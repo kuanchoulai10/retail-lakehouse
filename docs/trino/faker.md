@@ -16,7 +16,7 @@ The faker connector uses the [Datafaker library](https://www.datafaker.net/docum
 The faker connector is configured with the following settings:
 
 ```yaml title="trino/values-template.yaml"
---8<-- "trino/values-template.yaml:catalogs"
+--8<-- "retail-lakehouse/trino/values-template.yaml:catalogs"
 ```
 
 Here's a breakdown of the configuration:
@@ -33,13 +33,13 @@ The faker connector requires you to create tables with specific generator expres
 ### 1. Prices Table
 
 ```sql title="test-faker.sql - Prices Table"
---8<-- "trino/test-faker.sql:create-prices-table"
+--8<-- "retail-lakehouse/trino/test-faker.sql:create-prices-table"
 ```
 
 ### 2. Customer Table
 
 ```sql title="test-faker.sql - Customer Table"
---8<-- "trino/test-faker.sql:create-customer-table"
+--8<-- "retail-lakehouse/trino/test-faker.sql:create-customer-table"
 ```
 
 ## Example Queries
@@ -47,13 +47,13 @@ The faker connector requires you to create tables with specific generator expres
 ### Basic Data Generation
 
 ```sql title="test-faker.sql - Basic Queries"
---8<-- "trino/test-faker.sql:basic-queries"
+--8<-- "retail-lakehouse/trino/test-faker.sql:basic-queries"
 ```
 
 ### Advanced Queries
 
 ```sql title="test-faker.sql - Advanced Queries"
---8<-- "trino/test-faker.sql:advanced-queries"
+--8<-- "retail-lakehouse/trino/test-faker.sql:advanced-queries"
 ```
 
 ## Testing Commands
