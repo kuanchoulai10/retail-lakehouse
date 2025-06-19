@@ -1,0 +1,14 @@
+name: Trigger Monorepo to Build Docs
+
+on:
+  push:
+    paths:
+      - 'mkdocs.yml'
+      - 'README.md'
+      - 'docs/**'
+
+jobs:
+  trigger_monorepo:
+    uses: kuanchoulai10/reusable-workflows/.github/workflows/trigger-monorepo-to-build-doc.yml@main
+    secrets:
+      PAT: ${{ secrets.PAT }}
