@@ -1,4 +1,4 @@
-# Trino Faker Connector Guide
+# Faker Connector
 
 This guide covers how to use the faker connector in Trino to generate realistic fake data for testing and development purposes.
 
@@ -15,15 +15,16 @@ The faker connector uses the [Datafaker library](https://www.datafaker.net/docum
 
 The faker connector is configured with the following settings:
 
-```yaml title="values.yaml - Faker Connector Settings"
---8<-- "trino/values.yaml:faker-connector"
+```yaml title="trino/values-template.yaml"
+--8<-- "trino/values-template.yaml:catalogs"
 ```
 
-**Configuration Details:**
-- `connector.name=faker` - Specifies the faker connector
-- `faker.null-probability=0.1` - 10% chance of null values in generated data
-- `faker.default-limit=1000` - Default row limit for queries
-- `faker.locale=en` - English locale for generated data patterns
+Here's a breakdown of the configuration:
+
+- `connector.name=faker`: Specifies the faker connector
+- `faker.null-probability=0.1`: 10% chance of null values in generated data
+- `faker.default-limit=1000`: Default row limit for queries
+- `faker.locale=en`: English locale for generated data patterns
 
 ## Creating Tables
 

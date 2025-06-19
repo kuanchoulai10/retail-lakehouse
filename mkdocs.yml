@@ -6,7 +6,11 @@ nav:
     - trino/what-why-when.md
     - trino/how-it-works.md
     - trino/deployment.md
+    - trino/oauth2.md
+    - trino/fault-tolerant.md
+    - trino/catalogs.md
     - trino/faker.md
+
 
 theme:
   name: material
