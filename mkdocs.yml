@@ -3,12 +3,12 @@ docs_dir: docs
 nav:
   - index.md
   - Trino:
-    - trino/what-why-when.md
+    # - trino/what-why-when.md
     - trino/how-it-works.md
     - trino/deployment.md
     - trino/oauth2.md
-    - trino/fault-tolerant.md
-    - trino/catalogs.md
+    # - trino/fault-tolerant.md
+    # - trino/catalogs.md
     - trino/faker.md
 
 
