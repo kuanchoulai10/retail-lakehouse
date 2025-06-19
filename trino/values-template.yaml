@@ -1,0 +1,98 @@
+# --8<-- [start:image]
+image:
+  tag: "476"
+# --8<-- [end:image]
+
+# --8<-- [start:server]
+server:
+  workers: 2
+  config:
+    authenticationType: "oauth2"
+  coordinatorExtraConfig: |
+    http-server.https.enabled=true
+    http-server.https.port=8443
+    http-server.https.keystore.path=/etc/trino/tls/trino-dev.pem
+    http-server.authentication.oauth2.issuer=https://accounts.google.com
+    http-server.authentication.oauth2.client-id=$OAUTH2_CLIENT_ID
+    http-server.authentication.oauth2.client-secret=$OAUTH2_CLIENT_SECRET
+    web-ui.authentication.type=oauth2
+  #   distributed-sort=true
+  #   query.max-history=50
+# --8<-- [end:server]
+
+# --8<-- [start:coordinator]
+coordinator:
+  jvm:
+    maxHeapSize: "8G"
+  livenessProbe:
+    initialDelaySeconds: 30
+    failureThreshold: 20
+  readinessProbe:
+    initialDelaySeconds: 30
+    failureThreshold: 20
+  secretMounts:
+    - name: trino-tls
+      secretName: trino-tls-secret
+      path: /etc/trino/tls
+  additionalExposedPorts:
+    https:
+      servicePort: 8443
+      name: https
+      port: 8443
+      protocol: TCP
+  # access-control.properties: |
+  #   access-control.name=file
+  #   security.refresh-period=150s
+  #   security.config-file=/etc/trino/access-control/rules.json
+# --8<-- [end:coordinator]
+
+
+
+# --8<-- [start:worker]
+worker:
+  jvm:
+    maxHeapSize: "8G"
+  livenessProbe:
+    initialDelaySeconds: 30
+    failureThreshold: 20
+  readinessProbe:
+    initialDelaySeconds: 30
+    failureThreshold: 20
+# --8<-- [end:worker]
+
+# --8<-- [start:catalogs]
+catalogs:
+  faker: |
+    connector.name=faker
+    faker.null-probability=0.1
+    faker.default-limit=1000
+    faker.locale=en
+  tpch: |
+    connector.name=tpch
+    tpch.splits-per-node=4
+  tpcds: |
+    connector.name=tpcds
+    tpcds.splits-per-node=4
+# --8<-- [end:catalogs]
+
+
+
+# --8<-- [start:additionalConfigProperties]
+additionalConfigProperties:
+  - internal-communication.shared-secret=$INTERNAL_SHARED_SECRET
+  - discovery.uri=http://trino.trino.svc.cluster.local:8080
+# --8<-- [end:additionalConfigProperties]
+
+# --8<-- [start:additionalExchangeManagerProperties]
+additionalExchangeManagerProperties: []
+# additionalExchangeManagerProperties -- [Exchange manager
+# properties](https://trino.io/docs/current/admin/fault-tolerant-execution.html#exchange-manager).
+# @raw
+# Example:
+# ```yaml
+#  - exchange.s3.region=object-store-region
+#  - exchange.s3.endpoint=your-object-store-endpoint
+#  - exchange.s3.aws-access-key=your-access-key
+#  - exchange.s3.aws-secret-key=your-secret-key
+# ```
+# --8<-- [end:additionalExchangeManagerProperties]
