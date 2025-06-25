@@ -2,6 +2,9 @@ site_name: side-projects/retail-lakehouse
 docs_dir: docs
 nav:
   - index.md
+  - Apache Iceberg:
+    - Spark Quickstart:
+      - iceberg/spark-quickstart.md
   - Trino:
     # - trino/what-why-when.md
     - trino/how-it-works.md
