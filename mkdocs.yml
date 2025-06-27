@@ -2,6 +2,8 @@ site_name: side-projects/retail-lakehouse
 docs_dir: docs
 nav:
   - index.md
+  - Kafka:
+    - kafka/deployment.md
   - Apache Iceberg:
     - Spark Quickstart:
       - iceberg/spark-quickstart.md
