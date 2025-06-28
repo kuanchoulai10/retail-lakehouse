@@ -10,11 +10,9 @@ The basic deployment path includes the following steps:
 
 - Deploy the Strimzi Cluster Operator
 - Deploy the Kafka cluster
-- Deploy a Database (MySQL or PostgreSQL)
-- Create Secrets for the Database
+- Deploy a database (MySQL or PostgreSQL)
+- Create decrets for the database
 - Deploy a Debezium Connector
-
-
 
 ## Deploy the Strimzi Cluster Operator
 
@@ -24,25 +22,20 @@ Create a Kubernetes Namespace for the Strimzi Cluster Operator:
 kubectl create namespace strimzi
 ```
 
-Create a Kubernetes Namespace for the Kafka cluster:
-
-```bash
-kubectl create namespace kafka-db-cdc
-```
-
 Show the default values of the Strimzi Kafka Operator Helm chart:
 
 ```
 helm show values oci://quay.io/strimzi-helm/strimzi-kafka-operator > values-default.yaml
 ```
 
-Review the default values in `values-default.yaml` and modify them as needed. For example, you can set the `watchNamespaces` to the namespace where you want to deploy the Kafka cluster (`kafka-db-cdc` in this case):
+Review the default values in `values-default.yaml` and modify them as needed. For example, you can set the `watchNamespaces` to the namespace where you want to deploy the Kafka cluster (`kafka-cdc` in this case):
 
 ??? info "values.yaml"
 
     ```yaml linenums="1" hl_lines="8 9"
     --8<-- "./kafka/values.yaml"
     ```
+
 
 Install the Strimzi Cluster Operator using Helm:
 
@@ -76,7 +69,6 @@ NAME                                                 DESIRED   CURRENT   READY  
 replicaset.apps/strimzi-cluster-operator-5dd9cc85d   1         1         1       4m32s
 ```
 
-
 ## Deploying a Kafka Cluster
 
 To deploy a Kafka cluster in KRaft mode, you need to create a Kafka cluster YAML file that defines the cluster configuration. Below is an example of such a file:
@@ -89,14 +81,21 @@ Kafka 4.0 開始預設支援 KRaft；`metadataVersion`，IV 代表 Incompatible 
 
 ### KRaft Mode
 
-KafkaNodePool 是什麼？
+KRaft 模式是 Kafka 的一種新架構，取代了傳統的 ZooKeeper。它讓 Kafka broker 自己管理元資料（metadata），不再需要依賴外部的 ZooKeeper 叢集。這樣做的好處包括：
 
-在使用 KRaft 模式時，Strimzi 把 Kafka broker 的節點角色（如 controller、broker）和儲存設定獨立出來，用 KafkaNodePool 這個 CRD 來描述。這讓你可以：
+- 簡化部署：不需要額外安裝和維護 ZooKeeper。
+- 提升性能：減少了跨叢集的網路延遲。
+- 增強可靠性：減少了單點故障的風險。
+
+要在 Kafka Cluster 中啟用 KRaft 模式，你需要替 `strimzi.io/node-pools` 和 `strimzi.io/kraft` 這兩個註解加上 `enabled`。這樣 Strimzi 就會知道你要使用 KRaft 模式。
+
+
+不僅如此，在使用 KRaft 模式時，Strimzi 把 Kafka broker 的節點角色（如 controller、broker）和儲存設定獨立出來，用 KafkaNodePool 這個 CRD 來描述。這讓你可以：
 
 - 把不同角色（controller-only、broker-only、dual-role）分配到不同實體節點
 - 更細緻地分配儲存資源（像是磁碟大小、是否共用 metadata）
 
-這段定義了一個名叫 dual-role 的 Kafka 節點池，會掛在名為 kcl-cluster 的 Kafka 叢集之下。也就是說，這組節點是 kcl-cluster Kafka cluster 的一部分。我們希望這個節點池中有 3 個副本（replica），也就是說，會有 3 台 Pod 被建立，分別扮演 Kafka 節點角色。這裡指定每個節點同時扮演：
+這段定義了一個名叫 dual-role 的 `KafkaNodePool`，會掛在名為 `debezium-cluster` 的 Kafka Cluster之下。也就是說，這組節點是 `debezium-cluster` Kafka cluster 的一部分。我們希望這個節點池中有 3 個副本（replica），也就是說，會有 3 台 Pod 被建立，這裡指定每個節點同時扮演：
 
 - Kafka controller（負責元資料管理，取代原來 ZooKeeper 的角色）
 - Kafka broker（接收與傳送訊息給 producer/consumer）
@@ -154,14 +153,16 @@ Kafka 中的 listener 是用來定義 Kafka broker 如何接收 client（如 pro
 這五個設定合起來，是在對 Kafka 說：「我想要一個高度容錯、高可用、強一致性的 Kafka 環境，所以不論是 consumer offset、交易資料、或普通訊息，我都要求它們至少要有三份備份，而且要有兩份成功同步才算寫入成功。」
 
 
-
-
-
-
-After creating the YAML file, you can deploy the Kafka cluster using the following command:
+Create a Kubernetes Namespace for the Kafka cluster:
 
 ```bash
-kubectl create -f kafka.yaml -n kafka-db-cdc
+kubectl create namespace kafka-cdc
+```
+
+After creating the YAML file and the namespace, you can deploy the Kafka cluster using the following command:
+
+```bash
+kubectl create -f kafka-cluster.yaml -n kafka-cdc
 ```
 
 ```
@@ -172,7 +173,7 @@ kafka.kafka.strimzi.io/my-cluster created
 Check the status of the Kafka cluster:
 
 ```bash
-kubectl get all -n kafka-db-cdc
+kubectl get all -n kafka-cdc
 ```
 
 ```
@@ -200,7 +201,7 @@ replicaset.apps/my-cluster-entity-operator-674f9db8bf   1         1         1   
 ```
 
 ```bash
-kubectl apply -f db.yaml -n kafka-db-cdc
+kubectl apply -f db.yaml -n kafka-cdc
 ```
 
 ## Create Secrets for the Database
@@ -210,7 +211,7 @@ kubectl apply -f db.yaml -n kafka-db-cdc
 ```
 
 ```bash
-kubectl apply -f debezium-secret.yaml -n kafka-db-cdc
+kubectl apply -f debezium-secret.yaml -n kafka-cdc
 ```
 
 
@@ -219,7 +220,7 @@ kubectl apply -f debezium-secret.yaml -n kafka-db-cdc
 ```
 
 ```bash
-kubectl apply -f debezium-role.yaml -n kafka-db-cdc
+kubectl apply -f debezium-role.yaml -n kafka-cdc
 ```
 
 ```yaml title="debezium-role-binding.yaml"
@@ -227,7 +228,7 @@ kubectl apply -f debezium-role.yaml -n kafka-db-cdc
 ```
 
 ```bash
-kubectl apply -f debezium-role-binding.yaml -n kafka-db-cdc
+kubectl apply -f debezium-role-binding.yaml -n kafka-cdc
 ```
 
 ## Deploy a Debezium Connector
@@ -241,7 +242,7 @@ To deploy a Debezium connector, you need to deploy a Kafka Connect cluster with 
 ```
 
 ```bash
-kubectl apply -f debezium-kafka-connect.yaml -n kafka-db-cdc
+kubectl apply -f debezium-kafka-connect.yaml -n kafka-cdc
 ```
 
 
@@ -252,7 +253,7 @@ kubectl apply -f debezium-kafka-connect.yaml -n kafka-db-cdc
 ```
 
 ```bash
-kubectl apply -f debezium-kafka-connector.yaml -n kafka-db-cdc
+kubectl apply -f debezium-kafka-connector.yaml -n kafka-cdc
 ```
 
 ## Verify the Debezium Connector
