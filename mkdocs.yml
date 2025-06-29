@@ -6,7 +6,7 @@ nav:
     - kafka/deployment.md
   - Apache Iceberg:
     - Spark Quickstart:
-      - iceberg/spark-quickstart/index.md
+      - iceberg/spark-quickstart/deployment.md
       - iceberg/spark-quickstart/1-iceberg-getting-started.ipynb
       - iceberg/spark-quickstart/2-iceberg-integrated-audits-demo.ipynb
       - iceberg/spark-quickstart/3-iceberg-table-maintenance-spark-procedures.ipynb
