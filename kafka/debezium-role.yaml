@@ -2,7 +2,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: connector-configuration-role
-  namespace: debezium-example
+  namespace: kafka-cdc
 rules:
 - apiGroups: [""]
   resources: ["secrets"]

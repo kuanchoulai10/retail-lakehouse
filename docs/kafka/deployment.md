@@ -1,5 +1,7 @@
 # Deployment
 
+![](kafka.drawio.svg)
+
 You can deploy Strimzi on Kubernetes 1.25 and later using one of the following methods:
 
 - Deployment files (YAML files)
@@ -22,6 +24,13 @@ Create a Kubernetes Namespace for the Strimzi Cluster Operator:
 kubectl create namespace strimzi
 ```
 
+Create a Kubernetes Namespace for the Kafka cluster:
+
+```bash
+kubectl create namespace kafka-cdc
+```
+
+
 Show the default values of the Strimzi Kafka Operator Helm chart:
 
 ```
@@ -43,6 +52,23 @@ Install the Strimzi Cluster Operator using Helm:
 helm install strimzi-cluster-operator oci://quay.io/strimzi-helm/strimzi-kafka-operator -f values.yaml -n strimzi
 ```
 
+```
+Pulled: quay.io/strimzi-helm/strimzi-kafka-operator:0.46.1
+Digest: sha256:e87ea2a03985f5dd50fee1f8706f737fa1151b86dce5021b6c0798ac8b17e27f
+NAME: strimzi-cluster-operator
+LAST DEPLOYED: Sun Jun 29 17:25:49 2025
+NAMESPACE: strimzi
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+Thank you for installing {==strimzi-kafka-operator-0.46.1==}
+
+To create a Kafka cluster refer to the following documentation.
+
+https://strimzi.io/docs/operators/latest/deploying.html#deploying-cluster-operator-helm-chart-str
+```
+
 After the installation, you can verify that the Strimzi Cluster Operator is running:
 
 ```bash
@@ -50,8 +76,8 @@ helm ls -n strimzi
 ```
 
 ```
-NAME                    	NAMESPACE	REVISION	UPDATED                             	STATUS  	CHART                        	APP VERSION
-strimzi-cluster-operator	strimzi  	1       	2025-06-25 22:24:51.172738 +0800 CST	deployed	strimzi-kafka-operator-0.46.1	0.46.1     
+NAME                    	NAMESPACE	REVISION	UPDATED                             	STATUS  	HART                        	APP VERSION
+strimzi-cluster-operator	strimzi  	1       	2025-06-29 17:25:49.773026 +0800 CST	deployed	trimzi-kafka-operator-0.46.1	0.46.1     
 ```
 
 ```bash
@@ -60,13 +86,13 @@ kubectl get all -n strimzi
 
 ```
 NAME                                           READY   STATUS    RESTARTS   AGE
-pod/strimzi-cluster-operator-5dd9cc85d-mwdn9   1/1     Running   0          4m32s
+pod/strimzi-cluster-operator-74f577b78-s9n25   1/1     Running   0          108s
 
-NAME                                       READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/strimzi-cluster-operator   1/1     1            1           4m32s
+NAME                                           READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/strimzi-cluster-operator       1/1     1            1           108s
 
 NAME                                                 DESIRED   CURRENT   READY   AGE
-replicaset.apps/strimzi-cluster-operator-5dd9cc85d   1         1         1       4m32s
+replicaset.apps/strimzi-cluster-operator-74f577b78   1         1         1       108s
 ```
 
 ## Deploying a Kafka Cluster
@@ -152,13 +178,6 @@ Kafka 中的 listener 是用來定義 Kafka broker 如何接收 client（如 pro
 
 這五個設定合起來，是在對 Kafka 說：「我想要一個高度容錯、高可用、強一致性的 Kafka 環境，所以不論是 consumer offset、交易資料、或普通訊息，我都要求它們至少要有三份備份，而且要有兩份成功同步才算寫入成功。」
 
-
-Create a Kubernetes Namespace for the Kafka cluster:
-
-```bash
-kubectl create namespace kafka-cdc
-```
-
 After creating the YAML file and the namespace, you can deploy the Kafka cluster using the following command:
 
 ```bash
@@ -166,8 +185,8 @@ kubectl create -f kafka-cluster.yaml -n kafka-cdc
 ```
 
 ```
+kafka.kafka.strimzi.io/debezium-cluster created
 kafkanodepool.kafka.strimzi.io/dual-role created
-kafka.kafka.strimzi.io/my-cluster created
 ```
 
 Check the status of the Kafka cluster:
@@ -177,21 +196,21 @@ kubectl get all -n kafka-cdc
 ```
 
 ```
-NAME                                              READY   STATUS    RESTARTS   AGE
-pod/my-cluster-dual-role-0                        1/1     Running   0          2m19s
-pod/my-cluster-dual-role-1                        1/1     Running   0          2m19s
-pod/my-cluster-dual-role-2                        1/1     Running   0          2m19s
-pod/my-cluster-entity-operator-674f9db8bf-sr8kk   2/2     Running   0          36s
+NAME                                                    READY   STATUS    RESTARTS   AGE
+pod/debezium-cluster-dual-role-0                        1/1     Running   0          60s
+pod/debezium-cluster-dual-role-1                        1/1     Running   0          60s
+pod/debezium-cluster-dual-role-2                        1/1     Running   0          60s
+pod/debezium-cluster-entity-operator-5b998f6cbf-c8hdf   2/2     Running   0          24s
 
-NAME                                 TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                                        AGE
-service/my-cluster-kafka-bootstrap   ClusterIP   10.111.119.151   <none>        9091/TCP,9092/TCP,9093/TCP                     2m20s
-service/my-cluster-kafka-brokers     ClusterIP   None             <none>        9090/TCP,9091/TCP,8443/TCP,9092/TCP,9093/TCP   2m20s
+NAME                                       TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                                        AGE
+service/debezium-cluster-kafka-bootstrap   ClusterIP   10.105.50.103   <none>        9091/TCP,9092/TCP,9093/TCP                     61s
+service/debezium-cluster-kafka-brokers     ClusterIP   None            <none>        9090/TCP,9091/TCP,8443/TCP,9092/TCP,9093/TCP   61s
 
-NAME                                         READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/my-cluster-entity-operator   1/1     1            1           36s
+NAME                                               READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/debezium-cluster-entity-operator   1/1     1            1           24s
 
-NAME                                                    DESIRED   CURRENT   READY   AGE
-replicaset.apps/my-cluster-entity-operator-674f9db8bf   1         1         1       36s
+NAME                                                          DESIRED   CURRENT   READY   AGE
+replicaset.apps/debezium-cluster-entity-operator-5b998f6cbf   1         1         1       24s
 ```
 
 ## Deploy a Database
@@ -204,36 +223,95 @@ replicaset.apps/my-cluster-entity-operator-674f9db8bf   1         1         1   
 kubectl apply -f db.yaml -n kafka-cdc
 ```
 
+```
+service/mysql created
+deployment.apps/mysql created
+```
+
+```bash
+kubectl get all -n kafka-cdc
+```
+
+```
+NAME                                                    READY   STATUS    RESTARTS   AGE
+pod/debezium-cluster-dual-role-0                        1/1     Running   0          15m
+pod/debezium-cluster-dual-role-1                        1/1     Running   0          15m
+pod/debezium-cluster-dual-role-2                        1/1     Running   0          15m
+pod/debezium-cluster-entity-operator-5b998f6cbf-c8hdf   2/2     Running   0          15m
+{==pod/mysql-6b84fd947d-9g9lt==}                              1/1     Running   0          10m
+
+NAME                                       TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                                        AGE
+service/debezium-cluster-kafka-bootstrap   ClusterIP   10.105.50.103   <none>        9091/TCP,9092/TCP,9093/TCP                     15m
+service/debezium-cluster-kafka-brokers     ClusterIP   None            <none>        9090/TCP,9091/TCP,8443/TCP,9092/TCP,9093/TCP   15m
+{==service/mysql==}                              ClusterIP   None            <none>        3306/TCP                                       10m
+
+NAME                                               READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/debezium-cluster-entity-operator   1/1     1            1           15m
+{==deployment.apps/mysql==}                              1/1     1            1           10m
+
+NAME                                                          DESIRED   CURRENT   READY   AGE
+replicaset.apps/debezium-cluster-entity-operator-5b998f6cbf   1         1         1       15m
+{==replicaset.apps/mysql-6b84fd947d==}                              1         1         1       10m
+```
+
 ## Create Secrets for the Database
 
-```yaml title="debezium-secret.yaml"
+```yaml title="debezium-secret.yaml" linenums="1" hl_lines="4"
 --8<-- "./kafka/debezium-secret.yaml"
 ```
 
-```bash
-kubectl apply -f debezium-secret.yaml -n kafka-cdc
-```
-
-
-```yaml title="debezium-role.yaml"
+```yaml title="debezium-role.yaml" linenums="1" hl_lines="4 9"
 --8<-- "./kafka/debezium-role.yaml"
 ```
 
-```bash
-kubectl apply -f debezium-role.yaml -n kafka-cdc
-```
-
-```yaml title="debezium-role-binding.yaml"
+```yaml title="debezium-role-binding.yaml" linenums="1" hl_lines="4 8 12"
 --8<-- "./kafka/debezium-role-binding.yaml"
 ```
 
 ```bash
-kubectl apply -f debezium-role-binding.yaml -n kafka-cdc
+kubectl apply -f debezium-secret.yaml
+kubectl apply -f debezium-role.yaml
+kubectl apply -f debezium-role-binding.yaml
+```
+
+```
+secret/debezium-secret created
+role.rbac.authorization.k8s.io/connector-configuration-role created
+rolebinding.rbac.authorization.k8s.io/connector-configuration-role-binding created
 ```
 
 ## Deploy a Debezium Connector
 
 To deploy a Debezium connector, you need to deploy a Kafka Connect cluster with the required connector plug-in(s), before instantiating the actual connector itself.
+
+As the first step, a container image for Kafka Connect with the plug-in has to be created.
+
+Strimzi also can be used for building and pushing the required container image for us. In fact, both tasks can be merged together and instructions for building the container image can be provided directly within the `KafkaConnect` object specification:
+
+```bash
+minikube addons enable registry
+```
+
+```
+💡  registry is an addon maintained by minikube. For any concerns contact minikube on GitHub.
+You can view the list of minikube maintainers at: https://github.com/kubernetes/minikube/blob/master/OWNERS
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                      │
+│    Registry addon with docker driver uses port 49609 please use that instead of default port 5000    │
+│                                                                                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────╯
+📘  For more information see: https://minikube.sigs.k8s.io/docs/drivers/docker
+    ▪ Using image docker.io/registry:2.8.3
+    ▪ Using image gcr.io/k8s-minikube/kube-registry-proxy:0.0.6
+🔎  Verifying registry addon...
+🌟  The 'registry' addon is enabled
+```
+
+```bash
+kubectl -n kube-system get svc registry -o jsonpath='{.spec.clusterIP}'
+
+10.103.211.36
+```
 
 ### Creating a Kafka Connect Cluster
 
@@ -245,6 +323,38 @@ To deploy a Debezium connector, you need to deploy a Kafka Connect cluster with 
 kubectl apply -f debezium-kafka-connect.yaml -n kafka-cdc
 ```
 
+```
+kafkaconnect.kafka.strimzi.io/debezium-connect-cluster created
+```
+
+Check the current resources in the `kafka-cdc` namespace:
+
+```bash
+kubectl get all -n kafka-cdc
+```
+
+```
+NAME                                                    READY   STATUS    RESTARTS   AGE
+pod/debezium-cluster-dual-role-0                        1/1     Running   0          66m
+pod/debezium-cluster-dual-role-1                        1/1     Running   0          66m
+pod/debezium-cluster-dual-role-2                        1/1     Running   0          66m
+pod/debezium-cluster-entity-operator-5b998f6cbf-c8hdf   2/2     Running   0          65m
+{==pod/debezium-connect-cluster-connect-build==}              1/1     Running   0          49s
+pod/mysql-6b84fd947d-9g9lt                              1/1     Running   0          60m
+
+NAME                                       TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                                        AGE
+service/debezium-cluster-kafka-bootstrap   ClusterIP   10.105.50.103   <none>        9091/TCP,9092/TCP,9093/TCP                     66m
+service/debezium-cluster-kafka-brokers     ClusterIP   None            <none>        9090/TCP,9091/TCP,8443/TCP,9092/TCP,9093/TCP   66m
+service/mysql                              ClusterIP   None            <none>        3306/TCP                                       60m
+
+NAME                                               READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/debezium-cluster-entity-operator   1/1     1            1           65m
+deployment.apps/mysql                              1/1     1            1           60m
+
+NAME                                                          DESIRED   CURRENT   READY   AGE
+replicaset.apps/debezium-cluster-entity-operator-5b998f6cbf   1         1         1       65m
+replicaset.apps/mysql-6b84fd947d                              1         1         1       60m
+```
 
 ### Creating a Debezium Connector
 
@@ -256,19 +366,344 @@ kubectl apply -f debezium-kafka-connect.yaml -n kafka-cdc
 kubectl apply -f debezium-kafka-connector.yaml -n kafka-cdc
 ```
 
-## Verify the Debezium Connector
-
-```bash
-kubectl run -n debezium-example -it --rm --image=quay.io/debezium/tooling:1.2  --restart=Never watcher -- kcat -b debezium-cluster-kafka-bootstrap:9092 -C -o beginning -t mysql.inventory.customers
+```
+kafkaconnector.kafka.strimzi.io/debezium-connector-mysql created
 ```
 
 ```bash
-kubectl run -n debezium-example -it --rm --image=mysql:8.2 --restart=Never --env MYSQL_ROOT_PASSWORD=debezium mysqlterm -- mysql -hmysql -P3306 -uroot -pdebezium
+k get all -n kafka-cdc
+```
+
+```
+NAME                                                    READY   STATUS    RESTARTS   AGE
+pod/debezium-cluster-dual-role-0                        1/1     Running   0          100m
+pod/debezium-cluster-dual-role-1                        1/1     Running   0          100m
+pod/debezium-cluster-dual-role-2                        1/1     Running   0          100m
+pod/debezium-cluster-entity-operator-5b998f6cbf-c8hdf   2/2     Running   0          99m
+{==pod/debezium-connect-cluster-connect-0==}                  1/1     Running   0          30m
+pod/mysql-6b84fd947d-9g9lt                              1/1     Running   0          94m
+
+NAME                                           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                                        AGE
+service/debezium-cluster-kafka-bootstrap       ClusterIP   10.105.50.103    <none>        9091/TCP,9092/TCP,9093/TCP                     100m
+service/debezium-cluster-kafka-brokers         ClusterIP   None             <none>        9090/TCP,9091/TCP,8443/TCP,9092/TCP,9093/TCP   100m
+{==service/debezium-connect-cluster-connect==}       ClusterIP   None             <none>        8083/TCP                                       30m
+{==service/debezium-connect-cluster-connect-api==}   ClusterIP   10.100.229.177   <none>        8083/TCP                                       30m
+service/mysql                                  ClusterIP   None             <none>        3306/TCP                                       94m
+
+NAME                                               READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/debezium-cluster-entity-operator   1/1     1            1           99m
+deployment.apps/mysql                              1/1     1            1           94m
+
+NAME                                                          DESIRED   CURRENT   READY   AGE
+replicaset.apps/debezium-cluster-entity-operator-5b998f6cbf   1         1         1       99m
+replicaset.apps/mysql-6b84fd947d                              1         1         1       94m
+```
+## Verify the Debezium Connector
+
+```bash
+kubectl run kafka-topics-cli \
+  -n kafka-cdc \
+  -it --rm \
+  --image=quay.io/strimzi/kafka:0.46.1-kafka-4.0.0 \
+  --restart=Never -- \
+  bin/kafka-topics.sh \
+    --bootstrap-server debezium-cluster-kafka-bootstrap:9092 \
+    --list
+```
+
+??? info "Result"
+
+    ```
+    __consumer_offsets
+    connect-cluster-configs
+    connect-cluster-offsets
+    connect-cluster-status
+    mysql
+    mysql.inventory.addresses
+    mysql.inventory.customers
+    mysql.inventory.geom
+    mysql.inventory.orders
+    mysql.inventory.products
+    mysql.inventory.products_on_hand
+    schema-changes.inventory
+    ```
+
+
+```bash
+kubectl run kafka-cli \
+  -n kafka-cdc \
+  -it --rm \
+  --image=quay.io/strimzi/kafka:0.46.1-kafka-4.0.0 \
+  --restart=Never -- \
+  bin/kafka-console-consumer.sh \
+    --bootstrap-server debezium-cluster-kafka-bootstrap:9092 \
+    --topic mysql.inventory.customers \
+    --partition 0
+    --offset -10
+    --max-messages 10
+```
+
+```bash
+kubectl exec -n kafka-cdc -it mysql-6b84fd947d-9g9lt -- mysql -uroot -pdebezium
 ```
 
 ```bash
 sql> update customers set first_name="Sally Marie" where id=1001;
 ```
+
+??? info "Result"
+
+    ```json
+    {
+    "schema": {
+        "type": "struct",
+        "fields": [
+        {
+            "type": "struct",
+            "fields": [
+            {
+                "type": "int32",
+                "optional": false,
+                "field": "id"
+            },
+            {
+                "type": "string",
+                "optional": false,
+                "field": "first_name"
+            },
+            {
+                "type": "string",
+                "optional": false,
+                "field": "last_name"
+            },
+            {
+                "type": "string",
+                "optional": false,
+                "field": "email"
+            }
+            ],
+            "optional": true,
+            "name": "mysql.inventory.customers.Value",
+            "field": "before"
+        },
+        {
+            "type": "struct",
+            "fields": [
+            {
+                "type": "int32",
+                "optional": false,
+                "field": "id"
+            },
+            {
+                "type": "string",
+                "optional": false,
+                "field": "first_name"
+            },
+            {
+                "type": "string",
+                "optional": false,
+                "field": "last_name"
+            },
+            {
+                "type": "string",
+                "optional": false,
+                "field": "email"
+            }
+            ],
+            "optional": true,
+            "name": "mysql.inventory.customers.Value",
+            "field": "after"
+        },
+        {
+            "type": "struct",
+            "fields": [
+            {
+                "type": "string",
+                "optional": false,
+                "field": "version"
+            },
+            {
+                "type": "string",
+                "optional": false,
+                "field": "connector"
+            },
+            {
+                "type": "string",
+                "optional": false,
+                "field": "name"
+            },
+            {
+                "type": "int64",
+                "optional": false,
+                "field": "ts_ms"
+            },
+            {
+                "type": "string",
+                "optional": true,
+                "name": "io.debezium.data.Enum",
+                "version": 1,
+                "parameters": {
+                "allowed": "true,first,first_in_data_collection,last_in_data_collection,last,false,incremental"
+                },
+                "default": "false",
+                "field": "snapshot"
+            },
+            {
+                "type": "string",
+                "optional": false,
+                "field": "db"
+            },
+            {
+                "type": "string",
+                "optional": true,
+                "field": "sequence"
+            },
+            {
+                "type": "int64",
+                "optional": true,
+                "field": "ts_us"
+            },
+            {
+                "type": "int64",
+                "optional": true,
+                "field": "ts_ns"
+            },
+            {
+                "type": "string",
+                "optional": true,
+                "field": "table"
+            },
+            {
+                "type": "int64",
+                "optional": false,
+                "field": "server_id"
+            },
+            {
+                "type": "string",
+                "optional": true,
+                "field": "gtid"
+            },
+            {
+                "type": "string",
+                "optional": false,
+                "field": "file"
+            },
+            {
+                "type": "int64",
+                "optional": false,
+                "field": "pos"
+            },
+            {
+                "type": "int32",
+                "optional": false,
+                "field": "row"
+            },
+            {
+                "type": "int64",
+                "optional": true,
+                "field": "thread"
+            },
+            {
+                "type": "string",
+                "optional": true,
+                "field": "query"
+            }
+            ],
+            "optional": false,
+            "name": "io.debezium.connector.mysql.Source",
+            "version": 1,
+            "field": "source"
+        },
+        {
+            "type": "struct",
+            "fields": [
+            {
+                "type": "string",
+                "optional": false,
+                "field": "id"
+            },
+            {
+                "type": "int64",
+                "optional": false,
+                "field": "total_order"
+            },
+            {
+                "type": "int64",
+                "optional": false,
+                "field": "data_collection_order"
+            }
+            ],
+            "optional": true,
+            "name": "event.block",
+            "version": 1,
+            "field": "transaction"
+        },
+        {
+            "type": "string",
+            "optional": false,
+            "field": "op"
+        },
+        {
+            "type": "int64",
+            "optional": true,
+            "field": "ts_ms"
+        },
+        {
+            "type": "int64",
+            "optional": true,
+            "field": "ts_us"
+        },
+        {
+            "type": "int64",
+            "optional": true,
+            "field": "ts_ns"
+        }
+        ],
+        "optional": false,
+        "name": "mysql.inventory.customers.Envelope",
+        "version": 2
+    },
+    "payload": {
+        "before": {
+        "id": 1001,
+        "first_name": "Sally",
+        "last_name": "Thomas",
+        "email": "sally.thomas@acme.com"
+        },
+        "after": {
+        "id": 1001,
+        "first_name": "Sally Marie",
+        "last_name": "Thomas",
+        "email": "sally.thomas@acme.com"
+        },
+        "source": {
+        "version": "3.1.0.Final",
+        "connector": "mysql",
+        "name": "mysql",
+        "ts_ms": 1751201044000,
+        "snapshot": "false",
+        "db": "inventory",
+        "sequence": null,
+        "ts_us": 1751201044000000,
+        "ts_ns": 1751201044000000000,
+        "table": "customers",
+        "server_id": 1,
+        "gtid": null,
+        "file": "binlog.000002",
+        "pos": 401,
+        "row": 0,
+        "thread": 14,
+        "query": null
+        },
+        "transaction": null,
+        "op": "u",
+        "ts_ms": 1751201044907,
+        "ts_us": 1751201044907793,
+        "ts_ns": 1751201044907793970
+    }
+    }
+    ```
+
 
 
 ## References
