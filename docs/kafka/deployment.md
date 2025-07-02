@@ -1,6 +1,6 @@
 # Deployment
 
-![](kafka.drawio.svg)
+![](../architecture.drawio.svg)
 
 You can deploy Strimzi on Kubernetes 1.25 and later using one of the following methods:
 
@@ -13,7 +13,7 @@ The basic deployment path includes the following steps:
 - Deploy the Strimzi Cluster Operator
 - Deploy the Kafka cluster
 - Deploy a database (MySQL or PostgreSQL)
-- Create decrets for the database
+- Create secrets for the database
 - Deploy a Debezium Connector
 
 ## Deploy the Strimzi Cluster Operator
