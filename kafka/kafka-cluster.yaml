@@ -1,7 +1,7 @@
 apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
-  name: debezium-cluster
+  name: kafka-cluster
   annotations:
     strimzi.io/node-pools: enabled
     strimzi.io/kraft: enabled
@@ -35,7 +35,7 @@ kind: KafkaNodePool
 metadata:
   name: dual-role
   labels:
-    strimzi.io/cluster: debezium-cluster
+    strimzi.io/cluster: kafka-cluster
 spec:
   replicas: 3
   roles:
