@@ -12,7 +12,7 @@ spec:
     topics: mysql.inventory.orders
     iceberg.tables: inventory.orders
     iceberg.tables.default-commit-branch: main # Default branch for commits, main is used if not specified
-    iceberg.tables.default-id-columns: # TODO Default comma-separated list of columns that identify a row in tables (primary key)
+    # iceberg.tables.default-id-columns: # TODO Default comma-separated list of columns that identify a row in tables (primary key)
     iceberg.tables.auto-create-enabled: true # Set to true to automatically create destination tables, default is false
     iceberg.tables.auto-create-props.format-version: 2
     iceberg.tables.auto-create-props.write.format.default: parquet
@@ -24,3 +24,6 @@ spec:
     # iceberg.catalog.catalog-impl: org.apache.iceberg.aws.glue.GlueCatalog
     iceberg.catalog.io-impl: org.apache.iceberg.aws.s3.S3FileIO
     iceberg.catalog.warehouse: s3a://retail-lakehouse-7dj2/warehouse
+    transforms: debezium
+    transforms.debezium.type: org.apache.iceberg.connect.transforms.DebeziumTransform
+    

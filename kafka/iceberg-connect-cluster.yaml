@@ -41,3 +41,8 @@ spec:
             secretKeyRef:
               name: iceberg-secret
               key: awsSecretAccessKey
+        - name: AWS_REGION
+          valueFrom:
+            secretKeyRef:
+              name: iceberg-secret
+              key: awsRegion
