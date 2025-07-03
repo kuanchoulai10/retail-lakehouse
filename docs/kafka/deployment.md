@@ -11,10 +11,19 @@ You can deploy Strimzi on Kubernetes 1.25 and later using one of the following m
 The basic deployment path includes the following steps:
 
 - Deploy the Strimzi Cluster Operator
-- Deploy the Kafka cluster
-- Deploy a database (MySQL or PostgreSQL)
-- Create secrets for the database
-- Deploy a Debezium Connector
+- Deploy a Kafka Cluster
+- Deploy a MySQL Database
+- Deploy a Debezium Source Connector
+    - Create a Secret for Connecting to the Database
+    - Create a Debezium Kafka Connect Cluster
+    - Create a Debezium Source Connector
+    - Verify the Data Pipeline
+- Deploy an Iceberg Sink Connector
+    - Create a Secret for Connecting to AWS
+    - Create an Iceberg Kafka Connect Cluster
+    - Create an Iceberg Sink Connector
+    - Verify the Data Pipeline
+
 
 ## Deploy the Strimzi Cluster Operator
 
@@ -229,7 +238,7 @@ NAME                                                          DESIRED   CURRENT 
 replicaset.apps/kafka-cluster-entity-operator-5b998f6cbf      1         1         1       24s
 ```
 
-## Deploy a Database
+## Deploy a MySQL Database
 
 ```yaml title="db.yaml"
 --8<-- "./kafka/db.yaml"
@@ -270,7 +279,10 @@ replicaset.apps/kafka-cluster-entity-operator-5b998f6cbf      1         1       
 {==replicaset.apps/mysql-6b84fd947d==}                              1         1         1       10m
 ```
 
-## Create Secrets for the Database
+
+## Deploy a Debezium Source Connector
+
+### Create Secrets for the Database
 
 ```yaml title="debezium-secret.yaml" linenums="1" hl_lines="4"
 --8<-- "./kafka/debezium-secret.yaml"
@@ -296,7 +308,7 @@ role.rbac.authorization.k8s.io/debezium-role created
 rolebinding.rbac.authorization.k8s.io/debezium-role-binding created
 ```
 
-## Deploy a Debezium Connector
+### Create a Debezium Kafka Connect Cluster
 
 To deploy a Debezium connector, you need to deploy a Kafka Connect cluster with the required connector plug-in(s), before instantiating the actual connector itself.
 
@@ -328,8 +340,6 @@ kubectl -n kube-system get svc registry -o jsonpath='{.spec.clusterIP}'
 
 10.103.211.36
 ```
-
-### Creating a Kafka Connect Cluster
 
 ```yaml title="debezium-connect-cluster.yaml"
 --8<-- "./kafka/debezium-connect-cluster.yaml"
@@ -400,7 +410,7 @@ replicaset.apps/mysql-6b84fd947d                              1         1       
 ```
 
 
-### Creating a Debezium Connector
+### Create a Debezium Source Connector
 
 ```yaml title="debezium-connector.yaml"
 --8<-- "./kafka/debezium-connector.yaml"
@@ -415,34 +425,12 @@ kafkaconnector.kafka.strimzi.io/debezium-connector created
 ```
 
 ```bash
-k get all -n kafka-cdc
+kubectl get kafkaconnector debezium-connector -n kafka-cdc
+
+NAME                 CLUSTER                    CONNECTOR CLASS                              MAX TASKS   READY
+debezium-connector   debezium-connect-cluster   io.debezium.connector.mysql.MySqlConnector   1           True
 ```
-
-```
-NAME                                                    READY   STATUS    RESTARTS   AGE
-pod/kafka-cluster-dual-role-0                           1/1     Running   0          100m
-pod/kafka-cluster-dual-role-1                           1/1     Running   0          100m
-pod/kafka-cluster-dual-role-2                           1/1     Running   0          100m
-pod/kafka-cluster-entity-operator-5b998f6cbf-c8hdf      2/2     Running   0          99m
-{==pod/debezium-connect-cluster-connect-0==}                  1/1     Running   0          30m
-pod/mysql-6b84fd947d-9g9lt                              1/1     Running   0          94m
-
-NAME                                           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                                        AGE
-service/kafka-cluster-kafka-bootstrap          ClusterIP   10.105.50.103    <none>        9091/TCP,9092/TCP,9093/TCP                     100m
-service/kafka-cluster-kafka-brokers            ClusterIP   None             <none>        9090/TCP,9091/TCP,8443/TCP,9092/TCP,9093/TCP   100m
-{==service/debezium-connect-cluster-connect==}       ClusterIP   None             <none>        8083/TCP                                       30m
-{==service/debezium-connect-cluster-connect-api==}   ClusterIP   10.100.229.177   <none>        8083/TCP                                       30m
-service/mysql                                  ClusterIP   None             <none>        3306/TCP                                       94m
-
-NAME                                               READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/kafka-cluster-entity-operator      1/1     1            1           99m
-deployment.apps/mysql                              1/1     1            1           94m
-
-NAME                                                          DESIRED   CURRENT   READY   AGE
-replicaset.apps/kafka-cluster-entity-operator-5b998f6cbf      1         1         1       99m
-replicaset.apps/mysql-6b84fd947d                              1         1         1       94m
-```
-## Verify the Debezium Connector
+### Verify the Data Pipeline
 
 ```bash
 kubectl run kafka-topics-cli \
@@ -492,6 +480,7 @@ kubectl exec -n kafka-cdc -it mysql-6b84fd947d-9g9lt -- mysql -uroot -pdebezium
 ```
 
 ```bash
+sql> use inventory;
 sql> update customers set first_name="Sally Marie" where id=1001;
 ```
 
@@ -749,6 +738,147 @@ sql> update customers set first_name="Sally Marie" where id=1001;
     ```
 
 
+
+## Deploy an Iceberg Sink Connector
+
+### Create a Secret for Connecting to AWS
+
+```yaml title="iceberg-secret.yaml" linenums="1" hl_lines="4 5"
+--8<-- "./kafka/iceberg-secret.yaml"
+```
+
+```bash
+kubectl apply -f iceberg-secret.yaml -n kafka-cdc
+```
+
+### Create an Iceberg Kafka Connect Cluster
+
+```yaml title="iceberg-connect-cluster.yaml" linenums="1" hl_lines="4 5"
+--8<-- "./kafka/iceberg-connect-cluster.yaml"
+```
+
+```bash
+kubectl apply -f iceberg-connect-cluster.yaml -n kafka-cdc
+```
+
+```bash
+kubectl get all -n kafka-cdc
+
+NAME                                                 READY   STATUS    RESTARTS   AGE
+pod/debezium-connect-cluster-connect-0               1/1     Running   0          8m15s
+{==pod/iceberg-connect-cluster-connect-0==}                1/1     Running   0          73s
+pod/kafka-cluster-dual-role-0                        1/1     Running   0          14m
+pod/kafka-cluster-dual-role-1                        1/1     Running   0          14m
+pod/kafka-cluster-dual-role-2                        1/1     Running   0          14m
+pod/kafka-cluster-entity-operator-598bb8df8b-q2d4x   2/2     Running   0          13m
+pod/mysql-6b84fd947d-kpdk4                           1/1     Running   0          12m
+
+NAME                                           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                                        AGE
+service/debezium-connect-cluster-connect       ClusterIP   None             <none>        8083/TCP                                       8m15s
+service/debezium-connect-cluster-connect-api   ClusterIP   10.103.185.205   <none>        8083/TCP                                       8m15s
+{==service/iceberg-connect-cluster-connect==}        ClusterIP   None             <none>        8083/TCP                                       73s
+{==service/iceberg-connect-cluster-connect-api==}    ClusterIP   10.102.45.63     <none>        8083/TCP                                       73s
+service/kafka-cluster-kafka-bootstrap          ClusterIP   10.105.98.134    <none>        9091/TCP,9092/TCP,9093/TCP                     14m
+service/kafka-cluster-kafka-brokers            ClusterIP   None             <none>        9090/TCP,9091/TCP,8443/TCP,9092/TCP,9093/TCP   14m
+service/mysql                                  ClusterIP   None             <none>        3306/TCP                                       12m
+
+NAME                                            READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/kafka-cluster-entity-operator   1/1     1            1           13m
+deployment.apps/mysql                           1/1     1            1           12m
+
+NAME                                                       DESIRED   CURRENT   READY   AGE
+replicaset.apps/kafka-cluster-entity-operator-598bb8df8b   1         1         1       13m
+replicaset.apps/mysql-6b84fd947d                           1         1         1       12m
+```
+
+### Create an Iceberg Sink Connector
+
+```yaml title="iceberg-connector.yaml" linenums="1" hl_lines="4 5"
+--8<-- "./kafka/iceberg-connector.yaml"
+```
+
+```bash
+kubectl apply -f iceberg-connector.yaml -n kafka-cdc
+```
+
+```bash
+kubectl get kafkaconnector -n kafka-cdc
+
+NAME                 CLUSTER                    CONNECTOR CLASS                                   MAX TASKS   READY
+debezium-connector   debezium-connect-cluster   io.debezium.connector.mysql.MySqlConnector        1           True
+iceberg-connector    iceberg-connect-cluster    org.apache.iceberg.connect.IcebergSinkConnector   1           True
+```
+
+### Verify the Data Pipeline
+
+```bash
+kubectl exec -n kafka-cdc -it mysql-6b84fd947d-9g9lt -- mysql -uroot -pdebezium
+```
+
+```bash
+sql> use inventory;
+sql> INSERT INTO orders (order_date, purchaser, quantity, product_id)
+VALUES ('2016-03-01', 1004, 3, 108);
+```
+
+#### Schema Evolution
+
+```
+mysql> ALTER TABLE orders ADD COLUMN shipping_address TEXT DEFAULT NULL;
+Query OK, 0 rows affected (0.30 sec)
+Records: 0  Duplicates: 0  Warnings: 0
+```
+
+```
+mysql> describe orders;
++------------------+------+------+-----+---------+----------------+
+| Field            | Type | Null | Key | Default | Extra          |
++------------------+------+------+-----+---------+----------------+
+| order_number     | int  | NO   | PRI | NULL    | auto_increment |
+| order_date       | date | NO   |     | NULL    |                |
+| purchaser        | int  | NO   | MUL | NULL    |                |
+| quantity         | int  | NO   |     | NULL    |                |
+| product_id       | int  | NO   | MUL | NULL    |                |
+| shipping_address | text | YES  |     | NULL    |                |
++------------------+------+------+-----+---------+----------------+
+6 rows in set (0.05 sec)
+```
+
+```
+mysql> select * from orders;
++--------------+------------+-----------+----------+------------+------------------+
+| order_number | order_date | purchaser | quantity | product_id | shipping_address |
++--------------+------------+-----------+----------+------------+------------------+
+|        10001 | 2016-01-16 |      1001 |        1 |        102 | NULL             |
+|        10002 | 2016-01-17 |      1002 |        2 |        105 | NULL             |
+|        10003 | 2016-02-19 |      1002 |        2 |        106 | NULL             |
+|        10004 | 2016-02-21 |      1003 |        1 |        107 | NULL             |
+|        10005 | 2016-03-01 |      1004 |        3 |        108 | NULL             |
++--------------+------------+-----------+----------+------------+------------------+
+5 rows in set (0.00 sec)
+```
+
+
+```
+INSERT INTO orders (order_date, purchaser, quantity, product_id, shipping_address)
+VALUES ('2016-03-05', 1005, 2, 109, '123 Main Street, Taipei City');
+Query OK, 1 row affected (0.04 sec)
+```
+
+```
+mysql> select * from orders;
++--------------+------------+-----------+----------+------------+------------------------------+
+| order_number | order_date | purchaser | quantity | product_id | shipping_address             |
++--------------+------------+-----------+----------+------------+------------------------------+
+|        10001 | 2016-01-16 |      1001 |        1 |        102 | NULL                         |
+|        10002 | 2016-01-17 |      1002 |        2 |        105 | NULL                         |
+|        10003 | 2016-02-19 |      1002 |        2 |        106 | NULL                         |
+|        10004 | 2016-02-21 |      1003 |        1 |        107 | NULL                         |
+|        10005 | 2016-03-01 |      1004 |        3 |        108 | NULL                         |
+|        10006 | 2016-03-05 |      1005 |        2 |        109 | 123 Main Street, Taipei City |
++--------------+------------+-----------+----------+------------+------------------------------+
+6 rows in set (0.02 sec)
+```
 
 ## References
 
