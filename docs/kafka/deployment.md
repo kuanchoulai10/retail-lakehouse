@@ -121,7 +121,7 @@ KRaft 模式是 Kafka 的一種新架構，取代了傳統的 ZooKeeper。它讓
 - 把不同角色（controller-only、broker-only、dual-role）分配到不同實體節點
 - 更細緻地分配儲存資源（像是磁碟大小、是否共用 metadata）
 
-這段定義了一個名叫 dual-role 的 `KafkaNodePool`，會掛在名為 `debezium-cluster` 的 Kafka Cluster之下。也就是說，這組節點是 `debezium-cluster` Kafka cluster 的一部分。我們希望這個節點池中有 3 個副本（replica），也就是說，會有 3 台 Pod 被建立，這裡指定每個節點同時扮演：
+這段定義了一個名叫 dual-role 的 `KafkaNodePool`，會掛在名為 `kafka-cluster` 的 Kafka Cluster之下。也就是說，這組節點是 `kafka-cluster` Kafka cluster 的一部分。我們希望這個節點池中有 3 個副本（replica），也就是說，會有 3 台 Pod 被建立，這裡指定每個節點同時扮演：
 
 - Kafka controller（負責元資料管理，取代原來 ZooKeeper 的角色）
 - Kafka broker（接收與傳送訊息給 producer/consumer）
@@ -170,11 +170,27 @@ Kafka 中的 listener 是用來定義 Kafka broker 如何接收 client（如 pro
 
 ### Configurations
 
-- `offsets.topic.replication.factor: 3`:Kafka 內部會用一個叫 `__consumer_offsets` 的 topic 來儲存 每個 consumer 的讀取進度（offset）。這行設定告訴 Kafka：「請把這個 offsets topic 的每筆資料，都備份三份，分散存放在三個不同的 broker 上。」這樣做的好處是：就算壞掉一台 broker，也不會丟失消費者的讀取進度。
-- `transaction.state.log.replication.factor: 3`: 當 Kafka 用於 交易（transactional）訊息傳遞，它會在內部維護一個叫做 `__transaction_state` 的特殊 topic。這個設定的意思是：「請將每個 transaction 的狀態，也備份三份，保存在三個 broker 上。」這樣即使其中一台 broker 損壞，Kafka 也能保證 exactly-once delivery（恰好一次） 的可靠性。
-- `transaction.state.log.min.isr: 2`: ISR 是 In-Sync Replicas 的縮寫，意思是「目前跟 leader 保持同步的副本」。這行設定的意思是：「在寫入 transaction 狀態時，至少要有兩份副本是同步的，Kafka 才會認為寫入成功。」這是一種 強一致性保證，確保寫進 Kafka 的交易資料，不會只存在一份而造成風險。
-- `default.replication.factor: 3`: 這是 Kafka 在 建立新 topic 時的預設副本數量。這行的意思是：「如果用戶端沒有特別指定 topic 要有幾個副本，那就自動幫他設成三個副本。」這提供一種「預設的高可用」，防止開發者忘了設定而導致資料沒備份。
-- `min.insync.replicas: 2`: 這個設定決定了 producer 在寫入資料時，Kafka 最少需要幾個副本同步成功，才會回應 producer 說『OK，你寫進來了』。這裡設定成 2，代表：「每次 producer 寫入訊息，至少要有兩個 broker 成功同步，Kafka 才會回應 ACK。」這樣即使有一台 broker 掛掉，資料還有另一份備份在，提升寫入的資料安全性。
+`offsets.topic.replication.factor: 3`
+
+: Kafka 內部會用一個叫 `__consumer_offsets` 的 topic 來儲存 每個 consumer 的讀取進度（offset）。這行設定告訴 Kafka：「請把這個 offsets topic 的每筆資料，都備份三份，分散存放在三個不同的 broker 上。」這樣做的好處是：就算壞掉一台 broker，也不會丟失消費者的讀取進度。
+
+
+`transaction.state.log.replication.factor: 3`
+
+: 當 Kafka 用於 交易（transactional）訊息傳遞，它會在內部維護一個叫做 `__transaction_state` 的特殊 topic。這個設定的意思是：「請將每個 transaction 的狀態，也備份三份，保存在三個 broker 上。」這樣即使其中一台 broker 損壞，Kafka 也能保證 exactly-once delivery（恰好一次） 的可靠性。
+
+
+`transaction.state.log.min.isr: 2`
+
+： ISR 是 In-Sync Replicas 的縮寫，意思是「目前跟 leader 保持同步的副本」。這行設定的意思是：「在寫入 transaction 狀態時，至少要有兩份副本是同步的，Kafka 才會認為寫入成功。」這是一種 強一致性保證，確保寫進 Kafka 的交易資料，不會只存在一份而造成風險。
+
+`default.replication.factor: 3`
+
+: 這是 Kafka 在 建立新 topic 時的預設副本數量。這行的意思是：「如果用戶端沒有特別指定 topic 要有幾個副本，那就自動幫他設成三個副本。」這提供一種「預設的高可用」，防止開發者忘了設定而導致資料沒備份。
+
+`min.insync.replicas: 2`
+
+: 這個設定決定了 producer 在寫入資料時，Kafka 最少需要幾個副本同步成功，才會回應 producer 說『OK，你寫進來了』。這裡設定成 2，代表：「每次 producer 寫入訊息，至少要有兩個 broker 成功同步，Kafka 才會回應 ACK。」這樣即使有一台 broker 掛掉，資料還有另一份備份在，提升寫入的資料安全性。
 
 這五個設定合起來，是在對 Kafka 說：「我想要一個高度容錯、高可用、強一致性的 Kafka 環境，所以不論是 consumer offset、交易資料、或普通訊息，我都要求它們至少要有三份備份，而且要有兩份成功同步才算寫入成功。」
 
@@ -185,7 +201,7 @@ kubectl create -f kafka-cluster.yaml -n kafka-cdc
 ```
 
 ```
-kafka.kafka.strimzi.io/debezium-cluster created
+kafka.kafka.strimzi.io/kafka-cluster created
 kafkanodepool.kafka.strimzi.io/dual-role created
 ```
 
@@ -197,20 +213,20 @@ kubectl get all -n kafka-cdc
 
 ```
 NAME                                                    READY   STATUS    RESTARTS   AGE
-pod/debezium-cluster-dual-role-0                        1/1     Running   0          60s
-pod/debezium-cluster-dual-role-1                        1/1     Running   0          60s
-pod/debezium-cluster-dual-role-2                        1/1     Running   0          60s
-pod/debezium-cluster-entity-operator-5b998f6cbf-c8hdf   2/2     Running   0          24s
+pod/kafka-cluster-dual-role-0                           1/1     Running   0          60s
+pod/kafka-cluster-dual-role-1                           1/1     Running   0          60s
+pod/kafka-cluster-dual-role-2                           1/1     Running   0          60s
+pod/kafka-cluster-entity-operator-5b998f6cbf-c8hdf      2/2     Running   0          24s
 
 NAME                                       TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                                        AGE
-service/debezium-cluster-kafka-bootstrap   ClusterIP   10.105.50.103   <none>        9091/TCP,9092/TCP,9093/TCP                     61s
-service/debezium-cluster-kafka-brokers     ClusterIP   None            <none>        9090/TCP,9091/TCP,8443/TCP,9092/TCP,9093/TCP   61s
+service/kafka-cluster-kafka-bootstrap      ClusterIP   10.105.50.103   <none>        9091/TCP,9092/TCP,9093/TCP                     61s
+service/kafka-cluster-kafka-brokers        ClusterIP   None            <none>        9090/TCP,9091/TCP,8443/TCP,9092/TCP,9093/TCP   61s
 
 NAME                                               READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/debezium-cluster-entity-operator   1/1     1            1           24s
+deployment.apps/kafka-cluster-entity-operator      1/1     1            1           24s
 
 NAME                                                          DESIRED   CURRENT   READY   AGE
-replicaset.apps/debezium-cluster-entity-operator-5b998f6cbf   1         1         1       24s
+replicaset.apps/kafka-cluster-entity-operator-5b998f6cbf      1         1         1       24s
 ```
 
 ## Deploy a Database
@@ -234,23 +250,23 @@ kubectl get all -n kafka-cdc
 
 ```
 NAME                                                    READY   STATUS    RESTARTS   AGE
-pod/debezium-cluster-dual-role-0                        1/1     Running   0          15m
-pod/debezium-cluster-dual-role-1                        1/1     Running   0          15m
-pod/debezium-cluster-dual-role-2                        1/1     Running   0          15m
-pod/debezium-cluster-entity-operator-5b998f6cbf-c8hdf   2/2     Running   0          15m
+pod/kafka-cluster-dual-role-0                           1/1     Running   0          15m
+pod/kafka-cluster-dual-role-1                           1/1     Running   0          15m
+pod/kafka-cluster-dual-role-2                           1/1     Running   0          15m
+pod/kafka-cluster-entity-operator-5b998f6cbf-c8hdf      2/2     Running   0          15m
 {==pod/mysql-6b84fd947d-9g9lt==}                              1/1     Running   0          10m
 
 NAME                                       TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                                        AGE
-service/debezium-cluster-kafka-bootstrap   ClusterIP   10.105.50.103   <none>        9091/TCP,9092/TCP,9093/TCP                     15m
-service/debezium-cluster-kafka-brokers     ClusterIP   None            <none>        9090/TCP,9091/TCP,8443/TCP,9092/TCP,9093/TCP   15m
+service/kafka-cluster-kafka-bootstrap      ClusterIP   10.105.50.103   <none>        9091/TCP,9092/TCP,9093/TCP                     15m
+service/kafka-cluster-kafka-brokers        ClusterIP   None            <none>        9090/TCP,9091/TCP,8443/TCP,9092/TCP,9093/TCP   15m
 {==service/mysql==}                              ClusterIP   None            <none>        3306/TCP                                       10m
 
 NAME                                               READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/debezium-cluster-entity-operator   1/1     1            1           15m
+deployment.apps/kafka-cluster-entity-operator      1/1     1            1           15m
 {==deployment.apps/mysql==}                              1/1     1            1           10m
 
 NAME                                                          DESIRED   CURRENT   READY   AGE
-replicaset.apps/debezium-cluster-entity-operator-5b998f6cbf   1         1         1       15m
+replicaset.apps/kafka-cluster-entity-operator-5b998f6cbf      1         1         1       15m
 {==replicaset.apps/mysql-6b84fd947d==}                              1         1         1       10m
 ```
 
@@ -276,8 +292,8 @@ kubectl apply -f debezium-role-binding.yaml
 
 ```
 secret/debezium-secret created
-role.rbac.authorization.k8s.io/connector-configuration-role created
-rolebinding.rbac.authorization.k8s.io/connector-configuration-role-binding created
+role.rbac.authorization.k8s.io/debezium-role created
+rolebinding.rbac.authorization.k8s.io/debezium-role-binding created
 ```
 
 ## Deploy a Debezium Connector
@@ -315,12 +331,12 @@ kubectl -n kube-system get svc registry -o jsonpath='{.spec.clusterIP}'
 
 ### Creating a Kafka Connect Cluster
 
-```yaml title="debezium-kafka-connect.yaml"
---8<-- "./kafka/debezium-kafka-connect.yaml"
+```yaml title="debezium-connect-cluster.yaml"
+--8<-- "./kafka/debezium-connect-cluster.yaml"
 ```
 
 ```bash
-kubectl apply -f debezium-kafka-connect.yaml -n kafka-cdc
+kubectl apply -f debezium-connect-cluster.yaml -n kafka-cdc
 ```
 
 ```
@@ -335,39 +351,67 @@ kubectl get all -n kafka-cdc
 
 ```
 NAME                                                    READY   STATUS    RESTARTS   AGE
-pod/debezium-cluster-dual-role-0                        1/1     Running   0          66m
-pod/debezium-cluster-dual-role-1                        1/1     Running   0          66m
-pod/debezium-cluster-dual-role-2                        1/1     Running   0          66m
-pod/debezium-cluster-entity-operator-5b998f6cbf-c8hdf   2/2     Running   0          65m
+pod/kafka-cluster-dual-role-0                           1/1     Running   0          66m
+pod/kafka-cluster-dual-role-1                           1/1     Running   0          66m
+pod/kafka-cluster-dual-role-2                           1/1     Running   0          66m
+pod/kafka-cluster-entity-operator-5b998f6cbf-c8hdf      2/2     Running   0          65m
 {==pod/debezium-connect-cluster-connect-build==}              1/1     Running   0          49s
 pod/mysql-6b84fd947d-9g9lt                              1/1     Running   0          60m
 
 NAME                                       TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                                        AGE
-service/debezium-cluster-kafka-bootstrap   ClusterIP   10.105.50.103   <none>        9091/TCP,9092/TCP,9093/TCP                     66m
-service/debezium-cluster-kafka-brokers     ClusterIP   None            <none>        9090/TCP,9091/TCP,8443/TCP,9092/TCP,9093/TCP   66m
+service/kafka-cluster-kafka-bootstrap      ClusterIP   10.105.50.103   <none>        9091/TCP,9092/TCP,9093/TCP                     66m
+service/kafka-cluster-kafka-brokers        ClusterIP   None            <none>        9090/TCP,9091/TCP,8443/TCP,9092/TCP,9093/TCP   66m
 service/mysql                              ClusterIP   None            <none>        3306/TCP                                       60m
 
 NAME                                               READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/debezium-cluster-entity-operator   1/1     1            1           65m
+deployment.apps/kafka-cluster-entity-operator      1/1     1            1           65m
 deployment.apps/mysql                              1/1     1            1           60m
 
 NAME                                                          DESIRED   CURRENT   READY   AGE
-replicaset.apps/debezium-cluster-entity-operator-5b998f6cbf   1         1         1       65m
+replicaset.apps/kafka-cluster-entity-operator-5b998f6cbf      1         1         1       65m
 replicaset.apps/mysql-6b84fd947d                              1         1         1       60m
 ```
 
+過一陣子後
+
+```
+NAME                                                    READY   STATUS    RESTARTS   AGE
+pod/kafka-cluster-dual-role-0                           1/1     Running   0          100m
+pod/kafka-cluster-dual-role-1                           1/1     Running   0          100m
+pod/kafka-cluster-dual-role-2                           1/1     Running   0          100m
+pod/kafka-cluster-entity-operator-5b998f6cbf-c8hdf      2/2     Running   0          99m
+{==pod/debezium-connect-cluster-connect-0==}                  1/1     Running   0          30m
+pod/mysql-6b84fd947d-9g9lt                              1/1     Running   0          94m
+
+NAME                                           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                                        AGE
+service/kafka-cluster-kafka-bootstrap          ClusterIP   10.105.50.103    <none>        9091/TCP,9092/TCP,9093/TCP                     100m
+service/kafka-cluster-kafka-brokers            ClusterIP   None             <none>        9090/TCP,9091/TCP,8443/TCP,9092/TCP,9093/TCP   100m
+{==service/debezium-connect-cluster-connect==}       ClusterIP   None             <none>        8083/TCP                                       30m
+{==service/debezium-connect-cluster-connect-api==}   ClusterIP   10.100.229.177   <none>        8083/TCP                                       30m
+service/mysql                                  ClusterIP   None             <none>        3306/TCP                                       94m
+
+NAME                                               READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/kafka-cluster-entity-operator      1/1     1            1           99m
+deployment.apps/mysql                              1/1     1            1           94m
+
+NAME                                                          DESIRED   CURRENT   READY   AGE
+replicaset.apps/kafka-cluster-entity-operator-5b998f6cbf      1         1         1       99m
+replicaset.apps/mysql-6b84fd947d                              1         1         1       94m
+```
+
+
 ### Creating a Debezium Connector
 
-```yaml title="debezium-kafka-connector.yaml"
---8<-- "./kafka/debezium-kafka-connector.yaml"
+```yaml title="debezium-connector.yaml"
+--8<-- "./kafka/debezium-connector.yaml"
 ```
 
 ```bash
-kubectl apply -f debezium-kafka-connector.yaml -n kafka-cdc
+kubectl apply -f debezium-connector.yaml -n kafka-cdc
 ```
 
 ```
-kafkaconnector.kafka.strimzi.io/debezium-connector-mysql created
+kafkaconnector.kafka.strimzi.io/debezium-connector created
 ```
 
 ```bash
@@ -376,26 +420,26 @@ k get all -n kafka-cdc
 
 ```
 NAME                                                    READY   STATUS    RESTARTS   AGE
-pod/debezium-cluster-dual-role-0                        1/1     Running   0          100m
-pod/debezium-cluster-dual-role-1                        1/1     Running   0          100m
-pod/debezium-cluster-dual-role-2                        1/1     Running   0          100m
-pod/debezium-cluster-entity-operator-5b998f6cbf-c8hdf   2/2     Running   0          99m
+pod/kafka-cluster-dual-role-0                           1/1     Running   0          100m
+pod/kafka-cluster-dual-role-1                           1/1     Running   0          100m
+pod/kafka-cluster-dual-role-2                           1/1     Running   0          100m
+pod/kafka-cluster-entity-operator-5b998f6cbf-c8hdf      2/2     Running   0          99m
 {==pod/debezium-connect-cluster-connect-0==}                  1/1     Running   0          30m
 pod/mysql-6b84fd947d-9g9lt                              1/1     Running   0          94m
 
 NAME                                           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                                        AGE
-service/debezium-cluster-kafka-bootstrap       ClusterIP   10.105.50.103    <none>        9091/TCP,9092/TCP,9093/TCP                     100m
-service/debezium-cluster-kafka-brokers         ClusterIP   None             <none>        9090/TCP,9091/TCP,8443/TCP,9092/TCP,9093/TCP   100m
+service/kafka-cluster-kafka-bootstrap          ClusterIP   10.105.50.103    <none>        9091/TCP,9092/TCP,9093/TCP                     100m
+service/kafka-cluster-kafka-brokers            ClusterIP   None             <none>        9090/TCP,9091/TCP,8443/TCP,9092/TCP,9093/TCP   100m
 {==service/debezium-connect-cluster-connect==}       ClusterIP   None             <none>        8083/TCP                                       30m
 {==service/debezium-connect-cluster-connect-api==}   ClusterIP   10.100.229.177   <none>        8083/TCP                                       30m
 service/mysql                                  ClusterIP   None             <none>        3306/TCP                                       94m
 
 NAME                                               READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/debezium-cluster-entity-operator   1/1     1            1           99m
+deployment.apps/kafka-cluster-entity-operator      1/1     1            1           99m
 deployment.apps/mysql                              1/1     1            1           94m
 
 NAME                                                          DESIRED   CURRENT   READY   AGE
-replicaset.apps/debezium-cluster-entity-operator-5b998f6cbf   1         1         1       99m
+replicaset.apps/kafka-cluster-entity-operator-5b998f6cbf      1         1         1       99m
 replicaset.apps/mysql-6b84fd947d                              1         1         1       94m
 ```
 ## Verify the Debezium Connector
@@ -407,7 +451,7 @@ kubectl run kafka-topics-cli \
   --image=quay.io/strimzi/kafka:0.46.1-kafka-4.0.0 \
   --restart=Never -- \
   bin/kafka-topics.sh \
-    --bootstrap-server debezium-cluster-kafka-bootstrap:9092 \
+    --bootstrap-server kafka-cluster-kafka-bootstrap:9092 \
     --list
 ```
 
@@ -415,9 +459,9 @@ kubectl run kafka-topics-cli \
 
     ```
     __consumer_offsets
-    connect-cluster-configs
-    connect-cluster-offsets
-    connect-cluster-status
+    debezium-cluster-configs
+    debezium-cluster-offsets
+    debezium-cluster-status
     mysql
     mysql.inventory.addresses
     mysql.inventory.customers
@@ -436,7 +480,7 @@ kubectl run kafka-cli \
   --image=quay.io/strimzi/kafka:0.46.1-kafka-4.0.0 \
   --restart=Never -- \
   bin/kafka-console-consumer.sh \
-    --bootstrap-server debezium-cluster-kafka-bootstrap:9092 \
+    --bootstrap-server kafka-cluster-kafka-bootstrap:9092 \
     --topic mysql.inventory.customers \
     --partition 0
     --offset -10
