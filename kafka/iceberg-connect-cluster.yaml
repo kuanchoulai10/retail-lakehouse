@@ -1,0 +1,43 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnect
+metadata:
+  name: iceberg-connect-cluster
+  annotations:
+    strimzi.io/use-connector-resources: "true"
+spec:
+  version: 4.0.0
+  replicas: 1
+  bootstrapServers: kafka-cluster-kafka-bootstrap:9092
+  config:
+    config.providers: secrets
+    config.providers.secrets.class: io.strimzi.kafka.KubernetesSecretConfigProvider
+    group.id: iceberg-connect-cluster
+    offset.storage.topic: iceberg-connect-cluster-offsets
+    config.storage.topic: iceberg-connect-cluster-configs
+    status.storage.topic: iceberg-connect-cluster-status
+    # -1 means it will use the default replication factor configured in the broker
+    offset.storage.replication.factor: -1
+    config.storage.replication.factor: -1
+    status.storage.replication.factor: -1
+  build:
+    output:
+      type: docker
+      image: 10.103.211.36/iceberg-connect:latest
+    plugins:
+      - name: iceberg-connect
+        artifacts: 
+          - type: zip
+            url: https://static-file-4hj2.s3.ap-northeast-1.amazonaws.com/iceberg-kafka-connect-runtime-1.10.0-SNAPSHOT.zip
+  template:
+    connectContainer:
+      env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: iceberg-secret
+              key: awsAccessKey
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: iceberg-secret
+              key: awsSecretAccessKey
