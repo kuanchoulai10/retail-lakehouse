@@ -24,29 +24,31 @@ The basic deployment path includes the following steps:
     - Create an Iceberg Sink Connector
     - Verify the Data Pipeline
 
-
 ## Deploy the Strimzi Cluster Operator
 
-Create a Kubernetes Namespace for the Strimzi Cluster Operator:
+Before we dive into deploying Kafka, let's talk about what Strimzi is and why we need it. **Strimzi** is a Kubernetes operator that makes running Apache Kafka on Kubernetes much easier. Think of it as your Kafka cluster manager - it handles all the complex setup, configuration, and maintenance tasks that would otherwise require manual intervention.
+
+Instead of manually creating Kafka pods, services, and configurations, Strimzi lets you define what you want in simple YAML files, and it takes care of the rest.
+
+First, we need to create two separate Kubernetes namespaces, one for the Strimzi operator and another for our Kafka cluster:
 
 ```bash
 kubectl create namespace strimzi
-```
-
-Create a Kubernetes Namespace for the Kafka cluster:
-
-```bash
 kubectl create namespace kafka-cdc
 ```
 
+Why separate namespaces? It's a best practice to keep the operator (the manager) separate from the workloads it manages (the Kafka cluster). This makes it easier to manage permissions and troubleshoot issues.
 
-Show the default values of the Strimzi Kafka Operator Helm chart:
 
-```
+Before installing Strimzi, let's take a look at what configuration options are available. Helm charts come with default values, but it's always good to see what we can customize:
+
+```bash
 helm show values oci://quay.io/strimzi-helm/strimzi-kafka-operator > values-default.yaml
 ```
 
-Review the default values in `values-default.yaml` and modify them as needed. For example, you can set the `watchNamespaces` to the namespace where you want to deploy the Kafka cluster (`kafka-cdc` in this case):
+The most important setting we'll change is `watchNamespaces` - this tells Strimzi which namespaces it should monitor for Kafka-related resources.
+
+Here's our customized configuration:
 
 ??? info "values.yaml"
 
@@ -54,17 +56,20 @@ Review the default values in `values-default.yaml` and modify them as needed. Fo
     --8<-- "./kafka/values.yaml"
     ```
 
+The highlighted lines tell Strimzi to specifically watch the `kafka-cdc` namespace where we'll deploy our Kafka cluster.
 
-Install the Strimzi Cluster Operator using Helm:
+Now for the exciting part - let's install Strimzi using Helm:
 
-```
+```bash
 helm install strimzi-cluster-operator oci://quay.io/strimzi-helm/strimzi-kafka-operator -f values.yaml -n strimzi
 ```
+
+If everything goes well, you'll see output like this:
 
 ```
 Pulled: quay.io/strimzi-helm/strimzi-kafka-operator:0.46.1
 Digest: sha256:e87ea2a03985f5dd50fee1f8706f737fa1151b86dce5021b6c0798ac8b17e27f
-NAME: strimzi-cluster-operator
+NAME: {==strimzi-cluster-operator==}
 LAST DEPLOYED: Sun Jun 29 17:25:49 2025
 NAMESPACE: strimzi
 STATUS: deployed
@@ -78,20 +83,28 @@ To create a Kafka cluster refer to the following documentation.
 https://strimzi.io/docs/operators/latest/deploying.html#deploying-cluster-operator-helm-chart-str
 ```
 
-After the installation, you can verify that the Strimzi Cluster Operator is running:
+Great! The `STATUS: deployed` tells us everything went smoothly.
+
+Let's make sure our Strimzi operator is actually running. First, let's check if Helm recognizes our installation:
 
 ```bash
 helm ls -n strimzi
 ```
+
+You should see something like this:
 
 ```
 NAME                    	NAMESPACE	REVISION	UPDATED                             	STATUS  	HART                        	APP VERSION
 strimzi-cluster-operator	strimzi  	1       	2025-06-29 17:25:49.773026 +0800 CST	deployed	trimzi-kafka-operator-0.46.1	0.46.1     
 ```
 
+Now let's check what Kubernetes resources were actually created:
+
 ```bash
 kubectl get all -n strimzi
 ```
+
+Here's what you should see:
 
 ```
 NAME                                           READY   STATUS    RESTARTS   AGE
@@ -104,121 +117,98 @@ NAME                                                 DESIRED   CURRENT   READY  
 replicaset.apps/strimzi-cluster-operator-74f577b78   1         1         1       108s
 ```
 
-## Deploying a Kafka Cluster
+Perfect! At this point, the Strimzi operator is running and watching for Kafka-related resources in the `kafka-cdc` namespace. It's like having a dedicated Kafka administrator ready to spring into action whenever we create Kafka clusters or related components.
 
-To deploy a Kafka cluster in KRaft mode, you need to create a Kafka cluster YAML file that defines the cluster configuration. Below is an example of such a file:
+## Deploy a Kafka Cluster
+
+Now that we have Strimzi operator running, let's deploy our actual Kafka cluster! If you're coming from a traditional Kafka background, you might be expecting to see ZooKeeper configurations, but we're going to use Kafka's newer KRaft mode instead. Think of KRaft as Kafka's way of saying "I don't need ZooKeeper anymore - I can manage my own metadata."
+
+The configuration file we'll use defines not just a Kafka cluster, but also something called a KafkaNodePool. This is Strimzi's way of letting you organize your Kafka nodes into different groups with different roles and storage configurations.
 
 ```yaml title="kafka-cluster.yaml"
 --8<-- "./kafka/kafka-cluster.yaml"
 ```
 
-Kafka 4.0 開始預設支援 KRaft；`metadataVersion`，IV 代表 Incompatible Version，也就是: Kafka 叢集 metadata 結構出現重大變更，跟舊版不相容，所以需要你明確地指定升級。
+Let's break down what this configuration is telling Kubernetes to create for us.
 
-### KRaft Mode
+**The Kafka 4.0 Context**: You'll notice we're using Kafka 4.0, which defaults to KRaft mode. The `metadataVersion: 4.0-IV3` setting is important - the "IV" stands for "Incompatible Version," which means this version has significant metadata structure changes that aren't backward compatible. We need to explicitly specify this to confirm we understand we're using the latest format.
 
-KRaft 模式是 Kafka 的一種新架構，取代了傳統的 ZooKeeper。它讓 Kafka broker 自己管理元資料（metadata），不再需要依賴外部的 ZooKeeper 叢集。這樣做的好處包括：
+### Understanding KRaft Mode
 
-- 簡化部署：不需要額外安裝和維護 ZooKeeper。
-- 提升性能：減少了跨叢集的網路延遲。
-- 增強可靠性：減少了單點故障的風險。
+If you've worked with Kafka before, you might remember the pain of managing ZooKeeper alongside your Kafka clusters. KRaft mode eliminates that complexity entirely. Here's what makes it special:
 
-要在 Kafka Cluster 中啟用 KRaft 模式，你需要替 `strimzi.io/node-pools` 和 `strimzi.io/kraft` 這兩個註解加上 `enabled`。這樣 Strimzi 就會知道你要使用 KRaft 模式。
+**What KRaft Replaces**: Instead of relying on an external ZooKeeper ensemble to store Kafka's metadata (like topic configurations, partition assignments, and cluster membership), Kafka brokers now handle this responsibility themselves using a consensus algorithm similar to Raft.
 
+**Why This Matters**:
 
-不僅如此，在使用 KRaft 模式時，Strimzi 把 Kafka broker 的節點角色（如 controller、broker）和儲存設定獨立出來，用 KafkaNodePool 這個 CRD 來描述。這讓你可以：
+- **Simplified Operations**: One less system to deploy, monitor, and troubleshoot
+- **Better Performance**: No more network hops to ZooKeeper for metadata operations
+- **Improved Reliability**: Fewer moving parts means fewer potential failure points
 
-- 把不同角色（controller-only、broker-only、dual-role）分配到不同實體節點
-- 更細緻地分配儲存資源（像是磁碟大小、是否共用 metadata）
+To enable KRaft mode in Strimzi, we add two key annotations to our Kafka resource:
 
-這段定義了一個名叫 dual-role 的 `KafkaNodePool`，會掛在名為 `kafka-cluster` 的 Kafka Cluster之下。也就是說，這組節點是 `kafka-cluster` Kafka cluster 的一部分。我們希望這個節點池中有 3 個副本（replica），也就是說，會有 3 台 Pod 被建立，這裡指定每個節點同時扮演：
+- `strimzi.io/node-pools: enabled`: Tells Strimzi we want to use the newer node pool architecture
+- `strimzi.io/kraft: enabled`: Enables KRaft mode instead of ZooKeeper
 
-- Kafka controller（負責元資料管理，取代原來 ZooKeeper 的角色）
-- Kafka broker（接收與傳送訊息給 producer/consumer）
+### Node Pools: Organizing Your Kafka Nodes
 
-這叫做 dual-role（雙重角色）部署，在小型叢集中很常見，可節省資源。
+The `KafkaNodePool` concept lets you organize your Kafka nodes into logical groups. In our case, we're creating a "dual-role" pool where each node acts as both a **controller** (managing metadata) and a **broker** (handling client requests).
 
-- 使用 JBOD（Just a Bunch Of Disks）：支持多塊磁碟配置（可用來分開 log、metadata）
-- 設定了一塊名為 id: 0 的 volume：
-    - 是 persistent-claim，表示會動態建立 PVC（PersistentVolumeClaim）
-    - 大小為 100Gi
-    - deleteClaim: false 表示刪除 Pod 時不會順便刪掉 PVC（避免資料遺失）
-    - kraftMetadata: shared：這是 KRaft 專屬欄位，表示這塊磁碟同時儲存：
-    - Kafka log（一般訊息）
-    - Kafka metadata（controller quorum data）
+**Our Dual-Role Setup**: We're creating 3 nodes that each serve both functions. This is perfect for development and smaller production deployments because:
 
-什麼情況會用這種設計？這種設定很適合：
+- **Resource Efficient**: Fewer total machines needed
+- **Simpler Architecture**: No need to separate controller and broker concerns
+- **Still Highly Available**: With 3 nodes, we can tolerate losing one node
 
-- 中小型叢集（3 台 broker）
-- 想減少部署複雜度（不想分開 controller 與 broker）
-- 想善用資源、少開機器
-- 正式環境中需要 KRaft 模式（無 ZooKeeper）
+**Storage Configuration**: Each node gets a 100GB persistent volume that stores both regular Kafka logs and KRaft metadata. The `kraftMetadata: shared` setting means both types of data live on the same disk, which is fine for most use cases.
 
-這份 KafkaNodePool 設定建立了 3 台「同時扮演 controller 和 broker 的 Kafka 節點」，每台使用一塊 100Gi 的持久化磁碟，來存放訊息與 metadata。
+### Listeners: How Clients Connect
 
-### Listener
+Our configuration sets up two ways for applications to connect to Kafka:
 
-Kafka 中的 listener 是用來定義 Kafka broker 如何接收 client（如 producer、consumer、Kafka Connect 等）連線 的機制。可以把它想成是「Kafka 對外開的門」，每個 listener 設定會影響：
+**Plain Listener (port 9092)**: This is your standard, unencrypted connection. Perfect for:
 
-- 用什麼協定連線（PLAINTEXT、SSL、SASL、等）
-- 是否允許 TLS 加密
-- 可以從哪裡連進來（內部？外部？）
-- 用哪個 Port 提供服務
+- Development environments
+- Internal applications where network security is handled at other layers
+- High-throughput scenarios where TLS overhead isn't desired
 
-定義兩種內部連線方式。
+**TLS Listener (port 9093)**: This provides encrypted connections for:
 
-第一種的意思是：「我要開一個 listener，名稱叫 plain，監聽在 port 9092，只給叢集裡面的服務使用（internal），不啟用加密（TLS）。」也就是說，這是一個走明文的內部通訊通道，通常會給開發時用，或是叢集內部 service（例如 Kafka Connect）使用。
+- Cross-namespace communication
+- Production environments with security requirements
+- Any scenario where data in transit needs protection
 
-第二種的意思是：「再開一個叫 tls 的 listener，在 port 9093 上，只提供叢集內部使用，但這次要 啟用 TLS 加密。」也就是說，這是一個比較安全的內部通訊通道，適合用在需要機密性或驗證的情境（例如跨 namespace 使用、或內部有資料敏感性時）。
+### Configuration Deep Dive
 
-這樣設的目的是讓你：
+The configuration section ensures our cluster is production-ready with proper replication and consistency guarantees:
 
-- 可以選擇 快速但沒加密的通道（plain）來降低資源消耗
-- 或選擇 安全但略慢的通道（tls）來保護資料
+**Replication Settings**: We're telling Kafka to keep 3 copies of everything - your regular topics, consumer offset tracking, and transaction state. This means we can lose one broker and still have all our data.
 
-某些 internal components（如 Kafka Connect、MirrorMaker）甚至可以根據用途選擇連不同的 listener。
+**Consistency Settings**: The `min.insync.replicas: 2` setting is particularly important. It means that when a producer sends a message, Kafka won't acknowledge it as "successfully written" until at least 2 brokers have the data. This prevents data loss even if a broker fails right after acknowledging a write.
 
-### Configurations
+### Watching Your Cluster Come Online
 
-`offsets.topic.replication.factor: 3`
-
-: Kafka 內部會用一個叫 `__consumer_offsets` 的 topic 來儲存 每個 consumer 的讀取進度（offset）。這行設定告訴 Kafka：「請把這個 offsets topic 的每筆資料，都備份三份，分散存放在三個不同的 broker 上。」這樣做的好處是：就算壞掉一台 broker，也不會丟失消費者的讀取進度。
-
-
-`transaction.state.log.replication.factor: 3`
-
-: 當 Kafka 用於 交易（transactional）訊息傳遞，它會在內部維護一個叫做 `__transaction_state` 的特殊 topic。這個設定的意思是：「請將每個 transaction 的狀態，也備份三份，保存在三個 broker 上。」這樣即使其中一台 broker 損壞，Kafka 也能保證 exactly-once delivery（恰好一次） 的可靠性。
-
-
-`transaction.state.log.min.isr: 2`
-
-： ISR 是 In-Sync Replicas 的縮寫，意思是「目前跟 leader 保持同步的副本」。這行設定的意思是：「在寫入 transaction 狀態時，至少要有兩份副本是同步的，Kafka 才會認為寫入成功。」這是一種 強一致性保證，確保寫進 Kafka 的交易資料，不會只存在一份而造成風險。
-
-`default.replication.factor: 3`
-
-: 這是 Kafka 在 建立新 topic 時的預設副本數量。這行的意思是：「如果用戶端沒有特別指定 topic 要有幾個副本，那就自動幫他設成三個副本。」這提供一種「預設的高可用」，防止開發者忘了設定而導致資料沒備份。
-
-`min.insync.replicas: 2`
-
-: 這個設定決定了 producer 在寫入資料時，Kafka 最少需要幾個副本同步成功，才會回應 producer 說『OK，你寫進來了』。這裡設定成 2，代表：「每次 producer 寫入訊息，至少要有兩個 broker 成功同步，Kafka 才會回應 ACK。」這樣即使有一台 broker 掛掉，資料還有另一份備份在，提升寫入的資料安全性。
-
-這五個設定合起來，是在對 Kafka 說：「我想要一個高度容錯、高可用、強一致性的 Kafka 環境，所以不論是 consumer offset、交易資料、或普通訊息，我都要求它們至少要有三份備份，而且要有兩份成功同步才算寫入成功。」
-
-After creating the YAML file and the namespace, you can deploy the Kafka cluster using the following command:
+Now let's deploy this configuration and see it come to life!
 
 ```bash
 kubectl create -f kafka-cluster.yaml -n kafka-cdc
 ```
+
+This command tells Kubernetes to create both the Kafka cluster and the node pool in our `kafka-cdc` namespace. You should see output confirming both resources were created:
 
 ```
 kafka.kafka.strimzi.io/kafka-cluster created
 kafkanodepool.kafka.strimzi.io/dual-role created
 ```
 
-Check the status of the Kafka cluster:
+
+Kafka clusters take a bit of time to start up - they need to elect controllers, establish consensus, and create internal topics. Let's check on the progress:
 
 ```bash
 kubectl get all -n kafka-cdc
 ```
+
+Initially, you might see pods in `Pending` or `ContainerCreating` status. After a minute or two, you should see something like this:
 
 ```
 NAME                                                    READY   STATUS    RESTARTS   AGE
@@ -237,6 +227,15 @@ deployment.apps/kafka-cluster-entity-operator      1/1     1            1       
 NAME                                                          DESIRED   CURRENT   READY   AGE
 replicaset.apps/kafka-cluster-entity-operator-5b998f6cbf      1         1         1       24s
 ```
+
+**What You're Seeing**:
+
+- **Three Kafka Pods**: These are your dual-role nodes, numbered 0, 1, and 2
+- **Entity Operator**: This Strimzi component manages Kafka topics and users for you
+- **Bootstrap Service**: This is how clients discover and connect to your Kafka cluster
+- **Broker Service**: This provides direct access to individual brokers when needed
+
+Congratulations! You now have a fully functional Kafka cluster running in KRaft mode. In the next section, we'll deploy a MySQL database that will serve as our data source for change data capture.
 
 ## Deploy a MySQL Database
 
@@ -740,6 +739,254 @@ sql> update customers set first_name="Sally Marie" where id=1001;
 
 
 ## Deploy an Iceberg Sink Connector
+
+### Build the Iceberg Connector ZIP Archive
+
+Because the Iceberg Kafka Connect connector is not provided by Iceberg, you need to build the connector ZIP archive first. You can do this by cloning the Iceberg repository and checking out the desired version, then running the build command.
+
+```bash
+git clone https://github.com/apache/iceberg.git
+git checkout apache-iceberg-1.9.1
+
+./gradlew -x test -x integrationTest clean build
+```
+
+??? info "Result"
+
+    ```
+    Welcome to Gradle 8.13!
+
+    Here are the highlights of this release:
+    - Daemon JVM auto-provisioning
+    - Enhancements for Scala plugin and JUnit testing
+    - Improvements for build authors and plugin developers
+
+    For more details see https://docs.gradle.org/8.13/release-notes.html
+
+    Starting a Gradle Daemon (subsequent builds will be faster)
+    Configuration on demand is an incubating feature.
+
+    > Task :iceberg-aws:validateS3SignerSpec
+    Validating spec /Users/kcl/projects/iceberg/aws/src/main/resources/s3-signer-open-api.yaml
+
+    > Task :iceberg-open-api:validateRESTCatalogSpec
+    Validating spec /Users/kcl/projects/iceberg/open-api/rest-catalog-open-api.yaml
+    Spec is valid.
+
+    > Task :iceberg-aws:validateS3SignerSpec
+    Spec is valid.
+
+    > Task :iceberg-spark:iceberg-spark-3.5_2.12:scalastyleMainCheck
+    Processed 7 file(s)
+    Found 0 errors
+    Found 0 warnings
+    Finished in 4727 ms
+
+    > Task :iceberg-bundled-guava:shadowJar
+    MANIFEST.MF will be copied to 'META-INF/MANIFEST.MF', overwriting MANIFEST.MF, which has already been copied there.
+    file '/Users/kcl/projects/iceberg/bundled-guava/build/classes/java/main/org/apache/iceberg/GuavaClasses.class' will be copied to 'org/apache/iceberg/GuavaClasses.class', overwriting file '/Users/kcl/projects/iceberg/bundled-guava/build/classes/java/main/org/apache/iceberg/GuavaClasses.class', which has already been copied there.
+    file '/Users/kcl/.gradle/caches/modules-2/files-2.1/com.google.guava/guava/33.4.7-jre/c1f6ad95476208ef852f92919e7a9e22abd83a98/guava-33.4.7-jre.jar' will be copied to 'guava-33.4.7-jre.jar', overwriting file '/Users/kcl/.gradle/caches/modules-2/files-2.1/com.google.guava/guava/33.4.7-jre/c1f6ad95476208ef852f92919e7a9e22abd83a98/guava-33.4.7-jre.jar', which has already been copied there.
+    file '/Users/kcl/.gradle/caches/modules-2/files-2.1/com.google.guava/failureaccess/1.0.3/aeaffd00d57023a2c947393ed251f0354f0985fc/failureaccess-1.0.3.jar' will be copied to 'failureaccess-1.0.3.jar', overwriting file '/Users/kcl/.gradle/caches/modules-2/files-2.1/com.google.guava/failureaccess/1.0.3/aeaffd00d57023a2c947393ed251f0354f0985fc/failureaccess-1.0.3.jar', which has already been copied there.
+    file '/Users/kcl/.gradle/caches/modules-2/files-2.1/com.google.guava/listenablefuture/9999.0-empty-to-avoid-conflict-with-guava/b421526c5f297295adef1c886e5246c39d4ac629/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar' will be copied to 'listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar', overwriting file '/Users/kcl/.gradle/caches/modules-2/files-2.1/com.google.guava/listenablefuture/9999.0-empty-to-avoid-conflict-with-guava/b421526c5f297295adef1c886e5246c39d4ac629/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar', which has already been copied there.
+    file '/Users/kcl/.gradle/caches/modules-2/files-2.1/org.jspecify/jspecify/1.0.0/7425a601c1c7ec76645a78d22b8c6a627edee507/jspecify-1.0.0.jar' will be copied to 'jspecify-1.0.0.jar', overwriting file '/Users/kcl/.gradle/caches/modules-2/files-2.1/org.jspecify/jspecify/1.0.0/7425a601c1c7ec76645a78d22b8c6a627edee507/jspecify-1.0.0.jar', which has already been copied there.
+    file '/Users/kcl/projects/iceberg/bundled-guava/LICENSE' will be copied to 'LICENSE', overwriting file '/Users/kcl/projects/iceberg/bundled-guava/LICENSE', which has already been copied there.
+    file '/Users/kcl/projects/iceberg/bundled-guava/NOTICE' will be copied to 'NOTICE', overwriting file '/Users/kcl/projects/iceberg/bundled-guava/NOTICE', which has already been copied there.
+
+    > Task :iceberg-common:compileJava
+    /Users/kcl/projects/iceberg/common/src/main/java/org/apache/iceberg/common/DynConstructors.java:270: Note: [SafeLoggingPropagation] Safe logging annotations should be propagated to encapsulating elements to allow static analysis tooling to work with as much information as possible. This check can be auto-fixed using `./gradlew classes testClasses -PerrorProneApply=SafeLoggingPropagation`
+    private static String formatProblems(Map<String, Throwable> problems) {
+                            ^
+        (see https://github.com/palantir/gradle-baseline#baseline-error-prone-checks)
+    Did you mean '@Unsafe private static String formatProblems(Map<String, Throwable> problems) {'?
+    Note: Some input files use or override a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+
+    > Task :iceberg-api:compileJava
+    /Users/kcl/projects/iceberg/api/src/main/java/org/apache/iceberg/transforms/Timestamps.java:47: warning: [ImmutableEnumChecker] enums should be immutable: 'Timestamps' has field 'apply' of type 'org.apache.iceberg.util.SerializableFunction<java.lang.Long,java.lang.Integer>', the declaration of type 'org.apache.iceberg.util.SerializableFunction<java.lang.Long,java.lang.Integer>' is not annotated with @com.google.errorprone.annotations.Immutable
+    private final SerializableFunction<Long, Integer> apply;
+                                                        ^
+        (see https://errorprone.info/bugpattern/ImmutableEnumChecker)
+
+    > Task :iceberg-spark:iceberg-spark-extensions-3.5_2.12:scalastyleMainCheck
+    Processed 48 file(s)
+    Found 0 errors
+    Found 0 warnings
+    Finished in 8938 ms
+
+    > Task :iceberg-api:compileJava
+    Note: Some input files use or override a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+    Note: Some input files use unchecked or unsafe operations.
+    Note: Recompile with -Xlint:unchecked for details.
+    1 warning
+
+    > Task :iceberg-api:compileTestJava
+    Note: Some input files use or override a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+    Note: Some input files use unchecked or unsafe operations.
+    Note: Recompile with -Xlint:unchecked for details.
+
+    > Task :iceberg-api:testJar
+    file '/Users/kcl/projects/iceberg/build/iceberg-build.properties' will be copied to 'iceberg-build.properties', overwriting file '/Users/kcl/projects/iceberg/api/build/resources/test/iceberg-build.properties', which has already been copied there.
+
+    > Task :iceberg-core:compileJava
+    Note: Some input files use or override a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+    Note: Some input files use unchecked or unsafe operations.
+    Note: Recompile with -Xlint:unchecked for details.
+
+    > Task :iceberg-azure:compileJava
+    /Users/kcl/projects/iceberg/azure/src/main/java/org/apache/iceberg/azure/adlsv2/ADLSFileIO.java:136: warning: [UnnecessaryParentheses] These grouping parentheses are unnecessary; it is unlikely the code will be misinterpreted without them
+            .ifPresent((provider -> this.vendedAdlsCredentialProvider = provider));
+                    ^
+        (see https://errorprone.info/bugpattern/UnnecessaryParentheses)
+    Did you mean '.ifPresent( provider -> this.vendedAdlsCredentialProvider = provider);'?
+    Note: Some input files use or override a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+    1 warning
+
+    > Task :iceberg-aliyun:compileJava
+    Note: Some input files use or override a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+
+    > Task :iceberg-parquet:compileJava
+    Note: Some input files use or override a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+    Note: Some input files use unchecked or unsafe operations.
+    Note: Recompile with -Xlint:unchecked for details.
+
+    > Task :iceberg-aws:compileJava
+    Note: Some input files use or override a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+    Note: Some input files use unchecked or unsafe operations.
+    Note: Recompile with -Xlint:unchecked for details.
+
+    > Task :iceberg-data:compileJava
+    Note: Some input files use or override a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+
+    > Task :iceberg-arrow:compileJava
+    Note: /Users/kcl/projects/iceberg/arrow/src/main/java/org/apache/iceberg/arrow/ArrowSchemaUtil.java uses or overrides a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+
+    > Task :iceberg-core:compileTestJava
+    Note: Some input files use or override a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+    Note: Some input files use unchecked or unsafe operations.
+    Note: Recompile with -Xlint:unchecked for details.
+
+    > Task :iceberg-gcp:compileJava
+    Note: Some input files use or override a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+
+    > Task :iceberg-aws:compileTestJava
+    Note: Some input files use or override a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+
+    > Task :iceberg-aws:compileIntegrationJava
+    Note: Some input files use or override a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+    Note: Some input files use unchecked or unsafe operations.
+    Note: Recompile with -Xlint:unchecked for details.
+
+    > Task :iceberg-arrow:compileTestJava
+    Note: /Users/kcl/projects/iceberg/arrow/src/test/java/org/apache/iceberg/arrow/vectorized/ArrowReaderTest.java uses or overrides a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+
+    > Task :iceberg-data:compileTestJava
+    Note: Some input files use or override a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+    Note: Some input files use unchecked or unsafe operations.
+    Note: Recompile with -Xlint:unchecked for details.
+
+    > Task :iceberg-hive-metastore:compileTestJava
+    Note: /Users/kcl/projects/iceberg/hive-metastore/src/test/java/org/apache/iceberg/hive/TestHiveCatalog.java uses or overrides a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+    Note: /Users/kcl/projects/iceberg/hive-metastore/src/test/java/org/apache/iceberg/hive/TestHiveCatalog.java uses unchecked or unsafe operations.
+    Note: Recompile with -Xlint:unchecked for details.
+
+    > Task :iceberg-mr:compileJava
+    Note: /Users/kcl/projects/iceberg/mr/src/main/java/org/apache/iceberg/mr/mapred/MapredIcebergInputFormat.java uses unchecked or unsafe operations.
+    Note: Recompile with -Xlint:unchecked for details.
+
+    > Task :iceberg-nessie:compileJava
+    Note: /Users/kcl/projects/iceberg/nessie/src/main/java/org/apache/iceberg/nessie/NessieIcebergClient.java uses or overrides a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+
+    > Task :iceberg-parquet:javadoc
+    /Users/kcl/projects/iceberg/parquet/src/main/java/org/apache/iceberg/data/parquet/GenericParquetWriter.java:64: warning: reference not accessible: org.apache.iceberg.data.parquet.BaseParquetWriter
+    * @deprecated will be removed in 1.10.0; use {@link #createWriter(Types.StructType, MessageType)}
+                                                    ^
+    /Users/kcl/projects/iceberg/parquet/src/main/java/org/apache/iceberg/data/parquet/InternalWriter.java:67: warning: reference not accessible: org.apache.iceberg.data.parquet.BaseParquetWriter
+    * @deprecated will be removed in 1.10.0; use {@link #createWriter(Types.StructType, MessageType)}
+                                                    ^
+    /Users/kcl/projects/iceberg/parquet/src/main/java/org/apache/iceberg/data/parquet/GenericParquetWriter.java:64: warning: reference not accessible: org.apache.iceberg.data.parquet.BaseParquetWriter
+    * @deprecated will be removed in 1.10.0; use {@link #createWriter(Types.StructType, MessageType)}
+                                                    ^
+    /Users/kcl/projects/iceberg/parquet/src/main/java/org/apache/iceberg/data/parquet/InternalWriter.java:67: warning: reference not accessible: org.apache.iceberg.data.parquet.BaseParquetWriter
+    * @deprecated will be removed in 1.10.0; use {@link #createWriter(Types.StructType, MessageType)}
+                                                    ^
+    4 warnings
+
+    > Task :iceberg-parquet:compileTestJava
+    Note: Some input files use or override a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+
+    > Task :iceberg-spark:iceberg-spark-3.5_2.12:compileScala
+    [Warn] : javac: [options] system modules path not set in conjunction with -source 11
+    Could not determine source for class org.apache.iceberg.spark.ImmutableParquetBatchReadConf
+    Could not determine source for class org.apache.iceberg.spark.ImmutableOrcBatchReadConf$Builder
+    Could not determine source for class org.apache.iceberg.spark.ImmutableOrcBatchReadConf
+    Could not determine source for class org.apache.iceberg.spark.ImmutableParquetBatchReadConf$Builder
+
+    > Task :iceberg-kafka-connect:iceberg-kafka-connect:compileJava
+    Note: /Users/kcl/projects/iceberg/kafka-connect/kafka-connect/src/main/java/org/apache/iceberg/connect/channel/CommitterImpl.java uses or overrides a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+
+    > Task :iceberg-flink:iceberg-flink-1.20:compileJava
+    Note: Some input files use or override a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+    Note: Some input files use unchecked or unsafe operations.
+    Note: Recompile with -Xlint:unchecked for details.
+
+    > Task :iceberg-spark:iceberg-spark-3.5_2.12:compileTestJava
+    Note: Some input files use or override a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+    Note: Some input files use unchecked or unsafe operations.
+    Note: Recompile with -Xlint:unchecked for details.
+
+    > Task :iceberg-spark:iceberg-spark-3.5_2.12:compileJmhJava
+    Note: Some input files use or override a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+
+    > Task :iceberg-spark:iceberg-spark-extensions-3.5_2.12:compileTestJava
+    Note: /Users/kcl/projects/iceberg/spark/v3.5/spark-extensions/src/test/java/org/apache/iceberg/spark/extensions/TestRewritePositionDeleteFiles.java uses or overrides a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+    Note: Some input files use unchecked or unsafe operations.
+    Note: Recompile with -Xlint:unchecked for details.
+
+    > Task :iceberg-flink:iceberg-flink-1.20:compileTestJava
+    Note: Some input files use or override a deprecated API.
+    Note: Recompile with -Xlint:deprecation for details.
+    Note: Some input files use unchecked or unsafe operations.
+    Note: Recompile with -Xlint:unchecked for details.
+
+    [Incubating] Problems report is available at: file:///Users/kcl/projects/iceberg/build/reports/problems/problems-report.html
+
+    Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+    You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+    For more on this, please refer to https://docs.gradle.org/8.13/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation
+
+    BUILD SUCCESSFUL in 27m 45s
+    454 actionable tasks: 443 executed, 5 from cache, 6 up-to-date
+    ```
+
+The ZIP archive will be found under `./kafka-connect/kafka-connect-runtime/build/distributions`. There is one distribution that bundles the Hive Metastore client and related dependencies, and one that does not.
+
+Upload the ZIP archive to a publicly accessible S3 bucket so that the Iceberg Kafka Connect connector can be downloaded during the Kafka Connect cluster creation and image build process. Make note of the ZIP archive URL, as it will be required in subsequent steps.
+
 
 ### Create a Secret for Connecting to AWS
 
