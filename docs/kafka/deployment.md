@@ -53,7 +53,7 @@ Here's our customized configuration:
 ??? info "values.yaml"
 
     ```yaml linenums="1" hl_lines="8 9"
-    --8<-- "./kafka/values.yaml"
+    --8<-- "./retail-lakehouse/kafka/values.yaml"
     ```
 
 The highlighted lines tell Strimzi to specifically watch the `kafka-cdc` namespace where we'll deploy our Kafka cluster.
@@ -126,7 +126,7 @@ Now that we have Strimzi operator running, let's deploy our actual Kafka cluster
 The configuration file we'll use defines not just a Kafka cluster, but also something called a KafkaNodePool. This is Strimzi's way of letting you organize your Kafka nodes into different groups with different roles and storage configurations.
 
 ```yaml title="kafka-cluster.yaml"
---8<-- "./kafka/kafka-cluster.yaml"
+--8<-- "./retail-lakehouse/kafka/kafka-cluster.yaml"
 ```
 
 Let's break down what this configuration is telling Kubernetes to create for us.
@@ -240,7 +240,7 @@ Congratulations! You now have a fully functional Kafka cluster running in KRaft 
 ## Deploy a MySQL Database
 
 ```yaml title="db.yaml"
---8<-- "./kafka/db.yaml"
+--8<-- "./retail-lakehouse/kafka/db.yaml"
 ```
 
 ```bash
@@ -284,15 +284,15 @@ replicaset.apps/kafka-cluster-entity-operator-5b998f6cbf      1         1       
 ### Create Secrets for the Database
 
 ```yaml title="debezium-secret.yaml" linenums="1" hl_lines="4"
---8<-- "./kafka/debezium-secret.yaml"
+--8<-- "./retail-lakehouse/kafka/debezium-secret.yaml"
 ```
 
 ```yaml title="debezium-role.yaml" linenums="1" hl_lines="4 9"
---8<-- "./kafka/debezium-role.yaml"
+--8<-- "./retail-lakehouse/kafka/debezium-role.yaml"
 ```
 
 ```yaml title="debezium-role-binding.yaml" linenums="1" hl_lines="4 8 12"
---8<-- "./kafka/debezium-role-binding.yaml"
+--8<-- "./retail-lakehouse/kafka/debezium-role-binding.yaml"
 ```
 
 ```bash
@@ -341,7 +341,7 @@ kubectl -n kube-system get svc registry -o jsonpath='{.spec.clusterIP}'
 ```
 
 ```yaml title="debezium-connect-cluster.yaml"
---8<-- "./kafka/debezium-connect-cluster.yaml"
+--8<-- "./retail-lakehouse/kafka/debezium-connect-cluster.yaml"
 ```
 
 ```bash
@@ -412,7 +412,7 @@ replicaset.apps/mysql-6b84fd947d                              1         1       
 ### Create a Debezium Source Connector
 
 ```yaml title="debezium-connector.yaml"
---8<-- "./kafka/debezium-connector.yaml"
+--8<-- "./retail-lakehouse/kafka/debezium-connector.yaml"
 ```
 
 ```bash
@@ -991,7 +991,7 @@ Upload the ZIP archive to a publicly accessible S3 bucket so that the Iceberg Ka
 ### Create a Secret for Connecting to AWS
 
 ```yaml title="iceberg-secret.yaml" linenums="1" hl_lines="4 5"
---8<-- "./kafka/iceberg-secret.yaml"
+--8<-- "./retail-lakehouse/kafka/iceberg-secret.yaml"
 ```
 
 ```bash
@@ -1001,7 +1001,7 @@ kubectl apply -f iceberg-secret.yaml -n kafka-cdc
 ### Create an Iceberg Kafka Connect Cluster
 
 ```yaml title="iceberg-connect-cluster.yaml" linenums="1" hl_lines="4 5"
---8<-- "./kafka/iceberg-connect-cluster.yaml"
+--8<-- "./retail-lakehouse/kafka/iceberg-connect-cluster.yaml"
 ```
 
 ```bash
@@ -1041,7 +1041,7 @@ replicaset.apps/mysql-6b84fd947d                           1         1         1
 ### Create an Iceberg Sink Connector
 
 ```yaml title="iceberg-connector.yaml" linenums="1" hl_lines="4 5"
---8<-- "./kafka/iceberg-connector.yaml"
+--8<-- "./retail-lakehouse/kafka/iceberg-connector.yaml"
 ```
 
 ```bash

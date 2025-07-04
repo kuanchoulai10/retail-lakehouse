@@ -35,7 +35,7 @@ The automated script performs the following steps. Each step can also be execute
 **Step 1: Create Private Key**
 
 ```bash
---8<-- "retail-lakehouse/trino/generate-tls-certs.sh:create-private-key"
+--8<-- "./retail-lakehouse/trino/generate-tls-certs.sh:create-private-key"
 ```
 
 What this does:
@@ -47,7 +47,7 @@ What this does:
 **Step 2: Create Self-Signed Certificate**
 
 ```bash
---8<-- "retail-lakehouse/trino/generate-tls-certs.sh:create-certificate"
+--8<-- "./retail-lakehouse/trino/generate-tls-certs.sh:create-certificate"
 ```
 
 What this does:
@@ -60,13 +60,13 @@ What this does:
 - Saves the certificate to `.cert/certificate.crt`
 
 ```ini title="openssl.cnf"
---8<-- "retail-lakehouse/trino/openssl.cnf"
+--8<-- "./retail-lakehouse/trino/openssl.cnf"
 ```
 
 **Step 3: Combine Private Key and Certificate into PEM Format**
 
 ```bash
---8<-- "retail-lakehouse/trino/generate-tls-certs.sh:combine"
+--8<-- "./retail-lakehouse/trino/generate-tls-certs.sh:combine"
 ```
 
 What this does:
@@ -79,7 +79,7 @@ What this does:
 **Step 4: Create Kubernetes Secret Manifest**
 
 ```bash
---8<-- "retail-lakehouse/trino/generate-tls-certs.sh:create-k8s-secret"
+--8<-- "./retail-lakehouse/trino/generate-tls-certs.sh:create-k8s-secret"
 ```
 
 What this does:
@@ -111,13 +111,13 @@ kubectl apply -f .cert/trino-tls-secret.yaml --namespace trino
 
 
 ```yaml title="trino/values-template.yaml coordinator" linenums="1" hl_lines="1 10-13"
---8<-- "retail-lakehouse/trino/values-template.yaml:coordinator"
+--8<-- "./retail-lakehouse/trino/values-template.yaml:coordinator"
 ```
 
 Next, configure the coordinator to use the TLS certificate by specifying its location in the `http-server.https.keystore.path` setting:
 
 ```yaml title="trino/values-template.yaml server" linenums="1" hl_lines="1 5 8"
---8<-- "retail-lakehouse/trino/values-template.yaml:server"
+--8<-- "./retail-lakehouse/trino/values-template.yaml:server"
 ```
 
 ### Enable and Expose the HTTPS Endpoint
@@ -125,11 +125,11 @@ Next, configure the coordinator to use the TLS certificate by specifying its loc
 To activate HTTPS in Trino, configure the `http-server.https.enabled` setting to `true` and specify the `http-server.https.port` (typically `8443`). Additionally, expose this port through the Kubernetes service configuration.
 
 ```yaml title="trino/values-template.yaml server" linenums="1" hl_lines="1 6 7"
---8<-- "retail-lakehouse/trino/values-template.yaml:server"
+--8<-- "./retail-lakehouse/trino/values-template.yaml:server"
 ```
 
 ```yaml title="trino/values-template.yaml coordinator" linenums="1" hl_lines="1 14-19"
---8<-- "retail-lakehouse/trino/values-template.yaml:coordinator"
+--8<-- "./retail-lakehouse/trino/values-template.yaml:coordinator"
 ```
 
 ## Secure Internal Communication
@@ -150,7 +150,7 @@ openssl rand 512 | base64
 
 
 ```yaml title="trino/values-template.yaml additionalConfigProperties" linenums="1" hl_lines="1 2"
---8<-- "retail-lakehouse/trino/values-template.yaml:additionalConfigProperties"
+--8<-- "./retail-lakehouse/trino/values-template.yaml:additionalConfigProperties"
 ```
 
 The configurations under `additionalConfigProperties` will impact all the nodes in the Trino Cluster.
@@ -175,7 +175,7 @@ After createing the OAuth 2.0 client, you will be provided with a **client ID** 
 To enable OAuth 2.0 authentication in Trino, you will need to configure the OAuth2 properties in the Trino coordinator, which include the client ID, client secret, and authorization server URL. To enable OAuth 2.0 authentication for the Web UI, you also need to set the authentication type of the Web UI to `oauth2`.
 
 ```yaml title="trino/values-template.yaml server" linenums="1" hl_lines="1 3-5 8-12"
---8<-- "retail-lakehouse/trino/values-template.yaml:server"
+--8<-- "./retail-lakehouse/trino/values-template.yaml:server"
 ```
 
 Trino supports reading the Authorization Server configuration from the OIDC provider configuration metadata document. During coordinator startup, Trino retrieves this document and uses the provided values to set the corresponding OAuth2 authentication properties, eliminating the need for additional configuration setup.
