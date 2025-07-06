@@ -1058,6 +1058,11 @@ iceberg-connector    iceberg-connect-cluster    org.apache.iceberg.connect.Icebe
 
 ### Verify the Data Pipeline
 
+![](./static/cdc-sync-s3.png)
+
+![](./static/cdc-sync-athena.png)
+
+
 ```bash
 kubectl exec -n kafka-cdc -it mysql-6b84fd947d-9g9lt -- mysql -uroot -pdebezium
 ```
@@ -1068,7 +1073,11 @@ sql> INSERT INTO orders (order_date, purchaser, quantity, product_id)
 VALUES ('2016-03-01', 1004, 3, 108);
 ```
 
+
+
 #### Schema Evolution
+
+![](./static/cdc-sync-schema-evolution.png)
 
 ```
 mysql> ALTER TABLE orders ADD COLUMN shipping_address TEXT DEFAULT NULL;
@@ -1131,3 +1140,5 @@ mysql> select * from orders;
 
 - [Deploying Debezium on Kubernetes | Debezium Documentation](https://debezium.io/documentation//reference/stable/operations/kubernetes.html)
 - [Deploying and Managing | Strimzi Documentation](https://strimzi.io/docs/operators/latest/deploying)
+- [Using the Iceberg framework in AWS Glue | AWS](https://docs.aws.amazon.com/glue/latest/dg/aws-glue-programming-etl-format-iceberg.html)
+- [Iceberg Kafka Connector | Iceberg](https://iceberg.apache.org/docs/latest/kafka-connect/)
