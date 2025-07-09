@@ -15,9 +15,13 @@ server:
     http-server.authentication.oauth2.issuer=https://accounts.google.com
     http-server.authentication.oauth2.client-id=$OAUTH2_CLIENT_ID
     http-server.authentication.oauth2.client-secret=$OAUTH2_CLIENT_SECRET
+    http-server.authentication.oauth2.principal-field=email
+    http-server.authentication.oauth2.scopes=openid,email
     web-ui.authentication.type=oauth2
   #   distributed-sort=true
   #   query.max-history=50
+  # workerExtraConfig: |
+  #   discovery.uri=http://trino.trino.svc.cluster.local:8080
 # --8<-- [end:server]
 
 # --8<-- [start:coordinator]
@@ -34,15 +38,15 @@ coordinator:
     - name: trino-tls
       secretName: trino-tls-secret
       path: /etc/trino/tls
-    - name: trino-bigquery
-      secretName: trino-bigquery-secret
-      path: /etc/trino/bigquery
   additionalExposedPorts:
     https:
       servicePort: 8443
       name: https
       port: 8443
       protocol: TCP
+  additionalJVMConfig:
+    - --add-opens=java.base/java.nio=ALL-UNNAMED # https://trino.io/docs/current/connector/bigquery.html#arrow-serialization-support
+    - --sun-misc-unsafe-memory-access=allow
   # access-control.properties: |
   #   access-control.name=file
   #   security.refresh-period=150s
@@ -61,6 +65,9 @@ worker:
   readinessProbe:
     initialDelaySeconds: 30
     failureThreshold: 20
+  additionalJVMConfig:
+    - --add-opens=java.base/java.nio=ALL-UNNAMED # https://trino.io/docs/current/connector/bigquery.html#arrow-serialization-support
+    - --sun-misc-unsafe-memory-access=allow
 # --8<-- [end:worker]
 
 # --8<-- [start:catalogs]
@@ -80,6 +87,21 @@ catalogs:
     connector.name=bigquery
     bigquery.project-id=$PROJECT_ID
     bigquery.credentials-file=/etc/trino/bigquery/trino-sa.json
+  iceberg: |
+    iceberg.catalog.type=glue
+    iceberg.file-format=parquet
+    iceberg.security=READ_ONLY
+    hive.metastore.glue.region=ap-northeast-1
+    hive.metastore.glue.default-warehouse-dir=$ICEBERG_S3_URL
+    hive.metastore.glue.aws-access-key=$AWS_ACCESS_KEY
+    hive.metastore.glue.aws-secret-key=$AWS_SECRET_KEY
+    fs.native-s3.enabled=true
+    s3.region=ap-northeast-1
+    s3.aws-access-key=$AWS_ACCESS_KEY
+    s3.aws-secret-key=$AWS_SECRET_KEY
+
+# https://trino.io/docs/current/connector/iceberg.html#authorization
+# https://trino.io/docs/current/object-storage/file-system-s3.html
 # --8<-- [end:catalogs]
 
 
@@ -87,7 +109,6 @@ catalogs:
 # --8<-- [start:additionalConfigProperties]
 additionalConfigProperties:
   - internal-communication.shared-secret=$INTERNAL_SHARED_SECRET
-  - discovery.uri=http://trino.trino.svc.cluster.local:8080
 # --8<-- [end:additionalConfigProperties]
 
 # --8<-- [start:additionalExchangeManagerProperties]
@@ -103,3 +124,11 @@ additionalExchangeManagerProperties: []
 #  - exchange.s3.aws-secret-key=your-secret-key
 # ```
 # --8<-- [end:additionalExchangeManagerProperties]
+
+# --8<-- [start:secretMounts]
+# Allows mounting additional Trino configuration files from Kubernetes secrets on all nodes.
+secretMounts:
+  - name: trino-bigquery
+    secretName: trino-bigquery-secret
+    path: /etc/trino/bigquery
+# --8<-- [end:secretMounts]
