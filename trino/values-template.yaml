@@ -34,6 +34,9 @@ coordinator:
     - name: trino-tls
       secretName: trino-tls-secret
       path: /etc/trino/tls
+    - name: trino-bigquery
+      secretName: trino-bigquery-secret
+      path: /etc/trino/bigquery
   additionalExposedPorts:
     https:
       servicePort: 8443
@@ -73,6 +76,10 @@ catalogs:
   tpcds: |
     connector.name=tpcds
     tpcds.splits-per-node=4
+  bigquery: |
+    connector.name=bigquery
+    bigquery.project-id=$PROJECT_ID
+    bigquery.credentials-file=/etc/trino/bigquery/trino-sa.json
 # --8<-- [end:catalogs]
 
 
