@@ -59,6 +59,27 @@ Create Kubernetes secret to mount the TLS certificate:
 kubectl apply -f .cert/trino-tls-secret.yaml --namespace trino
 ```
 
+```bash
+env $(cat .env | xargs) envsubst < generate-trino-bigquery-secret.sh | bash
+```
+
+```bash
+kubectl apply -f ./trino-bigquery-secret.yaml --namespace trino
+```
+
+
+```yaml
+--8<-- "./retail-lakehouse/trino/values-template.yaml"
+```
+
+```
+--8<-- "./retail-lakehouse/trino/.env.template"
+```
+
+```bash
+env $(cat .env | xargs) envsubst < values-template.yaml > values.yaml
+```
+
 Add and update the Trino Helm repository:
 
 ```bash
