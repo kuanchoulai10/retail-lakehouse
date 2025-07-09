@@ -87,10 +87,11 @@ catalogs:
     connector.name=bigquery
     bigquery.project-id=$PROJECT_ID
     bigquery.credentials-file=/etc/trino/bigquery/trino-sa.json
+  # TODO iceberg
   iceberg: |
+    connector.name=bigquery
     iceberg.catalog.type=glue
     iceberg.file-format=parquet
-    iceberg.security=READ_ONLY
     hive.metastore.glue.region=ap-northeast-1
     hive.metastore.glue.default-warehouse-dir=$ICEBERG_S3_URL
     hive.metastore.glue.aws-access-key=$AWS_ACCESS_KEY
