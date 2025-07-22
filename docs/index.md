@@ -1,3 +1,11 @@
+---
+tags:
+  - Debizium
+  - Apache Kafka
+  - Apache Iceberg
+  - Apache Spark
+  - Trino
+---
 # Retail Lakehouse with Debezium, Kafka, Iceberg, and Trino
 
 ## 💡 Highlights
