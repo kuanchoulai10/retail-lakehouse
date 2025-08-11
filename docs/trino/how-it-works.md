@@ -1,3 +1,7 @@
+---
+tags:
+  - Trino
+---
 # How It Works?
 
 ## Key Modules and Their Roles

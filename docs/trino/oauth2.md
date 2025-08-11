@@ -1,8 +1,13 @@
+---
+tags:
+  - Trino
+---
 # Configure OAuth 2.0 Authentication
 
-Trino can be configured to enable OAuth 2.0 authentication over HTTPS for the Web UI and the JDBC driver. 
+To implement OAuth 2.0 authentication with HTTPS support for both Trino's Web UI and JDBC driver connections, two main configuration areas must be addressed:
 
-Using **TLS and HTTPS for Trino Clients** and a **configured shared secret** is required for OAuth 2.0 authentication.
+- [**TLS/HTTPS Configuration**](https://trino.io/docs/current/security/tls.html): Enables secure connections for Trino clients accessing the Web UI and using JDBC drivers (represented by **blue lines** in the diagram)
+- [**Internal Communication Security**](https://trino.io/docs/current/security/internal-communication.html): Establishes secure communication channels between Trino cluster nodes, including coordinator and workers (represented by **red lines** in the diagram)
 
 <figure markdown="span">
   ![](./static/trino.diagram.svg){width="500"}
@@ -10,16 +15,14 @@ Using **TLS and HTTPS for Trino Clients** and a **configured shared secret** is 
 
 ## Configure TLS/HTTPS
 
-Trino runs with no security by default. This allows you to connect to the server using URLs that specify the HTTP protocol when using the Trino CLI, the Web UI, or other clients.
+By default, Trino operates without any security measures enabled. This configuration permits connections to the server through HTTP protocol URLs when accessing Trino via the CLI, Web UI, or other client applications.
 
-this is about Trino Client and Trino coordinator communication (blue lines) , not about the internal communication between Trino nodes.
+To enable TLS support for Trino, you have two implementation options:
 
-To configure Trino with TLS support, consider two alternative paths:
+- **Use a load balancer or reverse proxy** to handle TLS termination. This is the recommended and simplest approach for most deployments.
+- **Configure TLS directly on the Trino server**. This method requires obtaining a valid certificate and configuring it within the Trino coordinator settings.
 
-- Use **the load balancer or proxy** at your site or cloud environment to terminate TLS/HTTPS. This approach is the simplest and strongly preferred solution.
-- Secure **the Trino server directly**. This requires you to obtain a valid certificate, and add it to the Trino coordinator’s configuration.
-
-Since we are deploying Trino in a local Kubernetes cluster, **we will use the second approach and configure Trino to run with TLS/HTTPS directly with self-signed certificates**.
+Since we're deploying Trino within a local Kubernetes environment, **we'll implement the second approach by configuring TLS/HTTPS directly on the Trino server using self-signed certificates**.
 
 
 ### Automated Certificate Generation
@@ -30,76 +33,87 @@ Use the provided script to automatically generate all necessary certificates and
 ./generate-tls-certs.sh
 ```
 
-The automated script performs the following steps. Each step can also be executed manually if needed:
+??? info "generate-tls-certs.sh"
 
-**Step 1: Create Private Key**
+    ```bash
+    --8<-- "./retail-lakehouse/trino/generate-tls-certs.sh"
+    ```
 
-```bash
---8<-- "./retail-lakehouse/trino/generate-tls-certs.sh:create-private-key"
-```
+??? info "Details"
 
-What this does:
+    The automated script performs the following steps. Each step can also be executed manually if needed:
 
-- Uses RSA algorithm to generate a 2048-bit private key
-- Saves the private key to `.cert/private.key`
-- This private key will be used to create the self-signed certificate
+    **Step 1: Create Private Key**
 
-**Step 2: Create Self-Signed Certificate**
+    ```bash
+    --8<-- "./retail-lakehouse/trino/generate-tls-certs.sh:create-private-key"
+    ```
 
-```bash
---8<-- "./retail-lakehouse/trino/generate-tls-certs.sh:create-certificate"
-```
+    What this does:
 
-What this does:
+    - Uses RSA algorithm to generate a 2048-bit private key
+    - Saves the private key to `.cert/private.key`
+    - This private key will be used to create the self-signed certificate
 
-- Creates a new self-signed X.509 certificate using the private key
-- Uses the OpenSSL configuration file (`openssl.cnf`) for certificate settings
-- Certificate is valid for 365 days
-- Applies `v3_req` extensions which include Subject Alternative Names (SAN)
-- The certificate hostname and SAN entries are configured in `openssl.cnf`
-- Saves the certificate to `.cert/certificate.crt`
+    **Step 2: Create Self-Signed Certificate**
 
-```ini title="openssl.cnf"
---8<-- "./retail-lakehouse/trino/openssl.cnf"
-```
+    ```bash
+    --8<-- "./retail-lakehouse/trino/generate-tls-certs.sh:create-certificate"
+    ```
 
-**Step 3: Combine Private Key and Certificate into PEM Format**
+    What this does:
 
-```bash
---8<-- "./retail-lakehouse/trino/generate-tls-certs.sh:combine"
-```
+    - Creates a new self-signed X.509 certificate using the private key
+    - Uses the OpenSSL configuration file (`openssl.cnf`) for certificate settings
+    - Certificate is valid for 365 days
+    - Applies `v3_req` extensions which include Subject Alternative Names (SAN)
+    - The certificate hostname and SAN entries are configured in `openssl.cnf`
+    - Saves the certificate to `.cert/certificate.crt`
 
-What this does:
+    ```ini title="openssl.cnf"
+    --8<-- "./retail-lakehouse/trino/openssl.cnf"
+    ```
 
-- Combines the private key and certificate into a single PEM file
-- Creates `.cert/trino-dev.pem` containing both private key and certificate
-- This combined PEM file is commonly used by applications that need both components
-- Note: This file contains the private key and must be protected properly
+    **Step 3: Combine Private Key and Certificate into PEM Format**
 
-**Step 4: Create Kubernetes Secret Manifest**
+    ```bash
+    --8<-- "./retail-lakehouse/trino/generate-tls-certs.sh:combine"
+    ```
 
-```bash
---8<-- "./retail-lakehouse/trino/generate-tls-certs.sh:create-k8s-secret"
-```
+    What this does:
 
-What this does:
+    - Combines the private key and certificate into a single PEM file
+    - Creates `.cert/trino-dev.pem` containing both private key and certificate
+    - This combined PEM file is commonly used by applications that need both components
+    - Note: This file contains the private key and must be protected properly
 
-- Generates a Kubernetes secret YAML manifest file
-- Contains the `trino-dev.pem` file for deployment
-- Uses `--dry-run=client` to generate the YAML without applying it to the cluster
-- The secret can be applied directly to the Kubernetes cluster with `kubectl apply`
+    **Step 4: Create Kubernetes Secret Manifest**
+
+    ```bash
+    --8<-- "./retail-lakehouse/trino/generate-tls-certs.sh:create-k8s-secret"
+    ```
+
+    What this does:
+
+    - Generates a Kubernetes secret YAML manifest file
+    - Contains the `trino-dev.pem` file for deployment
+    - Uses `--dry-run=client` to generate the YAML without applying it to the cluster
+    - The secret can be applied directly to the Kubernetes cluster with `kubectl apply`
+
 
 After running the script, you will find the generated files in the `.cert/` directory, the Kubernetes secret manifest file will be named `trino-tls-secret.yaml` and it should look like this:
 
-```yaml title="trino-tls-secret.yaml"
-apiVersion: v1
-kind: Secret
-metadata:
-  creationTimestamp: null
-  name: trino-tls-secret
-data:
-  {==trino-dev.pem==}: xxx
-```
+??? info "Result"
+
+    ```yaml title="trino-tls-secret.yaml"
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      creationTimestamp: null
+      name: trino-tls-secret
+    data:
+      {==trino-dev.pem==}: xxx
+    ```
 
 ### Mount the TLS Certificate
 
@@ -186,3 +200,21 @@ For Google configuration metadata document, see [here](https://accounts.google.c
 - [TLS and HTTPS](https://trino.io/docs/current/security/tls.html)
 - [Secure internal communication](https://trino.io/docs/current/security/internal-communication.html)
 - [OAuth 2.0 authentication](https://trino.io/docs/current/security/oauth2.html)
+
+```mermaid
+sequenceDiagram
+    participant Browser
+    participant Trino_Coordinator
+    participant Google_OAuth_Server
+
+    Browser->>Trino_Coordinator: 1. 請求 Trino Web UI
+    Trino_Coordinator-->>Browser: 2. Redirect 到 Google OAuth (auth URL)
+    Browser->>Google_OAuth_Server: 3. 使用者登入 + 同意授權
+    Google_OAuth_Server-->>Browser: 4. Redirect 回 Trino + 帶 authorization code
+    Browser->>Trino_Coordinator: 5. 將 code 發送給 Trino `/oauth2/callback`
+    Trino_Coordinator->>Google_OAuth_Server: 6. 用 authorization code 換 access token + ID token
+    Google_OAuth_Server-->>Trino_Coordinator: 7. 回傳 token(s)
+    Trino_Coordinator-->>Browser: 8. 顯示 Web UI（已登入）
+
+    note right of Trino_Coordinator: Trino 使用 ID token 中的 email 作為登入身份
+```
