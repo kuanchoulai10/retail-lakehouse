@@ -186,35 +186,42 @@ After createing the OAuth 2.0 client, you will be provided with a **client ID** 
 
 ## Configure OAuth 2.0 Authentication
 
-To enable OAuth 2.0 authentication in Trino, you will need to configure the OAuth2 properties in the Trino coordinator, which include the client ID, client secret, and authorization server URL. To enable OAuth 2.0 authentication for the Web UI, you also need to set the authentication type of the Web UI to `oauth2`.
+To activate OAuth 2.0 authentication in Trino, configure the following essential properties in the coordinator settings:
 
-```yaml title="trino/values-template.yaml server" linenums="1" hl_lines="1 3-5 8-12"
+- **Client ID**: OAuth 2.0 client identifier obtained from Google Cloud Console
+- **Client Secret**: OAuth 2.0 client secret obtained from Google Cloud Console  
+- **Authorization Server URL**: Google's OAuth 2.0 authorization endpoint
+- **Web UI Authentication Type**: Must be set to `oauth2` to enable OAuth 2.0 for the Web UI
+
+These configurations establish the connection between Trino and the OAuth 2.0 provider, enabling secure authentication for both Web UI and programmatic access.
+
+```yaml title="trino/values-template.yaml server" linenums="1" hl_lines="1 3-5 9-14"
 --8<-- "./retail-lakehouse/trino/values-template.yaml:server"
 ```
 
-Trino supports reading the Authorization Server configuration from the OIDC provider configuration metadata document. During coordinator startup, Trino retrieves this document and uses the provided values to set the corresponding OAuth2 authentication properties, eliminating the need for additional configuration setup.
+Trino can automatically retrieve OAuth 2.0 configuration settings from the OIDC provider's metadata document (such as Google's [configuration endpoint](https://accounts.google.com/.well-known/openid-configuration)). When the coordinator starts up, it fetches this metadata document and automatically configures the necessary OAuth 2.0 authentication properties, removing the need for manual configuration of these settings.
 
-For Google configuration metadata document, see [here](https://accounts.google.com/.well-known/openid-configuration).
+The sequence diagram below illustrates the OAuth 2.0 authentication flow in Trino:
+
+```mermaid
+sequenceDiagram
+  participant Browser
+  participant Coordinator as Trino Coordinator
+  participant Server as Google OAuth Server
+
+  Browser->>Coordinator: 1. Request Trino Web UI
+  Coordinator-->>Browser: 2. Redirect to Google OAuth (auth URL)
+  Browser->>Server: 3. User login + consent authorization
+  Server-->>Browser: 4. Redirect back to Trino + authorization code
+  Browser->>Coordinator: 5. Send authorization code to Trino /oauth2/callback
+  Coordinator->>Server: 6. Exchange authorization code for access token + ID token
+  Server-->>Coordinator: 7. Return token(s)
+  Coordinator-->>Browser: 8. Display Web UI (logged in)
+
+  note right of Coordinator: Trino uses email from ID token as user identity
+```
 
 ## References
 - [TLS and HTTPS](https://trino.io/docs/current/security/tls.html)
 - [Secure internal communication](https://trino.io/docs/current/security/internal-communication.html)
 - [OAuth 2.0 authentication](https://trino.io/docs/current/security/oauth2.html)
-
-```mermaid
-sequenceDiagram
-    participant Browser
-    participant Trino_Coordinator
-    participant Google_OAuth_Server
-
-    Browser->>Trino_Coordinator: 1. 請求 Trino Web UI
-    Trino_Coordinator-->>Browser: 2. Redirect 到 Google OAuth (auth URL)
-    Browser->>Google_OAuth_Server: 3. 使用者登入 + 同意授權
-    Google_OAuth_Server-->>Browser: 4. Redirect 回 Trino + 帶 authorization code
-    Browser->>Trino_Coordinator: 5. 將 code 發送給 Trino `/oauth2/callback`
-    Trino_Coordinator->>Google_OAuth_Server: 6. 用 authorization code 換 access token + ID token
-    Google_OAuth_Server-->>Trino_Coordinator: 7. 回傳 token(s)
-    Trino_Coordinator-->>Browser: 8. 顯示 Web UI（已登入）
-
-    note right of Trino_Coordinator: Trino 使用 ID token 中的 email 作為登入身份
-```
