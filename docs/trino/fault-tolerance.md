@@ -38,4 +38,3 @@ The **coordinator** node uses a configured **exchange manager** service that buf
 
 - [Improve query processing resilience](https://trino.io/docs/current/installation/query-resiliency.html)
 - [Fault-tolerant execution](https://trino.io/docs/current/admin/fault-tolerant-execution.html)
-- [Exchange properties](https://trino.io/docs/current/admin/properties-exchange.html)
