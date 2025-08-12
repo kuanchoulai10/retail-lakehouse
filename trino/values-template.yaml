@@ -77,27 +77,20 @@ catalogs:
     faker.null-probability=0.1
     faker.default-limit=1000
     faker.locale=en
-  tpch: |
-    connector.name=tpch
-    tpch.splits-per-node=4
-  tpcds: |
-    connector.name=tpcds
-    tpcds.splits-per-node=4
   bigquery: |
     connector.name=bigquery
     bigquery.project-id=$PROJECT_ID
     bigquery.credentials-file=/etc/trino/bigquery/trino-sa.json
-  # TODO iceberg
   iceberg: |
-    connector.name=bigquery
+    connector.name=iceberg
     iceberg.catalog.type=glue
     iceberg.file-format=parquet
-    hive.metastore.glue.region=ap-northeast-1
+    hive.metastore.glue.region=$AWS_REGION
     hive.metastore.glue.default-warehouse-dir=$ICEBERG_S3_URL
     hive.metastore.glue.aws-access-key=$AWS_ACCESS_KEY
     hive.metastore.glue.aws-secret-key=$AWS_SECRET_KEY
     fs.native-s3.enabled=true
-    s3.region=ap-northeast-1
+    s3.region=$AWS_REGION
     s3.aws-access-key=$AWS_ACCESS_KEY
     s3.aws-secret-key=$AWS_SECRET_KEY
 
