@@ -13,12 +13,11 @@ nav:
       - iceberg/spark-quickstart/4-iceberg-wap-with-branches.ipynb
       - iceberg/spark-quickstart/5-iceberg-view-support.ipynb
   - Trino:
-    # - trino/what-why-when.md
     - trino/how-it-works.md
     - trino/deployment.md
     - trino/oauth2.md
     - trino/fault-tolerance.md
-    # - trino/catalogs.md
+    - trino/catalogs.md
     - trino/faker.md
 
 
