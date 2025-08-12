@@ -10,7 +10,7 @@ To implement OAuth 2.0 authentication with HTTPS support for both Trino's Web UI
 - [**Internal Communication Security**](https://trino.io/docs/current/security/internal-communication.html): Establishes secure communication channels between Trino cluster nodes, including coordinator and workers (represented by **red lines** in the diagram)
 
 <figure markdown="span">
-  ![](./static/trino.diagram.svg){width="500"}
+  ![](./static/trino.drawio.svg){width="500"}
 </figure>
 
 ## Configure TLS/HTTPS
