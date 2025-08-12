@@ -17,7 +17,7 @@ nav:
     - trino/how-it-works.md
     - trino/deployment.md
     - trino/oauth2.md
-    # - trino/fault-tolerant.md
+    - trino/fault-tolerance.md
     # - trino/catalogs.md
     - trino/faker.md
 
