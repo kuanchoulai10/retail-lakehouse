@@ -1,3 +1,4 @@
+.DS_Store
 trino-bigquery-secret.yaml
 values.yaml
 .cert
