@@ -4,6 +4,11 @@ tags:
 ---
 # How It Works?
 
+<figure markdown="span">
+  ![](https://trino.io/assets/episode/29/1-architecture.png)
+  [*Trino: The Definitive Guide*](https://www.oreilly.com/library/view/trino-the-definitive/9781098107703/)
+</figure>
+
 ## Architecture Components
 
 ### Coordinator
@@ -51,21 +56,50 @@ The fundamental requirement for any catalog is the `connector.name` property, wh
 
 ### Query Execution Model
 
-A user starts by sending an SQL ***statement*** from a client tool—such as DBeaver, Superset, or a custom application—to the Trino cluster. This ***statement*** is a plain-text command like `SELECT region, COUNT(*) FROM sales GROUP BY region;`. It first arrives at the ***coordinator***, which is the brain of the Trino system.
+A user starts by sending an SQL statement from a client tool, such as DBeaver, Superset, or a custom application, to the Trino cluster. The **statement is a plain-text command** like `SELECT region, COUNT(*) FROM sales GROUP BY region;`. It first arrives at the coordinator, which is the brain of the Trino system.
 
-The ***coordinator*** begins by parsing this ***statement***, checking for syntax and semantic correctness. Once validated, the ***statement*** is transformed into a ***query***. This ***query*** is more than just text—it’s a fully-formed plan that defines how the cluster will execute the user’s command. The ***query*** is broken down into a hierarchy of ***stages***, forming a distributed execution plan. These ***stages*** form a tree-like structure, where each ***stage*** represents a logical step of the query, such as scanning data, performing aggregation, or returning final results.
+The coordinator begins by parsing this statement, checking for syntax and semantic correctness. Once validated, the statement is transformed into a query. The **query is more than just text. It's a fully-formed plan that defines how the cluster will execute the user's command**.
 
-Although ***stages*** define what needs to be done, they don’t perform the actual computation. Instead, each ***stage*** is implemented through multiple ***tasks***. These ***tasks*** are distributed across ***worker*** nodes in the cluster. Each ***task*** is responsible for executing a portion of its parent ***stage***, and together, the tasks accomplish the overall goal of that stage.
+**The query is broken down into a hierarchy of stages**, forming a distributed execution plan. These stages form a **tree-like structure**, where each stage represents a logical step of the query, such as scanning data, performing aggregation, or returning final results.
 
-Each ***task*** works on specific chunks of data called ***splits***. A ***split*** is a subset of the overall dataset—for example, a single Parquet file or a segment of rows. The ***coordinator*** asks the storage connector (such as the Hive connector) for a list of available ***splits*** for a given table and then assigns those ***splits*** to the ***tasks*** running on various workers.
+<figure markdown="span">
+  ![](https://trino.io/assets/episode/29/3-parser-planner.png)
+  [*Trino: The Definitive Guide*](https://www.oreilly.com/library/view/trino-the-definitive/9781098107703/)
+</figure>
 
-Within each ***task***, the execution is further broken down into one or more ***drivers***. A ***driver*** is essentially a data pipeline that runs in a single thread. Each ***driver*** consists of a series of ***operators***. These ***operators*** perform concrete operations like scanning a table, filtering rows, applying functions, or aggregating values. You can think of a ***driver*** as a physical pipeline built from ***operator*** components.
+<figure markdown="span">
+  ![](https://trino.io/assets/episode/29/4-distributed-query-plan.png)
+  [*Trino: The Definitive Guide*](https://www.oreilly.com/library/view/trino-the-definitive/9781098107703/)
+</figure>
 
-For example, a ***driver*** in this case might include a ***table scan operator*** that reads rows from the `sales` table, followed by a ***filter operator*** that removes NULL regions, and an ***aggregation operator*** that performs the `GROUP BY region` logic.
 
-As data flows upward from lower ***stages*** to higher ones, ***exchanges*** come into play. These are the network mechanisms that transfer data between nodes. When one ***stage*** finishes processing, it places its output into buffers. The next ***stage*** pulls data from these buffers using an ***exchange client***, ensuring the distributed stages stay connected even across physical nodes.
+Although stages define what needs to be done, they don't perform the actual computation. Instead, **each stage is implemented through multiple tasks**. These tasks are **distributed** across worker nodes in the cluster. **Each task is responsible for executing a portion of its parent stage**, and together, the tasks accomplish the overall goal of that stage.
 
-Once the root ***stage*** finishes aggregating the results from its child stages, the final output is assembled by the ***coordinator*** and returned to the client. What the user sees is a neatly formatted result set with regions and counts, but under the hood, that simple output is the product of a highly parallel and distributed pipeline involving ***statements***, ***queries***, ***stages***, ***tasks***, ***splits***, ***drivers***, ***operators***, and ***exchanges***.
+<figure markdown="span">
+  ![](https://trino.io/assets/episode/29/5-task-management.png)
+  [*Trino: The Definitive Guide*](https://www.oreilly.com/library/view/trino-the-definitive/9781098107703/)
+</figure>
+
+**Each task works on specific chunks of data called splits. A split is a subset of the overall dataset**. For example, a single Parquet file or a segment of rows. The coordinator asks the storage connector (such as the Hive connector) for a list of available splits for a given table and then assigns those splits to the tasks running on various workers.
+
+<figure markdown="span">
+  ![](https://trino.io/assets/episode/29/6-splits.png)
+  [*Trino: The Definitive Guide*](https://www.oreilly.com/library/view/trino-the-definitive/9781098107703/)
+</figure>
+
+**Within each task, the execution is further broken down into one or more drivers. A driver is essentially a data pipeline that runs in a single thread. Each driver consists of a series of operators**. These operators perform concrete operations like scanning a table, filtering rows, applying functions, or aggregating values. You can think of a driver as a physical pipeline built from operator components.
+
+For example, a driver in this case might include a table scan operator that reads rows from the `sales` table, followed by a filter operator that removes `NULL` regions, and an aggregation operator that performs the `GROUP BY region` logic.
+
+<figure markdown="span">
+  ![](https://trino.io/assets/episode/29/7-parallelism-over-drivers.png)
+  [*Trino: The Definitive Guide*](https://www.oreilly.com/library/view/trino-the-definitive/9781098107703/)
+</figure>
+
+
+As data flows upward from lower stages to higher ones, **exchanges** come into play. These are the network mechanisms that **transfer data between nodes**. **When one stage finishes processing, it places its output into buffers**. The next stage pulls data from these buffers using an exchange client, ensuring the distributed stages stay connected even across physical nodes.
+
+**Once the root stage finishes aggregating the results from its child stages, the final output is assembled by the coordinator and returned to the client**. What the user sees is a neatly formatted result set with regions and counts, but under the hood, that simple output is the product of **a highly parallel and distributed pipeline involving statements, queries, stages, tasks, splits, drivers, operators, and exchanges**.
 
 
 ### Client Protocol
@@ -88,3 +122,8 @@ sequenceDiagram
 ```
 
 See [Client Protocol | Trino](https://trino.io/docs/current/client/client-protocol.html) for more.
+
+## References
+
+- [29: What is Trino and the Hive connector](https://trino.io/episodes/29.html)
+- [Trino: The Definitive Guide](https://datafinder.ru/files/downloads/01/Trino---The-Definitive-Guide-2023.pdf)

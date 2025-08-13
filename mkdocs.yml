@@ -17,8 +17,10 @@ nav:
     - trino/deployment.md
     - trino/oauth2.md
     - trino/fault-tolerance.md
+    - trino/monitoring.md
     - trino/catalogs.md
     - trino/faker.md
+    - trino/join-optimization.md
 
 
 theme:
