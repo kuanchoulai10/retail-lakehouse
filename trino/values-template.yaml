@@ -18,6 +18,9 @@ server:
     http-server.authentication.oauth2.principal-field=email
     http-server.authentication.oauth2.scopes=openid,email
     web-ui.authentication.type=oauth2
+  exchangeManager:
+    name: filesystem
+    base-directories: $EXCHANGE_S3_URLS
   #   distributed-sort=true
   #   query.max-history=50
   # workerExtraConfig: |
@@ -103,10 +106,14 @@ catalogs:
 # --8<-- [start:additionalConfigProperties]
 additionalConfigProperties:
   - internal-communication.shared-secret=$INTERNAL_SHARED_SECRET
+  - retry-policy=TASK
 # --8<-- [end:additionalConfigProperties]
 
 # --8<-- [start:additionalExchangeManagerProperties]
-additionalExchangeManagerProperties: []
+additionalExchangeManagerProperties:
+  - exchange.s3.region=$AWS_REGION
+  - exchange.s3.aws-access-key=$AWS_ACCESS_KEY
+  - exchange.s3.aws-secret-key=$AWS_SECRET_KEY
 # additionalExchangeManagerProperties -- [Exchange manager
 # properties](https://trino.io/docs/current/admin/fault-tolerant-execution.html#exchange-manager).
 # @raw
