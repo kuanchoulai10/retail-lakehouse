@@ -18,11 +18,11 @@ server:
     http-server.authentication.oauth2.principal-field=email
     http-server.authentication.oauth2.scopes=openid,email
     web-ui.authentication.type=oauth2
+  #   distributed-sort=true
+  #   query.max-history=50
   exchangeManager:
     name: filesystem
     base-directories: $EXCHANGE_S3_URLS
-  #   distributed-sort=true
-  #   query.max-history=50
   # workerExtraConfig: |
   #   discovery.uri=http://trino.trino.svc.cluster.local:8080
 # --8<-- [end:server]
