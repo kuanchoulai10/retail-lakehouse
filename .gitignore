@@ -1,6 +1,6 @@
 .DS_Store
 trino-bigquery-secret.yaml
-values.yaml
+trino/values.yaml
 .cert
 
 # Byte-compiled / optimized / DLL files
