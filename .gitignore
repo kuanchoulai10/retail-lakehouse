@@ -1,6 +1,7 @@
 .DS_Store
 trino-bigquery-secret.yaml
 trino/values.yaml
+iceberg-secret.yaml
 .cert
 
 # Byte-compiled / optimized / DLL files
