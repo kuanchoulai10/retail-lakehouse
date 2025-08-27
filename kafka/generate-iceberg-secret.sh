@@ -10,3 +10,5 @@ kubectl create secret generic iceberg-secret \
   --from-literal=awsRegion=$AWS_ICEBERG_REGION \
   --namespace kafka-cdc \
   --dry-run=client -o yaml > "./iceberg-secret.yaml"
+
+echo "iceberg-secret.yaml file has been generated."
