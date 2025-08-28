@@ -337,7 +337,7 @@ You can view the list of minikube maintainers at: https://github.com/kubernetes/
 ```bash
 kubectl -n kube-system get svc registry -o jsonpath='{.spec.clusterIP}'
 
-10.103.211.36
+10.98.201.207
 ```
 
 ```yaml title="debezium-connect-cluster.yaml"

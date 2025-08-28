@@ -12,6 +12,7 @@ spec:
     config.providers: secrets
     config.providers.secrets.class: io.strimzi.kafka.KubernetesSecretConfigProvider
     group.id: debezium-connect-cluster
+    exactly.once.support: required
     offset.storage.topic: debezium-connect-cluster-offsets
     config.storage.topic: debezium-connect-cluster-configs
     status.storage.topic: debezium-connect-cluster-status
@@ -22,7 +23,7 @@ spec:
   build:
     output:
       type: docker
-      image: 10.103.211.36/debezium-connect-mysql:latest
+      image: 10.98.201.207/debezium-connect-mysql:latest
     plugins:
       - name: debezium-mysql-connector
         artifacts:
