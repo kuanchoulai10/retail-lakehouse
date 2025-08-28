@@ -22,7 +22,7 @@ spec:
   build:
     output:
       type: docker
-      image: 10.103.211.36/iceberg-connect:latest
+      image: 10.98.201.207/iceberg-connect:latest
     plugins:
       - name: iceberg-connect
         artifacts: 
