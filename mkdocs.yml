@@ -2,6 +2,7 @@ site_name: side-projects/retail-lakehouse
 docs_dir: docs
 nav:
   - index.md
+  - prerequisites.md
   - Kafka:
     - kafka/deployment.md
   - Apache Iceberg:
