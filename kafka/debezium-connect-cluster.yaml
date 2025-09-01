@@ -2,6 +2,7 @@ apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaConnect
 metadata:
   name: debezium-connect-cluster
+  namespace: kafka-cdc
   annotations:
     strimzi.io/use-connector-resources: "true"
 spec:
@@ -22,8 +23,9 @@ spec:
     status.storage.replication.factor: -1
   build:
     output:
+      # https://strimzi.io/docs/operators/latest/configuring.html#type-DockerOutput-reference
       type: docker
-      image: 10.98.201.207/debezium-connect-mysql:latest
+      image: 10.104.128.211/debezium-mysql-connector:latest
     plugins:
       - name: debezium-mysql-connector
         artifacts:
