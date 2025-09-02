@@ -88,10 +88,10 @@ The basic deployment path includes the following steps:
 
 !!! success "Deployment Steps"
 
-    - [ ] *Deploy a Kafka Cluster via the Strimzi Operator*
-    - [ ] *Deploy a MySQL Database*
-    - [ ] *Deploy a Debezium Kafka Source Connector*
-    - [ ] *Deploy an Iceberg Kafka Sink Connector*
-    - [ ] *Deploy a Trino Cluster*
-    - [ ] *Deploy a Spark Cluster (WIP)*
-    - [ ] *Deploy Prometheus and Grafana (WIP)*
+    - [ ] Deploy a Kafka Cluster via the Strimzi Operator
+    - [ ] Deploy a MySQL Database
+    - [ ] Deploy a Debezium Kafka Source Connector
+    - [ ] Deploy an Iceberg Kafka Sink Connector
+    - [ ] Deploy a Trino Cluster
+    - [ ] Deploy a Spark Cluster (WIP)
+    - [ ] Deploy Prometheus and Grafana (WIP)
