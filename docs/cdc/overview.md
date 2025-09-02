@@ -11,7 +11,7 @@ Specifically, we first deploy a Kafka Cluster to store real-time change data cap
 
 !!! success "Deployment Steps"
 
-    - [ ] [*Deploy a Kafka Cluster via the Strimzi Operator*](./cdc/deployment-kafka-cluster.md)
-    - [ ] [*Deploy a MySQL Database*](./cdc/deployment-mysql.md)
-    - [ ] [*Deploy a Debezium Kafka Source Connector*](./cdc/deployment-debezium-mysql-connector.md)
-    - [ ] [*Deploy an Iceberg Kafka Sink Connector*](./cdc/deployment-iceberg-connector.md)
+    - [ ] [Deploy a Kafka Cluster via the Strimzi Operator](./cdc/deployment-kafka-cluster.md)
+    - [ ] [Deploy a MySQL Database](./cdc/deployment-mysql.md)
+    - [ ] [Deploy a Debezium Kafka Source Connector](./cdc/deployment-debezium-mysql-connector.md)
+    - [ ] [Deploy an Iceberg Kafka Sink Connector](./cdc/deployment-iceberg-connector.md)

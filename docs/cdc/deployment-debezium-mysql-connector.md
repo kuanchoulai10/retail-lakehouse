@@ -9,10 +9,10 @@ Make sure you have deployed a Kafka cluster and a MySQL database first.
 
 !!! success "Deployment Steps"
 
-    - [x] [*Deploy a Kafka Cluster via the Strimzi Operator*](./cdc/deployment-kafka-cluster.md)
-    - [x] [*Deploy a MySQL Database*](./cdc/deployment-mysql.md)
-    - [ ] [*Deploy a Debezium Kafka Source Connector*](./cdc/deployment-debezium-mysql-connector.md)
-    - [ ] [*Deploy an Iceberg Kafka Sink Connector*](./cdc/deployment-iceberg-connector.md)
+    - [x] [Deploy a Kafka Cluster via the Strimzi Operator](./cdc/deployment-kafka-cluster.md)
+    - [x] [Deploy a MySQL Database](./cdc/deployment-mysql.md)
+    - [ ] [Deploy a Debezium Kafka Source Connector](./cdc/deployment-debezium-mysql-connector.md)
+    - [ ] [Deploy an Iceberg Kafka Sink Connector](./cdc/deployment-iceberg-connector.md)
 
 After the Kafka cluster and MySQL database are up and running, you can deploy the Debezium MySQL Kafka Connector by running the following commands:
 
