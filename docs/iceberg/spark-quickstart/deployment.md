@@ -3,7 +3,7 @@
 ## Docker-Compose
 
 ```yaml title="docker-compose.yml" linenums="1" hl_lines="2 23 37 52 71"
---8<-- "./retail-lakehouse/iceberg/spark-quickstart/docker-compose.yml"
+--8<-- "./iceberg/spark-quickstart/docker-compose.yml"
 ```
 
 This Docker Compose configuration sets up a complete Apache Iceberg development environment with the following components:
