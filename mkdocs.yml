@@ -7,8 +7,8 @@ nav:
     - cdc/overview.md
     - cdc/deployment-kafka-cluster.md
     - cdc/deployment-mysql.md
-    - cdc/deployment-kafka-debezium-mysql-connector.md
-    - cdc/deployment-kafka-iceberg-connector.md
+    - cdc/deployment-debezium-mysql-connector.md
+    - cdc/deployment-iceberg-connector.md
   - Trino:
     - trino/how-it-works.md
     - trino/deployment.md
