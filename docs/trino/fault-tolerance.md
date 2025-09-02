@@ -26,15 +26,15 @@ This allows Trino to handle larger queries such as **batch operations** without 
 To enable fault-tolerant execution, you need to configure the Trino cluster with the following properties:
 
 ```yaml title="value.yaml" linenums="1" hl_lines="1 17-19"
---8<-- "./retail-lakehouse/trino/values-template.yaml:server"
+--8<-- "./trino/values-template.yaml:server"
 ```
 
 ```yaml title="value.yaml" linenums="1" hl_lines="1 3"
---8<-- "./retail-lakehouse/trino/values-template.yaml:additionalConfigProperties"
+--8<-- "./trino/values-template.yaml:additionalConfigProperties"
 ```
 
 ```yaml title="value.yaml" linenums="1" hl_lines="1-4"
---8<-- "./retail-lakehouse/trino/values-template.yaml:additionalExchangeManagerProperties"
+--8<-- "./trino/values-template.yaml:additionalExchangeManagerProperties"
 ```
 
 The three configuration blocks shown above are **applied to both the coordinator and all worker nodes** in the Trino cluster.

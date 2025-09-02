@@ -4,15 +4,11 @@ nav:
   - index.md
   - prerequisites.md
   - Kafka:
-    - kafka/deployment.md
-  - Apache Iceberg:
-    - Spark Quickstart:
-      - iceberg/spark-quickstart/deployment.md
-      - iceberg/spark-quickstart/1-iceberg-getting-started.ipynb
-      - iceberg/spark-quickstart/2-iceberg-integrated-audits-demo.ipynb
-      - iceberg/spark-quickstart/3-iceberg-table-maintenance-spark-procedures.ipynb
-      - iceberg/spark-quickstart/4-iceberg-wap-with-branches.ipynb
-      - iceberg/spark-quickstart/5-iceberg-view-support.ipynb
+    - cdc/overview.md
+    - cdc/deployment-kafka-cluster.md
+    - cdc/deployment-mysql.md
+    - cdc/deployment-kafka-debezium-mysql-connector.md
+    - cdc/deployment-kafka-iceberg-connector.md
   - Trino:
     - trino/how-it-works.md
     - trino/deployment.md
@@ -22,6 +18,13 @@ nav:
     - trino/catalogs.md
     - trino/faker.md
     - trino/join-optimization.md
+  - Apache Iceberg - Spark Quickstart:
+      - iceberg/spark-quickstart/deployment.md
+      - iceberg/spark-quickstart/1-iceberg-getting-started.ipynb
+      - iceberg/spark-quickstart/2-iceberg-integrated-audits-demo.ipynb
+      - iceberg/spark-quickstart/3-iceberg-table-maintenance-spark-procedures.ipynb
+      - iceberg/spark-quickstart/4-iceberg-wap-with-branches.ipynb
+      - iceberg/spark-quickstart/5-iceberg-view-support.ipynb
 
 
 theme:

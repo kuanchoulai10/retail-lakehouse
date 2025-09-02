@@ -52,37 +52,46 @@ tags:
         - [x] Simplified **data access across multiple data sources without data duplication**, enabling ad-hoc analytics and reporting from a unified SQL interface.
         - [x] Integrated **Google OAuth 2.0** with Trino to enable **token-based authentication**, improving platform **auditability** and user **accountability**.
 
-## Solution Architecture Overview
+## 🏗️ Architecture
 
 ![](architecture.drawio.svg)
+/// caption
+Architecture Overview
+///
 
-## Background
+## 🗂️ What's Inside?
 
-You are a solution architect at a fast-growing e-commerce company that processes hundreds of thousands of transactions and user interactions daily.
+First, clone the repository:
 
-The current data setup is as follows:
+```bash
+mkdir -p ~/Projects
+cd ~/Projects
+git clone git@github.com:kuanchoulai10/retail-lakehouse.git
+```
 
-- Order and transaction data is stored in **AWS RDS (MySQL)**.
-- User behavioral data—such as product views, cart additions, and ad clicks—is collected via **Google Analytics 4 (GA4)** and streamed directly into **BigQuery**.
-- The team is familiar with both **AWS** and **Google Cloud**, and **Amazon S3** is used as an intermediate storage layer for certain analytics workflows.
+The project structure looks like this:
 
-## Legacy Architecture
+```
+.
+├── kafka-cluster
+├── mysql
+├── kafka-debezium-mysql-connector
+├── kafka-iceberg-connector
+├── trino
+├── spark
+└── prometheus-grafana
+```
 
-- Daily batch ETL jobs export data from RDS to feed internal reporting tools (e.g., Tableau or Google Looker Studio).
-- GA4 user events are streamed into BigQuery in real time and queried for behavioral analytics.
-- There is a clear **data silo** between MySQL and BigQuery, making it difficult to join and analyze user behavior alongside transactional data.
-- Due to the large volume of data, the team prefers **not to move data unnecessarily** between systems to avoid latency and cost.
+## 📑 Deployment Steps
 
-## Problems and Challenges
+The basic deployment path includes the following steps:
 
-- Reporting **latency is too high** due to daily batch processing. Marketing teams cannot react in real time to campaign performance.
-- There is **no unified way to analyze** both behavioral and transactional data together, which limits insight into user journeys and conversion paths.
-- **Data duplication or migration across platforms is undesirable due to storage and operational costs**.
-- There is **no centralized authentication or audit logging mechanism** to track query access and ensure data governance across multiple clouds.
+!!! success "Deployment Steps"
 
-## Business Requirements
-
-- **Marketing teams** need real-time reports that combine website behavior and order data to quickly evaluate and adjust campaign performance.
-- **Product managers** want to track funnel metrics like impressions, clicks, and conversions without waiting for daily batch reports.
-- **Data analysts** need access to versioned, clean, and reliable data to support accurate ad-hoc analysis and troubleshoot issues when metrics look off.
-- **IT and data governance teams** require secure, auditable access to data, with clear control over who can query what.
+    - [ ] *Deploy a Kafka Cluster via the Strimzi Operator*
+    - [ ] *Deploy a MySQL Database*
+    - [ ] *Deploy a Debezium Kafka Source Connector*
+    - [ ] *Deploy an Iceberg Kafka Sink Connector*
+    - [ ] *Deploy a Trino Cluster*
+    - [ ] *Deploy a Spark Cluster (WIP)*
+    - [ ] *Deploy Prometheus and Grafana (WIP)*
