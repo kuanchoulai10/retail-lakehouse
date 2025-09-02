@@ -1,3 +1,4 @@
+# --8<-- [start:cluster]
 apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
 metadata:
@@ -20,10 +21,10 @@ spec:
         type: internal
         tls: true
     config:
+      default.replication.factor: 3
       offsets.topic.replication.factor: 3
       transaction.state.log.replication.factor: 3
       transaction.state.log.min.isr: 2
-      default.replication.factor: 3
       min.insync.replicas: 2
     template:
       pod:
@@ -33,9 +34,9 @@ spec:
   entityOperator:
     topicOperator: {}
     userOperator: {}
-
+# --8<-- [end:cluster]
 ---
-
+# --8<-- [start:nodepool]
 apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaNodePool
 metadata:
@@ -56,3 +57,4 @@ spec:
         size: 100Gi
         deleteClaim: false
         kraftMetadata: shared
+# --8<-- [end:nodepool]
