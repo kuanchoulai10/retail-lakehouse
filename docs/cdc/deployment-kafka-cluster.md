@@ -59,6 +59,7 @@ Next, we need to add the Strimzi Helm repository to our local Helm setup and ins
 
 ```bash
 helm repo add strimzi https://strimzi.io/charts/
+helm repo update
 helm install \
   strimzi-cluster-operator \
   oci://quay.io/strimzi-helm/strimzi-kafka-operator \

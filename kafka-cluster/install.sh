@@ -7,6 +7,7 @@ kubectl create namespace strimzi
 kubectl create namespace kafka-cdc
 
 helm repo add strimzi https://strimzi.io/charts/
+helm repo update
 helm install \
   strimzi-cluster-operator \
   oci://quay.io/strimzi-helm/strimzi-kafka-operator \
