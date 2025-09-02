@@ -14,22 +14,25 @@ Make sure you have deployed a Kafka cluster and a MySQL database first.
     - [ ] [*Deploy a Debezium Kafka Source Connector*](./cdc/deployment-debezium-mysql-connector.md)
     - [ ] [*Deploy an Iceberg Kafka Sink Connector*](./cdc/deployment-iceberg-connector.md)
 
-After the Kafka cluster and MySQL database are up and running, you can deploy the Debezium MySQL Kafka Connector
+After the Kafka cluster and MySQL database are up and running, you can deploy the Debezium MySQL Kafka Connector by running the following commands:
 
-
-## Create Secrets for the Database
-
-```yaml title="debezium-secret.yaml" linenums="1" hl_lines="4"
---8<-- "./kafka-cluster/debezium-secret.yaml"
+```bash
+cd ~/Projects/retail-lakehouse/kafka-debezium-mysql-connector
+bash install.sh
 ```
 
-```yaml title="debezium-role.yaml" linenums="1" hl_lines="4 9"
---8<-- "./kafka-cluster/debezium-role.yaml"
-```
+??? info "Result"
 
-```yaml title="debezium-role-binding.yaml" linenums="1" hl_lines="4 8 12"
---8<-- "./kafka-cluster/debezium-role-binding.yaml"
-```
+    ```bash
+    --8<-- "./kafka-debezium-mysql-connector/install.sh"
+    ```
+
+This script will deploy the necessary secrets and roles in order to create a Debezium Connect Cluster and a Debezium Source Connector on that cluster.
+
+If you don't like my script and want to do it step by step manually, please continue reading. This article will walk you through how to deploy a Debezium MySQL Kafka Connector on Kubernetes step by step, explaining each part along the way.
+
+
+## Create Secret and Role for Accessing the Database
 
 ```bash
 kubectl apply -f debezium-secret.yaml
@@ -37,56 +40,89 @@ kubectl apply -f debezium-role.yaml
 kubectl apply -f debezium-role-binding.yaml
 ```
 
-```
-secret/debezium-secret created
-role.rbac.authorization.k8s.io/debezium-role created
-rolebinding.rbac.authorization.k8s.io/debezium-role-binding created
-```
+??? info "Result"
+
+    ```
+    secret/debezium-secret created
+    role.rbac.authorization.k8s.io/debezium-role created
+    rolebinding.rbac.authorization.k8s.io/debezium-role-binding created
+    ```
+
+!!! info "YAML Files"
+
+    ```yaml title="debezium-secret.yaml" linenums="1" hl_lines="4"
+    --8<-- "./kafka-debezium-mysql-connector/debezium-secret.yaml"
+    ```
+
+    ```yaml title="debezium-role.yaml" linenums="1" hl_lines="4 9"
+    --8<-- "./kafka-debezium-mysql-connector/debezium-role.yaml"
+    ```
+
+    ```yaml title="debezium-role-binding.yaml" linenums="1" hl_lines="4 8 12"
+    --8<-- "./kafka-debezium-mysql-connector/debezium-role-binding.yaml"
+    ```
 
 ## Create a Debezium Kafka Connect Cluster
 
-To deploy a Debezium connector, you need to deploy a Kafka Connect cluster with the required connector plug-in(s), before instantiating the actual connector itself.
+To deploy a Debezium MySQL connector, you need to deploy a *Kafka Connect cluster* with the required connector plug-in(s), before instantiating the actual connector itself.
 
 As the first step, a container image for Kafka Connect with the plug-in has to be created.
 
-Strimzi also can be used for building and pushing the required container image for us. In fact, both tasks can be merged together and instructions for building the container image can be provided directly within the `KafkaConnect` object specification:
+**Strimzi also can be used for building and pushing the required container image for us**. In fact, both tasks can be merged together and instructions for building the container image can be provided directly within the `KafkaConnect` object specification:
 
-```bash
-minikube addons enable registry
-```
+??? info "Prerequisite"
 
-```
-💡  registry is an addon maintained by minikube. For any concerns contact minikube on GitHub.
-You can view the list of minikube maintainers at: https://github.com/kubernetes/minikube/blob/master/OWNERS
-╭──────────────────────────────────────────────────────────────────────────────────────────────────────╮
-│                                                                                                      │
-│    Registry addon with docker driver uses port 49609 please use that instead of default port 5000    │
-│                                                                                                      │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────────╯
-📘  For more information see: https://minikube.sigs.k8s.io/docs/drivers/docker
-    ▪ Using image docker.io/registry:2.8.3
-    ▪ Using image gcr.io/k8s-minikube/kube-registry-proxy:0.0.6
-🔎  Verifying registry addon...
-🌟  The 'registry' addon is enabled
-```
+    Make sure you have **enabled the local registry and set up `insecure-registry` in your Minikube cluster**. If you have followed the instructions in the [Prerequisites](../prerequisites.md#setting-up-a-local-kubernetes-cluster) section, you should have already done this step. If not, you can enable it now by running the following command:
+
+    ```bash
+    minikube addons enable registry -p retail-lakehouse
+    ```
+
+    ??? info "Result"
+
+        ```
+        💡  registry is an addon maintained by minikube. For any concerns contact minikube on GitHub.
+        You can view the list of minikube maintainers at: https://github.com/kubernetes/minikube/blob/master/OWNERS
+        ╭──────────────────────────────────────────────────────────────────────────────────────────────────────╮
+        │                                                                                                      │
+        │    Registry addon with docker driver uses port 49609 please use that instead of default port 5000    │
+        │                                                                                                      │
+        ╰──────────────────────────────────────────────────────────────────────────────────────────────────────╯
+        📘  For more information see: https://minikube.sigs.k8s.io/docs/drivers/docker
+            ▪ Using image docker.io/registry:2.8.3
+            ▪ Using image gcr.io/k8s-minikube/kube-registry-proxy:0.0.6
+        🔎  Verifying registry addon...
+        🌟  The 'registry' addon is enabled
+        ```
+        
+You can check the IP address of the local registry by running the following command:
 
 ```bash
 kubectl -n kube-system get svc registry -o jsonpath='{.spec.clusterIP}'
-
-10.104.128.211
 ```
 
-```yaml title="debezium-connect-cluster.yaml"
---8<-- "./kafka-cluster/debezium-connect-cluster.yaml"
-```
+??? info "Result"
+
+    ```
+    10.104.128.211
+    ```
+
+
+??? info "debezium-connect-cluster.yaml"
+
+    ```yaml
+    --8<-- "./kafka-debezium-mysql-connector/debezium-connect-cluster.yaml"
+    ```
 
 ```bash
 kubectl apply -f debezium-connect-cluster.yaml -n kafka-cdc
 ```
 
-```
-kafkaconnect.kafka.strimzi.io/debezium-connect-cluster created
-```
+??? info "Result"
+
+    ```
+    kafkaconnect.kafka.strimzi.io/debezium-connect-cluster created
+    ```
 
 Check the current resources in the `kafka-cdc` namespace:
 
@@ -94,79 +130,139 @@ Check the current resources in the `kafka-cdc` namespace:
 kubectl get all -n kafka-cdc
 ```
 
-```
-NAME                                                    READY   STATUS    RESTARTS   AGE
-pod/kafka-cluster-dual-role-0                           1/1     Running   0          66m
-pod/kafka-cluster-dual-role-1                           1/1     Running   0          66m
-pod/kafka-cluster-dual-role-2                           1/1     Running   0          66m
-pod/kafka-cluster-entity-operator-5b998f6cbf-c8hdf      2/2     Running   0          65m
-{==pod/debezium-connect-cluster-connect-build==}              1/1     Running   0          49s
-pod/mysql-6b84fd947d-9g9lt                              1/1     Running   0          60m
+??? info "Result"
 
-NAME                                       TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                                        AGE
-service/kafka-cluster-kafka-bootstrap      ClusterIP   10.105.50.103   <none>        9091/TCP,9092/TCP,9093/TCP                     66m
-service/kafka-cluster-kafka-brokers        ClusterIP   None            <none>        9090/TCP,9091/TCP,8443/TCP,9092/TCP,9093/TCP   66m
-service/mysql                              ClusterIP   None            <none>        3306/TCP                                       60m
+    ```
+    NAME                                                    READY   STATUS    RESTARTS   AGE
+    pod/kafka-cluster-dual-role-0                           1/1     Running   0          66m
+    pod/kafka-cluster-dual-role-1                           1/1     Running   0          66m
+    pod/kafka-cluster-dual-role-2                           1/1     Running   0          66m
+    pod/kafka-cluster-entity-operator-5b998f6cbf-c8hdf      2/2     Running   0          65m
+    {==pod/debezium-connect-cluster-connect-build==}              1/1     Running   0          49s
+    pod/mysql-6b84fd947d-9g9lt                              1/1     Running   0          60m
 
-NAME                                               READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/kafka-cluster-entity-operator      1/1     1            1           65m
-deployment.apps/mysql                              1/1     1            1           60m
+    NAME                                       TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                                        AGE
+    service/kafka-cluster-kafka-bootstrap      ClusterIP   10.105.50.103   <none>        9091/TCP,9092/TCP,9093/TCP                     66m
+    service/kafka-cluster-kafka-brokers        ClusterIP   None            <none>        9090/TCP,9091/TCP,8443/TCP,9092/TCP,9093/TCP   66m
+    service/mysql                              ClusterIP   None            <none>        3306/TCP                                       60m
 
-NAME                                                          DESIRED   CURRENT   READY   AGE
-replicaset.apps/kafka-cluster-entity-operator-5b998f6cbf      1         1         1       65m
-replicaset.apps/mysql-6b84fd947d                              1         1         1       60m
-```
+    NAME                                               READY   UP-TO-DATE   AVAILABLE   AGE
+    deployment.apps/kafka-cluster-entity-operator      1/1     1            1           65m
+    deployment.apps/mysql                              1/1     1            1           60m
 
-過一陣子後
+    NAME                                                          DESIRED   CURRENT   READY   AGE
+    replicaset.apps/kafka-cluster-entity-operator-5b998f6cbf      1         1         1       65m
+    replicaset.apps/mysql-6b84fd947d                              1         1         1       60m
+    ```
 
-```
-NAME                                                    READY   STATUS    RESTARTS   AGE
-pod/kafka-cluster-dual-role-0                           1/1     Running   0          100m
-pod/kafka-cluster-dual-role-1                           1/1     Running   0          100m
-pod/kafka-cluster-dual-role-2                           1/1     Running   0          100m
-pod/kafka-cluster-entity-operator-5b998f6cbf-c8hdf      2/2     Running   0          99m
-{==pod/debezium-connect-cluster-connect-0==}                  1/1     Running   0          30m
-pod/mysql-6b84fd947d-9g9lt                              1/1     Running   0          94m
+    After a while, when the build is complete, you should see the `debezium-connect-cluster-connect-build` pod disappear and a new pod named `debezium-connect-cluster-connect-0` appear:
 
-NAME                                           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                                        AGE
-service/kafka-cluster-kafka-bootstrap          ClusterIP   10.105.50.103    <none>        9091/TCP,9092/TCP,9093/TCP                     100m
-service/kafka-cluster-kafka-brokers            ClusterIP   None             <none>        9090/TCP,9091/TCP,8443/TCP,9092/TCP,9093/TCP   100m
-{==service/debezium-connect-cluster-connect==}       ClusterIP   None             <none>        8083/TCP                                       30m
-{==service/debezium-connect-cluster-connect-api==}   ClusterIP   10.100.229.177   <none>        8083/TCP                                       30m
-service/mysql                                  ClusterIP   None             <none>        3306/TCP                                       94m
+    ```
+    NAME                                                    READY   STATUS    RESTARTS   AGE
+    pod/kafka-cluster-dual-role-0                           1/1     Running   0          100m
+    pod/kafka-cluster-dual-role-1                           1/1     Running   0          100m
+    pod/kafka-cluster-dual-role-2                           1/1     Running   0          100m
+    pod/kafka-cluster-entity-operator-5b998f6cbf-c8hdf      2/2     Running   0          99m
+    {==pod/debezium-connect-cluster-connect-0==}                  1/1     Running   0          30m
+    pod/mysql-6b84fd947d-9g9lt                              1/1     Running   0          94m
 
-NAME                                               READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/kafka-cluster-entity-operator      1/1     1            1           99m
-deployment.apps/mysql                              1/1     1            1           94m
+    NAME                                           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                                        AGE
+    service/kafka-cluster-kafka-bootstrap          ClusterIP   10.105.50.103    <none>        9091/TCP,9092/TCP,9093/TCP                     100m
+    service/kafka-cluster-kafka-brokers            ClusterIP   None             <none>        9090/TCP,9091/TCP,8443/TCP,9092/TCP,9093/TCP   100m
+    {==service/debezium-connect-cluster-connect==}       ClusterIP   None             <none>        8083/TCP                                       30m
+    {==service/debezium-connect-cluster-connect-api==}   ClusterIP   10.100.229.177   <none>        8083/TCP                                       30m
+    service/mysql                                  ClusterIP   None             <none>        3306/TCP                                       94m
 
-NAME                                                          DESIRED   CURRENT   READY   AGE
-replicaset.apps/kafka-cluster-entity-operator-5b998f6cbf      1         1         1       99m
-replicaset.apps/mysql-6b84fd947d                              1         1         1       94m
-```
+    NAME                                               READY   UP-TO-DATE   AVAILABLE   AGE
+    deployment.apps/kafka-cluster-entity-operator      1/1     1            1           99m
+    deployment.apps/mysql                              1/1     1            1           94m
 
+    NAME                                                          DESIRED   CURRENT   READY   AGE
+    replicaset.apps/kafka-cluster-entity-operator-5b998f6cbf      1         1         1       99m
+    replicaset.apps/mysql-6b84fd947d                              1         1         1       94m
+    ```
+
+??? warning
+
+    If the build fails, you can check the logs of the build pod to see what went wrong. You can also describe the pod to get more information about its status.
+
+    ```bash
+    kubectl logs pod/debezium-connect-cluster-build -n kafka-cdc
+    kubectl describe pod/debezium-connect-cluster-build -n kafka-cdc
+    ```
+
+    If the build success, but the pod is not running successfully, you can check the logs of the running pod to see what went wrong. You can also describe the pod to get more information about its status.
+
+    ```bash
+    kubectl logs pod/debezium-connect-cluster-connect-0 -n kafka-cdc
+    kubectl describe pod/debezium-connect-cluster-connect-0 -n kafka-cdc
+    ```
+
+    You can also check the Minikube configuration to see if the local registry is set up correctly.
+
+    ```bash
+    cat ~/.minikube/profiles/retail-lakehouse/config.json | jq .
+    ```
+
+    If there is any issue with pulling the image from the local registry, you can check the local registry to see if the image is there.
+
+    ```bash
+    kubectl port-forward --namespace kube-system service/registry 5000:80
+    ```
+
+    Create another terminal window, then run the following commands to check the local registry:
+
+    ```bash
+    curl http://localhost:5000/v2/_catalog
+    curl http://localhost:5000/v2/debezium-mysql-connector/tags/list
+    ```
 
 ## Create a Debezium Source Connector
-
-```yaml title="debezium-connector.yaml"
---8<-- "./kafka-cluster/debezium-connector.yaml"
-```
 
 ```bash
 kubectl apply -f debezium-connector.yaml -n kafka-cdc
 ```
 
-```
-kafkaconnector.kafka.strimzi.io/debezium-connector created
-```
+??? info "Result"
+
+    ```
+    kafkaconnector.kafka.strimzi.io/debezium-connector created
+    ```
+
+??? info "debezium-connector.yaml"
+
+    ```yaml
+    --8<-- "./kafka-debezium-mysql-connector/debezium-connector.yaml"
+    ```
+
+    - `database.include.list: inventory`: Specifies the database to capture changes from.
+    - `topic.prefix: mysql`: Sets the prefix for Kafka topics where change events will be published.
+    - `schema.history.internal.kafka.topic: schema-changes.inventory`: Specifies the Kafka topic to store schema history.
+    - `exactly.once.source.support: enabled`: Enables exactly-once delivery semantics for the source connector.
 
 ```bash
 kubectl get kafkaconnector debezium-connector -n kafka-cdc
-
-NAME                 CLUSTER                    CONNECTOR CLASS                              MAX TASKS   READY
-debezium-connector   debezium-connect-cluster   io.debezium.connector.mysql.MySqlConnector   1           True
 ```
 
+??? info "Result"
+
+    ```
+    NAME                 CLUSTER                    CONNECTOR CLASS                              MAX TASKS   READY
+    debezium-connector   debezium-connect-cluster   io.debezium.connector.mysql.MySqlConnector   1           True
+    ```
+
 ## Verify the CDC Pipeline
+
+In order to make sure the CDC pipeline is working correctly, we check 2 things:
+
+!!! success "Checklist"
+
+    - [ ] In the Kafka cluster, we should see topics created by the Debezium MySQL Connector, such as `mysql.inventory.customers`.
+    - [ ] When we update a record in the `customers` table in the MySQL database, we should see a corresponding message appear in the `mysql.inventory.customers` topic.
+
+### List Topics
+
+List all topics in the Kafka cluster:
 
 ```bash
 kubectl run kafka-topics-cli \
@@ -196,6 +292,9 @@ kubectl run kafka-topics-cli \
     schema-changes.inventory
     ```
 
+### Watch Changes
+
+Watch the `mysql.inventory.customers` topic for changes:
 
 ```bash
 kubectl run kafka-cli \
@@ -211,6 +310,8 @@ kubectl run kafka-cli \
     --max-messages 10
 ```
 
+Create another terminal window, then enter the MySQL pod and update a record in the `customers` table. Specifically, we will change the `first_name` of the customer with `id=1001` from `Sally` to `Sally Marie`:
+
 ```bash
 kubectl exec -n kafka-cdc -it mysql-6b84fd947d-9g9lt -- mysql -uroot -pdebezium
 ```
@@ -219,6 +320,8 @@ kubectl exec -n kafka-cdc -it mysql-6b84fd947d-9g9lt -- mysql -uroot -pdebezium
 sql> use inventory;
 sql> update customers set first_name="Sally Marie" where id=1001;
 ```
+
+Go back to the first terminal window where you are watching the `mysql.inventory.customers` topic. You should see a new message appear that reflects the change you just made in the MySQL database.
 
 ??? info "Result"
 
@@ -472,9 +575,6 @@ sql> update customers set first_name="Sally Marie" where id=1001;
     }
     }
     ```
-
-
-
 
 ## References
 
