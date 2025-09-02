@@ -17,7 +17,8 @@ Make sure you have deployed a Kafka cluster first.
 After the Kafka cluster is up and running, you can deploy MySQL by running the following commands:
 
 ```bash
-bash ~/Projects/retail-lakehouse/mysql/install.sh
+cd ~/Projects/retail-lakehouse/mysql
+bash /install.sh
 ```
 
 ??? info "Result"
@@ -72,3 +73,5 @@ kubectl get all -n kafka-cdc
     replicaset.apps/kafka-cluster-entity-operator-5b998f6cbf      1         1         1       15m
     {==replicaset.apps/mysql-6b84fd947d==}                              1         1         1       10m
     ```
+
+Perfect! You have successfully deployed MySQL. Next, you can proceed to [*Deploy the Debezium MySQL Source Connector*](./cdc/deployment-debezium-mysql-connector.md).
