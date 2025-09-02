@@ -23,7 +23,7 @@ bash install.sh
 ??? info "install.sh"
 
     ```bash
-    --8<-- "./kafka-cluster/install.sh"
+    --8<-- "./retail-lakehouse/kafka-cluster/install.sh"
     ```
 
 This script will deploy a Kafka Cluster using the Strimzi Operator in the `kafka-cdc` namespace.
@@ -72,7 +72,7 @@ Here's our customized `values.yaml` file and the most important settings is `wat
 ??? info "values.yaml"
 
     ```yaml linenums="1" hl_lines="8 9"
-    --8<-- "./kafka-cluster/values.yaml"
+    --8<-- "./retail-lakehouse/kafka-cluster/values.yaml"
     ```
 
 If everything goes well, you'll see output like this:
@@ -199,7 +199,7 @@ Let's break down what this configuration is telling Kubernetes to create for us.
 ??? info "kafka-cluster.yaml:cluster"
 
     ```yaml
-    --8<-- "./kafka-cluster/kafka-cluster.yaml:cluster"
+    --8<-- "./retail-lakehouse/kafka-cluster/kafka-cluster.yaml:cluster"
     ```
 
 We're using **Kafka 4.0**. The `spec.kafka.metadataVersion: 4.0-IV3` setting is important (the "IV" stands for "Incompatible Version," which means this version has significant metadata structure changes that aren't backward compatible). We need to explicitly specify this to confirm we understand we're using the latest format.
@@ -211,7 +211,7 @@ We're using **Kafka 4.0**. The `spec.kafka.metadataVersion: 4.0-IV3` setting is 
 ??? info "kafka-cluster.yaml:cluster"
 
     ```yaml
-    --8<-- "./kafka-cluster/kafka-cluster.yaml:cluster"
+    --8<-- "./retail-lakehouse/kafka-cluster/kafka-cluster.yaml:cluster"
     ```
 
 The configuration section ensures our cluster is production-ready with proper replication and consistency guarantees via settings under `spec.kafka.config`:
@@ -234,7 +234,7 @@ These configurations ensure that at least `2` replicas must acknowledge a write 
 ??? info "kafka-cluster.yaml:cluster"
 
     ```yaml
-    --8<-- "./kafka-cluster/kafka-cluster.yaml:cluster"
+    --8<-- "./retail-lakehouse/kafka-cluster/kafka-cluster.yaml:cluster"
     ```
 
 Our configuration sets up two ways for applications to connect to Kafka:
@@ -254,7 +254,7 @@ Our configuration sets up two ways for applications to connect to Kafka:
 ??? info "kafka-cluster.yaml"
 
     ```yaml
-    --8<-- "./kafka-cluster/kafka-cluster.yaml"
+    --8<-- "./retail-lakehouse/kafka-cluster/kafka-cluster.yaml"
     ```
 
 If you're coming from a traditional Kafka background, you might be expecting to see ZooKeeper configurations, but we're going to use Kafka's newer **KRaft mode** instead. Think of KRaft as Kafka's way of saying "*I don't need ZooKeeper anymore. I can manage my own metadata.*"

@@ -24,7 +24,7 @@ bash install.sh
 ??? info "Result"
 
     ```bash
-    --8<-- "./kafka-debezium-mysql-connector/install.sh"
+    --8<-- "./retail-lakehouse/kafka-debezium-mysql-connector/install.sh"
     ```
 
 This script will deploy the necessary secrets and roles in order to create a Debezium Connect Cluster and a Debezium Source Connector on that cluster.
@@ -51,15 +51,15 @@ kubectl apply -f debezium-role-binding.yaml
 !!! info "YAML Files"
 
     ```yaml title="debezium-secret.yaml" linenums="1" hl_lines="4"
-    --8<-- "./kafka-debezium-mysql-connector/debezium-secret.yaml"
+    --8<-- "./retail-lakehouse/kafka-debezium-mysql-connector/debezium-secret.yaml"
     ```
 
     ```yaml title="debezium-role.yaml" linenums="1" hl_lines="4 9"
-    --8<-- "./kafka-debezium-mysql-connector/debezium-role.yaml"
+    --8<-- "./retail-lakehouse/kafka-debezium-mysql-connector/debezium-role.yaml"
     ```
 
     ```yaml title="debezium-role-binding.yaml" linenums="1" hl_lines="4 8 12"
-    --8<-- "./kafka-debezium-mysql-connector/debezium-role-binding.yaml"
+    --8<-- "./retail-lakehouse/kafka-debezium-mysql-connector/debezium-role-binding.yaml"
     ```
 
 ## Create a Debezium Kafka Connect Cluster
@@ -111,7 +111,7 @@ kubectl -n kube-system get svc registry -o jsonpath='{.spec.clusterIP}'
 ??? info "debezium-connect-cluster.yaml"
 
     ```yaml
-    --8<-- "./kafka-debezium-mysql-connector/debezium-connect-cluster.yaml"
+    --8<-- "./retail-lakehouse/kafka-debezium-mysql-connector/debezium-connect-cluster.yaml"
     ```
 
 ```bash
@@ -232,7 +232,7 @@ kubectl apply -f debezium-connector.yaml -n kafka-cdc
 ??? info "debezium-connector.yaml"
 
     ```yaml
-    --8<-- "./kafka-debezium-mysql-connector/debezium-connector.yaml"
+    --8<-- "./retail-lakehouse/kafka-debezium-mysql-connector/debezium-connector.yaml"
     ```
 
     - `database.include.list: inventory`: Specifies the database to capture changes from.

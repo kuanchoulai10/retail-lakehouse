@@ -257,7 +257,7 @@ Upload the ZIP archive to a publicly accessible S3 bucket so that the Iceberg Ka
 ## Create a Secret for Connecting to AWS
 
 ```yaml title="iceberg-secret.yaml" linenums="1" hl_lines="4 5"
---8<-- "./kafka-cluster/iceberg-secret.yaml"
+--8<-- "./retail-lakehouse/kafka-cluster/iceberg-secret.yaml"
 ```
 
 ```bash
@@ -267,7 +267,7 @@ kubectl apply -f iceberg-secret.yaml -n kafka-cdc
 ## Create an Iceberg Kafka Connect Cluster
 
 ```yaml title="iceberg-connect-cluster.yaml" linenums="1" hl_lines="4 5"
---8<-- "./kafka-cluster/iceberg-connect-cluster.yaml"
+--8<-- "./retail-lakehouse/kafka-cluster/iceberg-connect-cluster.yaml"
 ```
 
 ```bash
@@ -307,7 +307,7 @@ replicaset.apps/mysql-6b84fd947d                           1         1         1
 ## Create an Iceberg Sink Connector
 
 ```yaml title="iceberg-connector.yaml" linenums="1" hl_lines="4 5"
---8<-- "./kafka-cluster/iceberg-connector.yaml"
+--8<-- "./retail-lakehouse/kafka-cluster/iceberg-connector.yaml"
 ```
 
 ```bash
