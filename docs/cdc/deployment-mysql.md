@@ -33,7 +33,7 @@ The `install.sh` script in the `mysql` directory is as follows:
 ??? info "install.sh"
 
     ```bash
-    --8<-- "./mysql/install.sh"
+    --8<-- "./retail-lakehouse/mysql/install.sh"
     ```
 
 You can check the `mysql.yaml` file in the `mysql` directory:
@@ -41,7 +41,7 @@ You can check the `mysql.yaml` file in the `mysql` directory:
 ??? info "mysql.yaml"
 
     ```yaml
-    --8<-- "./mysql/mysql.yaml"
+    --8<-- "./retail-lakehouse/mysql/mysql.yaml"
     ```
 
 To verify that MySQL is running, you can use the following command:
