@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
 
 CERT_DIR=".cert"
@@ -13,7 +13,8 @@ echo "Creating TLS certificates for Trino..."
 
 # --8<-- [start:create-private-key]
 echo "Step 1: Creating Private Key..."
-openssl genrsa -out $CERT_DIR/private.key 2048
+openssl genrsa -out $CERT_DIR/private.key 2048 > /dev/null
+echo "Step 1: Completed."
 # --8<-- [end:create-private-key]
 
 
@@ -26,13 +27,16 @@ openssl req \
   -config openssl.cnf \
   -days 365 \
   -extensions v3_req \
-  -out $CERT_DIR/certificate.crt
+  -out $CERT_DIR/certificate.crt > /dev/null
+echo "Step 2: Completed."
 # --8<-- [end:create-certificate]
 
 
 # --8<-- [start:combine]
 echo "Step 3: Combining Private Key and Certificate..."
 cat $CERT_DIR/private.key $CERT_DIR/certificate.crt > $CERT_DIR/trino-dev.pem
+rm -f $CERT_DIR/private.key $CERT_DIR/certificate.crt
+echo "Step 3: Completed."
 # --8<-- [end:combine]
 
 
@@ -40,15 +44,13 @@ cat $CERT_DIR/private.key $CERT_DIR/certificate.crt > $CERT_DIR/trino-dev.pem
 echo "Step 4: Creating Kubernetes secret..."
 kubectl create secret generic trino-tls-secret \
     --from-file=trino-dev.pem="$CERT_DIR/trino-dev.pem" \
-    --dry-run=client -o yaml > "$CERT_DIR/trino-tls-secret.yaml"
+    --dry-run=client -o yaml > "./trino-tls-secret.yaml"
+echo "Step 4: Completed."
 # --8<-- [end:create-k8s-secret]
-
-
-rm -f $CERT_DIR/private.key $CERT_DIR/certificate.crt
 
 
 echo "Certificate generation completed successfully!"
 echo ""
-echo "Generated files in $CERT_DIR/:"
-echo "  - trino-dev.pem (with private key and certificate)"
+echo "Generated files:"
+echo "  - $CERT_DIR/trino-dev.pem (with private key and certificate)"
 echo "  - trino-tls-secret.yaml (Kubernetes secret manifest)"
