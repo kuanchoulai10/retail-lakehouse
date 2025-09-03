@@ -2,11 +2,11 @@
 
 !!! success "Prerequisites"
 
-  - [ ] Complete all the requirements in the [Prerequisites](../prerequisites.md) section.
-  - [ ] OAuth 2.0 Client ID and Client Secret (`OAUTH2_CLIENT_ID` and `OAUTH2_CLIENT_SECRET`) for Google authentication. See [here](./oauth2.md#create-google-oauth-20-client) for instructions.
-  - [ ] GCP service account path in your local machine (`GCP_SA_INPUT_PATH`) for accessing BigQuery Datasets under your GCP project (`GCP_PROJECT_ID`). See [here](./catalogs.md#bigquery) for instructions.
-  - [ ] AWS credentials (`AWS_ACCESS_KEY` and `AWS_SECRET_KEY`), regions (`AWS_REGION`), and S3 bucket (`ICEBERG_S3_URL`) for accessing Iceberg table and Glue Data Catalog. See [here](./catalogs.md#iceberg) for instructions.
-  - [ ] AWS S3 Bucket for Exchange Manager (`EXCHANGE_S3_URLS`). See [here](./fault-tolerance.md) for instructions.
+    - [ ] Complete all the requirements in the [Prerequisites](../prerequisites.md) section.
+    - [ ] OAuth 2.0 Client ID and Client Secret (`OAUTH2_CLIENT_ID` and `OAUTH2_CLIENT_SECRET`) for Google authentication. See [here](./oauth2.md#create-google-oauth-20-client) for instructions.
+    - [ ] GCP service account path in your local machine (`GCP_SA_INPUT_PATH`) for accessing BigQuery Datasets under your GCP project (`GCP_PROJECT_ID`). See [here](./catalogs.md#bigquery) for instructions.
+    - [ ] AWS credentials (`AWS_ACCESS_KEY` and `AWS_SECRET_KEY`), regions (`AWS_REGION`), and S3 bucket (`ICEBERG_S3_URL`) for accessing Iceberg table and Glue Data Catalog. See [here](./catalogs.md#iceberg) for instructions.
+    - [ ] AWS S3 Bucket for Exchange Manager (`EXCHANGE_S3_URLS`). See [here](./fault-tolerance.md) for instructions.
 
 Without further ado, let's get started with the deployment:
 
