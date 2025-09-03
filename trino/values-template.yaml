@@ -22,7 +22,7 @@ server:
   #   query.max-history=50
   exchangeManager:
     name: filesystem
-    base-directories: $EXCHANGE_S3_URLS
+    baseDir: $EXCHANGE_S3_URLS
   # workerExtraConfig: |
   #   discovery.uri=http://trino.trino.svc.cluster.local:8080
 # --8<-- [end:server]
@@ -82,7 +82,7 @@ catalogs:
     faker.locale=en
   bigquery: |
     connector.name=bigquery
-    bigquery.project-id=$PROJECT_ID
+    bigquery.project-id=$GCP_BQ_PROJECT_ID
     bigquery.credentials-file=/etc/trino/bigquery/trino-sa.json
   iceberg: |
     connector.name=iceberg

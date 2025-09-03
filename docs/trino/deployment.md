@@ -1,62 +1,86 @@
-# Deployment
+# Trino Cluster Deployment
 
-This guide covers the deployment and configuration of a Trino cluster using Helm with the faker connector.
+!!! success "Prerequisites"
 
-## Prerequisites
+  - [ ] Complete all the requirements in the [Prerequisites](../prerequisites.md) section.
+  - [ ] OAuth 2.0 Client ID and Client Secret (`OAUTH2_CLIENT_ID` and `OAUTH2_CLIENT_SECRET`) for Google authentication. See [here](./oauth2.md#create-google-oauth-20-client) for instructions.
+  - [ ] GCP service account path in your local machine (`GCP_SA_INPUT_PATH`) for accessing BigQuery Datasets under your GCP project (`GCP_PROJECT_ID`). See [here](./catalogs.md#bigquery) for instructions.
+  - [ ] AWS credentials (`AWS_ACCESS_KEY` and `AWS_SECRET_KEY`), regions (`AWS_REGION`), and S3 bucket (`ICEBERG_S3_URL`) for accessing Iceberg table and Glue Data Catalog. See [here](./catalogs.md#iceberg) for instructions.
+  - [ ] AWS S3 Bucket for Exchange Manager (`EXCHANGE_S3_URLS`). See [here](./fault-tolerance.md) for instructions.
 
-- Kubernetes cluster
-- Helm 3.x installed
-- `kubectl` configured to access your cluster
-- Java 11 minimum requirement for JDBC driver compatibility
-- Rename `.env.template` file to `.env` and configure all the variables in the file
+Without further ado, let's get started with the deployment:
+
+```bash
+cd ~/Projects/retail-lakehouse/trino
+bash install.sh
+```
+
+The installation script `install.sh` will perform the following steps:
+
+1. Generate `.env` and `values.yaml` files
+2. Create the `trino` namespace.
+3. Generate TLS certificates and create the Kubernetes secret.
+4. Generate the BigQuery service account secret and create the Kubernetes secret.
+5. Install Trino using Helm with the generated `values.yaml`.
+
+??? info "install.sh"
+
+    ```bash
+    --8<-- "./retail-lakehouse/trino/install.sh"
+    ```
+
+For the script to work correctly, you need to set the following environment variables during the execution of the script. Another option is to set them in a `.env` file in the same directory as the script.
 
 ??? info ".env"
 
-    - **OAUTH2_CLIENT_ID**  
-      The client ID for OAuth 2.0 authentication, used to enable Google login for the Trino Web UI.  
-      Referenced in `values-template.yaml` as `http-server.authentication.oauth2.client-id`.
+    - `INTERNAL_SHARED_SECRET`: A secret string for internal communication security between Trino nodes. Used as `internal-communication.shared-secret`.
 
-    - **OAUTH2_CLIENT_SECRET**  
-      The client secret for OAuth 2.0 authentication, paired with the client ID for secure login.  
-      Used in `values-template.yaml` as `http-server.authentication.oauth2.client-secret`.
+    - `OAUTH2_CLIENT_ID`: The client ID for OAuth 2.0 authentication, used to enable Google login for the Trino Web UI. Referenced as `http-server.authentication.oauth2.client-id`.
 
-    - **INTERNAL_SHARED_SECRET**  
-      A secret string for internal communication security between Trino nodes.  
-      Used in `values-template.yaml` as `internal-communication.shared-secret`.
+    - `OAUTH2_CLIENT_SECRET`: The client secret for OAuth 2.0 authentication, paired with the client ID for secure login. Used as `http-server.authentication.oauth2.client-secret`.
 
-    - **SA_INPUT_PATH**  
-      Path to the service account JSON file for Google Cloud authentication.  
-      Used by `generate-trino-bigquery-secret.sh` to create the BigQuery service account secret.
+    - `GCP_BQ_PROJECT_ID`: The Google Cloud project ID, required for the BigQuery connector in Trino. Used as `bigquery.project-id`.
 
-    - **PROJECT_ID**  
-      The Google Cloud project ID, required for the BigQuery connector in Trino.  
-      Used in `values-template.yaml` as `bigquery.project-id`.
+    - `GCP_SA_INPUT_PATH`: Path to the service account JSON file for Google Cloud authentication. Used to create the BigQuery service account K8S secret.
 
-    - **AWS_ACCESS_KEY**  
-      AWS access key for authenticating to AWS services (S3, Glue, etc.).  
-      Used in `values-template.yaml` for S3 and Glue access, and for exchange manager S3 configuration.
+    - `AWS_ACCESS_KEY`: AWS access key for authenticating to AWS services (S3, Glue, etc.). Used for S3 and Glue access, and for exchange manager S3 configuration.
 
-    - **AWS_SECRET_KEY**  
-      AWS secret key, paired with the access key for AWS authentication.  
-      Used in `values-template.yaml` for S3, Glue, and exchange manager S3 configuration.
+    - `AWS_SECRET_KEY`: AWS secret key, paired with the access key for AWS authentication. Used for S3, Glue, and exchange manager S3 configuration.
 
-    - **AWS_REGION**  
-      The AWS region where your S3 buckets and Glue Data Catalog are located.  
-      Used in `values-template.yaml` for S3, Glue, and exchange manager S3 configuration.
+    - `AWS_REGION`: The AWS region where your S3 buckets and Glue Data Catalog are located. Used for S3, Glue, and exchange manager S3 configuration.
 
-    - **ICEBERG_S3_URL**  
-      The S3 URL (bucket path) for storing Iceberg table data.  
-      Used in `values-template.yaml` as `hive.metastore.glue.default-warehouse-dir`.
+    - `ICEBERG_S3_URL`: The S3 URL (bucket path) for storing Iceberg table data. Used as `hive.metastore.glue.default-warehouse-dir`.
 
-    - **EXCHANGE_S3_URLS**  
-      S3 URLs for Trino's exchange manager, which handles intermediate data during distributed query execution.  
-      Used in `values-template.yaml` as `exchangeManager.base-directories`.
+    - `EXCHANGE_S3_URLS`: S3 URLs for Trino's exchange manager, which handles intermediate data during distributed query execution. Used as `exchangeManager.baseDir`.
 
     These variables are substituted into the Trino Helm values file and Kubernetes secrets using `envsubst` to configure authentication, storage, and cloud integration for your Trino deployment.
 
-## Deployment
+If you don't like my script and want to do it step by step manually, please continue reading. This article will walk you through how to deploy a Trino Cluster on Kubernetes step by step, explaining each part along the way.
 
-Create the trino namespace, we will deploy Trino in this namespace:
+
+## Generating Environment and Values Files
+
+```bash title="install.sh:env"
+--8<-- "./retail-lakehouse/trino/install.sh:env"
+```
+
+??? info "generate-env.sh"
+
+    ```bash
+    --8<-- "./retail-lakehouse/trino/generate-env.sh"
+    ```
+
+## Loading environment variables from the `.env` file
+
+Load the environment variables from the `.env` file so that they can be used in subsequent commands:
+
+```bash
+source ".env"
+```
+
+## Creating the Namespace
+
+Create the trino namespace, which is where we deploy our Trino cluster:
 
 ```bash
 kubectl create namespace trino
@@ -68,12 +92,12 @@ kubectl create namespace trino
     namespace/trino created
     ```
 
-### Setting up TLS Certificates
+## Setting up TLS Certificates
 
-Execute `generate-tls-certs.sh` to generate TLS certificate and Kubernetes secret:
+Execute `generate-tls-certs.sh` to generate TLS certificate and Kubernetes secret and then apply the secret to the `trino` namespace:
 
-```bash
-./generate-tls-certs.sh
+```bash title="install.sh:tls"
+--8<-- "./retail-lakehouse/trino/install.sh:tls"
 ```
 
 ??? info "Result"
@@ -81,14 +105,20 @@ Execute `generate-tls-certs.sh` to generate TLS certificate and Kubernetes secre
     ```
     Creating TLS certificates for Trino...
     Step 1: Creating Private Key...
+    Step 1: Completed.
     Step 2: Creating Certificate...
+    Step 2: Completed.
     Step 3: Combining Private Key and Certificate...
+    Step 3: Completed.
     Step 4: Creating Kubernetes secret...
+    Step 4: Completed.
     Certificate generation completed successfully!
 
-    Generated files in .cert/:
-      - {==trino-dev.pem==} (with private key and certificate)
+    Generated files:
+      - {==.cert/trino-dev.pem==} (with private key and certificate)
       - {==trino-tls-secret.yaml==} (Kubernetes secret manifest)
+
+    {==secret/trino-tls-secret created==}
     ```
 
 Once executed, the `trino-tls-secret.yaml` file will have the following structure:
@@ -105,45 +135,42 @@ Once executed, the `trino-tls-secret.yaml` file will have the following structur
       {==trino-dev.pem==}: xxx
     ```
 
-Create Kubernetes secret to mount the TLS certificate:
+## Configuring BigQuery Service Account
 
-```bash
-kubectl apply -f .cert/trino-tls-secret.yaml --namespace trino
+Generate the BigQuery service account secret manifest file and apply it to the `trino` namespace:
+
+```bash title="install.sh:bq"
+--8<-- "./retail-lakehouse/trino/install.sh:bq"
 ```
 
-### Configuring BigQuery Service Account
+??? info "Result"
 
-Generate the BigQuery service account secret for Trino:
+    ```
+    Generating Kubernetes secret for Accessing BigQuery...
+    trino-bigquery-secret.yaml generated successfully.
+    {==secret/trino-bigquery-secret created==}
+    ```
 
-```bash
-env $(cat .env | xargs) envsubst < generate-trino-bigquery-secret.sh | bash
-```
+Once executed, the `trino-bigquery-secret.yaml` file will have the following structure:
 
-After running the script, you will have a Kubernetes secret manifest file named `trino-bigquery-secret.yaml` in the current directory. Then apply the secret to the Kubernetes cluster:
+??? info "trino-bigquery-secret.yaml"
 
-```bash
-kubectl apply -f ./trino-bigquery-secret.yaml --namespace trino
-```
+    ```yaml
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      creationTimestamp: null
+      name: trino-bigquery-secret
+    data:
+      {==trino-sa.json==}: xxx
+    ```
 
-### Installing Trino
+## Installing Trino
 
-First, add and update the Trino Helm repository:
+First, add and update the Trino Helm repository. Then, deploy Trino in the `trino` namespace using the generated `values.yaml` file:
 
-```bash
-helm repo add trino https://trinodb.github.io/charts/
-helm repo update
-```
-
-Next, generate the Trino Helm values file using variables from the `.env` file:
-
-```bash
-env $(cat .env | xargs) envsubst < values-template.yaml > values.yaml
-```
-
-Now, deploy Trino in the `trino` namespace using the provided `values.yaml` file:
-
-```bash
-helm install trino trino/trino -f values.yaml --namespace trino
+```bash title="install.sh:bq"
+--8<-- "./retail-lakehouse/trino/install.sh:helm"
 ```
 
 ??? info "Result"
@@ -160,11 +187,11 @@ helm install trino trino/trino -f values.yaml --namespace trino
       echo "Visit http://127.0.0.1:8080 to use your application"
     ```
 
-### Verifying the Deployment
+## Verifying the Deployment
 
 After the installation completes, verify that Trino has been deployed successfully. Show the deployed Trino release:
 
-```
+```bash
 helm list -n trino
 ```
 
@@ -202,11 +229,8 @@ kubectl get all -n trino
     replicaset.apps/trino-worker-777d595c66        2         2         2       5m38s
     ```
 
-Perfect! The deployment is successful. As you can see, the Trino coordinator and worker pods are up and running, and all services have been created correctly. With the cluster now operational, we can proceed to access the Trino Web UI and CLI to interact with the cluster.
+Perfect! The deployment is successful. As you can see, the Trino coordinator and worker pods are up and running, and all services have been created correctly. With the cluster now operational, we can proceed to access the *Trino Web UI* and *Trino CLI* to interact with the cluster.
 
-## Accessing Trino
-
-Now that Trino is successfully deployed and running, you can access it through both the Web UI and CLI. The cluster is configured with OAuth 2.0 authentication and TLS encryption for secure access.
 
 ### Web UI
 
@@ -238,11 +262,13 @@ Once authenticated successfully, you'll be redirected back to the Trino Web UI w
 
 For command-line access to Trino, you'll need to download and install the Trino CLI tool.
 
-First, download the `trino-cli-476-executable.jar` file from the [Maven repository](https://repo1.maven.org/maven2/io/trino/trino-cli/).
+First, download the [`trino-cli-476-executable.jar`](https://repo1.maven.org/maven2/io/trino/trino-cli/476/trino-cli-476-executable.jar) file from the [Maven repository](https://repo1.maven.org/maven2/io/trino/trino-cli/).
 
 Next, rename the file to `trino`, make it executable, and move it to a directory in your PATH (such as `/usr/local/bin`):
 
 ```bash
+cd ~/Projects/retail-lakehouse/trino
+curl -L -o trino-cli-476-executable.jar https://repo1.maven.org/maven2/io/trino/trino-cli/476/trino-cli-476-executable.jar
 chmod +x trino-cli-476-executable.jar
 sudo mv trino-cli-476-executable.jar /usr/local/bin/trino
 ```
@@ -268,20 +294,20 @@ trino --server https://127.0.0.1:8443 \
       --user "user@example.com"
 ```
 
-**Authentication Flow:**
+??? tip "Authentication Flow"
 
-The CLI authentication process works as follows:
+    The CLI authentication process works as follows:
 
-- Start the CLI with the `--external-authentication` option and execute a query.
-- The CLI starts and connects to Trino.
-- A message appears in the CLI directing you to open a browser with a specified URL when the first query is submitted.
-- Open the URL in a browser and follow through the authentication process.
-- The CLI automatically receives a token.
-- When successfully authenticated in the browser, the CLI proceeds to execute the query.
-- Further queries in the CLI session do not require additional logins while the authentication token remains valid. Token expiration depends on the external authentication type configuration.
-- Expired tokens force you to log in again.
+    - Start the CLI with the `--external-authentication` option and execute a query.
+    - The CLI starts and connects to Trino.
+    - A message appears in the CLI directing you to open a browser with a specified URL when the first query is submitted.
+    - Open the URL in a browser and follow through the authentication process.
+    - The CLI automatically receives a token.
+    - When successfully authenticated in the browser, the CLI proceeds to execute the query.
+    - Further queries in the CLI session do not require additional logins while the authentication token remains valid. Token expiration depends on the external authentication type configuration.
+    - Expired tokens force you to log in again.
 
-This authentication method ensures secure access to your Trino cluster while maintaining ease of use for interactive queries.
+    This authentication method ensures secure access to your Trino cluster while maintaining ease of use for interactive queries.
 
 ## Cleanup
 

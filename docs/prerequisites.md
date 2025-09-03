@@ -14,7 +14,7 @@ For this project, I use a Mac mini (2024) with the following specifications:
 Make sure you have [Homebrew](https://brew.sh/) installed. Then install the required tools:
 
 ```
-brew install colima, docker, kubectl, minikube, helm
+brew install colima, docker, kubectl, minikube, helm, openjdk@21
 ```
 
 ## Setting Up a Local Kubernetes Cluster

@@ -1,5 +1,6 @@
 .DS_Store
 trino-bigquery-secret.yaml
+trino-tls-secret.yaml
 trino/values.yaml
 iceberg-secret.yaml
 .cert
