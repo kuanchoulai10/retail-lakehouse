@@ -51,3 +51,7 @@ minikube start \
 
 This will create a 3-node Kubernetes cluster (3 CPUs, 8GB RAM, 40GB disk each) with a local container registry addon enabled. The `--insecure-registry` flag allows pushing images to the local registry.
 
+![](./assets/k8s-env.excalidraw.svg)
+///
+K8s Cluster Environment
+///
