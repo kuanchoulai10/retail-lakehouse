@@ -1,0 +1,138 @@
+# --8<-- [start:deployment]
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  namespace: minio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      containers:
+        - name: minio
+          image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+          args:
+            - server
+            - /data
+            - --console-address
+            - :9001
+          env:
+            - name: MINIO_ROOT_USER
+              value: minio_user
+            - name: MINIO_ROOT_PASSWORD
+              value: minio_password
+          ports:
+            - containerPort: 9000
+              protocol: TCP
+            - containerPort: 9001
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: 9000
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 15
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: 9000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 3
+          volumeMounts:
+            - name: storage
+              mountPath: /data
+      volumes:
+        - name: storage
+          hostPath:
+            path: /home/docker/data/minio
+            type: DirectoryOrCreate
+      restartPolicy: Always
+# --8<-- [end:deployment]
+---
+# --8<-- [start:services]
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-console
+  namespace: minio
+spec:
+  selector:
+    app: minio
+  type: NodePort
+  ports:
+    - name: console
+      port: 9001
+      targetPort: 9001
+      nodePort: 30901
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-api
+  namespace: minio
+spec:
+  selector:
+    app: minio
+  type: ClusterIP
+  ports:
+    - name: api
+      port: 9000
+      targetPort: 9000
+# --8<-- [end:services]
+---
+# --8<-- [start:job]
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-create-bucket
+  namespace: minio
+spec:
+  backoffLimit: 6
+  completions: 1
+  template:
+    metadata:
+      labels:
+        job: minio-create-bucket
+    spec:
+      initContainers:
+        - name: wait-for-minio
+          image: busybox
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z minio-api.minio.svc.cluster.local 9000; do
+                echo "Waiting for MinIO..."
+                sleep 2
+              done
+              echo "MinIO is ready!"
+      containers:
+        - name: minio-create-buckets
+          image: minio/mc
+          command:
+            - sh
+            - -c
+            - |
+              mc alias set minio http://minio-api.minio.svc.cluster.local:9000 minio_user minio_password &&
+              for bucket in retail-lakehouse-7dj2 trino-fault-tolerance-nkm5 trino-fault-tolerance-cws0; do
+                if ! mc ls minio/$bucket >/dev/null 2>&1; then
+                  echo "Creating bucket: $bucket"
+                  mc mb minio/$bucket
+                  echo "Bucket created: $bucket"
+                else
+                  echo "Bucket already exists: $bucket"
+                fi
+              done
+      restartPolicy: OnFailure
+      terminationGracePeriodSeconds: 30
+# --8<-- [end:job]
