@@ -7,7 +7,7 @@ Architecture Overview
 
 !!! success "Metrics Collection Deployment Steps"
 
-    - [ ] Deploy a Prometheus Operator
+    - [x] Deploy a Prometheus Operator using YAML files
     - [ ] Deploy a Thanos using bitnami helm chart (Receiver, Store Gateway, Querier, Compactor, )
     - [ ] Deploy a Thanos ruler using Prometheus Operator
     - [ ] Deploy a Prometheus Alertmanager using Prometheus Operator
@@ -25,7 +25,7 @@ The `install.sh` script in the `observability` directory is as follows:
 ??? info "install.sh"
 
     ```bash
-    --8<-- "./retail-lakehouse/mysql/install.sh"
+    --8<-- "./retail-lakehouse/observability/install.sh"
     ```
 
 
