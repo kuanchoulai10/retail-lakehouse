@@ -14,10 +14,19 @@ nav:
     - trino/deployment.md
     - trino/oauth2.md
     - trino/fault-tolerance.md
-    - trino/monitoring.md
     - trino/catalogs.md
     - trino/faker.md
     - trino/join-optimization.md
+  - Observability:
+    - observability/overview.md
+    - observability/prometheus/how-prometheus-works.md
+    - observability/prometheus/how-thanos-works.md
+    - observability/prometheus/prometheus-deployment.md
+    - observability/prometheus/thanos-deployment.md
+    - observability/opentelemetry/what-is-opentelemetry.md
+    - observability/opentelemetry/how-opentelemetry-works.md
+    - observability/opentelemetry/opentelemetry-deployment.md
+    - trino/monitoring.md
   - Apache Iceberg - Spark Quickstart:
       - iceberg/spark-quickstart/deployment.md
       - iceberg/spark-quickstart/1-iceberg-getting-started.ipynb
