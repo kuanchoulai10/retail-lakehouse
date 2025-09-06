@@ -1,5 +1,6 @@
-
 # Prometheus Deployment
+
+## K8S
 
 There are 3 ways of deploying Prometheus on Kubernetes:
 

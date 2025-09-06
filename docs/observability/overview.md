@@ -15,7 +15,18 @@ Architecture Overview
     - [ ] Deploy a OpenTelemetry Collector using OpenTelemetry Operator
     - [ ] Deploy a Grafana using helm chart
 
+```bash
+cd ~/Projects/retail-lakehouse/observability
+bash /install.sh
+```
 
+The `install.sh` script in the `observability` directory is as follows:
+
+??? info "install.sh"
+
+    ```bash
+    --8<-- "./retail-lakehouse/mysql/install.sh"
+    ```
 
 
 

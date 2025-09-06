@@ -120,7 +120,7 @@ Baggage is often used in tracing to propagate additional data across services. A
 ## [Architecture Components](https://opentelemetry.io/docs/concepts/components/)
 
 - Specification: API, SDK, and Data (OLTP, Semantic Conventions)
-- Collector
+- Collector (a vendor-agnostic way to receive, process and export telemetry data.)
     - Receivers
     - Processors
     - Connectors

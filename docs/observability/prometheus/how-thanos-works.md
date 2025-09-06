@@ -2,6 +2,7 @@
 tags:
   - Prometheus
   - Thanos
+  - SRE
 ---
 # How Thanos Works?
 
@@ -81,6 +82,13 @@ Thanos is comprised of a set of components where each fulfills a specific role
 
 
 ## Behind the Scenes
+
+### Thanos Receiver Deep Dive
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/jn_zIfBuUyE?si=OTRBxGMJg_j87tOc" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+/// caption
+Thanos Receiver Deep Dive - Joel Verezhak, Open Systems (2024)
+///
 
 ### How Thanos Stores Data
 
