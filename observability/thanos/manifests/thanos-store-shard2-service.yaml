@@ -3,10 +3,11 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/component: object-store-gateway
-    app.kubernetes.io/instance: thanos-store
+    app.kubernetes.io/instance: thanos-store-2
     app.kubernetes.io/name: thanos-store
     app.kubernetes.io/version: v0.39.2
-  name: thanos-store
+    store.thanos.io/shard: shard-2
+  name: thanos-store-2
   namespace: thanos
 spec:
   clusterIP: None
@@ -19,5 +20,6 @@ spec:
       targetPort: 10902
   selector:
     app.kubernetes.io/component: object-store-gateway
-    app.kubernetes.io/instance: thanos-store
+    app.kubernetes.io/instance: thanos-store-2
     app.kubernetes.io/name: thanos-store
+    store.thanos.io/shard: shard-2
