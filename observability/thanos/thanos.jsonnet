@@ -52,7 +52,6 @@ local rr = t.receiveRouter(commonConfig.config {
 local strs = t.storeShards(commonConfig.config {
   shards: 3,
   replicas: 1,
-  serviceMonitor: true,
   bucketCache: {
     type: 'memcached',
     config+: {
@@ -72,6 +71,7 @@ local strs = t.storeShards(commonConfig.config {
       addresses: ['dnssrv+_client._tcp.memcached.%s.svc.cluster.local' % commonConfig.config.namespace],
     },
   },
+  serviceMonitor: true,
 });
 // --8<-- [end:store-gateway]
 
@@ -81,8 +81,8 @@ local cs = t.compactShards(commonConfig.config {
   shards: 3,
   sourceLabels: ['cluster'],
   replicas: 1,
-  serviceMonitor: true,
   disableDownsampling: true,
+  serviceMonitor: true,
 });
 // --8<-- [end:compactor]
 
@@ -91,11 +91,11 @@ local cs = t.compactShards(commonConfig.config {
 local q = t.query(commonConfig.config {
   replicas: 3,
   replicaLabels: ['prometheus_replica', 'rule_replica', 'receive_replica'],
-  serviceMonitor: true,
   stores: ri.storeEndpoints + [
     'dnssrv+_grpc._tcp.%s.%s.svc.cluster.local' % [service.metadata.name, service.metadata.namespace]
     for service in [strs.shards[shard].service for shard in std.objectFields(strs.shards)]
   ],
+  serviceMonitor: true,
 });
 
 local qf = t.queryFrontend(commonConfig.config {
@@ -108,7 +108,6 @@ local qf = t.queryFrontend(commonConfig.config {
   splitInterval: '12h',
   maxRetries: 10,
   logQueriesLongerThan: '10s',
-  serviceMonitor: true,
   queryRangeCache: {
     type: 'memcached',
     config+: {
@@ -129,6 +128,7 @@ local qf = t.queryFrontend(commonConfig.config {
       addresses: ['dnssrv+_client._tcp.memcached.%s.svc.cluster.local' % commonConfig.config.namespace],
     },
   },
+  serviceMonitor: true,
 });
 // --8<-- [end:query]
 
