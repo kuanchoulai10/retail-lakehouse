@@ -1,13 +1,13 @@
 # Overview
 
 ![](./assets/metrics.excalidraw.svg){width=600}
-///
+/// caption
 Architecture Overview
 ///
 
 !!! success "Metrics Collection Deployment Steps"
 
-    - [x] Deploy a Prometheus Operator using YAML files
+    - [ ] Deploy a Prometheus Operator using YAML files
     - [ ] Deploy a Thanos using bitnami helm chart (Receiver, Store Gateway, Querier, Compactor, )
     - [ ] Deploy a Thanos ruler using Prometheus Operator
     - [ ] Deploy a Prometheus Alertmanager using Prometheus Operator
@@ -17,7 +17,7 @@ Architecture Overview
 
 ```bash
 cd ~/Projects/retail-lakehouse/observability
-bash /install.sh
+bash ./install.sh
 ```
 
 The `install.sh` script in the `observability` directory is as follows:
