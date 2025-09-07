@@ -20,9 +20,9 @@ nav:
   - Observability:
     - observability/overview.md
     - observability/prometheus/how-prometheus-works.md
-    - observability/prometheus/how-thanos-works.md
     - observability/prometheus/prometheus-deployment.md
-    - observability/prometheus/thanos-deployment.md
+    - observability/thanos/how-thanos-works.md
+    - observability/thanos/thanos-deployment.md
     - observability/opentelemetry/what-is-opentelemetry.md
     - observability/opentelemetry/how-opentelemetry-works.md
     - observability/opentelemetry/opentelemetry-deployment.md

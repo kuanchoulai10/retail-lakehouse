@@ -90,6 +90,16 @@ Thanos is comprised of a set of components where each fulfills a specific role
 Thanos Receiver Deep Dive - Joel Verezhak, Open Systems (2024)
 ///
 
+<iframe width="560" height="315" src="https://www.youtube.com/embed/5MJqdJq41Ms?si=410RBLTt1Yb213M4" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+/// caption
+Turn It Up to a Million: Ingesting Millions of Metrics with Thanos Receive - Lucas Servén Marín
+///
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/Sgv0fqy_AZk?si=isOAwtGiRBue1k5G" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+/// caption
+Handling Billions of Metrics with Prometheus and Thanos - Ravi Hari & Amit Auddy, Intuit
+///
+
 ### How Thanos Stores Data
 
 - **Chunk Files**: hold a few hundred MB worth of chunks each. Chunks for the same series are sequentially aligned.
