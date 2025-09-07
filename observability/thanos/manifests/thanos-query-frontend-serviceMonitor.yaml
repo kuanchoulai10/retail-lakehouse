@@ -2,11 +2,11 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   labels:
-    app.kubernetes.io/component: object-store-gateway
-    app.kubernetes.io/instance: thanos-store
-    app.kubernetes.io/name: thanos-store
+    app.kubernetes.io/component: query-cache
+    app.kubernetes.io/instance: thanos-query-frontend
+    app.kubernetes.io/name: thanos-query-frontend
     app.kubernetes.io/version: v0.39.2
-  name: thanos-store
+  name: thanos-query-frontend
   namespace: thanos
 spec:
   endpoints:
@@ -20,6 +20,6 @@ spec:
           targetLabel: instance
   selector:
     matchLabels:
-      app.kubernetes.io/component: object-store-gateway
-      app.kubernetes.io/instance: thanos-store
-      app.kubernetes.io/name: thanos-store
+      app.kubernetes.io/component: query-cache
+      app.kubernetes.io/instance: thanos-query-frontend
+      app.kubernetes.io/name: thanos-query-frontend
