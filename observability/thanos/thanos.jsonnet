@@ -32,15 +32,15 @@ local commonConfig = {
 // --8<-- [start:receiver]
 local ri = t.receiveIngestor(commonConfig.config {
   replicas: 3,
-  replicaLabels: ['receive_replica'],
   replicationFactor: 3,
+  replicaLabels: ['receive_replica'],
   serviceMonitor: true,
 });
 
 local rr = t.receiveRouter(commonConfig.config {
   routerReplicas: 3,
-  replicaLabels: ['receive_replica'],
   replicationFactor: 3,
+  replicaLabels: ['receive_replica'],
   // Disable shipping to object storage for the purposes of this example
   objectStorageConfig: null,
   endpoints: ri.endpoints,
