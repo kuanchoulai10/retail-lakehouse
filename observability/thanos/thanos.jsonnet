@@ -100,7 +100,7 @@ local q = t.query(commonConfig.config {
 
 local qf = t.queryFrontend(commonConfig.config {
   replicas: 3,
-  downstreamURL: 'http://%s.%s.svc.cluster.local.:%d' % [
+  downstreamURL: 'http://%s.%s.svc.cluster.local:%d' % [
     q.service.metadata.name,
     q.service.metadata.namespace,
     q.service.spec.ports[1].port,
