@@ -1,0 +1,14 @@
+b: bucket
+br: bucketReplicate
+c: compact
+cs: compactShards
+re: receive
+ru: rule
+sc: sidecar
+s: store
+q: query
+finalRu: rule
+qf: queryFrontend
+rcvs: receiveHashrings
+strs: storeShards
+finalQ: query
