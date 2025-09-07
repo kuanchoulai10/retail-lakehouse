@@ -1,3 +1,4 @@
+vendor/
 .DS_Store
 trino-bigquery-secret.yaml
 trino-tls-secret.yaml
