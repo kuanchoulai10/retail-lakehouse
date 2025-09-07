@@ -16,7 +16,11 @@ curl -s "https://raw.githubusercontent.com/prometheus-operator/prometheus-operat
 sleep 5
 kubectl wait --for=condition=Ready pods -l  app.kubernetes.io/name=prometheus-operator -n $NAMESPACE --timeout=180s
 
-# Deploy a Thanos using Bitnami Helm Chart
-# https://artifacthub.io/packages/helm/bitnami/thanos
-helm repo add bitnami https://charts.bitnami.com/bitnami
-helm repo update
+
+# Deploy Thanos using kube-thanos jsonnet
+# https://github.com/thanos-io/kube-thanos
+mkdir -p thanos
+cd thanos
+jb install github.com/thanos-io/kube-thanos/jsonnet/kube-thanos@main
+rm -f manifests/thanos-*
+jsonnet -J vendor -m manifests/ thanos.jsonnet | xargs -I{} sh -c "cat {} | yq -P > {}.yaml; rm -f {}" -- {}

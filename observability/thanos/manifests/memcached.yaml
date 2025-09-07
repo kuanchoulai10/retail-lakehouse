@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: memcached
+  namespace: thanos
+spec:
+  serviceName: memcached
+  replicas: 3
+  selector:
+    matchLabels:
+      app: memcached
+  template:
+    metadata:
+      labels:
+        app: memcached
+    spec:
+      containers:
+        - name: memcached
+          image: memcached:1.6.39
+          args: ["-m", "1024", "-p", "11211"]
+          ports:
+            - containerPort: 11211
+              name: memcached
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: memcached
+  namespace: thanos
+spec:
+  clusterIP: None   # headless service
+  ports:
+    - port: 11211
+      name: client
+  selector:
+    app: memcached
