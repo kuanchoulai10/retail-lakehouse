@@ -89,7 +89,7 @@ local cs = t.compactShards(commonConfig.config {
 
 // --8<-- [start:query]
 local q = t.query(commonConfig.config {
-  replicas: 1,
+  replicas: 3,
   replicaLabels: ['prometheus_replica', 'rule_replica', 'receive_replica'],
   serviceMonitor: true,
   stores: ri.storeEndpoints + [
