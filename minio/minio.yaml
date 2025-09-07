@@ -124,7 +124,7 @@ spec:
             - -c
             - |
               mc alias set minio http://minio-api.minio.svc.cluster.local:9000 minio_user minio_password &&
-              for bucket in retail-lakehouse-7dj2 trino-fault-tolerance-nkm5 trino-fault-tolerance-cws0; do
+              for bucket in retail-lakehouse-7dj2 trino-fault-tolerance-nkm5 trino-fault-tolerance-cws0 thanos; do
                 if ! mc ls minio/$bucket >/dev/null 2>&1; then
                   echo "Creating bucket: $bucket"
                   mc mb minio/$bucket
