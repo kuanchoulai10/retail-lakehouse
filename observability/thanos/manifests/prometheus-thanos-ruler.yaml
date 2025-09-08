@@ -1,0 +1,56 @@
+# 3) ThanosRuler：從 Thanos Query 取數、把告警打進本集群的 Alertmanager
+apiVersion: monitoring.coreos.com/v1
+kind: ThanosRuler
+metadata:
+  name: thanos-ruler
+  namespace: thanos
+spec:
+  replicas: 2
+  # 讓 Ruler 去哪裡查詢（PromQL）— 指向 Thanos Query 的 HTTP 端點
+  # 若你有 Query Frontend，也可改成前端的 service/URL
+  queryEndpoints:
+    - http://thanos-query-frontend.thanos.svc.cluster.local:10902
+  # （可選）當使用者在 Alertmanager UI 看 Source 時顯示的 Query 外部 URL
+  alertQueryUrl: http://thanos-query.thanos.svc.cluster.local:10902
+  # 把告警投遞到本命名空間由 Operator 自動建立的 "alertmanager-operated" 服務
+  # （Operator 會為每個 namespace 建立 alertmanager-operated，供內部發現）
+  alertmanagersUrl:
+    - http://alertmanager-operated.thanos.svc.cluster.local:9093
+  # 選取要載入的 PrometheusRule（見下方第 4 塊）
+  ruleSelector:
+    matchLabels:
+      example-rules: "true"
+  ruleNamespaceSelector: {}
+  evaluationInterval: 30s
+  objectStorageConfig:
+    key: thanos.yaml
+    name: thanos-objectstorage
+  storage:                           # 若要保留本地 WAL/blocks 可設 PVC
+    volumeClaimTemplate:
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+---
+# 4) 範例 PrometheusRule（測試管線）：每 1m 觸發一個示範告警
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: example-rules
+  namespace: thanos
+  labels:
+    example-rules: "true"
+spec:
+  groups:
+    - name: example
+      interval: 30s
+      rules:
+        - alert: ExampleAlwaysFiring
+          expr: vector(1)
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "This is a demo alert to validate Ruler → Alertmanager path"
+            description: "If you see this in Alertmanager, the pipeline works."

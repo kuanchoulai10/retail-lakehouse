@@ -16,6 +16,11 @@ curl -s "https://raw.githubusercontent.com/prometheus-operator/prometheus-operat
 sleep 5
 kubectl wait --for=condition=Ready pods -l  app.kubernetes.io/name=prometheus-operator -n $NAMESPACE --timeout=180s
 
+kubectl create namespace thanos || true
+kubectl apply -f manifests/prometheus-alertmanager.yaml
+kubectl apply -f manifests/memcached.yaml
+kubectl apply -f manifests/minio-secret-thanos.yaml
+
 
 # Deploy Thanos using kube-thanos jsonnet
 # https://github.com/thanos-io/kube-thanos
@@ -24,3 +29,4 @@ cd thanos
 jb install github.com/thanos-io/kube-thanos/jsonnet/kube-thanos@main
 rm -f manifests/thanos-*
 jsonnet -J vendor -m manifests/ thanos.jsonnet | xargs -I{} sh -c "cat {} | yq -P > {}.yaml; rm -f {}" -- {}
+

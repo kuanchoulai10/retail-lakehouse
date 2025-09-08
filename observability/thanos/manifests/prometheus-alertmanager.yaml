@@ -1,0 +1,32 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Alertmanager
+metadata:
+  name: alertmanager-sre
+  namespace: thanos
+spec:
+  replicas: 2
+  alertmanagerConfigNamespaceSelector: {}
+  alertmanagerConfigSelector:
+    matchLabels:
+      team: data
+  logLevel: info
+  retention: 120h
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: default-routing
+  namespace: thanos
+  labels:
+    team: data
+spec:
+  route:
+    groupBy: ['alertname','namespace']
+    groupWait: 30s
+    groupInterval: 2m
+    repeatInterval: 12h
+    receiver: 'slack-alerting-webhook'
+  receivers:
+    - name: slack-alerting-webhook
+      webhookConfigs:
+        - url: 'https://hooks.slack.com/services/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'
