@@ -132,6 +132,24 @@ local qf = t.queryFrontend(commonConfig.config {
 });
 // --8<-- [end:query]
 
+// --8<-- [start:ruler]
+// local ru = t.rule(commonConfig.config {
+//   replicas: 1,
+//   rulesConfig: [{ name: 'test', key: 'test' }],
+//   alertmanagersURLs: ['alertmanager:9093'],
+//   alertmanagerConfigFile: {
+//     name: 'thanos-ruler-config',
+//     key: 'config.yaml',
+//   },
+//   remoteWriteConfigFile: {
+//     name: 'thanos-stateless-ruler-config',
+//     key: 'rw-config.yaml',
+//   },
+//   reloaderImage: 'jimmidyson/configmap-reload:v0.5.0',
+//   serviceMonitor: true,
+//   queriers: ['dnssrv+_http._tcp.%s.%s.svc.cluster.local' % [q.service.metadata.name, q.service.metadata.namespace]],
+// });
+// --8<-- [end:ruler]
 
 // --8<-- [start:bucket-web-ui]
 local b = t.bucket(commonConfig.config {
@@ -171,5 +189,6 @@ local b = t.bucket(commonConfig.config {
 } +
 { ['thanos-query-' + name]: q[name] for name in std.objectFields(q) } +
 { ['thanos-query-frontend-' + name]: qf[name] for name in std.objectFields(qf) if qf[name] != null } +
+// { ['thanos-rule-' + name]: ru[name] for name in std.objectFields(ru) if ru[name] != null } +
 { ['thanos-bucket-' + name]: b[name] for name in std.objectFields(b) if b[name] != null }
 // --8<-- [end:objects]
