@@ -35,6 +35,13 @@ local ri = t.receiveIngestor(commonConfig.config {
   replicationFactor: 3,
   replicaLabels: ['receive_replica'],
   serviceMonitor: true,
+  securityContext: {
+    fsGroup: 0,
+    runAsUser: 0,
+    runAsGroup: 0,
+    runAsNonRoot: false,
+    seccompProfile: { type: 'RuntimeDefault' },
+  },
 });
 
 local rr = t.receiveRouter(commonConfig.config {
@@ -52,6 +59,13 @@ local rr = t.receiveRouter(commonConfig.config {
 local strs = t.storeShards(commonConfig.config {
   shards: 3,
   replicas: 1,
+  securityContext: {
+    fsGroup: 0,
+    runAsUser: 0,
+    runAsGroup: 0,
+    runAsNonRoot: false,
+    seccompProfile: { type: 'RuntimeDefault' },
+  },
   bucketCache: {
     type: 'memcached',
     config+: {
@@ -82,6 +96,13 @@ local cs = t.compactShards(commonConfig.config {
   sourceLabels: ['cluster'],
   replicas: 1,
   disableDownsampling: true,
+  securityContext: {
+    fsGroup: 0,
+    runAsUser: 0,
+    runAsGroup: 0,
+    runAsNonRoot: false,
+    seccompProfile: { type: 'RuntimeDefault' },
+  },
   serviceMonitor: true,
 });
 // --8<-- [end:compactor]
@@ -181,12 +202,14 @@ local b = t.bucket(commonConfig.config {
   for name in std.objectFields(strs.shards[shard])
   if strs.shards[shard][name] != null
 } +
+{ ['thanos-store-shards-' + name]: strs[name] for name in std.objectFields(strs) if name != 'shards' && strs[name] != null } +
 {
   ['thanos-compact-' + shard + '-' + name]: cs.shards[shard][name]
   for shard in std.objectFields(cs.shards)
   for name in std.objectFields(cs.shards[shard])
   if cs.shards[shard][name] != null
 } +
+{ ['thanos-compact-shards-' + name]: cs[name] for name in std.objectFields(cs) if name != 'shards' && cs[name] != null } +
 { ['thanos-query-' + name]: q[name] for name in std.objectFields(q) } +
 { ['thanos-query-frontend-' + name]: qf[name] for name in std.objectFields(qf) if qf[name] != null } +
 // { ['thanos-rule-' + name]: ru[name] for name in std.objectFields(ru) if ru[name] != null } +
