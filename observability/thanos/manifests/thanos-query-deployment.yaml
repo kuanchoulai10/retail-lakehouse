@@ -55,7 +55,8 @@ spec:
             - |-
               --tracing.config="config":
                 "client_type": "grpc"
-                "endpoint": "jaeger-inmemory-instance-collector.jaeger.svc.cluster.local:4317"
+                "endpoint": "jaeger-thanos-collector.jaeger.svc.cluster.local:4317"
+                "insecure": true
                 "retry_config":
                   "retry_enabled": true
                   "retry_initial_interval": "1s"

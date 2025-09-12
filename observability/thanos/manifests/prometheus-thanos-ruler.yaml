@@ -37,25 +37,66 @@ spec:
         resources:
           requests:
             storage: 10Gi
+  tracingConfig:
+    name: thanos-ruler-tracing
+    key: tracing.yaml
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: thanos-ruler-tracing
+  namespace: thanos
+type: Opaque
+stringData:
+  tracing.yaml: |
+    type: OTLP
+    config:
+      endpoint: jaeger-inmemory-instance-collector.jaeger.svc.cluster.local:4317
+      service_name: thanos-ruler
+      client_type: grpc
+      sampler_type: ratelimiting
+      sampler_param: 100
+      insecure: true
+      timeout: 10s
+      retry_config:
+        retry_enabled: true
+        retry_initial_interval: 1s
+        retry_max_interval: 5s
+        retry_max_elapsed_time: 30s
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: thanos-ruler
+  namespace: thanos
+spec:
+  clusterIP: None                  # headless，才能有 SRV
+  selector:
+    app.kubernetes.io/name: thanos-ruler
+  ports:
+    - name: grpc                   # 名稱很重要（_grpc）
+      port: 10901
+      targetPort: 10901
 ---
 # 4) 範例 PrometheusRule（測試管線）：每 1m 觸發一個示範告警
-apiVersion: monitoring.coreos.com/v1
-kind: PrometheusRule
-metadata:
-  name: example-rules
-  namespace: thanos
-  labels:
-    example-rules: "true"
-spec:
-  groups:
-    - name: example
-      interval: 30s
-      rules:
-        - alert: ExampleAlwaysFiring
-          expr: vector(1)
-          for: 1m
-          labels:
-            severity: warning
-          annotations:
-            summary: "This is a demo alert to validate Ruler → Alertmanager path"
-            description: "If you see this in Alertmanager, the pipeline works."
+# apiVersion: monitoring.coreos.com/v1
+# kind: PrometheusRule
+# metadata:
+#   name: example-rules
+#   namespace: thanos
+#   labels:
+#     example-rules: "true"
+# spec:
+#   groups:
+#     - name: example
+#       interval: 30s
+#       rules:
+#         - alert: ExampleAlwaysFiring
+#           expr: vector(1)
+#           for: 1m
+#           labels:
+#             severity: warning
+#             namespace: thanos
+#           annotations:
+#             summary: "This is a demo alert to validate Ruler → Alertmanager path"
+#             description: "If you see this in Alertmanager, the pipeline works."
