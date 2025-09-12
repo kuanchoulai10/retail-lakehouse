@@ -14,13 +14,22 @@ local commonConfig = {
       key: 'thanos.yaml',
     },
     hashringConfigMapName: 'hashring-config',
-    // tracing+: {
-    //   type: 'OTLP',
-    //   config+: {
-    //     sampler_type: 'ratelimiting',
-    //     sampler_param: 2,
-    //   },
-    // },
+    tracing+: {
+      type: 'OTLP',
+      config+: {
+        endpoint: 'jaeger-inmemory-instance-collector.jaeger.svc.cluster.local:4317',
+        client_type: 'grpc',
+        sampler_type: 'ratelimiting',
+        sampler_param: 100,
+        timeout: '10s',
+        retry_config: {
+          retry_enabled: true,
+          retry_initial_interval: '1s',
+          retry_max_interval: '5s',
+          retry_max_elapsed_time: '30s',
+        }
+      },
+    },
     volumeClaimTemplate: {
       spec: {
         accessModes: ['ReadWriteOnce'],
