@@ -16,17 +16,23 @@ curl -s "https://raw.githubusercontent.com/prometheus-operator/prometheus-operat
 sleep 5
 kubectl wait --for=condition=Ready pods -l  app.kubernetes.io/name=prometheus-operator -n $NAMESPACE --timeout=180s
 
-kubectl create namespace thanos || true
-kubectl apply -f manifests/prometheus-alertmanager.yaml
-kubectl apply -f manifests/memcached.yaml
-kubectl apply -f manifests/minio-secret-thanos.yaml
-
+# Deploy Jaeger using Otel Operator
+# 
+cd ~/Projects/retail-lakehouse/observability/jaeger
+CERT_MANAGER_VERSION=v1.18.2
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/$CERT_MANAGER_VERSION/cert-manager.yaml
+OTEL_OPERATOR_VERSION=v0.132.0
+kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releases/download/$OTEL_OPERATOR_VERSION/opentelemetry-operator.yaml
+kubectl create namespace jaeger || true
+kubectl apply -f otel-collector-jaeger.yaml -n  jaeger
 
 # Deploy Thanos using kube-thanos jsonnet
 # https://github.com/thanos-io/kube-thanos
-mkdir -p thanos
-cd thanos
+cd ~/Projects/retail-lakehouse/observability/thanos
+
+kubectl create namespace thanos || true
 jb install github.com/thanos-io/kube-thanos/jsonnet/kube-thanos@main
 rm -f manifests/thanos-*
 jsonnet -J vendor -m manifests/ thanos.jsonnet | xargs -I{} sh -c "cat {} | yq -P > {}.yaml; rm -f {}" -- {}
 
+kubectl apply -f manifests/
