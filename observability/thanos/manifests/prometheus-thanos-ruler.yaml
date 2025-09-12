@@ -9,9 +9,7 @@ spec:
   # 讓 Ruler 去哪裡查詢（PromQL）— 指向 Thanos Query 的 HTTP 端點
   # 若你有 Query Frontend，也可改成前端的 service/URL
   queryEndpoints:
-    - http://thanos-query-frontend.thanos.svc.cluster.local:10902
-  # （可選）當使用者在 Alertmanager UI 看 Source 時顯示的 Query 外部 URL
-  alertQueryUrl: http://thanos-query.thanos.svc.cluster.local:10902
+    - http://thanos-query-frontend.thanos.svc.cluster.local:9090
   # 把告警投遞到本命名空間由 Operator 自動建立的 "alertmanager-operated" 服務
   # （Operator 會為每個 namespace 建立 alertmanager-operated，供內部發現）
   alertmanagersUrl:
@@ -25,6 +23,13 @@ spec:
   objectStorageConfig:
     key: thanos.yaml
     name: thanos-objectstorage
+  securityContext:
+    fsGroup: 0
+    runAsUser: 0
+    runAsGroup: 0
+    runAsNonRoot: false
+    seccompProfile:
+      type: 'RuntimeDefault'
   storage:                           # 若要保留本地 WAL/blocks 可設 PVC
     volumeClaimTemplate:
       spec:
