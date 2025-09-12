@@ -59,6 +59,13 @@ tags:
 Architecture Overview
 ///
 
+![](trino-otel.drawio.svg)
+/// caption
+Architecture Overview (Observability Engineering)
+///
+
+
+
 ## 🗂️ What's Inside?
 
 First, clone the repository:
