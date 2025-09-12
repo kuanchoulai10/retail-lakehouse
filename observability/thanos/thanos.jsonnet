@@ -17,10 +17,11 @@ local commonConfig = {
     tracing+: {
       type: 'OTLP',
       config+: {
-        endpoint: 'jaeger-inmemory-instance-collector.jaeger.svc.cluster.local:4317',
+        endpoint: 'jaeger-thanos-collector.jaeger.svc.cluster.local:4317',
         client_type: 'grpc',
         sampler_type: 'ratelimiting',
         sampler_param: 100,
+        insecure: true,
         timeout: '10s',
         retry_config: {
           retry_enabled: true,
