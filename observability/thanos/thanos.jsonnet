@@ -14,6 +14,13 @@ local commonConfig = {
       key: 'thanos.yaml',
     },
     hashringConfigMapName: 'hashring-config',
+    // tracing+: {
+    //   type: 'OTLP',
+    //   config+: {
+    //     sampler_type: 'ratelimiting',
+    //     sampler_param: 2,
+    //   },
+    // },
     volumeClaimTemplate: {
       spec: {
         accessModes: ['ReadWriteOnce'],
@@ -115,7 +122,7 @@ local q = t.query(commonConfig.config {
   stores: ri.storeEndpoints + [
     'dnssrv+_grpc._tcp.%s.%s.svc.cluster.local' % [service.metadata.name, service.metadata.namespace]
     for service in [strs.shards[shard].service for shard in std.objectFields(strs.shards)]
-  ],
+  ] + ['dnssrv+_grpc._tcp.thanos-ruler.thanos.svc.cluster.local'],
   serviceMonitor: true,
 });
 
