@@ -52,6 +52,20 @@ spec:
             - --endpoint=dnssrv+_grpc._tcp.thanos-store-1.thanos.svc.cluster.local
             - --endpoint=dnssrv+_grpc._tcp.thanos-store-2.thanos.svc.cluster.local
             - --endpoint=dnssrv+_grpc._tcp.thanos-ruler.thanos.svc.cluster.local
+            - |-
+              --tracing.config="config":
+                "client_type": "grpc"
+                "endpoint": "jaeger-inmemory-instance-collector.jaeger.svc.cluster.local:4317"
+                "retry_config":
+                  "retry_enabled": true
+                  "retry_initial_interval": "1s"
+                  "retry_max_elapsed_time": "30s"
+                  "retry_max_interval": "5s"
+                "sampler_param": 100
+                "sampler_type": "ratelimiting"
+                "service_name": "thanos-query"
+                "timeout": "10s"
+              "type": "OTLP"
             - --query.auto-downsampling
           env:
             - name: HOST_IP_ADDRESS

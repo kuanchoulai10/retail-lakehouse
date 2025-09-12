@@ -61,6 +61,20 @@ spec:
             - --compact.concurrency=1
             - --downsample.concurrency=1
             - --downsampling.disable
+            - |-
+              --tracing.config="config":
+                "client_type": "grpc"
+                "endpoint": "jaeger-inmemory-instance-collector.jaeger.svc.cluster.local:4317"
+                "retry_config":
+                  "retry_enabled": true
+                  "retry_initial_interval": "1s"
+                  "retry_max_elapsed_time": "30s"
+                  "retry_max_interval": "5s"
+                "sampler_param": 100
+                "sampler_type": "ratelimiting"
+                "service_name": "thanos-compact"
+                "timeout": "10s"
+              "type": "OTLP"
             - |
               --selector.relabel-config=
                 - action: hashmod
