@@ -8,24 +8,43 @@ There are 3 ways of deploying Thanos on Kubernetes:
 - [prometheus-operator](https://github.com/coreos/prometheus-operator)
 - [kube-thanos](https://github.com/thanos-io/kube-thanos): Jsonnet based Kubernetes templates.
 
-We use **Bitnami Thanos Helm chart** to deploy Thanos components.
+We use **kube-thanos** to deploy Thanos components in this project.
 
+When deploying Thanos in Kubernetes, Ruler would hit "too many open files" error. The reason is minikube's default `fs.inotify.max_user_instances` is `128`, which is too small. Hence we need to increase it.
 
-有遇到個問題是，ruler執行時，遇到too many open files的問題，問題是minikube 裡的fs.inotify.max_user_instances 預設是128，太小了
+First, ssh into minikube VM:
+
 
 ```bash
 minikube -p retail-lakehouse ssh
-docker@retail-lakehouse:~$ sysctl fs.inotify.max_user_watches
+```
+
+Inside minikube VM, check the current value of fs.inotify.max_user_instances, fs.inotify.max_user_watches, and file-max
+
+```bash
+sysctl fs.inotify.max_user_watches
+sysctl fs.inotify.max_user_instances
+cat /proc/sys/fs/file-max
+```
+
+Output should be like below:
+
+```
 fs.inotify.max_user_watches = 1048576
-docker@retail-lakehouse:~$ sysctl fs.inotify.max_user_instances
 fs.inotify.max_user_instances = 128
-docker@retail-lakehouse:~$ cat /proc/sys/fs/file-max
 9223372036854775807
 ```
 
-調高到1024
-```
+Increase it to `1024` by running the following command:
+
+```bash
 sudo sysctl -w fs.inotify.max_user_instances=1024
+```
+
+After that, you can exit minikube VM:
+
+```bash
+exit
 ```
 
 ## References
