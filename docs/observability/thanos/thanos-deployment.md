@@ -10,10 +10,12 @@ There are 3 ways of deploying Thanos on Kubernetes:
 
 We use **kube-thanos** to deploy Thanos components in this project.
 
+
+## Prerequisites
+
 When deploying Thanos in Kubernetes, Ruler would hit "too many open files" error. The reason is minikube's default `fs.inotify.max_user_instances` is `128`, which is too small. Hence we need to increase it.
 
 First, ssh into minikube VM:
-
 
 ```bash
 minikube -p retail-lakehouse ssh
@@ -35,7 +37,7 @@ fs.inotify.max_user_instances = 128
 9223372036854775807
 ```
 
-Increase it to `1024` by running the following command:
+Increase `fs.inotify.max_user_instances` to `1024` by running the following command:
 
 ```bash
 sudo sysctl -w fs.inotify.max_user_instances=1024
