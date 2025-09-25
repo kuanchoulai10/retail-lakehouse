@@ -25,7 +25,7 @@ spec:
     output:
       # https://strimzi.io/docs/operators/latest/configuring.html#type-DockerOutput-reference
       type: docker
-      image: 10.104.128.211/debezium-mysql-connector:latest
+      image: 10.109.40.28/debezium-mysql-connector:latest
     plugins:
       - name: debezium-mysql-connector
         artifacts:

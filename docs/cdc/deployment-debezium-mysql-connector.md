@@ -21,7 +21,7 @@ cd ~/Projects/retail-lakehouse/kafka-debezium-mysql-connector
 bash install.sh
 ```
 
-??? info "Result"
+??? info "install.sh"
 
     ```bash
     --8<-- "./retail-lakehouse/kafka-debezium-mysql-connector/install.sh"
@@ -104,7 +104,7 @@ kubectl -n kube-system get svc registry -o jsonpath='{.spec.clusterIP}'
 ??? info "Result"
 
     ```
-    10.104.128.211
+    10.109.40.28
     ```
 
 
