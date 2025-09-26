@@ -17,7 +17,7 @@ local commonConfig = {
     tracing+: {
       type: 'OTLP',
       config+: {
-        endpoint: 'jaeger-thanos-collector.jaeger.svc.cluster.local:4317',
+        endpoint: 'jaeger-thanos-collector.thanos.svc.cluster.local:4317',
         client_type: 'grpc',
         sampler_type: 'ratelimiting',
         sampler_param: 100,

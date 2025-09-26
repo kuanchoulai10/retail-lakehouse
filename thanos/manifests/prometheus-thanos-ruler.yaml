@@ -51,7 +51,7 @@ stringData:
   tracing.yaml: |
     type: OTLP
     config:
-      endpoint: jaeger-inmemory-instance-collector.jaeger.svc.cluster.local:4317
+      endpoint: jaeger-thanos-collector.thanos.svc.cluster.local:4317
       service_name: thanos-ruler
       client_type: grpc
       sampler_type: ratelimiting
@@ -79,24 +79,24 @@ spec:
       targetPort: 10901
 ---
 # 4) 範例 PrometheusRule（測試管線）：每 1m 觸發一個示範告警
-# apiVersion: monitoring.coreos.com/v1
-# kind: PrometheusRule
-# metadata:
-#   name: example-rules
-#   namespace: thanos
-#   labels:
-#     example-rules: "true"
-# spec:
-#   groups:
-#     - name: example
-#       interval: 30s
-#       rules:
-#         - alert: ExampleAlwaysFiring
-#           expr: vector(1)
-#           for: 1m
-#           labels:
-#             severity: warning
-#             namespace: thanos
-#           annotations:
-#             summary: "This is a demo alert to validate Ruler → Alertmanager path"
-#             description: "If you see this in Alertmanager, the pipeline works."
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: example-rules
+  namespace: thanos
+  labels:
+    example-rules: "true"
+spec:
+  groups:
+    - name: example
+      interval: 30s
+      rules:
+        - alert: ExampleAlwaysFiring
+          expr: vector(1)
+          for: 1m
+          labels:
+            severity: warning
+            namespace: thanos
+          annotations:
+            summary: "This is a demo alert to validate Ruler → Alertmanager path"
+            description: "If you see this in Alertmanager, the pipeline works."

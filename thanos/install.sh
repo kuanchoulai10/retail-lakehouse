@@ -35,5 +35,4 @@ kubectl apply -f manifests/jaeger-thanos.yaml -n thanos
 jb install github.com/thanos-io/kube-thanos/jsonnet/kube-thanos@main
 rm -f manifests/thanos-*
 jsonnet -J vendor -m manifests/ thanos.jsonnet | xargs -I{} sh -c "cat {} | yq -P > {}.yaml; rm -f {}" -- {}
-# Install the rest of components
 kubectl apply -f manifests/

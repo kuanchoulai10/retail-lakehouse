@@ -64,7 +64,7 @@ spec:
             - |-
               --tracing.config="config":
                 "client_type": "grpc"
-                "endpoint": "jaeger-thanos-collector.jaeger.svc.cluster.local:4317"
+                "endpoint": "jaeger-thanos-collector.thanos.svc.cluster.local:4317"
                 "insecure": true
                 "retry_config":
                   "retry_enabled": true

@@ -2,6 +2,7 @@ apiVersion: opentelemetry.io/v1beta1
 kind: OpenTelemetryCollector
 metadata:
   name: jaeger-thanos
+  namespace: thanos
 spec:
   image: jaegertracing/jaeger:latest
   ports:
