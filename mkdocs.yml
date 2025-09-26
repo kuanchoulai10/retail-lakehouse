@@ -17,6 +17,8 @@ nav:
     - trino/catalogs.md
     - trino/faker.md
     - trino/join-optimization.md
+  - MinIO:
+    - minio/deployment.md
   - Observability:
     - observability/overview.md
     - observability/prometheus/how-prometheus-works.md
