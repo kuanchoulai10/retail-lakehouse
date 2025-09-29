@@ -134,7 +134,7 @@ Baggage is often used in tracing to propagate additional data across services. A
 [Data Flow Overview](https://opentelemetry.io/docs/demo/collector-data-flow-dashboard/#data-flow-overview)
 ///
 
-![](https://opentelemetry.io/docs/demo/collector-data-flow-dashboard/otelcol-data-flow-overview.png){width=600}
+![](https://opentelemetry.io/docs/demo/collector-data-flow-dashboard/otelcol-data-flow-metrics.png){width=600}
 /// caption
 [Ingress/Egress Metrics](https://opentelemetry.io/docs/demo/collector-data-flow-dashboard/#ingressegress-metrics)
 ///

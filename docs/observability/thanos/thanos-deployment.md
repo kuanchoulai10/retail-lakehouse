@@ -1,53 +1,75 @@
 # Thanos Deployment
 
-## K8S
+![](./assets/thanos.excalidraw.svg)
+/// caption
+Thanos Deployment Overview
+///
 
-There are 3 ways of deploying Thanos on Kubernetes:
-
-- [Community Helm charts](https://artifacthub.io/packages/search?ts_query_web=thanos)
-- [prometheus-operator](https://github.com/coreos/prometheus-operator)
-- [kube-thanos](https://github.com/thanos-io/kube-thanos): Jsonnet based Kubernetes templates.
-
-We use **kube-thanos** to deploy Thanos components in this project.
+We use [kube-thanos](https://github.com/thanos-io/kube-thanos) to deploy Thanos components in this project.
 
 
-## Prerequisites
+!!! warning
 
-When deploying Thanos in Kubernetes, Ruler would hit "too many open files" error. The reason is minikube's default `fs.inotify.max_user_instances` is `128`, which is too small. Hence we need to increase it.
+    When deploying Thanos in Kubernetes, Ruler would hit "too many open files" error. The reason is minikube's default `fs.inotify.max_user_instances` is `128`, which is too small. Hence we need to increase it.
 
-First, ssh into minikube VM:
+    First, ssh into minikube VM:
+
+    ```bash
+    minikube -p retail-lakehouse ssh
+    ```
+
+    Inside minikube VM, check the current value of fs.inotify.max_user_instances, fs.inotify.max_user_watches, and file-max
+
+    ```bash
+    sysctl fs.inotify.max_user_watches
+    sysctl fs.inotify.max_user_instances
+    cat /proc/sys/fs/file-max
+    ```
+
+    Output should be like below:
+
+    ```
+    fs.inotify.max_user_watches = 1048576
+    fs.inotify.max_user_instances = 128
+    9223372036854775807
+    ```
+
+    Increase `fs.inotify.max_user_instances` to `1024` by running the following command:
+
+    ```bash
+    sudo sysctl -w fs.inotify.max_user_instances=1024
+    ```
+
+    After that, you can exit minikube VM:
+
+    ```bash
+    exit
+    ```
 
 ```bash
-minikube -p retail-lakehouse ssh
+./install.sh
 ```
 
-Inside minikube VM, check the current value of fs.inotify.max_user_instances, fs.inotify.max_user_watches, and file-max
+This shell script will install Thanos components in `thanos` namespace. Specifically, it will install:
 
-```bash
-sysctl fs.inotify.max_user_watches
-sysctl fs.inotify.max_user_instances
-cat /proc/sys/fs/file-max
-```
+1. Prometheus Operator
+2. Cert Manager
+3. OpenTelemetry Operator
+4. Jaeger v2 using OpenTelemetry Operator for tracing
+5. Thanos components using kube-thanos jsonnet (excdpt Thanos Ruler)
+6. Prometheus Alertmanager and Thanos Ruler using Prometheus Operator
 
-Output should be like below:
+??? note "thanos/install.sh"
 
-```
-fs.inotify.max_user_watches = 1048576
-fs.inotify.max_user_instances = 128
-9223372036854775807
-```
+    ```shell linenums="1"
+    --8<-- "thanos/install.sh"
+    ```
 
-Increase `fs.inotify.max_user_instances` to `1024` by running the following command:
+??? note "thanos/thanos.jsonnet"
 
-```bash
-sudo sysctl -w fs.inotify.max_user_instances=1024
-```
-
-After that, you can exit minikube VM:
-
-```bash
-exit
-```
+    ```jsonnet linenums="1"
+    --8<-- "thanos/thanos.jsonnet"
+    ```
 
 ## References
 

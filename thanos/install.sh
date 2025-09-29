@@ -29,7 +29,7 @@ kubectl apply -f https://github.com/open-telemetry/opentelemetry-operator/releas
 cd ~/Projects/retail-lakehouse/thanos
 kubectl create namespace thanos || true
 # Install Jaeger using Otel Operator
-kubectl apply -f manifests/jaeger-thanos.yaml -n thanos
+kubectl apply -f manifests/jaeger.yaml -n thanos
 # Install Thanos using kube-thanos jsonnet
 # https://github.com/thanos-io/kube-thanos
 jb install github.com/thanos-io/kube-thanos/jsonnet/kube-thanos@main

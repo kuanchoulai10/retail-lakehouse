@@ -87,6 +87,3 @@ plugins:
   - glightbox
   - search
   - mkdocs-jupyter # mkdocs-jupyter==0.25.1
-  - enumerate-headings:
-      toc_depth: 0
-      increment_across_pages: false
