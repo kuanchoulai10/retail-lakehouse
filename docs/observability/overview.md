@@ -1,6 +1,6 @@
 # Overview
 
-![](./assets/metrics.excalidraw.svg){width=600}
+![](./assets/thanos-details.excalidraw.svg){width=600}
 /// caption
 Architecture Overview
 ///
