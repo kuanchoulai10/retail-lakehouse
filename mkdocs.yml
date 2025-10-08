@@ -86,4 +86,3 @@ markdown_extensions:
 plugins:
   - glightbox
   - search
-  - mkdocs-jupyter # mkdocs-jupyter==0.25.1
