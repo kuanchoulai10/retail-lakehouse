@@ -50,6 +50,12 @@ coordinator:
   additionalJVMConfig:
     - --add-opens=java.base/java.nio=ALL-UNNAMED # https://trino.io/docs/current/connector/bigquery.html#arrow-serialization-support
     - --sun-misc-unsafe-memory-access=allow
+  additionalConfigFiles:
+    http-event-listener.properties: |
+      event-listener.name=http
+      http-event-listener.log-created=true
+      http-event-listener.log-completed=true
+      http-event-listener.connect-ingest-uri=<your ingest URI>
   # access-control.properties: |
   #   access-control.name=file
   #   security.refresh-period=150s
@@ -71,6 +77,12 @@ worker:
   additionalJVMConfig:
     - --add-opens=java.base/java.nio=ALL-UNNAMED # https://trino.io/docs/current/connector/bigquery.html#arrow-serialization-support
     - --sun-misc-unsafe-memory-access=allow
+  additionalConfigFiles:
+    http-event-listener.properties: |
+      event-listener.name=http
+      http-event-listener.log-created=true
+      http-event-listener.log-completed=true
+      http-event-listener.connect-ingest-uri=<your ingest URI>
 # --8<-- [end:worker]
 
 # --8<-- [start:catalogs]
@@ -107,6 +119,9 @@ catalogs:
 additionalConfigProperties:
   - internal-communication.shared-secret=$INTERNAL_SHARED_SECRET
   - retry-policy=TASK
+  - tracing.enabled=true
+  - tracing.exporter.endpoint=http://jaeger-collector.trino.svc.cluster.local:4317
+  - event-listener.config-files=etc/http-event-listener.properties
 # --8<-- [end:additionalConfigProperties]
 
 # --8<-- [start:additionalExchangeManagerProperties]

@@ -6,12 +6,6 @@ tags:
 
 # How Prometheus Works?
 
-
-
-## Core Concepts
-
-
-
 ## Architecture Components
 
 ![](https://prometheus.io/assets/docs/architecture.svg)
@@ -33,6 +27,20 @@ tags:
 Similarly to Prometheus, Prometheus Agent will also require permission to scrape targets. Because of this, we will create a new service account for the Agent with the necessary permissions to scrape targets.
 
 See [Introducing Prometheus Agent Mode, an Efficient and Cloud-Native Way for Metric Forwarding](https://prometheus.io/blog/2021/11/16/agent/) for more details.
+
+## Kubernetes
+
+There are 3 ways of deploying Prometheus on Kubernetes:
+
+- [prometheus-operator/prometheus-operator](https://github.com/prometheus-operator/prometheus-operator)
+- [prometheus-operator/kube-prometheus](https://github.com/prometheus-operator/kube-prometheus)
+- [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack) in [prometheus-community/helm-charts](https://github.com/prometheus-community/helm-charts)
+
+We use the Prometheus Operator to deploy partial components of Prometheus in this project.
+
+
+## Core Concepts
+
 
 ## Behind the Scenes
 
