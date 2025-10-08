@@ -17,6 +17,7 @@ nav:
     - trino/catalogs.md
     - trino/faker.md
     - trino/join-optimization.md
+    - trino/event-listeners.md
   - MinIO:
     - minio/deployment.md
   - Observability:
