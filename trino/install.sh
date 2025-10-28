@@ -33,7 +33,7 @@ kubectl apply -f ./trino-bigquery-secret.yaml -n trino
 # --8<-- [start:helm]
 helm repo add trino https://trinodb.github.io/charts/
 helm repo update
-helm install trino trino/trino \
+helm upgrade trino trino/trino \
   -f values.yaml \
   -n trino \
   --version 1.39.1 \
