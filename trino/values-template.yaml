@@ -31,20 +31,42 @@ server:
     enabled: true
     minReplicaCount: 2
     maxReplicaCount: 5
-    pollingInterval: 60
-    initialCooldownPeriod: 0
-    cooldownPeriod: 300
+    pollingInterval: 15
+    initialCooldownPeriod: 0 # default 0s
+    cooldownPeriod: 300 # default 300s, only applies when scaling to 0
     fallback:
       failureThreshold: 3
       replicas: 2
-    advanced: {}
+      behavior: "static"
+    advanced:
+      horizontalPodAutoscalerConfig:
+        behavior:
+          scaleUp:
+            stabilizationWindowSeconds: 0
+            selectPolicy: Max
+            tolerance: 0
+            policies:
+              - type: Percent
+                value: 100
+                periodSeconds: 120
+              - type: Pods
+                value: 5
+                periodSeconds: 60
+          scaleDown:
+            stabilizationWindowSeconds: 300
+            selectPolicy: Min
+            tolerance: 0.05
+            policies:
+              - type: Percent
+                value: 10
+                periodSeconds: 60
     triggers:
       - type: metrics-api
         metadata:
           url: "https://trino.trino.svc.cluster.local:8443/metrics"
           format: "prometheus"
           valueLocation: trino_execution_name_QueryManager_RunningQueries
-          targetValue: "5"
+          targetValue: "1"
           authMode: "bearer"
           unsafeSsl: "true"
         authenticationRef:
