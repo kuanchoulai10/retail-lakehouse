@@ -55,7 +55,7 @@ server:
           scaleDown:
             stabilizationWindowSeconds: 300
             selectPolicy: Min
-            tolerance: 0.05
+            tolerance: 0
             policies:
               - type: Percent
                 value: 10
@@ -73,6 +73,30 @@ server:
           name: keda-metric-api-creds
     annotations: {}
 # --8<-- [end:server]
+
+# --8<-- [start:resource-groups]
+resourceGroups:
+  type: configmap
+  # Resource groups file is mounted to /etc/trino/resource-groups/resource-groups.json
+  resourceGroupsConfig: |-
+      {
+        "rootGroups": [
+          {
+            "name": "global",
+            "hardConcurrencyLimit": 10,
+            "maxQueued": 100,
+            "schedulingPolicy": "fair",
+            "jmxExport": true
+          }
+        ],
+        "selectors": [
+          {
+            "group": "global"
+          }
+        ]
+      }
+
+# --8<-- [end:resource-groups]
 
 # --8<-- [start:coordinator]
 coordinator:
