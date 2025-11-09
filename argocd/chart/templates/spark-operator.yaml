@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: spark-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  project: {{ .Values.project.name }}
+  sources:
+    - repoURL: https://github.com/kuanchoulai10/argocd-demo
+      targetRevision: main
+      ref: repo
+    - repoURL: https://kubeflow.github.io/spark-operator
+      chart: spark-operator
+      targetRevision: 2.3.0
+      helm:
+        releaseName: spark-operator 
+        valueFiles:
+          - '$repo/apps/00-operators/spark/values.yaml'
+  destination:
+    name: {{ .Values.spec.destination.name }}
+    namespace: spark-operator
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    automated:
+      prune: true
+      selfHeal: true

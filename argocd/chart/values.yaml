@@ -1,0 +1,6 @@
+project:
+  name: jp-prod-lakehouse-project
+
+spec:
+  destination:
+    name: in-cluster
