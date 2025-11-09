@@ -1,0 +1,16 @@
+apiVersion: v2
+name: argocd-demo
+description: A Helm chart for ArgoCD application management with operators and applications
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - argocd
+  - gitops
+  - kubernetes
+  - operators
+home: https://github.com/kuanchoulai10/argocd-demo
+sources:
+  - https://github.com/kuanchoulai10/argocd-demo
+maintainers:
+  - name: ArgoCD Demo Team

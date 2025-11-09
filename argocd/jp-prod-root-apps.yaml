@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root-app
+  namespace: argocd
+  finalizers:
+    - argocd.argoproj.io/resources-finalizer
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
+      path: argocd/chart
+      targetRevision: main
+      helm:
+        releaseName: jp-prod
+        valuesObject:
+          project:
+            name: jp-prod-lakehouse-project
+          spec:
+            destination:
+              name: in-cluster
+  destination:
+    name: in-cluster
+    namespace: argocd
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated:
+      prune: true
+      selfHeal: true

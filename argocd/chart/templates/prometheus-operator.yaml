@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  project: {{ .Values.project.name }}
+  sources:
+    - repoURL: https://github.com/kuanchoulai10/argocd-demo
+      targetRevision: main
+      path: apps/00-operators/prometheus
+  destination:
+    name: {{ .Values.spec.destination.name }}
+    namespace: prometheus-operator
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    automated:
+      prune: true
+      selfHeal: true

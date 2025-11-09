@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: opentelemetry-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "11" # after cert-manager
+spec:
+  project: {{ .Values.project.name }}
+  sources:
+    - repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
+      chart: opentelemetry-operator
+      targetRevision: 0.98.0
+      helm:
+        releaseName: opentelemetry-operator
+        valueFiles:
+          - '$repo/apps/00-operators/opentelemetry/values.yaml'
+    - repoURL: https://github.com/kuanchoulai10/argocd-demo
+      targetRevision: main
+      ref: repo
+  destination:
+    name: {{ .Values.spec.destination.name }}
+    namespace: opentelemetry-operator
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    automated:
+      prune: true
+      selfHeal: true
