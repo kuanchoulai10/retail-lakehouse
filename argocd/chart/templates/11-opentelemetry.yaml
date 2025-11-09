@@ -14,8 +14,8 @@ spec:
       helm:
         releaseName: opentelemetry-operator
         valueFiles:
-          - '$repo/apps/00-operators/opentelemetry/values.yaml'
-    - repoURL: https://github.com/kuanchoulai10/argocd-demo
+          - '$repo/opentelemetry/values.yaml'
+    - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
       targetRevision: main
       ref: repo
   destination:

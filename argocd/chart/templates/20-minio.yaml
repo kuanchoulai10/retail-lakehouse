@@ -1,26 +1,19 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: keda
+  name: minio
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "10"
+    argocd.argoproj.io/sync-wave: "20"
 spec:
   project: {{ .Values.project.name }}
   sources:
-    - repoURL: https://kedacore.github.io/charts
-      chart: keda
-      targetRevision: 2.18.0
-      helm:
-        releaseName: keda
-        valueFiles:
-          - '$repo/apps/00-operators/keda/values.yaml'
-    - repoURL: https://github.com/kuanchoulai10/argocd-demo
+    - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
+      path: minio
       targetRevision: main
-      ref: repo
   destination:
     name: {{ .Values.spec.destination.name }}
-    namespace: keda
+    namespace: kafka-cdc
   syncPolicy:
     syncOptions:
       - CreateNamespace=true

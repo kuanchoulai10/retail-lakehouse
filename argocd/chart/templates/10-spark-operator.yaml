@@ -8,16 +8,16 @@ metadata:
 spec:
   project: {{ .Values.project.name }}
   sources:
-    - repoURL: https://github.com/kuanchoulai10/argocd-demo
-      targetRevision: main
-      ref: repo
     - repoURL: https://kubeflow.github.io/spark-operator
       chart: spark-operator
       targetRevision: 2.3.0
       helm:
-        releaseName: spark-operator 
+        releaseName: spark-operator
         valueFiles:
-          - '$repo/apps/00-operators/spark/values.yaml'
+          - '$repo/spark/values.yaml'
+    - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
+      targetRevision: main
+      ref: repo
   destination:
     name: {{ .Values.spec.destination.name }}
     namespace: spark-operator
