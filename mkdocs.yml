@@ -3,6 +3,8 @@ docs_dir: docs
 nav:
   - index.md
   - prerequisites.md
+  - Argo CD:
+    - argocd/deployment.md
   - Kafka:
     - cdc/overview.md
     - cdc/deployment-kafka-cluster.md
