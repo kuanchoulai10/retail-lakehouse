@@ -1,5 +1,5 @@
 apiVersion: v2
-name: argocd-demo
+name: retail-lakehouse
 description: A Helm chart for ArgoCD application management with operators and applications
 type: application
 version: 0.1.0
@@ -9,8 +9,8 @@ keywords:
   - gitops
   - kubernetes
   - operators
-home: https://github.com/kuanchoulai10/argocd-demo
+home: https://github.com/kuanchoulai10/retail-lakehouse
 sources:
-  - https://github.com/kuanchoulai10/argocd-demo
+  - https://github.com/kuanchoulai10/retail-lakehouse
 maintainers:
   - name: ArgoCD Demo Team

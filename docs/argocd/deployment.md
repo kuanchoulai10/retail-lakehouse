@@ -28,8 +28,4 @@ Then, open your web browser and navigate to:
 https://localhost:8080
 ```
 
-To log in, use the username `admin` and the initial password retrieved with the command:
-
-```bash
-argocd admin initial-password -n argocd
-```
+To log in, use the username `admin` and the initial password retrieved earlier.
