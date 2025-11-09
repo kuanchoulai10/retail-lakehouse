@@ -1,26 +1,26 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: cert-manager
+  name: keda
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "10"
 spec:
   project: {{ .Values.project.name }}
   sources:
-    - repoURL: oci://quay.io/jetstack/charts/cert-manager
-      path: .
-      targetRevision: v1.19.1
+    - repoURL: https://kedacore.github.io/charts
+      chart: keda
+      targetRevision: 2.18.0
       helm:
-        releaseName: cert-manager
+        releaseName: keda
         valueFiles:
-          - '$repo/apps/00-operators/cert-manager/values.yaml'
-    - repoURL: https://github.com/kuanchoulai10/argocd-demo
+          - '$repo/keda/values.yaml'
+    - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
       targetRevision: main
       ref: repo
   destination:
     name: {{ .Values.spec.destination.name }}
-    namespace: cert-manager
+    namespace: keda
   syncPolicy:
     syncOptions:
       - CreateNamespace=true

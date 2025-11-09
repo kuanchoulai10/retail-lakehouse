@@ -1,21 +1,19 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: strimzi-operator
+  name: mysql
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "10"
+    argocd.argoproj.io/sync-wave: "20"
 spec:
   project: {{ .Values.project.name }}
   sources:
-    - repoURL: https://strimzi.io/charts/
-      chart: strimzi-kafka-operator
-      targetRevision: 0.46.1
-      helm:
-        releaseName: strimzi-operator
+    - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
+      path: mysql
+      targetRevision: main
   destination:
     name: {{ .Values.spec.destination.name }}
-    namespace: strimzi-operator
+    namespace: kafka-cdc
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
