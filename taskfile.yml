@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+vars:
+  GREETING: Hello, world!
+
+tasks:
+  default:
+    desc: Display available tasks
+    cmds:
+      - task --list
+    silent: true
+
+  # --8<-- [start:init]
+  init:
+    desc: "Initialize local dev environment"
+    cmds:
+      - task: setup-python
+      - task: setup-pre-commit
+
+  setup-python:
+    desc: "Install Python dependencies"
+    internal: true
+    cmds:
+      - uv sync --locked --all-packages
+
+  setup-pre-commit:
+    desc: "Setup pre-commit hooks"
+    internal: true
+    cmds:
+      - uv run pre-commit install
+  # --8<-- [end:init]
+
+  run-pre-commit-checks:
+    desc: "Run pre commit hooks"
+    cmds:
+      - uv run pre-commit run --all-files --show-diff-on-failure
+
+  # --8<-- [start:docs]
+  serve-docs:
+    desc: Serve docs locally
+    cmds:
+      - uv run mkdocs serve --livereload -a localhost:8591
