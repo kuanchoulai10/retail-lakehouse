@@ -1,0 +1,11 @@
+# https://github.com/koalaman/shellcheck/blob/master/shellcheck.1.md#rc-files
+
+source-path=SCRIPTDIR
+
+external-sources=true
+
+enable=quote-safe-variables
+
+
+# https://www.shellcheck.net/wiki/SC2154
+enable=check-unassigned-uppercase
