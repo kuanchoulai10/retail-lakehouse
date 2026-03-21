@@ -29,3 +29,10 @@ https://localhost:8080
 ```
 
 To log in, use the username `admin` and the initial password retrieved earlier.
+
+```bash
+kubectl patch cm/argocd-cm \
+  --type merge \
+  --patch-file argocd-cm-patch.yaml \
+  -n argocd
+```
