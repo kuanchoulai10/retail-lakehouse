@@ -17,7 +17,7 @@ Fault-tolerant execution is a feature in Trino that helps clusters recover from 
 
 This allows Trino to handle larger queries such as **batch operations** without worker node interruptions causing the query to fail.
 
-**The coordinator node** uses a configured exchange manager service that **buffers data during query processing in an external location**, such as an S3 object storage bucket. 
+**The coordinator node** uses a configured exchange manager service that **buffers data during query processing in an external location**, such as an S3 object storage bucket.
 
 **Worker nodes send data to the buffer as they execute their query tasks.**
 

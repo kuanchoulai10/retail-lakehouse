@@ -33,17 +33,17 @@ There are two main types of join distributions:
 !!! info "Configuration"
 
     Join enumeration strategy is controlled by `join_reordering_strategy` session property (or `optimizer.join-reordering-strategy` config)
-    
+
     - `AUTOMATIC` (default)
     - `ELIMINATE_CROSS_JOINS`
     - `NONE`.
-    
+
     Join distribution strategy uses `join_distribution_type` session property (or `join-distribution-type` config)
-    
+
     - `AUTOMATIC` (default)
     - `BROADCAST`
     - `PARTITIONED`.
-    
+
     Replicated table size can be capped using `join_max_broadcast_table_size` session property (or `join-max-broadcast-table-size` config): defaulting to 100MB.
 
     See [Cost-based optimizations](https://trino.io/docs/current/optimizer/cost-based-optimizations.html) for more details.

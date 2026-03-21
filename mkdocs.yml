@@ -46,7 +46,7 @@ theme:
   features:
     - content.tabs.link
     - content.code.copy
-    - content.code.annotate 
+    - content.code.annotate
 
 markdown_extensions:
   - attr_list

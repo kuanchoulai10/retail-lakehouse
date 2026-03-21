@@ -19,4 +19,3 @@ spec:
     schema.history.internal.kafka.bootstrap.servers: kafka-cluster-kafka-bootstrap:9092
     schema.history.internal.kafka.topic: schema-changes.inventory
     exactly.once.source.support: enabled
-    

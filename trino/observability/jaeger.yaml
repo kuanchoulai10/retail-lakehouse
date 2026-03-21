@@ -32,5 +32,5 @@ spec:
       extensions: [jaeger_storage, jaeger_query]
       pipelines:
         traces:
-          receivers: [otlp]    
+          receivers: [otlp]
           exporters: [jaeger_storage_exporter]

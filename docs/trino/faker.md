@@ -113,7 +113,7 @@ You can apply various constraints to faker columns:
 age INTEGER WITH (min = '18', max = '75')
 price DECIMAL(8,2) WITH (min = '0', max = '1000')
 
--- Date ranges  
+-- Date ranges
 birth_date DATE WITH (min = '1950-01-01', max = '2005-01-01')
 ```
 

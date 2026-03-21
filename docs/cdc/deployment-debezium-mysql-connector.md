@@ -94,7 +94,7 @@ As the first step, a container image for Kafka Connect with the plug-in has to b
         🔎  Verifying registry addon...
         🌟  The 'registry' addon is enabled
         ```
-        
+
 You can check the IP address of the local registry by running the following command:
 
 ```bash

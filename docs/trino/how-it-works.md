@@ -26,7 +26,7 @@ tags:
 
 ### Clients
 
-: Clients allow you to connect to Trino, submit SQL queries, and receive the results. Clients can access all configured data sources using *catalogs*. 
+: Clients allow you to connect to Trino, submit SQL queries, and receive the results. Clients can access all configured data sources using *catalogs*.
 
 ## Core Concepts
 

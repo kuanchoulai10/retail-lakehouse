@@ -26,4 +26,4 @@ spec:
     iceberg.catalog.warehouse: s3a://retail-lakehouse-7dj2/warehouse
     transforms: debezium
     transforms.debezium.type: org.apache.iceberg.connect.transforms.DebeziumTransform
-    
+

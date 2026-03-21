@@ -189,7 +189,7 @@ After createing the OAuth 2.0 client, you will be provided with a **client ID** 
 To activate OAuth 2.0 authentication in Trino, configure the following essential properties in the coordinator settings:
 
 - **Client ID**: OAuth 2.0 client identifier obtained from Google Cloud Console
-- **Client Secret**: OAuth 2.0 client secret obtained from Google Cloud Console  
+- **Client Secret**: OAuth 2.0 client secret obtained from Google Cloud Console
 - **Authorization Server URL**: Google's OAuth 2.0 authorization endpoint
 - **Web UI Authentication Type**: Must be set to `oauth2` to enable OAuth 2.0 for the Web UI
 

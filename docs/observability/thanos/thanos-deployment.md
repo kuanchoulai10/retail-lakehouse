@@ -73,4 +73,4 @@ This shell script will install Thanos components in `thanos` namespace. Specific
 
 ## References
 
-- [Community Thanos Kubernetes Applications | Thanos Docs](https://thanos.io/tip/thanos/getting-started.md/#community-thanos-kubernetes-applications) 
+- [Community Thanos Kubernetes Applications | Thanos Docs](https://thanos.io/tip/thanos/getting-started.md/#community-thanos-kubernetes-applications)

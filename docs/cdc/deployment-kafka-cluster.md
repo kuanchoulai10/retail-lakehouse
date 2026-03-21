@@ -34,7 +34,7 @@ If you don't like my script and want to do it step by step manually, please cont
 
 ## Deploy the Strimzi Cluster Operator
 
-Before we dive into deploying Kafka, let's talk about *what Strimzi is* and *why we need it*. 
+Before we dive into deploying Kafka, let's talk about *what Strimzi is* and *why we need it*.
 
 **Strimzi is a Kubernetes operator that makes running Apache Kafka on Kubernetes much easier**. Think of it as your Kafka cluster manager and it handles all the complex setup, configuration, and maintenance tasks that would otherwise require manual intervention.
 
@@ -109,7 +109,7 @@ helm ls -n strimzi
 
     ```
     NAME                    	NAMESPACE	REVISION	UPDATED                             	STATUS  	HART                        	APP VERSION
-    strimzi-cluster-operator	strimzi  	1       	2025-06-29 17:25:49.773026 +0800 CST	deployed	trimzi-kafka-operator-0.46.1	0.46.1     
+    strimzi-cluster-operator	strimzi  	1       	2025-06-29 17:25:49.773026 +0800 CST	deployed	trimzi-kafka-operator-0.46.1	0.46.1
     ```
 
 ```bash
@@ -265,7 +265,7 @@ If you're coming from a traditional Kafka background, you might be expecting to 
     If you've worked with Kafka before, you might remember the pain of managing ZooKeeper alongside your Kafka clusters. **KRaft mode eliminates that complexity entirely**. Here's what makes it special:
 
     **What KRaft Replaces**:
-    
+
     Instead of relying on an external ZooKeeper ensemble to store Kafka's metadata (like topic configurations, partition assignments, and cluster membership), **Kafka brokers now handle this responsibility themselves using a consensus algorithm similar to Raft**.
 
     **Why This Matters**:

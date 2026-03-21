@@ -44,7 +44,7 @@ SELECT faker.default.random_string('#{Name.first_name}') as first_name;
 
 -- --8<-- [start:advanced-queries]
 -- Join customer and prices tables
-SELECT 
+SELECT
     c.name as customer_name,
     c.email,
     p.currency,
@@ -59,7 +59,7 @@ FROM faker.default.prices
 LIMIT 5;
 
 -- Sample query to test various generators
-SELECT 
+SELECT
     faker.default.random_string('#{Name.fullName}') as full_name,
     faker.default.random_string('#{Internet.emailAddress}') as email,
     faker.default.random_string('#{Address.city}') as city,

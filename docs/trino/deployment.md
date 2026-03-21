@@ -199,7 +199,7 @@ helm list -n trino
 
     ```
     NAME    NAMESPACE       REVISION        UPDATED                                 STATUS          CHART           APP VERSION
-    trino   trino           1               2025-06-13 18:08:54.435442 +0800 CST    {==deployed==}        trino-1.39.1    475    
+    trino   trino           1               2025-06-13 18:08:54.435442 +0800 CST    {==deployed==}        trino-1.39.1    475
     ```
 
 Then, check the status of all resources in the `trino` namespace:

@@ -14,7 +14,7 @@ This Docker Compose configuration sets up a complete Apache Iceberg development 
 The main Spark service that provides the computational engine for working with Iceberg tables:
 
 - **Image**: `tabulario/spark-iceberg` - A pre-configured Spark image with Iceberg support
-- **Ports**: 
+- **Ports**:
     - `8888`: Jupyter notebook interface
     - `8080`: Spark UI
     - `10000-10001`: Spark Thrift server ports
@@ -28,7 +28,7 @@ Apache Iceberg's REST catalog service for metadata management:
 
 - **Image**: `apache/iceberg-rest-fixture` - Official Iceberg REST catalog
 - **Port**: `8181` - REST API endpoint
-- **Configuration**: 
+- **Configuration**:
     - Connects to MinIO S3-compatible storage
     - Uses `s3://warehouse/` as the warehouse location
     - Configured with S3FileIO for object storage operations

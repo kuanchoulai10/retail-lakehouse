@@ -6,10 +6,10 @@ tags:
 
 # What is OpenTelemetry?
 
-!!! quote 
+!!! quote
 
     OpenTelemetry **is** an **observability framework** and toolkit designed to facilitate the **generation**, **export**, **collection** of telemetry data such as **traces**, **metrics**, and **logs**.
-    
+
     OpenTelemetry **is not** an observability backend itself. --- [OpenTelemetry](https://opentelemetry.io/docs/what-is-opentelemetry/)
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/iEEIabOha8U?si=ZxHFJnl_ZLH1fAkZ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
