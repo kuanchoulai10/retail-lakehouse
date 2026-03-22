@@ -39,10 +39,82 @@ tasks:
       - uv run pre-commit install
   # --8<-- [end:init]
 
+  # --8<-- [start:checks]
   run-pre-commit-checks:
     desc: "Run pre commit hooks"
     cmds:
       - uv run pre-commit run --all-files --show-diff-on-failure
+  # --8<-- [end:checks]
+
+  # --8<-- [start:bootstrap-apps]
+  bootstrap-apps:
+    desc: "Bootstrap all K8s components in deployment order"
+    cmds:
+      - task: deploy-kafka-cluster
+      - task: deploy-mysql
+      - task: deploy-debezium-mysql-connector
+      - task: deploy-iceberg-connector
+      - task: deploy-minio
+      - task: deploy-trino
+      - task: deploy-thanos
+      - task: deploy-trino-observability
+
+  deploy-kafka-cluster:
+    desc: "Deploy Strimzi Kafka cluster"
+    internal: true
+    dir: kafka-cluster
+    cmds:
+      - bash install.sh
+
+  deploy-mysql:
+    desc: "Deploy MySQL"
+    internal: true
+    dir: mysql
+    cmds:
+      - bash install.sh
+
+  deploy-debezium-mysql-connector:
+    desc: "Deploy Debezium MySQL connector"
+    internal: true
+    dir: kafka-debezium-mysql-connector
+    cmds:
+      - bash install.sh
+
+  deploy-iceberg-connector:
+    desc: "Deploy Iceberg sink connector"
+    internal: true
+    dir: kafka-iceberg-connector
+    cmds:
+      - bash install.sh
+
+  deploy-minio:
+    desc: "Deploy MinIO"
+    internal: true
+    dir: minio
+    cmds:
+      - bash install.sh
+
+  deploy-trino:
+    desc: "Deploy Trino"
+    internal: true
+    dir: trino
+    cmds:
+      - bash install.sh
+
+  deploy-thanos:
+    desc: "Deploy observability stack (Prometheus + Thanos + OpenTelemetry)"
+    internal: true
+    dir: thanos
+    cmds:
+      - bash install.sh
+
+  deploy-trino-observability:
+    desc: "Deploy Trino observability (Jaeger)"
+    internal: true
+    dir: trino/observability
+    cmds:
+      - bash install.sh
+  # --8<-- [end:bootstrap-apps]
 
   # --8<-- [start:docs]
   serve-docs:
