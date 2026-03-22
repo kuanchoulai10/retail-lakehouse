@@ -37,7 +37,7 @@ ask() {
 echo "Generating .env file..."
 echo "=== Fill in variables to generate ENV_FILE ==="
 # 清空並重新創建 .env 檔案
-> "$ENV_FILE"
+: > "$ENV_FILE"
 # 不需要使用者輸入的所有變數
 INTERNAL_SHARED_SECRET="$(openssl rand 512 | base64)"
 export INTERNAL_SHARED_SECRET

@@ -23,6 +23,7 @@ kubectl apply -f ./trino-tls-secret.yaml -n trino
 
 # --8<-- [start:bq]
 echo "Generating Kubernetes secret for Accessing BigQuery..."
+# shellcheck disable=SC2154
 kubectl create secret generic trino-bigquery-secret \
     --from-file=trino-sa.json="$GCP_SA_INPUT_PATH" \
     --dry-run=client -o yaml > "./trino-bigquery-secret.yaml"
