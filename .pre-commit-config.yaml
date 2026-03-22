@@ -3,12 +3,20 @@ default_install_hook_types:
   - commit-msg
 
 repos:
+  - repo: meta
+    hooks:
+      - id: identity
+        name: Print checked files
+        description: Print input to the static check hooks for troubleshooting
+      - id: check-hooks-apply
+        name: Check if all hooks apply to the repository
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: "3e8a8703264a2f4a69428a0aa4dcb512790b2c8c" # v6.0.0
     hooks:
       - id: check-merge-conflict
       - id: trailing-whitespace
       - id: check-toml
+      - id: check-executables-have-shebangs
   - repo: https://github.com/koalaman/shellcheck-precommit/
     rev: "99470f5e12208ff0fb17ab81c3c494f7620a1d8d" # v0.11.0
     hooks:
@@ -20,3 +28,12 @@ repos:
         entry: npx --no -- commitlint --edit
         language: system
         stages: [commit-msg]
+  - repo: https://github.com/woodruffw/zizmor-pre-commit
+    rev: "ea2eb407b4cbce87cf0d502f36578950494f5ac9" # v1.23.1
+    hooks:
+      - id: zizmor
+        name: Run zizmor to check for github workflow syntax errors
+        types: [yaml]
+        files: ^\.github/workflows/.*$|^\.github/actions/.*$
+        require_serial: true
+        entry: zizmor
