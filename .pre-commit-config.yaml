@@ -1,3 +1,7 @@
+default_install_hook_types:
+  - pre-commit
+  - commit-msg
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: "3e8a8703264a2f4a69428a0aa4dcb512790b2c8c" # v6.0.0
@@ -9,3 +13,10 @@ repos:
     rev: "99470f5e12208ff0fb17ab81c3c494f7620a1d8d" # v0.11.0
     hooks:
       - id: shellcheck
+  - repo: local
+    hooks:
+      - id: commitlint
+        name: Commitlint
+        entry: npx --no -- commitlint --edit
+        language: system
+        stages: [commit-msg]
