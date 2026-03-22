@@ -7,8 +7,10 @@ on:
       - 'README.md'
       - 'docs/**'
 
+permissions: {}
+
 jobs:
   trigger_monorepo:
-    uses: kuanchoulai10/reusable-workflows/.github/workflows/trigger-monorepo-to-build-doc.yml@main
+    uses: kuanchoulai10/reusable-workflows/.github/workflows/trigger-monorepo-to-build-doc.yml@6701b6f95c3f45bae09dfe92043271c70ef4f69e
     secrets:
       PAT: ${{ secrets.PAT }}
