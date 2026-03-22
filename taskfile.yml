@@ -16,8 +16,15 @@ tasks:
   init:
     desc: "Initialize local dev environment"
     cmds:
+      - task: setup-node
       - task: setup-python
       - task: setup-pre-commit
+
+  setup-node:
+    desc: "Install Node dependencies"
+    internal: true
+    cmds:
+      - npm clean-install --save-dev @commitlint/cli @commitlint/config-conventional
 
   setup-python:
     desc: "Install Python dependencies"
