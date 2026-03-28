@@ -1,6 +1,10 @@
 project:
-  name: jp-prod-lakehouse-project
+  name: retail-lakehouse
 
 spec:
   destination:
     name: in-cluster
+
+deploy:
+  waveFrom: 9
+  waveTo: 10

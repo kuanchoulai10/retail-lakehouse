@@ -12,10 +12,10 @@ spec:
       path: argocd/chart
       targetRevision: main
       helm:
-        releaseName: jp-prod
+        releaseName: retail-lakehouse
         valuesObject:
           project:
-            name: jp-prod-lakehouse-project
+            name: retail-lakehouse
           spec:
             destination:
               name: in-cluster
