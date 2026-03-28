@@ -9,7 +9,7 @@ spec:
   project: default
   sources:
     - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
-      path: argocd/chart
+      path: charts/app-of-apps
       targetRevision: main
       helm:
         releaseName: retail-lakehouse
