@@ -6,9 +6,6 @@ cd "$(dirname "$0")"
 
 kubectl create namespace thanos || true
 
-# Install Jaeger using Otel Operator
-kubectl apply -f manifests/jaeger.yaml -n thanos
-
 # Install Thanos using kube-thanos jsonnet
 # https://github.com/thanos-io/kube-thanos
 jb install github.com/thanos-io/kube-thanos/jsonnet/kube-thanos@main

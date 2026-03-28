@@ -1,0 +1,25 @@
+{{- if and (ge 12 (int .Values.deploy.waveFrom)) (le 12 (int .Values.deploy.waveTo)) }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: jaeger
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "12" # after opentelemetry-operator (wave 11)
+spec:
+  project: {{ .Values.project.name }}
+  sources:
+    - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
+      path: 12-jaeger
+      targetRevision: main
+  destination:
+    name: {{ .Values.spec.destination.name }}
+    namespace: tracing
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    automated:
+      prune: true
+      selfHeal: true
+{{- end }}
