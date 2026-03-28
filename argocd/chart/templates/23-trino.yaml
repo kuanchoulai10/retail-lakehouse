@@ -15,7 +15,7 @@ spec:
       helm:
         releaseName: trino
         valueFiles:
-          - '$repo/trino/values.yaml'
+          - '$repo/23-trino/values.yaml'
     - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
       targetRevision: main
       ref: repo

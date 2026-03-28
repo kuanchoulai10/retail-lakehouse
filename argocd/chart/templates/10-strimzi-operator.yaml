@@ -15,7 +15,7 @@ spec:
       helm:
         releaseName: strimzi-operator
         valueFiles:
-          - '$repo/kafka-cluster/values.yaml'
+          - '$repo/20-kafka-cluster/values.yaml'
     - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
       targetRevision: main
       ref: repo

@@ -10,7 +10,7 @@ spec:
   project: {{ .Values.project.name }}
   sources:
     - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
-      path: kafka-debezium-mysql-connector
+      path: 21-kafka-debezium-mysql-connector
       targetRevision: main
   destination:
     name: {{ .Values.spec.destination.name }}

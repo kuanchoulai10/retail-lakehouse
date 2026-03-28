@@ -10,7 +10,7 @@ spec:
   project: {{ .Values.project.name }}
   sources:
     - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
-      path: prometheus
+      path: 10-prometheus
       targetRevision: main
   destination:
     name: {{ .Values.spec.destination.name }}

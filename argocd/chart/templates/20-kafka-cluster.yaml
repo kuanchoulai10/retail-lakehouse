@@ -10,7 +10,7 @@ spec:
   project: {{ .Values.project.name }}
   sources:
     - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
-      path: kafka-cluster
+      path: 20-kafka-cluster
       targetRevision: main
   destination:
     name: {{ .Values.spec.destination.name }}

@@ -15,7 +15,7 @@ spec:
       helm:
         releaseName: spark-operator
         valueFiles:
-          - '$repo/spark/values.yaml'
+          - '$repo/11-spark/values.yaml'
     - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
       targetRevision: main
       ref: repo

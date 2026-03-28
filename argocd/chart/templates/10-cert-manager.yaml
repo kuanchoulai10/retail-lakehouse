@@ -15,7 +15,7 @@ spec:
       helm:
         releaseName: cert-manager
         valueFiles:
-          - '$repo/cert-manager/values.yaml'
+          - '$repo/10-cert-manager/values.yaml'
     - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
       targetRevision: main
       ref: repo

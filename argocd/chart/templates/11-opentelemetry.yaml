@@ -15,7 +15,7 @@ spec:
       helm:
         releaseName: opentelemetry-operator
         valueFiles:
-          - '$repo/opentelemetry/values.yaml'
+          - '$repo/11-opentelemetry/values.yaml'
     - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
       targetRevision: main
       ref: repo
