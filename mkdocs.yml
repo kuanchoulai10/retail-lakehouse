@@ -71,12 +71,14 @@ markdown_extensions:
       slugify: !!python/object/apply:pymdownx.slugs.slugify
         kwds:
           case: lower
+  # https://facelessuser.github.io/pymdown-extensions/extensions/highlight/
   - pymdownx.highlight:
       anchor_linenums: true
       line_spans: __span
       pygments_lang_class: true
+      linenums: true
+      auto_title: true
   - pymdownx.inlinehilite
-  - pymdownx.snippets
   - pymdownx.betterem:
       smart_enable: all
   - pymdownx.tasklist:
