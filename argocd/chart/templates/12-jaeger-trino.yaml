@@ -2,7 +2,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: jaeger
+  name: jaeger-trino
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "12" # after opentelemetry-operator (wave 11)
@@ -10,11 +10,11 @@ spec:
   project: {{ .Values.project.name }}
   sources:
     - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
-      path: 12-jaeger
+      path: 12-jaeger-trino
       targetRevision: main
   destination:
     name: {{ .Values.spec.destination.name }}
-    namespace: tracing
+    namespace: trino
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
