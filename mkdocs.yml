@@ -5,6 +5,7 @@ nav:
   - prerequisites.md
   - Argo CD:
     - argocd/deployment.md
+    - argocd/cli.md
   - Kafka:
     - cdc/overview.md
     - cdc/deployment-kafka-cluster.md
