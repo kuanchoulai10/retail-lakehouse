@@ -441,7 +441,7 @@ prometheus:
 certManager:
   # -- Specifies whether to use [cert-manager](https://cert-manager.io) to generate certificate for webhook.
   # `webhook.enable` must be set to `true` to enable cert-manager.
-  enable: false
+  enable: true
   # -- The reference to the issuer.
   # @default -- A self-signed issuer will be created and used if not specified.
   issuerRef: {}
