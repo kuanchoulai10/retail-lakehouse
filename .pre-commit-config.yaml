@@ -17,10 +17,13 @@ repos:
       - id: trailing-whitespace
       - id: check-toml
       - id: check-executables-have-shebangs
-  - repo: https://github.com/koalaman/shellcheck-precommit/
-    rev: "99470f5e12208ff0fb17ab81c3c494f7620a1d8d" # v0.11.0
+  - repo: local
     hooks:
       - id: shellcheck
+        name: shellcheck
+        entry: shellcheck
+        language: system
+        types: [shell]
   - repo: local
     hooks:
       - id: commitlint
