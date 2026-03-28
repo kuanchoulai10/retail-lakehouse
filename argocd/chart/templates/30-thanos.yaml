@@ -1,3 +1,4 @@
+{{- if and (ge 30 (int .Values.deploy.waveFrom)) (le 30 (int .Values.deploy.waveTo)) }}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -21,3 +22,4 @@ spec:
     automated:
       prune: true
       selfHeal: true
+{{- end }}
