@@ -19,6 +19,13 @@ repos:
       - id: check-executables-have-shebangs
   - repo: local
     hooks:
+      - id: check-shell-scripts-are-executable
+        name: Check shell scripts are executable
+        entry: "bash -c 'rc=0; for f in \"$@\"; do if [[ ! -x \"$f\" ]]; then echo \"not executable $f\"; rc=1; fi; done; exit $rc' --"
+        language: system
+        types: [shell]
+  - repo: local
+    hooks:
       - id: shellcheck
         name: shellcheck
         entry: shellcheck
