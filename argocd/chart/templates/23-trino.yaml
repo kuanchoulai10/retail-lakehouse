@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: trino
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "23" # after minio (wave 20)
+spec:
+  project: {{ .Values.project.name }}
+  sources:
+    - repoURL: https://trinodb.github.io/charts/
+      chart: trino
+      targetRevision: 1.39.1
+      helm:
+        releaseName: trino
+        valueFiles:
+          - '$repo/trino/values.yaml'
+    - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
+      targetRevision: main
+      ref: repo
+  destination:
+    name: {{ .Values.spec.destination.name }}
+    namespace: trino
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    automated:
+      prune: true
+      selfHeal: true

@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kafka-iceberg-connector
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "22" # after kafka-debezium-mysql-connector (wave 21)
+spec:
+  project: {{ .Values.project.name }}
+  sources:
+    - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
+      path: kafka-iceberg-connector
+      targetRevision: main
+  destination:
+    name: {{ .Values.spec.destination.name }}
+    namespace: kafka-cdc
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    automated:
+      prune: true
+      selfHeal: true

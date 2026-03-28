@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: thanos
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "30" # after prometheus-operator (wave 10), cert-manager (wave 10), opentelemetry (wave 11)
+spec:
+  project: {{ .Values.project.name }}
+  sources:
+    - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
+      path: thanos/manifests
+      targetRevision: main
+  destination:
+    name: {{ .Values.spec.destination.name }}
+    namespace: thanos
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    automated:
+      prune: true
+      selfHeal: true
