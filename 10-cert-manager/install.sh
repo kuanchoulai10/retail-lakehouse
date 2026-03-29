@@ -4,7 +4,6 @@ set -euo pipefail
 KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR"
 
 echo "==> Installing cert-manager v1.19.1 (context: ${KUBE_CONTEXT})"
 
@@ -13,7 +12,7 @@ helm upgrade --install cert-manager \
   --version v1.19.1 \
   --namespace cert-manager \
   --create-namespace \
-  --values values.yaml \
+  --values "$SCRIPT_DIR/values.yaml" \
   --kube-context "${KUBE_CONTEXT}"
 
 echo "==> Done."

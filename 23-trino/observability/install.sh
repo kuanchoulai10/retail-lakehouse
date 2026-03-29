@@ -1,5 +1,6 @@
-#!/bin/bash
-
+#!/usr/bin/env bash
 set -euo pipefail
 
-kubectl apply -f jaeger.yaml
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+kubectl apply -f "$SCRIPT_DIR/jaeger.yaml"

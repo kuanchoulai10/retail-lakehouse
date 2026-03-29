@@ -4,7 +4,6 @@ set -euo pipefail
 KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR"
 
 echo "==> Installing KEDA 2.18.0 (context: ${KUBE_CONTEXT})"
 
@@ -15,7 +14,7 @@ helm upgrade --install keda kedacore/keda \
   --version 2.18.0 \
   --namespace keda \
   --create-namespace \
-  --values values.yaml \
+  --values "$SCRIPT_DIR/values.yaml" \
   --kube-context "${KUBE_CONTEXT}"
 
 echo "==> Done."

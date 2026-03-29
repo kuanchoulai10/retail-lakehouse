@@ -4,14 +4,13 @@ set -euo pipefail
 KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR"
 
 echo "==> Deleting Debezium MySQL connector (context: ${KUBE_CONTEXT})"
 
-kubectl delete -f debezium-connector.yaml -n kafka-cdc --context "${KUBE_CONTEXT}"
-kubectl delete -f debezium-connect-cluster.yaml -n kafka-cdc --context "${KUBE_CONTEXT}"
-kubectl delete -f debezium-role-binding.yaml -n kafka-cdc --context "${KUBE_CONTEXT}"
-kubectl delete -f debezium-role.yaml -n kafka-cdc --context "${KUBE_CONTEXT}"
-kubectl delete -f debezium-secret.yaml -n kafka-cdc --context "${KUBE_CONTEXT}"
+kubectl delete -f "$SCRIPT_DIR/debezium-connector.yaml" -n kafka-cdc --context "${KUBE_CONTEXT}"
+kubectl delete -f "$SCRIPT_DIR/debezium-connect-cluster.yaml" -n kafka-cdc --context "${KUBE_CONTEXT}"
+kubectl delete -f "$SCRIPT_DIR/debezium-role-binding.yaml" -n kafka-cdc --context "${KUBE_CONTEXT}"
+kubectl delete -f "$SCRIPT_DIR/debezium-role.yaml" -n kafka-cdc --context "${KUBE_CONTEXT}"
+kubectl delete -f "$SCRIPT_DIR/debezium-secret.yaml" -n kafka-cdc --context "${KUBE_CONTEXT}"
 
 echo "==> Done."

@@ -4,10 +4,9 @@ set -euo pipefail
 KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR"
 
 echo "==> Deploying Kafka cluster (context: ${KUBE_CONTEXT})"
 
-kubectl apply -f kafka-cluster.yaml -n kafka-cdc --context "${KUBE_CONTEXT}"
+kubectl apply -f "$SCRIPT_DIR/kafka-cluster.yaml" -n kafka-cdc --context "${KUBE_CONTEXT}"
 
 echo "==> Done."

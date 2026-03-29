@@ -4,7 +4,6 @@ set -euo pipefail
 KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR"
 
 echo "==> Installing Strimzi Operator 0.46.1 (context: ${KUBE_CONTEXT})"
 
@@ -15,7 +14,7 @@ helm upgrade --install strimzi-operator strimzi/strimzi-kafka-operator \
   --version 0.46.1 \
   --namespace strimzi-operator \
   --create-namespace \
-  --values values.yaml \
+  --values "$SCRIPT_DIR/values.yaml" \
   --kube-context "${KUBE_CONTEXT}"
 
 echo "==> Done."
