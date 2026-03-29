@@ -23,6 +23,14 @@ Namespace: cert-manager
 | `cert-manager-webhook` | Validates Certificate and Issuer resources |
 | `cert-manager-cainjector` | Injects CA bundles into webhook configurations |
 
+## Services
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| `cert-manager` | 9402 | Metrics endpoint |
+| `cert-manager-cainjector` | 9402 | Metrics endpoint |
+| `cert-manager-webhook` | 443, 9402 | Admission webhook and metrics |
+
 ## CRDs
 
 | CRD | Purpose |

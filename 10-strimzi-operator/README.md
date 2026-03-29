@@ -30,3 +30,6 @@ Namespace: strimzi-operator
 | `kafkatopics.kafka.strimzi.io` | Manages Kafka topics declaratively |
 | `kafkausers.kafka.strimzi.io` | Manages Kafka users and ACLs |
 | `kafkamirrormaker2s.kafka.strimzi.io` | Declares a MirrorMaker 2 replication cluster |
+| `kafkabridges.kafka.strimzi.io` | Declares a Kafka Bridge HTTP-to-Kafka proxy |
+| `kafkarebalances.kafka.strimzi.io` | Triggers Cruise Control partition rebalancing |
+| `strimzipodsets.core.strimzi.io` | Internal resource managing Strimzi-controlled pod sets |
