@@ -19,3 +19,10 @@ Namespace: kafka-cdc
 | Pod | Purpose |
 |-----|---------|
 | `debezium-connect-cluster-connect-0` | Runs the Debezium MySQL connector worker |
+
+## Services
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| `debezium-connect-cluster-connect-api` | 8083 | Kafka Connect REST API |
+| `debezium-connect-cluster-connect` | 8083 | Headless service for Connect worker pods |

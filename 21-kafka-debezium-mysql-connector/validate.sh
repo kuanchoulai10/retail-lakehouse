@@ -6,8 +6,7 @@ TIMEOUT="${TIMEOUT:-1200s}"
 
 echo "==> Validating Debezium MySQL connector (context: ${KUBE_CONTEXT})"
 
-kubectl wait pod \
-  -l app.kubernetes.io/name=kafka-connect \
+kubectl wait kafkaconnect/debezium-connect-cluster \
   -n kafka-cdc \
   --for=condition=Ready \
   --timeout="${TIMEOUT}" \
