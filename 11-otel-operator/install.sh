@@ -1,6 +1,20 @@
-#!/bin/bash
-
+#!/usr/bin/env bash
 set -euo pipefail
 
-OTEL_OPERATOR_VERSION=v0.132.0
-kubectl apply -f "https://github.com/open-telemetry/opentelemetry-operator/releases/download/$OTEL_OPERATOR_VERSION/opentelemetry-operator.yaml"
+KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
+
+cd "$(dirname "$0")"
+
+echo "==> Installing OpenTelemetry Operator 0.98.0 (context: ${KUBE_CONTEXT})"
+
+helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
+helm repo update open-telemetry
+
+helm upgrade --install opentelemetry-operator open-telemetry/opentelemetry-operator \
+  --version 0.98.0 \
+  --namespace opentelemetry-operator \
+  --create-namespace \
+  --values values.yaml \
+  --kube-context "${KUBE_CONTEXT}"
+
+echo "==> Done."
