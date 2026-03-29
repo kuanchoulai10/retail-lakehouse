@@ -11,10 +11,19 @@ Namespace: thanos
 
 ## Namespaces
 
-- `thanos` (pre-existing, created by `30-thanos`)
+- `thanos` (created by this component's install.sh)
 
 ## Pods
 
 | Pod | Purpose |
 |-----|---------|
 | `jaeger-thanos-collector` | Receives OTLP traces and serves the Jaeger query UI |
+
+## Services
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| `jaeger-thanos-collector` | 16686 (Jaeger UI), 4317 (OTLP gRPC), 4318 (OTLP HTTP) | Primary collector endpoint |
+| `jaeger-thanos-collector-extension` | 16686 | Jaeger query UI extension |
+| `jaeger-thanos-collector-headless` | 16686, 4317, 4318 | Headless service for direct pod access |
+| `jaeger-thanos-collector-monitoring` | 8888 | Collector metrics endpoint |

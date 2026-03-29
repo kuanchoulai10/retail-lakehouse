@@ -8,7 +8,7 @@ echo "==> Validating MinIO (context: ${KUBE_CONTEXT})"
 
 kubectl wait pod \
   -l app=minio \
-  -n kafka-cdc \
+  -n minio \
   --for=condition=Ready \
   --timeout="${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"

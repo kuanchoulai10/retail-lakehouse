@@ -20,3 +20,10 @@ Namespace: minio
 |-----|---------|
 | `minio` | S3-compatible object storage server |
 | `minio-create-bucket` | One-time job that creates the required buckets on startup |
+
+## Services
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| `minio-api` | 9000 | S3-compatible API endpoint |
+| `minio-console` | 9001 (NodePort 30901) | MinIO web console |

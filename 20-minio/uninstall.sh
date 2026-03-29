@@ -7,6 +7,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "==> Deleting MinIO (context: ${KUBE_CONTEXT})"
 
-kubectl delete -f "$SCRIPT_DIR/minio.yaml" -n kafka-cdc --context "${KUBE_CONTEXT}"
+kubectl delete -f "$SCRIPT_DIR/minio.yaml" --context "${KUBE_CONTEXT}"
 
 echo "==> Done."

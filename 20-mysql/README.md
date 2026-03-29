@@ -18,3 +18,9 @@ Namespace: kafka-cdc
 | Pod | Purpose |
 |-----|---------|
 | `mysql` | MySQL source database with binlog CDC enabled |
+
+## Services
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| `mysql` | 3306 | MySQL database (headless) |
