@@ -4,6 +4,10 @@ version: '3'
 
 vars:
   GREETING: Hello, world!
+  KUBE_CONTEXT: '{{env "KUBE_CONTEXT" | default "mini"}}'
+
+env:
+  KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
 
 tasks:
   default:
