@@ -1,8 +1,12 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-set -e
+KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
 
-cd ~/Projects/retail-lakehouse/mysql
-kubectl apply -f mysql.yaml -n kafka-cdc
-sleep 5
-kubectl wait --for=condition=Ready pod -l app=mysql -n kafka-cdc --timeout=1200s
+cd "$(dirname "$0")"
+
+echo "==> Deploying MySQL (context: ${KUBE_CONTEXT})"
+
+kubectl apply -f mysql.yaml -n kafka-cdc --context "${KUBE_CONTEXT}"
+
+echo "==> Done."
