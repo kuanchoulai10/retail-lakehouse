@@ -67,26 +67,26 @@ tasks:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
       - bash 10-cert-manager/install.sh
-      - bash 10-cert-manager/validate.sh
       - bash 10-kube-prometheus/install.sh
-      - bash 10-kube-prometheus/validate.sh
       - bash 10-strimzi-operator/install.sh
+      - bash 10-cert-manager/validate.sh
+      - bash 10-kube-prometheus/validate.sh
       - bash 10-strimzi-operator/validate.sh
       - bash 11-keda/install.sh
-      - bash 11-keda/validate.sh
       - bash 11-spark-operator/install.sh
-      - bash 11-spark-operator/validate.sh
       - bash 11-otel-operator/install.sh
+      - bash 11-keda/validate.sh
+      - bash 11-spark-operator/validate.sh
       - bash 11-otel-operator/validate.sh
       - bash 12-jaeger-thanos/install.sh
-      - bash 12-jaeger-thanos/validate.sh
       - bash 12-jaeger-trino/install.sh
+      - bash 12-jaeger-thanos/validate.sh
       - bash 12-jaeger-trino/validate.sh
       - bash 20-kafka-cluster/install.sh
-      - bash 20-kafka-cluster/validate.sh
       - bash 20-minio/install.sh
-      - bash 20-minio/validate.sh
       - bash 20-mysql/install.sh
+      - bash 20-kafka-cluster/validate.sh
+      - bash 20-minio/validate.sh
       - bash 20-mysql/validate.sh
       - bash 21-kafka-debezium-mysql-connector/install.sh
       - bash 21-kafka-debezium-mysql-connector/validate.sh
