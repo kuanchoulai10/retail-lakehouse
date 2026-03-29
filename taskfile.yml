@@ -52,9 +52,7 @@ tasks:
       vars:
         - name: KUBE_CONTEXT
         - name: DEPLOY_METHOD
-    preconditions:
-      - sh: '[ "{{.DEPLOY_METHOD}}" = "scripts" ] || [ "{{.DEPLOY_METHOD}}" = "argocd" ]'
-        msg: 'DEPLOY_METHOD must be "scripts" or "argocd"'
+          enum: ["scripts", "argocd"]
     cmds:
       - task: bootstrap-apps-by-{{.DEPLOY_METHOD}}
         vars:
