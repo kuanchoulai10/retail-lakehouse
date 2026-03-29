@@ -2,16 +2,17 @@
 set -euo pipefail
 
 KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
+STRIMZI_VERSION="${STRIMZI_VERSION:-0.46.1}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "==> Installing Strimzi Operator 0.46.1 (context: ${KUBE_CONTEXT})"
+echo "==> Installing Strimzi Operator ${STRIMZI_VERSION} (context: ${KUBE_CONTEXT})"
 
 helm repo add strimzi https://strimzi.io/charts/
 helm repo update strimzi
 
 helm upgrade --install strimzi-operator strimzi/strimzi-kafka-operator \
-  --version 0.46.1 \
+  --version "${STRIMZI_VERSION}" \
   --namespace strimzi-operator \
   --create-namespace \
   --values "$SCRIPT_DIR/values.yaml" \

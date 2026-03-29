@@ -2,14 +2,15 @@
 set -euo pipefail
 
 KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
+CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.19.1}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "==> Installing cert-manager v1.19.1 (context: ${KUBE_CONTEXT})"
+echo "==> Installing cert-manager ${CERT_MANAGER_VERSION} (context: ${KUBE_CONTEXT})"
 
 helm upgrade --install cert-manager \
   oci://quay.io/jetstack/charts/cert-manager \
-  --version v1.19.1 \
+  --version "${CERT_MANAGER_VERSION}" \
   --namespace cert-manager \
   --create-namespace \
   --values "$SCRIPT_DIR/values.yaml" \

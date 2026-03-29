@@ -2,10 +2,11 @@
 set -euo pipefail
 
 KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
+TRINO_VERSION="${TRINO_VERSION:-1.39.1}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "==> Installing Trino 1.39.1 (context: ${KUBE_CONTEXT})"
+echo "==> Installing Trino ${TRINO_VERSION} (context: ${KUBE_CONTEXT})"
 
 # Generate .env and values.yaml
 bash "$SCRIPT_DIR/generate-env.sh"
@@ -34,7 +35,7 @@ helm repo add trino https://trinodb.github.io/charts/
 helm repo update trino
 
 helm upgrade --install trino trino/trino \
-  --version 1.39.1 \
+  --version "${TRINO_VERSION}" \
   --namespace trino \
   --create-namespace \
   --values "$SCRIPT_DIR/values.yaml" \
