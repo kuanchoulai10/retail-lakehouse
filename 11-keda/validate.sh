@@ -8,7 +8,7 @@ echo "==> Validating KEDA (context: ${KUBE_CONTEXT})"
 
 kubectl rollout status deployment/keda-operator \
   -n keda --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
-kubectl rollout status deployment/keda-metrics-apiserver \
+kubectl rollout status deployment/keda-operator-metrics-apiserver \
   -n keda --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
 kubectl rollout status deployment/keda-admission-webhooks \
   -n keda --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"

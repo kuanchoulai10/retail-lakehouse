@@ -6,7 +6,7 @@ Deploys the OpenTelemetry Operator via Helm. The operator manages the lifecycle 
 
 ```
 Namespace: opentelemetry-operator
-└── opentelemetry-operator-controller-manager   (Deployment)
+└── opentelemetry-operator   (Deployment)
 ```
 
 ## Namespaces
@@ -17,7 +17,14 @@ Namespace: opentelemetry-operator
 
 | Pod | Purpose |
 |-----|---------|
-| `opentelemetry-operator-controller-manager` | Reconciles OpenTelemetryCollector and Instrumentation resources |
+| `opentelemetry-operator` | Reconciles OpenTelemetryCollector and Instrumentation resources |
+
+## Services
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| `opentelemetry-operator` | 8443, 8080 | Operator metrics and health endpoint |
+| `opentelemetry-operator-webhook` | 443 | Admission webhook for OpenTelemetryCollector validation |
 
 ## CRDs
 
@@ -26,3 +33,4 @@ Namespace: opentelemetry-operator
 | `opentelemetrycollectors.opentelemetry.io` | Declares an OpenTelemetry Collector deployment |
 | `instrumentations.opentelemetry.io` | Configures auto-instrumentation injection into application pods |
 | `opampbridges.opentelemetry.io` | Manages Collector configuration via the OpAMP protocol |
+| `targetallocators.opentelemetry.io` | Distributes Prometheus scrape targets across Collector replicas |

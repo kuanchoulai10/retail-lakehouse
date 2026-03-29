@@ -23,6 +23,14 @@ Namespace: keda
 | `keda-operator-metrics-apiserver` | Serves external metrics to the Kubernetes metrics API |
 | `keda-admission-webhooks` | Validates ScaledObject and TriggerAuthentication resources |
 
+## Services
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| `keda-operator` | 9666 | Operator metrics endpoint |
+| `keda-operator-metrics-apiserver` | 443, 8080 | External metrics API and health endpoint |
+| `keda-admission-webhooks` | 443 | Admission webhook for ScaledObject validation |
+
 ## CRDs
 
 | CRD | Purpose |
@@ -31,3 +39,5 @@ Namespace: keda
 | `scaledjobs.keda.sh` | Scales Kubernetes Jobs based on event source queue depth |
 | `triggerauthentications.keda.sh` | Stores authentication credentials for event source triggers |
 | `clustertriggerauthentications.keda.sh` | Cluster-scoped variant of TriggerAuthentication |
+| `cloudeventsources.eventing.keda.sh` | Configures CloudEvent-based scaling triggers |
+| `clustercloudeventsources.eventing.keda.sh` | Cluster-scoped variant of CloudEventSource |

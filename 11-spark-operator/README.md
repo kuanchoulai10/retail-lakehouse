@@ -21,6 +21,12 @@ Namespace: spark-operator
 | `spark-operator-controller` | Reconciles SparkApplication resources into driver and executor pods |
 | `spark-operator-webhook` | Mutates SparkApplication pods for volume mounts and configs |
 
+## Services
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| `spark-operator-webhook-svc` | 9443 | Admission webhook for SparkApplication mutation |
+
 ## CRDs
 
 | CRD | Purpose |
