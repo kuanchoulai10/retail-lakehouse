@@ -1,16 +1,16 @@
-{{- if and (ge 12 (int .Values.deploy.waveFrom)) (le 12 (int .Values.deploy.waveTo)) }}
+{{- if and (ge 20 (int .Values.deploy.waveFrom)) (le 20 (int .Values.deploy.waveTo)) }}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: jaeger-thanos
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "12" # after opentelemetry-operator (wave 11)
+    argocd.argoproj.io/sync-wave: "20" # after opentelemetry-operator (wave 11)
 spec:
   project: {{ .Values.project.name }}
   sources:
     - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
-      path: 12-jaeger-thanos
+      path: 20-jaeger-thanos
       targetRevision: main
   destination:
     name: {{ .Values.spec.destination.name }}
