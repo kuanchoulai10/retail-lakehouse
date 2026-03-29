@@ -2,6 +2,7 @@ apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaConnect
 metadata:
   name: iceberg-connect-cluster
+  namespace: kafka-cdc
   annotations:
     strimzi.io/use-connector-resources: "true"
 spec:
@@ -21,8 +22,9 @@ spec:
     status.storage.replication.factor: -1
   build:
     output:
+      # https://strimzi.io/docs/operators/latest/configuring.html#type-DockerOutput-reference
       type: docker
-      image: 10.109.40.28/iceberg-connect:latest
+      image: 10.100.237.160/iceberg-connect:latest
     plugins:
       - name: iceberg-connect
         artifacts:
