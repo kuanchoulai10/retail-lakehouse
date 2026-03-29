@@ -1,41 +1,43 @@
-#!/bin/bash
-
+#!/usr/bin/env bash
 set -euo pipefail
 
-# --8<-- [start:env]
-# 產生 .env 和 values.yaml 檔案
+KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
+
+cd "$(dirname "$0")"
+
+echo "==> Installing Trino 1.39.1 (context: ${KUBE_CONTEXT})"
+
+# Generate .env and values.yaml
 bash generate-env.sh
-# --8<-- [end:env]
 
-
-# 載入 .env 當作環境變數
+# Load .env as environment variables
 set -a
-# shellcheck disable=SC1090
+# shellcheck disable=SC1091
 source ".env"
 set +a
 
-kubectl create namespace trino || true
-
-# --8<-- [start:tls]
+# Generate TLS certs and apply secret
 bash generate-tls-certs.sh
-kubectl apply -f ./trino-tls-secret.yaml -n trino
-# --8<-- [end:tls]
+kubectl apply -f ./trino-tls-secret.yaml -n trino --context "${KUBE_CONTEXT}"
 
-# --8<-- [start:bq]
-echo "Generating Kubernetes secret for Accessing BigQuery..."
+# Generate and apply BigQuery secret
+echo "==> Generating Kubernetes secret for BigQuery..."
 # shellcheck disable=SC2154
 kubectl create secret generic trino-bigquery-secret \
-    --from-file=trino-sa.json="$GCP_SA_INPUT_PATH" \
-    --dry-run=client -o yaml > "./trino-bigquery-secret.yaml"
-echo "trino-bigquery-secret.yaml generated successfully."
-kubectl apply -f ./trino-bigquery-secret.yaml -n trino
-# --8<-- [end:bq]
+  --from-file=trino-sa.json="${GCP_SA_INPUT_PATH}" \
+  --namespace trino \
+  --dry-run=client -o yaml \
+  | kubectl apply -f - --context "${KUBE_CONTEXT}"
 
-# --8<-- [start:helm]
+# Install Trino via Helm
 helm repo add trino https://trinodb.github.io/charts/
-helm repo update
-helm upgrade trino trino/trino \
-  -f values.yaml \
-  -n trino \
+helm repo update trino
+
+helm upgrade --install trino trino/trino \
   --version 1.39.1 \
-# --8<-- [end:helm]
+  --namespace trino \
+  --create-namespace \
+  --values values.yaml \
+  --kube-context "${KUBE_CONTEXT}"
+
+echo "==> Done."
