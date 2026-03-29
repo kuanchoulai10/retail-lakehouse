@@ -4,10 +4,6 @@ version: '3'
 
 vars:
   GREETING: Hello, world!
-  KUBE_CONTEXT: '{{env "KUBE_CONTEXT" | default "mini"}}'
-
-env:
-  KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
 
 tasks:
   default:
@@ -53,6 +49,15 @@ tasks:
   # --8<-- [start:bootstrap-apps]
   bootstrap-apps:
     desc: "Bootstrap all K8s components in deployment order"
+    interactive: true
+    vars:
+      KUBE_CONTEXT:
+        sh: |
+          default="${KUBE_CONTEXT:-mini}"
+          read -r -p "KUBE_CONTEXT [${default}]: " ctx < /dev/tty
+          echo "${ctx:-$default}"
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
       - task: deploy-argocd
       - task: patch-argocd
