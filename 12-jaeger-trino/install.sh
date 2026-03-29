@@ -3,7 +3,8 @@ set -euo pipefail
 
 KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
 
-cd "$(dirname "$0")"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
 
 echo "==> Installing Jaeger for Trino (context: ${KUBE_CONTEXT})"
 

@@ -3,7 +3,8 @@ set -euo pipefail
 
 KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
 
-cd "$(dirname "$0")"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
 
 echo "==> Installing OpenTelemetry Operator 0.98.0 (context: ${KUBE_CONTEXT})"
 
