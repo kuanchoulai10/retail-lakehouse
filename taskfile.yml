@@ -68,8 +68,8 @@ tasks:
     cmds:
       - bash 10-cert-manager/install.sh
       - bash 10-cert-manager/validate.sh
-      - bash 10-prometheus/install.sh
-      - bash 10-prometheus/validate.sh
+      - bash 10-kube-prometheus/install.sh
+      - bash 10-kube-prometheus/validate.sh
       - bash 10-strimzi-operator/install.sh
       - bash 10-strimzi-operator/validate.sh
       - bash 11-keda/install.sh
