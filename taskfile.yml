@@ -11,8 +11,8 @@ tasks:
       - task --list
     silent: true
 
-  # --8<-- [start:init]
-  init:
+  # --8<-- [start:setup]
+  setup:
     desc: "Initialize local dev environment"
     cmds:
       - task: setup-node
@@ -36,11 +36,11 @@ tasks:
     internal: true
     cmds:
       - uv run pre-commit install
-  # --8<-- [end:init]
+  # --8<-- [end:setup]
 
   # --8<-- [start:checks]
   run-pre-commit-checks:
-    desc: "Run pre commit hooks"
+    desc: "Run pre commit checks"
     cmds:
       - uv run pre-commit run --all-files --show-diff-on-failure
   # --8<-- [end:checks]
@@ -68,18 +68,20 @@ tasks:
     cmds:
       - bash 10-cert-manager/install.sh
       - bash 10-cert-manager/validate.sh
-      - bash 11-keda/install.sh
-      - bash 11-keda/validate.sh
       - bash 10-prometheus/install.sh
       - bash 10-prometheus/validate.sh
       - bash 10-strimzi-operator/install.sh
       - bash 10-strimzi-operator/validate.sh
-      - bash 11-otel-operator/install.sh
-      - bash 11-otel-operator/validate.sh
+      - bash 11-keda/install.sh
+      - bash 11-keda/validate.sh
       - bash 11-spark-operator/install.sh
       - bash 11-spark-operator/validate.sh
+      - bash 11-otel-operator/install.sh
+      - bash 11-otel-operator/validate.sh
       - bash 12-jaeger-thanos/install.sh
+      - bash 12-jaeger-thanos/validate.sh
       - bash 12-jaeger-trino/install.sh
+      - bash 12-jaeger-trino/validate.sh
       - bash 20-kafka-cluster/install.sh
       - bash 20-kafka-cluster/validate.sh
       - bash 20-minio/install.sh
