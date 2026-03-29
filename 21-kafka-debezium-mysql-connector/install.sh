@@ -1,16 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-set -e
+KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
 
-# Deploy Debezium Connect Cluster
-kubectl apply -f debezium-secret.yaml
-kubectl apply -f debezium-role.yaml
-kubectl apply -f debezium-role-binding.yaml
-kubectl apply -f debezium-connect-cluster.yaml -n kafka-cdc
-sleep 5
-kubectl logs pod/debezium-connect-cluster-connect-build -n kafka-cdc
-sleep 5
-kubectl wait --for=condition=terminated pod -l app.kubernetes.io/name=kafka-connect-build -n kafka-cdc --timeout=1200s
+cd "$(dirname "$0")"
 
-kubectl apply -f debezium-connector.yaml -n kafka-cdc
-kubectl get kafkaconnector -n kafka-cdc
+echo "==> Deploying Debezium MySQL connector (context: ${KUBE_CONTEXT})"
+
+kubectl apply -f debezium-secret.yaml -n kafka-cdc --context "${KUBE_CONTEXT}"
+kubectl apply -f debezium-role.yaml -n kafka-cdc --context "${KUBE_CONTEXT}"
+kubectl apply -f debezium-role-binding.yaml -n kafka-cdc --context "${KUBE_CONTEXT}"
+kubectl apply -f debezium-connect-cluster.yaml -n kafka-cdc --context "${KUBE_CONTEXT}"
+kubectl apply -f debezium-connector.yaml -n kafka-cdc --context "${KUBE_CONTEXT}"
+
+echo "==> Done."
