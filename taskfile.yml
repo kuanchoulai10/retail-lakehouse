@@ -50,70 +50,156 @@ tasks:
   bootstrap-apps:
     desc: "Bootstrap all K8s components in deployment order"
     cmds:
+      - task: deploy-argocd
+      - task: patch-argocd
+      - task: deploy-cert-manager
+      - task: deploy-keda
+      - task: deploy-prometheus-operator
+      - task: deploy-strimzi-operator
+      - task: deploy-otel-operator
+      - task: deploy-spark-operator
+      - task: deploy-jaeger-thanos
+      - task: deploy-jaeger-trino
       - task: deploy-kafka-cluster
+      - task: deploy-minio
       - task: deploy-mysql
       - task: deploy-debezium-mysql-connector
       - task: deploy-iceberg-connector
-      - task: deploy-minio
       - task: deploy-trino
       - task: deploy-thanos
-      - task: deploy-trino-observability
+
+  deploy-argocd:
+    desc: "Install ArgoCD"
+    internal: true
+    dir: 00-argocd
+    cmds:
+      - bash install.sh
+      - bash validate.sh
+
+  patch-argocd:
+    desc: "Patch ArgoCD configmap"
+    internal: true
+    dir: 01-argocd-patch
+    cmds:
+      - bash install.sh
+
+  deploy-cert-manager:
+    desc: "Deploy cert-manager"
+    internal: true
+    dir: 10-cert-manager
+    cmds:
+      - bash install.sh
+      - bash validate.sh
+
+  deploy-keda:
+    desc: "Deploy KEDA"
+    internal: true
+    dir: 10-keda
+    cmds:
+      - bash install.sh
+      - bash validate.sh
+
+  deploy-prometheus-operator:
+    desc: "Deploy Prometheus Operator"
+    internal: true
+    dir: 10-prometheus
+    cmds:
+      - bash install.sh
+      - bash validate.sh
+
+  deploy-strimzi-operator:
+    desc: "Deploy Strimzi Operator"
+    internal: true
+    dir: 10-strimzi-operator
+    cmds:
+      - bash install.sh
+      - bash validate.sh
+
+  deploy-otel-operator:
+    desc: "Deploy OpenTelemetry Operator"
+    internal: true
+    dir: 11-otel-operator
+    cmds:
+      - bash install.sh
+      - bash validate.sh
+
+  deploy-spark-operator:
+    desc: "Deploy Spark Operator"
+    internal: true
+    dir: 11-spark-operator
+    cmds:
+      - bash install.sh
+      - bash validate.sh
+
+  deploy-jaeger-thanos:
+    desc: "Deploy Jaeger for Thanos"
+    internal: true
+    dir: 12-jaeger-thanos
+    cmds:
+      - bash install.sh
+
+  deploy-jaeger-trino:
+    desc: "Deploy Jaeger for Trino"
+    internal: true
+    dir: 12-jaeger-trino
+    cmds:
+      - bash install.sh
 
   deploy-kafka-cluster:
-    desc: "Deploy Strimzi Kafka cluster"
+    desc: "Deploy Kafka cluster"
     internal: true
-    dir: kafka-cluster
+    dir: 20-kafka-cluster
     cmds:
       - bash install.sh
-
-  deploy-mysql:
-    desc: "Deploy MySQL"
-    internal: true
-    dir: mysql
-    cmds:
-      - bash install.sh
-
-  deploy-debezium-mysql-connector:
-    desc: "Deploy Debezium MySQL connector"
-    internal: true
-    dir: kafka-debezium-mysql-connector
-    cmds:
-      - bash install.sh
-
-  deploy-iceberg-connector:
-    desc: "Deploy Iceberg sink connector"
-    internal: true
-    dir: kafka-iceberg-connector
-    cmds:
-      - bash install.sh
+      - bash validate.sh
 
   deploy-minio:
     desc: "Deploy MinIO"
     internal: true
-    dir: minio
+    dir: 20-minio
     cmds:
       - bash install.sh
+      - bash validate.sh
+
+  deploy-mysql:
+    desc: "Deploy MySQL"
+    internal: true
+    dir: 20-mysql
+    cmds:
+      - bash install.sh
+      - bash validate.sh
+
+  deploy-debezium-mysql-connector:
+    desc: "Deploy Debezium MySQL connector"
+    internal: true
+    dir: 21-kafka-debezium-mysql-connector
+    cmds:
+      - bash install.sh
+      - bash validate.sh
+
+  deploy-iceberg-connector:
+    desc: "Deploy Iceberg sink connector"
+    internal: true
+    dir: 22-kafka-iceberg-connector
+    cmds:
+      - bash install.sh
+      - bash validate.sh
 
   deploy-trino:
     desc: "Deploy Trino"
     internal: true
-    dir: trino
+    dir: 23-trino
     cmds:
       - bash install.sh
+      - bash validate.sh
 
   deploy-thanos:
-    desc: "Deploy observability stack (Prometheus + Thanos + OpenTelemetry)"
+    desc: "Deploy Thanos"
     internal: true
-    dir: thanos
+    dir: 30-thanos
     cmds:
       - bash install.sh
-
-  deploy-trino-observability:
-    desc: "Deploy Trino observability (Jaeger)"
-    internal: true
-    dir: trino/observability
-    cmds:
-      - bash install.sh
+      - bash validate.sh
   # --8<-- [end:bootstrap-apps]
 
   # --8<-- [start:docs]
