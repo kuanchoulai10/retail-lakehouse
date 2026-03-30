@@ -1,0 +1,94 @@
+image:
+  repository: apache/polaris
+  tag: "1.3.0-incubating"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+# ---------------------------------------------------------------------------
+# Persistence
+# ---------------------------------------------------------------------------
+persistence:
+  type: in-memory
+
+# ---------------------------------------------------------------------------
+# Storage credentials (MinIO)
+# ---------------------------------------------------------------------------
+# These credentials are vended to clients (Trino, Iceberg connector) so they
+# can read/write files directly on MinIO via the Iceberg REST protocol.
+storage:
+  secret:
+    name: polaris-storage-secret
+    awsAccessKeyId: awsAccessKeyId
+    awsSecretAccessKey: awsSecretAccessKey
+
+# ---------------------------------------------------------------------------
+# Environment variables — S3/STS endpoint and bootstrap credentials
+# ---------------------------------------------------------------------------
+# AWS SDK reads AWS_ENDPOINT_URL_S3 / AWS_ENDPOINT_URL_STS to redirect all
+# S3 and STS calls to MinIO instead of real AWS.
+# POLARIS_BOOTSTRAP_CREDENTIALS creates the initial admin principal on first start.
+# Format: <realm>,<username>,<password>  (comma-separated, no spaces)
+extraEnv:
+  - name: AWS_ACCESS_KEY_ID
+    valueFrom:
+      secretKeyRef:
+        name: polaris-storage-secret
+        key: awsAccessKeyId
+  - name: AWS_SECRET_ACCESS_KEY
+    valueFrom:
+      secretKeyRef:
+        name: polaris-storage-secret
+        key: awsSecretAccessKey
+  - name: AWS_REGION
+    value: "dummy-region"
+  - name: AWS_ENDPOINT_URL_S3
+    value: "http://minio-api.minio.svc.cluster.local:9000"
+  - name: AWS_ENDPOINT_URL_STS
+    value: "http://minio-api.minio.svc.cluster.local:9000"
+  - name: POLARIS_BOOTSTRAP_CREDENTIALS
+    valueFrom:
+      secretKeyRef:
+        name: polaris-bootstrap-secret
+        key: credentials
+
+# ---------------------------------------------------------------------------
+# Authentication
+# ---------------------------------------------------------------------------
+authentication:
+  type: internal
+  tokenBroker:
+    type: rsa-key-pair
+    maxTokenGeneration: PT1H
+    secret:
+      name: ~
+
+# ---------------------------------------------------------------------------
+# Realm
+# ---------------------------------------------------------------------------
+realmContext:
+  type: default
+  realms:
+    - POLARIS
+
+# ---------------------------------------------------------------------------
+# Observability
+# ---------------------------------------------------------------------------
+tracing:
+  enabled: false
+
+metrics:
+  enabled: true
+
+serviceMonitor:
+  enabled: true
+  labels: {}
+
+# ---------------------------------------------------------------------------
+# Service
+# ---------------------------------------------------------------------------
+service:
+  type: ClusterIP
+  ports:
+    - name: polaris-http
+      port: 8181

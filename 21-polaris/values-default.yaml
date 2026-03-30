@@ -1,0 +1,338 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+# -- The number of replicas to deploy (horizontal scaling).
+# Beware that replicas are stateless; don't set this number > 1 when using in-memory meta store manager.
+replicaCount: 1
+
+image:
+  # -- The image repository to pull from.
+  repository: apache/polaris
+  # -- The image pull policy.
+  pullPolicy: IfNotPresent
+  # -- The image tag.
+  tag: "latest"
+  # -- The path to the directory where the application.properties file, and other configuration
+  # files, if any, should be mounted.
+  configDir: /deployments/config
+
+# -- References to secrets in the same namespace to use for pulling any of the images used by this
+# chart. Each entry is a LocalObjectReference to an existing secret in the namespace. The secret
+# must contain a .dockerconfigjson key with a base64-encoded Docker configuration file. See
+# https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/ for more
+# information.
+imagePullSecrets: []
+#  - registry-creds
+
+
+serviceAccount:
+  # -- Specifies whether a service account should be created.
+  create: true
+  # -- Annotations to add to the service account.
+  annotations: {}
+  # -- The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template.
+  name: ""
+
+
+# -- Annotations to apply to polaris pods.
+podAnnotations: {}
+
+# -- Additional Labels to apply to polaris pods.
+podLabels: {}
+
+# -- Additional Labels to apply to polaris configmap.
+configMapLabels: {}
+
+# -- Pod disruption budget settings.
+podDisruptionBudget:
+  # -- Specifies whether a pod disruption budget should be created.
+  enabled: false
+  # -- The minimum number of pods that should remain available during disruptions.
+  # Can be an absolute number (ex: 5) or a percentage of desired pods (ex: 50%).
+  # IMPORTANT: Cannot be used simultaneously with maxUnavailable.
+  minAvailable: ~
+  # -- The maximum number of pods that can be unavailable during disruptions.
+  # Can be an absolute number (ex: 5) or a percentage of desired pods (ex: 50%).
+  # IMPORTANT: Cannot be used simultaneously with minAvailable.
+  maxUnavailable: ~
+  # -- Annotations to add to the pod disruption budget.
+  annotations: {}
+
+# -- The number of old ReplicaSets to retain to allow rollback (if not set, the default Kubernetes value is set to 10).
+revisionHistoryLimit: ~
+
+# -- Security context for the polaris pod. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/.
+podSecurityContext:
+  # -- GID 10001 is compatible with Polaris OSS default images; change this if you are using a different image.
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+# -- Security context for the polaris container. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/.
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  # -- UID 10000 is compatible with Polaris OSS default images; change this if you are using a different image.
+  runAsUser: 10000
+  capabilities:
+    drop: ["ALL"]
+  seccompProfile:
+    type: RuntimeDefault
+
+# -- Polaris main service settings.
+service:
+  # -- The type of service to create. Valid values are: ExternalName, ClusterIP, NodePort, and LoadBalancer.
+  # The default value is ClusterIP.
+  type: ClusterIP
+  # -- The ports the service will listen on.
+  # At least one port is required; the first port implicitly becomes the HTTP port that the
+  # application will use for serving API requests. By default, it's 8181.
+  # Note: port names must be unique and no more than 15 characters long.
+  ports:
+      # -- The name of the port. Required.
+    - name: polaris-http
+      # -- The port the service listens on. By default, the HTTP port is 8181.
+      port: 8181
+      # -- Number or name of the port to access on the pods targeted by the service.
+      # If this is a string, it will be looked up as a named port in the target Pod's container ports.
+      # If this is not specified, the value of the 'port' field is used.
+      targetPort: ~  # polaris-service
+      # -- The port on each node on which this service is exposed when type is NodePort or LoadBalancer.
+      # Usually assigned by the system. If not specified, a port will be allocated if this Service requires one. If this field is specified when creating a Service which does not need it, creation will fail.
+      nodePort: ~  # 30000
+      # -- The IP protocol for this port. Supports "TCP", "UDP", and "SCTP". Default is TCP.
+      protocol: ~
+    # - name: polaris-https
+    #  port: 18181
+  sessionAffinity: ~
+  clusterIP: ~
+  internalTrafficPolicy: ~
+  externalTrafficPolicy: ~
+  trafficDistribution: ~
+  # -- Annotations to add to the service.
+  annotations: {}
+
+# -- Management service settings.
+managementService:
+  type: ClusterIP
+  ports:
+    - name: polaris-mgmt
+      port: 8182
+      targetPort: ~
+      nodePort: ~
+      protocol: ~
+  clusterIP: None
+  sessionAffinity: ~
+  internalTrafficPolicy: ~
+  externalTrafficPolicy: ~
+  trafficDistribution: ~
+  annotations: {}
+
+extraServices: []
+
+ingress:
+  className: ""
+  enabled: false
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths: []
+  tls: []
+
+# -- Configures the resources requests and limits for polaris pods.
+resources: {}
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage:
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+livenessProbe:
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+  timeoutSeconds: 10
+  terminationGracePeriodSeconds: 30
+
+readinessProbe:
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+  timeoutSeconds: 10
+
+# -- Advanced configuration.
+advancedConfig: {}
+
+# -- Advanced configuration via Environment Variables.
+extraEnv: []
+
+extraVolumes: []
+extraVolumeMounts: []
+extraInitContainers: []
+
+tracing:
+  enabled: false
+  endpoint: "http://otlp-collector:4317"
+  sample: "1.0d"
+  attributes: {}
+
+metrics:
+  enabled: true
+  tags: {}
+
+serviceMonitor:
+  enabled: true
+  interval: ""
+  labels: {}
+  metricRelabelings: []
+
+logging:
+  level: INFO
+  requestIdHeaderName: X-Request-ID
+  console:
+    enabled: true
+    threshold: ALL
+    json: false
+    format: "%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] [%X{requestId},%X{realmId}] [%X{traceId},%X{parentId},%X{spanId},%X{sampled}] (%t) %s%e%n"
+  file:
+    enabled: false
+    threshold: ALL
+    json: false
+    format: "%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] [%X{requestId},%X{realmId}] [%X{traceId},%X{parentId},%X{spanId},%X{sampled}] (%t) %s%e%n"
+    logsDir: /deployments/logs
+    fileName: polaris.log
+    rotation:
+      maxFileSize: 100Mi
+      maxBackupIndex: 5
+      fileSuffix: ~
+    storage:
+      className: standard
+      size: 512Gi
+      selectorLabels: {}
+  categories:
+    org.apache.polaris: INFO
+    org.apache.iceberg.rest: INFO
+  mdc: {}
+
+realmContext:
+  type: default
+  realms:
+    - POLARIS
+
+features:
+  realmOverrides: {}
+
+# -- Polaris persistence configuration.
+persistence:
+  # -- Two built-in types: in-memory and relational-jdbc.
+  # in-memory: no external DB needed; state is lost on pod restart.
+  # relational-jdbc: requires an external PostgreSQL (or compatible) database.
+  type: in-memory
+  relationalJdbc:
+    secret:
+      name: ~
+      username: username
+      password: password
+      jdbcUrl: jdbcUrl
+
+fileIo:
+  type: default
+
+# -- Storage credentials for the server.
+# For MinIO (S3-compatible), set awsAccessKeyId and awsSecretAccessKey.
+# If unset, the pod's IAM role / IRSA is used instead.
+storage:
+  secret:
+    name: ~
+    awsAccessKeyId: ~
+    awsSecretAccessKey: ~
+    gcpToken: ~
+    gcpTokenLifespan: ~
+
+authentication:
+  type: internal
+  authenticator:
+    type: default
+  tokenService:
+    type: default
+  tokenBroker:
+    type: rsa-key-pair
+    maxTokenGeneration: PT1H
+    secret:
+      name: ~
+      publicKey: public.pem
+      privateKey: private.pem
+      secretKey: symmetric.pem
+      rsaKeyPair:
+        publicKey: public.pem
+        privateKey: private.pem
+      symmetricKey:
+        secretKey: symmetric.key
+  realmOverrides: {}
+
+oidc:
+  authServeUrl: ~
+  client:
+    id: polaris
+    secret:
+      name: ~
+      key: clientSecret
+  principalMapper:
+    type: default
+    idClaimPath: ~
+    nameClaimPath: ~
+  principalRolesMapper:
+    type: default
+    rolesClaimPath: ~
+    filter: ~
+    mappings: []
+
+cors:
+  allowedOrigins: []
+  allowedMethods: []
+  allowedHeaders: []
+  exposedHeaders: []
+  accessControlMaxAge: ~
+  accessControlAllowCredentials: ~
+
+rateLimiter:
+  type: no-op
+  tokenBucket:
+    type: default
+    requestsPerSecond: 9999
+    window: PT10S
+
+tasks:
+  maxConcurrentTasks: ~
+  maxQueuedTasks: ~

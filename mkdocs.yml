@@ -24,6 +24,9 @@ nav:
     - trino/event-listeners.md
   - MinIO:
     - minio/deployment.md
+  - Apache Polaris:
+    - polaris/deployment.md
+    - polaris/api.md
   - Observability:
     - observability/overview.md
     - observability/prometheus/how-prometheus-works.md
