@@ -2,17 +2,15 @@
 
 set -e
 
-echo "Creating Kubernetes secret for Accessing Iceberg Table in AWS S3..."
+KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
 
-read -r -p "  Enter AWS Region: " AWS_REGION
-read -r -p "  Enter AWS Access Key: " AWS_ACCESS_KEY_ID
-read -r -p "  Enter AWS Secret Access Key: " AWS_SECRET_ACCESS_KEY
+echo "Creating Kubernetes secret for MinIO S3 access..."
 
 kubectl create secret generic iceberg-secret \
-  --from-literal=awsRegion="$AWS_REGION" \
-  --from-literal=awsAccessKey="$AWS_ACCESS_KEY_ID" \
-  --from-literal=awsSecretAccessKey="$AWS_SECRET_ACCESS_KEY" \
+  --from-literal=awsAccessKey=minio_user \
+  --from-literal=awsSecretAccessKey=minio_password \
   --namespace kafka-cdc \
-  --dry-run=client -o yaml > "./iceberg-secret.yaml"
+  --dry-run=client -o yaml \
+  | kubectl apply -f - --context "${KUBE_CONTEXT}"
 
-echo "iceberg-secret.yaml created."
+echo "iceberg-secret applied."

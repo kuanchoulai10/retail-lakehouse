@@ -20,10 +20,14 @@ spec:
     iceberg.tables.evolve-schema-enabled: true # Set to true to add any missing record fields to the table schema, default is false
     # iceberg.tables.default-id-columns # TODO
     iceberg.catalog: retail
-    iceberg.catalog.type: glue
-    # iceberg.catalog.catalog-impl: org.apache.iceberg.aws.glue.GlueCatalog
+    iceberg.catalog.type: rest
+    iceberg.catalog.uri: http://polaris.polaris.svc.cluster.local:8181/api/catalog
+    iceberg.catalog.warehouse: iceberg
+    iceberg.catalog.credential: root:secret
+    iceberg.catalog.scope: PRINCIPAL_ROLE:ALL
     iceberg.catalog.io-impl: org.apache.iceberg.aws.s3.S3FileIO
-    iceberg.catalog.warehouse: s3a://retail-lakehouse-7dj2/warehouse
+    iceberg.catalog.s3.endpoint: http://minio-api.minio.svc.cluster.local:9000
+    iceberg.catalog.s3.path-style-access: "true"
     transforms: debezium
     transforms.debezium.type: org.apache.iceberg.connect.transforms.DebeziumTransform
 

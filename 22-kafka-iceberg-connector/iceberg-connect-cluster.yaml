@@ -44,7 +44,8 @@ spec:
               name: iceberg-secret
               key: awsSecretAccessKey
         - name: AWS_REGION
-          valueFrom:
-            secretKeyRef:
-              name: iceberg-secret
-              key: awsRegion
+          value: dummy-region
+        - name: AWS_ENDPOINT_URL_S3
+          value: http://minio-api.minio.svc.cluster.local:9000
+        - name: AWS_ENDPOINT_URL_STS
+          value: http://minio-api.minio.svc.cluster.local:9000

@@ -9,7 +9,6 @@ echo "==> Deploying Iceberg sink connector (context: ${KUBE_CONTEXT})"
 
 bash "$SCRIPT_DIR/generate-iceberg-secret.sh"
 
-kubectl apply -f "$SCRIPT_DIR/iceberg-secret.yaml" -n kafka-cdc --context "${KUBE_CONTEXT}"
 kubectl apply -f "$SCRIPT_DIR/iceberg-connect-cluster.yaml" -n kafka-cdc --context "${KUBE_CONTEXT}"
 kubectl apply -f "$SCRIPT_DIR/iceberg-connector.yaml" -n kafka-cdc --context "${KUBE_CONTEXT}"
 
