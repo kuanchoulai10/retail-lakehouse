@@ -8,37 +8,30 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "==> Installing Trino ${TRINO_VERSION} (context: ${KUBE_CONTEXT})"
 
-# Generate .env and values.yaml
-bash "$SCRIPT_DIR/generate-env.sh"
-
-# Load .env as environment variables
-set -a
-# shellcheck disable=SC1091
-source "$SCRIPT_DIR/.env"
-set +a
-
-# Generate TLS certs and apply secret
-bash "$SCRIPT_DIR/generate-tls-certs.sh"
-kubectl apply -f "$SCRIPT_DIR/trino-tls-secret.yaml" -n trino --context "${KUBE_CONTEXT}"
-
-# Generate and apply BigQuery secret
-echo "==> Generating Kubernetes secret for BigQuery..."
-# shellcheck disable=SC2154
-kubectl create secret generic trino-bigquery-secret \
-  --from-file=trino-sa.json="${GCP_SA_INPUT_PATH}" \
-  --namespace trino \
-  --dry-run=client -o yaml \
+# Create namespace if not exists
+kubectl create namespace trino --dry-run=client -o yaml \
   | kubectl apply -f - --context "${KUBE_CONTEXT}"
 
-# Install Trino via Helm
+# Apply cert-manager Issuer and Certificate
+kubectl apply -f "$SCRIPT_DIR/trino-certificate.yaml" --context "${KUBE_CONTEXT}"
+
+# Apply KEDA secrets and TriggerAuthentication
+kubectl apply -f "$SCRIPT_DIR/secrets.yaml" --context "${KUBE_CONTEXT}"
+
+# Wait for cert-manager to issue the TLS certificate
+echo "==> Waiting for cert-manager to issue TLS certificate..."
+kubectl wait --for=condition=Ready certificate/trino-tls \
+  -n trino --timeout=120s --context "${KUBE_CONTEXT}"
+
+# Install Trino via Helm with helm-secrets
 helm repo add trino https://trinodb.github.io/charts/
 helm repo update trino
 
-helm upgrade --install trino trino/trino \
+helm secrets upgrade --install trino trino/trino \
   --version "${TRINO_VERSION}" \
   --namespace trino \
-  --create-namespace \
   --values "$SCRIPT_DIR/values.yaml" \
+  --values "$SCRIPT_DIR/values-secret.yaml" \
   --kube-context "${KUBE_CONTEXT}"
 
 echo "==> Done."

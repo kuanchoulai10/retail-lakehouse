@@ -6,6 +6,9 @@ TIMEOUT="${TIMEOUT:-300s}"
 
 echo "==> Validating Trino (context: ${KUBE_CONTEXT})"
 
+kubectl wait --for=condition=Ready certificate/trino-tls \
+  -n trino --timeout=60s --context "${KUBE_CONTEXT}"
+
 kubectl rollout status deployment/trino-coordinator \
   -n trino --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
 
