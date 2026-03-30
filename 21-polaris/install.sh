@@ -28,9 +28,9 @@ kubectl create secret generic polaris-bootstrap-secret \
   --dry-run=client -o yaml \
   | kubectl apply -f - --context "${KUBE_CONTEXT}"
 
-# Install Polaris via Helm
+# Install Polaris via wrapper Helm chart (vendored chart in charts/)
 helm upgrade --install polaris \
-  "https://downloads.apache.org/incubator/polaris/helm-chart/1.3.0-incubating/polaris-1.3.0-incubating.tgz" \
+  "$SCRIPT_DIR" \
   --namespace polaris \
   --values "$SCRIPT_DIR/values.yaml" \
   --kube-context "${KUBE_CONTEXT}"

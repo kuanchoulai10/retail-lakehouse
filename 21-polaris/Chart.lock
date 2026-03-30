@@ -1,0 +1,6 @@
+dependencies:
+- name: polaris
+  repository: https://downloads.apache.org/incubator/polaris/helm-chart
+  version: 1.3.0-incubating
+digest: sha256:dfbfcc6055f0b68ee362953f625f5587698d8f87bb883363a1355b50d29e6357
+generated: "2026-03-31T01:09:11.502225+08:00"
