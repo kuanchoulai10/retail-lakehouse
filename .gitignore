@@ -151,7 +151,7 @@ vite.config.ts.timestamp-*
 vendor/
 .DS_Store
 trino/values.yaml
-iceberg-secret.yaml
+
 
 
 # ======================= Python =======================
