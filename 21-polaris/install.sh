@@ -3,7 +3,6 @@ set -euo pipefail
 
 KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
 POLARIS_VERSION="${POLARIS_VERSION:-1.3.0-incubating}"
-POLARIS_BOOTSTRAP_CREDENTIALS="${POLARIS_BOOTSTRAP_CREDENTIALS:-POLARIS,root,secret}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -13,19 +12,11 @@ echo "==> Installing Apache Polaris ${POLARIS_VERSION} (context: ${KUBE_CONTEXT}
 kubectl create namespace polaris --dry-run=client -o yaml \
   | kubectl apply -f - --context "${KUBE_CONTEXT}"
 
-# Create MinIO storage credentials secret
-kubectl create secret generic polaris-storage-secret \
-  --from-literal=awsAccessKeyId=minio_user \
-  --from-literal=awsSecretAccessKey=minio_password \
-  --namespace polaris \
-  --dry-run=client -o yaml \
+# Apply SOPS-encrypted secrets
+sops --decrypt "$SCRIPT_DIR/polaris-storage-secret.yaml" \
   | kubectl apply -f - --context "${KUBE_CONTEXT}"
 
-# Create bootstrap credentials secret (realm,username,password)
-kubectl create secret generic polaris-bootstrap-secret \
-  --from-literal=credentials="${POLARIS_BOOTSTRAP_CREDENTIALS}" \
-  --namespace polaris \
-  --dry-run=client -o yaml \
+sops --decrypt "$SCRIPT_DIR/polaris-bootstrap-secret.yaml" \
   | kubectl apply -f - --context "${KUBE_CONTEXT}"
 
 # Install Polaris via wrapper Helm chart (vendored chart in charts/)
