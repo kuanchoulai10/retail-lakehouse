@@ -15,8 +15,9 @@ polaris:
   # ---------------------------------------------------------------------------
   # Storage credentials (MinIO)
   # ---------------------------------------------------------------------------
-  # These credentials are vended to clients (Trino, Iceberg connector) so they
-  # can read/write files directly on MinIO via the Iceberg REST protocol.
+  # Injected as polaris.storage.aws.access-key / polaris.storage.aws.secret-key
+  # (Polaris-native Quarkus properties). Used by Polaris for catalog storage
+  # operations (writing metadata, vended credentials flow).
   storage:
     secret:
       name: polaris-storage-secret
@@ -31,16 +32,6 @@ polaris:
   # POLARIS_BOOTSTRAP_CREDENTIALS creates the initial admin principal on first start.
   # Format: <realm>,<username>,<password>  (comma-separated, no spaces)
   extraEnv:
-    - name: AWS_ACCESS_KEY_ID
-      valueFrom:
-        secretKeyRef:
-          name: polaris-storage-secret
-          key: awsAccessKeyId
-    - name: AWS_SECRET_ACCESS_KEY
-      valueFrom:
-        secretKeyRef:
-          name: polaris-storage-secret
-          key: awsSecretAccessKey
     - name: AWS_REGION
       value: "dummy-region"
     - name: AWS_ENDPOINT_URL_S3
