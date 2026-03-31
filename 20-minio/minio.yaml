@@ -22,11 +22,9 @@ spec:
             - /data
             - --console-address
             - :9001
-          env:
-            - name: MINIO_ROOT_USER
-              value: minio_user
-            - name: MINIO_ROOT_PASSWORD
-              value: minio_password
+          envFrom:
+            - secretRef:
+                name: minio-secret
           ports:
             - containerPort: 9000
               protocol: TCP
@@ -119,11 +117,14 @@ spec:
       containers:
         - name: minio-create-buckets
           image: minio/mc
+          envFrom:
+            - secretRef:
+                name: minio-secret
           command:
             - sh
             - -c
             - |
-              mc alias set minio http://minio-api.minio.svc.cluster.local:9000 minio_user minio_password &&
+              mc alias set minio http://minio-api.minio.svc.cluster.local:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" &&
               for bucket in retail-lakehouse-7dj2 trino-fault-tolerance-nkm5 trino-fault-tolerance-cws0 thanos; do
                 if ! mc ls minio/$bucket >/dev/null 2>&1; then
                   echo "Creating bucket: $bucket"
