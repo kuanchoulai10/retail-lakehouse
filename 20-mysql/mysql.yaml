@@ -28,13 +28,9 @@ spec:
       containers:
       - image: quay.io/debezium/example-mysql:3.2
         name: mysql
-        env:
-        - name: MYSQL_ROOT_PASSWORD
-          value: debezium
-        - name: MYSQL_USER
-          value: mysqluser
-        - name: MYSQL_PASSWORD
-          value: mysqlpw
+        envFrom:
+        - secretRef:
+            name: mysql-secret
         ports:
         - containerPort: 3306
           name: mysql
