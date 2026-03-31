@@ -7,7 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "==> Deploying Iceberg sink connector (context: ${KUBE_CONTEXT})"
 
-bash "$SCRIPT_DIR/generate-iceberg-secret.sh"
+sops --decrypt "$SCRIPT_DIR/iceberg-secret.yaml" \
+  | kubectl apply -f - -n kafka-cdc --context "${KUBE_CONTEXT}"
 
 kubectl apply -f "$SCRIPT_DIR/iceberg-connect-cluster.yaml" -n kafka-cdc --context "${KUBE_CONTEXT}"
 kubectl apply -f "$SCRIPT_DIR/iceberg-connector.yaml" -n kafka-cdc --context "${KUBE_CONTEXT}"
