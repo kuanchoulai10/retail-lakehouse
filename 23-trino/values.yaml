@@ -27,7 +27,6 @@ server:
           scaleUp:
             stabilizationWindowSeconds: 0
             selectPolicy: Max
-            tolerance: 0
             policies:
               - type: Percent
                 value: 100
@@ -38,7 +37,6 @@ server:
           scaleDown:
             stabilizationWindowSeconds: 300
             selectPolicy: Min
-            tolerance: 0
             policies:
               - type: Percent
                 value: 10
@@ -91,25 +89,14 @@ coordinator:
   readinessProbe:
     initialDelaySeconds: 30
     failureThreshold: 20
-  initContainers:
-    - name: concat-tls
-      image: busybox:1.36
-      command: ["sh", "-c", "cat /certs-in/tls.key /certs-in/tls.crt > /certs-out/trino-dev.pem"]
-      volumeMounts:
-        - name: tls-input
-          mountPath: /certs-in
-          readOnly: true
-        - name: tls-output
-          mountPath: /certs-out
   additionalVolumes:
-    - name: tls-input
+    - name: tls-certs
       secret:
         secretName: trino-tls-secret
-    - name: tls-output
-      emptyDir: {}
   additionalVolumeMounts:
-    - name: tls-output
+    - name: tls-certs
       mountPath: /etc/trino/tls
+      readOnly: true
   additionalExposedPorts:
     https:
       servicePort: 8443

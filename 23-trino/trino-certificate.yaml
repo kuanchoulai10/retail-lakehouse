@@ -30,3 +30,9 @@ spec:
     encoding: PKCS8
   usages:
     - server auth
+  keystores:
+    pkcs12:
+      create: true
+      passwordSecretRef:
+        name: trino-keystore-password
+        key: password

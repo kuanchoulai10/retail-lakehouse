@@ -23,15 +23,20 @@ echo "==> Waiting for cert-manager to issue TLS certificate..."
 kubectl wait --for=condition=Ready certificate/trino-tls \
   -n trino --timeout=120s --context "${KUBE_CONTEXT}"
 
-# Install Trino via Helm with helm-secrets
+# Install Trino via Helm
 helm repo add trino https://trinodb.github.io/charts/
 helm repo update trino
 
-helm secrets upgrade --install trino trino/trino \
+# Decrypt SOPS-encrypted values to a temp file
+SECRETS_TMP="$(mktemp /tmp/trino-values-secret-XXXXXX.yaml)"
+trap 'rm -f "$SECRETS_TMP"' EXIT
+sops -d "$SCRIPT_DIR/values-secret.yaml" > "$SECRETS_TMP"
+
+helm upgrade --install trino trino/trino \
   --version "${TRINO_VERSION}" \
   --namespace trino \
   --values "$SCRIPT_DIR/values.yaml" \
-  --values "$SCRIPT_DIR/values-secret.yaml" \
+  --values "$SECRETS_TMP" \
   --kube-context "${KUBE_CONTEXT}"
 
 echo "==> Done."
