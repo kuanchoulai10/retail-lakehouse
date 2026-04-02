@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mysql-insert-100-rows
+  namespace: kafka-cdc
+spec:
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: mysql-insert
+          image: mysql:8.4
+          env:
+            - name: MYSQL_PWD
+              value: mysqlpw
+            - name: MYSQL_USER
+              value: mysqluser
+          command:
+            - sh
+            - -c
+            - |
+              mysql -h mysql.kafka-cdc.svc.cluster.local \
+                -u "$MYSQL_USER" \
+                --database=inventory \
+                --connect-timeout=30 \
+                -e "INSERT INTO orders (order_date, purchaser, quantity, product_id)
+                    SELECT
+                      DATE_ADD('2026-01-01', INTERVAL (t1.n + t2.n * 10) DAY),
+                      ELT(1 + ((t1.n + t2.n * 10) % 4), 1001, 1002, 1003, 1004),
+                      1 + ((t1.n + t2.n * 10) % 9),
+                      ELT(1 + ((t1.n + t2.n * 10) % 4), 101, 102, 103, 104)
+                    FROM
+                      (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL
+                       SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL
+                       SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) t1,
+                      (SELECT 0 AS n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL
+                       SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL
+                       SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) t2
+                    WHERE t1.n + t2.n * 10 < 100;
+                    SELECT ROW_COUNT() AS rows_inserted;"
+              echo "Done: inserted 100 rows into inventory.orders"
