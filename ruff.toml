@@ -1,0 +1,89 @@
+# Enable rules.
+lint.select = [
+    "A",   # flake8-builtins - https://beta.ruff.rs/docs/rules/#flake8-builtins-a
+    "B",   # flake8-bugbear-b - https://beta.ruff.rs/docs/rules/#flake8-bugbear-b
+    "C4",  # flake8-comprehensions - https://beta.ruff.rs/docs/rules/#flake8-comprehensions-c4
+    "C90", # mccabe - https://beta.ruff.rs/docs/rules/#mccabe-c90
+    "COM", # flak8-commas - https://beta.ruff.rs/docs/rules/#flake8-commas-com
+    #"D", # pydocstyle - not enabled temporarily
+    "E",   # pycodestyle error - https://beta.ruff.rs/docs/rules/#error-e
+    "ERA", # flake8-eradicate - https://beta.ruff.rs/docs/rules/#eradicate-era
+    "FA",  # flake8-future-annotations - https://beta.ruff.rs/docs/rules/#flake8-future-annotations-fa
+    "FIX", # flake8-fixme - https://beta.ruff.rs/docs/rules/#flake8-fixme-fix
+    "F",   # pyflakes - https://beta.ruff.rs/docs/rules/#pyflakes-f
+    "I",   # isort - https://beta.ruff.rs/docs/rules/#isort-i
+    "ICN", # flake8-import-conventions - https://beta.ruff.rs/docs/rules/#flake8-import-conventions-icn
+    "ISC", # flake8-implicit-str-concat - https://beta.ruff.rs/docs/rules/#flake8-implicit-str-concat-isc
+    "PLE", # pylint error - https://beta.ruff.rs/docs/rules/#error-ple
+    "PLC", # pylint convention - https://beta.ruff.rs/docs/rules/#convention-plc
+    "PLR", # pylint refactoring - https://beta.ruff.rs/docs/rules/#refactor-plr
+    "PLW", # pylint warning - https://beta.ruff.rs/docs/rules/#warning-plw
+    "PL",  # pylint - https://beta.ruff.rs/docs/rules/#pylint-pl
+    "PYI", # flake8-pyi - https://beta.ruff.rs/docs/rules/#flake8-pyi-pyi
+    "Q",   # flake8-quotes - https://beta.ruff.rs/docs/rules/#flake8-quotes-q
+    "PTH", # flake8-use-pathlib - https://beta.ruff.rs/docs/rules/#flake8-use-pathlib-pth
+    "T10", # flake8-debugger https://beta.ruff.rs/docs/rules/#flake8-debugger-t10
+    "TCH", # flake8-type-checking - https://docs.astral.sh/ruff/rules/#flake8-type-checking-tch
+    "TD",  # flake8-todo - https://beta.ruff.rs/docs/rules/#flake8-todos-td
+    "UP",  # pyupgrade - https://docs.astral.sh/ruff/rules/#pyupgrade-up
+    "W",   # pycodestyle warning - https://beta.ruff.rs/docs/rules/#warning-w
+]
+
+# Ignore specific rules
+lint.ignore = [
+    "W291",    # https://beta.ruff.rs/docs/rules/trailing-whitespace/
+    "PLR0913", # https://beta.ruff.rs/docs/rules/too-many-arguments/
+    "PLR2004", #https://beta.ruff.rs/docs/rules/magic-value-comparison/
+    "PLW0603", #https://beta.ruff.rs/docs/rules/global-statement/
+    "B904",    # raise-without-from-inside-except - disabled temporarily
+    "PLC1901", # Compare-to-empty-string - disabled temporarily
+    "PYI024",
+    "A005",
+    "TC006",   # https://docs.astral.sh/ruff/rules/runtime-cast-value/
+    "PLC0415", # https://docs.astral.sh/ruff/rules/import-outside-top-level/
+    "COM812",  # conflicts with ruff formatter
+]
+
+# Exclude files and directories
+exclude = [
+    "docs",
+    ".eggs",
+    "setup.py",
+    "example",
+    ".aws-sam",
+    ".git",
+    "dist",
+    ".md",
+    ".yaml",
+    ".txt",
+    ".ini",
+]
+
+# Maximum line length
+line-length = 120
+
+target-version = "py314"
+
+fix = true
+lint.fixable = ["I", "COM812", "W"]
+
+lint.typing-modules = []
+
+[lint.mccabe]
+# Maximum cyclomatic complexity
+max-complexity = 16
+
+[lint.pylint]
+# Maximum number of nested blocks
+max-branches = 16
+# Maximum number of if statements in a function
+max-statements = 70
+
+[lint.isort]
+split-on-trailing-comma = true
+
+[lint.flake8-type-checking]
+runtime-evaluated-base-classes = ["pydantic.BaseModel", "pydantic_settings.BaseSettings"]
+
+[lint.per-file-ignores]
+"tests/*" = ["FA100"]
