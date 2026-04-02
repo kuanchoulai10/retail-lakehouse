@@ -1,9 +1,10 @@
 from configs import JobSettings
+from sql_builder import IcebergCallBuilder
 
 
 def main():
     settings = JobSettings()
-    print(settings.model_dump())
+    print(IcebergCallBuilder(settings).build_sql())
 
 
 if __name__ == "__main__":
