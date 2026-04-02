@@ -2,7 +2,10 @@
 
 version: '3'
 
-output: group
+output:
+  group:
+    begin: '::group::{{.TASK}}'
+    end: '::endgroup::'
 
 tasks:
   default:
@@ -39,7 +42,7 @@ tasks:
   # --8<-- [end:setup]
 
   # --8<-- [start:checks]
-  run-pre-commit-checks:
+  pre-commit:
     desc: "Run pre commit checks"
     cmds:
       - uv run pre-commit run --all-files --show-diff-on-failure
@@ -113,7 +116,7 @@ tasks:
   # --8<-- [end:bootstrap-apps]
 
   # --8<-- [start:validate]
-  validate:
+  validate-apps:
     desc: "Validate all K8s components in parallel (KUBE_CONTEXT required)"
     requires:
       vars:

@@ -25,6 +25,7 @@ echo "    Path: retail-lakehouse-7dj2/warehouse/inventory/orders/data/"
 kubectl delete pod mc-e2e-validate -n minio \
   --context "${KUBE_CONTEXT}" --ignore-not-found=true 2>/dev/null || true
 
+# shellcheck disable=SC2016  # vars intentionally unexpanded; they expand inside the container
 kubectl run mc-e2e-validate --rm -i --restart=Never \
   --image=minio/mc \
   --namespace=minio \

@@ -16,8 +16,6 @@ kubectl rollout status deployment/trino-worker \
   -n trino --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
 
 echo "==> Validating JMX exporter sidecar is running"
-READY=$(kubectl get deployment/trino-coordinator -n trino --context "${KUBE_CONTEXT}" \
-  -o jsonpath='{.status.readyReplicas}')
 CONTAINERS=$(kubectl get deployment/trino-coordinator -n trino --context "${KUBE_CONTEXT}" \
   -o jsonpath='{.spec.template.spec.containers[*].name}' | tr ' ' '\n' | wc -l | tr -d ' ')
 if [ "${CONTAINERS}" -lt 2 ]; then
