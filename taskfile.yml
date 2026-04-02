@@ -112,6 +112,165 @@ tasks:
       - bash 02-argocd-apps/validate.sh
   # --8<-- [end:bootstrap-apps]
 
+  # --8<-- [start:validate]
+  validate:
+    desc: "Validate all K8s components in parallel (KUBE_CONTEXT required)"
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+    deps:
+      - task: validate-cert-manager
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-kube-prometheus
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-strimzi-operator
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-keda
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-spark-operator
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-otel-operator
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-kafka-cluster
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-minio
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-mysql
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-jaeger-thanos
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-jaeger-trino
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-kafka-debezium-mysql-connector
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-kafka-iceberg-connector
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-trino
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-thanos
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+
+  validate-cert-manager:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash 10-cert-manager/validate.sh
+
+  validate-kube-prometheus:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash 10-kube-prometheus/validate.sh
+
+  validate-strimzi-operator:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash 10-strimzi-operator/validate.sh
+
+  validate-keda:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash 11-keda/validate.sh
+
+  validate-spark-operator:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash 11-spark-operator/validate.sh
+
+  validate-otel-operator:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash 11-otel-operator/validate.sh
+
+  validate-kafka-cluster:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash 20-kafka-cluster/validate.sh
+
+  validate-minio:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash 20-minio/validate.sh
+
+  validate-mysql:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash 20-mysql/validate.sh
+
+  validate-jaeger-thanos:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash 20-jaeger-thanos/validate.sh
+
+  validate-jaeger-trino:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash 20-jaeger-trino/validate.sh
+
+  validate-kafka-debezium-mysql-connector:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash 21-kafka-debezium-mysql-connector/validate.sh
+
+  validate-kafka-iceberg-connector:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash 22-kafka-iceberg-connector/validate.sh
+
+  validate-trino:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash 23-trino/validate.sh
+
+  validate-thanos:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash 30-thanos/validate.sh
+  # --8<-- [end:validate]
+
   # --8<-- [start:docs]
   serve-docs:
     desc: Serve docs locally
