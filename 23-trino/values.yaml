@@ -42,16 +42,12 @@ server:
                 value: 10
                 periodSeconds: 60
     triggers:
-      - type: metrics-api
+      - type: prometheus
         metadata:
-          url: "https://trino.trino.svc.cluster.local:8443/metrics"
-          format: "prometheus"
-          valueLocation: trino_execution_name_QueryManager_RunningQueries
-          targetValue: "1"
-          authMode: "bearer"
-          unsafeSsl: "true"
-        authenticationRef:
-          name: keda-metric-api-creds
+          serverAddress: http://prometheus-k8s.monitoring.svc.cluster.local:9090
+          metricName: trino_running_queries
+          query: trino_execution_QueryManager_RunningQueries{job="trino"}
+          threshold: "1"
     annotations: {}
 # --8<-- [end:server]
 
