@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class JobType(str, Enum):
+class JobType(StrEnum):
     EXPIRE_SNAPSHOTS = "expire_snapshots"
     REMOVE_ORPHAN_FILES = "remove_orphan_files"
     REWRITE_DATA_FILES = "rewrite_data_files"

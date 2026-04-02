@@ -3,7 +3,7 @@ from sql_builder import IcebergCallBuilder
 
 
 def main():
-    settings = JobSettings()
+    settings = JobSettings()  # ty: ignore[missing-argument]
     print(IcebergCallBuilder(settings).build_sql())
 
 

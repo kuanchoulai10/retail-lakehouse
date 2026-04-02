@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel
 
 
@@ -13,7 +11,6 @@ class RewriteManifestsConfig(BaseModel):
       REWRITE_MANIFESTS__SPEC_ID     optional int, partition spec ID
     """
 
-    table: Optional[str] = None
+    table: str | None = None
     use_caching: bool = True
-    spec_id: Optional[int] = None
-
+    spec_id: int | None = None

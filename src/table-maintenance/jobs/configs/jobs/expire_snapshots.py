@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -16,9 +15,8 @@ class ExpireSnapshotsConfig(BaseModel):
       EXPIRE_SNAPSHOTS__STREAM_RESULTS         optional bool, default false
     """
 
-    table: Optional[str] = None
-    older_than: Optional[datetime] = None
+    table: str | None = None
+    older_than: datetime | None = None
     retain_last: int = 1
-    max_concurrent_deletes: Optional[int] = None
+    max_concurrent_deletes: int | None = None
     stream_results: bool = False
-

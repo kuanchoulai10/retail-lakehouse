@@ -32,5 +32,3 @@ class JobSettings(BaseSettings):
     remove_orphan_files: RemoveOrphanFilesConfig = RemoveOrphanFilesConfig()
     rewrite_data_files: RewriteDataFilesConfig = RewriteDataFilesConfig()
     rewrite_manifests: RewriteManifestsConfig = RewriteManifestsConfig()
-
-

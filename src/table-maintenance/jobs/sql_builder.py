@@ -1,5 +1,11 @@
-from configs import JobSettings
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from configs.base import JobType
+
+if TYPE_CHECKING:
+    from configs import JobSettings
 
 
 def _ts(dt) -> str:

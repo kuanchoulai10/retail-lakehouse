@@ -1,10 +1,9 @@
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 from pydantic import BaseModel
 
 
-class Strategy(str, Enum):
+class Strategy(StrEnum):
     BINPACK = "binpack"
     SORT = "sort"
     ZORDER = "zorder"
@@ -29,17 +28,16 @@ class RewriteDataFilesConfig(BaseModel):
       REWRITE_DATA_FILES__PARTIAL_PROGRESS_MAX_COMMITS    optional int (Iceberg default: 10)
     """
 
-    table: Optional[str] = None
+    table: str | None = None
     strategy: Strategy = Strategy.BINPACK
-    sort_order: Optional[str] = None
-    where: Optional[str] = None
+    sort_order: str | None = None
+    where: str | None = None
     # Iceberg options map entries
-    target_file_size_bytes: Optional[int] = None
-    min_file_size_bytes: Optional[int] = None
-    max_file_size_bytes: Optional[int] = None
-    min_input_files: Optional[int] = None
-    rewrite_all: Optional[bool] = None
-    max_concurrent_file_group_rewrites: Optional[int] = None
-    partial_progress_enabled: Optional[bool] = None
-    partial_progress_max_commits: Optional[int] = None
-
+    target_file_size_bytes: int | None = None
+    min_file_size_bytes: int | None = None
+    max_file_size_bytes: int | None = None
+    min_input_files: int | None = None
+    rewrite_all: bool | None = None
+    max_concurrent_file_group_rewrites: int | None = None
+    partial_progress_enabled: bool | None = None
+    partial_progress_max_commits: int | None = None

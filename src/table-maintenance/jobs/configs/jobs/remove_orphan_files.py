@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -16,9 +15,8 @@ class RemoveOrphanFilesConfig(BaseModel):
       REMOVE_ORPHAN_FILES__MAX_CONCURRENT_DELETES  optional int
     """
 
-    table: Optional[str] = None
-    older_than: Optional[datetime] = None
-    location: Optional[str] = None
+    table: str | None = None
+    older_than: datetime | None = None
+    location: str | None = None
     dry_run: bool = False
-    max_concurrent_deletes: Optional[int] = None
-
+    max_concurrent_deletes: int | None = None
