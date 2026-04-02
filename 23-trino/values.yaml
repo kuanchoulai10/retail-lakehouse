@@ -139,6 +139,28 @@ worker:
   #     http-event-listener.connect-ingest-uri=<your ingest URI>
 # --8<-- [end:worker]
 
+# --8<-- [start:jmx]
+jmx:
+  enabled: true
+  exporter:
+    enabled: true
+    image: bitnami/jmx-exporter:latest
+    configProperties: |-
+      hostPort: localhost:{{- .Values.jmx.registryPort }}
+      startDelaySeconds: 0
+      ssl: false
+      lowercaseOutputName: false
+      lowercaseOutputLabelNames: false
+# --8<-- [end:jmx]
+
+# --8<-- [start:serviceMonitor]
+serviceMonitor:
+  enabled: true
+  labels:
+    prometheus: kube-prometheus
+  interval: "30s"
+# --8<-- [end:serviceMonitor]
+
 # --8<-- [start:catalogs]
 catalogs:
   faker: |

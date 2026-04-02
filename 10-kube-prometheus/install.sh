@@ -31,4 +31,7 @@ kubectl create -f kube-prometheus/manifests/ --context "${KUBE_CONTEXT}"
 echo "==> Cleaning up"
 rm -rf kube-prometheus
 
+echo "==> Applying Prometheus RBAC for additional namespaces"
+kubectl apply -f "$SCRIPT_DIR/prometheus-rolebinding-trino.yaml" --context "${KUBE_CONTEXT}"
+
 echo "==> Done."
