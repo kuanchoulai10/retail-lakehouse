@@ -79,7 +79,7 @@ def test_list_merges_both_kinds():
         {"items": []},
     ]
     repo = JobsRepository(api, SETTINGS)
-    results = repo.list()
+    results = repo.list_all()
     assert len(results) == 1
     assert api.list_namespaced_custom_object.call_count == 2
 

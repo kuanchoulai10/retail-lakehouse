@@ -15,6 +15,7 @@ def test_valid_rewrite_data_files_request():
     )
     assert req.job_type == JobType.REWRITE_DATA_FILES
     assert req.catalog == "retail"
+    assert req.rewrite_data_files is not None
     assert req.rewrite_data_files.table == "inventory.orders"
 
 

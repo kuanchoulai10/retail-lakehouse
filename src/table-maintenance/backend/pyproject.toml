@@ -16,10 +16,14 @@ dev = [
     "pytest>=8",
     "httpx>=0.27",
     "pytest-mock>=3",
+    "ty>=0.0.27",
 ]
 
 [tool.setuptools.packages.find]
 include = ["models*", "k8s*", "api*"]
+
+[tool.ty.environment]
+extra-paths = ["../jobs"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

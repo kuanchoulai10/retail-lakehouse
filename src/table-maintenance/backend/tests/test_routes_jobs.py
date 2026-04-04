@@ -57,7 +57,7 @@ def test_post_job_invalid_request_returns_422():
 
 def test_list_jobs_returns_200():
     repo = MagicMock()
-    repo.list.return_value = [SAMPLE_RESPONSE]
+    repo.list_all.return_value = [SAMPLE_RESPONSE]
     client = _make_client(repo)
 
     response = client.get("/jobs")

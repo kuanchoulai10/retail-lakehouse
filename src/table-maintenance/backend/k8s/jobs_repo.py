@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from configs.base import JobType
@@ -42,7 +42,7 @@ def _extract_job_type(resource: dict) -> JobType:
 def _to_response(resource: dict, job_type: JobType) -> JobResponse:
     meta = resource.get("metadata", {})
     ts = meta.get("creationTimestamp")
-    created_at = datetime.fromisoformat(ts.replace("Z", "+00:00")) if ts else datetime.utcnow()
+    created_at = datetime.fromisoformat(ts.replace("Z", "+00:00")) if ts else datetime.now(UTC)
     kind = resource.get("kind", "SparkApplication")
     state = resource.get("status", {}).get("applicationState", {}).get("state", "")
     return JobResponse(
@@ -73,7 +73,7 @@ class JobsRepository:
         )
         return _to_response(resource, request.job_type)
 
-    def list(self) -> list[JobResponse]:
+    def list_all(self) -> list[JobResponse]:
         results = []
         for plural in (_PLURAL_SPARK, _PLURAL_SCHEDULED):
             resp = self._api.list_namespaced_custom_object(

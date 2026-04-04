@@ -17,7 +17,7 @@ def create_job(request: JobRequest, repo: JobsRepository = Depends(get_repo)):
 
 @router.get("", response_model=list[JobResponse])
 def list_jobs(repo: JobsRepository = Depends(get_repo)):
-    return repo.list()
+    return repo.list_all()
 
 
 @router.get("/{name}", response_model=JobResponse)

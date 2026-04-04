@@ -46,6 +46,13 @@ repos:
         language: system
         types: [python]
         exclude: ^src/table-maintenance/backend/
+      - id: ty-backend
+        name: ty (backend)
+        entry: uv run --project src/table-maintenance/backend --directory src/table-maintenance/backend ty check
+        language: system
+        types: [python]
+        files: ^src/table-maintenance/backend/
+        pass_filenames: false
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: "aca6d4c8045a504e2812ea4bedff1d0a09e437bc" # v0.15.8
     hooks:
