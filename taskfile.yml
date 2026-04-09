@@ -46,6 +46,23 @@ tasks:
     desc: "Run pre commit checks"
     cmds:
       - uv run pre-commit run --all-files --show-diff-on-failure
+
+  pre-pr:
+    desc: "Run all checks before creating a PR"
+    cmds:
+      - task: pre-commit
+      - task: unit-test
+
+  unit-test:
+    desc: "Run all unit tests in parallel"
+    deps:
+      - unit-test-backend
+
+  unit-test-backend:
+    desc: "Run table-maintenance backend tests"
+    internal: true
+    cmds:
+      - cmd: echo "TODO:// uv run --project src/table-maintenance/backend --directory src/table-maintenance/backend pytest -v"
   # --8<-- [end:checks]
 
   # --8<-- [start:bootstrap-apps]
