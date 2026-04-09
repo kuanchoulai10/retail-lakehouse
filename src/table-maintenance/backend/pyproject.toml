@@ -20,7 +20,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["models*", "k8s*", "api*"]
+include = ["models*", "k8s*", "api*", "repos*"]
 
 [tool.ty.environment]
 extra-paths = ["../jobs"]

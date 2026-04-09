@@ -1,12 +1,12 @@
 from contextlib import asynccontextmanager
 
-from api.routes.jobs import get_repo
-from api.routes.jobs import router as jobs_router
+from api.routes import router as jobs_router
+from api.routes._deps import get_repo
 from config import AppSettings
 from fastapi import FastAPI
 from k8s.client import load_k8s_config
-from k8s.jobs_repo import JobsRepository
 from kubernetes import client as k8s_client
+from repos.k8s import K8sJobsRepo
 
 settings = AppSettings()
 
@@ -15,7 +15,7 @@ settings = AppSettings()
 async def lifespan(app: FastAPI):
     load_k8s_config()
     api = k8s_client.CustomObjectsApi()
-    repo = JobsRepository(api, settings)
+    repo = K8sJobsRepo(api, settings)
     app.dependency_overrides[get_repo] = lambda: repo
     yield
     app.dependency_overrides.clear()

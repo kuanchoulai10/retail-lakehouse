@@ -5,11 +5,11 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from configs.base import JobType
-from fastapi import HTTPException
+from k8s.manifest import build_manifest
 from kubernetes.client.exceptions import ApiException
 from models.responses import JobResponse, status_from_k8s
 
-from k8s.manifest import build_manifest
+from repos.base import JobNotFoundError, JobsRepo
 
 if TYPE_CHECKING:
     from config import AppSettings
@@ -28,11 +28,9 @@ def _generate_name(job_type: JobType) -> str:
 
 
 def _extract_job_type(resource: dict) -> JobType:
-    # SparkApplication: spec.driver.env
     for env in resource.get("spec", {}).get("driver", {}).get("env", []):
         if env["name"] == "GLAC_JOB_TYPE":
             return JobType(env["value"])
-    # ScheduledSparkApplication: spec.template.driver.env
     for env in resource.get("spec", {}).get("template", {}).get("driver", {}).get("env", []):
         if env["name"] == "GLAC_JOB_TYPE":
             return JobType(env["value"])
@@ -55,7 +53,7 @@ def _to_response(resource: dict, job_type: JobType) -> JobResponse:
     )
 
 
-class JobsRepository:
+class K8sJobsRepo(JobsRepo):
     def __init__(self, api: CustomObjectsApi, settings: AppSettings):
         self._api = api
         self._settings = settings
@@ -104,7 +102,7 @@ class JobsRepository:
                 if e.status == 404:
                     continue
                 raise
-        raise HTTPException(status_code=404, detail=f"Job {name!r} not found")
+        raise JobNotFoundError(name)
 
     def delete(self, name: str) -> None:
         for plural in (_PLURAL_SPARK, _PLURAL_SCHEDULED):
@@ -121,4 +119,4 @@ class JobsRepository:
                 if e.status == 404:
                     continue
                 raise
-        raise HTTPException(status_code=404, detail=f"Job {name!r} not found")
+        raise JobNotFoundError(name)

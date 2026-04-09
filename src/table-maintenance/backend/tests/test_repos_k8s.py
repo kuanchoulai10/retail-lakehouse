@@ -4,11 +4,11 @@ import pytest
 from config import AppSettings
 from configs.base import JobType
 from configs.jobs.rewrite_data_files import RewriteDataFilesConfig
-from fastapi import HTTPException
-from k8s.jobs_repo import JobsRepository
 from kubernetes.client.exceptions import ApiException
 from models.requests import JobRequest
 from models.responses import JobStatus
+from repos.base import JobNotFoundError, JobsRepo
+from repos.k8s import K8sJobsRepo
 
 SETTINGS = AppSettings()
 
@@ -39,12 +39,18 @@ def _make_request() -> JobRequest:
     )
 
 
+def test_is_subclass_of_jobs_repo():
+    api = MagicMock()
+    repo = K8sJobsRepo(api, SETTINGS)
+    assert isinstance(repo, JobsRepo)
+
+
 def test_create_returns_job_response():
     api = MagicMock()
     api.create_namespaced_custom_object.return_value = MOCK_SPARK_APP
-    repo = JobsRepository(api, SETTINGS)
+    repo = K8sJobsRepo(api, SETTINGS)
 
-    with patch("k8s.jobs_repo._generate_name", return_value="table-maintenance-rewrite-data-files-abc123"):
+    with patch("repos.k8s._generate_name", return_value="table-maintenance-rewrite-data-files-abc123"):
         response = repo.create(_make_request())
 
     assert response.name == "table-maintenance-rewrite-data-files-abc123"
@@ -60,12 +66,12 @@ def test_create_scheduled_uses_correct_plural():
     api = MagicMock()
     scheduled_app = {**MOCK_SPARK_APP, "kind": "ScheduledSparkApplication"}
     api.create_namespaced_custom_object.return_value = scheduled_app
-    repo = JobsRepository(api, SETTINGS)
+    repo = K8sJobsRepo(api, SETTINGS)
 
     req = _make_request()
     req.cron = "0 2 * * *"
 
-    with patch("k8s.jobs_repo._generate_name", return_value="my-job"):
+    with patch("repos.k8s._generate_name", return_value="my-job"):
         repo.create(req)
 
     call_kwargs = api.create_namespaced_custom_object.call_args.kwargs
@@ -78,7 +84,7 @@ def test_list_merges_both_kinds():
         {"items": [MOCK_SPARK_APP]},
         {"items": []},
     ]
-    repo = JobsRepository(api, SETTINGS)
+    repo = K8sJobsRepo(api, SETTINGS)
     results = repo.list_all()
     assert len(results) == 1
     assert api.list_namespaced_custom_object.call_count == 2
@@ -87,7 +93,7 @@ def test_list_merges_both_kinds():
 def test_get_tries_spark_application_first():
     api = MagicMock()
     api.get_namespaced_custom_object.return_value = MOCK_SPARK_APP
-    repo = JobsRepository(api, SETTINGS)
+    repo = K8sJobsRepo(api, SETTINGS)
 
     response = repo.get("table-maintenance-rewrite-data-files-abc123")
 
@@ -105,37 +111,36 @@ def test_get_falls_back_to_scheduled():
     }
     not_found = ApiException(status=404)
     api.get_namespaced_custom_object.side_effect = [not_found, scheduled_app]
-    repo = JobsRepository(api, SETTINGS)
+    repo = K8sJobsRepo(api, SETTINGS)
 
     response = repo.get("my-job")
     assert response.kind == "ScheduledSparkApplication"
 
 
-def test_get_raises_404_when_not_found():
+def test_get_raises_not_found():
     api = MagicMock()
     api.get_namespaced_custom_object.side_effect = ApiException(status=404)
-    repo = JobsRepository(api, SETTINGS)
+    repo = K8sJobsRepo(api, SETTINGS)
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(JobNotFoundError) as exc_info:
         repo.get("nonexistent")
-    assert exc_info.value.status_code == 404
+    assert exc_info.value.name == "nonexistent"
 
 
 def test_delete_calls_correct_plural():
     api = MagicMock()
     api.delete_namespaced_custom_object.return_value = {}
-    repo = JobsRepository(api, SETTINGS)
+    repo = K8sJobsRepo(api, SETTINGS)
 
     repo.delete("table-maintenance-rewrite-data-files-abc123")
     call_kwargs = api.delete_namespaced_custom_object.call_args.kwargs
     assert call_kwargs["plural"] == "sparkapplications"
 
 
-def test_delete_raises_404_when_not_found():
+def test_delete_raises_not_found():
     api = MagicMock()
     api.delete_namespaced_custom_object.side_effect = ApiException(status=404)
-    repo = JobsRepository(api, SETTINGS)
+    repo = K8sJobsRepo(api, SETTINGS)
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(JobNotFoundError):
         repo.delete("nonexistent")
-    assert exc_info.value.status_code == 404
