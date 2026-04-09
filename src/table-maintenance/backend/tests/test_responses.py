@@ -1,7 +1,8 @@
 from datetime import UTC, datetime
 
 from configs.base import JobType
-from models.responses import JobResponse, JobStatus, status_from_k8s
+from models.job_response import JobResponse
+from models.job_status import JobStatus, status_from_k8s
 
 
 def test_status_empty_state_is_pending():

@@ -4,10 +4,11 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from models.responses import JobResponse, status_from_k8s
+from models.job_response import JobResponse
+from models.job_status import status_from_k8s
 
 if TYPE_CHECKING:
-    from models.requests import JobRequest
+    from models.job_request import JobRequest
 
 from repos.base import JobNotFoundError, JobsRepo
 

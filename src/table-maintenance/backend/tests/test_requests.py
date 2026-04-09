@@ -2,7 +2,7 @@ import pytest
 from configs.base import JobType
 from configs.jobs.expire_snapshots import ExpireSnapshotsConfig
 from configs.jobs.rewrite_data_files import RewriteDataFilesConfig
-from models.requests import JobRequest
+from models.job_request import JobRequest
 from pydantic import ValidationError
 
 

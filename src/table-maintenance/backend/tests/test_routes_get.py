@@ -6,7 +6,8 @@ from api.jobs._deps import get_repo
 from configs.base import JobType
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from models.responses import JobResponse, JobStatus
+from models.job_response import JobResponse
+from models.job_status import JobStatus
 from repos.base import JobNotFoundError
 
 SAMPLE_RESPONSE = JobResponse(

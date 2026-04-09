@@ -7,14 +7,15 @@ from typing import TYPE_CHECKING
 from configs.base import JobType
 from k8s.manifest import build_manifest
 from kubernetes.client.exceptions import ApiException
-from models.responses import JobResponse, status_from_k8s
+from models.job_response import JobResponse
+from models.job_status import status_from_k8s
 
 from repos.base import JobNotFoundError, JobsRepo
 
 if TYPE_CHECKING:
     from config import AppSettings
     from kubernetes.client import CustomObjectsApi
-    from models.requests import JobRequest
+    from models.job_request import JobRequest
 
 _GROUP = "sparkoperator.k8s.io"
 _VERSION = "v1beta2"

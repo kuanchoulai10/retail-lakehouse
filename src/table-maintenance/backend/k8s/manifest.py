@@ -6,7 +6,7 @@ from configs.base import JobType
 
 if TYPE_CHECKING:
     from config import AppSettings
-    from models.requests import JobRequest
+    from models.job_request import JobRequest
     from pydantic import BaseModel
 
 _JOB_PREFIX: dict[JobType, str] = {

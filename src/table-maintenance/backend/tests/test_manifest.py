@@ -5,7 +5,7 @@ from configs.base import JobType
 from configs.jobs.expire_snapshots import ExpireSnapshotsConfig
 from configs.jobs.rewrite_data_files import RewriteDataFilesConfig, Strategy
 from k8s.manifest import build_manifest
-from models.requests import JobRequest
+from models.job_request import JobRequest
 
 SETTINGS = AppSettings()
 

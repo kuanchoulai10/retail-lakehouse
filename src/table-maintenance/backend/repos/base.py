@@ -4,8 +4,8 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from models.requests import JobRequest
-    from models.responses import JobResponse
+    from models.job_request import JobRequest
+    from models.job_response import JobResponse
 
 
 class JobNotFoundError(Exception):

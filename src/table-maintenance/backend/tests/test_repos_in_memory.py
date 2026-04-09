@@ -1,8 +1,8 @@
 import pytest
 from configs.base import JobType
 from configs.jobs.rewrite_data_files import RewriteDataFilesConfig
-from models.requests import JobRequest
-from models.responses import JobStatus
+from models.job_request import JobRequest
+from models.job_status import JobStatus
 from repos.base import JobNotFoundError, JobsRepo
 from repos.in_memory import InMemoryJobsRepo
 
