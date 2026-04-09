@@ -19,7 +19,7 @@ def test_delete_job_returns_204():
     repo.delete.return_value = None
     client = _make_client(repo)
 
-    response = client.delete("/jobs/table-maintenance-rewrite-data-files-abc123")
+    response = client.delete("/v1/jobs/table-maintenance-rewrite-data-files-abc123")
     assert response.status_code == 204
 
 
@@ -28,5 +28,5 @@ def test_delete_job_not_found_returns_404():
     repo.delete.side_effect = JobNotFoundError("nonexistent")
     client = _make_client(repo)
 
-    response = client.delete("/jobs/nonexistent")
+    response = client.delete("/v1/jobs/nonexistent")
     assert response.status_code == 404

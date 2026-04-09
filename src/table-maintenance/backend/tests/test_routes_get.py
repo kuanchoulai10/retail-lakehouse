@@ -31,7 +31,7 @@ def test_get_job_returns_200():
     repo.get.return_value = SAMPLE_RESPONSE
     client = _make_client(repo)
 
-    response = client.get("/jobs/table-maintenance-rewrite-data-files-abc123")
+    response = client.get("/v1/jobs/table-maintenance-rewrite-data-files-abc123")
     assert response.status_code == 200
     assert response.json()["kind"] == "SparkApplication"
 
@@ -41,6 +41,6 @@ def test_get_job_not_found_returns_404():
     repo.get.side_effect = JobNotFoundError("nonexistent")
     client = _make_client(repo)
 
-    response = client.get("/jobs/nonexistent")
+    response = client.get("/v1/jobs/nonexistent")
     assert response.status_code == 404
     assert "nonexistent" in response.json()["detail"]

@@ -30,6 +30,6 @@ def test_list_jobs_returns_200():
     repo.list_all.return_value = [SAMPLE_RESPONSE]
     client = _make_client(repo)
 
-    response = client.get("/jobs")
+    response = client.get("/v1/jobs")
     assert response.status_code == 200
     assert len(response.json()) == 1
