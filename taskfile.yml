@@ -63,7 +63,7 @@ tasks:
     desc: "Run table-maintenance backend tests"
     internal: true
     cmds:
-      - cmd: echo "TODO:// uv run --project src/table-maintenance/backend --directory src/table-maintenance/backend pytest -v"
+      - uv run --project src/table-maintenance/backend --directory src/table-maintenance/backend pytest -v
 
   unit-test-jobs:
     desc: "Run table-maintenance jobs tests"
