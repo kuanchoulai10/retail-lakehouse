@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 
-from api.routes import router as jobs_router
-from api.routes._deps import get_repo
+from api.jobs import router as jobs_router
+from api.jobs._deps import get_repo
 from config import AppSettings
 from fastapi import FastAPI
 from k8s.client import load_k8s_config

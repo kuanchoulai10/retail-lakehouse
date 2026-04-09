@@ -1,7 +1,7 @@
 """Integration test: full CRUD lifecycle via HTTP with InMemoryJobsRepo."""
 
-from api.routes import router
-from api.routes._deps import get_repo
+from api.jobs import router
+from api.jobs._deps import get_repo
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from repos.in_memory import InMemoryJobsRepo

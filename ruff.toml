@@ -87,4 +87,4 @@ runtime-evaluated-base-classes = ["pydantic.BaseModel", "pydantic_settings.BaseS
 
 [lint.per-file-ignores]
 "tests/*" = ["FA100"]
-"src/table-maintenance/backend/api/routes/*.py" = ["B008", "TC002"]
+"src/table-maintenance/backend/api/jobs/*.py" = ["B008", "TC002"]

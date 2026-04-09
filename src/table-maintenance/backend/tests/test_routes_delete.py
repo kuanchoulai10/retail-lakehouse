@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock
 
-from api.routes import router
-from api.routes._deps import get_repo
+from api.jobs import router
+from api.jobs._deps import get_repo
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from repos.base import JobNotFoundError
