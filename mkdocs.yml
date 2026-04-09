@@ -37,6 +37,15 @@ nav:
     - observability/opentelemetry/how-opentelemetry-works.md
     - observability/opentelemetry/opentelemetry-deployment.md
     - trino/monitoring.md
+  - Iceberg Table Maintenance:
+    - iceberg/table-maintenance.md
+    - iceberg/troubleshooting-spark-runtime-version.md
+  - Troubleshooting:
+    - troubleshooting-minikube-node-recovery.md
+    - troubleshooting-minikube-image-pull.md
+    - troubleshooting-spark-operator-leader-election.md
+    - minio/troubleshooting-hostpath-data-recovery.md
+    - polaris/troubleshooting-catalog-reset.md
   - Apache Iceberg - Spark Quickstart:
       - iceberg/spark-quickstart/deployment.md
       - iceberg/spark-quickstart/1-iceberg-getting-started.ipynb
