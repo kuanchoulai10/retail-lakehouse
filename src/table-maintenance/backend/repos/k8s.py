@@ -10,7 +10,8 @@ from kubernetes.client.exceptions import ApiException
 from models.job_response import JobResponse
 from models.job_status import status_from_k8s
 
-from repos.base import JobNotFoundError, JobsRepo
+from repos.exceptions import JobNotFoundError
+from repos.jobs_repo import JobsRepo
 
 if TYPE_CHECKING:
     from config import AppSettings

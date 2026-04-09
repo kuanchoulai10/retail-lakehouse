@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
-from repos.base import JobNotFoundError, JobsRepo
+from repos.exceptions import JobNotFoundError
+from repos.jobs_repo import JobsRepo
 
 from api.jobs._deps import get_repo
 

@@ -7,7 +7,8 @@ from configs.jobs.rewrite_data_files import RewriteDataFilesConfig
 from kubernetes.client.exceptions import ApiException
 from models.job_request import JobRequest
 from models.job_status import JobStatus
-from repos.base import JobNotFoundError, JobsRepo
+from repos.exceptions import JobNotFoundError
+from repos.jobs_repo import JobsRepo
 from repos.k8s import K8sJobsRepo
 
 SETTINGS = AppSettings()

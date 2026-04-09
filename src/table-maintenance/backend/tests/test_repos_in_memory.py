@@ -3,8 +3,9 @@ from configs.base import JobType
 from configs.jobs.rewrite_data_files import RewriteDataFilesConfig
 from models.job_request import JobRequest
 from models.job_status import JobStatus
-from repos.base import JobNotFoundError, JobsRepo
+from repos.exceptions import JobNotFoundError
 from repos.in_memory import InMemoryJobsRepo
+from repos.jobs_repo import JobsRepo
 
 
 def _make_request(

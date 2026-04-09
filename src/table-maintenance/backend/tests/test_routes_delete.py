@@ -4,7 +4,7 @@ from api.jobs import router
 from api.jobs._deps import get_repo
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from repos.base import JobNotFoundError
+from repos.exceptions import JobNotFoundError
 
 
 def _make_client(repo: MagicMock) -> TestClient:

@@ -1,5 +1,6 @@
 import pytest
-from repos.base import JobNotFoundError, JobsRepo
+from repos.exceptions import JobNotFoundError
+from repos.jobs_repo import JobsRepo
 
 
 def test_job_not_found_error_has_name():

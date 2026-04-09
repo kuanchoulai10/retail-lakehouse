@@ -8,14 +8,6 @@ if TYPE_CHECKING:
     from models.job_response import JobResponse
 
 
-class JobNotFoundError(Exception):
-    """Raised when a job is not found in the repository."""
-
-    def __init__(self, name: str) -> None:
-        self.name = name
-        super().__init__(f"Job {name!r} not found")
-
-
 class JobsRepo(ABC):
     @abstractmethod
     def create(self, request: JobRequest) -> JobResponse: ...

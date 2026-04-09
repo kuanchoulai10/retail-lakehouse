@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from models.job_response import JobResponse
 from models.job_status import JobStatus
-from repos.base import JobNotFoundError
+from repos.exceptions import JobNotFoundError
 
 SAMPLE_RESPONSE = JobResponse(
     name="table-maintenance-rewrite-data-files-abc123",
