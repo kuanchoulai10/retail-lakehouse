@@ -14,7 +14,7 @@ from repos.exceptions import JobNotFoundError
 from repos.jobs_repo import JobsRepo
 
 if TYPE_CHECKING:
-    from config import AppSettings
+    from configs.app import AppSettings
     from kubernetes.client import CustomObjectsApi
     from models.job_request import JobRequest
 

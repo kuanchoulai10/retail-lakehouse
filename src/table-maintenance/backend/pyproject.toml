@@ -5,11 +5,7 @@ requires-python = ">=3.14"
 dependencies = [
     "fastapi[standard]>=0.115",
     "kubernetes>=32.0",
-    "jobs",
 ]
-
-[tool.uv.sources]
-jobs = { path = "../jobs", editable = true }
 
 [dependency-groups]
 dev = [
@@ -20,10 +16,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["models*", "k8s*", "api*", "repos*"]
-
-[tool.ty.environment]
-extra-paths = ["../jobs"]
+include = ["models*", "k8s*", "api*", "repos*", "configs*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

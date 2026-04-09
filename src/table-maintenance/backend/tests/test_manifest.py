@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from config import AppSettings
+from configs.app import AppSettings
 from configs.base import JobType
 from configs.jobs.expire_snapshots import ExpireSnapshotsConfig
 from configs.jobs.rewrite_data_files import RewriteDataFilesConfig, Strategy

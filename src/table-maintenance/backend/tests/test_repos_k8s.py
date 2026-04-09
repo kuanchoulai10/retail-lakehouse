@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from config import AppSettings
+from configs.app import AppSettings
 from configs.base import JobType
 from configs.jobs.rewrite_data_files import RewriteDataFilesConfig
 from kubernetes.client.exceptions import ApiException

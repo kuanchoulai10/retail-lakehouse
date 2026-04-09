@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from configs.base import JobType
 
 if TYPE_CHECKING:
-    from config import AppSettings
+    from configs.app import AppSettings
     from models.job_request import JobRequest
     from pydantic import BaseModel
 

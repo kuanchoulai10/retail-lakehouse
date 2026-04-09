@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from api.jobs import router as jobs_router
 from api.jobs._deps import get_repo
-from config import AppSettings
+from configs.app import AppSettings
 from fastapi import FastAPI
 from k8s.client import load_k8s_config
 from kubernetes import client as k8s_client
