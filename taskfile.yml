@@ -57,12 +57,19 @@ tasks:
     desc: "Run all unit tests in parallel"
     deps:
       - unit-test-backend
+      - unit-test-jobs
 
   unit-test-backend:
     desc: "Run table-maintenance backend tests"
     internal: true
     cmds:
       - cmd: echo "TODO:// uv run --project src/table-maintenance/backend --directory src/table-maintenance/backend pytest -v"
+
+  unit-test-jobs:
+    desc: "Run table-maintenance jobs tests"
+    internal: true
+    cmds:
+      - cmd: echo "TODO:// uv run --project src/table-maintenance/jobs --directory src/table-maintenance/jobs pytest -v"
   # --8<-- [end:checks]
 
   # --8<-- [start:bootstrap-apps]
