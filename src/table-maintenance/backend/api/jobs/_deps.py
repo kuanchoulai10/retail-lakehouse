@@ -1,5 +1,5 @@
-from repos.jobs_repo import JobsRepo
+from repos.base_jobs_repo import BaseJobsRepo
 
 
-def get_repo() -> JobsRepo:
+def get_repo() -> BaseJobsRepo:
     raise NotImplementedError("Dependency not wired — call app.dependency_overrides[get_repo]")

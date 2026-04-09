@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
+from repos.base_jobs_repo import BaseJobsRepo
 from repos.exceptions import JobNotFoundError
-from repos.jobs_repo import JobsRepo
 
 from api.jobs._deps import get_repo
 
@@ -8,7 +8,7 @@ router = APIRouter()
 
 
 @router.delete("/jobs/{name}", status_code=204, response_class=Response)
-def delete_job(name: str, repo: JobsRepo = Depends(get_repo)):
+def delete_job(name: str, repo: BaseJobsRepo = Depends(get_repo)):
     try:
         repo.delete(name)
     except JobNotFoundError as e:

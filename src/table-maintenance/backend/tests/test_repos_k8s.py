@@ -7,9 +7,9 @@ from configs.jobs.rewrite_data_files import RewriteDataFilesConfig
 from kubernetes.client.exceptions import ApiException
 from models.job_request import JobRequest
 from models.job_status import JobStatus
+from repos.base_jobs_repo import BaseJobsRepo
 from repos.exceptions import JobNotFoundError
-from repos.jobs_repo import JobsRepo
-from repos.k8s import K8sJobsRepo
+from repos.k8s_jobs_repo import K8sJobsRepo
 
 SETTINGS = AppSettings()
 
@@ -43,7 +43,7 @@ def _make_request() -> JobRequest:
 def test_is_subclass_of_jobs_repo():
     api = MagicMock()
     repo = K8sJobsRepo(api, SETTINGS)
-    assert isinstance(repo, JobsRepo)
+    assert isinstance(repo, BaseJobsRepo)
 
 
 def test_create_returns_job_response():
@@ -51,7 +51,7 @@ def test_create_returns_job_response():
     api.create_namespaced_custom_object.return_value = MOCK_SPARK_APP
     repo = K8sJobsRepo(api, SETTINGS)
 
-    with patch("repos.k8s._generate_name", return_value="table-maintenance-rewrite-data-files-abc123"):
+    with patch("repos.k8s_jobs_repo._generate_name", return_value="table-maintenance-rewrite-data-files-abc123"):
         response = repo.create(_make_request())
 
     assert response.name == "table-maintenance-rewrite-data-files-abc123"
@@ -72,7 +72,7 @@ def test_create_scheduled_uses_correct_plural():
     req = _make_request()
     req.cron = "0 2 * * *"
 
-    with patch("repos.k8s._generate_name", return_value="my-job"):
+    with patch("repos.k8s_jobs_repo._generate_name", return_value="my-job"):
         repo.create(req)
 
     call_kwargs = api.create_namespaced_custom_object.call_args.kwargs

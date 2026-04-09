@@ -10,11 +10,11 @@ from models.job_status import status_from_k8s
 if TYPE_CHECKING:
     from models.job_request import JobRequest
 
+from repos.base_jobs_repo import BaseJobsRepo
 from repos.exceptions import JobNotFoundError
-from repos.jobs_repo import JobsRepo
 
 
-class InMemoryJobsRepo(JobsRepo):
+class InMemoryJobsRepo(BaseJobsRepo):
     def __init__(self) -> None:
         self._jobs: dict[str, JobResponse] = {}
 

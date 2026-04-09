@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from models.job_response import JobResponse
 
 
-class JobsRepo(ABC):
+class BaseJobsRepo(ABC):
     @abstractmethod
     def create(self, request: JobRequest) -> JobResponse: ...
 

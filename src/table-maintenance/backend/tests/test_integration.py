@@ -4,7 +4,7 @@ from api.jobs import router
 from api.jobs._deps import get_repo
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from repos.in_memory import InMemoryJobsRepo
+from repos.in_memory_jobs_repo import InMemoryJobsRepo
 
 
 def _make_app() -> FastAPI:

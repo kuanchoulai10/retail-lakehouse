@@ -9,15 +9,15 @@ from configs.app import AppSettings
 from fastapi import FastAPI
 from k8s.client import load_k8s_config
 from kubernetes import client as k8s_client
-from repos.k8s import K8sJobsRepo
+from repos.k8s_jobs_repo import K8sJobsRepo
 
 if TYPE_CHECKING:
-    from repos.jobs_repo import JobsRepo
+    from repos.base_jobs_repo import BaseJobsRepo
 
 settings = AppSettings()
 
 
-def create_repo(settings: AppSettings) -> JobsRepo:
+def create_repo(settings: AppSettings) -> BaseJobsRepo:
     load_k8s_config()
     api = k8s_client.CustomObjectsApi()
     return K8sJobsRepo(api, settings)
