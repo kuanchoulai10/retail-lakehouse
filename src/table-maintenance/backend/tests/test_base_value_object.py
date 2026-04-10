@@ -1,9 +1,13 @@
 """Tests for ValueObject base type."""
 
+from dataclasses import FrozenInstanceError, dataclass
+
+import pytest
 from base import ValueObject
 
 
-class Money(ValueObject, frozen=True):
+@dataclass(frozen=True)
+class Money(ValueObject):
     amount: int
     currency: str
 
@@ -29,11 +33,8 @@ def test_not_equal_when_different():
 
 def test_immutable():
     """ValueObject should be frozen (immutable)."""
-    import pytest
-    from pydantic import ValidationError
-
     m = Money(amount=100, currency="USD")
-    with pytest.raises(ValidationError):
+    with pytest.raises(FrozenInstanceError):
         m.amount = 999  # type: ignore[misc]  # ty: ignore[invalid-assignment]
 
 

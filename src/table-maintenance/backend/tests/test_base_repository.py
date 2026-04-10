@@ -1,11 +1,13 @@
 """Tests for Repository base type."""
 
+from dataclasses import dataclass
+
 import pytest
 from base import Entity, Repository
 
 
+@dataclass(eq=False)
 class Item(Entity):
-    id: str
     name: str
 
 

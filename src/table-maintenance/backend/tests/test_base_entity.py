@@ -1,10 +1,12 @@
 """Tests for Entity base type."""
 
+from dataclasses import dataclass
+
 from base import Entity
 
 
+@dataclass(eq=False)
 class User(Entity):
-    id: str
     name: str
     email: str
 

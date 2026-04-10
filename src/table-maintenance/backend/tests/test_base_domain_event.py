@@ -1,13 +1,14 @@
 """Tests for DomainEvent base type."""
 
+from dataclasses import FrozenInstanceError, dataclass
 from datetime import UTC, datetime
 
 import pytest
 from base import DomainEvent
-from pydantic import ValidationError
 
 
-class UserRegistered(DomainEvent, frozen=True):
+@dataclass(frozen=True)
+class UserRegistered(DomainEvent):
     user_id: str
     email: str
 
@@ -27,7 +28,7 @@ def test_has_occurred_at():
 
 def test_immutable():
     event = UserRegistered(user_id="1", email="a@example.com")
-    with pytest.raises(ValidationError):
+    with pytest.raises(FrozenInstanceError):
         event.user_id = "2"  # type: ignore[misc]  # ty: ignore[invalid-assignment]
 
 

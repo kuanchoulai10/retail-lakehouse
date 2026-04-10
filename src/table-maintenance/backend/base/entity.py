@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 from abc import ABC
+from dataclasses import dataclass
 
-from pydantic import BaseModel
 
+@dataclass(eq=False)
+class Entity(ABC):
+    """Object defined by a unique identity rather than its attributes.
 
-class Entity(ABC, BaseModel):
-    """Object defined by a unique identity rather than its attributes."""
+    Subclasses should use @dataclass(eq=False) to preserve identity-based equality.
+    """
 
-    id: str
+    id: str  # noqa: A003
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):

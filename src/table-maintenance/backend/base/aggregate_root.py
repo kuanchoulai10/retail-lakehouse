@@ -1,8 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
-
-from pydantic import PrivateAttr
 
 from base.entity import Entity
 
@@ -10,10 +9,14 @@ if TYPE_CHECKING:
     from base.domain_event import DomainEvent
 
 
+@dataclass(eq=False)
 class AggregateRoot(Entity):
-    """Entity that serves as a consistency boundary and emits domain events."""
+    """Entity that serves as a consistency boundary and emits domain events.
 
-    _events: list[DomainEvent] = PrivateAttr(default_factory=list)
+    Subclasses should use @dataclass(eq=False) to preserve identity-based equality.
+    """
+
+    _events: list[DomainEvent] = field(default_factory=list, init=False, repr=False)
 
     def register_event(self, event: DomainEvent) -> None:
         self._events.append(event)

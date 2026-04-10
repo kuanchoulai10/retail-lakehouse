@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from abc import ABC
 
-from pydantic import BaseModel
 
+class ValueObject(ABC):  # noqa: B024
+    """Immutable object defined by its attributes, not by identity.
 
-class ValueObject(ABC, BaseModel, frozen=True):
-    """Immutable object defined by its attributes, not by identity."""
+    Subclasses should use @dataclass(frozen=True) to enforce immutability.
+    """

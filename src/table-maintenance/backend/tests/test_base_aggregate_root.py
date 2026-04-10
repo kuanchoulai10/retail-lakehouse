@@ -1,14 +1,17 @@
 """Tests for AggregateRoot base type."""
 
+from dataclasses import dataclass
+
 from base import AggregateRoot, DomainEvent
 
 
-class OrderCreated(DomainEvent, frozen=True):
+@dataclass(frozen=True)
+class OrderCreated(DomainEvent):
     order_id: str
 
 
+@dataclass(eq=False)
 class Order(AggregateRoot):
-    id: str
     total: int
 
 
