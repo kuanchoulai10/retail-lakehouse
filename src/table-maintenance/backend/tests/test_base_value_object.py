@@ -19,6 +19,15 @@ def test_value_object_is_base_class():
     assert issubclass(ValueObject, ABC)
 
 
+def test_rejects_non_frozen_subclass():
+    """ValueObject subclasses must be frozen dataclasses."""
+    with pytest.raises(TypeError, match="frozen"):
+
+        @dataclass
+        class BadVO(ValueObject):  # ty: ignore[invalid-frozen-dataclass-subclass]
+            x: int
+
+
 def test_equal_by_value():
     a = Money(amount=100, currency="USD")
     b = Money(amount=100, currency="USD")
