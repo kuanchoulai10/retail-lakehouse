@@ -1,9 +1,3 @@
-from fastapi.testclient import TestClient
-from main import app
+"""Stub: re-exports from tests.jobs.adapter.inbound.web.test_health for backward compatibility."""
 
-
-def test_health():
-    client = TestClient(app)
-    response = client.get("/health")
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+from tests.jobs.adapter.inbound.web.test_health import *  # noqa: F401, F403

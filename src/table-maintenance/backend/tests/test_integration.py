@@ -1,10 +1,10 @@
 """Integration test: full CRUD lifecycle via HTTP with InMemoryJobsRepo."""
 
-from api.jobs import router
-from api.jobs._deps import get_repo
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from repos import InMemoryJobsRepo
+from jobs.adapter.inbound.web import router
+from jobs.adapter.inbound.web.deps import get_repo
+from jobs.adapter.outbound.in_memory_jobs_repo import InMemoryJobsRepo
 
 
 def _make_app() -> FastAPI:
