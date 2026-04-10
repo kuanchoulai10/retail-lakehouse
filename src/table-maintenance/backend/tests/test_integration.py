@@ -42,9 +42,8 @@ def test_full_crud_lifecycle():
     resp = client.post("/v1/jobs", json=REWRITE_PAYLOAD)
     assert resp.status_code == 201
     job1 = resp.json()
-    name1 = job1["name"]
-    assert name1.startswith("table-maintenance-rewrite-data-files-")
-    assert job1["kind"] == "SparkApplication"
+    id1 = job1["id"]
+    assert len(id1) == 10  # secrets.token_hex(5) produces 10 hex chars
     assert job1["status"] == "pending"
 
     # 3. List shows 1 job
@@ -52,19 +51,19 @@ def test_full_crud_lifecycle():
     assert resp.status_code == 200
     jobs = resp.json()
     assert len(jobs) == 1
-    assert jobs[0]["name"] == name1
+    assert jobs[0]["id"] == id1
 
-    # 4. Get by name returns the job
-    resp = client.get(f"/v1/jobs/{name1}")
+    # 4. Get by id returns the job
+    resp = client.get(f"/v1/jobs/{id1}")
     assert resp.status_code == 200
-    assert resp.json()["name"] == name1
+    assert resp.json()["id"] == id1
 
     # 5. Create second job (different type)
     resp = client.post("/v1/jobs", json=EXPIRE_PAYLOAD)
     assert resp.status_code == 201
     job2 = resp.json()
-    name2 = job2["name"]
-    assert name2.startswith("table-maintenance-expire-snapshots-")
+    id2 = job2["id"]
+    assert len(id2) == 10
 
     # 6. List shows 2 jobs
     resp = client.get("/v1/jobs")
@@ -72,7 +71,7 @@ def test_full_crud_lifecycle():
     assert len(resp.json()) == 2
 
     # 7. Delete first job
-    resp = client.delete(f"/v1/jobs/{name1}")
+    resp = client.delete(f"/v1/jobs/{id1}")
     assert resp.status_code == 204
 
     # 8. List shows 1 job (only second remains)
@@ -80,14 +79,14 @@ def test_full_crud_lifecycle():
     assert resp.status_code == 200
     jobs = resp.json()
     assert len(jobs) == 1
-    assert jobs[0]["name"] == name2
+    assert jobs[0]["id"] == id2
 
     # 9. Get deleted job returns 404
-    resp = client.get(f"/v1/jobs/{name1}")
+    resp = client.get(f"/v1/jobs/{id1}")
     assert resp.status_code == 404
 
     # 10. Delete second job
-    resp = client.delete(f"/v1/jobs/{name2}")
+    resp = client.delete(f"/v1/jobs/{id2}")
     assert resp.status_code == 204
 
     # 11. List is empty again
@@ -96,5 +95,5 @@ def test_full_crud_lifecycle():
     assert resp.json() == []
 
     # 12. Delete already-deleted job returns 404
-    resp = client.delete(f"/v1/jobs/{name2}")
+    resp = client.delete(f"/v1/jobs/{id2}")
     assert resp.status_code == 404

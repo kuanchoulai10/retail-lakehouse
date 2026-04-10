@@ -1,0 +1,57 @@
+from datetime import UTC, datetime
+
+from base import AggregateRoot
+from jobs.domain.job import Job
+from jobs.domain.job_id import JobId
+from jobs.domain.job_status import JobStatus
+from jobs.domain.job_type import JobType
+
+
+def test_job_is_aggregate_root():
+    assert issubclass(Job, AggregateRoot)
+
+
+def test_job_fields():
+    jid = JobId(value="abc1234567")
+    job = Job(
+        id=jid,
+        job_type=JobType.REWRITE_DATA_FILES,
+        status=JobStatus.PENDING,
+        created_at=datetime(2026, 4, 10, tzinfo=UTC),
+    )
+    assert job.id == jid
+    assert job.job_type == JobType.REWRITE_DATA_FILES
+    assert job.status == JobStatus.PENDING
+    assert job.created_at == datetime(2026, 4, 10, tzinfo=UTC)
+
+
+def test_job_equality_by_id():
+    a = Job(
+        id=JobId("abc1234567"),
+        job_type=JobType.REWRITE_DATA_FILES,
+        status=JobStatus.PENDING,
+        created_at=datetime(2026, 4, 10, tzinfo=UTC),
+    )
+    b = Job(
+        id=JobId("abc1234567"),
+        job_type=JobType.EXPIRE_SNAPSHOTS,
+        status=JobStatus.COMPLETED,
+        created_at=datetime(2026, 4, 11, tzinfo=UTC),
+    )
+    assert a == b
+
+
+def test_job_inequality_different_id():
+    a = Job(
+        id=JobId("abc1234567"),
+        job_type=JobType.REWRITE_DATA_FILES,
+        status=JobStatus.PENDING,
+        created_at=datetime(2026, 4, 10, tzinfo=UTC),
+    )
+    b = Job(
+        id=JobId("xyz9876543"),
+        job_type=JobType.REWRITE_DATA_FILES,
+        status=JobStatus.PENDING,
+        created_at=datetime(2026, 4, 10, tzinfo=UTC),
+    )
+    assert a != b

@@ -24,20 +24,18 @@ def test_is_subclass_of_jobs_repo():
     assert isinstance(repo, BaseJobsRepo)
 
 
-def test_create_returns_response_with_name():
+def test_create_returns_job_with_id():
     repo = InMemoryJobsRepo()
-    resp = repo.create(_make_request())
-    assert resp.name.startswith("table-maintenance-rewrite-data-files-")
-    assert resp.job_type == JobType.REWRITE_DATA_FILES
-    assert resp.kind == "SparkApplication"
-    assert resp.status == JobStatus.PENDING
+    job = repo.create(_make_request())
+    assert len(job.id.value) == 10  # secrets.token_hex(5) produces 10 hex chars
+    assert job.job_type == JobType.REWRITE_DATA_FILES
+    assert job.status == JobStatus.PENDING
 
 
-def test_create_scheduled_sets_kind():
+def test_create_scheduled_sets_running_status():
     repo = InMemoryJobsRepo()
-    resp = repo.create(_make_request(cron="0 2 * * *"))
-    assert resp.kind == "ScheduledSparkApplication"
-    assert resp.status == JobStatus.RUNNING
+    job = repo.create(_make_request(cron="0 2 * * *"))
+    assert job.status == JobStatus.RUNNING
 
 
 def test_list_all_empty():
@@ -55,8 +53,8 @@ def test_list_all_returns_created_jobs():
 def test_get_returns_created_job():
     repo = InMemoryJobsRepo()
     created = repo.create(_make_request())
-    fetched = repo.get(created.name)
-    assert fetched.name == created.name
+    fetched = repo.get(created.id.value)
+    assert fetched.id.value == created.id.value
 
 
 def test_get_raises_not_found():
@@ -69,7 +67,7 @@ def test_get_raises_not_found():
 def test_delete_removes_job():
     repo = InMemoryJobsRepo()
     created = repo.create(_make_request())
-    repo.delete(created.name)
+    repo.delete(created.id.value)
     assert repo.list_all() == []
 
 

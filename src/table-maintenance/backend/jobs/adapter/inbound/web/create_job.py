@@ -9,4 +9,5 @@ router = APIRouter()
 
 @router.post("/jobs", response_model=JobResponse, status_code=201)
 def create_job(request: JobRequest, repo: BaseJobsRepo = Depends(get_repo)):
-    return repo.create(request)
+    job = repo.create(request)
+    return JobResponse.from_domain(job)

@@ -44,19 +44,18 @@ def test_is_subclass_of_jobs_repo():
     assert isinstance(repo, BaseJobsRepo)
 
 
-def test_create_returns_job_response():
+def test_create_returns_job():
     api = MagicMock()
     api.create_namespaced_custom_object.return_value = MOCK_SPARK_APP
     repo = K8sJobsRepo(api, SETTINGS)
 
     patch_target = "jobs.adapter.outbound.k8s.k8s_jobs_repo._generate_name"
     with patch(patch_target, return_value="table-maintenance-rewrite-data-files-abc123"):
-        response = repo.create(_make_request())
+        job = repo.create(_make_request())
 
-    assert response.name == "table-maintenance-rewrite-data-files-abc123"
-    assert response.kind == "SparkApplication"
-    assert response.status == JobStatus.COMPLETED
-    assert response.job_type == JobType.REWRITE_DATA_FILES
+    assert job.id.value == "table-maintenance-rewrite-data-files-abc123"
+    assert job.status == JobStatus.COMPLETED
+    assert job.job_type == JobType.REWRITE_DATA_FILES
     api.create_namespaced_custom_object.assert_called_once()
     call_kwargs = api.create_namespaced_custom_object.call_args.kwargs
     assert call_kwargs["plural"] == "sparkapplications"
@@ -95,9 +94,9 @@ def test_get_tries_spark_application_first():
     api.get_namespaced_custom_object.return_value = MOCK_SPARK_APP
     repo = K8sJobsRepo(api, SETTINGS)
 
-    response = repo.get("table-maintenance-rewrite-data-files-abc123")
+    job = repo.get("table-maintenance-rewrite-data-files-abc123")
 
-    assert response.name == "table-maintenance-rewrite-data-files-abc123"
+    assert job.id.value == "table-maintenance-rewrite-data-files-abc123"
     first_call = api.get_namespaced_custom_object.call_args_list[0].kwargs
     assert first_call["plural"] == "sparkapplications"
 
@@ -113,8 +112,8 @@ def test_get_falls_back_to_scheduled():
     api.get_namespaced_custom_object.side_effect = [not_found, scheduled_app]
     repo = K8sJobsRepo(api, SETTINGS)
 
-    response = repo.get("my-job")
-    assert response.kind == "ScheduledSparkApplication"
+    job = repo.get("my-job")
+    assert job.status == JobStatus.RUNNING
 
 
 def test_get_raises_not_found():

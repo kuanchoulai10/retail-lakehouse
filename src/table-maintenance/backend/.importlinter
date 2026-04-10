@@ -27,7 +27,7 @@ forbidden_modules =
     shared
     fastapi
     kubernetes
-; TODO: Remove when domain Job entity replaces DTO in port signature
+; TODO: Remove when JobRequest is replaced by a domain command object
 ignore_imports =
     jobs.application.port.outbound.jobs_repo -> jobs.adapter.inbound.web.dto
 
@@ -46,7 +46,7 @@ source_modules =
     jobs.adapter.outbound
 forbidden_modules =
     jobs.adapter.inbound
-; TODO: Remove when domain Job entity replaces DTO in repo implementations
+; TODO: Remove when JobRequest is replaced by a domain command object
 ignore_imports =
     jobs.adapter.outbound.in_memory_jobs_repo -> jobs.adapter.inbound.web.dto
     jobs.adapter.outbound.k8s.k8s_jobs_repo -> jobs.adapter.inbound.web.dto

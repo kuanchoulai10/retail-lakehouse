@@ -4,18 +4,19 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from jobs.adapter.inbound.web.dto import JobRequest, JobResponse
+    from jobs.adapter.inbound.web.dto import JobRequest
+    from jobs.domain.job import Job
 
 
 class BaseJobsRepo(ABC):
     @abstractmethod
-    def create(self, request: JobRequest) -> JobResponse: ...
+    def create(self, request: JobRequest) -> Job: ...
 
     @abstractmethod
-    def list_all(self) -> list[JobResponse]: ...
+    def list_all(self) -> list[Job]: ...
 
     @abstractmethod
-    def get(self, name: str) -> JobResponse: ...
+    def get(self, name: str) -> Job: ...
 
     @abstractmethod
     def delete(self, name: str) -> None: ...

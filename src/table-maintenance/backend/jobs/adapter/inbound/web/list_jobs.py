@@ -9,4 +9,4 @@ router = APIRouter()
 
 @router.get("/jobs", response_model=list[JobResponse])
 def list_jobs(repo: BaseJobsRepo = Depends(get_repo)):
-    return repo.list_all()
+    return [JobResponse.from_domain(job) for job in repo.list_all()]

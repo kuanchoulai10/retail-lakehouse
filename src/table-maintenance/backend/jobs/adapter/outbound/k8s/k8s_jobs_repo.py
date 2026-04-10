@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import uuid
+import secrets
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -10,13 +10,15 @@ from jobs.adapter.outbound.k8s.manifest import build_manifest
 from jobs.adapter.outbound.k8s.status_mapper import status_from_k8s
 from jobs.application.port.outbound.jobs_repo import BaseJobsRepo
 from jobs.domain.exceptions import JobNotFoundError
+from jobs.domain.job import Job
+from jobs.domain.job_id import JobId
 from jobs.domain.job_type import JobType
 
 if TYPE_CHECKING:
     from kubernetes.client import CustomObjectsApi
     from shared.configs import AppSettings
 
-    from jobs.adapter.inbound.web.dto import JobRequest, JobResponse
+    from jobs.adapter.inbound.web.dto import JobRequest
 
 _GROUP = "sparkoperator.k8s.io"
 _VERSION = "v1beta2"
@@ -25,8 +27,8 @@ _PLURAL_SCHEDULED = "scheduledsparkapplications"
 
 
 def _generate_name(job_type: JobType) -> str:
-    suffix = uuid.uuid4().hex[:8]
-    return f"table-maintenance-{job_type.value.replace('_', '-')}-{suffix}"
+    slug = job_type.value.replace("_", "-")
+    return f"table-maintenance-{slug}-{secrets.token_hex(5)}"
 
 
 def _extract_job_type(resource: dict) -> JobType:
@@ -39,18 +41,14 @@ def _extract_job_type(resource: dict) -> JobType:
     raise ValueError(f"Cannot determine job_type from resource {resource.get('metadata', {}).get('name')}")
 
 
-def _to_response(resource: dict, job_type: JobType) -> JobResponse:
-    from jobs.adapter.inbound.web.dto import JobResponse
-
+def _to_job(resource: dict, job_type: JobType) -> Job:
     meta = resource.get("metadata", {})
     ts = meta.get("creationTimestamp")
     created_at = datetime.fromisoformat(ts.replace("Z", "+00:00")) if ts else datetime.now(UTC)
     kind = resource.get("kind", "SparkApplication")
     state = resource.get("status", {}).get("applicationState", {}).get("state", "")
-    return JobResponse(
-        name=meta["name"],
-        kind=kind,
-        namespace=meta.get("namespace", "default"),
+    return Job(
+        id=JobId(value=meta["name"]),
         job_type=job_type,
         status=status_from_k8s(kind, state),
         created_at=created_at,
@@ -62,7 +60,7 @@ class K8sJobsRepo(BaseJobsRepo):
         self._api = api
         self._settings = settings
 
-    def create(self, request: JobRequest) -> JobResponse:
+    def create(self, request: JobRequest) -> Job:
         name = _generate_name(request.job_type)
         manifest = build_manifest(name, request, self._settings)
         plural = _PLURAL_SCHEDULED if manifest["kind"] == "ScheduledSparkApplication" else _PLURAL_SPARK
@@ -73,9 +71,9 @@ class K8sJobsRepo(BaseJobsRepo):
             plural=plural,
             body=manifest,
         )
-        return _to_response(resource, request.job_type)
+        return _to_job(resource, request.job_type)
 
-    def list_all(self) -> list[JobResponse]:
+    def list_all(self) -> list[Job]:
         results = []
         for plural in (_PLURAL_SPARK, _PLURAL_SCHEDULED):
             resp = self._api.list_namespaced_custom_object(
@@ -86,12 +84,12 @@ class K8sJobsRepo(BaseJobsRepo):
             )
             for item in resp.get("items", []):
                 try:
-                    results.append(_to_response(item, _extract_job_type(item)))
+                    results.append(_to_job(item, _extract_job_type(item)))
                 except ValueError:
                     continue
         return results
 
-    def get(self, name: str) -> JobResponse:
+    def get(self, name: str) -> Job:
         for plural in (_PLURAL_SPARK, _PLURAL_SCHEDULED):
             try:
                 resource = self._api.get_namespaced_custom_object(
@@ -101,7 +99,7 @@ class K8sJobsRepo(BaseJobsRepo):
                     plural=plural,
                     name=name,
                 )
-                return _to_response(resource, _extract_job_type(resource))
+                return _to_job(resource, _extract_job_type(resource))
             except ApiException as e:
                 if e.status == 404:
                     continue

@@ -8,6 +8,7 @@ from jobs.domain.config.expire_snapshots import ExpireSnapshotsConfig
 from jobs.domain.config.remove_orphan_files import RemoveOrphanFilesConfig
 from jobs.domain.config.rewrite_data_files import RewriteDataFilesConfig
 from jobs.domain.config.rewrite_manifests import RewriteManifestsConfig
+from jobs.domain.job import Job
 from jobs.domain.job_status import JobStatus
 from jobs.domain.job_type import JobType
 
@@ -43,9 +44,16 @@ class JobRequest(BaseModel):
 
 
 class JobResponse(BaseModel):
-    name: str
-    kind: str
-    namespace: str
+    id: str
     job_type: JobType
     status: JobStatus
     created_at: datetime
+
+    @staticmethod
+    def from_domain(job: Job) -> JobResponse:
+        return JobResponse(
+            id=job.id.value,
+            job_type=job.job_type,
+            status=job.status,
+            created_at=job.created_at,
+        )
