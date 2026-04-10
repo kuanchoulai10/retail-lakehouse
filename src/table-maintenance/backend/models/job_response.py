@@ -1,17 +1,5 @@
-from __future__ import annotations
+"""Backward-compatible re-export. Canonical location: jobs.adapter.inbound.web.dto"""
 
-from datetime import datetime
+from jobs.adapter.inbound.web.dto import JobResponse
 
-from configs import JobType
-from pydantic import BaseModel
-
-from models.job_status import JobStatus
-
-
-class JobResponse(BaseModel):
-    name: str
-    kind: str
-    namespace: str
-    job_type: JobType
-    status: JobStatus
-    created_at: datetime
+__all__ = ["JobResponse"]

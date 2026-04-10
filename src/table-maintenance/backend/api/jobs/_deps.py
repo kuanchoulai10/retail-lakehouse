@@ -1,5 +1,5 @@
-from repos import BaseJobsRepo
+"""Backward-compatible re-export. Canonical location: jobs.adapter.inbound.web.deps"""
 
+from jobs.adapter.inbound.web.deps import get_repo
 
-def get_repo() -> BaseJobsRepo:
-    raise NotImplementedError("Dependency not wired — call app.dependency_overrides[get_repo]")
+__all__ = ["get_repo"]
