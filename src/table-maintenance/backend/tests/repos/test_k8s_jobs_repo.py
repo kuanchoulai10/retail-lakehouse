@@ -47,7 +47,8 @@ def test_create_returns_job_response():
     api.create_namespaced_custom_object.return_value = MOCK_SPARK_APP
     repo = K8sJobsRepo(api, SETTINGS)
 
-    with patch("repos.k8s_jobs_repo._generate_name", return_value="table-maintenance-rewrite-data-files-abc123"):
+    patch_target = "jobs.adapter.outbound.k8s.k8s_jobs_repo._generate_name"
+    with patch(patch_target, return_value="table-maintenance-rewrite-data-files-abc123"):
         response = repo.create(_make_request())
 
     assert response.name == "table-maintenance-rewrite-data-files-abc123"
@@ -68,7 +69,7 @@ def test_create_scheduled_uses_correct_plural():
     req = _make_request()
     req.cron = "0 2 * * *"
 
-    with patch("repos.k8s_jobs_repo._generate_name", return_value="my-job"):
+    with patch("jobs.adapter.outbound.k8s.k8s_jobs_repo._generate_name", return_value="my-job"):
         repo.create(req)
 
     call_kwargs = api.create_namespaced_custom_object.call_args.kwargs
