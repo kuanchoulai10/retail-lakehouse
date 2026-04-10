@@ -2,19 +2,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from jobs.domain.job_type import JobType
-
 if TYPE_CHECKING:
-    from pydantic import BaseModel
     from shared.configs import AppSettings
 
-    from jobs.adapter.inbound.web.dto import JobRequest
+    from jobs.adapter.inbound.web.dto import JobApiRequest as JobRequest
 
-_JOB_PREFIX: dict[JobType, str] = {
-    JobType.EXPIRE_SNAPSHOTS: "GLAC_EXPIRE_SNAPSHOTS",
-    JobType.REMOVE_ORPHAN_FILES: "GLAC_REMOVE_ORPHAN_FILES",
-    JobType.REWRITE_DATA_FILES: "GLAC_REWRITE_DATA_FILES",
-    JobType.REWRITE_MANIFESTS: "GLAC_REWRITE_MANIFESTS",
+_JOB_PREFIX: dict[str, str] = {
+    "expire_snapshots": "GLAC_EXPIRE_SNAPSHOTS",
+    "remove_orphan_files": "GLAC_REMOVE_ORPHAN_FILES",
+    "rewrite_data_files": "GLAC_REWRITE_DATA_FILES",
+    "rewrite_manifests": "GLAC_REWRITE_MANIFESTS",
 }
 
 _AWS_ENV = [
@@ -24,9 +21,11 @@ _AWS_ENV = [
 ]
 
 
-def _model_to_env(prefix: str, model: BaseModel) -> list[dict]:
+def _dict_to_env(prefix: str, config: dict) -> list[dict]:
     result = []
-    for field_name, value in model.model_dump(mode="json", exclude_none=True).items():
+    for field_name, value in config.items():
+        if value is None:
+            continue
         env_key = f"{prefix}__{field_name.upper()}"
         env_val = str(value).lower() if isinstance(value, bool) else str(value)
         result.append({"name": env_key, "value": env_val})
@@ -34,20 +33,21 @@ def _model_to_env(prefix: str, model: BaseModel) -> list[dict]:
 
 
 def _build_driver_env(request: JobRequest) -> list[dict]:
+    job_type = request.job_type
     env = [
-        {"name": "GLAC_JOB_TYPE", "value": request.job_type.value},
+        {"name": "GLAC_JOB_TYPE", "value": job_type},
         {"name": "GLAC_CATALOG", "value": request.catalog},
     ]
     config_by_type = {
-        JobType.EXPIRE_SNAPSHOTS: request.expire_snapshots,
-        JobType.REMOVE_ORPHAN_FILES: request.remove_orphan_files,
-        JobType.REWRITE_DATA_FILES: request.rewrite_data_files,
-        JobType.REWRITE_MANIFESTS: request.rewrite_manifests,
+        "expire_snapshots": request.expire_snapshots,
+        "remove_orphan_files": request.remove_orphan_files,
+        "rewrite_data_files": request.rewrite_data_files,
+        "rewrite_manifests": request.rewrite_manifests,
     }
-    prefix = _JOB_PREFIX[request.job_type]
-    job_config = config_by_type[request.job_type]
+    prefix = _JOB_PREFIX[job_type]
+    job_config = config_by_type[job_type]
     if job_config:
-        env.extend(_model_to_env(prefix, job_config))
+        env.extend(_dict_to_env(prefix, job_config))
     env.extend(_AWS_ENV)
     return env
 

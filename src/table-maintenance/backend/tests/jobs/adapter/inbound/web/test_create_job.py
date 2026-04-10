@@ -5,9 +5,10 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from jobs.adapter.inbound.web import router
 from jobs.adapter.inbound.web.deps import get_repo
-from jobs.domain import JobStatus, JobType
 from jobs.domain.job import Job
 from jobs.domain.job_id import JobId
+from jobs.domain.job_status import JobStatus
+from jobs.domain.job_type import JobType
 
 SAMPLE_JOB = Job(
     id=JobId(value="abc1234567"),
@@ -41,14 +42,10 @@ def test_post_job_returns_201():
     assert response.json()["status"] == "completed"
 
 
-def test_post_job_invalid_request_returns_422():
+def test_post_job_missing_catalog_returns_422():
     repo = MagicMock()
     client = _make_client(repo)
 
-    payload = {
-        "job_type": "rewrite_data_files",
-        "catalog": "retail",
-        "spark_conf": {},
-    }
+    payload = {"job_type": "rewrite_data_files", "spark_conf": {}}
     response = client.post("/v1/jobs", json=payload)
     assert response.status_code == 422

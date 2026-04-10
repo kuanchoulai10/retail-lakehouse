@@ -1,21 +1,18 @@
 from datetime import UTC, datetime
 
-from jobs.adapter.inbound.web.dto import JobRequest
+from jobs.adapter.inbound.web.dto import JobApiRequest
 from jobs.adapter.outbound.k8s.manifest import build_manifest
-from jobs.domain import JobType
-from jobs.domain.config.expire_snapshots import ExpireSnapshotsConfig
-from jobs.domain.config.rewrite_data_files import RewriteDataFilesConfig, Strategy
 from shared.configs import AppSettings
 
 SETTINGS = AppSettings()
 
 
-def _make_rewrite_request(**kwargs) -> JobRequest:
-    return JobRequest(
-        job_type=JobType.REWRITE_DATA_FILES,
+def _make_rewrite_request(**kwargs) -> JobApiRequest:
+    return JobApiRequest(
+        job_type="rewrite_data_files",
         catalog="retail",
         spark_conf={"spark.sql.catalog.retail.uri": "http://polaris:8181/api/catalog"},
-        rewrite_data_files=RewriteDataFilesConfig(table="inventory.orders", **kwargs),
+        rewrite_data_files={"table": "inventory.orders", **kwargs},
     )
 
 
@@ -46,7 +43,7 @@ def test_driver_env_glac_vars():
 
 
 def test_strategy_enum_serialized_as_value():
-    req = _make_rewrite_request(strategy=Strategy.SORT)
+    req = _make_rewrite_request(strategy="sort")
     manifest = build_manifest("my-job", req, SETTINGS)
     env = {e["name"]: e["value"] for e in manifest["spec"]["driver"]["env"]}
     assert env["GLAC_REWRITE_DATA_FILES__STRATEGY"] == "sort"
@@ -54,11 +51,11 @@ def test_strategy_enum_serialized_as_value():
 
 def test_expire_snapshots_datetime_env():
     dt = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
-    req = JobRequest(
-        job_type=JobType.EXPIRE_SNAPSHOTS,
+    req = JobApiRequest(
+        job_type="expire_snapshots",
         catalog="retail",
         spark_conf={},
-        expire_snapshots=ExpireSnapshotsConfig(table="inventory.orders", older_than=dt),
+        expire_snapshots={"table": "inventory.orders", "older_than": dt.isoformat()},
     )
     manifest = build_manifest("my-job", req, SETTINGS)
     env = {e["name"]: e["value"] for e in manifest["spec"]["driver"]["env"]}

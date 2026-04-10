@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from kubernetes.client import CustomObjectsApi
     from shared.configs import AppSettings
 
-    from jobs.adapter.inbound.web.dto import JobRequest
+    from jobs.adapter.inbound.web.dto import JobApiRequest as JobRequest
 
 _GROUP = "sparkoperator.k8s.io"
 _VERSION = "v1beta2"
@@ -26,8 +26,9 @@ _PLURAL_SPARK = "sparkapplications"
 _PLURAL_SCHEDULED = "scheduledsparkapplications"
 
 
-def _generate_name(job_type: JobType) -> str:
-    slug = job_type.value.replace("_", "-")
+def _generate_name(job_type: str | JobType) -> str:
+    value = job_type.value if isinstance(job_type, JobType) else job_type
+    slug = value.replace("_", "-")
     return f"table-maintenance-{slug}-{secrets.token_hex(5)}"
 
 
@@ -71,7 +72,7 @@ class K8sJobsRepo(BaseJobsRepo):
             plural=plural,
             body=manifest,
         )
-        return _to_job(resource, request.job_type)
+        return _to_job(resource, JobType(request.job_type))
 
     def list_all(self) -> list[Job]:
         results = []

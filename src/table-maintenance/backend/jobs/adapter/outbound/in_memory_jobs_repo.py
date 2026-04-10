@@ -9,9 +9,10 @@ from jobs.application.port.outbound.jobs_repo import BaseJobsRepo
 from jobs.domain.exceptions import JobNotFoundError
 from jobs.domain.job import Job
 from jobs.domain.job_id import JobId
+from jobs.domain.job_type import JobType
 
 if TYPE_CHECKING:
-    from jobs.adapter.inbound.web.dto import JobRequest
+    from jobs.adapter.inbound.web.dto import JobApiRequest as JobRequest
 
 
 class InMemoryJobsRepo(BaseJobsRepo):
@@ -23,7 +24,7 @@ class InMemoryJobsRepo(BaseJobsRepo):
         kind = "ScheduledSparkApplication" if request.cron else "SparkApplication"
         job = Job(
             id=job_id,
-            job_type=request.job_type,
+            job_type=JobType(request.job_type),
             status=status_from_k8s(kind, ""),
             created_at=datetime.now(UTC),
         )

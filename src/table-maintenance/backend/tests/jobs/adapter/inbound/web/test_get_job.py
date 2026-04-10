@@ -5,40 +5,40 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from jobs.adapter.inbound.web import router
 from jobs.adapter.inbound.web.get_job import _get_use_case
-from jobs.application.service.get_job import GetJobService
-from jobs.domain import JobNotFoundError, JobStatus, JobType
-from jobs.domain.job import Job
-from jobs.domain.job_id import JobId
+from jobs.application.exceptions import JobNotFoundError
+from jobs.application.port.inbound.get_job import GetJobResult
 
-SAMPLE_JOB = Job(
-    id=JobId(value="abc1234567"),
-    job_type=JobType.REWRITE_DATA_FILES,
-    status=JobStatus.COMPLETED,
+
+def _make_client(use_case: MagicMock) -> TestClient:
+    app = FastAPI()
+    app.include_router(router)
+    app.dependency_overrides[_get_use_case] = lambda: use_case
+    return TestClient(app)
+
+
+SAMPLE_RESULT = GetJobResult(
+    id="abc1234567",
+    job_type="rewrite_data_files",
+    status="completed",
     created_at=datetime(2026, 4, 4, tzinfo=UTC),
 )
 
 
-def _make_client(repo: MagicMock) -> TestClient:
-    app = FastAPI()
-    app.include_router(router)
-    app.dependency_overrides[_get_use_case] = lambda: GetJobService(repo)
-    return TestClient(app)
-
-
 def test_get_job_returns_200():
-    repo = MagicMock()
-    repo.get.return_value = SAMPLE_JOB
-    client = _make_client(repo)
+    use_case = MagicMock()
+    use_case.execute.return_value = SAMPLE_RESULT
+    client = _make_client(use_case)
 
     response = client.get("/v1/jobs/abc1234567")
     assert response.status_code == 200
     assert response.json()["id"] == "abc1234567"
+    assert response.json()["job_type"] == "rewrite_data_files"
 
 
 def test_get_job_not_found_returns_404():
-    repo = MagicMock()
-    repo.get.side_effect = JobNotFoundError("nonexistent")
-    client = _make_client(repo)
+    use_case = MagicMock()
+    use_case.execute.side_effect = JobNotFoundError("nonexistent")
+    client = _make_client(use_case)
 
     response = client.get("/v1/jobs/nonexistent")
     assert response.status_code == 404

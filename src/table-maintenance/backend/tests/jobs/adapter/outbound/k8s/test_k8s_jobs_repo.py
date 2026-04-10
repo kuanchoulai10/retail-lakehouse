@@ -1,11 +1,10 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from jobs.adapter.inbound.web.dto import JobRequest
+from jobs.adapter.inbound.web.dto import JobApiRequest
 from jobs.adapter.outbound.k8s.k8s_jobs_repo import K8sJobsRepo
 from jobs.application.port.outbound.jobs_repo import BaseJobsRepo
 from jobs.domain import JobNotFoundError, JobStatus, JobType
-from jobs.domain.config.rewrite_data_files import RewriteDataFilesConfig
 from kubernetes.client.exceptions import ApiException
 from shared.configs import AppSettings
 
@@ -29,12 +28,12 @@ MOCK_SPARK_APP = {
 }
 
 
-def _make_request() -> JobRequest:
-    return JobRequest(
-        job_type=JobType.REWRITE_DATA_FILES,
+def _make_request() -> JobApiRequest:
+    return JobApiRequest(
+        job_type="rewrite_data_files",
         catalog="retail",
         spark_conf={},
-        rewrite_data_files=RewriteDataFilesConfig(table="inventory.orders"),
+        rewrite_data_files={"table": "inventory.orders"},
     )
 
 

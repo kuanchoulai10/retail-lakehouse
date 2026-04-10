@@ -89,3 +89,4 @@ runtime-evaluated-base-classes = ["pydantic.BaseModel", "pydantic_settings.BaseS
 "tests/*" = ["FA100"]
 "src/table-maintenance/backend/jobs/adapter/inbound/web/*.py" = ["B008", "TC001", "TC002"]
 "src/table-maintenance/backend/jobs/domain/job.py" = ["TC001", "TC003"]
+"src/table-maintenance/backend/jobs/application/port/inbound/get_job.py" = ["TC003"]

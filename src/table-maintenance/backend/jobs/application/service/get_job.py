@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from jobs.application.port.inbound.get_job import GetJobUseCase
+from jobs.application.exceptions import JobNotFoundError as AppJobNotFoundError
+from jobs.application.port.inbound.get_job import GetJobResult, GetJobUseCase
+from jobs.domain.exceptions import JobNotFoundError
 
 if TYPE_CHECKING:
     from jobs.application.port.outbound.jobs_repo import BaseJobsRepo
-    from jobs.domain.job import Job
 
 
 class GetJobService(GetJobUseCase):
@@ -15,5 +16,14 @@ class GetJobService(GetJobUseCase):
     def __init__(self, repo: BaseJobsRepo) -> None:
         self._repo = repo
 
-    def execute(self, request: str) -> Job:
-        return self._repo.get(request)
+    def execute(self, request: str) -> GetJobResult:
+        try:
+            job = self._repo.get(request)
+        except JobNotFoundError as e:
+            raise AppJobNotFoundError(e.name) from e
+        return GetJobResult(
+            id=job.id.value,
+            job_type=job.job_type.value,
+            status=job.status.value,
+            created_at=job.created_at,
+        )

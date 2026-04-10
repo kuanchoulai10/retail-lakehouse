@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from jobs.adapter.inbound.web.dto import JobRequest
+    from jobs.adapter.inbound.web.dto import JobApiRequest as JobRequest
     from jobs.domain.job import Job
 
 

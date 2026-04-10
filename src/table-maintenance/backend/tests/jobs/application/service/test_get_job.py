@@ -4,7 +4,8 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
-from jobs.application.port.inbound.get_job import GetJobUseCase
+from jobs.application.exceptions import JobNotFoundError as AppJobNotFoundError
+from jobs.application.port.inbound.get_job import GetJobResult, GetJobUseCase
 from jobs.application.service.get_job import GetJobService
 from jobs.domain.exceptions import JobNotFoundError
 from jobs.domain.job import Job
@@ -26,22 +27,25 @@ def test_get_job_service_implements_use_case():
     assert issubclass(GetJobService, GetJobUseCase)
 
 
-def test_get_job_returns_job():
+def test_get_job_returns_result():
     repo = MagicMock()
     repo.get.return_value = _make_job()
     service = GetJobService(repo)
 
     result = service.execute("abc1234567")
 
-    assert result.id.value == "abc1234567"
-    assert result.status == JobStatus.COMPLETED
+    assert isinstance(result, GetJobResult)
+    assert result.id == "abc1234567"
+    assert result.job_type == "rewrite_data_files"
+    assert result.status == "completed"
     repo.get.assert_called_once_with("abc1234567")
 
 
-def test_get_job_raises_not_found():
+def test_get_job_raises_app_not_found():
     repo = MagicMock()
     repo.get.side_effect = JobNotFoundError("nonexistent")
     service = GetJobService(repo)
 
-    with pytest.raises(JobNotFoundError):
+    with pytest.raises(AppJobNotFoundError) as exc_info:
         service.execute("nonexistent")
+    assert exc_info.value.job_id == "nonexistent"

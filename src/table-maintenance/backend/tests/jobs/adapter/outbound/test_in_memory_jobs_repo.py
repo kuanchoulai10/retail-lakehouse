@@ -1,20 +1,19 @@
 import pytest
-from jobs.adapter.inbound.web.dto import JobRequest
+from jobs.adapter.inbound.web.dto import JobApiRequest
 from jobs.adapter.outbound.in_memory_jobs_repo import InMemoryJobsRepo
 from jobs.application.port.outbound.jobs_repo import BaseJobsRepo
 from jobs.domain import JobNotFoundError, JobStatus, JobType
-from jobs.domain.config.rewrite_data_files import RewriteDataFilesConfig
 
 
 def _make_request(
-    job_type: JobType = JobType.REWRITE_DATA_FILES,
+    job_type: str = "rewrite_data_files",
     cron: str | None = None,
-) -> JobRequest:
-    return JobRequest(
+) -> JobApiRequest:
+    return JobApiRequest(
         job_type=job_type,
         catalog="retail",
         spark_conf={},
-        rewrite_data_files=RewriteDataFilesConfig(table="inventory.orders"),
+        rewrite_data_files={"table": "inventory.orders"},
         cron=cron,
     )
 
