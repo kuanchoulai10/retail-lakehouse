@@ -6,9 +6,30 @@ from dataclasses import dataclass
 
 @dataclass(eq=False)
 class Entity(ABC):
-    """Object defined by a unique identity rather than its attributes.
+    """An object with a distinct identity that persists through state changes.
 
-    Subclasses should use @dataclass(eq=False) to preserve identity-based equality.
+    Two Entities are equal when they share the same ``id``, even if every
+    other attribute differs. This makes identity — not current state — the
+    basis for equality and hashing.
+
+    Examples: User(id, name, email), Order(id, total, status),
+    Product(id, sku, price).
+
+    Rules:
+        - Identity: each Entity has a unique ``id`` that never changes.
+        - Equality by identity: two instances with the same ``id`` are equal.
+        - Mutable: state may change over the Entity's lifecycle.
+
+    Usage::
+
+        @dataclass(eq=False)
+        class User(Entity):
+            name: str
+            email: str
+
+    Subclasses must use @dataclass(eq=False) so the identity-based
+    __eq__ and __hash__ defined here are not overridden by dataclass-
+    generated versions.
     """
 
     id: str  # noqa: A003

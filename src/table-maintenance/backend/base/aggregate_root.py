@@ -11,9 +11,31 @@ if TYPE_CHECKING:
 
 @dataclass(eq=False)
 class AggregateRoot(Entity):
-    """Entity that serves as a consistency boundary and emits domain events.
+    """An Entity that acts as the entry point and consistency boundary for a cluster of related objects.
 
-    Subclasses should use @dataclass(eq=False) to preserve identity-based equality.
+    External code should only modify the cluster through the AggregateRoot,
+    never by reaching into child Entities or ValueObjects directly. This
+    ensures invariants are enforced in one place.
+
+    The AggregateRoot also collects DomainEvents that record what happened
+    during a business operation. After the operation completes, the caller
+    retrieves the events via ``collect_events()`` and dispatches them.
+
+    Examples: Order (owns OrderLines), Account (owns Transactions).
+
+    Rules:
+        - Consistency boundary: all changes within the aggregate are atomic.
+        - Single entry point: external code interacts only with the root.
+        - Event producer: records DomainEvents via ``register_event()``.
+        - collect_events() returns accumulated events and clears the list.
+
+    Usage::
+
+        @dataclass(eq=False)
+        class Order(AggregateRoot):
+            total: int
+
+    Subclasses must use @dataclass(eq=False) to preserve identity-based equality.
     """
 
     _events: list[DomainEvent] = field(default_factory=list, init=False, repr=False)

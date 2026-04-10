@@ -7,9 +7,33 @@ from datetime import UTC, datetime
 
 @dataclass(frozen=True)
 class DomainEvent(ABC):  # noqa: B024
-    """Something that happened in the domain.
+    """A record of something meaningful that occurred in the domain.
 
-    Subclasses should use @dataclass(frozen=True) to enforce immutability.
+    DomainEvents are named in past tense (OrderPlaced, PaymentReceived)
+    and capture the facts of what happened, not commands for what should
+    happen next. They are immutable: once an event has occurred, it
+    cannot be changed.
+
+    Every event carries an ``occurred_at`` timestamp that is automatically
+    set to the current UTC time at construction.
+
+    Examples: OrderPlaced(order_id), InventoryAdjusted(sku, delta),
+    SnapshotExpired(table, expired_count).
+
+    Rules:
+        - Immutable: events describe the past and cannot be altered.
+        - Named in past tense: describes what already happened.
+        - Self-contained: carries all data needed to understand the event.
+        - Timestamped: ``occurred_at`` is set automatically.
+
+    Usage::
+
+        @dataclass(frozen=True)
+        class OrderPlaced(DomainEvent):
+            order_id: str
+            total: int
+
+    Subclasses must use @dataclass(frozen=True) to enforce immutability.
     """
 
     occurred_at: datetime = field(default_factory=lambda: datetime.now(UTC), kw_only=True)
