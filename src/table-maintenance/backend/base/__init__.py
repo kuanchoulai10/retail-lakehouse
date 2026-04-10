@@ -10,6 +10,8 @@ Provides the foundational tactical patterns for structuring domain models:
 - DomainEvent: A record of something meaningful that occurred in the domain.
 - Repository: An interface for retrieving and persisting aggregates/entities,
   decoupling the domain from infrastructure concerns.
+- UseCase: A single application-level operation that orchestrates domain
+  objects and repositories to fulfil a business action.
 """
 
 from base.aggregate_root import AggregateRoot
@@ -17,6 +19,7 @@ from base.domain_event import DomainEvent
 from base.entity import Entity
 from base.entity_id import EntityId
 from base.repository import Repository
+from base.use_case import UseCase
 from base.value_object import ValueObject
 
 __all__ = [
@@ -25,5 +28,6 @@ __all__ = [
     "Entity",
     "EntityId",
     "Repository",
+    "UseCase",
     "ValueObject",
 ]
