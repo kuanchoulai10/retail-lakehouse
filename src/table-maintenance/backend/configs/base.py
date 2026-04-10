@@ -1,8 +1,5 @@
-from enum import StrEnum
+"""Backward-compatible re-export. Canonical location: jobs.domain.job_type"""
 
+from jobs.domain.job_type import JobType
 
-class JobType(StrEnum):
-    EXPIRE_SNAPSHOTS = "expire_snapshots"
-    REMOVE_ORPHAN_FILES = "remove_orphan_files"
-    REWRITE_DATA_FILES = "rewrite_data_files"
-    REWRITE_MANIFESTS = "rewrite_manifests"
+__all__ = ["JobType"]

@@ -1,11 +1,5 @@
-from datetime import datetime
+"""Backward-compatible re-export. Canonical location: jobs.domain.config.remove_orphan_files"""
 
-from pydantic import BaseModel
+from jobs.domain.config.remove_orphan_files import RemoveOrphanFilesConfig
 
-
-class RemoveOrphanFilesConfig(BaseModel):
-    table: str | None = None
-    older_than: datetime | None = None
-    location: str | None = None
-    dry_run: bool = False
-    max_concurrent_deletes: int | None = None
+__all__ = ["RemoveOrphanFilesConfig"]

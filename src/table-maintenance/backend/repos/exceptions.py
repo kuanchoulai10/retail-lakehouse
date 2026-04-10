@@ -1,6 +1,5 @@
-class JobNotFoundError(Exception):
-    """Raised when a job is not found in the repository."""
+"""Backward-compatible re-export. Canonical location: jobs.domain.exceptions"""
 
-    def __init__(self, name: str) -> None:
-        self.name = name
-        super().__init__(f"Job {name!r} not found")
+from jobs.domain.exceptions import JobNotFoundError
+
+__all__ = ["JobNotFoundError"]

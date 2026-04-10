@@ -1,7 +1,5 @@
-from pydantic import BaseModel
+"""Backward-compatible re-export. Canonical location: jobs.domain.config.rewrite_manifests"""
 
+from jobs.domain.config.rewrite_manifests import RewriteManifestsConfig
 
-class RewriteManifestsConfig(BaseModel):
-    table: str | None = None
-    use_caching: bool = True
-    spec_id: int | None = None
+__all__ = ["RewriteManifestsConfig"]
