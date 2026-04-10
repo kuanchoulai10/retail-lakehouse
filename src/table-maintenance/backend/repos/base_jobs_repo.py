@@ -1,21 +1,5 @@
-from __future__ import annotations
+"""Backward-compatible re-export. Canonical location: jobs.application.port.outbound.jobs_repo"""
 
-from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from jobs.application.port.outbound.jobs_repo import BaseJobsRepo
 
-if TYPE_CHECKING:
-    from models import JobRequest, JobResponse
-
-
-class BaseJobsRepo(ABC):
-    @abstractmethod
-    def create(self, request: JobRequest) -> JobResponse: ...
-
-    @abstractmethod
-    def list_all(self) -> list[JobResponse]: ...
-
-    @abstractmethod
-    def get(self, name: str) -> JobResponse: ...
-
-    @abstractmethod
-    def delete(self, name: str) -> None: ...
+__all__ = ["BaseJobsRepo"]
