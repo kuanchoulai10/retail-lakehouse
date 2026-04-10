@@ -4,7 +4,8 @@ from unittest.mock import MagicMock
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from jobs.adapter.inbound.web import router
-from jobs.adapter.inbound.web.deps import get_repo
+from jobs.adapter.inbound.web.get_job import _get_use_case
+from jobs.application.service.get_job import GetJobService
 from jobs.domain import JobNotFoundError, JobStatus, JobType
 from jobs.domain.job import Job
 from jobs.domain.job_id import JobId
@@ -20,7 +21,7 @@ SAMPLE_JOB = Job(
 def _make_client(repo: MagicMock) -> TestClient:
     app = FastAPI()
     app.include_router(router)
-    app.dependency_overrides[get_repo] = lambda: repo
+    app.dependency_overrides[_get_use_case] = lambda: GetJobService(repo)
     return TestClient(app)
 
 

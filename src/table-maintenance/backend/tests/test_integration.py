@@ -4,7 +4,9 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from jobs.adapter.inbound.web import router
 from jobs.adapter.inbound.web.deps import get_repo
+from jobs.adapter.inbound.web.get_job import _get_use_case as get_job_dep
 from jobs.adapter.outbound.in_memory_jobs_repo import InMemoryJobsRepo
+from jobs.application.service.get_job import GetJobService
 
 
 def _make_app() -> FastAPI:
@@ -12,6 +14,7 @@ def _make_app() -> FastAPI:
     app.include_router(router)
     repo = InMemoryJobsRepo()
     app.dependency_overrides[get_repo] = lambda: repo
+    app.dependency_overrides[get_job_dep] = lambda: GetJobService(repo)
     return app
 
 
