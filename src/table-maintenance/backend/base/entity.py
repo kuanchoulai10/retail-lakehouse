@@ -3,9 +3,11 @@ from __future__ import annotations
 from abc import ABC
 from dataclasses import dataclass
 
+from base.entity_id import EntityId
+
 
 @dataclass(eq=False)
-class Entity(ABC):
+class Entity[ID: EntityId](ABC):
     """An object with a distinct identity that persists through state changes.
 
     Two Entities are equal when they share the same ``id``, even if every
@@ -22,8 +24,12 @@ class Entity(ABC):
 
     Usage::
 
+        @dataclass(frozen=True)
+        class UserId(EntityId):
+            pass
+
         @dataclass(eq=False)
-        class User(Entity):
+        class User(Entity[UserId]):
             name: str
             email: str
 
@@ -32,7 +38,7 @@ class Entity(ABC):
     generated versions.
     """
 
-    id: str  # noqa: A003
+    id: ID  # noqa: A003
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):

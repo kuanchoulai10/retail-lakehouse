@@ -3,11 +3,16 @@
 from dataclasses import dataclass
 
 import pytest
-from base import Entity, Repository
+from base import Entity, EntityId, Repository
+
+
+@dataclass(frozen=True)
+class ItemId(EntityId):
+    pass
 
 
 @dataclass(eq=False)
-class Item(Entity):
+class Item(Entity[ItemId]):
     name: str
 
 
@@ -21,27 +26,27 @@ def test_repository_is_generic_over_entity():
 
     class InMemoryItemRepo(Repository[Item]):
         def __init__(self) -> None:
-            self._items: dict[str, Item] = {}
+            self._items: dict[EntityId, Item] = {}
 
         def create(self, entity: Item) -> Item:
             self._items[entity.id] = entity
             return entity
 
-        def get(self, entity_id: str) -> Item:
+        def get(self, entity_id: EntityId) -> Item:
             return self._items[entity_id]
 
         def list_all(self) -> list[Item]:
             return list(self._items.values())
 
-        def delete(self, entity_id: str) -> None:
+        def delete(self, entity_id: EntityId) -> None:
             del self._items[entity_id]
 
     repo = InMemoryItemRepo()
-    item = Item(id="1", name="Widget")
+    item = Item(id=ItemId("1"), name="Widget")
     assert repo.create(item) == item
-    assert repo.get("1") == item
+    assert repo.get(ItemId("1")) == item
     assert repo.list_all() == [item]
-    repo.delete("1")
+    repo.delete(ItemId("1"))
     assert repo.list_all() == []
 
 

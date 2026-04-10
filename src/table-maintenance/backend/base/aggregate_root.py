@@ -4,13 +4,14 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from base.entity import Entity
+from base.entity_id import EntityId
 
 if TYPE_CHECKING:
     from base.domain_event import DomainEvent
 
 
 @dataclass(eq=False)
-class AggregateRoot(Entity):
+class AggregateRoot[ID: EntityId](Entity[ID]):
     """An Entity that acts as the entry point and consistency boundary for a cluster of related objects.
 
     External code should only modify the cluster through the AggregateRoot,
@@ -32,7 +33,7 @@ class AggregateRoot(Entity):
     Usage::
 
         @dataclass(eq=False)
-        class Order(AggregateRoot):
+        class Order(AggregateRoot[OrderId]):
             total: int
 
     Subclasses must use @dataclass(eq=False) to preserve identity-based equality.
