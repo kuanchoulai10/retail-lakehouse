@@ -1,4 +1,4 @@
-from repos.base_jobs_repo import BaseJobsRepo
+from repos import BaseJobsRepo
 
 
 def get_repo() -> BaseJobsRepo:

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from configs.base import JobType
+from configs import JobType
 
 if TYPE_CHECKING:
-    from configs.app import AppSettings
-    from models.job_request import JobRequest
+    from configs import AppSettings
+    from models import JobRequest
     from pydantic import BaseModel
 
 _JOB_PREFIX: dict[JobType, str] = {

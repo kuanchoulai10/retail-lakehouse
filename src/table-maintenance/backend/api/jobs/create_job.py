@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
-from models.job_request import JobRequest
-from models.job_response import JobResponse
-from repos.base_jobs_repo import BaseJobsRepo
+from models import JobRequest, JobResponse
+from repos import BaseJobsRepo
 
 from api.jobs._deps import get_repo
 

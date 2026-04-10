@@ -3,16 +3,16 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
-from api.jobs import router as jobs_router
+from api import jobs_router
 from api.jobs._deps import get_repo
-from configs.app import AppSettings
+from configs import AppSettings
 from fastapi import FastAPI
 from k8s.client import load_k8s_config
 from kubernetes import client as k8s_client
-from repos.k8s_jobs_repo import K8sJobsRepo
+from repos import K8sJobsRepo
 
 if TYPE_CHECKING:
-    from repos.base_jobs_repo import BaseJobsRepo
+    from repos import BaseJobsRepo
 
 settings = AppSettings()
 

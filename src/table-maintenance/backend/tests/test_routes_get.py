@@ -3,12 +3,11 @@ from unittest.mock import MagicMock
 
 from api.jobs import router
 from api.jobs._deps import get_repo
-from configs.base import JobType
+from configs import JobType
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from models.job_response import JobResponse
-from models.job_status import JobStatus
-from repos.exceptions import JobNotFoundError
+from models import JobResponse, JobStatus
+from repos import JobNotFoundError
 
 SAMPLE_RESPONSE = JobResponse(
     name="table-maintenance-rewrite-data-files-abc123",

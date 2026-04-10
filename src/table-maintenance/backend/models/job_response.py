@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from configs.base import JobType
+from configs import JobType
 from pydantic import BaseModel
 
 from models.job_status import JobStatus

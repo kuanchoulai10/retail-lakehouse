@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from configs.base import JobType
+from configs import JobType
 from configs.jobs.expire_snapshots import ExpireSnapshotsConfig
 from configs.jobs.remove_orphan_files import RemoveOrphanFilesConfig
 from configs.jobs.rewrite_data_files import RewriteDataFilesConfig

@@ -4,19 +4,18 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from configs.base import JobType
+from configs import JobType
 from k8s.manifest import build_manifest
 from kubernetes.client.exceptions import ApiException
-from models.job_response import JobResponse
-from models.job_status import status_from_k8s
+from models import JobResponse, status_from_k8s
 
 from repos.base_jobs_repo import BaseJobsRepo
 from repos.exceptions import JobNotFoundError
 
 if TYPE_CHECKING:
-    from configs.app import AppSettings
+    from configs import AppSettings
     from kubernetes.client import CustomObjectsApi
-    from models.job_request import JobRequest
+    from models import JobRequest
 
 _GROUP = "sparkoperator.k8s.io"
 _VERSION = "v1beta2"

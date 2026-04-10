@@ -4,8 +4,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from models.job_request import JobRequest
-    from models.job_response import JobResponse
+    from models import JobRequest, JobResponse
 
 
 class BaseJobsRepo(ABC):

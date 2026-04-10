@@ -1,15 +1,11 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from configs.app import AppSettings
-from configs.base import JobType
+from configs import AppSettings, JobType
 from configs.jobs.rewrite_data_files import RewriteDataFilesConfig
 from kubernetes.client.exceptions import ApiException
-from models.job_request import JobRequest
-from models.job_status import JobStatus
-from repos.base_jobs_repo import BaseJobsRepo
-from repos.exceptions import JobNotFoundError
-from repos.k8s_jobs_repo import K8sJobsRepo
+from models import JobRequest, JobStatus
+from repos import BaseJobsRepo, JobNotFoundError, K8sJobsRepo
 
 SETTINGS = AppSettings()
 
