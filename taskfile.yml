@@ -52,6 +52,7 @@ tasks:
     cmds:
       - task: pre-commit
       - task: unit-test
+      - task: arch-test
 
   unit-test:
     desc: "Run all unit tests in parallel"
@@ -70,6 +71,12 @@ tasks:
     internal: true
     cmds:
       - cmd: echo "TODO:// uv run --project src/table-maintenance/jobs --directory src/table-maintenance/jobs pytest -v"
+
+  arch-test:
+    desc: "Run architecture boundary tests (import-linter)"
+    internal: true
+    cmds:
+      - uv run --project src/table-maintenance/backend --directory src/table-maintenance/backend lint-imports
   # --8<-- [end:checks]
 
   # --8<-- [start:bootstrap-apps]

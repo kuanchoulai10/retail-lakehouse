@@ -13,6 +13,7 @@ dev = [
     "httpx>=0.27",
     "pytest-mock>=3",
     "ty>=0.0.27",
+    "import-linter>=2.11",
 ]
 
 [tool.setuptools.packages.find]
@@ -21,3 +22,48 @@ include = ["base*", "shared*", "jobs*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+# -- Architecture boundary tests (import-linter) --
+
+[tool.importlinter]
+root_packages = ["jobs", "shared", "base"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Domain does not depend on application or adapter"
+type = "forbidden"
+source_modules = ["jobs.domain"]
+forbidden_modules = ["jobs.application", "jobs.adapter", "shared", "fastapi", "kubernetes"]
+
+[[tool.importlinter.contracts]]
+name = "Application does not depend on adapter"
+type = "forbidden"
+source_modules = ["jobs.application"]
+forbidden_modules = ["jobs.adapter", "shared", "fastapi", "kubernetes"]
+# TODO: Remove when domain Job entity replaces DTO in port signature
+ignore_imports = ["jobs.application.port.outbound.jobs_repo -> jobs.adapter.inbound.web.dto"]
+
+[[tool.importlinter.contracts]]
+name = "Inbound adapter does not depend on outbound adapter"
+type = "forbidden"
+source_modules = ["jobs.adapter.inbound"]
+forbidden_modules = ["jobs.adapter.outbound"]
+
+[[tool.importlinter.contracts]]
+name = "Outbound adapter does not depend on inbound adapter"
+type = "forbidden"
+source_modules = ["jobs.adapter.outbound"]
+forbidden_modules = ["jobs.adapter.inbound"]
+# TODO: Remove when domain Job entity replaces DTO in repo implementations
+ignore_imports = [
+    "jobs.adapter.outbound.in_memory_jobs_repo -> jobs.adapter.inbound.web.dto",
+    "jobs.adapter.outbound.k8s.k8s_jobs_repo -> jobs.adapter.inbound.web.dto",
+    "jobs.adapter.outbound.k8s.manifest -> jobs.adapter.inbound.web.dto",
+    "jobs.application.port.outbound.jobs_repo -> jobs.adapter.inbound.web.dto",
+]
+
+[[tool.importlinter.contracts]]
+name = "Shared does not depend on bounded contexts"
+type = "forbidden"
+source_modules = ["shared"]
+forbidden_modules = ["jobs"]
