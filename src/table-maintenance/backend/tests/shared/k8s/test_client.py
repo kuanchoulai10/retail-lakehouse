@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
-from k8s.client import load_k8s_config
 from kubernetes.config.config_exception import ConfigException
+from shared.k8s.client import load_k8s_config
 
 
 def test_uses_incluster_when_available():

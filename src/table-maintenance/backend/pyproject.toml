@@ -16,7 +16,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["base*", "models*", "k8s*", "api*", "repos*", "configs*"]
+include = ["base*", "shared*", "jobs*", "models*", "k8s*", "api*", "repos*", "configs*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
