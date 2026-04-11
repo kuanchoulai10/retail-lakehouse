@@ -1,4 +1,4 @@
-from jobs.application.domain.job_status import JobStatus
+from jobs.application.domain.model.job_status import JobStatus
 
 _STATE_MAP: dict[str, JobStatus] = {
     "RUNNING": JobStatus.RUNNING,

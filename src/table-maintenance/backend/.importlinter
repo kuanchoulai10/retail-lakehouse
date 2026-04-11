@@ -9,11 +9,7 @@ include_external_packages = True
 name = Domain core (entities, value objects) does not depend on application or adapter
 type = forbidden
 source_modules =
-    jobs.application.domain.job
-    jobs.application.domain.job_id
-    jobs.application.domain.job_status
-    jobs.application.domain.job_type
-    jobs.application.domain.exceptions
+    jobs.application.domain.model
 forbidden_modules =
     jobs.application.port
     jobs.application.exceptions
@@ -46,7 +42,7 @@ source_modules =
 forbidden_modules =
     jobs.application.domain
 ignore_imports =
-    jobs.application.port.outbound.jobs_repo -> jobs.application.domain.job
+    jobs.application.port.outbound.jobs_repo -> jobs.application.domain.model.job
 
 [importlinter:contract:inbound-outbound-separation]
 name = Inbound adapter does not depend on outbound adapter

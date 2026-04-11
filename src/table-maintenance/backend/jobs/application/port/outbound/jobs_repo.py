@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from jobs.adapter.inbound.web.dto import JobApiRequest as JobRequest
-    from jobs.application.domain.job import Job
+    from jobs.application.domain.model.job import Job
 
 
 class BaseJobsRepo(ABC):

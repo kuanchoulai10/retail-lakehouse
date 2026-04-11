@@ -5,10 +5,10 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from jobs.adapter.outbound.k8s.status_mapper import status_from_k8s
-from jobs.application.domain.exceptions import JobNotFoundError
-from jobs.application.domain.job import Job
-from jobs.application.domain.job_id import JobId
-from jobs.application.domain.job_type import JobType
+from jobs.application.domain.model.exceptions import JobNotFoundError
+from jobs.application.domain.model.job import Job
+from jobs.application.domain.model.job_id import JobId
+from jobs.application.domain.model.job_type import JobType
 from jobs.application.port.outbound.jobs_repo import BaseJobsRepo
 
 if TYPE_CHECKING:

@@ -4,11 +4,11 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
-from jobs.application.domain.exceptions import JobNotFoundError
-from jobs.application.domain.job import Job
-from jobs.application.domain.job_id import JobId
-from jobs.application.domain.job_status import JobStatus
-from jobs.application.domain.job_type import JobType
+from jobs.application.domain.model.exceptions import JobNotFoundError
+from jobs.application.domain.model.job import Job
+from jobs.application.domain.model.job_id import JobId
+from jobs.application.domain.model.job_status import JobStatus
+from jobs.application.domain.model.job_type import JobType
 from jobs.application.domain.service.get_job import GetJobService
 from jobs.application.exceptions import JobNotFoundError as AppJobNotFoundError
 from jobs.application.port.inbound import GetJobInput, GetJobOutput, GetJobUseCase
