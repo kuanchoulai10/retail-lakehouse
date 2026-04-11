@@ -8,10 +8,10 @@ from jobs.adapter.inbound.web.delete_job import _get_use_case as delete_job_dep
 from jobs.adapter.inbound.web.get_job import _get_use_case as get_job_dep
 from jobs.adapter.inbound.web.list_jobs import _get_use_case as list_jobs_dep
 from jobs.adapter.outbound.in_memory_jobs_repo import InMemoryJobsRepo
-from jobs.application.service.create_job import CreateJobService
-from jobs.application.service.delete_job import DeleteJobService
-from jobs.application.service.get_job import GetJobService
-from jobs.application.service.list_jobs import ListJobsService
+from jobs.application.domain.service.create_job import CreateJobService
+from jobs.application.domain.service.delete_job import DeleteJobService
+from jobs.application.domain.service.get_job import GetJobService
+from jobs.application.domain.service.list_jobs import ListJobsService
 
 
 def _make_app() -> FastAPI:

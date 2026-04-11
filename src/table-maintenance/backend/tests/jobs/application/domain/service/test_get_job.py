@@ -9,9 +9,9 @@ from jobs.application.domain.job import Job
 from jobs.application.domain.job_id import JobId
 from jobs.application.domain.job_status import JobStatus
 from jobs.application.domain.job_type import JobType
+from jobs.application.domain.service.get_job import GetJobService
 from jobs.application.exceptions import JobNotFoundError as AppJobNotFoundError
 from jobs.application.port.inbound import GetJobInput, GetJobOutput, GetJobUseCase
-from jobs.application.service.get_job import GetJobService
 
 
 def _make_job(job_id: str = "abc1234567") -> Job:

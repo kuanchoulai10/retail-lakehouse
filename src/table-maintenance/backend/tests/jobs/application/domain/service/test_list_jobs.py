@@ -9,8 +9,8 @@ from jobs.application.domain.job import Job
 from jobs.application.domain.job_id import JobId
 from jobs.application.domain.job_status import JobStatus
 from jobs.application.domain.job_type import JobType
+from jobs.application.domain.service.list_jobs import ListJobsService
 from jobs.application.port.inbound import ListJobsInput, ListJobsOutput, ListJobsOutputItem, ListJobsUseCase
-from jobs.application.service.list_jobs import ListJobsService
 
 
 def _make_job(job_id: str = "abc1234567") -> Job:

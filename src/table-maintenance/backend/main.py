@@ -10,10 +10,10 @@ from jobs.adapter.inbound.web.delete_job import _get_use_case as delete_job_dep
 from jobs.adapter.inbound.web.get_job import _get_use_case as get_job_dep
 from jobs.adapter.inbound.web.list_jobs import _get_use_case as list_jobs_dep
 from jobs.adapter.outbound.k8s.k8s_jobs_repo import K8sJobsRepo
-from jobs.application.service.create_job import CreateJobService
-from jobs.application.service.delete_job import DeleteJobService
-from jobs.application.service.get_job import GetJobService
-from jobs.application.service.list_jobs import ListJobsService
+from jobs.application.domain.service.create_job import CreateJobService
+from jobs.application.domain.service.delete_job import DeleteJobService
+from jobs.application.domain.service.get_job import GetJobService
+from jobs.application.domain.service.list_jobs import ListJobsService
 from kubernetes import client as k8s_client
 from shared.configs import AppSettings
 from shared.k8s.client import load_k8s_config

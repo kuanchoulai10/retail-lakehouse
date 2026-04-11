@@ -6,9 +6,9 @@ from unittest.mock import MagicMock
 
 import pytest
 from jobs.application.domain.exceptions import JobNotFoundError
+from jobs.application.domain.service.delete_job import DeleteJobService
 from jobs.application.exceptions import JobNotFoundError as AppJobNotFoundError
 from jobs.application.port.inbound import DeleteJobInput, DeleteJobOutput, DeleteJobUseCase
-from jobs.application.service.delete_job import DeleteJobService
 
 
 def test_delete_job_service_implements_use_case():

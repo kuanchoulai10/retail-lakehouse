@@ -5,15 +5,20 @@ root_packages =
     base
 include_external_packages = True
 
-[importlinter:contract:domain-isolation]
-name = Domain does not depend on application or adapter
+[importlinter:contract:domain-core-isolation]
+name = Domain core (entities, value objects) does not depend on application or adapter
 type = forbidden
 source_modules =
-    jobs.application.domain
+    jobs.application.domain.job
+    jobs.application.domain.job_id
+    jobs.application.domain.job_status
+    jobs.application.domain.job_type
+    jobs.application.domain.exceptions
+    jobs.application.domain.config
 forbidden_modules =
     jobs.application.port
-    jobs.application.service
     jobs.application.exceptions
+    jobs.application.domain.service
     jobs.adapter
     shared
     fastapi
@@ -32,7 +37,7 @@ forbidden_modules =
 ; TODO: Remove when JobApiRequest is replaced by a domain command object
 ignore_imports =
     jobs.application.port.outbound.jobs_repo -> jobs.adapter.inbound.web.dto
-    jobs.application.service.create_job -> jobs.adapter.inbound.web.dto
+    jobs.application.domain.service.create_job -> jobs.adapter.inbound.web.dto
 
 [importlinter:contract:inbound-adapter-no-domain]
 name = Inbound adapter does not skip layers to depend on domain
