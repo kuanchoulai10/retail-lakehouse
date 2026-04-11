@@ -4,31 +4,29 @@ from unittest.mock import MagicMock
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from jobs.adapter.inbound.web import router
-from jobs.adapter.inbound.web.deps import get_repo
-from jobs.domain.job import Job
-from jobs.domain.job_id import JobId
-from jobs.domain.job_status import JobStatus
-from jobs.domain.job_type import JobType
-
-SAMPLE_JOB = Job(
-    id=JobId(value="abc1234567"),
-    job_type=JobType.REWRITE_DATA_FILES,
-    status=JobStatus.COMPLETED,
-    created_at=datetime(2026, 4, 4, tzinfo=UTC),
-)
+from jobs.adapter.inbound.web.create_job import _get_use_case
+from jobs.application.port.inbound import CreateJobOutput
 
 
-def _make_client(repo: MagicMock) -> TestClient:
+def _make_client(use_case: MagicMock) -> TestClient:
     app = FastAPI()
     app.include_router(router)
-    app.dependency_overrides[get_repo] = lambda: repo
+    app.dependency_overrides[_get_use_case] = lambda: use_case
     return TestClient(app)
 
 
+SAMPLE_OUTPUT = CreateJobOutput(
+    id="abc1234567",
+    job_type="rewrite_data_files",
+    status="pending",
+    created_at=datetime(2026, 4, 11, tzinfo=UTC),
+)
+
+
 def test_post_job_returns_201():
-    repo = MagicMock()
-    repo.create.return_value = SAMPLE_JOB
-    client = _make_client(repo)
+    use_case = MagicMock()
+    use_case.execute.return_value = SAMPLE_OUTPUT
+    client = _make_client(use_case)
 
     payload = {
         "job_type": "rewrite_data_files",
@@ -39,12 +37,12 @@ def test_post_job_returns_201():
     response = client.post("/v1/jobs", json=payload)
     assert response.status_code == 201
     assert response.json()["id"] == "abc1234567"
-    assert response.json()["status"] == "completed"
+    assert response.json()["status"] == "pending"
 
 
 def test_post_job_missing_catalog_returns_422():
-    repo = MagicMock()
-    client = _make_client(repo)
+    use_case = MagicMock()
+    client = _make_client(use_case)
 
     payload = {"job_type": "rewrite_data_files", "spark_conf": {}}
     response = client.post("/v1/jobs", json=payload)

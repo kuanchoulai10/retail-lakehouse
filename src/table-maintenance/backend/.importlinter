@@ -30,6 +30,7 @@ forbidden_modules =
 ; TODO: Remove when JobApiRequest is replaced by a domain command object
 ignore_imports =
     jobs.application.port.outbound.jobs_repo -> jobs.adapter.inbound.web.dto
+    jobs.application.service.create_job -> jobs.adapter.inbound.web.dto
 
 [importlinter:contract:inbound-adapter-no-domain]
 name = Inbound adapter does not skip layers to depend on domain
@@ -38,9 +39,7 @@ source_modules =
     jobs.adapter.inbound
 forbidden_modules =
     jobs.domain
-; TODO: Remove when create/list/delete endpoints use use cases
 ignore_imports =
-    jobs.adapter.inbound.web.delete_job -> jobs.domain.exceptions
     jobs.application.port.outbound.jobs_repo -> jobs.domain.job
 
 [importlinter:contract:inbound-outbound-separation]

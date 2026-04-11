@@ -1,20 +1,24 @@
 from fastapi import APIRouter, Depends
 
-from jobs.adapter.inbound.web.deps import get_repo
 from jobs.adapter.inbound.web.dto import JobApiResponse
-from jobs.application.port.outbound.jobs_repo import BaseJobsRepo
+from jobs.application.port.inbound import ListJobsInput, ListJobsUseCase
 
 router = APIRouter()
 
 
+def _get_use_case() -> ListJobsUseCase:
+    raise NotImplementedError("Dependency not wired — call app.dependency_overrides")
+
+
 @router.get("/jobs", response_model=list[JobApiResponse])
-def list_jobs(repo: BaseJobsRepo = Depends(get_repo)):
+def list_jobs(use_case: ListJobsUseCase = Depends(_get_use_case)):
+    result = use_case.execute(ListJobsInput())
     return [
         JobApiResponse(
-            id=job.id.value,
-            job_type=job.job_type.value,
-            status=job.status.value,
-            created_at=job.created_at,
+            id=item.id,
+            job_type=item.job_type,
+            status=item.status,
+            created_at=item.created_at,
         )
-        for job in repo.list_all()
+        for item in result.jobs
     ]
