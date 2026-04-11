@@ -14,7 +14,6 @@ source_modules =
     jobs.application.domain.job_status
     jobs.application.domain.job_type
     jobs.application.domain.exceptions
-    jobs.application.domain.config
 forbidden_modules =
     jobs.application.port
     jobs.application.exceptions
