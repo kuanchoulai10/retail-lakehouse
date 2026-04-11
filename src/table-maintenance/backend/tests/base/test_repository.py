@@ -13,6 +13,7 @@ class ItemId(EntityId):
 
 @dataclass(eq=False)
 class Item(Entity[ItemId]):
+    id: ItemId
     name: str
 
 

@@ -14,6 +14,7 @@ from jobs.domain.job_type import JobType
 class Job(AggregateRoot[JobId]):
     """A table maintenance job — the aggregate root of the jobs context."""
 
+    id: JobId
     job_type: JobType
     status: JobStatus
     created_at: datetime

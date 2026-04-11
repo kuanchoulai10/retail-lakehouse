@@ -17,6 +17,7 @@ class OrderCreated(DomainEvent):
 
 @dataclass(eq=False)
 class Order(AggregateRoot[OrderId]):
+    id: OrderId
     total: int
 
 
@@ -45,3 +46,10 @@ def test_collect_events_clears():
     order.register_event(OrderCreated(order_id="1"))
     order.collect_events()
     assert order.collect_events() == []
+
+
+def test_aggregate_root_is_not_a_dataclass():
+    """AggregateRoot itself should be a plain class, not a dataclass."""
+    import dataclasses
+
+    assert not dataclasses.is_dataclass(AggregateRoot)

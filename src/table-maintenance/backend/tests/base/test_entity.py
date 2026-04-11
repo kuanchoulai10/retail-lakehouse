@@ -12,6 +12,7 @@ class UserId(EntityId):
 
 @dataclass(eq=False)
 class User(Entity[UserId]):
+    id: UserId
     name: str
     email: str
 
@@ -45,3 +46,10 @@ def test_not_equal_to_other_types():
     a = User(id=UserId("1"), name="Alice", email="a@example.com")
     assert a != "1"
     assert a != 1
+
+
+def test_entity_is_not_a_dataclass():
+    """Entity itself should be a plain class, not a dataclass."""
+    import dataclasses
+
+    assert not dataclasses.is_dataclass(Entity)

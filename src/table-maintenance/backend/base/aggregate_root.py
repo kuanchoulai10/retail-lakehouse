@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from base.entity import Entity
@@ -10,7 +9,6 @@ if TYPE_CHECKING:
     from base.domain_event import DomainEvent
 
 
-@dataclass(eq=False)
 class AggregateRoot[ID: EntityId](Entity[ID]):
     """An Entity that acts as the entry point and consistency boundary for a cluster of related objects.
 
@@ -39,12 +37,17 @@ class AggregateRoot[ID: EntityId](Entity[ID]):
     Subclasses must use @dataclass(eq=False) to preserve identity-based equality.
     """
 
-    _events: list[DomainEvent] = field(default_factory=list, init=False, repr=False)
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        super().__init_subclass__(**kwargs)
 
     def register_event(self, event: DomainEvent) -> None:
+        if not hasattr(self, "_events"):
+            self._events: list[DomainEvent] = []
         self._events.append(event)
 
     def collect_events(self) -> list[DomainEvent]:
+        if not hasattr(self, "_events"):
+            return []
         events = list(self._events)
         self._events.clear()
         return events

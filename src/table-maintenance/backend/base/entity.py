@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 from abc import ABC
-from dataclasses import dataclass
 
 from base.entity_id import EntityId
 
 
-@dataclass(eq=False)
 class Entity[ID: EntityId](ABC):
     """An object with a distinct identity that persists through state changes.
 
