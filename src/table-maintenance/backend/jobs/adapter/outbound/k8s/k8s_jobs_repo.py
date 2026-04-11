@@ -8,11 +8,11 @@ from kubernetes.client.exceptions import ApiException
 
 from jobs.adapter.outbound.k8s.manifest import build_manifest
 from jobs.adapter.outbound.k8s.status_mapper import status_from_k8s
+from jobs.application.domain.exceptions import JobNotFoundError
+from jobs.application.domain.job import Job
+from jobs.application.domain.job_id import JobId
+from jobs.application.domain.job_type import JobType
 from jobs.application.port.outbound.jobs_repo import BaseJobsRepo
-from jobs.domain.exceptions import JobNotFoundError
-from jobs.domain.job import Job
-from jobs.domain.job_id import JobId
-from jobs.domain.job_type import JobType
 
 if TYPE_CHECKING:
     from kubernetes.client import CustomObjectsApi

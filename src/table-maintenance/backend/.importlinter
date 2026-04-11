@@ -9,9 +9,11 @@ include_external_packages = True
 name = Domain does not depend on application or adapter
 type = forbidden
 source_modules =
-    jobs.domain
+    jobs.application.domain
 forbidden_modules =
-    jobs.application
+    jobs.application.port
+    jobs.application.service
+    jobs.application.exceptions
     jobs.adapter
     shared
     fastapi
@@ -38,9 +40,9 @@ type = forbidden
 source_modules =
     jobs.adapter.inbound
 forbidden_modules =
-    jobs.domain
+    jobs.application.domain
 ignore_imports =
-    jobs.application.port.outbound.jobs_repo -> jobs.domain.job
+    jobs.application.port.outbound.jobs_repo -> jobs.application.domain.job
 
 [importlinter:contract:inbound-outbound-separation]
 name = Inbound adapter does not depend on outbound adapter

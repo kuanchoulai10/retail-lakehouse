@@ -1,5 +1,5 @@
 from jobs.adapter.outbound.k8s.status_mapper import status_from_k8s
-from jobs.domain import JobStatus
+from jobs.application.domain import JobStatus
 
 
 def test_status_empty_state_is_pending():

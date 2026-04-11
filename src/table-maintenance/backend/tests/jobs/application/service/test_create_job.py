@@ -5,12 +5,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
+from jobs.application.domain.job import Job
+from jobs.application.domain.job_id import JobId
+from jobs.application.domain.job_status import JobStatus
+from jobs.application.domain.job_type import JobType
 from jobs.application.port.inbound import CreateJobInput, CreateJobOutput, CreateJobUseCase
 from jobs.application.service.create_job import CreateJobService
-from jobs.domain.job import Job
-from jobs.domain.job_id import JobId
-from jobs.domain.job_status import JobStatus
-from jobs.domain.job_type import JobType
 
 
 def _make_job() -> Job:

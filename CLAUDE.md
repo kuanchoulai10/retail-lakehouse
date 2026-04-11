@@ -34,8 +34,8 @@ adapter/*        ──✗──> domain (forbidden: must go through application
 
 ```
 jobs/
-├── domain/              # Entities, Value Objects, Domain Events, Exceptions
 ├── application/
+│   ├── domain/          # Entities, Value Objects, Domain Events, Exceptions
 │   ├── port/inbound/    # Use case interfaces + result types
 │   ├── port/outbound/   # Repository interfaces
 │   └── service/         # Use case implementations

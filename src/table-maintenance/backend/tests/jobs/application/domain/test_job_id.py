@@ -1,5 +1,5 @@
 from base import EntityId
-from jobs.domain.job_id import JobId
+from jobs.application.domain.job_id import JobId
 
 
 def test_job_id_is_entity_id():

@@ -1,6 +1,6 @@
 import pytest
+from jobs.application.domain import JobNotFoundError
 from jobs.application.port.outbound.jobs_repo import BaseJobsRepo
-from jobs.domain import JobNotFoundError
 
 
 def test_job_not_found_error_has_name():

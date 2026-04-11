@@ -3,8 +3,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from jobs.adapter.inbound.web.dto import JobApiRequest
 from jobs.adapter.outbound.k8s.k8s_jobs_repo import K8sJobsRepo
+from jobs.application.domain import JobNotFoundError, JobStatus, JobType
 from jobs.application.port.outbound.jobs_repo import BaseJobsRepo
-from jobs.domain import JobNotFoundError, JobStatus, JobType
 from kubernetes.client.exceptions import ApiException
 from shared.configs import AppSettings
 

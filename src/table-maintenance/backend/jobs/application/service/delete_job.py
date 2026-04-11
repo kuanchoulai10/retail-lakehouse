@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from jobs.application.domain.exceptions import JobNotFoundError
 from jobs.application.exceptions import JobNotFoundError as AppJobNotFoundError
 from jobs.application.port.inbound import DeleteJobInput, DeleteJobOutput, DeleteJobUseCase
-from jobs.domain.exceptions import JobNotFoundError
 
 if TYPE_CHECKING:
     from jobs.application.port.outbound.jobs_repo import BaseJobsRepo

@@ -1,8 +1,8 @@
 import pytest
 from jobs.adapter.inbound.web.dto import JobApiRequest
 from jobs.adapter.outbound.in_memory_jobs_repo import InMemoryJobsRepo
+from jobs.application.domain import JobNotFoundError, JobStatus, JobType
 from jobs.application.port.outbound.jobs_repo import BaseJobsRepo
-from jobs.domain import JobNotFoundError, JobStatus, JobType
 
 
 def _make_request(
