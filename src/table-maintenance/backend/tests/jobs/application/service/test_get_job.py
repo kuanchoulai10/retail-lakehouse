@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from jobs.application.exceptions import JobNotFoundError as AppJobNotFoundError
-from jobs.application.port.inbound.get_job import GetJobResult, GetJobUseCase
+from jobs.application.port.inbound import GetJobInput, GetJobOutput, GetJobUseCase
 from jobs.application.service.get_job import GetJobService
 from jobs.domain.exceptions import JobNotFoundError
 from jobs.domain.job import Job
@@ -32,9 +32,9 @@ def test_get_job_returns_result():
     repo.get.return_value = _make_job()
     service = GetJobService(repo)
 
-    result = service.execute("abc1234567")
+    result = service.execute(GetJobInput(job_id="abc1234567"))
 
-    assert isinstance(result, GetJobResult)
+    assert isinstance(result, GetJobOutput)
     assert result.id == "abc1234567"
     assert result.job_type == "rewrite_data_files"
     assert result.status == "completed"
@@ -47,5 +47,5 @@ def test_get_job_raises_app_not_found():
     service = GetJobService(repo)
 
     with pytest.raises(AppJobNotFoundError) as exc_info:
-        service.execute("nonexistent")
+        service.execute(GetJobInput(job_id="nonexistent"))
     assert exc_info.value.job_id == "nonexistent"

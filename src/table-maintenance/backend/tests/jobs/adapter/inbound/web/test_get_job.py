@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from jobs.adapter.inbound.web import router
 from jobs.adapter.inbound.web.get_job import _get_use_case
 from jobs.application.exceptions import JobNotFoundError
-from jobs.application.port.inbound.get_job import GetJobResult
+from jobs.application.port.inbound import GetJobOutput
 
 
 def _make_client(use_case: MagicMock) -> TestClient:
@@ -16,7 +16,7 @@ def _make_client(use_case: MagicMock) -> TestClient:
     return TestClient(app)
 
 
-SAMPLE_RESULT = GetJobResult(
+SAMPLE_RESULT = GetJobOutput(
     id="abc1234567",
     job_type="rewrite_data_files",
     status="completed",
