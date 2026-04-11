@@ -46,7 +46,7 @@ jobs/
 
 ### Rules
 
-- **Domain** depends on nothing except `base/` and stdlib. Pydantic allowed for config value objects only.
+- **Domain** depends on nothing except `base/` and stdlib. No Pydantic — use dataclasses.
 - **Application** depends on domain and base. No adapter, no framework, no infra imports.
 - **Adapter** depends on application only (not domain directly). Web adapter catches application-layer exceptions, not domain exceptions.
 - **Shared** (`shared/`) is cross-cutting infrastructure (AppSettings, K8s client). It must not depend on any bounded context.

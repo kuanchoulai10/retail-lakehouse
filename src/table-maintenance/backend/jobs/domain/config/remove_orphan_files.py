@@ -1,9 +1,14 @@
-from datetime import datetime
+from __future__ import annotations
 
-from pydantic import BaseModel
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 
-class RemoveOrphanFilesConfig(BaseModel):
+@dataclass
+class RemoveOrphanFilesConfig:
     table: str | None = None
     older_than: datetime | None = None
     location: str | None = None

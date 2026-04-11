@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from jobs.domain.config.expire_snapshots import ExpireSnapshotsConfig
 from jobs.domain.config.remove_orphan_files import RemoveOrphanFilesConfig
 from jobs.domain.config.rewrite_data_files import RewriteDataFilesConfig, Strategy

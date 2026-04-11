@@ -1,6 +1,7 @@
-from enum import StrEnum
+from __future__ import annotations
 
-from pydantic import BaseModel
+from dataclasses import dataclass, field
+from enum import StrEnum
 
 
 class Strategy(StrEnum):
@@ -9,9 +10,10 @@ class Strategy(StrEnum):
     ZORDER = "zorder"
 
 
-class RewriteDataFilesConfig(BaseModel):
+@dataclass
+class RewriteDataFilesConfig:
     table: str | None = None
-    strategy: Strategy = Strategy.BINPACK
+    strategy: Strategy = field(default=Strategy.BINPACK)
     sort_order: str | None = None
     where: str | None = None
     target_file_size_bytes: int | None = None
