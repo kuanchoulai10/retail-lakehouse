@@ -1,9 +1,11 @@
+from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
-from jobs.adapter.inbound.web.dto import JobApiRequest
 from jobs.adapter.outbound.k8s.k8s_jobs_repo import K8sJobsRepo
 from jobs.application.domain import JobNotFoundError, JobStatus, JobType
+from jobs.application.domain.model.job import Job
+from jobs.application.domain.model.job_id import JobId
 from jobs.application.port.outbound.jobs_repo import BaseJobsRepo
 from kubernetes.client.exceptions import ApiException
 from shared.configs import AppSettings
@@ -28,12 +30,12 @@ MOCK_SPARK_APP = {
 }
 
 
-def _make_request() -> JobApiRequest:
-    return JobApiRequest(
-        job_type="rewrite_data_files",
-        catalog="retail",
-        spark_conf={},
-        rewrite_data_files={"table": "inventory.orders"},
+def _make_job(job_id: str = "table-maintenance-rewrite-data-files-abc123") -> Job:
+    return Job(
+        id=JobId(value=job_id),
+        job_type=JobType.REWRITE_DATA_FILES,
+        status=JobStatus.PENDING,
+        created_at=datetime.now(UTC),
     )
 
 
@@ -48,9 +50,9 @@ def test_create_returns_job():
     api.create_namespaced_custom_object.return_value = MOCK_SPARK_APP
     repo = K8sJobsRepo(api, SETTINGS)
 
-    patch_target = "jobs.adapter.outbound.k8s.k8s_jobs_repo._generate_name"
-    with patch(patch_target, return_value="table-maintenance-rewrite-data-files-abc123"):
-        job = repo.create(_make_request())
+    with patch("jobs.adapter.outbound.k8s.k8s_jobs_repo.build_manifest") as mock_build:
+        mock_build.return_value = {"kind": "SparkApplication"}
+        job = repo.create(_make_job())
 
     assert job.id.value == "table-maintenance-rewrite-data-files-abc123"
     assert job.status == JobStatus.COMPLETED
@@ -66,11 +68,9 @@ def test_create_scheduled_uses_correct_plural():
     api.create_namespaced_custom_object.return_value = scheduled_app
     repo = K8sJobsRepo(api, SETTINGS)
 
-    req = _make_request()
-    req.cron = "0 2 * * *"
-
-    with patch("jobs.adapter.outbound.k8s.k8s_jobs_repo._generate_name", return_value="my-job"):
-        repo.create(req)
+    with patch("jobs.adapter.outbound.k8s.k8s_jobs_repo.build_manifest") as mock_build:
+        mock_build.return_value = {"kind": "ScheduledSparkApplication"}
+        repo.create(_make_job())
 
     call_kwargs = api.create_namespaced_custom_object.call_args.kwargs
     assert call_kwargs["plural"] == "scheduledsparkapplications"
@@ -93,7 +93,7 @@ def test_get_tries_spark_application_first():
     api.get_namespaced_custom_object.return_value = MOCK_SPARK_APP
     repo = K8sJobsRepo(api, SETTINGS)
 
-    job = repo.get("table-maintenance-rewrite-data-files-abc123")
+    job = repo.get(JobId(value="table-maintenance-rewrite-data-files-abc123"))
 
     assert job.id.value == "table-maintenance-rewrite-data-files-abc123"
     first_call = api.get_namespaced_custom_object.call_args_list[0].kwargs
@@ -111,7 +111,7 @@ def test_get_falls_back_to_scheduled():
     api.get_namespaced_custom_object.side_effect = [not_found, scheduled_app]
     repo = K8sJobsRepo(api, SETTINGS)
 
-    job = repo.get("my-job")
+    job = repo.get(JobId(value="my-job"))
     assert job.status == JobStatus.RUNNING
 
 
@@ -121,7 +121,7 @@ def test_get_raises_not_found():
     repo = K8sJobsRepo(api, SETTINGS)
 
     with pytest.raises(JobNotFoundError) as exc_info:
-        repo.get("nonexistent")
+        repo.get(JobId(value="nonexistent"))
     assert exc_info.value.name == "nonexistent"
 
 
@@ -130,7 +130,7 @@ def test_delete_calls_correct_plural():
     api.delete_namespaced_custom_object.return_value = {}
     repo = K8sJobsRepo(api, SETTINGS)
 
-    repo.delete("table-maintenance-rewrite-data-files-abc123")
+    repo.delete(JobId(value="table-maintenance-rewrite-data-files-abc123"))
     call_kwargs = api.delete_namespaced_custom_object.call_args.kwargs
     assert call_kwargs["plural"] == "sparkapplications"
 
@@ -141,4 +141,4 @@ def test_delete_raises_not_found():
     repo = K8sJobsRepo(api, SETTINGS)
 
     with pytest.raises(JobNotFoundError):
-        repo.delete("nonexistent")
+        repo.delete(JobId(value="nonexistent"))

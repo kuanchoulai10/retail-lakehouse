@@ -1,22 +1,9 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from base.repository import Repository
 
-if TYPE_CHECKING:
-    from jobs.adapter.inbound.web.dto import JobApiRequest as JobRequest
-    from jobs.application.domain.model.job import Job
+from jobs.application.domain.model.job import Job
 
 
-class BaseJobsRepo(ABC):
-    @abstractmethod
-    def create(self, request: JobRequest) -> Job: ...
-
-    @abstractmethod
-    def list_all(self) -> list[Job]: ...
-
-    @abstractmethod
-    def get(self, name: str) -> Job: ...
-
-    @abstractmethod
-    def delete(self, name: str) -> None: ...
+class BaseJobsRepo(Repository[Job]):
+    pass

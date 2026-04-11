@@ -29,10 +29,6 @@ forbidden_modules =
     shared
     fastapi
     kubernetes
-; TODO: Remove when JobApiRequest is replaced by a domain command object
-ignore_imports =
-    jobs.application.port.outbound.jobs_repo -> jobs.adapter.inbound.web.dto
-    jobs.application.domain.service.create_job -> jobs.adapter.inbound.web.dto
 
 [importlinter:contract:inbound-adapter-no-domain]
 name = Inbound adapter does not skip layers to depend on domain
@@ -59,12 +55,6 @@ source_modules =
     jobs.adapter.outbound
 forbidden_modules =
     jobs.adapter.inbound
-; TODO: Remove when JobApiRequest is replaced by a domain command object
-ignore_imports =
-    jobs.adapter.outbound.in_memory_jobs_repo -> jobs.adapter.inbound.web.dto
-    jobs.adapter.outbound.k8s.k8s_jobs_repo -> jobs.adapter.inbound.web.dto
-    jobs.adapter.outbound.k8s.manifest -> jobs.adapter.inbound.web.dto
-    jobs.application.port.outbound.jobs_repo -> jobs.adapter.inbound.web.dto
 
 [importlinter:contract:shared-leaf]
 name = Shared does not depend on bounded contexts

@@ -15,10 +15,9 @@ from jobs.application.domain.model.job_type import JobType
 from jobs.application.port.outbound.jobs_repo import BaseJobsRepo
 
 if TYPE_CHECKING:
+    from base.entity_id import EntityId
     from kubernetes.client import CustomObjectsApi
     from shared.configs import AppSettings
-
-    from jobs.adapter.inbound.web.dto import JobApiRequest as JobRequest
 
 _GROUP = "sparkoperator.k8s.io"
 _VERSION = "v1beta2"
@@ -61,9 +60,8 @@ class K8sJobsRepo(BaseJobsRepo):
         self._api = api
         self._settings = settings
 
-    def create(self, request: JobRequest) -> Job:
-        name = _generate_name(request.job_type)
-        manifest = build_manifest(name, request, self._settings)
+    def create(self, entity: Job) -> Job:
+        manifest = build_manifest(entity, self._settings)
         plural = _PLURAL_SCHEDULED if manifest["kind"] == "ScheduledSparkApplication" else _PLURAL_SPARK
         resource = self._api.create_namespaced_custom_object(
             group=_GROUP,
@@ -72,7 +70,7 @@ class K8sJobsRepo(BaseJobsRepo):
             plural=plural,
             body=manifest,
         )
-        return _to_job(resource, JobType(request.job_type))
+        return _to_job(resource, entity.job_type)
 
     def list_all(self) -> list[Job]:
         results = []
@@ -90,7 +88,8 @@ class K8sJobsRepo(BaseJobsRepo):
                     continue
         return results
 
-    def get(self, name: str) -> Job:
+    def get(self, entity_id: EntityId) -> Job:
+        name = entity_id.value
         for plural in (_PLURAL_SPARK, _PLURAL_SCHEDULED):
             try:
                 resource = self._api.get_namespaced_custom_object(
@@ -107,7 +106,8 @@ class K8sJobsRepo(BaseJobsRepo):
                 raise
         raise JobNotFoundError(name)
 
-    def delete(self, name: str) -> None:
+    def delete(self, entity_id: EntityId) -> None:
+        name = entity_id.value
         for plural in (_PLURAL_SPARK, _PLURAL_SCHEDULED):
             try:
                 self._api.delete_namespaced_custom_object(

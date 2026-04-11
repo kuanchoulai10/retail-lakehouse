@@ -2,24 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
-from jobs.application.domain.model.job import Job
-from jobs.application.domain.model.job_id import JobId
-from jobs.application.domain.model.job_status import JobStatus
-from jobs.application.domain.model.job_type import JobType
 from jobs.application.domain.service.create_job import CreateJobService
 from jobs.application.port.inbound import CreateJobInput, CreateJobOutput, CreateJobUseCase
-
-
-def _make_job() -> Job:
-    return Job(
-        id=JobId(value="abc1234567"),
-        job_type=JobType.REWRITE_DATA_FILES,
-        status=JobStatus.PENDING,
-        created_at=datetime(2026, 4, 11, tzinfo=UTC),
-    )
 
 
 def test_create_job_service_implements_use_case():
@@ -28,7 +14,7 @@ def test_create_job_service_implements_use_case():
 
 def test_create_job_returns_output():
     repo = MagicMock()
-    repo.create.return_value = _make_job()
+    repo.create.side_effect = lambda job: job
     service = CreateJobService(repo)
 
     input_ = CreateJobInput(
@@ -40,7 +26,6 @@ def test_create_job_returns_output():
     result = service.execute(input_)
 
     assert isinstance(result, CreateJobOutput)
-    assert result.id == "abc1234567"
     assert result.job_type == "rewrite_data_files"
     assert result.status == "pending"
     repo.create.assert_called_once()

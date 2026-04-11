@@ -38,7 +38,7 @@ def test_get_job_returns_result():
     assert result.id == "abc1234567"
     assert result.job_type == "rewrite_data_files"
     assert result.status == "completed"
-    repo.get.assert_called_once_with("abc1234567")
+    repo.get.assert_called_once_with(JobId(value="abc1234567"))
 
 
 def test_get_job_raises_app_not_found():

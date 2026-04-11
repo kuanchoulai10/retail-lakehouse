@@ -1,47 +1,35 @@
 from __future__ import annotations
 
-import secrets
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from jobs.adapter.outbound.k8s.status_mapper import status_from_k8s
 from jobs.application.domain.model.exceptions import JobNotFoundError
-from jobs.application.domain.model.job import Job
-from jobs.application.domain.model.job_id import JobId
-from jobs.application.domain.model.job_type import JobType
 from jobs.application.port.outbound.jobs_repo import BaseJobsRepo
 
 if TYPE_CHECKING:
-    from jobs.adapter.inbound.web.dto import JobApiRequest as JobRequest
+    from base.entity_id import EntityId
+
+    from jobs.application.domain.model.job import Job
 
 
 class InMemoryJobsRepo(BaseJobsRepo):
     def __init__(self) -> None:
         self._jobs: dict[str, Job] = {}
 
-    def create(self, request: JobRequest) -> Job:
-        job_id = JobId(value=secrets.token_hex(5))
-        kind = "ScheduledSparkApplication" if request.cron else "SparkApplication"
-        job = Job(
-            id=job_id,
-            job_type=JobType(request.job_type),
-            status=status_from_k8s(kind, ""),
-            created_at=datetime.now(UTC),
-        )
-        self._jobs[job_id.value] = job
-        return job
+    def create(self, entity: Job) -> Job:
+        self._jobs[entity.id.value] = entity
+        return entity
 
     def list_all(self) -> list[Job]:
         return list(self._jobs.values())
 
-    def get(self, name: str) -> Job:
+    def get(self, entity_id: EntityId) -> Job:
         try:
-            return self._jobs[name]
+            return self._jobs[entity_id.value]
         except KeyError:
-            raise JobNotFoundError(name) from None
+            raise JobNotFoundError(entity_id.value) from None
 
-    def delete(self, name: str) -> None:
+    def delete(self, entity_id: EntityId) -> None:
         try:
-            del self._jobs[name]
+            del self._jobs[entity_id.value]
         except KeyError:
-            raise JobNotFoundError(name) from None
+            raise JobNotFoundError(entity_id.value) from None

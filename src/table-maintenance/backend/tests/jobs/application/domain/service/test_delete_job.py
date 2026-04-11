@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from jobs.application.domain.model.exceptions import JobNotFoundError
+from jobs.application.domain.model.job_id import JobId
 from jobs.application.domain.service.delete_job import DeleteJobService
 from jobs.application.exceptions import JobNotFoundError as AppJobNotFoundError
 from jobs.application.port.inbound import DeleteJobInput, DeleteJobOutput, DeleteJobUseCase
@@ -23,7 +24,7 @@ def test_delete_job_returns_output():
     result = service.execute(DeleteJobInput(job_id="abc1234567"))
 
     assert isinstance(result, DeleteJobOutput)
-    repo.delete.assert_called_once_with("abc1234567")
+    repo.delete.assert_called_once_with(JobId(value="abc1234567"))
 
 
 def test_delete_job_raises_app_not_found():

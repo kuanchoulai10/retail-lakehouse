@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from jobs.application.domain.model.exceptions import JobNotFoundError
+from jobs.application.domain.model.job_id import JobId
 from jobs.application.exceptions import JobNotFoundError as AppJobNotFoundError
 from jobs.application.port.inbound import DeleteJobInput, DeleteJobOutput, DeleteJobUseCase
 
@@ -18,7 +19,7 @@ class DeleteJobService(DeleteJobUseCase):
 
     def execute(self, request: DeleteJobInput) -> DeleteJobOutput:
         try:
-            self._repo.delete(request.job_id)
+            self._repo.delete(JobId(value=request.job_id))
         except JobNotFoundError as e:
             raise AppJobNotFoundError(e.name) from e
         return DeleteJobOutput()

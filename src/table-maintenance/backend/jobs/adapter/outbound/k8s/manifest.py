@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from shared.configs import AppSettings
 
-    from jobs.adapter.inbound.web.dto import JobApiRequest as JobRequest
+    from jobs.application.domain.model.job import Job
+    from jobs.application.port.inbound.create_job.input import CreateJobInput
 
 _JOB_PREFIX: dict[str, str] = {
     "expire_snapshots": "GLAC_EXPIRE_SNAPSHOTS",
@@ -32,7 +33,7 @@ def _dict_to_env(prefix: str, config: dict) -> list[dict]:
     return result
 
 
-def _build_driver_env(request: JobRequest) -> list[dict]:
+def _build_driver_env(request: CreateJobInput) -> list[dict]:
     job_type = request.job_type
     env = [
         {"name": "GLAC_JOB_TYPE", "value": job_type},
@@ -52,7 +53,7 @@ def _build_driver_env(request: JobRequest) -> list[dict]:
     return env
 
 
-def _build_spark_app_spec(request: JobRequest, settings: AppSettings, env: list[dict]) -> dict:
+def _build_spark_app_spec(request: CreateJobInput, settings: AppSettings, env: list[dict]) -> dict:
     return {
         "type": "Python",
         "pythonVersion": "3",
@@ -84,7 +85,12 @@ def _build_spark_app_spec(request: JobRequest, settings: AppSettings, env: list[
     }
 
 
-def build_manifest(name: str, request: JobRequest, settings: AppSettings) -> dict:
+def build_manifest(job: Job, settings: AppSettings, request: CreateJobInput | None = None) -> dict:
+    if request is None:
+        msg = "request is required"
+        raise ValueError(msg)
+
+    name = job.id.value
     env = _build_driver_env(request)
     spark_spec = _build_spark_app_spec(request, settings, env)
 
