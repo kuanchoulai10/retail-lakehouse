@@ -15,6 +15,7 @@ spec:
       labels:
         app: table-maintenance-backend
     spec:
+      serviceAccountName: table-maintenance-backend
       containers:
         - name: backend
           image: localhost:5001/table-maintenance-backend:latest
