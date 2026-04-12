@@ -1,16 +1,9 @@
-# Build context: src/table-maintenance/
-# docker build -t table-maintenance-backend -f backend/Dockerfile src/table-maintenance/
 FROM python:3.14-slim
 
 RUN pip install --no-cache-dir uv
 
-# Install shared jobs package (provides configs/ models)
-COPY jobs/ /jobs
-RUN uv pip install --system --no-cache /jobs
-
-# Install backend dependencies
 WORKDIR /app
-COPY backend/ .
+COPY . .
 RUN uv pip install --system --no-cache \
     "fastapi[standard]>=0.115" \
     "kubernetes>=32.0"

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-IMAGE="localhost:5000/table-maintenance-jobs:latest"
+IMAGE="localhost:5001/table-maintenance-jobs:latest"
 JOBS_DIR="${SCRIPT_DIR}/../src/table-maintenance/jobs"
 
 echo "==> Building Docker image..."
