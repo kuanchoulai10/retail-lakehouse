@@ -6,7 +6,6 @@ if TYPE_CHECKING:
     from shared.configs import AppSettings
 
     from jobs.application.domain.model.job import Job
-    from jobs.application.port.inbound.create_job.input import CreateJobInput
 
 _JOB_PREFIX: dict[str, str] = {
     "expire_snapshots": "GLAC_EXPIRE_SNAPSHOTS",
@@ -33,27 +32,20 @@ def _dict_to_env(prefix: str, config: dict) -> list[dict]:
     return result
 
 
-def _build_driver_env(request: CreateJobInput) -> list[dict]:
-    job_type = request.job_type
+def _build_driver_env(job: Job) -> list[dict]:
+    job_type = job.job_type.value
     env = [
         {"name": "GLAC_JOB_TYPE", "value": job_type},
-        {"name": "GLAC_CATALOG", "value": request.catalog},
+        {"name": "GLAC_CATALOG", "value": job.catalog},
     ]
-    config_by_type = {
-        "expire_snapshots": request.expire_snapshots,
-        "remove_orphan_files": request.remove_orphan_files,
-        "rewrite_data_files": request.rewrite_data_files,
-        "rewrite_manifests": request.rewrite_manifests,
-    }
     prefix = _JOB_PREFIX[job_type]
-    job_config = config_by_type[job_type]
-    if job_config:
-        env.extend(_dict_to_env(prefix, job_config))
+    if job.job_config:
+        env.extend(_dict_to_env(prefix, job.job_config))
     env.extend(_AWS_ENV)
     return env
 
 
-def _build_spark_app_spec(request: CreateJobInput, settings: AppSettings, env: list[dict]) -> dict:
+def _build_spark_app_spec(job: Job, settings: AppSettings, env: list[dict]) -> dict:
     return {
         "type": "Python",
         "pythonVersion": "3",
@@ -66,41 +58,36 @@ def _build_spark_app_spec(request: CreateJobInput, settings: AppSettings, env: l
             "jars": [settings.iceberg_jar, settings.iceberg_aws_jar],
         },
         "sparkConf": {
-            "spark.sql.extensions": ("org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions"),
-            "spark.driver.extraJavaOptions": ("-Divy.cache.dir=/tmp/.ivy2 -Divy.home=/tmp/.ivy"),
-            **request.spark_conf,
+            "spark.sql.extensions": "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+            "spark.driver.extraJavaOptions": "-Divy.cache.dir=/tmp/.ivy2 -Divy.home=/tmp/.ivy",
         },
         "driver": {
             "cores": 1,
-            "memory": request.driver_memory,
+            "memory": settings.driver_memory,
             "serviceAccount": settings.service_account,
             "env": env,
         },
         "executor": {
             "cores": 1,
-            "instances": request.executor_instances,
-            "memory": request.executor_memory,
+            "instances": settings.executor_instances,
+            "memory": settings.executor_memory,
             "env": _AWS_ENV,
         },
     }
 
 
-def build_manifest(job: Job, settings: AppSettings, request: CreateJobInput | None = None) -> dict:
-    if request is None:
-        msg = "request is required"
-        raise ValueError(msg)
-
+def build_manifest(job: Job, settings: AppSettings) -> dict:
     name = job.id.value
-    env = _build_driver_env(request)
-    spark_spec = _build_spark_app_spec(request, settings, env)
+    env = _build_driver_env(job)
+    spark_spec = _build_spark_app_spec(job, settings, env)
 
-    if request.cron:
+    if job.cron:
         return {
             "apiVersion": "sparkoperator.k8s.io/v1beta2",
             "kind": "ScheduledSparkApplication",
             "metadata": {"name": name, "namespace": settings.namespace},
             "spec": {
-                "schedule": request.cron,
+                "schedule": job.cron,
                 "template": spark_spec,
             },
         }

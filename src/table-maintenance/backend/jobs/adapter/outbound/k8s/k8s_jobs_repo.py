@@ -41,17 +41,27 @@ def _extract_job_type(resource: dict) -> JobType:
     raise ValueError(f"Cannot determine job_type from resource {resource.get('metadata', {}).get('name')}")
 
 
+def _extract_env(resource: dict) -> dict[str, str]:
+    """Extract env vars from driver spec (SparkApplication or ScheduledSparkApplication)."""
+    driver = resource.get("spec", {}).get("driver", {})
+    if not driver:
+        driver = resource.get("spec", {}).get("template", {}).get("driver", {})
+    return {e["name"]: e["value"] for e in driver.get("env", [])}
+
+
 def _to_job(resource: dict, job_type: JobType) -> Job:
     meta = resource.get("metadata", {})
     ts = meta.get("creationTimestamp")
     created_at = datetime.fromisoformat(ts.replace("Z", "+00:00")) if ts else datetime.now(UTC)
     kind = resource.get("kind", "SparkApplication")
     state = resource.get("status", {}).get("applicationState", {}).get("state", "")
+    env = _extract_env(resource)
     return Job(
         id=JobId(value=meta["name"]),
         job_type=job_type,
         status=status_from_k8s(kind, state),
         created_at=created_at,
+        catalog=env.get("GLAC_CATALOG", ""),
     )
 
 

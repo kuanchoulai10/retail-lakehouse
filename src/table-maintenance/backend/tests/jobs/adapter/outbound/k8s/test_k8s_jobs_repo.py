@@ -23,6 +23,7 @@ MOCK_SPARK_APP = {
         "driver": {
             "env": [
                 {"name": "GLAC_JOB_TYPE", "value": "rewrite_data_files"},
+                {"name": "GLAC_CATALOG", "value": "retail"},
             ]
         }
     },

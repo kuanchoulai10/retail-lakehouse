@@ -22,3 +22,11 @@ class Job(AggregateRoot[JobId]):
     job_type: JobType
     status: JobStatus
     created_at: datetime
+    catalog: str = ""
+    table: str = ""
+    job_config: dict | None = None
+    cron: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.job_config is None:
+            self.job_config = {}

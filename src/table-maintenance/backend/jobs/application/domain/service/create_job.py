@@ -13,6 +13,13 @@ from jobs.application.port.inbound import CreateJobInput, CreateJobOutput, Creat
 if TYPE_CHECKING:
     from jobs.application.port.outbound.jobs_repo import BaseJobsRepo
 
+_CONFIG_BY_TYPE = {
+    "expire_snapshots": "expire_snapshots",
+    "remove_orphan_files": "remove_orphan_files",
+    "rewrite_data_files": "rewrite_data_files",
+    "rewrite_manifests": "rewrite_manifests",
+}
+
 
 class CreateJobService(CreateJobUseCase):
     """Implements CreateJobUseCase by delegating to the jobs repository."""
@@ -21,11 +28,18 @@ class CreateJobService(CreateJobUseCase):
         self._repo = repo
 
     def execute(self, request: CreateJobInput) -> CreateJobOutput:
+        job_config = getattr(request, _CONFIG_BY_TYPE[request.job_type], None) or {}
+        table = job_config.get("table", "")
+
         job = Job(
             id=JobId(value=secrets.token_hex(5)),
             job_type=JobType(request.job_type),
             status=JobStatus.PENDING,
             created_at=datetime.now(UTC),
+            catalog=request.catalog,
+            table=table,
+            job_config=job_config,
+            cron=request.cron,
         )
         job = self._repo.create(job)
         return CreateJobOutput(

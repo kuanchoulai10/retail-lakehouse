@@ -28,14 +28,12 @@ def _make_app() -> FastAPI:
 REWRITE_PAYLOAD = {
     "job_type": "rewrite_data_files",
     "catalog": "retail",
-    "spark_conf": {},
     "rewrite_data_files": {"table": "inventory.orders"},
 }
 
 EXPIRE_PAYLOAD = {
     "job_type": "expire_snapshots",
     "catalog": "retail",
-    "spark_conf": {},
     "expire_snapshots": {"table": "inventory.orders"},
 }
 

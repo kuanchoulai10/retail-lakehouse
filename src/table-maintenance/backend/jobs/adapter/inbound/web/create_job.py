@@ -16,14 +16,10 @@ def create_job(request: JobApiRequest, use_case: CreateJobUseCase = Depends(_get
         CreateJobInput(
             job_type=request.job_type,
             catalog=request.catalog,
-            spark_conf=request.spark_conf,
             expire_snapshots=request.expire_snapshots,
             remove_orphan_files=request.remove_orphan_files,
             rewrite_data_files=request.rewrite_data_files,
             rewrite_manifests=request.rewrite_manifests,
-            driver_memory=request.driver_memory,
-            executor_memory=request.executor_memory,
-            executor_instances=request.executor_instances,
             cron=request.cron,
         )
     )

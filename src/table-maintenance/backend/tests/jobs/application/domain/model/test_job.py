@@ -18,11 +18,44 @@ def test_job_fields():
         job_type=JobType.REWRITE_DATA_FILES,
         status=JobStatus.PENDING,
         created_at=datetime(2026, 4, 10, tzinfo=UTC),
+        catalog="retail",
+        table="inventory.orders",
+        job_config={"rewrite_all": True},
     )
     assert job.id == jid
     assert job.job_type == JobType.REWRITE_DATA_FILES
     assert job.status == JobStatus.PENDING
     assert job.created_at == datetime(2026, 4, 10, tzinfo=UTC)
+    assert job.catalog == "retail"
+    assert job.table == "inventory.orders"
+    assert job.job_config == {"rewrite_all": True}
+
+
+def test_job_cron_defaults_to_none():
+    job = Job(
+        id=JobId(value="abc1234567"),
+        job_type=JobType.REWRITE_DATA_FILES,
+        status=JobStatus.PENDING,
+        created_at=datetime(2026, 4, 10, tzinfo=UTC),
+        catalog="retail",
+        table="inventory.orders",
+        job_config={},
+    )
+    assert job.cron is None
+
+
+def test_job_with_cron():
+    job = Job(
+        id=JobId(value="abc1234567"),
+        job_type=JobType.REWRITE_DATA_FILES,
+        status=JobStatus.PENDING,
+        created_at=datetime(2026, 4, 10, tzinfo=UTC),
+        catalog="retail",
+        table="inventory.orders",
+        job_config={},
+        cron="0 2 * * *",
+    )
+    assert job.cron == "0 2 * * *"
 
 
 def test_job_equality_by_id():
