@@ -1,9 +1,9 @@
 from unittest.mock import MagicMock
 
+from dependencies.use_cases import get_delete_job_use_case
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from jobs.adapter.inbound.web import router
-from jobs.adapter.inbound.web.delete_job import _get_use_case
 from jobs.application.exceptions import JobNotFoundError
 from jobs.application.port.inbound import DeleteJobOutput
 
@@ -11,7 +11,7 @@ from jobs.application.port.inbound import DeleteJobOutput
 def _make_client(use_case: MagicMock) -> TestClient:
     app = FastAPI()
     app.include_router(router)
-    app.dependency_overrides[_get_use_case] = lambda: use_case
+    app.dependency_overrides[get_delete_job_use_case] = lambda: use_case
     return TestClient(app)
 
 

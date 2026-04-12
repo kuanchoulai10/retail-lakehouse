@@ -1,12 +1,14 @@
 """Integration test: full CRUD lifecycle via HTTP with InMemoryJobsRepo."""
 
+from dependencies.use_cases import (
+    get_create_job_use_case,
+    get_delete_job_use_case,
+    get_get_job_use_case,
+    get_list_jobs_use_case,
+)
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from jobs.adapter.inbound.web import router
-from jobs.adapter.inbound.web.create_job import _get_use_case as create_job_dep
-from jobs.adapter.inbound.web.delete_job import _get_use_case as delete_job_dep
-from jobs.adapter.inbound.web.get_job import _get_use_case as get_job_dep
-from jobs.adapter.inbound.web.list_jobs import _get_use_case as list_jobs_dep
 from jobs.adapter.outbound.in_memory_jobs_repo import InMemoryJobsRepo
 from jobs.application.domain.service.create_job import CreateJobService
 from jobs.application.domain.service.delete_job import DeleteJobService
@@ -18,10 +20,10 @@ def _make_app() -> FastAPI:
     app = FastAPI()
     app.include_router(router)
     repo = InMemoryJobsRepo()
-    app.dependency_overrides[create_job_dep] = lambda: CreateJobService(repo)
-    app.dependency_overrides[delete_job_dep] = lambda: DeleteJobService(repo)
-    app.dependency_overrides[get_job_dep] = lambda: GetJobService(repo)
-    app.dependency_overrides[list_jobs_dep] = lambda: ListJobsService(repo)
+    app.dependency_overrides[get_create_job_use_case] = lambda: CreateJobService(repo)
+    app.dependency_overrides[get_delete_job_use_case] = lambda: DeleteJobService(repo)
+    app.dependency_overrides[get_get_job_use_case] = lambda: GetJobService(repo)
+    app.dependency_overrides[get_list_jobs_use_case] = lambda: ListJobsService(repo)
     return app
 
 

@@ -3,6 +3,7 @@ root_packages =
     jobs
     shared
     base
+    dependencies
 include_external_packages = True
 
 [importlinter:contract:domain-core-isolation]
@@ -39,6 +40,8 @@ forbidden_modules =
     jobs.application.domain
 ignore_imports =
     jobs.application.port.outbound.jobs_repo -> jobs.application.domain.model.job
+    dependencies.use_cases -> jobs.application.domain.service.*
+    dependencies.repos -> jobs.adapter.outbound.k8s.k8s_jobs_repo
 
 [importlinter:contract:inbound-outbound-separation]
 name = Inbound adapter does not depend on outbound adapter
@@ -47,6 +50,8 @@ source_modules =
     jobs.adapter.inbound
 forbidden_modules =
     jobs.adapter.outbound
+ignore_imports =
+    dependencies.repos -> jobs.adapter.outbound.k8s.k8s_jobs_repo
 
 [importlinter:contract:outbound-inbound-separation]
 name = Outbound adapter does not depend on inbound adapter

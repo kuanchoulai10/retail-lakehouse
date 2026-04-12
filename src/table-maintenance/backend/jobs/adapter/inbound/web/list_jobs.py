@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from dependencies.use_cases import get_list_jobs_use_case
 from fastapi import APIRouter, Depends
 
 from jobs.adapter.inbound.web.dto import JobApiResponse
@@ -6,12 +9,10 @@ from jobs.application.port.inbound import ListJobsInput, ListJobsUseCase
 router = APIRouter()
 
 
-def _get_use_case() -> ListJobsUseCase:
-    raise NotImplementedError("Dependency not wired — call app.dependency_overrides")
-
-
 @router.get("/jobs", response_model=list[JobApiResponse])
-def list_jobs(use_case: ListJobsUseCase = Depends(_get_use_case)):
+def list_jobs(
+    use_case: ListJobsUseCase = Depends(get_list_jobs_use_case),
+):
     result = use_case.execute(ListJobsInput())
     return [
         JobApiResponse(
