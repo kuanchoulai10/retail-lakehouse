@@ -5,7 +5,11 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from jobs.application.domain.service.create_job import CreateJobService
-from jobs.application.port.inbound import CreateJobInput, CreateJobOutput, CreateJobUseCase
+from jobs.application.port.inbound import (
+    CreateJobInput,
+    CreateJobOutput,
+    CreateJobUseCase,
+)
 
 
 def test_create_job_service_implements_use_case():

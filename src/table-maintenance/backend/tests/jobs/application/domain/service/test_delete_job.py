@@ -9,7 +9,11 @@ from jobs.application.domain.model.exceptions import JobNotFoundError
 from jobs.application.domain.model.job_id import JobId
 from jobs.application.domain.service.delete_job import DeleteJobService
 from jobs.application.exceptions import JobNotFoundError as AppJobNotFoundError
-from jobs.application.port.inbound import DeleteJobInput, DeleteJobOutput, DeleteJobUseCase
+from jobs.application.port.inbound import (
+    DeleteJobInput,
+    DeleteJobOutput,
+    DeleteJobUseCase,
+)
 
 
 def test_delete_job_service_implements_use_case():

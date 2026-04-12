@@ -5,7 +5,11 @@ from typing import TYPE_CHECKING
 from jobs.application.domain.model.exceptions import JobNotFoundError
 from jobs.application.domain.model.job_id import JobId
 from jobs.application.exceptions import JobNotFoundError as AppJobNotFoundError
-from jobs.application.port.inbound import DeleteJobInput, DeleteJobOutput, DeleteJobUseCase
+from jobs.application.port.inbound import (
+    DeleteJobInput,
+    DeleteJobOutput,
+    DeleteJobUseCase,
+)
 
 if TYPE_CHECKING:
     from jobs.application.port.outbound.jobs_repo import BaseJobsRepo

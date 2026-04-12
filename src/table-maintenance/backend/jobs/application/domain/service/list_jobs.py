@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from jobs.application.port.inbound import ListJobsInput, ListJobsOutput, ListJobsOutputItem, ListJobsUseCase
+from jobs.application.port.inbound import (
+    ListJobsInput,
+    ListJobsOutput,
+    ListJobsOutputItem,
+    ListJobsUseCase,
+)
 
 if TYPE_CHECKING:
     from jobs.application.port.outbound.jobs_repo import BaseJobsRepo

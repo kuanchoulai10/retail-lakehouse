@@ -16,7 +16,10 @@ def test_uses_incluster_when_available():
 
 def test_falls_back_to_kubeconfig_when_not_in_cluster():
     with (
-        patch("shared.k8s.client.k8s_config.load_incluster_config", side_effect=ConfigException("not in cluster")),
+        patch(
+            "shared.k8s.client.k8s_config.load_incluster_config",
+            side_effect=ConfigException("not in cluster"),
+        ),
         patch("shared.k8s.client.k8s_config.load_kube_config") as mock_kube,
     ):
         load_k8s_config()
