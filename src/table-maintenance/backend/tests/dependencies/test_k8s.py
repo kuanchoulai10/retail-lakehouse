@@ -1,15 +1,19 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import patch
 
 from dependencies.k8s import get_k8s_api
+from kubernetes.client import CustomObjectsApi
 
 
-def test_get_k8s_api_returns_api_from_app_state():
-    mock_api = MagicMock()
-    mock_request = MagicMock()
-    mock_request.app.state.k8s_api = mock_api
+@patch("dependencies.k8s.load_k8s_config")
+def test_get_k8s_api_returns_custom_objects_api(mock_load):
+    result = get_k8s_api()
+    assert isinstance(result, CustomObjectsApi)
 
-    result = get_k8s_api(mock_request)
 
-    assert result is mock_api
+@patch("dependencies.k8s.load_k8s_config")
+def test_get_k8s_api_returns_same_instance(mock_load):
+    a = get_k8s_api()
+    b = get_k8s_api()
+    assert a is b

@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import TYPE_CHECKING
 
+from shared.k8s.client import load_k8s_config
+
 if TYPE_CHECKING:
-    from fastapi import Request
     from kubernetes.client import CustomObjectsApi
 
 
-def get_k8s_api(request: Request) -> CustomObjectsApi:
-    return request.app.state.k8s_api
+@lru_cache
+def get_k8s_api() -> CustomObjectsApi:
+    from kubernetes.client import CustomObjectsApi
+
+    load_k8s_config()
+    return CustomObjectsApi()
