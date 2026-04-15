@@ -30,18 +30,21 @@ adapter/outbound ──> application ──> domain
 adapter/*        ──✗──> domain (forbidden: must go through application)
 ```
 
-### Bounded Context Structure
+### Backend Structure
 
 ```
-jobs/
+backend/
 ├── application/
 │   ├── domain/          # Entities, Value Objects, Domain Events, Exceptions
 │   ├── port/inbound/    # Use case interfaces + result types
 │   ├── port/outbound/   # Repository interfaces
 │   └── service/         # Use case implementations
-└── adapter/
-    ├── inbound/web/     # FastAPI routes, API DTOs (JobApiRequest, JobApiResponse)
-    └── outbound/        # Repository implementations (K8s, in-memory)
+├── adapter/
+│   ├── inbound/web/     # FastAPI routes, API DTOs (JobApiRequest, JobApiResponse)
+│   └── outbound/        # Repository implementations (K8s, in-memory)
+├── base/                # DDD shared kernel
+├── shared/              # Cross-cutting infrastructure (AppSettings, K8s client)
+└── dependencies/        # FastAPI dependency injection
 ```
 
 ### Rules

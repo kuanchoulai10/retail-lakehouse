@@ -3,7 +3,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from dependencies.repos import get_jobs_repo
-from jobs.adapter.outbound.k8s.k8s_jobs_repo import K8sJobsRepo
+from adapter.outbound.k8s.k8s_jobs_repo import K8sJobsRepo
 from shared.configs import AppSettings
 
 

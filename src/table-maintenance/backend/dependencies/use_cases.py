@@ -3,21 +3,21 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from fastapi import Depends
-from jobs.application.domain.service.create_job import CreateJobService
-from jobs.application.domain.service.delete_job import DeleteJobService
-from jobs.application.domain.service.get_job import GetJobService
-from jobs.application.domain.service.list_jobs import ListJobsService
+from application.domain.service.create_job import CreateJobService
+from application.domain.service.delete_job import DeleteJobService
+from application.domain.service.get_job import GetJobService
+from application.domain.service.list_jobs import ListJobsService
 
 from dependencies.repos import get_jobs_repo
 
 if TYPE_CHECKING:
-    from jobs.application.port.inbound import (
+    from application.port.inbound import (
         CreateJobUseCase,
         DeleteJobUseCase,
         GetJobUseCase,
         ListJobsUseCase,
     )
-    from jobs.application.port.outbound.jobs_repo import BaseJobsRepo
+    from application.port.outbound.jobs_repo import BaseJobsRepo
 
 
 def get_create_job_use_case(

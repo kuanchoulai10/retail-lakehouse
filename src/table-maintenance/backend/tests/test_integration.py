@@ -8,12 +8,12 @@ from dependencies.use_cases import (
 )
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from jobs.adapter.inbound.web import router
-from jobs.adapter.outbound.in_memory_jobs_repo import InMemoryJobsRepo
-from jobs.application.domain.service.create_job import CreateJobService
-from jobs.application.domain.service.delete_job import DeleteJobService
-from jobs.application.domain.service.get_job import GetJobService
-from jobs.application.domain.service.list_jobs import ListJobsService
+from adapter.inbound.web import router
+from adapter.outbound.in_memory_jobs_repo import InMemoryJobsRepo
+from application.domain.service.create_job import CreateJobService
+from application.domain.service.delete_job import DeleteJobService
+from application.domain.service.get_job import GetJobService
+from application.domain.service.list_jobs import ListJobsService
 
 
 def _make_app() -> FastAPI:

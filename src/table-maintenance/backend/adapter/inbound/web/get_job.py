@@ -1,0 +1,27 @@
+from __future__ import annotations
+
+from dependencies.use_cases import get_get_job_use_case
+from fastapi import APIRouter, Depends, HTTPException
+
+from adapter.inbound.web.dto import JobApiResponse
+from application.exceptions import JobNotFoundError
+from application.port.inbound import GetJobInput, GetJobUseCase
+
+router = APIRouter()
+
+
+@router.get("/jobs/{name}", response_model=JobApiResponse)
+def get_job(
+    name: str,
+    use_case: GetJobUseCase = Depends(get_get_job_use_case),
+):
+    try:
+        result = use_case.execute(GetJobInput(job_id=name))
+        return JobApiResponse(
+            id=result.id,
+            job_type=result.job_type,
+            status=result.status,
+            created_at=result.created_at,
+        )
+    except JobNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e

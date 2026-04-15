@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 
 INBOUND_PORT_DIR = (
-    Path(__file__).resolve().parents[2] / "jobs" / "application" / "port" / "inbound"
+    Path(__file__).resolve().parents[2] / "application" / "port" / "inbound"
 )
 REQUIRED_FILES = {"__init__.py", "input.py", "output.py", "use_case.py"}
 
@@ -89,7 +89,7 @@ def _exported_classes(module_path: str) -> list[str]:
 def test_input_class_naming(use_case_dir: Path):
     prefix = _pascal_to_words(use_case_dir.name)
     expected = f"{prefix}Input"
-    module = f"jobs.application.port.inbound.{use_case_dir.name}.input"
+    module = f"application.port.inbound.{use_case_dir.name}.input"
     classes = _exported_classes(module)
     assert expected in classes, (
         f"{use_case_dir.name}/input.py must export '{expected}', found: {classes}"
@@ -100,7 +100,7 @@ def test_input_class_naming(use_case_dir: Path):
 def test_output_class_naming(use_case_dir: Path):
     prefix = _pascal_to_words(use_case_dir.name)
     expected = f"{prefix}Output"
-    module = f"jobs.application.port.inbound.{use_case_dir.name}.output"
+    module = f"application.port.inbound.{use_case_dir.name}.output"
     classes = _exported_classes(module)
     assert expected in classes, (
         f"{use_case_dir.name}/output.py must export '{expected}', found: {classes}"
@@ -111,7 +111,7 @@ def test_output_class_naming(use_case_dir: Path):
 def test_use_case_class_naming(use_case_dir: Path):
     prefix = _pascal_to_words(use_case_dir.name)
     expected = f"{prefix}UseCase"
-    module = f"jobs.application.port.inbound.{use_case_dir.name}.use_case"
+    module = f"application.port.inbound.{use_case_dir.name}.use_case"
     classes = _exported_classes(module)
     assert expected in classes, (
         f"{use_case_dir.name}/use_case.py must export '{expected}', found: {classes}"
@@ -125,7 +125,7 @@ def test_use_case_class_naming(use_case_dir: Path):
 def test_init_reexports_all_symbols(use_case_dir: Path):
     prefix = _pascal_to_words(use_case_dir.name)
     expected_symbols = {f"{prefix}Input", f"{prefix}Output", f"{prefix}UseCase"}
-    module = f"jobs.application.port.inbound.{use_case_dir.name}"
+    module = f"application.port.inbound.{use_case_dir.name}"
     mod = importlib.import_module(module)
     exported = set(getattr(mod, "__all__", []))
     missing = expected_symbols - exported
