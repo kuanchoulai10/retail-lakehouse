@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 from dependencies.repos import get_jobs_repo
 from adapter.outbound.k8s.k8s_jobs_repo import K8sJobsRepo
-from shared.configs import AppSettings
+from configs import AppSettings
 
 
 def test_get_jobs_repo_returns_k8s_jobs_repo():

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dependencies.settings import get_settings
-from shared.configs import AppSettings
+from configs import AppSettings
 
 
 def test_get_settings_returns_app_settings():

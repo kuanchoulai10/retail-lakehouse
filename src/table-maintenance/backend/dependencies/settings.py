@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from shared.configs import AppSettings
+from configs import AppSettings
 
 
 @lru_cache

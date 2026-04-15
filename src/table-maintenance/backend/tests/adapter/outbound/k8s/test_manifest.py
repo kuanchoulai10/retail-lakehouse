@@ -5,7 +5,7 @@ from application.domain.model.job import Job
 from application.domain.model.job_id import JobId
 from application.domain.model.job_status import JobStatus
 from application.domain.model.job_type import JobType
-from shared.configs import AppSettings
+from configs import AppSettings
 
 SETTINGS = AppSettings()
 

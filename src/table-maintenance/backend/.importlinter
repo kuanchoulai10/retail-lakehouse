@@ -2,7 +2,7 @@
 root_packages =
     adapter
     application
-    shared
+    configs
     base
     dependencies
 include_external_packages = True
@@ -17,7 +17,7 @@ forbidden_modules =
     application.exceptions
     application.domain.service
     adapter
-    shared
+    configs
     fastapi
     kubernetes
 
@@ -28,7 +28,7 @@ source_modules =
     application
 forbidden_modules =
     adapter
-    shared
+    configs
     fastapi
     kubernetes
 
@@ -62,11 +62,11 @@ source_modules =
 forbidden_modules =
     adapter.inbound
 
-[importlinter:contract:shared-leaf]
-name = Shared does not depend on bounded contexts
+[importlinter:contract:configs-leaf]
+name = Configs does not depend on bounded contexts
 type = forbidden
 source_modules =
-    shared
+    configs
 forbidden_modules =
     adapter
     application

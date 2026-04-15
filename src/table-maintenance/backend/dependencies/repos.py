@@ -11,7 +11,7 @@ from dependencies.settings import get_settings
 if TYPE_CHECKING:
     from application.port.outbound.jobs_repo import BaseJobsRepo
     from kubernetes.client import CustomObjectsApi
-    from shared.configs import AppSettings
+    from configs import AppSettings
 
 
 def get_jobs_repo(

@@ -8,7 +8,7 @@ from application.domain.model.job import Job
 from application.domain.model.job_id import JobId
 from application.port.outbound.jobs_repo import BaseJobsRepo
 from kubernetes.client.exceptions import ApiException
-from shared.configs import AppSettings
+from configs import AppSettings
 
 SETTINGS = AppSettings()
 

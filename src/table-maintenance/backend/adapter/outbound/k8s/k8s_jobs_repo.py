@@ -17,7 +17,7 @@ from application.port.outbound.jobs_repo import BaseJobsRepo
 if TYPE_CHECKING:
     from base.entity_id import EntityId
     from kubernetes.client import CustomObjectsApi
-    from shared.configs import AppSettings
+    from configs import AppSettings
 
 _GROUP = "sparkoperator.k8s.io"
 _VERSION = "v1beta2"
