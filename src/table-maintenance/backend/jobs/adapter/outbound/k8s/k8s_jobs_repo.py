@@ -35,10 +35,14 @@ def _extract_job_type(resource: dict) -> JobType:
     for env in resource.get("spec", {}).get("driver", {}).get("env", []):
         if env["name"] == "GLAC_JOB_TYPE":
             return JobType(env["value"])
-    for env in resource.get("spec", {}).get("template", {}).get("driver", {}).get("env", []):
+    for env in (
+        resource.get("spec", {}).get("template", {}).get("driver", {}).get("env", [])
+    ):
         if env["name"] == "GLAC_JOB_TYPE":
             return JobType(env["value"])
-    raise ValueError(f"Cannot determine job_type from resource {resource.get('metadata', {}).get('name')}")
+    raise ValueError(
+        f"Cannot determine job_type from resource {resource.get('metadata', {}).get('name')}"
+    )
 
 
 def _extract_env(resource: dict) -> dict[str, str]:
@@ -52,7 +56,9 @@ def _extract_env(resource: dict) -> dict[str, str]:
 def _to_job(resource: dict, job_type: JobType) -> Job:
     meta = resource.get("metadata", {})
     ts = meta.get("creationTimestamp")
-    created_at = datetime.fromisoformat(ts.replace("Z", "+00:00")) if ts else datetime.now(UTC)
+    created_at = (
+        datetime.fromisoformat(ts.replace("Z", "+00:00")) if ts else datetime.now(UTC)
+    )
     kind = resource.get("kind", "SparkApplication")
     state = resource.get("status", {}).get("applicationState", {}).get("state", "")
     env = _extract_env(resource)
@@ -72,7 +78,11 @@ class K8sJobsRepo(BaseJobsRepo):
 
     def create(self, entity: Job) -> Job:
         manifest = build_manifest(entity, self._settings)
-        plural = _PLURAL_SCHEDULED if manifest["kind"] == "ScheduledSparkApplication" else _PLURAL_SPARK
+        plural = (
+            _PLURAL_SCHEDULED
+            if manifest["kind"] == "ScheduledSparkApplication"
+            else _PLURAL_SPARK
+        )
         resource = self._api.create_namespaced_custom_object(
             group=_GROUP,
             version=_VERSION,

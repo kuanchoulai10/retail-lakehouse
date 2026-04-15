@@ -106,7 +106,13 @@ def test_get_falls_back_to_scheduled():
     scheduled_app = {
         **MOCK_SPARK_APP,
         "kind": "ScheduledSparkApplication",
-        "spec": {"template": {"driver": {"env": [{"name": "GLAC_JOB_TYPE", "value": "rewrite_data_files"}]}}},
+        "spec": {
+            "template": {
+                "driver": {
+                    "env": [{"name": "GLAC_JOB_TYPE", "value": "rewrite_data_files"}]
+                }
+            }
+        },
     }
     not_found = ApiException(status=404)
     api.get_namespaced_custom_object.side_effect = [not_found, scheduled_app]

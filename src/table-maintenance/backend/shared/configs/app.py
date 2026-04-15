@@ -14,9 +14,7 @@ class AppSettings(BaseSettings):
         "iceberg-spark-runtime-4.0_2.13/1.10.1/"
         "iceberg-spark-runtime-4.0_2.13-1.10.1.jar"
     )
-    iceberg_aws_jar: str = (
-        "https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-aws-bundle/1.10.1/iceberg-aws-bundle-1.10.1.jar"
-    )
+    iceberg_aws_jar: str = "https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-aws-bundle/1.10.1/iceberg-aws-bundle-1.10.1.jar"
     driver_memory: str = "512m"
     executor_memory: str = "1g"
     executor_instances: int = 1

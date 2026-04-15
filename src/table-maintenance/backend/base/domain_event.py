@@ -36,4 +36,6 @@ class DomainEvent(ABC):  # noqa: B024
     Subclasses must use @dataclass(frozen=True) to enforce immutability.
     """
 
-    occurred_at: datetime = field(default_factory=lambda: datetime.now(UTC), kw_only=True)
+    occurred_at: datetime = field(
+        default_factory=lambda: datetime.now(UTC), kw_only=True
+    )
