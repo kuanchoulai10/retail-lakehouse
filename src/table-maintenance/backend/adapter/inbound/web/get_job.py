@@ -20,8 +20,9 @@ def get_job(
         return JobApiResponse(
             id=result.id,
             job_type=result.job_type,
-            status=result.status,
+            enabled=result.enabled,
             created_at=result.created_at,
+            updated_at=result.updated_at,
         )
     except JobNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e

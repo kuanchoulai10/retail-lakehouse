@@ -9,7 +9,6 @@ from application.domain.model.job_id import JobId
 from application.domain.model.job_run import JobRun
 from application.domain.model.job_run_id import JobRunId
 from application.domain.model.job_run_status import JobRunStatus
-from application.domain.model.job_status import JobStatus
 from application.domain.model.job_type import JobType
 
 __all__ = [
@@ -20,6 +19,5 @@ __all__ = [
     "JobRunId",
     "JobRunNotFoundError",
     "JobRunStatus",
-    "JobStatus",
     "JobType",
 ]

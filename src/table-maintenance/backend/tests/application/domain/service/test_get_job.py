@@ -7,7 +7,6 @@ import pytest
 from application.domain.model.exceptions import JobNotFoundError
 from application.domain.model.job import Job
 from application.domain.model.job_id import JobId
-from application.domain.model.job_status import JobStatus
 from application.domain.model.job_type import JobType
 from application.domain.service.get_job import GetJobService
 from application.exceptions import JobNotFoundError as AppJobNotFoundError
@@ -19,9 +18,9 @@ def _make_job(job_id: str = "abc1234567") -> Job:
     return Job(
         id=JobId(value=job_id),
         job_type=JobType.REWRITE_DATA_FILES,
-        status=JobStatus.COMPLETED,
         created_at=ts,
         updated_at=ts,
+        enabled=True,
     )
 
 
@@ -39,7 +38,7 @@ def test_get_job_returns_result():
     assert isinstance(result, GetJobOutput)
     assert result.id == "abc1234567"
     assert result.job_type == "rewrite_data_files"
-    assert result.status == "completed"
+    assert result.enabled is True
     repo.get.assert_called_once_with(JobId(value="abc1234567"))
 
 

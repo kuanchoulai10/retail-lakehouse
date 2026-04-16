@@ -7,7 +7,6 @@ from unittest.mock import MagicMock
 
 from application.domain.model.job import Job
 from application.domain.model.job_id import JobId
-from application.domain.model.job_status import JobStatus
 from application.domain.model.job_type import JobType
 from application.domain.service.list_jobs import ListJobsService
 from application.port.inbound import (
@@ -23,7 +22,6 @@ def _make_job(job_id: str = "abc1234567") -> Job:
     return Job(
         id=JobId(value=job_id),
         job_type=JobType.REWRITE_DATA_FILES,
-        status=JobStatus.COMPLETED,
         created_at=ts,
         updated_at=ts,
     )

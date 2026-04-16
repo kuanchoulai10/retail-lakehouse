@@ -2,7 +2,6 @@ from datetime import UTC, datetime
 
 from adapter.outbound.sql.row_to_job import row_to_job
 from application.domain.model.job_id import JobId
-from application.domain.model.job_status import JobStatus
 from application.domain.model.job_type import JobType
 
 
@@ -10,7 +9,6 @@ def test_row_maps_to_job():
     row = {
         "id": "abc1234567",
         "job_type": "rewrite_data_files",
-        "status": "pending",
         "catalog": "retail",
         "table": "inventory.orders",
         "job_config": {"rewrite_all": True},
@@ -24,7 +22,6 @@ def test_row_maps_to_job():
 
     assert job.id == JobId(value="abc1234567")
     assert job.job_type == JobType.REWRITE_DATA_FILES
-    assert job.status == JobStatus.PENDING
     assert job.catalog == "retail"
     assert job.table == "inventory.orders"
     assert job.job_config == {"rewrite_all": True}
@@ -38,7 +35,6 @@ def test_row_preserves_cron():
     row = {
         "id": "x",
         "job_type": "rewrite_data_files",
-        "status": "pending",
         "catalog": "",
         "table": "",
         "job_config": {},

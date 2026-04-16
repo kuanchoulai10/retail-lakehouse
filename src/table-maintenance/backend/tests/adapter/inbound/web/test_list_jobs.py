@@ -20,8 +20,9 @@ SAMPLE_OUTPUT = ListJobsOutput(
         ListJobsOutputItem(
             id="abc1234567",
             job_type="rewrite_data_files",
-            status="completed",
+            enabled=False,
             created_at=datetime(2026, 4, 4, tzinfo=UTC),
+            updated_at=datetime(2026, 4, 4, tzinfo=UTC),
         ),
     ],
 )
@@ -35,4 +36,7 @@ def test_list_jobs_returns_200():
     response = client.get("/v1/jobs")
     assert response.status_code == 200
     assert len(response.json()) == 1
-    assert response.json()[0]["id"] == "abc1234567"
+    body = response.json()[0]
+    assert body["id"] == "abc1234567"
+    assert body["enabled"] is False
+    assert "status" not in body

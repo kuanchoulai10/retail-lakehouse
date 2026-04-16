@@ -5,7 +5,6 @@ from adapter.outbound.k8s.k8s_job_run_executor import K8sJobRunExecutor
 from application.domain.model.job import Job
 from application.domain.model.job_id import JobId
 from application.domain.model.job_run_status import JobRunStatus
-from application.domain.model.job_status import JobStatus
 from application.domain.model.job_type import JobType
 from application.port.outbound.job_run_executor import JobRunExecutor
 from configs import AppSettings
@@ -19,7 +18,6 @@ def _make_job(job_id: str = "abc1234567", cron: str | None = None) -> Job:
     return Job(
         id=JobId(value=job_id),
         job_type=JobType.REWRITE_DATA_FILES,
-        status=JobStatus.PENDING,
         created_at=now,
         updated_at=now,
         catalog="retail",

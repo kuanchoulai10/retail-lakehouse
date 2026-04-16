@@ -16,3 +16,4 @@ class CreateJobInput:
     rewrite_manifests: dict | None = None
 
     cron: str | None = None
+    enabled: bool = False

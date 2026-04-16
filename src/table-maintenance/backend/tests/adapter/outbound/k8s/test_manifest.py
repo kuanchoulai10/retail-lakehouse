@@ -3,7 +3,6 @@ from datetime import UTC, datetime
 from adapter.outbound.k8s.manifest import build_manifest
 from application.domain.model.job import Job
 from application.domain.model.job_id import JobId
-from application.domain.model.job_status import JobStatus
 from application.domain.model.job_type import JobType
 from configs import AppSettings
 
@@ -15,7 +14,6 @@ def _make_job(name: str = "my-job", **kwargs) -> Job:  # type: ignore[no-any-exp
     defaults: dict = {
         "id": JobId(value=name),
         "job_type": JobType.REWRITE_DATA_FILES,
-        "status": JobStatus.PENDING,
         "created_at": now,
         "updated_at": now,
         "catalog": "retail",

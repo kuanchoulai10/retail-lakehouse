@@ -6,7 +6,6 @@ from adapter.outbound.sql.sql_jobs_repo import SqlJobsRepo
 from application.domain.model.exceptions import JobNotFoundError
 from application.domain.model.job import Job
 from application.domain.model.job_id import JobId
-from application.domain.model.job_status import JobStatus
 from application.domain.model.job_type import JobType
 from application.port.outbound.jobs_repo import BaseJobsRepo
 
@@ -20,7 +19,6 @@ def _make_job(
     return Job(
         id=JobId(value=job_id),
         job_type=JobType.REWRITE_DATA_FILES,
-        status=JobStatus.PENDING,
         created_at=now,
         updated_at=now,
         catalog="retail",

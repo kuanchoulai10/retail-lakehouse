@@ -25,6 +25,7 @@ class GetJobService(GetJobUseCase):
         return GetJobOutput(
             id=job.id.value,
             job_type=job.job_type.value,
-            status=job.status.value,
+            enabled=job.enabled,
             created_at=job.created_at,
+            updated_at=job.updated_at,
         )

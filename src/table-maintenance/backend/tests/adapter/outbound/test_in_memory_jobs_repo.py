@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 import pytest
 from base import Repository
 from adapter.outbound.in_memory_jobs_repo import InMemoryJobsRepo
-from application.domain import JobNotFoundError, JobStatus, JobType
+from application.domain import JobNotFoundError, JobType
 from application.domain.model.job import Job
 from application.domain.model.job_id import JobId
 
@@ -12,15 +12,15 @@ from application.domain.model.job_id import JobId
 def _make_job(
     job_id: str | None = None,
     job_type: JobType = JobType.REWRITE_DATA_FILES,
-    status: JobStatus = JobStatus.PENDING,
+    enabled: bool = False,
 ) -> Job:
     now = datetime.now(UTC)
     return Job(
         id=JobId(value=job_id or secrets.token_hex(5)),
         job_type=job_type,
-        status=status,
         created_at=now,
         updated_at=now,
+        enabled=enabled,
     )
 
 
@@ -79,15 +79,15 @@ def test_delete_raises_not_found():
 
 def test_update_replaces_existing_job():
     repo = InMemoryJobsRepo()
-    original = _make_job(job_id="abc1234567", status=JobStatus.PENDING)
+    original = _make_job(job_id="abc1234567", enabled=False)
     repo.create(original)
 
-    modified = _make_job(job_id="abc1234567", status=JobStatus.COMPLETED)
+    modified = _make_job(job_id="abc1234567", enabled=True)
     result = repo.update(modified)
 
     assert result == modified
     fetched = repo.get(JobId(value="abc1234567"))
-    assert fetched.status == JobStatus.COMPLETED
+    assert fetched.enabled is True
 
 
 def test_update_raises_not_found():

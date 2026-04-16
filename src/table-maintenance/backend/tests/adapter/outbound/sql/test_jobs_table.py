@@ -17,7 +17,6 @@ def test_has_expected_columns():
     assert names == {
         "id",
         "job_type",
-        "status",
         "catalog",
         "table",
         "job_config",

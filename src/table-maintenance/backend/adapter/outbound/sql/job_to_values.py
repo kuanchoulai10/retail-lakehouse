@@ -10,7 +10,6 @@ def job_to_values(job: Job) -> dict[str, Any]:
     return {
         "id": job.id.value,
         "job_type": job.job_type.value,
-        "status": job.status.value,
         "catalog": job.catalog,
         "table": job.table,
         "job_config": job.job_config,

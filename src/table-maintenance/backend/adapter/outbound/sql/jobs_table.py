@@ -7,7 +7,6 @@ jobs_table = Table(
     metadata,
     Column("id", String, primary_key=True),
     Column("job_type", String, nullable=False),
-    Column("status", String, nullable=False),
     Column("catalog", String, nullable=False, default=""),
     Column("table", String, nullable=False, default=""),
     Column("job_config", JSON, nullable=False, default=dict),

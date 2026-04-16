@@ -13,5 +13,6 @@ class CreateJobOutput:
 
     id: str
     job_type: str
-    status: str
+    enabled: bool
     created_at: datetime
+    updated_at: datetime

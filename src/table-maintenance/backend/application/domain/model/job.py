@@ -10,17 +10,18 @@ from application.domain.model.job_id import JobId
 if TYPE_CHECKING:
     from datetime import datetime
 
-    from application.domain.model.job_status import JobStatus
     from application.domain.model.job_type import JobType
 
 
 @dataclass(eq=False)
 class Job(AggregateRoot[JobId]):
-    """A table maintenance job — the aggregate root of the jobs context."""
+    """A table maintenance job — the aggregate root of the jobs context.
+
+    Execution state lives in the JobRun aggregate, not on the Job.
+    """
 
     id: JobId
     job_type: JobType
-    status: JobStatus
     created_at: datetime
     updated_at: datetime
     catalog: str = ""

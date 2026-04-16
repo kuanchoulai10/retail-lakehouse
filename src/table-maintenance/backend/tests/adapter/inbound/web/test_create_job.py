@@ -18,8 +18,9 @@ def _make_client(use_case: MagicMock) -> TestClient:
 SAMPLE_OUTPUT = CreateJobOutput(
     id="abc1234567",
     job_type="rewrite_data_files",
-    status="pending",
+    enabled=False,
     created_at=datetime(2026, 4, 11, tzinfo=UTC),
+    updated_at=datetime(2026, 4, 11, tzinfo=UTC),
 )
 
 
@@ -31,19 +32,19 @@ def test_post_job_returns_201():
     payload = {
         "job_type": "rewrite_data_files",
         "catalog": "retail",
-        "spark_conf": {},
         "rewrite_data_files": {"table": "inventory.orders"},
     }
     response = client.post("/v1/jobs", json=payload)
     assert response.status_code == 201
     assert response.json()["id"] == "abc1234567"
-    assert response.json()["status"] == "pending"
+    assert response.json()["enabled"] is False
+    assert "status" not in response.json()
 
 
 def test_post_job_missing_catalog_returns_422():
     use_case = MagicMock()
     client = _make_client(use_case)
 
-    payload = {"job_type": "rewrite_data_files", "spark_conf": {}}
+    payload = {"job_type": "rewrite_data_files"}
     response = client.post("/v1/jobs", json=payload)
     assert response.status_code == 422
