@@ -86,7 +86,7 @@ class K8sJobsRepo(BaseJobsRepo):
         resource = self._api.create_namespaced_custom_object(
             group=_GROUP,
             version=_VERSION,
-            namespace=self._settings.namespace,
+            namespace=self._settings.k8s.namespace,
             plural=plural,
             body=manifest,
         )
@@ -98,7 +98,7 @@ class K8sJobsRepo(BaseJobsRepo):
             resp = self._api.list_namespaced_custom_object(
                 group=_GROUP,
                 version=_VERSION,
-                namespace=self._settings.namespace,
+                namespace=self._settings.k8s.namespace,
                 plural=plural,
             )
             for item in resp.get("items", []):
@@ -115,7 +115,7 @@ class K8sJobsRepo(BaseJobsRepo):
                 resource = self._api.get_namespaced_custom_object(
                     group=_GROUP,
                     version=_VERSION,
-                    namespace=self._settings.namespace,
+                    namespace=self._settings.k8s.namespace,
                     plural=plural,
                     name=name,
                 )
@@ -133,7 +133,7 @@ class K8sJobsRepo(BaseJobsRepo):
                 self._api.delete_namespaced_custom_object(
                     group=_GROUP,
                     version=_VERSION,
-                    namespace=self._settings.namespace,
+                    namespace=self._settings.k8s.namespace,
                     plural=plural,
                     name=name,
                 )

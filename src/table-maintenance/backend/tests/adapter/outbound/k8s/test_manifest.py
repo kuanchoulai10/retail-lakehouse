@@ -33,7 +33,7 @@ def test_kind_is_spark_application_without_cron():
 def test_name_and_namespace():
     manifest = build_manifest(_make_job("my-job-abc123"), SETTINGS)
     assert manifest["metadata"]["name"] == "my-job-abc123"
-    assert manifest["metadata"]["namespace"] == SETTINGS.namespace
+    assert manifest["metadata"]["namespace"] == SETTINGS.k8s.namespace
 
 
 def test_driver_env_glac_vars():

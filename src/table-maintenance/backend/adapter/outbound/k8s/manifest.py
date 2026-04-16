@@ -50,12 +50,12 @@ def _build_spark_app_spec(job: Job, settings: AppSettings, env: list[dict]) -> d
         "type": "Python",
         "pythonVersion": "3",
         "mode": "cluster",
-        "image": settings.image,
-        "imagePullPolicy": settings.image_pull_policy,
+        "image": settings.k8s.image,
+        "imagePullPolicy": settings.k8s.image_pull_policy,
         "mainApplicationFile": "local:///opt/spark/work-dir/main.py",
-        "sparkVersion": settings.spark_version,
+        "sparkVersion": settings.k8s.spark_version,
         "deps": {
-            "jars": [settings.iceberg_jar, settings.iceberg_aws_jar],
+            "jars": [settings.k8s.iceberg_jar, settings.k8s.iceberg_aws_jar],
         },
         "sparkConf": {
             "spark.sql.extensions": "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
@@ -63,14 +63,14 @@ def _build_spark_app_spec(job: Job, settings: AppSettings, env: list[dict]) -> d
         },
         "driver": {
             "cores": 1,
-            "memory": settings.driver_memory,
-            "serviceAccount": settings.service_account,
+            "memory": settings.k8s.driver_memory,
+            "serviceAccount": settings.k8s.service_account,
             "env": env,
         },
         "executor": {
             "cores": 1,
-            "instances": settings.executor_instances,
-            "memory": settings.executor_memory,
+            "instances": settings.k8s.executor_instances,
+            "memory": settings.k8s.executor_memory,
             "env": _AWS_ENV,
         },
     }
@@ -85,7 +85,7 @@ def build_manifest(job: Job, settings: AppSettings) -> dict:
         return {
             "apiVersion": "sparkoperator.k8s.io/v1beta2",
             "kind": "ScheduledSparkApplication",
-            "metadata": {"name": name, "namespace": settings.namespace},
+            "metadata": {"name": name, "namespace": settings.k8s.namespace},
             "spec": {
                 "schedule": job.cron,
                 "template": spark_spec,
@@ -95,6 +95,6 @@ def build_manifest(job: Job, settings: AppSettings) -> dict:
     return {
         "apiVersion": "sparkoperator.k8s.io/v1beta2",
         "kind": "SparkApplication",
-        "metadata": {"name": name, "namespace": settings.namespace},
+        "metadata": {"name": name, "namespace": settings.k8s.namespace},
         "spec": spark_spec,
     }
