@@ -11,11 +11,13 @@ SETTINGS = AppSettings()
 
 
 def _make_job(name: str = "my-job", **kwargs) -> Job:  # type: ignore[no-any-explicit]
+    now = datetime.now(UTC)
     defaults: dict = {
         "id": JobId(value=name),
         "job_type": JobType.REWRITE_DATA_FILES,
         "status": JobStatus.PENDING,
-        "created_at": datetime.now(UTC),
+        "created_at": now,
+        "updated_at": now,
         "catalog": "retail",
         "table": "inventory.orders",
         "job_config": {},

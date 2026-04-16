@@ -34,12 +34,14 @@ class CreateJobService(CreateJobUseCase):
     def execute(self, request: CreateJobInput) -> CreateJobOutput:
         job_config = getattr(request, _CONFIG_BY_TYPE[request.job_type], None) or {}
         table = job_config.get("table", "")
+        now = datetime.now(UTC)
 
         job = Job(
             id=JobId(value=secrets.token_hex(5)),
             job_type=JobType(request.job_type),
             status=JobStatus.PENDING,
-            created_at=datetime.now(UTC),
+            created_at=now,
+            updated_at=now,
             catalog=request.catalog,
             table=table,
             job_config=job_config,

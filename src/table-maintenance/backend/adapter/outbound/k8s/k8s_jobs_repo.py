@@ -67,6 +67,7 @@ def _to_job(resource: dict, job_type: JobType) -> Job:
         job_type=job_type,
         status=status_from_k8s(kind, state),
         created_at=created_at,
+        updated_at=created_at,
         catalog=env.get("GLAC_CATALOG", ""),
     )
 

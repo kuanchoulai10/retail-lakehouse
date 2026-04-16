@@ -32,11 +32,13 @@ MOCK_SPARK_APP = {
 
 
 def _make_job(job_id: str = "table-maintenance-rewrite-data-files-abc123") -> Job:
+    now = datetime.now(UTC)
     return Job(
         id=JobId(value=job_id),
         job_type=JobType.REWRITE_DATA_FILES,
         status=JobStatus.PENDING,
-        created_at=datetime.now(UTC),
+        created_at=now,
+        updated_at=now,
     )
 
 

@@ -15,11 +15,13 @@ from application.port.inbound import GetJobInput, GetJobOutput, GetJobUseCase
 
 
 def _make_job(job_id: str = "abc1234567") -> Job:
+    ts = datetime(2026, 4, 10, tzinfo=UTC)
     return Job(
         id=JobId(value=job_id),
         job_type=JobType.REWRITE_DATA_FILES,
         status=JobStatus.COMPLETED,
-        created_at=datetime(2026, 4, 10, tzinfo=UTC),
+        created_at=ts,
+        updated_at=ts,
     )
 
 

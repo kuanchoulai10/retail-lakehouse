@@ -54,6 +54,38 @@ def test_create_job_populates_domain_fields():
     assert job.cron == "0 2 * * *"
 
 
+def test_create_job_sets_enabled_false_by_default():
+    repo = MagicMock()
+    repo.create.side_effect = lambda job: job
+    service = CreateJobService(repo)
+
+    input_ = CreateJobInput(
+        job_type="rewrite_data_files",
+        catalog="retail",
+        rewrite_data_files={"table": "inventory.orders"},
+    )
+    service.execute(input_)
+
+    job = repo.create.call_args[0][0]
+    assert job.enabled is False
+
+
+def test_create_job_sets_updated_at_equal_to_created_at_initially():
+    repo = MagicMock()
+    repo.create.side_effect = lambda job: job
+    service = CreateJobService(repo)
+
+    input_ = CreateJobInput(
+        job_type="rewrite_data_files",
+        catalog="retail",
+        rewrite_data_files={"table": "inventory.orders"},
+    )
+    service.execute(input_)
+
+    job = repo.create.call_args[0][0]
+    assert job.updated_at == job.created_at
+
+
 def test_create_job_extracts_table_from_expire_snapshots():
     repo = MagicMock()
     repo.create.side_effect = lambda job: job

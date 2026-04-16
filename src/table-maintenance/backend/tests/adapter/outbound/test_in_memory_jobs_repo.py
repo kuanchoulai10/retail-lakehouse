@@ -14,11 +14,13 @@ def _make_job(
     job_type: JobType = JobType.REWRITE_DATA_FILES,
     status: JobStatus = JobStatus.PENDING,
 ) -> Job:
+    now = datetime.now(UTC)
     return Job(
         id=JobId(value=job_id or secrets.token_hex(5)),
         job_type=job_type,
         status=status,
-        created_at=datetime.now(UTC),
+        created_at=now,
+        updated_at=now,
     )
 
 
