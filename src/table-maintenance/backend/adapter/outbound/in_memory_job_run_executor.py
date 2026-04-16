@@ -1,0 +1,30 @@
+from __future__ import annotations
+
+import secrets
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
+
+from application.domain.model.job_run import JobRun
+from application.domain.model.job_run_id import JobRunId
+from application.domain.model.job_run_status import JobRunStatus
+from application.port.outbound.job_run_executor import JobRunExecutor
+
+if TYPE_CHECKING:
+    from application.domain.model.job import Job
+
+
+class InMemoryJobRunExecutor(JobRunExecutor):
+    """Test double for JobRunExecutor. Records every triggered run."""
+
+    def __init__(self) -> None:
+        self.triggered_runs: list[JobRun] = []
+
+    def trigger(self, job: Job) -> JobRun:
+        run = JobRun(
+            id=JobRunId(value=f"{job.id.value}-{secrets.token_hex(3)}"),
+            job_id=job.id,
+            status=JobRunStatus.PENDING,
+            started_at=datetime.now(UTC),
+        )
+        self.triggered_runs.append(run)
+        return run
