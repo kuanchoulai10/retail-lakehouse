@@ -15,6 +15,7 @@ from application.port.inbound import (
 )
 
 if TYPE_CHECKING:
+    from application.port.outbound.job_run_executor import JobRunExecutor
     from application.port.outbound.jobs_repo import BaseJobsRepo
 
 _CONFIG_BY_TYPE = {
@@ -26,10 +27,16 @@ _CONFIG_BY_TYPE = {
 
 
 class CreateJobService(CreateJobUseCase):
-    """Implements CreateJobUseCase by delegating to the jobs repository."""
+    """Creates a Job definition, then triggers a run if enabled.
 
-    def __init__(self, repo: BaseJobsRepo) -> None:
+    During the Job/JobRun split transition, `enabled` is hardcoded to True so
+    POST /jobs preserves its pre-split side-effect of triggering K8s. Stage 7
+    will take `enabled` from the request and default it to False.
+    """
+
+    def __init__(self, repo: BaseJobsRepo, executor: JobRunExecutor) -> None:
         self._repo = repo
+        self._executor = executor
 
     def execute(self, request: CreateJobInput) -> CreateJobOutput:
         job_config = getattr(request, _CONFIG_BY_TYPE[request.job_type], None) or {}
@@ -46,8 +53,11 @@ class CreateJobService(CreateJobUseCase):
             table=table,
             job_config=job_config,
             cron=request.cron,
+            enabled=True,
         )
         job = self._repo.create(job)
+        if job.enabled:
+            self._executor.trigger(job)
         return CreateJobOutput(
             id=job.id.value,
             job_type=job.job_type.value,

@@ -1,17 +1,17 @@
-from application.domain.model.job_status import JobStatus
+from application.domain.model.job_run_status import JobRunStatus
 
-_STATE_MAP: dict[str, JobStatus] = {
-    "RUNNING": JobStatus.RUNNING,
-    "COMPLETED": JobStatus.COMPLETED,
-    "FAILED": JobStatus.FAILED,
-    "SUBMISSION_FAILED": JobStatus.FAILED,
-    "INVALIDATING": JobStatus.FAILED,
+_STATE_MAP: dict[str, JobRunStatus] = {
+    "RUNNING": JobRunStatus.RUNNING,
+    "COMPLETED": JobRunStatus.COMPLETED,
+    "FAILED": JobRunStatus.FAILED,
+    "SUBMISSION_FAILED": JobRunStatus.FAILED,
+    "INVALIDATING": JobRunStatus.FAILED,
 }
 
 
-def status_from_k8s(kind: str, state: str) -> JobStatus:
+def status_from_k8s(kind: str, state: str) -> JobRunStatus:
     if kind == "ScheduledSparkApplication":
-        return JobStatus.RUNNING
+        return JobRunStatus.RUNNING
     if not state:
-        return JobStatus.PENDING
-    return _STATE_MAP.get(state, JobStatus.UNKNOWN)
+        return JobRunStatus.PENDING
+    return _STATE_MAP.get(state, JobRunStatus.UNKNOWN)

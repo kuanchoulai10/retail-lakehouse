@@ -41,8 +41,15 @@ forbidden_modules =
     application.domain
 ignore_imports =
     application.port.outbound.jobs_repo -> application.domain.model.job
+    application.port.outbound.job_runs_repo -> application.domain.model.job_run
+    application.port.outbound.job_runs_repo -> application.domain.model.job_id
+    application.port.outbound.job_runs_repo -> application.domain.model.job_run_id
+    application.port.outbound.job_run_executor -> application.domain.model.job
+    application.port.outbound.job_run_executor -> application.domain.model.job_run
     dependencies.use_cases -> application.domain.service.*
-    dependencies.repos -> adapter.outbound.k8s.k8s_jobs_repo
+    dependencies.repos -> adapter.outbound.k8s.k8s_job_runs_repo
+    dependencies.repos -> adapter.outbound.k8s.k8s_job_run_executor
+    dependencies.repos -> adapter.outbound.in_memory_jobs_repo
 
 [importlinter:contract:inbound-outbound-separation]
 name = Inbound adapter does not depend on outbound adapter
@@ -52,7 +59,9 @@ source_modules =
 forbidden_modules =
     adapter.outbound
 ignore_imports =
-    dependencies.repos -> adapter.outbound.k8s.k8s_jobs_repo
+    dependencies.repos -> adapter.outbound.k8s.k8s_job_runs_repo
+    dependencies.repos -> adapter.outbound.k8s.k8s_job_run_executor
+    dependencies.repos -> adapter.outbound.in_memory_jobs_repo
 
 [importlinter:contract:outbound-inbound-separation]
 name = Outbound adapter does not depend on inbound adapter

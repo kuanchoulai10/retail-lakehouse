@@ -7,6 +7,8 @@ if TYPE_CHECKING:
 
     from application.domain.model.job import Job
 
+_JOB_LABEL = "table-maintenance/job-id"
+
 _JOB_PREFIX: dict[str, str] = {
     "expire_snapshots": "GLAC_EXPIRE_SNAPSHOTS",
     "remove_orphan_files": "GLAC_REMOVE_ORPHAN_FILES",
@@ -76,16 +78,26 @@ def _build_spark_app_spec(job: Job, settings: AppSettings, env: list[dict]) -> d
     }
 
 
-def build_manifest(job: Job, settings: AppSettings) -> dict:
-    name = job.id.value
+def build_manifest(job: Job, name: str, settings: AppSettings) -> dict:
+    """Build a K8s manifest for a Spark job.
+
+    `name` is the K8s metadata.name — for SparkApplication this is typically a
+    unique-per-run identifier (e.g. JobRun.id); for ScheduledSparkApplication
+    it is the Job.id (one schedule per Job definition).
+    """
     env = _build_driver_env(job)
     spark_spec = _build_spark_app_spec(job, settings, env)
+    labels = {_JOB_LABEL: job.id.value}
 
     if job.cron:
         return {
             "apiVersion": "sparkoperator.k8s.io/v1beta2",
             "kind": "ScheduledSparkApplication",
-            "metadata": {"name": name, "namespace": settings.k8s.namespace},
+            "metadata": {
+                "name": name,
+                "namespace": settings.k8s.namespace,
+                "labels": labels,
+            },
             "spec": {
                 "schedule": job.cron,
                 "template": spark_spec,
@@ -95,6 +107,10 @@ def build_manifest(job: Job, settings: AppSettings) -> dict:
     return {
         "apiVersion": "sparkoperator.k8s.io/v1beta2",
         "kind": "SparkApplication",
-        "metadata": {"name": name, "namespace": settings.k8s.namespace},
+        "metadata": {
+            "name": name,
+            "namespace": settings.k8s.namespace,
+            "labels": labels,
+        },
         "spec": spark_spec,
     }
