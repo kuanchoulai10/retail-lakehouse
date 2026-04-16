@@ -50,6 +50,8 @@ ignore_imports =
     dependencies.repos -> adapter.outbound.k8s.k8s_job_runs_repo
     dependencies.repos -> adapter.outbound.k8s.k8s_job_run_executor
     dependencies.repos -> adapter.outbound.in_memory_jobs_repo
+    dependencies.repos -> adapter.outbound.sql.sql_jobs_repo
+    dependencies.repos -> adapter.outbound.sql.engine_factory
 
 [importlinter:contract:inbound-outbound-separation]
 name = Inbound adapter does not depend on outbound adapter
@@ -62,6 +64,8 @@ ignore_imports =
     dependencies.repos -> adapter.outbound.k8s.k8s_job_runs_repo
     dependencies.repos -> adapter.outbound.k8s.k8s_job_run_executor
     dependencies.repos -> adapter.outbound.in_memory_jobs_repo
+    dependencies.repos -> adapter.outbound.sql.sql_jobs_repo
+    dependencies.repos -> adapter.outbound.sql.engine_factory
 
 [importlinter:contract:outbound-inbound-separation]
 name = Outbound adapter does not depend on inbound adapter
