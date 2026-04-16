@@ -33,3 +33,9 @@ class InMemoryJobsRepo(BaseJobsRepo):
             del self._jobs[entity_id.value]
         except KeyError:
             raise JobNotFoundError(entity_id.value) from None
+
+    def update(self, entity: Job) -> Job:
+        if entity.id.value not in self._jobs:
+            raise JobNotFoundError(entity.id.value)
+        self._jobs[entity.id.value] = entity
+        return entity

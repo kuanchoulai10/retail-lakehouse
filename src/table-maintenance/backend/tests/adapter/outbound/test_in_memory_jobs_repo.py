@@ -75,3 +75,23 @@ def test_delete_raises_not_found():
     repo = InMemoryJobsRepo()
     with pytest.raises(JobNotFoundError):
         repo.delete(JobId(value="nonexistent"))
+
+
+def test_update_replaces_existing_job():
+    repo = InMemoryJobsRepo()
+    original = _make_job(job_id="abc1234567", status=JobStatus.PENDING)
+    repo.create(original)
+
+    modified = _make_job(job_id="abc1234567", status=JobStatus.COMPLETED)
+    result = repo.update(modified)
+
+    assert result == modified
+    fetched = repo.get(JobId(value="abc1234567"))
+    assert fetched.status == JobStatus.COMPLETED
+
+
+def test_update_raises_not_found():
+    repo = InMemoryJobsRepo()
+    missing = _make_job(job_id="ghost")
+    with pytest.raises(JobNotFoundError):
+        repo.update(missing)

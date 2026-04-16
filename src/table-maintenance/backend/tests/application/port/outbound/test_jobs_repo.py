@@ -24,3 +24,4 @@ def test_jobs_repo_has_abstract_methods():
     assert "list_all" in BaseJobsRepo.__abstractmethods__
     assert "get" in BaseJobsRepo.__abstractmethods__
     assert "delete" in BaseJobsRepo.__abstractmethods__
+    assert "update" in BaseJobsRepo.__abstractmethods__
