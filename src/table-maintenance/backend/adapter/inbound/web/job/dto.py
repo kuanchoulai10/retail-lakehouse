@@ -33,11 +33,3 @@ class JobApiResponse(BaseModel):
     enabled: bool
     created_at: datetime
     updated_at: datetime
-
-
-class JobRunApiResponse(BaseModel):
-    run_id: str
-    job_id: str
-    status: str
-    started_at: datetime | None
-    finished_at: datetime | None

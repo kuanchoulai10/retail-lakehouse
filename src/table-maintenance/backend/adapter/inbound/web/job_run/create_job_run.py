@@ -3,7 +3,7 @@ from __future__ import annotations
 from dependencies.use_cases import get_create_job_run_use_case
 from fastapi import APIRouter, Depends, HTTPException
 
-from adapter.inbound.web.dto import JobRunApiResponse
+from adapter.inbound.web.job_run.dto import JobRunApiResponse
 from application.exceptions import JobDisabledError, JobNotFoundError
 from application.port.inbound import CreateJobRunInput, CreateJobRunUseCase
 

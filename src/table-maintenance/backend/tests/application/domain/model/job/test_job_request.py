@@ -1,4 +1,4 @@
-from adapter.inbound.web.dto import JobApiRequest
+from adapter.inbound.web.job.dto import JobApiRequest
 
 
 def test_valid_rewrite_data_files_request():

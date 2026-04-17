@@ -3,7 +3,7 @@ from __future__ import annotations
 from dependencies.use_cases import get_list_job_runs_use_case
 from fastapi import APIRouter, Depends
 
-from adapter.inbound.web.dto import JobRunApiResponse
+from adapter.inbound.web.job_run.dto import JobRunApiResponse
 from application.port.inbound import ListJobRunsInput, ListJobRunsUseCase
 
 router = APIRouter()
