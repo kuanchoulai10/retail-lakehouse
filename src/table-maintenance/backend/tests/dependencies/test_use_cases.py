@@ -12,9 +12,9 @@ from dependencies.use_cases import (
     get_list_jobs_use_case,
     get_update_job_use_case,
 )
-from adapter.outbound.in_memory_job_run_executor import InMemoryJobRunExecutor
-from adapter.outbound.in_memory_job_runs_repo import InMemoryJobRunsRepo
-from adapter.outbound.in_memory_jobs_repo import InMemoryJobsRepo
+from adapter.outbound.job.in_memory_jobs_repo import InMemoryJobsRepo
+from adapter.outbound.job_run.in_memory_job_run_executor import InMemoryJobRunExecutor
+from adapter.outbound.job_run.in_memory_job_runs_repo import InMemoryJobRunsRepo
 from application.domain.service.job.create_job import CreateJobService
 from application.domain.service.job.delete_job import DeleteJobService
 from application.domain.service.job.get_job import GetJobService

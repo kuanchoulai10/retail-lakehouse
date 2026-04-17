@@ -4,7 +4,7 @@ import secrets
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from adapter.outbound.k8s.manifest import build_manifest
+from adapter.outbound.job_run.k8s.manifest import build_manifest
 from application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
 from application.port.outbound.job_run.job_run_executor import JobRunExecutor
 

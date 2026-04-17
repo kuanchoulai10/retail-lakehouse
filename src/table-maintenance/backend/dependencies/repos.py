@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING
 
 from fastapi import Depends
 
-from adapter.outbound.in_memory_jobs_repo import InMemoryJobsRepo
-from adapter.outbound.k8s.k8s_job_run_executor import K8sJobRunExecutor
-from adapter.outbound.k8s.k8s_job_runs_repo import K8sJobRunsRepo
+from adapter.outbound.job.in_memory_jobs_repo import InMemoryJobsRepo
+from adapter.outbound.job.sql.sql_jobs_repo import SqlJobsRepo
+from adapter.outbound.job_run.k8s.k8s_job_run_executor import K8sJobRunExecutor
+from adapter.outbound.job_run.k8s.k8s_job_runs_repo import K8sJobRunsRepo
 from adapter.outbound.sql.engine_factory import build_engine
-from adapter.outbound.sql.sql_jobs_repo import SqlJobsRepo
 from configs import JobsRepoBackend
 from dependencies.k8s import get_k8s_api
 from dependencies.settings import get_settings

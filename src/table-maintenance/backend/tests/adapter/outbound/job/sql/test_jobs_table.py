@@ -1,6 +1,6 @@
 from sqlalchemy import Boolean, DateTime, String
 
-from adapter.outbound.sql.jobs_table import jobs_table
+from adapter.outbound.job.sql.jobs_table import jobs_table
 
 
 def test_table_name():

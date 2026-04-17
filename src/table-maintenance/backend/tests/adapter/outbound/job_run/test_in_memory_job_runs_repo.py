@@ -1,6 +1,6 @@
 import pytest
 
-from adapter.outbound.in_memory_job_runs_repo import InMemoryJobRunsRepo
+from adapter.outbound.job_run.in_memory_job_runs_repo import InMemoryJobRunsRepo
 from application.domain.model.job import JobId
 from application.domain.model.job_run import (
     JobRun,

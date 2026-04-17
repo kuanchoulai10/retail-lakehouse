@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from adapter.outbound.sql.row_to_job import row_to_job
+from adapter.outbound.job.sql.row_to_job import row_to_job
 from application.domain.model.job import JobId, JobType
 
 

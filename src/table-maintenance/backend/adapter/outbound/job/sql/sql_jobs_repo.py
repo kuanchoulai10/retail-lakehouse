@@ -4,9 +4,9 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import delete, insert, select, update
 
-from adapter.outbound.sql.job_to_values import job_to_values
-from adapter.outbound.sql.jobs_table import jobs_table
-from adapter.outbound.sql.row_to_job import row_to_job
+from adapter.outbound.job.sql.job_to_values import job_to_values
+from adapter.outbound.job.sql.jobs_table import jobs_table
+from adapter.outbound.job.sql.row_to_job import row_to_job
 from application.domain.model.job import JobNotFoundError
 from application.port.outbound.job.jobs_repo import BaseJobsRepo
 

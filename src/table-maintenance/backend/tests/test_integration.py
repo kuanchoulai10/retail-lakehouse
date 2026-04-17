@@ -13,9 +13,9 @@ from dependencies.use_cases import (
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from adapter.inbound.web import router
-from adapter.outbound.in_memory_job_run_executor import InMemoryJobRunExecutor
-from adapter.outbound.in_memory_job_runs_repo import InMemoryJobRunsRepo
-from adapter.outbound.in_memory_jobs_repo import InMemoryJobsRepo
+from adapter.outbound.job.in_memory_jobs_repo import InMemoryJobsRepo
+from adapter.outbound.job_run.in_memory_job_run_executor import InMemoryJobRunExecutor
+from adapter.outbound.job_run.in_memory_job_runs_repo import InMemoryJobRunsRepo
 from application.domain.service.job.create_job import CreateJobService
 from application.domain.service.job.delete_job import DeleteJobService
 from application.domain.service.job.get_job import GetJobService

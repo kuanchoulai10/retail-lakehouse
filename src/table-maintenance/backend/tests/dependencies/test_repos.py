@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from adapter.outbound.in_memory_jobs_repo import InMemoryJobsRepo
-from adapter.outbound.k8s.k8s_job_run_executor import K8sJobRunExecutor
-from adapter.outbound.k8s.k8s_job_runs_repo import K8sJobRunsRepo
-from adapter.outbound.sql.sql_jobs_repo import SqlJobsRepo
+from adapter.outbound.job.in_memory_jobs_repo import InMemoryJobsRepo
+from adapter.outbound.job.sql.sql_jobs_repo import SqlJobsRepo
+from adapter.outbound.job_run.k8s.k8s_job_run_executor import K8sJobRunExecutor
+from adapter.outbound.job_run.k8s.k8s_job_runs_repo import K8sJobRunsRepo
 from configs import AppSettings, JobsRepoBackend
 from dependencies.repos import (
     _engine_cache,

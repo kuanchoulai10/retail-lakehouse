@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 
 import pytest
 from base import Repository
-from adapter.outbound.in_memory_jobs_repo import InMemoryJobsRepo
+from adapter.outbound.job.in_memory_jobs_repo import InMemoryJobsRepo
 from application.domain import JobNotFoundError, JobType
 from application.domain.model.job import Job, JobId
 

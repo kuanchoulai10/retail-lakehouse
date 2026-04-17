@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from adapter.outbound.in_memory_job_run_executor import InMemoryJobRunExecutor
+from adapter.outbound.job_run.in_memory_job_run_executor import InMemoryJobRunExecutor
 from application.domain.model.job import Job, JobId, JobType
 from application.domain.model.job_run import JobRunStatus
 from application.port.outbound.job_run.job_run_executor import JobRunExecutor
