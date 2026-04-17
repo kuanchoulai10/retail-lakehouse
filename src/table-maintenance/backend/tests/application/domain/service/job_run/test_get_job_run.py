@@ -10,7 +10,7 @@ from application.domain.model.job_run import (
     JobRunNotFoundError,
     JobRunStatus,
 )
-from application.domain.service.get_job_run import GetJobRunService
+from application.domain.service.job_run.get_job_run import GetJobRunService
 from application.exceptions import JobRunNotFoundError as AppJobRunNotFoundError
 from application.port.inbound import (
     GetJobRunInput,

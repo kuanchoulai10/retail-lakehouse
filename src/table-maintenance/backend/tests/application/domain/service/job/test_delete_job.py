@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from application.domain.model.job import JobId, JobNotFoundError
-from application.domain.service.delete_job import DeleteJobService
+from application.domain.service.job.delete_job import DeleteJobService
 from application.exceptions import JobNotFoundError as AppJobNotFoundError
 from application.port.inbound import (
     DeleteJobInput,

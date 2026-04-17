@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from application.domain.service.create_job import CreateJobService
+from application.domain.service.job.create_job import CreateJobService
 from application.port.inbound import (
     CreateJobInput,
     CreateJobOutput,

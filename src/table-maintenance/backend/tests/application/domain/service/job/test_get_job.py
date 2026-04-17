@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from application.domain.model.job import Job, JobId, JobNotFoundError, JobType
-from application.domain.service.get_job import GetJobService
+from application.domain.service.job.get_job import GetJobService
 from application.exceptions import JobNotFoundError as AppJobNotFoundError
 from application.port.inbound import GetJobInput, GetJobOutput, GetJobUseCase
 

@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 from application.domain.model.job import JobId
 from application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
-from application.domain.service.list_job_runs import ListJobRunsService
+from application.domain.service.job_run.list_job_runs import ListJobRunsService
 from application.port.inbound import (
     ListJobRunsInput,
     ListJobRunsOutput,

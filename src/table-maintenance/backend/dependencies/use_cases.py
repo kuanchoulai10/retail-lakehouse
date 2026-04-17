@@ -3,14 +3,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from fastapi import Depends
-from application.domain.service.create_job import CreateJobService
-from application.domain.service.create_job_run import CreateJobRunService
-from application.domain.service.delete_job import DeleteJobService
-from application.domain.service.get_job import GetJobService
-from application.domain.service.get_job_run import GetJobRunService
-from application.domain.service.list_job_runs import ListJobRunsService
-from application.domain.service.list_jobs import ListJobsService
-from application.domain.service.update_job import UpdateJobService
+from application.domain.service.job.create_job import CreateJobService
+from application.domain.service.job.delete_job import DeleteJobService
+from application.domain.service.job.get_job import GetJobService
+from application.domain.service.job.list_jobs import ListJobsService
+from application.domain.service.job.update_job import UpdateJobService
+from application.domain.service.job_run.create_job_run import CreateJobRunService
+from application.domain.service.job_run.get_job_run import GetJobRunService
+from application.domain.service.job_run.list_job_runs import ListJobRunsService
 
 from dependencies.repos import (
     get_job_run_executor,

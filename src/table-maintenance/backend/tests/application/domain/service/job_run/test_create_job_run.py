@@ -5,7 +5,7 @@ import pytest
 
 from application.domain.model.job import Job, JobId, JobNotFoundError, JobType
 from application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
-from application.domain.service.create_job_run import CreateJobRunService
+from application.domain.service.job_run.create_job_run import CreateJobRunService
 from application.exceptions import JobDisabledError
 from application.exceptions import JobNotFoundError as AppJobNotFoundError
 from application.port.inbound import (
