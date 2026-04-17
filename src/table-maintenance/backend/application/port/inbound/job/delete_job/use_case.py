@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from base.use_case import UseCase
 
-from application.port.inbound.delete_job.input import DeleteJobInput
-from application.port.inbound.delete_job.output import DeleteJobOutput
+from application.port.inbound.job.delete_job.input import DeleteJobInput
+from application.port.inbound.job.delete_job.output import DeleteJobOutput
 
 
 class DeleteJobUseCase(UseCase[DeleteJobInput, DeleteJobOutput]):

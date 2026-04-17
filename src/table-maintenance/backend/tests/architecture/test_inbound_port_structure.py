@@ -1,6 +1,7 @@
 """Guard tests for inbound port directory structure and naming conventions.
 
-Each use case under port/inbound/ must be a directory containing exactly:
+Use cases are grouped under port/inbound/{aggregate}/ (e.g. job/, job_run/).
+Each use case directory must contain exactly:
   __init__.py, input.py, output.py, use_case.py
 
 Naming convention:
@@ -23,12 +24,22 @@ INBOUND_PORT_DIR = (
 )
 REQUIRED_FILES = {"__init__.py", "input.py", "output.py", "use_case.py"}
 
+AGGREGATE_GROUPS = ["job", "job_run"]
 
-def _use_case_dirs() -> list[Path]:
-    """Return all use case directories under port/inbound/."""
-    return [
-        d for d in INBOUND_PORT_DIR.iterdir() if d.is_dir() and d.name != "__pycache__"
-    ]
+
+def _group_dirs() -> list[Path]:
+    """Return aggregate grouping directories under port/inbound/."""
+    return [INBOUND_PORT_DIR / name for name in AGGREGATE_GROUPS]
+
+
+def _use_case_dirs() -> list[tuple[str, Path]]:
+    """Return (group, path) for all use case directories under port/inbound/{group}/."""
+    result: list[tuple[str, Path]] = []
+    for group_dir in _group_dirs():
+        for d in sorted(group_dir.iterdir()):
+            if d.is_dir() and d.name != "__pycache__":
+                result.append((group_dir.name, d))
+    return result
 
 
 def _pascal_to_words(name: str) -> str:
@@ -36,7 +47,12 @@ def _pascal_to_words(name: str) -> str:
     return "".join(word.capitalize() for word in name.split("_"))
 
 
-# --- Rule 1: No loose .py files (only __init__.py and directories) ---
+def _use_case_id(param: tuple[str, Path]) -> str:
+    group, d = param
+    return f"{group}/{d.name}"
+
+
+# --- Rule 1: No loose .py files (only __init__.py and group directories) ---
 
 
 def test_no_loose_py_files_in_inbound_port():
@@ -50,11 +66,23 @@ def test_no_loose_py_files_in_inbound_port():
     )
 
 
+def test_only_aggregate_groups_in_inbound_port():
+    dirs = [
+        d.name
+        for d in INBOUND_PORT_DIR.iterdir()
+        if d.is_dir() and d.name != "__pycache__"
+    ]
+    assert sorted(dirs) == sorted(AGGREGATE_GROUPS), (
+        f"port/inbound/ must only contain aggregate groups {AGGREGATE_GROUPS}, found: {dirs}"
+    )
+
+
 # --- Rule 2: Each use case directory has exactly the required files ---
 
 
-@pytest.mark.parametrize("use_case_dir", _use_case_dirs(), ids=lambda d: d.name)
-def test_use_case_dir_has_required_files(use_case_dir: Path):
+@pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
+def test_use_case_dir_has_required_files(use_case_entry: tuple[str, Path]):
+    _group, use_case_dir = use_case_entry
     actual_files = {
         f.name for f in use_case_dir.iterdir() if f.is_file() and f.suffix == ".py"
     }
@@ -63,8 +91,9 @@ def test_use_case_dir_has_required_files(use_case_dir: Path):
     )
 
 
-@pytest.mark.parametrize("use_case_dir", _use_case_dirs(), ids=lambda d: d.name)
-def test_use_case_dir_has_no_extra_files(use_case_dir: Path):
+@pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
+def test_use_case_dir_has_no_extra_files(use_case_entry: tuple[str, Path]):
+    _group, use_case_dir = use_case_entry
     actual_files = {
         f.name for f in use_case_dir.iterdir() if f.is_file() and f.suffix == ".py"
     }
@@ -85,33 +114,36 @@ def _exported_classes(module_path: str) -> list[str]:
     ]
 
 
-@pytest.mark.parametrize("use_case_dir", _use_case_dirs(), ids=lambda d: d.name)
-def test_input_class_naming(use_case_dir: Path):
+@pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
+def test_input_class_naming(use_case_entry: tuple[str, Path]):
+    group, use_case_dir = use_case_entry
     prefix = _pascal_to_words(use_case_dir.name)
     expected = f"{prefix}Input"
-    module = f"application.port.inbound.{use_case_dir.name}.input"
+    module = f"application.port.inbound.{group}.{use_case_dir.name}.input"
     classes = _exported_classes(module)
     assert expected in classes, (
         f"{use_case_dir.name}/input.py must export '{expected}', found: {classes}"
     )
 
 
-@pytest.mark.parametrize("use_case_dir", _use_case_dirs(), ids=lambda d: d.name)
-def test_output_class_naming(use_case_dir: Path):
+@pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
+def test_output_class_naming(use_case_entry: tuple[str, Path]):
+    group, use_case_dir = use_case_entry
     prefix = _pascal_to_words(use_case_dir.name)
     expected = f"{prefix}Output"
-    module = f"application.port.inbound.{use_case_dir.name}.output"
+    module = f"application.port.inbound.{group}.{use_case_dir.name}.output"
     classes = _exported_classes(module)
     assert expected in classes, (
         f"{use_case_dir.name}/output.py must export '{expected}', found: {classes}"
     )
 
 
-@pytest.mark.parametrize("use_case_dir", _use_case_dirs(), ids=lambda d: d.name)
-def test_use_case_class_naming(use_case_dir: Path):
+@pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
+def test_use_case_class_naming(use_case_entry: tuple[str, Path]):
+    group, use_case_dir = use_case_entry
     prefix = _pascal_to_words(use_case_dir.name)
     expected = f"{prefix}UseCase"
-    module = f"application.port.inbound.{use_case_dir.name}.use_case"
+    module = f"application.port.inbound.{group}.{use_case_dir.name}.use_case"
     classes = _exported_classes(module)
     assert expected in classes, (
         f"{use_case_dir.name}/use_case.py must export '{expected}', found: {classes}"
@@ -121,11 +153,12 @@ def test_use_case_class_naming(use_case_dir: Path):
 # --- Rule 4: __init__.py re-exports all three symbols ---
 
 
-@pytest.mark.parametrize("use_case_dir", _use_case_dirs(), ids=lambda d: d.name)
-def test_init_reexports_all_symbols(use_case_dir: Path):
+@pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
+def test_init_reexports_all_symbols(use_case_entry: tuple[str, Path]):
+    group, use_case_dir = use_case_entry
     prefix = _pascal_to_words(use_case_dir.name)
     expected_symbols = {f"{prefix}Input", f"{prefix}Output", f"{prefix}UseCase"}
-    module = f"application.port.inbound.{use_case_dir.name}"
+    module = f"application.port.inbound.{group}.{use_case_dir.name}"
     mod = importlib.import_module(module)
     exported = set(getattr(mod, "__all__", []))
     missing = expected_symbols - exported
