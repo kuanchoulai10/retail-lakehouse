@@ -8,7 +8,7 @@ from application.exceptions import JobNotFoundError as AppJobNotFoundError
 from application.port.inbound import UpdateJobInput, UpdateJobOutput, UpdateJobUseCase
 
 if TYPE_CHECKING:
-    from application.port.outbound.jobs_repo import BaseJobsRepo
+    from application.port.outbound.job.jobs_repo import BaseJobsRepo
 
 
 class UpdateJobService(UpdateJobUseCase):

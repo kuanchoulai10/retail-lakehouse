@@ -1,6 +1,6 @@
 from abc import ABC
 
-from application.port.outbound.job_runs_repo import BaseJobRunsRepo
+from application.port.outbound.job_run.job_runs_repo import BaseJobRunsRepo
 
 
 def test_is_abstract():

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from adapter.outbound.k8s.manifest import build_manifest
 from application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
-from application.port.outbound.job_run_executor import JobRunExecutor
+from application.port.outbound.job_run.job_run_executor import JobRunExecutor
 
 if TYPE_CHECKING:
     from kubernetes.client import CustomObjectsApi

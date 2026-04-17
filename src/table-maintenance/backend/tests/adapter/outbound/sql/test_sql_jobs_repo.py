@@ -4,7 +4,7 @@ import pytest
 
 from adapter.outbound.sql.sql_jobs_repo import SqlJobsRepo
 from application.domain.model.job import Job, JobId, JobNotFoundError, JobType
-from application.port.outbound.jobs_repo import BaseJobsRepo
+from application.port.outbound.job.jobs_repo import BaseJobsRepo
 
 
 def _make_job(

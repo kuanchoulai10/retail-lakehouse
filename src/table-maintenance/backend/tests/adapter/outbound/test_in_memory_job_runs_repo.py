@@ -8,7 +8,7 @@ from application.domain.model.job_run import (
     JobRunNotFoundError,
     JobRunStatus,
 )
-from application.port.outbound.job_runs_repo import BaseJobRunsRepo
+from application.port.outbound.job_run.job_runs_repo import BaseJobRunsRepo
 
 
 def _make_run(run_id: str = "run-1", job_id: str = "job-1") -> JobRun:

@@ -7,7 +7,7 @@ from application.exceptions import JobRunNotFoundError as AppJobRunNotFoundError
 from application.port.inbound import GetJobRunInput, GetJobRunOutput, GetJobRunUseCase
 
 if TYPE_CHECKING:
-    from application.port.outbound.job_runs_repo import BaseJobRunsRepo
+    from application.port.outbound.job_run.job_runs_repo import BaseJobRunsRepo
 
 
 class GetJobRunService(GetJobRunUseCase):

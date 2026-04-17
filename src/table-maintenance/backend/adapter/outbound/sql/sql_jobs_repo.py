@@ -8,7 +8,7 @@ from adapter.outbound.sql.job_to_values import job_to_values
 from adapter.outbound.sql.jobs_table import jobs_table
 from adapter.outbound.sql.row_to_job import row_to_job
 from application.domain.model.job import JobNotFoundError
-from application.port.outbound.jobs_repo import BaseJobsRepo
+from application.port.outbound.job.jobs_repo import BaseJobsRepo
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine

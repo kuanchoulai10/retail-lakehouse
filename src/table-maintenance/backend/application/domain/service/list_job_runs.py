@@ -11,7 +11,7 @@ from application.port.inbound import (
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.job_runs_repo import BaseJobRunsRepo
+    from application.port.outbound.job_run.job_runs_repo import BaseJobRunsRepo
 
 
 class ListJobRunsService(ListJobRunsUseCase):

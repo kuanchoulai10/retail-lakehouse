@@ -11,7 +11,7 @@ from application.port.inbound import (
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.jobs_repo import BaseJobsRepo
+    from application.port.outbound.job.jobs_repo import BaseJobsRepo
 
 
 class DeleteJobService(DeleteJobUseCase):

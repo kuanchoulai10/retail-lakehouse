@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from application.domain.model.job import JobNotFoundError
-from application.port.outbound.jobs_repo import BaseJobsRepo
+from application.port.outbound.job.jobs_repo import BaseJobsRepo
 
 if TYPE_CHECKING:
     from base.entity_id import EntityId

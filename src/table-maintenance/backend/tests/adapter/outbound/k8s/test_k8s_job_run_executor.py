@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 from adapter.outbound.k8s.k8s_job_run_executor import K8sJobRunExecutor
 from application.domain.model.job import Job, JobId, JobType
 from application.domain.model.job_run import JobRunStatus
-from application.port.outbound.job_run_executor import JobRunExecutor
+from application.port.outbound.job_run.job_run_executor import JobRunExecutor
 from configs import AppSettings
 
 

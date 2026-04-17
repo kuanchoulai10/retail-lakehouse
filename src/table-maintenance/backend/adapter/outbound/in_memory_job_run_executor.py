@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
-from application.port.outbound.job_run_executor import JobRunExecutor
+from application.port.outbound.job_run.job_run_executor import JobRunExecutor
 
 if TYPE_CHECKING:
     from application.domain.model.job import Job

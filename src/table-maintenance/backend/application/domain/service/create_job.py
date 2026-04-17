@@ -12,7 +12,7 @@ from application.port.inbound import (
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.jobs_repo import BaseJobsRepo
+    from application.port.outbound.job.jobs_repo import BaseJobsRepo
 
 _CONFIG_BY_TYPE = {
     "expire_snapshots": "expire_snapshots",

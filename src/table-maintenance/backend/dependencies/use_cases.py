@@ -29,9 +29,9 @@ if TYPE_CHECKING:
         ListJobsUseCase,
         UpdateJobUseCase,
     )
-    from application.port.outbound.job_run_executor import JobRunExecutor
-    from application.port.outbound.job_runs_repo import BaseJobRunsRepo
-    from application.port.outbound.jobs_repo import BaseJobsRepo
+    from application.port.outbound.job_run.job_run_executor import JobRunExecutor
+    from application.port.outbound.job_run.job_runs_repo import BaseJobRunsRepo
+    from application.port.outbound.job.jobs_repo import BaseJobsRepo
 
 
 def get_create_job_use_case(
