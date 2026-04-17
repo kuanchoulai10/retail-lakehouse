@@ -5,8 +5,7 @@ import pytest
 from base import Repository
 from adapter.outbound.in_memory_jobs_repo import InMemoryJobsRepo
 from application.domain import JobNotFoundError, JobType
-from application.domain.model.job import Job
-from application.domain.model.job_id import JobId
+from application.domain.model.job import Job, JobId
 
 
 def _make_job(

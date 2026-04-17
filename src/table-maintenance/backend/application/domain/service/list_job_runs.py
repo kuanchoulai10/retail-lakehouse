@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.job_id import JobId
+from application.domain.model.job import JobId
 from application.port.inbound import (
     ListJobRunsInput,
     ListJobRunsOutput,

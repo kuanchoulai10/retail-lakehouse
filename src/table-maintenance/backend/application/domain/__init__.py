@@ -1,9 +1,5 @@
-from application.domain.model.exceptions import (
-    JobNotFoundError,
-    JobRunNotFoundError,
-)
-from application.domain.model.job_run_status import JobRunStatus
-from application.domain.model.job_type import JobType
+from application.domain.model.job import JobNotFoundError, JobType
+from application.domain.model.job_run import JobRunNotFoundError, JobRunStatus
 
 __all__ = [
     "JobNotFoundError",

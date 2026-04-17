@@ -1,15 +1,6 @@
 import pytest
 
-from application.domain.model.exceptions import (
-    JobNotFoundError,
-    JobRunNotFoundError,
-)
-
-
-def test_job_not_found_error_stores_name():
-    err = JobNotFoundError("missing-id")
-    assert err.name == "missing-id"
-    assert "missing-id" in str(err)
+from application.domain.model.job_run import JobRunNotFoundError
 
 
 def test_job_run_not_found_error_stores_run_id():

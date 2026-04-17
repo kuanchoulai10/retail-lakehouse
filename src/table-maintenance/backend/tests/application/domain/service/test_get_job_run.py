@@ -3,11 +3,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from application.domain.model.exceptions import JobRunNotFoundError
-from application.domain.model.job_id import JobId
-from application.domain.model.job_run import JobRun
-from application.domain.model.job_run_id import JobRunId
-from application.domain.model.job_run_status import JobRunStatus
+from application.domain.model.job import JobId
+from application.domain.model.job_run import (
+    JobRun,
+    JobRunId,
+    JobRunNotFoundError,
+    JobRunStatus,
+)
 from application.domain.service.get_job_run import GetJobRunService
 from application.exceptions import JobRunNotFoundError as AppJobRunNotFoundError
 from application.port.inbound import (

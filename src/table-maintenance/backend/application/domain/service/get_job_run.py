@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.exceptions import JobRunNotFoundError
-from application.domain.model.job_run_id import JobRunId
+from application.domain.model.job_run import JobRunId, JobRunNotFoundError
 from application.exceptions import JobRunNotFoundError as AppJobRunNotFoundError
 from application.port.inbound import GetJobRunInput, GetJobRunOutput, GetJobRunUseCase
 

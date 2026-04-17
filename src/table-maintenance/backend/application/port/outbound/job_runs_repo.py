@@ -4,9 +4,8 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from application.domain.model.job_id import JobId
-    from application.domain.model.job_run import JobRun
-    from application.domain.model.job_run_id import JobRunId
+    from application.domain.model.job import JobId
+    from application.domain.model.job_run import JobRun, JobRunId
 
 
 class BaseJobRunsRepo(ABC):

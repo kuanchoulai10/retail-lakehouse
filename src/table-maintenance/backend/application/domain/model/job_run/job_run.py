@@ -5,13 +5,13 @@ from typing import TYPE_CHECKING
 
 from base.aggregate_root import AggregateRoot
 
-from application.domain.model.job_run_id import JobRunId
+from application.domain.model.job_run.job_run_id import JobRunId
 
 if TYPE_CHECKING:
     from datetime import datetime
 
-    from application.domain.model.job_id import JobId
-    from application.domain.model.job_run_status import JobRunStatus
+    from application.domain.model.job.job_id import JobId
+    from application.domain.model.job_run.job_run_status import JobRunStatus
 
 
 @dataclass(eq=False)

@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.exceptions import JobNotFoundError
-from application.domain.model.job_id import JobId
+from application.domain.model.job import JobId, JobNotFoundError
 from application.exceptions import JobNotFoundError as AppJobNotFoundError
 from application.port.inbound import GetJobInput, GetJobOutput, GetJobUseCase
 

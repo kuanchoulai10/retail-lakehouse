@@ -4,9 +4,7 @@ import secrets
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.domain.model.job import Job
-from application.domain.model.job_id import JobId
-from application.domain.model.job_type import JobType
+from application.domain.model.job import Job, JobId, JobType
 from application.port.inbound import (
     CreateJobInput,
     CreateJobOutput,

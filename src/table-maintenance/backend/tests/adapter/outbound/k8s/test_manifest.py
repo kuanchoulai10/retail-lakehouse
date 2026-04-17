@@ -1,9 +1,7 @@
 from datetime import UTC, datetime
 
 from adapter.outbound.k8s.manifest import build_manifest
-from application.domain.model.job import Job
-from application.domain.model.job_id import JobId
-from application.domain.model.job_type import JobType
+from application.domain.model.job import Job, JobId, JobType
 from configs import AppSettings
 
 SETTINGS = AppSettings()

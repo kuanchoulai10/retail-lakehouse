@@ -5,9 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
-from application.domain.model.job import Job
-from application.domain.model.job_id import JobId
-from application.domain.model.job_type import JobType
+from application.domain.model.job import Job, JobId, JobType
 from application.domain.service.list_jobs import ListJobsService
 from application.port.inbound import (
     ListJobsInput,

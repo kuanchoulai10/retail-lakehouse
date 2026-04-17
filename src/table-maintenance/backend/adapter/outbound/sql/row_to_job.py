@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from application.domain.model.job import Job
-from application.domain.model.job_id import JobId
-from application.domain.model.job_type import JobType
+from application.domain.model.job import Job, JobId, JobType
 
 
 def row_to_job(row: Any) -> Job:

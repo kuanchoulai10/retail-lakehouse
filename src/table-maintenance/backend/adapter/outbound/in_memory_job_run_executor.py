@@ -4,9 +4,7 @@ import secrets
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.domain.model.job_run import JobRun
-from application.domain.model.job_run_id import JobRunId
-from application.domain.model.job_run_status import JobRunStatus
+from application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
 from application.port.outbound.job_run_executor import JobRunExecutor
 
 if TYPE_CHECKING:

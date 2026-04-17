@@ -1,8 +1,7 @@
 from datetime import UTC, datetime
 
 from adapter.outbound.sql.row_to_job import row_to_job
-from application.domain.model.job_id import JobId
-from application.domain.model.job_type import JobType
+from application.domain.model.job import JobId, JobType
 
 
 def test_row_maps_to_job():

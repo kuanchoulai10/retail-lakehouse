@@ -1,10 +1,8 @@
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
-from application.domain.model.job_id import JobId
-from application.domain.model.job_run import JobRun
-from application.domain.model.job_run_id import JobRunId
-from application.domain.model.job_run_status import JobRunStatus
+from application.domain.model.job import JobId
+from application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
 from application.domain.service.list_job_runs import ListJobRunsService
 from application.port.inbound import (
     ListJobRunsInput,

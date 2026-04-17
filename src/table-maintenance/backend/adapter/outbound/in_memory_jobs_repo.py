@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.exceptions import JobNotFoundError
+from application.domain.model.job import JobNotFoundError
 from application.port.outbound.jobs_repo import BaseJobsRepo
 
 if TYPE_CHECKING:

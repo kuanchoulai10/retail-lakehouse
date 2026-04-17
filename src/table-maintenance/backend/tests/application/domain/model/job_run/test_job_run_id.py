@@ -1,5 +1,5 @@
-from application.domain.model.job_id import JobId
-from application.domain.model.job_run_id import JobRunId
+from application.domain.model.job import JobId
+from application.domain.model.job_run import JobRunId
 from base.entity_id import EntityId
 
 
