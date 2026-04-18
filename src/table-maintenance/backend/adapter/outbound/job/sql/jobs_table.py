@@ -1,3 +1,5 @@
+"""Define the jobs SQLAlchemy table schema."""
+
 from sqlalchemy import JSON, Boolean, Column, DateTime, String, Table
 
 from adapter.outbound.sql.metadata import metadata

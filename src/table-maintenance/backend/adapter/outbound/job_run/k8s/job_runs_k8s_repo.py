@@ -1,3 +1,5 @@
+"""Define the JobRunsK8sRepo adapter."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -37,15 +39,18 @@ class JobRunsK8sRepo(JobRunsRepo):
     """Read-only view over JobRuns backed by K8s SparkApplication resources."""
 
     def __init__(self, api: CustomObjectsApi, settings: AppSettings) -> None:
+        """Initialize with a Kubernetes API client and application settings."""
         self._api = api
         self._settings = settings
 
     def create(self, entity: JobRun) -> JobRun:
+        """Raise NotImplementedError since K8s repo is read-only."""
         raise NotImplementedError(
             "JobRunsK8sRepo is read-only; runs are created via JobRunExecutor.trigger()"
         )
 
     def get(self, run_id: JobRunId) -> JobRun:
+        """Fetch a single job run from Kubernetes by name."""
         for plural in (_PLURAL_SPARK, _PLURAL_SCHEDULED):
             try:
                 resource = self._api.get_namespaced_custom_object(
@@ -63,6 +68,7 @@ class JobRunsK8sRepo(JobRunsRepo):
         raise JobRunNotFoundError(run_id.value)
 
     def list_for_job(self, job_id: JobId) -> list[JobRun]:
+        """List all Kubernetes job runs matching the given job id."""
         selector = f"{_JOB_LABEL}={job_id.value}"
         results: list[JobRun] = []
         for plural in (_PLURAL_SPARK, _PLURAL_SCHEDULED):
@@ -77,6 +83,7 @@ class JobRunsK8sRepo(JobRunsRepo):
         return results
 
     def list_all(self) -> list[JobRun]:
+        """List all SparkApplication and ScheduledSparkApplication resources."""
         results: list[JobRun] = []
         for plural in (_PLURAL_SPARK, _PLURAL_SCHEDULED):
             resp = self._api.list_namespaced_custom_object(

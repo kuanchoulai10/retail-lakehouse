@@ -1,3 +1,5 @@
+"""Provide the build_manifest helper for Kubernetes job manifests."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

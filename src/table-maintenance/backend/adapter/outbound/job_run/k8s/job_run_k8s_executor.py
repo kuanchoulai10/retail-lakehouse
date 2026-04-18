@@ -1,3 +1,5 @@
+"""Define the JobRunK8sExecutor adapter."""
+
 from __future__ import annotations
 
 import secrets
@@ -24,10 +26,12 @@ class JobRunK8sExecutor(JobRunExecutor):
     """Triggers a JobRun by creating a SparkApplication (or ScheduledSparkApplication) in K8s."""
 
     def __init__(self, api: CustomObjectsApi, settings: AppSettings) -> None:
+        """Initialize with a Kubernetes API client and application settings."""
         self._api = api
         self._settings = settings
 
     def trigger(self, job: Job) -> JobRun:
+        """Create a SparkApplication in Kubernetes and return the new JobRun."""
         if job.cron:
             run_id = JobRunId(value=job.id.value)
             plural = _PLURAL_SCHEDULED
