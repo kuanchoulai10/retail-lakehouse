@@ -147,6 +147,9 @@ vite.config.ts.timestamp-*
 .vite/
 
 
+# Git worktrees
+.worktrees/
+
 # =======================Customization=======================
 vendor/
 .DS_Store
