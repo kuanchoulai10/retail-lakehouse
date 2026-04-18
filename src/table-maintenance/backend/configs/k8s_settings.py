@@ -1,9 +1,13 @@
+"""Define the K8sSettings configuration model."""
+
 from __future__ import annotations
 
 from pydantic import BaseModel
 
 
 class K8sSettings(BaseModel):
+    """Kubernetes and Spark driver/executor configuration."""
+
     namespace: str = "default"
     image: str = "localhost:5000/table-maintenance-jobs:latest"
     image_pull_policy: str = "Never"

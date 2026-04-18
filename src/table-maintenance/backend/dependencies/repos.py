@@ -1,3 +1,5 @@
+"""Provide repository and executor dependencies."""
+
 from __future__ import annotations
 
 from functools import lru_cache

@@ -1,3 +1,5 @@
+"""Application configuration models and enumerations."""
+
 from configs.app import AppSettings
 from configs.database_backend import DatabaseBackend
 from configs.job_run_executor_adapter import JobRunExecutorAdapter
