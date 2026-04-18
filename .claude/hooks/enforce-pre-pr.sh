@@ -11,12 +11,8 @@ output=$(task pre-pr 2>&1) || {
     --arg reason "pre-pr checks failed. Fix the issues and try again." \
     --arg context "$tail_output" \
     '{
-      decision: "block",
-      reason: $reason,
-      hookSpecificOutput: {
-        hookEventName: "Stop",
-        additionalContext: ("pre-pr output:\n" + $context)
-      }
+      continue: false,
+      stopReason: ($reason + "\n\n" + $context)
     }'
-  exit 2
+  exit 0
 }
