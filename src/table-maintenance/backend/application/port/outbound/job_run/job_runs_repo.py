@@ -9,11 +9,10 @@ if TYPE_CHECKING:
 
 
 class BaseJobRunsRepo(ABC):
-    """Read-only port over JobRun execution instances.
+    """Port over JobRun execution instances."""
 
-    A JobRun is created by a JobRunExecutor side-effect, not by a repo.create()
-    call — this port therefore omits create/delete and only exposes reads.
-    """
+    @abstractmethod
+    def create(self, entity: JobRun) -> JobRun: ...
 
     @abstractmethod
     def get(self, run_id: JobRunId) -> JobRun: ...

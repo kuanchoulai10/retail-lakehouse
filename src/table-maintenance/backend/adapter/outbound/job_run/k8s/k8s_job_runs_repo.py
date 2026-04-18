@@ -40,6 +40,11 @@ class K8sJobRunsRepo(BaseJobRunsRepo):
         self._api = api
         self._settings = settings
 
+    def create(self, entity: JobRun) -> JobRun:
+        raise NotImplementedError(
+            "K8sJobRunsRepo is read-only; runs are created via JobRunExecutor.trigger()"
+        )
+
     def get(self, run_id: JobRunId) -> JobRun:
         for plural in (_PLURAL_SPARK, _PLURAL_SCHEDULED):
             try:

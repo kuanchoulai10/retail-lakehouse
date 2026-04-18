@@ -4,12 +4,14 @@ from unittest.mock import MagicMock
 
 from adapter.outbound.job.in_memory_jobs_repo import InMemoryJobsRepo
 from adapter.outbound.job.sql.sql_jobs_repo import SqlJobsRepo
+from adapter.outbound.job_run.in_memory_job_runs_repo import InMemoryJobRunsRepo
 from adapter.outbound.job_run.k8s.k8s_job_run_executor import K8sJobRunExecutor
-from adapter.outbound.job_run.k8s.k8s_job_runs_repo import K8sJobRunsRepo
+from adapter.outbound.job_run.sql.sql_job_runs_repo import SqlJobRunsRepo
 from configs import AppSettings, JobsRepoBackend
 from dependencies.repos import (
     _engine_cache,
     _in_memory_jobs_repo_singleton,
+    _in_memory_job_runs_repo_singleton,
     get_job_run_executor,
     get_job_runs_repo,
     get_jobs_repo,
@@ -18,6 +20,7 @@ from dependencies.repos import (
 
 def _clear_caches() -> None:
     _in_memory_jobs_repo_singleton.cache_clear()
+    _in_memory_job_runs_repo_singleton.cache_clear()
     _engine_cache.clear()
 
 
@@ -71,11 +74,20 @@ def test_sql_engine_cached_per_backend_and_url():
     assert first._engine is second._engine
 
 
-def test_get_job_runs_repo_returns_k8s_impl():
-    api = MagicMock()
+def test_get_job_runs_repo_returns_in_memory_by_default():
+    _clear_caches()
+    settings = AppSettings()  # default: IN_MEMORY
+    result = get_job_runs_repo(api=MagicMock(), settings=settings)
+    assert isinstance(result, InMemoryJobRunsRepo)
+
+
+def test_get_job_runs_repo_returns_sql_for_sqlite_backend():
+    _clear_caches()
     settings = AppSettings()
-    result = get_job_runs_repo(api=api, settings=settings)
-    assert isinstance(result, K8sJobRunsRepo)
+    settings.jobs_repo_backend = JobsRepoBackend.SQLITE
+    settings.sqlite.db_path = ":memory:"
+    result = get_job_runs_repo(api=MagicMock(), settings=settings)
+    assert isinstance(result, SqlJobRunsRepo)
 
 
 def test_get_job_run_executor_returns_k8s_impl():

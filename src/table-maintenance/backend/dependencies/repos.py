@@ -7,8 +7,10 @@ from fastapi import Depends
 
 from adapter.outbound.job.in_memory_jobs_repo import InMemoryJobsRepo
 from adapter.outbound.job.sql.sql_jobs_repo import SqlJobsRepo
+from adapter.outbound.job_run.in_memory_job_runs_repo import InMemoryJobRunsRepo
 from adapter.outbound.job_run.k8s.k8s_job_run_executor import K8sJobRunExecutor
 from adapter.outbound.job_run.k8s.k8s_job_runs_repo import K8sJobRunsRepo
+from adapter.outbound.job_run.sql.sql_job_runs_repo import SqlJobRunsRepo
 from adapter.outbound.sql.engine_factory import build_engine
 from configs import JobsRepoBackend
 from dependencies.k8s import get_k8s_api
@@ -27,6 +29,11 @@ if TYPE_CHECKING:
 @lru_cache(maxsize=1)
 def _in_memory_jobs_repo_singleton() -> InMemoryJobsRepo:
     return InMemoryJobsRepo()
+
+
+@lru_cache(maxsize=1)
+def _in_memory_job_runs_repo_singleton() -> InMemoryJobRunsRepo:
+    return InMemoryJobRunsRepo()
 
 
 _engine_cache: dict[tuple[str, str], Engine] = {}
@@ -59,6 +66,11 @@ def get_job_runs_repo(
     api: CustomObjectsApi = Depends(get_k8s_api),
     settings: AppSettings = Depends(get_settings),
 ) -> BaseJobRunsRepo:
+    """Return the JobRun repository based on AppSettings.jobs_repo_backend."""
+    if settings.jobs_repo_backend == JobsRepoBackend.IN_MEMORY:
+        return _in_memory_job_runs_repo_singleton()
+    if settings.jobs_repo_backend in (JobsRepoBackend.SQLITE, JobsRepoBackend.POSTGRES):
+        return SqlJobRunsRepo(_cached_sql_engine(settings))
     return K8sJobRunsRepo(api, settings)
 
 

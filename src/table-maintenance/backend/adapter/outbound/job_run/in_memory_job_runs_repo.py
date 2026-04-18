@@ -14,9 +14,9 @@ class InMemoryJobRunsRepo(BaseJobRunsRepo):
     def __init__(self) -> None:
         self._runs: dict[str, JobRun] = {}
 
-    def add(self, run: JobRun) -> None:
-        """Seed the repo with a run (test helper, not part of BaseJobRunsRepo)."""
-        self._runs[run.id.value] = run
+    def create(self, entity: JobRun) -> JobRun:
+        self._runs[entity.id.value] = entity
+        return entity
 
     def get(self, run_id: JobRunId) -> JobRun:
         try:

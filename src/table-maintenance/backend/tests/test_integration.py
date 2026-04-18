@@ -35,7 +35,7 @@ class _RecordingExecutor(InMemoryJobRunExecutor):
 
     def trigger(self, job):
         run = super().trigger(job)
-        self._runs_repo.add(run)
+        self._runs_repo.create(run)
         return run
 
 

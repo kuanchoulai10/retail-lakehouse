@@ -9,6 +9,7 @@ def test_is_abstract():
 
 def test_has_required_abstract_methods():
     methods = BaseJobRunsRepo.__abstractmethods__
+    assert "create" in methods
     assert "get" in methods
     assert "list_for_job" in methods
     assert "list_all" in methods
