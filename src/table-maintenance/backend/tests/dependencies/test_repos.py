@@ -5,11 +5,19 @@ from unittest.mock import MagicMock
 from adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
 from adapter.outbound.job.sql.jobs_sql_repo import JobsSqlRepo
 from adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
+from adapter.outbound.job_run.job_run_in_memory_executor import JobRunInMemoryExecutor
 from adapter.outbound.job_run.k8s.job_run_k8s_executor import JobRunK8sExecutor
 from adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
-from configs import AppSettings, JobsRepoBackend
+from configs import (
+    AppSettings,
+    DatabaseBackend,
+    JobRunExecutorAdapter,
+    JobRunsRepoAdapter,
+    JobsRepoAdapter,
+)
 from dependencies.repos import (
     _engine_cache,
+    _in_memory_executor_singleton,
     _in_memory_jobs_repo_singleton,
     _in_memory_job_runs_repo_singleton,
     get_job_run_executor,
@@ -21,12 +29,13 @@ from dependencies.repos import (
 def _clear_caches() -> None:
     _in_memory_jobs_repo_singleton.cache_clear()
     _in_memory_job_runs_repo_singleton.cache_clear()
+    _in_memory_executor_singleton.cache_clear()
     _engine_cache.clear()
 
 
 def test_get_jobs_repo_returns_in_memory_by_default():
     _clear_caches()
-    settings = AppSettings()  # default: IN_MEMORY
+    settings = AppSettings()
     result = get_jobs_repo(settings=settings)
     assert isinstance(result, JobsInMemoryRepo)
 
@@ -39,16 +48,17 @@ def test_in_memory_backend_is_module_singleton():
     assert first is second
 
 
-def test_get_jobs_repo_returns_sql_for_sqlite_backend():
+def test_get_jobs_repo_returns_sql_for_sqlite():
     _clear_caches()
     settings = AppSettings()
-    settings.jobs_repo_backend = JobsRepoBackend.SQLITE
+    settings.jobs_repo_adapter = JobsRepoAdapter.SQL
+    settings.database_backend = DatabaseBackend.SQLITE
     settings.sqlite.db_path = ":memory:"
     result = get_jobs_repo(settings=settings)
     assert isinstance(result, JobsSqlRepo)
 
 
-def test_get_jobs_repo_returns_sql_for_postgres_backend(monkeypatch):
+def test_get_jobs_repo_returns_sql_for_postgres(monkeypatch):
     _clear_caches()
     from adapter.outbound.sql import engine_factory as ef
 
@@ -56,7 +66,8 @@ def test_get_jobs_repo_returns_sql_for_postgres_backend(monkeypatch):
     monkeypatch.setattr(ef, "create_engine", MagicMock(return_value=fake_engine))
 
     settings = AppSettings()
-    settings.jobs_repo_backend = JobsRepoBackend.POSTGRES
+    settings.jobs_repo_adapter = JobsRepoAdapter.SQL
+    settings.database_backend = DatabaseBackend.POSTGRES
     settings.postgres.db_url = "postgresql+psycopg://u:p@h/db"
     result = get_jobs_repo(settings=settings)
     assert isinstance(result, JobsSqlRepo)
@@ -65,7 +76,8 @@ def test_get_jobs_repo_returns_sql_for_postgres_backend(monkeypatch):
 def test_sql_engine_cached_per_backend_and_url():
     _clear_caches()
     settings = AppSettings()
-    settings.jobs_repo_backend = JobsRepoBackend.SQLITE
+    settings.jobs_repo_adapter = JobsRepoAdapter.SQL
+    settings.database_backend = DatabaseBackend.SQLITE
     settings.sqlite.db_path = ":memory:"
     first = get_jobs_repo(settings=settings)
     second = get_jobs_repo(settings=settings)
@@ -76,22 +88,36 @@ def test_sql_engine_cached_per_backend_and_url():
 
 def test_get_job_runs_repo_returns_in_memory_by_default():
     _clear_caches()
-    settings = AppSettings()  # default: IN_MEMORY
-    result = get_job_runs_repo(api=MagicMock(), settings=settings)
+    settings = AppSettings()
+    result = get_job_runs_repo(settings=settings)
     assert isinstance(result, JobRunsInMemoryRepo)
 
 
-def test_get_job_runs_repo_returns_sql_for_sqlite_backend():
+def test_get_job_runs_repo_returns_sql_for_sqlite():
     _clear_caches()
     settings = AppSettings()
-    settings.jobs_repo_backend = JobsRepoBackend.SQLITE
+    settings.job_runs_repo_adapter = JobRunsRepoAdapter.SQL
+    settings.database_backend = DatabaseBackend.SQLITE
     settings.sqlite.db_path = ":memory:"
-    result = get_job_runs_repo(api=MagicMock(), settings=settings)
+    result = get_job_runs_repo(settings=settings)
     assert isinstance(result, JobRunsSqlRepo)
 
 
-def test_get_job_run_executor_returns_k8s_impl():
-    api = MagicMock()
+def test_get_job_run_executor_returns_in_memory_by_default():
+    _clear_caches()
+    _in_memory_executor_singleton.cache_clear()
     settings = AppSettings()
-    result = get_job_run_executor(api=api, settings=settings)
+    result = get_job_run_executor(settings=settings)
+    assert isinstance(result, JobRunInMemoryExecutor)
+
+
+def test_get_job_run_executor_returns_k8s_when_configured(monkeypatch):
+    _clear_caches()
+    from dependencies import repos as repos_mod
+
+    monkeypatch.setattr(repos_mod, "get_k8s_api", MagicMock())
+
+    settings = AppSettings()
+    settings.job_run_executor_adapter = JobRunExecutorAdapter.K8S
+    result = get_job_run_executor(settings=settings)
     assert isinstance(result, JobRunK8sExecutor)

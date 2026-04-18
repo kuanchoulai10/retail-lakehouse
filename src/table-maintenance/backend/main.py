@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from fastapi import FastAPI
 from adapter.inbound.web import router as jobs_router
 from adapter.outbound.sql.metadata import metadata
-from configs import JobsRepoBackend
+from configs import JobsRepoAdapter, JobRunsRepoAdapter
 from dependencies.repos import _cached_sql_engine
 from dependencies.settings import get_settings
 
@@ -17,7 +17,11 @@ if TYPE_CHECKING:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
-    if settings.jobs_repo_backend != JobsRepoBackend.IN_MEMORY:
+    uses_sql = (
+        settings.jobs_repo_adapter == JobsRepoAdapter.SQL
+        or settings.job_runs_repo_adapter == JobRunsRepoAdapter.SQL
+    )
+    if uses_sql:
         engine = _cached_sql_engine(settings)
         metadata.create_all(engine)
     yield

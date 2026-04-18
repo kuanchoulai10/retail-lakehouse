@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import create_engine
 
-from configs import JobsRepoBackend
+from configs import DatabaseBackend
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine
@@ -12,14 +12,12 @@ if TYPE_CHECKING:
     from configs import AppSettings
 
 
-def build_engine(backend: JobsRepoBackend, settings: AppSettings) -> Engine:
-    if backend == JobsRepoBackend.SQLITE:
+def build_engine(settings: AppSettings) -> Engine:
+    if settings.database_backend == DatabaseBackend.SQLITE:
         return create_engine(f"sqlite:///{settings.sqlite.db_path}")
-    if backend == JobsRepoBackend.POSTGRES:
+    if settings.database_backend == DatabaseBackend.POSTGRES:
         return create_engine(
             settings.postgres.db_url,
             pool_size=settings.postgres.pool_size,
         )
-    raise ValueError(
-        f"build_engine does not support {backend.value!r}; use an in-process repo for IN_MEMORY"
-    )
+    raise ValueError(f"Unsupported database backend: {settings.database_backend!r}")
