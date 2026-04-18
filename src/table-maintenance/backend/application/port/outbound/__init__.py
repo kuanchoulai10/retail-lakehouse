@@ -1,3 +1,5 @@
+"""Outbound port interfaces (repositories, executors)."""
+
 from application.port.outbound.job import JobsRepo
 from application.port.outbound.job_run import JobRunsRepo, JobRunExecutor
 

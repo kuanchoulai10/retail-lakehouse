@@ -1,3 +1,5 @@
+"""Define the JobRunExecutor port interface."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -17,4 +19,6 @@ class JobRunExecutor(ABC):
     """
 
     @abstractmethod
-    def trigger(self, job: Job) -> JobRun: ...
+    def trigger(self, job: Job) -> JobRun:
+        """Trigger execution of the given job and return the resulting run."""
+        ...

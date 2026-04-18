@@ -1,3 +1,5 @@
+"""JobRun use case interfaces and DTOs."""
+
 from application.port.inbound.job_run.create_job_run import (
     CreateJobRunInput,
     CreateJobRunOutput,

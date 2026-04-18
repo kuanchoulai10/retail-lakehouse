@@ -1,3 +1,5 @@
+"""Job use case interfaces and DTOs."""
+
 from application.port.inbound.job.create_job import (
     CreateJobInput,
     CreateJobOutput,
