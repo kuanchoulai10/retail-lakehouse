@@ -1,3 +1,5 @@
+"""Define the ListJobsService."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -17,9 +19,11 @@ class ListJobsService(ListJobsUseCase):
     """Implements ListJobsUseCase by delegating to the jobs repository."""
 
     def __init__(self, repo: JobsRepo) -> None:
+        """Initialize with the jobs repository."""
         self._repo = repo
 
     def execute(self, request: ListJobsInput) -> ListJobsOutput:
+        """Return all jobs."""
         jobs = self._repo.list_all()
         return ListJobsOutput(
             jobs=[

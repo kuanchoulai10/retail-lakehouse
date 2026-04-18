@@ -1,3 +1,5 @@
+"""Define the UpdateJobService."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -15,9 +17,11 @@ class UpdateJobService(UpdateJobUseCase):
     """Applies a partial update to an existing Job definition."""
 
     def __init__(self, repo: JobsRepo) -> None:
+        """Initialize with the jobs repository."""
         self._repo = repo
 
     def execute(self, request: UpdateJobInput) -> UpdateJobOutput:
+        """Apply partial updates to the specified job."""
         try:
             job = self._repo.get(JobId(value=request.job_id))
         except JobNotFoundError as e:

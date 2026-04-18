@@ -1,3 +1,5 @@
+"""Define the ListJobRunsService."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -18,9 +20,11 @@ class ListJobRunsService(ListJobRunsUseCase):
     """Lists all runs for a given Job."""
 
     def __init__(self, repo: JobRunsRepo) -> None:
+        """Initialize with the job runs repository."""
         self._repo = repo
 
     def execute(self, request: ListJobRunsInput) -> ListJobRunsOutput:
+        """Return all job runs for the specified job."""
         runs = self._repo.list_for_job(JobId(value=request.job_id))
         return ListJobRunsOutput(
             runs=[
