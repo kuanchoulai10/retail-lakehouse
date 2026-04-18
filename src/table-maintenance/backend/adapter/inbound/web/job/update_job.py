@@ -1,3 +1,5 @@
+"""Define the PATCH /jobs/{name} endpoint."""
+
 from __future__ import annotations
 
 from dependencies.use_cases import get_update_job_use_case
@@ -16,6 +18,7 @@ def update_job(
     request: UpdateJobApiRequest,
     use_case: UpdateJobUseCase = Depends(get_update_job_use_case),
 ):
+    """Apply partial updates to a job."""
     try:
         result = use_case.execute(
             UpdateJobInput(

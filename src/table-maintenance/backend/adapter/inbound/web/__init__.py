@@ -1,3 +1,5 @@
+"""FastAPI web adapter."""
+
 from fastapi import APIRouter
 
 from adapter.inbound.web.job import router as job_router

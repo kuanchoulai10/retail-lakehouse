@@ -1,3 +1,5 @@
+"""Define the GET /runs/{run_id} endpoint."""
+
 from __future__ import annotations
 
 from dependencies.use_cases import get_get_job_run_use_case
@@ -15,6 +17,7 @@ def get_job_run(
     run_id: str,
     use_case: GetJobRunUseCase = Depends(get_get_job_run_use_case),
 ):
+    """Retrieve a job run by its identifier."""
     try:
         result = use_case.execute(GetJobRunInput(run_id=run_id))
     except JobRunNotFoundError as e:

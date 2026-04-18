@@ -1,3 +1,5 @@
+"""Define Job API request and response DTOs."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -6,6 +8,8 @@ from pydantic import BaseModel
 
 
 class JobApiRequest(BaseModel):
+    """Request body for creating a new job."""
+
     job_type: str
     catalog: str
 
@@ -28,6 +32,8 @@ class UpdateJobApiRequest(BaseModel):
 
 
 class JobApiResponse(BaseModel):
+    """Response body representing a job."""
+
     id: str
     job_type: str
     enabled: bool

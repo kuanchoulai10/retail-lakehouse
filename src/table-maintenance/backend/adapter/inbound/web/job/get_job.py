@@ -1,3 +1,5 @@
+"""Define the GET /jobs/{name} endpoint."""
+
 from __future__ import annotations
 
 from dependencies.use_cases import get_get_job_use_case
@@ -15,6 +17,7 @@ def get_job(
     name: str,
     use_case: GetJobUseCase = Depends(get_get_job_use_case),
 ):
+    """Retrieve a job by its name."""
     try:
         result = use_case.execute(GetJobInput(job_id=name))
         return JobApiResponse(

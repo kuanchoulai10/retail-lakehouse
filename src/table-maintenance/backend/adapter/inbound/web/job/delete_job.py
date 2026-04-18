@@ -1,3 +1,5 @@
+"""Define the DELETE /jobs/{name} endpoint."""
+
 from __future__ import annotations
 
 from dependencies.use_cases import get_delete_job_use_case
@@ -14,6 +16,7 @@ def delete_job(
     name: str,
     use_case: DeleteJobUseCase = Depends(get_delete_job_use_case),
 ):
+    """Delete a job by its name."""
     try:
         use_case.execute(DeleteJobInput(job_id=name))
     except JobNotFoundError as e:

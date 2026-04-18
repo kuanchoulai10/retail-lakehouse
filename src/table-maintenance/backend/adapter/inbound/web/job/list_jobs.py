@@ -1,3 +1,5 @@
+"""Define the GET /jobs endpoint."""
+
 from __future__ import annotations
 
 from dependencies.use_cases import get_list_jobs_use_case
@@ -13,6 +15,7 @@ router = APIRouter()
 def list_jobs(
     use_case: ListJobsUseCase = Depends(get_list_jobs_use_case),
 ):
+    """Return all jobs."""
     result = use_case.execute(ListJobsInput())
     return [
         JobApiResponse(
