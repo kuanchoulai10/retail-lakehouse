@@ -1,3 +1,5 @@
+"""Define the JobId value object."""
+
 from dataclasses import dataclass
 
 from base.entity_id import EntityId
