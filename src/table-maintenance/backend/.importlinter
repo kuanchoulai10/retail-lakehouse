@@ -47,12 +47,12 @@ ignore_imports =
     application.port.outbound.job_run.job_run_executor -> application.domain.model.job_run
     dependencies.use_cases -> application.domain.service.job.*
     dependencies.use_cases -> application.domain.service.job_run.*
-    dependencies.repos -> adapter.outbound.job_run.k8s.k8s_job_runs_repo
-    dependencies.repos -> adapter.outbound.job_run.k8s.k8s_job_run_executor
-    dependencies.repos -> adapter.outbound.job.in_memory_jobs_repo
-    dependencies.repos -> adapter.outbound.job.sql.sql_jobs_repo
-    dependencies.repos -> adapter.outbound.job_run.in_memory_job_runs_repo
-    dependencies.repos -> adapter.outbound.job_run.sql.sql_job_runs_repo
+    dependencies.repos -> adapter.outbound.job_run.k8s.job_runs_k8s_repo
+    dependencies.repos -> adapter.outbound.job_run.k8s.job_run_k8s_executor
+    dependencies.repos -> adapter.outbound.job.jobs_in_memory_repo
+    dependencies.repos -> adapter.outbound.job.sql.jobs_sql_repo
+    dependencies.repos -> adapter.outbound.job_run.job_runs_in_memory_repo
+    dependencies.repos -> adapter.outbound.job_run.sql.job_runs_sql_repo
     dependencies.repos -> adapter.outbound.sql.engine_factory
 
 [importlinter:contract:inbound-outbound-separation]
@@ -63,12 +63,12 @@ source_modules =
 forbidden_modules =
     adapter.outbound
 ignore_imports =
-    dependencies.repos -> adapter.outbound.job_run.k8s.k8s_job_runs_repo
-    dependencies.repos -> adapter.outbound.job_run.k8s.k8s_job_run_executor
-    dependencies.repos -> adapter.outbound.job.in_memory_jobs_repo
-    dependencies.repos -> adapter.outbound.job.sql.sql_jobs_repo
-    dependencies.repos -> adapter.outbound.job_run.in_memory_job_runs_repo
-    dependencies.repos -> adapter.outbound.job_run.sql.sql_job_runs_repo
+    dependencies.repos -> adapter.outbound.job_run.k8s.job_runs_k8s_repo
+    dependencies.repos -> adapter.outbound.job_run.k8s.job_run_k8s_executor
+    dependencies.repos -> adapter.outbound.job.jobs_in_memory_repo
+    dependencies.repos -> adapter.outbound.job.sql.jobs_sql_repo
+    dependencies.repos -> adapter.outbound.job_run.job_runs_in_memory_repo
+    dependencies.repos -> adapter.outbound.job_run.sql.job_runs_sql_repo
     dependencies.repos -> adapter.outbound.sql.engine_factory
 
 [importlinter:contract:outbound-inbound-separation]

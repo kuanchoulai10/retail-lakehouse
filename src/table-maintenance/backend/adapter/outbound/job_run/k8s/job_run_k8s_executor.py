@@ -20,7 +20,7 @@ _PLURAL_SPARK = "sparkapplications"
 _PLURAL_SCHEDULED = "scheduledsparkapplications"
 
 
-class K8sJobRunExecutor(JobRunExecutor):
+class JobRunK8sExecutor(JobRunExecutor):
     """Triggers a JobRun by creating a SparkApplication (or ScheduledSparkApplication) in K8s."""
 
     def __init__(self, api: CustomObjectsApi, settings: AppSettings) -> None:

@@ -10,13 +10,13 @@ from application.port.inbound import (
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.job.jobs_repo import BaseJobsRepo
+    from application.port.outbound.job.jobs_repo import JobsRepo
 
 
 class ListJobsService(ListJobsUseCase):
     """Implements ListJobsUseCase by delegating to the jobs repository."""
 
-    def __init__(self, repo: BaseJobsRepo) -> None:
+    def __init__(self, repo: JobsRepo) -> None:
         self._repo = repo
 
     def execute(self, request: ListJobsInput) -> ListJobsOutput:

@@ -7,13 +7,13 @@ from application.exceptions import JobRunNotFoundError as AppJobRunNotFoundError
 from application.port.inbound import GetJobRunInput, GetJobRunOutput, GetJobRunUseCase
 
 if TYPE_CHECKING:
-    from application.port.outbound.job_run.job_runs_repo import BaseJobRunsRepo
+    from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 
 
 class GetJobRunService(GetJobRunUseCase):
     """Retrieves a single JobRun by id."""
 
-    def __init__(self, repo: BaseJobRunsRepo) -> None:
+    def __init__(self, repo: JobRunsRepo) -> None:
         self._repo = repo
 
     def execute(self, request: GetJobRunInput) -> GetJobRunOutput:

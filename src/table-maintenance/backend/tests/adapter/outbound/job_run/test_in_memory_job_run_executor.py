@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from adapter.outbound.job_run.in_memory_job_run_executor import InMemoryJobRunExecutor
+from adapter.outbound.job_run.job_run_in_memory_executor import JobRunInMemoryExecutor
 from application.domain.model.job import Job, JobId, JobType
 from application.domain.model.job_run import JobRunStatus
 from application.port.outbound.job_run.job_run_executor import JobRunExecutor
@@ -17,28 +17,28 @@ def _make_job(job_id: str = "job-1") -> Job:
 
 
 def test_is_subclass_of_job_run_executor():
-    assert issubclass(InMemoryJobRunExecutor, JobRunExecutor)
+    assert issubclass(JobRunInMemoryExecutor, JobRunExecutor)
 
 
 def test_trigger_returns_job_run_with_status_pending():
-    executor = InMemoryJobRunExecutor()
+    executor = JobRunInMemoryExecutor()
     run = executor.trigger(_make_job())
     assert run.status == JobRunStatus.PENDING
 
 
 def test_trigger_links_run_to_job_id():
-    executor = InMemoryJobRunExecutor()
+    executor = JobRunInMemoryExecutor()
     run = executor.trigger(_make_job("job-xyz"))
     assert run.job_id.value == "job-xyz"
 
 
 def test_trigger_records_run_for_later_retrieval():
-    executor = InMemoryJobRunExecutor()
+    executor = JobRunInMemoryExecutor()
     run = executor.trigger(_make_job("job-1"))
     assert run in executor.triggered_runs
 
 
 def test_trigger_sets_started_at():
-    executor = InMemoryJobRunExecutor()
+    executor = JobRunInMemoryExecutor()
     run = executor.trigger(_make_job())
     assert run.started_at is not None

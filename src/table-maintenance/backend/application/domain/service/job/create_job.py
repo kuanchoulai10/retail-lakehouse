@@ -12,7 +12,7 @@ from application.port.inbound import (
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.job.jobs_repo import BaseJobsRepo
+    from application.port.outbound.job.jobs_repo import JobsRepo
 
 _CONFIG_BY_TYPE = {
     "expire_snapshots": "expire_snapshots",
@@ -25,7 +25,7 @@ _CONFIG_BY_TYPE = {
 class CreateJobService(CreateJobUseCase):
     """Creates a Job definition only. Triggering a run is a separate use case."""
 
-    def __init__(self, repo: BaseJobsRepo) -> None:
+    def __init__(self, repo: JobsRepo) -> None:
         self._repo = repo
 
     def execute(self, request: CreateJobInput) -> CreateJobOutput:

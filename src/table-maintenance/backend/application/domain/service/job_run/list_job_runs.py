@@ -11,13 +11,13 @@ from application.port.inbound import (
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.job_run.job_runs_repo import BaseJobRunsRepo
+    from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 
 
 class ListJobRunsService(ListJobRunsUseCase):
     """Lists all runs for a given Job."""
 
-    def __init__(self, repo: BaseJobRunsRepo) -> None:
+    def __init__(self, repo: JobRunsRepo) -> None:
         self._repo = repo
 
     def execute(self, request: ListJobRunsInput) -> ListJobRunsOutput:

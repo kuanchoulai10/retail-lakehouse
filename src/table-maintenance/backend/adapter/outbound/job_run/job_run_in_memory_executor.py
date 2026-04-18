@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from application.domain.model.job import Job
 
 
-class InMemoryJobRunExecutor(JobRunExecutor):
+class JobRunInMemoryExecutor(JobRunExecutor):
     """Test double for JobRunExecutor. Records every triggered run."""
 
     def __init__(self) -> None:

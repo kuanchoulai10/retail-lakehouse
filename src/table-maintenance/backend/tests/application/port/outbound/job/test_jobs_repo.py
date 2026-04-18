@@ -1,6 +1,6 @@
 import pytest
 from application.domain import JobNotFoundError
-from application.port.outbound.job.jobs_repo import BaseJobsRepo
+from application.port.outbound.job.jobs_repo import JobsRepo
 
 
 def test_job_not_found_error_has_name():
@@ -16,12 +16,12 @@ def test_job_not_found_error_is_exception():
 
 def test_jobs_repo_cannot_be_instantiated():
     with pytest.raises(TypeError):
-        BaseJobsRepo()  # type: ignore[abstract]
+        JobsRepo()  # type: ignore[abstract]
 
 
 def test_jobs_repo_has_abstract_methods():
-    assert "create" in BaseJobsRepo.__abstractmethods__
-    assert "list_all" in BaseJobsRepo.__abstractmethods__
-    assert "get" in BaseJobsRepo.__abstractmethods__
-    assert "delete" in BaseJobsRepo.__abstractmethods__
-    assert "update" in BaseJobsRepo.__abstractmethods__
+    assert "create" in JobsRepo.__abstractmethods__
+    assert "list_all" in JobsRepo.__abstractmethods__
+    assert "get" in JobsRepo.__abstractmethods__
+    assert "delete" in JobsRepo.__abstractmethods__
+    assert "update" in JobsRepo.__abstractmethods__

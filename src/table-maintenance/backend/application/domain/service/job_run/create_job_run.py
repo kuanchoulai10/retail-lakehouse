@@ -13,13 +13,13 @@ from application.port.inbound import (
 
 if TYPE_CHECKING:
     from application.port.outbound.job_run.job_run_executor import JobRunExecutor
-    from application.port.outbound.job.jobs_repo import BaseJobsRepo
+    from application.port.outbound.job.jobs_repo import JobsRepo
 
 
 class CreateJobRunService(CreateJobRunUseCase):
     """Triggers a JobRun via the executor — only if the Job is enabled."""
 
-    def __init__(self, repo: BaseJobsRepo, executor: JobRunExecutor) -> None:
+    def __init__(self, repo: JobsRepo, executor: JobRunExecutor) -> None:
         self._repo = repo
         self._executor = executor
 

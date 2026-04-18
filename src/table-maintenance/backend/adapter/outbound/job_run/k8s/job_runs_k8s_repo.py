@@ -7,7 +7,7 @@ from kubernetes.client.exceptions import ApiException
 from adapter.outbound.job_run.k8s.status_mapper import status_from_k8s
 from application.domain.model.job import JobId
 from application.domain.model.job_run import JobRun, JobRunId, JobRunNotFoundError
-from application.port.outbound.job_run.job_runs_repo import BaseJobRunsRepo
+from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 
 if TYPE_CHECKING:
     from kubernetes.client import CustomObjectsApi
@@ -33,7 +33,7 @@ def _to_job_run(resource: dict) -> JobRun:
     )
 
 
-class K8sJobRunsRepo(BaseJobRunsRepo):
+class JobRunsK8sRepo(JobRunsRepo):
     """Read-only view over JobRuns backed by K8s SparkApplication resources."""
 
     def __init__(self, api: CustomObjectsApi, settings: AppSettings) -> None:
@@ -42,7 +42,7 @@ class K8sJobRunsRepo(BaseJobRunsRepo):
 
     def create(self, entity: JobRun) -> JobRun:
         raise NotImplementedError(
-            "K8sJobRunsRepo is read-only; runs are created via JobRunExecutor.trigger()"
+            "JobRunsK8sRepo is read-only; runs are created via JobRunExecutor.trigger()"
         )
 
     def get(self, run_id: JobRunId) -> JobRun:

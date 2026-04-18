@@ -8,13 +8,13 @@ from application.exceptions import JobNotFoundError as AppJobNotFoundError
 from application.port.inbound import UpdateJobInput, UpdateJobOutput, UpdateJobUseCase
 
 if TYPE_CHECKING:
-    from application.port.outbound.job.jobs_repo import BaseJobsRepo
+    from application.port.outbound.job.jobs_repo import JobsRepo
 
 
 class UpdateJobService(UpdateJobUseCase):
     """Applies a partial update to an existing Job definition."""
 
-    def __init__(self, repo: BaseJobsRepo) -> None:
+    def __init__(self, repo: JobsRepo) -> None:
         self._repo = repo
 
     def execute(self, request: UpdateJobInput) -> UpdateJobOutput:

@@ -8,7 +8,7 @@ from adapter.outbound.job_run.sql.job_run_to_values import job_run_to_values
 from adapter.outbound.job_run.sql.job_runs_table import job_runs_table
 from adapter.outbound.job_run.sql.row_to_job_run import row_to_job_run
 from application.domain.model.job_run import JobRunNotFoundError
-from application.port.outbound.job_run.job_runs_repo import BaseJobRunsRepo
+from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine
@@ -17,8 +17,8 @@ if TYPE_CHECKING:
     from application.domain.model.job_run import JobRun, JobRunId
 
 
-class SqlJobRunsRepo(BaseJobRunsRepo):
-    """BaseJobRunsRepo backed by a SQLAlchemy Engine."""
+class JobRunsSqlRepo(JobRunsRepo):
+    """JobRunsRepo backed by a SQLAlchemy Engine."""
 
     def __init__(self, engine: Engine) -> None:
         self._engine = engine

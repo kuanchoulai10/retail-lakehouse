@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 
 import pytest
 from base import Repository
-from adapter.outbound.job.in_memory_jobs_repo import InMemoryJobsRepo
+from adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
 from application.domain import JobNotFoundError, JobType
 from application.domain.model.job import Job, JobId
 
@@ -24,11 +24,11 @@ def _make_job(
 
 
 def test_is_subclass_of_repository():
-    assert issubclass(InMemoryJobsRepo, Repository)
+    assert issubclass(JobsInMemoryRepo, Repository)
 
 
 def test_create_stores_and_returns_job():
-    repo = InMemoryJobsRepo()
+    repo = JobsInMemoryRepo()
     job = _make_job(job_id="abc1234567")
     result = repo.create(job)
     assert result == job
@@ -36,19 +36,19 @@ def test_create_stores_and_returns_job():
 
 
 def test_list_all_empty():
-    repo = InMemoryJobsRepo()
+    repo = JobsInMemoryRepo()
     assert repo.list_all() == []
 
 
 def test_list_all_returns_created_jobs():
-    repo = InMemoryJobsRepo()
+    repo = JobsInMemoryRepo()
     repo.create(_make_job())
     repo.create(_make_job())
     assert len(repo.list_all()) == 2
 
 
 def test_get_returns_created_job():
-    repo = InMemoryJobsRepo()
+    repo = JobsInMemoryRepo()
     job = _make_job(job_id="abc1234567")
     repo.create(job)
     fetched = repo.get(JobId(value="abc1234567"))
@@ -56,14 +56,14 @@ def test_get_returns_created_job():
 
 
 def test_get_raises_not_found():
-    repo = InMemoryJobsRepo()
+    repo = JobsInMemoryRepo()
     with pytest.raises(JobNotFoundError) as exc_info:
         repo.get(JobId(value="nonexistent"))
     assert exc_info.value.name == "nonexistent"
 
 
 def test_delete_removes_job():
-    repo = InMemoryJobsRepo()
+    repo = JobsInMemoryRepo()
     job = _make_job(job_id="abc1234567")
     repo.create(job)
     repo.delete(JobId(value="abc1234567"))
@@ -71,13 +71,13 @@ def test_delete_removes_job():
 
 
 def test_delete_raises_not_found():
-    repo = InMemoryJobsRepo()
+    repo = JobsInMemoryRepo()
     with pytest.raises(JobNotFoundError):
         repo.delete(JobId(value="nonexistent"))
 
 
 def test_update_replaces_existing_job():
-    repo = InMemoryJobsRepo()
+    repo = JobsInMemoryRepo()
     original = _make_job(job_id="abc1234567", enabled=False)
     repo.create(original)
 
@@ -90,7 +90,7 @@ def test_update_replaces_existing_job():
 
 
 def test_update_raises_not_found():
-    repo = InMemoryJobsRepo()
+    repo = JobsInMemoryRepo()
     missing = _make_job(job_id="ghost")
     with pytest.raises(JobNotFoundError):
         repo.update(missing)

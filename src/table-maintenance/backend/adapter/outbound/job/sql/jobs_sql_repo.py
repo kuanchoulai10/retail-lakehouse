@@ -8,7 +8,7 @@ from adapter.outbound.job.sql.job_to_values import job_to_values
 from adapter.outbound.job.sql.jobs_table import jobs_table
 from adapter.outbound.job.sql.row_to_job import row_to_job
 from application.domain.model.job import JobNotFoundError
-from application.port.outbound.job.jobs_repo import BaseJobsRepo
+from application.port.outbound.job.jobs_repo import JobsRepo
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine
@@ -17,8 +17,8 @@ if TYPE_CHECKING:
     from base.entity_id import EntityId
 
 
-class SqlJobsRepo(BaseJobsRepo):
-    """BaseJobsRepo backed by a SQLAlchemy Engine (Postgres / SQLite / MySQL)."""
+class JobsSqlRepo(JobsRepo):
+    """JobsRepo backed by a SQLAlchemy Engine (Postgres / SQLite / MySQL)."""
 
     def __init__(self, engine: Engine) -> None:
         self._engine = engine

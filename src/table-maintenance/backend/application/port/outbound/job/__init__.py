@@ -1,3 +1,3 @@
-from application.port.outbound.job.jobs_repo import BaseJobsRepo
+from application.port.outbound.job.jobs_repo import JobsRepo
 
-__all__ = ["BaseJobsRepo"]
+__all__ = ["JobsRepo"]

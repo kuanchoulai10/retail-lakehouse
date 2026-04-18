@@ -3,14 +3,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from application.domain.model.job_run import JobRunNotFoundError
-from application.port.outbound.job_run.job_runs_repo import BaseJobRunsRepo
+from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 
 if TYPE_CHECKING:
     from application.domain.model.job import JobId
     from application.domain.model.job_run import JobRun, JobRunId
 
 
-class InMemoryJobRunsRepo(BaseJobRunsRepo):
+class JobRunsInMemoryRepo(JobRunsRepo):
     def __init__(self) -> None:
         self._runs: dict[str, JobRun] = {}
 

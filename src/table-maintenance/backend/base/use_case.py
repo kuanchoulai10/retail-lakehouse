@@ -22,7 +22,7 @@ class UseCase[TInput, TOutput](ABC):
     Usage::
 
         class CreateJob(UseCase[JobRequest, JobResponse]):
-            def __init__(self, repo: BaseJobsRepo) -> None:
+            def __init__(self, repo: JobsRepo) -> None:
                 self.repo = repo
 
             def execute(self, input: JobRequest) -> JobResponse:

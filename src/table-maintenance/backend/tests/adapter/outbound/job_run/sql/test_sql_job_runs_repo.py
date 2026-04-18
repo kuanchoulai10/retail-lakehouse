@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import Engine, insert
 
 from adapter.outbound.job.sql.jobs_table import jobs_table
-from adapter.outbound.job_run.sql.sql_job_runs_repo import SqlJobRunsRepo
+from adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
 from application.domain.model.job import JobId
 from application.domain.model.job_run import (
     JobRun,
@@ -14,7 +14,7 @@ from application.domain.model.job_run import (
     JobRunNotFoundError,
     JobRunStatus,
 )
-from application.port.outbound.job_run.job_runs_repo import BaseJobRunsRepo
+from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 
 NOW = datetime(2026, 4, 10, 12, 0, tzinfo=UTC)
 
@@ -53,13 +53,13 @@ def _make_run(
 
 
 def test_is_subclass_of_base_job_runs_repo(sqlite_engine):
-    repo = SqlJobRunsRepo(sqlite_engine)
-    assert isinstance(repo, BaseJobRunsRepo)
+    repo = JobRunsSqlRepo(sqlite_engine)
+    assert isinstance(repo, JobRunsRepo)
 
 
 def test_create_and_get_roundtrip(sqlite_engine):
     _insert_parent_job(sqlite_engine, "job-1")
-    repo = SqlJobRunsRepo(sqlite_engine)
+    repo = JobRunsSqlRepo(sqlite_engine)
     run = _make_run("run-1", "job-1")
     result = repo.create(run)
     assert result == run
@@ -68,7 +68,7 @@ def test_create_and_get_roundtrip(sqlite_engine):
 
 
 def test_get_raises_not_found(sqlite_engine):
-    repo = SqlJobRunsRepo(sqlite_engine)
+    repo = JobRunsSqlRepo(sqlite_engine)
     with pytest.raises(JobRunNotFoundError) as exc_info:
         repo.get(JobRunId(value="missing"))
     assert exc_info.value.run_id == "missing"
@@ -77,7 +77,7 @@ def test_get_raises_not_found(sqlite_engine):
 def test_list_for_job_filters_correctly(sqlite_engine):
     _insert_parent_job(sqlite_engine, "job-1")
     _insert_parent_job(sqlite_engine, "job-2")
-    repo = SqlJobRunsRepo(sqlite_engine)
+    repo = JobRunsSqlRepo(sqlite_engine)
     repo.create(_make_run("run-1", "job-1"))
     repo.create(_make_run("run-2", "job-1"))
     repo.create(_make_run("run-3", "job-2"))
@@ -86,27 +86,27 @@ def test_list_for_job_filters_correctly(sqlite_engine):
 
 
 def test_list_for_job_empty_for_unknown_job(sqlite_engine):
-    repo = SqlJobRunsRepo(sqlite_engine)
+    repo = JobRunsSqlRepo(sqlite_engine)
     assert repo.list_for_job(JobId(value="no-such-job")) == []
 
 
 def test_list_all(sqlite_engine):
     _insert_parent_job(sqlite_engine, "job-1")
     _insert_parent_job(sqlite_engine, "job-2")
-    repo = SqlJobRunsRepo(sqlite_engine)
+    repo = JobRunsSqlRepo(sqlite_engine)
     repo.create(_make_run("run-1", "job-1"))
     repo.create(_make_run("run-2", "job-2"))
     assert len(repo.list_all()) == 2
 
 
 def test_list_all_empty(sqlite_engine):
-    repo = SqlJobRunsRepo(sqlite_engine)
+    repo = JobRunsSqlRepo(sqlite_engine)
     assert repo.list_all() == []
 
 
 def test_status_roundtrips(sqlite_engine):
     _insert_parent_job(sqlite_engine, "job-1")
-    repo = SqlJobRunsRepo(sqlite_engine)
+    repo = JobRunsSqlRepo(sqlite_engine)
     for status in JobRunStatus:
         run_id = f"run-{status.value}"
         repo.create(_make_run(run_id, "job-1", status=status))
@@ -117,7 +117,7 @@ def test_status_roundtrips(sqlite_engine):
 
 def test_nullable_timestamps_roundtrip(sqlite_engine):
     _insert_parent_job(sqlite_engine, "job-1")
-    repo = SqlJobRunsRepo(sqlite_engine)
+    repo = JobRunsSqlRepo(sqlite_engine)
     repo.create(_make_run("run-1", "job-1"))
     fetched = repo.get(JobRunId(value="run-1"))
     assert fetched.started_at is None
@@ -126,7 +126,7 @@ def test_nullable_timestamps_roundtrip(sqlite_engine):
 
 def test_timestamps_roundtrip(sqlite_engine):
     _insert_parent_job(sqlite_engine, "job-1")
-    repo = SqlJobRunsRepo(sqlite_engine)
+    repo = JobRunsSqlRepo(sqlite_engine)
     run = _make_run(
         "run-1",
         "job-1",

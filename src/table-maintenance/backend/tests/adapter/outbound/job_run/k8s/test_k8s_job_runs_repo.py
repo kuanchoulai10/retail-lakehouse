@@ -3,10 +3,10 @@ from unittest.mock import MagicMock
 import pytest
 from kubernetes.client.exceptions import ApiException
 
-from adapter.outbound.job_run.k8s.k8s_job_runs_repo import K8sJobRunsRepo
+from adapter.outbound.job_run.k8s.job_runs_k8s_repo import JobRunsK8sRepo
 from application.domain.model.job import JobId
 from application.domain.model.job_run import JobRunId, JobRunNotFoundError, JobRunStatus
-from application.port.outbound.job_run.job_runs_repo import BaseJobRunsRepo
+from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 from configs import AppSettings
 
 SETTINGS = AppSettings()
@@ -36,14 +36,14 @@ MOCK_SCHEDULED = {
 
 def test_is_subclass_of_base_job_runs_repo():
     api = MagicMock()
-    repo = K8sJobRunsRepo(api, SETTINGS)
-    assert isinstance(repo, BaseJobRunsRepo)
+    repo = JobRunsK8sRepo(api, SETTINGS)
+    assert isinstance(repo, JobRunsRepo)
 
 
 def test_get_returns_job_run_from_spark_app():
     api = MagicMock()
     api.get_namespaced_custom_object.return_value = MOCK_SPARK_APP
-    repo = K8sJobRunsRepo(api, SETTINGS)
+    repo = JobRunsK8sRepo(api, SETTINGS)
 
     run = repo.get(JobRunId(value="job-1-abc"))
 
@@ -58,7 +58,7 @@ def test_get_falls_back_to_scheduled():
         ApiException(status=404),
         MOCK_SCHEDULED,
     ]
-    repo = K8sJobRunsRepo(api, SETTINGS)
+    repo = JobRunsK8sRepo(api, SETTINGS)
 
     run = repo.get(JobRunId(value="job-2"))
 
@@ -70,7 +70,7 @@ def test_get_falls_back_to_scheduled():
 def test_get_raises_job_run_not_found():
     api = MagicMock()
     api.get_namespaced_custom_object.side_effect = ApiException(status=404)
-    repo = K8sJobRunsRepo(api, SETTINGS)
+    repo = JobRunsK8sRepo(api, SETTINGS)
 
     with pytest.raises(JobRunNotFoundError) as exc_info:
         repo.get(JobRunId(value="missing"))
@@ -83,7 +83,7 @@ def test_list_for_job_filters_by_label_selector():
         {"items": [MOCK_SPARK_APP]},
         {"items": []},
     ]
-    repo = K8sJobRunsRepo(api, SETTINGS)
+    repo = JobRunsK8sRepo(api, SETTINGS)
 
     runs = repo.list_for_job(JobId(value="job-1"))
 
@@ -98,7 +98,7 @@ def test_list_all_merges_both_kinds():
         {"items": [MOCK_SPARK_APP]},
         {"items": [MOCK_SCHEDULED]},
     ]
-    repo = K8sJobRunsRepo(api, SETTINGS)
+    repo = JobRunsK8sRepo(api, SETTINGS)
 
     runs = repo.list_all()
 

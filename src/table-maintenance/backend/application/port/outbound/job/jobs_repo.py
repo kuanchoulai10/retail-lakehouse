@@ -7,7 +7,7 @@ from base.repository import Repository
 from application.domain.model.job import Job
 
 
-class BaseJobsRepo(Repository[Job]):
+class JobsRepo(Repository[Job]):
     """Repository for Job definitions.
 
     Extends the generic CRUD Repository with an `update` operation so Jobs

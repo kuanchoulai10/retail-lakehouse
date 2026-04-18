@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from application.domain.model.job_run import JobRun, JobRunId
 
 
-class BaseJobRunsRepo(ABC):
+class JobRunsRepo(ABC):
     """Port over JobRun execution instances."""
 
     @abstractmethod
