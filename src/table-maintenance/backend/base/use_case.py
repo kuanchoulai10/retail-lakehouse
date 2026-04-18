@@ -1,3 +1,5 @@
+"""Define the UseCase abstract base class."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -30,4 +32,5 @@ class UseCase[TInput, TOutput](ABC):
     """
 
     @abstractmethod
-    def execute(self, request: TInput) -> TOutput: ...
+    def execute(self, request: TInput) -> TOutput:
+        """Execute the use case with the given request and return a result."""

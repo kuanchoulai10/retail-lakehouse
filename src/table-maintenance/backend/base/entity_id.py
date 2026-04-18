@@ -1,3 +1,5 @@
+"""Define the EntityId base class."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -28,4 +30,5 @@ class EntityId(ValueObject):
     value: str
 
     def __str__(self) -> str:
+        """Return the raw identifier string."""
         return self.value

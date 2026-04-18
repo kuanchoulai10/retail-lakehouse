@@ -1,3 +1,5 @@
+"""Define the AggregateRoot base class."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -38,14 +40,17 @@ class AggregateRoot[ID: EntityId](Entity[ID]):
     """
 
     def __init_subclass__(cls, **kwargs: object) -> None:
+        """Initialize subclass and forward keyword arguments to super."""
         super().__init_subclass__(**kwargs)
 
     def register_event(self, event: DomainEvent) -> None:
+        """Append a domain event to be collected later."""
         if not hasattr(self, "_events"):
             self._events: list[DomainEvent] = []
         self._events.append(event)
 
     def collect_events(self) -> list[DomainEvent]:
+        """Return all accumulated events and clear the internal list."""
         if not hasattr(self, "_events"):
             return []
         events = list(self._events)
