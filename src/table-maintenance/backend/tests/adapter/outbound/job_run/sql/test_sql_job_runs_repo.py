@@ -1,3 +1,5 @@
+"""Tests for JobRunsSqlRepo."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -20,6 +22,7 @@ NOW = datetime(2026, 4, 10, 12, 0, tzinfo=UTC)
 
 
 def _insert_parent_job(engine: Engine, job_id: str) -> None:
+    """Insert a parent job row required by the foreign key constraint."""
     with engine.begin() as conn:
         conn.execute(
             insert(jobs_table).values(
@@ -43,6 +46,7 @@ def _make_run(
     started_at: datetime | None = None,
     finished_at: datetime | None = None,
 ) -> JobRun:
+    """Provide a sample JobRun entity with optional overrides."""
     return JobRun(
         id=JobRunId(value=run_id),
         job_id=JobId(value=job_id),
@@ -53,11 +57,13 @@ def _make_run(
 
 
 def test_is_subclass_of_base_job_runs_repo(sqlite_engine):
+    """Verify that JobRunsSqlRepo implements the JobRunsRepo interface."""
     repo = JobRunsSqlRepo(sqlite_engine)
     assert isinstance(repo, JobRunsRepo)
 
 
 def test_create_and_get_roundtrip(sqlite_engine):
+    """Verify that a created run can be retrieved by id."""
     _insert_parent_job(sqlite_engine, "job-1")
     repo = JobRunsSqlRepo(sqlite_engine)
     run = _make_run("run-1", "job-1")
@@ -68,6 +74,7 @@ def test_create_and_get_roundtrip(sqlite_engine):
 
 
 def test_get_raises_not_found(sqlite_engine):
+    """Verify that get raises JobRunNotFoundError for a missing id."""
     repo = JobRunsSqlRepo(sqlite_engine)
     with pytest.raises(JobRunNotFoundError) as exc_info:
         repo.get(JobRunId(value="missing"))
@@ -75,6 +82,7 @@ def test_get_raises_not_found(sqlite_engine):
 
 
 def test_list_for_job_filters_correctly(sqlite_engine):
+    """Verify that list_for_job returns only runs belonging to the given job."""
     _insert_parent_job(sqlite_engine, "job-1")
     _insert_parent_job(sqlite_engine, "job-2")
     repo = JobRunsSqlRepo(sqlite_engine)
@@ -86,11 +94,13 @@ def test_list_for_job_filters_correctly(sqlite_engine):
 
 
 def test_list_for_job_empty_for_unknown_job(sqlite_engine):
+    """Verify that list_for_job returns an empty list for an unknown job."""
     repo = JobRunsSqlRepo(sqlite_engine)
     assert repo.list_for_job(JobId(value="no-such-job")) == []
 
 
 def test_list_all(sqlite_engine):
+    """Verify that list_all returns every stored run."""
     _insert_parent_job(sqlite_engine, "job-1")
     _insert_parent_job(sqlite_engine, "job-2")
     repo = JobRunsSqlRepo(sqlite_engine)
@@ -100,11 +110,13 @@ def test_list_all(sqlite_engine):
 
 
 def test_list_all_empty(sqlite_engine):
+    """Verify that list_all returns an empty list when no runs exist."""
     repo = JobRunsSqlRepo(sqlite_engine)
     assert repo.list_all() == []
 
 
 def test_status_roundtrips(sqlite_engine):
+    """Verify that all JobRunStatus values roundtrip through the database."""
     _insert_parent_job(sqlite_engine, "job-1")
     repo = JobRunsSqlRepo(sqlite_engine)
     for status in JobRunStatus:
@@ -116,6 +128,7 @@ def test_status_roundtrips(sqlite_engine):
 
 
 def test_nullable_timestamps_roundtrip(sqlite_engine):
+    """Verify that null timestamps roundtrip through the database."""
     _insert_parent_job(sqlite_engine, "job-1")
     repo = JobRunsSqlRepo(sqlite_engine)
     repo.create(_make_run("run-1", "job-1"))
@@ -125,6 +138,7 @@ def test_nullable_timestamps_roundtrip(sqlite_engine):
 
 
 def test_timestamps_roundtrip(sqlite_engine):
+    """Verify that non-null timestamps roundtrip through the database."""
     _insert_parent_job(sqlite_engine, "job-1")
     repo = JobRunsSqlRepo(sqlite_engine)
     run = _make_run(

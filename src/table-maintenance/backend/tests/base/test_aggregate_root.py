@@ -7,16 +7,22 @@ from base import AggregateRoot, DomainEvent, EntityId
 
 @dataclass(frozen=True)
 class OrderId(EntityId):
+    """Test stub for EntityId."""
+
     pass
 
 
 @dataclass(frozen=True)
 class OrderCreated(DomainEvent):
+    """Test stub for DomainEvent."""
+
     order_id: str
 
 
 @dataclass(eq=False)
 class Order(AggregateRoot[OrderId]):
+    """Test stub for AggregateRoot."""
+
     id: OrderId
     total: int
 
@@ -29,11 +35,13 @@ def test_aggregate_root_is_entity():
 
 
 def test_no_events_initially():
+    """Verify that a new AggregateRoot has no domain events."""
     order = Order(id=OrderId("1"), total=100)
     assert order.collect_events() == []
 
 
 def test_register_and_collect_events():
+    """Verify that registered events are returned by collect_events."""
     order = Order(id=OrderId("1"), total=100)
     event = OrderCreated(order_id="1")
     order.register_event(event)

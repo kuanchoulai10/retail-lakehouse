@@ -1,3 +1,5 @@
+"""Provide the build_engine factory function."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -13,6 +15,7 @@ if TYPE_CHECKING:
 
 
 def build_engine(settings: AppSettings) -> Engine:
+    """Create a SQLAlchemy engine from the given backend and settings."""
     if settings.database_backend == DatabaseBackend.SQLITE:
         return create_engine(f"sqlite:///{settings.sqlite.db_path}")
     if settings.database_backend == DatabaseBackend.POSTGRES:

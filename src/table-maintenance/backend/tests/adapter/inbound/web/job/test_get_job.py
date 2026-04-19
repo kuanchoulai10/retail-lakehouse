@@ -1,3 +1,5 @@
+"""Tests for get job endpoint."""
+
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
@@ -10,6 +12,7 @@ from application.port.inbound import GetJobOutput
 
 
 def _make_client(use_case: MagicMock) -> TestClient:
+    """Provide a test client with the get-job use case overridden."""
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_get_job_use_case] = lambda: use_case
@@ -26,6 +29,7 @@ SAMPLE_RESULT = GetJobOutput(
 
 
 def test_get_job_returns_200():
+    """Return 200 with job details when the job exists."""
     use_case = MagicMock()
     use_case.execute.return_value = SAMPLE_RESULT
     client = _make_client(use_case)
@@ -40,6 +44,7 @@ def test_get_job_returns_200():
 
 
 def test_get_job_not_found_returns_404():
+    """Return 404 when the requested job does not exist."""
     use_case = MagicMock()
     use_case.execute.side_effect = JobNotFoundError("nonexistent")
     client = _make_client(use_case)

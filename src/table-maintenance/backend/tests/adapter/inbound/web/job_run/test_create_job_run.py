@@ -1,3 +1,5 @@
+"""Tests for create job run endpoint."""
+
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
@@ -10,6 +12,7 @@ from application.port.inbound import CreateJobRunOutput
 
 
 def _make_client(use_case: MagicMock) -> TestClient:
+    """Provide a test client with the create-job-run use case overridden."""
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_create_job_run_use_case] = lambda: use_case
@@ -26,6 +29,7 @@ SAMPLE = CreateJobRunOutput(
 
 
 def test_post_run_returns_201():
+    """Return 201 with the created job run."""
     use_case = MagicMock()
     use_case.execute.return_value = SAMPLE
     client = _make_client(use_case)
@@ -36,6 +40,7 @@ def test_post_run_returns_201():
 
 
 def test_post_run_disabled_returns_409():
+    """Return 409 when the job is disabled."""
     use_case = MagicMock()
     use_case.execute.side_effect = JobDisabledError("abc1234567")
     client = _make_client(use_case)
@@ -46,6 +51,7 @@ def test_post_run_disabled_returns_409():
 
 
 def test_post_run_for_missing_job_returns_404():
+    """Return 404 when the parent job does not exist."""
     use_case = MagicMock()
     use_case.execute.side_effect = JobNotFoundError("ghost")
     client = _make_client(use_case)

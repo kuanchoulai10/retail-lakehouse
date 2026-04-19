@@ -1,3 +1,5 @@
+"""Domain entities, value objects, and exceptions."""
+
 from __future__ import annotations
 
 from application.domain.model.job import Job, JobId, JobNotFoundError, JobType

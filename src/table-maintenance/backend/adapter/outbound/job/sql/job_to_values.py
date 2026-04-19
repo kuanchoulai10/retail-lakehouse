@@ -1,3 +1,5 @@
+"""Provide the job_to_values serializer."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -7,6 +9,7 @@ if TYPE_CHECKING:
 
 
 def job_to_values(job: Job) -> dict[str, Any]:
+    """Convert a Job domain entity to a dict of SQL column values."""
     return {
         "id": job.id.value,
         "job_type": job.job_type.value,

@@ -1,3 +1,5 @@
+"""Define the ListJobsInput dataclass."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

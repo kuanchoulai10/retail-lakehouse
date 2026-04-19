@@ -1,3 +1,5 @@
+"""Tests for CreateJobRunService."""
+
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
@@ -16,6 +18,7 @@ from application.port.inbound import (
 
 
 def _enabled_job(job_id: str = "abc1234567") -> Job:
+    """Provide an enabled Job domain entity."""
     now = datetime.now(UTC)
     return Job(
         id=JobId(value=job_id),
@@ -27,6 +30,7 @@ def _enabled_job(job_id: str = "abc1234567") -> Job:
 
 
 def _disabled_job(job_id: str = "abc1234567") -> Job:
+    """Provide a disabled Job domain entity."""
     now = datetime.now(UTC)
     return Job(
         id=JobId(value=job_id),
@@ -38,6 +42,7 @@ def _disabled_job(job_id: str = "abc1234567") -> Job:
 
 
 def _run_for(job_id: str) -> JobRun:
+    """Provide a pending JobRun for the given job ID."""
     return JobRun(
         id=JobRunId(value=f"{job_id}-xyz"),
         job_id=JobId(value=job_id),
@@ -47,10 +52,12 @@ def _run_for(job_id: str) -> JobRun:
 
 
 def test_implements_use_case():
+    """Verify that CreateJobRunService implements CreateJobRunUseCase."""
     assert issubclass(CreateJobRunService, CreateJobRunUseCase)
 
 
 def test_triggers_executor_for_enabled_job():
+    """Verify that execute triggers the executor and returns output for an enabled job."""
     repo = MagicMock()
     repo.get.return_value = _enabled_job()
     executor = MagicMock()
@@ -65,6 +72,7 @@ def test_triggers_executor_for_enabled_job():
 
 
 def test_raises_disabled_when_job_disabled():
+    """Verify that execute raises JobDisabledError when the job is disabled."""
     repo = MagicMock()
     repo.get.return_value = _disabled_job()
     executor = MagicMock()
@@ -77,6 +85,7 @@ def test_raises_disabled_when_job_disabled():
 
 
 def test_raises_not_found_when_job_missing():
+    """Verify that execute raises AppJobNotFoundError when the job does not exist."""
     repo = MagicMock()
     repo.get.side_effect = JobNotFoundError("ghost")
     executor = MagicMock()

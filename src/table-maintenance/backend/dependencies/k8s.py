@@ -1,3 +1,5 @@
+"""Provide the Kubernetes API client dependency."""
+
 from __future__ import annotations
 
 from functools import lru_cache
@@ -12,6 +14,7 @@ if TYPE_CHECKING:
 
 @lru_cache
 def get_k8s_api() -> CustomObjectsApi:
+    """Return a cached Kubernetes CustomObjectsApi client."""
     from kubernetes.client import CustomObjectsApi
 
     try:

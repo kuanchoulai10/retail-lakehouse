@@ -1,3 +1,5 @@
+"""Define the GetJobRunService."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -14,9 +16,11 @@ class GetJobRunService(GetJobRunUseCase):
     """Retrieves a single JobRun by id."""
 
     def __init__(self, repo: JobRunsRepo) -> None:
+        """Initialize with the job runs repository."""
         self._repo = repo
 
     def execute(self, request: GetJobRunInput) -> GetJobRunOutput:
+        """Retrieve a job run by its identifier."""
         try:
             run = self._repo.get(JobRunId(value=request.run_id))
         except JobRunNotFoundError as e:

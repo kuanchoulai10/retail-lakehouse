@@ -1,1 +1,1 @@
-
+"""Job use case services."""

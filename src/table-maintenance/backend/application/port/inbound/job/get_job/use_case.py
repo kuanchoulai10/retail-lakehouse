@@ -1,3 +1,5 @@
+"""Define the GetJobUseCase interface."""
+
 from __future__ import annotations
 
 from base.use_case import UseCase

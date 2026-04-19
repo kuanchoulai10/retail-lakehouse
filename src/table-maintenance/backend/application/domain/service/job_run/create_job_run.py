@@ -1,3 +1,5 @@
+"""Define the CreateJobRunService."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -20,10 +22,12 @@ class CreateJobRunService(CreateJobRunUseCase):
     """Triggers a JobRun via the executor — only if the Job is enabled."""
 
     def __init__(self, repo: JobsRepo, executor: JobRunExecutor) -> None:
+        """Initialize with the jobs repository and job run executor."""
         self._repo = repo
         self._executor = executor
 
     def execute(self, request: CreateJobRunInput) -> CreateJobRunOutput:
+        """Trigger a new execution of the specified job."""
         try:
             job = self._repo.get(JobId(value=request.job_id))
         except JobNotFoundError as e:

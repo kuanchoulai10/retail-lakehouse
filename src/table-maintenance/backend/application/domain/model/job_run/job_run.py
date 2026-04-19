@@ -1,3 +1,5 @@
+"""Define the JobRun aggregate root."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

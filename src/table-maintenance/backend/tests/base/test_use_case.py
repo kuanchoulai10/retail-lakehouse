@@ -5,6 +5,7 @@ from base import UseCase
 
 
 def test_use_case_is_abstract():
+    """Verify that UseCase cannot be instantiated directly."""
     with pytest.raises(TypeError):
         UseCase()  # type: ignore[call-arg]
 

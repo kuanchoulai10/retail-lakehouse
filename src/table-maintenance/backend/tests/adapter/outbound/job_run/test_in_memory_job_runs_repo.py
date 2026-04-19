@@ -1,3 +1,5 @@
+"""Tests for JobRunsInMemoryRepo."""
+
 import pytest
 
 from adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
@@ -12,6 +14,7 @@ from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 
 
 def _make_run(run_id: str = "run-1", job_id: str = "job-1") -> JobRun:
+    """Provide a sample JobRun entity."""
     return JobRun(
         id=JobRunId(value=run_id),
         job_id=JobId(value=job_id),
@@ -20,10 +23,12 @@ def _make_run(run_id: str = "run-1", job_id: str = "job-1") -> JobRun:
 
 
 def test_is_subclass_of_base_job_runs_repo():
+    """Verify that JobRunsInMemoryRepo is a subclass of JobRunsRepo."""
     assert issubclass(JobRunsInMemoryRepo, JobRunsRepo)
 
 
 def test_get_returns_stored_run():
+    """Verify that get returns a previously stored run."""
     repo = JobRunsInMemoryRepo()
     run = _make_run()
     repo.create(run)
@@ -32,6 +37,7 @@ def test_get_returns_stored_run():
 
 
 def test_get_raises_not_found():
+    """Verify that get raises JobRunNotFoundError for a missing id."""
     repo = JobRunsInMemoryRepo()
     with pytest.raises(JobRunNotFoundError) as exc_info:
         repo.get(JobRunId(value="missing"))
@@ -39,6 +45,7 @@ def test_get_raises_not_found():
 
 
 def test_list_for_job_returns_only_matching_runs():
+    """Verify that list_for_job returns only runs for the given job."""
     repo = JobRunsInMemoryRepo()
     repo.create(_make_run("run-1", "job-1"))
     repo.create(_make_run("run-2", "job-1"))
@@ -49,6 +56,7 @@ def test_list_for_job_returns_only_matching_runs():
 
 
 def test_list_all_returns_every_run():
+    """Verify that list_all returns every stored run."""
     repo = JobRunsInMemoryRepo()
     repo.create(_make_run("run-1", "job-1"))
     repo.create(_make_run("run-2", "job-2"))

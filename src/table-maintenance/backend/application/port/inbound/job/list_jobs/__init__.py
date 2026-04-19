@@ -1,3 +1,5 @@
+"""ListJobs use case definition."""
+
 from application.port.inbound.job.list_jobs.input import ListJobsInput
 from application.port.inbound.job.list_jobs.output import (
     ListJobsOutput,

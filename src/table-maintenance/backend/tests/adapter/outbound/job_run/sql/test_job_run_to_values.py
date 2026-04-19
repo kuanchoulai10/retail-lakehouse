@@ -1,3 +1,5 @@
+"""Tests for job_run_to_values."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -8,6 +10,7 @@ from application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
 
 
 def test_serializes_all_fields():
+    """Verify that all fields are serialized to the expected dict."""
     run = JobRun(
         id=JobRunId(value="run-1"),
         job_id=JobId(value="job-1"),
@@ -26,6 +29,7 @@ def test_serializes_all_fields():
 
 
 def test_serializes_completed_run_with_finished_at():
+    """Verify that a completed run includes the finished_at timestamp."""
     run = JobRun(
         id=JobRunId(value="run-2"),
         job_id=JobId(value="job-1"),

@@ -1,3 +1,5 @@
+"""JobRun REST API endpoints."""
+
 from fastapi import APIRouter
 
 from adapter.inbound.web.job_run.create_job_run import router as create_run_router

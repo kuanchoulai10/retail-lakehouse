@@ -1,3 +1,5 @@
+"""Define the CreateJobService."""
+
 from __future__ import annotations
 
 import secrets
@@ -26,9 +28,11 @@ class CreateJobService(CreateJobUseCase):
     """Creates a Job definition only. Triggering a run is a separate use case."""
 
     def __init__(self, repo: JobsRepo) -> None:
+        """Initialize with the jobs repository."""
         self._repo = repo
 
     def execute(self, request: CreateJobInput) -> CreateJobOutput:
+        """Create a new job from the given input and persist it."""
         job_config = getattr(request, _CONFIG_BY_TYPE[request.job_type], None) or {}
         table = job_config.get("table", "")
         now = datetime.now(UTC)

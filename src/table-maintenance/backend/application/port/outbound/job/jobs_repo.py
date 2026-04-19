@@ -1,3 +1,5 @@
+"""Define the JobsRepo port interface."""
+
 from __future__ import annotations
 
 from abc import abstractmethod
@@ -15,4 +17,6 @@ class JobsRepo(Repository[Job]):
     """
 
     @abstractmethod
-    def update(self, entity: Job) -> Job: ...
+    def update(self, entity: Job) -> Job:
+        """Persist changes to an existing job and return the updated entity."""
+        ...

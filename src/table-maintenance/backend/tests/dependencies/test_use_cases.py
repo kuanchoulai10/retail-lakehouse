@@ -1,3 +1,5 @@
+"""Tests for use case dependency providers."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
@@ -26,36 +28,42 @@ from application.domain.service.job_run.list_job_runs import ListJobRunsService
 
 
 def test_get_create_job_use_case():
+    """Verify that get_create_job_use_case returns a CreateJobService."""
     repo = JobsInMemoryRepo()
     result = get_create_job_use_case(repo=repo)
     assert isinstance(result, CreateJobService)
 
 
 def test_get_delete_job_use_case():
+    """Verify that get_delete_job_use_case returns a DeleteJobService."""
     repo = JobsInMemoryRepo()
     result = get_delete_job_use_case(repo=repo)
     assert isinstance(result, DeleteJobService)
 
 
 def test_get_get_job_use_case():
+    """Verify that get_get_job_use_case returns a GetJobService."""
     repo = JobsInMemoryRepo()
     result = get_get_job_use_case(repo=repo)
     assert isinstance(result, GetJobService)
 
 
 def test_get_list_jobs_use_case():
+    """Verify that get_list_jobs_use_case returns a ListJobsService."""
     repo = JobsInMemoryRepo()
     result = get_list_jobs_use_case(repo=repo)
     assert isinstance(result, ListJobsService)
 
 
 def test_get_update_job_use_case():
+    """Verify that get_update_job_use_case returns an UpdateJobService."""
     repo = JobsInMemoryRepo()
     result = get_update_job_use_case(repo=repo)
     assert isinstance(result, UpdateJobService)
 
 
 def test_get_create_job_run_use_case():
+    """Verify that get_create_job_run_use_case returns a CreateJobRunService."""
     repo = JobsInMemoryRepo()
     executor = JobRunInMemoryExecutor()
     result = get_create_job_run_use_case(repo=repo, executor=executor)
@@ -63,6 +71,7 @@ def test_get_create_job_run_use_case():
 
 
 def test_get_create_job_run_use_case_injects_collaborators():
+    """Verify that get_create_job_run_use_case injects repo and executor into service."""
     repo = MagicMock()
     executor = MagicMock()
     service = get_create_job_run_use_case(repo=repo, executor=executor)
@@ -72,12 +81,14 @@ def test_get_create_job_run_use_case_injects_collaborators():
 
 
 def test_get_list_job_runs_use_case():
+    """Verify that get_list_job_runs_use_case returns a ListJobRunsService."""
     repo = JobRunsInMemoryRepo()
     result = get_list_job_runs_use_case(repo=repo)
     assert isinstance(result, ListJobRunsService)
 
 
 def test_get_get_job_run_use_case():
+    """Verify that get_get_job_run_use_case returns a GetJobRunService."""
     repo = JobRunsInMemoryRepo()
     result = get_get_job_run_use_case(repo=repo)
     assert isinstance(result, GetJobRunService)

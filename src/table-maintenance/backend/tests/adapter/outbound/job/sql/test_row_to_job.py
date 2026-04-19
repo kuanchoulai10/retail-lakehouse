@@ -1,3 +1,5 @@
+"""Tests for row_to_job."""
+
 from datetime import UTC, datetime
 
 from adapter.outbound.job.sql.row_to_job import row_to_job
@@ -5,6 +7,7 @@ from application.domain.model.job import JobId, JobType
 
 
 def test_row_maps_to_job():
+    """Verify that a row dict is correctly mapped to a Job entity."""
     row = {
         "id": "abc1234567",
         "job_type": "rewrite_data_files",
@@ -31,6 +34,7 @@ def test_row_maps_to_job():
 
 
 def test_row_preserves_cron():
+    """Verify that a non-null cron value is preserved during mapping."""
     row = {
         "id": "x",
         "job_type": "rewrite_data_files",

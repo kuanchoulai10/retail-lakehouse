@@ -1,3 +1,5 @@
+"""FastAPI application entry point for the table-maintenance backend."""
+
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -16,6 +18,7 @@ if TYPE_CHECKING:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Create SQL tables on startup when a SQL-backed repository is configured."""
     settings = get_settings()
     uses_sql = (
         settings.jobs_repo_adapter == JobsRepoAdapter.SQL
@@ -33,4 +36,5 @@ app.include_router(jobs_router)
 
 @app.get("/health")
 def health():
+    """Return a simple health-check response."""
     return {"status": "ok"}

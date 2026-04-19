@@ -1,3 +1,5 @@
+"""Tests for JobRun."""
+
 from datetime import UTC, datetime
 
 from base import AggregateRoot
@@ -6,10 +8,12 @@ from application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
 
 
 def test_is_aggregate_root():
+    """Verify that JobRun is a subclass of AggregateRoot."""
     assert issubclass(JobRun, AggregateRoot)
 
 
 def test_fields():
+    """Verify that all JobRun fields are stored correctly."""
     run_id = JobRunId(value="job-1-abc")
     job_id = JobId(value="job-1")
     started = datetime(2026, 4, 10, 12, 0, tzinfo=UTC)
@@ -28,6 +32,7 @@ def test_fields():
 
 
 def test_equality_by_id():
+    """Verify that two JobRuns with the same id are equal."""
     a = JobRun(
         id=JobRunId(value="run-1"),
         job_id=JobId(value="job-1"),
@@ -46,6 +51,7 @@ def test_equality_by_id():
 
 
 def test_started_at_defaults_to_none():
+    """Verify that started_at and finished_at default to None."""
     run = JobRun(
         id=JobRunId(value="run-1"),
         job_id=JobId(value="job-1"),

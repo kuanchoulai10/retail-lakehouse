@@ -1,3 +1,5 @@
+"""Define the job_runs SQLAlchemy table schema."""
+
 from __future__ import annotations
 
 from sqlalchemy import Column, DateTime, ForeignKey, String, Table

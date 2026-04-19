@@ -1,3 +1,5 @@
+"""Define the JobsSqlRepo adapter."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -21,14 +23,17 @@ class JobsSqlRepo(JobsRepo):
     """JobsRepo backed by a SQLAlchemy Engine (Postgres / SQLite / MySQL)."""
 
     def __init__(self, engine: Engine) -> None:
+        """Initialize the repository with a SQLAlchemy engine."""
         self._engine = engine
 
     def create(self, entity: Job) -> Job:
+        """Insert a new job row and return the entity."""
         with self._engine.begin() as conn:
             conn.execute(insert(jobs_table).values(**job_to_values(entity)))
         return entity
 
     def get(self, entity_id: EntityId) -> Job:
+        """Fetch a job by id or raise JobNotFoundError."""
         stmt = select(jobs_table).where(jobs_table.c.id == entity_id.value)
         with self._engine.connect() as conn:
             row = conn.execute(stmt).mappings().first()
@@ -37,11 +42,13 @@ class JobsSqlRepo(JobsRepo):
         return row_to_job(row)
 
     def list_all(self) -> list[Job]:
+        """Return all jobs from the database."""
         with self._engine.connect() as conn:
             rows = conn.execute(select(jobs_table)).mappings().all()
         return [row_to_job(r) for r in rows]
 
     def delete(self, entity_id: EntityId) -> None:
+        """Delete a job by id or raise JobNotFoundError."""
         stmt = delete(jobs_table).where(jobs_table.c.id == entity_id.value)
         with self._engine.begin() as conn:
             result = conn.execute(stmt)
@@ -49,6 +56,7 @@ class JobsSqlRepo(JobsRepo):
             raise JobNotFoundError(entity_id.value)
 
     def update(self, entity: Job) -> Job:
+        """Update an existing job row or raise JobNotFoundError."""
         stmt = (
             update(jobs_table)
             .where(jobs_table.c.id == entity.id.value)

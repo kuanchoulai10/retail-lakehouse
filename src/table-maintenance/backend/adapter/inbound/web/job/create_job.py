@@ -1,3 +1,5 @@
+"""Define the POST /jobs endpoint."""
+
 from __future__ import annotations
 
 from dependencies.use_cases import get_create_job_use_case
@@ -14,6 +16,7 @@ def create_job(
     request: JobApiRequest,
     use_case: CreateJobUseCase = Depends(get_create_job_use_case),
 ):
+    """Create a new job from the request body."""
     result = use_case.execute(
         CreateJobInput(
             job_type=request.job_type,

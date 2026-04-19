@@ -1,3 +1,5 @@
+"""Define the GET /jobs/{name}/runs endpoint."""
+
 from __future__ import annotations
 
 from dependencies.use_cases import get_list_job_runs_use_case
@@ -14,6 +16,7 @@ def list_job_runs(
     name: str,
     use_case: ListJobRunsUseCase = Depends(get_list_job_runs_use_case),
 ):
+    """Return all runs for the specified job."""
     result = use_case.execute(ListJobRunsInput(job_id=name))
     return [
         JobRunApiResponse(

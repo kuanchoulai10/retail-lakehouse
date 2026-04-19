@@ -1,3 +1,5 @@
+"""Define the Entity base class."""
+
 from __future__ import annotations
 
 from abc import ABC
@@ -39,9 +41,11 @@ class Entity[ID: EntityId](ABC):
     id: ID  # noqa: A003
 
     def __eq__(self, other: object) -> bool:
+        """Compare equality by identity, not by attribute values."""
         if not isinstance(other, self.__class__):
             return NotImplemented
         return self.id == other.id
 
     def __hash__(self) -> int:
+        """Hash by identity so entities work correctly in sets and dicts."""
         return hash(self.id)

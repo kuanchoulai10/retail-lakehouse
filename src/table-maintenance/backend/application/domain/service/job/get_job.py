@@ -1,3 +1,5 @@
+"""Define the GetJobService."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -14,9 +16,11 @@ class GetJobService(GetJobUseCase):
     """Implements GetJobUseCase by delegating to the jobs repository."""
 
     def __init__(self, repo: JobsRepo) -> None:
+        """Initialize with the jobs repository."""
         self._repo = repo
 
     def execute(self, request: GetJobInput) -> GetJobOutput:
+        """Retrieve a job by its identifier."""
         try:
             job = self._repo.get(JobId(value=request.job_id))
         except JobNotFoundError as e:

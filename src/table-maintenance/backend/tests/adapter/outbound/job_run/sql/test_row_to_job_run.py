@@ -1,3 +1,5 @@
+"""Tests for row_to_job_run."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -8,6 +10,7 @@ from application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
 
 
 def test_deserializes_row_to_job_run():
+    """Verify that a row dict is correctly deserialized to a JobRun entity."""
     row = {
         "id": "run-1",
         "job_id": "job-1",
@@ -25,6 +28,7 @@ def test_deserializes_row_to_job_run():
 
 
 def test_deserializes_all_statuses():
+    """Verify that every JobRunStatus value deserializes correctly."""
     for status in JobRunStatus:
         row = {
             "id": "r",

@@ -1,3 +1,5 @@
+"""Define the ListJobsOutput and ListJobsOutputItem dataclasses."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

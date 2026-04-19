@@ -1,3 +1,5 @@
+"""Tests for JobRunsK8sRepo."""
+
 from unittest.mock import MagicMock
 
 import pytest
@@ -35,12 +37,14 @@ MOCK_SCHEDULED = {
 
 
 def test_is_subclass_of_base_job_runs_repo():
+    """Verify that JobRunsK8sRepo implements the JobRunsRepo interface."""
     api = MagicMock()
     repo = JobRunsK8sRepo(api, SETTINGS)
     assert isinstance(repo, JobRunsRepo)
 
 
 def test_get_returns_job_run_from_spark_app():
+    """Verify that get returns a job run from a SparkApplication resource."""
     api = MagicMock()
     api.get_namespaced_custom_object.return_value = MOCK_SPARK_APP
     repo = JobRunsK8sRepo(api, SETTINGS)
@@ -53,6 +57,7 @@ def test_get_returns_job_run_from_spark_app():
 
 
 def test_get_falls_back_to_scheduled():
+    """Verify that get falls back to ScheduledSparkApplication on 404."""
     api = MagicMock()
     api.get_namespaced_custom_object.side_effect = [
         ApiException(status=404),
@@ -68,6 +73,7 @@ def test_get_falls_back_to_scheduled():
 
 
 def test_get_raises_job_run_not_found():
+    """Verify that get raises JobRunNotFoundError when both lookups fail."""
     api = MagicMock()
     api.get_namespaced_custom_object.side_effect = ApiException(status=404)
     repo = JobRunsK8sRepo(api, SETTINGS)
@@ -78,6 +84,7 @@ def test_get_raises_job_run_not_found():
 
 
 def test_list_for_job_filters_by_label_selector():
+    """Verify that list_for_job uses a label selector to filter runs."""
     api = MagicMock()
     api.list_namespaced_custom_object.side_effect = [
         {"items": [MOCK_SPARK_APP]},
@@ -93,6 +100,7 @@ def test_list_for_job_filters_by_label_selector():
 
 
 def test_list_all_merges_both_kinds():
+    """Verify that list_all merges SparkApplication and ScheduledSparkApplication."""
     api = MagicMock()
     api.list_namespaced_custom_object.side_effect = [
         {"items": [MOCK_SPARK_APP]},

@@ -1,3 +1,5 @@
+"""Define the AppSettings configuration model."""
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -11,6 +13,8 @@ from configs.sqlite_settings import SqliteSettings
 
 
 class AppSettings(BaseSettings):
+    """Root application settings loaded from environment variables."""
+
     model_config = SettingsConfigDict(
         env_prefix="BACKEND_",
         env_nested_delimiter="__",

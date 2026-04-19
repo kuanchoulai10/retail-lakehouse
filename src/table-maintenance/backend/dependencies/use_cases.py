@@ -1,3 +1,5 @@
+"""Provide use case dependencies."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -37,30 +39,35 @@ if TYPE_CHECKING:
 def get_create_job_use_case(
     repo: JobsRepo = Depends(get_jobs_repo),
 ) -> CreateJobUseCase:
+    """Provide the CreateJob use case with injected dependencies."""
     return CreateJobService(repo)
 
 
 def get_delete_job_use_case(
     repo: JobsRepo = Depends(get_jobs_repo),
 ) -> DeleteJobUseCase:
+    """Provide the DeleteJob use case with injected dependencies."""
     return DeleteJobService(repo)
 
 
 def get_get_job_use_case(
     repo: JobsRepo = Depends(get_jobs_repo),
 ) -> GetJobUseCase:
+    """Provide the GetJob use case with injected dependencies."""
     return GetJobService(repo)
 
 
 def get_list_jobs_use_case(
     repo: JobsRepo = Depends(get_jobs_repo),
 ) -> ListJobsUseCase:
+    """Provide the ListJobs use case with injected dependencies."""
     return ListJobsService(repo)
 
 
 def get_update_job_use_case(
     repo: JobsRepo = Depends(get_jobs_repo),
 ) -> UpdateJobUseCase:
+    """Provide the UpdateJob use case with injected dependencies."""
     return UpdateJobService(repo)
 
 
@@ -68,16 +75,19 @@ def get_create_job_run_use_case(
     repo: JobsRepo = Depends(get_jobs_repo),
     executor: JobRunExecutor = Depends(get_job_run_executor),
 ) -> CreateJobRunUseCase:
+    """Provide the CreateJobRun use case with injected dependencies."""
     return CreateJobRunService(repo, executor)
 
 
 def get_list_job_runs_use_case(
     repo: JobRunsRepo = Depends(get_job_runs_repo),
 ) -> ListJobRunsUseCase:
+    """Provide the ListJobRuns use case with injected dependencies."""
     return ListJobRunsService(repo)
 
 
 def get_get_job_run_use_case(
     repo: JobRunsRepo = Depends(get_job_runs_repo),
 ) -> GetJobRunUseCase:
+    """Provide the GetJobRun use case with injected dependencies."""
     return GetJobRunService(repo)

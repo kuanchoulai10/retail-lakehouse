@@ -1,3 +1,5 @@
+"""Define the Job aggregate root."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -31,5 +33,6 @@ class Job(AggregateRoot[JobId]):
     enabled: bool = False
 
     def __post_init__(self) -> None:
+        """Initialize job_config to an empty dict if not provided."""
         if self.job_config is None:
             self.job_config = {}

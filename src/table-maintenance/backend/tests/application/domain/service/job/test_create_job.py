@@ -13,6 +13,7 @@ from application.port.inbound import (
 
 
 def _make_service() -> tuple[CreateJobService, MagicMock]:
+    """Provide a CreateJobService with a mocked repository."""
     repo = MagicMock()
     repo.create.side_effect = lambda job: job
     service = CreateJobService(repo)
@@ -20,10 +21,12 @@ def _make_service() -> tuple[CreateJobService, MagicMock]:
 
 
 def test_create_job_service_implements_use_case():
+    """Verify that CreateJobService implements CreateJobUseCase."""
     assert issubclass(CreateJobService, CreateJobUseCase)
 
 
 def test_create_job_returns_output():
+    """Verify that execute returns a CreateJobOutput with correct fields."""
     service, _ = _make_service()
 
     input_ = CreateJobInput(
@@ -39,6 +42,7 @@ def test_create_job_returns_output():
 
 
 def test_create_job_populates_domain_fields():
+    """Verify that execute populates catalog, table, job_config, and cron on the domain entity."""
     service, repo = _make_service()
 
     input_ = CreateJobInput(
@@ -57,6 +61,7 @@ def test_create_job_populates_domain_fields():
 
 
 def test_create_job_enabled_defaults_to_false():
+    """Verify that enabled defaults to False when not provided."""
     service, repo = _make_service()
 
     service.execute(
@@ -72,6 +77,7 @@ def test_create_job_enabled_defaults_to_false():
 
 
 def test_create_job_enabled_passed_through_from_input():
+    """Verify that enabled is passed through from input when explicitly set."""
     service, repo = _make_service()
 
     service.execute(
@@ -88,6 +94,7 @@ def test_create_job_enabled_passed_through_from_input():
 
 
 def test_create_job_sets_updated_at_equal_to_created_at_initially():
+    """Verify that updated_at equals created_at on initial creation."""
     service, repo = _make_service()
 
     service.execute(
@@ -103,6 +110,7 @@ def test_create_job_sets_updated_at_equal_to_created_at_initially():
 
 
 def test_create_job_extracts_table_from_expire_snapshots():
+    """Verify that table is extracted from expire_snapshots config."""
     service, repo = _make_service()
 
     input_ = CreateJobInput(

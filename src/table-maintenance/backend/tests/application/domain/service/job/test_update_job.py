@@ -1,3 +1,5 @@
+"""Tests for UpdateJobService."""
+
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
@@ -10,6 +12,7 @@ from application.port.inbound import UpdateJobInput, UpdateJobOutput, UpdateJobU
 
 
 def _existing_job() -> Job:
+    """Provide an existing Job domain entity for update tests."""
     return Job(
         id=JobId(value="abc1234567"),
         job_type=JobType.REWRITE_DATA_FILES,
@@ -23,10 +26,12 @@ def _existing_job() -> Job:
 
 
 def test_implements_use_case():
+    """Verify that UpdateJobService implements UpdateJobUseCase."""
     assert issubclass(UpdateJobService, UpdateJobUseCase)
 
 
 def test_update_enables_job():
+    """Verify that execute enables a job and returns an UpdateJobOutput."""
     repo = MagicMock()
     repo.get.return_value = _existing_job()
     repo.update.side_effect = lambda job: job
@@ -40,6 +45,7 @@ def test_update_enables_job():
 
 
 def test_update_leaves_other_fields_when_only_enabled_provided():
+    """Verify that unrelated fields remain unchanged when only enabled is updated."""
     repo = MagicMock()
     job = _existing_job()
     repo.get.return_value = job
@@ -54,6 +60,7 @@ def test_update_leaves_other_fields_when_only_enabled_provided():
 
 
 def test_update_bumps_updated_at():
+    """Verify that updated_at is bumped to a later timestamp after update."""
     repo = MagicMock()
     job = _existing_job()
     repo.get.return_value = job
@@ -67,6 +74,7 @@ def test_update_bumps_updated_at():
 
 
 def test_update_raises_app_not_found():
+    """Verify that execute raises AppJobNotFoundError when job does not exist."""
     repo = MagicMock()
     repo.get.side_effect = JobNotFoundError("ghost")
     service = UpdateJobService(repo)

@@ -1,3 +1,5 @@
+"""Define the Repository abstract base class."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -37,13 +39,17 @@ class Repository[E: Entity](ABC):
     """
 
     @abstractmethod
-    def create(self, entity: E) -> E: ...
+    def create(self, entity: E) -> E:
+        """Persist a new entity and return it."""
 
     @abstractmethod
-    def get(self, entity_id: EntityId) -> E: ...
+    def get(self, entity_id: EntityId) -> E:
+        """Retrieve an entity by its identifier."""
 
     @abstractmethod
-    def list_all(self) -> list[E]: ...
+    def list_all(self) -> list[E]:
+        """Return all entities of this type."""
 
     @abstractmethod
-    def delete(self, entity_id: EntityId) -> None: ...
+    def delete(self, entity_id: EntityId) -> None:
+        """Remove an entity by its identifier."""

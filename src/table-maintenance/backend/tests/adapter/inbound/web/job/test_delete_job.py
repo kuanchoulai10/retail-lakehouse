@@ -1,3 +1,5 @@
+"""Tests for delete job endpoint."""
+
 from unittest.mock import MagicMock
 
 from dependencies.use_cases import get_delete_job_use_case
@@ -9,6 +11,7 @@ from application.port.inbound import DeleteJobOutput
 
 
 def _make_client(use_case: MagicMock) -> TestClient:
+    """Provide a test client with the delete-job use case overridden."""
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_delete_job_use_case] = lambda: use_case
@@ -16,6 +19,7 @@ def _make_client(use_case: MagicMock) -> TestClient:
 
 
 def test_delete_job_returns_204():
+    """Return 204 with no content when the job is successfully deleted."""
     use_case = MagicMock()
     use_case.execute.return_value = DeleteJobOutput()
     client = _make_client(use_case)
@@ -25,6 +29,7 @@ def test_delete_job_returns_204():
 
 
 def test_delete_job_not_found_returns_404():
+    """Return 404 when the job to delete does not exist."""
     use_case = MagicMock()
     use_case.execute.side_effect = JobNotFoundError("nonexistent")
     client = _make_client(use_case)

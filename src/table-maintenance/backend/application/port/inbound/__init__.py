@@ -1,3 +1,5 @@
+"""Inbound port interfaces (use cases)."""
+
 from application.port.inbound.job import (
     CreateJobInput,
     CreateJobOutput,

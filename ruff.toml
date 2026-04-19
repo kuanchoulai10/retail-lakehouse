@@ -5,7 +5,7 @@ lint.select = [
     "C4",  # flake8-comprehensions - https://beta.ruff.rs/docs/rules/#flake8-comprehensions-c4
     "C90", # mccabe - https://beta.ruff.rs/docs/rules/#mccabe-c90
     "COM", # flak8-commas - https://beta.ruff.rs/docs/rules/#flake8-commas-com
-    #"D", # pydocstyle - not enabled temporarily
+    "D",   # pydocstyle - https://docs.astral.sh/ruff/rules/#pydocstyle-d
     "E",   # pycodestyle error - https://beta.ruff.rs/docs/rules/#error-e
     "ERA", # flake8-eradicate - https://beta.ruff.rs/docs/rules/#eradicate-era
     "FA",  # flake8-future-annotations - https://beta.ruff.rs/docs/rules/#flake8-future-annotations-fa
@@ -42,6 +42,8 @@ lint.ignore = [
     "TC006",   # https://docs.astral.sh/ruff/rules/runtime-cast-value/
     "PLC0415", # https://docs.astral.sh/ruff/rules/import-outside-top-level/
     "COM812",  # conflicts with ruff formatter
+    "D203",    # no-blank-line-before-class (conflicts with D211)
+    "D213",    # multi-line-summary-second-line (conflicts with D212)
 ]
 
 # Exclude files and directories
@@ -82,11 +84,11 @@ max-statements = 70
 [lint.isort]
 split-on-trailing-comma = true
 
+[lint.pydocstyle]
+convention = "google"
+
 [lint.flake8-type-checking]
 runtime-evaluated-base-classes = ["pydantic.BaseModel", "pydantic_settings.BaseSettings"]
 
 [lint.per-file-ignores]
 "tests/*" = ["FA100"]
-"src/table-maintenance/backend/jobs/adapter/inbound/web/*.py" = ["B008", "TC001", "TC002"]
-"src/table-maintenance/backend/jobs/domain/job.py" = ["TC001", "TC003"]
-"src/table-maintenance/backend/jobs/application/port/inbound/*/output.py" = ["TC003"]

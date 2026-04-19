@@ -16,6 +16,7 @@ from application.port.inbound import (
 
 
 def _make_job(job_id: str = "abc1234567") -> Job:
+    """Provide a Job domain entity with sensible defaults."""
     ts = datetime(2026, 4, 11, tzinfo=UTC)
     return Job(
         id=JobId(value=job_id),
@@ -26,10 +27,12 @@ def _make_job(job_id: str = "abc1234567") -> Job:
 
 
 def test_list_jobs_service_implements_use_case():
+    """Verify that ListJobsService implements ListJobsUseCase."""
     assert issubclass(ListJobsService, ListJobsUseCase)
 
 
 def test_list_jobs_returns_output():
+    """Verify that execute returns a ListJobsOutput with all jobs."""
     repo = MagicMock()
     repo.list_all.return_value = [_make_job("aaa"), _make_job("bbb")]
     service = ListJobsService(repo)
@@ -44,6 +47,7 @@ def test_list_jobs_returns_output():
 
 
 def test_list_jobs_empty():
+    """Verify that execute returns an empty list when no jobs exist."""
     repo = MagicMock()
     repo.list_all.return_value = []
     service = ListJobsService(repo)

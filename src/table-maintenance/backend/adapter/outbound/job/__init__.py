@@ -1,1 +1,1 @@
-
+"""Job repository adapters."""

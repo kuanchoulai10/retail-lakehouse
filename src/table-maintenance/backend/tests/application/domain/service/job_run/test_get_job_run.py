@@ -1,3 +1,5 @@
+"""Tests for GetJobRunService."""
+
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
@@ -20,10 +22,12 @@ from application.port.inbound import (
 
 
 def test_implements_use_case():
+    """Verify that GetJobRunService implements GetJobRunUseCase."""
     assert issubclass(GetJobRunService, GetJobRunUseCase)
 
 
 def test_get_returns_run():
+    """Verify that execute returns a GetJobRunOutput with correct fields."""
     repo = MagicMock()
     repo.get.return_value = JobRun(
         id=JobRunId(value="run-1"),
@@ -42,6 +46,7 @@ def test_get_returns_run():
 
 
 def test_get_raises_app_not_found():
+    """Verify that execute raises AppJobRunNotFoundError when run does not exist."""
     repo = MagicMock()
     repo.get.side_effect = JobRunNotFoundError("ghost")
     service = GetJobRunService(repo)

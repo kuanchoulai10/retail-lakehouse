@@ -1,3 +1,5 @@
+"""Define the POST /jobs/{name}/runs endpoint."""
+
 from __future__ import annotations
 
 from dependencies.use_cases import get_create_job_run_use_case
@@ -19,6 +21,7 @@ def create_job_run(
     name: str,
     use_case: CreateJobRunUseCase = Depends(get_create_job_run_use_case),
 ):
+    """Trigger a new run for the specified job."""
     try:
         result = use_case.execute(CreateJobRunInput(job_id=name))
     except JobNotFoundError as e:

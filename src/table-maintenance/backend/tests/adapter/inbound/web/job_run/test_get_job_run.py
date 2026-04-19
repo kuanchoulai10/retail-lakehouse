@@ -1,3 +1,5 @@
+"""Tests for get job run endpoint."""
+
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
@@ -10,6 +12,7 @@ from application.port.inbound import GetJobRunOutput
 
 
 def _make_client(use_case: MagicMock) -> TestClient:
+    """Provide a test client with the get-job-run use case overridden."""
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_get_job_run_use_case] = lambda: use_case
@@ -17,6 +20,7 @@ def _make_client(use_case: MagicMock) -> TestClient:
 
 
 def test_get_run_returns_200():
+    """Return 200 with job run details when the run exists."""
     use_case = MagicMock()
     use_case.execute.return_value = GetJobRunOutput(
         run_id="run-1",
@@ -33,6 +37,7 @@ def test_get_run_returns_200():
 
 
 def test_get_unknown_run_returns_404():
+    """Return 404 when the requested job run does not exist."""
     use_case = MagicMock()
     use_case.execute.side_effect = JobRunNotFoundError("ghost")
     client = _make_client(use_case)
