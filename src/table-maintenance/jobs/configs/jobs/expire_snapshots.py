@@ -1,11 +1,12 @@
+"""Configure the expire_snapshots maintenance procedure."""
+
 from datetime import datetime
 
 from pydantic import BaseModel
 
 
 class ExpireSnapshotsConfig(BaseModel):
-    """
-    Config for CALL <catalog>.system.expire_snapshots(...)
+    """Configure the expire_snapshots procedure call.
 
     Env vars (delimiter: __):
       EXPIRE_SNAPSHOTS__TABLE                  required

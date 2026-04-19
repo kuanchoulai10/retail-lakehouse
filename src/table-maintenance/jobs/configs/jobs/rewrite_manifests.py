@@ -1,9 +1,10 @@
+"""Configure the rewrite_manifests maintenance procedure."""
+
 from pydantic import BaseModel
 
 
 class RewriteManifestsConfig(BaseModel):
-    """
-    Config for CALL <catalog>.system.rewrite_manifests(...)
+    """Configure the rewrite_manifests procedure call.
 
     Env vars (delimiter: __):
       REWRITE_MANIFESTS__TABLE       required

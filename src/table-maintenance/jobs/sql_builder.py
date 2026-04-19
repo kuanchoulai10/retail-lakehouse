@@ -1,3 +1,5 @@
+"""Build Iceberg system procedure CALL statements from job settings."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -18,10 +20,14 @@ def _map_expr(opts: dict[str, str]) -> str:
 
 
 class IcebergCallBuilder:
+    """Build a CALL SQL statement for an Iceberg maintenance procedure."""
+
     def __init__(self, settings: JobSettings):
+        """Initialize the builder with the given job settings."""
         self._settings = settings
 
     def build_sql(self) -> str:
+        """Return the fully rendered CALL SQL string."""
         settings = self._settings
         catalog = settings.catalog
 

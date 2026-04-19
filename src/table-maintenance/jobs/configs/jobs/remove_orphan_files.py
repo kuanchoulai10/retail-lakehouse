@@ -1,11 +1,12 @@
+"""Configure the remove_orphan_files maintenance procedure."""
+
 from datetime import datetime
 
 from pydantic import BaseModel
 
 
 class RemoveOrphanFilesConfig(BaseModel):
-    """
-    Config for CALL <catalog>.system.remove_orphan_files(...)
+    """Configure the remove_orphan_files procedure call.
 
     Env vars (delimiter: __):
       REMOVE_ORPHAN_FILES__TABLE                   required

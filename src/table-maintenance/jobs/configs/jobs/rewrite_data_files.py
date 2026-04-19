@@ -1,17 +1,20 @@
+"""Configure the rewrite_data_files maintenance procedure."""
+
 from enum import StrEnum
 
 from pydantic import BaseModel
 
 
 class Strategy(StrEnum):
+    """Enumerate the available rewrite strategies."""
+
     BINPACK = "binpack"
     SORT = "sort"
     ZORDER = "zorder"
 
 
 class RewriteDataFilesConfig(BaseModel):
-    """
-    Config for CALL <catalog>.system.rewrite_data_files(...)
+    """Configure the rewrite_data_files procedure call.
 
     Env vars (delimiter: __):
       REWRITE_DATA_FILES__TABLE                           required

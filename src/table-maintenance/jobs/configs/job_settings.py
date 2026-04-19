@@ -1,3 +1,5 @@
+"""Provide top-level settings for Iceberg table maintenance jobs."""
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .base import JobType
@@ -5,8 +7,7 @@ from .jobs import ExpireSnapshotsConfig, RemoveOrphanFilesConfig, RewriteDataFil
 
 
 class JobSettings(BaseSettings):
-    """
-    Top-level settings for Iceberg table maintenance jobs.
+    """Top-level settings for Iceberg table maintenance jobs.
 
     Env vars (prefix: GLAC_):
       GLAC_JOB_TYPE    required  expire_snapshots | remove_orphan_files | rewrite_data_files | rewrite_manifests
