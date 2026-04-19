@@ -1,3 +1,5 @@
+"""Tests for build_engine."""
+
 from unittest.mock import patch
 
 from sqlalchemy import Engine
@@ -7,6 +9,7 @@ from configs import AppSettings, DatabaseBackend
 
 
 def test_sqlite_backend_builds_sqlite_engine():
+    """Verify that SQLite backend builds a SQLite engine."""
     settings = AppSettings()
     settings.database_backend = DatabaseBackend.SQLITE
     settings.sqlite.db_path = ":memory:"
@@ -16,6 +19,7 @@ def test_sqlite_backend_builds_sqlite_engine():
 
 
 def test_postgres_backend_delegates_to_create_engine():
+    """Verify that Postgres backend delegates to SQLAlchemy create_engine."""
     settings = AppSettings()
     settings.database_backend = DatabaseBackend.POSTGRES
     settings.postgres.db_url = "postgresql+psycopg://user:pass@host/db"

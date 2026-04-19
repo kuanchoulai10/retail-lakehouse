@@ -11,6 +11,7 @@ from application.port.inbound import GetJobInput, GetJobOutput, GetJobUseCase
 
 
 def _make_job(job_id: str = "abc1234567") -> Job:
+    """Provide a Job domain entity with sensible defaults."""
     ts = datetime(2026, 4, 10, tzinfo=UTC)
     return Job(
         id=JobId(value=job_id),
@@ -22,10 +23,12 @@ def _make_job(job_id: str = "abc1234567") -> Job:
 
 
 def test_get_job_service_implements_use_case():
+    """Verify that GetJobService implements GetJobUseCase."""
     assert issubclass(GetJobService, GetJobUseCase)
 
 
 def test_get_job_returns_result():
+    """Verify that execute returns a GetJobOutput with correct fields."""
     repo = MagicMock()
     repo.get.return_value = _make_job()
     service = GetJobService(repo)
@@ -40,6 +43,7 @@ def test_get_job_returns_result():
 
 
 def test_get_job_raises_app_not_found():
+    """Verify that execute raises AppJobNotFoundError when job does not exist."""
     repo = MagicMock()
     repo.get.side_effect = JobNotFoundError("nonexistent")
     service = GetJobService(repo)

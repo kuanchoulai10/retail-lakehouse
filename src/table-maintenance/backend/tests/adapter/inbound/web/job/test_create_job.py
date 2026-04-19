@@ -1,3 +1,5 @@
+"""Tests for create job endpoint."""
+
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
@@ -9,6 +11,7 @@ from application.port.inbound import CreateJobOutput
 
 
 def _make_client(use_case: MagicMock) -> TestClient:
+    """Provide a test client with the create-job use case overridden."""
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_create_job_use_case] = lambda: use_case
@@ -25,6 +28,7 @@ SAMPLE_OUTPUT = CreateJobOutput(
 
 
 def test_post_job_returns_201():
+    """Return 201 with the created job when payload is valid."""
     use_case = MagicMock()
     use_case.execute.return_value = SAMPLE_OUTPUT
     client = _make_client(use_case)
@@ -42,6 +46,7 @@ def test_post_job_returns_201():
 
 
 def test_post_job_missing_catalog_returns_422():
+    """Return 422 when required catalog field is missing."""
     use_case = MagicMock()
     client = _make_client(use_case)
 

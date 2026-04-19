@@ -1,3 +1,5 @@
+"""Shared fixtures for SQL infrastructure tests."""
+
 from __future__ import annotations
 
 from collections.abc import Iterator
@@ -10,6 +12,7 @@ from adapter.outbound.sql.metadata import metadata
 
 @pytest.fixture
 def sqlite_engine() -> Iterator[Engine]:
+    """Provide an in-memory SQLite engine with all tables created."""
     engine = create_engine("sqlite:///:memory:")
     metadata.create_all(engine)
     try:

@@ -1,3 +1,5 @@
+"""Tests for repository and executor dependency providers."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
@@ -27,6 +29,7 @@ from dependencies.repos import (
 
 
 def _clear_caches() -> None:
+    """Clear all singleton and engine caches between tests."""
     _in_memory_jobs_repo_singleton.cache_clear()
     _in_memory_job_runs_repo_singleton.cache_clear()
     _in_memory_executor_singleton.cache_clear()
@@ -34,6 +37,7 @@ def _clear_caches() -> None:
 
 
 def test_get_jobs_repo_returns_in_memory_by_default():
+    """Verify that get_jobs_repo returns JobsInMemoryRepo with default settings."""
     _clear_caches()
     settings = AppSettings()
     result = get_jobs_repo(settings=settings)
@@ -41,6 +45,7 @@ def test_get_jobs_repo_returns_in_memory_by_default():
 
 
 def test_in_memory_backend_is_module_singleton():
+    """Verify that in-memory jobs repo is returned as a singleton."""
     _clear_caches()
     settings = AppSettings()
     first = get_jobs_repo(settings=settings)
@@ -49,6 +54,7 @@ def test_in_memory_backend_is_module_singleton():
 
 
 def test_get_jobs_repo_returns_sql_for_sqlite():
+    """Verify that get_jobs_repo returns JobsSqlRepo when configured for SQLite."""
     _clear_caches()
     settings = AppSettings()
     settings.jobs_repo_adapter = JobsRepoAdapter.SQL
@@ -59,6 +65,7 @@ def test_get_jobs_repo_returns_sql_for_sqlite():
 
 
 def test_get_jobs_repo_returns_sql_for_postgres(monkeypatch):
+    """Verify that get_jobs_repo returns JobsSqlRepo when configured for Postgres."""
     _clear_caches()
     from adapter.outbound.sql import engine_factory as ef
 
@@ -74,6 +81,7 @@ def test_get_jobs_repo_returns_sql_for_postgres(monkeypatch):
 
 
 def test_sql_engine_cached_per_backend_and_url():
+    """Verify that the SQL engine is cached and reused across repo instances."""
     _clear_caches()
     settings = AppSettings()
     settings.jobs_repo_adapter = JobsRepoAdapter.SQL
@@ -87,6 +95,7 @@ def test_sql_engine_cached_per_backend_and_url():
 
 
 def test_get_job_runs_repo_returns_in_memory_by_default():
+    """Verify that get_job_runs_repo returns JobRunsInMemoryRepo with default settings."""
     _clear_caches()
     settings = AppSettings()
     result = get_job_runs_repo(settings=settings)
@@ -94,6 +103,7 @@ def test_get_job_runs_repo_returns_in_memory_by_default():
 
 
 def test_get_job_runs_repo_returns_sql_for_sqlite():
+    """Verify that get_job_runs_repo returns JobRunsSqlRepo when configured for SQLite."""
     _clear_caches()
     settings = AppSettings()
     settings.job_runs_repo_adapter = JobRunsRepoAdapter.SQL
@@ -104,6 +114,7 @@ def test_get_job_runs_repo_returns_sql_for_sqlite():
 
 
 def test_get_job_run_executor_returns_in_memory_by_default():
+    """Verify that get_job_run_executor returns JobRunInMemoryExecutor with default settings."""
     _clear_caches()
     _in_memory_executor_singleton.cache_clear()
     settings = AppSettings()
@@ -112,6 +123,7 @@ def test_get_job_run_executor_returns_in_memory_by_default():
 
 
 def test_get_job_run_executor_returns_k8s_when_configured(monkeypatch):
+    """Verify that get_job_run_executor returns JobRunK8sExecutor when configured for K8s."""
     _clear_caches()
     from dependencies import repos as repos_mod
 

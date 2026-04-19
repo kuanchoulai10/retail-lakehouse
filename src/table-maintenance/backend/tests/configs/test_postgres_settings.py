@@ -1,13 +1,17 @@
+"""Tests for PostgresSettings."""
+
 from configs import AppSettings, PostgresSettings
 
 
 def test_defaults():
+    """Verify that PostgresSettings has correct default values."""
     s = PostgresSettings()
     assert s.db_url == ""
     assert s.pool_size == 5
 
 
 def test_env_nested_override(monkeypatch):
+    """Verify that nested Postgres env vars override PostgresSettings via AppSettings."""
     monkeypatch.setenv("BACKEND_POSTGRES__DB_URL", "postgresql://localhost/jobs")
     monkeypatch.setenv("BACKEND_POSTGRES__POOL_SIZE", "10")
     s = AppSettings()

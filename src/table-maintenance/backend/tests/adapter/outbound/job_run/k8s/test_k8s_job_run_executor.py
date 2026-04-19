@@ -1,3 +1,5 @@
+"""Tests for JobRunK8sExecutor."""
+
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
@@ -12,6 +14,7 @@ SETTINGS = AppSettings()
 
 
 def _make_job(job_id: str = "abc1234567", cron: str | None = None) -> Job:
+    """Provide a sample Job entity with optional overrides."""
     now = datetime.now(UTC)
     return Job(
         id=JobId(value=job_id),
@@ -25,12 +28,14 @@ def _make_job(job_id: str = "abc1234567", cron: str | None = None) -> Job:
 
 
 def test_is_subclass_of_job_run_executor():
+    """Verify that JobRunK8sExecutor implements the JobRunExecutor interface."""
     api = MagicMock()
     executor = JobRunK8sExecutor(api, SETTINGS)
     assert isinstance(executor, JobRunExecutor)
 
 
 def test_trigger_calls_create_namespaced_custom_object():
+    """Verify that trigger calls the K8s API to create a custom object."""
     api = MagicMock()
     api.create_namespaced_custom_object.return_value = {
         "metadata": {"name": "abc1234567-d3adbe"},
@@ -42,6 +47,7 @@ def test_trigger_calls_create_namespaced_custom_object():
 
 
 def test_trigger_uses_scheduled_plural_when_cron_set():
+    """Verify that trigger uses the scheduled plural when a cron is set."""
     api = MagicMock()
     api.create_namespaced_custom_object.return_value = {
         "metadata": {"name": "abc1234567"},
@@ -54,6 +60,7 @@ def test_trigger_uses_scheduled_plural_when_cron_set():
 
 
 def test_trigger_uses_spark_plural_for_non_cron_job():
+    """Verify that trigger uses the spark plural for a non-cron job."""
     api = MagicMock()
     api.create_namespaced_custom_object.return_value = {
         "metadata": {"name": "abc1234567-d3adbe"},
@@ -66,6 +73,7 @@ def test_trigger_uses_spark_plural_for_non_cron_job():
 
 
 def test_trigger_returns_job_run_linked_to_job_id():
+    """Verify that the returned run is linked to the correct job id."""
     api = MagicMock()
     api.create_namespaced_custom_object.return_value = {
         "metadata": {"name": "abc1234567-d3adbe"},
@@ -77,6 +85,7 @@ def test_trigger_returns_job_run_linked_to_job_id():
 
 
 def test_trigger_returns_pending_status():
+    """Verify that the returned run has pending status."""
     api = MagicMock()
     api.create_namespaced_custom_object.return_value = {
         "metadata": {"name": "abc1234567-d3adbe"},
@@ -88,7 +97,7 @@ def test_trigger_returns_pending_status():
 
 
 def test_trigger_uses_scheduled_metadata_name_equal_to_job_id():
-    """For ScheduledSparkApplication the K8s name must equal Job.id (one per Job)."""
+    """Verify that ScheduledSparkApplication uses the job id as its name."""
     api = MagicMock()
     api.create_namespaced_custom_object.return_value = {
         "metadata": {"name": "abc1234567"},
@@ -101,7 +110,7 @@ def test_trigger_uses_scheduled_metadata_name_equal_to_job_id():
 
 
 def test_trigger_uses_spark_metadata_name_unique_per_run():
-    """For SparkApplication the K8s name is unique (job_id + run_token)."""
+    """Verify that SparkApplication uses a unique name per run."""
     api = MagicMock()
     api.create_namespaced_custom_object.return_value = {
         "metadata": {"name": "unused"},

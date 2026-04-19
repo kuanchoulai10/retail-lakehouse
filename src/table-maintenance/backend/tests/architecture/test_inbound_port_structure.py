@@ -48,6 +48,7 @@ def _pascal_to_words(name: str) -> str:
 
 
 def _use_case_id(param: tuple[str, Path]) -> str:
+    """Format a use case entry as a readable pytest ID."""
     group, d = param
     return f"{group}/{d.name}"
 
@@ -56,6 +57,7 @@ def _use_case_id(param: tuple[str, Path]) -> str:
 
 
 def test_no_loose_py_files_in_inbound_port():
+    """Verify that port/inbound/ contains no loose .py files besides __init__.py."""
     loose_files = [
         f.name
         for f in INBOUND_PORT_DIR.iterdir()
@@ -67,6 +69,7 @@ def test_no_loose_py_files_in_inbound_port():
 
 
 def test_only_aggregate_groups_in_inbound_port():
+    """Verify that port/inbound/ contains only the expected aggregate group directories."""
     dirs = [
         d.name
         for d in INBOUND_PORT_DIR.iterdir()
@@ -82,6 +85,7 @@ def test_only_aggregate_groups_in_inbound_port():
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
 def test_use_case_dir_has_required_files(use_case_entry: tuple[str, Path]):
+    """Verify that each use case directory contains all required files."""
     _group, use_case_dir = use_case_entry
     actual_files = {
         f.name for f in use_case_dir.iterdir() if f.is_file() and f.suffix == ".py"
@@ -93,6 +97,7 @@ def test_use_case_dir_has_required_files(use_case_entry: tuple[str, Path]):
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
 def test_use_case_dir_has_no_extra_files(use_case_entry: tuple[str, Path]):
+    """Verify that each use case directory contains no unexpected files."""
     _group, use_case_dir = use_case_entry
     actual_files = {
         f.name for f in use_case_dir.iterdir() if f.is_file() and f.suffix == ".py"
@@ -116,6 +121,7 @@ def _exported_classes(module_path: str) -> list[str]:
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
 def test_input_class_naming(use_case_entry: tuple[str, Path]):
+    """Verify that input.py exports a class named {PascalCase}Input."""
     group, use_case_dir = use_case_entry
     prefix = _pascal_to_words(use_case_dir.name)
     expected = f"{prefix}Input"
@@ -128,6 +134,7 @@ def test_input_class_naming(use_case_entry: tuple[str, Path]):
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
 def test_output_class_naming(use_case_entry: tuple[str, Path]):
+    """Verify that output.py exports a class named {PascalCase}Output."""
     group, use_case_dir = use_case_entry
     prefix = _pascal_to_words(use_case_dir.name)
     expected = f"{prefix}Output"
@@ -140,6 +147,7 @@ def test_output_class_naming(use_case_entry: tuple[str, Path]):
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
 def test_use_case_class_naming(use_case_entry: tuple[str, Path]):
+    """Verify that use_case.py exports a class named {PascalCase}UseCase."""
     group, use_case_dir = use_case_entry
     prefix = _pascal_to_words(use_case_dir.name)
     expected = f"{prefix}UseCase"
@@ -155,6 +163,7 @@ def test_use_case_class_naming(use_case_entry: tuple[str, Path]):
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
 def test_init_reexports_all_symbols(use_case_entry: tuple[str, Path]):
+    """Verify that __init__.py re-exports Input, Output, and UseCase in __all__."""
     group, use_case_dir = use_case_entry
     prefix = _pascal_to_words(use_case_dir.name)
     expected_symbols = {f"{prefix}Input", f"{prefix}Output", f"{prefix}UseCase"}

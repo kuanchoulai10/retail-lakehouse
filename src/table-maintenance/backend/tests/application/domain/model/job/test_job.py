@@ -1,3 +1,5 @@
+"""Tests for Job."""
+
 from datetime import UTC, datetime
 
 from base import AggregateRoot
@@ -5,10 +7,12 @@ from application.domain.model.job import Job, JobId, JobType
 
 
 def test_job_is_aggregate_root():
+    """Verify that Job is a subclass of AggregateRoot."""
     assert issubclass(Job, AggregateRoot)
 
 
 def test_job_fields():
+    """Verify that all Job fields are stored correctly."""
     jid = JobId(value="abc1234567")
     job = Job(
         id=jid,
@@ -29,6 +33,7 @@ def test_job_fields():
 
 
 def test_job_enabled_defaults_to_false():
+    """Verify that enabled defaults to False when not specified."""
     job = Job(
         id=JobId(value="abc1234567"),
         job_type=JobType.REWRITE_DATA_FILES,
@@ -39,6 +44,7 @@ def test_job_enabled_defaults_to_false():
 
 
 def test_job_enabled_can_be_true():
+    """Verify that enabled can be set to True."""
     job = Job(
         id=JobId(value="abc1234567"),
         job_type=JobType.REWRITE_DATA_FILES,
@@ -50,6 +56,7 @@ def test_job_enabled_can_be_true():
 
 
 def test_job_cron_defaults_to_none():
+    """Verify that cron defaults to None when not specified."""
     job = Job(
         id=JobId(value="abc1234567"),
         job_type=JobType.REWRITE_DATA_FILES,
@@ -63,6 +70,7 @@ def test_job_cron_defaults_to_none():
 
 
 def test_job_with_cron():
+    """Verify that cron expression is stored when provided."""
     job = Job(
         id=JobId(value="abc1234567"),
         job_type=JobType.REWRITE_DATA_FILES,
@@ -77,6 +85,7 @@ def test_job_with_cron():
 
 
 def test_job_equality_by_id():
+    """Verify that two Jobs with the same id are equal regardless of other fields."""
     a = Job(
         id=JobId("abc1234567"),
         job_type=JobType.REWRITE_DATA_FILES,
@@ -93,6 +102,7 @@ def test_job_equality_by_id():
 
 
 def test_job_inequality_different_id():
+    """Verify that two Jobs with different ids are not equal."""
     a = Job(
         id=JobId("abc1234567"),
         job_type=JobType.REWRITE_DATA_FILES,

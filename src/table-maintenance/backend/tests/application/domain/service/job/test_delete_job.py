@@ -16,10 +16,12 @@ from application.port.inbound import (
 
 
 def test_delete_job_service_implements_use_case():
+    """Verify that DeleteJobService implements DeleteJobUseCase."""
     assert issubclass(DeleteJobService, DeleteJobUseCase)
 
 
 def test_delete_job_returns_output():
+    """Verify that execute returns a DeleteJobOutput and calls repo.delete."""
     repo = MagicMock()
     repo.delete.return_value = None
     service = DeleteJobService(repo)
@@ -31,6 +33,7 @@ def test_delete_job_returns_output():
 
 
 def test_delete_job_raises_app_not_found():
+    """Verify that execute raises AppJobNotFoundError when job does not exist."""
     repo = MagicMock()
     repo.delete.side_effect = JobNotFoundError("nonexistent")
     service = DeleteJobService(repo)

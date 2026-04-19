@@ -40,6 +40,7 @@ class _RecordingExecutor(JobRunInMemoryExecutor):
 
 
 def _make_app() -> tuple[FastAPI, JobRunsInMemoryRepo, _RecordingExecutor]:
+    """Build a FastAPI app wired with in-memory adapters for testing."""
     app = FastAPI()
     app.include_router(router)
     repo = JobsInMemoryRepo()
@@ -71,6 +72,7 @@ REWRITE_PAYLOAD = {
 
 
 def test_full_job_and_run_lifecycle():
+    """Verify that a job can be created, enabled, triggered, listed, and deleted."""
     app, _, _ = _make_app()
     client = TestClient(app)
 
@@ -127,6 +129,7 @@ def test_full_job_and_run_lifecycle():
 
 
 def test_create_with_enabled_true_allows_immediate_run():
+    """Verify that a job created with enabled=true allows immediate run triggering."""
     app, _, _ = _make_app()
     client = TestClient(app)
 
@@ -139,6 +142,7 @@ def test_create_with_enabled_true_allows_immediate_run():
 
 
 def test_patch_unknown_job_returns_404():
+    """Verify that patching a nonexistent job returns 404."""
     app, _, _ = _make_app()
     client = TestClient(app)
 
@@ -147,6 +151,7 @@ def test_patch_unknown_job_returns_404():
 
 
 def test_trigger_run_for_unknown_job_returns_404():
+    """Verify that triggering a run for a nonexistent job returns 404."""
     app, _, _ = _make_app()
     client = TestClient(app)
 

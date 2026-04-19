@@ -1,3 +1,5 @@
+"""Tests for list job runs endpoint."""
+
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
@@ -9,6 +11,7 @@ from application.port.inbound import ListJobRunsOutput, ListJobRunsOutputItem
 
 
 def _make_client(use_case: MagicMock) -> TestClient:
+    """Provide a test client with the list-job-runs use case overridden."""
     app = FastAPI()
     app.include_router(router)
     app.dependency_overrides[get_list_job_runs_use_case] = lambda: use_case
@@ -16,6 +19,7 @@ def _make_client(use_case: MagicMock) -> TestClient:
 
 
 def test_list_job_runs_returns_200():
+    """Return 200 with a list of job runs for the given job."""
     use_case = MagicMock()
     use_case.execute.return_value = ListJobRunsOutput(
         runs=[

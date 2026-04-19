@@ -1,3 +1,5 @@
+"""Tests for build_manifest."""
+
 from datetime import UTC, datetime
 
 from adapter.outbound.job_run.k8s.manifest import build_manifest
@@ -8,6 +10,7 @@ SETTINGS = AppSettings()
 
 
 def _make_job(name: str = "my-job", **kwargs) -> Job:  # type: ignore[no-any-explicit]
+    """Provide a sample Job entity with optional overrides."""
     now = datetime.now(UTC)
     defaults: dict = {
         "id": JobId(value=name),
@@ -23,23 +26,27 @@ def _make_job(name: str = "my-job", **kwargs) -> Job:  # type: ignore[no-any-exp
 
 
 def test_kind_is_spark_application_without_cron():
+    """Verify that the kind is SparkApplication when no cron is set."""
     manifest = build_manifest(_make_job(), "my-job-run", SETTINGS)
     assert manifest["kind"] == "SparkApplication"
     assert manifest["apiVersion"] == "sparkoperator.k8s.io/v1beta2"
 
 
 def test_name_and_namespace():
+    """Verify that the manifest sets name and namespace correctly."""
     manifest = build_manifest(_make_job("my-job"), "my-job-abc123", SETTINGS)
     assert manifest["metadata"]["name"] == "my-job-abc123"
     assert manifest["metadata"]["namespace"] == SETTINGS.k8s.namespace
 
 
 def test_manifest_includes_job_id_label():
+    """Verify that the manifest includes the job-id label."""
     manifest = build_manifest(_make_job("job-xyz"), "job-xyz-run1", SETTINGS)
     assert manifest["metadata"]["labels"]["table-maintenance/job-id"] == "job-xyz"
 
 
 def test_driver_env_glac_vars():
+    """Verify that driver env contains GLAC configuration variables."""
     job = _make_job(job_config={"rewrite_all": True})
     manifest = build_manifest(job, "my-job-run", SETTINGS)
     env = {e["name"]: e["value"] for e in manifest["spec"]["driver"]["env"]}
@@ -49,6 +56,7 @@ def test_driver_env_glac_vars():
 
 
 def test_strategy_enum_serialized_as_value():
+    """Verify that strategy enum is serialized as its string value."""
     job = _make_job(job_config={"table": "inventory.orders", "strategy": "sort"})
     manifest = build_manifest(job, "my-job-run", SETTINGS)
     env = {e["name"]: e["value"] for e in manifest["spec"]["driver"]["env"]}
@@ -56,6 +64,7 @@ def test_strategy_enum_serialized_as_value():
 
 
 def test_expire_snapshots_datetime_env():
+    """Verify that expire_snapshots env vars include the datetime value."""
     dt = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
     job = _make_job(
         job_type=JobType.EXPIRE_SNAPSHOTS,
@@ -68,6 +77,7 @@ def test_expire_snapshots_datetime_env():
 
 
 def test_executor_env_has_aws_vars():
+    """Verify that executor env includes AWS credential variables."""
     manifest = build_manifest(_make_job(), "my-job-run", SETTINGS)
     exec_env_keys = {e["name"] for e in manifest["spec"]["executor"]["env"]}
     assert "AWS_ACCESS_KEY_ID" in exec_env_keys
@@ -75,6 +85,7 @@ def test_executor_env_has_aws_vars():
 
 
 def test_resource_defaults_from_settings():
+    """Verify that resource defaults come from settings."""
     manifest = build_manifest(_make_job(), "my-job-run", SETTINGS)
     assert manifest["spec"]["driver"]["memory"] == "512m"
     assert manifest["spec"]["executor"]["memory"] == "1g"
@@ -82,6 +93,7 @@ def test_resource_defaults_from_settings():
 
 
 def test_cron_creates_scheduled_spark_application():
+    """Verify that a cron job produces a ScheduledSparkApplication manifest."""
     job = _make_job(cron="0 2 * * *")
     manifest = build_manifest(job, "my-job", SETTINGS)
     assert manifest["kind"] == "ScheduledSparkApplication"
@@ -90,6 +102,7 @@ def test_cron_creates_scheduled_spark_application():
 
 
 def test_none_fields_not_in_env():
+    """Verify that None-valued fields are omitted from the env vars."""
     manifest = build_manifest(_make_job(), "my-job-run", SETTINGS)
     env_names = {e["name"] for e in manifest["spec"]["driver"]["env"]}
     assert "GLAC_REWRITE_DATA_FILES__SORT_ORDER" not in env_names

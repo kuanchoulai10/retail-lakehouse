@@ -8,16 +8,21 @@ from base import Entity, EntityId, Repository
 
 @dataclass(frozen=True)
 class ItemId(EntityId):
+    """Test stub for EntityId."""
+
     pass
 
 
 @dataclass(eq=False)
 class Item(Entity[ItemId]):
+    """Test stub for Entity."""
+
     id: ItemId
     name: str
 
 
 def test_repository_is_abstract():
+    """Verify that Repository cannot be instantiated directly."""
     with pytest.raises(TypeError):
         Repository()  # type: ignore[call-arg]
 

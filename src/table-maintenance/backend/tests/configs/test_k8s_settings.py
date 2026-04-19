@@ -1,7 +1,10 @@
+"""Tests for K8sSettings."""
+
 from configs import AppSettings, K8sSettings
 
 
 def test_defaults():
+    """Verify that K8sSettings has correct default values."""
     s = K8sSettings()
     assert s.namespace == "default"
     assert s.image == "localhost:5000/table-maintenance-jobs:latest"
@@ -16,6 +19,7 @@ def test_defaults():
 
 
 def test_env_nested_override(monkeypatch):
+    """Verify that nested K8s env vars override K8sSettings via AppSettings."""
     monkeypatch.setenv("BACKEND_K8S__NAMESPACE", "spark-jobs")
     monkeypatch.setenv("BACKEND_K8S__EXECUTOR_INSTANCES", "3")
     s = AppSettings()

@@ -1,3 +1,5 @@
+"""Tests for JobsSqlRepo."""
+
 from datetime import UTC, datetime
 
 import pytest
@@ -12,6 +14,7 @@ def _make_job(
     enabled: bool = False,
     cron: str | None = None,
 ) -> Job:
+    """Provide a sample Job entity with optional overrides."""
     now = datetime(2026, 4, 10, 12, 0, tzinfo=UTC)
     return Job(
         id=JobId(value=job_id),
@@ -27,11 +30,13 @@ def _make_job(
 
 
 def test_is_subclass_of_base_jobs_repo(sqlite_engine):
+    """Verify that JobsSqlRepo implements the JobsRepo interface."""
     repo = JobsSqlRepo(sqlite_engine)
     assert isinstance(repo, JobsRepo)
 
 
 def test_create_inserts_row(sqlite_engine):
+    """Verify that create inserts a row and returns the job."""
     repo = JobsSqlRepo(sqlite_engine)
     job = _make_job()
     result = repo.create(job)
@@ -39,6 +44,7 @@ def test_create_inserts_row(sqlite_engine):
 
 
 def test_get_returns_created_job(sqlite_engine):
+    """Verify that get returns a previously created job."""
     repo = JobsSqlRepo(sqlite_engine)
     job = _make_job("abc1234567")
     repo.create(job)
@@ -47,6 +53,7 @@ def test_get_returns_created_job(sqlite_engine):
 
 
 def test_get_raises_not_found(sqlite_engine):
+    """Verify that get raises JobNotFoundError for a missing id."""
     repo = JobsSqlRepo(sqlite_engine)
     with pytest.raises(JobNotFoundError) as exc_info:
         repo.get(JobId(value="missing"))
@@ -54,6 +61,7 @@ def test_get_raises_not_found(sqlite_engine):
 
 
 def test_list_all_returns_all_jobs(sqlite_engine):
+    """Verify that list_all returns every stored job."""
     repo = JobsSqlRepo(sqlite_engine)
     repo.create(_make_job("a"))
     repo.create(_make_job("b"))
@@ -62,11 +70,13 @@ def test_list_all_returns_all_jobs(sqlite_engine):
 
 
 def test_list_all_empty(sqlite_engine):
+    """Verify that list_all returns an empty list when no jobs exist."""
     repo = JobsSqlRepo(sqlite_engine)
     assert repo.list_all() == []
 
 
 def test_delete_removes_job(sqlite_engine):
+    """Verify that delete removes the job from the store."""
     repo = JobsSqlRepo(sqlite_engine)
     repo.create(_make_job("abc1234567"))
     repo.delete(JobId(value="abc1234567"))
@@ -74,12 +84,14 @@ def test_delete_removes_job(sqlite_engine):
 
 
 def test_delete_raises_not_found(sqlite_engine):
+    """Verify that delete raises JobNotFoundError for a missing id."""
     repo = JobsSqlRepo(sqlite_engine)
     with pytest.raises(JobNotFoundError):
         repo.delete(JobId(value="missing"))
 
 
 def test_update_replaces_row(sqlite_engine):
+    """Verify that update replaces the existing row with new values."""
     repo = JobsSqlRepo(sqlite_engine)
     original = _make_job("abc1234567", enabled=False)
     repo.create(original)
@@ -92,12 +104,14 @@ def test_update_replaces_row(sqlite_engine):
 
 
 def test_update_raises_not_found(sqlite_engine):
+    """Verify that update raises JobNotFoundError for a missing id."""
     repo = JobsSqlRepo(sqlite_engine)
     with pytest.raises(JobNotFoundError):
         repo.update(_make_job("ghost"))
 
 
 def test_enabled_roundtrips(sqlite_engine):
+    """Verify that the enabled flag roundtrips through the database."""
     repo = JobsSqlRepo(sqlite_engine)
     repo.create(_make_job("a", enabled=True))
     repo.create(_make_job("b", enabled=False))
@@ -107,6 +121,7 @@ def test_enabled_roundtrips(sqlite_engine):
 
 
 def test_cron_nullable_roundtrips(sqlite_engine):
+    """Verify that nullable cron values roundtrip through the database."""
     repo = JobsSqlRepo(sqlite_engine)
     repo.create(_make_job("a", cron=None))
     repo.create(_make_job("b", cron="0 2 * * *"))
