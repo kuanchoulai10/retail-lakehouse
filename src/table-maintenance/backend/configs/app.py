@@ -27,3 +27,5 @@ class AppSettings(BaseSettings):
     k8s: K8sSettings = Field(default_factory=K8sSettings)
     postgres: PostgresSettings = Field(default_factory=PostgresSettings)
     sqlite: SqliteSettings = Field(default_factory=SqliteSettings)
+    iceberg_catalog_uri: str = "http://polaris:8181/api/catalog"
+    iceberg_catalog_name: str = "iceberg"
