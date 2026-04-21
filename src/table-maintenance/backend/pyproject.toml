@@ -7,6 +7,7 @@ dependencies = [
     "kubernetes>=32.0",
     "sqlalchemy>=2.0",
     "psycopg[binary]>=3.2",
+    "pyiceberg>=0.9",
 ]
 
 [dependency-groups]
