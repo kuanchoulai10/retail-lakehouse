@@ -11,8 +11,7 @@ This skill standardizes the cycle of building a Docker image locally, loading it
 
 - Minikube profile: `lakehouse-demo`
 - Docker runtime: Colima (Docker runs inside a VM — `localhost` from Docker ≠ host `localhost`)
-- Image loading: `minikube image load` (direct load into containerd, no registry networking needed)
-- Image naming: `localhost:5001/<name>:latest` (convention only — images are loaded directly, not pulled from a registry)
+- Image naming: `localhost:5001/<name>:<tag>` (convention only — images are loaded directly, not pulled from a registry)
 - `imagePullPolicy: Never` in all manifests (prevents K8s from trying to pull from a registry)
 - K8s manifests live in numbered directories (e.g., `25-table-maintenance/`)
 
@@ -33,49 +32,64 @@ When the user asks to deploy something not in this table, ask them for the Docke
 
 Execute these steps in order. If any step fails, stop and diagnose before continuing.
 
-### Step 1: Clean Old Images
+### Step 1: Generate a Unique Image Tag
 
-Remove old images to free space before building new ones.
+Never use `:latest` for deploy iterations. The `latest` tag causes caching issues where `minikube image load` silently keeps the old image. Use a unique tag for every build so K8s is forced to pull the new image.
 
-**Remove from Minikube's container runtime:**
+Generate a tag based on timestamp:
 ```bash
-minikube image rm localhost:5001/<IMAGE_NAME>:latest -p lakehouse-demo 2>/dev/null || true
+TAG=$(date +%Y%m%d-%H%M%S)
 ```
 
-**Remove from local Docker:**
-```bash
-docker rmi localhost:5001/<IMAGE_NAME>:latest 2>/dev/null || true
-```
+Example: `localhost:5001/table-maintenance-backend:20260421-213000`
 
 ### Step 2: Build Image
 
 ```bash
-docker build -t localhost:5001/<IMAGE_NAME>:latest <BUILD_CONTEXT>
+docker build -t localhost:5001/<IMAGE_NAME>:$TAG <BUILD_CONTEXT>
 ```
 
 Replace `<BUILD_CONTEXT>` with the absolute path from the Known Images table. If the Dockerfile is not at the root of the build context, add `-f <DOCKERFILE_PATH>`.
 
+**After build completes, verify the image has the expected files:**
+```bash
+docker run --rm localhost:5001/<IMAGE_NAME>:$TAG ls /app/
+```
+
+This catches Dockerfile issues (missing COPY, wrong build context) before loading into Minikube.
+
 ### Step 3: Load into Minikube
 
+Use `docker save` + `ctr import` for reliable image loading. `minikube image load` has caching issues where it can silently keep old image layers even with a new tag.
+
 ```bash
-minikube image load localhost:5001/<IMAGE_NAME>:latest -p lakehouse-demo
+docker save localhost:5001/<IMAGE_NAME>:$TAG -o /tmp/<IMAGE_NAME>.tar
+minikube cp /tmp/<IMAGE_NAME>.tar lakehouse-demo:/tmp/<IMAGE_NAME>.tar -p lakehouse-demo
+minikube ssh -p lakehouse-demo -- "sudo ctr -n k8s.io images import /tmp/<IMAGE_NAME>.tar && sudo rm -f /tmp/<IMAGE_NAME>.tar"
+rm /tmp/<IMAGE_NAME>.tar
+```
+
+Also run `minikube image load` to ensure crictl sees the tag (ctr import alone sometimes isn't enough for crictl):
+```bash
+minikube image load localhost:5001/<IMAGE_NAME>:$TAG -p lakehouse-demo
 ```
 
 Verify the image is loaded:
 ```bash
-minikube image ls -p lakehouse-demo 2>/dev/null | grep <IMAGE_NAME>
+minikube ssh -p lakehouse-demo -- "sudo crictl images | grep <IMAGE_NAME>"
 ```
 
-### Step 4: Deploy
+### Step 4: Update Manifest and Deploy
 
-The deploy strategy depends on the resource kind:
+Update the image tag in the manifest file before applying. Do not rely on `rollout restart` with the same tag — K8s won't detect a change.
+
+1. Update the `image:` field in the manifest to use the new tag
+2. Apply and wait:
 
 **For Deployment (e.g., backend):**
 ```bash
 kubectl apply -f <MANIFEST_PATH>
-# Force pods to recreate with the new image
-kubectl rollout restart deployment/<DEPLOYMENT_NAME> -n default
-kubectl rollout status deployment/<DEPLOYMENT_NAME> -n default --timeout=60s
+kubectl rollout status deployment/<DEPLOYMENT_NAME> -n default --timeout=90s
 ```
 
 **For SparkApplication (e.g., jobs):**
@@ -94,16 +108,33 @@ kubectl logs -n default -l spark-role=driver,spark-app-name=<APP_NAME> -f
 
 ### Step 5: Verify
 
-After deploy, confirm the workload is healthy:
+After deploy, confirm the workload is healthy and running the correct image:
 
 **For Deployment:**
 ```bash
+# Check pod status
 kubectl get pods -l app=<DEPLOYMENT_NAME> -n default
+
+# Verify the pod is running the new image (check the tag matches)
+kubectl get pod -l app=<DEPLOYMENT_NAME> -n default -o jsonpath='{.items[0].spec.containers[0].image}'
+
+# Verify files inside the running pod
+kubectl exec $(kubectl get pods -l app=<DEPLOYMENT_NAME> -n default -o jsonpath='{.items[0].metadata.name}') -n default -- ls /app/
 ```
 
 **For SparkApplication:**
 ```bash
 kubectl get sparkapplication/<APP_NAME> -n default
+```
+
+### Step 6: Smoke Test
+
+If the deployed service has an HTTP endpoint, port-forward and test it:
+
+```bash
+kubectl port-forward svc/<SERVICE_NAME> <PORT>:<PORT> -n default &
+sleep 3
+curl -s http://localhost:<PORT>/health
 ```
 
 ## Bulk Cleanup
@@ -112,7 +143,7 @@ If the user wants to free up space across all images:
 
 ```bash
 # List images in minikube
-minikube image ls -p lakehouse-demo 2>/dev/null | grep localhost
+minikube ssh -p lakehouse-demo -- "sudo crictl images" | grep localhost
 
 # Prune dangling docker images locally
 docker image prune -f
@@ -123,11 +154,22 @@ minikube ssh -p lakehouse-demo -- df -h /
 
 ## Troubleshooting
 
-If pods show `ErrImageNeverPull` or `ImagePullBackOff`:
+### ErrImageNeverPull or ImagePullBackOff
 
-1. **Image not loaded** → re-run `minikube image load`
-2. **imagePullPolicy wrong** → must be `Never` for locally-loaded images
-3. **Image name mismatch** → compare `minikube image ls` output with manifest's `image:` field exactly
-4. **Disk full** → run bulk cleanup above
+1. **Image not loaded** — verify with `crictl images`, not just `minikube image ls`. If missing, re-run the `docker save` + `ctr import` flow.
+2. **imagePullPolicy wrong** — must be `Never` for locally-loaded images
+3. **Image name/tag mismatch** — compare `crictl images` output with manifest's `image:` field exactly (including tag)
+4. **Disk full** — run bulk cleanup above
+
+### Image loaded but pod has old files
+
+This is the most common issue. Causes:
+1. **Used `:latest` tag** — minikube caches aggressively. Solution: always use unique tags.
+2. **`minikube image load` cached old layers** — Solution: use `docker save` + `ctr import` instead.
+3. **Pod using old image** — verify with: `kubectl get pod <POD> -o jsonpath='{.status.containerStatuses[0].imageID}'` and compare to local `docker inspect --format '{{.Id}}'`.
+
+### Cross-namespace service connection failures
+
+If the deployed app can't reach services in other namespaces (e.g., `Failed to resolve 'polaris'`), use the FQDN: `<service>.<namespace>.svc.cluster.local`. Configure via environment variables in the deployment manifest.
 
 For deeper diagnosis, see `docs/troubleshooting-minikube-image-pull.md` in this repo.
