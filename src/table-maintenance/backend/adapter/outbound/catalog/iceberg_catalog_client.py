@@ -8,12 +8,26 @@ from pyiceberg.catalog import load_catalog
 class IcebergCatalogClient:
     """Wrap PyIceberg catalog operations, returning plain dicts."""
 
-    def __init__(self, catalog_uri: str, catalog_name: str) -> None:
-        self._catalog = load_catalog(
-            name=catalog_name,
-            type="rest",
-            uri=catalog_uri,
-        )
+    def __init__(
+        self,
+        catalog_uri: str,
+        catalog_name: str,
+        credential: str = "",
+        warehouse: str = "",
+        scope: str = "",
+    ) -> None:
+        kwargs: dict[str, str] = {
+            "name": catalog_name,
+            "type": "rest",
+            "uri": catalog_uri,
+        }
+        if credential:
+            kwargs["credential"] = credential
+        if warehouse:
+            kwargs["warehouse"] = warehouse
+        if scope:
+            kwargs["scope"] = scope
+        self._catalog = load_catalog(**kwargs)
 
     def list_namespaces(self) -> list[str]:
         """Return namespace names as a flat list of strings."""

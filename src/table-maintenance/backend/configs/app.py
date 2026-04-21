@@ -29,3 +29,6 @@ class AppSettings(BaseSettings):
     sqlite: SqliteSettings = Field(default_factory=SqliteSettings)
     iceberg_catalog_uri: str = "http://polaris:8181/api/catalog"
     iceberg_catalog_name: str = "iceberg"
+    iceberg_catalog_credential: str = ""
+    iceberg_catalog_warehouse: str = ""
+    iceberg_catalog_scope: str = ""
