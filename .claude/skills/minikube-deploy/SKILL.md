@@ -32,11 +32,16 @@ When the user asks to deploy something not in this table, ask them for the Docke
 
 Execute these steps in order. If any step fails, stop and diagnose before continuing.
 
-### Step 1: Generate a Unique Image Tag
+### Step 1: Generate a Unique Image Tag and Record the Previous Tag
 
 Never use `:latest` for deploy iterations. The `latest` tag causes caching issues where `minikube image load` silently keeps the old image. Use a unique tag for every build so K8s is forced to pull the new image.
 
-Generate a tag based on timestamp:
+Read the current image tag from the manifest so you can clean it up later:
+```bash
+OLD_TAG=$(grep 'image:.*<IMAGE_NAME>' <MANIFEST_PATH> | sed 's/.*://')
+```
+
+Generate a new tag based on timestamp:
 ```bash
 TAG=$(date +%Y%m%d-%H%M%S)
 ```
@@ -127,7 +132,26 @@ kubectl exec $(kubectl get pods -l app=<DEPLOYMENT_NAME> -n default -o jsonpath=
 kubectl get sparkapplication/<APP_NAME> -n default
 ```
 
-### Step 6: Smoke Test
+### Step 6: Clean Up Previous Image
+
+After the new pod is verified running, remove the old image from both local Docker and Minikube to prevent disk bloat. Minikube disk space is limited — skipping cleanup will eventually cause deploy failures.
+
+```bash
+# Remove old image from local Docker
+docker rmi localhost:5001/<IMAGE_NAME>:$OLD_TAG 2>/dev/null || true
+docker image prune -f
+
+# Remove old image from Minikube (both ctr and crictl layers)
+minikube ssh -p lakehouse-demo -- "sudo ctr -n k8s.io images rm localhost:5001/<IMAGE_NAME>:$OLD_TAG" 2>/dev/null || true
+minikube ssh -p lakehouse-demo -- "sudo ctr -n k8s.io content prune references" 2>/dev/null || true
+```
+
+Verify only the new tag remains:
+```bash
+minikube ssh -p lakehouse-demo -- "sudo crictl images | grep <IMAGE_NAME>"
+```
+
+### Step 7: Smoke Test
 
 If the deployed service has an HTTP endpoint, port-forward and test it:
 
