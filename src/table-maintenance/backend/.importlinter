@@ -72,6 +72,12 @@ ignore_imports =
     dependencies.repos -> adapter.outbound.job_run.sql.job_runs_sql_repo
     dependencies.repos -> adapter.outbound.sql.engine_factory
     dependencies.catalog -> adapter.outbound.catalog.iceberg_catalog_client
+    adapter.inbound.web.catalog.list_namespaces -> adapter.outbound.catalog.iceberg_catalog_client
+    adapter.inbound.web.catalog.list_tables -> adapter.outbound.catalog.iceberg_catalog_client
+    adapter.inbound.web.catalog.get_table -> adapter.outbound.catalog.iceberg_catalog_client
+    adapter.inbound.web.catalog.list_snapshots -> adapter.outbound.catalog.iceberg_catalog_client
+    adapter.inbound.web.catalog.list_branches -> adapter.outbound.catalog.iceberg_catalog_client
+    adapter.inbound.web.catalog.list_tags -> adapter.outbound.catalog.iceberg_catalog_client
 
 [importlinter:contract:outbound-inbound-separation]
 name = Outbound adapter does not depend on inbound adapter
