@@ -68,9 +68,7 @@ class IcebergCatalogClient:
                 "snapshot_id": snap.snapshot_id,
                 "parent_id": snap.parent_snapshot_id,
                 "timestamp_ms": snap.timestamp_ms,
-                "summary": {k: v for k, v in snap.summary.items()}
-                if snap.summary
-                else {},
+                "summary": snap.summary.model_dump() if snap.summary else {},
             }
             for snap in tbl.metadata.snapshots
         ]

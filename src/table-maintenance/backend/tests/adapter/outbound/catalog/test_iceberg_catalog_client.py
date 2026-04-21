@@ -82,7 +82,12 @@ def test_list_snapshots(client, mock_pyiceberg_catalog):
     mock_snap.snapshot_id = 100
     mock_snap.parent_snapshot_id = None
     mock_snap.timestamp_ms = 1713600000000
-    mock_snap.summary = {"operation": "append", "added-records": "50"}
+    mock_summary = MagicMock()
+    mock_summary.model_dump.return_value = {
+        "operation": "append",
+        "added-records": "50",
+    }
+    mock_snap.summary = mock_summary
 
     mock_table = MagicMock()
     mock_table.metadata.snapshots = [mock_snap]
