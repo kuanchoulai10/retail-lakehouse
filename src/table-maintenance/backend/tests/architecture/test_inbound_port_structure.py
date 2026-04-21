@@ -24,7 +24,7 @@ INBOUND_PORT_DIR = (
 )
 REQUIRED_FILES = {"__init__.py", "input.py", "output.py", "use_case.py"}
 
-AGGREGATE_GROUPS = ["job", "job_run"]
+AGGREGATE_GROUPS = ["catalog", "job", "job_run"]
 
 
 def _group_dirs() -> list[Path]:

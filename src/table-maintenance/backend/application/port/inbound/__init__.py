@@ -1,5 +1,25 @@
 """Inbound port interfaces (use cases)."""
 
+from application.port.inbound.catalog import (
+    GetTableInput,
+    GetTableOutput,
+    GetTableUseCase,
+    ListBranchesInput,
+    ListBranchesOutput,
+    ListBranchesUseCase,
+    ListNamespacesInput,
+    ListNamespacesOutput,
+    ListNamespacesUseCase,
+    ListSnapshotsInput,
+    ListSnapshotsOutput,
+    ListSnapshotsUseCase,
+    ListTablesInput,
+    ListTablesOutput,
+    ListTablesUseCase,
+    ListTagsInput,
+    ListTagsOutput,
+    ListTagsUseCase,
+)
 from application.port.inbound.job import (
     CreateJobInput,
     CreateJobOutput,
@@ -32,6 +52,24 @@ from application.port.inbound.job_run import (
 )
 
 __all__ = [
+    "GetTableInput",
+    "GetTableOutput",
+    "GetTableUseCase",
+    "ListBranchesInput",
+    "ListBranchesOutput",
+    "ListBranchesUseCase",
+    "ListNamespacesInput",
+    "ListNamespacesOutput",
+    "ListNamespacesUseCase",
+    "ListSnapshotsInput",
+    "ListSnapshotsOutput",
+    "ListSnapshotsUseCase",
+    "ListTablesInput",
+    "ListTablesOutput",
+    "ListTablesUseCase",
+    "ListTagsInput",
+    "ListTagsOutput",
+    "ListTagsUseCase",
     "CreateJobInput",
     "CreateJobOutput",
     "CreateJobRunInput",

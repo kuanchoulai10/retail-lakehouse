@@ -1,6 +1,7 @@
-"""Outbound port interfaces (repositories, executors)."""
+"""Outbound port interfaces (repositories, executors, readers)."""
 
+from application.port.outbound.catalog import CatalogReader
 from application.port.outbound.job import JobsRepo
 from application.port.outbound.job_run import JobRunsRepo, JobRunExecutor
 
-__all__ = ["JobRunsRepo", "JobsRepo", "JobRunExecutor"]
+__all__ = ["CatalogReader", "JobRunsRepo", "JobsRepo", "JobRunExecutor"]

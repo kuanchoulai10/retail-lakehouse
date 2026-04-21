@@ -5,8 +5,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 
 from adapter.inbound.web.catalog.dto import TablesResponse
-from adapter.outbound.catalog.iceberg_catalog_client import IcebergCatalogClient
-from dependencies.catalog import get_catalog_client
+from application.port.inbound.catalog.list_tables import (
+    ListTablesInput,
+    ListTablesUseCase,
+)
+from dependencies.use_cases import get_list_tables_use_case
 
 router = APIRouter()
 
@@ -18,8 +21,8 @@ router = APIRouter()
 def list_tables(
     catalog: str,
     namespace: str,
-    client: IcebergCatalogClient = Depends(get_catalog_client),
+    use_case: ListTablesUseCase = Depends(get_list_tables_use_case),
 ) -> TablesResponse:
     """Return all tables in the namespace."""
-    tables = client.list_tables(namespace)
-    return TablesResponse(tables=tables)
+    result = use_case.execute(ListTablesInput(namespace=namespace))
+    return TablesResponse(tables=result.tables)

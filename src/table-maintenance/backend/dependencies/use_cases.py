@@ -5,6 +5,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from fastapi import Depends
+from application.domain.service.catalog.get_table import GetTableService
+from application.domain.service.catalog.list_branches import ListBranchesService
+from application.domain.service.catalog.list_namespaces import ListNamespacesService
+from application.domain.service.catalog.list_snapshots import ListSnapshotsService
+from application.domain.service.catalog.list_tables import ListTablesService
+from application.domain.service.catalog.list_tags import ListTagsService
 from application.domain.service.job.create_job import CreateJobService
 from application.domain.service.job.delete_job import DeleteJobService
 from application.domain.service.job.get_job import GetJobService
@@ -14,6 +20,7 @@ from application.domain.service.job_run.create_job_run import CreateJobRunServic
 from application.domain.service.job_run.get_job_run import GetJobRunService
 from application.domain.service.job_run.list_job_runs import ListJobRunsService
 
+from dependencies.catalog import get_catalog_reader
 from dependencies.repos import (
     get_job_run_executor,
     get_job_runs_repo,
@@ -27,10 +34,17 @@ if TYPE_CHECKING:
         DeleteJobUseCase,
         GetJobRunUseCase,
         GetJobUseCase,
+        GetTableUseCase,
+        ListBranchesUseCase,
         ListJobRunsUseCase,
         ListJobsUseCase,
+        ListNamespacesUseCase,
+        ListSnapshotsUseCase,
+        ListTablesUseCase,
+        ListTagsUseCase,
         UpdateJobUseCase,
     )
+    from application.port.outbound.catalog.catalog_reader import CatalogReader
     from application.port.outbound.job_run.job_run_executor import JobRunExecutor
     from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
     from application.port.outbound.job.jobs_repo import JobsRepo
@@ -91,3 +105,48 @@ def get_get_job_run_use_case(
 ) -> GetJobRunUseCase:
     """Provide the GetJobRun use case with injected dependencies."""
     return GetJobRunService(repo)
+
+
+# --- Catalog use cases ---
+
+
+def get_list_namespaces_use_case(
+    reader: CatalogReader = Depends(get_catalog_reader),
+) -> ListNamespacesUseCase:
+    """Provide the ListNamespaces use case."""
+    return ListNamespacesService(reader)
+
+
+def get_list_tables_use_case(
+    reader: CatalogReader = Depends(get_catalog_reader),
+) -> ListTablesUseCase:
+    """Provide the ListTables use case."""
+    return ListTablesService(reader)
+
+
+def get_get_table_use_case(
+    reader: CatalogReader = Depends(get_catalog_reader),
+) -> GetTableUseCase:
+    """Provide the GetTable use case."""
+    return GetTableService(reader)
+
+
+def get_list_snapshots_use_case(
+    reader: CatalogReader = Depends(get_catalog_reader),
+) -> ListSnapshotsUseCase:
+    """Provide the ListSnapshots use case."""
+    return ListSnapshotsService(reader)
+
+
+def get_list_branches_use_case(
+    reader: CatalogReader = Depends(get_catalog_reader),
+) -> ListBranchesUseCase:
+    """Provide the ListBranches use case."""
+    return ListBranchesService(reader)
+
+
+def get_list_tags_use_case(
+    reader: CatalogReader = Depends(get_catalog_reader),
+) -> ListTagsUseCase:
+    """Provide the ListTags use case."""
+    return ListTagsService(reader)

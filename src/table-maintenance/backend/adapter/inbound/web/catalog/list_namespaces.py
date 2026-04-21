@@ -5,8 +5,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 
 from adapter.inbound.web.catalog.dto import NamespacesResponse
-from adapter.outbound.catalog.iceberg_catalog_client import IcebergCatalogClient
-from dependencies.catalog import get_catalog_client
+from application.port.inbound.catalog.list_namespaces import (
+    ListNamespacesInput,
+    ListNamespacesUseCase,
+)
+from dependencies.use_cases import get_list_namespaces_use_case
 
 router = APIRouter()
 
@@ -17,8 +20,8 @@ router = APIRouter()
 )
 def list_namespaces(
     catalog: str,
-    client: IcebergCatalogClient = Depends(get_catalog_client),
+    use_case: ListNamespacesUseCase = Depends(get_list_namespaces_use_case),
 ) -> NamespacesResponse:
     """Return all namespaces in the catalog."""
-    namespaces = client.list_namespaces()
-    return NamespacesResponse(namespaces=namespaces)
+    result = use_case.execute(ListNamespacesInput())
+    return NamespacesResponse(namespaces=result.namespaces)

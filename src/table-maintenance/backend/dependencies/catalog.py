@@ -1,4 +1,4 @@
-"""Provide the Iceberg catalog client dependency."""
+"""Provide the Iceberg catalog reader dependency."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from functools import lru_cache
 from fastapi import Depends
 
 from adapter.outbound.catalog.iceberg_catalog_client import IcebergCatalogClient
+from application.port.outbound.catalog.catalog_reader import CatalogReader
 from configs import AppSettings
 from dependencies.settings import get_settings
 
@@ -25,10 +26,10 @@ def _catalog_client_singleton(
     )
 
 
-def get_catalog_client(
+def get_catalog_reader(
     settings: AppSettings = Depends(get_settings),
-) -> IcebergCatalogClient:
-    """Return a cached IcebergCatalogClient based on AppSettings."""
+) -> CatalogReader:
+    """Return a CatalogReader backed by IcebergCatalogClient."""
     return _catalog_client_singleton(
         uri=settings.iceberg_catalog_uri,
         name=settings.iceberg_catalog_name,

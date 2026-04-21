@@ -5,8 +5,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 
 from adapter.inbound.web.catalog.dto import TagResponse, TagsResponse
-from adapter.outbound.catalog.iceberg_catalog_client import IcebergCatalogClient
-from dependencies.catalog import get_catalog_client
+from application.port.inbound.catalog.list_tags import (
+    ListTagsInput,
+    ListTagsUseCase,
+)
+from dependencies.use_cases import get_list_tags_use_case
 
 router = APIRouter()
 
@@ -19,10 +22,17 @@ def list_tags(
     catalog: str,
     namespace: str,
     table: str,
-    client: IcebergCatalogClient = Depends(get_catalog_client),
+    use_case: ListTagsUseCase = Depends(get_list_tags_use_case),
 ) -> TagsResponse:
     """Return all tags for a table."""
-    tags = client.list_tags(namespace, table)
+    result = use_case.execute(ListTagsInput(namespace=namespace, table=table))
     return TagsResponse(
-        tags=[TagResponse(**t) for t in tags],
+        tags=[
+            TagResponse(
+                name=t.name,
+                snapshot_id=t.snapshot_id,
+                max_ref_age_ms=t.max_ref_age_ms,
+            )
+            for t in result.tags
+        ],
     )

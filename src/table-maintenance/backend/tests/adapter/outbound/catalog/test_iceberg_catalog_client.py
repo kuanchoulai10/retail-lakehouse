@@ -1,4 +1,4 @@
-"""Tests for IcebergCatalogClient."""
+"""Tests for IcebergCatalogClient implementing CatalogReader."""
 
 from __future__ import annotations
 
@@ -7,6 +7,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from adapter.outbound.catalog.iceberg_catalog_client import IcebergCatalogClient
+from application.domain.model.catalog.table import Table
+from application.port.outbound.catalog.catalog_reader import CatalogReader
 
 
 @pytest.fixture
@@ -26,6 +28,11 @@ def client(mock_pyiceberg_catalog):
             catalog_uri="http://polaris:8181/api/catalog",
             catalog_name="iceberg",
         )
+
+
+def test_client_implements_catalog_reader(client):
+    """IcebergCatalogClient implements the CatalogReader port."""
+    assert isinstance(client, CatalogReader)
 
 
 def test_list_namespaces(client, mock_pyiceberg_catalog):
@@ -50,13 +57,14 @@ def test_list_tables(client, mock_pyiceberg_catalog):
     mock_pyiceberg_catalog.list_tables.assert_called_once_with(namespace="default")
 
 
-def test_get_table(client, mock_pyiceberg_catalog):
-    """Return table metadata as a plain dict."""
+def _mock_pyiceberg_table():
+    """Build a mock PyIceberg table with schema, snapshots, branches, tags."""
     mock_table = MagicMock()
-    mock_table.metadata.current_snapshot_id = 123
     mock_table.metadata.location = "s3://warehouse/default/orders"
+    mock_table.metadata.current_snapshot_id = 123
     mock_table.metadata.properties = {"write.format.default": "parquet"}
 
+    # Schema
     mock_field = MagicMock()
     mock_field.field_id = 1
     mock_field.name = "order_id"
@@ -65,19 +73,7 @@ def test_get_table(client, mock_pyiceberg_catalog):
     mock_field.required = True
     mock_table.schema.return_value.fields = (mock_field,)
 
-    mock_pyiceberg_catalog.load_table.return_value = mock_table
-    result = client.get_table("default", "orders")
-
-    assert result["table"] == "orders"
-    assert result["namespace"] == "default"
-    assert result["location"] == "s3://warehouse/default/orders"
-    assert result["current_snapshot_id"] == 123
-    assert result["schema"]["fields"][0]["name"] == "order_id"
-    assert result["properties"] == {"write.format.default": "parquet"}
-
-
-def test_list_snapshots(client, mock_pyiceberg_catalog):
-    """Return snapshots as a list of dicts."""
+    # Snapshots
     mock_snap = MagicMock()
     mock_snap.snapshot_id = 100
     mock_snap.parent_snapshot_id = None
@@ -88,59 +84,65 @@ def test_list_snapshots(client, mock_pyiceberg_catalog):
         "added-records": "50",
     }
     mock_snap.summary = mock_summary
-
-    mock_table = MagicMock()
     mock_table.metadata.snapshots = [mock_snap]
-    mock_pyiceberg_catalog.load_table.return_value = mock_table
 
-    result = client.list_snapshots("default", "orders")
-    assert len(result) == 1
-    assert result[0]["snapshot_id"] == 100
-    assert result[0]["parent_id"] is None
-    assert result[0]["timestamp_ms"] == 1713600000000
-    assert result[0]["summary"] == {"operation": "append", "added-records": "50"}
-
-
-def test_list_branches(client, mock_pyiceberg_catalog):
-    """Return only branch refs."""
+    # Refs (branch + tag)
     main_ref = MagicMock()
     main_ref.snapshot_id = 100
     main_ref.snapshot_ref_type = "branch"
     main_ref.max_ref_age_ms = None
-    main_ref.max_snapshot_age_ms = None
-    main_ref.min_snapshots_to_keep = None
+    main_ref.max_snapshot_age_ms = 86400000
+    main_ref.min_snapshots_to_keep = 5
 
     tag_ref = MagicMock()
-    tag_ref.snapshot_ref_type = "tag"
-
-    mock_table = MagicMock()
-    mock_table.metadata.refs = {"main": main_ref, "v1.0": tag_ref}
-    mock_pyiceberg_catalog.load_table.return_value = mock_table
-
-    result = client.list_branches("default", "orders")
-    assert len(result) == 1
-    assert result[0]["name"] == "main"
-    assert result[0]["snapshot_id"] == 100
-
-
-def test_list_tags(client, mock_pyiceberg_catalog):
-    """Return only tag refs."""
-    branch_ref = MagicMock()
-    branch_ref.snapshot_ref_type = "branch"
-
-    tag_ref = MagicMock()
-    tag_ref.snapshot_id = 200
+    tag_ref.snapshot_id = 100
     tag_ref.snapshot_ref_type = "tag"
     tag_ref.max_ref_age_ms = None
 
-    mock_table = MagicMock()
-    mock_table.metadata.refs = {"main": branch_ref, "v1.0": tag_ref}
-    mock_pyiceberg_catalog.load_table.return_value = mock_table
+    mock_table.metadata.refs = {"main": main_ref, "v1.0": tag_ref}
 
-    result = client.list_tags("default", "orders")
-    assert len(result) == 1
-    assert result[0]["name"] == "v1.0"
-    assert result[0]["snapshot_id"] == 200
+    return mock_table
+
+
+def test_load_table(client, mock_pyiceberg_catalog):
+    """Return a Table domain aggregate from PyIceberg metadata."""
+    mock_pyiceberg_catalog.load_table.return_value = _mock_pyiceberg_table()
+
+    result = client.load_table("default", "orders")
+
+    assert isinstance(result, Table)
+    assert result.id.value == "default.orders"
+    assert result.namespace == "default"
+    assert result.name == "orders"
+    assert result.location == "s3://warehouse/default/orders"
+    assert result.current_snapshot_id == 123
+    assert result.properties == {"write.format.default": "parquet"}
+
+    # Schema
+    assert len(result.schema.fields) == 1
+    assert result.schema.fields[0].name == "order_id"
+    assert result.schema.fields[0].field_type == "long"
+
+    # Snapshots
+    assert len(result.snapshots) == 1
+    assert result.snapshots[0].snapshot_id == 100
+    assert result.snapshots[0].parent_id is None
+    assert result.snapshots[0].summary.data == {
+        "operation": "append",
+        "added-records": "50",
+    }
+
+    # Branches
+    assert len(result.branches) == 1
+    assert result.branches[0].id.value == "main"
+    assert result.branches[0].snapshot_id == 100
+    assert result.branches[0].retention.max_snapshot_age_ms == 86400000
+    assert result.branches[0].retention.min_snapshots_to_keep == 5
+
+    # Tags
+    assert len(result.tags) == 1
+    assert result.tags[0].name == "v1.0"
+    assert result.tags[0].snapshot_id == 100
 
 
 def test_list_namespaces_not_found(client, mock_pyiceberg_catalog):
@@ -152,10 +154,10 @@ def test_list_namespaces_not_found(client, mock_pyiceberg_catalog):
         client.list_namespaces()
 
 
-def test_get_table_not_found(client, mock_pyiceberg_catalog):
+def test_load_table_not_found(client, mock_pyiceberg_catalog):
     """Raise NoSuchTableError when table does not exist."""
     from pyiceberg.exceptions import NoSuchTableError
 
     mock_pyiceberg_catalog.load_table.side_effect = NoSuchTableError("nope")
     with pytest.raises(NoSuchTableError):
-        client.get_table("default", "nonexistent")
+        client.load_table("default", "nonexistent")

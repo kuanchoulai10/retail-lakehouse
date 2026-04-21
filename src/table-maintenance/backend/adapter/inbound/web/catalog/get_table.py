@@ -9,8 +9,11 @@ from adapter.inbound.web.catalog.dto import (
     SchemaResponse,
     TableDetailResponse,
 )
-from adapter.outbound.catalog.iceberg_catalog_client import IcebergCatalogClient
-from dependencies.catalog import get_catalog_client
+from application.port.inbound.catalog.get_table import (
+    GetTableInput,
+    GetTableUseCase,
+)
+from dependencies.use_cases import get_get_table_use_case
 
 router = APIRouter()
 
@@ -23,17 +26,25 @@ def get_table(
     catalog: str,
     namespace: str,
     table: str,
-    client: IcebergCatalogClient = Depends(get_catalog_client),
+    use_case: GetTableUseCase = Depends(get_get_table_use_case),
 ) -> TableDetailResponse:
     """Return metadata for a specific table."""
-    data = client.get_table(namespace, table)
+    result = use_case.execute(GetTableInput(namespace=namespace, table=table))
     return TableDetailResponse(
-        table=data["table"],
-        namespace=data["namespace"],
-        location=data["location"],
-        current_snapshot_id=data["current_snapshot_id"],
+        table=result.name,
+        namespace=result.namespace,
+        location=result.location,
+        current_snapshot_id=result.current_snapshot_id,
         schema=SchemaResponse(
-            fields=[SchemaFieldResponse(**f) for f in data["schema"]["fields"]],
+            fields=[
+                SchemaFieldResponse(
+                    id=f.field_id,
+                    name=f.name,
+                    type=f.field_type,
+                    required=f.required,
+                )
+                for f in result.schema.fields
+            ],
         ),
-        properties=data["properties"],
+        properties=result.properties,
     )
