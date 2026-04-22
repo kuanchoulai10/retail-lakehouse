@@ -128,3 +128,85 @@ def test_cron_nullable_roundtrips(sqlite_engine):
     jobs = {j.id.value: j for j in repo.list_all()}
     assert jobs["a"].cron is None
     assert jobs["b"].cron == "0 2 * * *"
+
+
+def _make_schedulable_job(
+    job_id: str,
+    next_run_at: datetime,
+    enabled: bool = True,
+    cron: str = "0 * * * *",
+    max_active_runs: int = 1,
+) -> Job:
+    """Provide a Job entity with scheduling fields set."""
+    now = datetime(2026, 4, 10, 12, 0, tzinfo=UTC)
+    return Job(
+        id=JobId(value=job_id),
+        job_type=JobType.REWRITE_DATA_FILES,
+        created_at=now,
+        updated_at=now,
+        cron=cron,
+        enabled=enabled,
+        next_run_at=next_run_at,
+        max_active_runs=max_active_runs,
+    )
+
+
+def test_scheduling_fields_roundtrip(sqlite_engine):
+    """Verify that next_run_at and max_active_runs roundtrip through the database."""
+    repo = JobsSqlRepo(sqlite_engine)
+    run_at = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)
+    job = _make_schedulable_job("j1", next_run_at=run_at, max_active_runs=3)
+    repo.create(job)
+    fetched = repo.get(JobId("j1"))
+    # SQLite strips timezone info; compare naive part only
+    assert fetched.next_run_at is not None
+    assert fetched.next_run_at.replace(tzinfo=UTC) == run_at
+    assert fetched.max_active_runs == 3
+
+
+def test_list_schedulable_returns_due_jobs(sqlite_engine):
+    """Verify that list_schedulable returns enabled jobs with next_run_at <= now."""
+    repo = JobsSqlRepo(sqlite_engine)
+    now = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)
+    repo.create(
+        _make_schedulable_job("j1", next_run_at=datetime(2026, 4, 22, 9, 0, tzinfo=UTC))
+    )
+    result = repo.list_schedulable(now)
+    assert len(result) == 1
+    assert result[0].id.value == "j1"
+
+
+def test_list_schedulable_skips_disabled(sqlite_engine):
+    """Verify that list_schedulable skips disabled jobs."""
+    repo = JobsSqlRepo(sqlite_engine)
+    now = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)
+    repo.create(
+        _make_schedulable_job(
+            "j1", next_run_at=datetime(2026, 4, 22, 9, 0, tzinfo=UTC), enabled=False
+        )
+    )
+    assert repo.list_schedulable(now) == []
+
+
+def test_list_schedulable_skips_no_cron(sqlite_engine):
+    """Verify that list_schedulable skips jobs without a cron expression."""
+    repo = JobsSqlRepo(sqlite_engine)
+    now = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)
+    job = _make_job("j1", enabled=True)
+    job.next_run_at = datetime(2026, 4, 22, 9, 0, tzinfo=UTC)
+    repo.create(job)
+    assert repo.list_schedulable(now) == []
+
+
+def test_save_next_run_at_updates_row(sqlite_engine):
+    """Verify that save_next_run_at updates the persisted next_run_at."""
+    repo = JobsSqlRepo(sqlite_engine)
+    repo.create(
+        _make_schedulable_job("j1", next_run_at=datetime(2026, 4, 22, 9, 0, tzinfo=UTC))
+    )
+    new_time = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)
+    repo.save_next_run_at(JobId("j1"), new_time)
+    fetched = repo.get(JobId("j1"))
+    # SQLite strips timezone info; compare naive part only
+    assert fetched.next_run_at is not None
+    assert fetched.next_run_at.replace(tzinfo=UTC) == new_time

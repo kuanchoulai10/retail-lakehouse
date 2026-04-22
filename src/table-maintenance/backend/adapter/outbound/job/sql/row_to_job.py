@@ -19,4 +19,6 @@ def row_to_job(row: Any) -> Job:
         job_config=row["job_config"],
         cron=row["cron"],
         enabled=row["enabled"],
+        next_run_at=row["next_run_at"],
+        max_active_runs=row["max_active_runs"],
     )

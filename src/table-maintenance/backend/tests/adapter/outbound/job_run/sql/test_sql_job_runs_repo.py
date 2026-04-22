@@ -33,6 +33,8 @@ def _insert_parent_job(engine: Engine, job_id: str) -> None:
                 job_config={},
                 cron=None,
                 enabled=False,
+                next_run_at=None,
+                max_active_runs=1,
                 created_at=NOW,
                 updated_at=NOW,
             )
@@ -155,3 +157,20 @@ def test_timestamps_roundtrip(sqlite_engine):
     assert fetched.finished_at is not None
     assert fetched.started_at.replace(tzinfo=UTC) == run.started_at
     assert fetched.finished_at.replace(tzinfo=UTC) == run.finished_at
+
+
+def test_count_active_for_job(sqlite_engine):
+    """Verify that count_active_for_job counts pending and running runs."""
+    _insert_parent_job(sqlite_engine, "job-1")
+    repo = JobRunsSqlRepo(sqlite_engine)
+    repo.create(_make_run("r1", "job-1", JobRunStatus.PENDING))
+    repo.create(_make_run("r2", "job-1", JobRunStatus.RUNNING))
+    repo.create(_make_run("r3", "job-1", JobRunStatus.COMPLETED))
+    repo.create(_make_run("r4", "job-1", JobRunStatus.FAILED))
+    assert repo.count_active_for_job(JobId("job-1")) == 2
+
+
+def test_count_active_returns_zero_when_empty(sqlite_engine):
+    """Verify that count_active_for_job returns 0 when no runs exist."""
+    repo = JobRunsSqlRepo(sqlite_engine)
+    assert repo.count_active_for_job(JobId("job-1")) == 0

@@ -13,9 +13,11 @@ from application.domain.model.job import JobNotFoundError
 from application.port.outbound.job.jobs_repo import JobsRepo
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from sqlalchemy import Engine
 
-    from application.domain.model.job import Job
+    from application.domain.model.job import Job, JobId
     from base.entity_id import EntityId
 
 
@@ -67,3 +69,27 @@ class JobsSqlRepo(JobsRepo):
         if result.rowcount == 0:
             raise JobNotFoundError(entity.id.value)
         return entity
+
+    def list_schedulable(self, now: datetime) -> list[Job]:
+        """Return enabled jobs with a cron schedule whose next_run_at <= now."""
+        stmt = select(jobs_table).where(
+            jobs_table.c.enabled.is_(True),
+            jobs_table.c.cron.isnot(None),
+            jobs_table.c.next_run_at.isnot(None),
+            jobs_table.c.next_run_at <= now,
+        )
+        with self._engine.connect() as conn:
+            rows = conn.execute(stmt).mappings().all()
+        return [row_to_job(r) for r in rows]
+
+    def save_next_run_at(self, job_id: JobId, next_run_at: datetime) -> None:
+        """Persist the advanced next_run_at for a job."""
+        stmt = (
+            update(jobs_table)
+            .where(jobs_table.c.id == job_id.value)
+            .values(next_run_at=next_run_at)
+        )
+        with self._engine.begin() as conn:
+            result = conn.execute(stmt)
+        if result.rowcount == 0:
+            raise JobNotFoundError(job_id.value)

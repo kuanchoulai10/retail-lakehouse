@@ -16,6 +16,8 @@ def test_row_maps_to_job():
         "job_config": {"rewrite_all": True},
         "cron": None,
         "enabled": True,
+        "next_run_at": None,
+        "max_active_runs": 1,
         "created_at": datetime(2026, 4, 10, tzinfo=UTC),
         "updated_at": datetime(2026, 4, 10, tzinfo=UTC),
     }
@@ -29,6 +31,8 @@ def test_row_maps_to_job():
     assert job.job_config == {"rewrite_all": True}
     assert job.cron is None
     assert job.enabled is True
+    assert job.next_run_at is None
+    assert job.max_active_runs == 1
     assert job.created_at == datetime(2026, 4, 10, tzinfo=UTC)
     assert job.updated_at == datetime(2026, 4, 10, tzinfo=UTC)
 
@@ -43,6 +47,8 @@ def test_row_preserves_cron():
         "job_config": {},
         "cron": "0 2 * * *",
         "enabled": False,
+        "next_run_at": None,
+        "max_active_runs": 1,
         "created_at": datetime(2026, 4, 10, tzinfo=UTC),
         "updated_at": datetime(2026, 4, 10, tzinfo=UTC),
     }

@@ -94,3 +94,8 @@ class JobRunsK8sRepo(JobRunsRepo):
             )
             results.extend(_to_job_run(item) for item in resp.get("items", []))
         return results
+
+    def count_active_for_job(self, job_id: JobId) -> int:
+        """Count non-terminal runs for a job by querying Kubernetes."""
+        runs = self.list_for_job(job_id)
+        return sum(1 for r in runs if r.status.value in ("pending", "running"))

@@ -32,6 +32,8 @@ def test_values_has_all_columns():
         "job_config",
         "cron",
         "enabled",
+        "next_run_at",
+        "max_active_runs",
         "created_at",
         "updated_at",
     }

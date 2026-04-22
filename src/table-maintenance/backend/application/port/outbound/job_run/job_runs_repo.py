@@ -32,3 +32,8 @@ class JobRunsRepo(ABC):
     def list_all(self) -> list[JobRun]:
         """Return all job runs."""
         ...
+
+    @abstractmethod
+    def count_active_for_job(self, job_id: JobId) -> int:
+        """Return the count of non-terminal runs (pending or running) for a job."""
+        ...

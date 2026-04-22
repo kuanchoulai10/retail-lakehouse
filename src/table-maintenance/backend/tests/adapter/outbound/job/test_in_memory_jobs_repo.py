@@ -107,3 +107,61 @@ def test_update_raises_not_found():
     missing = _make_job(job_id="ghost")
     with pytest.raises(JobNotFoundError):
         repo.update(missing)
+
+
+def test_list_schedulable_returns_due_enabled_jobs():
+    """Verify that list_schedulable returns enabled jobs with cron and next_run_at <= now."""
+    repo = JobsInMemoryRepo()
+    now = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)
+    job = _make_job(job_id="j1", enabled=True)
+    job.cron = "0 * * * *"
+    job.next_run_at = datetime(2026, 4, 22, 9, 0, tzinfo=UTC)  # in the past
+    repo.create(job)
+    result = repo.list_schedulable(now)
+    assert len(result) == 1
+    assert result[0].id.value == "j1"
+
+
+def test_list_schedulable_ignores_disabled_jobs():
+    """Verify that list_schedulable skips disabled jobs."""
+    repo = JobsInMemoryRepo()
+    now = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)
+    job = _make_job(job_id="j1", enabled=False)
+    job.cron = "0 * * * *"
+    job.next_run_at = datetime(2026, 4, 22, 9, 0, tzinfo=UTC)
+    repo.create(job)
+    assert repo.list_schedulable(now) == []
+
+
+def test_list_schedulable_ignores_jobs_without_cron():
+    """Verify that list_schedulable skips jobs without a cron expression."""
+    repo = JobsInMemoryRepo()
+    now = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)
+    job = _make_job(job_id="j1", enabled=True)
+    job.next_run_at = datetime(2026, 4, 22, 9, 0, tzinfo=UTC)
+    repo.create(job)
+    assert repo.list_schedulable(now) == []
+
+
+def test_list_schedulable_ignores_future_next_run():
+    """Verify that list_schedulable skips jobs whose next_run_at is in the future."""
+    repo = JobsInMemoryRepo()
+    now = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)
+    job = _make_job(job_id="j1", enabled=True)
+    job.cron = "0 * * * *"
+    job.next_run_at = datetime(2026, 4, 22, 11, 0, tzinfo=UTC)  # future
+    repo.create(job)
+    assert repo.list_schedulable(now) == []
+
+
+def test_save_next_run_at_updates_field():
+    """Verify that save_next_run_at updates the job's next_run_at."""
+    repo = JobsInMemoryRepo()
+    job = _make_job(job_id="j1", enabled=True)
+    job.cron = "0 * * * *"
+    job.next_run_at = datetime(2026, 4, 22, 9, 0, tzinfo=UTC)
+    repo.create(job)
+    new_time = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)
+    repo.save_next_run_at(JobId("j1"), new_time)
+    updated = repo.get(JobId("j1"))
+    assert updated.next_run_at == new_time

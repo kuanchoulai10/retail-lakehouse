@@ -31,3 +31,13 @@ def test_jobs_repo_has_abstract_methods():
     assert "get" in JobsRepo.__abstractmethods__
     assert "delete" in JobsRepo.__abstractmethods__
     assert "update" in JobsRepo.__abstractmethods__
+
+
+def test_jobs_repo_has_list_schedulable():
+    """Verify that JobsRepo declares list_schedulable as abstract."""
+    assert "list_schedulable" in JobsRepo.__abstractmethods__
+
+
+def test_jobs_repo_has_save_next_run_at():
+    """Verify that JobsRepo declares save_next_run_at as abstract."""
+    assert "save_next_run_at" in JobsRepo.__abstractmethods__

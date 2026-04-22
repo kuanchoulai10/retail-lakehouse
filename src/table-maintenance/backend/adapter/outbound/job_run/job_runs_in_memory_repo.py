@@ -38,3 +38,11 @@ class JobRunsInMemoryRepo(JobRunsRepo):
     def list_all(self) -> list[JobRun]:
         """Return all stored job runs."""
         return list(self._runs.values())
+
+    def count_active_for_job(self, job_id: JobId) -> int:
+        """Return the count of non-terminal runs (pending or running) for a job."""
+        return sum(
+            1
+            for r in self._runs.values()
+            if r.job_id == job_id and r.status in ("pending", "running")
+        )

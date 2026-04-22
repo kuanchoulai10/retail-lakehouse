@@ -31,6 +31,8 @@ class Job(AggregateRoot[JobId]):
     job_config: dict | None = None
     cron: str | None = None
     enabled: bool = False
+    next_run_at: datetime | None = None
+    max_active_runs: int = 1
 
     def __post_init__(self) -> None:
         """Initialize job_config to an empty dict if not provided."""

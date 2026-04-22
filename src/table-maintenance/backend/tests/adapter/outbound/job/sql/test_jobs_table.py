@@ -27,6 +27,8 @@ def test_has_expected_columns():
         "job_config",
         "cron",
         "enabled",
+        "next_run_at",
+        "max_active_runs",
         "created_at",
         "updated_at",
     }

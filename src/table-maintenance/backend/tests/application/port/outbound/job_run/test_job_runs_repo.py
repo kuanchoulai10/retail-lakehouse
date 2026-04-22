@@ -17,3 +17,8 @@ def test_has_required_abstract_methods():
     assert "get" in methods
     assert "list_for_job" in methods
     assert "list_all" in methods
+
+
+def test_has_count_active_for_job():
+    """Verify that JobRunsRepo declares count_active_for_job as abstract."""
+    assert "count_active_for_job" in JobRunsRepo.__abstractmethods__

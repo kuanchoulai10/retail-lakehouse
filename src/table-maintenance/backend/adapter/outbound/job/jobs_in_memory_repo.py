@@ -8,9 +8,11 @@ from application.domain.model.job import JobNotFoundError
 from application.port.outbound.job.jobs_repo import JobsRepo
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from base.entity_id import EntityId
 
-    from application.domain.model.job import Job
+    from application.domain.model.job import Job, JobId
 
 
 class JobsInMemoryRepo(JobsRepo):
@@ -49,3 +51,20 @@ class JobsInMemoryRepo(JobsRepo):
             raise JobNotFoundError(entity.id.value)
         self._jobs[entity.id.value] = entity
         return entity
+
+    def list_schedulable(self, now: datetime) -> list[Job]:
+        """Return enabled jobs with a cron schedule whose next_run_at <= now."""
+        return [
+            j
+            for j in self._jobs.values()
+            if j.enabled
+            and j.cron is not None
+            and j.next_run_at is not None
+            and j.next_run_at <= now
+        ]
+
+    def save_next_run_at(self, job_id: JobId, next_run_at: datetime) -> None:
+        """Update the next_run_at field of the given job."""
+        if job_id.value not in self._jobs:
+            raise JobNotFoundError(job_id.value)
+        self._jobs[job_id.value].next_run_at = next_run_at

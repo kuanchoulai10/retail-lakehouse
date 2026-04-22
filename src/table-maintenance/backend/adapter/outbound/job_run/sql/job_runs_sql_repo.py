@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import insert, select
+from sqlalchemy import func, insert, select
 
 from adapter.outbound.job_run.sql.job_run_to_values import job_run_to_values
 from adapter.outbound.job_run.sql.job_runs_table import job_runs_table
@@ -53,3 +53,16 @@ class JobRunsSqlRepo(JobRunsRepo):
         with self._engine.connect() as conn:
             rows = conn.execute(select(job_runs_table)).mappings().all()
         return [row_to_job_run(r) for r in rows]
+
+    def count_active_for_job(self, job_id: JobId) -> int:
+        """Return the count of non-terminal runs (pending or running) for a job."""
+        stmt = (
+            select(func.count())
+            .select_from(job_runs_table)
+            .where(
+                job_runs_table.c.job_id == job_id.value,
+                job_runs_table.c.status.in_(["pending", "running"]),
+            )
+        )
+        with self._engine.connect() as conn:
+            return conn.execute(stmt).scalar_one()

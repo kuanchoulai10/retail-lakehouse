@@ -61,3 +61,39 @@ def test_list_all_returns_every_run():
     repo.create(_make_run("run-1", "job-1"))
     repo.create(_make_run("run-2", "job-2"))
     assert len(repo.list_all()) == 2
+
+
+def _make_run_with_status(
+    run_id: str,
+    job_id: str,
+    status: JobRunStatus,
+) -> JobRun:
+    """Provide a JobRun with a specific status."""
+    return JobRun(
+        id=JobRunId(value=run_id),
+        job_id=JobId(value=job_id),
+        status=status,
+    )
+
+
+def test_count_active_returns_pending_and_running():
+    """Verify that count_active_for_job counts PENDING and RUNNING runs."""
+    repo = JobRunsInMemoryRepo()
+    repo.create(_make_run_with_status("r1", "j1", JobRunStatus.PENDING))
+    repo.create(_make_run_with_status("r2", "j1", JobRunStatus.RUNNING))
+    assert repo.count_active_for_job(JobId("j1")) == 2
+
+
+def test_count_active_ignores_completed_and_failed():
+    """Verify that count_active_for_job ignores terminal states."""
+    repo = JobRunsInMemoryRepo()
+    repo.create(_make_run_with_status("r1", "j1", JobRunStatus.COMPLETED))
+    repo.create(_make_run_with_status("r2", "j1", JobRunStatus.FAILED))
+    repo.create(_make_run_with_status("r3", "j1", JobRunStatus.PENDING))
+    assert repo.count_active_for_job(JobId("j1")) == 1
+
+
+def test_count_active_returns_zero_when_empty():
+    """Verify that count_active_for_job returns 0 when no runs exist for the job."""
+    repo = JobRunsInMemoryRepo()
+    assert repo.count_active_for_job(JobId("j1")) == 0

@@ -3,6 +3,7 @@ name = "table-maintenance-backend"
 version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
+    "croniter>=6.0",
     "fastapi[standard]>=0.115",
     "kubernetes>=32.0",
     "sqlalchemy>=2.0",

@@ -18,6 +18,8 @@ def job_to_values(job: Job) -> dict[str, Any]:
         "job_config": job.job_config,
         "cron": job.cron,
         "enabled": job.enabled,
+        "next_run_at": job.next_run_at,
+        "max_active_runs": job.max_active_runs,
         "created_at": job.created_at,
         "updated_at": job.updated_at,
     }

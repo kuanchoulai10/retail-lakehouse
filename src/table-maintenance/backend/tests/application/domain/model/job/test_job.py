@@ -116,3 +116,41 @@ def test_job_inequality_different_id():
         updated_at=datetime(2026, 4, 10, tzinfo=UTC),
     )
     assert a != b
+
+
+def test_job_defaults_next_run_at_to_none():
+    """Verify that next_run_at defaults to None when not specified."""
+    job = Job(
+        id=JobId("abc1234567"),
+        job_type=JobType.REWRITE_DATA_FILES,
+        created_at=datetime(2026, 4, 10, tzinfo=UTC),
+        updated_at=datetime(2026, 4, 10, tzinfo=UTC),
+    )
+    assert job.next_run_at is None
+
+
+def test_job_defaults_max_active_runs_to_1():
+    """Verify that max_active_runs defaults to 1 when not specified."""
+    job = Job(
+        id=JobId("abc1234567"),
+        job_type=JobType.REWRITE_DATA_FILES,
+        created_at=datetime(2026, 4, 10, tzinfo=UTC),
+        updated_at=datetime(2026, 4, 10, tzinfo=UTC),
+    )
+    assert job.max_active_runs == 1
+
+
+def test_job_with_scheduling_fields():
+    """Verify that next_run_at and max_active_runs are stored when provided."""
+    run_at = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)
+    job = Job(
+        id=JobId("abc1234567"),
+        job_type=JobType.REWRITE_DATA_FILES,
+        created_at=datetime(2026, 4, 10, tzinfo=UTC),
+        updated_at=datetime(2026, 4, 10, tzinfo=UTC),
+        cron="0 10 * * *",
+        next_run_at=run_at,
+        max_active_runs=3,
+    )
+    assert job.next_run_at == run_at
+    assert job.max_active_runs == 3
