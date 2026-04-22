@@ -45,7 +45,7 @@ repos:
         entry: uv run ty check
         language: system
         types: [python]
-        exclude: ^src/table-maintenance/backend/
+        exclude: ^src/table-maintenance/(backend|scheduler)/
       - id: ty-backend
         name: ty (backend)
         entry: uv run --project src/table-maintenance/backend --directory src/table-maintenance/backend ty check
