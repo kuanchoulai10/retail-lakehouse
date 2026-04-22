@@ -23,7 +23,7 @@ Docker runs inside Colima VM. `kubectl port-forward` binds to the host network. 
 
 | Image Name | Dockerfile | Build Context | Deploy Manifest | Deploy Kind |
 |-----------|-----------|--------------|----------------|------------|
-| `table-maintenance-jobs` | `src/table-maintenance/jobs/Dockerfile` | `src/table-maintenance/jobs/` | `25-table-maintenance/sparkapplication-rewrite-data-files.yaml` | SparkApplication |
+| `table-maintenance-spark` | `src/table-maintenance/runtime/spark/Dockerfile` | `src/table-maintenance/runtime/spark/` | `25-table-maintenance/sparkapplication-rewrite-data-files.yaml` | SparkApplication |
 | `table-maintenance-backend` | `src/table-maintenance/backend/Dockerfile` | `src/table-maintenance/backend/` | `25-table-maintenance/backend-deployment.yaml` | Deployment + Service |
 
 When the user asks to deploy something not in this table, ask them for the Dockerfile path, build context, and deploy manifest path. Then add it to this table for future reference.

@@ -58,7 +58,7 @@ tasks:
     desc: "Run all unit tests in parallel"
     deps:
       - unit-test-backend
-      - unit-test-jobs
+      - unit-test-spark
 
   unit-test-backend:
     desc: "Run table-maintenance backend tests"
@@ -66,11 +66,11 @@ tasks:
     cmds:
       - uv run --project src/table-maintenance/backend --directory src/table-maintenance/backend pytest -v
 
-  unit-test-jobs:
-    desc: "Run table-maintenance jobs tests"
+  unit-test-spark:
+    desc: "Run table-maintenance spark runtime tests"
     internal: true
     cmds:
-      - cmd: echo "TODO:// uv run --project src/table-maintenance/jobs --directory src/table-maintenance/jobs pytest -v"
+      - cmd: echo "TODO:// uv run --project src/table-maintenance/runtime/spark --directory src/table-maintenance/runtime/spark pytest -v"
 
   arch-test:
     desc: "Run architecture boundary tests (import-linter)"
