@@ -17,4 +17,4 @@ def status_from_k8s(kind: str, state: str) -> JobRunStatus:
         return JobRunStatus.RUNNING
     if not state:
         return JobRunStatus.PENDING
-    return _STATE_MAP.get(state, JobRunStatus.UNKNOWN)
+    return _STATE_MAP.get(state, JobRunStatus.FAILED)

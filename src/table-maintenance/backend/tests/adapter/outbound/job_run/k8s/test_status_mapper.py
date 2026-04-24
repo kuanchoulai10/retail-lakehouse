@@ -25,9 +25,9 @@ def test_status_failed_states():
         assert status_from_k8s("SparkApplication", state) == JobRunStatus.FAILED
 
 
-def test_status_unknown_state():
-    """Verify that an unrecognized state maps to UNKNOWN status."""
-    assert status_from_k8s("SparkApplication", "WEIRD_STATE") == JobRunStatus.UNKNOWN
+def test_status_unknown_state_maps_to_failed():
+    """Verify that an unrecognized state maps to FAILED status."""
+    assert status_from_k8s("SparkApplication", "WEIRD_STATE") == JobRunStatus.FAILED
 
 
 def test_scheduled_app_always_running():

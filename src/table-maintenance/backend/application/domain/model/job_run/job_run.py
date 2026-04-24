@@ -7,13 +7,14 @@ from typing import TYPE_CHECKING
 
 from base.aggregate_root import AggregateRoot
 
+from application.domain.model.job_run.exceptions import InvalidStateTransitionError
 from application.domain.model.job_run.job_run_id import JobRunId
+from application.domain.model.job_run.job_run_status import JobRunStatus
 
 if TYPE_CHECKING:
     from datetime import datetime
 
     from application.domain.model.job.job_id import JobId
-    from application.domain.model.job_run.job_run_status import JobRunStatus
 
 
 @dataclass(eq=False)
@@ -25,3 +26,28 @@ class JobRun(AggregateRoot[JobRunId]):
     status: JobRunStatus
     started_at: datetime | None = None
     finished_at: datetime | None = None
+
+    def _transition_to(self, target: JobRunStatus) -> None:
+        """Guard and execute a state transition."""
+        if not self.status.can_transition_to(target):
+            raise InvalidStateTransitionError(self.status.value, target.value)
+        self.status = target
+
+    def mark_running(self, started_at: datetime) -> None:
+        """Transition from PENDING to RUNNING."""
+        self._transition_to(JobRunStatus.RUNNING)
+        self.started_at = started_at
+
+    def mark_completed(self, finished_at: datetime) -> None:
+        """Transition from RUNNING to COMPLETED."""
+        self._transition_to(JobRunStatus.COMPLETED)
+        self.finished_at = finished_at
+
+    def mark_failed(self, finished_at: datetime) -> None:
+        """Transition from PENDING or RUNNING to FAILED."""
+        self._transition_to(JobRunStatus.FAILED)
+        self.finished_at = finished_at
+
+    def cancel(self) -> None:
+        """Transition from PENDING or RUNNING to CANCELLED."""
+        self._transition_to(JobRunStatus.CANCELLED)
