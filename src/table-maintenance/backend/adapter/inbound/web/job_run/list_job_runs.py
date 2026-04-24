@@ -23,6 +23,7 @@ def list_job_runs(
             run_id=r.run_id,
             job_id=r.job_id,
             status=r.status,
+            trigger_type=r.trigger_type,
             started_at=r.started_at,
             finished_at=r.finished_at,
         )

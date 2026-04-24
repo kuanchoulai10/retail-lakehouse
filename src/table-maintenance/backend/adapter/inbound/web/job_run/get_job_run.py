@@ -26,6 +26,7 @@ def get_job_run(
         run_id=result.run_id,
         job_id=result.job_id,
         status=result.status,
+        trigger_type=result.trigger_type,
         started_at=result.started_at,
         finished_at=result.finished_at,
     )

@@ -16,6 +16,7 @@ class ListJobRunsOutputItem:
     run_id: str
     job_id: str
     status: str
+    trigger_type: str
     started_at: datetime | None
     finished_at: datetime | None
 

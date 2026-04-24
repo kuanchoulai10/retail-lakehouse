@@ -23,6 +23,7 @@ SAMPLE = CreateJobRunOutput(
     run_id="abc1234567-xyz",
     job_id="abc1234567",
     status="pending",
+    trigger_type="manual",
     started_at=datetime(2026, 4, 4, tzinfo=UTC),
     finished_at=None,
 )

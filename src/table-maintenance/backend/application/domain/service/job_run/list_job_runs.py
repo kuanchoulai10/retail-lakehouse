@@ -32,6 +32,7 @@ class ListJobRunsService(ListJobRunsUseCase):
                     run_id=r.id.value,
                     job_id=r.job_id.value,
                     status=r.status.value,
+                    trigger_type=r.trigger_type.value,
                     started_at=r.started_at,
                     finished_at=r.finished_at,
                 )

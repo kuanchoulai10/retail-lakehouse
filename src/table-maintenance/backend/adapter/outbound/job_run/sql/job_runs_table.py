@@ -12,6 +12,7 @@ job_runs_table = Table(
     Column("id", String, primary_key=True),
     Column("job_id", String, ForeignKey("jobs.id"), nullable=False),
     Column("status", String, nullable=False),
+    Column("trigger_type", String, nullable=False, default="manual"),
     Column("started_at", DateTime(timezone=True), nullable=True),
     Column("finished_at", DateTime(timezone=True), nullable=True),
 )

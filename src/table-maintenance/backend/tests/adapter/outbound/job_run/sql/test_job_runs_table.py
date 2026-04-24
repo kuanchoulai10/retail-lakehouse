@@ -14,7 +14,14 @@ def test_table_exists_in_shared_metadata():
 def test_columns():
     """Verify that the table has the expected columns."""
     cols = {c.name for c in job_runs_table.columns}
-    assert cols == {"id", "job_id", "status", "started_at", "finished_at"}
+    assert cols == {
+        "id",
+        "job_id",
+        "status",
+        "trigger_type",
+        "started_at",
+        "finished_at",
+    }
 
 
 def test_primary_key_is_id():

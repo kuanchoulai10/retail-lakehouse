@@ -14,6 +14,7 @@ def job_run_to_values(run: JobRun) -> dict[str, Any]:
         "id": run.id.value,
         "job_id": run.job_id.value,
         "status": run.status.value,
+        "trigger_type": run.trigger_type.value,
         "started_at": run.started_at,
         "finished_at": run.finished_at,
     }

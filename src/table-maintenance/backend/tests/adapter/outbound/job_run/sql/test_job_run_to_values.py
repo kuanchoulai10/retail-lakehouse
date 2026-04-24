@@ -23,6 +23,7 @@ def test_serializes_all_fields():
         "id": "run-1",
         "job_id": "job-1",
         "status": "running",
+        "trigger_type": "manual",
         "started_at": datetime(2026, 4, 10, 12, 0, tzinfo=UTC),
         "finished_at": None,
     }

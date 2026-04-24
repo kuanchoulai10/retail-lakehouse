@@ -27,6 +27,7 @@ def test_list_job_runs_returns_200():
                 run_id="a-1",
                 job_id="a",
                 status="running",
+                trigger_type="manual",
                 started_at=datetime(2026, 4, 4, tzinfo=UTC),
                 finished_at=None,
             ),

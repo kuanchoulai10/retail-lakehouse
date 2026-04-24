@@ -19,6 +19,7 @@ from application.domain.model.job.table_reference import TableReference
 from application.domain.model.job_run.job_run import JobRun
 from application.domain.model.job_run.job_run_id import JobRunId
 from application.domain.model.job_run.job_run_status import JobRunStatus
+from application.domain.model.job_run.trigger_type import TriggerType
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -77,6 +78,7 @@ class Job(AggregateRoot[JobId]):
         run_id: JobRunId,
         now: datetime,
         active_run_count: int,
+        trigger_type: TriggerType = TriggerType.MANUAL,
     ) -> JobRun:
         """Create a new PENDING JobRun if the job is triggerable.
 
@@ -92,5 +94,6 @@ class Job(AggregateRoot[JobId]):
             id=run_id,
             job_id=self.id,
             status=JobRunStatus.PENDING,
+            trigger_type=trigger_type,
             started_at=now,
         )

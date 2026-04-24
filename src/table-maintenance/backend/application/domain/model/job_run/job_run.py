@@ -10,6 +10,7 @@ from base.aggregate_root import AggregateRoot
 from application.domain.model.job_run.exceptions import InvalidStateTransitionError
 from application.domain.model.job_run.job_run_id import JobRunId
 from application.domain.model.job_run.job_run_status import JobRunStatus
+from application.domain.model.job_run.trigger_type import TriggerType
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -24,6 +25,7 @@ class JobRun(AggregateRoot[JobRunId]):
     id: JobRunId
     job_id: JobId
     status: JobRunStatus
+    trigger_type: TriggerType = TriggerType.MANUAL
     started_at: datetime | None = None
     finished_at: datetime | None = None
 

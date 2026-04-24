@@ -9,6 +9,7 @@ from application.domain.model.job_run.exceptions import (
 from application.domain.model.job_run.job_run import JobRun
 from application.domain.model.job_run.job_run_id import JobRunId
 from application.domain.model.job_run.job_run_status import JobRunStatus
+from application.domain.model.job_run.trigger_type import TriggerType
 
 __all__ = [
     "InvalidStateTransitionError",
@@ -16,4 +17,5 @@ __all__ = [
     "JobRunId",
     "JobRunNotFoundError",
     "JobRunStatus",
+    "TriggerType",
 ]

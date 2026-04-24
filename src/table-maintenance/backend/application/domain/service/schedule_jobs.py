@@ -6,7 +6,7 @@ import logging
 import secrets
 from typing import TYPE_CHECKING
 
-from application.domain.model.job_run import JobRunId
+from application.domain.model.job_run import JobRunId, TriggerType
 from application.domain.service.schedule_jobs_result import ScheduleJobsResult
 
 if TYPE_CHECKING:
@@ -46,6 +46,7 @@ class ScheduleJobsService:
                     run_id=JobRunId(value=f"{job.id.value}-{secrets.token_hex(3)}"),
                     now=now,
                     active_run_count=active,
+                    trigger_type=TriggerType.SCHEDULED,
                 )
                 self._job_runs_repo.create(run)
                 assert job.cron is not None  # guaranteed by list_schedulable
