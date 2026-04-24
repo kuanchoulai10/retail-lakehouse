@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: table-maintenance-scheduler
+  namespace: default
+  labels:
+    app: table-maintenance-scheduler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: table-maintenance-scheduler
+  template:
+    metadata:
+      labels:
+        app: table-maintenance-scheduler
+    spec:
+      containers:
+        - name: scheduler
+          image: localhost:5001/table-maintenance-scheduler:20260422-230712
+          imagePullPolicy: Never
+          env:
+            - name: SCHEDULER_DATABASE_URL
+              value: "postgresql+psycopg://tm:tm@tbl-maint-db.default.svc:5432/table_maintenance"
+            - name: SCHEDULER_INTERVAL_SECONDS
+              value: "30"
