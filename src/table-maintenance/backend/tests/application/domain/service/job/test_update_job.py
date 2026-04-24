@@ -11,6 +11,7 @@ from application.domain.model.job import (
     JobNotFoundError,
     JobStatus,
     JobType,
+    TableReference,
 )
 from application.domain.service.job.update_job import UpdateJobService
 from application.exceptions import JobNotFoundError as AppJobNotFoundError
@@ -24,8 +25,7 @@ def _existing_job() -> Job:
         job_type=JobType.REWRITE_DATA_FILES,
         created_at=datetime(2026, 4, 10, tzinfo=UTC),
         updated_at=datetime(2026, 4, 10, tzinfo=UTC),
-        catalog="retail",
-        table="inventory.orders",
+        table_ref=TableReference(catalog="retail", table="inventory.orders"),
         cron=None,
         status=JobStatus.PAUSED,
     )
@@ -61,7 +61,7 @@ def test_update_leaves_other_fields_when_only_status_provided():
     service.execute(UpdateJobInput(job_id="abc1234567", status="active"))
 
     updated = repo.update.call_args[0][0]
-    assert updated.catalog == "retail"
+    assert updated.table_ref.catalog == "retail"
     assert updated.cron is None
 
 

@@ -7,7 +7,7 @@ import pytest
 from base import Repository
 from adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
 from application.domain import JobNotFoundError, JobType
-from application.domain.model.job import Job, JobId, JobStatus
+from application.domain.model.job import CronExpression, Job, JobId, JobStatus
 
 
 def _make_job(
@@ -114,7 +114,7 @@ def test_list_schedulable_returns_due_enabled_jobs():
     repo = JobsInMemoryRepo()
     now = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)
     job = _make_job(job_id="j1", status=JobStatus.ACTIVE)
-    job.cron = "0 * * * *"
+    job.cron = CronExpression(expression="0 * * * *")
     job.next_run_at = datetime(2026, 4, 22, 9, 0, tzinfo=UTC)  # in the past
     repo.create(job)
     result = repo.list_schedulable(now)
@@ -127,7 +127,7 @@ def test_list_schedulable_ignores_paused_jobs():
     repo = JobsInMemoryRepo()
     now = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)
     job = _make_job(job_id="j1", status=JobStatus.PAUSED)
-    job.cron = "0 * * * *"
+    job.cron = CronExpression(expression="0 * * * *")
     job.next_run_at = datetime(2026, 4, 22, 9, 0, tzinfo=UTC)
     repo.create(job)
     assert repo.list_schedulable(now) == []
@@ -148,7 +148,7 @@ def test_list_schedulable_ignores_future_next_run():
     repo = JobsInMemoryRepo()
     now = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)
     job = _make_job(job_id="j1", status=JobStatus.ACTIVE)
-    job.cron = "0 * * * *"
+    job.cron = CronExpression(expression="0 * * * *")
     job.next_run_at = datetime(2026, 4, 22, 11, 0, tzinfo=UTC)  # future
     repo.create(job)
     assert repo.list_schedulable(now) == []
@@ -158,7 +158,7 @@ def test_save_next_run_at_updates_field():
     """Verify that save_next_run_at updates the job's next_run_at."""
     repo = JobsInMemoryRepo()
     job = _make_job(job_id="j1", status=JobStatus.ACTIVE)
-    job.cron = "0 * * * *"
+    job.cron = CronExpression(expression="0 * * * *")
     job.next_run_at = datetime(2026, 4, 22, 9, 0, tzinfo=UTC)
     repo.create(job)
     new_time = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)

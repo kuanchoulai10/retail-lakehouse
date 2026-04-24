@@ -3,7 +3,14 @@
 from datetime import UTC, datetime
 
 from adapter.outbound.job.sql.job_to_values import job_to_values
-from application.domain.model.job import Job, JobId, JobStatus, JobType
+from application.domain.model.job import (
+    CronExpression,
+    Job,
+    JobId,
+    JobStatus,
+    JobType,
+    TableReference,
+)
 
 
 def _make_job() -> Job:
@@ -13,10 +20,9 @@ def _make_job() -> Job:
         job_type=JobType.REWRITE_DATA_FILES,
         created_at=datetime(2026, 4, 10, tzinfo=UTC),
         updated_at=datetime(2026, 4, 10, tzinfo=UTC),
-        catalog="retail",
-        table="inventory.orders",
+        table_ref=TableReference(catalog="retail", table="inventory.orders"),
         job_config={"rewrite_all": True},
-        cron="0 2 * * *",
+        cron=CronExpression(expression="0 2 * * *"),
         status=JobStatus.ACTIVE,
     )
 

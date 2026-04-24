@@ -4,7 +4,13 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 from adapter.outbound.job_run.k8s.job_run_k8s_executor import JobRunK8sExecutor
-from application.domain.model.job import Job, JobId, JobType
+from application.domain.model.job import (
+    CronExpression,
+    Job,
+    JobId,
+    JobType,
+    TableReference,
+)
 from application.domain.model.job_run import JobRunStatus
 from application.port.outbound.job_run.job_run_executor import JobRunExecutor
 from configs import AppSettings
@@ -21,9 +27,8 @@ def _make_job(job_id: str = "abc1234567", cron: str | None = None) -> Job:
         job_type=JobType.REWRITE_DATA_FILES,
         created_at=now,
         updated_at=now,
-        catalog="retail",
-        table="inventory.orders",
-        cron=cron,
+        table_ref=TableReference(catalog="retail", table="inventory.orders"),
+        cron=CronExpression(expression=cron) if cron else None,
     )
 
 

@@ -55,10 +55,10 @@ def test_create_job_populates_domain_fields():
     service.execute(input_)
 
     job = repo.create.call_args[0][0]
-    assert job.catalog == "retail"
-    assert job.table == "inventory.orders"
+    assert job.table_ref.catalog == "retail"
+    assert job.table_ref.table == "inventory.orders"
     assert job.job_config == {"table": "inventory.orders", "rewrite_all": True}
-    assert job.cron == "0 2 * * *"
+    assert job.cron.expression == "0 2 * * *"
 
 
 def test_create_job_status_defaults_to_active():
@@ -122,5 +122,5 @@ def test_create_job_extracts_table_from_expire_snapshots():
     service.execute(input_)
 
     job = repo.create.call_args[0][0]
-    assert job.table == "inventory.orders"
+    assert job.table_ref.table == "inventory.orders"
     assert job.job_config == {"table": "inventory.orders"}

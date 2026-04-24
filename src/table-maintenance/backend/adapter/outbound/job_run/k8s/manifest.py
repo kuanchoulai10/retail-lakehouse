@@ -40,7 +40,7 @@ def _build_driver_env(job: Job) -> list[dict]:
     job_type = job.job_type.value
     env = [
         {"name": "GLAC_JOB_TYPE", "value": job_type},
-        {"name": "GLAC_CATALOG", "value": job.catalog},
+        {"name": "GLAC_CATALOG", "value": job.table_ref.catalog},
     ]
     prefix = _JOB_PREFIX[job_type]
     if job.job_config:
@@ -101,7 +101,7 @@ def build_manifest(job: Job, name: str, settings: AppSettings) -> dict:
                 "labels": labels,
             },
             "spec": {
-                "schedule": job.cron,
+                "schedule": job.cron.expression,
                 "template": spark_spec,
             },
         }

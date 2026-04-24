@@ -3,7 +3,13 @@
 from datetime import UTC, datetime
 
 from adapter.outbound.job.sql.row_to_job import row_to_job
-from application.domain.model.job import JobId, JobStatus, JobType
+from application.domain.model.job import (
+    CronExpression,
+    JobId,
+    JobStatus,
+    JobType,
+    TableReference,
+)
 
 
 def test_row_maps_to_job():
@@ -26,8 +32,7 @@ def test_row_maps_to_job():
 
     assert job.id == JobId(value="abc1234567")
     assert job.job_type == JobType.REWRITE_DATA_FILES
-    assert job.catalog == "retail"
-    assert job.table == "inventory.orders"
+    assert job.table_ref == TableReference(catalog="retail", table="inventory.orders")
     assert job.job_config == {"rewrite_all": True}
     assert job.cron is None
     assert job.status == JobStatus.ACTIVE
@@ -52,4 +57,4 @@ def test_row_preserves_cron():
         "created_at": datetime(2026, 4, 10, tzinfo=UTC),
         "updated_at": datetime(2026, 4, 10, tzinfo=UTC),
     }
-    assert row_to_job(row).cron == "0 2 * * *"
+    assert row_to_job(row).cron == CronExpression(expression="0 2 * * *")

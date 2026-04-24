@@ -6,11 +6,13 @@ import pytest
 
 from adapter.outbound.job.sql.jobs_sql_repo import JobsSqlRepo
 from application.domain.model.job import (
+    CronExpression,
     Job,
     JobId,
     JobNotFoundError,
     JobStatus,
     JobType,
+    TableReference,
 )
 from application.port.outbound.job.jobs_repo import JobsRepo
 
@@ -27,10 +29,9 @@ def _make_job(
         job_type=JobType.REWRITE_DATA_FILES,
         created_at=now,
         updated_at=now,
-        catalog="retail",
-        table="inventory.orders",
+        table_ref=TableReference(catalog="retail", table="inventory.orders"),
         job_config={"rewrite_all": True},
-        cron=cron,
+        cron=CronExpression(expression=cron) if cron else None,
         status=status,
     )
 
@@ -133,7 +134,7 @@ def test_cron_nullable_roundtrips(sqlite_engine):
     repo.create(_make_job("b", cron="0 2 * * *"))
     jobs = {j.id.value: j for j in repo.list_all()}
     assert jobs["a"].cron is None
-    assert jobs["b"].cron == "0 2 * * *"
+    assert jobs["b"].cron == CronExpression(expression="0 2 * * *")
 
 
 def _make_schedulable_job(
@@ -150,7 +151,7 @@ def _make_schedulable_job(
         job_type=JobType.REWRITE_DATA_FILES,
         created_at=now,
         updated_at=now,
-        cron=cron,
+        cron=CronExpression(expression=cron),
         status=status,
         next_run_at=next_run_at,
         max_active_runs=max_active_runs,

@@ -13,10 +13,10 @@ def job_to_values(job: Job) -> dict[str, Any]:
     return {
         "id": job.id.value,
         "job_type": job.job_type.value,
-        "catalog": job.catalog,
-        "table": job.table,
+        "catalog": job.table_ref.catalog,
+        "table": job.table_ref.table,
         "job_config": job.job_config,
-        "cron": job.cron,
+        "cron": job.cron.expression if job.cron else None,
         "status": job.status.value,
         "next_run_at": job.next_run_at,
         "max_active_runs": job.max_active_runs,

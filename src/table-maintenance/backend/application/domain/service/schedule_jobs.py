@@ -6,7 +6,6 @@ import logging
 import secrets
 from typing import TYPE_CHECKING
 
-from application.cron_calculator import next_run_from_cron
 from application.domain.model.job_run import JobRunId
 from application.domain.service.schedule_jobs_result import ScheduleJobsResult
 
@@ -50,7 +49,7 @@ class ScheduleJobsService:
                 )
                 self._job_runs_repo.create(run)
                 assert job.cron is not None  # guaranteed by list_schedulable
-                next_time = next_run_from_cron(job.cron, now)
+                next_time = job.cron.next_run_after(now)
                 self._jobs_repo.save_next_run_at(job.id, next_time)
                 triggered.append(job.id.value)
             except Exception:

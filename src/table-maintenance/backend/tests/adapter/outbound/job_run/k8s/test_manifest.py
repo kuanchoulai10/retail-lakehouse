@@ -3,7 +3,13 @@
 from datetime import UTC, datetime
 
 from adapter.outbound.job_run.k8s.manifest import build_manifest
-from application.domain.model.job import Job, JobId, JobType
+from application.domain.model.job import (
+    CronExpression,
+    Job,
+    JobId,
+    JobType,
+    TableReference,
+)
 from configs import AppSettings
 
 SETTINGS = AppSettings()
@@ -17,8 +23,7 @@ def _make_job(name: str = "my-job", **kwargs) -> Job:  # type: ignore[no-any-exp
         "job_type": JobType.REWRITE_DATA_FILES,
         "created_at": now,
         "updated_at": now,
-        "catalog": "retail",
-        "table": "inventory.orders",
+        "table_ref": TableReference(catalog="retail", table="inventory.orders"),
         "job_config": {},
     }
     defaults.update(kwargs)
@@ -94,7 +99,7 @@ def test_resource_defaults_from_settings():
 
 def test_cron_creates_scheduled_spark_application():
     """Verify that a cron job produces a ScheduledSparkApplication manifest."""
-    job = _make_job(cron="0 2 * * *")
+    job = _make_job(cron=CronExpression(expression="0 2 * * *"))
     manifest = build_manifest(job, "my-job", SETTINGS)
     assert manifest["kind"] == "ScheduledSparkApplication"
     assert manifest["spec"]["schedule"] == "0 2 * * *"

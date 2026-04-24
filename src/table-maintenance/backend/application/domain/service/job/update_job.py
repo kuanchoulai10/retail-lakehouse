@@ -5,7 +5,13 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.domain.model.job import JobId, JobNotFoundError, JobStatus
+from application.domain.model.job import (
+    CronExpression,
+    JobId,
+    JobNotFoundError,
+    JobStatus,
+    TableReference,
+)
 from application.exceptions import JobNotFoundError as AppJobNotFoundError
 from application.port.inbound import UpdateJobInput, UpdateJobOutput, UpdateJobUseCase
 
@@ -38,9 +44,11 @@ class UpdateJobService(UpdateJobUseCase):
             action = _STATUS_ACTION[target]
             getattr(job, action)()
         if request.catalog is not None:
-            job.catalog = request.catalog
+            job.table_ref = TableReference(
+                catalog=request.catalog, table=job.table_ref.table
+            )
         if request.cron is not None:
-            job.cron = request.cron
+            job.cron = CronExpression(expression=request.cron)
         if request.job_config is not None:
             job.job_config = request.job_config
         job.updated_at = datetime.now(UTC)

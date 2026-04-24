@@ -12,8 +12,10 @@ from application.domain.model.job.exceptions import (
     JobNotActiveError,
     MaxActiveRunsExceededError,
 )
+from application.domain.model.job.cron_expression import CronExpression
 from application.domain.model.job.job_id import JobId
 from application.domain.model.job.job_status import JobStatus
+from application.domain.model.job.table_reference import TableReference
 from application.domain.model.job_run.job_run import JobRun
 from application.domain.model.job_run.job_run_id import JobRunId
 from application.domain.model.job_run.job_run_status import JobRunStatus
@@ -35,10 +37,9 @@ class Job(AggregateRoot[JobId]):
     job_type: JobType
     created_at: datetime
     updated_at: datetime
-    catalog: str = ""
-    table: str = ""
+    table_ref: TableReference = TableReference(catalog="", table="")
     job_config: dict | None = None
-    cron: str | None = None
+    cron: CronExpression | None = None
     status: JobStatus = JobStatus.ACTIVE
     next_run_at: datetime | None = None
     max_active_runs: int = 1
