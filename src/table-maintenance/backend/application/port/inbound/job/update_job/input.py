@@ -10,7 +10,7 @@ class UpdateJobInput:
     """Partial update: only non-None fields are applied."""
 
     job_id: str
-    enabled: bool | None = None
+    status: str | None = None
     catalog: str | None = None
     cron: str | None = None
     job_config: dict | None = None

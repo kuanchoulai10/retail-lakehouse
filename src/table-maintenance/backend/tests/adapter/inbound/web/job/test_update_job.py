@@ -22,7 +22,7 @@ def _make_client(use_case: MagicMock) -> TestClient:
 SAMPLE = UpdateJobOutput(
     id="abc1234567",
     job_type="rewrite_data_files",
-    enabled=True,
+    status="active",
     created_at=datetime(2026, 4, 4, tzinfo=UTC),
     updated_at=datetime(2026, 4, 5, tzinfo=UTC),
 )
@@ -34,9 +34,9 @@ def test_patch_job_returns_200():
     use_case.execute.return_value = SAMPLE
     client = _make_client(use_case)
 
-    resp = client.patch("/v1/jobs/abc1234567", json={"enabled": True})
+    resp = client.patch("/v1/jobs/abc1234567", json={"status": "active"})
     assert resp.status_code == 200
-    assert resp.json()["enabled"] is True
+    assert resp.json()["status"] == "active"
 
 
 def test_patch_unknown_job_returns_404():
@@ -45,5 +45,5 @@ def test_patch_unknown_job_returns_404():
     use_case.execute.side_effect = JobNotFoundError("ghost")
     client = _make_client(use_case)
 
-    resp = client.patch("/v1/jobs/ghost", json={"enabled": True})
+    resp = client.patch("/v1/jobs/ghost", json={"status": "active"})
     assert resp.status_code == 404

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
-from application.domain.model.job import Job, JobId, JobType
+from application.domain.model.job import Job, JobId, JobStatus, JobType
 from application.domain.model.job_run import JobRunStatus
 from application.domain.service.schedule_jobs import ScheduleJobsService
 
@@ -25,7 +25,7 @@ def _make_job(
         created_at=NOW,
         updated_at=NOW,
         cron=cron,
-        enabled=True,
+        status=JobStatus.ACTIVE,
         next_run_at=next_run_at or datetime(2026, 4, 22, 9, 0, tzinfo=UTC),
         max_active_runs=max_active_runs,
     )

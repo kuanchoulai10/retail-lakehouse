@@ -30,7 +30,7 @@ class ListJobsService(ListJobsUseCase):
                 ListJobsOutputItem(
                     id=job.id.value,
                     job_type=job.job_type.value,
-                    enabled=job.enabled,
+                    status=job.status.value,
                     created_at=job.created_at,
                     updated_at=job.updated_at,
                 )

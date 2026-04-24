@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+from application.domain.model.job import JobStatus
 from application.domain.service.job.create_job import CreateJobService
 from application.port.inbound import (
     CreateJobInput,
@@ -38,7 +39,7 @@ def test_create_job_returns_output():
 
     assert isinstance(result, CreateJobOutput)
     assert result.job_type == "rewrite_data_files"
-    assert result.enabled is False
+    assert result.status == "active"
 
 
 def test_create_job_populates_domain_fields():
@@ -60,8 +61,8 @@ def test_create_job_populates_domain_fields():
     assert job.cron == "0 2 * * *"
 
 
-def test_create_job_enabled_defaults_to_false():
-    """Verify that enabled defaults to False when not provided."""
+def test_create_job_status_defaults_to_active():
+    """Verify that status defaults to active when not provided."""
     service, repo = _make_service()
 
     service.execute(
@@ -73,11 +74,11 @@ def test_create_job_enabled_defaults_to_false():
     )
 
     job = repo.create.call_args[0][0]
-    assert job.enabled is False
+    assert job.status == JobStatus.ACTIVE
 
 
-def test_create_job_enabled_passed_through_from_input():
-    """Verify that enabled is passed through from input when explicitly set."""
+def test_create_job_status_passed_through_from_input():
+    """Verify that status is passed through from input when explicitly set."""
     service, repo = _make_service()
 
     service.execute(
@@ -85,12 +86,12 @@ def test_create_job_enabled_passed_through_from_input():
             job_type="rewrite_data_files",
             catalog="retail",
             rewrite_data_files={"table": "inventory.orders"},
-            enabled=True,
+            status="paused",
         )
     )
 
     job = repo.create.call_args[0][0]
-    assert job.enabled is True
+    assert job.status == JobStatus.PAUSED
 
 
 def test_create_job_sets_updated_at_equal_to_created_at_initially():

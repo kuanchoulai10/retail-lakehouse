@@ -4,7 +4,13 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
-from application.domain.model.job import Job, JobId, JobNotFoundError, JobType
+from application.domain.model.job import (
+    Job,
+    JobId,
+    JobNotFoundError,
+    JobStatus,
+    JobType,
+)
 from application.domain.service.job.get_job import GetJobService
 from application.exceptions import JobNotFoundError as AppJobNotFoundError
 from application.port.inbound import GetJobInput, GetJobOutput, GetJobUseCase
@@ -18,7 +24,7 @@ def _make_job(job_id: str = "abc1234567") -> Job:
         job_type=JobType.REWRITE_DATA_FILES,
         created_at=ts,
         updated_at=ts,
-        enabled=True,
+        status=JobStatus.ACTIVE,
     )
 
 
@@ -38,7 +44,7 @@ def test_get_job_returns_result():
     assert isinstance(result, GetJobOutput)
     assert result.id == "abc1234567"
     assert result.job_type == "rewrite_data_files"
-    assert result.enabled is True
+    assert result.status == "active"
     repo.get.assert_called_once_with(JobId(value="abc1234567"))
 
 

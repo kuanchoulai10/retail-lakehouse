@@ -73,7 +73,7 @@ class JobsSqlRepo(JobsRepo):
     def list_schedulable(self, now: datetime) -> list[Job]:
         """Return enabled jobs with a cron schedule whose next_run_at <= now."""
         stmt = select(jobs_table).where(
-            jobs_table.c.enabled.is_(True),
+            jobs_table.c.status == "active",
             jobs_table.c.cron.isnot(None),
             jobs_table.c.next_run_at.isnot(None),
             jobs_table.c.next_run_at <= now,

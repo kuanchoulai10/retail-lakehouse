@@ -57,7 +57,7 @@ class JobsInMemoryRepo(JobsRepo):
         return [
             j
             for j in self._jobs.values()
-            if j.enabled
+            if j.is_active
             and j.cron is not None
             and j.next_run_at is not None
             and j.next_run_at <= now

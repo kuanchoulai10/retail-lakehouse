@@ -5,12 +5,18 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.domain.model.job import JobId, JobNotFoundError
+from application.domain.model.job import JobId, JobNotFoundError, JobStatus
 from application.exceptions import JobNotFoundError as AppJobNotFoundError
 from application.port.inbound import UpdateJobInput, UpdateJobOutput, UpdateJobUseCase
 
 if TYPE_CHECKING:
     from application.port.outbound.job.jobs_repo import JobsRepo
+
+_STATUS_ACTION = {
+    JobStatus.ACTIVE: "resume",
+    JobStatus.PAUSED: "pause",
+    JobStatus.ARCHIVED: "archive",
+}
 
 
 class UpdateJobService(UpdateJobUseCase):
@@ -27,8 +33,10 @@ class UpdateJobService(UpdateJobUseCase):
         except JobNotFoundError as e:
             raise AppJobNotFoundError(e.name) from e
 
-        if request.enabled is not None:
-            job.enabled = request.enabled
+        if request.status is not None:
+            target = JobStatus(request.status)
+            action = _STATUS_ACTION[target]
+            getattr(job, action)()
         if request.catalog is not None:
             job.catalog = request.catalog
         if request.cron is not None:
@@ -42,7 +50,7 @@ class UpdateJobService(UpdateJobUseCase):
         return UpdateJobOutput(
             id=job.id.value,
             job_type=job.job_type.value,
-            enabled=job.enabled,
+            status=job.status.value,
             created_at=job.created_at,
             updated_at=job.updated_at,
         )

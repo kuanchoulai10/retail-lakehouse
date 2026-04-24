@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 
 from base import AggregateRoot
-from application.domain.model.job import Job, JobId, JobType
+from application.domain.model.job import Job, JobId, JobStatus, JobType
 
 
 def test_job_is_aggregate_root():
@@ -32,27 +32,27 @@ def test_job_fields():
     assert job.job_config == {"rewrite_all": True}
 
 
-def test_job_enabled_defaults_to_false():
-    """Verify that enabled defaults to False when not specified."""
+def test_job_status_defaults_to_active():
+    """Verify that status defaults to ACTIVE when not specified."""
     job = Job(
         id=JobId(value="abc1234567"),
         job_type=JobType.REWRITE_DATA_FILES,
         created_at=datetime(2026, 4, 10, tzinfo=UTC),
         updated_at=datetime(2026, 4, 10, tzinfo=UTC),
     )
-    assert job.enabled is False
+    assert job.status == JobStatus.ACTIVE
 
 
-def test_job_enabled_can_be_true():
-    """Verify that enabled can be set to True."""
+def test_job_status_can_be_paused():
+    """Verify that status can be set to PAUSED."""
     job = Job(
         id=JobId(value="abc1234567"),
         job_type=JobType.REWRITE_DATA_FILES,
         created_at=datetime(2026, 4, 10, tzinfo=UTC),
         updated_at=datetime(2026, 4, 10, tzinfo=UTC),
-        enabled=True,
+        status=JobStatus.PAUSED,
     )
-    assert job.enabled is True
+    assert job.status == JobStatus.PAUSED
 
 
 def test_job_cron_defaults_to_none():

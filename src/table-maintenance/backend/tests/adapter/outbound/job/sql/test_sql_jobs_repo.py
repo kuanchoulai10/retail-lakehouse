@@ -5,13 +5,19 @@ from datetime import UTC, datetime
 import pytest
 
 from adapter.outbound.job.sql.jobs_sql_repo import JobsSqlRepo
-from application.domain.model.job import Job, JobId, JobNotFoundError, JobType
+from application.domain.model.job import (
+    Job,
+    JobId,
+    JobNotFoundError,
+    JobStatus,
+    JobType,
+)
 from application.port.outbound.job.jobs_repo import JobsRepo
 
 
 def _make_job(
     job_id: str = "abc1234567",
-    enabled: bool = False,
+    status: JobStatus = JobStatus.PAUSED,
     cron: str | None = None,
 ) -> Job:
     """Provide a sample Job entity with optional overrides."""
@@ -25,7 +31,7 @@ def _make_job(
         table="inventory.orders",
         job_config={"rewrite_all": True},
         cron=cron,
-        enabled=enabled,
+        status=status,
     )
 
 
@@ -93,14 +99,14 @@ def test_delete_raises_not_found(sqlite_engine):
 def test_update_replaces_row(sqlite_engine):
     """Verify that update replaces the existing row with new values."""
     repo = JobsSqlRepo(sqlite_engine)
-    original = _make_job("abc1234567", enabled=False)
+    original = _make_job("abc1234567", status=JobStatus.PAUSED)
     repo.create(original)
 
-    modified = _make_job("abc1234567", enabled=True)
+    modified = _make_job("abc1234567", status=JobStatus.ACTIVE)
     repo.update(modified)
 
     fetched = repo.get(JobId(value="abc1234567"))
-    assert fetched.enabled is True
+    assert fetched.status == JobStatus.ACTIVE
 
 
 def test_update_raises_not_found(sqlite_engine):
@@ -110,14 +116,14 @@ def test_update_raises_not_found(sqlite_engine):
         repo.update(_make_job("ghost"))
 
 
-def test_enabled_roundtrips(sqlite_engine):
-    """Verify that the enabled flag roundtrips through the database."""
+def test_status_roundtrips(sqlite_engine):
+    """Verify that the status field roundtrips through the database."""
     repo = JobsSqlRepo(sqlite_engine)
-    repo.create(_make_job("a", enabled=True))
-    repo.create(_make_job("b", enabled=False))
+    repo.create(_make_job("a", status=JobStatus.ACTIVE))
+    repo.create(_make_job("b", status=JobStatus.PAUSED))
     jobs = {j.id.value: j for j in repo.list_all()}
-    assert jobs["a"].enabled is True
-    assert jobs["b"].enabled is False
+    assert jobs["a"].status == JobStatus.ACTIVE
+    assert jobs["b"].status == JobStatus.PAUSED
 
 
 def test_cron_nullable_roundtrips(sqlite_engine):
@@ -133,7 +139,7 @@ def test_cron_nullable_roundtrips(sqlite_engine):
 def _make_schedulable_job(
     job_id: str,
     next_run_at: datetime,
-    enabled: bool = True,
+    status: JobStatus = JobStatus.ACTIVE,
     cron: str = "0 * * * *",
     max_active_runs: int = 1,
 ) -> Job:
@@ -145,7 +151,7 @@ def _make_schedulable_job(
         created_at=now,
         updated_at=now,
         cron=cron,
-        enabled=enabled,
+        status=status,
         next_run_at=next_run_at,
         max_active_runs=max_active_runs,
     )
@@ -176,13 +182,15 @@ def test_list_schedulable_returns_due_jobs(sqlite_engine):
     assert result[0].id.value == "j1"
 
 
-def test_list_schedulable_skips_disabled(sqlite_engine):
-    """Verify that list_schedulable skips disabled jobs."""
+def test_list_schedulable_skips_paused(sqlite_engine):
+    """Verify that list_schedulable skips paused jobs."""
     repo = JobsSqlRepo(sqlite_engine)
     now = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)
     repo.create(
         _make_schedulable_job(
-            "j1", next_run_at=datetime(2026, 4, 22, 9, 0, tzinfo=UTC), enabled=False
+            "j1",
+            next_run_at=datetime(2026, 4, 22, 9, 0, tzinfo=UTC),
+            status=JobStatus.PAUSED,
         )
     )
     assert repo.list_schedulable(now) == []
@@ -192,7 +200,7 @@ def test_list_schedulable_skips_no_cron(sqlite_engine):
     """Verify that list_schedulable skips jobs without a cron expression."""
     repo = JobsSqlRepo(sqlite_engine)
     now = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)
-    job = _make_job("j1", enabled=True)
+    job = _make_job("j1", status=JobStatus.ACTIVE)
     job.next_run_at = datetime(2026, 4, 22, 9, 0, tzinfo=UTC)
     repo.create(job)
     assert repo.list_schedulable(now) == []

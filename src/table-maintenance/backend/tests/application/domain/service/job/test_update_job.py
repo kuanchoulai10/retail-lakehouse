@@ -5,7 +5,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from application.domain.model.job import Job, JobId, JobNotFoundError, JobType
+from application.domain.model.job import (
+    Job,
+    JobId,
+    JobNotFoundError,
+    JobStatus,
+    JobType,
+)
 from application.domain.service.job.update_job import UpdateJobService
 from application.exceptions import JobNotFoundError as AppJobNotFoundError
 from application.port.inbound import UpdateJobInput, UpdateJobOutput, UpdateJobUseCase
@@ -21,7 +27,7 @@ def _existing_job() -> Job:
         catalog="retail",
         table="inventory.orders",
         cron=None,
-        enabled=False,
+        status=JobStatus.PAUSED,
     )
 
 
@@ -30,29 +36,29 @@ def test_implements_use_case():
     assert issubclass(UpdateJobService, UpdateJobUseCase)
 
 
-def test_update_enables_job():
-    """Verify that execute enables a job and returns an UpdateJobOutput."""
+def test_update_activates_job():
+    """Verify that execute activates a job and returns an UpdateJobOutput."""
     repo = MagicMock()
     repo.get.return_value = _existing_job()
     repo.update.side_effect = lambda job: job
     service = UpdateJobService(repo)
 
-    result = service.execute(UpdateJobInput(job_id="abc1234567", enabled=True))
+    result = service.execute(UpdateJobInput(job_id="abc1234567", status="active"))
 
     assert isinstance(result, UpdateJobOutput)
-    assert result.enabled is True
+    assert result.status == "active"
     repo.update.assert_called_once()
 
 
-def test_update_leaves_other_fields_when_only_enabled_provided():
-    """Verify that unrelated fields remain unchanged when only enabled is updated."""
+def test_update_leaves_other_fields_when_only_status_provided():
+    """Verify that unrelated fields remain unchanged when only status is updated."""
     repo = MagicMock()
     job = _existing_job()
     repo.get.return_value = job
     repo.update.side_effect = lambda j: j
     service = UpdateJobService(repo)
 
-    service.execute(UpdateJobInput(job_id="abc1234567", enabled=True))
+    service.execute(UpdateJobInput(job_id="abc1234567", status="active"))
 
     updated = repo.update.call_args[0][0]
     assert updated.catalog == "retail"
@@ -67,7 +73,7 @@ def test_update_bumps_updated_at():
     repo.update.side_effect = lambda j: j
     service = UpdateJobService(repo)
 
-    service.execute(UpdateJobInput(job_id="abc1234567", enabled=True))
+    service.execute(UpdateJobInput(job_id="abc1234567", status="active"))
 
     updated = repo.update.call_args[0][0]
     assert updated.updated_at > job.created_at
@@ -80,5 +86,5 @@ def test_update_raises_app_not_found():
     service = UpdateJobService(repo)
 
     with pytest.raises(AppJobNotFoundError) as exc_info:
-        service.execute(UpdateJobInput(job_id="ghost", enabled=True))
+        service.execute(UpdateJobInput(job_id="ghost", status="active"))
     assert exc_info.value.job_id == "ghost"

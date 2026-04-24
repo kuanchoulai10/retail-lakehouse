@@ -22,7 +22,7 @@ def _make_client(use_case: MagicMock) -> TestClient:
 SAMPLE_RESULT = GetJobOutput(
     id="abc1234567",
     job_type="rewrite_data_files",
-    enabled=True,
+    status="active",
     created_at=datetime(2026, 4, 4, tzinfo=UTC),
     updated_at=datetime(2026, 4, 4, tzinfo=UTC),
 )
@@ -39,8 +39,7 @@ def test_get_job_returns_200():
     body = response.json()
     assert body["id"] == "abc1234567"
     assert body["job_type"] == "rewrite_data_files"
-    assert body["enabled"] is True
-    assert "status" not in body
+    assert body["status"] == "active"
 
 
 def test_get_job_not_found_returns_404():

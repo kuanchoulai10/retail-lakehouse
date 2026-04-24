@@ -7,7 +7,7 @@ import secrets
 from typing import TYPE_CHECKING
 
 from application.cron_calculator import next_run_from_cron
-from application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
+from application.domain.model.job_run import JobRunId
 from application.domain.service.schedule_jobs_result import ScheduleJobsResult
 
 if TYPE_CHECKING:
@@ -42,14 +42,11 @@ class ScheduleJobsService:
 
         for job in jobs:
             active = self._job_runs_repo.count_active_for_job(job.id)
-            if active >= job.max_active_runs:
-                continue
             try:
-                run = JobRun(
-                    id=JobRunId(value=f"{job.id.value}-{secrets.token_hex(3)}"),
-                    job_id=job.id,
-                    status=JobRunStatus.PENDING,
-                    started_at=now,
+                run = job.trigger(
+                    run_id=JobRunId(value=f"{job.id.value}-{secrets.token_hex(3)}"),
+                    now=now,
+                    active_run_count=active,
                 )
                 self._job_runs_repo.create(run)
                 assert job.cron is not None  # guaranteed by list_schedulable

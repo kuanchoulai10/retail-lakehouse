@@ -5,8 +5,14 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from application.domain.model.job import Job, JobId, JobNotFoundError, JobType
-from application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
+from application.domain.model.job import (
+    Job,
+    JobId,
+    JobNotFoundError,
+    JobStatus,
+    JobType,
+)
+
 from application.domain.service.job_run.create_job_run import CreateJobRunService
 from application.exceptions import JobDisabledError
 from application.exceptions import JobNotFoundError as AppJobNotFoundError
@@ -17,37 +23,27 @@ from application.port.inbound import (
 )
 
 
-def _enabled_job(job_id: str = "abc1234567") -> Job:
-    """Provide an enabled Job domain entity."""
+def _active_job(job_id: str = "abc1234567") -> Job:
+    """Provide an active Job domain entity."""
     now = datetime.now(UTC)
     return Job(
         id=JobId(value=job_id),
         job_type=JobType.REWRITE_DATA_FILES,
         created_at=now,
         updated_at=now,
-        enabled=True,
+        status=JobStatus.ACTIVE,
     )
 
 
-def _disabled_job(job_id: str = "abc1234567") -> Job:
-    """Provide a disabled Job domain entity."""
+def _paused_job(job_id: str = "abc1234567") -> Job:
+    """Provide a paused Job domain entity."""
     now = datetime.now(UTC)
     return Job(
         id=JobId(value=job_id),
         job_type=JobType.REWRITE_DATA_FILES,
         created_at=now,
         updated_at=now,
-        enabled=False,
-    )
-
-
-def _run_for(job_id: str) -> JobRun:
-    """Provide a pending JobRun for the given job ID."""
-    return JobRun(
-        id=JobRunId(value=f"{job_id}-xyz"),
-        job_id=JobId(value=job_id),
-        status=JobRunStatus.PENDING,
-        started_at=datetime.now(UTC),
+        status=JobStatus.PAUSED,
     )
 
 
@@ -56,41 +52,40 @@ def test_implements_use_case():
     assert issubclass(CreateJobRunService, CreateJobRunUseCase)
 
 
-def test_triggers_executor_for_enabled_job():
-    """Verify that execute triggers the executor and returns output for an enabled job."""
+def test_creates_run_for_active_job():
+    """Verify that execute creates a job run and returns output for an active job."""
     repo = MagicMock()
-    repo.get.return_value = _enabled_job()
-    executor = MagicMock()
-    executor.trigger.return_value = _run_for("abc1234567")
-    service = CreateJobRunService(repo, executor)
+    repo.get.return_value = _active_job()
+    job_runs_repo = MagicMock()
+    job_runs_repo.count_active_for_job.return_value = 0
+    job_runs_repo.create.side_effect = lambda run: run
+    service = CreateJobRunService(repo, job_runs_repo)
 
     result = service.execute(CreateJobRunInput(job_id="abc1234567"))
 
     assert isinstance(result, CreateJobRunOutput)
-    executor.trigger.assert_called_once()
+    job_runs_repo.create.assert_called_once()
     assert result.job_id == "abc1234567"
 
 
-def test_raises_disabled_when_job_disabled():
-    """Verify that execute raises JobDisabledError when the job is disabled."""
+def test_raises_disabled_when_job_paused():
+    """Verify that execute raises JobDisabledError when the job is paused."""
     repo = MagicMock()
-    repo.get.return_value = _disabled_job()
-    executor = MagicMock()
-    service = CreateJobRunService(repo, executor)
+    repo.get.return_value = _paused_job()
+    job_runs_repo = MagicMock()
+    service = CreateJobRunService(repo, job_runs_repo)
 
     with pytest.raises(JobDisabledError) as exc_info:
         service.execute(CreateJobRunInput(job_id="abc1234567"))
     assert exc_info.value.job_id == "abc1234567"
-    executor.trigger.assert_not_called()
 
 
 def test_raises_not_found_when_job_missing():
     """Verify that execute raises AppJobNotFoundError when the job does not exist."""
     repo = MagicMock()
     repo.get.side_effect = JobNotFoundError("ghost")
-    executor = MagicMock()
-    service = CreateJobRunService(repo, executor)
+    job_runs_repo = MagicMock()
+    service = CreateJobRunService(repo, job_runs_repo)
 
     with pytest.raises(AppJobNotFoundError):
         service.execute(CreateJobRunInput(job_id="ghost"))
-    executor.trigger.assert_not_called()

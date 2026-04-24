@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 
 from adapter.outbound.job.sql.job_to_values import job_to_values
-from application.domain.model.job import Job, JobId, JobType
+from application.domain.model.job import Job, JobId, JobStatus, JobType
 
 
 def _make_job() -> Job:
@@ -17,7 +17,7 @@ def _make_job() -> Job:
         table="inventory.orders",
         job_config={"rewrite_all": True},
         cron="0 2 * * *",
-        enabled=True,
+        status=JobStatus.ACTIVE,
     )
 
 
@@ -31,7 +31,7 @@ def test_values_has_all_columns():
         "table",
         "job_config",
         "cron",
-        "enabled",
+        "status",
         "next_run_at",
         "max_active_runs",
         "created_at",
@@ -52,5 +52,5 @@ def test_scalars_passthrough():
     assert values["catalog"] == "retail"
     assert values["table"] == "inventory.orders"
     assert values["cron"] == "0 2 * * *"
-    assert values["enabled"] is True
+    assert values["status"] == "active"
     assert values["job_config"] == {"rewrite_all": True}

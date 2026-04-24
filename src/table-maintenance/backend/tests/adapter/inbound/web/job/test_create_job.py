@@ -21,7 +21,7 @@ def _make_client(use_case: MagicMock) -> TestClient:
 SAMPLE_OUTPUT = CreateJobOutput(
     id="abc1234567",
     job_type="rewrite_data_files",
-    enabled=False,
+    status="paused",
     created_at=datetime(2026, 4, 11, tzinfo=UTC),
     updated_at=datetime(2026, 4, 11, tzinfo=UTC),
 )
@@ -41,8 +41,7 @@ def test_post_job_returns_201():
     response = client.post("/v1/jobs", json=payload)
     assert response.status_code == 201
     assert response.json()["id"] == "abc1234567"
-    assert response.json()["enabled"] is False
-    assert "status" not in response.json()
+    assert response.json()["status"] == "paused"
 
 
 def test_post_job_missing_catalog_returns_422():

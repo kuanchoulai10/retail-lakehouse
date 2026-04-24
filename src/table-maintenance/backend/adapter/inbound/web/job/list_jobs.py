@@ -21,7 +21,7 @@ def list_jobs(
         JobApiResponse(
             id=item.id,
             job_type=item.job_type,
-            enabled=item.enabled,
+            status=item.status,
             created_at=item.created_at,
             updated_at=item.updated_at,
         )

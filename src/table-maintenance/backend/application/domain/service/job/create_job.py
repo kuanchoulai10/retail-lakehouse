@@ -6,7 +6,7 @@ import secrets
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.domain.model.job import Job, JobId, JobType
+from application.domain.model.job import Job, JobId, JobStatus, JobType
 from application.port.inbound import (
     CreateJobInput,
     CreateJobOutput,
@@ -46,13 +46,13 @@ class CreateJobService(CreateJobUseCase):
             table=table,
             job_config=job_config,
             cron=request.cron,
-            enabled=request.enabled,
+            status=JobStatus(request.status),
         )
         job = self._repo.create(job)
         return CreateJobOutput(
             id=job.id.value,
             job_type=job.job_type.value,
-            enabled=job.enabled,
+            status=job.status.value,
             created_at=job.created_at,
             updated_at=job.updated_at,
         )

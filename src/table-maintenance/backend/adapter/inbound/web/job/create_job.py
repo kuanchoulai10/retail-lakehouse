@@ -26,13 +26,13 @@ def create_job(
             rewrite_data_files=request.rewrite_data_files,
             rewrite_manifests=request.rewrite_manifests,
             cron=request.cron,
-            enabled=request.enabled,
+            status=request.status,
         )
     )
     return JobApiResponse(
         id=result.id,
         job_type=result.job_type,
-        enabled=result.enabled,
+        status=result.status,
         created_at=result.created_at,
         updated_at=result.updated_at,
     )

@@ -1,6 +1,6 @@
 """Tests for jobs_table."""
 
-from sqlalchemy import Boolean, DateTime, String
+from sqlalchemy import DateTime, String
 
 from adapter.outbound.job.sql.jobs_table import jobs_table
 
@@ -26,7 +26,7 @@ def test_has_expected_columns():
         "table",
         "job_config",
         "cron",
-        "enabled",
+        "status",
         "next_run_at",
         "max_active_runs",
         "created_at",
@@ -41,9 +41,9 @@ def test_id_is_string_not_null():
     assert col.nullable is False
 
 
-def test_enabled_is_boolean():
-    """Verify that the enabled column is a boolean type."""
-    assert isinstance(jobs_table.c.enabled.type, Boolean)
+def test_status_is_string():
+    """Verify that the status column is a string type."""
+    assert isinstance(jobs_table.c.status.type, String)
 
 
 def test_cron_is_nullable():

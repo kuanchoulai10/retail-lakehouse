@@ -15,7 +15,6 @@ from dependencies.use_cases import (
     get_update_job_use_case,
 )
 from adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
-from adapter.outbound.job_run.job_run_in_memory_executor import JobRunInMemoryExecutor
 from adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
 from application.domain.service.job.create_job import CreateJobService
 from application.domain.service.job.delete_job import DeleteJobService
@@ -65,19 +64,19 @@ def test_get_update_job_use_case():
 def test_get_create_job_run_use_case():
     """Verify that get_create_job_run_use_case returns a CreateJobRunService."""
     repo = JobsInMemoryRepo()
-    executor = JobRunInMemoryExecutor()
-    result = get_create_job_run_use_case(repo=repo, executor=executor)
+    job_runs_repo = JobRunsInMemoryRepo()
+    result = get_create_job_run_use_case(repo=repo, job_runs_repo=job_runs_repo)
     assert isinstance(result, CreateJobRunService)
 
 
 def test_get_create_job_run_use_case_injects_collaborators():
-    """Verify that get_create_job_run_use_case injects repo and executor into service."""
+    """Verify that get_create_job_run_use_case injects repo and job_runs_repo into service."""
     repo = MagicMock()
-    executor = MagicMock()
-    service = get_create_job_run_use_case(repo=repo, executor=executor)
+    job_runs_repo = MagicMock()
+    service = get_create_job_run_use_case(repo=repo, job_runs_repo=job_runs_repo)
     assert isinstance(service, CreateJobRunService)
     assert service._repo is repo
-    assert service._executor is executor
+    assert service._job_runs_repo is job_runs_repo
 
 
 def test_get_list_job_runs_use_case():

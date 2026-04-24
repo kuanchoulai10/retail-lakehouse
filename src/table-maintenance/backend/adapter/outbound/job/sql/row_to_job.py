@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from application.domain.model.job import Job, JobId, JobType
+from application.domain.model.job import Job, JobId, JobStatus, JobType
 
 
 def row_to_job(row: Any) -> Job:
@@ -18,7 +18,7 @@ def row_to_job(row: Any) -> Job:
         table=row["table"],
         job_config=row["job_config"],
         cron=row["cron"],
-        enabled=row["enabled"],
+        status=JobStatus(row["status"]),
         next_run_at=row["next_run_at"],
         max_active_runs=row["max_active_runs"],
     )

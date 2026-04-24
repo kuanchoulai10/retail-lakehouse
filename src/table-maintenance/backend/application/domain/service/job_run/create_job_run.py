@@ -2,9 +2,17 @@
 
 from __future__ import annotations
 
+import secrets
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.domain.model.job import JobId, JobNotFoundError
+from application.domain.model.job import (
+    JobId,
+    JobNotActiveError,
+    JobNotFoundError,
+    MaxActiveRunsExceededError,
+)
+from application.domain.model.job_run import JobRunId
 from application.exceptions import JobDisabledError
 from application.exceptions import JobNotFoundError as AppJobNotFoundError
 from application.port.inbound import (
@@ -14,17 +22,17 @@ from application.port.inbound import (
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.job_run.job_run_executor import JobRunExecutor
     from application.port.outbound.job.jobs_repo import JobsRepo
+    from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 
 
 class CreateJobRunService(CreateJobRunUseCase):
-    """Triggers a JobRun via the executor — only if the Job is enabled."""
+    """Triggers a JobRun via Job.trigger() — only if the Job is active."""
 
-    def __init__(self, repo: JobsRepo, executor: JobRunExecutor) -> None:
-        """Initialize with the jobs repository and job run executor."""
+    def __init__(self, repo: JobsRepo, job_runs_repo: JobRunsRepo) -> None:
+        """Initialize with the jobs and job runs repositories."""
         self._repo = repo
-        self._executor = executor
+        self._job_runs_repo = job_runs_repo
 
     def execute(self, request: CreateJobRunInput) -> CreateJobRunOutput:
         """Trigger a new execution of the specified job."""
@@ -33,10 +41,20 @@ class CreateJobRunService(CreateJobRunUseCase):
         except JobNotFoundError as e:
             raise AppJobNotFoundError(e.name) from e
 
-        if not job.enabled:
-            raise JobDisabledError(request.job_id)
+        active_count = self._job_runs_repo.count_active_for_job(job.id)
 
-        run = self._executor.trigger(job)
+        try:
+            run = job.trigger(
+                run_id=JobRunId(value=f"{job.id.value}-{secrets.token_hex(3)}"),
+                now=datetime.now(UTC),
+                active_run_count=active_count,
+            )
+        except JobNotActiveError as e:
+            raise JobDisabledError(e.job_id) from e
+        except MaxActiveRunsExceededError as e:
+            raise JobDisabledError(e.job_id) from e
+
+        run = self._job_runs_repo.create(run)
         return CreateJobRunOutput(
             run_id=run.id.value,
             job_id=run.job_id.value,

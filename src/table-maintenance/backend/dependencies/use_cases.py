@@ -22,7 +22,6 @@ from application.domain.service.job_run.list_job_runs import ListJobRunsService
 
 from dependencies.catalog import get_catalog_reader
 from dependencies.repos import (
-    get_job_run_executor,
     get_job_runs_repo,
     get_jobs_repo,
 )
@@ -45,7 +44,6 @@ if TYPE_CHECKING:
         UpdateJobUseCase,
     )
     from application.port.outbound.catalog.catalog_reader import CatalogReader
-    from application.port.outbound.job_run.job_run_executor import JobRunExecutor
     from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
     from application.port.outbound.job.jobs_repo import JobsRepo
 
@@ -87,10 +85,10 @@ def get_update_job_use_case(
 
 def get_create_job_run_use_case(
     repo: JobsRepo = Depends(get_jobs_repo),
-    executor: JobRunExecutor = Depends(get_job_run_executor),
+    job_runs_repo: JobRunsRepo = Depends(get_job_runs_repo),
 ) -> CreateJobRunUseCase:
     """Provide the CreateJobRun use case with injected dependencies."""
-    return CreateJobRunService(repo, executor)
+    return CreateJobRunService(repo, job_runs_repo)
 
 
 def get_list_job_runs_use_case(

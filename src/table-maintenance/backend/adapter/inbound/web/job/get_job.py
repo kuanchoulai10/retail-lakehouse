@@ -23,7 +23,7 @@ def get_job(
         return JobApiResponse(
             id=result.id,
             job_type=result.job_type,
-            enabled=result.enabled,
+            status=result.status,
             created_at=result.created_at,
             updated_at=result.updated_at,
         )

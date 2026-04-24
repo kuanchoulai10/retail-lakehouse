@@ -32,7 +32,7 @@ def _insert_parent_job(engine: Engine, job_id: str) -> None:
                 table="inventory.orders",
                 job_config={},
                 cron=None,
-                enabled=False,
+                status="active",
                 next_run_at=None,
                 max_active_runs=1,
                 created_at=NOW,
