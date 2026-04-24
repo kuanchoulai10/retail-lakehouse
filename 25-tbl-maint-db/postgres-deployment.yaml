@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tbl-maint-db
+  namespace: default
+  labels:
+    app: tbl-maint-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tbl-maint-db
+  template:
+    metadata:
+      labels:
+        app: tbl-maint-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          env:
+            - name: POSTGRES_DB
+              value: "table_maintenance"
+            - name: POSTGRES_USER
+              value: "tm"
+            - name: POSTGRES_PASSWORD
+              value: "tm"
+            - name: PGDATA
+              value: "/var/lib/postgresql/data/pgdata"
+          ports:
+            - name: postgres
+              containerPort: 5432
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "tm", "-d", "table_maintenance"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "tm", "-d", "table_maintenance"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: tbl-maint-db

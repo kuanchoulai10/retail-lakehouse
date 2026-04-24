@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: tbl-maint-db
+  namespace: default
+  labels:
+    app: tbl-maint-db
+spec:
+  selector:
+    app: tbl-maint-db
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
