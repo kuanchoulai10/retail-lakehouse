@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: table-maintenance-backend
+  namespace: default
+  labels:
+    app: table-maintenance-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: table-maintenance-backend
+  template:
+    metadata:
+      labels:
+        app: table-maintenance-backend
+    spec:
+      serviceAccountName: table-maintenance-backend
+      containers:
+        - name: backend
+          image: localhost:5001/table-maintenance-backend:20260422-014020
+          imagePullPolicy: Never
+          env:
+            - name: BACKEND_DATABASE_BACKEND
+              value: "postgres"
+            - name: BACKEND_POSTGRES__DB_URL
+              value: "postgresql+psycopg://tm:tm@tbl-maint-db.default.svc:5432/table_maintenance"
+            - name: BACKEND_JOBS_REPO_ADAPTER
+              value: "sql"
+            - name: BACKEND_JOB_RUNS_REPO_ADAPTER
+              value: "sql"
+            - name: BACKEND_ICEBERG_CATALOG_URI
+              value: "http://polaris.polaris.svc.cluster.local:8181/api/catalog"
+            - name: BACKEND_ICEBERG_CATALOG_CREDENTIAL
+              value: "root:secret"
+            - name: BACKEND_ICEBERG_CATALOG_WAREHOUSE
+              value: "iceberg"
+            - name: BACKEND_ICEBERG_CATALOG_SCOPE
+              value: "PRINCIPAL_ROLE:ALL"
+          ports:
+            - name: http
+              containerPort: 8000
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
