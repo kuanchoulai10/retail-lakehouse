@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: scheduler
-          image: localhost:5001/table-maintenance-scheduler:20260422-230712
+          image: localhost:5001/table-maintenance-scheduler:20260424-233832
           imagePullPolicy: Never
           env:
             - name: SCHEDULER_DATABASE_URL

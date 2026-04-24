@@ -18,7 +18,7 @@ spec:
       serviceAccountName: table-maintenance-backend
       containers:
         - name: backend
-          image: localhost:5001/table-maintenance-backend:20260422-014020
+          image: localhost:5001/table-maintenance-backend:20260424-233832
           imagePullPolicy: Never
           env:
             - name: BACKEND_DATABASE_BACKEND
