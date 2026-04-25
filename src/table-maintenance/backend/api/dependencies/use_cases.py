@@ -6,8 +6,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import Depends
 
-from core.base.event_dispatcher import EventDispatcher
-from core.application.event_handler.job_triggered_handler import JobTriggeredHandler
+from core.application.event_handler.event_serializer import EventSerializer
 from core.application.service.catalog.get_table import GetTableService
 from core.application.service.catalog.list_branches import ListBranchesService
 from core.application.service.catalog.list_namespaces import (
@@ -25,10 +24,7 @@ from core.application.service.job_run.get_job_run import GetJobRunService
 from core.application.service.job_run.list_job_runs import ListJobRunsService
 
 from api.dependencies.catalog import get_catalog_reader
-from api.dependencies.event_dispatcher import (
-    get_event_dispatcher,
-    get_triggered_handler,
-)
+from api.dependencies.outbox import get_event_serializer, get_outbox_repo
 from api.dependencies.repos import (
     get_job_runs_repo,
     get_jobs_repo,
@@ -51,16 +47,18 @@ if TYPE_CHECKING:
         UpdateJobUseCase,
     )
     from core.application.port.outbound.catalog.catalog_reader import CatalogReader
+    from core.application.port.outbound.event_outbox_repo import EventOutboxRepo
     from core.application.port.outbound.job_run.job_runs_repo import JobRunsRepo
     from core.application.port.outbound.job.jobs_repo import JobsRepo
 
 
 def get_create_job_use_case(
     repo: JobsRepo = Depends(get_jobs_repo),
-    dispatcher: EventDispatcher = Depends(get_event_dispatcher),
+    outbox_repo: EventOutboxRepo = Depends(get_outbox_repo),
+    serializer: EventSerializer = Depends(get_event_serializer),
 ) -> CreateJobUseCase:
     """Provide the CreateJob use case with injected dependencies."""
-    return CreateJobService(repo, dispatcher)
+    return CreateJobService(repo, outbox_repo, serializer)
 
 
 def get_get_job_use_case(
@@ -79,20 +77,21 @@ def get_list_jobs_use_case(
 
 def get_update_job_use_case(
     repo: JobsRepo = Depends(get_jobs_repo),
-    dispatcher: EventDispatcher = Depends(get_event_dispatcher),
+    outbox_repo: EventOutboxRepo = Depends(get_outbox_repo),
+    serializer: EventSerializer = Depends(get_event_serializer),
 ) -> UpdateJobUseCase:
     """Provide the UpdateJob use case with injected dependencies."""
-    return UpdateJobService(repo, dispatcher)
+    return UpdateJobService(repo, outbox_repo, serializer)
 
 
 def get_create_job_run_use_case(
     repo: JobsRepo = Depends(get_jobs_repo),
     job_runs_repo: JobRunsRepo = Depends(get_job_runs_repo),
-    dispatcher: EventDispatcher = Depends(get_event_dispatcher),
-    triggered_handler: JobTriggeredHandler = Depends(get_triggered_handler),
+    outbox_repo: EventOutboxRepo = Depends(get_outbox_repo),
+    serializer: EventSerializer = Depends(get_event_serializer),
 ) -> CreateJobRunUseCase:
     """Provide the CreateJobRun use case with injected dependencies."""
-    return CreateJobRunService(repo, job_runs_repo, dispatcher, triggered_handler)
+    return CreateJobRunService(repo, job_runs_repo, outbox_repo, serializer)
 
 
 def get_list_job_runs_use_case(

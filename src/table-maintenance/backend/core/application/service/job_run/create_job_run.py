@@ -14,34 +14,34 @@ from core.application.exceptions import JobDisabledError
 from core.application.exceptions import JobNotFoundError as AppJobNotFoundError
 from core.application.port.inbound import (
     CreateJobRunInput,
-    CreateJobRunOutput,
     CreateJobRunUseCase,
 )
+from core.application.port.inbound.job_run.create_job_run import TriggerJobOutput
 
 if TYPE_CHECKING:
-    from core.base.event_dispatcher import EventDispatcher
-    from core.application.event_handler.job_triggered_handler import JobTriggeredHandler
+    from core.application.event_handler.event_serializer import EventSerializer
+    from core.application.port.outbound.event_outbox_repo import EventOutboxRepo
     from core.application.port.outbound.job.jobs_repo import JobsRepo
     from core.application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 
 
 class CreateJobRunService(CreateJobRunUseCase):
-    """Triggers a JobRun via Job.trigger() — only if the Job is active."""
+    """Triggers a JobRun via Job.trigger() — writes event to outbox for async processing."""
 
     def __init__(
         self,
         repo: JobsRepo,
         job_runs_repo: JobRunsRepo,
-        dispatcher: EventDispatcher,
-        triggered_handler: JobTriggeredHandler,
+        outbox_repo: EventOutboxRepo,
+        serializer: EventSerializer,
     ) -> None:
-        """Initialize with repos, event dispatcher, and triggered handler."""
+        """Initialize with repos, outbox repo, and serializer."""
         self._repo = repo
         self._job_runs_repo = job_runs_repo
-        self._dispatcher = dispatcher
-        self._triggered_handler = triggered_handler
+        self._outbox_repo = outbox_repo
+        self._serializer = serializer
 
-    def execute(self, request: CreateJobRunInput) -> CreateJobRunOutput:
+    def execute(self, request: CreateJobRunInput) -> TriggerJobOutput:
         """Trigger a new execution of the specified job."""
         try:
             job = self._repo.get(JobId(value=request.job_id))
@@ -57,17 +57,11 @@ class CreateJobRunService(CreateJobRunUseCase):
         except MaxActiveRunsExceededError as e:
             raise JobDisabledError(e.job_id) from e
 
-        self._dispatcher.dispatch_all(job.collect_events())
-
-        run = self._triggered_handler.last_created_run
-        if run is None:
-            msg = "JobRun was not created by handler"
-            raise RuntimeError(msg)
-        return CreateJobRunOutput(
-            run_id=run.id.value,
-            job_id=run.job_id.value,
-            status=run.status.value,
-            trigger_type=run.trigger_type.value,
-            started_at=run.started_at,
-            finished_at=run.finished_at,
+        entries = self._serializer.to_outbox_entries(
+            events=job.collect_events(),
+            aggregate_type="Job",
+            aggregate_id=job.id.value,
         )
+        self._outbox_repo.save(entries)
+
+        return TriggerJobOutput(job_id=job.id.value)

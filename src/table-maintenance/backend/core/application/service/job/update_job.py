@@ -20,7 +20,8 @@ from core.application.port.inbound import (
 )
 
 if TYPE_CHECKING:
-    from core.base.event_dispatcher import EventDispatcher
+    from core.application.event_handler.event_serializer import EventSerializer
+    from core.application.port.outbound.event_outbox_repo import EventOutboxRepo
     from core.application.port.outbound.job.jobs_repo import JobsRepo
 
 _STATUS_ACTION = {
@@ -33,10 +34,13 @@ _STATUS_ACTION = {
 class UpdateJobService(UpdateJobUseCase):
     """Applies a partial update to an existing Job definition."""
 
-    def __init__(self, repo: JobsRepo, dispatcher: EventDispatcher) -> None:
-        """Initialize with the jobs repository and event dispatcher."""
+    def __init__(
+        self, repo: JobsRepo, outbox_repo: EventOutboxRepo, serializer: EventSerializer
+    ) -> None:
+        """Initialize with the jobs repository, outbox repo, and serializer."""
         self._repo = repo
-        self._dispatcher = dispatcher
+        self._outbox_repo = outbox_repo
+        self._serializer = serializer
 
     def execute(self, request: UpdateJobInput) -> UpdateJobOutput:
         """Apply partial updates to the specified job."""
@@ -62,7 +66,12 @@ class UpdateJobService(UpdateJobUseCase):
         job.updated_at = datetime.now(UTC)
 
         job = self._repo.update(job)
-        self._dispatcher.dispatch_all(job.collect_events())
+        entries = self._serializer.to_outbox_entries(
+            events=job.collect_events(),
+            aggregate_type="Job",
+            aggregate_id=job.id.value,
+        )
+        self._outbox_repo.save(entries)
 
         return UpdateJobOutput(
             id=job.id.value,

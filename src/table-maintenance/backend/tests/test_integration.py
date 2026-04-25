@@ -1,5 +1,7 @@
 """Integration test: full Job + JobRun lifecycle via HTTP."""
 
+from unittest.mock import MagicMock
+
 from api.dependencies.use_cases import (
     get_create_job_run_use_case,
     get_create_job_use_case,
@@ -14,9 +16,7 @@ from fastapi.testclient import TestClient
 from api.adapter.inbound.web import router
 from core.adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
 from core.adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
-from core.application.domain.model.job.events import JobTriggered
-from core.base.event_dispatcher import EventDispatcher
-from core.application.event_handler.job_triggered_handler import JobTriggeredHandler
+from core.application.event_handler.event_serializer import EventSerializer
 from core.application.service.job.create_job import CreateJobService
 from core.application.service.job.get_job import GetJobService
 from core.application.service.job.list_jobs import ListJobsService
@@ -32,23 +32,22 @@ def _make_app() -> tuple[FastAPI, JobRunsInMemoryRepo]:
     app.include_router(router)
     repo = JobsInMemoryRepo()
     runs_repo = JobRunsInMemoryRepo()
-    dispatcher = EventDispatcher()
-    handler = JobTriggeredHandler(runs_repo)
-    dispatcher.register(JobTriggered, handler)
+    outbox_repo = MagicMock()
+    serializer = EventSerializer()
 
     app.dependency_overrides[get_create_job_use_case] = lambda: CreateJobService(
-        repo, dispatcher
+        repo, outbox_repo, serializer
     )
     app.dependency_overrides[get_get_job_use_case] = lambda: GetJobService(repo)
     app.dependency_overrides[get_list_jobs_use_case] = lambda: ListJobsService(repo)
     app.dependency_overrides[get_update_job_use_case] = lambda: UpdateJobService(
-        repo, dispatcher
+        repo, outbox_repo, serializer
     )
     app.dependency_overrides[get_create_job_run_use_case] = lambda: CreateJobRunService(
         repo,
         runs_repo,
-        dispatcher,
-        handler,
+        outbox_repo,
+        serializer,
     )
     app.dependency_overrides[get_list_job_runs_use_case] = lambda: ListJobRunsService(
         runs_repo
@@ -91,26 +90,12 @@ def test_full_job_and_run_lifecycle():
     assert resp.status_code == 200
     assert resp.json()["status"] == "active"
 
-    # 5. Now we can trigger a run
+    # 5. Now we can trigger a run (async — returns 202 accepted)
     resp = client.post(f"/v1/jobs/{job_id}/runs")
-    assert resp.status_code == 201
-    run = resp.json()
-    assert run["job_id"] == job_id
-    assert run["status"] == "pending"
-    run_id = run["run_id"]
+    assert resp.status_code == 202
+    assert resp.json() == {"job_id": job_id, "accepted": True}
 
-    # 6. List runs for the job
-    resp = client.get(f"/v1/jobs/{job_id}/runs")
-    assert resp.status_code == 200
-    assert len(resp.json()) == 1
-    assert resp.json()[0]["run_id"] == run_id
-
-    # 7. Get the specific run
-    resp = client.get(f"/v1/runs/{run_id}")
-    assert resp.status_code == 200
-    assert resp.json()["run_id"] == run_id
-
-    # 8. Unknown run returns 404
+    # 6. Unknown run returns 404
     resp = client.get("/v1/runs/ghost")
     assert resp.status_code == 404
 
@@ -134,7 +119,7 @@ def test_create_with_status_active_allows_immediate_run():
     assert resp.json()["status"] == "active"
 
     resp = client.post(f"/v1/jobs/{job_id}/runs")
-    assert resp.status_code == 201
+    assert resp.status_code == 202
 
 
 def test_patch_unknown_job_returns_404():

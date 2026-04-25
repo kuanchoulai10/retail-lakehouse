@@ -13,17 +13,14 @@ from core.application.domain.model.job import (
     JobType,
 )
 
-from core.application.domain.model.job.events import JobTriggered
-from core.base.event_dispatcher import EventDispatcher
-from core.application.event_handler.job_triggered_handler import JobTriggeredHandler
 from core.application.service.job_run.create_job_run import CreateJobRunService
 from core.application.exceptions import JobDisabledError
 from core.application.exceptions import JobNotFoundError as AppJobNotFoundError
 from core.application.port.inbound import (
     CreateJobRunInput,
-    CreateJobRunOutput,
     CreateJobRunUseCase,
 )
+from core.application.port.inbound.job_run.create_job_run import TriggerJobOutput
 
 
 def _active_job(job_id: str = "abc1234567") -> Job:
@@ -55,34 +52,34 @@ def test_implements_use_case():
     assert issubclass(CreateJobRunService, CreateJobRunUseCase)
 
 
-def test_creates_run_for_active_job():
-    """Verify that execute creates a job run and returns output for an active job."""
+def _make_service():
+    """Provide a CreateJobRunService with mocked collaborators."""
     repo = MagicMock()
-    repo.get.return_value = _active_job()
     job_runs_repo = MagicMock()
+    outbox_repo = MagicMock()
+    serializer = MagicMock()
+    serializer.to_outbox_entries.return_value = []
+    service = CreateJobRunService(repo, job_runs_repo, outbox_repo, serializer)
+    return service, repo, job_runs_repo
+
+
+def test_creates_run_for_active_job():
+    """Verify that execute triggers a job and returns TriggerJobOutput for an active job."""
+    service, repo, job_runs_repo = _make_service()
+    repo.get.return_value = _active_job()
     job_runs_repo.count_active_for_job.return_value = 0
-    job_runs_repo.create.side_effect = lambda run: run
-    handler = JobTriggeredHandler(job_runs_repo)
-    dispatcher = EventDispatcher()
-    dispatcher.register(JobTriggered, handler)
-    service = CreateJobRunService(repo, job_runs_repo, dispatcher, handler)
 
     result = service.execute(CreateJobRunInput(job_id="abc1234567"))
 
-    assert isinstance(result, CreateJobRunOutput)
-    job_runs_repo.create.assert_called_once()
+    assert isinstance(result, TriggerJobOutput)
     assert result.job_id == "abc1234567"
+    assert result.accepted is True
 
 
 def test_raises_disabled_when_job_paused():
     """Verify that execute raises JobDisabledError when the job is paused."""
-    repo = MagicMock()
+    service, repo, job_runs_repo = _make_service()
     repo.get.return_value = _paused_job()
-    job_runs_repo = MagicMock()
-    handler = JobTriggeredHandler(job_runs_repo)
-    dispatcher = EventDispatcher()
-    dispatcher.register(JobTriggered, handler)
-    service = CreateJobRunService(repo, job_runs_repo, dispatcher, handler)
 
     with pytest.raises(JobDisabledError) as exc_info:
         service.execute(CreateJobRunInput(job_id="abc1234567"))
@@ -91,13 +88,8 @@ def test_raises_disabled_when_job_paused():
 
 def test_raises_not_found_when_job_missing():
     """Verify that execute raises AppJobNotFoundError when the job does not exist."""
-    repo = MagicMock()
+    service, repo, job_runs_repo = _make_service()
     repo.get.side_effect = JobNotFoundError("ghost")
-    job_runs_repo = MagicMock()
-    handler = JobTriggeredHandler(job_runs_repo)
-    dispatcher = EventDispatcher()
-    dispatcher.register(JobTriggered, handler)
-    service = CreateJobRunService(repo, job_runs_repo, dispatcher, handler)
 
     with pytest.raises(AppJobNotFoundError):
         service.execute(CreateJobRunInput(job_id="ghost"))

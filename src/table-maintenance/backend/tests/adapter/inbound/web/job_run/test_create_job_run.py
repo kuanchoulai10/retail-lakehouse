@@ -1,6 +1,5 @@
 """Tests for create job run endpoint."""
 
-from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 from api.dependencies.use_cases import get_create_job_run_use_case
@@ -8,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from api.adapter.inbound.web import router
 from core.application.exceptions import JobDisabledError, JobNotFoundError
-from core.application.port.inbound import CreateJobRunOutput
+from core.application.port.inbound.job_run.create_job_run import TriggerJobOutput
 
 
 def _make_client(use_case: MagicMock) -> TestClient:
@@ -19,25 +18,18 @@ def _make_client(use_case: MagicMock) -> TestClient:
     return TestClient(app)
 
 
-SAMPLE = CreateJobRunOutput(
-    run_id="abc1234567-xyz",
-    job_id="abc1234567",
-    status="pending",
-    trigger_type="manual",
-    started_at=datetime(2026, 4, 4, tzinfo=UTC),
-    finished_at=None,
-)
+SAMPLE = TriggerJobOutput(job_id="abc1234567")
 
 
-def test_post_run_returns_201():
-    """Return 201 with the created job run."""
+def test_post_run_returns_202():
+    """Return 202 with accepted trigger response."""
     use_case = MagicMock()
     use_case.execute.return_value = SAMPLE
     client = _make_client(use_case)
 
     resp = client.post("/v1/jobs/abc1234567/runs")
-    assert resp.status_code == 201
-    assert resp.json()["run_id"] == "abc1234567-xyz"
+    assert resp.status_code == 202
+    assert resp.json() == {"job_id": "abc1234567", "accepted": True}
 
 
 def test_post_run_disabled_returns_409():

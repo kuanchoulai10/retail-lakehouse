@@ -1,4 +1,4 @@
-"""Scheduler entry point — polls DB and creates JobRuns for due jobs."""
+"""Scheduler entry point — polls DB and writes trigger events to outbox."""
 
 from __future__ import annotations
 
@@ -9,10 +9,9 @@ from datetime import UTC, datetime
 
 from core.adapter.outbound.job.sql.jobs_sql_repo import JobsSqlRepo
 from core.adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
+from core.adapter.outbound.sql.event_outbox_sql_repo import EventOutboxSqlRepo
 from core.adapter.outbound.sql.metadata import metadata
-from core.application.domain.model.job.events import JobTriggered
-from core.base.event_dispatcher import EventDispatcher
-from core.application.event_handler.job_triggered_handler import JobTriggeredHandler
+from core.application.event_handler.event_serializer import EventSerializer
 from core.application.service.schedule_jobs import ScheduleJobsService
 from scheduler.scheduler_loop import SchedulerLoop
 from sqlalchemy import create_engine
@@ -37,15 +36,15 @@ def build_scheduler() -> SchedulerLoop:
 
     jobs_repo = JobsSqlRepo(engine)
     job_runs_repo = JobRunsSqlRepo(engine)
-
-    dispatcher = EventDispatcher()
-    dispatcher.register(JobTriggered, JobTriggeredHandler(job_runs_repo))
+    outbox_repo = EventOutboxSqlRepo(engine)
+    serializer = EventSerializer()
 
     service = ScheduleJobsService(
         jobs_repo,
         job_runs_repo,
         clock=lambda: datetime.now(UTC),
-        dispatcher=dispatcher,
+        outbox_repo=outbox_repo,
+        serializer=serializer,
     )
     return SchedulerLoop(service, interval_seconds=interval)
 

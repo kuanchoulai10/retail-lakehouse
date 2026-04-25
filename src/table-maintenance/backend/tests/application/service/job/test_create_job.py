@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from core.application.domain.model.job import JobStatus
-from core.base.event_dispatcher import EventDispatcher
 from core.application.service.job.create_job import CreateJobService
 from core.application.port.inbound import (
     CreateJobInput,
@@ -18,7 +17,10 @@ def _make_service() -> tuple[CreateJobService, MagicMock]:
     """Provide a CreateJobService with a mocked repository."""
     repo = MagicMock()
     repo.create.side_effect = lambda job: job
-    service = CreateJobService(repo, EventDispatcher())
+    outbox_repo = MagicMock()
+    serializer = MagicMock()
+    serializer.to_outbox_entries.return_value = []
+    service = CreateJobService(repo, outbox_repo, serializer)
     return service, repo
 
 

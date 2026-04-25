@@ -12,10 +12,6 @@ from core.application.domain.model.job import (
     JobStatus,
     JobType,
 )
-from core.application.domain.model.job.events import JobTriggered
-from core.application.domain.model.job_run import JobRunStatus
-from core.base.event_dispatcher import EventDispatcher
-from core.application.event_handler.job_triggered_handler import JobTriggeredHandler
 from core.application.service.schedule_jobs import ScheduleJobsService
 
 NOW = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)
@@ -44,17 +40,19 @@ def _make_service():
     """Provide a ScheduleJobsService with mocked collaborators."""
     jobs_repo = MagicMock()
     job_runs_repo = MagicMock()
-    job_runs_repo.create.side_effect = lambda run: run
     clock = MagicMock(return_value=NOW)
-    dispatcher = EventDispatcher()
-    dispatcher.register(JobTriggered, JobTriggeredHandler(job_runs_repo))
-    service = ScheduleJobsService(jobs_repo, job_runs_repo, clock, dispatcher)
-    return service, jobs_repo, job_runs_repo
+    outbox_repo = MagicMock()
+    serializer = MagicMock()
+    serializer.to_outbox_entries.return_value = []
+    service = ScheduleJobsService(
+        jobs_repo, job_runs_repo, clock, outbox_repo, serializer
+    )
+    return service, jobs_repo, job_runs_repo, outbox_repo
 
 
 def test_no_schedulable_jobs_returns_zero():
     """Verify that execute returns zero when no jobs are due."""
-    service, jobs_repo, _ = _make_service()
+    service, jobs_repo, _, _ = _make_service()
     jobs_repo.list_schedulable.return_value = []
     result = service.execute()
     assert result.triggered_count == 0
@@ -62,8 +60,8 @@ def test_no_schedulable_jobs_returns_zero():
 
 
 def test_triggers_run_for_schedulable_job():
-    """Verify that execute creates a JobRun for a schedulable job."""
-    service, jobs_repo, job_runs_repo = _make_service()
+    """Verify that execute writes outbox entries for a schedulable job."""
+    service, jobs_repo, job_runs_repo, outbox_repo = _make_service()
     job = _make_job("j1")
     jobs_repo.list_schedulable.return_value = [job]
     job_runs_repo.count_active_for_job.return_value = 0
@@ -72,16 +70,13 @@ def test_triggers_run_for_schedulable_job():
 
     assert result.triggered_count == 1
     assert "j1" in result.job_ids
-    job_runs_repo.create.assert_called_once()
-    created_run = job_runs_repo.create.call_args[0][0]
-    assert created_run.job_id == JobId("j1")
-    assert created_run.status == JobRunStatus.PENDING
+    outbox_repo.save.assert_called_once()
     jobs_repo.save_next_run_at.assert_called_once()
 
 
 def test_skips_job_at_max_active_runs():
     """Verify that execute skips a job that has reached max_active_runs."""
-    service, jobs_repo, job_runs_repo = _make_service()
+    service, jobs_repo, job_runs_repo, outbox_repo = _make_service()
     job = _make_job("j1", max_active_runs=1)
     jobs_repo.list_schedulable.return_value = [job]
     job_runs_repo.count_active_for_job.return_value = 1
@@ -89,12 +84,12 @@ def test_skips_job_at_max_active_runs():
     result = service.execute()
 
     assert result.triggered_count == 0
-    job_runs_repo.create.assert_not_called()
+    outbox_repo.save.assert_not_called()
 
 
 def test_triggers_multiple_jobs():
     """Verify that execute triggers multiple schedulable jobs."""
-    service, jobs_repo, job_runs_repo = _make_service()
+    service, jobs_repo, job_runs_repo, _ = _make_service()
     jobs_repo.list_schedulable.return_value = [_make_job("j1"), _make_job("j2")]
     job_runs_repo.count_active_for_job.return_value = 0
 
@@ -106,7 +101,7 @@ def test_triggers_multiple_jobs():
 
 def test_advances_next_run_at_using_cron():
     """Verify that execute advances next_run_at to the next cron occurrence."""
-    service, jobs_repo, job_runs_repo = _make_service()
+    service, jobs_repo, job_runs_repo, _ = _make_service()
     job = _make_job("j1", cron="0 * * * *")
     jobs_repo.list_schedulable.return_value = [job]
     job_runs_repo.count_active_for_job.return_value = 0
@@ -120,10 +115,10 @@ def test_advances_next_run_at_using_cron():
 
 def test_continues_on_single_job_failure():
     """Verify that a failure on one job does not block others."""
-    service, jobs_repo, job_runs_repo = _make_service()
+    service, jobs_repo, job_runs_repo, outbox_repo = _make_service()
     jobs_repo.list_schedulable.return_value = [_make_job("j1"), _make_job("j2")]
     job_runs_repo.count_active_for_job.return_value = 0
-    job_runs_repo.create.side_effect = [RuntimeError("boom"), MagicMock()]
+    outbox_repo.save.side_effect = [RuntimeError("boom"), None]
 
     result = service.execute()
 

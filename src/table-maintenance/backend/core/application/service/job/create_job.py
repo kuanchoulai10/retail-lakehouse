@@ -21,7 +21,8 @@ from core.application.port.inbound import (
 )
 
 if TYPE_CHECKING:
-    from core.base.event_dispatcher import EventDispatcher
+    from core.application.event_handler.event_serializer import EventSerializer
+    from core.application.port.outbound.event_outbox_repo import EventOutboxRepo
     from core.application.port.outbound.job.jobs_repo import JobsRepo
 
 _CONFIG_BY_TYPE = {
@@ -35,10 +36,13 @@ _CONFIG_BY_TYPE = {
 class CreateJobService(CreateJobUseCase):
     """Creates a Job definition only. Triggering a run is a separate use case."""
 
-    def __init__(self, repo: JobsRepo, dispatcher: EventDispatcher) -> None:
-        """Initialize with the jobs repository and event dispatcher."""
+    def __init__(
+        self, repo: JobsRepo, outbox_repo: EventOutboxRepo, serializer: EventSerializer
+    ) -> None:
+        """Initialize with the jobs repository, outbox repo, and serializer."""
         self._repo = repo
-        self._dispatcher = dispatcher
+        self._outbox_repo = outbox_repo
+        self._serializer = serializer
 
     def execute(self, request: CreateJobInput) -> CreateJobOutput:
         """Create a new job from the given input and persist it."""
@@ -57,7 +61,12 @@ class CreateJobService(CreateJobUseCase):
             status=JobStatus(request.status),
         )
         job = self._repo.create(job)
-        self._dispatcher.dispatch_all(job.collect_events())
+        entries = self._serializer.to_outbox_entries(
+            events=job.collect_events(),
+            aggregate_type="Job",
+            aggregate_id=job.id.value,
+        )
+        self._outbox_repo.save(entries)
         return CreateJobOutput(
             id=job.id.value,
             job_type=job.job_type.value,

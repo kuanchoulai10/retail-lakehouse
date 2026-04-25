@@ -15,7 +15,6 @@ from core.application.domain.model.job import (
     JobType,
     TableReference,
 )
-from core.base.event_dispatcher import EventDispatcher
 from core.application.service.job.update_job import UpdateJobService
 from core.application.exceptions import JobNotFoundError as AppJobNotFoundError
 from core.application.port.inbound import (
@@ -42,7 +41,10 @@ def test_archive_job_returns_output():
     repo = MagicMock()
     repo.get.return_value = _existing_job()
     repo.update.side_effect = lambda job: job
-    service = UpdateJobService(repo, EventDispatcher())
+    outbox_repo = MagicMock()
+    serializer = MagicMock()
+    serializer.to_outbox_entries.return_value = []
+    service = UpdateJobService(repo, outbox_repo, serializer)
 
     result = service.execute(UpdateJobInput(job_id="abc1234567", status="archived"))
 
@@ -55,7 +57,10 @@ def test_archive_job_raises_app_not_found():
     """Verify that archiving raises AppJobNotFoundError when job does not exist."""
     repo = MagicMock()
     repo.get.side_effect = JobNotFoundError("nonexistent")
-    service = UpdateJobService(repo, EventDispatcher())
+    outbox_repo = MagicMock()
+    serializer = MagicMock()
+    serializer.to_outbox_entries.return_value = []
+    service = UpdateJobService(repo, outbox_repo, serializer)
 
     with pytest.raises(AppJobNotFoundError) as exc_info:
         service.execute(UpdateJobInput(job_id="nonexistent", status="archived"))
