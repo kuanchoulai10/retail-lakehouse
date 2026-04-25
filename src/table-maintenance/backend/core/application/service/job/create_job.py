@@ -21,6 +21,7 @@ from core.application.port.inbound import (
 )
 
 if TYPE_CHECKING:
+    from core.application.event_handler.event_dispatcher import EventDispatcher
     from core.application.port.outbound.job.jobs_repo import JobsRepo
 
 _CONFIG_BY_TYPE = {
@@ -34,9 +35,10 @@ _CONFIG_BY_TYPE = {
 class CreateJobService(CreateJobUseCase):
     """Creates a Job definition only. Triggering a run is a separate use case."""
 
-    def __init__(self, repo: JobsRepo) -> None:
-        """Initialize with the jobs repository."""
+    def __init__(self, repo: JobsRepo, dispatcher: EventDispatcher) -> None:
+        """Initialize with the jobs repository and event dispatcher."""
         self._repo = repo
+        self._dispatcher = dispatcher
 
     def execute(self, request: CreateJobInput) -> CreateJobOutput:
         """Create a new job from the given input and persist it."""
@@ -44,7 +46,7 @@ class CreateJobService(CreateJobUseCase):
         table = job_config.get("table", "")
         now = datetime.now(UTC)
 
-        job = Job(
+        job = Job.create(
             id=JobId(value=secrets.token_hex(5)),
             job_type=JobType(request.job_type),
             created_at=now,
@@ -55,6 +57,7 @@ class CreateJobService(CreateJobUseCase):
             status=JobStatus(request.status),
         )
         job = self._repo.create(job)
+        self._dispatcher.dispatch_all(job.collect_events())
         return CreateJobOutput(
             id=job.id.value,
             job_type=job.job_type.value,

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import secrets
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from core.application.domain.model.job import (
@@ -12,7 +10,6 @@ from core.application.domain.model.job import (
     JobNotFoundError,
     MaxActiveRunsExceededError,
 )
-from core.application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
 from core.application.exceptions import JobDisabledError
 from core.application.exceptions import JobNotFoundError as AppJobNotFoundError
 from core.application.port.inbound import (
@@ -22,6 +19,8 @@ from core.application.port.inbound import (
 )
 
 if TYPE_CHECKING:
+    from core.application.event_handler.event_dispatcher import EventDispatcher
+    from core.application.event_handler.job_triggered_handler import JobTriggeredHandler
     from core.application.port.outbound.job.jobs_repo import JobsRepo
     from core.application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 
@@ -29,10 +28,18 @@ if TYPE_CHECKING:
 class CreateJobRunService(CreateJobRunUseCase):
     """Triggers a JobRun via Job.trigger() — only if the Job is active."""
 
-    def __init__(self, repo: JobsRepo, job_runs_repo: JobRunsRepo) -> None:
-        """Initialize with the jobs and job runs repositories."""
+    def __init__(
+        self,
+        repo: JobsRepo,
+        job_runs_repo: JobRunsRepo,
+        dispatcher: EventDispatcher,
+        triggered_handler: JobTriggeredHandler,
+    ) -> None:
+        """Initialize with repos, event dispatcher, and triggered handler."""
         self._repo = repo
         self._job_runs_repo = job_runs_repo
+        self._dispatcher = dispatcher
+        self._triggered_handler = triggered_handler
 
     def execute(self, request: CreateJobRunInput) -> CreateJobRunOutput:
         """Trigger a new execution of the specified job."""
@@ -50,14 +57,12 @@ class CreateJobRunService(CreateJobRunUseCase):
         except MaxActiveRunsExceededError as e:
             raise JobDisabledError(e.job_id) from e
 
-        now = datetime.now(UTC)
-        run = JobRun(
-            id=JobRunId(value=f"{job.id.value}-{secrets.token_hex(3)}"),
-            job_id=job.id,
-            status=JobRunStatus.PENDING,
-            started_at=now,
-        )
-        run = self._job_runs_repo.create(run)
+        self._dispatcher.dispatch_all(job.collect_events())
+
+        run = self._triggered_handler.last_created_run
+        if run is None:
+            msg = "JobRun was not created by handler"
+            raise RuntimeError(msg)
         return CreateJobRunOutput(
             run_id=run.id.value,
             job_id=run.job_id.value,

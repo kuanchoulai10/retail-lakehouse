@@ -20,6 +20,7 @@ from core.application.port.inbound import (
 )
 
 if TYPE_CHECKING:
+    from core.application.event_handler.event_dispatcher import EventDispatcher
     from core.application.port.outbound.job.jobs_repo import JobsRepo
 
 _STATUS_ACTION = {
@@ -32,9 +33,10 @@ _STATUS_ACTION = {
 class UpdateJobService(UpdateJobUseCase):
     """Applies a partial update to an existing Job definition."""
 
-    def __init__(self, repo: JobsRepo) -> None:
-        """Initialize with the jobs repository."""
+    def __init__(self, repo: JobsRepo, dispatcher: EventDispatcher) -> None:
+        """Initialize with the jobs repository and event dispatcher."""
         self._repo = repo
+        self._dispatcher = dispatcher
 
     def execute(self, request: UpdateJobInput) -> UpdateJobOutput:
         """Apply partial updates to the specified job."""
@@ -47,17 +49,20 @@ class UpdateJobService(UpdateJobUseCase):
             target = JobStatus(request.status)
             action = _STATUS_ACTION[target]
             getattr(job, action)()
-        if request.catalog is not None:
-            job.table_ref = TableReference(
-                catalog=request.catalog, table=job.table_ref.table
-            )
-        if request.cron is not None:
-            job.cron = CronExpression(expression=request.cron)
-        if request.job_config is not None:
-            job.job_config = request.job_config
+
+        job.apply_changes(
+            table_ref=TableReference(catalog=request.catalog, table=job.table_ref.table)
+            if request.catalog is not None
+            else None,
+            cron=CronExpression(expression=request.cron)
+            if request.cron is not None
+            else None,
+            job_config=request.job_config,
+        )
         job.updated_at = datetime.now(UTC)
 
         job = self._repo.update(job)
+        self._dispatcher.dispatch_all(job.collect_events())
 
         return UpdateJobOutput(
             id=job.id.value,

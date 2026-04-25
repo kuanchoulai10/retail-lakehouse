@@ -1,12 +1,12 @@
-"""Define the DELETE /jobs/{name} endpoint."""
+"""Define the DELETE /jobs/{name} endpoint (archives the job)."""
 
 from __future__ import annotations
 
-from api.dependencies.use_cases import get_delete_job_use_case
+from api.dependencies.use_cases import get_update_job_use_case
 from fastapi import APIRouter, Depends, HTTPException, Response
 
 from core.application.exceptions import JobNotFoundError
-from core.application.port.inbound import DeleteJobInput, DeleteJobUseCase
+from core.application.port.inbound import UpdateJobInput, UpdateJobUseCase
 
 router = APIRouter()
 
@@ -14,10 +14,10 @@ router = APIRouter()
 @router.delete("/jobs/{name}", status_code=204, response_class=Response)
 def delete_job(
     name: str,
-    use_case: DeleteJobUseCase = Depends(get_delete_job_use_case),
+    use_case: UpdateJobUseCase = Depends(get_update_job_use_case),
 ):
-    """Delete a job by its name."""
+    """Archive a job by its name (soft delete)."""
     try:
-        use_case.execute(DeleteJobInput(job_id=name))
+        use_case.execute(UpdateJobInput(job_id=name, status="archived"))
     except JobNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e

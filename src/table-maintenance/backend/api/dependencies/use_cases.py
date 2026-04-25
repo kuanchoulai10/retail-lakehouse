@@ -5,6 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from fastapi import Depends
+
+from core.application.domain.model.job.events import JobTriggered
+from core.application.event_handler.event_dispatcher import EventDispatcher
+from core.application.event_handler.job_triggered_handler import JobTriggeredHandler
 from core.application.service.catalog.get_table import GetTableService
 from core.application.service.catalog.list_branches import ListBranchesService
 from core.application.service.catalog.list_namespaces import (
@@ -14,7 +18,6 @@ from core.application.service.catalog.list_snapshots import ListSnapshotsService
 from core.application.service.catalog.list_tables import ListTablesService
 from core.application.service.catalog.list_tags import ListTagsService
 from core.application.service.job.create_job import CreateJobService
-from core.application.service.job.delete_job import DeleteJobService
 from core.application.service.job.get_job import GetJobService
 from core.application.service.job.list_jobs import ListJobsService
 from core.application.service.job.update_job import UpdateJobService
@@ -32,7 +35,6 @@ if TYPE_CHECKING:
     from core.application.port.inbound import (
         CreateJobRunUseCase,
         CreateJobUseCase,
-        DeleteJobUseCase,
         GetJobRunUseCase,
         GetJobUseCase,
         GetTableUseCase,
@@ -50,18 +52,28 @@ if TYPE_CHECKING:
     from core.application.port.outbound.job.jobs_repo import JobsRepo
 
 
+def get_triggered_handler(
+    job_runs_repo: JobRunsRepo = Depends(get_job_runs_repo),
+) -> JobTriggeredHandler:
+    """Provide the JobTriggeredHandler."""
+    return JobTriggeredHandler(job_runs_repo)
+
+
+def get_event_dispatcher(
+    triggered_handler: JobTriggeredHandler = Depends(get_triggered_handler),
+) -> EventDispatcher:
+    """Provide the EventDispatcher with all registered handlers."""
+    dispatcher = EventDispatcher()
+    dispatcher.register(JobTriggered, triggered_handler)
+    return dispatcher
+
+
 def get_create_job_use_case(
     repo: JobsRepo = Depends(get_jobs_repo),
+    dispatcher: EventDispatcher = Depends(get_event_dispatcher),
 ) -> CreateJobUseCase:
     """Provide the CreateJob use case with injected dependencies."""
-    return CreateJobService(repo)
-
-
-def get_delete_job_use_case(
-    repo: JobsRepo = Depends(get_jobs_repo),
-) -> DeleteJobUseCase:
-    """Provide the DeleteJob use case with injected dependencies."""
-    return DeleteJobService(repo)
+    return CreateJobService(repo, dispatcher)
 
 
 def get_get_job_use_case(
@@ -80,17 +92,20 @@ def get_list_jobs_use_case(
 
 def get_update_job_use_case(
     repo: JobsRepo = Depends(get_jobs_repo),
+    dispatcher: EventDispatcher = Depends(get_event_dispatcher),
 ) -> UpdateJobUseCase:
     """Provide the UpdateJob use case with injected dependencies."""
-    return UpdateJobService(repo)
+    return UpdateJobService(repo, dispatcher)
 
 
 def get_create_job_run_use_case(
     repo: JobsRepo = Depends(get_jobs_repo),
     job_runs_repo: JobRunsRepo = Depends(get_job_runs_repo),
+    dispatcher: EventDispatcher = Depends(get_event_dispatcher),
+    triggered_handler: JobTriggeredHandler = Depends(get_triggered_handler),
 ) -> CreateJobRunUseCase:
     """Provide the CreateJobRun use case with injected dependencies."""
-    return CreateJobRunService(repo, job_runs_repo)
+    return CreateJobRunService(repo, job_runs_repo, dispatcher, triggered_handler)
 
 
 def get_list_job_runs_use_case(

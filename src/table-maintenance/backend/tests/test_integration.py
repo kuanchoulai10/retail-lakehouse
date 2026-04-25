@@ -3,7 +3,6 @@
 from api.dependencies.use_cases import (
     get_create_job_run_use_case,
     get_create_job_use_case,
-    get_delete_job_use_case,
     get_get_job_run_use_case,
     get_get_job_use_case,
     get_list_job_runs_use_case,
@@ -15,8 +14,10 @@ from fastapi.testclient import TestClient
 from api.adapter.inbound.web import router
 from core.adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
 from core.adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
+from core.application.domain.model.job.events import JobTriggered
+from core.application.event_handler.event_dispatcher import EventDispatcher
+from core.application.event_handler.job_triggered_handler import JobTriggeredHandler
 from core.application.service.job.create_job import CreateJobService
-from core.application.service.job.delete_job import DeleteJobService
 from core.application.service.job.get_job import GetJobService
 from core.application.service.job.list_jobs import ListJobsService
 from core.application.service.job.update_job import UpdateJobService
@@ -31,14 +32,23 @@ def _make_app() -> tuple[FastAPI, JobRunsInMemoryRepo]:
     app.include_router(router)
     repo = JobsInMemoryRepo()
     runs_repo = JobRunsInMemoryRepo()
+    dispatcher = EventDispatcher()
+    handler = JobTriggeredHandler(runs_repo)
+    dispatcher.register(JobTriggered, handler)
 
-    app.dependency_overrides[get_create_job_use_case] = lambda: CreateJobService(repo)
-    app.dependency_overrides[get_delete_job_use_case] = lambda: DeleteJobService(repo)
+    app.dependency_overrides[get_create_job_use_case] = lambda: CreateJobService(
+        repo, dispatcher
+    )
     app.dependency_overrides[get_get_job_use_case] = lambda: GetJobService(repo)
     app.dependency_overrides[get_list_jobs_use_case] = lambda: ListJobsService(repo)
-    app.dependency_overrides[get_update_job_use_case] = lambda: UpdateJobService(repo)
+    app.dependency_overrides[get_update_job_use_case] = lambda: UpdateJobService(
+        repo, dispatcher
+    )
     app.dependency_overrides[get_create_job_run_use_case] = lambda: CreateJobRunService(
-        repo, runs_repo
+        repo,
+        runs_repo,
+        dispatcher,
+        handler,
     )
     app.dependency_overrides[get_list_job_runs_use_case] = lambda: ListJobRunsService(
         runs_repo
@@ -104,13 +114,14 @@ def test_full_job_and_run_lifecycle():
     resp = client.get("/v1/runs/ghost")
     assert resp.status_code == 404
 
-    # 9. Delete the job
+    # 9. Archive the job (soft delete)
     resp = client.delete(f"/v1/jobs/{job_id}")
     assert resp.status_code == 204
 
-    # 10. Get deleted returns 404
+    # 10. Archived job is still retrievable but has status 'archived'
     resp = client.get(f"/v1/jobs/{job_id}")
-    assert resp.status_code == 404
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "archived"
 
 
 def test_create_with_status_active_allows_immediate_run():

@@ -7,17 +7,19 @@ from unittest.mock import MagicMock
 from api.dependencies.use_cases import (
     get_create_job_run_use_case,
     get_create_job_use_case,
-    get_delete_job_use_case,
+    get_event_dispatcher,
     get_get_job_run_use_case,
     get_get_job_use_case,
     get_list_job_runs_use_case,
     get_list_jobs_use_case,
+    get_triggered_handler,
     get_update_job_use_case,
 )
 from core.adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
 from core.adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
+from core.application.event_handler.event_dispatcher import EventDispatcher
+from core.application.event_handler.job_triggered_handler import JobTriggeredHandler
 from core.application.service.job.create_job import CreateJobService
-from core.application.service.job.delete_job import DeleteJobService
 from core.application.service.job.get_job import GetJobService
 from core.application.service.job.list_jobs import ListJobsService
 from core.application.service.job.update_job import UpdateJobService
@@ -29,15 +31,9 @@ from core.application.service.job_run.list_job_runs import ListJobRunsService
 def test_get_create_job_use_case():
     """Verify that get_create_job_use_case returns a CreateJobService."""
     repo = JobsInMemoryRepo()
-    result = get_create_job_use_case(repo=repo)
+    dispatcher = EventDispatcher()
+    result = get_create_job_use_case(repo=repo, dispatcher=dispatcher)
     assert isinstance(result, CreateJobService)
-
-
-def test_get_delete_job_use_case():
-    """Verify that get_delete_job_use_case returns a DeleteJobService."""
-    repo = JobsInMemoryRepo()
-    result = get_delete_job_use_case(repo=repo)
-    assert isinstance(result, DeleteJobService)
 
 
 def test_get_get_job_use_case():
@@ -57,7 +53,8 @@ def test_get_list_jobs_use_case():
 def test_get_update_job_use_case():
     """Verify that get_update_job_use_case returns an UpdateJobService."""
     repo = JobsInMemoryRepo()
-    result = get_update_job_use_case(repo=repo)
+    dispatcher = EventDispatcher()
+    result = get_update_job_use_case(repo=repo, dispatcher=dispatcher)
     assert isinstance(result, UpdateJobService)
 
 
@@ -65,7 +62,14 @@ def test_get_create_job_run_use_case():
     """Verify that get_create_job_run_use_case returns a CreateJobRunService."""
     repo = JobsInMemoryRepo()
     job_runs_repo = JobRunsInMemoryRepo()
-    result = get_create_job_run_use_case(repo=repo, job_runs_repo=job_runs_repo)
+    handler = get_triggered_handler(job_runs_repo=job_runs_repo)
+    dispatcher = get_event_dispatcher(triggered_handler=handler)
+    result = get_create_job_run_use_case(
+        repo=repo,
+        job_runs_repo=job_runs_repo,
+        dispatcher=dispatcher,
+        triggered_handler=handler,
+    )
     assert isinstance(result, CreateJobRunService)
 
 
@@ -73,7 +77,14 @@ def test_get_create_job_run_use_case_injects_collaborators():
     """Verify that get_create_job_run_use_case injects repo and job_runs_repo into service."""
     repo = MagicMock()
     job_runs_repo = MagicMock()
-    service = get_create_job_run_use_case(repo=repo, job_runs_repo=job_runs_repo)
+    handler = JobTriggeredHandler(job_runs_repo)
+    dispatcher = EventDispatcher()
+    service = get_create_job_run_use_case(
+        repo=repo,
+        job_runs_repo=job_runs_repo,
+        dispatcher=dispatcher,
+        triggered_handler=handler,
+    )
     assert isinstance(service, CreateJobRunService)
     assert service._repo is repo
     assert service._job_runs_repo is job_runs_repo

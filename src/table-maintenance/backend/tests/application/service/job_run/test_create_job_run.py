@@ -13,6 +13,9 @@ from core.application.domain.model.job import (
     JobType,
 )
 
+from core.application.domain.model.job.events import JobTriggered
+from core.application.event_handler.event_dispatcher import EventDispatcher
+from core.application.event_handler.job_triggered_handler import JobTriggeredHandler
 from core.application.service.job_run.create_job_run import CreateJobRunService
 from core.application.exceptions import JobDisabledError
 from core.application.exceptions import JobNotFoundError as AppJobNotFoundError
@@ -59,7 +62,10 @@ def test_creates_run_for_active_job():
     job_runs_repo = MagicMock()
     job_runs_repo.count_active_for_job.return_value = 0
     job_runs_repo.create.side_effect = lambda run: run
-    service = CreateJobRunService(repo, job_runs_repo)
+    handler = JobTriggeredHandler(job_runs_repo)
+    dispatcher = EventDispatcher()
+    dispatcher.register(JobTriggered, handler)
+    service = CreateJobRunService(repo, job_runs_repo, dispatcher, handler)
 
     result = service.execute(CreateJobRunInput(job_id="abc1234567"))
 
@@ -73,7 +79,10 @@ def test_raises_disabled_when_job_paused():
     repo = MagicMock()
     repo.get.return_value = _paused_job()
     job_runs_repo = MagicMock()
-    service = CreateJobRunService(repo, job_runs_repo)
+    handler = JobTriggeredHandler(job_runs_repo)
+    dispatcher = EventDispatcher()
+    dispatcher.register(JobTriggered, handler)
+    service = CreateJobRunService(repo, job_runs_repo, dispatcher, handler)
 
     with pytest.raises(JobDisabledError) as exc_info:
         service.execute(CreateJobRunInput(job_id="abc1234567"))
@@ -85,7 +94,10 @@ def test_raises_not_found_when_job_missing():
     repo = MagicMock()
     repo.get.side_effect = JobNotFoundError("ghost")
     job_runs_repo = MagicMock()
-    service = CreateJobRunService(repo, job_runs_repo)
+    handler = JobTriggeredHandler(job_runs_repo)
+    dispatcher = EventDispatcher()
+    dispatcher.register(JobTriggered, handler)
+    service = CreateJobRunService(repo, job_runs_repo, dispatcher, handler)
 
     with pytest.raises(AppJobNotFoundError):
         service.execute(CreateJobRunInput(job_id="ghost"))

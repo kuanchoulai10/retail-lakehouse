@@ -13,6 +13,7 @@ from core.application.domain.model.job import (
     JobType,
     TableReference,
 )
+from core.application.event_handler.event_dispatcher import EventDispatcher
 from core.application.service.job.update_job import UpdateJobService
 from core.application.exceptions import JobNotFoundError as AppJobNotFoundError
 from core.application.port.inbound import (
@@ -45,7 +46,7 @@ def test_update_activates_job():
     repo = MagicMock()
     repo.get.return_value = _existing_job()
     repo.update.side_effect = lambda job: job
-    service = UpdateJobService(repo)
+    service = UpdateJobService(repo, EventDispatcher())
 
     result = service.execute(UpdateJobInput(job_id="abc1234567", status="active"))
 
@@ -60,7 +61,7 @@ def test_update_leaves_other_fields_when_only_status_provided():
     job = _existing_job()
     repo.get.return_value = job
     repo.update.side_effect = lambda j: j
-    service = UpdateJobService(repo)
+    service = UpdateJobService(repo, EventDispatcher())
 
     service.execute(UpdateJobInput(job_id="abc1234567", status="active"))
 
@@ -75,7 +76,7 @@ def test_update_bumps_updated_at():
     job = _existing_job()
     repo.get.return_value = job
     repo.update.side_effect = lambda j: j
-    service = UpdateJobService(repo)
+    service = UpdateJobService(repo, EventDispatcher())
 
     service.execute(UpdateJobInput(job_id="abc1234567", status="active"))
 
@@ -87,7 +88,7 @@ def test_update_raises_app_not_found():
     """Verify that execute raises AppJobNotFoundError when job does not exist."""
     repo = MagicMock()
     repo.get.side_effect = JobNotFoundError("ghost")
-    service = UpdateJobService(repo)
+    service = UpdateJobService(repo, EventDispatcher())
 
     with pytest.raises(AppJobNotFoundError) as exc_info:
         service.execute(UpdateJobInput(job_id="ghost", status="active"))

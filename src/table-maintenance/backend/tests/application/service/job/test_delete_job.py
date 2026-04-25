@@ -1,43 +1,62 @@
-"""Tests for DeleteJob use case service."""
+"""Tests for archive-job flow via UpdateJobService with status='archived'."""
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
-from core.application.domain.model.job import JobId, JobNotFoundError
-from core.application.service.job.delete_job import DeleteJobService
+
+from core.application.domain.model.job import (
+    Job,
+    JobId,
+    JobNotFoundError,
+    JobStatus,
+    JobType,
+    TableReference,
+)
+from core.application.event_handler.event_dispatcher import EventDispatcher
+from core.application.service.job.update_job import UpdateJobService
 from core.application.exceptions import JobNotFoundError as AppJobNotFoundError
 from core.application.port.inbound import (
-    DeleteJobInput,
-    DeleteJobOutput,
-    DeleteJobUseCase,
+    UpdateJobInput,
+    UpdateJobOutput,
 )
 
 
-def test_delete_job_service_implements_use_case():
-    """Verify that DeleteJobService implements DeleteJobUseCase."""
-    assert issubclass(DeleteJobService, DeleteJobUseCase)
+def _existing_job() -> Job:
+    """Provide an existing active Job domain entity for archive tests."""
+    return Job(
+        id=JobId(value="abc1234567"),
+        job_type=JobType.REWRITE_DATA_FILES,
+        created_at=datetime(2026, 4, 10, tzinfo=UTC),
+        updated_at=datetime(2026, 4, 10, tzinfo=UTC),
+        table_ref=TableReference(catalog="retail", table="inventory.orders"),
+        cron=None,
+        status=JobStatus.ACTIVE,
+    )
 
 
-def test_delete_job_returns_output():
-    """Verify that execute returns a DeleteJobOutput and calls repo.delete."""
+def test_archive_job_returns_output():
+    """Verify that archiving via UpdateJobService returns an UpdateJobOutput with archived status."""
     repo = MagicMock()
-    repo.delete.return_value = None
-    service = DeleteJobService(repo)
+    repo.get.return_value = _existing_job()
+    repo.update.side_effect = lambda job: job
+    service = UpdateJobService(repo, EventDispatcher())
 
-    result = service.execute(DeleteJobInput(job_id="abc1234567"))
+    result = service.execute(UpdateJobInput(job_id="abc1234567", status="archived"))
 
-    assert isinstance(result, DeleteJobOutput)
-    repo.delete.assert_called_once_with(JobId(value="abc1234567"))
+    assert isinstance(result, UpdateJobOutput)
+    assert result.status == "archived"
+    repo.update.assert_called_once()
 
 
-def test_delete_job_raises_app_not_found():
-    """Verify that execute raises AppJobNotFoundError when job does not exist."""
+def test_archive_job_raises_app_not_found():
+    """Verify that archiving raises AppJobNotFoundError when job does not exist."""
     repo = MagicMock()
-    repo.delete.side_effect = JobNotFoundError("nonexistent")
-    service = DeleteJobService(repo)
+    repo.get.side_effect = JobNotFoundError("nonexistent")
+    service = UpdateJobService(repo, EventDispatcher())
 
     with pytest.raises(AppJobNotFoundError) as exc_info:
-        service.execute(DeleteJobInput(job_id="nonexistent"))
+        service.execute(UpdateJobInput(job_id="nonexistent", status="archived"))
     assert exc_info.value.job_id == "nonexistent"

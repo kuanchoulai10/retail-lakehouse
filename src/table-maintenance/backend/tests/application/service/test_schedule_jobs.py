@@ -12,7 +12,10 @@ from core.application.domain.model.job import (
     JobStatus,
     JobType,
 )
+from core.application.domain.model.job.events import JobTriggered
 from core.application.domain.model.job_run import JobRunStatus
+from core.application.event_handler.event_dispatcher import EventDispatcher
+from core.application.event_handler.job_triggered_handler import JobTriggeredHandler
 from core.application.service.schedule_jobs import ScheduleJobsService
 
 NOW = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)
@@ -41,8 +44,11 @@ def _make_service():
     """Provide a ScheduleJobsService with mocked collaborators."""
     jobs_repo = MagicMock()
     job_runs_repo = MagicMock()
+    job_runs_repo.create.side_effect = lambda run: run
     clock = MagicMock(return_value=NOW)
-    service = ScheduleJobsService(jobs_repo, job_runs_repo, clock)
+    dispatcher = EventDispatcher()
+    dispatcher.register(JobTriggered, JobTriggeredHandler(job_runs_repo))
+    service = ScheduleJobsService(jobs_repo, job_runs_repo, clock, dispatcher)
     return service, jobs_repo, job_runs_repo
 
 
