@@ -57,6 +57,10 @@ ignore_imports =
     api.dependencies.repos -> core.adapter.outbound.sql.engine_factory
     api.dependencies.catalog -> core.adapter.outbound.catalog.iceberg_catalog_client
 
+    api.dependencies.event_dispatcher -> core.application.domain.model.job.events
+    api.dependencies.event_dispatcher -> core.application.event_handler.*
+    api.dependencies.use_cases -> core.application.event_handler.*
+
 [importlinter:contract:inbound-outbound-separation]
 name = Inbound adapter does not depend on outbound adapter
 type = forbidden
