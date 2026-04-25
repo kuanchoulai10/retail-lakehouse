@@ -1,0 +1,51 @@
+{
+    "table": "orders",
+    "namespace": "inventory",
+    "location": "s3://retail-lakehouse-7dj2/warehouse/inventory/orders",
+    "current_snapshot_id": 2845338736284531512,
+    "schema": {
+        "fields": [
+            {
+                "id": 1,
+                "name": "order_number",
+                "type": "int",
+                "required": true
+            },
+            {
+                "id": 2,
+                "name": "order_date",
+                "type": "int",
+                "required": true
+            },
+            {
+                "id": 3,
+                "name": "purchaser",
+                "type": "int",
+                "required": true
+            },
+            {
+                "id": 4,
+                "name": "quantity",
+                "type": "int",
+                "required": true
+            },
+            {
+                "id": 5,
+                "name": "product_id",
+                "type": "int",
+                "required": true
+            },
+            {
+                "id": 6,
+                "name": "_cdc",
+                "type": "struct<7: op: required string, 8: ts: required timestamptz, 9: offset: optional long, 10: source: required string, 11: target: required string, 12: key: required struct<13: order_number: required int>>",
+                "required": true
+            }
+        ]
+    },
+    "properties": {
+        "write.format.default": "parquet",
+        "created-at": "2026-03-31T15:26:30.039933717Z",
+        "write.parquet.compression-codec": "snappy"
+    }
+}

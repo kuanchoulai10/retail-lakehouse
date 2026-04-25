@@ -1,0 +1,11 @@
+{
+    "branches": [
+        {
+            "name": "main",
+            "snapshot_id": 2845338736284531512,
+            "max_snapshot_age_ms": null,
+            "max_ref_age_ms": null,
+            "min_snapshots_to_keep": null
+        }
+    ]
+}

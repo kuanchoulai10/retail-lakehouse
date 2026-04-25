@@ -1,0 +1,113 @@
+{
+    "snapshots": [
+        {
+            "snapshot_id": 4642229369925761227,
+            "parent_id": null,
+            "timestamp_ms": 1774971421089,
+            "summary": {
+                "operation": "append",
+                "kafka.connect.offsets.control-iceberg.connect-iceberg-connector": "{\"0\":8}",
+                "kafka.connect.commit-id": "2c41999f-c521-4210-bef0-58d0a14fee06",
+                "added-data-files": "1",
+                "added-records": "5",
+                "added-files-size": "3561",
+                "changed-partition-count": "1",
+                "total-records": "5",
+                "total-files-size": "3561",
+                "total-data-files": "1",
+                "total-delete-files": "0",
+                "total-position-deletes": "0",
+                "total-equality-deletes": "0",
+                "iceberg-version": "Apache Iceberg 1.10.0-SNAPSHOT (commit f40208ae6fb2f33e578c2637d3dea1db18739f31)"
+            }
+        },
+        {
+            "snapshot_id": 7893451481601534446,
+            "parent_id": 4642229369925761227,
+            "timestamp_ms": 1774971721184,
+            "summary": {
+                "operation": "append",
+                "kafka.connect.offsets.control-iceberg.connect-iceberg-connector": "{\"0\":17}",
+                "kafka.connect.commit-id": "4271ce2e-0995-437c-9ed5-fc7a81d637d7",
+                "added-data-files": "1",
+                "added-records": "3",
+                "added-files-size": "3436",
+                "changed-partition-count": "1",
+                "total-records": "8",
+                "total-files-size": "6997",
+                "total-data-files": "2",
+                "total-delete-files": "0",
+                "total-position-deletes": "0",
+                "total-equality-deletes": "0",
+                "iceberg-version": "Apache Iceberg 1.10.0-SNAPSHOT (commit f40208ae6fb2f33e578c2637d3dea1db18739f31)"
+            }
+        },
+        {
+            "snapshot_id": 3318732876308242841,
+            "parent_id": 7893451481601534446,
+            "timestamp_ms": 1775120971015,
+            "summary": {
+                "operation": "append",
+                "kafka.connect.offsets.control-iceberg.connect-iceberg-connector": "{\"0\":2528}",
+                "kafka.connect.commit-id": "1e37216a-ad39-445b-be52-8bcf3b533c98",
+                "added-data-files": "1",
+                "added-records": "200",
+                "added-files-size": "6935",
+                "changed-partition-count": "1",
+                "total-records": "208",
+                "total-files-size": "13932",
+                "total-data-files": "3",
+                "total-delete-files": "0",
+                "total-position-deletes": "0",
+                "total-equality-deletes": "0",
+                "iceberg-version": "Apache Iceberg 1.10.0-SNAPSHOT (commit f40208ae6fb2f33e578c2637d3dea1db18739f31)"
+            }
+        },
+        {
+            "snapshot_id": 3316291293013050692,
+            "parent_id": 3318732876308242841,
+            "timestamp_ms": 1775121871075,
+            "summary": {
+                "operation": "append",
+                "kafka.connect.offsets.control-iceberg.connect-iceberg-connector": "{\"0\":2549}",
+                "kafka.connect.commit-id": "8d819728-9c11-4865-aed8-d2621e1924ed",
+                "added-data-files": "1",
+                "added-records": "100",
+                "added-files-size": "5547",
+                "changed-partition-count": "1",
+                "total-records": "308",
+                "total-files-size": "19479",
+                "total-data-files": "4",
+                "total-delete-files": "0",
+                "total-position-deletes": "0",
+                "total-equality-deletes": "0",
+                "iceberg-version": "Apache Iceberg 1.10.0-SNAPSHOT (commit f40208ae6fb2f33e578c2637d3dea1db18739f31)"
+            }
+        },
+        {
+            "snapshot_id": 2845338736284531512,
+            "parent_id": 3316291293013050692,
+            "timestamp_ms": 1775179319893,
+            "summary": {
+                "operation": "replace",
+                "added-data-files": "1",
+                "deleted-data-files": "4",
+                "added-records": "308",
+                "deleted-records": "308",
+                "added-files-size": "8756",
+                "removed-files-size": "19479",
+                "changed-partition-count": "1",
+                "total-records": "308",
+                "total-files-size": "8756",
+                "total-data-files": "1",
+                "total-delete-files": "0",
+                "total-position-deletes": "0",
+                "total-equality-deletes": "0",
+                "engine-version": "4.0.0",
+                "app-id": "spark-5b3ad40acc944b1993234ce68ee3c73d",
+                "engine-name": "spark",
+                "iceberg-version": "Apache Iceberg 1.10.1 (commit ccb8bc435062171e64bc8b7e5f56e6aed9c5b934)"
+            }
+        }
+    ]
+}
