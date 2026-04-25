@@ -90,6 +90,39 @@ forbidden_modules =
     core.adapter
     core.application
 
+[importlinter:contract:base-isolation]
+name = Base (DDD kernel) depends on nothing project-internal
+type = forbidden
+source_modules =
+    core.base
+forbidden_modules =
+    core.application
+    core.adapter
+    core.configs
+    api
+    scheduler
+
+[importlinter:contract:domain-service-isolation]
+name = Domain service (use case impl) does not depend on adapter or framework
+type = forbidden
+source_modules =
+    core.application.domain.service
+forbidden_modules =
+    core.adapter
+    core.configs
+    api
+    scheduler
+    fastapi
+    kubernetes
+
+[importlinter:contract:api-no-scheduler]
+name = API does not depend on scheduler
+type = forbidden
+source_modules =
+    api
+forbidden_modules =
+    scheduler
+
 [importlinter:contract:scheduler-no-api]
 name = Scheduler does not depend on API
 type = forbidden
