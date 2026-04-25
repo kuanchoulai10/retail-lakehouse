@@ -12,12 +12,16 @@ Provides the foundational tactical patterns for structuring domain models:
   decoupling the domain from infrastructure concerns.
 - UseCase: A single application-level operation that orchestrates domain
   objects and repositories to fulfil a business action.
+- EventHandler: An abstract handler for a specific domain event type.
+- EventDispatcher: Routes domain events to registered handlers.
 """
 
 from core.base.aggregate_root import AggregateRoot
 from core.base.domain_event import DomainEvent
 from core.base.entity import Entity
 from core.base.entity_id import EntityId
+from core.base.event_dispatcher import EventDispatcher
+from core.base.event_handler import EventHandler
 from core.base.repository import Repository
 from core.base.use_case import UseCase
 from core.base.value_object import ValueObject
@@ -27,6 +31,8 @@ __all__ = [
     "DomainEvent",
     "Entity",
     "EntityId",
+    "EventDispatcher",
+    "EventHandler",
     "Repository",
     "UseCase",
     "ValueObject",

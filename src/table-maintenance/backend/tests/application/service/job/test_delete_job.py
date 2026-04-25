@@ -15,7 +15,7 @@ from core.application.domain.model.job import (
     JobType,
     TableReference,
 )
-from core.application.event_handler.event_dispatcher import EventDispatcher
+from core.base.event_dispatcher import EventDispatcher
 from core.application.service.job.update_job import UpdateJobService
 from core.application.exceptions import JobNotFoundError as AppJobNotFoundError
 from core.application.port.inbound import (

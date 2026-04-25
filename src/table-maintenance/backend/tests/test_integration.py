@@ -15,7 +15,7 @@ from api.adapter.inbound.web import router
 from core.adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
 from core.adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
 from core.application.domain.model.job.events import JobTriggered
-from core.application.event_handler.event_dispatcher import EventDispatcher
+from core.base.event_dispatcher import EventDispatcher
 from core.application.event_handler.job_triggered_handler import JobTriggeredHandler
 from core.application.service.job.create_job import CreateJobService
 from core.application.service.job.get_job import GetJobService

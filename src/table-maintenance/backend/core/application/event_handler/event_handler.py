@@ -1,18 +1,5 @@
-"""Define the EventHandler abstract base class."""
+"""Re-export EventHandler from core.base for backwards compatibility."""
 
-from __future__ import annotations
+from core.base.event_handler import EventHandler
 
-from abc import ABC, abstractmethod
-from typing import Generic, TypeVar
-
-from core.base.domain_event import DomainEvent
-
-E = TypeVar("E", bound=DomainEvent)
-
-
-class EventHandler(ABC, Generic[E]):
-    """Abstract handler for a specific domain event type."""
-
-    @abstractmethod
-    def handle(self, event: E) -> None:
-        """Process the given domain event."""
+__all__ = ["EventHandler"]

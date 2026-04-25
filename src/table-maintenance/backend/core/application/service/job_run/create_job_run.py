@@ -19,7 +19,7 @@ from core.application.port.inbound import (
 )
 
 if TYPE_CHECKING:
-    from core.application.event_handler.event_dispatcher import EventDispatcher
+    from core.base.event_dispatcher import EventDispatcher
     from core.application.event_handler.job_triggered_handler import JobTriggeredHandler
     from core.application.port.outbound.job.jobs_repo import JobsRepo
     from core.application.port.outbound.job_run.job_runs_repo import JobRunsRepo

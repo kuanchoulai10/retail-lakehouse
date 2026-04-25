@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 
 from core.base import DomainEvent
-from core.application.event_handler.event_dispatcher import EventDispatcher
-from core.application.event_handler.event_handler import EventHandler
+from core.base.event_dispatcher import EventDispatcher
+from core.base.event_handler import EventHandler
 
 
 @dataclass(frozen=True)

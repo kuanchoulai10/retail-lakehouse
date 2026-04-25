@@ -21,7 +21,7 @@ from core.application.port.inbound import (
 )
 
 if TYPE_CHECKING:
-    from core.application.event_handler.event_dispatcher import EventDispatcher
+    from core.base.event_dispatcher import EventDispatcher
     from core.application.port.outbound.job.jobs_repo import JobsRepo
 
 _CONFIG_BY_TYPE = {

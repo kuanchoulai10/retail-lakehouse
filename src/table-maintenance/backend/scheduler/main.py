@@ -11,7 +11,7 @@ from core.adapter.outbound.job.sql.jobs_sql_repo import JobsSqlRepo
 from core.adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
 from core.adapter.outbound.sql.metadata import metadata
 from core.application.domain.model.job.events import JobTriggered
-from core.application.event_handler.event_dispatcher import EventDispatcher
+from core.base.event_dispatcher import EventDispatcher
 from core.application.event_handler.job_triggered_handler import JobTriggeredHandler
 from core.application.service.schedule_jobs import ScheduleJobsService
 from scheduler.scheduler_loop import SchedulerLoop

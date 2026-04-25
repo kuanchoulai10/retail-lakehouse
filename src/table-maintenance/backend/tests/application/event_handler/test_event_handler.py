@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import pytest
 
 from core.base import DomainEvent
-from core.application.event_handler.event_handler import EventHandler
+from core.base.event_handler import EventHandler
 
 
 @dataclass(frozen=True)

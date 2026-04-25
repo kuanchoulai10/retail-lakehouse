@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import Depends
 
-from core.application.event_handler.event_dispatcher import EventDispatcher
+from core.base.event_dispatcher import EventDispatcher
 from core.application.event_handler.job_triggered_handler import JobTriggeredHandler
 from core.application.service.catalog.get_table import GetTableService
 from core.application.service.catalog.list_branches import ListBranchesService

@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from core.application.domain.model.job import JobStatus
-from core.application.event_handler.event_dispatcher import EventDispatcher
+from core.base.event_dispatcher import EventDispatcher
 from core.application.service.job.create_job import CreateJobService
 from core.application.port.inbound import (
     CreateJobInput,

@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from core.application.domain.model.job_run import JobRun, JobRunId
-from core.application.event_handler.event_handler import EventHandler
+from core.base.event_handler import EventHandler
 
 if TYPE_CHECKING:
     from core.application.domain.model.job.events import JobTriggered
