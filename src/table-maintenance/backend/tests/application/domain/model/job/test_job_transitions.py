@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 import pytest
 
 from core.application.domain.model.job import (
+    CronExpression,
     InvalidJobStateTransitionError,
     Job,
     JobId,
@@ -12,12 +13,14 @@ from core.application.domain.model.job import (
     JobStatus,
     JobType,
     MaxActiveRunsExceededError,
+    TableReference,
 )
 from core.application.domain.model.job.events import (
     JobArchived,
     JobPaused,
     JobResumed,
     JobTriggered,
+    JobUpdated,
 )
 from core.application.domain.model.job_run import TriggerType
 
@@ -167,3 +170,69 @@ class TestIsActive:
     def test_archived_is_false(self):
         """Verify is_active returns False for ARCHIVED jobs."""
         assert _make_job(JobStatus.ARCHIVED).is_active is False
+
+
+class TestApplyChanges:
+    """Tests for Job.apply_changes()."""
+
+    def test_change_cron(self):
+        """Verify changing cron registers JobUpdated with FieldChange."""
+        job = _make_job(JobStatus.ACTIVE)
+        old_cron = CronExpression(expression="0 * * * *")
+        new_cron = CronExpression(expression="0 2 * * *")
+        job.cron = old_cron
+        job.apply_changes(cron=new_cron)
+        assert job.cron == new_cron
+        events = job.collect_events()
+        assert len(events) == 1
+        event = events[0]
+        assert isinstance(event, JobUpdated)
+        assert len(event.changes) == 1
+        assert event.changes[0].field == "cron"
+
+    def test_change_table_ref(self):
+        """Verify changing table_ref registers JobUpdated."""
+        job = _make_job(JobStatus.ACTIVE)
+        new_ref = TableReference(catalog="new_cat", table="new_tbl")
+        job.apply_changes(table_ref=new_ref)
+        assert job.table_ref == new_ref
+        events = job.collect_events()
+        assert len(events) == 1
+        event = events[0]
+        assert isinstance(event, JobUpdated)
+        assert event.changes[0].field == "table_ref"
+
+    def test_change_job_config(self):
+        """Verify changing job_config registers JobUpdated."""
+        job = _make_job(JobStatus.ACTIVE)
+        job.apply_changes(job_config={"new_key": True})
+        assert job.job_config == {"new_key": True}
+        events = job.collect_events()
+        assert len(events) == 1
+        event = events[0]
+        assert isinstance(event, JobUpdated)
+        assert event.changes[0].field == "job_config"
+
+    def test_multiple_changes(self):
+        """Verify multiple field changes produce one event with multiple FieldChanges."""
+        job = _make_job(JobStatus.ACTIVE)
+        new_cron = CronExpression(expression="0 3 * * *")
+        new_ref = TableReference(catalog="c", table="t")
+        job.apply_changes(cron=new_cron, table_ref=new_ref)
+        events = job.collect_events()
+        assert len(events) == 1
+        event = events[0]
+        assert isinstance(event, JobUpdated)
+        assert len(event.changes) == 2
+
+    def test_no_change_no_event(self):
+        """Verify no event is registered when values are unchanged."""
+        job = _make_job(JobStatus.ACTIVE)
+        job.apply_changes(table_ref=job.table_ref)
+        assert job.collect_events() == []
+
+    def test_none_args_ignored(self):
+        """Verify None arguments are ignored (no changes applied)."""
+        job = _make_job(JobStatus.ACTIVE)
+        job.apply_changes()
+        assert job.collect_events() == []

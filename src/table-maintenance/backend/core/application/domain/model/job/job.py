@@ -13,7 +13,9 @@ from core.application.domain.model.job.events import (
     JobPaused,
     JobResumed,
     JobTriggered,
+    JobUpdated,
 )
+from core.application.domain.model.job.field_change import FieldChange
 from core.application.domain.model.job.exceptions import (
     InvalidJobStateTransitionError,
     JobNotActiveError,
@@ -133,3 +135,37 @@ class Job(AggregateRoot[JobId]):
         if active_run_count >= self.max_active_runs:
             raise MaxActiveRunsExceededError(self.id.value, self.max_active_runs)
         self.register_event(JobTriggered(job_id=self.id, trigger_type=trigger_type))
+
+    def apply_changes(
+        self,
+        table_ref: TableReference | None = None,
+        cron: CronExpression | None = None,
+        job_config: dict | None = None,
+    ) -> None:
+        """Apply configuration changes and register a JobUpdated event if anything changed."""
+        changes: list[FieldChange] = []
+        if table_ref is not None and table_ref != self.table_ref:
+            changes.append(
+                FieldChange(
+                    field="table_ref",
+                    old_value=str(self.table_ref),
+                    new_value=str(table_ref),
+                )
+            )
+            self.table_ref = table_ref
+        if cron is not None and cron != self.cron:
+            changes.append(
+                FieldChange(field="cron", old_value=str(self.cron), new_value=str(cron))
+            )
+            self.cron = cron
+        if job_config is not None and job_config != self.job_config:
+            changes.append(
+                FieldChange(
+                    field="job_config",
+                    old_value=str(self.job_config),
+                    new_value=str(job_config),
+                )
+            )
+            self.job_config = job_config
+        if changes:
+            self.register_event(JobUpdated(job_id=self.id, changes=tuple(changes)))
