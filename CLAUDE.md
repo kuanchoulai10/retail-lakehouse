@@ -34,28 +34,38 @@ adapter/*        ──✗──> domain (forbidden: must go through application
 
 ```
 backend/
-├── application/
-│   ├── domain/          # Entities, Value Objects, Domain Events, Exceptions
-│   ├── port/inbound/    # Use case interfaces + result types
-│   ├── port/outbound/   # Repository interfaces
-│   └── service/         # Use case implementations
-├── adapter/
-│   ├── inbound/web/     # FastAPI routes, API DTOs (JobApiRequest, JobApiResponse)
-│   └── outbound/        # Repository implementations (K8s, in-memory)
-├── base/                # DDD shared kernel
-├── shared/              # Cross-cutting infrastructure (AppSettings, K8s client)
-└── dependencies/        # FastAPI dependency injection
+├── core/                    # Shared domain kernel
+│   ├── application/
+│   │   ├── domain/          # Entities, Value Objects, Domain Events, Exceptions
+│   │   ├── port/inbound/    # Use case interfaces + result types
+│   │   ├── port/outbound/   # Repository interfaces
+│   │   └── service/         # Use case implementations
+│   ├── adapter/
+│   │   └── outbound/        # Repository implementations (SQL, K8s, in-memory)
+│   ├── base/                # DDD shared kernel
+│   └── configs/             # AppSettings, adapter enums
+├── api/                     # API server entry
+│   ├── adapter/
+│   │   └── inbound/web/     # FastAPI routes, API DTOs
+│   ├── dependencies/        # FastAPI dependency injection
+│   └── main.py              # FastAPI app factory
+├── scheduler/               # Scheduler entry
+│   ├── main.py              # Scheduler bootstrap
+│   └── scheduler_loop.py    # Polling loop
+└── entrypoint.py            # ROLE env var → api or scheduler
 ```
 
 ### Rules
 
-- **Domain** depends on nothing except `base/` and stdlib. No Pydantic — use dataclasses.
+- **Domain** depends on nothing except `core/base/` and stdlib. No Pydantic — use dataclasses.
 - **Application** depends on domain and base. No adapter, no framework, no infra imports.
 - **Adapter** depends on application only (not domain directly). Web adapter catches application-layer exceptions, not domain exceptions.
-- **Shared** (`shared/`) is cross-cutting infrastructure (AppSettings, K8s client). It must not depend on any bounded context.
-- **DTOs live in the adapter.** `JobApiRequest`/`JobApiResponse` are in `adapter/inbound/web/dto.py` with plain types (no domain enums).
+- **Configs** (`core/configs/`) is cross-cutting configuration. It must not depend on any bounded context.
+- **DTOs live in the adapter.** `JobApiRequest`/`JobApiResponse` are in `api/adapter/inbound/web/dto.py` with plain types (no domain enums).
 - **Use case results live in the application layer.** Services convert domain objects to application-layer result dataclasses so adapters never see domain types.
+- **Scheduler** cannot import from `api` or `fastapi` (enforced by import-linter).
 - Architecture boundaries are enforced by `import-linter` (configured in `.importlinter`). Run `lint-imports` to verify.
+- **Single image, dual role**: `ROLE=api` (default) or `ROLE=scheduler` via `entrypoint.py`.
 
 ## Development Workflow
 
