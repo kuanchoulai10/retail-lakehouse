@@ -11,6 +11,12 @@ from core.application.domain.model.job_run import (
     JobRunId,
     JobRunStatus,
 )
+from core.application.domain.model.job_run.events import (
+    JobRunCancelled,
+    JobRunCompleted,
+    JobRunFailed,
+    JobRunStarted,
+)
 
 
 def _make_run(status: JobRunStatus = JobRunStatus.PENDING) -> JobRun:
@@ -45,6 +51,16 @@ class TestMarkRunning:
         with pytest.raises(InvalidStateTransitionError):
             run.mark_running(datetime.now(UTC))
 
+    def test_mark_running_registers_event(self):
+        """Verify mark_running registers a JobRunStarted event."""
+        run = _make_run(JobRunStatus.PENDING)
+        now = datetime(2026, 4, 25, 12, 0, tzinfo=UTC)
+        run.mark_running(now)
+        events = run.collect_events()
+        assert len(events) == 1
+        assert isinstance(events[0], JobRunStarted)
+        assert events[0].started_at == now
+
 
 class TestMarkCompleted:
     """Tests for JobRun.mark_completed()."""
@@ -62,6 +78,16 @@ class TestMarkCompleted:
         run = _make_run(JobRunStatus.PENDING)
         with pytest.raises(InvalidStateTransitionError):
             run.mark_completed(datetime.now(UTC))
+
+    def test_mark_completed_registers_event(self):
+        """Verify mark_completed registers a JobRunCompleted event."""
+        run = _make_run(JobRunStatus.RUNNING)
+        now = datetime(2026, 4, 25, 13, 0, tzinfo=UTC)
+        run.mark_completed(now)
+        events = run.collect_events()
+        assert len(events) == 1
+        assert isinstance(events[0], JobRunCompleted)
+        assert events[0].finished_at == now
 
 
 class TestMarkFailed:
@@ -88,6 +114,16 @@ class TestMarkFailed:
         run = _make_run(JobRunStatus.COMPLETED)
         with pytest.raises(InvalidStateTransitionError):
             run.mark_failed(datetime.now(UTC))
+
+    def test_mark_failed_registers_event(self):
+        """Verify mark_failed registers a JobRunFailed event."""
+        run = _make_run(JobRunStatus.RUNNING)
+        now = datetime(2026, 4, 25, 14, 0, tzinfo=UTC)
+        run.mark_failed(now)
+        events = run.collect_events()
+        assert len(events) == 1
+        assert isinstance(events[0], JobRunFailed)
+        assert events[0].finished_at == now
 
 
 class TestCancel:
@@ -116,3 +152,12 @@ class TestCancel:
         run = _make_run(JobRunStatus.FAILED)
         with pytest.raises(InvalidStateTransitionError):
             run.cancel()
+
+    def test_cancel_registers_event(self):
+        """Verify cancel registers a JobRunCancelled event."""
+        run = _make_run(JobRunStatus.PENDING)
+        run.cancel()
+        events = run.collect_events()
+        assert len(events) == 1
+        assert isinstance(events[0], JobRunCancelled)
+        assert events[0].run_id == JobRunId(value="run-1")

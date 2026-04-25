@@ -4,7 +4,13 @@ from datetime import UTC, datetime
 
 from core.base import AggregateRoot
 from core.application.domain.model.job import JobId
-from core.application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
+from core.application.domain.model.job_run import (
+    JobRun,
+    JobRunId,
+    JobRunStatus,
+    TriggerType,
+)
+from core.application.domain.model.job_run.events import JobRunCreated
 
 
 def test_is_aggregate_root():
@@ -59,3 +65,25 @@ def test_started_at_defaults_to_none():
     )
     assert run.started_at is None
     assert run.finished_at is None
+
+
+def test_create_factory_returns_run_with_event():
+    """Verify JobRun.create() returns a JobRun and registers a JobRunCreated event."""
+    started = datetime(2026, 4, 25, 12, 0, tzinfo=UTC)
+    run = JobRun.create(
+        id=JobRunId(value="r1"),
+        job_id=JobId(value="j1"),
+        trigger_type=TriggerType.MANUAL,
+        started_at=started,
+    )
+    assert run.id == JobRunId(value="r1")
+    assert run.job_id == JobId(value="j1")
+    assert run.status == JobRunStatus.PENDING
+    assert run.trigger_type == TriggerType.MANUAL
+    assert run.started_at == started
+    events = run.collect_events()
+    assert len(events) == 1
+    assert isinstance(events[0], JobRunCreated)
+    assert events[0].run_id == JobRunId(value="r1")
+    assert events[0].job_id == JobId(value="j1")
+    assert events[0].trigger_type == TriggerType.MANUAL
