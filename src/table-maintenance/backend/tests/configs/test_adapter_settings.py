@@ -1,6 +1,6 @@
 """Tests for AppSettings adapter configuration."""
 
-from configs import (
+from core.configs import (
     AppSettings,
     DatabaseBackend,
     JobRunExecutorAdapter,

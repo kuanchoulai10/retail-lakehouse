@@ -9,7 +9,7 @@ from adapter.outbound.job_run.k8s.job_runs_k8s_repo import JobRunsK8sRepo
 from application.domain.model.job import JobId
 from application.domain.model.job_run import JobRunId, JobRunNotFoundError, JobRunStatus
 from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
-from configs import AppSettings
+from core.configs import AppSettings
 
 SETTINGS = AppSettings()
 

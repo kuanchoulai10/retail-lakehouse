@@ -1,6 +1,6 @@
 """Tests for AppSettings K8s nested configuration."""
 
-from configs import AppSettings
+from core.configs import AppSettings
 
 
 def test_defaults():

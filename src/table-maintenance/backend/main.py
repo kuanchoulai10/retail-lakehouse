@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from fastapi import FastAPI
 from adapter.inbound.web import router as jobs_router
 from adapter.outbound.sql.metadata import metadata
-from configs import JobsRepoAdapter, JobRunsRepoAdapter
+from core.configs import JobsRepoAdapter, JobRunsRepoAdapter
 from dependencies.repos import _cached_sql_engine
 from dependencies.settings import get_settings
 

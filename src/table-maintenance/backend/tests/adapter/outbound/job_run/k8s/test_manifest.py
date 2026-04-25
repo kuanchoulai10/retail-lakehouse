@@ -10,7 +10,7 @@ from application.domain.model.job import (
     JobType,
     TableReference,
 )
-from configs import AppSettings
+from core.configs import AppSettings
 
 SETTINGS = AppSettings()
 

@@ -2,7 +2,6 @@
 root_packages =
     adapter
     application
-    configs
     dependencies
     core
     api
@@ -89,7 +88,7 @@ forbidden_modules =
 name = Configs does not depend on bounded contexts
 type = forbidden
 source_modules =
-    configs
+    core.configs
 forbidden_modules =
-    adapter
-    application
+    core.adapter
+    core.application

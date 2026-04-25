@@ -8,7 +8,7 @@ from fastapi import Depends
 
 from adapter.outbound.catalog.iceberg_catalog_client import IcebergCatalogClient
 from application.port.outbound.catalog.catalog_reader import CatalogReader
-from configs import AppSettings
+from core.configs import AppSettings
 from dependencies.settings import get_settings
 
 

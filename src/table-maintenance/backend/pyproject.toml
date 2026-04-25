@@ -21,7 +21,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["configs*", "adapter*", "application*", "dependencies*", "core*", "api*", "scheduler*"]
+include = ["adapter*", "application*", "dependencies*", "core*", "api*", "scheduler*"]
 
 [tool.ruff.lint.per-file-ignores]
 "dependencies/*.py" = ["B008"]

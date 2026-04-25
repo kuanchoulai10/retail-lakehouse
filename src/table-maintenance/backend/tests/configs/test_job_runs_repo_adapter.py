@@ -1,6 +1,6 @@
 """Tests for JobRunsRepoAdapter."""
 
-from configs import JobRunsRepoAdapter
+from core.configs import JobRunsRepoAdapter
 
 
 def test_enum_values():
