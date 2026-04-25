@@ -7,7 +7,7 @@ from collections.abc import Iterator
 import pytest
 from sqlalchemy import Engine, create_engine
 
-from adapter.outbound.sql.metadata import metadata
+from core.adapter.outbound.sql.metadata import metadata
 
 
 @pytest.fixture

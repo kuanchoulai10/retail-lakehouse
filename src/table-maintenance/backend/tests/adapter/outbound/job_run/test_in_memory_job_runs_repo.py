@@ -2,7 +2,7 @@
 
 import pytest
 
-from adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
+from core.adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
 from core.application.domain.model.job import JobId
 from core.application.domain.model.job_run import (
     JobRun,

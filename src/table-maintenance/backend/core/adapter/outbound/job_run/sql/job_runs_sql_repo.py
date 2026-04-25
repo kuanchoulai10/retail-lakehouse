@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import func, insert, select
 
-from adapter.outbound.job_run.sql.job_run_to_values import job_run_to_values
-from adapter.outbound.job_run.sql.job_runs_table import job_runs_table
-from adapter.outbound.job_run.sql.row_to_job_run import row_to_job_run
+from core.adapter.outbound.job_run.sql.job_run_to_values import job_run_to_values
+from core.adapter.outbound.job_run.sql.job_runs_table import job_runs_table
+from core.adapter.outbound.job_run.sql.row_to_job_run import row_to_job_run
 from core.application.domain.model.job_run import JobRunNotFoundError
 from core.application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 

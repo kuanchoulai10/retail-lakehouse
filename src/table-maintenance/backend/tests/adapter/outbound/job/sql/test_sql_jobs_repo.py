@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from adapter.outbound.job.sql.jobs_sql_repo import JobsSqlRepo
+from core.adapter.outbound.job.sql.jobs_sql_repo import JobsSqlRepo
 from core.application.domain.model.job import (
     CronExpression,
     Job,

@@ -13,8 +13,8 @@ from dependencies.use_cases import (
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from adapter.inbound.web import router
-from adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
-from adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
+from core.adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
+from core.adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
 from core.application.domain.service.job.create_job import CreateJobService
 from core.application.domain.service.job.delete_job import DeleteJobService
 from core.application.domain.service.job.get_job import GetJobService

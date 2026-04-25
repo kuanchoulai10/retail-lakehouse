@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 from kubernetes.client.exceptions import ApiException
 
-from adapter.outbound.job_run.k8s.job_runs_k8s_repo import JobRunsK8sRepo
+from core.adapter.outbound.job_run.k8s.job_runs_k8s_repo import JobRunsK8sRepo
 from core.application.domain.model.job import JobId
 from core.application.domain.model.job_run import (
     JobRunId,

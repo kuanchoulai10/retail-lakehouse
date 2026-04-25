@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from sqlalchemy import Column, DateTime, ForeignKey, String, Table
 
-from adapter.outbound.sql.metadata import metadata
+from core.adapter.outbound.sql.metadata import metadata
 
 job_runs_table = Table(
     "job_runs",

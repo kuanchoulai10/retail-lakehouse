@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from sqlalchemy import Engine
 
-from adapter.outbound.sql.engine_factory import build_engine
+from core.adapter.outbound.sql.engine_factory import build_engine
 from core.configs import AppSettings, DatabaseBackend
 
 
@@ -24,7 +24,7 @@ def test_postgres_backend_delegates_to_create_engine():
     settings.database_backend = DatabaseBackend.POSTGRES
     settings.postgres.db_url = "postgresql+psycopg://user:pass@host/db"
     settings.postgres.pool_size = 7
-    with patch("adapter.outbound.sql.engine_factory.create_engine") as mock_create:
+    with patch("core.adapter.outbound.sql.engine_factory.create_engine") as mock_create:
         build_engine(settings)
     call = mock_create.call_args
     assert call.args[0] == "postgresql+psycopg://user:pass@host/db"

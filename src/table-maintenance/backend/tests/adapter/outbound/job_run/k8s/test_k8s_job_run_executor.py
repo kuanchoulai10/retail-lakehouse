@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
-from adapter.outbound.job_run.k8s.job_run_k8s_executor import JobRunK8sExecutor
+from core.adapter.outbound.job_run.k8s.job_run_k8s_executor import JobRunK8sExecutor
 from core.application.domain.model.job import (
     CronExpression,
     Job,

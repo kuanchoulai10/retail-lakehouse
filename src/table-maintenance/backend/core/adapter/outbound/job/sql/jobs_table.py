@@ -2,7 +2,7 @@
 
 from sqlalchemy import JSON, Column, DateTime, Integer, String, Table
 
-from adapter.outbound.sql.metadata import metadata
+from core.adapter.outbound.sql.metadata import metadata
 
 jobs_table = Table(
     "jobs",

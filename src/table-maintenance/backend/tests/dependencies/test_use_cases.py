@@ -14,8 +14,8 @@ from dependencies.use_cases import (
     get_list_jobs_use_case,
     get_update_job_use_case,
 )
-from adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
-from adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
+from core.adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
+from core.adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
 from core.application.domain.service.job.create_job import CreateJobService
 from core.application.domain.service.job.delete_job import DeleteJobService
 from core.application.domain.service.job.get_job import GetJobService

@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 import pytest
 from sqlalchemy import Engine, insert
 
-from adapter.outbound.job.sql.jobs_table import jobs_table
-from adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
+from core.adapter.outbound.job.sql.jobs_table import jobs_table
+from core.adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
 from core.application.domain.model.job import JobId
 from core.application.domain.model.job_run import (
     JobRun,
