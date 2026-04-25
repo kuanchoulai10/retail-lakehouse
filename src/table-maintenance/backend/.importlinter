@@ -5,6 +5,9 @@ root_packages =
     configs
     base
     dependencies
+    core
+    api
+    scheduler
 include_external_packages = True
 
 [importlinter:contract:domain-core-isolation]
