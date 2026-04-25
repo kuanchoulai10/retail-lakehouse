@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from base import AggregateRoot, DomainEvent, EntityId
+from core.base import AggregateRoot, DomainEvent, EntityId
 
 
 @dataclass(frozen=True)
@@ -29,7 +29,7 @@ class Order(AggregateRoot[OrderId]):
 
 def test_aggregate_root_is_entity():
     """AggregateRoot should be a subclass of Entity."""
-    from base import Entity
+    from core.base import Entity
 
     assert issubclass(AggregateRoot, Entity)
 

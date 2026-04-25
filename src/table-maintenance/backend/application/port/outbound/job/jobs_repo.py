@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import TYPE_CHECKING
 
-from base.repository import Repository
+from core.base.repository import Repository
 
 from application.domain.model.job import Job
 

@@ -1,6 +1,6 @@
 """Tests for JobId."""
 
-from base import EntityId
+from core.base import EntityId
 from application.domain.model.job import JobId
 
 

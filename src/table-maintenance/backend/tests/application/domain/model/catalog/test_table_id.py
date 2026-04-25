@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from base import EntityId
+from core.base import EntityId
 from application.domain.model.catalog.table_id import TableId
 
 

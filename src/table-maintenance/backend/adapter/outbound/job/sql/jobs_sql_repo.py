@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from sqlalchemy import Engine
 
     from application.domain.model.job import Job, JobId
-    from base.entity_id import EntityId
+    from core.base.entity_id import EntityId
 
 
 class JobsSqlRepo(JobsRepo):

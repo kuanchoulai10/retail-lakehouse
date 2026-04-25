@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from croniter import CroniterBadCronError, croniter
 
-from base.value_object import ValueObject
+from core.base.value_object import ValueObject
 
 if TYPE_CHECKING:
     from datetime import datetime

@@ -3,7 +3,6 @@ root_packages =
     adapter
     application
     configs
-    base
     dependencies
     core
     api

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from base.use_case import UseCase
+from core.base.use_case import UseCase
 
 from application.port.inbound.job.delete_job.input import DeleteJobInput
 from application.port.inbound.job.delete_job.output import DeleteJobOutput

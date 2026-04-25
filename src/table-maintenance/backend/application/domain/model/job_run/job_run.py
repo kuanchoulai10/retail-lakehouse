@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from base.aggregate_root import AggregateRoot
+from core.base.aggregate_root import AggregateRoot
 
 from application.domain.model.job_run.exceptions import InvalidStateTransitionError
 from application.domain.model.job_run.job_run_id import JobRunId

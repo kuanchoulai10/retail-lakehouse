@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from base.entity import Entity
-from base.entity_id import EntityId
+from core.base.entity import Entity
+from core.base.entity_id import EntityId
 
 if TYPE_CHECKING:
-    from base.domain_event import DomainEvent
+    from core.base.domain_event import DomainEvent
 
 
 class AggregateRoot[ID: EntityId](Entity[ID]):

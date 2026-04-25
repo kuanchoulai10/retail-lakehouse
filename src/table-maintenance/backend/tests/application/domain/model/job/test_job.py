@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from base import AggregateRoot
+from core.base import AggregateRoot
 from application.domain.model.job import (
     CronExpression,
     Job,

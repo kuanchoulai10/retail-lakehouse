@@ -3,7 +3,7 @@
 from abc import ABC
 from dataclasses import dataclass
 
-from base import ValueObject
+from core.base import ValueObject
 
 
 @dataclass(frozen=True)

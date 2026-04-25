@@ -5,10 +5,10 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-from base.entity import Entity
+from core.base.entity import Entity
 
 if TYPE_CHECKING:
-    from base.entity_id import EntityId
+    from core.base.entity_id import EntityId
 
 
 class Repository[E: Entity](ABC):

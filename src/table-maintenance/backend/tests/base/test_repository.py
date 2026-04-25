@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 import pytest
-from base import Entity, EntityId, Repository
+from core.base import Entity, EntityId, Repository
 
 
 @dataclass(frozen=True)
