@@ -21,10 +21,10 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["adapter*", "dependencies*", "core*", "api*", "scheduler*"]
+include = ["core*", "api*", "scheduler*"]
 
 [tool.ruff.lint.per-file-ignores]
-"dependencies/*.py" = ["B008"]
+"api/dependencies/*.py" = ["B008"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

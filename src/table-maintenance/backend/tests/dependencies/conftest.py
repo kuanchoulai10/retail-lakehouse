@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from dependencies.k8s import get_k8s_api
-from dependencies.settings import get_settings
+from api.dependencies.k8s import get_k8s_api
+from api.dependencies.settings import get_settings
 
 
 @pytest.fixture(autouse=True)

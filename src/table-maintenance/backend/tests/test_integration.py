@@ -1,6 +1,6 @@
 """Integration test: full Job + JobRun lifecycle via HTTP."""
 
-from dependencies.use_cases import (
+from api.dependencies.use_cases import (
     get_create_job_run_use_case,
     get_create_job_use_case,
     get_delete_job_use_case,
@@ -12,7 +12,7 @@ from dependencies.use_cases import (
 )
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from adapter.inbound.web import router
+from api.adapter.inbound.web import router
 from core.adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
 from core.adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
 from core.application.domain.service.job.create_job import CreateJobService

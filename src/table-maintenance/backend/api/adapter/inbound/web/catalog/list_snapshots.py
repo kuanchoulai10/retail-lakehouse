@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from adapter.inbound.web.catalog.dto import SnapshotResponse, SnapshotsResponse
+from api.adapter.inbound.web.catalog.dto import SnapshotResponse, SnapshotsResponse
 from core.application.port.inbound.catalog.list_snapshots import (
     ListSnapshotsInput,
     ListSnapshotsUseCase,
 )
-from dependencies.use_cases import get_list_snapshots_use_case
+from api.dependencies.use_cases import get_list_snapshots_use_case
 
 router = APIRouter()
 

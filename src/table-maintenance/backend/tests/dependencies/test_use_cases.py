@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from dependencies.use_cases import (
+from api.dependencies.use_cases import (
     get_create_job_run_use_case,
     get_create_job_use_case,
     get_delete_job_use_case,

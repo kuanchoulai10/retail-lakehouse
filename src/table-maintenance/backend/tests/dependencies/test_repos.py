@@ -19,7 +19,7 @@ from core.configs import (
     JobRunsRepoAdapter,
     JobsRepoAdapter,
 )
-from dependencies.repos import (
+from api.dependencies.repos import (
     _engine_cache,
     _in_memory_executor_singleton,
     _in_memory_jobs_repo_singleton,
@@ -127,7 +127,7 @@ def test_get_job_run_executor_returns_in_memory_by_default():
 def test_get_job_run_executor_returns_k8s_when_configured(monkeypatch):
     """Verify that get_job_run_executor returns JobRunK8sExecutor when configured for K8s."""
     _clear_caches()
-    from dependencies import repos as repos_mod
+    from api.dependencies import repos as repos_mod
 
     monkeypatch.setattr(repos_mod, "get_k8s_api", MagicMock())
 

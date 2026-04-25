@@ -6,11 +6,11 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
-from adapter.inbound.web import router as jobs_router
+from api.adapter.inbound.web import router as jobs_router
 from core.adapter.outbound.sql.metadata import metadata
 from core.configs import JobsRepoAdapter, JobRunsRepoAdapter
-from dependencies.repos import _cached_sql_engine
-from dependencies.settings import get_settings
+from api.dependencies.repos import _cached_sql_engine
+from api.dependencies.settings import get_settings
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator

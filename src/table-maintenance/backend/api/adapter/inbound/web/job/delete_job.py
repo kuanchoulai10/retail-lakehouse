@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dependencies.use_cases import get_delete_job_use_case
+from api.dependencies.use_cases import get_delete_job_use_case
 from fastapi import APIRouter, Depends, HTTPException, Response
 
 from core.application.exceptions import JobNotFoundError

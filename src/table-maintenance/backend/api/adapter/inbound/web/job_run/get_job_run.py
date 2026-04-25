@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from dependencies.use_cases import get_get_job_run_use_case
+from api.dependencies.use_cases import get_get_job_run_use_case
 from fastapi import APIRouter, Depends, HTTPException
 
-from adapter.inbound.web.job_run.dto import JobRunApiResponse
+from api.adapter.inbound.web.job_run.dto import JobRunApiResponse
 from core.application.exceptions import JobRunNotFoundError
 from core.application.port.inbound import GetJobRunInput, GetJobRunUseCase
 

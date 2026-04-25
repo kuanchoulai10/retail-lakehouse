@@ -7,9 +7,9 @@ from unittest.mock import MagicMock
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from adapter.inbound.web import router
+from api.adapter.inbound.web import router
 from core.application.port.inbound.catalog.list_tables import ListTablesOutput
-from dependencies.use_cases import get_list_tables_use_case
+from api.dependencies.use_cases import get_list_tables_use_case
 
 
 def _make_client(use_case: MagicMock) -> TestClient:

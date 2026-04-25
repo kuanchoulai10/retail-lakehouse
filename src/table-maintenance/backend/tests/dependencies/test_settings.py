@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dependencies.settings import get_settings
+from api.dependencies.settings import get_settings
 from core.configs import AppSettings
 
 

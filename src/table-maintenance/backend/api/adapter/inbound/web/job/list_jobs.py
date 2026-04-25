@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from dependencies.use_cases import get_list_jobs_use_case
+from api.dependencies.use_cases import get_list_jobs_use_case
 from fastapi import APIRouter, Depends
 
-from adapter.inbound.web.job.dto import JobApiResponse
+from api.adapter.inbound.web.job.dto import JobApiResponse
 from core.application.port.inbound import ListJobsInput, ListJobsUseCase
 
 router = APIRouter()

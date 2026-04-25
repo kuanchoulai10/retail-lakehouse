@@ -22,8 +22,8 @@ from core.application.domain.service.job_run.create_job_run import CreateJobRunS
 from core.application.domain.service.job_run.get_job_run import GetJobRunService
 from core.application.domain.service.job_run.list_job_runs import ListJobRunsService
 
-from dependencies.catalog import get_catalog_reader
-from dependencies.repos import (
+from api.dependencies.catalog import get_catalog_reader
+from api.dependencies.repos import (
     get_job_runs_repo,
     get_jobs_repo,
 )

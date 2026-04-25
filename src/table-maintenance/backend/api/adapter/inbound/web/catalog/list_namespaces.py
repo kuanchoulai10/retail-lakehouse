@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from adapter.inbound.web.catalog.dto import NamespacesResponse
+from api.adapter.inbound.web.catalog.dto import NamespacesResponse
 from core.application.port.inbound.catalog.list_namespaces import (
     ListNamespacesInput,
     ListNamespacesUseCase,
 )
-from dependencies.use_cases import get_list_namespaces_use_case
+from api.dependencies.use_cases import get_list_namespaces_use_case
 
 router = APIRouter()
 

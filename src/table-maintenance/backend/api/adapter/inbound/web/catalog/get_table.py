@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from adapter.inbound.web.catalog.dto import (
+from api.adapter.inbound.web.catalog.dto import (
     SchemaFieldResponse,
     SchemaResponse,
     TableDetailResponse,
@@ -13,7 +13,7 @@ from core.application.port.inbound.catalog.get_table import (
     GetTableInput,
     GetTableUseCase,
 )
-from dependencies.use_cases import get_get_table_use_case
+from api.dependencies.use_cases import get_get_table_use_case
 
 router = APIRouter()
 

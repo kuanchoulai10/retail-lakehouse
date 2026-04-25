@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from adapter.inbound.web.catalog.dto import BranchResponse, BranchesResponse
+from api.adapter.inbound.web.catalog.dto import BranchResponse, BranchesResponse
 from core.application.port.inbound.catalog.list_branches import (
     ListBranchesInput,
     ListBranchesUseCase,
 )
-from dependencies.use_cases import get_list_branches_use_case
+from api.dependencies.use_cases import get_list_branches_use_case
 
 router = APIRouter()
 
