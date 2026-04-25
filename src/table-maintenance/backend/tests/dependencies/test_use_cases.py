@@ -16,14 +16,14 @@ from api.dependencies.use_cases import (
 )
 from core.adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
 from core.adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
-from core.application.domain.service.job.create_job import CreateJobService
-from core.application.domain.service.job.delete_job import DeleteJobService
-from core.application.domain.service.job.get_job import GetJobService
-from core.application.domain.service.job.list_jobs import ListJobsService
-from core.application.domain.service.job.update_job import UpdateJobService
-from core.application.domain.service.job_run.create_job_run import CreateJobRunService
-from core.application.domain.service.job_run.get_job_run import GetJobRunService
-from core.application.domain.service.job_run.list_job_runs import ListJobRunsService
+from core.application.service.job.create_job import CreateJobService
+from core.application.service.job.delete_job import DeleteJobService
+from core.application.service.job.get_job import GetJobService
+from core.application.service.job.list_jobs import ListJobsService
+from core.application.service.job.update_job import UpdateJobService
+from core.application.service.job_run.create_job_run import CreateJobRunService
+from core.application.service.job_run.get_job_run import GetJobRunService
+from core.application.service.job_run.list_job_runs import ListJobRunsService
 
 
 def test_get_create_job_use_case():

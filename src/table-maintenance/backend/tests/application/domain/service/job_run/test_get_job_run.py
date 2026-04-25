@@ -12,7 +12,7 @@ from core.application.domain.model.job_run import (
     JobRunNotFoundError,
     JobRunStatus,
 )
-from core.application.domain.service.job_run.get_job_run import GetJobRunService
+from core.application.service.job_run.get_job_run import GetJobRunService
 from core.application.exceptions import JobRunNotFoundError as AppJobRunNotFoundError
 from core.application.port.inbound import (
     GetJobRunInput,

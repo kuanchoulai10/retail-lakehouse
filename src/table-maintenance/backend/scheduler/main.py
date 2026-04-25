@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from core.adapter.outbound.job.sql.jobs_sql_repo import JobsSqlRepo
 from core.adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
 from core.adapter.outbound.sql.metadata import metadata
-from core.application.domain.service.schedule_jobs import ScheduleJobsService
+from core.application.service.schedule_jobs import ScheduleJobsService
 from scheduler.scheduler_loop import SchedulerLoop
 from sqlalchemy import create_engine
 

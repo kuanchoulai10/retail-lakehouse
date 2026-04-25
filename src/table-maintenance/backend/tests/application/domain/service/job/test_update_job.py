@@ -13,7 +13,7 @@ from core.application.domain.model.job import (
     JobType,
     TableReference,
 )
-from core.application.domain.service.job.update_job import UpdateJobService
+from core.application.service.job.update_job import UpdateJobService
 from core.application.exceptions import JobNotFoundError as AppJobNotFoundError
 from core.application.port.inbound import (
     UpdateJobInput,

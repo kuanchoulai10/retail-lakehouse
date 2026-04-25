@@ -13,7 +13,7 @@ from core.application.domain.model.job import (
     JobType,
 )
 
-from core.application.domain.service.job_run.create_job_run import CreateJobRunService
+from core.application.service.job_run.create_job_run import CreateJobRunService
 from core.application.exceptions import JobDisabledError
 from core.application.exceptions import JobNotFoundError as AppJobNotFoundError
 from core.application.port.inbound import (

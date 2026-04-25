@@ -13,7 +13,7 @@ from core.application.domain.model.catalog.snapshot_summary import SnapshotSumma
 from core.application.domain.model.catalog.table import Table
 from core.application.domain.model.catalog.table_id import TableId
 from core.application.domain.model.catalog.table_schema import TableSchema
-from core.application.domain.service.catalog.list_branches import ListBranchesService
+from core.application.service.catalog.list_branches import ListBranchesService
 from core.application.port.inbound.catalog.list_branches import (
     ListBranchesInput,
     ListBranchesOutput,

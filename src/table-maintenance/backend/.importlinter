@@ -13,7 +13,7 @@ source_modules =
 forbidden_modules =
     core.application.port
     core.application.exceptions
-    core.application.domain.service
+    core.application.service
     core.adapter
     core.configs
     fastapi
@@ -44,9 +44,9 @@ ignore_imports =
     core.application.port.outbound.job_run.job_run_executor -> core.application.domain.model.job
     core.application.port.outbound.job_run.job_run_executor -> core.application.domain.model.job_run
     core.application.port.outbound.catalog.catalog_reader -> core.application.domain.model.catalog.table
-    api.dependencies.use_cases -> core.application.domain.service.catalog.*
-    api.dependencies.use_cases -> core.application.domain.service.job.*
-    api.dependencies.use_cases -> core.application.domain.service.job_run.*
+    api.dependencies.use_cases -> core.application.service.catalog.*
+    api.dependencies.use_cases -> core.application.service.job.*
+    api.dependencies.use_cases -> core.application.service.job_run.*
     api.dependencies.repos -> core.adapter.outbound.job_run.job_run_in_memory_executor
     api.dependencies.repos -> core.adapter.outbound.job_run.k8s.job_run_k8s_executor
     api.dependencies.repos -> core.adapter.outbound.job.jobs_in_memory_repo
@@ -103,10 +103,10 @@ forbidden_modules =
     scheduler
 
 [importlinter:contract:domain-service-isolation]
-name = Domain service (use case impl) does not depend on adapter or framework
+name = Application service (use case impl) does not depend on adapter or framework
 type = forbidden
 source_modules =
-    core.application.domain.service
+    core.application.service
 forbidden_modules =
     core.adapter
     core.configs

@@ -7,7 +7,7 @@ import secrets
 from typing import TYPE_CHECKING
 
 from core.application.domain.model.job_run import JobRunId, TriggerType
-from core.application.domain.service.schedule_jobs_result import ScheduleJobsResult
+from core.application.service.schedule_jobs_result import ScheduleJobsResult
 
 if TYPE_CHECKING:
     from collections.abc import Callable

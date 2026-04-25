@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 from core.application.domain.model.job import JobId
 from core.application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
-from core.application.domain.service.job_run.list_job_runs import ListJobRunsService
+from core.application.service.job_run.list_job_runs import ListJobRunsService
 from core.application.port.inbound import (
     ListJobRunsInput,
     ListJobRunsOutput,

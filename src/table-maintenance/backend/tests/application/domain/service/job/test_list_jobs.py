@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 from core.application.domain.model.job import Job, JobId, JobType
-from core.application.domain.service.job.list_jobs import ListJobsService
+from core.application.service.job.list_jobs import ListJobsService
 from core.application.port.inbound import (
     ListJobsInput,
     ListJobsOutput,

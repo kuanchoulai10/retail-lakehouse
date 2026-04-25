@@ -11,7 +11,7 @@ from core.application.domain.model.job import (
     JobStatus,
     JobType,
 )
-from core.application.domain.service.job.get_job import GetJobService
+from core.application.service.job.get_job import GetJobService
 from core.application.exceptions import JobNotFoundError as AppJobNotFoundError
 from core.application.port.inbound import GetJobInput, GetJobOutput, GetJobUseCase
 

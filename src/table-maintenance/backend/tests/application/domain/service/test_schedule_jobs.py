@@ -13,7 +13,7 @@ from core.application.domain.model.job import (
     JobType,
 )
 from core.application.domain.model.job_run import JobRunStatus
-from core.application.domain.service.schedule_jobs import ScheduleJobsService
+from core.application.service.schedule_jobs import ScheduleJobsService
 
 NOW = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)
 
