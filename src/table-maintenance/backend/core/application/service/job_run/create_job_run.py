@@ -12,7 +12,7 @@ from core.application.domain.model.job import (
     JobNotFoundError,
     MaxActiveRunsExceededError,
 )
-from core.application.domain.model.job_run import JobRunId
+from core.application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
 from core.application.exceptions import JobDisabledError
 from core.application.exceptions import JobNotFoundError as AppJobNotFoundError
 from core.application.port.inbound import (
@@ -44,16 +44,19 @@ class CreateJobRunService(CreateJobRunUseCase):
         active_count = self._job_runs_repo.count_active_for_job(job.id)
 
         try:
-            run = job.trigger(
-                run_id=JobRunId(value=f"{job.id.value}-{secrets.token_hex(3)}"),
-                now=datetime.now(UTC),
-                active_run_count=active_count,
-            )
+            job.trigger(active_run_count=active_count)
         except JobNotActiveError as e:
             raise JobDisabledError(e.job_id) from e
         except MaxActiveRunsExceededError as e:
             raise JobDisabledError(e.job_id) from e
 
+        now = datetime.now(UTC)
+        run = JobRun(
+            id=JobRunId(value=f"{job.id.value}-{secrets.token_hex(3)}"),
+            job_id=job.id,
+            status=JobRunStatus.PENDING,
+            started_at=now,
+        )
         run = self._job_runs_repo.create(run)
         return CreateJobRunOutput(
             run_id=run.id.value,

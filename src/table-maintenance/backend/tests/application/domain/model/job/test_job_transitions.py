@@ -13,7 +13,13 @@ from core.application.domain.model.job import (
     JobType,
     MaxActiveRunsExceededError,
 )
-from core.application.domain.model.job_run import JobRunId, JobRunStatus
+from core.application.domain.model.job.events import (
+    JobArchived,
+    JobPaused,
+    JobResumed,
+    JobTriggered,
+)
+from core.application.domain.model.job_run import TriggerType
 
 NOW = datetime(2026, 4, 25, 12, 0, tzinfo=UTC)
 
@@ -44,6 +50,15 @@ class TestPause:
         with pytest.raises(InvalidJobStateTransitionError):
             job.pause()
 
+    def test_pause_registers_event(self):
+        """Verify pause() registers a JobPaused event."""
+        job = _make_job(JobStatus.ACTIVE)
+        job.pause()
+        events = job.collect_events()
+        assert len(events) == 1
+        assert isinstance(events[0], JobPaused)
+        assert events[0].job_id == JobId(value="job-1")
+
 
 class TestResume:
     """Tests for Job.resume()."""
@@ -59,6 +74,15 @@ class TestResume:
         job = _make_job(JobStatus.ACTIVE)
         with pytest.raises(InvalidJobStateTransitionError):
             job.resume()
+
+    def test_resume_registers_event(self):
+        """Verify resume() registers a JobResumed event."""
+        job = _make_job(JobStatus.PAUSED)
+        job.resume()
+        events = job.collect_events()
+        assert len(events) == 1
+        assert isinstance(events[0], JobResumed)
+        assert events[0].job_id == JobId(value="job-1")
 
 
 class TestArchive:
@@ -76,54 +100,57 @@ class TestArchive:
         job.archive()
         assert job.status == JobStatus.ARCHIVED
 
+    def test_archive_registers_event(self):
+        """Verify archive() registers a JobArchived event."""
+        job = _make_job(JobStatus.ACTIVE)
+        job.archive()
+        events = job.collect_events()
+        assert len(events) == 1
+        assert isinstance(events[0], JobArchived)
+        assert events[0].job_id == JobId(value="job-1")
+
 
 class TestTrigger:
     """Tests for Job.trigger()."""
 
-    def test_creates_pending_run(self):
-        """Verify trigger creates a PENDING JobRun."""
+    def test_registers_job_triggered_event(self):
+        """Verify trigger registers a JobTriggered event."""
         job = _make_job(JobStatus.ACTIVE)
-        run = job.trigger(
-            run_id=JobRunId(value="run-1"),
-            now=NOW,
-            active_run_count=0,
-        )
-        assert run.id == JobRunId(value="run-1")
-        assert run.job_id == job.id
-        assert run.status == JobRunStatus.PENDING
-        assert run.started_at == NOW
+        job.trigger(active_run_count=0)
+        events = job.collect_events()
+        assert len(events) == 1
+        assert isinstance(events[0], JobTriggered)
+        assert events[0].job_id == JobId(value="job-1")
+        assert events[0].trigger_type == TriggerType.MANUAL
+
+    def test_trigger_with_scheduled_type(self):
+        """Verify trigger passes through trigger_type."""
+        job = _make_job(JobStatus.ACTIVE)
+        job.trigger(active_run_count=0, trigger_type=TriggerType.SCHEDULED)
+        events = job.collect_events()
+        event = events[0]
+        assert isinstance(event, JobTriggered)
+        assert event.trigger_type == TriggerType.SCHEDULED
 
     def test_raises_when_not_active(self):
         """Verify trigger raises JobNotActiveError for paused job."""
         job = _make_job(JobStatus.PAUSED)
         with pytest.raises(JobNotActiveError):
-            job.trigger(
-                run_id=JobRunId(value="run-1"),
-                now=NOW,
-                active_run_count=0,
-            )
+            job.trigger(active_run_count=0)
 
     def test_raises_when_max_active_runs_exceeded(self):
         """Verify trigger raises MaxActiveRunsExceededError."""
         job = _make_job(JobStatus.ACTIVE)
         job.max_active_runs = 1
         with pytest.raises(MaxActiveRunsExceededError):
-            job.trigger(
-                run_id=JobRunId(value="run-1"),
-                now=NOW,
-                active_run_count=1,
-            )
+            job.trigger(active_run_count=1)
 
-    def test_allows_trigger_under_max_active_runs(self):
-        """Verify trigger succeeds when active count < max."""
-        job = _make_job(JobStatus.ACTIVE)
-        job.max_active_runs = 3
-        run = job.trigger(
-            run_id=JobRunId(value="run-1"),
-            now=NOW,
-            active_run_count=2,
-        )
-        assert run.status == JobRunStatus.PENDING
+    def test_no_event_on_failure(self):
+        """Verify no event is registered when trigger fails."""
+        job = _make_job(JobStatus.PAUSED)
+        with pytest.raises(JobNotActiveError):
+            job.trigger(active_run_count=0)
+        assert job.collect_events() == []
 
 
 class TestIsActive:

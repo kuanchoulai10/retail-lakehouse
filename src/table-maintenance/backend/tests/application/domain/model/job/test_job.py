@@ -11,6 +11,7 @@ from core.application.domain.model.job import (
     JobType,
     TableReference,
 )
+from core.application.domain.model.job.events import JobCreated
 
 
 def test_job_is_aggregate_root():
@@ -158,3 +159,38 @@ def test_job_with_scheduling_fields():
     )
     assert job.next_run_at == run_at
     assert job.max_active_runs == 3
+
+
+def test_create_factory_returns_job_with_event():
+    """Verify Job.create() returns a Job and registers a JobCreated event."""
+    job = Job.create(
+        id=JobId(value="j1"),
+        job_type=JobType.REWRITE_DATA_FILES,
+        created_at=datetime(2026, 4, 10, tzinfo=UTC),
+        updated_at=datetime(2026, 4, 10, tzinfo=UTC),
+        table_ref=TableReference(catalog="retail", table="orders"),
+        cron=CronExpression(expression="0 2 * * *"),
+    )
+    assert job.id == JobId(value="j1")
+    assert job.job_type == JobType.REWRITE_DATA_FILES
+    events = job.collect_events()
+    assert len(events) == 1
+    assert isinstance(events[0], JobCreated)
+    assert events[0].job_id == JobId(value="j1")
+    assert events[0].job_type == JobType.REWRITE_DATA_FILES
+    assert events[0].table_ref == TableReference(catalog="retail", table="orders")
+    assert events[0].cron == CronExpression(expression="0 2 * * *")
+
+
+def test_create_factory_with_no_cron():
+    """Verify Job.create() works with cron=None."""
+    job = Job.create(
+        id=JobId(value="j1"),
+        job_type=JobType.EXPIRE_SNAPSHOTS,
+        created_at=datetime(2026, 4, 10, tzinfo=UTC),
+        updated_at=datetime(2026, 4, 10, tzinfo=UTC),
+    )
+    events = job.collect_events()
+    event = events[0]
+    assert isinstance(event, JobCreated)
+    assert event.cron is None

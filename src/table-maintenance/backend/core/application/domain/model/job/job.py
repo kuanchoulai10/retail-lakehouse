@@ -7,6 +7,13 @@ from typing import TYPE_CHECKING
 
 from core.base.aggregate_root import AggregateRoot
 
+from core.application.domain.model.job.events import (
+    JobArchived,
+    JobCreated,
+    JobPaused,
+    JobResumed,
+    JobTriggered,
+)
 from core.application.domain.model.job.exceptions import (
     InvalidJobStateTransitionError,
     JobNotActiveError,
@@ -16,9 +23,6 @@ from core.application.domain.model.job.cron_expression import CronExpression
 from core.application.domain.model.job.job_id import JobId
 from core.application.domain.model.job.job_status import JobStatus
 from core.application.domain.model.job.table_reference import TableReference
-from core.application.domain.model.job_run.job_run import JobRun
-from core.application.domain.model.job_run.job_run_id import JobRunId
-from core.application.domain.model.job_run.job_run_status import JobRunStatus
 from core.application.domain.model.job_run.trigger_type import TriggerType
 
 if TYPE_CHECKING:
@@ -50,6 +54,43 @@ class Job(AggregateRoot[JobId]):
         if self.job_config is None:
             self.job_config = {}
 
+    @classmethod
+    def create(
+        cls,
+        id: JobId,
+        job_type: JobType,
+        created_at: datetime,
+        updated_at: datetime,
+        table_ref: TableReference = TableReference(catalog="", table=""),
+        job_config: dict | None = None,
+        cron: CronExpression | None = None,
+        status: JobStatus = JobStatus.ACTIVE,
+        next_run_at: datetime | None = None,
+        max_active_runs: int = 1,
+    ) -> Job:
+        """Create a new Job and register a JobCreated event."""
+        job = cls(
+            id=id,
+            job_type=job_type,
+            created_at=created_at,
+            updated_at=updated_at,
+            table_ref=table_ref,
+            job_config=job_config,
+            cron=cron,
+            status=status,
+            next_run_at=next_run_at,
+            max_active_runs=max_active_runs,
+        )
+        job.register_event(
+            JobCreated(
+                job_id=id,
+                job_type=job_type,
+                table_ref=table_ref,
+                cron=cron,
+            )
+        )
+        return job
+
     @property
     def is_active(self) -> bool:
         """Return True if the job is in ACTIVE status."""
@@ -64,23 +105,24 @@ class Job(AggregateRoot[JobId]):
     def pause(self) -> None:
         """Transition from ACTIVE to PAUSED."""
         self._transition_to(JobStatus.PAUSED)
+        self.register_event(JobPaused(job_id=self.id))
 
     def resume(self) -> None:
         """Transition from PAUSED to ACTIVE."""
         self._transition_to(JobStatus.ACTIVE)
+        self.register_event(JobResumed(job_id=self.id))
 
     def archive(self) -> None:
         """Transition from ACTIVE or PAUSED to ARCHIVED."""
         self._transition_to(JobStatus.ARCHIVED)
+        self.register_event(JobArchived(job_id=self.id))
 
     def trigger(
         self,
-        run_id: JobRunId,
-        now: datetime,
         active_run_count: int,
         trigger_type: TriggerType = TriggerType.MANUAL,
-    ) -> JobRun:
-        """Create a new PENDING JobRun if the job is triggerable.
+    ) -> None:
+        """Guard trigger invariants and register a JobTriggered event.
 
         Raises:
             JobNotActiveError: if the job is not ACTIVE.
@@ -90,10 +132,4 @@ class Job(AggregateRoot[JobId]):
             raise JobNotActiveError(self.id.value)
         if active_run_count >= self.max_active_runs:
             raise MaxActiveRunsExceededError(self.id.value, self.max_active_runs)
-        return JobRun(
-            id=run_id,
-            job_id=self.id,
-            status=JobRunStatus.PENDING,
-            trigger_type=trigger_type,
-            started_at=now,
-        )
+        self.register_event(JobTriggered(job_id=self.id, trigger_type=trigger_type))
