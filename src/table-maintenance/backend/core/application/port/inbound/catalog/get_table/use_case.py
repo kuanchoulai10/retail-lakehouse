@@ -1,0 +1,11 @@
+"""Define the GetTableUseCase interface."""
+
+from __future__ import annotations
+
+from core.base.use_case import UseCase
+from core.application.port.inbound.catalog.get_table.input import GetTableInput
+from core.application.port.inbound.catalog.get_table.output import GetTableOutput
+
+
+class GetTableUseCase(UseCase[GetTableInput, GetTableOutput]):
+    """Get metadata for a specific table."""

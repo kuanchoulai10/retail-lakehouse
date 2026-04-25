@@ -6,8 +6,8 @@ from datetime import UTC, datetime
 import pytest
 from core.base import Repository
 from adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
-from application.domain import JobNotFoundError, JobType
-from application.domain.model.job import CronExpression, Job, JobId, JobStatus
+from core.application.domain import JobNotFoundError, JobType
+from core.application.domain.model.job import CronExpression, Job, JobId, JobStatus
 
 
 def _make_job(

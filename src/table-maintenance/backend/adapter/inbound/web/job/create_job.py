@@ -6,7 +6,7 @@ from dependencies.use_cases import get_create_job_use_case
 from fastapi import APIRouter, Depends
 
 from adapter.inbound.web.job.dto import JobApiRequest, JobApiResponse
-from application.port.inbound import CreateJobInput, CreateJobUseCase
+from core.application.port.inbound import CreateJobInput, CreateJobUseCase
 
 router = APIRouter()
 

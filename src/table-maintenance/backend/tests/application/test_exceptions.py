@@ -2,7 +2,7 @@
 
 import pytest
 
-from application.exceptions import JobNotFoundError, JobRunNotFoundError
+from core.application.exceptions import JobNotFoundError, JobRunNotFoundError
 
 
 def test_job_not_found_error_stores_job_id():

@@ -5,9 +5,15 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
-from application.domain.model.job import CronExpression, Job, JobId, JobStatus, JobType
-from application.domain.model.job_run import JobRunStatus
-from application.domain.service.schedule_jobs import ScheduleJobsService
+from core.application.domain.model.job import (
+    CronExpression,
+    Job,
+    JobId,
+    JobStatus,
+    JobType,
+)
+from core.application.domain.model.job_run import JobRunStatus
+from core.application.domain.service.schedule_jobs import ScheduleJobsService
 
 NOW = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)
 

@@ -7,8 +7,8 @@ from dependencies.use_cases import get_update_job_use_case
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from adapter.inbound.web import router
-from application.exceptions import JobNotFoundError
-from application.port.inbound import UpdateJobOutput
+from core.application.exceptions import JobNotFoundError
+from core.application.port.inbound import UpdateJobOutput
 
 
 def _make_client(use_case: MagicMock) -> TestClient:

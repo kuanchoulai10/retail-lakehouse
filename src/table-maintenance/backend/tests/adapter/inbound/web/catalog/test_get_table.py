@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from adapter.inbound.web import router
-from application.port.inbound.catalog.get_table.output import (
+from core.application.port.inbound.catalog.get_table.output import (
     GetTableOutput,
     GetTableSchemaFieldOutput,
     GetTableSchemaOutput,

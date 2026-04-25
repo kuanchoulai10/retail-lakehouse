@@ -2,7 +2,7 @@
 
 from abc import ABC
 
-from application.port.outbound.job_run.job_run_executor import JobRunExecutor
+from core.application.port.outbound.job_run.job_run_executor import JobRunExecutor
 
 
 def test_is_abstract():

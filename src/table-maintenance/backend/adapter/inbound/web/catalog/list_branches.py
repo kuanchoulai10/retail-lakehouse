@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 
 from adapter.inbound.web.catalog.dto import BranchResponse, BranchesResponse
-from application.port.inbound.catalog.list_branches import (
+from core.application.port.inbound.catalog.list_branches import (
     ListBranchesInput,
     ListBranchesUseCase,
 )

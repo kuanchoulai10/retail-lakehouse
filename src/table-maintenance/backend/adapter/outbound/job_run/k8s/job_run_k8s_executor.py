@@ -7,13 +7,13 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from adapter.outbound.job_run.k8s.manifest import build_manifest
-from application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
-from application.port.outbound.job_run.job_run_executor import JobRunExecutor
+from core.application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
+from core.application.port.outbound.job_run.job_run_executor import JobRunExecutor
 
 if TYPE_CHECKING:
     from kubernetes.client import CustomObjectsApi
 
-    from application.domain.model.job import Job
+    from core.application.domain.model.job import Job
     from core.configs import AppSettings
 
 _GROUP = "sparkoperator.k8s.io"

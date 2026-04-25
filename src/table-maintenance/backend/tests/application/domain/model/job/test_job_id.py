@@ -1,7 +1,7 @@
 """Tests for JobId."""
 
 from core.base import EntityId
-from application.domain.model.job import JobId
+from core.application.domain.model.job import JobId
 
 
 def test_job_id_is_entity_id():

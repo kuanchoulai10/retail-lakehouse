@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from application.domain.model.job import (
+from core.application.domain.model.job import (
     InvalidJobStateTransitionError,
     Job,
     JobId,
@@ -13,7 +13,7 @@ from application.domain.model.job import (
     JobType,
     MaxActiveRunsExceededError,
 )
-from application.domain.model.job_run import JobRunId, JobRunStatus
+from core.application.domain.model.job_run import JobRunId, JobRunStatus
 
 NOW = datetime(2026, 4, 25, 12, 0, tzinfo=UTC)
 

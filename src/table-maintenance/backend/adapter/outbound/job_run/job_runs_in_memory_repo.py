@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.job_run import JobRunNotFoundError
-from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
+from core.application.domain.model.job_run import JobRunNotFoundError
+from core.application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 
 if TYPE_CHECKING:
-    from application.domain.model.job import JobId
-    from application.domain.model.job_run import JobRun, JobRunId
+    from core.application.domain.model.job import JobId
+    from core.application.domain.model.job_run import JobRun, JobRunId
 
 
 class JobRunsInMemoryRepo(JobRunsRepo):

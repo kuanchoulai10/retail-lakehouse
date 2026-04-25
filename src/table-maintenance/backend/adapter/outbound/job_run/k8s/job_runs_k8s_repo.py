@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING
 from kubernetes.client.exceptions import ApiException
 
 from adapter.outbound.job_run.k8s.status_mapper import status_from_k8s
-from application.domain.model.job import JobId
-from application.domain.model.job_run import JobRun, JobRunId, JobRunNotFoundError
-from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
+from core.application.domain.model.job import JobId
+from core.application.domain.model.job_run import JobRun, JobRunId, JobRunNotFoundError
+from core.application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 
 if TYPE_CHECKING:
     from kubernetes.client import CustomObjectsApi

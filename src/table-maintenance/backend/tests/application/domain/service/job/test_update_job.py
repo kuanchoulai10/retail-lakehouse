@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from application.domain.model.job import (
+from core.application.domain.model.job import (
     Job,
     JobId,
     JobNotFoundError,
@@ -13,9 +13,13 @@ from application.domain.model.job import (
     JobType,
     TableReference,
 )
-from application.domain.service.job.update_job import UpdateJobService
-from application.exceptions import JobNotFoundError as AppJobNotFoundError
-from application.port.inbound import UpdateJobInput, UpdateJobOutput, UpdateJobUseCase
+from core.application.domain.service.job.update_job import UpdateJobService
+from core.application.exceptions import JobNotFoundError as AppJobNotFoundError
+from core.application.port.inbound import (
+    UpdateJobInput,
+    UpdateJobOutput,
+    UpdateJobUseCase,
+)
 
 
 def _existing_job() -> Job:

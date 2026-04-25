@@ -2,7 +2,7 @@
 
 import pytest
 
-from application.domain.model.job import TableReference
+from core.application.domain.model.job import TableReference
 
 
 def test_stores_fields():

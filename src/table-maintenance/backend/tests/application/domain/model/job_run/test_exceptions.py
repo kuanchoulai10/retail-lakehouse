@@ -2,7 +2,7 @@
 
 import pytest
 
-from application.domain.model.job_run import JobRunNotFoundError
+from core.application.domain.model.job_run import JobRunNotFoundError
 
 
 def test_job_run_not_found_error_stores_run_id():

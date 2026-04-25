@@ -1,6 +1,6 @@
 """Provide the status_from_k8s mapping function."""
 
-from application.domain.model.job_run import JobRunStatus
+from core.application.domain.model.job_run import JobRunStatus
 
 _STATE_MAP: dict[str, JobRunStatus] = {
     "RUNNING": JobRunStatus.RUNNING,

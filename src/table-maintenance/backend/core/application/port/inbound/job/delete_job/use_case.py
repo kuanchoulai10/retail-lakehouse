@@ -1,0 +1,12 @@
+"""Define the DeleteJobUseCase interface."""
+
+from __future__ import annotations
+
+from core.base.use_case import UseCase
+
+from core.application.port.inbound.job.delete_job.input import DeleteJobInput
+from core.application.port.inbound.job.delete_job.output import DeleteJobOutput
+
+
+class DeleteJobUseCase(UseCase[DeleteJobInput, DeleteJobOutput]):
+    """Delete a table maintenance job by its ID."""

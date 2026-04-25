@@ -4,15 +4,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.job import JobNotFoundError
-from application.port.outbound.job.jobs_repo import JobsRepo
+from core.application.domain.model.job import JobNotFoundError
+from core.application.port.outbound.job.jobs_repo import JobsRepo
 
 if TYPE_CHECKING:
     from datetime import datetime
 
     from core.base.entity_id import EntityId
 
-    from application.domain.model.job import Job, JobId
+    from core.application.domain.model.job import Job, JobId
 
 
 class JobsInMemoryRepo(JobsRepo):

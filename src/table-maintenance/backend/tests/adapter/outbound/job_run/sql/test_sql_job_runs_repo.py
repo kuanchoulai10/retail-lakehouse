@@ -9,14 +9,14 @@ from sqlalchemy import Engine, insert
 
 from adapter.outbound.job.sql.jobs_table import jobs_table
 from adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
-from application.domain.model.job import JobId
-from application.domain.model.job_run import (
+from core.application.domain.model.job import JobId
+from core.application.domain.model.job_run import (
     JobRun,
     JobRunId,
     JobRunNotFoundError,
     JobRunStatus,
 )
-from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
+from core.application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 
 NOW = datetime(2026, 4, 10, 12, 0, tzinfo=UTC)
 

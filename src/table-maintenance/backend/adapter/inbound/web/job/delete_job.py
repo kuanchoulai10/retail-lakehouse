@@ -5,8 +5,8 @@ from __future__ import annotations
 from dependencies.use_cases import get_delete_job_use_case
 from fastapi import APIRouter, Depends, HTTPException, Response
 
-from application.exceptions import JobNotFoundError
-from application.port.inbound import DeleteJobInput, DeleteJobUseCase
+from core.application.exceptions import JobNotFoundError
+from core.application.port.inbound import DeleteJobInput, DeleteJobUseCase
 
 router = APIRouter()
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from core.base import ValueObject
-from application.domain.model.catalog.tag import Tag
+from core.application.domain.model.catalog.tag import Tag
 
 
 def test_tag_is_value_object():

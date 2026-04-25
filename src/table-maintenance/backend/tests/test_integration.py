@@ -15,14 +15,14 @@ from fastapi.testclient import TestClient
 from adapter.inbound.web import router
 from adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
 from adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
-from application.domain.service.job.create_job import CreateJobService
-from application.domain.service.job.delete_job import DeleteJobService
-from application.domain.service.job.get_job import GetJobService
-from application.domain.service.job.list_jobs import ListJobsService
-from application.domain.service.job.update_job import UpdateJobService
-from application.domain.service.job_run.create_job_run import CreateJobRunService
-from application.domain.service.job_run.get_job_run import GetJobRunService
-from application.domain.service.job_run.list_job_runs import ListJobRunsService
+from core.application.domain.service.job.create_job import CreateJobService
+from core.application.domain.service.job.delete_job import DeleteJobService
+from core.application.domain.service.job.get_job import GetJobService
+from core.application.domain.service.job.list_jobs import ListJobsService
+from core.application.domain.service.job.update_job import UpdateJobService
+from core.application.domain.service.job_run.create_job_run import CreateJobRunService
+from core.application.domain.service.job_run.get_job_run import GetJobRunService
+from core.application.domain.service.job_run.list_job_runs import ListJobRunsService
 
 
 def _make_app() -> tuple[FastAPI, JobRunsInMemoryRepo]:

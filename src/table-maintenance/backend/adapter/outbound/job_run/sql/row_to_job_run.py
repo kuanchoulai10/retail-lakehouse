@@ -4,8 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from application.domain.model.job import JobId
-from application.domain.model.job_run import JobRun, JobRunId, JobRunStatus, TriggerType
+from core.application.domain.model.job import JobId
+from core.application.domain.model.job_run import (
+    JobRun,
+    JobRunId,
+    JobRunStatus,
+    TriggerType,
+)
 
 
 def row_to_job_run(row: Any) -> JobRun:

@@ -4,8 +4,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from application.domain.model.job import JobId
-from application.domain.model.job_run import (
+from core.application.domain.model.job import JobId
+from core.application.domain.model.job_run import (
     InvalidStateTransitionError,
     JobRun,
     JobRunId,

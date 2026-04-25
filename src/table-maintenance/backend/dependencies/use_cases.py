@@ -5,20 +5,22 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from fastapi import Depends
-from application.domain.service.catalog.get_table import GetTableService
-from application.domain.service.catalog.list_branches import ListBranchesService
-from application.domain.service.catalog.list_namespaces import ListNamespacesService
-from application.domain.service.catalog.list_snapshots import ListSnapshotsService
-from application.domain.service.catalog.list_tables import ListTablesService
-from application.domain.service.catalog.list_tags import ListTagsService
-from application.domain.service.job.create_job import CreateJobService
-from application.domain.service.job.delete_job import DeleteJobService
-from application.domain.service.job.get_job import GetJobService
-from application.domain.service.job.list_jobs import ListJobsService
-from application.domain.service.job.update_job import UpdateJobService
-from application.domain.service.job_run.create_job_run import CreateJobRunService
-from application.domain.service.job_run.get_job_run import GetJobRunService
-from application.domain.service.job_run.list_job_runs import ListJobRunsService
+from core.application.domain.service.catalog.get_table import GetTableService
+from core.application.domain.service.catalog.list_branches import ListBranchesService
+from core.application.domain.service.catalog.list_namespaces import (
+    ListNamespacesService,
+)
+from core.application.domain.service.catalog.list_snapshots import ListSnapshotsService
+from core.application.domain.service.catalog.list_tables import ListTablesService
+from core.application.domain.service.catalog.list_tags import ListTagsService
+from core.application.domain.service.job.create_job import CreateJobService
+from core.application.domain.service.job.delete_job import DeleteJobService
+from core.application.domain.service.job.get_job import GetJobService
+from core.application.domain.service.job.list_jobs import ListJobsService
+from core.application.domain.service.job.update_job import UpdateJobService
+from core.application.domain.service.job_run.create_job_run import CreateJobRunService
+from core.application.domain.service.job_run.get_job_run import GetJobRunService
+from core.application.domain.service.job_run.list_job_runs import ListJobRunsService
 
 from dependencies.catalog import get_catalog_reader
 from dependencies.repos import (
@@ -27,7 +29,7 @@ from dependencies.repos import (
 )
 
 if TYPE_CHECKING:
-    from application.port.inbound import (
+    from core.application.port.inbound import (
         CreateJobRunUseCase,
         CreateJobUseCase,
         DeleteJobUseCase,
@@ -43,9 +45,9 @@ if TYPE_CHECKING:
         ListTagsUseCase,
         UpdateJobUseCase,
     )
-    from application.port.outbound.catalog.catalog_reader import CatalogReader
-    from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
-    from application.port.outbound.job.jobs_repo import JobsRepo
+    from core.application.port.outbound.catalog.catalog_reader import CatalogReader
+    from core.application.port.outbound.job_run.job_runs_repo import JobRunsRepo
+    from core.application.port.outbound.job.jobs_repo import JobsRepo
 
 
 def get_create_job_use_case(

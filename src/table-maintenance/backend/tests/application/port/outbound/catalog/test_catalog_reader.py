@@ -6,7 +6,7 @@ from abc import ABC
 
 import pytest
 
-from application.port.outbound.catalog.catalog_reader import CatalogReader
+from core.application.port.outbound.catalog.catalog_reader import CatalogReader
 
 
 def test_catalog_reader_is_abstract():

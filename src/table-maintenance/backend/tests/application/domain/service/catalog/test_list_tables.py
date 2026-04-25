@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from application.domain.service.catalog.list_tables import ListTablesService
-from application.port.inbound.catalog.list_tables import (
+from core.application.domain.service.catalog.list_tables import ListTablesService
+from core.application.port.inbound.catalog.list_tables import (
     ListTablesInput,
     ListTablesOutput,
     ListTablesUseCase,

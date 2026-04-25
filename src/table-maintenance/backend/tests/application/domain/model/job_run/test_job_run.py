@@ -3,8 +3,8 @@
 from datetime import UTC, datetime
 
 from core.base import AggregateRoot
-from application.domain.model.job import JobId
-from application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
+from core.application.domain.model.job import JobId
+from core.application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
 
 
 def test_is_aggregate_root():
