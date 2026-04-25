@@ -89,3 +89,12 @@ source_modules =
 forbidden_modules =
     core.adapter
     core.application
+
+[importlinter:contract:scheduler-no-api]
+name = Scheduler does not depend on API
+type = forbidden
+source_modules =
+    scheduler
+forbidden_modules =
+    api
+    fastapi
