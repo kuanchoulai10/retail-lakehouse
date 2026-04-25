@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from core.application.domain.model.job.cron_expression import CronExpression
+from core.application.domain.model.job.field_change import FieldChange
 from core.application.domain.model.job.exceptions import (
     InvalidJobStateTransitionError,
     JobNotActiveError,
@@ -17,6 +18,7 @@ from core.application.domain.model.job.table_reference import TableReference
 
 __all__ = [
     "CronExpression",
+    "FieldChange",
     "InvalidJobStateTransitionError",
     "Job",
     "JobId",
