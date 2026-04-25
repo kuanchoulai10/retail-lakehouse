@@ -21,6 +21,8 @@ spec:
           image: localhost:5001/table-maintenance-backend:20260424-233832
           imagePullPolicy: Never
           env:
+            - name: ROLE
+              value: "api"
             - name: BACKEND_DATABASE_BACKEND
               value: "postgres"
             - name: BACKEND_POSTGRES__DB_URL

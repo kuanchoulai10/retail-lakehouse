@@ -17,9 +17,11 @@ spec:
     spec:
       containers:
         - name: scheduler
-          image: localhost:5001/table-maintenance-scheduler:20260424-233832
+          image: localhost:5001/table-maintenance-backend:20260424-233832
           imagePullPolicy: Never
           env:
+            - name: ROLE
+              value: "scheduler"
             - name: SCHEDULER_DATABASE_URL
               value: "postgresql+psycopg://tm:tm@tbl-maint-db.default.svc:5432/table_maintenance"
             - name: SCHEDULER_INTERVAL_SECONDS
