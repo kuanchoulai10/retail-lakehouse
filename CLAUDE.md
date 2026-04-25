@@ -36,10 +36,10 @@ adapter/*        ──✗──> domain (forbidden: must go through application
 backend/
 ├── core/                    # Shared domain kernel
 │   ├── application/
-│   │   ├── domain/          # Entities, Value Objects, Domain Events, Exceptions
+│   │   ├── domain/model/    # Entities, Value Objects, Domain Events, Exceptions
 │   │   ├── port/inbound/    # Use case interfaces + result types
 │   │   ├── port/outbound/   # Repository interfaces
-│   │   └── service/         # Use case implementations
+│   │   └── service/         # Use case implementations (application services)
 │   ├── adapter/
 │   │   └── outbound/        # Repository implementations (SQL, K8s, in-memory)
 │   ├── base/                # DDD shared kernel
