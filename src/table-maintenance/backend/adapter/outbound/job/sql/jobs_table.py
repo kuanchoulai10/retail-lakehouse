@@ -16,6 +16,9 @@ jobs_table = Table(
     Column("status", String, nullable=False, default="active"),
     Column("next_run_at", DateTime(timezone=True), nullable=True),
     Column("max_active_runs", Integer, nullable=False, default=1),
+    Column("driver_memory", String, nullable=False, default="512m"),
+    Column("executor_memory", String, nullable=False, default="1g"),
+    Column("executor_instances", Integer, nullable=False, default=1),
     Column("created_at", DateTime(timezone=True), nullable=False),
     Column("updated_at", DateTime(timezone=True), nullable=False),
 )

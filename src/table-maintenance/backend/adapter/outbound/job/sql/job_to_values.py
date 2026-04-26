@@ -20,6 +20,9 @@ def job_to_values(job: Job) -> dict[str, Any]:
         "status": job.status.value,
         "next_run_at": job.next_run_at,
         "max_active_runs": job.max_active_runs,
+        "driver_memory": job.resource_config.driver_memory,
+        "executor_memory": job.resource_config.executor_memory,
+        "executor_instances": job.resource_config.executor_instances,
         "created_at": job.created_at,
         "updated_at": job.updated_at,
     }

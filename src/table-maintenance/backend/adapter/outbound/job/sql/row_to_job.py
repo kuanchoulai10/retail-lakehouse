@@ -10,6 +10,7 @@ from application.domain.model.job import (
     JobId,
     JobStatus,
     JobType,
+    ResourceConfig,
     TableReference,
 )
 
@@ -28,4 +29,9 @@ def row_to_job(row: Any) -> Job:
         status=JobStatus(row["status"]),
         next_run_at=row["next_run_at"],
         max_active_runs=row["max_active_runs"],
+        resource_config=ResourceConfig(
+            driver_memory=row["driver_memory"],
+            executor_memory=row["executor_memory"],
+            executor_instances=row["executor_instances"],
+        ),
     )

@@ -40,6 +40,9 @@ def test_values_has_all_columns():
         "status",
         "next_run_at",
         "max_active_runs",
+        "driver_memory",
+        "executor_memory",
+        "executor_instances",
         "created_at",
         "updated_at",
     }

@@ -6,15 +6,20 @@ import logging
 import signal
 
 from adapter.inbound.messaging.outbox.publisher_loop import PublisherLoop
+from adapter.outbound.job_run.k8s.job_run_k8s_executor import JobRunK8sExecutor
+from adapter.outbound.job_run.k8s.k8s_executor_config import K8sExecutorConfig
 from adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
 from adapter.outbound.sql.engine_factory import build_engine
 from adapter.outbound.sql.event_outbox_sql_repo import EventOutboxSqlRepo
 from adapter.outbound.sql.metadata import metadata
 from application.domain.model.job.events import JobTriggered
+from application.domain.model.job_run.events import JobRunCreated
+from application.service.job_run.job_run_created_handler import JobRunCreatedHandler
 from application.service.job_run.job_triggered_handler import JobTriggeredHandler
 from application.service.outbox.event_serializer import EventSerializer
 from application.service.outbox.publish_events import PublishEventsService
 from base.event_dispatcher import EventDispatcher
+from bootstrap.dependencies.k8s import get_k8s_api
 from bootstrap.dependencies.settings import get_settings
 
 logging.basicConfig(
@@ -39,6 +44,19 @@ def build_publisher() -> PublisherLoop:
         JobTriggered,
         JobTriggeredHandler(job_runs_repo, outbox_repo, serializer),
     )
+
+    k8s_api = get_k8s_api()
+    k8s_config = K8sExecutorConfig(
+        namespace=settings.k8s.namespace,
+        image=settings.k8s.image,
+        image_pull_policy=settings.k8s.image_pull_policy,
+        spark_version=settings.k8s.spark_version,
+        service_account=settings.k8s.service_account,
+        iceberg_jar=settings.k8s.iceberg_jar,
+        iceberg_aws_jar=settings.k8s.iceberg_aws_jar,
+    )
+    executor = JobRunK8sExecutor(k8s_api, k8s_config)
+    dispatcher.register(JobRunCreated, JobRunCreatedHandler(executor))
 
     service = PublishEventsService(outbox_repo, serializer, dispatcher)
     return PublisherLoop(service, interval_seconds=settings.messaging.interval_seconds)

@@ -8,6 +8,7 @@ from application.domain.model.job import (
     JobId,
     JobStatus,
     JobType,
+    ResourceConfig,
     TableReference,
 )
 
@@ -24,6 +25,9 @@ def test_row_maps_to_job():
         "status": "active",
         "next_run_at": None,
         "max_active_runs": 1,
+        "driver_memory": "2g",
+        "executor_memory": "4g",
+        "executor_instances": 3,
         "created_at": datetime(2026, 4, 10, tzinfo=UTC),
         "updated_at": datetime(2026, 4, 10, tzinfo=UTC),
     }
@@ -38,6 +42,9 @@ def test_row_maps_to_job():
     assert job.status == JobStatus.ACTIVE
     assert job.next_run_at is None
     assert job.max_active_runs == 1
+    assert job.resource_config == ResourceConfig(
+        driver_memory="2g", executor_memory="4g", executor_instances=3
+    )
     assert job.created_at == datetime(2026, 4, 10, tzinfo=UTC)
     assert job.updated_at == datetime(2026, 4, 10, tzinfo=UTC)
 
@@ -54,6 +61,9 @@ def test_row_preserves_cron():
         "status": "paused",
         "next_run_at": None,
         "max_active_runs": 1,
+        "driver_memory": "512m",
+        "executor_memory": "1g",
+        "executor_instances": 1,
         "created_at": datetime(2026, 4, 10, tzinfo=UTC),
         "updated_at": datetime(2026, 4, 10, tzinfo=UTC),
     }
