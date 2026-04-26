@@ -23,6 +23,7 @@ from base.entity_id import EntityId
 from base.event_dispatcher import EventDispatcher
 from base.event_handler import EventHandler
 from base.repository import Repository
+from base.store import Store
 from base.use_case import UseCase
 from base.value_object import ValueObject
 
@@ -34,6 +35,7 @@ __all__ = [
     "EventDispatcher",
     "EventHandler",
     "Repository",
+    "Store",
     "UseCase",
     "ValueObject",
 ]
