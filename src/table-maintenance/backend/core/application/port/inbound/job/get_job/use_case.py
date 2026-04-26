@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from core.base.use_case import UseCase
+from base.use_case import UseCase
 
 from core.application.port.inbound.job.get_job.input import GetJobInput
 from core.application.port.inbound.job.get_job.output import GetJobOutput

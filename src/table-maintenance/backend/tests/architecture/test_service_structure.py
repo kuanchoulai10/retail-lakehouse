@@ -21,8 +21,8 @@ from pathlib import Path
 
 import pytest
 
-from core.base.event_handler import EventHandler
-from core.base.use_case import UseCase
+from base.event_handler import EventHandler
+from base.use_case import UseCase
 
 SERVICE_DIR = Path(__file__).resolve().parents[2] / "core" / "application" / "service"
 

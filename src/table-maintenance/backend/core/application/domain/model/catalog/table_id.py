@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from core.base.entity_id import EntityId
+from base.entity_id import EntityId
 
 
 @dataclass(frozen=True)

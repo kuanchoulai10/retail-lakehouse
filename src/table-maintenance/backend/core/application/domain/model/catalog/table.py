@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from core.base.aggregate_root import AggregateRoot
+from base.aggregate_root import AggregateRoot
 from core.application.domain.model.catalog.branch import Branch
 from core.application.domain.model.catalog.snapshot import Snapshot
 from core.application.domain.model.catalog.table_id import TableId

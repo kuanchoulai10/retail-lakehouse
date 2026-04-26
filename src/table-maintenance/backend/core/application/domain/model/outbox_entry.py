@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from core.base.value_object import ValueObject
+from base.value_object import ValueObject
 
 if TYPE_CHECKING:
     from datetime import datetime

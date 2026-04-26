@@ -1,5 +1,6 @@
 [importlinter]
 root_packages =
+    base
     core
     api
     dependencies
@@ -81,7 +82,7 @@ forbidden_modules =
 name = Base (DDD kernel) depends on nothing project-internal
 type = forbidden
 source_modules =
-    core.base
+    base
 forbidden_modules =
     core.application
     core.adapter

@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from core.base import ValueObject
+from base import ValueObject
 from core.application.domain.model.outbox_entry import OutboxEntry
 
 

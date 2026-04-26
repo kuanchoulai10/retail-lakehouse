@@ -4,7 +4,7 @@ import secrets
 from datetime import UTC, datetime
 
 import pytest
-from core.base import Repository
+from base import Repository
 from core.adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
 from core.application.domain import JobNotFoundError, JobType
 from core.application.domain.model.job import CronExpression, Job, JobId, JobStatus

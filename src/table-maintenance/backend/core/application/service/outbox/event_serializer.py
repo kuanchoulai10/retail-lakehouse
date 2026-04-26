@@ -9,7 +9,7 @@ from dataclasses import fields
 from datetime import datetime
 from typing import Any, ClassVar
 
-from core.base.domain_event import DomainEvent
+from base.domain_event import DomainEvent
 
 from core.application.domain.model.job.cron_expression import CronExpression
 from core.application.domain.model.job.events import (

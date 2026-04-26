@@ -16,15 +16,15 @@ Provides the foundational tactical patterns for structuring domain models:
 - EventDispatcher: Routes domain events to registered handlers.
 """
 
-from core.base.aggregate_root import AggregateRoot
-from core.base.domain_event import DomainEvent
-from core.base.entity import Entity
-from core.base.entity_id import EntityId
-from core.base.event_dispatcher import EventDispatcher
-from core.base.event_handler import EventHandler
-from core.base.repository import Repository
-from core.base.use_case import UseCase
-from core.base.value_object import ValueObject
+from base.aggregate_root import AggregateRoot
+from base.domain_event import DomainEvent
+from base.entity import Entity
+from base.entity_id import EntityId
+from base.event_dispatcher import EventDispatcher
+from base.event_handler import EventHandler
+from base.repository import Repository
+from base.use_case import UseCase
+from base.value_object import ValueObject
 
 __all__ = [
     "AggregateRoot",

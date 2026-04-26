@@ -12,7 +12,7 @@ from core.application.port.inbound.outbox.publish_events import (
 if TYPE_CHECKING:
     from core.application.service.outbox.event_serializer import EventSerializer
     from core.application.port.outbound.event_outbox_repo import EventOutboxRepo
-    from core.base.event_dispatcher import EventDispatcher
+    from base.event_dispatcher import EventDispatcher
 
 
 class PublishEventsService(PublishEventsUseCase):

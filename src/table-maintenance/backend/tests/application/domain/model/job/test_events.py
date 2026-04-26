@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from core.base import DomainEvent
+from base import DomainEvent
 from core.application.domain.model.job import (
     CronExpression,
     FieldChange,

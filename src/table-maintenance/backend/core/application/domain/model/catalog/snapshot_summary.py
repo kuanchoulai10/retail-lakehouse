@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from core.base.value_object import ValueObject
+from base.value_object import ValueObject
 
 
 @dataclass(frozen=True)

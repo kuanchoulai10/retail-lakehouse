@@ -4,7 +4,7 @@ from abc import ABC
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from core.base import DomainEvent
+from base import DomainEvent
 
 
 @dataclass(frozen=True)

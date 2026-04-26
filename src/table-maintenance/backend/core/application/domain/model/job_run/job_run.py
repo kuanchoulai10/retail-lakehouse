@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from core.base.aggregate_root import AggregateRoot
+from base.aggregate_root import AggregateRoot
 
 from core.application.domain.model.job_run.events import (
     JobRunCancelled,

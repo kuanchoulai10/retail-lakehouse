@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from core.base import Entity, EntityId, ValueObject
+from base import Entity, EntityId, ValueObject
 from core.application.domain.model.catalog.branch import Branch
 from core.application.domain.model.catalog.branch_id import BranchId
 from core.application.domain.model.catalog.retention_policy import RetentionPolicy

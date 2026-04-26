@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from core.base import AggregateRoot
+from base import AggregateRoot
 from core.application.domain.model.catalog.branch import Branch
 from core.application.domain.model.catalog.branch_id import BranchId
 from core.application.domain.model.catalog.schema_field import SchemaField

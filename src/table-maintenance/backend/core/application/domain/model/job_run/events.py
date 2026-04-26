@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from core.base.domain_event import DomainEvent
+from base.domain_event import DomainEvent
 
 if TYPE_CHECKING:
     from datetime import datetime

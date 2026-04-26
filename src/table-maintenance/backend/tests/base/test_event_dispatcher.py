@@ -2,9 +2,9 @@
 
 from dataclasses import dataclass
 
-from core.base import DomainEvent
-from core.base.event_dispatcher import EventDispatcher
-from core.base.event_handler import EventHandler
+from base import DomainEvent
+from base.event_dispatcher import EventDispatcher
+from base.event_handler import EventHandler
 
 
 @dataclass(frozen=True)

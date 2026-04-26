@@ -2,7 +2,7 @@
 
 from core.application.domain.model.job import JobId
 from core.application.domain.model.job_run import JobRunId
-from core.base.entity_id import EntityId
+from base.entity_id import EntityId
 
 
 def test_is_entity_id():

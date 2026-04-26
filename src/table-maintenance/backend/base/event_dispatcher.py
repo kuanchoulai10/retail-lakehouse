@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from core.base.domain_event import DomainEvent
-from core.base.event_handler import EventHandler
+from base.domain_event import DomainEvent
+from base.event_handler import EventHandler
 
 
 class EventDispatcher:

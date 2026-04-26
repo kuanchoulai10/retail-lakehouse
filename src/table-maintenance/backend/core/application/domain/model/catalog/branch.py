@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from core.base.entity import Entity
+from base.entity import Entity
 from core.application.domain.model.catalog.branch_id import BranchId
 from core.application.domain.model.catalog.retention_policy import RetentionPolicy
 

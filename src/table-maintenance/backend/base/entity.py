@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC
 
-from core.base.entity_id import EntityId
+from base.entity_id import EntityId
 
 
 class Entity[ID: EntityId](ABC):

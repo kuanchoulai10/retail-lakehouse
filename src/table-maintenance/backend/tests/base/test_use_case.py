@@ -1,7 +1,7 @@
 """Tests for UseCase base type."""
 
 import pytest
-from core.base import UseCase
+from base import UseCase
 
 
 def test_use_case_is_abstract():

@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from core.base import EntityId, ValueObject
+from base import EntityId, ValueObject
 
 
 @dataclass(frozen=True)

@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from core.base import DomainEvent
+from base import DomainEvent
 from core.application.domain.model.job import JobId
 from core.application.domain.model.job_run import JobRunId, TriggerType
 from core.application.domain.model.job_run.events import (

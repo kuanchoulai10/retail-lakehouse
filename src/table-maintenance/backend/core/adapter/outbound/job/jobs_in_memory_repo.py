@@ -10,7 +10,7 @@ from core.application.port.outbound.job.jobs_repo import JobsRepo
 if TYPE_CHECKING:
     from datetime import datetime
 
-    from core.base.entity_id import EntityId
+    from base.entity_id import EntityId
 
     from core.application.domain.model.job import Job, JobId
 

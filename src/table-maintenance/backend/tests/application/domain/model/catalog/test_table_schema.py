@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from core.base import ValueObject
+from base import ValueObject
 from core.application.domain.model.catalog.schema_field import SchemaField
 from core.application.domain.model.catalog.table_schema import TableSchema
 

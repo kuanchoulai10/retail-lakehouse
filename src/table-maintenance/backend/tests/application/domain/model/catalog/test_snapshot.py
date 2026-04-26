@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from core.base import ValueObject
+from base import ValueObject
 from core.application.domain.model.catalog.snapshot import Snapshot
 from core.application.domain.model.catalog.snapshot_summary import SnapshotSummary
 
