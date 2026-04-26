@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from api.adapter.inbound.web.catalog.dto import TagResponse, TagsResponse
+from adapter.inbound.web.catalog.dto import TagResponse, TagsResponse
 from application.port.inbound.catalog.list_tags import (
     ListTagsInput,
     ListTagsUseCase,

@@ -2,9 +2,9 @@
 
 from fastapi import APIRouter
 
-from api.adapter.inbound.web.catalog import router as catalog_router
-from api.adapter.inbound.web.job import router as job_router
-from api.adapter.inbound.web.job_run import router as job_run_router
+from adapter.inbound.web.catalog import router as catalog_router
+from adapter.inbound.web.job import router as job_router
+from adapter.inbound.web.job_run import router as job_run_router
 
 router = APIRouter(prefix="/v1")
 router.include_router(job_router)

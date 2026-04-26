@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 from bootstrap.dependencies.use_cases import get_create_job_run_use_case
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from api.adapter.inbound.web import router
+from adapter.inbound.web import router
 from application.exceptions import JobDisabledError, JobNotFoundError
 from application.port.inbound.job_run.create_job_run import TriggerJobOutput
 

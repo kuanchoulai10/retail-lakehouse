@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from api.adapter.inbound.web import router
+from adapter.inbound.web import router
 from application.port.inbound.catalog.list_namespaces import ListNamespacesOutput
 from bootstrap.dependencies.use_cases import get_list_namespaces_use_case
 

@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
-from api.adapter.inbound.web import router as jobs_router
+from adapter.inbound.web import router as jobs_router
 from adapter.outbound.sql.metadata import metadata
 from bootstrap.configs import JobsRepoAdapter, JobRunsRepoAdapter
 from bootstrap.dependencies.repos import _cached_sql_engine

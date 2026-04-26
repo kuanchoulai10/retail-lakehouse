@@ -39,7 +39,7 @@ forbidden_modules =
 name = Clean Architecture layer ordering
 type = layers
 layers =
-    api.adapter.inbound.web
+    adapter.inbound.web
     application.service
     application.port
     application.domain.model
@@ -48,7 +48,7 @@ layers =
 name = Inbound adapter does not depend on outbound adapter
 type = forbidden
 source_modules =
-    api.adapter.inbound
+    adapter.inbound
 forbidden_modules =
     adapter.outbound
 ignore_imports =
@@ -68,7 +68,7 @@ type = forbidden
 source_modules =
     adapter.outbound
 forbidden_modules =
-    api.adapter.inbound
+    adapter.inbound
 
 [importlinter:contract:configs-leaf]
 name = Configs does not depend on bounded contexts
@@ -145,12 +145,12 @@ forbidden_modules =
     scheduler
 
 [importlinter:contract:dependencies-no-api-adapter]
-name = Dependencies does not depend on API adapter
+name = Dependencies does not depend on inbound adapters
 type = forbidden
 source_modules =
     bootstrap.dependencies
 forbidden_modules =
-    api.adapter
+    adapter.inbound
 
 [importlinter:contract:dependencies-no-scheduler]
 name = Dependencies does not depend on scheduler or outbox publisher

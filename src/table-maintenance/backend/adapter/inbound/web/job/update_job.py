@@ -5,7 +5,7 @@ from __future__ import annotations
 from bootstrap.dependencies.use_cases import get_update_job_use_case
 from fastapi import APIRouter, Depends, HTTPException
 
-from api.adapter.inbound.web.job.dto import JobApiResponse, UpdateJobApiRequest
+from adapter.inbound.web.job.dto import JobApiResponse, UpdateJobApiRequest
 from application.exceptions import JobNotFoundError
 from application.port.inbound import UpdateJobInput, UpdateJobUseCase
 
