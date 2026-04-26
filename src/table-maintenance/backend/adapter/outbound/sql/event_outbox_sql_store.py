@@ -1,4 +1,4 @@
-"""Define the EventOutboxSqlRepo adapter."""
+"""Define the EventOutboxSqlStore adapter."""
 
 from __future__ import annotations
 
@@ -9,14 +9,14 @@ from sqlalchemy import insert, select, update
 
 from adapter.outbound.sql.outbox_table import outbox_table
 from application.domain.model.outbox_entry import OutboxEntry
-from application.port.outbound.event_outbox_repo import EventOutboxRepo
+from application.port.outbound.event_outbox.event_outbox_store import EventOutboxStore
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine
 
 
-class EventOutboxSqlRepo(EventOutboxRepo):
-    """EventOutboxRepo backed by a SQLAlchemy Engine."""
+class EventOutboxSqlStore(EventOutboxStore):
+    """EventOutboxStore backed by a SQLAlchemy Engine."""
 
     def __init__(self, engine: Engine) -> None:
         """Initialize with a SQLAlchemy engine."""

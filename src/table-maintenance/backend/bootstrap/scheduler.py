@@ -10,7 +10,7 @@ from adapter.inbound.scheduler.scheduler_loop import SchedulerLoop
 from adapter.outbound.job.sql.jobs_sql_repo import JobsSqlRepo
 from adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
 from adapter.outbound.sql.engine_factory import build_engine
-from adapter.outbound.sql.event_outbox_sql_repo import EventOutboxSqlRepo
+from adapter.outbound.sql.event_outbox_sql_store import EventOutboxSqlStore
 from adapter.outbound.sql.metadata import metadata
 from application.service.outbox.event_serializer import EventSerializer
 from application.service.scheduling.schedule_jobs import ScheduleJobsService
@@ -31,7 +31,7 @@ def build_scheduler() -> SchedulerLoop:
 
     jobs_repo = JobsSqlRepo(engine)
     job_runs_repo = JobRunsSqlRepo(engine)
-    outbox_repo = EventOutboxSqlRepo(engine)
+    outbox_repo = EventOutboxSqlStore(engine)
     serializer = EventSerializer()
 
     service = ScheduleJobsService(

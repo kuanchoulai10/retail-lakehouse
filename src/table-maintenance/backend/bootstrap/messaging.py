@@ -10,7 +10,7 @@ from adapter.outbound.job_run.k8s.job_run_k8s_executor import JobRunK8sExecutor
 from adapter.outbound.job_run.k8s.k8s_executor_config import K8sExecutorConfig
 from adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
 from adapter.outbound.sql.engine_factory import build_engine
-from adapter.outbound.sql.event_outbox_sql_repo import EventOutboxSqlRepo
+from adapter.outbound.sql.event_outbox_sql_store import EventOutboxSqlStore
 from adapter.outbound.sql.metadata import metadata
 from application.domain.model.job.events import JobTriggered
 from application.domain.model.job_run.events import JobRunCreated
@@ -36,7 +36,7 @@ def build_publisher() -> PublisherLoop:
     engine = build_engine(settings)
     metadata.create_all(engine)
 
-    outbox_repo = EventOutboxSqlRepo(engine)
+    outbox_repo = EventOutboxSqlStore(engine)
     job_runs_repo = JobRunsSqlRepo(engine)
     serializer = EventSerializer()
 

@@ -12,7 +12,7 @@ from sqlalchemy import create_engine
 
 from adapter.outbound.job.sql.jobs_table import jobs_table as _jobs_table  # noqa: F401
 from adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
-from adapter.outbound.sql.event_outbox_sql_repo import EventOutboxSqlRepo
+from adapter.outbound.sql.event_outbox_sql_store import EventOutboxSqlStore
 from adapter.outbound.sql.metadata import metadata
 from application.domain.model.job import (
     CronExpression,
@@ -48,7 +48,7 @@ def _build_chain_with_failing_executor():
     engine = create_engine("sqlite://", echo=False)
     metadata.create_all(engine)
 
-    outbox_repo = EventOutboxSqlRepo(engine)
+    outbox_repo = EventOutboxSqlStore(engine)
     job_runs_repo = JobRunsSqlRepo(engine)
     serializer = EventSerializer()
 

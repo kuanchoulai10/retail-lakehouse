@@ -1,20 +1,20 @@
-"""Tests for EventOutboxSqlRepo."""
+"""Tests for EventOutboxSqlStore."""
 
 from datetime import UTC, datetime
 
 from sqlalchemy import create_engine
 
-from adapter.outbound.sql.event_outbox_sql_repo import EventOutboxSqlRepo
+from adapter.outbound.sql.event_outbox_sql_store import EventOutboxSqlStore
 from adapter.outbound.sql.metadata import metadata
 from application.domain.model.outbox_entry import OutboxEntry
-from application.port.outbound.event_outbox_repo import EventOutboxRepo
+from application.port.outbound.event_outbox.event_outbox_store import EventOutboxStore
 
 
-def _make_repo():
-    """Create an in-memory SQLite repo for testing."""
+def _make_store():
+    """Create an in-memory SQLite store for testing."""
     engine = create_engine("sqlite:///:memory:")
     metadata.create_all(engine)
-    return EventOutboxSqlRepo(engine)
+    return EventOutboxSqlStore(engine)
 
 
 def _make_entry(entry_id: str = "e1", event_type: str = "JobTriggered") -> OutboxEntry:
@@ -29,16 +29,16 @@ def _make_entry(entry_id: str = "e1", event_type: str = "JobTriggered") -> Outbo
 
 
 def test_implements_port():
-    """Verify EventOutboxSqlRepo implements EventOutboxRepo."""
-    assert issubclass(EventOutboxSqlRepo, EventOutboxRepo)
+    """Verify EventOutboxSqlStore implements EventOutboxStore."""
+    assert issubclass(EventOutboxSqlStore, EventOutboxStore)
 
 
 def test_save_and_fetch_unpublished():
     """Verify saved entries are returned by fetch_unpublished."""
-    repo = _make_repo()
+    store = _make_store()
     entry = _make_entry()
-    repo.save([entry])
-    result = repo.fetch_unpublished()
+    store.save([entry])
+    result = store.fetch_unpublished()
     assert len(result) == 1
     assert result[0].id == "e1"
     assert result[0].published_at is None
@@ -46,34 +46,34 @@ def test_save_and_fetch_unpublished():
 
 def test_fetch_unpublished_ignores_published():
     """Verify published entries are not returned."""
-    repo = _make_repo()
-    repo.save([_make_entry("e1"), _make_entry("e2")])
-    repo.mark_published(["e1"])
-    result = repo.fetch_unpublished()
+    store = _make_store()
+    store.save([_make_entry("e1"), _make_entry("e2")])
+    store.mark_published(["e1"])
+    result = store.fetch_unpublished()
     assert len(result) == 1
     assert result[0].id == "e2"
 
 
 def test_mark_published_sets_timestamp():
     """Verify mark_published sets published_at."""
-    repo = _make_repo()
-    repo.save([_make_entry()])
-    repo.mark_published(["e1"])
-    result = repo.fetch_unpublished()
+    store = _make_store()
+    store.save([_make_entry()])
+    store.mark_published(["e1"])
+    result = store.fetch_unpublished()
     assert result == []
 
 
 def test_fetch_unpublished_respects_batch_size():
     """Verify batch_size limits results."""
-    repo = _make_repo()
-    repo.save([_make_entry("e1"), _make_entry("e2"), _make_entry("e3")])
-    result = repo.fetch_unpublished(batch_size=2)
+    store = _make_store()
+    store.save([_make_entry("e1"), _make_entry("e2"), _make_entry("e3")])
+    result = store.fetch_unpublished(batch_size=2)
     assert len(result) == 2
 
 
 def test_fetch_unpublished_ordered_by_occurred_at():
     """Verify results are ordered by occurred_at ascending."""
-    repo = _make_repo()
+    store = _make_store()
     early = OutboxEntry(
         id="e1",
         aggregate_type="Job",
@@ -90,7 +90,7 @@ def test_fetch_unpublished_ordered_by_occurred_at():
         payload="{}",
         occurred_at=datetime(2026, 4, 25, 14, 0, tzinfo=UTC),
     )
-    repo.save([late, early])
-    result = repo.fetch_unpublished()
+    store.save([late, early])
+    result = store.fetch_unpublished()
     assert result[0].id == "e1"
     assert result[1].id == "e2"

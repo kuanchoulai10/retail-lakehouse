@@ -47,14 +47,16 @@ if TYPE_CHECKING:
         UpdateJobUseCase,
     )
     from application.port.outbound.catalog.catalog_reader import CatalogReader
-    from application.port.outbound.event_outbox_repo import EventOutboxRepo
+    from application.port.outbound.event_outbox.event_outbox_store import (
+        EventOutboxStore,
+    )
     from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
     from application.port.outbound.job.jobs_repo import JobsRepo
 
 
 def get_create_job_use_case(
     repo: JobsRepo = Depends(get_jobs_repo),
-    outbox_repo: EventOutboxRepo = Depends(get_outbox_repo),
+    outbox_repo: EventOutboxStore = Depends(get_outbox_repo),
     serializer: EventSerializer = Depends(get_event_serializer),
 ) -> CreateJobUseCase:
     """Provide the CreateJob use case with injected dependencies."""
@@ -77,7 +79,7 @@ def get_list_jobs_use_case(
 
 def get_update_job_use_case(
     repo: JobsRepo = Depends(get_jobs_repo),
-    outbox_repo: EventOutboxRepo = Depends(get_outbox_repo),
+    outbox_repo: EventOutboxStore = Depends(get_outbox_repo),
     serializer: EventSerializer = Depends(get_event_serializer),
 ) -> UpdateJobUseCase:
     """Provide the UpdateJob use case with injected dependencies."""
@@ -87,7 +89,7 @@ def get_update_job_use_case(
 def get_create_job_run_use_case(
     repo: JobsRepo = Depends(get_jobs_repo),
     job_runs_repo: JobRunsRepo = Depends(get_job_runs_repo),
-    outbox_repo: EventOutboxRepo = Depends(get_outbox_repo),
+    outbox_repo: EventOutboxStore = Depends(get_outbox_repo),
     serializer: EventSerializer = Depends(get_event_serializer),
 ) -> CreateJobRunUseCase:
     """Provide the CreateJobRun use case with injected dependencies."""

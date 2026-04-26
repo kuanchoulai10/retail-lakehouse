@@ -11,7 +11,9 @@ from application.port.inbound.outbox.publish_events import (
 
 if TYPE_CHECKING:
     from application.service.outbox.event_serializer import EventSerializer
-    from application.port.outbound.event_outbox_repo import EventOutboxRepo
+    from application.port.outbound.event_outbox.event_outbox_store import (
+        EventOutboxStore,
+    )
     from base.event_dispatcher import EventDispatcher
 
 
@@ -20,7 +22,7 @@ class PublishEventsService(PublishEventsUseCase):
 
     def __init__(
         self,
-        outbox_repo: EventOutboxRepo,
+        outbox_repo: EventOutboxStore,
         serializer: EventSerializer,
         dispatcher: EventDispatcher,
     ) -> None:

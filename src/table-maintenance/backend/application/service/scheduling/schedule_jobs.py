@@ -16,7 +16,9 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from application.service.outbox.event_serializer import EventSerializer
-    from application.port.outbound.event_outbox_repo import EventOutboxRepo
+    from application.port.outbound.event_outbox.event_outbox_store import (
+        EventOutboxStore,
+    )
     from application.port.outbound.job.jobs_repo import JobsRepo
     from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 
@@ -31,7 +33,7 @@ class ScheduleJobsService(ScheduleJobsUseCase):
         jobs_repo: JobsRepo,
         job_runs_repo: JobRunsRepo,
         clock: Callable[[], datetime],
-        outbox_repo: EventOutboxRepo,
+        outbox_repo: EventOutboxStore,
         serializer: EventSerializer,
     ) -> None:
         """Initialize with repo dependencies, clock, outbox repo, and serializer."""

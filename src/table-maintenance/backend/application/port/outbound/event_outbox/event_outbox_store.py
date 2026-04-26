@@ -1,15 +1,17 @@
-"""Define the EventOutboxRepo port interface."""
+"""Define the EventOutboxStore port interface."""
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import TYPE_CHECKING
+
+from base.store import Store
 
 if TYPE_CHECKING:
     from application.domain.model.outbox_entry import OutboxEntry
 
 
-class EventOutboxRepo(ABC):
+class EventOutboxStore(Store):
     """Port for persisting and retrieving outbox entries."""
 
     @abstractmethod

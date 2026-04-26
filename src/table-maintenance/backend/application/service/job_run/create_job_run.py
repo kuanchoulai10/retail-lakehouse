@@ -20,7 +20,9 @@ from application.port.inbound.job_run.create_job_run import TriggerJobOutput
 
 if TYPE_CHECKING:
     from application.service.outbox.event_serializer import EventSerializer
-    from application.port.outbound.event_outbox_repo import EventOutboxRepo
+    from application.port.outbound.event_outbox.event_outbox_store import (
+        EventOutboxStore,
+    )
     from application.port.outbound.job.jobs_repo import JobsRepo
     from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 
@@ -32,7 +34,7 @@ class CreateJobRunService(CreateJobRunUseCase):
         self,
         repo: JobsRepo,
         job_runs_repo: JobRunsRepo,
-        outbox_repo: EventOutboxRepo,
+        outbox_repo: EventOutboxStore,
         serializer: EventSerializer,
     ) -> None:
         """Initialize with repos, outbox repo, and serializer."""

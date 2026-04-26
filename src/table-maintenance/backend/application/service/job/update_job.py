@@ -21,7 +21,9 @@ from application.port.inbound import (
 
 if TYPE_CHECKING:
     from application.service.outbox.event_serializer import EventSerializer
-    from application.port.outbound.event_outbox_repo import EventOutboxRepo
+    from application.port.outbound.event_outbox.event_outbox_store import (
+        EventOutboxStore,
+    )
     from application.port.outbound.job.jobs_repo import JobsRepo
 
 _STATUS_ACTION = {
@@ -35,7 +37,7 @@ class UpdateJobService(UpdateJobUseCase):
     """Applies a partial update to an existing Job definition."""
 
     def __init__(
-        self, repo: JobsRepo, outbox_repo: EventOutboxRepo, serializer: EventSerializer
+        self, repo: JobsRepo, outbox_repo: EventOutboxStore, serializer: EventSerializer
     ) -> None:
         """Initialize with the jobs repository, outbox repo, and serializer."""
         self._repo = repo

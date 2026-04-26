@@ -12,7 +12,9 @@ from base.event_handler import EventHandler
 if TYPE_CHECKING:
     from application.domain.model.job.events import JobTriggered
     from application.service.outbox.event_serializer import EventSerializer
-    from application.port.outbound.event_outbox_repo import EventOutboxRepo
+    from application.port.outbound.event_outbox.event_outbox_store import (
+        EventOutboxStore,
+    )
     from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 
 
@@ -26,7 +28,7 @@ class JobTriggeredHandler(EventHandler["JobTriggered"]):
     def __init__(
         self,
         job_runs_repo: JobRunsRepo,
-        outbox_repo: EventOutboxRepo,
+        outbox_repo: EventOutboxStore,
         serializer: EventSerializer,
     ) -> None:
         """Initialize with job runs repo, outbox repo, and serializer."""
