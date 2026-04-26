@@ -10,6 +10,6 @@ def test_is_abstract():
     assert issubclass(JobRunExecutor, ABC)
 
 
-def test_has_trigger_method():
-    """Verify that JobRunExecutor declares trigger as an abstract method."""
-    assert "trigger" in JobRunExecutor.__abstractmethods__
+def test_has_submit_method():
+    """Verify that JobRunExecutor declares submit as an abstract method."""
+    assert "submit" in JobRunExecutor.__abstractmethods__

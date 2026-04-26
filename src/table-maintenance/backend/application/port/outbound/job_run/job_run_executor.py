@@ -6,19 +6,18 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from application.domain.model.job import Job
-    from application.domain.model.job_run import JobRun
+    from application.port.outbound.job_run.job_submission import JobSubmission
 
 
 class JobRunExecutor(ABC):
-    """Port for triggering a new execution of a Job.
+    """Port for submitting a job to an external execution system.
 
-    Unlike a repository, the executor performs a side-effect in an external
-    system (e.g. creating a SparkApplication in Kubernetes). It returns the
-    freshly-created JobRun representing that execution.
+    The executor performs a side-effect (e.g. creating a SparkApplication
+    in Kubernetes). It does not create domain entities — that responsibility
+    belongs to the application service layer.
     """
 
     @abstractmethod
-    def trigger(self, job: Job) -> JobRun:
-        """Trigger execution of the given job and return the resulting run."""
+    def submit(self, submission: JobSubmission) -> None:
+        """Submit the job for execution in the external system."""
         ...
