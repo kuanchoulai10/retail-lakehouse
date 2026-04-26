@@ -1,129 +1,87 @@
 """Tests for JobRunK8sExecutor."""
 
-from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 from adapter.outbound.job_run.k8s.job_run_k8s_executor import JobRunK8sExecutor
-from application.domain.model.job import (
-    CronExpression,
-    Job,
-    JobId,
-    JobType,
-    TableReference,
-)
-from application.domain.model.job_run import JobRunStatus
+from adapter.outbound.job_run.k8s.k8s_executor_config import K8sExecutorConfig
 from application.port.outbound.job_run.job_run_executor import JobRunExecutor
-from bootstrap.configs import AppSettings
+from application.port.outbound.job_run.job_submission import JobSubmission
 
 
-SETTINGS = AppSettings()
-
-
-def _make_job(job_id: str = "abc1234567", cron: str | None = None) -> Job:
-    """Provide a sample Job entity with optional overrides."""
-    now = datetime.now(UTC)
-    return Job(
-        id=JobId(value=job_id),
-        job_type=JobType.REWRITE_DATA_FILES,
-        created_at=now,
-        updated_at=now,
-        table_ref=TableReference(catalog="retail", table="inventory.orders"),
-        cron=CronExpression(expression=cron) if cron else None,
+def _config() -> K8sExecutorConfig:
+    return K8sExecutorConfig(
+        namespace="spark-jobs",
+        image="localhost:5000/table-maintenance-jobs:latest",
+        image_pull_policy="Never",
+        spark_version="4.0.0",
+        service_account="spark-operator-spark",
+        iceberg_jar="https://repo1.maven.org/iceberg-spark.jar",
+        iceberg_aws_jar="https://repo1.maven.org/iceberg-aws.jar",
     )
 
 
+def _submission(**overrides) -> JobSubmission:
+    defaults = {
+        "run_id": "j1-abc123",
+        "job_id": "j1",
+        "job_type": "expire_snapshots",
+        "catalog": "retail",
+        "table": "inventory.orders",
+        "job_config": {"retain_last": 5},
+        "driver_memory": "2g",
+        "executor_memory": "4g",
+        "executor_instances": 2,
+        "cron_expression": None,
+    }
+    defaults.update(overrides)
+    return JobSubmission(**defaults)  # type: ignore[arg-type]
+
+
 def test_is_subclass_of_job_run_executor():
-    """Verify that JobRunK8sExecutor implements the JobRunExecutor interface."""
+    """Verify JobRunK8sExecutor implements the JobRunExecutor interface."""
     api = MagicMock()
-    executor = JobRunK8sExecutor(api, SETTINGS)
+    executor = JobRunK8sExecutor(api, _config())
     assert isinstance(executor, JobRunExecutor)
 
 
-def test_trigger_calls_create_namespaced_custom_object():
-    """Verify that trigger calls the K8s API to create a custom object."""
+def test_submit_calls_create_namespaced_custom_object():
+    """Verify submit calls the K8s API."""
     api = MagicMock()
-    api.create_namespaced_custom_object.return_value = {
-        "metadata": {"name": "abc1234567-d3adbe"},
-        "kind": "SparkApplication",
-    }
-    executor = JobRunK8sExecutor(api, SETTINGS)
-    executor.trigger(_make_job())
+    executor = JobRunK8sExecutor(api, _config())
+    executor.submit(_submission())
     api.create_namespaced_custom_object.assert_called_once()
 
 
-def test_trigger_uses_scheduled_plural_when_cron_set():
-    """Verify that trigger uses the scheduled plural when a cron is set."""
+def test_submit_uses_spark_plural_for_non_cron():
+    """Verify submit uses sparkapplications plural when no cron."""
     api = MagicMock()
-    api.create_namespaced_custom_object.return_value = {
-        "metadata": {"name": "abc1234567"},
-        "kind": "ScheduledSparkApplication",
-    }
-    executor = JobRunK8sExecutor(api, SETTINGS)
-    executor.trigger(_make_job(cron="0 2 * * *"))
-    call_kwargs = api.create_namespaced_custom_object.call_args.kwargs
-    assert call_kwargs["plural"] == "scheduledsparkapplications"
-
-
-def test_trigger_uses_spark_plural_for_non_cron_job():
-    """Verify that trigger uses the spark plural for a non-cron job."""
-    api = MagicMock()
-    api.create_namespaced_custom_object.return_value = {
-        "metadata": {"name": "abc1234567-d3adbe"},
-        "kind": "SparkApplication",
-    }
-    executor = JobRunK8sExecutor(api, SETTINGS)
-    executor.trigger(_make_job())
+    executor = JobRunK8sExecutor(api, _config())
+    executor.submit(_submission(cron_expression=None))
     call_kwargs = api.create_namespaced_custom_object.call_args.kwargs
     assert call_kwargs["plural"] == "sparkapplications"
 
 
-def test_trigger_returns_job_run_linked_to_job_id():
-    """Verify that the returned run is linked to the correct job id."""
+def test_submit_uses_scheduled_plural_for_cron():
+    """Verify submit uses scheduledsparkapplications plural when cron set."""
     api = MagicMock()
-    api.create_namespaced_custom_object.return_value = {
-        "metadata": {"name": "abc1234567-d3adbe"},
-        "kind": "SparkApplication",
-    }
-    executor = JobRunK8sExecutor(api, SETTINGS)
-    run = executor.trigger(_make_job("abc1234567"))
-    assert run.job_id == JobId(value="abc1234567")
+    executor = JobRunK8sExecutor(api, _config())
+    executor.submit(_submission(cron_expression="0 2 * * *"))
+    call_kwargs = api.create_namespaced_custom_object.call_args.kwargs
+    assert call_kwargs["plural"] == "scheduledsparkapplications"
 
 
-def test_trigger_returns_pending_status():
-    """Verify that the returned run has pending status."""
+def test_submit_uses_config_namespace():
+    """Verify submit passes the config namespace to K8s API."""
     api = MagicMock()
-    api.create_namespaced_custom_object.return_value = {
-        "metadata": {"name": "abc1234567-d3adbe"},
-        "kind": "SparkApplication",
-    }
-    executor = JobRunK8sExecutor(api, SETTINGS)
-    run = executor.trigger(_make_job())
-    assert run.status == JobRunStatus.PENDING
+    executor = JobRunK8sExecutor(api, _config())
+    executor.submit(_submission())
+    call_kwargs = api.create_namespaced_custom_object.call_args.kwargs
+    assert call_kwargs["namespace"] == "spark-jobs"
 
 
-def test_trigger_uses_scheduled_metadata_name_equal_to_job_id():
-    """Verify that ScheduledSparkApplication uses the job id as its name."""
+def test_submit_returns_none():
+    """Verify submit returns None — no entity creation."""
     api = MagicMock()
-    api.create_namespaced_custom_object.return_value = {
-        "metadata": {"name": "abc1234567"},
-        "kind": "ScheduledSparkApplication",
-    }
-    executor = JobRunK8sExecutor(api, SETTINGS)
-    executor.trigger(_make_job("abc1234567", cron="0 2 * * *"))
-    manifest = api.create_namespaced_custom_object.call_args.kwargs["body"]
-    assert manifest["metadata"]["name"] == "abc1234567"
-
-
-def test_trigger_uses_spark_metadata_name_unique_per_run():
-    """Verify that SparkApplication uses a unique name per run."""
-    api = MagicMock()
-    api.create_namespaced_custom_object.return_value = {
-        "metadata": {"name": "unused"},
-        "kind": "SparkApplication",
-    }
-    executor = JobRunK8sExecutor(api, SETTINGS)
-    executor.trigger(_make_job("abc1234567"))
-    manifest = api.create_namespaced_custom_object.call_args.kwargs["body"]
-    name = manifest["metadata"]["name"]
-    assert name.startswith("abc1234567-")
-    assert name != "abc1234567"
+    executor = JobRunK8sExecutor(api, _config())
+    result = executor.submit(_submission())
+    assert result is None

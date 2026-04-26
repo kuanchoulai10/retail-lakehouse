@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from adapter.outbound.job_run.k8s.constants import JOB_LABEL
+
 if TYPE_CHECKING:
-    from bootstrap.configs import AppSettings
-
-    from application.domain.model.job import Job
-
-_JOB_LABEL = "table-maintenance/job-id"
+    from adapter.outbound.job_run.k8s.k8s_executor_config import K8sExecutorConfig
+    from application.port.outbound.job_run.job_submission import JobSubmission
 
 _JOB_PREFIX: dict[str, str] = {
     "expire_snapshots": "GLAC_EXPIRE_SNAPSHOTS",
@@ -36,30 +35,31 @@ def _dict_to_env(prefix: str, config: dict) -> list[dict]:
     return result
 
 
-def _build_driver_env(job: Job) -> list[dict]:
-    job_type = job.job_type.value
+def _build_driver_env(submission: JobSubmission) -> list[dict]:
     env = [
-        {"name": "GLAC_JOB_TYPE", "value": job_type},
-        {"name": "GLAC_CATALOG", "value": job.table_ref.catalog},
+        {"name": "GLAC_JOB_TYPE", "value": submission.job_type},
+        {"name": "GLAC_CATALOG", "value": submission.catalog},
     ]
-    prefix = _JOB_PREFIX[job_type]
-    if job.job_config:
-        env.extend(_dict_to_env(prefix, job.job_config))
+    prefix = _JOB_PREFIX[submission.job_type]
+    if submission.job_config:
+        env.extend(_dict_to_env(prefix, submission.job_config))
     env.extend(_AWS_ENV)
     return env
 
 
-def _build_spark_app_spec(job: Job, settings: AppSettings, env: list[dict]) -> dict:
+def _build_spark_app_spec(
+    submission: JobSubmission, config: K8sExecutorConfig, env: list[dict]
+) -> dict:
     return {
         "type": "Python",
         "pythonVersion": "3",
         "mode": "cluster",
-        "image": settings.k8s.image,
-        "imagePullPolicy": settings.k8s.image_pull_policy,
+        "image": config.image,
+        "imagePullPolicy": config.image_pull_policy,
         "mainApplicationFile": "local:///opt/spark/work-dir/main.py",
-        "sparkVersion": settings.k8s.spark_version,
+        "sparkVersion": config.spark_version,
         "deps": {
-            "jars": [settings.k8s.iceberg_jar, settings.k8s.iceberg_aws_jar],
+            "jars": [config.iceberg_jar, config.iceberg_aws_jar],
         },
         "sparkConf": {
             "spark.sql.extensions": "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
@@ -67,41 +67,40 @@ def _build_spark_app_spec(job: Job, settings: AppSettings, env: list[dict]) -> d
         },
         "driver": {
             "cores": 1,
-            "memory": settings.k8s.driver_memory,
-            "serviceAccount": settings.k8s.service_account,
+            "memory": submission.driver_memory,
+            "serviceAccount": config.service_account,
             "env": env,
         },
         "executor": {
             "cores": 1,
-            "instances": settings.k8s.executor_instances,
-            "memory": settings.k8s.executor_memory,
+            "instances": submission.executor_instances,
+            "memory": submission.executor_memory,
             "env": _AWS_ENV,
         },
     }
 
 
-def build_manifest(job: Job, name: str, settings: AppSettings) -> dict:
+def build_manifest(submission: JobSubmission, config: K8sExecutorConfig) -> dict:
     """Build a K8s manifest for a Spark job.
 
-    `name` is the K8s metadata.name — for SparkApplication this is typically a
-    unique-per-run identifier (e.g. JobRun.id); for ScheduledSparkApplication
-    it is the Job.id (one schedule per Job definition).
+    Per-job values (memory, instances, job_config) come from the submission.
+    System values (image, namespace, spark_version) come from the config.
     """
-    env = _build_driver_env(job)
-    spark_spec = _build_spark_app_spec(job, settings, env)
-    labels = {_JOB_LABEL: job.id.value}
+    env = _build_driver_env(submission)
+    spark_spec = _build_spark_app_spec(submission, config, env)
+    labels = {JOB_LABEL: submission.job_id}
 
-    if job.cron:
+    if submission.cron_expression:
         return {
             "apiVersion": "sparkoperator.k8s.io/v1beta2",
             "kind": "ScheduledSparkApplication",
             "metadata": {
-                "name": name,
-                "namespace": settings.k8s.namespace,
+                "name": submission.run_id,
+                "namespace": config.namespace,
                 "labels": labels,
             },
             "spec": {
-                "schedule": job.cron.expression,
+                "schedule": submission.cron_expression,
                 "template": spark_spec,
             },
         }
@@ -110,8 +109,8 @@ def build_manifest(job: Job, name: str, settings: AppSettings) -> dict:
         "apiVersion": "sparkoperator.k8s.io/v1beta2",
         "kind": "SparkApplication",
         "metadata": {
-            "name": name,
-            "namespace": settings.k8s.namespace,
+            "name": submission.run_id,
+            "namespace": config.namespace,
             "labels": labels,
         },
         "spec": spark_spec,

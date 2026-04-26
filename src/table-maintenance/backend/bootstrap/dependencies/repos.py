@@ -14,6 +14,7 @@ from adapter.outbound.job_run.job_run_in_memory_executor import (
 )
 from adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
 from adapter.outbound.job_run.k8s.job_run_k8s_executor import JobRunK8sExecutor
+from adapter.outbound.job_run.k8s.k8s_executor_config import K8sExecutorConfig
 from adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
 from adapter.outbound.sql.engine_factory import build_engine
 from bootstrap.configs import (
@@ -91,4 +92,13 @@ def get_job_run_executor(
     if settings.job_run_executor_adapter == JobRunExecutorAdapter.IN_MEMORY:
         return _in_memory_executor_singleton()
     api = get_k8s_api()
-    return JobRunK8sExecutor(api, settings)
+    k8s_config = K8sExecutorConfig(
+        namespace=settings.k8s.namespace,
+        image=settings.k8s.image,
+        image_pull_policy=settings.k8s.image_pull_policy,
+        spark_version=settings.k8s.spark_version,
+        service_account=settings.k8s.service_account,
+        iceberg_jar=settings.k8s.iceberg_jar,
+        iceberg_aws_jar=settings.k8s.iceberg_aws_jar,
+    )
+    return JobRunK8sExecutor(api, k8s_config)

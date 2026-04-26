@@ -1,24 +1,27 @@
 """Tests for JobRunInMemoryExecutor."""
 
-from datetime import UTC, datetime
-
 from adapter.outbound.job_run.job_run_in_memory_executor import (
     JobRunInMemoryExecutor,
 )
-from application.domain.model.job import Job, JobId, JobType
-from application.domain.model.job_run import JobRunStatus
 from application.port.outbound.job_run.job_run_executor import JobRunExecutor
+from application.port.outbound.job_run.job_submission import JobSubmission
 
 
-def _make_job(job_id: str = "job-1") -> Job:
-    """Provide a sample Job entity."""
-    now = datetime.now(UTC)
-    return Job(
-        id=JobId(value=job_id),
-        job_type=JobType.REWRITE_DATA_FILES,
-        created_at=now,
-        updated_at=now,
-    )
+def _submission(**overrides) -> JobSubmission:
+    defaults = {
+        "run_id": "r1",
+        "job_id": "j1",
+        "job_type": "expire_snapshots",
+        "catalog": "retail",
+        "table": "orders",
+        "job_config": {},
+        "driver_memory": "512m",
+        "executor_memory": "1g",
+        "executor_instances": 1,
+        "cron_expression": None,
+    }
+    defaults.update(overrides)
+    return JobSubmission(**defaults)  # type: ignore[arg-type]
 
 
 def test_is_subclass_of_job_run_executor():
@@ -26,29 +29,16 @@ def test_is_subclass_of_job_run_executor():
     assert issubclass(JobRunInMemoryExecutor, JobRunExecutor)
 
 
-def test_trigger_returns_job_run_with_status_pending():
-    """Verify that trigger returns a job run with pending status."""
+def test_submit_records_submission():
+    """Verify that submit records the submission."""
     executor = JobRunInMemoryExecutor()
-    run = executor.trigger(_make_job())
-    assert run.status == JobRunStatus.PENDING
+    sub = _submission()
+    executor.submit(sub)
+    assert sub in executor.submitted
 
 
-def test_trigger_links_run_to_job_id():
-    """Verify that the triggered run is linked to the correct job id."""
+def test_submit_returns_none():
+    """Verify that submit returns None."""
     executor = JobRunInMemoryExecutor()
-    run = executor.trigger(_make_job("job-xyz"))
-    assert run.job_id.value == "job-xyz"
-
-
-def test_trigger_records_run_for_later_retrieval():
-    """Verify that the triggered run is stored for later retrieval."""
-    executor = JobRunInMemoryExecutor()
-    run = executor.trigger(_make_job("job-1"))
-    assert run in executor.triggered_runs
-
-
-def test_trigger_sets_started_at():
-    """Verify that the triggered run has a non-null started_at timestamp."""
-    executor = JobRunInMemoryExecutor()
-    run = executor.trigger(_make_job())
-    assert run.started_at is not None
+    result = executor.submit(_submission())
+    assert result is None

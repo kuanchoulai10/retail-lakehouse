@@ -2,31 +2,21 @@
 
 from __future__ import annotations
 
-import secrets
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
 from application.port.outbound.job_run.job_run_executor import JobRunExecutor
 
 if TYPE_CHECKING:
-    from application.domain.model.job import Job
+    from application.port.outbound.job_run.job_submission import JobSubmission
 
 
 class JobRunInMemoryExecutor(JobRunExecutor):
-    """Test double for JobRunExecutor. Records every triggered run."""
+    """Test double for JobRunExecutor. Records every submitted job."""
 
     def __init__(self) -> None:
-        """Initialize an empty list of triggered runs."""
-        self.triggered_runs: list[JobRun] = []
+        """Initialize an empty list of submissions."""
+        self.submitted: list[JobSubmission] = []
 
-    def trigger(self, job: Job) -> JobRun:
-        """Create a pending JobRun in memory and record it."""
-        run = JobRun(
-            id=JobRunId(value=f"{job.id.value}-{secrets.token_hex(3)}"),
-            job_id=job.id,
-            status=JobRunStatus.PENDING,
-            started_at=datetime.now(UTC),
-        )
-        self.triggered_runs.append(run)
-        return run
+    def submit(self, submission: JobSubmission) -> None:
+        """Record the submission in memory."""
+        self.submitted.append(submission)
