@@ -19,7 +19,7 @@ def main() -> None:
 
         scheduler_main()
     elif role == "outbox-publisher":
-        from outbox_publisher.main import main as publisher_main
+        from bootstrap.messaging import main as publisher_main
 
         publisher_main()
     else:

@@ -14,7 +14,7 @@ from application.service.job_run.job_triggered_handler import JobTriggeredHandle
 from application.service.outbox.event_serializer import EventSerializer
 from application.service.outbox.publish_events import PublishEventsService
 from base.event_dispatcher import EventDispatcher
-from outbox_publisher.publisher_loop import PublisherLoop
+from adapter.inbound.messaging.outbox.publisher_loop import PublisherLoop
 from sqlalchemy import create_engine
 
 logging.basicConfig(
