@@ -39,38 +39,40 @@ adapter/*        ──✗──> domain (forbidden: must go through application
 
 ```
 backend/
-├── core/                    # Shared domain kernel
-│   ├── application/
-│   │   ├── domain/model/    # Entities, Value Objects, Domain Events, Exceptions
-│   │   ├── port/inbound/    # Use case interfaces + result types
-│   │   ├── port/outbound/   # Repository interfaces
-│   │   └── service/         # Use case implementations (application services)
-│   ├── adapter/
-│   │   └── outbound/        # Repository implementations (SQL, K8s, in-memory)
-│   ├── base/                # DDD shared kernel
-│   └── configs/             # AppSettings, adapter enums
-├── api/                     # API server entry
-│   ├── adapter/
-│   │   └── inbound/web/     # FastAPI routes, API DTOs
+├── bootstrap/               # Composition roots (knows all layers)
+│   ├── configs/             # AppSettings, adapter enums
 │   ├── dependencies/        # FastAPI dependency injection
-│   └── main.py              # FastAPI app factory
-├── scheduler/               # Scheduler entry
-│   ├── main.py              # Scheduler bootstrap
-│   └── scheduler_loop.py    # Polling loop
-└── entrypoint.py            # ROLE env var → api or scheduler
+│   ├── api.py               # API entry point
+│   ├── scheduler.py         # Scheduler entry point
+│   └── messaging.py         # Outbox publisher entry point
+├── adapter/                 # Outermost ring
+│   ├── inbound/
+│   │   ├── web/             # FastAPI routes, API DTOs
+│   │   ├── scheduler/       # Scheduler polling loop
+│   │   └── messaging/
+│   │       └── outbox/      # Outbox publisher polling loop
+│   └── outbound/            # Repository implementations (SQL, K8s, in-memory)
+├── application/             # Middle ring
+│   ├── domain/model/        # Entities, Value Objects, Domain Events, Exceptions
+│   ├── port/inbound/        # Use case interfaces + result types
+│   ├── port/outbound/       # Repository interfaces
+│   └── service/             # Use case implementations (application services)
+├── base/                    # DDD shared kernel
+├── entrypoint.py            # ROLE env var → api, scheduler, or outbox-publisher
+└── tests/
 ```
 
 ### Rules
 
-- **Domain** depends on nothing except `core/base/` and stdlib. No Pydantic — use dataclasses.
+- **Domain** depends on nothing except `base/` and stdlib. No Pydantic — use dataclasses.
 - **Application** depends on domain and base. No adapter, no framework, no infra imports.
 - **Adapter** depends on application only (not domain directly). Web adapter catches application-layer exceptions, not domain exceptions.
-- **Configs** (`core/configs/`) is cross-cutting configuration. It must not depend on any bounded context.
-- **DTOs live in the adapter.** `JobApiRequest`/`JobApiResponse` are in `api/adapter/inbound/web/dto.py` with plain types (no domain enums).
+- **Configs** (`bootstrap/configs/`) is cross-cutting configuration. It must not depend on any bounded context.
+- **DTOs live in the adapter.** `JobApiRequest`/`JobApiResponse` are in `adapter/inbound/web/job/dto.py` with plain types (no domain enums).
 - **Use case results live in the application layer.** Services convert domain objects to application-layer result dataclasses so adapters never see domain types.
-- **Scheduler** cannot import from `api` or `fastapi` (enforced by import-linter).
+- **Bootstrap** is the only layer allowed to import from all other layers. It is the composition root.
 - Architecture boundaries are enforced by `import-linter` (configured in `.importlinter`). Run `lint-imports` to verify.
-- **Single image, dual role**: `ROLE=api` (default) or `ROLE=scheduler` via `entrypoint.py`.
+- **Single image, triple role**: `ROLE=api` (default), `ROLE=scheduler`, or `ROLE=outbox-publisher` via `entrypoint.py`.
 
 ## Development Workflow
 
