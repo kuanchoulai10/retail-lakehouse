@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 import logging
-import os
 import signal
 from datetime import UTC, datetime
 
+from adapter.inbound.scheduler.scheduler_loop import SchedulerLoop
 from adapter.outbound.job.sql.jobs_sql_repo import JobsSqlRepo
 from adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
+from adapter.outbound.sql.engine_factory import build_engine
 from adapter.outbound.sql.event_outbox_sql_repo import EventOutboxSqlRepo
 from adapter.outbound.sql.metadata import metadata
 from application.service.outbox.event_serializer import EventSerializer
 from application.service.scheduling.schedule_jobs import ScheduleJobsService
-from adapter.inbound.scheduler.scheduler_loop import SchedulerLoop
-from sqlalchemy import create_engine
+from bootstrap.dependencies.settings import get_settings
 
 logging.basicConfig(
     level=logging.INFO,
@@ -25,13 +25,8 @@ logger = logging.getLogger(__name__)
 
 def build_scheduler() -> SchedulerLoop:
     """Wire up the scheduler with SQL repos and return the loop."""
-    database_url = os.environ.get(
-        "SCHEDULER_DATABASE_URL",
-        "sqlite:///scheduler.db",
-    )
-    interval = int(os.environ.get("SCHEDULER_INTERVAL_SECONDS", "30"))
-
-    engine = create_engine(database_url)
+    settings = get_settings()
+    engine = build_engine(settings)
     metadata.create_all(engine)
 
     jobs_repo = JobsSqlRepo(engine)
@@ -46,7 +41,7 @@ def build_scheduler() -> SchedulerLoop:
         outbox_repo=outbox_repo,
         serializer=serializer,
     )
-    return SchedulerLoop(service, interval_seconds=interval)
+    return SchedulerLoop(service, interval_seconds=settings.scheduler.interval_seconds)
 
 
 def main() -> None:
