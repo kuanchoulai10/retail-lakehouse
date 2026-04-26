@@ -20,8 +20,8 @@ def test_defaults():
 
 def test_env_nested_override(monkeypatch):
     """Verify that nested K8s env vars override K8sSettings via AppSettings."""
-    monkeypatch.setenv("BACKEND_K8S__NAMESPACE", "spark-jobs")
-    monkeypatch.setenv("BACKEND_K8S__EXECUTOR_INSTANCES", "3")
+    monkeypatch.setenv("GLAC_K8S__NAMESPACE", "spark-jobs")
+    monkeypatch.setenv("GLAC_K8S__EXECUTOR_INSTANCES", "3")
     s = AppSettings()
     assert s.k8s.namespace == "spark-jobs"
     assert s.k8s.executor_instances == 3

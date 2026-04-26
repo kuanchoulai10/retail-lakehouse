@@ -11,6 +11,6 @@ def test_defaults():
 
 def test_env_nested_override(monkeypatch):
     """Verify that nested SQLite env vars override SqliteSettings via AppSettings."""
-    monkeypatch.setenv("BACKEND_SQLITE__DB_PATH", "/tmp/jobs.db")
+    monkeypatch.setenv("GLAC_SQLITE__DB_PATH", "/tmp/jobs.db")
     s = AppSettings()
     assert s.sqlite.db_path == "/tmp/jobs.db"

@@ -1,6 +1,7 @@
-"""Tests for AppSettings K8s nested configuration."""
+"""Tests for AppSettings configuration."""
 
 from bootstrap.configs import AppSettings
+from bootstrap.configs.component import Component
 
 
 def test_defaults():
@@ -18,6 +19,33 @@ def test_defaults():
 
 def test_env_nested_override(monkeypatch):
     """Verify that nested K8s env vars override AppSettings K8s sub-settings."""
-    monkeypatch.setenv("BACKEND_K8S__NAMESPACE", "spark-jobs")
+    monkeypatch.setenv("GLAC_K8S__NAMESPACE", "spark-jobs")
     s = AppSettings()
     assert s.k8s.namespace == "spark-jobs"
+
+
+def test_component_defaults_to_api():
+    """Verify component defaults to API."""
+    settings = AppSettings()
+    assert settings.component == Component.API
+
+
+def test_component_from_env(monkeypatch):
+    """Verify GLAC_COMPONENT env var sets the component."""
+    monkeypatch.setenv("GLAC_COMPONENT", "scheduler")
+    settings = AppSettings()
+    assert settings.component == Component.SCHEDULER
+
+
+def test_scheduler_settings_nested(monkeypatch):
+    """Verify GLAC_SCHEDULER__INTERVAL_SECONDS sets scheduler interval."""
+    monkeypatch.setenv("GLAC_SCHEDULER__INTERVAL_SECONDS", "60")
+    settings = AppSettings()
+    assert settings.scheduler.interval_seconds == 60
+
+
+def test_messaging_settings_nested(monkeypatch):
+    """Verify GLAC_MESSAGING__INTERVAL_SECONDS sets messaging interval."""
+    monkeypatch.setenv("GLAC_MESSAGING__INTERVAL_SECONDS", "10")
+    settings = AppSettings()
+    assert settings.messaging.interval_seconds == 10
