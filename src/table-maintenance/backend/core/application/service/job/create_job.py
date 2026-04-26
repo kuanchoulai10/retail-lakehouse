@@ -21,7 +21,7 @@ from core.application.port.inbound import (
 )
 
 if TYPE_CHECKING:
-    from core.application.event_handler.event_serializer import EventSerializer
+    from core.application.service.outbox.event_serializer import EventSerializer
     from core.application.port.outbound.event_outbox_repo import EventOutboxRepo
     from core.application.port.outbound.job.jobs_repo import JobsRepo
 

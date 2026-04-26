@@ -11,8 +11,8 @@ from core.adapter.outbound.sql.event_outbox_sql_repo import EventOutboxSqlRepo
 from core.adapter.outbound.sql.metadata import metadata
 from core.application.domain.model.job.events import JobTriggered
 from core.application.event_handler.create_job_run_consumer import CreateJobRunConsumer
-from core.application.event_handler.event_serializer import EventSerializer
-from core.application.service.outbox_publisher import OutboxPublisherService
+from core.application.service.outbox.event_serializer import EventSerializer
+from core.application.service.outbox.publish_events import PublishEventsService
 from core.base.event_dispatcher import EventDispatcher
 from outbox_publisher.publisher_loop import PublisherLoop
 from sqlalchemy import create_engine
@@ -45,7 +45,7 @@ def build_publisher() -> PublisherLoop:
         CreateJobRunConsumer(job_runs_repo, outbox_repo, serializer),
     )
 
-    service = OutboxPublisherService(outbox_repo, serializer, dispatcher)
+    service = PublishEventsService(outbox_repo, serializer, dispatcher)
     return PublisherLoop(service, interval_seconds=interval)
 
 

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import Depends
 
-from core.application.event_handler.event_serializer import EventSerializer
+from core.application.service.outbox.event_serializer import EventSerializer
 from core.application.service.catalog.get_table import GetTableService
 from core.application.service.catalog.list_branches import ListBranchesService
 from core.application.service.catalog.list_namespaces import (

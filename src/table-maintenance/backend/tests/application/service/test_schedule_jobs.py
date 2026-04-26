@@ -12,7 +12,10 @@ from core.application.domain.model.job import (
     JobStatus,
     JobType,
 )
-from core.application.service.schedule_jobs import ScheduleJobsService
+from core.application.port.inbound.scheduling.schedule_jobs import (
+    ScheduleJobsUseCase,
+)
+from core.application.service.scheduling.schedule_jobs import ScheduleJobsService
 
 NOW = datetime(2026, 4, 22, 10, 0, tzinfo=UTC)
 
@@ -50,11 +53,17 @@ def _make_service():
     return service, jobs_repo, job_runs_repo, outbox_repo
 
 
+def test_service_implements_use_case():
+    """Verify that ScheduleJobsService implements ScheduleJobsUseCase."""
+    service, *_ = _make_service()
+    assert isinstance(service, ScheduleJobsUseCase)
+
+
 def test_no_schedulable_jobs_returns_zero():
     """Verify that execute returns zero when no jobs are due."""
     service, jobs_repo, _, _ = _make_service()
     jobs_repo.list_schedulable.return_value = []
-    result = service.execute()
+    result = service.execute(None)
     assert result.triggered_count == 0
     assert result.job_ids == []
 
@@ -66,7 +75,7 @@ def test_triggers_run_for_schedulable_job():
     jobs_repo.list_schedulable.return_value = [job]
     job_runs_repo.count_active_for_job.return_value = 0
 
-    result = service.execute()
+    result = service.execute(None)
 
     assert result.triggered_count == 1
     assert "j1" in result.job_ids
@@ -81,7 +90,7 @@ def test_skips_job_at_max_active_runs():
     jobs_repo.list_schedulable.return_value = [job]
     job_runs_repo.count_active_for_job.return_value = 1
 
-    result = service.execute()
+    result = service.execute(None)
 
     assert result.triggered_count == 0
     outbox_repo.save.assert_not_called()
@@ -93,7 +102,7 @@ def test_triggers_multiple_jobs():
     jobs_repo.list_schedulable.return_value = [_make_job("j1"), _make_job("j2")]
     job_runs_repo.count_active_for_job.return_value = 0
 
-    result = service.execute()
+    result = service.execute(None)
 
     assert result.triggered_count == 2
     assert set(result.job_ids) == {"j1", "j2"}
@@ -106,7 +115,7 @@ def test_advances_next_run_at_using_cron():
     jobs_repo.list_schedulable.return_value = [job]
     job_runs_repo.count_active_for_job.return_value = 0
 
-    service.execute()
+    service.execute(None)
 
     save_call = jobs_repo.save_next_run_at.call_args
     next_time = save_call[0][1]
@@ -120,7 +129,7 @@ def test_continues_on_single_job_failure():
     job_runs_repo.count_active_for_job.return_value = 0
     outbox_repo.save.side_effect = [RuntimeError("boom"), None]
 
-    result = service.execute()
+    result = service.execute(None)
 
     assert result.triggered_count == 1
     assert "j2" in result.job_ids

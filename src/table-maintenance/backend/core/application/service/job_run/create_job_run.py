@@ -19,7 +19,7 @@ from core.application.port.inbound import (
 from core.application.port.inbound.job_run.create_job_run import TriggerJobOutput
 
 if TYPE_CHECKING:
-    from core.application.event_handler.event_serializer import EventSerializer
+    from core.application.service.outbox.event_serializer import EventSerializer
     from core.application.port.outbound.event_outbox_repo import EventOutboxRepo
     from core.application.port.outbound.job.jobs_repo import JobsRepo
     from core.application.port.outbound.job_run.job_runs_repo import JobRunsRepo

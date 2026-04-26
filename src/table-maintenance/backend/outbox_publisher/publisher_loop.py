@@ -7,7 +7,7 @@ import threading
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from core.application.service.outbox_publisher import OutboxPublisherService
+    from core.application.service.outbox.publish_events import PublishEventsService
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ class PublisherLoop:
     """Poll the outbox table and dispatch events on a fixed interval."""
 
     def __init__(
-        self, service: OutboxPublisherService, interval_seconds: int = 5
+        self, service: PublishEventsService, interval_seconds: int = 5
     ) -> None:
         """Initialize with a publisher service and polling interval."""
         self._service = service

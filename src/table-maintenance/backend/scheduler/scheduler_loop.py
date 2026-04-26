@@ -7,7 +7,7 @@ import threading
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from core.application.service.schedule_jobs import ScheduleJobsService
+    from core.application.service.scheduling.schedule_jobs import ScheduleJobsService
 
 logger = logging.getLogger(__name__)
 

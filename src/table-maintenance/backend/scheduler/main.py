@@ -11,8 +11,8 @@ from core.adapter.outbound.job.sql.jobs_sql_repo import JobsSqlRepo
 from core.adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
 from core.adapter.outbound.sql.event_outbox_sql_repo import EventOutboxSqlRepo
 from core.adapter.outbound.sql.metadata import metadata
-from core.application.event_handler.event_serializer import EventSerializer
-from core.application.service.schedule_jobs import ScheduleJobsService
+from core.application.service.outbox.event_serializer import EventSerializer
+from core.application.service.scheduling.schedule_jobs import ScheduleJobsService
 from scheduler.scheduler_loop import SchedulerLoop
 from sqlalchemy import create_engine
 

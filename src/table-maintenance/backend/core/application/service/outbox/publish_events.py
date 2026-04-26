@@ -1,18 +1,21 @@
-"""Define the OutboxPublisherService."""
+"""Define the PublishEventsService."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from core.application.service.outbox_publish_result import OutboxPublishResult
+from core.application.port.inbound.outbox.publish_events import (
+    PublishEventsResult,
+    PublishEventsUseCase,
+)
 
 if TYPE_CHECKING:
-    from core.application.event_handler.event_serializer import EventSerializer
+    from core.application.service.outbox.event_serializer import EventSerializer
     from core.application.port.outbound.event_outbox_repo import EventOutboxRepo
     from core.base.event_dispatcher import EventDispatcher
 
 
-class OutboxPublisherService:
+class PublishEventsService(PublishEventsUseCase):
     """Fetch unpublished outbox entries, dispatch events, mark as published."""
 
     def __init__(
@@ -26,15 +29,15 @@ class OutboxPublisherService:
         self._serializer = serializer
         self._dispatcher = dispatcher
 
-    def execute(self) -> OutboxPublishResult:
+    def execute(self, request: None = None) -> PublishEventsResult:
         """One tick: fetch unpublished → deserialize → dispatch → mark published."""
         entries = self._outbox_repo.fetch_unpublished(batch_size=100)
         if not entries:
-            return OutboxPublishResult(published_count=0)
+            return PublishEventsResult(published_count=0)
 
         for entry in entries:
             event = self._serializer.deserialize(entry.event_type, entry.payload)
             self._dispatcher.dispatch(event)
 
         self._outbox_repo.mark_published([e.id for e in entries])
-        return OutboxPublishResult(published_count=len(entries))
+        return PublishEventsResult(published_count=len(entries))

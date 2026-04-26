@@ -11,7 +11,7 @@ from core.base.event_handler import EventHandler
 
 if TYPE_CHECKING:
     from core.application.domain.model.job.events import JobTriggered
-    from core.application.event_handler.event_serializer import EventSerializer
+    from core.application.service.outbox.event_serializer import EventSerializer
     from core.application.port.outbound.event_outbox_repo import EventOutboxRepo
     from core.application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 

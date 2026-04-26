@@ -16,7 +16,7 @@ from fastapi.testclient import TestClient
 from api.adapter.inbound.web import router
 from core.adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
 from core.adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
-from core.application.event_handler.event_serializer import EventSerializer
+from core.application.service.outbox.event_serializer import EventSerializer
 from core.application.service.job.create_job import CreateJobService
 from core.application.service.job.get_job import GetJobService
 from core.application.service.job.list_jobs import ListJobsService

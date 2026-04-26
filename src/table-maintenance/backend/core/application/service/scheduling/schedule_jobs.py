@@ -6,13 +6,16 @@ import logging
 from typing import TYPE_CHECKING
 
 from core.application.domain.model.job_run import TriggerType
-from core.application.service.schedule_jobs_result import ScheduleJobsResult
+from core.application.port.inbound.scheduling.schedule_jobs import (
+    ScheduleJobsResult,
+    ScheduleJobsUseCase,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from datetime import datetime
 
-    from core.application.event_handler.event_serializer import EventSerializer
+    from core.application.service.outbox.event_serializer import EventSerializer
     from core.application.port.outbound.event_outbox_repo import EventOutboxRepo
     from core.application.port.outbound.job.jobs_repo import JobsRepo
     from core.application.port.outbound.job_run.job_runs_repo import JobRunsRepo
@@ -20,7 +23,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class ScheduleJobsService:
+class ScheduleJobsService(ScheduleJobsUseCase):
     """Create JobRuns for jobs whose cron schedule is due."""
 
     def __init__(
@@ -38,7 +41,7 @@ class ScheduleJobsService:
         self._outbox_repo = outbox_repo
         self._serializer = serializer
 
-    def execute(self) -> ScheduleJobsResult:
+    def execute(self, request: None = None) -> ScheduleJobsResult:
         """Run one scheduling tick: find due jobs and write trigger events to outbox."""
         now = self._clock()
         jobs = self._jobs_repo.list_schedulable(now)
