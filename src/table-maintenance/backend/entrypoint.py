@@ -13,7 +13,7 @@ def main() -> None:
     if role == "api":
         import uvicorn
 
-        uvicorn.run("api.main:app", host="0.0.0.0", port=8000)
+        uvicorn.run("bootstrap.api:app", host="0.0.0.0", port=8000)
     elif role == "scheduler":
         from scheduler.main import main as scheduler_main
 

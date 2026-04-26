@@ -1,7 +1,7 @@
 """Tests for health check endpoint."""
 
 from fastapi.testclient import TestClient
-from api.main import app
+from bootstrap.api import app
 
 
 def test_health():
