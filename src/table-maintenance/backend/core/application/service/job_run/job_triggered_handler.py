@@ -1,4 +1,4 @@
-"""Define the consumer for JobTriggered events."""
+"""Define the handler for JobTriggered events."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from core.application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 
 
-class CreateJobRunConsumer(EventHandler["JobTriggered"]):
+class JobTriggeredHandler(EventHandler["JobTriggered"]):
     """Handle JobTriggered by creating a new PENDING JobRun.
 
     Writes the JobRun's own events (JobRunCreated) to the outbox

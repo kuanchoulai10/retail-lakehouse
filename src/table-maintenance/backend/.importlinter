@@ -38,7 +38,6 @@ name = Clean Architecture layer ordering
 type = layers
 layers =
     api.adapter.inbound.web
-    core.application.event_handler
     core.application.service
     core.application.port
     core.application.domain.model

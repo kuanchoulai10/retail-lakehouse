@@ -10,7 +10,7 @@ from core.adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
 from core.adapter.outbound.sql.event_outbox_sql_repo import EventOutboxSqlRepo
 from core.adapter.outbound.sql.metadata import metadata
 from core.application.domain.model.job.events import JobTriggered
-from core.application.event_handler.create_job_run_consumer import CreateJobRunConsumer
+from core.application.service.job_run.job_triggered_handler import JobTriggeredHandler
 from core.application.service.outbox.event_serializer import EventSerializer
 from core.application.service.outbox.publish_events import PublishEventsService
 from core.base.event_dispatcher import EventDispatcher
@@ -42,7 +42,7 @@ def build_publisher() -> PublisherLoop:
     dispatcher = EventDispatcher()
     dispatcher.register(
         JobTriggered,
-        CreateJobRunConsumer(job_runs_repo, outbox_repo, serializer),
+        JobTriggeredHandler(job_runs_repo, outbox_repo, serializer),
     )
 
     service = PublishEventsService(outbox_repo, serializer, dispatcher)
