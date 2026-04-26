@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import logging
-import os
 import signal
 
+from adapter.inbound.messaging.outbox.publisher_loop import PublisherLoop
 from adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
+from adapter.outbound.sql.engine_factory import build_engine
 from adapter.outbound.sql.event_outbox_sql_repo import EventOutboxSqlRepo
 from adapter.outbound.sql.metadata import metadata
 from application.domain.model.job.events import JobTriggered
@@ -14,8 +15,7 @@ from application.service.job_run.job_triggered_handler import JobTriggeredHandle
 from application.service.outbox.event_serializer import EventSerializer
 from application.service.outbox.publish_events import PublishEventsService
 from base.event_dispatcher import EventDispatcher
-from adapter.inbound.messaging.outbox.publisher_loop import PublisherLoop
-from sqlalchemy import create_engine
+from bootstrap.dependencies.settings import get_settings
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,13 +26,8 @@ logger = logging.getLogger(__name__)
 
 def build_publisher() -> PublisherLoop:
     """Wire up the outbox publisher with SQL repos and return the loop."""
-    database_url = os.environ.get(
-        "OUTBOX_DATABASE_URL",
-        "sqlite:///scheduler.db",
-    )
-    interval = int(os.environ.get("OUTBOX_INTERVAL_SECONDS", "5"))
-
-    engine = create_engine(database_url)
+    settings = get_settings()
+    engine = build_engine(settings)
     metadata.create_all(engine)
 
     outbox_repo = EventOutboxSqlRepo(engine)
@@ -46,7 +41,7 @@ def build_publisher() -> PublisherLoop:
     )
 
     service = PublishEventsService(outbox_repo, serializer, dispatcher)
-    return PublisherLoop(service, interval_seconds=interval)
+    return PublisherLoop(service, interval_seconds=settings.messaging.interval_seconds)
 
 
 def main() -> None:
