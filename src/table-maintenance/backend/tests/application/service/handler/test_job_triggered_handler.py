@@ -12,7 +12,7 @@ from application.domain.model.job import (
 from application.domain.model.job.events import JobTriggered
 from application.domain.model.job_run import TriggerType
 from application.domain.model.job_run.events import JobRunCreated
-from application.service.job_run.job_triggered_handler import JobTriggeredHandler
+from application.service.handler.job_triggered_handler import JobTriggeredHandler
 
 
 def _make_enriched_event() -> JobTriggered:

@@ -30,8 +30,8 @@ from application.domain.model.job_run.events import JobRunCreated
 from application.domain.model.job_run.job_run_id import JobRunId
 from application.domain.model.job_run.trigger_type import TriggerType
 from application.port.outbound.job_run.job_submission import JobSubmission
-from application.service.job_run.job_run_created_handler import JobRunCreatedHandler
-from application.service.job_run.job_triggered_handler import JobTriggeredHandler
+from application.service.handler.job_run_created_handler import JobRunCreatedHandler
+from application.service.handler.job_triggered_handler import JobTriggeredHandler
 from application.service.outbox.event_serializer import EventSerializer
 from application.service.outbox.publish_events import PublishEventsService
 from base.event_dispatcher import EventDispatcher

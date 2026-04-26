@@ -14,8 +14,8 @@ from adapter.outbound.sql.event_outbox_sql_repo import EventOutboxSqlRepo
 from adapter.outbound.sql.metadata import metadata
 from application.domain.model.job.events import JobTriggered
 from application.domain.model.job_run.events import JobRunCreated
-from application.service.job_run.job_run_created_handler import JobRunCreatedHandler
-from application.service.job_run.job_triggered_handler import JobTriggeredHandler
+from application.service.handler.job_run_created_handler import JobRunCreatedHandler
+from application.service.handler.job_triggered_handler import JobTriggeredHandler
 from application.service.outbox.event_serializer import EventSerializer
 from application.service.outbox.publish_events import PublishEventsService
 from base.event_dispatcher import EventDispatcher

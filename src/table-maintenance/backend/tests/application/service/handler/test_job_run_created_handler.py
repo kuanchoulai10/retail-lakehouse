@@ -12,7 +12,7 @@ from application.domain.model.job import (
 from application.domain.model.job_run import JobRunId, TriggerType
 from application.domain.model.job_run.events import JobRunCreated
 from application.port.outbound.job_run.job_submission import JobSubmission
-from application.service.job_run.job_run_created_handler import JobRunCreatedHandler
+from application.service.handler.job_run_created_handler import JobRunCreatedHandler
 
 
 def _make_event(**overrides) -> JobRunCreated:
