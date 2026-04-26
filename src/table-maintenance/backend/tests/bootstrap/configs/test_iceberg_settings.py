@@ -16,14 +16,14 @@ def test_iceberg_catalog_name_default():
 
 
 def test_iceberg_catalog_uri_env_override(monkeypatch):
-    """Verify that BACKEND_ICEBERG_CATALOG_URI overrides the default."""
+    """Verify that GLAC_ICEBERG_CATALOG_URI overrides the default."""
     monkeypatch.setenv("GLAC_ICEBERG_CATALOG_URI", "http://custom:9999/api/catalog")
     s = AppSettings()
     assert s.iceberg_catalog_uri == "http://custom:9999/api/catalog"
 
 
 def test_iceberg_catalog_name_env_override(monkeypatch):
-    """Verify that BACKEND_ICEBERG_CATALOG_NAME overrides the default."""
+    """Verify that GLAC_ICEBERG_CATALOG_NAME overrides the default."""
     monkeypatch.setenv("GLAC_ICEBERG_CATALOG_NAME", "my_catalog")
     s = AppSettings()
     assert s.iceberg_catalog_name == "my_catalog"
