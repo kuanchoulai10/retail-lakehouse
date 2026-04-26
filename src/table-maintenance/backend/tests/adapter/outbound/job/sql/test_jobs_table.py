@@ -2,7 +2,7 @@
 
 from sqlalchemy import DateTime, String
 
-from core.adapter.outbound.job.sql.jobs_table import jobs_table
+from adapter.outbound.job.sql.jobs_table import jobs_table
 
 
 def test_table_name():

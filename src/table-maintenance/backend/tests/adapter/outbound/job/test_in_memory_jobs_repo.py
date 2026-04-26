@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 
 import pytest
 from base import Repository
-from core.adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
+from adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
 from application.domain import JobNotFoundError, JobType
 from application.domain.model.job import CronExpression, Job, JobId, JobStatus
 

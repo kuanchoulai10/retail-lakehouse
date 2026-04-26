@@ -1,1 +1,0 @@
-"""Inbound and outbound adapters."""

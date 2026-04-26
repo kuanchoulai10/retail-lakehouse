@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import Depends
 
-from core.adapter.outbound.sql.event_outbox_sql_repo import EventOutboxSqlRepo
+from adapter.outbound.sql.event_outbox_sql_repo import EventOutboxSqlRepo
 from application.service.outbox.event_serializer import EventSerializer
 
 from dependencies.settings import get_settings

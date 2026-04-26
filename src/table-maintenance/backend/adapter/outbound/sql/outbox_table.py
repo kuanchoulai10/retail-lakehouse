@@ -2,7 +2,7 @@
 
 from sqlalchemy import Column, DateTime, String, Table
 
-from core.adapter.outbound.sql.metadata import metadata
+from adapter.outbound.sql.metadata import metadata
 
 outbox_table = Table(
     "domain_event_outbox",

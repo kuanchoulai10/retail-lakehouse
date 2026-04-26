@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from core.adapter.outbound.job_run.job_run_in_memory_executor import (
+from adapter.outbound.job_run.job_run_in_memory_executor import (
     JobRunInMemoryExecutor,
 )
 from application.domain.model.job import Job, JobId, JobType

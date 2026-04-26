@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from core.adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
-from core.adapter.outbound.job.sql.jobs_sql_repo import JobsSqlRepo
-from core.adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
-from core.adapter.outbound.job_run.job_run_in_memory_executor import (
+from adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
+from adapter.outbound.job.sql.jobs_sql_repo import JobsSqlRepo
+from adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
+from adapter.outbound.job_run.job_run_in_memory_executor import (
     JobRunInMemoryExecutor,
 )
-from core.adapter.outbound.job_run.k8s.job_run_k8s_executor import JobRunK8sExecutor
-from core.adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
+from adapter.outbound.job_run.k8s.job_run_k8s_executor import JobRunK8sExecutor
+from adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
 from core.configs import (
     AppSettings,
     DatabaseBackend,
@@ -69,7 +69,7 @@ def test_get_jobs_repo_returns_sql_for_sqlite():
 def test_get_jobs_repo_returns_sql_for_postgres(monkeypatch):
     """Verify that get_jobs_repo returns JobsSqlRepo when configured for Postgres."""
     _clear_caches()
-    from core.adapter.outbound.sql import engine_factory as ef
+    from adapter.outbound.sql import engine_factory as ef
 
     fake_engine = MagicMock(name="engine")
     monkeypatch.setattr(ef, "create_engine", MagicMock(return_value=fake_engine))

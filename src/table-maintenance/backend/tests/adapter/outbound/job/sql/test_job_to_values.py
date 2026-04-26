@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from core.adapter.outbound.job.sql.job_to_values import job_to_values
+from adapter.outbound.job.sql.job_to_values import job_to_values
 from application.domain.model.job import (
     CronExpression,
     Job,

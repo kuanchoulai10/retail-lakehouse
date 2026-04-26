@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.adapter.outbound.catalog.iceberg_catalog_client import IcebergCatalogClient
+from adapter.outbound.catalog.iceberg_catalog_client import IcebergCatalogClient
 from application.domain.model.catalog.table import Table
 from application.port.outbound.catalog.catalog_reader import CatalogReader
 
@@ -21,7 +21,7 @@ def mock_pyiceberg_catalog():
 def client(mock_pyiceberg_catalog):
     """Return an IcebergCatalogClient wrapping a mock catalog."""
     with patch(
-        "core.adapter.outbound.catalog.iceberg_catalog_client.load_catalog",
+        "adapter.outbound.catalog.iceberg_catalog_client.load_catalog",
         return_value=mock_pyiceberg_catalog,
     ):
         return IcebergCatalogClient(

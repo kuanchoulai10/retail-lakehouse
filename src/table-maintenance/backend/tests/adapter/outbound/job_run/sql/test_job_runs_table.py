@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from core.adapter.outbound.job_run.sql.job_runs_table import job_runs_table
-from core.adapter.outbound.sql.metadata import metadata
+from adapter.outbound.job_run.sql.job_runs_table import job_runs_table
+from adapter.outbound.sql.metadata import metadata
 
 
 def test_table_exists_in_shared_metadata():

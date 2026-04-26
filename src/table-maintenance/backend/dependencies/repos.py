@@ -7,15 +7,15 @@ from typing import TYPE_CHECKING
 
 from fastapi import Depends
 
-from core.adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
-from core.adapter.outbound.job.sql.jobs_sql_repo import JobsSqlRepo
-from core.adapter.outbound.job_run.job_run_in_memory_executor import (
+from adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
+from adapter.outbound.job.sql.jobs_sql_repo import JobsSqlRepo
+from adapter.outbound.job_run.job_run_in_memory_executor import (
     JobRunInMemoryExecutor,
 )
-from core.adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
-from core.adapter.outbound.job_run.k8s.job_run_k8s_executor import JobRunK8sExecutor
-from core.adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
-from core.adapter.outbound.sql.engine_factory import build_engine
+from adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
+from adapter.outbound.job_run.k8s.job_run_k8s_executor import JobRunK8sExecutor
+from adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
+from adapter.outbound.sql.engine_factory import build_engine
 from core.configs import (
     DatabaseBackend,
     JobRunExecutorAdapter,

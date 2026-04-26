@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from core.adapter.outbound.job_run.k8s.manifest import build_manifest
+from adapter.outbound.job_run.k8s.manifest import build_manifest
 from application.domain.model.job import (
     CronExpression,
     Job,
