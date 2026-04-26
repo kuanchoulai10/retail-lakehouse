@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 
 from api.adapter.inbound.web.catalog.dto import TablesResponse
-from core.application.port.inbound.catalog.list_tables import (
+from application.port.inbound.catalog.list_tables import (
     ListTablesInput,
     ListTablesUseCase,
 )

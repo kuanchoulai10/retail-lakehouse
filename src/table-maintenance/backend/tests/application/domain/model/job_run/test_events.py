@@ -3,9 +3,9 @@
 from datetime import UTC, datetime
 
 from base import DomainEvent
-from core.application.domain.model.job import JobId
-from core.application.domain.model.job_run import JobRunId, TriggerType
-from core.application.domain.model.job_run.events import (
+from application.domain.model.job import JobId
+from application.domain.model.job_run import JobRunId, TriggerType
+from application.domain.model.job_run.events import (
     JobRunCancelled,
     JobRunCompleted,
     JobRunCreated,

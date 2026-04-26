@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from core.application.domain.model.job import (
+from application.domain.model.job import (
     CronExpression,
     InvalidJobStateTransitionError,
     Job,
@@ -15,14 +15,14 @@ from core.application.domain.model.job import (
     MaxActiveRunsExceededError,
     TableReference,
 )
-from core.application.domain.model.job.events import (
+from application.domain.model.job.events import (
     JobArchived,
     JobPaused,
     JobResumed,
     JobTriggered,
     JobUpdated,
 )
-from core.application.domain.model.job_run import TriggerType
+from application.domain.model.job_run import TriggerType
 
 NOW = datetime(2026, 4, 25, 12, 0, tzinfo=UTC)
 

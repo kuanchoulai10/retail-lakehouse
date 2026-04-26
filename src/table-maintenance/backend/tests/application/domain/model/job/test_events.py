@@ -3,14 +3,14 @@
 from datetime import datetime
 
 from base import DomainEvent
-from core.application.domain.model.job import (
+from application.domain.model.job import (
     CronExpression,
     FieldChange,
     JobId,
     JobType,
     TableReference,
 )
-from core.application.domain.model.job.events import (
+from application.domain.model.job.events import (
     JobArchived,
     JobCreated,
     JobPaused,
@@ -18,7 +18,7 @@ from core.application.domain.model.job.events import (
     JobTriggered,
     JobUpdated,
 )
-from core.application.domain.model.job_run import TriggerType
+from application.domain.model.job_run import TriggerType
 
 
 class TestJobCreated:

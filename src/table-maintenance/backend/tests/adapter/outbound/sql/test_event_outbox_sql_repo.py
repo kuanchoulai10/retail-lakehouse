@@ -6,8 +6,8 @@ from sqlalchemy import create_engine
 
 from core.adapter.outbound.sql.event_outbox_sql_repo import EventOutboxSqlRepo
 from core.adapter.outbound.sql.metadata import metadata
-from core.application.domain.model.outbox_entry import OutboxEntry
-from core.application.port.outbound.event_outbox_repo import EventOutboxRepo
+from application.domain.model.outbox_entry import OutboxEntry
+from application.port.outbound.event_outbox_repo import EventOutboxRepo
 
 
 def _make_repo():

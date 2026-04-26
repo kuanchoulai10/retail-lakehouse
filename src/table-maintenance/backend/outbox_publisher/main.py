@@ -9,10 +9,10 @@ import signal
 from core.adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
 from core.adapter.outbound.sql.event_outbox_sql_repo import EventOutboxSqlRepo
 from core.adapter.outbound.sql.metadata import metadata
-from core.application.domain.model.job.events import JobTriggered
-from core.application.service.job_run.job_triggered_handler import JobTriggeredHandler
-from core.application.service.outbox.event_serializer import EventSerializer
-from core.application.service.outbox.publish_events import PublishEventsService
+from application.domain.model.job.events import JobTriggered
+from application.service.job_run.job_triggered_handler import JobTriggeredHandler
+from application.service.outbox.event_serializer import EventSerializer
+from application.service.outbox.publish_events import PublishEventsService
 from base.event_dispatcher import EventDispatcher
 from outbox_publisher.publisher_loop import PublisherLoop
 from sqlalchemy import create_engine

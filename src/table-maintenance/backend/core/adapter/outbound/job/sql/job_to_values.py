@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from core.application.domain.model.job import Job
+    from application.domain.model.job import Job
 
 
 def job_to_values(job: Job) -> dict[str, Any]:

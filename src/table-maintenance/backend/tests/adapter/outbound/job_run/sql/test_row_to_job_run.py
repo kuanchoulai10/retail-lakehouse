@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from core.adapter.outbound.job_run.sql.row_to_job_run import row_to_job_run
-from core.application.domain.model.job import JobId
-from core.application.domain.model.job_run import (
+from application.domain.model.job import JobId
+from application.domain.model.job_run import (
     JobRun,
     JobRunId,
     JobRunStatus,

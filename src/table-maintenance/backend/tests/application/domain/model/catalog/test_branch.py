@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from base import Entity, EntityId, ValueObject
-from core.application.domain.model.catalog.branch import Branch
-from core.application.domain.model.catalog.branch_id import BranchId
-from core.application.domain.model.catalog.retention_policy import RetentionPolicy
+from application.domain.model.catalog.branch import Branch
+from application.domain.model.catalog.branch_id import BranchId
+from application.domain.model.catalog.retention_policy import RetentionPolicy
 
 
 def test_branch_id_is_entity_id():

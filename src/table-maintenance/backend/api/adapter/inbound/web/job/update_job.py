@@ -6,8 +6,8 @@ from dependencies.use_cases import get_update_job_use_case
 from fastapi import APIRouter, Depends, HTTPException
 
 from api.adapter.inbound.web.job.dto import JobApiResponse, UpdateJobApiRequest
-from core.application.exceptions import JobNotFoundError
-from core.application.port.inbound import UpdateJobInput, UpdateJobUseCase
+from application.exceptions import JobNotFoundError
+from application.port.inbound import UpdateJobInput, UpdateJobUseCase
 
 router = APIRouter()
 

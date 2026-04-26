@@ -1,5 +1,6 @@
 [importlinter]
 root_packages =
+    application
     base
     core
     api
@@ -12,12 +13,12 @@ include_external_packages = True
 name = Domain core (entities, value objects) does not depend on application or adapter
 type = forbidden
 source_modules =
-    core.application.domain.model
+    application.domain.model
 forbidden_modules =
-    core.application.port
-    core.application.exceptions
-    core.application.service
-    core.application.domain.service
+    application.port
+    application.exceptions
+    application.service
+    application.domain.service
     core.adapter
     core.configs
     fastapi
@@ -27,7 +28,7 @@ forbidden_modules =
 name = Application does not depend on adapter
 type = forbidden
 source_modules =
-    core.application
+    application
 forbidden_modules =
     core.adapter
     core.configs
@@ -39,9 +40,9 @@ name = Clean Architecture layer ordering
 type = layers
 layers =
     api.adapter.inbound.web
-    core.application.service
-    core.application.port
-    core.application.domain.model
+    application.service
+    application.port
+    application.domain.model
 
 [importlinter:contract:inbound-outbound-separation]
 name = Inbound adapter does not depend on outbound adapter
@@ -76,7 +77,7 @@ source_modules =
     core.configs
 forbidden_modules =
     core.adapter
-    core.application
+    application
 
 [importlinter:contract:base-isolation]
 name = Base (DDD kernel) depends on nothing project-internal
@@ -84,7 +85,7 @@ type = forbidden
 source_modules =
     base
 forbidden_modules =
-    core.application
+    application
     core.adapter
     core.configs
     api
@@ -96,7 +97,7 @@ forbidden_modules =
 name = Application service (use case impl) does not depend on adapter or framework
 type = forbidden
 source_modules =
-    core.application.service
+    application.service
 forbidden_modules =
     core.adapter
     core.configs

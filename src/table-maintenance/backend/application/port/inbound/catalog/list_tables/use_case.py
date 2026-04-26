@@ -1,0 +1,11 @@
+"""Define the ListTablesUseCase interface."""
+
+from __future__ import annotations
+
+from base.use_case import UseCase
+from application.port.inbound.catalog.list_tables.input import ListTablesInput
+from application.port.inbound.catalog.list_tables.output import ListTablesOutput
+
+
+class ListTablesUseCase(UseCase[ListTablesInput, ListTablesOutput]):
+    """List all tables in a namespace."""

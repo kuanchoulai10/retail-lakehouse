@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 
 from api.adapter.inbound.web.catalog.dto import SnapshotResponse, SnapshotsResponse
-from core.application.port.inbound.catalog.list_snapshots import (
+from application.port.inbound.catalog.list_snapshots import (
     ListSnapshotsInput,
     ListSnapshotsUseCase,
 )

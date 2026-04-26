@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from core.application.domain.model.job import JobStatus
-from core.application.service.job.create_job import CreateJobService
-from core.application.port.inbound import (
+from application.domain.model.job import JobStatus
+from application.service.job.create_job import CreateJobService
+from application.port.inbound import (
     CreateJobInput,
     CreateJobOutput,
     CreateJobUseCase,

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from base import EntityId
-from core.application.domain.model.catalog.table_id import TableId
+from application.domain.model.catalog.table_id import TableId
 
 
 def test_table_id_is_entity_id():

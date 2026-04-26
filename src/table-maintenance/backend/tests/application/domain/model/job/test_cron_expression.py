@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from core.application.domain.model.job import CronExpression
+from application.domain.model.job import CronExpression
 
 
 def test_stores_expression():

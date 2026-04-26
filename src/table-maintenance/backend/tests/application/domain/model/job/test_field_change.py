@@ -1,7 +1,7 @@
 """Tests for FieldChange value object."""
 
 from base import ValueObject
-from core.application.domain.model.job.field_change import FieldChange
+from application.domain.model.job.field_change import FieldChange
 
 
 def test_is_value_object():

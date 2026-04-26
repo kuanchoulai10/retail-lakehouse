@@ -9,7 +9,7 @@ from api.adapter.inbound.web.catalog.dto import (
     SchemaResponse,
     TableDetailResponse,
 )
-from core.application.port.inbound.catalog.get_table import (
+from application.port.inbound.catalog.get_table import (
     GetTableInput,
     GetTableUseCase,
 )

@@ -2,11 +2,11 @@
 
 import json
 
-from core.application.domain.model.job import JobId, JobType, TableReference
-from core.application.domain.model.job.events import JobCreated, JobPaused, JobTriggered
-from core.application.domain.model.job_run import TriggerType
-from core.application.domain.model.outbox_entry import OutboxEntry
-from core.application.service.outbox.event_serializer import EventSerializer
+from application.domain.model.job import JobId, JobType, TableReference
+from application.domain.model.job.events import JobCreated, JobPaused, JobTriggered
+from application.domain.model.job_run import TriggerType
+from application.domain.model.outbox_entry import OutboxEntry
+from application.service.outbox.event_serializer import EventSerializer
 
 
 def _make_serializer() -> EventSerializer:

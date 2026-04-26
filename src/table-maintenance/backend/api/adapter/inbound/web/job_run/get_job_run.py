@@ -6,8 +6,8 @@ from dependencies.use_cases import get_get_job_run_use_case
 from fastapi import APIRouter, Depends, HTTPException
 
 from api.adapter.inbound.web.job_run.dto import JobRunApiResponse
-from core.application.exceptions import JobRunNotFoundError
-from core.application.port.inbound import GetJobRunInput, GetJobRunUseCase
+from application.exceptions import JobRunNotFoundError
+from application.port.inbound import GetJobRunInput, GetJobRunUseCase
 
 router = APIRouter()
 

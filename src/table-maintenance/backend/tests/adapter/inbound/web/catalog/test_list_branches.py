@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api.adapter.inbound.web import router
-from core.application.port.inbound.catalog.list_branches.output import (
+from application.port.inbound.catalog.list_branches.output import (
     ListBranchesOutput,
     ListBranchesOutputItem,
 )

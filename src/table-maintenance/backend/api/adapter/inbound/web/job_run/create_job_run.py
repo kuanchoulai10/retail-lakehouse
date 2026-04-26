@@ -5,8 +5,8 @@ from __future__ import annotations
 from dependencies.use_cases import get_create_job_run_use_case
 from fastapi import APIRouter, Depends, HTTPException
 
-from core.application.exceptions import JobDisabledError, JobNotFoundError
-from core.application.port.inbound import CreateJobRunInput, CreateJobRunUseCase
+from application.exceptions import JobDisabledError, JobNotFoundError
+from application.port.inbound import CreateJobRunInput, CreateJobRunUseCase
 
 router = APIRouter()
 

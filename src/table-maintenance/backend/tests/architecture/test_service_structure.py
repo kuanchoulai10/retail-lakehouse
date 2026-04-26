@@ -24,7 +24,7 @@ import pytest
 from base.event_handler import EventHandler
 from base.use_case import UseCase
 
-SERVICE_DIR = Path(__file__).resolve().parents[2] / "core" / "application" / "service"
+SERVICE_DIR = Path(__file__).resolve().parents[2] / "application" / "service"
 
 # Files that are utilities, not services — excluded from service rules
 UTILITY_FILES = {"event_serializer.py"}
@@ -69,7 +69,7 @@ def _all_modules() -> list[tuple[str, Path]]:
             continue
         if py_file.name in UTILITY_FILES:
             continue
-        relative = py_file.relative_to(SERVICE_DIR.parents[2])
+        relative = py_file.relative_to(SERVICE_DIR.parents[1])
         module_path = str(relative.with_suffix("")).replace("/", ".")
         result.append((module_path, py_file))
     return result

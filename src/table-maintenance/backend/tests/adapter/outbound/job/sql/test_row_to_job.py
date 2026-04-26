@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 
 from core.adapter.outbound.job.sql.row_to_job import row_to_job
-from core.application.domain.model.job import (
+from application.domain.model.job import (
     CronExpression,
     JobId,
     JobStatus,

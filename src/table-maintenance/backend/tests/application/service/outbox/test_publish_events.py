@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from core.application.port.inbound.outbox.publish_events import (
+from application.port.inbound.outbox.publish_events import (
     PublishEventsUseCase,
 )
-from core.application.service.outbox.publish_events import PublishEventsService
+from application.service.outbox.publish_events import PublishEventsService
 
 
 def _make_service():

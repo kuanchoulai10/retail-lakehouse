@@ -7,7 +7,7 @@ from dependencies.use_cases import get_list_jobs_use_case
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from api.adapter.inbound.web import router
-from core.application.port.inbound import ListJobsOutput, ListJobsOutputItem
+from application.port.inbound import ListJobsOutput, ListJobsOutputItem
 
 
 def _make_client(use_case: MagicMock) -> TestClient:

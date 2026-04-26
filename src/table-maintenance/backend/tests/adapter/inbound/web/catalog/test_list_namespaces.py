@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api.adapter.inbound.web import router
-from core.application.port.inbound.catalog.list_namespaces import ListNamespacesOutput
+from application.port.inbound.catalog.list_namespaces import ListNamespacesOutput
 from dependencies.use_cases import get_list_namespaces_use_case
 
 

@@ -1,7 +1,7 @@
 """Tests for JobRunId."""
 
-from core.application.domain.model.job import JobId
-from core.application.domain.model.job_run import JobRunId
+from application.domain.model.job import JobId
+from application.domain.model.job_run import JobRunId
 from base.entity_id import EntityId
 
 

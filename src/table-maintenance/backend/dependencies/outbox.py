@@ -7,12 +7,12 @@ from typing import TYPE_CHECKING
 from fastapi import Depends
 
 from core.adapter.outbound.sql.event_outbox_sql_repo import EventOutboxSqlRepo
-from core.application.service.outbox.event_serializer import EventSerializer
+from application.service.outbox.event_serializer import EventSerializer
 
 from dependencies.settings import get_settings
 
 if TYPE_CHECKING:
-    from core.application.port.outbound.event_outbox_repo import EventOutboxRepo
+    from application.port.outbound.event_outbox_repo import EventOutboxRepo
     from core.configs import AppSettings
 
 

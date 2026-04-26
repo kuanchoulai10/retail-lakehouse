@@ -2,7 +2,7 @@
 
 import pytest
 
-from core.application.domain.model.job import JobStatus
+from application.domain.model.job import JobStatus
 
 
 def test_enum_values():

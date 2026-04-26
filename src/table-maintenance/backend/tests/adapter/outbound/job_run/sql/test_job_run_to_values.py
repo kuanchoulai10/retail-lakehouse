@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from core.adapter.outbound.job_run.sql.job_run_to_values import job_run_to_values
-from core.application.domain.model.job import JobId
-from core.application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
+from application.domain.model.job import JobId
+from application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
 
 
 def test_serializes_all_fields():

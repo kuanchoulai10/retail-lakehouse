@@ -6,13 +6,13 @@ import pytest
 from kubernetes.client.exceptions import ApiException
 
 from core.adapter.outbound.job_run.k8s.job_runs_k8s_repo import JobRunsK8sRepo
-from core.application.domain.model.job import JobId
-from core.application.domain.model.job_run import (
+from application.domain.model.job import JobId
+from application.domain.model.job_run import (
     JobRunId,
     JobRunNotFoundError,
     JobRunStatus,
 )
-from core.application.port.outbound.job_run.job_runs_repo import JobRunsRepo
+from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 from core.configs import AppSettings
 
 SETTINGS = AppSettings()

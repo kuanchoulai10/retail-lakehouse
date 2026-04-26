@@ -9,15 +9,15 @@ from sqlalchemy import delete, insert, select, update
 from core.adapter.outbound.job.sql.job_to_values import job_to_values
 from core.adapter.outbound.job.sql.jobs_table import jobs_table
 from core.adapter.outbound.job.sql.row_to_job import row_to_job
-from core.application.domain.model.job import JobNotFoundError
-from core.application.port.outbound.job.jobs_repo import JobsRepo
+from application.domain.model.job import JobNotFoundError
+from application.port.outbound.job.jobs_repo import JobsRepo
 
 if TYPE_CHECKING:
     from datetime import datetime
 
     from sqlalchemy import Engine
 
-    from core.application.domain.model.job import Job, JobId
+    from application.domain.model.job import Job, JobId
     from base.entity_id import EntityId
 
 

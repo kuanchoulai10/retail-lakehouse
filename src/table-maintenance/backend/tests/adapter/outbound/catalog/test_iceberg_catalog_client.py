@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.adapter.outbound.catalog.iceberg_catalog_client import IcebergCatalogClient
-from core.application.domain.model.catalog.table import Table
-from core.application.port.outbound.catalog.catalog_reader import CatalogReader
+from application.domain.model.catalog.table import Table
+from application.port.outbound.catalog.catalog_reader import CatalogReader
 
 
 @pytest.fixture

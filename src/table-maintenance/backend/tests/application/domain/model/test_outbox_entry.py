@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 
 from base import ValueObject
-from core.application.domain.model.outbox_entry import OutboxEntry
+from application.domain.model.outbox_entry import OutboxEntry
 
 
 def test_is_value_object():

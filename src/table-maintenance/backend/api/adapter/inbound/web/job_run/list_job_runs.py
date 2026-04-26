@@ -6,7 +6,7 @@ from dependencies.use_cases import get_list_job_runs_use_case
 from fastapi import APIRouter, Depends
 
 from api.adapter.inbound.web.job_run.dto import JobRunApiResponse
-from core.application.port.inbound import ListJobRunsInput, ListJobRunsUseCase
+from application.port.inbound import ListJobRunsInput, ListJobRunsUseCase
 
 router = APIRouter()
 

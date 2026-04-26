@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from base import ValueObject
-from core.application.domain.model.catalog.schema_field import SchemaField
-from core.application.domain.model.catalog.table_schema import TableSchema
+from application.domain.model.catalog.schema_field import SchemaField
+from application.domain.model.catalog.table_schema import TableSchema
 
 
 def test_schema_field_is_value_object():

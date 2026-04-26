@@ -4,16 +4,16 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from core.application.domain.model.catalog.branch import Branch
-from core.application.domain.model.catalog.branch_id import BranchId
-from core.application.domain.model.catalog.schema_field import SchemaField
-from core.application.domain.model.catalog.snapshot import Snapshot
-from core.application.domain.model.catalog.snapshot_summary import SnapshotSummary
-from core.application.domain.model.catalog.table import Table
-from core.application.domain.model.catalog.table_id import TableId
-from core.application.domain.model.catalog.table_schema import TableSchema
-from core.application.service.catalog.get_table import GetTableService
-from core.application.port.inbound.catalog.get_table import (
+from application.domain.model.catalog.branch import Branch
+from application.domain.model.catalog.branch_id import BranchId
+from application.domain.model.catalog.schema_field import SchemaField
+from application.domain.model.catalog.snapshot import Snapshot
+from application.domain.model.catalog.snapshot_summary import SnapshotSummary
+from application.domain.model.catalog.table import Table
+from application.domain.model.catalog.table_id import TableId
+from application.domain.model.catalog.table_schema import TableSchema
+from application.service.catalog.get_table import GetTableService
+from application.port.inbound.catalog.get_table import (
     GetTableInput,
     GetTableOutput,
     GetTableUseCase,

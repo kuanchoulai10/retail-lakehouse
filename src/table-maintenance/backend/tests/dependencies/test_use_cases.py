@@ -15,14 +15,14 @@ from dependencies.use_cases import (
 )
 from core.adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
 from core.adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
-from core.application.service.outbox.event_serializer import EventSerializer
-from core.application.service.job.create_job import CreateJobService
-from core.application.service.job.get_job import GetJobService
-from core.application.service.job.list_jobs import ListJobsService
-from core.application.service.job.update_job import UpdateJobService
-from core.application.service.job_run.create_job_run import CreateJobRunService
-from core.application.service.job_run.get_job_run import GetJobRunService
-from core.application.service.job_run.list_job_runs import ListJobRunsService
+from application.service.outbox.event_serializer import EventSerializer
+from application.service.job.create_job import CreateJobService
+from application.service.job.get_job import GetJobService
+from application.service.job.list_jobs import ListJobsService
+from application.service.job.update_job import UpdateJobService
+from application.service.job_run.create_job_run import CreateJobRunService
+from application.service.job_run.get_job_run import GetJobRunService
+from application.service.job_run.list_job_runs import ListJobRunsService
 
 
 def test_get_create_job_use_case():

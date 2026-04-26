@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 from sqlalchemy import insert, select, update
 
 from core.adapter.outbound.sql.outbox_table import outbox_table
-from core.application.domain.model.outbox_entry import OutboxEntry
-from core.application.port.outbound.event_outbox_repo import EventOutboxRepo
+from application.domain.model.outbox_entry import OutboxEntry
+from application.port.outbound.event_outbox_repo import EventOutboxRepo
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine

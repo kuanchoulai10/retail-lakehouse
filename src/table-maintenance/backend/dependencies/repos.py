@@ -28,9 +28,9 @@ from dependencies.settings import get_settings
 if TYPE_CHECKING:
     from sqlalchemy import Engine
 
-    from core.application.port.outbound.job_run.job_run_executor import JobRunExecutor
-    from core.application.port.outbound.job_run.job_runs_repo import JobRunsRepo
-    from core.application.port.outbound.job.jobs_repo import JobsRepo
+    from application.port.outbound.job_run.job_run_executor import JobRunExecutor
+    from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
+    from application.port.outbound.job.jobs_repo import JobsRepo
     from core.configs import AppSettings
 
 

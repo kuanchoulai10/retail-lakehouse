@@ -3,14 +3,14 @@
 import pytest
 
 from core.adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
-from core.application.domain.model.job import JobId
-from core.application.domain.model.job_run import (
+from application.domain.model.job import JobId
+from application.domain.model.job_run import (
     JobRun,
     JobRunId,
     JobRunNotFoundError,
     JobRunStatus,
 )
-from core.application.port.outbound.job_run.job_runs_repo import JobRunsRepo
+from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 
 
 def _make_run(run_id: str = "run-1", job_id: str = "job-1") -> JobRun:

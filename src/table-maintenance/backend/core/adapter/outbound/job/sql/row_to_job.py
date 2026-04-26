@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from core.application.domain.model.job import (
+from application.domain.model.job import (
     CronExpression,
     Job,
     JobId,

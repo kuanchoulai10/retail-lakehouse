@@ -4,15 +4,15 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 from core.adapter.outbound.job_run.k8s.job_run_k8s_executor import JobRunK8sExecutor
-from core.application.domain.model.job import (
+from application.domain.model.job import (
     CronExpression,
     Job,
     JobId,
     JobType,
     TableReference,
 )
-from core.application.domain.model.job_run import JobRunStatus
-from core.application.port.outbound.job_run.job_run_executor import JobRunExecutor
+from application.domain.model.job_run import JobRunStatus
+from application.port.outbound.job_run.job_run_executor import JobRunExecutor
 from core.configs import AppSettings
 
 

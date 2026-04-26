@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 
 from base import AggregateRoot
-from core.application.domain.model.job import (
+from application.domain.model.job import (
     CronExpression,
     Job,
     JobId,
@@ -11,7 +11,7 @@ from core.application.domain.model.job import (
     JobType,
     TableReference,
 )
-from core.application.domain.model.job.events import JobCreated
+from application.domain.model.job.events import JobCreated
 
 
 def test_job_is_aggregate_root():

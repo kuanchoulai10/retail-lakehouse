@@ -7,7 +7,7 @@ import threading
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from core.application.service.outbox.publish_events import PublishEventsService
+    from application.service.outbox.publish_events import PublishEventsService
 
 logger = logging.getLogger(__name__)
 

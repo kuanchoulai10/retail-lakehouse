@@ -2,7 +2,7 @@
 
 from abc import ABC
 
-from core.application.port.outbound.event_outbox_repo import EventOutboxRepo
+from application.port.outbound.event_outbox_repo import EventOutboxRepo
 
 
 def test_is_abstract():

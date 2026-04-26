@@ -1,8 +1,8 @@
 """Tests for JobsRepo."""
 
 import pytest
-from core.application.domain import JobNotFoundError
-from core.application.port.outbound.job.jobs_repo import JobsRepo
+from application.domain import JobNotFoundError
+from application.port.outbound.job.jobs_repo import JobsRepo
 
 
 def test_job_not_found_error_has_name():

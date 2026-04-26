@@ -1,6 +1,6 @@
 """Tests for JobNotFoundError."""
 
-from core.application.domain.model.job import JobNotFoundError
+from application.domain.model.job import JobNotFoundError
 
 
 def test_job_not_found_error_stores_name():
