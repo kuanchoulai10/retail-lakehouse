@@ -1,33 +1,28 @@
-"""Entry point: selects api, scheduler, or outbox-publisher role via ROLE env var."""
+"""Entry point: selects api, scheduler, or messaging component via GLAC_COMPONENT."""
 
 from __future__ import annotations
 
-import os
-import sys
+from bootstrap.configs.component import Component
+from bootstrap.dependencies.settings import get_settings
 
 
 def main() -> None:
-    """Dispatch to api, scheduler, or outbox-publisher based on ROLE env var."""
-    role = os.environ.get("ROLE", "api")
+    """Dispatch to the component specified by GLAC_COMPONENT."""
+    settings = get_settings()
 
-    if role == "api":
-        import uvicorn
+    match settings.component:
+        case Component.API:
+            import uvicorn
 
-        uvicorn.run("bootstrap.api:app", host="0.0.0.0", port=8000)
-    elif role == "scheduler":
-        from bootstrap.scheduler import main as scheduler_main
+            uvicorn.run("bootstrap.api:app", host="0.0.0.0", port=8000)
+        case Component.SCHEDULER:
+            from bootstrap.scheduler import main as scheduler_main
 
-        scheduler_main()
-    elif role == "outbox-publisher":
-        from bootstrap.messaging import main as publisher_main
+            scheduler_main()
+        case Component.MESSAGING:
+            from bootstrap.messaging import main as messaging_main
 
-        publisher_main()
-    else:
-        print(
-            f"Unknown ROLE: {role!r}. Use 'api', 'scheduler', or 'outbox-publisher'.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+            messaging_main()
 
 
 if __name__ == "__main__":
