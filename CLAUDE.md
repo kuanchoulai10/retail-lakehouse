@@ -19,6 +19,11 @@ Respond in the same language as the user's message. The user typically communica
 - **StrEnum** for string-valued enumerations.
 - **`from __future__ import annotations`** in every module for deferred type evaluation.
 
+## Architecture Mindset
+
+- **DDD best practices first.** Always prefer Domain-Driven Design idioms and patterns. When in doubt, choose the approach closest to established DDD literature (Evans, Vernon).
+- **Design for high complexity.** This project will grow significantly in complexity. Favor extensible, well-structured designs over minimal implementations. Over-engineering is acceptable — under-engineering is not.
+
 ## Architecture: Clean Architecture (Strict Layering)
 
 This project follows "Get Your Hands Dirty on Clean Architecture" with an additional **no-skip-layer rule**: each layer may only depend on the layer directly below it.
