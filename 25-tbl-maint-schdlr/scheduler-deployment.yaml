@@ -20,9 +20,11 @@ spec:
           image: localhost:5001/table-maintenance-backend:20260424-233832
           imagePullPolicy: Never
           env:
-            - name: ROLE
+            - name: GLAC_COMPONENT
               value: "scheduler"
-            - name: SCHEDULER_DATABASE_URL
+            - name: GLAC_DATABASE_BACKEND
+              value: "postgres"
+            - name: GLAC_POSTGRES__DB_URL
               value: "postgresql+psycopg://tm:tm@tbl-maint-db.default.svc:5432/table_maintenance"
-            - name: SCHEDULER_INTERVAL_SECONDS
+            - name: GLAC_SCHEDULER__INTERVAL_SECONDS
               value: "30"

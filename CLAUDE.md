@@ -72,7 +72,8 @@ backend/
 - **Use case results live in the application layer.** Services convert domain objects to application-layer result dataclasses so adapters never see domain types.
 - **Bootstrap** is the only layer allowed to import from all other layers. It is the composition root.
 - Architecture boundaries are enforced by `import-linter` (configured in `.importlinter`). Run `lint-imports` to verify.
-- **Single image, triple role**: `ROLE=api` (default), `ROLE=scheduler`, or `ROLE=outbox-publisher` via `entrypoint.py`.
+- **Single image, triple component**: `GLAC_COMPONENT=api` (default), `GLAC_COMPONENT=scheduler`, or `GLAC_COMPONENT=messaging` via `entrypoint.py`.
+- **Unified settings**: All configuration via `GLAC_` prefixed env vars (pydantic-settings). Nested with `__` delimiter: `GLAC_SCHEDULER__INTERVAL_SECONDS=30`.
 
 ## Development Workflow
 
