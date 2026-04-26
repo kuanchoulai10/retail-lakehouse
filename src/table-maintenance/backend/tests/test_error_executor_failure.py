@@ -28,6 +28,7 @@ from application.port.outbound.job_run.job_run_executor import JobRunExecutor
 from application.port.outbound.job_run.job_submission import JobSubmission
 from application.service.handler.job_run_created_handler import JobRunCreatedHandler
 from application.service.handler.job_triggered_handler import JobTriggeredHandler
+from application.service.job_run.submit_job_run import SubmitJobRunService
 from application.service.outbox.event_serializer import EventSerializer
 from application.service.outbox.publish_events import PublishEventsService
 from base.event_dispatcher import EventDispatcher
@@ -58,7 +59,7 @@ def _build_chain_with_failing_executor():
     )
     dispatcher.register(
         JobRunCreated,
-        JobRunCreatedHandler(FailingExecutor()),
+        JobRunCreatedHandler(SubmitJobRunService(FailingExecutor())),
     )
 
     publish_service = PublishEventsService(outbox_repo, serializer, dispatcher)

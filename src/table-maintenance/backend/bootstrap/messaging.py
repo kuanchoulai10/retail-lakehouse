@@ -16,6 +16,7 @@ from application.domain.model.job.events import JobTriggered
 from application.domain.model.job_run.events import JobRunCreated
 from application.service.handler.job_run_created_handler import JobRunCreatedHandler
 from application.service.handler.job_triggered_handler import JobTriggeredHandler
+from application.service.job_run.submit_job_run import SubmitJobRunService
 from application.service.outbox.event_serializer import EventSerializer
 from application.service.outbox.publish_events import PublishEventsService
 from base.event_dispatcher import EventDispatcher
@@ -56,7 +57,8 @@ def build_publisher() -> PublisherLoop:
         iceberg_aws_jar=settings.k8s.iceberg_aws_jar,
     )
     executor = JobRunK8sExecutor(k8s_api, k8s_config)
-    dispatcher.register(JobRunCreated, JobRunCreatedHandler(executor))
+    submit_service = SubmitJobRunService(executor)
+    dispatcher.register(JobRunCreated, JobRunCreatedHandler(submit_service))
 
     service = PublishEventsService(outbox_repo, serializer, dispatcher)
     return PublisherLoop(service, interval_seconds=settings.messaging.interval_seconds)

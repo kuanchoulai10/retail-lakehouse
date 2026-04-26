@@ -52,6 +52,7 @@ KNOWN_VERBS = {
     "Execute",
     "Run",
     "Process",
+    "Submit",
     # Data
     "Import",
     "Export",

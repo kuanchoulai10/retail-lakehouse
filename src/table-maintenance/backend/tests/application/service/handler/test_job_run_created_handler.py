@@ -11,7 +11,7 @@ from application.domain.model.job import (
 )
 from application.domain.model.job_run import JobRunId, TriggerType
 from application.domain.model.job_run.events import JobRunCreated
-from application.port.outbound.job_run.job_submission import JobSubmission
+from application.port.inbound.job_run.submit_job_run import SubmitJobRunInput
 from application.service.handler.job_run_created_handler import JobRunCreatedHandler
 
 
@@ -32,44 +32,44 @@ def _make_event(**overrides) -> JobRunCreated:
     return JobRunCreated(**defaults)  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
 
 
-def test_calls_executor_submit():
-    """Verify handler calls executor.submit() with a JobSubmission."""
-    executor = MagicMock()
-    handler = JobRunCreatedHandler(executor)
+def test_delegates_to_use_case():
+    """Verify handler calls use_case.execute() with a SubmitJobRunInput."""
+    use_case = MagicMock()
+    handler = JobRunCreatedHandler(use_case)
 
     handler.handle(_make_event())
 
-    executor.submit.assert_called_once()
-    submission = executor.submit.call_args[0][0]
-    assert isinstance(submission, JobSubmission)
+    use_case.execute.assert_called_once()
+    inp = use_case.execute.call_args[0][0]
+    assert isinstance(inp, SubmitJobRunInput)
 
 
-def test_submission_maps_event_fields():
-    """Verify the JobSubmission contains correct values from the event."""
-    executor = MagicMock()
-    handler = JobRunCreatedHandler(executor)
+def test_input_maps_event_fields():
+    """Verify the SubmitJobRunInput contains correct values from the event."""
+    use_case = MagicMock()
+    handler = JobRunCreatedHandler(use_case)
 
     handler.handle(_make_event())
 
-    submission = executor.submit.call_args[0][0]
-    assert submission.run_id == "r1"
-    assert submission.job_id == "j1"
-    assert submission.job_type == "expire_snapshots"
-    assert submission.catalog == "retail"
-    assert submission.table == "orders"
-    assert submission.job_config == {"retain_last": 5}
-    assert submission.driver_memory == "2g"
-    assert submission.executor_memory == "4g"
-    assert submission.executor_instances == 2
-    assert submission.cron_expression == "0 2 * * *"
+    inp = use_case.execute.call_args[0][0]
+    assert inp.run_id == "r1"
+    assert inp.job_id == "j1"
+    assert inp.job_type == "expire_snapshots"
+    assert inp.catalog == "retail"
+    assert inp.table == "orders"
+    assert inp.job_config == {"retain_last": 5}
+    assert inp.driver_memory == "2g"
+    assert inp.executor_memory == "4g"
+    assert inp.executor_instances == 2
+    assert inp.cron_expression == "0 2 * * *"
 
 
-def test_submission_with_no_cron():
+def test_input_with_no_cron():
     """Verify cron_expression is None when event has no cron."""
-    executor = MagicMock()
-    handler = JobRunCreatedHandler(executor)
+    use_case = MagicMock()
+    handler = JobRunCreatedHandler(use_case)
 
     handler.handle(_make_event(cron=None))
 
-    submission = executor.submit.call_args[0][0]
-    assert submission.cron_expression is None
+    inp = use_case.execute.call_args[0][0]
+    assert inp.cron_expression is None

@@ -49,6 +49,8 @@ from application.port.inbound.job_run import (
     ListJobRunsOutput,
     ListJobRunsOutputItem,
     ListJobRunsUseCase,
+    SubmitJobRunInput,
+    SubmitJobRunUseCase,
 )
 
 __all__ = [
@@ -93,6 +95,8 @@ __all__ = [
     "ListJobsOutput",
     "ListJobsOutputItem",
     "ListJobsUseCase",
+    "SubmitJobRunInput",
+    "SubmitJobRunUseCase",
     "UpdateJobInput",
     "UpdateJobOutput",
     "UpdateJobUseCase",

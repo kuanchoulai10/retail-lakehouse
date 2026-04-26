@@ -16,6 +16,10 @@ from application.port.inbound.job_run.list_job_runs import (
     ListJobRunsOutputItem,
     ListJobRunsUseCase,
 )
+from application.port.inbound.job_run.submit_job_run import (
+    SubmitJobRunInput,
+    SubmitJobRunUseCase,
+)
 
 __all__ = [
     "CreateJobRunInput",
@@ -28,4 +32,6 @@ __all__ = [
     "ListJobRunsOutput",
     "ListJobRunsOutputItem",
     "ListJobRunsUseCase",
+    "SubmitJobRunInput",
+    "SubmitJobRunUseCase",
 ]
