@@ -13,7 +13,7 @@ from application.port.inbound.catalog.get_table import (
     GetTableInput,
     GetTableUseCase,
 )
-from dependencies.use_cases import get_get_table_use_case
+from bootstrap.dependencies.use_cases import get_get_table_use_case
 
 router = APIRouter()
 

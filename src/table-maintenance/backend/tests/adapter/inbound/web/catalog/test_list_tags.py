@@ -12,7 +12,7 @@ from application.port.inbound.catalog.list_tags.output import (
     ListTagsOutput,
     ListTagsOutputItem,
 )
-from dependencies.use_cases import get_list_tags_use_case
+from bootstrap.dependencies.use_cases import get_list_tags_use_case
 
 
 def _make_client(use_case: MagicMock) -> TestClient:

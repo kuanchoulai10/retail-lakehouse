@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dependencies.settings import get_settings
+from bootstrap.dependencies.settings import get_settings
 from bootstrap.configs import AppSettings
 
 

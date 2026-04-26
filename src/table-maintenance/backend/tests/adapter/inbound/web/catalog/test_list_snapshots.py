@@ -12,7 +12,7 @@ from application.port.inbound.catalog.list_snapshots.output import (
     ListSnapshotsOutput,
     ListSnapshotsOutputItem,
 )
-from dependencies.use_cases import get_list_snapshots_use_case
+from bootstrap.dependencies.use_cases import get_list_snapshots_use_case
 
 
 def _make_client(use_case: MagicMock) -> TestClient:

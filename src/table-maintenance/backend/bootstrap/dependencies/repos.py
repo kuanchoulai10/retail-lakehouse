@@ -22,8 +22,8 @@ from bootstrap.configs import (
     JobRunsRepoAdapter,
     JobsRepoAdapter,
 )
-from dependencies.k8s import get_k8s_api
-from dependencies.settings import get_settings
+from bootstrap.dependencies.k8s import get_k8s_api
+from bootstrap.dependencies.settings import get_settings
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine

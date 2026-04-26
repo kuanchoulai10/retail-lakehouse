@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock
 
-from dependencies.use_cases import get_create_job_run_use_case
+from bootstrap.dependencies.use_cases import get_create_job_run_use_case
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from api.adapter.inbound.web import router

@@ -9,7 +9,7 @@ from application.port.inbound.catalog.list_snapshots import (
     ListSnapshotsInput,
     ListSnapshotsUseCase,
 )
-from dependencies.use_cases import get_list_snapshots_use_case
+from bootstrap.dependencies.use_cases import get_list_snapshots_use_case
 
 router = APIRouter()
 

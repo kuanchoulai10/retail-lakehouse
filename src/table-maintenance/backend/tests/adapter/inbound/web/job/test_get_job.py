@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
-from dependencies.use_cases import get_get_job_use_case
+from bootstrap.dependencies.use_cases import get_get_job_use_case
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from api.adapter.inbound.web import router

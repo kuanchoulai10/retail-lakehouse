@@ -9,8 +9,8 @@ from fastapi import FastAPI
 from api.adapter.inbound.web import router as jobs_router
 from adapter.outbound.sql.metadata import metadata
 from bootstrap.configs import JobsRepoAdapter, JobRunsRepoAdapter
-from dependencies.repos import _cached_sql_engine
-from dependencies.settings import get_settings
+from bootstrap.dependencies.repos import _cached_sql_engine
+from bootstrap.dependencies.settings import get_settings
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator

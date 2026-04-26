@@ -9,7 +9,7 @@ from application.port.inbound.catalog.list_branches import (
     ListBranchesInput,
     ListBranchesUseCase,
 )
-from dependencies.use_cases import get_list_branches_use_case
+from bootstrap.dependencies.use_cases import get_list_branches_use_case
 
 router = APIRouter()
 

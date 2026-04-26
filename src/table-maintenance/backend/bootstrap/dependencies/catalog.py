@@ -9,7 +9,7 @@ from fastapi import Depends
 from adapter.outbound.catalog.iceberg_catalog_client import IcebergCatalogClient
 from application.port.outbound.catalog.catalog_reader import CatalogReader
 from bootstrap.configs import AppSettings
-from dependencies.settings import get_settings
+from bootstrap.dependencies.settings import get_settings
 
 
 @lru_cache(maxsize=1)

@@ -9,7 +9,7 @@ from application.port.inbound.catalog.list_namespaces import (
     ListNamespacesInput,
     ListNamespacesUseCase,
 )
-from dependencies.use_cases import get_list_namespaces_use_case
+from bootstrap.dependencies.use_cases import get_list_namespaces_use_case
 
 router = APIRouter()
 
