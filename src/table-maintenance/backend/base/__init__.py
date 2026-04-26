@@ -19,6 +19,7 @@ Provides the foundational tactical patterns for structuring domain models:
 from base.aggregate_root import AggregateRoot
 from base.domain_event import DomainEvent
 from base.entity import Entity
+from base.gateway import Gateway
 from base.entity_id import EntityId
 from base.event_dispatcher import EventDispatcher
 from base.event_handler import EventHandler
@@ -32,6 +33,7 @@ __all__ = [
     "DomainEvent",
     "Entity",
     "EntityId",
+    "Gateway",
     "EventDispatcher",
     "EventHandler",
     "Repository",
