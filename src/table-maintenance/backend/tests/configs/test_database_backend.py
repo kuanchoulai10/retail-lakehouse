@@ -1,6 +1,6 @@
 """Tests for DatabaseBackend."""
 
-from core.configs import DatabaseBackend
+from bootstrap.configs import DatabaseBackend
 
 
 def test_enum_values():

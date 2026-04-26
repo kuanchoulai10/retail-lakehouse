@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from core.configs import AppSettings
+from bootstrap.configs import AppSettings
 
 
 @lru_cache

@@ -1,6 +1,6 @@
 """Tests for K8sSettings."""
 
-from core.configs import AppSettings, K8sSettings
+from bootstrap.configs import AppSettings, K8sSettings
 
 
 def test_defaults():

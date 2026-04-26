@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from kubernetes.client import CustomObjectsApi
 
     from application.domain.model.job import Job
-    from core.configs import AppSettings
+    from bootstrap.configs import AppSettings
 
 _GROUP = "sparkoperator.k8s.io"
 _VERSION = "v1beta2"

@@ -13,7 +13,7 @@ from dependencies.settings import get_settings
 
 if TYPE_CHECKING:
     from application.port.outbound.event_outbox_repo import EventOutboxRepo
-    from core.configs import AppSettings
+    from bootstrap.configs import AppSettings
 
 
 def get_event_serializer() -> EventSerializer:

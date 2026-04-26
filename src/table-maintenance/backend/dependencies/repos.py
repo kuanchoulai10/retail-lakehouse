@@ -16,7 +16,7 @@ from adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
 from adapter.outbound.job_run.k8s.job_run_k8s_executor import JobRunK8sExecutor
 from adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
 from adapter.outbound.sql.engine_factory import build_engine
-from core.configs import (
+from bootstrap.configs import (
     DatabaseBackend,
     JobRunExecutorAdapter,
     JobRunsRepoAdapter,
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     from application.port.outbound.job_run.job_run_executor import JobRunExecutor
     from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
     from application.port.outbound.job.jobs_repo import JobsRepo
-    from core.configs import AppSettings
+    from bootstrap.configs import AppSettings
 
 
 @lru_cache(maxsize=1)

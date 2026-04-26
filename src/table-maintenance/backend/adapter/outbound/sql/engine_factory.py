@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import create_engine
 
-from core.configs import DatabaseBackend
+from bootstrap.configs import DatabaseBackend
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine
 
-    from core.configs import AppSettings
+    from bootstrap.configs import AppSettings
 
 
 def build_engine(settings: AppSettings) -> Engine:

@@ -1,6 +1,6 @@
 """Tests for AppSettings Iceberg catalog configuration."""
 
-from core.configs import AppSettings
+from bootstrap.configs import AppSettings
 
 
 def test_iceberg_catalog_uri_default():

@@ -5,7 +5,7 @@ from unittest.mock import patch
 from sqlalchemy import Engine
 
 from adapter.outbound.sql.engine_factory import build_engine
-from core.configs import AppSettings, DatabaseBackend
+from bootstrap.configs import AppSettings, DatabaseBackend
 
 
 def test_sqlite_backend_builds_sqlite_engine():

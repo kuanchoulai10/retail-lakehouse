@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dependencies.settings import get_settings
-from core.configs import AppSettings
+from bootstrap.configs import AppSettings
 
 
 def test_get_settings_returns_app_settings():

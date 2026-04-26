@@ -1,6 +1,6 @@
 """Tests for JobsRepoAdapter."""
 
-from core.configs import JobsRepoAdapter
+from bootstrap.configs import JobsRepoAdapter
 
 
 def test_enum_values():

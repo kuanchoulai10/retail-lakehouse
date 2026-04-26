@@ -1,6 +1,6 @@
 """Tests for SqliteSettings."""
 
-from core.configs import AppSettings, SqliteSettings
+from bootstrap.configs import AppSettings, SqliteSettings
 
 
 def test_defaults():

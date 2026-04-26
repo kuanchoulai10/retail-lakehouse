@@ -1,6 +1,6 @@
 """Tests for PostgresSettings."""
 
-from core.configs import AppSettings, PostgresSettings
+from bootstrap.configs import AppSettings, PostgresSettings
 
 
 def test_defaults():

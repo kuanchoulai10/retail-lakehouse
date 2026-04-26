@@ -1,6 +1,6 @@
 """Tests for JobRunExecutorAdapter."""
 
-from core.configs import JobRunExecutorAdapter
+from bootstrap.configs import JobRunExecutorAdapter
 
 
 def test_enum_values():

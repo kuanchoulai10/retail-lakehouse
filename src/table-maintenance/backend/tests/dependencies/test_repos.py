@@ -12,7 +12,7 @@ from adapter.outbound.job_run.job_run_in_memory_executor import (
 )
 from adapter.outbound.job_run.k8s.job_run_k8s_executor import JobRunK8sExecutor
 from adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
-from core.configs import (
+from bootstrap.configs import (
     AppSettings,
     DatabaseBackend,
     JobRunExecutorAdapter,

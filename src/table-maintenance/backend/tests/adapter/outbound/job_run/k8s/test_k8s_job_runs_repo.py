@@ -13,7 +13,7 @@ from application.domain.model.job_run import (
     JobRunStatus,
 )
 from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
-from core.configs import AppSettings
+from bootstrap.configs import AppSettings
 
 SETTINGS = AppSettings()
 

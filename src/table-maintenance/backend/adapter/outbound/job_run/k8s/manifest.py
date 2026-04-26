@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from core.configs import AppSettings
+    from bootstrap.configs import AppSettings
 
     from application.domain.model.job import Job
 
