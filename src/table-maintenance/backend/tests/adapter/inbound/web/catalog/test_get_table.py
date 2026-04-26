@@ -13,7 +13,7 @@ from core.application.port.inbound.catalog.get_table.output import (
     GetTableSchemaFieldOutput,
     GetTableSchemaOutput,
 )
-from api.dependencies.use_cases import get_get_table_use_case
+from dependencies.use_cases import get_get_table_use_case
 
 
 def _make_client(use_case: MagicMock) -> TestClient:

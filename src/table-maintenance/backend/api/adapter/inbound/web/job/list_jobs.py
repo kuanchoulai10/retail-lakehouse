@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from api.dependencies.use_cases import get_list_jobs_use_case
+from dependencies.use_cases import get_list_jobs_use_case
 from fastapi import APIRouter, Depends
 
 from api.adapter.inbound.web.job.dto import JobApiResponse

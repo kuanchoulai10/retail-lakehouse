@@ -23,9 +23,9 @@ from core.application.service.job_run.create_job_run import CreateJobRunService
 from core.application.service.job_run.get_job_run import GetJobRunService
 from core.application.service.job_run.list_job_runs import ListJobRunsService
 
-from api.dependencies.catalog import get_catalog_reader
-from api.dependencies.outbox import get_event_serializer, get_outbox_repo
-from api.dependencies.repos import (
+from dependencies.catalog import get_catalog_reader
+from dependencies.outbox import get_event_serializer, get_outbox_repo
+from dependencies.repos import (
     get_job_runs_repo,
     get_jobs_repo,
 )

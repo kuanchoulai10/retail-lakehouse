@@ -9,7 +9,7 @@ from core.application.port.inbound.catalog.list_tables import (
     ListTablesInput,
     ListTablesUseCase,
 )
-from api.dependencies.use_cases import get_list_tables_use_case
+from dependencies.use_cases import get_list_tables_use_case
 
 router = APIRouter()
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from api.dependencies.use_cases import get_get_job_run_use_case
+from dependencies.use_cases import get_get_job_run_use_case
 from fastapi import APIRouter, Depends, HTTPException
 
 from api.adapter.inbound.web.job_run.dto import JobRunApiResponse

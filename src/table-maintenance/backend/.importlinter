@@ -2,6 +2,7 @@
 root_packages =
     core
     api
+    dependencies
     scheduler
     outbox_publisher
 include_external_packages = True
@@ -32,35 +33,15 @@ forbidden_modules =
     fastapi
     kubernetes
 
-[importlinter:contract:inbound-adapter-no-domain]
-name = Inbound adapter does not skip layers to depend on domain
-type = forbidden
-source_modules =
-    api.adapter.inbound
-forbidden_modules =
-    core.application.domain
-ignore_imports =
-    core.application.port.outbound.job.jobs_repo -> core.application.domain.model.job
-    core.application.port.outbound.job_run.job_runs_repo -> core.application.domain.model.job_run
-    core.application.port.outbound.job_run.job_runs_repo -> core.application.domain.model.job
-    core.application.port.outbound.job_run.job_run_executor -> core.application.domain.model.job
-    core.application.port.outbound.job_run.job_run_executor -> core.application.domain.model.job_run
-    core.application.port.outbound.catalog.catalog_reader -> core.application.domain.model.catalog.table
-    core.application.port.outbound.event_outbox_repo -> core.application.domain.model.outbox_entry
-    api.dependencies.use_cases -> core.application.service.catalog.*
-    api.dependencies.use_cases -> core.application.service.job.*
-    api.dependencies.use_cases -> core.application.service.job_run.*
-    api.dependencies.use_cases -> core.application.event_handler.*
-    api.dependencies.outbox -> core.adapter.outbound.sql.event_outbox_sql_repo
-    api.dependencies.outbox -> core.application.event_handler.*
-    api.dependencies.repos -> core.adapter.outbound.job_run.job_run_in_memory_executor
-    api.dependencies.repos -> core.adapter.outbound.job_run.k8s.job_run_k8s_executor
-    api.dependencies.repos -> core.adapter.outbound.job.jobs_in_memory_repo
-    api.dependencies.repos -> core.adapter.outbound.job.sql.jobs_sql_repo
-    api.dependencies.repos -> core.adapter.outbound.job_run.job_runs_in_memory_repo
-    api.dependencies.repos -> core.adapter.outbound.job_run.sql.job_runs_sql_repo
-    api.dependencies.repos -> core.adapter.outbound.sql.engine_factory
-    api.dependencies.catalog -> core.adapter.outbound.catalog.iceberg_catalog_client
+[importlinter:contract:clean-architecture-layers]
+name = Clean Architecture layer ordering
+type = layers
+layers =
+    api.adapter.inbound.web
+    core.application.service
+    core.application.event_handler
+    core.application.port
+    core.application.domain.model
 
 [importlinter:contract:inbound-outbound-separation]
 name = Inbound adapter does not depend on outbound adapter
@@ -70,15 +51,15 @@ source_modules =
 forbidden_modules =
     core.adapter.outbound
 ignore_imports =
-    api.dependencies.repos -> core.adapter.outbound.job_run.job_run_in_memory_executor
-    api.dependencies.repos -> core.adapter.outbound.job_run.k8s.job_run_k8s_executor
-    api.dependencies.repos -> core.adapter.outbound.job.jobs_in_memory_repo
-    api.dependencies.repos -> core.adapter.outbound.job.sql.jobs_sql_repo
-    api.dependencies.repos -> core.adapter.outbound.job_run.job_runs_in_memory_repo
-    api.dependencies.repos -> core.adapter.outbound.job_run.sql.job_runs_sql_repo
-    api.dependencies.repos -> core.adapter.outbound.sql.engine_factory
-    api.dependencies.catalog -> core.adapter.outbound.catalog.iceberg_catalog_client
-    api.dependencies.outbox -> core.adapter.outbound.sql.event_outbox_sql_repo
+    dependencies.repos -> core.adapter.outbound.job.jobs_in_memory_repo
+    dependencies.repos -> core.adapter.outbound.job.sql.jobs_sql_repo
+    dependencies.repos -> core.adapter.outbound.job_run.job_run_in_memory_executor
+    dependencies.repos -> core.adapter.outbound.job_run.job_runs_in_memory_repo
+    dependencies.repos -> core.adapter.outbound.job_run.sql.job_runs_sql_repo
+    dependencies.repos -> core.adapter.outbound.job_run.k8s.job_run_k8s_executor
+    dependencies.repos -> core.adapter.outbound.sql.engine_factory
+    dependencies.catalog -> core.adapter.outbound.catalog.iceberg_catalog_client
+    dependencies.outbox -> core.adapter.outbound.sql.event_outbox_sql_repo
 
 [importlinter:contract:outbound-inbound-separation]
 name = Outbound adapter does not depend on inbound adapter
@@ -107,6 +88,7 @@ forbidden_modules =
     core.adapter
     core.configs
     api
+    dependencies
     scheduler
     outbox_publisher
 
@@ -119,6 +101,7 @@ forbidden_modules =
     core.adapter
     core.configs
     api
+    dependencies
     scheduler
     outbox_publisher
     fastapi
@@ -159,3 +142,20 @@ source_modules =
     outbox_publisher
 forbidden_modules =
     scheduler
+
+[importlinter:contract:dependencies-no-api-adapter]
+name = Dependencies does not depend on API adapter
+type = forbidden
+source_modules =
+    dependencies
+forbidden_modules =
+    api.adapter
+
+[importlinter:contract:dependencies-no-scheduler]
+name = Dependencies does not depend on scheduler or outbox publisher
+type = forbidden
+source_modules =
+    dependencies
+forbidden_modules =
+    scheduler
+    outbox_publisher
