@@ -6,7 +6,11 @@ from pydantic import BaseModel
 
 
 class K8sSettings(BaseModel):
-    """Kubernetes and Spark driver/executor configuration."""
+    """System-level Kubernetes and Spark configuration.
+
+    Per-job resource settings (driver_memory, executor_memory, executor_instances)
+    are modeled on the Job entity via ResourceConfig.
+    """
 
     namespace: str = "default"
     image: str = "localhost:5000/table-maintenance-jobs:latest"
@@ -19,6 +23,3 @@ class K8sSettings(BaseModel):
         "iceberg-spark-runtime-4.0_2.13-1.10.1.jar"
     )
     iceberg_aws_jar: str = "https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-aws-bundle/1.10.1/iceberg-aws-bundle-1.10.1.jar"
-    driver_memory: str = "512m"
-    executor_memory: str = "1g"
-    executor_instances: int = 1

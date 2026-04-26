@@ -11,9 +11,6 @@ def test_defaults():
     assert s.image_pull_policy == "Never"
     assert s.spark_version == "4.0.0"
     assert s.service_account == "spark-operator-spark"
-    assert s.driver_memory == "512m"
-    assert s.executor_memory == "1g"
-    assert s.executor_instances == 1
     assert s.iceberg_jar.startswith("https://repo1.maven.org/")
     assert s.iceberg_aws_jar.startswith("https://repo1.maven.org/")
 
@@ -21,7 +18,5 @@ def test_defaults():
 def test_env_nested_override(monkeypatch):
     """Verify that nested K8s env vars override K8sSettings via AppSettings."""
     monkeypatch.setenv("GLAC_K8S__NAMESPACE", "spark-jobs")
-    monkeypatch.setenv("GLAC_K8S__EXECUTOR_INSTANCES", "3")
     s = AppSettings()
     assert s.k8s.namespace == "spark-jobs"
-    assert s.k8s.executor_instances == 3
