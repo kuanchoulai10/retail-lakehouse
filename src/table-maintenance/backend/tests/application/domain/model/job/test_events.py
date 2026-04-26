@@ -8,6 +8,7 @@ from application.domain.model.job import (
     FieldChange,
     JobId,
     JobType,
+    ResourceConfig,
     TableReference,
 )
 from application.domain.model.job.events import (
@@ -104,16 +105,35 @@ class TestJobTriggered:
     """Tests for JobTriggered event."""
 
     def test_fields(self):
+        rc = ResourceConfig(
+            driver_memory="2g", executor_memory="4g", executor_instances=2
+        )
         ev = JobTriggered(
             job_id=JobId(value="j1"),
             trigger_type=TriggerType.MANUAL,
+            job_type=JobType.EXPIRE_SNAPSHOTS,
+            table_ref=TableReference(catalog="cat", table="tbl"),
+            job_config={"retain_last": 5},
+            resource_config=rc,
+            cron=CronExpression(expression="0 * * * *"),
         )
         assert ev.job_id == JobId(value="j1")
         assert ev.trigger_type == TriggerType.MANUAL
+        assert ev.job_type == JobType.EXPIRE_SNAPSHOTS
+        assert ev.table_ref == TableReference(catalog="cat", table="tbl")
+        assert ev.job_config == {"retain_last": 5}
+        assert ev.resource_config == rc
+        assert ev.cron == CronExpression(expression="0 * * * *")
 
     def test_scheduled(self):
         ev = JobTriggered(
             job_id=JobId(value="j1"),
             trigger_type=TriggerType.SCHEDULED,
+            job_type=JobType.REWRITE_DATA_FILES,
+            table_ref=TableReference(catalog="c", table="t"),
+            job_config={},
+            resource_config=ResourceConfig(),
+            cron=None,
         )
         assert ev.trigger_type == TriggerType.SCHEDULED
+        assert ev.cron is None

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from base.aggregate_root import AggregateRoot
@@ -24,6 +24,7 @@ from application.domain.model.job.exceptions import (
 from application.domain.model.job.cron_expression import CronExpression
 from application.domain.model.job.job_id import JobId
 from application.domain.model.job.job_status import JobStatus
+from application.domain.model.job.resource_config import ResourceConfig
 from application.domain.model.job.table_reference import TableReference
 from application.domain.model.job_run.trigger_type import TriggerType
 
@@ -47,6 +48,7 @@ class Job(AggregateRoot[JobId]):
     table_ref: TableReference = TableReference(catalog="", table="")
     job_config: dict | None = None
     cron: CronExpression | None = None
+    resource_config: ResourceConfig = field(default_factory=ResourceConfig)
     status: JobStatus = JobStatus.ACTIVE
     next_run_at: datetime | None = None
     max_active_runs: int = 1
@@ -66,6 +68,7 @@ class Job(AggregateRoot[JobId]):
         table_ref: TableReference = TableReference(catalog="", table=""),
         job_config: dict | None = None,
         cron: CronExpression | None = None,
+        resource_config: ResourceConfig | None = None,
         status: JobStatus = JobStatus.ACTIVE,
         next_run_at: datetime | None = None,
         max_active_runs: int = 1,
@@ -79,6 +82,7 @@ class Job(AggregateRoot[JobId]):
             table_ref=table_ref,
             job_config=job_config,
             cron=cron,
+            resource_config=resource_config or ResourceConfig(),
             status=status,
             next_run_at=next_run_at,
             max_active_runs=max_active_runs,
@@ -134,13 +138,24 @@ class Job(AggregateRoot[JobId]):
             raise JobNotActiveError(self.id.value)
         if active_run_count >= self.max_active_runs:
             raise MaxActiveRunsExceededError(self.id.value, self.max_active_runs)
-        self.register_event(JobTriggered(job_id=self.id, trigger_type=trigger_type))
+        self.register_event(
+            JobTriggered(
+                job_id=self.id,
+                trigger_type=trigger_type,
+                job_type=self.job_type,
+                table_ref=self.table_ref,
+                job_config=dict(self.job_config) if self.job_config else {},
+                resource_config=self.resource_config,
+                cron=self.cron,
+            )
+        )
 
     def apply_changes(
         self,
         table_ref: TableReference | None = None,
         cron: CronExpression | None = None,
         job_config: dict | None = None,
+        resource_config: ResourceConfig | None = None,
     ) -> None:
         """Apply configuration changes and register a JobUpdated event if anything changed."""
         changes: list[FieldChange] = []
@@ -167,5 +182,14 @@ class Job(AggregateRoot[JobId]):
                 )
             )
             self.job_config = job_config
+        if resource_config is not None and resource_config != self.resource_config:
+            changes.append(
+                FieldChange(
+                    field="resource_config",
+                    old_value=str(self.resource_config),
+                    new_value=str(resource_config),
+                )
+            )
+            self.resource_config = resource_config
         if changes:
             self.register_event(JobUpdated(job_id=self.id, changes=tuple(changes)))

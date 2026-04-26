@@ -22,7 +22,11 @@ from application.domain.model.job_run.trigger_type import TriggerType
 if TYPE_CHECKING:
     from datetime import datetime
 
+    from application.domain.model.job.cron_expression import CronExpression
     from application.domain.model.job.job_id import JobId
+    from application.domain.model.job.job_type import JobType
+    from application.domain.model.job.resource_config import ResourceConfig
+    from application.domain.model.job.table_reference import TableReference
 
 
 @dataclass(eq=False)
@@ -43,6 +47,11 @@ class JobRun(AggregateRoot[JobRunId]):
         job_id: JobId,
         trigger_type: TriggerType,
         started_at: datetime,
+        job_type: JobType,
+        table_ref: TableReference,
+        job_config: dict,
+        resource_config: ResourceConfig,
+        cron: CronExpression | None = None,
     ) -> JobRun:
         """Create a new PENDING JobRun and register a JobRunCreated event."""
         run = cls(
@@ -53,7 +62,16 @@ class JobRun(AggregateRoot[JobRunId]):
             started_at=started_at,
         )
         run.register_event(
-            JobRunCreated(run_id=id, job_id=job_id, trigger_type=trigger_type)
+            JobRunCreated(
+                run_id=id,
+                job_id=job_id,
+                trigger_type=trigger_type,
+                job_type=job_type,
+                table_ref=table_ref,
+                job_config=job_config,
+                resource_config=resource_config,
+                cron=cron,
+            )
         )
         return run
 

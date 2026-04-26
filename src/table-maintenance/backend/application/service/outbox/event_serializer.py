@@ -12,6 +12,7 @@ from typing import Any, ClassVar
 from base.domain_event import DomainEvent
 
 from application.domain.model.job.cron_expression import CronExpression
+from application.domain.model.job.resource_config import ResourceConfig
 from application.domain.model.job.events import (
     JobArchived,
     JobCreated,
@@ -92,6 +93,12 @@ class EventSerializer:
         """Handle domain types during JSON serialization."""
         if isinstance(obj, TableReference):
             return {"catalog": obj.catalog, "table": obj.table}
+        if isinstance(obj, ResourceConfig):
+            return {
+                "driver_memory": obj.driver_memory,
+                "executor_memory": obj.executor_memory,
+                "executor_instances": obj.executor_instances,
+            }
         if isinstance(obj, FieldChange):
             return {
                 "field": obj.field,
@@ -134,6 +141,12 @@ class EventSerializer:
             return TableReference(catalog=value["catalog"], table=value["table"])
         if name == "cron":
             return CronExpression(expression=value) if value else None
+        if name == "resource_config":
+            return ResourceConfig(
+                driver_memory=value["driver_memory"],
+                executor_memory=value["executor_memory"],
+                executor_instances=value["executor_instances"],
+            )
         if name == "changes":
             return tuple(
                 FieldChange(

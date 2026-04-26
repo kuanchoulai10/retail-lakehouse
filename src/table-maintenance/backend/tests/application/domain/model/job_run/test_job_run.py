@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 
 from base import AggregateRoot
-from application.domain.model.job import JobId
+from application.domain.model.job import JobId, JobType, ResourceConfig, TableReference
 from application.domain.model.job_run import (
     JobRun,
     JobRunId,
@@ -70,11 +70,16 @@ def test_started_at_defaults_to_none():
 def test_create_factory_returns_run_with_event():
     """Verify JobRun.create() returns a JobRun and registers a JobRunCreated event."""
     started = datetime(2026, 4, 25, 12, 0, tzinfo=UTC)
+    rc = ResourceConfig(driver_memory="2g", executor_memory="4g", executor_instances=2)
     run = JobRun.create(
         id=JobRunId(value="r1"),
         job_id=JobId(value="j1"),
         trigger_type=TriggerType.MANUAL,
         started_at=started,
+        job_type=JobType.EXPIRE_SNAPSHOTS,
+        table_ref=TableReference(catalog="cat", table="tbl"),
+        job_config={"retain_last": 5},
+        resource_config=rc,
     )
     assert run.id == JobRunId(value="r1")
     assert run.job_id == JobId(value="j1")
@@ -87,3 +92,5 @@ def test_create_factory_returns_run_with_event():
     assert events[0].run_id == JobRunId(value="r1")
     assert events[0].job_id == JobId(value="j1")
     assert events[0].trigger_type == TriggerType.MANUAL
+    assert events[0].job_type == JobType.EXPIRE_SNAPSHOTS
+    assert events[0].resource_config == rc

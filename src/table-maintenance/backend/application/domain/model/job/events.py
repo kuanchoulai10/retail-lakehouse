@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from application.domain.model.job.field_change import FieldChange
     from application.domain.model.job.job_id import JobId
     from application.domain.model.job.job_type import JobType
+    from application.domain.model.job.resource_config import ResourceConfig
     from application.domain.model.job.table_reference import TableReference
     from application.domain.model.job_run.trigger_type import TriggerType
 
@@ -57,7 +58,16 @@ class JobArchived(DomainEvent):
 
 @dataclass(frozen=True)
 class JobTriggered(DomainEvent):
-    """Raised when a Job is triggered to create a new run."""
+    """Raised when a Job is triggered to create a new run.
+
+    Carries full Job context so downstream handlers can act
+    without querying the repository.
+    """
 
     job_id: JobId
     trigger_type: TriggerType
+    job_type: JobType
+    table_ref: TableReference
+    job_config: dict
+    resource_config: ResourceConfig
+    cron: CronExpression | None

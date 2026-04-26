@@ -41,6 +41,11 @@ class JobTriggeredHandler(EventHandler["JobTriggered"]):
             job_id=event.job_id,
             trigger_type=event.trigger_type,
             started_at=datetime.now(UTC),
+            job_type=event.job_type,
+            table_ref=event.table_ref,
+            job_config=event.job_config,
+            resource_config=event.resource_config,
+            cron=event.cron,
         )
         self._job_runs_repo.create(run)
         entries = self._serializer.to_outbox_entries(
