@@ -15,7 +15,7 @@ def main() -> None:
 
         uvicorn.run("bootstrap.api:app", host="0.0.0.0", port=8000)
     elif role == "scheduler":
-        from scheduler.main import main as scheduler_main
+        from bootstrap.scheduler import main as scheduler_main
 
         scheduler_main()
     elif role == "outbox-publisher":

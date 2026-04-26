@@ -5,7 +5,7 @@ from __future__ import annotations
 import threading
 from unittest.mock import MagicMock
 
-from scheduler.scheduler_loop import SchedulerLoop
+from adapter.inbound.scheduler.scheduler_loop import SchedulerLoop
 
 
 def _make_result(count: int = 0):

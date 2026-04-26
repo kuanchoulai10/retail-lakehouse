@@ -4,7 +4,6 @@ root_packages =
     application
     base
     bootstrap
-    scheduler
     outbox_publisher
 include_external_packages = True
 
@@ -87,7 +86,6 @@ forbidden_modules =
     application
     adapter
     bootstrap
-    scheduler
     outbox_publisher
 
 [importlinter:contract:domain-service-isolation]
@@ -98,42 +96,22 @@ source_modules =
 forbidden_modules =
     adapter
     bootstrap
-    scheduler
     outbox_publisher
     fastapi
     kubernetes
 
-[importlinter:contract:scheduler-no-outbox]
-name = Scheduler does not depend on outbox publisher
-type = forbidden
-source_modules =
-    scheduler
-forbidden_modules =
-    outbox_publisher
-    fastapi
-
 [importlinter:contract:outbox-publisher-isolation]
-name = Outbox publisher does not depend on scheduler or fastapi
+name = Outbox publisher does not depend on fastapi
 type = forbidden
 source_modules =
     outbox_publisher
 forbidden_modules =
-    scheduler
     fastapi
 
-[importlinter:contract:dependencies-no-api-adapter]
+[importlinter:contract:dependencies-no-inbound-adapter]
 name = Dependencies does not depend on inbound adapters
 type = forbidden
 source_modules =
     bootstrap.dependencies
 forbidden_modules =
     adapter.inbound
-
-[importlinter:contract:dependencies-no-scheduler]
-name = Dependencies does not depend on scheduler or outbox publisher
-type = forbidden
-source_modules =
-    bootstrap.dependencies
-forbidden_modules =
-    scheduler
-    outbox_publisher

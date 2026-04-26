@@ -13,7 +13,7 @@ from adapter.outbound.sql.event_outbox_sql_repo import EventOutboxSqlRepo
 from adapter.outbound.sql.metadata import metadata
 from application.service.outbox.event_serializer import EventSerializer
 from application.service.scheduling.schedule_jobs import ScheduleJobsService
-from scheduler.scheduler_loop import SchedulerLoop
+from adapter.inbound.scheduler.scheduler_loop import SchedulerLoop
 from sqlalchemy import create_engine
 
 logging.basicConfig(
