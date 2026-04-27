@@ -96,4 +96,20 @@ Shared kernel with zero external dependencies (stdlib only):
 - `AggregateRoot[ID]` — Entity + domain event collection
 - `DomainEvent` — frozen dataclass with auto `occurred_at`
 - `Repository[E]` — generic persistence ABC
+- `Store` — infrastructure persistence (not aggregate)
+- `Gateway` — external system interaction
 - `UseCase[TInput, TOutput]` — single `execute()` method
+
+## Outbound Port & Adapter Naming Convention
+
+Three base classes define all outbound ports (in `base/`):
+
+| Base Class | When to use | Port format | Adapter format |
+|------------|------------|-------------|----------------|
+| `Repository` | Aggregate persistence | `{Aggregate}Repo` | `{Aggregate}{Tech}Repo` |
+| `Store` | Infrastructure persistence (not aggregate) | `{Noun}Store` | `{Noun}{Tech}Store` |
+| `Gateway` | External system interaction | `{Verb}{Noun}Gateway` | `{Verb}{Noun}{Tech}Gateway` |
+
+**Gateway verb vocabulary** (new verbs require review): `Read`, `Submit`, `Send`, `Publish`, `Poll`, `Sync`, `Write`, `Delete`.
+
+See `docs/superpowers/specs/2026-04-27-outbound-port-adapter-naming-convention.md` for full spec.
