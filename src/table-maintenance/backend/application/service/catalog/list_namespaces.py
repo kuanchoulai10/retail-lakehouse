@@ -15,7 +15,7 @@ from application.port.inbound.catalog.list_namespaces.use_case import (
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.catalog.read_catalog_gateway import (
+    from application.port.outbound.catalog.read_catalog.gateway import (
         ReadCatalogGateway,
     )
 

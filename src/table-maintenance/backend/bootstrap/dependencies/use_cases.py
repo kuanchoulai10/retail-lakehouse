@@ -46,7 +46,7 @@ if TYPE_CHECKING:
         ListTagsUseCase,
         UpdateJobUseCase,
     )
-    from application.port.outbound.catalog.read_catalog_gateway import (
+    from application.port.outbound.catalog.read_catalog.gateway import (
         ReadCatalogGateway,
     )
     from application.port.outbound.event_outbox.event_outbox_store import (

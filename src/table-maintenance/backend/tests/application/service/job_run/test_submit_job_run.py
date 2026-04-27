@@ -6,7 +6,9 @@ from application.port.inbound.job_run.submit_job_run import (
     SubmitJobRunInput,
     SubmitJobRunUseCase,
 )
-from application.port.outbound.job_run.job_submission import JobSubmission
+from application.port.outbound.job_run.submit_job_run.input import (
+    SubmitJobRunInput as SubmitJobRunGatewayInput,
+)
 from application.service.job_run.submit_job_run import SubmitJobRunService
 
 
@@ -38,7 +40,7 @@ class TestSubmitJobRunService:
         service.execute(inp)
 
         executor.submit.assert_called_once_with(
-            JobSubmission(
+            SubmitJobRunGatewayInput(
                 run_id="r1",
                 job_id="j1",
                 job_type="compaction",

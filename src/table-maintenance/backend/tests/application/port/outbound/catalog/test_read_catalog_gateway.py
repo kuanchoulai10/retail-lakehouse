@@ -6,7 +6,7 @@ import pytest
 
 from base.gateway import Gateway
 
-from application.port.outbound.catalog.read_catalog_gateway import ReadCatalogGateway
+from application.port.outbound.catalog.read_catalog.gateway import ReadCatalogGateway
 
 
 def test_cannot_be_instantiated() -> None:

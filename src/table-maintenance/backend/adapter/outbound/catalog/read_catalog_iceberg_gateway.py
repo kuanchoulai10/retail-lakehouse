@@ -14,7 +14,7 @@ from application.domain.model.catalog.table import Table
 from application.domain.model.catalog.table_id import TableId
 from application.domain.model.catalog.table_schema import TableSchema
 from application.domain.model.catalog.tag import Tag
-from application.port.outbound.catalog.read_catalog_gateway import ReadCatalogGateway
+from application.port.outbound.catalog.read_catalog.gateway import ReadCatalogGateway
 
 
 class ReadCatalogIcebergGateway(ReadCatalogGateway):

@@ -24,8 +24,8 @@ from application.domain.model.job import (
 from application.domain.model.job.events import JobTriggered
 from application.domain.model.job_run import JobRunStatus
 from application.domain.model.job_run.events import JobRunCreated
-from application.port.outbound.job_run.submit_job_run_gateway import SubmitJobRunGateway
-from application.port.outbound.job_run.job_submission import JobSubmission
+from application.port.outbound.job_run.submit_job_run.gateway import SubmitJobRunGateway
+from application.port.outbound.job_run.submit_job_run.input import SubmitJobRunInput
 from application.service.handler.job_run_created_handler import JobRunCreatedHandler
 from application.service.handler.job_triggered_handler import JobTriggeredHandler
 from application.service.job_run.submit_job_run import SubmitJobRunService
@@ -38,7 +38,7 @@ from application.domain.model.job_run import TriggerType
 class FailingGateway(SubmitJobRunGateway):
     """Executor that always raises to simulate K8s unavailability."""
 
-    def submit(self, submission: JobSubmission) -> None:
+    def submit(self, submission: SubmitJobRunInput) -> None:
         """Raise RuntimeError to simulate failure."""
         raise RuntimeError("K8s unavailable")
 

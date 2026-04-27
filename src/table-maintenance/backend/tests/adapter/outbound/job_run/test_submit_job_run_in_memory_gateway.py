@@ -3,11 +3,11 @@
 from adapter.outbound.job_run.submit_job_run_in_memory_gateway import (
     SubmitJobRunInMemoryGateway,
 )
-from application.port.outbound.job_run.submit_job_run_gateway import SubmitJobRunGateway
-from application.port.outbound.job_run.job_submission import JobSubmission
+from application.port.outbound.job_run.submit_job_run.gateway import SubmitJobRunGateway
+from application.port.outbound.job_run.submit_job_run.input import SubmitJobRunInput
 
 
-def _submission(**overrides) -> JobSubmission:
+def _submission(**overrides) -> SubmitJobRunInput:
     defaults = {
         "run_id": "r1",
         "job_id": "j1",
@@ -21,7 +21,7 @@ def _submission(**overrides) -> JobSubmission:
         "cron_expression": None,
     }
     defaults.update(overrides)
-    return JobSubmission(**defaults)  # type: ignore[arg-type]
+    return SubmitJobRunInput(**defaults)  # type: ignore[arg-type]
 
 
 def test_is_subclass_of_gateway():

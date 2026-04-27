@@ -9,7 +9,7 @@ from fastapi import Depends
 from adapter.outbound.catalog.read_catalog_iceberg_gateway import (
     ReadCatalogIcebergGateway,
 )
-from application.port.outbound.catalog.read_catalog_gateway import ReadCatalogGateway
+from application.port.outbound.catalog.read_catalog.gateway import ReadCatalogGateway
 from bootstrap.configs import AppSettings
 from bootstrap.dependencies.settings import get_settings
 

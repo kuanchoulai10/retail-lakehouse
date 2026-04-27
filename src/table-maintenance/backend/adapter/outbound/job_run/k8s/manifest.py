@@ -8,7 +8,7 @@ from adapter.outbound.job_run.k8s.constants import JOB_LABEL
 
 if TYPE_CHECKING:
     from adapter.outbound.job_run.k8s.k8s_executor_config import K8sExecutorConfig
-    from application.port.outbound.job_run.job_submission import JobSubmission
+    from application.port.outbound.job_run.submit_job_run.input import SubmitJobRunInput
 
 _JOB_PREFIX: dict[str, str] = {
     "expire_snapshots": "GLAC_EXPIRE_SNAPSHOTS",
@@ -35,7 +35,7 @@ def _dict_to_env(prefix: str, config: dict) -> list[dict]:
     return result
 
 
-def _build_driver_env(submission: JobSubmission) -> list[dict]:
+def _build_driver_env(submission: SubmitJobRunInput) -> list[dict]:
     env = [
         {"name": "GLAC_JOB_TYPE", "value": submission.job_type},
         {"name": "GLAC_CATALOG", "value": submission.catalog},
@@ -48,7 +48,7 @@ def _build_driver_env(submission: JobSubmission) -> list[dict]:
 
 
 def _build_spark_app_spec(
-    submission: JobSubmission, config: K8sExecutorConfig, env: list[dict]
+    submission: SubmitJobRunInput, config: K8sExecutorConfig, env: list[dict]
 ) -> dict:
     return {
         "type": "Python",
@@ -80,7 +80,7 @@ def _build_spark_app_spec(
     }
 
 
-def build_manifest(submission: JobSubmission, config: K8sExecutorConfig) -> dict:
+def build_manifest(submission: SubmitJobRunInput, config: K8sExecutorConfig) -> dict:
     """Build a K8s manifest for a Spark job.
 
     Per-job values (memory, instances, job_config) come from the submission.

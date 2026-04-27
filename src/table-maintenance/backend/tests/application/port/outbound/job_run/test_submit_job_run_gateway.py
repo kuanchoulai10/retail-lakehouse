@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from base.gateway import Gateway
 
-from application.port.outbound.job_run.submit_job_run_gateway import SubmitJobRunGateway
+from application.port.outbound.job_run.submit_job_run.gateway import SubmitJobRunGateway
 
 
 def test_is_gateway() -> None:

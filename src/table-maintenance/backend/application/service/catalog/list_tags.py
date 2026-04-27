@@ -12,7 +12,7 @@ from application.port.inbound.catalog.list_tags.output import (
 from application.port.inbound.catalog.list_tags.use_case import ListTagsUseCase
 
 if TYPE_CHECKING:
-    from application.port.outbound.catalog.read_catalog_gateway import (
+    from application.port.outbound.catalog.read_catalog.gateway import (
         ReadCatalogGateway,
     )
 

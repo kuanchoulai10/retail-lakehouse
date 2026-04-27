@@ -112,4 +112,15 @@ Three base classes define all outbound ports (in `base/`):
 
 **Gateway verb vocabulary** (new verbs require review): `Read`, `Submit`, `Send`, `Publish`, `Poll`, `Sync`, `Write`, `Delete`.
 
+**Gateway directory structure** (under `port/outbound/{aggregate}/`):
+```
+{verb}_{noun}/
+├── __init__.py       # re-export all symbols
+├── gateway.py        # {Verb}{Noun}Gateway (extends Gateway)
+├── input.py          # {Verb}{Noun}Input (optional, primitive-only)
+└── output.py         # {Verb}{Noun}Output (optional, primitive-only)
+```
+
+Input/output files must only use primitive types (`str`, `int`, `float`, `bool`, `dict`, `list`, `None`). They may import `base.value_object.ValueObject` but nothing from `application.domain` or other `base.*` modules. This is enforced by `test_outbound_port_structure.py`.
+
 See `docs/superpowers/specs/2026-04-27-outbound-port-adapter-naming-convention.md` for full spec.

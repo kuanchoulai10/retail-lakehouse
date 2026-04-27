@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from base.gateway import Gateway
 
 if TYPE_CHECKING:
-    from application.port.outbound.job_run.job_submission import JobSubmission
+    from application.port.outbound.job_run.submit_job_run.input import SubmitJobRunInput
 
 
 class SubmitJobRunGateway(Gateway):
@@ -20,6 +20,6 @@ class SubmitJobRunGateway(Gateway):
     """
 
     @abstractmethod
-    def submit(self, submission: JobSubmission) -> None:
+    def submit(self, submission: SubmitJobRunInput) -> None:
         """Submit the job for execution in the external system."""
         ...

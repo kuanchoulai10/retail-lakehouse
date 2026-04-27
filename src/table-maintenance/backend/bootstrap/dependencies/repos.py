@@ -31,7 +31,7 @@ from bootstrap.dependencies.settings import get_settings
 if TYPE_CHECKING:
     from sqlalchemy import Engine
 
-    from application.port.outbound.job_run.submit_job_run_gateway import (
+    from application.port.outbound.job_run.submit_job_run.gateway import (
         SubmitJobRunGateway,
     )
     from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
