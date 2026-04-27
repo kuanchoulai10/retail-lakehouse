@@ -7,15 +7,17 @@ from unittest.mock import MagicMock
 from adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
 from adapter.outbound.job.sql.jobs_sql_repo import JobsSqlRepo
 from adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
-from adapter.outbound.job_run.job_run_in_memory_executor import (
-    JobRunInMemoryExecutor,
+from adapter.outbound.job_run.submit_job_run_in_memory_gateway import (
+    SubmitJobRunInMemoryGateway,
 )
-from adapter.outbound.job_run.k8s.job_run_k8s_executor import JobRunK8sExecutor
+from adapter.outbound.job_run.k8s.submit_job_run_k8s_gateway import (
+    SubmitJobRunK8sGateway,
+)
 from adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
 from bootstrap.configs import (
     AppSettings,
     DatabaseBackend,
-    JobRunExecutorAdapter,
+    SubmitJobRunGatewayAdapter,
     JobRunsRepoAdapter,
     JobsRepoAdapter,
 )
@@ -116,22 +118,22 @@ def test_get_job_runs_repo_returns_sql_for_sqlite():
 
 
 def test_get_job_run_executor_returns_in_memory_by_default():
-    """Verify that get_job_run_executor returns JobRunInMemoryExecutor with default settings."""
+    """Verify that get_job_run_executor returns SubmitJobRunInMemoryGateway with default settings."""
     _clear_caches()
     _in_memory_executor_singleton.cache_clear()
     settings = AppSettings()
     result = get_job_run_executor(settings=settings)
-    assert isinstance(result, JobRunInMemoryExecutor)
+    assert isinstance(result, SubmitJobRunInMemoryGateway)
 
 
 def test_get_job_run_executor_returns_k8s_when_configured(monkeypatch):
-    """Verify that get_job_run_executor returns JobRunK8sExecutor when configured for K8s."""
+    """Verify that get_job_run_executor returns SubmitJobRunK8sGateway when configured for K8s."""
     _clear_caches()
     from bootstrap.dependencies import repos as repos_mod
 
     monkeypatch.setattr(repos_mod, "get_k8s_api", MagicMock())
 
     settings = AppSettings()
-    settings.job_run_executor_adapter = JobRunExecutorAdapter.K8S
+    settings.submit_job_run_gateway_adapter = SubmitJobRunGatewayAdapter.K8S
     result = get_job_run_executor(settings=settings)
-    assert isinstance(result, JobRunK8sExecutor)
+    assert isinstance(result, SubmitJobRunK8sGateway)

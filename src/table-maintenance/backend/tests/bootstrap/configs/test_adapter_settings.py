@@ -3,7 +3,7 @@
 from bootstrap.configs import (
     AppSettings,
     DatabaseBackend,
-    JobRunExecutorAdapter,
+    SubmitJobRunGatewayAdapter,
     JobRunsRepoAdapter,
     JobsRepoAdapter,
 )
@@ -14,7 +14,7 @@ def test_app_settings_defaults():
     s = AppSettings()
     assert s.jobs_repo_adapter == JobsRepoAdapter.IN_MEMORY
     assert s.job_runs_repo_adapter == JobRunsRepoAdapter.IN_MEMORY
-    assert s.job_run_executor_adapter == JobRunExecutorAdapter.IN_MEMORY
+    assert s.submit_job_run_gateway_adapter == SubmitJobRunGatewayAdapter.IN_MEMORY
     assert s.database_backend == DatabaseBackend.SQLITE
 
 
@@ -32,11 +32,11 @@ def test_app_settings_env_override_job_runs_repo_adapter(monkeypatch):
     assert s.job_runs_repo_adapter == JobRunsRepoAdapter.SQL
 
 
-def test_app_settings_env_override_job_run_executor_adapter(monkeypatch):
-    """Verify that GLAC_JOB_RUN_EXECUTOR_ADAPTER env var overrides job_run_executor_adapter."""
-    monkeypatch.setenv("GLAC_JOB_RUN_EXECUTOR_ADAPTER", "k8s")
+def test_app_settings_env_override_submit_job_run_gateway_adapter(monkeypatch):
+    """Verify that GLAC_SUBMIT_JOB_RUN_GATEWAY_ADAPTER env var overrides submit_job_run_gateway_adapter."""
+    monkeypatch.setenv("GLAC_SUBMIT_JOB_RUN_GATEWAY_ADAPTER", "k8s")
     s = AppSettings()
-    assert s.job_run_executor_adapter == JobRunExecutorAdapter.K8S
+    assert s.submit_job_run_gateway_adapter == SubmitJobRunGatewayAdapter.K8S
 
 
 def test_app_settings_env_override_database_backend(monkeypatch):

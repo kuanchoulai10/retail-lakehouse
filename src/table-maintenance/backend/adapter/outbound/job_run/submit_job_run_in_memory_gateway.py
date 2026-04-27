@@ -1,17 +1,17 @@
-"""Define the JobRunInMemoryExecutor adapter."""
+"""Define the SubmitJobRunInMemoryGateway adapter."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.port.outbound.job_run.job_run_executor import JobRunExecutor
+from application.port.outbound.job_run.submit_job_run_gateway import SubmitJobRunGateway
 
 if TYPE_CHECKING:
     from application.port.outbound.job_run.job_submission import JobSubmission
 
 
-class JobRunInMemoryExecutor(JobRunExecutor):
-    """Test double for JobRunExecutor. Records every submitted job."""
+class SubmitJobRunInMemoryGateway(SubmitJobRunGateway):
+    """Test double for SubmitJobRunGateway. Records every submitted job."""
 
     def __init__(self) -> None:
         """Initialize an empty list of submissions."""

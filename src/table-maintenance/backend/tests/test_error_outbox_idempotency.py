@@ -9,7 +9,9 @@ from __future__ import annotations
 from sqlalchemy import create_engine
 
 from adapter.outbound.job.sql.jobs_table import jobs_table as _jobs_table  # noqa: F401
-from adapter.outbound.job_run.job_run_in_memory_executor import JobRunInMemoryExecutor
+from adapter.outbound.job_run.submit_job_run_in_memory_gateway import (
+    SubmitJobRunInMemoryGateway,
+)
 from adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
 from adapter.outbound.sql.event_outbox_sql_store import EventOutboxSqlStore
 from adapter.outbound.sql.metadata import metadata
@@ -38,7 +40,7 @@ def _build_chain():
     outbox_repo = EventOutboxSqlStore(engine)
     job_runs_repo = JobRunsSqlRepo(engine)
     serializer = EventSerializer()
-    executor = JobRunInMemoryExecutor()
+    executor = SubmitJobRunInMemoryGateway()
 
     dispatcher = EventDispatcher()
     dispatcher.register(

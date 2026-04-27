@@ -9,17 +9,19 @@ from fastapi import Depends
 
 from adapter.outbound.job.jobs_in_memory_repo import JobsInMemoryRepo
 from adapter.outbound.job.sql.jobs_sql_repo import JobsSqlRepo
-from adapter.outbound.job_run.job_run_in_memory_executor import (
-    JobRunInMemoryExecutor,
+from adapter.outbound.job_run.submit_job_run_in_memory_gateway import (
+    SubmitJobRunInMemoryGateway,
 )
 from adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
-from adapter.outbound.job_run.k8s.job_run_k8s_executor import JobRunK8sExecutor
+from adapter.outbound.job_run.k8s.submit_job_run_k8s_gateway import (
+    SubmitJobRunK8sGateway,
+)
 from adapter.outbound.job_run.k8s.k8s_executor_config import K8sExecutorConfig
 from adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
 from adapter.outbound.sql.engine_factory import build_engine
 from bootstrap.configs import (
     DatabaseBackend,
-    JobRunExecutorAdapter,
+    SubmitJobRunGatewayAdapter,
     JobRunsRepoAdapter,
     JobsRepoAdapter,
 )
@@ -29,7 +31,9 @@ from bootstrap.dependencies.settings import get_settings
 if TYPE_CHECKING:
     from sqlalchemy import Engine
 
-    from application.port.outbound.job_run.job_run_executor import JobRunExecutor
+    from application.port.outbound.job_run.submit_job_run_gateway import (
+        SubmitJobRunGateway,
+    )
     from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
     from application.port.outbound.job.jobs_repo import JobsRepo
     from bootstrap.configs import AppSettings
@@ -81,15 +85,15 @@ def get_job_runs_repo(
 
 
 @lru_cache(maxsize=1)
-def _in_memory_executor_singleton() -> JobRunInMemoryExecutor:
-    return JobRunInMemoryExecutor()
+def _in_memory_executor_singleton() -> SubmitJobRunInMemoryGateway:
+    return SubmitJobRunInMemoryGateway()
 
 
 def get_job_run_executor(
     settings: AppSettings = Depends(get_settings),
-) -> JobRunExecutor:
-    """Return the JobRun executor based on AppSettings.job_run_executor_adapter."""
-    if settings.job_run_executor_adapter == JobRunExecutorAdapter.IN_MEMORY:
+) -> SubmitJobRunGateway:
+    """Return the JobRun executor based on AppSettings.submit_job_run_gateway_adapter."""
+    if settings.submit_job_run_gateway_adapter == SubmitJobRunGatewayAdapter.IN_MEMORY:
         return _in_memory_executor_singleton()
     api = get_k8s_api()
     k8s_config = K8sExecutorConfig(
@@ -101,4 +105,4 @@ def get_job_run_executor(
         iceberg_jar=settings.k8s.iceberg_jar,
         iceberg_aws_jar=settings.k8s.iceberg_aws_jar,
     )
-    return JobRunK8sExecutor(api, k8s_config)
+    return SubmitJobRunK8sGateway(api, k8s_config)

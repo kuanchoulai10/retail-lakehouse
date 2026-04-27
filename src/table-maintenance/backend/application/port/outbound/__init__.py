@@ -2,6 +2,6 @@
 
 from application.port.outbound.catalog import ReadCatalogGateway
 from application.port.outbound.job import JobsRepo
-from application.port.outbound.job_run import JobRunExecutor, JobRunsRepo
+from application.port.outbound.job_run import SubmitJobRunGateway, JobRunsRepo
 
-__all__ = ["ReadCatalogGateway", "JobRunsRepo", "JobsRepo", "JobRunExecutor"]
+__all__ = ["ReadCatalogGateway", "JobRunsRepo", "JobsRepo", "SubmitJobRunGateway"]

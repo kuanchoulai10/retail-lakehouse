@@ -1,9 +1,9 @@
-"""Tests for JobRunInMemoryExecutor."""
+"""Tests for SubmitJobRunInMemoryGateway."""
 
-from adapter.outbound.job_run.job_run_in_memory_executor import (
-    JobRunInMemoryExecutor,
+from adapter.outbound.job_run.submit_job_run_in_memory_gateway import (
+    SubmitJobRunInMemoryGateway,
 )
-from application.port.outbound.job_run.job_run_executor import JobRunExecutor
+from application.port.outbound.job_run.submit_job_run_gateway import SubmitJobRunGateway
 from application.port.outbound.job_run.job_submission import JobSubmission
 
 
@@ -24,21 +24,21 @@ def _submission(**overrides) -> JobSubmission:
     return JobSubmission(**defaults)  # type: ignore[arg-type]
 
 
-def test_is_subclass_of_job_run_executor():
-    """Verify that JobRunInMemoryExecutor is a subclass of JobRunExecutor."""
-    assert issubclass(JobRunInMemoryExecutor, JobRunExecutor)
+def test_is_subclass_of_gateway():
+    """Verify that SubmitJobRunInMemoryGateway is a subclass of SubmitJobRunGateway."""
+    assert issubclass(SubmitJobRunInMemoryGateway, SubmitJobRunGateway)
 
 
 def test_submit_records_submission():
     """Verify that submit records the submission."""
-    executor = JobRunInMemoryExecutor()
+    gateway = SubmitJobRunInMemoryGateway()
     sub = _submission()
-    executor.submit(sub)
-    assert sub in executor.submitted
+    gateway.submit(sub)
+    assert sub in gateway.submitted
 
 
 def test_submit_returns_none():
     """Verify that submit returns None."""
-    executor = JobRunInMemoryExecutor()
-    result = executor.submit(_submission())
+    gateway = SubmitJobRunInMemoryGateway()
+    result = gateway.submit(_submission())
     assert result is None

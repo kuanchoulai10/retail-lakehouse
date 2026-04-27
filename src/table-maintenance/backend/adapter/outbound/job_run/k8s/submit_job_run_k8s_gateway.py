@@ -1,4 +1,4 @@
-"""Define the JobRunK8sExecutor adapter."""
+"""Define the SubmitJobRunK8sGateway adapter."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from adapter.outbound.job_run.k8s.constants import (
     VERSION,
 )
 from adapter.outbound.job_run.k8s.manifest import build_manifest
-from application.port.outbound.job_run.job_run_executor import JobRunExecutor
+from application.port.outbound.job_run.submit_job_run_gateway import SubmitJobRunGateway
 
 if TYPE_CHECKING:
     from kubernetes.client import CustomObjectsApi
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from application.port.outbound.job_run.job_submission import JobSubmission
 
 
-class JobRunK8sExecutor(JobRunExecutor):
+class SubmitJobRunK8sGateway(SubmitJobRunGateway):
     """Submit a job by creating a SparkApplication (or ScheduledSparkApplication) in K8s."""
 
     def __init__(self, api: CustomObjectsApi, config: K8sExecutorConfig) -> None:

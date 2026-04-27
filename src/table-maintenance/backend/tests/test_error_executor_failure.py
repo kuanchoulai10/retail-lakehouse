@@ -24,7 +24,7 @@ from application.domain.model.job import (
 from application.domain.model.job.events import JobTriggered
 from application.domain.model.job_run import JobRunStatus
 from application.domain.model.job_run.events import JobRunCreated
-from application.port.outbound.job_run.job_run_executor import JobRunExecutor
+from application.port.outbound.job_run.submit_job_run_gateway import SubmitJobRunGateway
 from application.port.outbound.job_run.job_submission import JobSubmission
 from application.service.handler.job_run_created_handler import JobRunCreatedHandler
 from application.service.handler.job_triggered_handler import JobTriggeredHandler
@@ -35,7 +35,7 @@ from base.event_dispatcher import EventDispatcher
 from application.domain.model.job_run import TriggerType
 
 
-class FailingExecutor(JobRunExecutor):
+class FailingGateway(SubmitJobRunGateway):
     """Executor that always raises to simulate K8s unavailability."""
 
     def submit(self, submission: JobSubmission) -> None:
@@ -44,7 +44,7 @@ class FailingExecutor(JobRunExecutor):
 
 
 def _build_chain_with_failing_executor():
-    """Wire event chain with a FailingExecutor for the second hop."""
+    """Wire event chain with a FailingGateway for the second hop."""
     engine = create_engine("sqlite://", echo=False)
     metadata.create_all(engine)
 
@@ -59,7 +59,7 @@ def _build_chain_with_failing_executor():
     )
     dispatcher.register(
         JobRunCreated,
-        JobRunCreatedHandler(SubmitJobRunService(FailingExecutor())),
+        JobRunCreatedHandler(SubmitJobRunService(FailingGateway())),
     )
 
     publish_service = PublishEventsService(outbox_repo, serializer, dispatcher)
@@ -103,7 +103,7 @@ def test_executor_failure_does_not_lose_job_run():
     assert len(all_runs) == 1
     assert all_runs[0].status == JobRunStatus.PENDING
 
-    # Tick 2: JobRunCreated → FailingExecutor raises
+    # Tick 2: JobRunCreated → FailingGateway raises
     with pytest.raises(RuntimeError, match="K8s unavailable"):
         c["publish_service"].execute()
 

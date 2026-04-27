@@ -6,7 +6,9 @@ import logging
 import signal
 
 from adapter.inbound.messaging.outbox.publisher_loop import PublisherLoop
-from adapter.outbound.job_run.k8s.job_run_k8s_executor import JobRunK8sExecutor
+from adapter.outbound.job_run.k8s.submit_job_run_k8s_gateway import (
+    SubmitJobRunK8sGateway,
+)
 from adapter.outbound.job_run.k8s.k8s_executor_config import K8sExecutorConfig
 from adapter.outbound.job_run.sql.job_runs_sql_repo import JobRunsSqlRepo
 from adapter.outbound.sql.engine_factory import build_engine
@@ -56,7 +58,7 @@ def build_publisher() -> PublisherLoop:
         iceberg_jar=settings.k8s.iceberg_jar,
         iceberg_aws_jar=settings.k8s.iceberg_aws_jar,
     )
-    executor = JobRunK8sExecutor(k8s_api, k8s_config)
+    executor = SubmitJobRunK8sGateway(k8s_api, k8s_config)
     submit_service = SubmitJobRunService(executor)
     dispatcher.register(JobRunCreated, JobRunCreatedHandler(submit_service))
 

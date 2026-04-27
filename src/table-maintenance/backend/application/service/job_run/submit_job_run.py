@@ -11,13 +11,15 @@ from application.port.inbound.job_run.submit_job_run import (
 from application.port.outbound.job_run.job_submission import JobSubmission
 
 if TYPE_CHECKING:
-    from application.port.outbound.job_run.job_run_executor import JobRunExecutor
+    from application.port.outbound.job_run.submit_job_run_gateway import (
+        SubmitJobRunGateway,
+    )
 
 
 class SubmitJobRunService(SubmitJobRunUseCase):
     """Map a SubmitJobRunInput to a JobSubmission and delegate to the executor."""
 
-    def __init__(self, executor: JobRunExecutor) -> None:
+    def __init__(self, executor: SubmitJobRunGateway) -> None:
         """Initialize with the job run executor."""
         self._executor = executor
 
