@@ -1,4 +1,4 @@
-"""Tests for IcebergCatalogClient implementing CatalogReader."""
+"""Tests for ReadCatalogIcebergGateway implementing ReadCatalogGateway."""
 
 from __future__ import annotations
 
@@ -6,9 +6,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from adapter.outbound.catalog.iceberg_catalog_client import IcebergCatalogClient
+from adapter.outbound.catalog.read_catalog_iceberg_gateway import (
+    ReadCatalogIcebergGateway,
+)
 from application.domain.model.catalog.table import Table
-from application.port.outbound.catalog.catalog_reader import CatalogReader
+from application.port.outbound.catalog.read_catalog_gateway import ReadCatalogGateway
 
 
 @pytest.fixture
@@ -19,20 +21,20 @@ def mock_pyiceberg_catalog():
 
 @pytest.fixture
 def client(mock_pyiceberg_catalog):
-    """Return an IcebergCatalogClient wrapping a mock catalog."""
+    """Return a ReadCatalogIcebergGateway wrapping a mock catalog."""
     with patch(
-        "adapter.outbound.catalog.iceberg_catalog_client.load_catalog",
+        "adapter.outbound.catalog.read_catalog_iceberg_gateway.load_catalog",
         return_value=mock_pyiceberg_catalog,
     ):
-        return IcebergCatalogClient(
+        return ReadCatalogIcebergGateway(
             catalog_uri="http://polaris:8181/api/catalog",
             catalog_name="iceberg",
         )
 
 
-def test_client_implements_catalog_reader(client):
-    """IcebergCatalogClient implements the CatalogReader port."""
-    assert isinstance(client, CatalogReader)
+def test_client_implements_gateway(client):
+    """ReadCatalogIcebergGateway implements the ReadCatalogGateway port."""
+    assert isinstance(client, ReadCatalogGateway)
 
 
 def test_list_namespaces(client, mock_pyiceberg_catalog):

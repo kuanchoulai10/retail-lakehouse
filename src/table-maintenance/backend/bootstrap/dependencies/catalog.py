@@ -6,8 +6,10 @@ from functools import lru_cache
 
 from fastapi import Depends
 
-from adapter.outbound.catalog.iceberg_catalog_client import IcebergCatalogClient
-from application.port.outbound.catalog.catalog_reader import CatalogReader
+from adapter.outbound.catalog.read_catalog_iceberg_gateway import (
+    ReadCatalogIcebergGateway,
+)
+from application.port.outbound.catalog.read_catalog_gateway import ReadCatalogGateway
 from bootstrap.configs import AppSettings
 from bootstrap.dependencies.settings import get_settings
 
@@ -15,9 +17,9 @@ from bootstrap.dependencies.settings import get_settings
 @lru_cache(maxsize=1)
 def _catalog_client_singleton(
     uri: str, name: str, credential: str, warehouse: str, scope: str
-) -> IcebergCatalogClient:
-    """Return a cached IcebergCatalogClient instance."""
-    return IcebergCatalogClient(
+) -> ReadCatalogIcebergGateway:
+    """Return a cached ReadCatalogIcebergGateway instance."""
+    return ReadCatalogIcebergGateway(
         catalog_uri=uri,
         catalog_name=name,
         credential=credential,
@@ -28,8 +30,8 @@ def _catalog_client_singleton(
 
 def get_catalog_reader(
     settings: AppSettings = Depends(get_settings),
-) -> CatalogReader:
-    """Return a CatalogReader backed by IcebergCatalogClient."""
+) -> ReadCatalogGateway:
+    """Return a ReadCatalogGateway backed by ReadCatalogIcebergGateway."""
     return _catalog_client_singleton(
         uri=settings.iceberg_catalog_uri,
         name=settings.iceberg_catalog_name,

@@ -46,7 +46,9 @@ if TYPE_CHECKING:
         ListTagsUseCase,
         UpdateJobUseCase,
     )
-    from application.port.outbound.catalog.catalog_reader import CatalogReader
+    from application.port.outbound.catalog.read_catalog_gateway import (
+        ReadCatalogGateway,
+    )
     from application.port.outbound.event_outbox.event_outbox_store import (
         EventOutboxStore,
     )
@@ -114,42 +116,42 @@ def get_get_job_run_use_case(
 
 
 def get_list_namespaces_use_case(
-    reader: CatalogReader = Depends(get_catalog_reader),
+    reader: ReadCatalogGateway = Depends(get_catalog_reader),
 ) -> ListNamespacesUseCase:
     """Provide the ListNamespaces use case."""
     return ListNamespacesService(reader)
 
 
 def get_list_tables_use_case(
-    reader: CatalogReader = Depends(get_catalog_reader),
+    reader: ReadCatalogGateway = Depends(get_catalog_reader),
 ) -> ListTablesUseCase:
     """Provide the ListTables use case."""
     return ListTablesService(reader)
 
 
 def get_get_table_use_case(
-    reader: CatalogReader = Depends(get_catalog_reader),
+    reader: ReadCatalogGateway = Depends(get_catalog_reader),
 ) -> GetTableUseCase:
     """Provide the GetTable use case."""
     return GetTableService(reader)
 
 
 def get_list_snapshots_use_case(
-    reader: CatalogReader = Depends(get_catalog_reader),
+    reader: ReadCatalogGateway = Depends(get_catalog_reader),
 ) -> ListSnapshotsUseCase:
     """Provide the ListSnapshots use case."""
     return ListSnapshotsService(reader)
 
 
 def get_list_branches_use_case(
-    reader: CatalogReader = Depends(get_catalog_reader),
+    reader: ReadCatalogGateway = Depends(get_catalog_reader),
 ) -> ListBranchesUseCase:
     """Provide the ListBranches use case."""
     return ListBranchesService(reader)
 
 
 def get_list_tags_use_case(
-    reader: CatalogReader = Depends(get_catalog_reader),
+    reader: ReadCatalogGateway = Depends(get_catalog_reader),
 ) -> ListTagsUseCase:
     """Provide the ListTags use case."""
     return ListTagsService(reader)

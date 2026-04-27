@@ -1,19 +1,18 @@
-"""Define the CatalogReader port interface."""
+"""Define the ReadCatalogGateway port interface."""
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import TYPE_CHECKING
+
+from base.gateway import Gateway
 
 if TYPE_CHECKING:
     from application.domain.model.catalog.table import Table
 
 
-class CatalogReader(ABC):
-    """Read-only port for accessing Iceberg catalog metadata.
-
-    Not a Repository because this is a remote catalog, not our own persistence.
-    """
+class ReadCatalogGateway(Gateway):
+    """Read-only gateway for accessing Iceberg catalog metadata."""
 
     @abstractmethod
     def list_namespaces(self) -> list[str]:

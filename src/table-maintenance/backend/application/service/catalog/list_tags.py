@@ -12,13 +12,15 @@ from application.port.inbound.catalog.list_tags.output import (
 from application.port.inbound.catalog.list_tags.use_case import ListTagsUseCase
 
 if TYPE_CHECKING:
-    from application.port.outbound.catalog.catalog_reader import CatalogReader
+    from application.port.outbound.catalog.read_catalog_gateway import (
+        ReadCatalogGateway,
+    )
 
 
 class ListTagsService(ListTagsUseCase):
-    """List all tags by delegating to CatalogReader."""
+    """List all tags by delegating to ReadCatalogGateway."""
 
-    def __init__(self, reader: CatalogReader) -> None:
+    def __init__(self, reader: ReadCatalogGateway) -> None:
         """Initialize with the catalog reader port."""
         self._reader = reader
 

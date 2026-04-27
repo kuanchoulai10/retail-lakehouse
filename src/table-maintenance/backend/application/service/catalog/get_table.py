@@ -13,13 +13,15 @@ from application.port.inbound.catalog.get_table.output import (
 from application.port.inbound.catalog.get_table.use_case import GetTableUseCase
 
 if TYPE_CHECKING:
-    from application.port.outbound.catalog.catalog_reader import CatalogReader
+    from application.port.outbound.catalog.read_catalog_gateway import (
+        ReadCatalogGateway,
+    )
 
 
 class GetTableService(GetTableUseCase):
-    """Get table metadata by delegating to CatalogReader."""
+    """Get table metadata by delegating to ReadCatalogGateway."""
 
-    def __init__(self, reader: CatalogReader) -> None:
+    def __init__(self, reader: ReadCatalogGateway) -> None:
         """Initialize with the catalog reader port."""
         self._reader = reader
 

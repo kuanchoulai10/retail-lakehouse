@@ -14,13 +14,15 @@ from application.port.inbound.catalog.list_branches.use_case import (
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.catalog.catalog_reader import CatalogReader
+    from application.port.outbound.catalog.read_catalog_gateway import (
+        ReadCatalogGateway,
+    )
 
 
 class ListBranchesService(ListBranchesUseCase):
-    """List all branches by delegating to CatalogReader."""
+    """List all branches by delegating to ReadCatalogGateway."""
 
-    def __init__(self, reader: CatalogReader) -> None:
+    def __init__(self, reader: ReadCatalogGateway) -> None:
         """Initialize with the catalog reader port."""
         self._reader = reader
 

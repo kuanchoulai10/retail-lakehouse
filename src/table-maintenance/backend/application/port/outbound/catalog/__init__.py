@@ -1,5 +1,5 @@
-"""Catalog reader port."""
+"""Catalog gateway port."""
 
-from application.port.outbound.catalog.catalog_reader import CatalogReader
+from application.port.outbound.catalog.read_catalog_gateway import ReadCatalogGateway
 
-__all__ = ["CatalogReader"]
+__all__ = ["ReadCatalogGateway"]

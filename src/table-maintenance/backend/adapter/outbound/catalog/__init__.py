@@ -1,5 +1,7 @@
 """Iceberg catalog outbound adapter."""
 
-from adapter.outbound.catalog.iceberg_catalog_client import IcebergCatalogClient
+from adapter.outbound.catalog.read_catalog_iceberg_gateway import (
+    ReadCatalogIcebergGateway,
+)
 
-__all__ = ["IcebergCatalogClient"]
+__all__ = ["ReadCatalogIcebergGateway"]

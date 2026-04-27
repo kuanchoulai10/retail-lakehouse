@@ -1,4 +1,4 @@
-"""PyIceberg-based catalog client implementing the CatalogReader port."""
+"""PyIceberg-based gateway implementing the ReadCatalogGateway port."""
 
 from __future__ import annotations
 
@@ -14,11 +14,11 @@ from application.domain.model.catalog.table import Table
 from application.domain.model.catalog.table_id import TableId
 from application.domain.model.catalog.table_schema import TableSchema
 from application.domain.model.catalog.tag import Tag
-from application.port.outbound.catalog.catalog_reader import CatalogReader
+from application.port.outbound.catalog.read_catalog_gateway import ReadCatalogGateway
 
 
-class IcebergCatalogClient(CatalogReader):
-    """Implement CatalogReader via PyIceberg REST catalog."""
+class ReadCatalogIcebergGateway(ReadCatalogGateway):
+    """Implement ReadCatalogGateway via PyIceberg REST catalog."""
 
     def __init__(
         self,
