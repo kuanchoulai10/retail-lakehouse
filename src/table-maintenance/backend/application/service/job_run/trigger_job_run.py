@@ -1,4 +1,4 @@
-"""Define the CreateJobRunService."""
+"""Define the TriggerJobRunService."""
 
 from __future__ import annotations
 
@@ -13,10 +13,10 @@ from application.domain.model.job import (
 from application.exceptions import JobDisabledError
 from application.exceptions import JobNotFoundError as AppJobNotFoundError
 from application.port.inbound import (
-    CreateJobRunInput,
-    CreateJobRunUseCase,
+    TriggerJobRunInput,
+    TriggerJobRunUseCase,
 )
-from application.port.inbound.job_run.create_job_run import TriggerJobOutput
+from application.port.inbound.job_run.trigger_job_run import TriggerJobRunOutput
 
 if TYPE_CHECKING:
     from application.service.outbox.event_serializer import EventSerializer
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 
 
-class CreateJobRunService(CreateJobRunUseCase):
+class TriggerJobRunService(TriggerJobRunUseCase):
     """Triggers a JobRun via Job.trigger() — writes event to outbox for async processing."""
 
     def __init__(
@@ -43,7 +43,7 @@ class CreateJobRunService(CreateJobRunUseCase):
         self._outbox_repo = outbox_repo
         self._serializer = serializer
 
-    def execute(self, request: CreateJobRunInput) -> TriggerJobOutput:
+    def execute(self, request: TriggerJobRunInput) -> TriggerJobRunOutput:
         """Trigger a new execution of the specified job."""
         try:
             job = self._repo.get(JobId(value=request.job_id))
@@ -66,4 +66,4 @@ class CreateJobRunService(CreateJobRunUseCase):
         )
         self._outbox_repo.save(entries)
 
-        return TriggerJobOutput(job_id=job.id.value)
+        return TriggerJobRunOutput(job_id=job.id.value)

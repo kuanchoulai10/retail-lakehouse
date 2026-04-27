@@ -169,7 +169,23 @@ def test_use_case_class_naming(use_case_entry: tuple[str, Path]):
     )
 
 
-# --- Rule 4: __init__.py re-exports all three symbols ---
+# --- Rule 4: One class per file (no extra classes) ---
+
+
+@pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
+def test_output_classes_prefixed(use_case_entry: tuple[str, Path]):
+    """Verify that all classes in output.py are prefixed with {PascalCase(dir_name)}."""
+    group, use_case_dir = use_case_entry
+    prefix = _pascal_to_words(use_case_dir.name)
+    module = f"application.port.inbound.{group}.{use_case_dir.name}.output"
+    classes = _exported_classes(module)
+    misnamed = [c for c in classes if not c.startswith(prefix)]
+    assert misnamed == [], (
+        f"{use_case_dir.name}/output.py has classes not prefixed with '{prefix}': {misnamed}"
+    )
+
+
+# --- Rule 5: __init__.py re-exports all three symbols ---
 
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)

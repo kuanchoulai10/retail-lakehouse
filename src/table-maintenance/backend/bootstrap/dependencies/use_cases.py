@@ -19,7 +19,7 @@ from application.service.job.create_job import CreateJobService
 from application.service.job.get_job import GetJobService
 from application.service.job.list_jobs import ListJobsService
 from application.service.job.update_job import UpdateJobService
-from application.service.job_run.create_job_run import CreateJobRunService
+from application.service.job_run.trigger_job_run import TriggerJobRunService
 from application.service.job_run.get_job_run import GetJobRunService
 from application.service.job_run.list_job_runs import ListJobRunsService
 
@@ -32,7 +32,7 @@ from bootstrap.dependencies.repos import (
 
 if TYPE_CHECKING:
     from application.port.inbound import (
-        CreateJobRunUseCase,
+        TriggerJobRunUseCase,
         CreateJobUseCase,
         GetJobRunUseCase,
         GetJobUseCase,
@@ -88,14 +88,14 @@ def get_update_job_use_case(
     return UpdateJobService(repo, outbox_repo, serializer)
 
 
-def get_create_job_run_use_case(
+def get_trigger_job_run_use_case(
     repo: JobsRepo = Depends(get_jobs_repo),
     job_runs_repo: JobRunsRepo = Depends(get_job_runs_repo),
     outbox_repo: EventOutboxStore = Depends(get_outbox_repo),
     serializer: EventSerializer = Depends(get_event_serializer),
-) -> CreateJobRunUseCase:
-    """Provide the CreateJobRun use case with injected dependencies."""
-    return CreateJobRunService(repo, job_runs_repo, outbox_repo, serializer)
+) -> TriggerJobRunUseCase:
+    """Provide the TriggerJobRun use case with injected dependencies."""
+    return TriggerJobRunService(repo, job_runs_repo, outbox_repo, serializer)
 
 
 def get_list_job_runs_use_case(

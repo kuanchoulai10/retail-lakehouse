@@ -3,7 +3,7 @@
 from unittest.mock import MagicMock
 
 from bootstrap.dependencies.use_cases import (
-    get_create_job_run_use_case,
+    get_trigger_job_run_use_case,
     get_create_job_use_case,
     get_get_job_run_use_case,
     get_get_job_use_case,
@@ -21,7 +21,7 @@ from application.service.job.create_job import CreateJobService
 from application.service.job.get_job import GetJobService
 from application.service.job.list_jobs import ListJobsService
 from application.service.job.update_job import UpdateJobService
-from application.service.job_run.create_job_run import CreateJobRunService
+from application.service.job_run.trigger_job_run import TriggerJobRunService
 from application.service.job_run.get_job_run import GetJobRunService
 from application.service.job_run.list_job_runs import ListJobRunsService
 
@@ -43,11 +43,13 @@ def _make_app() -> tuple[FastAPI, JobRunsInMemoryRepo]:
     app.dependency_overrides[get_update_job_use_case] = lambda: UpdateJobService(
         repo, outbox_repo, serializer
     )
-    app.dependency_overrides[get_create_job_run_use_case] = lambda: CreateJobRunService(
-        repo,
-        runs_repo,
-        outbox_repo,
-        serializer,
+    app.dependency_overrides[get_trigger_job_run_use_case] = lambda: (
+        TriggerJobRunService(
+            repo,
+            runs_repo,
+            outbox_repo,
+            serializer,
+        )
     )
     app.dependency_overrides[get_list_job_runs_use_case] = lambda: ListJobRunsService(
         runs_repo

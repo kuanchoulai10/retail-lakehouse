@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 from bootstrap.dependencies.use_cases import (
-    get_create_job_run_use_case,
+    get_trigger_job_run_use_case,
     get_create_job_use_case,
     get_get_job_run_use_case,
     get_get_job_use_case,
@@ -20,7 +20,7 @@ from application.service.job.create_job import CreateJobService
 from application.service.job.get_job import GetJobService
 from application.service.job.list_jobs import ListJobsService
 from application.service.job.update_job import UpdateJobService
-from application.service.job_run.create_job_run import CreateJobRunService
+from application.service.job_run.trigger_job_run import TriggerJobRunService
 from application.service.job_run.get_job_run import GetJobRunService
 from application.service.job_run.list_job_runs import ListJobRunsService
 
@@ -61,34 +61,34 @@ def test_get_update_job_use_case():
     assert isinstance(result, UpdateJobService)
 
 
-def test_get_create_job_run_use_case():
-    """Verify that get_create_job_run_use_case returns a CreateJobRunService."""
+def test_get_trigger_job_run_use_case():
+    """Verify that get_trigger_job_run_use_case returns a TriggerJobRunService."""
     repo = JobsInMemoryRepo()
     job_runs_repo = JobRunsInMemoryRepo()
     outbox_repo = MagicMock()
     serializer = EventSerializer()
-    result = get_create_job_run_use_case(
+    result = get_trigger_job_run_use_case(
         repo=repo,
         job_runs_repo=job_runs_repo,
         outbox_repo=outbox_repo,
         serializer=serializer,
     )
-    assert isinstance(result, CreateJobRunService)
+    assert isinstance(result, TriggerJobRunService)
 
 
-def test_get_create_job_run_use_case_injects_collaborators():
-    """Verify that get_create_job_run_use_case injects repo and job_runs_repo into service."""
+def test_get_trigger_job_run_use_case_injects_collaborators():
+    """Verify that get_trigger_job_run_use_case injects repo and job_runs_repo into service."""
     repo = MagicMock()
     job_runs_repo = MagicMock()
     outbox_repo = MagicMock()
     serializer = EventSerializer()
-    service = get_create_job_run_use_case(
+    service = get_trigger_job_run_use_case(
         repo=repo,
         job_runs_repo=job_runs_repo,
         outbox_repo=outbox_repo,
         serializer=serializer,
     )
-    assert isinstance(service, CreateJobRunService)
+    assert isinstance(service, TriggerJobRunService)
     assert service._repo is repo
     assert service._job_runs_repo is job_runs_repo
 

@@ -39,9 +39,6 @@ from application.port.inbound.job import (
     UpdateJobUseCase,
 )
 from application.port.inbound.job_run import (
-    CreateJobRunInput,
-    CreateJobRunOutput,
-    CreateJobRunUseCase,
     GetJobRunInput,
     GetJobRunOutput,
     GetJobRunUseCase,
@@ -51,6 +48,9 @@ from application.port.inbound.job_run import (
     ListJobRunsUseCase,
     SubmitJobRunInput,
     SubmitJobRunUseCase,
+    TriggerJobRunInput,
+    TriggerJobRunOutput,
+    TriggerJobRunUseCase,
 )
 
 __all__ = [
@@ -74,9 +74,6 @@ __all__ = [
     "ListTagsUseCase",
     "CreateJobInput",
     "CreateJobOutput",
-    "CreateJobRunInput",
-    "CreateJobRunOutput",
-    "CreateJobRunUseCase",
     "CreateJobUseCase",
     "DeleteJobInput",
     "DeleteJobOutput",
@@ -97,6 +94,9 @@ __all__ = [
     "ListJobsUseCase",
     "SubmitJobRunInput",
     "SubmitJobRunUseCase",
+    "TriggerJobRunInput",
+    "TriggerJobRunOutput",
+    "TriggerJobRunUseCase",
     "UpdateJobInput",
     "UpdateJobOutput",
     "UpdateJobUseCase",

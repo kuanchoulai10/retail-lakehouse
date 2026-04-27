@@ -1,24 +1,24 @@
-"""Tests for create job run endpoint."""
+"""Tests for trigger job run endpoint."""
 
 from unittest.mock import MagicMock
 
-from bootstrap.dependencies.use_cases import get_create_job_run_use_case
+from bootstrap.dependencies.use_cases import get_trigger_job_run_use_case
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from adapter.inbound.web import router
 from application.exceptions import JobDisabledError, JobNotFoundError
-from application.port.inbound.job_run.create_job_run import TriggerJobOutput
+from application.port.inbound.job_run.trigger_job_run import TriggerJobRunOutput
 
 
 def _make_client(use_case: MagicMock) -> TestClient:
-    """Provide a test client with the create-job-run use case overridden."""
+    """Provide a test client with the trigger-job-run use case overridden."""
     app = FastAPI()
     app.include_router(router)
-    app.dependency_overrides[get_create_job_run_use_case] = lambda: use_case
+    app.dependency_overrides[get_trigger_job_run_use_case] = lambda: use_case
     return TestClient(app)
 
 
-SAMPLE = TriggerJobOutput(job_id="abc1234567")
+SAMPLE = TriggerJobRunOutput(job_id="abc1234567")
 
 
 def test_post_run_returns_202():
