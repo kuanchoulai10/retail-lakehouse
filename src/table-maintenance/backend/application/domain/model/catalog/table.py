@@ -8,6 +8,9 @@ from base.aggregate_root import AggregateRoot
 from application.domain.model.catalog.branch import Branch
 from application.domain.model.catalog.snapshot import Snapshot
 from application.domain.model.catalog.table_id import TableId
+from application.domain.model.catalog.table_properties.table_properties import (
+    TableProperties,
+)
 from application.domain.model.catalog.table_schema import TableSchema
 from application.domain.model.catalog.tag import Tag
 
@@ -25,4 +28,4 @@ class Table(AggregateRoot[TableId]):
     snapshots: tuple[Snapshot, ...]
     branches: tuple[Branch, ...]
     tags: tuple[Tag, ...]
-    properties: dict[str, str]
+    properties: TableProperties

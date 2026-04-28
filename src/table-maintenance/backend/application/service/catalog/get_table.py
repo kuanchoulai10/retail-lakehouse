@@ -11,6 +11,9 @@ from application.port.inbound.catalog.get_table.output import (
     GetTableSchemaOutput,
 )
 from application.port.inbound.catalog.get_table.use_case import GetTableUseCase
+from application.service.catalog.table_properties_serializer import (
+    table_properties_to_dict,
+)
 
 if TYPE_CHECKING:
     from application.port.outbound.catalog.read_catalog.gateway import (
@@ -44,5 +47,5 @@ class GetTableService(GetTableUseCase):
                     for f in table.schema.fields
                 ],
             ),
-            properties=table.properties,
+            properties=table_properties_to_dict(table.properties),
         )

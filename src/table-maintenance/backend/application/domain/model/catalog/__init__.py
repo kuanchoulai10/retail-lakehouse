@@ -8,18 +8,28 @@ from application.domain.model.catalog.snapshot import Snapshot
 from application.domain.model.catalog.snapshot_summary import SnapshotSummary
 from application.domain.model.catalog.table import Table
 from application.domain.model.catalog.table_id import TableId
+from application.domain.model.catalog.table_properties import (
+    DistributionMode,
+    IsolationLevel,
+    TableProperties,
+    WriteMode,
+)
 from application.domain.model.catalog.table_schema import TableSchema
 from application.domain.model.catalog.tag import Tag
 
 __all__ = [
     "Branch",
     "BranchId",
+    "DistributionMode",
+    "IsolationLevel",
     "RetentionPolicy",
     "SchemaField",
     "Snapshot",
     "SnapshotSummary",
     "Table",
     "TableId",
+    "TableProperties",
     "TableSchema",
     "Tag",
+    "WriteMode",
 ]

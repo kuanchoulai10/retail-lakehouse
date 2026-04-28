@@ -10,6 +10,15 @@ from application.domain.model.catalog.snapshot import Snapshot
 from application.domain.model.catalog.snapshot_summary import SnapshotSummary
 from application.domain.model.catalog.table import Table
 from application.domain.model.catalog.table_id import TableId
+from application.domain.model.catalog.table_properties.format_properties import (
+    FormatProperties,
+)
+from application.domain.model.catalog.table_properties.table_properties import (
+    TableProperties,
+)
+from application.domain.model.catalog.table_properties.write_properties import (
+    WriteProperties,
+)
 from application.domain.model.catalog.table_schema import TableSchema
 
 
@@ -36,7 +45,9 @@ def _make_table(**overrides) -> Table:
         ),
         "branches": (Branch(id=BranchId(value="main"), snapshot_id=100),),
         "tags": (),
-        "properties": {"write.format.default": "parquet"},
+        "properties": TableProperties(
+            write=WriteProperties(format=FormatProperties(default="parquet")),
+        ),
     }
     defaults.update(overrides)
     return Table(**defaults)

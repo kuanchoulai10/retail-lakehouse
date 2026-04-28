@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pyiceberg.catalog import load_catalog
 
+from adapter.outbound.catalog.dict_to_table_properties import dict_to_table_properties
 from application.domain.model.catalog.branch import Branch
 from application.domain.model.catalog.branch_id import BranchId
 from application.domain.model.catalog.retention_policy import RetentionPolicy
@@ -105,5 +106,5 @@ class ReadCatalogIcebergGateway(ReadCatalogGateway):
                 for name, ref in tbl.metadata.refs.items()
                 if ref.snapshot_ref_type == "tag"
             ),
-            properties=dict(tbl.metadata.properties),
+            properties=dict_to_table_properties(dict(tbl.metadata.properties)),
         )
