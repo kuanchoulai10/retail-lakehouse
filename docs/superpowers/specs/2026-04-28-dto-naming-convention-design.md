@@ -35,9 +35,9 @@ Introduce layer-specific suffixes and prefix rules for all DTO classes, enforced
 
 | File | Suffix | Example |
 |------|--------|---------|
-| `dto.py` | `ApiRequest` / `ApiResponse` | `CreateJobApiRequest`, `GetJobApiResponse` |
+| `dto.py` | `ApiRequest` / `ApiResponse` | `CreateJobApiRequest`, `JobApiResponse`, `BranchApiResponse` |
 
-**Prefix**: Must be `{Verb}{Noun}` in PascalCase. Every DTO must have a verb prefix (no bare `JobApiRequest`).
+**Prefix**: No prefix enforced. Verb prefix is the recommended convention for endpoint-specific request DTOs (e.g., `CreateJobApiRequest` over `JobApiRequest` to disambiguate create vs update). Shared resource responses and nested sub-components may use noun-based names (e.g., `JobApiResponse`, `BranchApiResponse`).
 
 ## What Changes
 
@@ -83,6 +83,20 @@ Introduce layer-specific suffixes and prefix rules for all DTO classes, enforced
 | Inbound port | `PublishEventsOutput` | `PublishEventsUseCaseOutput` |
 | Outbound port | `SubmitJobRunInput` (outbound) | `SubmitJobRunGatewayInput` |
 | Web adapter | `JobApiRequest` | `CreateJobApiRequest` |
+| Web adapter | `CompleteJobRunRequest` | `CompleteJobRunApiRequest` |
+| Web adapter | `FailJobRunRequest` | `FailJobRunApiRequest` |
+| Web adapter | `JobRunCallbackResponse` | `JobRunCallbackApiResponse` |
+| Web adapter | `SchemaFieldResponse` | `SchemaFieldApiResponse` |
+| Web adapter | `SchemaResponse` | `SchemaApiResponse` |
+| Web adapter | `NamespacesResponse` | `NamespacesApiResponse` |
+| Web adapter | `TablesResponse` | `TablesApiResponse` |
+| Web adapter | `TableDetailResponse` | `TableDetailApiResponse` |
+| Web adapter | `SnapshotResponse` | `SnapshotApiResponse` |
+| Web adapter | `SnapshotsResponse` | `SnapshotsApiResponse` |
+| Web adapter | `BranchResponse` | `BranchApiResponse` |
+| Web adapter | `BranchesResponse` | `BranchesApiResponse` |
+| Web adapter | `TagResponse` | `TagApiResponse` |
+| Web adapter | `TagsResponse` | `TagsApiResponse` |
 
 ### Not Changed
 
@@ -98,7 +112,7 @@ A new test `tests/architecture/test_dto_naming.py` will enforce:
 
 1. **Inbound port input/output files**: Every class defined in `application/port/inbound/**/input.py` must end with `UseCaseInput`. Every class in `output.py` must end with `UseCaseOutput`.
 2. **Outbound port input/output files**: Every class defined in `application/port/outbound/**/input.py` must end with `GatewayInput`. Every class in `output.py` must end with `GatewayOutput`.
-3. **Web adapter dto files**: Every class defined in `adapter/inbound/web/**/dto.py` must end with `ApiRequest` or `ApiResponse`.
-4. **Prefix rule**: The class name prefix (everything before the suffix) must match the PascalCase conversion of the parent directory name. For web adapter DTOs, the prefix must start with a known verb.
+3. **Web adapter dto files**: Every class defined in `adapter/inbound/web/**/dto.py` must end with `ApiRequest` or `ApiResponse`. No prefix rule enforced.
+4. **Prefix rule (port layers only)**: The class name prefix (everything before the suffix) must match the PascalCase conversion of the parent directory name.
 
 The test discovers files via glob, parses class names via AST, and validates against the rules above.
