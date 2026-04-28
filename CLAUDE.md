@@ -117,10 +117,28 @@ Three base classes define all outbound ports (in `base/`):
 {verb}_{noun}/
 ├── __init__.py       # re-export all symbols
 ├── gateway.py        # {Verb}{Noun}Gateway (extends Gateway)
-├── input.py          # {Verb}{Noun}Input (optional, primitive-only)
-└── output.py         # {Verb}{Noun}Output (optional, primitive-only)
+├── input.py          # {Verb}{Noun}GatewayInput (optional, primitive-only)
+└── output.py         # {Verb}{Noun}GatewayOutput (optional, primitive-only)
 ```
 
 Input/output files must only use primitive types (`str`, `int`, `float`, `bool`, `dict`, `list`, `None`). They may import `base.value_object.ValueObject` but nothing from `application.domain` or other `base.*` modules. This is enforced by `test_outbound_port_structure.py`.
 
 See `docs/superpowers/specs/2026-04-27-outbound-port-adapter-naming-convention.md` for full spec.
+
+## DTO Naming Convention (Layer Suffixes)
+
+Each DTO class carries a layer-specific suffix so its origin is unambiguous at a glance:
+
+| Layer | File | Suffix | Example |
+|-------|------|--------|---------|
+| Inbound port | `port/inbound/{aggregate}/{verb}_{noun}/input.py` | `UseCaseInput` | `CreateJobUseCaseInput` |
+| Inbound port | `port/inbound/{aggregate}/{verb}_{noun}/output.py` | `UseCaseOutput` (or `UseCaseOutputItem` for list helpers) | `CreateJobUseCaseOutput`, `ListJobsUseCaseOutputItem` |
+| Outbound port | `port/outbound/{aggregate}/{verb}_{noun}/input.py` | `GatewayInput` | `SubmitJobRunGatewayInput` |
+| Outbound port | `port/outbound/{aggregate}/{verb}_{noun}/output.py` | `GatewayOutput` | (none yet) |
+| Web adapter | `adapter/inbound/web/{aggregate}/dto.py` | `ApiRequest` / `ApiResponse` | `CreateJobApiRequest`, `JobApiResponse` |
+
+**Prefix rules:**
+- Port layers (inbound/outbound): class prefix must match the PascalCase form of the parent directory name. Enforced by `test_inbound_port_structure.py` and `test_outbound_port_structure.py`.
+- Web adapter: no prefix rule enforced. Verb prefix is convention for endpoint-specific request DTOs (e.g., `CreateJobApiRequest` over bare `JobApiRequest`); shared resource responses and nested sub-components may use noun-based names. Suffix enforced by `test_dto_naming.py`.
+
+See `docs/superpowers/specs/2026-04-28-dto-naming-convention-design.md` for full spec.
