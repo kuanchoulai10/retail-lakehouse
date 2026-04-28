@@ -30,7 +30,7 @@ Namespace: polaris
 
 ## Sync Wave
 
-Wave 21 — depends on MinIO (wave 20). Deploys in parallel with the Debezium CDC connector. The Iceberg Kafka connector (wave 22) and Trino (wave 23) depend on Polaris being ready.
+Wave 21 — depends on MinIO (wave 20, S3 storage) and polaris-db (wave 20, catalog persistence). Deploys in parallel with the Debezium CDC connector. The Iceberg Kafka connector (wave 22) and Trino (wave 23) depend on Polaris being ready.
 
 ## Prerequisites
 
@@ -50,7 +50,7 @@ The following fields in `values.yaml` require attention before deploying:
 
 | Field | Description | Current Value |
 |-------|-------------|---------------|
-| `persistence.type` | `in-memory` loses catalog state on pod restart; switch to `relational-jdbc` with PostgreSQL for durability | `in-memory` |
+| `persistence.type` | Backed by PostgreSQL deployed in wave 20 by [`20-polaris-db/`](../20-polaris-db/README.md). Catalog state is durable across pod restarts. | `relational-jdbc` |
 | `storage.secret.name` | K8s Secret with MinIO credentials for vended credential issuance | `polaris-storage-secret` |
 | `advancedConfig.polaris.storage.s3.endpoint` | MinIO service DNS inside the cluster | `http://minio.minio.svc.cluster.local:9000` |
 | `authentication.tokenBroker.secret.name` | RSA key pair secret; leave blank to auto-generate (keys rotate on restart) | blank |
@@ -96,4 +96,30 @@ kubectl logs -l app.kubernetes.io/name=polaris -n polaris --context mini | grep 
 #     "roleArn": ""
 #   }
 # }
+```
+
+### Smoke Test: Catalog Persistence
+
+Verify that catalog state survives a Polaris pod restart (impossible under the old `in-memory` mode):
+
+```bash
+# 1. Get the root credentials from the first-start logs
+kubectl logs -l app.kubernetes.io/name=polaris -n polaris --context mini \
+  | grep -i "root credentials"
+
+# 2. Use the Polaris admin REST API (via kubectl exec) to create a catalog.
+#    See the example POST body above in this section.
+
+# 3. Restart Polaris
+kubectl rollout restart deployment/polaris -n polaris --context mini
+kubectl rollout status deployment/polaris -n polaris --context mini
+
+# 4. List catalogs again — the test catalog must still be present.
+#    Use the same admin REST API endpoint.
+
+# 5. Verify the metadata tables exist in PostgreSQL
+POD=$(kubectl get pod -l app=polaris-db -n polaris --context mini \
+  -o jsonpath='{.items[0].metadata.name}')
+kubectl exec -n polaris "$POD" --context mini \
+  -- psql -U polaris -d polaris -c '\dt'
 ```
