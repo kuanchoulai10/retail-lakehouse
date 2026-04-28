@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: polaris-db
+  namespace: polaris
+  labels:
+    app: polaris-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: polaris-db
+  template:
+    metadata:
+      labels:
+        app: polaris-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: polaris-db
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: polaris-db
+                  key: password
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: polaris-db
+                  key: database
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - name: postgres
+              containerPort: 5432
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          # NOTE: Probe args duplicate Secret values (probes can't read Secrets).
+          # If username/database in the Secret change, update these args in lockstep.
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "polaris", "-d", "polaris"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "polaris", "-d", "polaris"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: polaris-db
