@@ -5,7 +5,7 @@ from __future__ import annotations
 from bootstrap.dependencies.use_cases import get_create_job_use_case
 from fastapi import APIRouter, Depends
 
-from adapter.inbound.web.job.dto import JobApiRequest, JobApiResponse
+from adapter.inbound.web.job.dto import CreateJobApiRequest, JobApiResponse
 from application.port.inbound import CreateJobInput, CreateJobUseCase
 
 router = APIRouter()
@@ -13,7 +13,7 @@ router = APIRouter()
 
 @router.post("/jobs", response_model=JobApiResponse, status_code=201)
 def create_job(
-    request: JobApiRequest,
+    request: CreateJobApiRequest,
     use_case: CreateJobUseCase = Depends(get_create_job_use_case),
 ):
     """Create a new job from the request body."""

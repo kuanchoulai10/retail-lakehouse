@@ -7,7 +7,7 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
-class JobApiRequest(BaseModel):
+class CreateJobApiRequest(BaseModel):
     """Request body for creating a new job."""
 
     job_type: str
