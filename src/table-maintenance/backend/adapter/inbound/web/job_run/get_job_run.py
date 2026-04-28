@@ -29,4 +29,7 @@ def get_job_run(
         trigger_type=result.trigger_type,
         started_at=result.started_at,
         finished_at=result.finished_at,
+        error=result.error,
+        result_duration_ms=result.result_duration_ms,
+        result_metadata=result.result_metadata,
     )

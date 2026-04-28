@@ -1,4 +1,4 @@
-"""Define JobRun API response DTO."""
+"""Define JobRun API DTOs."""
 
 from __future__ import annotations
 
@@ -16,3 +16,29 @@ class JobRunApiResponse(BaseModel):
     trigger_type: str
     started_at: datetime | None
     finished_at: datetime | None
+    error: str | None = None
+    result_duration_ms: int | None = None
+    result_metadata: dict[str, str] | None = None
+
+
+class CompleteJobRunRequest(BaseModel):
+    """Request body for completing a job run."""
+
+    duration_ms: int | None = None
+    metadata: dict[str, str] | None = None
+
+
+class FailJobRunRequest(BaseModel):
+    """Request body for failing a job run."""
+
+    error: str
+    duration_ms: int | None = None
+    metadata: dict[str, str] | None = None
+
+
+class JobRunCallbackResponse(BaseModel):
+    """Response body after a callback state transition."""
+
+    run_id: str
+    status: str
+    finished_at: datetime

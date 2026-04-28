@@ -19,3 +19,6 @@ class GetJobRunOutput:
     trigger_type: str
     started_at: datetime | None
     finished_at: datetime | None
+    error: str | None
+    result_duration_ms: int | None
+    result_metadata: dict[str, str] | None

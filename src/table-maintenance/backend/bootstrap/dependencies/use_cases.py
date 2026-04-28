@@ -19,6 +19,8 @@ from application.service.job.create_job import CreateJobService
 from application.service.job.get_job import GetJobService
 from application.service.job.list_jobs import ListJobsService
 from application.service.job.update_job import UpdateJobService
+from application.service.job_run.complete_job_run import CompleteJobRunService
+from application.service.job_run.fail_job_run import FailJobRunService
 from application.service.job_run.trigger_job_run import TriggerJobRunService
 from application.service.job_run.get_job_run import GetJobRunService
 from application.service.job_run.list_job_runs import ListJobRunsService
@@ -32,6 +34,8 @@ from bootstrap.dependencies.repos import (
 
 if TYPE_CHECKING:
     from application.port.inbound import (
+        CompleteJobRunUseCase,
+        FailJobRunUseCase,
         TriggerJobRunUseCase,
         CreateJobUseCase,
         GetJobRunUseCase,
@@ -110,6 +114,20 @@ def get_get_job_run_use_case(
 ) -> GetJobRunUseCase:
     """Provide the GetJobRun use case with injected dependencies."""
     return GetJobRunService(repo)
+
+
+def get_complete_job_run_use_case(
+    repo: JobRunsRepo = Depends(get_job_runs_repo),
+) -> CompleteJobRunUseCase:
+    """Provide the CompleteJobRun use case with injected dependencies."""
+    return CompleteJobRunService(repo)
+
+
+def get_fail_job_run_use_case(
+    repo: JobRunsRepo = Depends(get_job_runs_repo),
+) -> FailJobRunUseCase:
+    """Provide the FailJobRun use case with injected dependencies."""
+    return FailJobRunService(repo)
 
 
 # --- Catalog use cases ---

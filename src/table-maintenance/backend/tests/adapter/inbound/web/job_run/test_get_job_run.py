@@ -29,6 +29,9 @@ def test_get_run_returns_200():
         trigger_type="manual",
         started_at=datetime(2026, 4, 4, tzinfo=UTC),
         finished_at=datetime(2026, 4, 4, 1, tzinfo=UTC),
+        error=None,
+        result_duration_ms=None,
+        result_metadata=None,
     )
     client = _make_client(use_case)
 

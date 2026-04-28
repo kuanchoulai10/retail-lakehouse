@@ -36,4 +36,7 @@ class GetJobRunService(GetJobRunUseCase):
             trigger_type=run.trigger_type.value,
             started_at=run.started_at,
             finished_at=run.finished_at,
+            error=run.error,
+            result_duration_ms=run.result.duration_ms if run.result else None,
+            result_metadata=run.result.metadata if run.result else None,
         )
