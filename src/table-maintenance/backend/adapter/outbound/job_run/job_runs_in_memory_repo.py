@@ -24,6 +24,11 @@ class JobRunsInMemoryRepo(JobRunsRepo):
         self._runs[entity.id.value] = entity
         return entity
 
+    def save(self, entity: JobRun) -> JobRun:
+        """Overwrite an existing job run in memory."""
+        self._runs[entity.id.value] = entity
+        return entity
+
     def get(self, run_id: JobRunId) -> JobRun:
         """Return the job run with the given id or raise JobRunNotFoundError."""
         try:

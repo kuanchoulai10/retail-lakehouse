@@ -23,6 +23,9 @@ def test_deserializes_row_to_job_run():
         "trigger_type": "manual",
         "started_at": datetime(2026, 4, 10, 12, 0, tzinfo=UTC),
         "finished_at": None,
+        "error": None,
+        "result_duration_ms": None,
+        "result_metadata": None,
     }
     run = row_to_job_run(row)
     assert isinstance(run, JobRun)
@@ -32,6 +35,8 @@ def test_deserializes_row_to_job_run():
     assert run.trigger_type == TriggerType.MANUAL
     assert run.started_at == datetime(2026, 4, 10, 12, 0, tzinfo=UTC)
     assert run.finished_at is None
+    assert run.error is None
+    assert run.result is None
 
 
 def test_deserializes_all_statuses():
@@ -44,5 +49,8 @@ def test_deserializes_all_statuses():
             "trigger_type": "manual",
             "started_at": None,
             "finished_at": None,
+            "error": None,
+            "result_duration_ms": None,
+            "result_metadata": None,
         }
         assert row_to_job_run(row).status == status

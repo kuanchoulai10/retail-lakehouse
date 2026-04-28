@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import func, insert, select
+from sqlalchemy import func, insert, select, update
 
 from adapter.outbound.job_run.sql.job_run_to_values import job_run_to_values
 from adapter.outbound.job_run.sql.job_runs_table import job_runs_table
@@ -30,6 +30,17 @@ class JobRunsSqlRepo(JobRunsRepo):
         """Insert a new job run row and return the entity."""
         with self._engine.begin() as conn:
             conn.execute(insert(job_runs_table).values(**job_run_to_values(entity)))
+        return entity
+
+    def save(self, entity: JobRun) -> JobRun:
+        """Update an existing job run row and return the entity."""
+        values = job_run_to_values(entity)
+        run_id = values.pop("id")
+        stmt = (
+            update(job_runs_table).where(job_runs_table.c.id == run_id).values(**values)
+        )
+        with self._engine.begin() as conn:
+            conn.execute(stmt)
         return entity
 
     def get(self, run_id: JobRunId) -> JobRun:

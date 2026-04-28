@@ -19,6 +19,11 @@ class JobRunsRepo(ABC):
         ...
 
     @abstractmethod
+    def save(self, entity: JobRun) -> JobRun:
+        """Persist changes to an existing job run and return it."""
+        ...
+
+    @abstractmethod
     def get(self, run_id: JobRunId) -> JobRun:
         """Retrieve a job run by its identifier."""
         ...

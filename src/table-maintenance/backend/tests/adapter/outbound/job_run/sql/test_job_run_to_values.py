@@ -26,6 +26,9 @@ def test_serializes_all_fields():
         "trigger_type": "manual",
         "started_at": datetime(2026, 4, 10, 12, 0, tzinfo=UTC),
         "finished_at": None,
+        "error": None,
+        "result_duration_ms": None,
+        "result_metadata": None,
     }
 
 

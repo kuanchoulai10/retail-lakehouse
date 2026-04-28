@@ -21,6 +21,9 @@ def test_columns():
         "trigger_type",
         "started_at",
         "finished_at",
+        "error",
+        "result_duration_ms",
+        "result_metadata",
     }
 
 
