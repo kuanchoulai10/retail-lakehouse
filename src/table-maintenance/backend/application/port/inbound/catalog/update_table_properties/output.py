@@ -1,4 +1,4 @@
-"""Define the UpdateTablePropertiesOutput dataclass."""
+"""Define the UpdateTablePropertiesUseCaseOutput dataclass."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class UpdateTablePropertiesOutput:
+class UpdateTablePropertiesUseCaseOutput:
     """Output for the UpdateTableProperties use case."""
 
     properties: dict[str, str]

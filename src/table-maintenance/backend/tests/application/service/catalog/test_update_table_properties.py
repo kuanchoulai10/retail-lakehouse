@@ -26,8 +26,8 @@ from application.domain.model.catalog.table_properties.write_properties import (
 )
 from application.domain.model.catalog.table_schema import TableSchema
 from application.port.inbound.catalog.update_table_properties import (
-    UpdateTablePropertiesInput,
-    UpdateTablePropertiesOutput,
+    UpdateTablePropertiesUseCaseInput,
+    UpdateTablePropertiesUseCaseOutput,
     UpdateTablePropertiesUseCase,
 )
 from application.service.catalog.update_table_properties import (
@@ -80,7 +80,7 @@ def test_splits_updates_and_removals():
     service = UpdateTablePropertiesService(writer=writer, reader=reader)
 
     service.execute(
-        UpdateTablePropertiesInput(
+        UpdateTablePropertiesUseCaseInput(
             namespace="default",
             table="orders",
             properties={
@@ -106,14 +106,14 @@ def test_returns_updated_properties():
     service = UpdateTablePropertiesService(writer=writer, reader=reader)
 
     result = service.execute(
-        UpdateTablePropertiesInput(
+        UpdateTablePropertiesUseCaseInput(
             namespace="default",
             table="orders",
             properties={"write.merge.mode": "merge-on-read"},
         )
     )
 
-    assert isinstance(result, UpdateTablePropertiesOutput)
+    assert isinstance(result, UpdateTablePropertiesUseCaseOutput)
     assert result.properties["write.merge.mode"] == "merge-on-read"
     assert result.properties["write.format.default"] == "parquet"
     reader.load_table.assert_called_once_with("default", "orders")

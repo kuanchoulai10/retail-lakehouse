@@ -1,4 +1,4 @@
-"""Define the UpdateTablePropertiesInput value object."""
+"""Define the UpdateTablePropertiesGatewayInput value object."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from base.value_object import ValueObject
 
 
 @dataclass(frozen=True)
-class UpdateTablePropertiesInput(ValueObject):
+class UpdateTablePropertiesGatewayInput(ValueObject):
     """Primitive-only input for updating table properties via the catalog.
 
     Uses only primitive types so adapter implementations need zero domain imports.

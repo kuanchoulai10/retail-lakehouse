@@ -5,16 +5,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from application.port.inbound.catalog.update_table_properties.input import (
-    UpdateTablePropertiesInput,
+    UpdateTablePropertiesUseCaseInput,
 )
 from application.port.inbound.catalog.update_table_properties.output import (
-    UpdateTablePropertiesOutput,
+    UpdateTablePropertiesUseCaseOutput,
 )
 from application.port.inbound.catalog.update_table_properties.use_case import (
     UpdateTablePropertiesUseCase,
 )
 from application.port.outbound.catalog.update_table_properties.input import (
-    UpdateTablePropertiesInput as OutboundInput,
+    UpdateTablePropertiesGatewayInput,
 )
 from application.service.catalog.table_properties_serializer import (
     table_properties_to_dict,
@@ -42,8 +42,8 @@ class UpdateTablePropertiesService(UpdateTablePropertiesUseCase):
         self._reader = reader
 
     def execute(
-        self, request: UpdateTablePropertiesInput
-    ) -> UpdateTablePropertiesOutput:
+        self, request: UpdateTablePropertiesUseCaseInput
+    ) -> UpdateTablePropertiesUseCaseOutput:
         """Split properties into updates/removals, apply, and return updated state."""
         updates: dict[str, str] = {}
         removals: list[str] = []
@@ -55,7 +55,7 @@ class UpdateTablePropertiesService(UpdateTablePropertiesUseCase):
                 updates[key] = value
 
         self._writer.execute(
-            OutboundInput(
+            UpdateTablePropertiesGatewayInput(
                 namespace=request.namespace,
                 table=request.table,
                 updates=updates,
@@ -64,6 +64,6 @@ class UpdateTablePropertiesService(UpdateTablePropertiesUseCase):
         )
 
         table = self._reader.load_table(request.namespace, request.table)
-        return UpdateTablePropertiesOutput(
+        return UpdateTablePropertiesUseCaseOutput(
             properties=table_properties_to_dict(table.properties),
         )

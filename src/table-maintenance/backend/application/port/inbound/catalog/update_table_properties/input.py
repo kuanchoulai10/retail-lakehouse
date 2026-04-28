@@ -1,4 +1,4 @@
-"""Define the UpdateTablePropertiesInput dataclass."""
+"""Define the UpdateTablePropertiesUseCaseInput dataclass."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class UpdateTablePropertiesInput:
+class UpdateTablePropertiesUseCaseInput:
     """Input for the UpdateTableProperties use case.
 
     properties: dict mapping Iceberg property keys to new values.
