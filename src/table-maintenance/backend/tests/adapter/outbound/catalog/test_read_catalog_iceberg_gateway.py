@@ -118,7 +118,9 @@ def test_load_table(client, mock_pyiceberg_catalog):
     assert result.name == "orders"
     assert result.location == "s3://warehouse/default/orders"
     assert result.current_snapshot_id == 123
-    assert result.properties == {"write.format.default": "parquet"}
+    assert result.properties.write is not None
+    assert result.properties.write.format is not None
+    assert result.properties.write.format.default == "parquet"
 
     # Schema
     assert len(result.schema.fields) == 1

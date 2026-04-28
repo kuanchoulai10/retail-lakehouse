@@ -12,6 +12,9 @@ from application.domain.model.catalog.snapshot import Snapshot
 from application.domain.model.catalog.snapshot_summary import SnapshotSummary
 from application.domain.model.catalog.table import Table
 from application.domain.model.catalog.table_id import TableId
+from application.domain.model.catalog.table_properties.table_properties import (
+    TableProperties,
+)
 from application.domain.model.catalog.table_schema import TableSchema
 from application.service.catalog.list_branches import ListBranchesService
 from application.port.inbound.catalog.list_branches import (
@@ -53,7 +56,7 @@ def _make_table_with_branches() -> Table:
             Branch(id=BranchId(value="audit"), snapshot_id=100),
         ),
         tags=(),
-        properties={},
+        properties=TableProperties(),
     )
 
 

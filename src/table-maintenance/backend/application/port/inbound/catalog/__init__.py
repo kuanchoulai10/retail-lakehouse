@@ -30,6 +30,11 @@ from application.port.inbound.catalog.list_tags import (
     ListTagsOutput,
     ListTagsUseCase,
 )
+from application.port.inbound.catalog.update_table_properties import (
+    UpdateTablePropertiesInput,
+    UpdateTablePropertiesOutput,
+    UpdateTablePropertiesUseCase,
+)
 
 __all__ = [
     "GetTableInput",
@@ -50,4 +55,7 @@ __all__ = [
     "ListTagsInput",
     "ListTagsOutput",
     "ListTagsUseCase",
+    "UpdateTablePropertiesInput",
+    "UpdateTablePropertiesOutput",
+    "UpdateTablePropertiesUseCase",
 ]

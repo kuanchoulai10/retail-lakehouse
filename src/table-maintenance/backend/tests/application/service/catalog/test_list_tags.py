@@ -11,6 +11,9 @@ from application.domain.model.catalog.snapshot import Snapshot
 from application.domain.model.catalog.snapshot_summary import SnapshotSummary
 from application.domain.model.catalog.table import Table
 from application.domain.model.catalog.table_id import TableId
+from application.domain.model.catalog.table_properties.table_properties import (
+    TableProperties,
+)
 from application.domain.model.catalog.table_schema import TableSchema
 from application.domain.model.catalog.tag import Tag
 from application.service.catalog.list_tags import ListTagsService
@@ -47,7 +50,7 @@ def _make_table_with_tags() -> Table:
             Tag(name="v1.0", snapshot_id=100, max_ref_age_ms=86400000),
             Tag(name="v2.0", snapshot_id=100),
         ),
-        properties={},
+        properties=TableProperties(),
     )
 
 
