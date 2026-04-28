@@ -1,53 +1,53 @@
 """JobRun use case interfaces and DTOs."""
 
 from application.port.inbound.job_run.complete_job_run import (
-    CompleteJobRunInput,
-    CompleteJobRunOutput,
+    CompleteJobRunUseCaseInput,
+    CompleteJobRunUseCaseOutput,
     CompleteJobRunUseCase,
 )
 from application.port.inbound.job_run.fail_job_run import (
-    FailJobRunInput,
-    FailJobRunOutput,
+    FailJobRunUseCaseInput,
+    FailJobRunUseCaseOutput,
     FailJobRunUseCase,
 )
 from application.port.inbound.job_run.get_job_run import (
-    GetJobRunInput,
-    GetJobRunOutput,
+    GetJobRunUseCaseInput,
+    GetJobRunUseCaseOutput,
     GetJobRunUseCase,
 )
 from application.port.inbound.job_run.list_job_runs import (
-    ListJobRunsInput,
-    ListJobRunsOutput,
-    ListJobRunsOutputItem,
+    ListJobRunsUseCaseInput,
+    ListJobRunsUseCaseOutput,
+    ListJobRunsUseCaseOutputItem,
     ListJobRunsUseCase,
 )
 from application.port.inbound.job_run.submit_job_run import (
-    SubmitJobRunInput,
+    SubmitJobRunUseCaseInput,
     SubmitJobRunUseCase,
 )
 from application.port.inbound.job_run.trigger_job_run import (
-    TriggerJobRunInput,
-    TriggerJobRunOutput,
+    TriggerJobRunUseCaseInput,
+    TriggerJobRunUseCaseOutput,
     TriggerJobRunUseCase,
 )
 
 __all__ = [
-    "CompleteJobRunInput",
-    "CompleteJobRunOutput",
+    "CompleteJobRunUseCaseInput",
+    "CompleteJobRunUseCaseOutput",
     "CompleteJobRunUseCase",
-    "FailJobRunInput",
-    "FailJobRunOutput",
+    "FailJobRunUseCaseInput",
+    "FailJobRunUseCaseOutput",
     "FailJobRunUseCase",
-    "GetJobRunInput",
-    "GetJobRunOutput",
+    "GetJobRunUseCaseInput",
+    "GetJobRunUseCaseOutput",
     "GetJobRunUseCase",
-    "ListJobRunsInput",
-    "ListJobRunsOutput",
-    "ListJobRunsOutputItem",
+    "ListJobRunsUseCaseInput",
+    "ListJobRunsUseCaseOutput",
+    "ListJobRunsUseCaseOutputItem",
     "ListJobRunsUseCase",
-    "SubmitJobRunInput",
+    "SubmitJobRunUseCaseInput",
     "SubmitJobRunUseCase",
-    "TriggerJobRunInput",
-    "TriggerJobRunOutput",
+    "TriggerJobRunUseCaseInput",
+    "TriggerJobRunUseCaseOutput",
     "TriggerJobRunUseCase",
 ]

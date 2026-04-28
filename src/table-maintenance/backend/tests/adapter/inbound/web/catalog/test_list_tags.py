@@ -9,8 +9,8 @@ from fastapi.testclient import TestClient
 
 from adapter.inbound.web import router
 from application.port.inbound.catalog.list_tags.output import (
-    ListTagsOutput,
-    ListTagsOutputItem,
+    ListTagsUseCaseOutput,
+    ListTagsUseCaseOutputItem,
 )
 from bootstrap.dependencies.use_cases import get_list_tags_use_case
 
@@ -26,9 +26,11 @@ def _make_client(use_case: MagicMock) -> TestClient:
 def test_list_tags_returns_200():
     """Return 200 with a list of tag refs."""
     use_case = MagicMock()
-    use_case.execute.return_value = ListTagsOutput(
+    use_case.execute.return_value = ListTagsUseCaseOutput(
         tags=[
-            ListTagsOutputItem(name="v1.0", snapshot_id=200, max_ref_age_ms=None),
+            ListTagsUseCaseOutputItem(
+                name="v1.0", snapshot_id=200, max_ref_age_ms=None
+            ),
         ],
     )
     client = _make_client(use_case)
@@ -45,7 +47,7 @@ def test_list_tags_returns_200():
 def test_list_tags_empty():
     """Return 200 with empty list when table has no tags."""
     use_case = MagicMock()
-    use_case.execute.return_value = ListTagsOutput(tags=[])
+    use_case.execute.return_value = ListTagsUseCaseOutput(tags=[])
     client = _make_client(use_case)
 
     response = client.get("/v1/catalogs/iceberg/namespaces/default/tables/orders/tags")

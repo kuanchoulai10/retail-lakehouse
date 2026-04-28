@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from adapter.inbound.web import router
-from application.port.inbound.catalog.list_namespaces import ListNamespacesOutput
+from application.port.inbound.catalog.list_namespaces import ListNamespacesUseCaseOutput
 from bootstrap.dependencies.use_cases import get_list_namespaces_use_case
 
 
@@ -23,7 +23,9 @@ def _make_client(use_case: MagicMock) -> TestClient:
 def test_list_namespaces_returns_200():
     """Return 200 with a list of namespace names."""
     use_case = MagicMock()
-    use_case.execute.return_value = ListNamespacesOutput(namespaces=["default", "raw"])
+    use_case.execute.return_value = ListNamespacesUseCaseOutput(
+        namespaces=["default", "raw"]
+    )
     client = _make_client(use_case)
 
     response = client.get("/v1/catalogs/iceberg/namespaces")
@@ -35,7 +37,7 @@ def test_list_namespaces_returns_200():
 def test_list_namespaces_empty():
     """Return 200 with an empty list when no namespaces exist."""
     use_case = MagicMock()
-    use_case.execute.return_value = ListNamespacesOutput(namespaces=[])
+    use_case.execute.return_value = ListNamespacesUseCaseOutput(namespaces=[])
     client = _make_client(use_case)
 
     response = client.get("/v1/catalogs/iceberg/namespaces")

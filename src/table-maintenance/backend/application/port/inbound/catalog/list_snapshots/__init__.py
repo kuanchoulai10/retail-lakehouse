@@ -1,13 +1,17 @@
 """ListSnapshots use case definition."""
 
 from application.port.inbound.catalog.list_snapshots.input import (
-    ListSnapshotsInput,
+    ListSnapshotsUseCaseInput,
 )
 from application.port.inbound.catalog.list_snapshots.output import (
-    ListSnapshotsOutput,
+    ListSnapshotsUseCaseOutput,
 )
 from application.port.inbound.catalog.list_snapshots.use_case import (
     ListSnapshotsUseCase,
 )
 
-__all__ = ["ListSnapshotsInput", "ListSnapshotsOutput", "ListSnapshotsUseCase"]
+__all__ = [
+    "ListSnapshotsUseCaseInput",
+    "ListSnapshotsUseCaseOutput",
+    "ListSnapshotsUseCase",
+]

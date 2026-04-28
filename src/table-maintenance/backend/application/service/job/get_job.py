@@ -6,7 +6,11 @@ from typing import TYPE_CHECKING
 
 from application.domain.model.job import JobId, JobNotFoundError
 from application.exceptions import JobNotFoundError as AppJobNotFoundError
-from application.port.inbound import GetJobInput, GetJobOutput, GetJobUseCase
+from application.port.inbound import (
+    GetJobUseCaseInput,
+    GetJobUseCaseOutput,
+    GetJobUseCase,
+)
 
 if TYPE_CHECKING:
     from application.port.outbound.job.jobs_repo import JobsRepo
@@ -19,13 +23,13 @@ class GetJobService(GetJobUseCase):
         """Initialize with the jobs repository."""
         self._repo = repo
 
-    def execute(self, request: GetJobInput) -> GetJobOutput:
+    def execute(self, request: GetJobUseCaseInput) -> GetJobUseCaseOutput:
         """Retrieve a job by its identifier."""
         try:
             job = self._repo.get(JobId(value=request.job_id))
         except JobNotFoundError as e:
             raise AppJobNotFoundError(e.name) from e
-        return GetJobOutput(
+        return GetJobUseCaseOutput(
             id=job.id.value,
             job_type=job.job_type.value,
             status=job.status.value,

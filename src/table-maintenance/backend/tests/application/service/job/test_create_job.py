@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 from application.domain.model.job import JobStatus
 from application.service.job.create_job import CreateJobService
 from application.port.inbound import (
-    CreateJobInput,
-    CreateJobOutput,
+    CreateJobUseCaseInput,
+    CreateJobUseCaseOutput,
     CreateJobUseCase,
 )
 
@@ -30,17 +30,17 @@ def test_create_job_service_implements_use_case():
 
 
 def test_create_job_returns_output():
-    """Verify that execute returns a CreateJobOutput with correct fields."""
+    """Verify that execute returns a CreateJobUseCaseOutput with correct fields."""
     service, _ = _make_service()
 
-    input_ = CreateJobInput(
+    input_ = CreateJobUseCaseInput(
         job_type="rewrite_data_files",
         catalog="retail",
         rewrite_data_files={"table": "inventory.orders"},
     )
     result = service.execute(input_)
 
-    assert isinstance(result, CreateJobOutput)
+    assert isinstance(result, CreateJobUseCaseOutput)
     assert result.job_type == "rewrite_data_files"
     assert result.status == "active"
 
@@ -49,7 +49,7 @@ def test_create_job_populates_domain_fields():
     """Verify that execute populates catalog, table, job_config, and cron on the domain entity."""
     service, repo = _make_service()
 
-    input_ = CreateJobInput(
+    input_ = CreateJobUseCaseInput(
         job_type="rewrite_data_files",
         catalog="retail",
         rewrite_data_files={"table": "inventory.orders", "rewrite_all": True},
@@ -69,7 +69,7 @@ def test_create_job_status_defaults_to_active():
     service, repo = _make_service()
 
     service.execute(
-        CreateJobInput(
+        CreateJobUseCaseInput(
             job_type="rewrite_data_files",
             catalog="retail",
             rewrite_data_files={"table": "inventory.orders"},
@@ -85,7 +85,7 @@ def test_create_job_status_passed_through_from_input():
     service, repo = _make_service()
 
     service.execute(
-        CreateJobInput(
+        CreateJobUseCaseInput(
             job_type="rewrite_data_files",
             catalog="retail",
             rewrite_data_files={"table": "inventory.orders"},
@@ -102,7 +102,7 @@ def test_create_job_sets_updated_at_equal_to_created_at_initially():
     service, repo = _make_service()
 
     service.execute(
-        CreateJobInput(
+        CreateJobUseCaseInput(
             job_type="rewrite_data_files",
             catalog="retail",
             rewrite_data_files={"table": "inventory.orders"},
@@ -117,7 +117,7 @@ def test_create_job_extracts_table_from_expire_snapshots():
     """Verify that table is extracted from expire_snapshots config."""
     service, repo = _make_service()
 
-    input_ = CreateJobInput(
+    input_ = CreateJobUseCaseInput(
         job_type="expire_snapshots",
         catalog="retail",
         expire_snapshots={"table": "inventory.orders"},

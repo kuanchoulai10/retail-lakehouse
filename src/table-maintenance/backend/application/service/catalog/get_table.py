@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.port.inbound.catalog.get_table.input import GetTableInput
+from application.port.inbound.catalog.get_table.input import GetTableUseCaseInput
 from application.port.inbound.catalog.get_table.output import (
-    GetTableOutput,
-    GetTableSchemaFieldOutput,
-    GetTableSchemaOutput,
+    GetTableUseCaseOutput,
+    GetTableSchemaFieldUseCaseOutput,
+    GetTableSchemaUseCaseOutput,
 )
 from application.port.inbound.catalog.get_table.use_case import GetTableUseCase
 
@@ -25,17 +25,17 @@ class GetTableService(GetTableUseCase):
         """Initialize with the catalog reader port."""
         self._reader = reader
 
-    def execute(self, request: GetTableInput) -> GetTableOutput:
+    def execute(self, request: GetTableUseCaseInput) -> GetTableUseCaseOutput:
         """Load table and return metadata as output DTO."""
         table = self._reader.load_table(request.namespace, request.table)
-        return GetTableOutput(
+        return GetTableUseCaseOutput(
             name=table.name,
             namespace=table.namespace,
             location=table.location,
             current_snapshot_id=table.current_snapshot_id,
-            schema=GetTableSchemaOutput(
+            schema=GetTableSchemaUseCaseOutput(
                 fields=[
-                    GetTableSchemaFieldOutput(
+                    GetTableSchemaFieldUseCaseOutput(
                         field_id=f.field_id,
                         name=f.name,
                         field_type=f.field_type,

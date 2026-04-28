@@ -1,13 +1,17 @@
 """ListNamespaces use case definition."""
 
 from application.port.inbound.catalog.list_namespaces.input import (
-    ListNamespacesInput,
+    ListNamespacesUseCaseInput,
 )
 from application.port.inbound.catalog.list_namespaces.output import (
-    ListNamespacesOutput,
+    ListNamespacesUseCaseOutput,
 )
 from application.port.inbound.catalog.list_namespaces.use_case import (
     ListNamespacesUseCase,
 )
 
-__all__ = ["ListNamespacesInput", "ListNamespacesOutput", "ListNamespacesUseCase"]
+__all__ = [
+    "ListNamespacesUseCaseInput",
+    "ListNamespacesUseCaseOutput",
+    "ListNamespacesUseCase",
+]

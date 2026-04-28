@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 
 from adapter.inbound.web.catalog.dto import BranchApiResponse, BranchesApiResponse
 from application.port.inbound.catalog.list_branches import (
-    ListBranchesInput,
+    ListBranchesUseCaseInput,
     ListBranchesUseCase,
 )
 from bootstrap.dependencies.use_cases import get_list_branches_use_case
@@ -25,7 +25,9 @@ def list_branches(
     use_case: ListBranchesUseCase = Depends(get_list_branches_use_case),
 ) -> BranchesApiResponse:
     """Return all branches for a table."""
-    result = use_case.execute(ListBranchesInput(namespace=namespace, table=table))
+    result = use_case.execute(
+        ListBranchesUseCaseInput(namespace=namespace, table=table)
+    )
     return BranchesApiResponse(
         branches=[
             BranchApiResponse(

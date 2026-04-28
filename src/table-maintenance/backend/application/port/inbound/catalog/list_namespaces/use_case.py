@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from base.use_case import UseCase
 from application.port.inbound.catalog.list_namespaces.input import (
-    ListNamespacesInput,
+    ListNamespacesUseCaseInput,
 )
 from application.port.inbound.catalog.list_namespaces.output import (
-    ListNamespacesOutput,
+    ListNamespacesUseCaseOutput,
 )
 
 
-class ListNamespacesUseCase(UseCase[ListNamespacesInput, ListNamespacesOutput]):
+class ListNamespacesUseCase(
+    UseCase[ListNamespacesUseCaseInput, ListNamespacesUseCaseOutput]
+):
     """List all namespaces in the catalog."""

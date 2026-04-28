@@ -9,8 +9,8 @@ from application.domain.model.job_run import JobRunId, JobRunNotFoundError
 from application.domain.model.job_run.job_run_result import JobRunResult
 from application.exceptions import JobRunNotFoundError as AppJobRunNotFoundError
 from application.port.inbound.job_run.complete_job_run import (
-    CompleteJobRunInput,
-    CompleteJobRunOutput,
+    CompleteJobRunUseCaseInput,
+    CompleteJobRunUseCaseOutput,
     CompleteJobRunUseCase,
 )
 
@@ -25,7 +25,9 @@ class CompleteJobRunService(CompleteJobRunUseCase):
         """Initialize with the job runs repository."""
         self._repo = repo
 
-    def execute(self, request: CompleteJobRunInput) -> CompleteJobRunOutput:
+    def execute(
+        self, request: CompleteJobRunUseCaseInput
+    ) -> CompleteJobRunUseCaseOutput:
         """Complete a job run and persist the result."""
         try:
             run = self._repo.get(JobRunId(value=request.run_id))
@@ -38,7 +40,7 @@ class CompleteJobRunService(CompleteJobRunUseCase):
         finished_at = datetime.now(UTC)
         run.mark_completed(finished_at=finished_at, result=result)
         self._repo.save(run)
-        return CompleteJobRunOutput(
+        return CompleteJobRunUseCaseOutput(
             run_id=run.id.value,
             status=run.status.value,
             finished_at=finished_at,

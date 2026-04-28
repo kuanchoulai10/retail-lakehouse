@@ -7,7 +7,7 @@ from bootstrap.dependencies.use_cases import get_create_job_use_case
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from adapter.inbound.web import router
-from application.port.inbound import CreateJobOutput
+from application.port.inbound import CreateJobUseCaseOutput
 
 
 def _make_client(use_case: MagicMock) -> TestClient:
@@ -18,7 +18,7 @@ def _make_client(use_case: MagicMock) -> TestClient:
     return TestClient(app)
 
 
-SAMPLE_OUTPUT = CreateJobOutput(
+SAMPLE_OUTPUT = CreateJobUseCaseOutput(
     id="abc1234567",
     job_type="rewrite_data_files",
     status="paused",

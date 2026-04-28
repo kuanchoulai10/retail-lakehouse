@@ -10,7 +10,7 @@ from adapter.inbound.web.catalog.dto import (
     TableDetailApiResponse,
 )
 from application.port.inbound.catalog.get_table import (
-    GetTableInput,
+    GetTableUseCaseInput,
     GetTableUseCase,
 )
 from bootstrap.dependencies.use_cases import get_get_table_use_case
@@ -29,7 +29,7 @@ def get_table(
     use_case: GetTableUseCase = Depends(get_get_table_use_case),
 ) -> TableDetailApiResponse:
     """Return metadata for a specific table."""
-    result = use_case.execute(GetTableInput(namespace=namespace, table=table))
+    result = use_case.execute(GetTableUseCaseInput(namespace=namespace, table=table))
     return TableDetailApiResponse(
         table=result.name,
         namespace=result.namespace,

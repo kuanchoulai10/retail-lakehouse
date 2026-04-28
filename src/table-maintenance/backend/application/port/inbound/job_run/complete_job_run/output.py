@@ -1,4 +1,4 @@
-"""Define the CompleteJobRunOutput dataclass."""
+"""Define the CompleteJobRunUseCaseOutput dataclass."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
-class CompleteJobRunOutput:
+class CompleteJobRunUseCaseOutput:
     """Output after completing a job run."""
 
     run_id: str

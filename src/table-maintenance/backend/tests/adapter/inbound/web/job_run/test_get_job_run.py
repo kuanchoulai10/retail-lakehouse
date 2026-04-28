@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from adapter.inbound.web import router
 from application.exceptions import JobRunNotFoundError
-from application.port.inbound import GetJobRunOutput
+from application.port.inbound import GetJobRunUseCaseOutput
 
 
 def _make_client(use_case: MagicMock) -> TestClient:
@@ -22,7 +22,7 @@ def _make_client(use_case: MagicMock) -> TestClient:
 def test_get_run_returns_200():
     """Return 200 with job run details when the run exists."""
     use_case = MagicMock()
-    use_case.execute.return_value = GetJobRunOutput(
+    use_case.execute.return_value = GetJobRunUseCaseOutput(
         run_id="run-1",
         job_id="job-1",
         status="completed",

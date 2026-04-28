@@ -6,8 +6,8 @@ from unittest.mock import MagicMock
 
 from application.service.catalog.list_tables import ListTablesService
 from application.port.inbound.catalog.list_tables import (
-    ListTablesInput,
-    ListTablesOutput,
+    ListTablesUseCaseInput,
+    ListTablesUseCaseOutput,
     ListTablesUseCase,
 )
 
@@ -23,8 +23,8 @@ def test_returns_tables():
     reader.list_tables.return_value = ["orders", "products"]
     service = ListTablesService(reader)
 
-    result = service.execute(ListTablesInput(namespace="default"))
+    result = service.execute(ListTablesUseCaseInput(namespace="default"))
 
-    assert isinstance(result, ListTablesOutput)
+    assert isinstance(result, ListTablesUseCaseOutput)
     assert result.tables == ["orders", "products"]
     reader.list_tables.assert_called_once_with("default")

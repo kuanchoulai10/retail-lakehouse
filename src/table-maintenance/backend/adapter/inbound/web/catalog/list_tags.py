@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 
 from adapter.inbound.web.catalog.dto import TagApiResponse, TagsApiResponse
 from application.port.inbound.catalog.list_tags import (
-    ListTagsInput,
+    ListTagsUseCaseInput,
     ListTagsUseCase,
 )
 from bootstrap.dependencies.use_cases import get_list_tags_use_case
@@ -25,7 +25,7 @@ def list_tags(
     use_case: ListTagsUseCase = Depends(get_list_tags_use_case),
 ) -> TagsApiResponse:
     """Return all tags for a table."""
-    result = use_case.execute(ListTagsInput(namespace=namespace, table=table))
+    result = use_case.execute(ListTagsUseCaseInput(namespace=namespace, table=table))
     return TagsApiResponse(
         tags=[
             TagApiResponse(

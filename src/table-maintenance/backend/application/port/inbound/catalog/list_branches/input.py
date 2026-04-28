@@ -1,4 +1,4 @@
-"""Define the ListBranchesInput dataclass."""
+"""Define the ListBranchesUseCaseInput dataclass."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class ListBranchesInput:
+class ListBranchesUseCaseInput:
     """Input for the ListBranches use case."""
 
     namespace: str

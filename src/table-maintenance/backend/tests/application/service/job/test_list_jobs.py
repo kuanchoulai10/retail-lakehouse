@@ -8,9 +8,9 @@ from unittest.mock import MagicMock
 from application.domain.model.job import Job, JobId, JobType
 from application.service.job.list_jobs import ListJobsService
 from application.port.inbound import (
-    ListJobsInput,
-    ListJobsOutput,
-    ListJobsOutputItem,
+    ListJobsUseCaseInput,
+    ListJobsUseCaseOutput,
+    ListJobsUseCaseOutputItem,
     ListJobsUseCase,
 )
 
@@ -32,16 +32,16 @@ def test_list_jobs_service_implements_use_case():
 
 
 def test_list_jobs_returns_output():
-    """Verify that execute returns a ListJobsOutput with all jobs."""
+    """Verify that execute returns a ListJobsUseCaseOutput with all jobs."""
     repo = MagicMock()
     repo.list_all.return_value = [_make_job("aaa"), _make_job("bbb")]
     service = ListJobsService(repo)
 
-    result = service.execute(ListJobsInput())
+    result = service.execute(ListJobsUseCaseInput())
 
-    assert isinstance(result, ListJobsOutput)
+    assert isinstance(result, ListJobsUseCaseOutput)
     assert len(result.jobs) == 2
-    assert isinstance(result.jobs[0], ListJobsOutputItem)
+    assert isinstance(result.jobs[0], ListJobsUseCaseOutputItem)
     assert result.jobs[0].id == "aaa"
     assert result.jobs[1].id == "bbb"
 
@@ -52,6 +52,6 @@ def test_list_jobs_empty():
     repo.list_all.return_value = []
     service = ListJobsService(repo)
 
-    result = service.execute(ListJobsInput())
+    result = service.execute(ListJobsUseCaseInput())
 
     assert result.jobs == []

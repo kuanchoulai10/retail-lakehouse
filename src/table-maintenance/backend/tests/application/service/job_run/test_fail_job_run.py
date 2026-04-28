@@ -8,8 +8,8 @@ from application.domain.model.job import JobId
 from application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
 from application.domain.model.job_run.job_run_result import JobRunResult
 from application.port.inbound.job_run.fail_job_run import (
-    FailJobRunInput,
-    FailJobRunOutput,
+    FailJobRunUseCaseInput,
+    FailJobRunUseCaseOutput,
     FailJobRunUseCase,
 )
 from application.service.job_run.fail_job_run import FailJobRunService
@@ -37,7 +37,7 @@ class TestFailJobRunService:
         service = FailJobRunService(repo)
 
         result = service.execute(
-            FailJobRunInput(
+            FailJobRunUseCaseInput(
                 run_id="run-1",
                 error="Spark OOM",
                 duration_ms=500,
@@ -45,7 +45,7 @@ class TestFailJobRunService:
             )
         )
 
-        assert isinstance(result, FailJobRunOutput)
+        assert isinstance(result, FailJobRunUseCaseOutput)
         assert result.run_id == "run-1"
         assert result.status == "failed"
         assert result.finished_at is not None
@@ -63,7 +63,7 @@ class TestFailJobRunService:
         service = FailJobRunService(repo)
 
         service.execute(
-            FailJobRunInput(
+            FailJobRunUseCaseInput(
                 run_id="run-1",
                 error="Connection refused",
                 duration_ms=None,
@@ -87,7 +87,7 @@ class TestFailJobRunService:
         service = FailJobRunService(repo)
 
         result = service.execute(
-            FailJobRunInput(
+            FailJobRunUseCaseInput(
                 run_id="run-1", error="Submit failed", duration_ms=None, metadata=None
             )
         )
@@ -101,7 +101,7 @@ class TestFailJobRunService:
         service = FailJobRunService(repo)
         with pytest.raises(Exception):
             service.execute(
-                FailJobRunInput(
+                FailJobRunUseCaseInput(
                     run_id="nope", error="err", duration_ms=None, metadata=None
                 )
             )

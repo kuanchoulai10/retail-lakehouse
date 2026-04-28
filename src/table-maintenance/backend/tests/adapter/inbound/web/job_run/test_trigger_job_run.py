@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from adapter.inbound.web import router
 from application.exceptions import JobDisabledError, JobNotFoundError
-from application.port.inbound.job_run.trigger_job_run import TriggerJobRunOutput
+from application.port.inbound.job_run.trigger_job_run import TriggerJobRunUseCaseOutput
 
 
 def _make_client(use_case: MagicMock) -> TestClient:
@@ -18,7 +18,7 @@ def _make_client(use_case: MagicMock) -> TestClient:
     return TestClient(app)
 
 
-SAMPLE = TriggerJobRunOutput(job_id="abc1234567")
+SAMPLE = TriggerJobRunUseCaseOutput(job_id="abc1234567")
 
 
 def test_post_run_returns_202():

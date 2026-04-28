@@ -1,47 +1,47 @@
 """Job use case interfaces and DTOs."""
 
 from application.port.inbound.job.create_job import (
-    CreateJobInput,
-    CreateJobOutput,
+    CreateJobUseCaseInput,
+    CreateJobUseCaseOutput,
     CreateJobUseCase,
 )
 from application.port.inbound.job.delete_job import (
-    DeleteJobInput,
-    DeleteJobOutput,
+    DeleteJobUseCaseInput,
+    DeleteJobUseCaseOutput,
     DeleteJobUseCase,
 )
 from application.port.inbound.job.get_job import (
-    GetJobInput,
-    GetJobOutput,
+    GetJobUseCaseInput,
+    GetJobUseCaseOutput,
     GetJobUseCase,
 )
 from application.port.inbound.job.list_jobs import (
-    ListJobsInput,
-    ListJobsOutput,
-    ListJobsOutputItem,
+    ListJobsUseCaseInput,
+    ListJobsUseCaseOutput,
+    ListJobsUseCaseOutputItem,
     ListJobsUseCase,
 )
 from application.port.inbound.job.update_job import (
-    UpdateJobInput,
-    UpdateJobOutput,
+    UpdateJobUseCaseInput,
+    UpdateJobUseCaseOutput,
     UpdateJobUseCase,
 )
 
 __all__ = [
-    "CreateJobInput",
-    "CreateJobOutput",
+    "CreateJobUseCaseInput",
+    "CreateJobUseCaseOutput",
     "CreateJobUseCase",
-    "DeleteJobInput",
-    "DeleteJobOutput",
+    "DeleteJobUseCaseInput",
+    "DeleteJobUseCaseOutput",
     "DeleteJobUseCase",
-    "GetJobInput",
-    "GetJobOutput",
+    "GetJobUseCaseInput",
+    "GetJobUseCaseOutput",
     "GetJobUseCase",
-    "ListJobsInput",
-    "ListJobsOutput",
-    "ListJobsOutputItem",
+    "ListJobsUseCaseInput",
+    "ListJobsUseCaseOutput",
+    "ListJobsUseCaseOutputItem",
     "ListJobsUseCase",
-    "UpdateJobInput",
-    "UpdateJobOutput",
+    "UpdateJobUseCaseInput",
+    "UpdateJobUseCaseOutput",
     "UpdateJobUseCase",
 ]

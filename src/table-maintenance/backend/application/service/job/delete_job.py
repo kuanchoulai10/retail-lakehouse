@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 from application.domain.model.job import JobId, JobNotFoundError
 from application.exceptions import JobNotFoundError as AppJobNotFoundError
 from application.port.inbound import (
-    DeleteJobInput,
-    DeleteJobOutput,
+    DeleteJobUseCaseInput,
+    DeleteJobUseCaseOutput,
     DeleteJobUseCase,
 )
 
@@ -23,10 +23,10 @@ class DeleteJobService(DeleteJobUseCase):
         """Initialize with the jobs repository."""
         self._repo = repo
 
-    def execute(self, request: DeleteJobInput) -> DeleteJobOutput:
+    def execute(self, request: DeleteJobUseCaseInput) -> DeleteJobUseCaseOutput:
         """Delete the job identified by the input."""
         try:
             self._repo.delete(JobId(value=request.job_id))
         except JobNotFoundError as e:
             raise AppJobNotFoundError(e.name) from e
-        return DeleteJobOutput()
+        return DeleteJobUseCaseOutput()

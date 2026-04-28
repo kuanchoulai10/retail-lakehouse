@@ -10,7 +10,7 @@ from adapter.inbound.web.job_run.dto import (
 )
 from application.exceptions import JobRunNotFoundError
 from application.port.inbound.job_run.complete_job_run import (
-    CompleteJobRunInput,
+    CompleteJobRunUseCaseInput,
     CompleteJobRunUseCase,
 )
 from bootstrap.dependencies.use_cases import get_complete_job_run_use_case
@@ -27,7 +27,7 @@ def complete_job_run(
     """Mark a job run as completed with result metadata."""
     try:
         result = use_case.execute(
-            CompleteJobRunInput(
+            CompleteJobRunUseCaseInput(
                 run_id=run_id,
                 duration_ms=body.duration_ms,
                 metadata=body.metadata or {},

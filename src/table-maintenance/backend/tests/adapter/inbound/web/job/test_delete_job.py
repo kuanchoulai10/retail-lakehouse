@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from adapter.inbound.web import router
 from application.exceptions import JobNotFoundError
-from application.port.inbound import UpdateJobOutput
+from application.port.inbound import UpdateJobUseCaseOutput
 
 
 def _make_client(use_case: MagicMock) -> TestClient:
@@ -23,7 +23,7 @@ def test_delete_job_returns_204():
     """Return 204 with no content when the job is successfully archived."""
     now = datetime.now(UTC)
     use_case = MagicMock()
-    use_case.execute.return_value = UpdateJobOutput(
+    use_case.execute.return_value = UpdateJobUseCaseOutput(
         id="abc123",
         job_type="rewrite_data_files",
         status="archived",

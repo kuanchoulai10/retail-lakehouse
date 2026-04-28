@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from base.use_case import UseCase
 from application.port.inbound.catalog.list_snapshots.input import (
-    ListSnapshotsInput,
+    ListSnapshotsUseCaseInput,
 )
 from application.port.inbound.catalog.list_snapshots.output import (
-    ListSnapshotsOutput,
+    ListSnapshotsUseCaseOutput,
 )
 
 
-class ListSnapshotsUseCase(UseCase[ListSnapshotsInput, ListSnapshotsOutput]):
+class ListSnapshotsUseCase(
+    UseCase[ListSnapshotsUseCaseInput, ListSnapshotsUseCaseOutput]
+):
     """List all snapshots for a table."""

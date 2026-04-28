@@ -1,4 +1,4 @@
-"""Define the ListTagsOutput dataclass."""
+"""Define the ListTagsUseCaseOutput dataclass."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class ListTagsOutputItem:
+class ListTagsUseCaseOutputItem:
     """A single tag in the result."""
 
     name: str
@@ -15,7 +15,7 @@ class ListTagsOutputItem:
 
 
 @dataclass(frozen=True)
-class ListTagsOutput:
+class ListTagsUseCaseOutput:
     """Output for the ListTags use case."""
 
-    tags: list[ListTagsOutputItem]
+    tags: list[ListTagsUseCaseOutputItem]

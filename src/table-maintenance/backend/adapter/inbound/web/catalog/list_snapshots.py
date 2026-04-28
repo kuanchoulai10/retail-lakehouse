@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 
 from adapter.inbound.web.catalog.dto import SnapshotApiResponse, SnapshotsApiResponse
 from application.port.inbound.catalog.list_snapshots import (
-    ListSnapshotsInput,
+    ListSnapshotsUseCaseInput,
     ListSnapshotsUseCase,
 )
 from bootstrap.dependencies.use_cases import get_list_snapshots_use_case
@@ -25,7 +25,9 @@ def list_snapshots(
     use_case: ListSnapshotsUseCase = Depends(get_list_snapshots_use_case),
 ) -> SnapshotsApiResponse:
     """Return all snapshots for a table."""
-    result = use_case.execute(ListSnapshotsInput(namespace=namespace, table=table))
+    result = use_case.execute(
+        ListSnapshotsUseCaseInput(namespace=namespace, table=table)
+    )
     return SnapshotsApiResponse(
         snapshots=[
             SnapshotApiResponse(

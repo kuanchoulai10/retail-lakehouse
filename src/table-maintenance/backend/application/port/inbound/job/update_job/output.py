@@ -1,4 +1,4 @@
-"""Define the UpdateJobOutput dataclass."""
+"""Define the UpdateJobUseCaseOutput dataclass."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
-class UpdateJobOutput:
+class UpdateJobUseCaseOutput:
     """Output for the UpdateJob use case."""
 
     id: str

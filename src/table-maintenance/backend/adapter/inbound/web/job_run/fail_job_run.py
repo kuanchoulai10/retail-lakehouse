@@ -10,7 +10,7 @@ from adapter.inbound.web.job_run.dto import (
 )
 from application.exceptions import JobRunNotFoundError
 from application.port.inbound.job_run.fail_job_run import (
-    FailJobRunInput,
+    FailJobRunUseCaseInput,
     FailJobRunUseCase,
 )
 from bootstrap.dependencies.use_cases import get_fail_job_run_use_case
@@ -27,7 +27,7 @@ def fail_job_run(
     """Mark a job run as failed with error details."""
     try:
         result = use_case.execute(
-            FailJobRunInput(
+            FailJobRunUseCaseInput(
                 run_id=run_id,
                 error=body.error,
                 duration_ms=body.duration_ms,

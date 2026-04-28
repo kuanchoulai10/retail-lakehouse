@@ -7,7 +7,10 @@ from bootstrap.dependencies.use_cases import get_list_job_runs_use_case
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from adapter.inbound.web import router
-from application.port.inbound import ListJobRunsOutput, ListJobRunsOutputItem
+from application.port.inbound import (
+    ListJobRunsUseCaseOutput,
+    ListJobRunsUseCaseOutputItem,
+)
 
 
 def _make_client(use_case: MagicMock) -> TestClient:
@@ -21,9 +24,9 @@ def _make_client(use_case: MagicMock) -> TestClient:
 def test_list_job_runs_returns_200():
     """Return 200 with a list of job runs for the given job."""
     use_case = MagicMock()
-    use_case.execute.return_value = ListJobRunsOutput(
+    use_case.execute.return_value = ListJobRunsUseCaseOutput(
         runs=[
-            ListJobRunsOutputItem(
+            ListJobRunsUseCaseOutputItem(
                 run_id="a-1",
                 job_id="a",
                 status="running",

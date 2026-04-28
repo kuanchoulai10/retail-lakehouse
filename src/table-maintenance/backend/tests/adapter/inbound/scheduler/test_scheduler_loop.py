@@ -9,7 +9,7 @@ from adapter.inbound.scheduler.scheduler_loop import SchedulerLoop
 
 
 def _make_result(count: int = 0):
-    """Provide a mock ScheduleJobsResult."""
+    """Provide a mock ScheduleJobsUseCaseOutput."""
     result = MagicMock()
     result.triggered_count = count
     return result

@@ -15,8 +15,8 @@ from application.domain.model.job_run import (
 from application.service.job_run.get_job_run import GetJobRunService
 from application.exceptions import JobRunNotFoundError as AppJobRunNotFoundError
 from application.port.inbound import (
-    GetJobRunInput,
-    GetJobRunOutput,
+    GetJobRunUseCaseInput,
+    GetJobRunUseCaseOutput,
     GetJobRunUseCase,
 )
 
@@ -27,7 +27,7 @@ def test_implements_use_case():
 
 
 def test_get_returns_run():
-    """Verify that execute returns a GetJobRunOutput with correct fields."""
+    """Verify that execute returns a GetJobRunUseCaseOutput with correct fields."""
     repo = MagicMock()
     repo.get.return_value = JobRun(
         id=JobRunId(value="run-1"),
@@ -37,9 +37,9 @@ def test_get_returns_run():
     )
     service = GetJobRunService(repo)
 
-    result = service.execute(GetJobRunInput(run_id="run-1"))
+    result = service.execute(GetJobRunUseCaseInput(run_id="run-1"))
 
-    assert isinstance(result, GetJobRunOutput)
+    assert isinstance(result, GetJobRunUseCaseOutput)
     assert result.run_id == "run-1"
     assert result.job_id == "job-1"
     assert result.status == "completed"
@@ -52,5 +52,5 @@ def test_get_raises_app_not_found():
     service = GetJobRunService(repo)
 
     with pytest.raises(AppJobRunNotFoundError) as exc_info:
-        service.execute(GetJobRunInput(run_id="ghost"))
+        service.execute(GetJobRunUseCaseInput(run_id="ghost"))
     assert exc_info.value.run_id == "ghost"

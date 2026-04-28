@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from base.use_case import UseCase
 
-from application.port.inbound.job.delete_job.input import DeleteJobInput
-from application.port.inbound.job.delete_job.output import DeleteJobOutput
+from application.port.inbound.job.delete_job.input import DeleteJobUseCaseInput
+from application.port.inbound.job.delete_job.output import DeleteJobUseCaseOutput
 
 
-class DeleteJobUseCase(UseCase[DeleteJobInput, DeleteJobOutput]):
+class DeleteJobUseCase(UseCase[DeleteJobUseCaseInput, DeleteJobUseCaseOutput]):
     """Delete a table maintenance job by its ID."""

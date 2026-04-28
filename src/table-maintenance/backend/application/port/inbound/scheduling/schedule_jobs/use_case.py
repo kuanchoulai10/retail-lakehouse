@@ -5,9 +5,9 @@ from __future__ import annotations
 from base.use_case import UseCase
 
 from application.port.inbound.scheduling.schedule_jobs.output import (
-    ScheduleJobsResult,
+    ScheduleJobsUseCaseOutput,
 )
 
 
-class ScheduleJobsUseCase(UseCase[None, ScheduleJobsResult]):
+class ScheduleJobsUseCase(UseCase[None, ScheduleJobsUseCaseOutput]):
     """Run one scheduling tick: find due jobs and trigger them."""

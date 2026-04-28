@@ -6,7 +6,7 @@ from bootstrap.dependencies.use_cases import get_trigger_job_run_use_case
 from fastapi import APIRouter, Depends, HTTPException
 
 from application.exceptions import JobDisabledError, JobNotFoundError
-from application.port.inbound import TriggerJobRunInput, TriggerJobRunUseCase
+from application.port.inbound import TriggerJobRunUseCaseInput, TriggerJobRunUseCase
 
 router = APIRouter()
 
@@ -21,7 +21,7 @@ def trigger_job_run(
 ):
     """Trigger a new run for the specified job (async — run created by outbox consumer)."""
     try:
-        result = use_case.execute(TriggerJobRunInput(job_id=name))
+        result = use_case.execute(TriggerJobRunUseCaseInput(job_id=name))
     except JobNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     except JobDisabledError as e:

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from adapter.inbound.web.job.dto import JobApiResponse
 from application.exceptions import JobNotFoundError
-from application.port.inbound import GetJobInput, GetJobUseCase
+from application.port.inbound import GetJobUseCaseInput, GetJobUseCase
 
 router = APIRouter()
 
@@ -19,7 +19,7 @@ def get_job(
 ):
     """Retrieve a job by its name."""
     try:
-        result = use_case.execute(GetJobInput(job_id=name))
+        result = use_case.execute(GetJobUseCaseInput(job_id=name))
         return JobApiResponse(
             id=result.id,
             job_type=result.job_type,

@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from application.port.inbound import (
-    ListJobsInput,
-    ListJobsOutput,
-    ListJobsOutputItem,
+    ListJobsUseCaseInput,
+    ListJobsUseCaseOutput,
+    ListJobsUseCaseOutputItem,
     ListJobsUseCase,
 )
 
@@ -22,12 +22,12 @@ class ListJobsService(ListJobsUseCase):
         """Initialize with the jobs repository."""
         self._repo = repo
 
-    def execute(self, request: ListJobsInput) -> ListJobsOutput:
+    def execute(self, request: ListJobsUseCaseInput) -> ListJobsUseCaseOutput:
         """Return all jobs."""
         jobs = self._repo.list_all()
-        return ListJobsOutput(
+        return ListJobsUseCaseOutput(
             jobs=[
-                ListJobsOutputItem(
+                ListJobsUseCaseOutputItem(
                     id=job.id.value,
                     job_type=job.job_type.value,
                     status=job.status.value,

@@ -6,7 +6,7 @@ from bootstrap.dependencies.use_cases import get_update_job_use_case
 from fastapi import APIRouter, Depends, HTTPException, Response
 
 from application.exceptions import JobNotFoundError
-from application.port.inbound import UpdateJobInput, UpdateJobUseCase
+from application.port.inbound import UpdateJobUseCaseInput, UpdateJobUseCase
 
 router = APIRouter()
 
@@ -18,6 +18,6 @@ def delete_job(
 ):
     """Archive a job by its name (soft delete)."""
     try:
-        use_case.execute(UpdateJobInput(job_id=name, status="archived"))
+        use_case.execute(UpdateJobUseCaseInput(job_id=name, status="archived"))
     except JobNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e

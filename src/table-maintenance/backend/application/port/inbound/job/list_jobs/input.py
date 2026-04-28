@@ -1,4 +1,4 @@
-"""Define the ListJobsInput dataclass."""
+"""Define the ListJobsUseCaseInput dataclass."""
 
 from __future__ import annotations
 
@@ -6,5 +6,5 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class ListJobsInput:
+class ListJobsUseCaseInput:
     """Input for the ListJobs use case — no parameters needed."""

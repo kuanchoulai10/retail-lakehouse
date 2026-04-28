@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.port.inbound.catalog.list_tables.input import ListTablesInput
-from application.port.inbound.catalog.list_tables.output import ListTablesOutput
+from application.port.inbound.catalog.list_tables.input import ListTablesUseCaseInput
+from application.port.inbound.catalog.list_tables.output import ListTablesUseCaseOutput
 from application.port.inbound.catalog.list_tables.use_case import ListTablesUseCase
 
 if TYPE_CHECKING:
@@ -21,7 +21,7 @@ class ListTablesService(ListTablesUseCase):
         """Initialize with the catalog reader port."""
         self._reader = reader
 
-    def execute(self, request: ListTablesInput) -> ListTablesOutput:
+    def execute(self, request: ListTablesUseCaseInput) -> ListTablesUseCaseOutput:
         """Return all table names in the namespace."""
         tables = self._reader.list_tables(request.namespace)
-        return ListTablesOutput(tables=tables)
+        return ListTablesUseCaseOutput(tables=tables)

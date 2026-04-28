@@ -1,4 +1,4 @@
-"""Define the CreateJobInput dataclass."""
+"""Define the CreateJobUseCaseInput dataclass."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class CreateJobInput:
+class CreateJobUseCaseInput:
     """Input for the CreateJob use case."""
 
     job_type: str

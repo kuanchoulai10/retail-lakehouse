@@ -15,8 +15,8 @@ from application.domain.model.catalog.table_id import TableId
 from application.domain.model.catalog.table_schema import TableSchema
 from application.service.catalog.list_branches import ListBranchesService
 from application.port.inbound.catalog.list_branches import (
-    ListBranchesInput,
-    ListBranchesOutput,
+    ListBranchesUseCaseInput,
+    ListBranchesUseCaseOutput,
     ListBranchesUseCase,
 )
 
@@ -68,9 +68,11 @@ def test_returns_branches():
     reader.load_table.return_value = _make_table_with_branches()
     service = ListBranchesService(reader)
 
-    result = service.execute(ListBranchesInput(namespace="default", table="orders"))
+    result = service.execute(
+        ListBranchesUseCaseInput(namespace="default", table="orders")
+    )
 
-    assert isinstance(result, ListBranchesOutput)
+    assert isinstance(result, ListBranchesUseCaseOutput)
     assert len(result.branches) == 2
     assert result.branches[0].name == "main"
     assert result.branches[0].max_snapshot_age_ms == 86400000

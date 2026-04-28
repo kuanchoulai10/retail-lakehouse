@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from adapter.inbound.web import router
 from application.exceptions import JobNotFoundError
-from application.port.inbound import UpdateJobOutput
+from application.port.inbound import UpdateJobUseCaseOutput
 
 
 def _make_client(use_case: MagicMock) -> TestClient:
@@ -19,7 +19,7 @@ def _make_client(use_case: MagicMock) -> TestClient:
     return TestClient(app)
 
 
-SAMPLE = UpdateJobOutput(
+SAMPLE = UpdateJobUseCaseOutput(
     id="abc1234567",
     job_type="rewrite_data_files",
     status="active",
