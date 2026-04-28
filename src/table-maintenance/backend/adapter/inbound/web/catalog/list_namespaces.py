@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from adapter.inbound.web.catalog.dto import NamespacesResponse
+from adapter.inbound.web.catalog.dto import NamespacesApiResponse
 from application.port.inbound.catalog.list_namespaces import (
     ListNamespacesInput,
     ListNamespacesUseCase,
@@ -16,12 +16,12 @@ router = APIRouter()
 
 @router.get(
     "/catalogs/{catalog}/namespaces",
-    response_model=NamespacesResponse,
+    response_model=NamespacesApiResponse,
 )
 def list_namespaces(
     catalog: str,
     use_case: ListNamespacesUseCase = Depends(get_list_namespaces_use_case),
-) -> NamespacesResponse:
+) -> NamespacesApiResponse:
     """Return all namespaces in the catalog."""
     result = use_case.execute(ListNamespacesInput())
-    return NamespacesResponse(namespaces=result.namespaces)
+    return NamespacesApiResponse(namespaces=result.namespaces)
