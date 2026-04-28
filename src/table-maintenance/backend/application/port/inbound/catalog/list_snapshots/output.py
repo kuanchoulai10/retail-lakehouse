@@ -1,4 +1,4 @@
-"""Define the ListSnapshotsOutput dataclass."""
+"""Define the ListSnapshotsUseCaseOutput dataclass."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class ListSnapshotsOutputItem:
+class ListSnapshotsUseCaseOutputItem:
     """A single snapshot in the result."""
 
     snapshot_id: int
@@ -16,7 +16,7 @@ class ListSnapshotsOutputItem:
 
 
 @dataclass(frozen=True)
-class ListSnapshotsOutput:
+class ListSnapshotsUseCaseOutput:
     """Output for the ListSnapshots use case."""
 
-    snapshots: list[ListSnapshotsOutputItem]
+    snapshots: list[ListSnapshotsUseCaseOutputItem]

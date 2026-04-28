@@ -16,8 +16,8 @@ from application.domain.model.job import (
 from application.service.job.update_job import UpdateJobService
 from application.exceptions import JobNotFoundError as AppJobNotFoundError
 from application.port.inbound import (
-    UpdateJobInput,
-    UpdateJobOutput,
+    UpdateJobUseCaseInput,
+    UpdateJobUseCaseOutput,
     UpdateJobUseCase,
 )
 
@@ -41,7 +41,7 @@ def test_implements_use_case():
 
 
 def test_update_activates_job():
-    """Verify that execute activates a job and returns an UpdateJobOutput."""
+    """Verify that execute activates a job and returns an UpdateJobUseCaseOutput."""
     repo = MagicMock()
     repo.get.return_value = _existing_job()
     repo.update.side_effect = lambda job: job
@@ -50,9 +50,11 @@ def test_update_activates_job():
     serializer.to_outbox_entries.return_value = []
     service = UpdateJobService(repo, outbox_repo, serializer)
 
-    result = service.execute(UpdateJobInput(job_id="abc1234567", status="active"))
+    result = service.execute(
+        UpdateJobUseCaseInput(job_id="abc1234567", status="active")
+    )
 
-    assert isinstance(result, UpdateJobOutput)
+    assert isinstance(result, UpdateJobUseCaseOutput)
     assert result.status == "active"
     repo.update.assert_called_once()
 
@@ -68,7 +70,7 @@ def test_update_leaves_other_fields_when_only_status_provided():
     serializer.to_outbox_entries.return_value = []
     service = UpdateJobService(repo, outbox_repo, serializer)
 
-    service.execute(UpdateJobInput(job_id="abc1234567", status="active"))
+    service.execute(UpdateJobUseCaseInput(job_id="abc1234567", status="active"))
 
     updated = repo.update.call_args[0][0]
     assert updated.table_ref.catalog == "retail"
@@ -86,7 +88,7 @@ def test_update_bumps_updated_at():
     serializer.to_outbox_entries.return_value = []
     service = UpdateJobService(repo, outbox_repo, serializer)
 
-    service.execute(UpdateJobInput(job_id="abc1234567", status="active"))
+    service.execute(UpdateJobUseCaseInput(job_id="abc1234567", status="active"))
 
     updated = repo.update.call_args[0][0]
     assert updated.updated_at > job.created_at
@@ -102,5 +104,5 @@ def test_update_raises_app_not_found():
     service = UpdateJobService(repo, outbox_repo, serializer)
 
     with pytest.raises(AppJobNotFoundError) as exc_info:
-        service.execute(UpdateJobInput(job_id="ghost", status="active"))
+        service.execute(UpdateJobUseCaseInput(job_id="ghost", status="active"))
     assert exc_info.value.job_id == "ghost"

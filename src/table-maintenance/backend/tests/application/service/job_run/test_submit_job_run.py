@@ -10,17 +10,17 @@ import pytest
 from application.domain.model.job import JobId
 from application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
 from application.port.inbound.job_run.submit_job_run import (
-    SubmitJobRunInput,
+    SubmitJobRunUseCaseInput,
     SubmitJobRunUseCase,
 )
 from application.port.outbound.job_run.submit_job_run.input import (
-    SubmitJobRunInput as SubmitJobRunGatewayInput,
+    SubmitJobRunGatewayInput,
 )
 from application.service.job_run.submit_job_run import SubmitJobRunService
 from adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo
 
 
-def _make_input(**overrides) -> SubmitJobRunInput:
+def _make_input(**overrides) -> SubmitJobRunUseCaseInput:
     defaults = {
         "run_id": "r1",
         "job_id": "j1",
@@ -34,7 +34,7 @@ def _make_input(**overrides) -> SubmitJobRunInput:
         "cron_expression": "0 0 * * *",
     }
     defaults.update(overrides)
-    return SubmitJobRunInput(**defaults)
+    return SubmitJobRunUseCaseInput(**defaults)
 
 
 def _pending_job_run(run_id: str = "r1") -> JobRun:

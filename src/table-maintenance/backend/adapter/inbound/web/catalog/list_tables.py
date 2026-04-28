@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from adapter.inbound.web.catalog.dto import TablesResponse
+from adapter.inbound.web.catalog.dto import TablesApiResponse
 from application.port.inbound.catalog.list_tables import (
-    ListTablesInput,
+    ListTablesUseCaseInput,
     ListTablesUseCase,
 )
 from bootstrap.dependencies.use_cases import get_list_tables_use_case
@@ -16,13 +16,13 @@ router = APIRouter()
 
 @router.get(
     "/catalogs/{catalog}/namespaces/{namespace}/tables",
-    response_model=TablesResponse,
+    response_model=TablesApiResponse,
 )
 def list_tables(
     catalog: str,
     namespace: str,
     use_case: ListTablesUseCase = Depends(get_list_tables_use_case),
-) -> TablesResponse:
+) -> TablesApiResponse:
     """Return all tables in the namespace."""
-    result = use_case.execute(ListTablesInput(namespace=namespace))
-    return TablesResponse(tables=result.tables)
+    result = use_case.execute(ListTablesUseCaseInput(namespace=namespace))
+    return TablesApiResponse(tables=result.tables)

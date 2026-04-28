@@ -5,9 +5,9 @@ Each use case directory must contain exactly:
   __init__.py, input.py, output.py, use_case.py
 
 Naming convention:
-  {Name}Input  in input.py
-  {Name}Output in output.py
-  {Name}UseCase in use_case.py
+  {Name}UseCaseInput   in input.py
+  {Name}UseCaseOutput  in output.py
+  {Name}UseCase        in use_case.py
 
 __init__.py must re-export all three symbols.
 """
@@ -129,12 +129,12 @@ def _exported_classes(module_path: str) -> list[str]:
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
 def test_input_class_naming(use_case_entry: tuple[str, Path]):
-    """Verify that input.py exports a class named {PascalCase}Input."""
+    """Verify that input.py exports a class named {PascalCase}UseCaseInput."""
     group, use_case_dir = use_case_entry
     if group in AGGREGATE_GROUPS_NO_INPUT:
         pytest.skip("No-input use case")
     prefix = _pascal_to_words(use_case_dir.name)
-    expected = f"{prefix}Input"
+    expected = f"{prefix}UseCaseInput"
     module = f"application.port.inbound.{group}.{use_case_dir.name}.input"
     classes = _exported_classes(module)
     assert expected in classes, (
@@ -144,15 +144,14 @@ def test_input_class_naming(use_case_entry: tuple[str, Path]):
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
 def test_output_class_naming(use_case_entry: tuple[str, Path]):
-    """Verify that output.py exports a class named {PascalCase}Output or {PascalCase}Result."""
+    """Verify that output.py exports a class named {PascalCase}UseCaseOutput."""
     group, use_case_dir = use_case_entry
     prefix = _pascal_to_words(use_case_dir.name)
-    expected_output = f"{prefix}Output"
-    expected_result = f"{prefix}Result"
+    expected = f"{prefix}UseCaseOutput"
     module = f"application.port.inbound.{group}.{use_case_dir.name}.output"
     classes = _exported_classes(module)
-    assert expected_output in classes or expected_result in classes, (
-        f"{use_case_dir.name}/output.py must export '{expected_output}' or '{expected_result}', found: {classes}"
+    assert expected in classes, (
+        f"{use_case_dir.name}/output.py must export '{expected}', found: {classes}"
     )
 
 
@@ -190,7 +189,7 @@ def test_output_classes_prefixed(use_case_entry: tuple[str, Path]):
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
 def test_init_reexports_all_symbols(use_case_entry: tuple[str, Path]):
-    """Verify that __init__.py re-exports Input, Output/Result, and UseCase in __all__."""
+    """Verify that __init__.py re-exports UseCaseInput, UseCaseOutput, and UseCase in __all__."""
     group, use_case_dir = use_case_entry
     prefix = _pascal_to_words(use_case_dir.name)
     module = f"application.port.inbound.{group}.{use_case_dir.name}"
@@ -201,12 +200,12 @@ def test_init_reexports_all_symbols(use_case_entry: tuple[str, Path]):
     assert f"{prefix}UseCase" in exported, (
         f"{use_case_dir.name}/__init__.py must re-export '{prefix}UseCase' in __all__"
     )
-    # Output or Result is required
-    assert f"{prefix}Output" in exported or f"{prefix}Result" in exported, (
-        f"{use_case_dir.name}/__init__.py must re-export '{prefix}Output' or '{prefix}Result' in __all__"
+    # UseCaseOutput is required
+    assert f"{prefix}UseCaseOutput" in exported, (
+        f"{use_case_dir.name}/__init__.py must re-export '{prefix}UseCaseOutput' in __all__"
     )
-    # Input is required only for groups with input
+    # UseCaseInput is required only for groups with input
     if group not in AGGREGATE_GROUPS_NO_INPUT:
-        assert f"{prefix}Input" in exported, (
-            f"{use_case_dir.name}/__init__.py must re-export '{prefix}Input' in __all__"
+        assert f"{prefix}UseCaseInput" in exported, (
+            f"{use_case_dir.name}/__init__.py must re-export '{prefix}UseCaseInput' in __all__"
         )

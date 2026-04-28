@@ -1,4 +1,4 @@
-"""Define the TriggerJobRunOutput dataclass."""
+"""Define the TriggerJobRunUseCaseOutput dataclass."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class TriggerJobRunOutput:
+class TriggerJobRunUseCaseOutput:
     """Output of the trigger-job-run use case (async — no run_id yet)."""
 
     job_id: str

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from application.domain.model.job_run import TriggerType
 from application.port.inbound.scheduling.schedule_jobs import (
-    ScheduleJobsResult,
+    ScheduleJobsUseCaseOutput,
     ScheduleJobsUseCase,
 )
 
@@ -43,7 +43,7 @@ class ScheduleJobsService(ScheduleJobsUseCase):
         self._outbox_repo = outbox_repo
         self._serializer = serializer
 
-    def execute(self, request: None = None) -> ScheduleJobsResult:
+    def execute(self, request: None = None) -> ScheduleJobsUseCaseOutput:
         """Run one scheduling tick: find due jobs and write trigger events to outbox."""
         now = self._clock()
         jobs = self._jobs_repo.list_schedulable(now)
@@ -69,7 +69,7 @@ class ScheduleJobsService(ScheduleJobsUseCase):
             except Exception:
                 logger.exception("Failed to schedule job %s", job.id.value)
 
-        return ScheduleJobsResult(
+        return ScheduleJobsUseCaseOutput(
             triggered_count=len(triggered),
             job_ids=triggered,
         )

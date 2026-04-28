@@ -31,7 +31,9 @@ from application.domain.model.job_run import JobRunStatus
 from application.domain.model.job_run.events import JobRunCreated
 from application.domain.model.job_run.job_run_id import JobRunId
 from application.domain.model.job_run.trigger_type import TriggerType
-from application.port.outbound.job_run.submit_job_run.input import SubmitJobRunInput
+from application.port.outbound.job_run.submit_job_run.input import (
+    SubmitJobRunGatewayInput,
+)
 from application.service.handler.job_run_created_handler import JobRunCreatedHandler
 from application.service.handler.job_triggered_handler import JobTriggeredHandler
 from application.service.job_run.submit_job_run import SubmitJobRunService
@@ -177,7 +179,7 @@ def test_job_run_created_flows_to_executor_submit():
     # Executor should have received a submission
     assert len(chain.executor.submitted) == 1
     sub = chain.executor.submitted[0]
-    assert isinstance(sub, SubmitJobRunInput)
+    assert isinstance(sub, SubmitJobRunGatewayInput)
     assert sub.job_id == "job-1"
     assert sub.run_id == "job-1-abc123"
     assert sub.job_type == "expire_snapshots"

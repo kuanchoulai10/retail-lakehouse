@@ -1,4 +1,4 @@
-"""Define the UpdateJobInput dataclass."""
+"""Define the UpdateJobUseCaseInput dataclass."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class UpdateJobInput:
+class UpdateJobUseCaseInput:
     """Partial update: only non-None fields are applied."""
 
     job_id: str

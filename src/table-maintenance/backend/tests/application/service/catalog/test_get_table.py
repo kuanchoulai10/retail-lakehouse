@@ -23,8 +23,8 @@ from application.domain.model.catalog.table_properties.write_properties import (
 from application.domain.model.catalog.table_schema import TableSchema
 from application.service.catalog.get_table import GetTableService
 from application.port.inbound.catalog.get_table import (
-    GetTableInput,
-    GetTableOutput,
+    GetTableUseCaseInput,
+    GetTableUseCaseOutput,
     GetTableUseCase,
 )
 
@@ -74,9 +74,9 @@ def test_returns_table_metadata():
     reader.load_table.return_value = _make_table()
     service = GetTableService(reader)
 
-    result = service.execute(GetTableInput(namespace="default", table="orders"))
+    result = service.execute(GetTableUseCaseInput(namespace="default", table="orders"))
 
-    assert isinstance(result, GetTableOutput)
+    assert isinstance(result, GetTableUseCaseOutput)
     assert result.name == "orders"
     assert result.namespace == "default"
     assert result.location == "s3://warehouse/default/orders"

@@ -1,4 +1,4 @@
-"""Define the GetJobOutput dataclass."""
+"""Define the GetJobUseCaseOutput dataclass."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
-class GetJobOutput:
+class GetJobUseCaseOutput:
     """Output for the GetJob use case — no domain types leak to the adapter."""
 
     id: str

@@ -1,17 +1,17 @@
 """ListJobRuns use case definition."""
 
-from application.port.inbound.job_run.list_job_runs.input import ListJobRunsInput
+from application.port.inbound.job_run.list_job_runs.input import ListJobRunsUseCaseInput
 from application.port.inbound.job_run.list_job_runs.output import (
-    ListJobRunsOutput,
-    ListJobRunsOutputItem,
+    ListJobRunsUseCaseOutput,
+    ListJobRunsUseCaseOutputItem,
 )
 from application.port.inbound.job_run.list_job_runs.use_case import (
     ListJobRunsUseCase,
 )
 
 __all__ = [
-    "ListJobRunsInput",
-    "ListJobRunsOutput",
-    "ListJobRunsOutputItem",
+    "ListJobRunsUseCaseInput",
+    "ListJobRunsUseCaseOutput",
+    "ListJobRunsUseCaseOutputItem",
     "ListJobRunsUseCase",
 ]

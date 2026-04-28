@@ -1,33 +1,33 @@
 """Catalog use case definitions."""
 
 from application.port.inbound.catalog.get_table import (
-    GetTableInput,
-    GetTableOutput,
+    GetTableUseCaseInput,
+    GetTableUseCaseOutput,
     GetTableUseCase,
 )
 from application.port.inbound.catalog.list_branches import (
-    ListBranchesInput,
-    ListBranchesOutput,
+    ListBranchesUseCaseInput,
+    ListBranchesUseCaseOutput,
     ListBranchesUseCase,
 )
 from application.port.inbound.catalog.list_namespaces import (
-    ListNamespacesInput,
-    ListNamespacesOutput,
+    ListNamespacesUseCaseInput,
+    ListNamespacesUseCaseOutput,
     ListNamespacesUseCase,
 )
 from application.port.inbound.catalog.list_snapshots import (
-    ListSnapshotsInput,
-    ListSnapshotsOutput,
+    ListSnapshotsUseCaseInput,
+    ListSnapshotsUseCaseOutput,
     ListSnapshotsUseCase,
 )
 from application.port.inbound.catalog.list_tables import (
-    ListTablesInput,
-    ListTablesOutput,
+    ListTablesUseCaseInput,
+    ListTablesUseCaseOutput,
     ListTablesUseCase,
 )
 from application.port.inbound.catalog.list_tags import (
-    ListTagsInput,
-    ListTagsOutput,
+    ListTagsUseCaseInput,
+    ListTagsUseCaseOutput,
     ListTagsUseCase,
 )
 from application.port.inbound.catalog.update_table_properties import (
@@ -37,23 +37,23 @@ from application.port.inbound.catalog.update_table_properties import (
 )
 
 __all__ = [
-    "GetTableInput",
-    "GetTableOutput",
+    "GetTableUseCaseInput",
+    "GetTableUseCaseOutput",
     "GetTableUseCase",
-    "ListBranchesInput",
-    "ListBranchesOutput",
+    "ListBranchesUseCaseInput",
+    "ListBranchesUseCaseOutput",
     "ListBranchesUseCase",
-    "ListNamespacesInput",
-    "ListNamespacesOutput",
+    "ListNamespacesUseCaseInput",
+    "ListNamespacesUseCaseOutput",
     "ListNamespacesUseCase",
-    "ListSnapshotsInput",
-    "ListSnapshotsOutput",
+    "ListSnapshotsUseCaseInput",
+    "ListSnapshotsUseCaseOutput",
     "ListSnapshotsUseCase",
-    "ListTablesInput",
-    "ListTablesOutput",
+    "ListTablesUseCaseInput",
+    "ListTablesUseCaseOutput",
     "ListTablesUseCase",
-    "ListTagsInput",
-    "ListTagsOutput",
+    "ListTagsUseCaseInput",
+    "ListTagsUseCaseOutput",
     "ListTagsUseCase",
     "UpdateTablePropertiesInput",
     "UpdateTablePropertiesOutput",

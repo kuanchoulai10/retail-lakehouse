@@ -18,8 +18,8 @@ from application.domain.model.catalog.table_schema import TableSchema
 from application.domain.model.catalog.tag import Tag
 from application.service.catalog.list_tags import ListTagsService
 from application.port.inbound.catalog.list_tags import (
-    ListTagsInput,
-    ListTagsOutput,
+    ListTagsUseCaseInput,
+    ListTagsUseCaseOutput,
     ListTagsUseCase,
 )
 
@@ -65,9 +65,9 @@ def test_returns_tags():
     reader.load_table.return_value = _make_table_with_tags()
     service = ListTagsService(reader)
 
-    result = service.execute(ListTagsInput(namespace="default", table="orders"))
+    result = service.execute(ListTagsUseCaseInput(namespace="default", table="orders"))
 
-    assert isinstance(result, ListTagsOutput)
+    assert isinstance(result, ListTagsUseCaseOutput)
     assert len(result.tags) == 2
     assert result.tags[0].name == "v1.0"
     assert result.tags[0].max_ref_age_ms == 86400000

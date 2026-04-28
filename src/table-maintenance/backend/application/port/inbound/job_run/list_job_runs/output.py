@@ -1,4 +1,4 @@
-"""Define the ListJobRunsOutput and ListJobRunsOutputItem dataclasses."""
+"""Define the ListJobRunsUseCaseOutput and ListJobRunsUseCaseOutputItem dataclasses."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
-class ListJobRunsOutputItem:
+class ListJobRunsUseCaseOutputItem:
     """A single run in the ListJobRuns result."""
 
     run_id: str
@@ -22,7 +22,7 @@ class ListJobRunsOutputItem:
 
 
 @dataclass(frozen=True)
-class ListJobRunsOutput:
+class ListJobRunsUseCaseOutput:
     """Output for the ListJobRuns use case."""
 
-    runs: list[ListJobRunsOutputItem]
+    runs: list[ListJobRunsUseCaseOutputItem]

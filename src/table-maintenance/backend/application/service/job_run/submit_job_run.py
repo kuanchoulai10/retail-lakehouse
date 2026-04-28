@@ -7,11 +7,11 @@ from typing import TYPE_CHECKING
 
 from application.domain.model.job_run import JobRunId
 from application.port.inbound.job_run.submit_job_run import (
-    SubmitJobRunInput,
+    SubmitJobRunUseCaseInput,
     SubmitJobRunUseCase,
 )
 from application.port.outbound.job_run.submit_job_run.input import (
-    SubmitJobRunInput as SubmitJobRunGatewayInput,
+    SubmitJobRunGatewayInput,
 )
 
 if TYPE_CHECKING:
@@ -22,14 +22,14 @@ if TYPE_CHECKING:
 
 
 class SubmitJobRunService(SubmitJobRunUseCase):
-    """Map a SubmitJobRunInput to a SubmitJobRunGatewayInput and delegate to the executor."""
+    """Map a SubmitJobRunUseCaseInput to a SubmitJobRunGatewayInput and delegate to the executor."""
 
     def __init__(self, executor: SubmitJobRunGateway, repo: JobRunsRepo) -> None:
         """Initialize with the job run executor and repository."""
         self._executor = executor
         self._repo = repo
 
-    def execute(self, request: SubmitJobRunInput) -> None:
+    def execute(self, request: SubmitJobRunUseCaseInput) -> None:
         """Build a SubmitJobRunGatewayInput from the input, submit it, and mark as RUNNING."""
         submission = SubmitJobRunGatewayInput(
             run_id=request.run_id,

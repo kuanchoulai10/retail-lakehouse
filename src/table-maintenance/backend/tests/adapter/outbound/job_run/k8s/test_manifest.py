@@ -2,7 +2,9 @@
 
 from adapter.outbound.job_run.k8s.k8s_executor_config import K8sExecutorConfig
 from adapter.outbound.job_run.k8s.manifest import build_manifest
-from application.port.outbound.job_run.submit_job_run.input import SubmitJobRunInput
+from application.port.outbound.job_run.submit_job_run.input import (
+    SubmitJobRunGatewayInput,
+)
 
 
 def _config() -> K8sExecutorConfig:
@@ -17,7 +19,7 @@ def _config() -> K8sExecutorConfig:
     )
 
 
-def _sub(**overrides) -> SubmitJobRunInput:
+def _sub(**overrides) -> SubmitJobRunGatewayInput:
     defaults = {
         "run_id": "my-job-abc123",
         "job_id": "my-job",
@@ -31,7 +33,7 @@ def _sub(**overrides) -> SubmitJobRunInput:
         "cron_expression": None,
     }
     defaults.update(overrides)
-    return SubmitJobRunInput(**defaults)  # type: ignore[arg-type]
+    return SubmitJobRunGatewayInput(**defaults)  # type: ignore[arg-type]
 
 
 def test_kind_is_spark_application_without_cron():

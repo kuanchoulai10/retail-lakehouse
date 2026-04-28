@@ -5,7 +5,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 
-class SchemaFieldResponse(BaseModel):
+class SchemaFieldApiResponse(BaseModel):
     """A single field in a table schema."""
 
     id: int
@@ -14,38 +14,38 @@ class SchemaFieldResponse(BaseModel):
     required: bool
 
 
-class SchemaResponse(BaseModel):
+class SchemaApiResponse(BaseModel):
     """Table schema with its fields."""
 
-    fields: list[SchemaFieldResponse]
+    fields: list[SchemaFieldApiResponse]
 
 
-class NamespacesResponse(BaseModel):
+class NamespacesApiResponse(BaseModel):
     """Response for listing namespaces."""
 
     namespaces: list[str]
 
 
-class TablesResponse(BaseModel):
+class TablesApiResponse(BaseModel):
     """Response for listing tables."""
 
     tables: list[str]
 
 
-class TableDetailResponse(BaseModel):
+class TableDetailApiResponse(BaseModel):
     """Response for table metadata."""
 
     table: str
     namespace: str
     location: str
     current_snapshot_id: int | None
-    schema_: SchemaResponse = Field(alias="schema")
+    schema_: SchemaApiResponse = Field(alias="schema")
     properties: dict[str, str]
 
     model_config = {"populate_by_name": True}
 
 
-class SnapshotResponse(BaseModel):
+class SnapshotApiResponse(BaseModel):
     """A single snapshot."""
 
     snapshot_id: int
@@ -54,13 +54,13 @@ class SnapshotResponse(BaseModel):
     summary: dict[str, str]
 
 
-class SnapshotsResponse(BaseModel):
+class SnapshotsApiResponse(BaseModel):
     """Response for listing snapshots."""
 
-    snapshots: list[SnapshotResponse]
+    snapshots: list[SnapshotApiResponse]
 
 
-class BranchResponse(BaseModel):
+class BranchApiResponse(BaseModel):
     """A single branch ref."""
 
     name: str
@@ -70,13 +70,13 @@ class BranchResponse(BaseModel):
     min_snapshots_to_keep: int | None
 
 
-class BranchesResponse(BaseModel):
+class BranchesApiResponse(BaseModel):
     """Response for listing branches."""
 
-    branches: list[BranchResponse]
+    branches: list[BranchApiResponse]
 
 
-class TagResponse(BaseModel):
+class TagApiResponse(BaseModel):
     """A single tag ref."""
 
     name: str
@@ -84,7 +84,7 @@ class TagResponse(BaseModel):
     max_ref_age_ms: int | None
 
 
-class TagsResponse(BaseModel):
+class TagsApiResponse(BaseModel):
     """Response for listing tags."""
 
-    tags: list[TagResponse]
+    tags: list[TagApiResponse]

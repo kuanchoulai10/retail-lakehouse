@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from application.port.inbound.catalog.list_snapshots.input import (
-    ListSnapshotsInput,
+    ListSnapshotsUseCaseInput,
 )
 from application.port.inbound.catalog.list_snapshots.output import (
-    ListSnapshotsOutput,
-    ListSnapshotsOutputItem,
+    ListSnapshotsUseCaseOutput,
+    ListSnapshotsUseCaseOutputItem,
 )
 from application.port.inbound.catalog.list_snapshots.use_case import (
     ListSnapshotsUseCase,
@@ -28,12 +28,12 @@ class ListSnapshotsService(ListSnapshotsUseCase):
         """Initialize with the catalog reader port."""
         self._reader = reader
 
-    def execute(self, request: ListSnapshotsInput) -> ListSnapshotsOutput:
+    def execute(self, request: ListSnapshotsUseCaseInput) -> ListSnapshotsUseCaseOutput:
         """Load table and return snapshots as output DTOs."""
         table = self._reader.load_table(request.namespace, request.table)
-        return ListSnapshotsOutput(
+        return ListSnapshotsUseCaseOutput(
             snapshots=[
-                ListSnapshotsOutputItem(
+                ListSnapshotsUseCaseOutputItem(
                     snapshot_id=s.snapshot_id,
                     parent_id=s.parent_id,
                     timestamp_ms=s.timestamp_ms,

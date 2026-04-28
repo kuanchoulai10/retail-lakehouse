@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from adapter.inbound.web import router
-from application.port.inbound.catalog.list_tables import ListTablesOutput
+from application.port.inbound.catalog.list_tables import ListTablesUseCaseOutput
 from bootstrap.dependencies.use_cases import get_list_tables_use_case
 
 
@@ -23,7 +23,9 @@ def _make_client(use_case: MagicMock) -> TestClient:
 def test_list_tables_returns_200():
     """Return 200 with a list of table names."""
     use_case = MagicMock()
-    use_case.execute.return_value = ListTablesOutput(tables=["orders", "products"])
+    use_case.execute.return_value = ListTablesUseCaseOutput(
+        tables=["orders", "products"]
+    )
     client = _make_client(use_case)
 
     response = client.get("/v1/catalogs/iceberg/namespaces/default/tables")
@@ -35,7 +37,7 @@ def test_list_tables_returns_200():
 def test_list_tables_empty():
     """Return 200 with an empty list when no tables exist."""
     use_case = MagicMock()
-    use_case.execute.return_value = ListTablesOutput(tables=[])
+    use_case.execute.return_value = ListTablesUseCaseOutput(tables=[])
     client = _make_client(use_case)
 
     response = client.get("/v1/catalogs/iceberg/namespaces/default/tables")

@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.port.inbound.catalog.list_branches.input import ListBranchesInput
+from application.port.inbound.catalog.list_branches.input import (
+    ListBranchesUseCaseInput,
+)
 from application.port.inbound.catalog.list_branches.output import (
-    ListBranchesOutput,
-    ListBranchesOutputItem,
+    ListBranchesUseCaseOutput,
+    ListBranchesUseCaseOutputItem,
 )
 from application.port.inbound.catalog.list_branches.use_case import (
     ListBranchesUseCase,
@@ -26,12 +28,12 @@ class ListBranchesService(ListBranchesUseCase):
         """Initialize with the catalog reader port."""
         self._reader = reader
 
-    def execute(self, request: ListBranchesInput) -> ListBranchesOutput:
+    def execute(self, request: ListBranchesUseCaseInput) -> ListBranchesUseCaseOutput:
         """Load table and return branches as output DTOs."""
         table = self._reader.load_table(request.namespace, request.table)
-        return ListBranchesOutput(
+        return ListBranchesUseCaseOutput(
             branches=[
-                ListBranchesOutputItem(
+                ListBranchesUseCaseOutputItem(
                     name=b.id.value,
                     snapshot_id=b.snapshot_id,
                     max_snapshot_age_ms=b.retention.max_snapshot_age_ms

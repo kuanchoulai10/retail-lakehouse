@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from application.port.inbound.outbox.publish_events import (
-    PublishEventsResult,
+    PublishEventsUseCaseOutput,
     PublishEventsUseCase,
 )
 
@@ -31,15 +31,15 @@ class PublishEventsService(PublishEventsUseCase):
         self._serializer = serializer
         self._dispatcher = dispatcher
 
-    def execute(self, request: None = None) -> PublishEventsResult:
+    def execute(self, request: None = None) -> PublishEventsUseCaseOutput:
         """One tick: fetch unpublished → deserialize → dispatch → mark published."""
         entries = self._outbox_repo.fetch_unpublished(batch_size=100)
         if not entries:
-            return PublishEventsResult(published_count=0)
+            return PublishEventsUseCaseOutput(published_count=0)
 
         for entry in entries:
             event = self._serializer.deserialize(entry.event_type, entry.payload)
             self._dispatcher.dispatch(event)
 
         self._outbox_repo.mark_published([e.id for e in entries])
-        return PublishEventsResult(published_count=len(entries))
+        return PublishEventsUseCaseOutput(published_count=len(entries))

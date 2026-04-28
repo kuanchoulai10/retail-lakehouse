@@ -11,7 +11,7 @@ from application.domain.model.job import (
 )
 from application.domain.model.job_run import JobRunId, TriggerType
 from application.domain.model.job_run.events import JobRunCreated
-from application.port.inbound.job_run.submit_job_run import SubmitJobRunInput
+from application.port.inbound.job_run.submit_job_run import SubmitJobRunUseCaseInput
 from application.service.handler.job_run_created_handler import JobRunCreatedHandler
 
 
@@ -33,7 +33,7 @@ def _make_event(**overrides) -> JobRunCreated:
 
 
 def test_delegates_to_use_case():
-    """Verify handler calls use_case.execute() with a SubmitJobRunInput."""
+    """Verify handler calls use_case.execute() with a SubmitJobRunUseCaseInput."""
     use_case = MagicMock()
     handler = JobRunCreatedHandler(use_case)
 
@@ -41,11 +41,11 @@ def test_delegates_to_use_case():
 
     use_case.execute.assert_called_once()
     inp = use_case.execute.call_args[0][0]
-    assert isinstance(inp, SubmitJobRunInput)
+    assert isinstance(inp, SubmitJobRunUseCaseInput)
 
 
 def test_input_maps_event_fields():
-    """Verify the SubmitJobRunInput contains correct values from the event."""
+    """Verify the SubmitJobRunUseCaseInput contains correct values from the event."""
     use_case = MagicMock()
     handler = JobRunCreatedHandler(use_case)
 

@@ -1,4 +1,4 @@
-"""Define the FailJobRunOutput dataclass."""
+"""Define the FailJobRunUseCaseOutput dataclass."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
-class FailJobRunOutput:
+class FailJobRunUseCaseOutput:
     """Output after marking a job run as failed."""
 
     run_id: str

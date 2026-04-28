@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
-class ScheduleJobsResult:
+class ScheduleJobsUseCaseOutput:
     """Result returned after one scheduling tick."""
 
     triggered_count: int = 0

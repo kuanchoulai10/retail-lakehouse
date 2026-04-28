@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from application.port.inbound.catalog.list_namespaces.input import (
-    ListNamespacesInput,
+    ListNamespacesUseCaseInput,
 )
 from application.port.inbound.catalog.list_namespaces.output import (
-    ListNamespacesOutput,
+    ListNamespacesUseCaseOutput,
 )
 from application.port.inbound.catalog.list_namespaces.use_case import (
     ListNamespacesUseCase,
@@ -27,7 +27,9 @@ class ListNamespacesService(ListNamespacesUseCase):
         """Initialize with the catalog reader port."""
         self._reader = reader
 
-    def execute(self, request: ListNamespacesInput) -> ListNamespacesOutput:
+    def execute(
+        self, request: ListNamespacesUseCaseInput
+    ) -> ListNamespacesUseCaseOutput:
         """Return all namespace names."""
         namespaces = self._reader.list_namespaces()
-        return ListNamespacesOutput(namespaces=namespaces)
+        return ListNamespacesUseCaseOutput(namespaces=namespaces)

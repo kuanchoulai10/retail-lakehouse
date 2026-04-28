@@ -17,7 +17,9 @@ if TYPE_CHECKING:
     from kubernetes.client import CustomObjectsApi
 
     from adapter.outbound.job_run.k8s.k8s_executor_config import K8sExecutorConfig
-    from application.port.outbound.job_run.submit_job_run.input import SubmitJobRunInput
+    from application.port.outbound.job_run.submit_job_run.input import (
+        SubmitJobRunGatewayInput,
+    )
 
 
 class SubmitJobRunK8sGateway(SubmitJobRunGateway):
@@ -28,7 +30,7 @@ class SubmitJobRunK8sGateway(SubmitJobRunGateway):
         self._api = api
         self._config = config
 
-    def submit(self, submission: SubmitJobRunInput) -> None:
+    def submit(self, submission: SubmitJobRunGatewayInput) -> None:
         """Create a SparkApplication in Kubernetes."""
         manifest = build_manifest(submission, self._config)
         plural = PLURAL_SCHEDULED if submission.cron_expression else PLURAL_SPARK

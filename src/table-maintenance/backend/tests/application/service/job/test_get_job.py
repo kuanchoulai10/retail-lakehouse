@@ -13,7 +13,11 @@ from application.domain.model.job import (
 )
 from application.service.job.get_job import GetJobService
 from application.exceptions import JobNotFoundError as AppJobNotFoundError
-from application.port.inbound import GetJobInput, GetJobOutput, GetJobUseCase
+from application.port.inbound import (
+    GetJobUseCaseInput,
+    GetJobUseCaseOutput,
+    GetJobUseCase,
+)
 
 
 def _make_job(job_id: str = "abc1234567") -> Job:
@@ -34,14 +38,14 @@ def test_get_job_service_implements_use_case():
 
 
 def test_get_job_returns_result():
-    """Verify that execute returns a GetJobOutput with correct fields."""
+    """Verify that execute returns a GetJobUseCaseOutput with correct fields."""
     repo = MagicMock()
     repo.get.return_value = _make_job()
     service = GetJobService(repo)
 
-    result = service.execute(GetJobInput(job_id="abc1234567"))
+    result = service.execute(GetJobUseCaseInput(job_id="abc1234567"))
 
-    assert isinstance(result, GetJobOutput)
+    assert isinstance(result, GetJobUseCaseOutput)
     assert result.id == "abc1234567"
     assert result.job_type == "rewrite_data_files"
     assert result.status == "active"
@@ -55,5 +59,5 @@ def test_get_job_raises_app_not_found():
     service = GetJobService(repo)
 
     with pytest.raises(AppJobNotFoundError) as exc_info:
-        service.execute(GetJobInput(job_id="nonexistent"))
+        service.execute(GetJobUseCaseInput(job_id="nonexistent"))
     assert exc_info.value.job_id == "nonexistent"

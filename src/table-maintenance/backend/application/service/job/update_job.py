@@ -14,8 +14,8 @@ from application.domain.model.job import (
 )
 from application.exceptions import JobNotFoundError as AppJobNotFoundError
 from application.port.inbound import (
-    UpdateJobInput,
-    UpdateJobOutput,
+    UpdateJobUseCaseInput,
+    UpdateJobUseCaseOutput,
     UpdateJobUseCase,
 )
 
@@ -44,7 +44,7 @@ class UpdateJobService(UpdateJobUseCase):
         self._outbox_repo = outbox_repo
         self._serializer = serializer
 
-    def execute(self, request: UpdateJobInput) -> UpdateJobOutput:
+    def execute(self, request: UpdateJobUseCaseInput) -> UpdateJobUseCaseOutput:
         """Apply partial updates to the specified job."""
         try:
             job = self._repo.get(JobId(value=request.job_id))
@@ -75,7 +75,7 @@ class UpdateJobService(UpdateJobUseCase):
         )
         self._outbox_repo.save(entries)
 
-        return UpdateJobOutput(
+        return UpdateJobUseCaseOutput(
             id=job.id.value,
             job_type=job.job_type.value,
             status=job.status.value,

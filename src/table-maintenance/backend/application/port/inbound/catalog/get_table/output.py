@@ -1,4 +1,4 @@
-"""Define the GetTableOutput dataclass."""
+"""Define the GetTableUseCaseOutput dataclass."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class GetTableSchemaFieldOutput:
+class GetTableSchemaFieldUseCaseOutput:
     """A single field in the schema output."""
 
     field_id: int
@@ -16,19 +16,19 @@ class GetTableSchemaFieldOutput:
 
 
 @dataclass(frozen=True)
-class GetTableSchemaOutput:
+class GetTableSchemaUseCaseOutput:
     """Schema portion of the GetTable output."""
 
-    fields: list[GetTableSchemaFieldOutput]
+    fields: list[GetTableSchemaFieldUseCaseOutput]
 
 
 @dataclass(frozen=True)
-class GetTableOutput:
+class GetTableUseCaseOutput:
     """Output for the GetTable use case."""
 
     name: str
     namespace: str
     location: str
     current_snapshot_id: int | None
-    schema: GetTableSchemaOutput
+    schema: GetTableSchemaUseCaseOutput
     properties: dict[str, str]

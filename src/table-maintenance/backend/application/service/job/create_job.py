@@ -15,8 +15,8 @@ from application.domain.model.job import (
     TableReference,
 )
 from application.port.inbound import (
-    CreateJobInput,
-    CreateJobOutput,
+    CreateJobUseCaseInput,
+    CreateJobUseCaseOutput,
     CreateJobUseCase,
 )
 
@@ -46,7 +46,7 @@ class CreateJobService(CreateJobUseCase):
         self._outbox_repo = outbox_repo
         self._serializer = serializer
 
-    def execute(self, request: CreateJobInput) -> CreateJobOutput:
+    def execute(self, request: CreateJobUseCaseInput) -> CreateJobUseCaseOutput:
         """Create a new job from the given input and persist it."""
         job_config = getattr(request, _CONFIG_BY_TYPE[request.job_type], None) or {}
         table = job_config.get("table", "")
@@ -69,7 +69,7 @@ class CreateJobService(CreateJobUseCase):
             aggregate_id=job.id.value,
         )
         self._outbox_repo.save(entries)
-        return CreateJobOutput(
+        return CreateJobUseCaseOutput(
             id=job.id.value,
             job_type=job.job_type.value,
             status=job.status.value,

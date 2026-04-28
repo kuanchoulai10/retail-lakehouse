@@ -17,8 +17,8 @@ from application.domain.model.catalog.table_properties.table_properties import (
 from application.domain.model.catalog.table_schema import TableSchema
 from application.service.catalog.list_snapshots import ListSnapshotsService
 from application.port.inbound.catalog.list_snapshots import (
-    ListSnapshotsInput,
-    ListSnapshotsOutput,
+    ListSnapshotsUseCaseInput,
+    ListSnapshotsUseCaseOutput,
     ListSnapshotsUseCase,
 )
 
@@ -67,9 +67,11 @@ def test_returns_snapshots():
     reader.load_table.return_value = _make_table_with_snapshots()
     service = ListSnapshotsService(reader)
 
-    result = service.execute(ListSnapshotsInput(namespace="default", table="orders"))
+    result = service.execute(
+        ListSnapshotsUseCaseInput(namespace="default", table="orders")
+    )
 
-    assert isinstance(result, ListSnapshotsOutput)
+    assert isinstance(result, ListSnapshotsUseCaseOutput)
     assert len(result.snapshots) == 2
     assert result.snapshots[0].snapshot_id == 100
     assert result.snapshots[0].summary == {"operation": "append"}

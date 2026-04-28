@@ -8,8 +8,8 @@ from application.domain.model.job import JobId
 from application.domain.model.job_run import JobRun, JobRunId, JobRunStatus
 from application.domain.model.job_run.job_run_result import JobRunResult
 from application.port.inbound.job_run.complete_job_run import (
-    CompleteJobRunInput,
-    CompleteJobRunOutput,
+    CompleteJobRunUseCaseInput,
+    CompleteJobRunUseCaseOutput,
     CompleteJobRunUseCase,
 )
 from application.service.job_run.complete_job_run import CompleteJobRunService
@@ -38,14 +38,14 @@ class TestCompleteJobRunService:
         service = CompleteJobRunService(repo)
 
         result = service.execute(
-            CompleteJobRunInput(
+            CompleteJobRunUseCaseInput(
                 run_id="run-1",
                 duration_ms=1500,
                 metadata={"expired_snapshots": "42"},
             )
         )
 
-        assert isinstance(result, CompleteJobRunOutput)
+        assert isinstance(result, CompleteJobRunUseCaseOutput)
         assert result.run_id == "run-1"
         assert result.status == "completed"
         assert result.finished_at is not None
@@ -62,7 +62,7 @@ class TestCompleteJobRunService:
         service = CompleteJobRunService(repo)
 
         service.execute(
-            CompleteJobRunInput(run_id="run-1", duration_ms=None, metadata={})
+            CompleteJobRunUseCaseInput(run_id="run-1", duration_ms=None, metadata={})
         )
 
         saved = repo.get(JobRunId(value="run-1"))
@@ -75,7 +75,7 @@ class TestCompleteJobRunService:
         service = CompleteJobRunService(repo)
         with pytest.raises(Exception):
             service.execute(
-                CompleteJobRunInput(run_id="nope", duration_ms=None, metadata={})
+                CompleteJobRunUseCaseInput(run_id="nope", duration_ms=None, metadata={})
             )
 
     def test_raises_on_invalid_transition(self) -> None:
@@ -91,5 +91,7 @@ class TestCompleteJobRunService:
         service = CompleteJobRunService(repo)
         with pytest.raises(Exception):
             service.execute(
-                CompleteJobRunInput(run_id="run-1", duration_ms=None, metadata={})
+                CompleteJobRunUseCaseInput(
+                    run_id="run-1", duration_ms=None, metadata={}
+                )
             )

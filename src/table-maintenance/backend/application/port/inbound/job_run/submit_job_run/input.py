@@ -1,4 +1,4 @@
-"""Define the SubmitJobRunInput dataclass."""
+"""Define the SubmitJobRunUseCaseInput dataclass."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class SubmitJobRunInput:
+class SubmitJobRunUseCaseInput:
     """Input for submitting a job run to an external executor.
 
     Uses only primitive types so that callers need zero domain imports.

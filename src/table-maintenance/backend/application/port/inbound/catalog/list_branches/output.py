@@ -1,4 +1,4 @@
-"""Define the ListBranchesOutput dataclass."""
+"""Define the ListBranchesUseCaseOutput dataclass."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class ListBranchesOutputItem:
+class ListBranchesUseCaseOutputItem:
     """A single branch in the result."""
 
     name: str
@@ -17,7 +17,7 @@ class ListBranchesOutputItem:
 
 
 @dataclass(frozen=True)
-class ListBranchesOutput:
+class ListBranchesUseCaseOutput:
     """Output for the ListBranches use case."""
 
-    branches: list[ListBranchesOutputItem]
+    branches: list[ListBranchesUseCaseOutputItem]

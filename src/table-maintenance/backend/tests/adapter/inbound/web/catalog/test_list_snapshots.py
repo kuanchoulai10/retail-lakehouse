@@ -9,8 +9,8 @@ from fastapi.testclient import TestClient
 
 from adapter.inbound.web import router
 from application.port.inbound.catalog.list_snapshots.output import (
-    ListSnapshotsOutput,
-    ListSnapshotsOutputItem,
+    ListSnapshotsUseCaseOutput,
+    ListSnapshotsUseCaseOutputItem,
 )
 from bootstrap.dependencies.use_cases import get_list_snapshots_use_case
 
@@ -26,9 +26,9 @@ def _make_client(use_case: MagicMock) -> TestClient:
 def test_list_snapshots_returns_200():
     """Return 200 with a list of snapshots."""
     use_case = MagicMock()
-    use_case.execute.return_value = ListSnapshotsOutput(
+    use_case.execute.return_value = ListSnapshotsUseCaseOutput(
         snapshots=[
-            ListSnapshotsOutputItem(
+            ListSnapshotsUseCaseOutputItem(
                 snapshot_id=100,
                 parent_id=None,
                 timestamp_ms=1713600000000,
@@ -53,7 +53,7 @@ def test_list_snapshots_returns_200():
 def test_list_snapshots_empty():
     """Return 200 with empty list when table has no snapshots."""
     use_case = MagicMock()
-    use_case.execute.return_value = ListSnapshotsOutput(snapshots=[])
+    use_case.execute.return_value = ListSnapshotsUseCaseOutput(snapshots=[])
     client = _make_client(use_case)
 
     response = client.get(

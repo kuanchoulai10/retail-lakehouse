@@ -9,8 +9,8 @@ from fastapi.testclient import TestClient
 
 from adapter.inbound.web import router
 from application.port.inbound.catalog.list_branches.output import (
-    ListBranchesOutput,
-    ListBranchesOutputItem,
+    ListBranchesUseCaseOutput,
+    ListBranchesUseCaseOutputItem,
 )
 from bootstrap.dependencies.use_cases import get_list_branches_use_case
 
@@ -26,9 +26,9 @@ def _make_client(use_case: MagicMock) -> TestClient:
 def test_list_branches_returns_200():
     """Return 200 with a list of branch refs."""
     use_case = MagicMock()
-    use_case.execute.return_value = ListBranchesOutput(
+    use_case.execute.return_value = ListBranchesUseCaseOutput(
         branches=[
-            ListBranchesOutputItem(
+            ListBranchesUseCaseOutputItem(
                 name="main",
                 snapshot_id=100,
                 max_snapshot_age_ms=None,
@@ -53,7 +53,7 @@ def test_list_branches_returns_200():
 def test_list_branches_empty():
     """Return 200 with empty list when table has no branches."""
     use_case = MagicMock()
-    use_case.execute.return_value = ListBranchesOutput(branches=[])
+    use_case.execute.return_value = ListBranchesUseCaseOutput(branches=[])
     client = _make_client(use_case)
 
     response = client.get(

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from adapter.inbound.web.job.dto import JobApiResponse, UpdateJobApiRequest
 from application.exceptions import JobNotFoundError
-from application.port.inbound import UpdateJobInput, UpdateJobUseCase
+from application.port.inbound import UpdateJobUseCaseInput, UpdateJobUseCase
 
 router = APIRouter()
 
@@ -21,7 +21,7 @@ def update_job(
     """Apply partial updates to a job."""
     try:
         result = use_case.execute(
-            UpdateJobInput(
+            UpdateJobUseCaseInput(
                 job_id=name,
                 status=request.status,
                 catalog=request.catalog,

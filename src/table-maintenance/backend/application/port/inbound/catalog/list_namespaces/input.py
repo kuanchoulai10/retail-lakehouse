@@ -1,4 +1,4 @@
-"""Define the ListNamespacesInput dataclass."""
+"""Define the ListNamespacesUseCaseInput dataclass."""
 
 from __future__ import annotations
 
@@ -6,5 +6,5 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class ListNamespacesInput:
+class ListNamespacesUseCaseInput:
     """Input for the ListNamespaces use case."""

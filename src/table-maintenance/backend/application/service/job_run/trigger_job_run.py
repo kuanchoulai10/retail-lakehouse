@@ -13,10 +13,10 @@ from application.domain.model.job import (
 from application.exceptions import JobDisabledError
 from application.exceptions import JobNotFoundError as AppJobNotFoundError
 from application.port.inbound import (
-    TriggerJobRunInput,
+    TriggerJobRunUseCaseInput,
     TriggerJobRunUseCase,
 )
-from application.port.inbound.job_run.trigger_job_run import TriggerJobRunOutput
+from application.port.inbound.job_run.trigger_job_run import TriggerJobRunUseCaseOutput
 
 if TYPE_CHECKING:
     from application.service.outbox.event_serializer import EventSerializer
@@ -43,7 +43,7 @@ class TriggerJobRunService(TriggerJobRunUseCase):
         self._outbox_repo = outbox_repo
         self._serializer = serializer
 
-    def execute(self, request: TriggerJobRunInput) -> TriggerJobRunOutput:
+    def execute(self, request: TriggerJobRunUseCaseInput) -> TriggerJobRunUseCaseOutput:
         """Trigger a new execution of the specified job."""
         try:
             job = self._repo.get(JobId(value=request.job_id))
@@ -66,4 +66,4 @@ class TriggerJobRunService(TriggerJobRunUseCase):
         )
         self._outbox_repo.save(entries)
 
-        return TriggerJobRunOutput(job_id=job.id.value)
+        return TriggerJobRunUseCaseOutput(job_id=job.id.value)

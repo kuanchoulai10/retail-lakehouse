@@ -1,4 +1,4 @@
-"""Define the GetTableInput dataclass."""
+"""Define the GetTableUseCaseInput dataclass."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class GetTableInput:
+class GetTableUseCaseInput:
     """Input for the GetTable use case."""
 
     namespace: str

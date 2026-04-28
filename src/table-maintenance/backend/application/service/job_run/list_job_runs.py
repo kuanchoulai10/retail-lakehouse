@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING
 
 from application.domain.model.job import JobId
 from application.port.inbound import (
-    ListJobRunsInput,
-    ListJobRunsOutput,
-    ListJobRunsOutputItem,
+    ListJobRunsUseCaseInput,
+    ListJobRunsUseCaseOutput,
+    ListJobRunsUseCaseOutputItem,
     ListJobRunsUseCase,
 )
 
@@ -23,12 +23,12 @@ class ListJobRunsService(ListJobRunsUseCase):
         """Initialize with the job runs repository."""
         self._repo = repo
 
-    def execute(self, request: ListJobRunsInput) -> ListJobRunsOutput:
+    def execute(self, request: ListJobRunsUseCaseInput) -> ListJobRunsUseCaseOutput:
         """Return all job runs for the specified job."""
         runs = self._repo.list_for_job(JobId(value=request.job_id))
-        return ListJobRunsOutput(
+        return ListJobRunsUseCaseOutput(
             runs=[
-                ListJobRunsOutputItem(
+                ListJobRunsUseCaseOutputItem(
                     run_id=r.id.value,
                     job_id=r.job_id.value,
                     status=r.status.value,

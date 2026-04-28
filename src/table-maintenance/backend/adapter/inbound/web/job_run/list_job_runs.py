@@ -6,7 +6,7 @@ from bootstrap.dependencies.use_cases import get_list_job_runs_use_case
 from fastapi import APIRouter, Depends
 
 from adapter.inbound.web.job_run.dto import JobRunApiResponse
-from application.port.inbound import ListJobRunsInput, ListJobRunsUseCase
+from application.port.inbound import ListJobRunsUseCaseInput, ListJobRunsUseCase
 
 router = APIRouter()
 
@@ -17,7 +17,7 @@ def list_job_runs(
     use_case: ListJobRunsUseCase = Depends(get_list_job_runs_use_case),
 ):
     """Return all runs for the specified job."""
-    result = use_case.execute(ListJobRunsInput(job_id=name))
+    result = use_case.execute(ListJobRunsUseCaseInput(job_id=name))
     return [
         JobRunApiResponse(
             run_id=r.run_id,

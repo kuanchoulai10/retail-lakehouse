@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.port.inbound.catalog.list_tags.input import ListTagsInput
+from application.port.inbound.catalog.list_tags.input import ListTagsUseCaseInput
 from application.port.inbound.catalog.list_tags.output import (
-    ListTagsOutput,
-    ListTagsOutputItem,
+    ListTagsUseCaseOutput,
+    ListTagsUseCaseOutputItem,
 )
 from application.port.inbound.catalog.list_tags.use_case import ListTagsUseCase
 
@@ -24,12 +24,12 @@ class ListTagsService(ListTagsUseCase):
         """Initialize with the catalog reader port."""
         self._reader = reader
 
-    def execute(self, request: ListTagsInput) -> ListTagsOutput:
+    def execute(self, request: ListTagsUseCaseInput) -> ListTagsUseCaseOutput:
         """Load table and return tags as output DTOs."""
         table = self._reader.load_table(request.namespace, request.table)
-        return ListTagsOutput(
+        return ListTagsUseCaseOutput(
             tags=[
-                ListTagsOutputItem(
+                ListTagsUseCaseOutputItem(
                     name=t.name,
                     snapshot_id=t.snapshot_id,
                     max_ref_age_ms=t.max_ref_age_ms,

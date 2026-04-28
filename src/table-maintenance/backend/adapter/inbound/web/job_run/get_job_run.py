@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from adapter.inbound.web.job_run.dto import JobRunApiResponse
 from application.exceptions import JobRunNotFoundError
-from application.port.inbound import GetJobRunInput, GetJobRunUseCase
+from application.port.inbound import GetJobRunUseCaseInput, GetJobRunUseCase
 
 router = APIRouter()
 
@@ -19,7 +19,7 @@ def get_job_run(
 ):
     """Retrieve a job run by its identifier."""
     try:
-        result = use_case.execute(GetJobRunInput(run_id=run_id))
+        result = use_case.execute(GetJobRunUseCaseInput(run_id=run_id))
     except JobRunNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     return JobRunApiResponse(
