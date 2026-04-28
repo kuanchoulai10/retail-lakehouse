@@ -7,7 +7,9 @@ from typing import TYPE_CHECKING
 from application.port.outbound.job_run.submit_job_run.gateway import SubmitJobRunGateway
 
 if TYPE_CHECKING:
-    from application.port.outbound.job_run.submit_job_run.input import SubmitJobRunInput
+    from application.port.outbound.job_run.submit_job_run.input import (
+        SubmitJobRunGatewayInput,
+    )
 
 
 class SubmitJobRunInMemoryGateway(SubmitJobRunGateway):
@@ -15,8 +17,8 @@ class SubmitJobRunInMemoryGateway(SubmitJobRunGateway):
 
     def __init__(self) -> None:
         """Initialize an empty list of submissions."""
-        self.submitted: list[SubmitJobRunInput] = []
+        self.submitted: list[SubmitJobRunGatewayInput] = []
 
-    def submit(self, submission: SubmitJobRunInput) -> None:
+    def submit(self, submission: SubmitJobRunGatewayInput) -> None:
         """Record the submission in memory."""
         self.submitted.append(submission)

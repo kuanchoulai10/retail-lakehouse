@@ -5,7 +5,7 @@ from application.port.outbound.job import JobsRepo
 from application.port.outbound.job_run import (
     SubmitJobRunGateway,
     JobRunsRepo,
-    SubmitJobRunInput,
+    SubmitJobRunGatewayInput,
 )
 
 __all__ = [
@@ -13,5 +13,5 @@ __all__ = [
     "JobRunsRepo",
     "JobsRepo",
     "SubmitJobRunGateway",
-    "SubmitJobRunInput",
+    "SubmitJobRunGatewayInput",
 ]

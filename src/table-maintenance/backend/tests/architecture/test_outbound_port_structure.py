@@ -12,9 +12,9 @@ Gateway subdirectory must contain:
   Optional: input.py, output.py
 
 Naming convention for Gateway subdirectory {verb}_{noun}/:
-  {Verb}{Noun}Gateway  in gateway.py
-  {Verb}{Noun}Input    in input.py   (if present, primitive-only imports)
-  {Verb}{Noun}Output   in output.py  (if present, primitive-only imports)
+  {Verb}{Noun}Gateway        in gateway.py
+  {Verb}{Noun}GatewayInput   in input.py   (if present, primitive-only imports)
+  {Verb}{Noun}GatewayOutput  in output.py  (if present, primitive-only imports)
 
 __init__.py must re-export all symbols via __all__.
 """
@@ -174,13 +174,13 @@ def test_gateway_extends_base(gw_entry: tuple[str, Path]):
 
 @pytest.mark.parametrize("gw_entry", _gateway_dirs(), ids=_gateway_id)
 def test_input_class_naming(gw_entry: tuple[str, Path]):
-    """Verify that input.py exports {Verb}{Noun}Input (if present)."""
+    """Verify that input.py exports {Verb}{Noun}GatewayInput (if present)."""
     group, gw_dir = gw_entry
     input_file = gw_dir / "input.py"
     if not input_file.exists():
         pytest.skip("No input.py")
     prefix = _pascal_case(gw_dir.name)
-    expected = f"{prefix}Input"
+    expected = f"{prefix}GatewayInput"
     module = f"application.port.outbound.{group}.{gw_dir.name}.input"
     classes = _exported_classes(module)
     assert expected in classes, (
@@ -193,13 +193,13 @@ def test_input_class_naming(gw_entry: tuple[str, Path]):
 
 @pytest.mark.parametrize("gw_entry", _gateway_dirs(), ids=_gateway_id)
 def test_output_class_naming(gw_entry: tuple[str, Path]):
-    """Verify that output.py exports {Verb}{Noun}Output (if present)."""
+    """Verify that output.py exports {Verb}{Noun}GatewayOutput (if present)."""
     group, gw_dir = gw_entry
     output_file = gw_dir / "output.py"
     if not output_file.exists():
         pytest.skip("No output.py")
     prefix = _pascal_case(gw_dir.name)
-    expected = f"{prefix}Output"
+    expected = f"{prefix}GatewayOutput"
     module = f"application.port.outbound.{group}.{gw_dir.name}.output"
     classes = _exported_classes(module)
     assert expected in classes, (
@@ -266,13 +266,13 @@ def test_init_reexports_all_symbols(gw_entry: tuple[str, Path]):
     assert f"{prefix}Gateway" in exported, (
         f"{gw_dir.name}/__init__.py must re-export '{prefix}Gateway' in __all__"
     )
-    # Input is required if input.py exists
+    # GatewayInput is required if input.py exists
     if (gw_dir / "input.py").exists():
-        assert f"{prefix}Input" in exported, (
-            f"{gw_dir.name}/__init__.py must re-export '{prefix}Input' in __all__"
+        assert f"{prefix}GatewayInput" in exported, (
+            f"{gw_dir.name}/__init__.py must re-export '{prefix}GatewayInput' in __all__"
         )
-    # Output is required if output.py exists
+    # GatewayOutput is required if output.py exists
     if (gw_dir / "output.py").exists():
-        assert f"{prefix}Output" in exported, (
-            f"{gw_dir.name}/__init__.py must re-export '{prefix}Output' in __all__"
+        assert f"{prefix}GatewayOutput" in exported, (
+            f"{gw_dir.name}/__init__.py must re-export '{prefix}GatewayOutput' in __all__"
         )

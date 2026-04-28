@@ -1,13 +1,15 @@
-"""Tests for SubmitJobRunInput value object."""
+"""Tests for SubmitJobRunGatewayInput value object."""
 
 import pytest
 
-from application.port.outbound.job_run.submit_job_run.input import SubmitJobRunInput
+from application.port.outbound.job_run.submit_job_run.input import (
+    SubmitJobRunGatewayInput,
+)
 
 
 def test_stores_fields():
     """Verify all fields are stored correctly."""
-    sub = SubmitJobRunInput(
+    sub = SubmitJobRunGatewayInput(
         run_id="r1",
         job_id="j1",
         job_type="expire_snapshots",
@@ -33,7 +35,7 @@ def test_stores_fields():
 
 def test_cron_expression_none():
     """Verify cron_expression can be None."""
-    sub = SubmitJobRunInput(
+    sub = SubmitJobRunGatewayInput(
         run_id="r1",
         job_id="j1",
         job_type="expire_snapshots",
@@ -49,8 +51,8 @@ def test_cron_expression_none():
 
 
 def test_is_frozen():
-    """Verify SubmitJobRunInput is immutable."""
-    sub = SubmitJobRunInput(
+    """Verify SubmitJobRunGatewayInput is immutable."""
+    sub = SubmitJobRunGatewayInput(
         run_id="r1",
         job_id="j1",
         job_type="expire_snapshots",

@@ -14,7 +14,7 @@ from application.port.inbound.job_run.submit_job_run import (
     SubmitJobRunUseCase,
 )
 from application.port.outbound.job_run.submit_job_run.input import (
-    SubmitJobRunInput as SubmitJobRunGatewayInput,
+    SubmitJobRunGatewayInput,
 )
 from application.service.job_run.submit_job_run import SubmitJobRunService
 from adapter.outbound.job_run.job_runs_in_memory_repo import JobRunsInMemoryRepo

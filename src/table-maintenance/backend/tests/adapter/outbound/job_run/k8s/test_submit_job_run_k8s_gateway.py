@@ -7,7 +7,9 @@ from adapter.outbound.job_run.k8s.submit_job_run_k8s_gateway import (
 )
 from adapter.outbound.job_run.k8s.k8s_executor_config import K8sExecutorConfig
 from application.port.outbound.job_run.submit_job_run.gateway import SubmitJobRunGateway
-from application.port.outbound.job_run.submit_job_run.input import SubmitJobRunInput
+from application.port.outbound.job_run.submit_job_run.input import (
+    SubmitJobRunGatewayInput,
+)
 
 
 def _config() -> K8sExecutorConfig:
@@ -22,7 +24,7 @@ def _config() -> K8sExecutorConfig:
     )
 
 
-def _submission(**overrides) -> SubmitJobRunInput:
+def _submission(**overrides) -> SubmitJobRunGatewayInput:
     defaults = {
         "run_id": "j1-abc123",
         "job_id": "j1",
@@ -36,7 +38,7 @@ def _submission(**overrides) -> SubmitJobRunInput:
         "cron_expression": None,
     }
     defaults.update(overrides)
-    return SubmitJobRunInput(**defaults)  # type: ignore[arg-type]
+    return SubmitJobRunGatewayInput(**defaults)  # type: ignore[arg-type]
 
 
 def test_is_subclass_of_gateway():

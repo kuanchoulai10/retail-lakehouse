@@ -11,7 +11,7 @@ from application.port.inbound.job_run.submit_job_run import (
     SubmitJobRunUseCase,
 )
 from application.port.outbound.job_run.submit_job_run.input import (
-    SubmitJobRunInput as SubmitJobRunGatewayInput,
+    SubmitJobRunGatewayInput,
 )
 
 if TYPE_CHECKING:

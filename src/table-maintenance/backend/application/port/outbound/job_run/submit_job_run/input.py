@@ -1,4 +1,4 @@
-"""Define the SubmitJobRunInput value object."""
+"""Define the SubmitJobRunGatewayInput value object."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from base.value_object import ValueObject
 
 
 @dataclass(frozen=True)
-class SubmitJobRunInput(ValueObject):
+class SubmitJobRunGatewayInput(ValueObject):
     """Encapsulates all information needed to submit a job to an external executor.
 
     Uses only primitive types so that adapter implementations need zero
