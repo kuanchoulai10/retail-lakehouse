@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from application.domain.model.job.resource_config import ResourceConfig
     from application.domain.model.job.table_reference import TableReference
     from application.domain.model.job_run.job_run_id import JobRunId
+    from application.domain.model.job_run.job_run_result import JobRunResult
     from application.domain.model.job_run.trigger_type import TriggerType
 
 
@@ -53,6 +54,7 @@ class JobRunCompleted(DomainEvent):
     run_id: JobRunId
     job_id: JobId
     finished_at: datetime
+    result: JobRunResult
 
 
 @dataclass(frozen=True)
@@ -62,6 +64,8 @@ class JobRunFailed(DomainEvent):
     run_id: JobRunId
     job_id: JobId
     finished_at: datetime
+    error: str
+    result: JobRunResult | None
 
 
 @dataclass(frozen=True)

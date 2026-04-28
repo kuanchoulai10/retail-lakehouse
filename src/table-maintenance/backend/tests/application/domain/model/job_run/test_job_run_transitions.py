@@ -17,6 +17,9 @@ from application.domain.model.job_run.events import (
     JobRunFailed,
     JobRunStarted,
 )
+from application.domain.model.job_run.job_run_result import JobRunResult
+
+_DUMMY_RESULT = JobRunResult(duration_ms=None, metadata={})
 
 
 def _make_run(status: JobRunStatus = JobRunStatus.PENDING) -> JobRun:
@@ -69,7 +72,7 @@ class TestMarkCompleted:
         """Verify RUNNING run transitions to COMPLETED with finished_at set."""
         run = _make_run(JobRunStatus.RUNNING)
         now = datetime(2026, 4, 25, 13, 0, tzinfo=UTC)
-        run.mark_completed(now)
+        run.mark_completed(now, result=_DUMMY_RESULT)
         assert run.status == JobRunStatus.COMPLETED
         assert run.finished_at == now
 
@@ -77,13 +80,13 @@ class TestMarkCompleted:
         """Verify PENDING run cannot skip to COMPLETED."""
         run = _make_run(JobRunStatus.PENDING)
         with pytest.raises(InvalidStateTransitionError):
-            run.mark_completed(datetime.now(UTC))
+            run.mark_completed(datetime.now(UTC), result=_DUMMY_RESULT)
 
     def test_mark_completed_registers_event(self):
         """Verify mark_completed registers a JobRunCompleted event."""
         run = _make_run(JobRunStatus.RUNNING)
         now = datetime(2026, 4, 25, 13, 0, tzinfo=UTC)
-        run.mark_completed(now)
+        run.mark_completed(now, result=_DUMMY_RESULT)
         events = run.collect_events()
         assert len(events) == 1
         assert isinstance(events[0], JobRunCompleted)
@@ -97,7 +100,7 @@ class TestMarkFailed:
         """Verify PENDING run can transition to FAILED."""
         run = _make_run(JobRunStatus.PENDING)
         now = datetime(2026, 4, 25, 14, 0, tzinfo=UTC)
-        run.mark_failed(now)
+        run.mark_failed(now, error="test error")
         assert run.status == JobRunStatus.FAILED
         assert run.finished_at == now
 
@@ -105,7 +108,7 @@ class TestMarkFailed:
         """Verify RUNNING run can transition to FAILED."""
         run = _make_run(JobRunStatus.RUNNING)
         now = datetime(2026, 4, 25, 14, 0, tzinfo=UTC)
-        run.mark_failed(now)
+        run.mark_failed(now, error="test error")
         assert run.status == JobRunStatus.FAILED
         assert run.finished_at == now
 
@@ -113,13 +116,13 @@ class TestMarkFailed:
         """Verify COMPLETED run cannot transition to FAILED."""
         run = _make_run(JobRunStatus.COMPLETED)
         with pytest.raises(InvalidStateTransitionError):
-            run.mark_failed(datetime.now(UTC))
+            run.mark_failed(datetime.now(UTC), error="test error")
 
     def test_mark_failed_registers_event(self):
         """Verify mark_failed registers a JobRunFailed event."""
         run = _make_run(JobRunStatus.RUNNING)
         now = datetime(2026, 4, 25, 14, 0, tzinfo=UTC)
-        run.mark_failed(now)
+        run.mark_failed(now, error="test error")
         events = run.collect_events()
         assert len(events) == 1
         assert isinstance(events[0], JobRunFailed)

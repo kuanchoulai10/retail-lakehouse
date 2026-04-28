@@ -10,7 +10,12 @@ from application.domain.model.job_run import (
     JobRunStatus,
     TriggerType,
 )
-from application.domain.model.job_run.events import JobRunCreated
+from application.domain.model.job_run.events import (
+    JobRunCompleted,
+    JobRunCreated,
+    JobRunFailed,
+)
+from application.domain.model.job_run.job_run_result import JobRunResult
 
 
 def test_is_aggregate_root():
@@ -94,3 +99,72 @@ def test_create_factory_returns_run_with_event():
     assert events[0].trigger_type == TriggerType.MANUAL
     assert events[0].job_type == JobType.EXPIRE_SNAPSHOTS
     assert events[0].resource_config == rc
+
+
+def _running_job_run() -> JobRun:
+    """Create a RUNNING JobRun for testing transitions."""
+    return JobRun(
+        id=JobRunId(value="run-1"),
+        job_id=JobId(value="job-1"),
+        status=JobRunStatus.RUNNING,
+        started_at=datetime(2026, 4, 28, 12, 0, tzinfo=UTC),
+    )
+
+
+def test_mark_completed_with_result():
+    """Verify mark_completed stores result and emits event with result."""
+    run = _running_job_run()
+    result = JobRunResult(duration_ms=1500, metadata={"expired_snapshots": "42"})
+    finished = datetime(2026, 4, 28, 12, 5, tzinfo=UTC)
+
+    run.mark_completed(finished_at=finished, result=result)
+
+    assert run.status == JobRunStatus.COMPLETED
+    assert run.finished_at == finished
+    assert run.result == result
+    events = run.collect_events()
+    assert len(events) == 1
+    assert isinstance(events[0], JobRunCompleted)
+    assert events[0].result == result
+
+
+def test_mark_failed_with_error_and_result():
+    """Verify mark_failed stores error, result, and emits event."""
+    run = _running_job_run()
+    result = JobRunResult(duration_ms=500, metadata={})
+    finished = datetime(2026, 4, 28, 12, 5, tzinfo=UTC)
+
+    run.mark_failed(finished_at=finished, error="Spark OOM", result=result)
+
+    assert run.status == JobRunStatus.FAILED
+    assert run.finished_at == finished
+    assert run.result == result
+    assert run.error == "Spark OOM"
+    events = run.collect_events()
+    assert len(events) == 1
+    assert isinstance(events[0], JobRunFailed)
+    assert events[0].error == "Spark OOM"
+    assert events[0].result == result
+
+
+def test_mark_failed_without_result():
+    """Verify mark_failed works with result=None."""
+    run = _running_job_run()
+    finished = datetime(2026, 4, 28, 12, 5, tzinfo=UTC)
+
+    run.mark_failed(finished_at=finished, error="Connection refused")
+
+    assert run.status == JobRunStatus.FAILED
+    assert run.error == "Connection refused"
+    assert run.result is None
+
+
+def test_result_defaults_to_none():
+    """Verify result and error default to None on new JobRun."""
+    run = JobRun(
+        id=JobRunId(value="run-1"),
+        job_id=JobId(value="job-1"),
+        status=JobRunStatus.PENDING,
+    )
+    assert run.result is None
+    assert run.error is None

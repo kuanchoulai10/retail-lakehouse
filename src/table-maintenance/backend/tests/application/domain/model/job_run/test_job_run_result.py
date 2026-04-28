@@ -40,4 +40,4 @@ def test_immutable():
 
     result = JobRunResult(duration_ms=100, metadata={})
     with pytest.raises(AttributeError):
-        object.__setattr__(result, "duration_ms", 200)
+        result.duration_ms = 200  # type: ignore[misc]  # ty: ignore[invalid-assignment]

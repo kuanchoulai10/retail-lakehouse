@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from application.domain.model.job.job_type import JobType
     from application.domain.model.job.resource_config import ResourceConfig
     from application.domain.model.job.table_reference import TableReference
+    from application.domain.model.job_run.job_run_result import JobRunResult
 
 
 @dataclass(eq=False)
@@ -39,6 +40,8 @@ class JobRun(AggregateRoot[JobRunId]):
     trigger_type: TriggerType = TriggerType.MANUAL
     started_at: datetime | None = None
     finished_at: datetime | None = None
+    result: JobRunResult | None = None
+    error: str | None = None
 
     @classmethod
     def create(
@@ -89,20 +92,39 @@ class JobRun(AggregateRoot[JobRunId]):
             JobRunStarted(run_id=self.id, job_id=self.job_id, started_at=started_at)
         )
 
-    def mark_completed(self, finished_at: datetime) -> None:
+    def mark_completed(self, finished_at: datetime, result: JobRunResult) -> None:
         """Transition from RUNNING to COMPLETED."""
         self._transition_to(JobRunStatus.COMPLETED)
         self.finished_at = finished_at
+        self.result = result
         self.register_event(
-            JobRunCompleted(run_id=self.id, job_id=self.job_id, finished_at=finished_at)
+            JobRunCompleted(
+                run_id=self.id,
+                job_id=self.job_id,
+                finished_at=finished_at,
+                result=result,
+            )
         )
 
-    def mark_failed(self, finished_at: datetime) -> None:
+    def mark_failed(
+        self,
+        finished_at: datetime,
+        error: str,
+        result: JobRunResult | None = None,
+    ) -> None:
         """Transition from PENDING or RUNNING to FAILED."""
         self._transition_to(JobRunStatus.FAILED)
         self.finished_at = finished_at
+        self.error = error
+        self.result = result
         self.register_event(
-            JobRunFailed(run_id=self.id, job_id=self.job_id, finished_at=finished_at)
+            JobRunFailed(
+                run_id=self.id,
+                job_id=self.job_id,
+                finished_at=finished_at,
+                error=error,
+                result=result,
+            )
         )
 
     def cancel(self) -> None:
