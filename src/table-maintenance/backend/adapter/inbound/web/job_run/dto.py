@@ -21,14 +21,14 @@ class JobRunApiResponse(BaseModel):
     result_metadata: dict[str, str] | None = None
 
 
-class CompleteJobRunRequest(BaseModel):
+class CompleteJobRunApiRequest(BaseModel):
     """Request body for completing a job run."""
 
     duration_ms: int | None = None
     metadata: dict[str, str] | None = None
 
 
-class FailJobRunRequest(BaseModel):
+class FailJobRunApiRequest(BaseModel):
     """Request body for failing a job run."""
 
     error: str
@@ -36,7 +36,7 @@ class FailJobRunRequest(BaseModel):
     metadata: dict[str, str] | None = None
 
 
-class JobRunCallbackResponse(BaseModel):
+class JobRunCallbackApiResponse(BaseModel):
     """Response body after a callback state transition."""
 
     run_id: str
