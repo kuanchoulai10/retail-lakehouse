@@ -59,7 +59,7 @@ def build_publisher() -> PublisherLoop:
         iceberg_aws_jar=settings.k8s.iceberg_aws_jar,
     )
     executor = SubmitJobRunK8sGateway(k8s_api, k8s_config)
-    submit_service = SubmitJobRunService(executor)
+    submit_service = SubmitJobRunService(executor, job_runs_repo)
     dispatcher.register(JobRunCreated, JobRunCreatedHandler(submit_service))
 
     service = PublishEventsService(outbox_repo, serializer, dispatcher)

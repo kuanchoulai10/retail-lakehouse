@@ -73,7 +73,7 @@ def build_event_chain() -> EventChain:
     )
     dispatcher.register(
         JobRunCreated,
-        JobRunCreatedHandler(SubmitJobRunService(executor)),
+        JobRunCreatedHandler(SubmitJobRunService(executor, job_runs_repo)),
     )
 
     publish_service = PublishEventsService(outbox_repo, serializer, dispatcher)
@@ -153,6 +153,18 @@ def test_job_triggered_flows_to_pending_job_run():
 def test_job_run_created_flows_to_executor_submit():
     """Verify: JobRunCreated outbox entry → handler → executor.submit() with correct fields."""
     chain = build_event_chain()
+
+    # Pre-create the PENDING JobRun so SubmitJobRunService can mark it RUNNING
+    from application.domain.model.job_run import JobRun, JobRunId
+    from application.domain.model.job_run.trigger_type import TriggerType
+
+    run = JobRun(
+        id=JobRunId(value="job-1-abc123"),
+        job_id=JobId(value="job-1"),
+        status=JobRunStatus.PENDING,
+        trigger_type=TriggerType.SCHEDULED,
+    )
+    chain.job_runs_repo.create(run)
 
     # Seed a JobRunCreated entry in the outbox
     entries = _make_job_run_created_entry(chain.serializer)

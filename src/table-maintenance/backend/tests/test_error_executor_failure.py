@@ -59,7 +59,7 @@ def _build_chain_with_failing_executor():
     )
     dispatcher.register(
         JobRunCreated,
-        JobRunCreatedHandler(SubmitJobRunService(FailingGateway())),
+        JobRunCreatedHandler(SubmitJobRunService(FailingGateway(), job_runs_repo)),
     )
 
     publish_service = PublishEventsService(outbox_repo, serializer, dispatcher)

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from application.domain.model.job_run import JobRunId
 from application.port.inbound.job_run.submit_job_run import (
     SubmitJobRunInput,
     SubmitJobRunUseCase,
@@ -13,6 +15,7 @@ from application.port.outbound.job_run.submit_job_run.input import (
 )
 
 if TYPE_CHECKING:
+    from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
     from application.port.outbound.job_run.submit_job_run.gateway import (
         SubmitJobRunGateway,
     )
@@ -21,12 +24,13 @@ if TYPE_CHECKING:
 class SubmitJobRunService(SubmitJobRunUseCase):
     """Map a SubmitJobRunInput to a SubmitJobRunGatewayInput and delegate to the executor."""
 
-    def __init__(self, executor: SubmitJobRunGateway) -> None:
-        """Initialize with the job run executor."""
+    def __init__(self, executor: SubmitJobRunGateway, repo: JobRunsRepo) -> None:
+        """Initialize with the job run executor and repository."""
         self._executor = executor
+        self._repo = repo
 
     def execute(self, request: SubmitJobRunInput) -> None:
-        """Build a SubmitJobRunGatewayInput from the input and submit it."""
+        """Build a SubmitJobRunGatewayInput from the input, submit it, and mark as RUNNING."""
         submission = SubmitJobRunGatewayInput(
             run_id=request.run_id,
             job_id=request.job_id,
@@ -40,3 +44,6 @@ class SubmitJobRunService(SubmitJobRunUseCase):
             cron_expression=request.cron_expression,
         )
         self._executor.submit(submission)
+        run = self._repo.get(JobRunId(value=request.run_id))
+        run.mark_running(started_at=datetime.now(UTC))
+        self._repo.save(run)

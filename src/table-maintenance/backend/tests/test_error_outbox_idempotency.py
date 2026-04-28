@@ -49,7 +49,7 @@ def _build_chain():
     )
     dispatcher.register(
         JobRunCreated,
-        JobRunCreatedHandler(SubmitJobRunService(executor)),
+        JobRunCreatedHandler(SubmitJobRunService(executor, job_runs_repo)),
     )
 
     publish_service = PublishEventsService(outbox_repo, serializer, dispatcher)
