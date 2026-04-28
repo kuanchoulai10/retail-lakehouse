@@ -39,6 +39,8 @@ KNOWN_VERBS = {
     "Update",
     "Delete",
     # Lifecycle
+    "Complete",
+    "Fail",
     "Start",
     "Stop",
     "Cancel",

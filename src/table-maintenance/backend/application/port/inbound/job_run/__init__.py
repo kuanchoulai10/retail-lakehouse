@@ -1,5 +1,15 @@
 """JobRun use case interfaces and DTOs."""
 
+from application.port.inbound.job_run.complete_job_run import (
+    CompleteJobRunInput,
+    CompleteJobRunOutput,
+    CompleteJobRunUseCase,
+)
+from application.port.inbound.job_run.fail_job_run import (
+    FailJobRunInput,
+    FailJobRunOutput,
+    FailJobRunUseCase,
+)
 from application.port.inbound.job_run.get_job_run import (
     GetJobRunInput,
     GetJobRunOutput,
@@ -22,6 +32,12 @@ from application.port.inbound.job_run.trigger_job_run import (
 )
 
 __all__ = [
+    "CompleteJobRunInput",
+    "CompleteJobRunOutput",
+    "CompleteJobRunUseCase",
+    "FailJobRunInput",
+    "FailJobRunOutput",
+    "FailJobRunUseCase",
     "GetJobRunInput",
     "GetJobRunOutput",
     "GetJobRunUseCase",
