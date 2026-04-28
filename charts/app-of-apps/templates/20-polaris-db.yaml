@@ -1,0 +1,25 @@
+{{- if and (ge 20 (int .Values.deploy.waveFrom)) (le 20 (int .Values.deploy.waveTo)) }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: polaris-db
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+spec:
+  project: {{ .Values.project.name }}
+  sources:
+    - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
+      path: 20-polaris-db
+      targetRevision: main
+  destination:
+    name: {{ .Values.spec.destination.name }}
+    namespace: polaris
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    automated:
+      prune: true
+      selfHeal: true
+{{- end }}
