@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: polaris-db
+  namespace: polaris
+  labels:
+    app: polaris-db
+spec:
+  selector:
+    app: polaris-db
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres

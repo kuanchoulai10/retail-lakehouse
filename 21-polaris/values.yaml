@@ -10,7 +10,15 @@ polaris:
   # Persistence
   # ---------------------------------------------------------------------------
   persistence:
-    type: in-memory
+    type: relational-jdbc
+    relationalJdbc:
+      # The Secret 'polaris-db' is created by 20-polaris-db/ in the same namespace.
+      # It exposes 'username', 'password', and 'jdbcUrl' keys.
+      secret:
+        name: polaris-db
+        username: username
+        password: password
+        jdbcUrl: jdbcUrl
 
   # ---------------------------------------------------------------------------
   # Storage credentials (MinIO)
