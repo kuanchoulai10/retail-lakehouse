@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-KUBE_CONTEXT="${KUBE_CONTEXT:-retail-lakehouse}"
+: "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 SPARK_OPERATOR_VERSION="${SPARK_OPERATOR_VERSION:-2.3.0}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

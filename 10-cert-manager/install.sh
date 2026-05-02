@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-KUBE_CONTEXT="${KUBE_CONTEXT:-retail-lakehouse}"
+: "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.19.1}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

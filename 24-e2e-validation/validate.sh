@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-KUBE_CONTEXT="${KUBE_CONTEXT:-lakehouse-demo}"
+: "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
 MINIO_POLL_TIMEOUT="${MINIO_POLL_TIMEOUT:-360}"  # seconds to wait for data in MinIO (Iceberg commits every ~5 min)
 

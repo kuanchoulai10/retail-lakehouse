@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-KUBE_CONTEXT="${KUBE_CONTEXT:-retail-lakehouse}"
+: "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 POLARIS_VERSION="${POLARIS_VERSION:-1.3.0-incubating}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

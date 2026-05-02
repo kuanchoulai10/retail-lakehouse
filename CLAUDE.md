@@ -8,7 +8,7 @@ Respond in the same language as the user's message. The user typically communica
 
 - Never use `cd` to change directory. Always use absolute paths or tool flags like `--directory`, `--project`.
 - Use `uv run` instead of bare `python`, `python3`, `pytest`, or `pip`. Example: `uv run --project src/table-maintenance/backend --directory src/table-maintenance/backend pytest -v`
-- The local minikube/dev cluster context is `retail-lakehouse`. Infra scripts (`*/install.sh`, `*/validate.sh`, `*/uninstall.sh`) and `taskfile.yml` default `KUBE_CONTEXT=retail-lakehouse`, so no override is needed locally — only set `KUBE_CONTEXT=<name>` when targeting a different cluster.
+- The local minikube/dev cluster context is `retail-lakehouse`. Infra scripts (`*/install.sh`, `*/validate.sh`, `*/uninstall.sh`, `*/patch.sh`) require `KUBE_CONTEXT` to be set explicitly — there is no fallback (scripts fail fast with `KUBE_CONTEXT is required`). Always pass it when invoking Taskfile entries or running scripts directly, e.g. `task onboard KUBE_CONTEXT=retail-lakehouse`.
 
 ## Code Style
 

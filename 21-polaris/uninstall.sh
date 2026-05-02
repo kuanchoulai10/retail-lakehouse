@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-KUBE_CONTEXT="${KUBE_CONTEXT:-retail-lakehouse}"
+: "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 
 echo "==> Uninstalling Apache Polaris (context: ${KUBE_CONTEXT})"
 

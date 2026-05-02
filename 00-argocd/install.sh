@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-KUBE_CONTEXT="${KUBE_CONTEXT:-retail-lakehouse}"
+: "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 ARGOCD_VERSION="${ARGOCD_VERSION:-v3.1.7}"
 
 echo "==> Deploying ArgoCD ${ARGOCD_VERSION} (context: ${KUBE_CONTEXT})"

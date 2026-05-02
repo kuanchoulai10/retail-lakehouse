@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-KUBE_CONTEXT="${KUBE_CONTEXT:-retail-lakehouse}"
+: "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 KEDA_VERSION="${KEDA_VERSION:-2.18.0}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
