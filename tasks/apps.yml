@@ -102,11 +102,11 @@ tasks:
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
-      - bash 00-argocd/bootstrap.sh
-      - bash 00-argocd/validate.sh
-      - bash 01-argocd-health-checks/patch.sh
-      - bash 02-argocd-apps/bootstrap.sh
-      - bash 02-argocd-apps/validate.sh
+      - bash platform/00-argocd/bootstrap.sh
+      - bash platform/00-argocd/validate.sh
+      - bash platform/01-argocd-health-checks/patch.sh
+      - bash platform/02-argocd-apps/bootstrap.sh
+      - bash platform/02-argocd-apps/validate.sh
 
   validate:
     desc: "Validate all K8s apps in parallel"
