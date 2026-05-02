@@ -8,8 +8,6 @@ tasks:
     requires:
       vars:
         - name: KUBE_CONTEXT
-          enum:
-            ref: .AVAILABLE_KUBE_CONTEXTS | splitLines | compact
         - name: DEPLOY_METHOD
           enum: ["scripts", "argocd"]
     cmds:
@@ -22,10 +20,25 @@ tasks:
     requires:
       vars:
         - name: KUBE_CONTEXT
-          enum:
-            ref: .AVAILABLE_KUBE_CONTEXTS | splitLines | compact
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    status:
+      - TIMEOUT=10s bash 10-cert-manager/validate.sh
+      - TIMEOUT=10s bash 10-kube-prometheus/validate.sh
+      - TIMEOUT=10s bash 10-strimzi-operator/validate.sh
+      - TIMEOUT=10s bash 11-keda/validate.sh
+      - TIMEOUT=10s bash 11-spark-operator/validate.sh
+      - TIMEOUT=10s bash 11-otel-operator/validate.sh
+      - TIMEOUT=10s bash 20-kafka-cluster/validate.sh
+      - TIMEOUT=10s bash 20-minio/validate.sh
+      - TIMEOUT=10s bash 20-mysql/validate.sh
+      - TIMEOUT=10s bash 20-jaeger-thanos/validate.sh
+      - TIMEOUT=10s bash 20-jaeger-trino/validate.sh
+      - TIMEOUT=10s bash 20-polaris-db/validate.sh
+      - TIMEOUT=10s bash 21-polaris/validate.sh
+      - TIMEOUT=10s bash 21-kafka-debezium-mysql-connector/validate.sh
+      - TIMEOUT=10s bash 22-kafka-iceberg-connector/validate.sh
+      - TIMEOUT=10s bash 23-trino/validate.sh
     cmds:
       - bash 10-cert-manager/install.sh
       - bash 10-kube-prometheus/install.sh
@@ -65,8 +78,6 @@ tasks:
     requires:
       vars:
         - name: KUBE_CONTEXT
-          enum:
-            ref: .AVAILABLE_KUBE_CONTEXTS | splitLines | compact
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
@@ -81,8 +92,6 @@ tasks:
     requires:
       vars:
         - name: KUBE_CONTEXT
-          enum:
-            ref: .AVAILABLE_KUBE_CONTEXTS | splitLines | compact
     deps:
       - task: validate-cert-manager
         vars:

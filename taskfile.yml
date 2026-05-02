@@ -26,8 +26,6 @@ includes:
   apps:
     taskfile: ./tasks/apps.yml
     dir: '{{.ROOT_DIR}}'
-    vars:
-      AVAILABLE_KUBE_CONTEXTS: '{{.AVAILABLE_KUBE_CONTEXTS}}'
   trino:
     taskfile: ./tasks/trino.yml
     dir: '{{.ROOT_DIR}}'
