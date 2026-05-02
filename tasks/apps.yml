@@ -44,12 +44,12 @@ tasks:
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     status:
-      - TIMEOUT=10s bash 10-cert-manager/validate.sh
-      - TIMEOUT=10s bash 10-kube-prometheus/validate.sh
-      - TIMEOUT=10s bash 10-strimzi-operator/validate.sh
-      - TIMEOUT=10s bash 11-keda/validate.sh
-      - TIMEOUT=10s bash 11-spark-operator/validate.sh
-      - TIMEOUT=10s bash 11-otel-operator/validate.sh
+      - TIMEOUT=10s bash platform/10-cert-manager/validate.sh
+      - TIMEOUT=10s bash platform/10-kube-prometheus/validate.sh
+      - TIMEOUT=10s bash platform/10-strimzi-operator/validate.sh
+      - TIMEOUT=10s bash platform/11-keda/validate.sh
+      - TIMEOUT=10s bash platform/11-spark-operator/validate.sh
+      - TIMEOUT=10s bash platform/11-otel-operator/validate.sh
       - TIMEOUT=10s bash 20-kafka-cluster/validate.sh
       - TIMEOUT=10s bash 20-minio/validate.sh
       - TIMEOUT=10s bash 20-mysql/validate.sh
@@ -61,18 +61,18 @@ tasks:
       - TIMEOUT=10s bash 22-kafka-iceberg-connector/validate.sh
       - TIMEOUT=10s bash 23-trino/validate.sh
     cmds:
-      - bash 10-cert-manager/bootstrap.sh
-      - bash 10-kube-prometheus/bootstrap.sh
-      - bash 10-strimzi-operator/bootstrap.sh
-      - bash 10-cert-manager/validate.sh
-      - bash 10-kube-prometheus/validate.sh
-      - bash 10-strimzi-operator/validate.sh
-      - bash 11-keda/bootstrap.sh
-      - bash 11-spark-operator/bootstrap.sh
-      - bash 11-otel-operator/bootstrap.sh
-      - bash 11-keda/validate.sh
-      - bash 11-spark-operator/validate.sh
-      - bash 11-otel-operator/validate.sh
+      - bash platform/10-cert-manager/bootstrap.sh
+      - bash platform/10-kube-prometheus/bootstrap.sh
+      - bash platform/10-strimzi-operator/bootstrap.sh
+      - bash platform/10-cert-manager/validate.sh
+      - bash platform/10-kube-prometheus/validate.sh
+      - bash platform/10-strimzi-operator/validate.sh
+      - bash platform/11-keda/bootstrap.sh
+      - bash platform/11-spark-operator/bootstrap.sh
+      - bash platform/11-otel-operator/bootstrap.sh
+      - bash platform/11-keda/validate.sh
+      - bash platform/11-spark-operator/validate.sh
+      - bash platform/11-otel-operator/validate.sh
       - bash 20-kafka-cluster/bootstrap.sh
       - bash 20-minio/bootstrap.sh
       - bash 20-mysql/bootstrap.sh
@@ -168,42 +168,42 @@ tasks:
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
-      - bash 10-cert-manager/validate.sh
+      - bash platform/10-cert-manager/validate.sh
 
   validate-kube-prometheus:
     internal: true
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
-      - bash 10-kube-prometheus/validate.sh
+      - bash platform/10-kube-prometheus/validate.sh
 
   validate-strimzi-operator:
     internal: true
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
-      - bash 10-strimzi-operator/validate.sh
+      - bash platform/10-strimzi-operator/validate.sh
 
   validate-keda:
     internal: true
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
-      - bash 11-keda/validate.sh
+      - bash platform/11-keda/validate.sh
 
   validate-spark-operator:
     internal: true
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
-      - bash 11-spark-operator/validate.sh
+      - bash platform/11-spark-operator/validate.sh
 
   validate-otel-operator:
     internal: true
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
-      - bash 11-otel-operator/validate.sh
+      - bash platform/11-otel-operator/validate.sh
 
   validate-kafka-cluster:
     internal: true

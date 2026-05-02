@@ -15,7 +15,7 @@ spec:
       helm:
         releaseName: strimzi-operator
         valueFiles:
-          - '$repo/10-strimzi-operator/values.yaml'
+          - '$repo/platform/10-strimzi-operator/values.yaml'
     - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
       targetRevision: main
       ref: repo

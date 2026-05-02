@@ -15,7 +15,7 @@ spec:
       helm:
         releaseName: keda
         valueFiles:
-          - '$repo/11-keda/values.yaml'
+          - '$repo/platform/11-keda/values.yaml'
     - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
       targetRevision: main
       ref: repo
