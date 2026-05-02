@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
+
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
 
-echo "==> Validating kube-prometheus stack (context: ${KUBE_CONTEXT})"
+log::header "Validating kube-prometheus stack"
 
 kubectl rollout status deployment/prometheus-operator \
   -n monitoring --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
@@ -23,4 +25,4 @@ kubectl rollout status statefulset/alertmanager-main \
 kubectl rollout status daemonset/node-exporter \
   -n monitoring --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
 
-echo "==> kube-prometheus stack is ready."
+log::footer "kube-prometheus stack is ready"

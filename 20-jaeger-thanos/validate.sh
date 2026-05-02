@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
+
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
 
-echo "==> Validating Jaeger for Thanos (context: ${KUBE_CONTEXT})"
+log::header "Validating Jaeger for Thanos"
 
 kubectl wait pod \
   -l app.kubernetes.io/managed-by=opentelemetry-operator \
@@ -13,4 +15,4 @@ kubectl wait pod \
   --timeout="${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
-echo "==> Jaeger (thanos) is ready."
+log::footer "Jaeger (thanos) is ready"

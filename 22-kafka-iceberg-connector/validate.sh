@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
+
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-1200s}"
 
-echo "==> Validating Iceberg sink connector (context: ${KUBE_CONTEXT})"
+log::header "Validating Iceberg sink connector"
 
 kubectl wait kafkaconnect/iceberg-connect-cluster \
   -n kafka-cdc \
@@ -18,4 +20,4 @@ kubectl wait kafkaconnector/iceberg-connector \
   --timeout="${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
-echo "==> Iceberg connector is ready."
+log::footer "Iceberg connector is ready"

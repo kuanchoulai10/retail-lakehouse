@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
+
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
 
-echo "==> Validating MinIO (context: ${KUBE_CONTEXT})"
+log::header "Validating MinIO"
 
 kubectl wait pod \
   -l app=minio \
@@ -13,4 +15,4 @@ kubectl wait pod \
   --timeout="${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
-echo "==> MinIO is ready."
+log::footer "MinIO is ready"

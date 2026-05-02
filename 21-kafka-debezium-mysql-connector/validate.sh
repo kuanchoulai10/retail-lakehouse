@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
+
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-1200s}"
 
-echo "==> Validating Debezium MySQL connector (context: ${KUBE_CONTEXT})"
+log::header "Validating Debezium MySQL connector"
 
 kubectl wait kafkaconnect/debezium-connect-cluster \
   -n kafka-cdc \
@@ -18,4 +20,4 @@ kubectl wait kafkaconnector/debezium-connector \
   --timeout="${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
-echo "==> Debezium connector is ready."
+log::footer "Debezium connector is ready"

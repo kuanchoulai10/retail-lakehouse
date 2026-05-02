@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
+
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
 
-echo "==> Validating cert-manager (context: ${KUBE_CONTEXT})"
+log::header "Validating cert-manager"
 
 kubectl rollout status deployment/cert-manager \
   -n cert-manager --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
@@ -13,4 +15,4 @@ kubectl rollout status deployment/cert-manager-cainjector \
 kubectl rollout status deployment/cert-manager-webhook \
   -n cert-manager --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
 
-echo "==> cert-manager is ready."
+log::footer "cert-manager is ready"

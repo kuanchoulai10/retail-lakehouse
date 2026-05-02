@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
+
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
 
-echo "==> Validating KEDA (context: ${KUBE_CONTEXT})"
+log::header "Validating KEDA"
 
 kubectl rollout status deployment/keda-operator \
   -n keda --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
@@ -13,4 +15,4 @@ kubectl rollout status deployment/keda-operator-metrics-apiserver \
 kubectl rollout status deployment/keda-admission-webhooks \
   -n keda --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
 
-echo "==> KEDA is ready."
+log::footer "KEDA is ready"

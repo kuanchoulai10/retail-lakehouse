@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
+
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
 
-echo "==> Validating table-maintenance scheduler (context: ${KUBE_CONTEXT})"
+log::header "Validating table-maintenance scheduler"
 
 kubectl rollout status deployment/table-maintenance-scheduler \
   -n default --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
 
-echo "==> Checking scheduler logs for tick output..."
+log::step "Checking scheduler logs for tick output"
 POD=$(kubectl get pod -l app=table-maintenance-scheduler -n default \
   --context "${KUBE_CONTEXT}" -o jsonpath='{.items[0].metadata.name}')
 kubectl logs "$POD" -n default --context "${KUBE_CONTEXT}" --tail=5 | grep -q "Scheduler tick"
 
-echo "==> Scheduler is ready."
+log::footer "Scheduler is ready"
