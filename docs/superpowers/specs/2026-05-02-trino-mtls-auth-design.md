@@ -19,36 +19,45 @@
 ## Decisions
 
 - **多重驗證**：`authenticationType: "certificate,oauth2"` — Trino 依序嘗試 client cert → OAuth2
-- **PKI 範圍**：Trino-namespace 範圍。沿用既有 `trino-selfsigned-issuer`，不升級成 `ClusterIssuer`
+- **PKI 範圍**：Trino-namespace 範圍。**bootstrap CA 階層**（`trino-selfsigned-issuer` 簽出 `trino-ca`，`trino-ca-issuer` 用該 CA secret 簽 server + client cert）。⚠️ 實作時發現：原本構想的「`trino-selfsigned-issuer` 同時簽 server 和 client」不成立 — `selfSigned` 不是 shared CA，每張 cert 自己當 root，導致 mTLS 雙向驗證失敗。標準 cert-manager pattern 需要 `isCA: true` 的中介 CA cert。
 - **CN 格式**：`CN=<username>`（不加 `user/` 前綴）
 - **Keystore 密碼**：所有 client cert 沿用既有 `trino-keystore-password` secret（值 `trinopassword`）
-- **Truststore 建立**：新增獨立 init container 跑 `keytool` 把 `ca.crt` 包成 `truststore.p12`
-- **Laptop cert 流程**：`task trino:client-cert USER=<name>` 一鍵簽發 + 匯出
-- **Cert 期限**：Laptop client 365 天、未來 in-cluster client 1 年
+- **Truststore 建立**：新增獨立 init container 跑 `keytool` 把 `trino-tls-secret.ca.crt`（即 `trino-ca` 公鑰）包成 `truststore.p12`
+- **Laptop cert 流程**：`task trino-client-cert USER=<name>` 一鍵簽發 + 匯出
+- **Cert 期限**：Laptop client 365 天、CA 10 年、未來 in-cluster client 1 年
 - **Output 路徑**：`23-trino/client-certs/<user>/`（**專案目錄內**，加進 `.gitignore`，不放家目錄）
+- **mTLS server 端 properties 放置位置**：`server.coordinatorExtraConfig`（SOPS 加密的 `values-secret.yaml`，與 OAuth2 entries 並列）。⚠️ 原 spec 設想用明文 `additionalConfigProperties` (top-level)，但 chart 的 top-level `additionalConfigProperties` 同時套用 coordinator + worker，而 `http-server.authentication.*` 是 coordinator-only — worker 啟動時拒絕設定而 crash-loop。`coordinatorExtraConfig` 才是正確的目標位置。
 - **In-cluster client 暫不實作**：留範本與決策樹，等真的有需求再開新 spec
 
 ## Architecture
 
-### PKI 結構（trino namespace）
+### PKI 結構（trino namespace）— bootstrap CA 階層
 
 ```
-Issuer: trino-selfsigned-issuer  (既有)
+Issuer: trino-selfsigned-issuer (selfSigned, bootstrap only)
   │
-  ├── Certificate: trino-tls               (既有 — server cert)
-  │     └── Secret: trino-tls-secret
-  │           ├── tls.crt          ← server cert
-  │           ├── tls.key
-  │           ├── ca.crt           ← 用來建 truststore
-  │           └── keystore.p12
-  │
-  └── Certificate: trino-client-{user}     (新增 — client cert)
-        └── Secret: trino-client-{user}-tls
-              ├── keystore.p12     ← client identity
-              ├── tls.crt
-              ├── tls.key
-              └── ca.crt
+  └── Certificate: trino-ca (isCA: true, 10 年)
+        └── Secret: trino-ca-secret      ← 含 CA private key + cert
+              │
+              ↓ 引用
+        Issuer: trino-ca-issuer (ca:)    ← 真正在用的 issuer
+              │
+              ├── Certificate: trino-tls (server cert, 1 年)
+              │     └── Secret: trino-tls-secret
+              │           ├── tls.crt          ← server cert
+              │           ├── tls.key
+              │           ├── ca.crt           ← trino-ca 公鑰，建 truststore 用
+              │           └── keystore.p12
+              │
+              └── Certificate: trino-client-<user> (client cert, 365 天)
+                    └── Secret: trino-client-<user>-tls
+                          ├── keystore.p12     ← client identity
+                          ├── tls.crt
+                          ├── tls.key
+                          └── ca.crt           ← trino-ca 公鑰
 ```
+
+關鍵：所有 server / client cert 的 `ca.crt` 欄位都是同一張 `trino-ca` 公鑰。Server truststore 和 laptop truststore 從各自 secret 的 `ca.crt` 建出來，內容相同 — 雙向 mTLS 驗證才能成立。
 
 ### 認證流程
 
