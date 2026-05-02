@@ -14,5 +14,6 @@ dev = [
 [tool.uv.workspace]
 members = [
     "docs",
+    "src/table-maintenance/backend",
     "src/table-maintenance/runtime/spark",
 ]
