@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+tasks:
+  cluster-up:
+    desc: "Start colima VM + minikube cluster (one-time setup or after cluster-down)"
+    vars:
+      PROFILE: 'retail-lakehouse'
+    cmds:
+      - |
+        colima start \
+          --cpu 9 \
+          --memory 28 \
+          --disk 120 \
+          --runtime docker \
+          --profile {{.PROFILE}}
+      - |
+        minikube start \
+          --profile {{.PROFILE}} \
+          --nodes 1 \
+          --cpus 9 \
+          --memory 26G \
+          --disk-size 120G \
+          --driver docker \
+          --container-runtime docker \
+          --kubernetes-version v1.33.2 \
+          --addons registry --addons metrics-server \
+          --insecure-registry "10.0.0.0/24" \
+          --delete-on-failure
+
+  check-tools:
+    desc: "Verify required CLI tools are installed"
+    cmds:
+      - |
+        missing=()
+        for t in colima docker kubectl minikube helm jsonnet jb envsubst keytool; do
+          command -v "$t" >/dev/null 2>&1 || missing+=("$t")
+        done
+        if [ ${#missing[@]} -gt 0 ]; then
+          echo "ERROR missing tools: ${missing[*]}"
+          echo "  install via Homebrew (see docs/prerequisites.md)"
+          exit 1
+        fi
+        echo "✓ tools OK"

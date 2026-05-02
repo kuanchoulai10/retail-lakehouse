@@ -1,0 +1,47 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+tasks:
+  trino-client-cert:
+    desc: 'Issue a Trino mTLS client cert. Usage: task trino:trino-client-cert USER=alice'
+    vars:
+      OUTDIR: '23-trino/client-certs/{{.USER}}'
+      CTX: '{{.KUBE_CONTEXT | default "retail-lakehouse"}}'
+    cmds:
+      - 'test -n "{{.USER}}" || { echo "ERROR USER=<name> required"; exit 1; }'
+      - mkdir -p {{.OUTDIR}}
+      - chmod 700 {{.OUTDIR}}
+      - USER={{.USER}} envsubst < 23-trino/client-certificate-template.yaml | kubectl apply -f - --context {{.CTX}}
+      - kubectl wait --for=condition=Ready certificate/trino-client-{{.USER}} -n trino --timeout=120s --context {{.CTX}}
+      - kubectl get -n trino secret trino-client-{{.USER}}-tls --context {{.CTX}} -o jsonpath='{.data.keystore\.p12}' | base64 -d > {{.OUTDIR}}/keystore.p12
+      - kubectl get -n trino secret trino-client-{{.USER}}-tls --context {{.CTX}} -o jsonpath='{.data.ca\.crt}' | base64 -d > {{.OUTDIR}}/ca.crt
+      - kubectl get -n trino secret trino-keystore-password --context {{.CTX}} -o jsonpath='{.data.password}' | base64 -d > {{.OUTDIR}}/password.txt
+      - rm -f {{.OUTDIR}}/truststore.p12
+      - keytool -importcert -noprompt -alias trino-ca -file {{.OUTDIR}}/ca.crt -keystore {{.OUTDIR}}/truststore.p12 -storetype PKCS12 -storepass "$(cat {{.OUTDIR}}/password.txt)"
+      - chmod 600 {{.OUTDIR}}/keystore.p12 {{.OUTDIR}}/truststore.p12 {{.OUTDIR}}/ca.crt {{.OUTDIR}}/password.txt
+      - echo "✓ {{.OUTDIR}}/{keystore.p12, truststore.p12, password.txt}"
+
+  trino-smoke-test:
+    desc: 'End-to-end mTLS smoke test (issues throwaway cert, runs SHOW CATALOGS, cleans up)'
+    vars:
+      TUSER: 'smoke-test'
+      OUTDIR: '23-trino/client-certs/smoke-test'
+      CTX: '{{.KUBE_CONTEXT | default "retail-lakehouse"}}'
+    cmds:
+      - task: trino-client-cert
+        vars:
+          USER: '{{.TUSER}}'
+      - defer: kubectl delete -n trino certificate trino-client-{{.TUSER}} --context {{.CTX}} --ignore-not-found
+      - defer: kubectl delete -n trino secret trino-client-{{.TUSER}}-tls --context {{.CTX}} --ignore-not-found
+      - defer: rm -rf {{.OUTDIR}}
+      - defer: pkill -f 'port-forward.*trino.*18443' || true
+      - kubectl port-forward -n trino svc/trino 18443:8443 --context {{.CTX}} &
+      - sleep 2
+      - |
+        trino --server https://localhost:18443 --user {{.TUSER}} \
+          --keystore-path {{.OUTDIR}}/keystore.p12 \
+          --keystore-password "$(cat {{.OUTDIR}}/password.txt)" \
+          --truststore-path {{.OUTDIR}}/truststore.p12 \
+          --truststore-password "$(cat {{.OUTDIR}}/password.txt)" \
+          --execute "SHOW CATALOGS"

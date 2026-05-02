@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+tasks:
+  setup:
+    desc: "Initialize local dev environment"
+    cmds:
+      - task: setup-node
+      - task: setup-python
+      - task: setup-pre-commit
+
+  setup-node:
+    desc: "Install Node dependencies"
+    internal: true
+    cmds:
+      - npm clean-install --save-dev @commitlint/cli @commitlint/config-conventional
+
+  setup-python:
+    desc: "Install Python dependencies"
+    internal: true
+    cmds:
+      - uv sync --locked --all-packages
+
+  setup-pre-commit:
+    desc: "Setup pre-commit hooks"
+    internal: true
+    cmds:
+      - uv run pre-commit install

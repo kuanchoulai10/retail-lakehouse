@@ -1,0 +1,9 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+tasks:
+  serve-docs:
+    desc: Serve docs locally
+    cmds:
+      - uv run mkdocs serve --livereload -a localhost:8591
