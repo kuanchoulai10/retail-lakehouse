@@ -4,7 +4,7 @@ version: '3'
 
 tasks:
   bootstrap:
-    desc: "Bootstrap all K8s apps (KUBE_CONTEXT required, DEPLOY_METHOD: scripts|argocd)"
+    desc: "Bootstrap all K8s apps"
     requires:
       vars:
         - name: KUBE_CONTEXT
@@ -77,7 +77,7 @@ tasks:
       - bash 02-argocd-apps/validate.sh
 
   validate:
-    desc: "Validate all K8s apps in parallel (KUBE_CONTEXT required)"
+    desc: "Validate all K8s apps in parallel"
     requires:
       vars:
         - name: KUBE_CONTEXT

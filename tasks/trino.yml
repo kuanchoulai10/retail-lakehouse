@@ -4,7 +4,7 @@ version: '3'
 
 tasks:
   issue-cert:
-    desc: 'Issue a Trino mTLS client cert. Usage: task trino:issue-cert KUBE_CONTEXT=<ctx> TRINO_USER=alice'
+    desc: 'Issue a Trino mTLS client cert'
     requires:
       vars:
         - name: KUBE_CONTEXT

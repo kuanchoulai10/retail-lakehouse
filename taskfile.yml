@@ -65,7 +65,7 @@ tasks:
       - task: docs:serve
 
   onboard:
-    desc: "One-shot setup: check tools, bootstrap cluster + apps, sync dev (DEPLOY_METHOD=scripts|argocd required)"
+    desc: "One-shot setup: check tools, bootstrap cluster + apps, sync dev"
     preconditions:
       - sh: '[ "$(uname -s)" = "Darwin" ]'
         msg: "Only macOS (Darwin) is supported right now, sorry"

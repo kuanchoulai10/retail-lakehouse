@@ -4,7 +4,7 @@ version: '3'
 
 tasks:
   bootstrap:
-    desc: "Bootstrap local colima VM + minikube cluster (KUBE_CONTEXT required)"
+    desc: "Bootstrap local colima VM + minikube cluster"
     requires:
       vars:
         - name: KUBE_CONTEXT
