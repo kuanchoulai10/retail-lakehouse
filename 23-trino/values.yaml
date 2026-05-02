@@ -51,6 +51,35 @@ server:
     annotations: {}
 # --8<-- [end:server]
 
+# --8<-- [start:initContainers]
+initContainers:
+  coordinator:
+    - name: build-truststore
+      image: eclipse-temurin:21-jre
+      command:
+        - sh
+        - -c
+        - |
+          keytool -importcert -noprompt \
+            -alias trino-ca \
+            -file /tls-src/ca.crt \
+            -keystore /tls-built/truststore.p12 \
+            -storetype PKCS12 \
+            -storepass "$KEYSTORE_PASSWORD"
+      env:
+        - name: KEYSTORE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: trino-keystore-password
+              key: password
+      volumeMounts:
+        - name: tls-certs
+          mountPath: /tls-src
+          readOnly: true
+        - name: tls-built
+          mountPath: /tls-built
+# --8<-- [end:initContainers]
+
 # --8<-- [start:resource-groups]
 resourceGroups:
   type: configmap
@@ -89,9 +118,14 @@ coordinator:
     - name: tls-certs
       secret:
         secretName: trino-tls-secret
+    - name: tls-built
+      emptyDir: {}
   additionalVolumeMounts:
     - name: tls-certs
       mountPath: /etc/trino/tls
+      readOnly: true
+    - name: tls-built
+      mountPath: /etc/trino/truststore
       readOnly: true
   additionalExposedPorts:
     https:
