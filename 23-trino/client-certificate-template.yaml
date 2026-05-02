@@ -1,0 +1,28 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: trino-client-${USER}
+  namespace: trino
+spec:
+  secretName: trino-client-${USER}-tls
+  duration: 8760h
+  renewBefore: 720h
+  issuerRef:
+    name: trino-selfsigned-issuer
+    kind: Issuer
+  commonName: ${USER}
+  subject:
+    organizations:
+      - Trino
+  usages:
+    - client auth
+  privateKey:
+    algorithm: RSA
+    size: 2048
+    encoding: PKCS8
+  keystores:
+    pkcs12:
+      create: true
+      passwordSecretRef:
+        name: trino-keystore-password
+        key: password
