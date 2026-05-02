@@ -7,6 +7,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 TIMEOUT="${TIMEOUT:-300s}"
 
 log::on_success "Backend is ready"
+log::on_failure "Backend is not ready"
 
 kubectl rollout status deployment/table-maintenance-backend \
   -n default --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"

@@ -6,6 +6,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 
 log::on_success "Patch applied"
+log::on_failure "Patch not applied"
 
 kubectl get configmap argocd-cm -n argocd \
   --context "${KUBE_CONTEXT}" \

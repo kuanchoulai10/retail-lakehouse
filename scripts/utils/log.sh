@@ -7,9 +7,13 @@
 #   log::error "msg"   # [ERROR] msg    (red, exits 1)
 #
 # Defer-until-exit mode (preferred for validate scripts):
-#   log::on_success "Trino is ready"   # buffer all output; on success print
-#                                      # "[INFO] Trino is ready", on failure
-#                                      # dump captured stdout+stderr.
+#   log::on_success "Trino is ready"        # register success message
+#   log::on_failure "Trino is broken"       # register failure message (optional)
+#
+# Either call lazily enables output buffering. On exit:
+#   rc == 0 → print "[INFO] <success_msg>"  if registered, else silent
+#   rc != 0 → print "[ERROR] <failure_msg>" if registered, then dump
+#             captured stdout+stderr
 #
 # Honors NO_COLOR.
 
@@ -45,7 +49,17 @@ log::error() {
 }
 
 log::on_success() {
-  __LOG_SUCCESS_MSG="${1:-done}"
+  __LOG_SUCCESS_MSG="$1"
+  __log::enable_buffering
+}
+
+log::on_failure() {
+  __LOG_FAILURE_MSG="$1"
+  __log::enable_buffering
+}
+
+__log::enable_buffering() {
+  [[ -n "${__LOG_BUF:-}" ]] && return 0
   __LOG_BUF=$(mktemp)
   exec 3>&1 4>&2 >"$__LOG_BUF" 2>&1
   trap '__log::on_exit $?' EXIT
@@ -55,8 +69,10 @@ __log::on_exit() {
   local rc=$1
   exec 1>&3 2>&4 3>&- 4>&-
   if (( rc == 0 )); then
-    log::info "$__LOG_SUCCESS_MSG"
+    [[ -n "${__LOG_SUCCESS_MSG:-}" ]] && log::info "$__LOG_SUCCESS_MSG"
   else
+    [[ -n "${__LOG_FAILURE_MSG:-}" ]] && \
+      printf '%s[ERROR] %s%s\n' "$__LOG_RED" "$__LOG_FAILURE_MSG" "$__LOG_RESET" >&2
     cat "$__LOG_BUF" >&2
   fi
   rm -f "$__LOG_BUF"

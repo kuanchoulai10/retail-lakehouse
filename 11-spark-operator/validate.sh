@@ -7,6 +7,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 TIMEOUT="${TIMEOUT:-300s}"
 
 log::on_success "Spark Operator is ready"
+log::on_failure "Spark Operator is not ready"
 
 kubectl rollout status deployment/spark-operator-controller \
   -n spark-operator --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"

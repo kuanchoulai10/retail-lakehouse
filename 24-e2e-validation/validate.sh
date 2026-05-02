@@ -8,6 +8,7 @@ TIMEOUT="${TIMEOUT:-300s}"
 MINIO_POLL_TIMEOUT="${MINIO_POLL_TIMEOUT:-360}"  # seconds to wait for data in MinIO (Iceberg commits every ~5 min)
 
 log::on_success "e2e validation passed: 100 rows inserted into MySQL and data is present in MinIO"
+log::on_failure "e2e validation failed"
 
 log::info "Waiting for MySQL insert job to complete"
 kubectl wait --for=condition=complete job/mysql-insert-100-rows \

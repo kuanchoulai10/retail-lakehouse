@@ -7,6 +7,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 TIMEOUT="${TIMEOUT:-300s}"
 
 log::on_success "MySQL is ready"
+log::on_failure "MySQL is not ready"
 
 kubectl wait pod \
   -l app=mysql \

@@ -7,6 +7,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 TIMEOUT="${TIMEOUT:-300s}"
 
 log::on_success "Trino is ready"
+log::on_failure "Trino is not ready"
 
 kubectl wait --for=condition=Ready certificate/trino-tls \
   -n trino --timeout=60s --context "${KUBE_CONTEXT}"

@@ -7,6 +7,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 TIMEOUT="${TIMEOUT:-300s}"
 
 log::on_success "cert-manager is ready"
+log::on_failure "cert-manager is not ready"
 
 kubectl rollout status deployment/cert-manager \
   -n cert-manager --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"

@@ -7,6 +7,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 TIMEOUT="${TIMEOUT:-300s}"
 
 log::on_success "Root app is Healthy"
+log::on_failure "Root app is not Healthy"
 
 kubectl wait application/root-app \
   -n argocd \

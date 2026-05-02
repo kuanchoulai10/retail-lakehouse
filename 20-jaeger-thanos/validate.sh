@@ -7,6 +7,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 TIMEOUT="${TIMEOUT:-300s}"
 
 log::on_success "Jaeger (thanos) is ready"
+log::on_failure "Jaeger (thanos) is not ready"
 
 kubectl wait pod \
   -l app.kubernetes.io/managed-by=opentelemetry-operator \

@@ -7,6 +7,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 TIMEOUT="${TIMEOUT:-1200s}"
 
 log::on_success "Kafka cluster is ready"
+log::on_failure "Kafka cluster is not ready"
 
 kubectl wait kafka/kafka-cluster \
   -n kafka-cdc \

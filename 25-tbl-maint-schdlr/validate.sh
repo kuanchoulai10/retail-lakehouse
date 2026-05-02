@@ -7,6 +7,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 TIMEOUT="${TIMEOUT:-300s}"
 
 log::on_success "Scheduler is ready"
+log::on_failure "Scheduler is not ready"
 
 kubectl rollout status deployment/table-maintenance-scheduler \
   -n default --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"

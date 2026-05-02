@@ -7,6 +7,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 TIMEOUT="${TIMEOUT:-300s}"
 
 log::on_success "OpenTelemetry Operator is ready"
+log::on_failure "OpenTelemetry Operator is not ready"
 
 kubectl rollout status deployment/opentelemetry-operator \
   -n opentelemetry-operator --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"

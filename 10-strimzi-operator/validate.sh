@@ -7,6 +7,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 TIMEOUT="${TIMEOUT:-300s}"
 
 log::on_success "Strimzi Operator is ready"
+log::on_failure "Strimzi Operator is not ready"
 
 kubectl rollout status deployment/strimzi-cluster-operator \
   -n strimzi-operator --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"

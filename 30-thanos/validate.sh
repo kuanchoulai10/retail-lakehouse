@@ -7,6 +7,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 TIMEOUT="${TIMEOUT:-300s}"
 
 log::on_success "Thanos is ready"
+log::on_failure "Thanos is not ready"
 
 kubectl rollout status deployment/thanos-query \
   -n thanos --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"

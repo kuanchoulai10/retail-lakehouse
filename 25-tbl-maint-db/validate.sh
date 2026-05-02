@@ -7,6 +7,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 TIMEOUT="${TIMEOUT:-300s}"
 
 log::on_success "PostgreSQL for table-maintenance is ready"
+log::on_failure "PostgreSQL for table-maintenance is not ready"
 
 kubectl wait pod \
   -l app=tbl-maint-db \
