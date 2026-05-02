@@ -25,10 +25,13 @@ tasks:
         msg: "git missing, run: xcode-select --install (or brew install git)"
       - sh: command -v python3
         msg: "python3 missing, run: xcode-select --install (or brew install python@3.13)"
+      - sh: colima status -p {{.KUBE_CONTEXT}} >/dev/null 2>&1
+        msg: "colima VM '{{.KUBE_CONTEXT}}' not running (run: task cluster:bootstrap KUBE_CONTEXT={{.KUBE_CONTEXT}})"
+      - sh: minikube status -p {{.KUBE_CONTEXT}} >/dev/null 2>&1
+        msg: "minikube profile '{{.KUBE_CONTEXT}}' not running (run: task cluster:bootstrap KUBE_CONTEXT={{.KUBE_CONTEXT}})"
+      - sh: kubectl config get-contexts {{.KUBE_CONTEXT}} >/dev/null 2>&1
+        msg: "kubectl context '{{.KUBE_CONTEXT}}' not found"
     cmds:
-      - colima status -p {{.KUBE_CONTEXT}} >/dev/null
-      - minikube status -p {{.KUBE_CONTEXT}} >/dev/null
-      - kubectl config get-contexts {{.KUBE_CONTEXT}} >/dev/null
       - task: bootstrap-by-{{.DEPLOY_METHOD}}
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"

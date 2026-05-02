@@ -104,10 +104,9 @@ tasks:
       - task: cluster:bootstrap
         vars:
           KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
-      - task: apps:bootstrap
+      - task: apps:bootstrap-by-{{.DEPLOY_METHOD}}
         vars:
           KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
-          DEPLOY_METHOD: '{{.DEPLOY_METHOD}}'
       - task: dev:sync
     prompt: |
       This will take 10-20 minutes and does the following:
@@ -123,6 +122,11 @@ tasks:
     requires:
       vars:
         - name: KUBE_CONTEXT
+    preconditions:
+      - sh: command -v minikube
+        msg: "minikube missing, run: brew install minikube"
+      - sh: command -v colima
+        msg: "colima missing, run: brew install colima"
     cmds:
       - minikube delete -p {{.KUBE_CONTEXT}}
       - colima delete -p {{.KUBE_CONTEXT}} -f
