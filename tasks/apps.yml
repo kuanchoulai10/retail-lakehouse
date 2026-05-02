@@ -50,12 +50,12 @@ tasks:
       - TIMEOUT=10s bash platform/11-keda/validate.sh
       - TIMEOUT=10s bash platform/11-spark-operator/validate.sh
       - TIMEOUT=10s bash platform/11-otel-operator/validate.sh
-      - TIMEOUT=10s bash 20-kafka-cluster/validate.sh
-      - TIMEOUT=10s bash 20-minio/validate.sh
-      - TIMEOUT=10s bash 20-mysql/validate.sh
-      - TIMEOUT=10s bash 20-jaeger-thanos/validate.sh
-      - TIMEOUT=10s bash 20-jaeger-trino/validate.sh
-      - TIMEOUT=10s bash 20-polaris-db/validate.sh
+      - TIMEOUT=10s bash platform/20-kafka-cluster/validate.sh
+      - TIMEOUT=10s bash platform/20-minio/validate.sh
+      - TIMEOUT=10s bash platform/20-mysql/validate.sh
+      - TIMEOUT=10s bash platform/20-jaeger-thanos/validate.sh
+      - TIMEOUT=10s bash platform/20-jaeger-trino/validate.sh
+      - TIMEOUT=10s bash platform/20-polaris-db/validate.sh
       - TIMEOUT=10s bash 21-polaris/validate.sh
       - TIMEOUT=10s bash 21-kafka-debezium-mysql-connector/validate.sh
       - TIMEOUT=10s bash 22-kafka-iceberg-connector/validate.sh
@@ -73,18 +73,18 @@ tasks:
       - bash platform/11-keda/validate.sh
       - bash platform/11-spark-operator/validate.sh
       - bash platform/11-otel-operator/validate.sh
-      - bash 20-kafka-cluster/bootstrap.sh
-      - bash 20-minio/bootstrap.sh
-      - bash 20-mysql/bootstrap.sh
-      - bash 20-jaeger-thanos/bootstrap.sh
-      - bash 20-jaeger-trino/bootstrap.sh
-      - bash 20-polaris-db/bootstrap.sh
-      - bash 20-kafka-cluster/validate.sh
-      - bash 20-minio/validate.sh
-      - bash 20-mysql/validate.sh
-      - bash 20-jaeger-thanos/validate.sh
-      - bash 20-jaeger-trino/validate.sh
-      - bash 20-polaris-db/validate.sh
+      - bash platform/20-kafka-cluster/bootstrap.sh
+      - bash platform/20-minio/bootstrap.sh
+      - bash platform/20-mysql/bootstrap.sh
+      - bash platform/20-jaeger-thanos/bootstrap.sh
+      - bash platform/20-jaeger-trino/bootstrap.sh
+      - bash platform/20-polaris-db/bootstrap.sh
+      - bash platform/20-kafka-cluster/validate.sh
+      - bash platform/20-minio/validate.sh
+      - bash platform/20-mysql/validate.sh
+      - bash platform/20-jaeger-thanos/validate.sh
+      - bash platform/20-jaeger-trino/validate.sh
+      - bash platform/20-polaris-db/validate.sh
       - bash 21-polaris/bootstrap.sh
       - bash 21-polaris/validate.sh
       - bash 21-kafka-debezium-mysql-connector/bootstrap.sh
@@ -210,35 +210,35 @@ tasks:
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
-      - bash 20-kafka-cluster/validate.sh
+      - bash platform/20-kafka-cluster/validate.sh
 
   validate-minio:
     internal: true
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
-      - bash 20-minio/validate.sh
+      - bash platform/20-minio/validate.sh
 
   validate-mysql:
     internal: true
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
-      - bash 20-mysql/validate.sh
+      - bash platform/20-mysql/validate.sh
 
   validate-jaeger-thanos:
     internal: true
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
-      - bash 20-jaeger-thanos/validate.sh
+      - bash platform/20-jaeger-thanos/validate.sh
 
   validate-jaeger-trino:
     internal: true
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
-      - bash 20-jaeger-trino/validate.sh
+      - bash platform/20-jaeger-trino/validate.sh
 
   validate-kafka-debezium-mysql-connector:
     internal: true
@@ -266,7 +266,7 @@ tasks:
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
-      - bash 20-polaris-db/validate.sh
+      - bash platform/20-polaris-db/validate.sh
 
   validate-polaris:
     internal: true

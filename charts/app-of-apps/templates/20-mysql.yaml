@@ -10,7 +10,7 @@ spec:
   project: {{ .Values.project.name }}
   sources:
     - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
-      path: 20-mysql
+      path: platform/20-mysql
       targetRevision: main
   destination:
     name: {{ .Values.spec.destination.name }}

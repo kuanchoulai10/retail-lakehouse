@@ -10,7 +10,7 @@ spec:
   project: {{ .Values.project.name }}
   sources:
     - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
-      path: 20-jaeger-trino
+      path: platform/20-jaeger-trino
       targetRevision: main
   destination:
     name: {{ .Values.spec.destination.name }}
