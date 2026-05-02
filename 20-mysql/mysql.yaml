@@ -26,7 +26,7 @@ spec:
         app: mysql
     spec:
       containers:
-      - image: quay.io/debezium/example-mysql:3.2
+      - image: quay.io/debezium/example-mysql:2.7.3.Final
         name: mysql
         envFrom:
         - secretRef:
