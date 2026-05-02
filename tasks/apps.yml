@@ -4,7 +4,7 @@ version: '3'
 
 tasks:
   bootstrap:
-    desc: "Bootstrap all K8s apps (DEPLOY_METHOD: scripts|argocd)"
+    desc: "Bootstrap all K8s apps (KUBE_CONTEXT required, DEPLOY_METHOD: scripts|argocd)"
     requires:
       vars:
         - name: KUBE_CONTEXT

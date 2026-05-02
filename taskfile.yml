@@ -55,8 +55,24 @@ tasks:
       - task: docs:serve
 
   onboard:
-    desc: "One-shot setup for a new machine: check tools, start cluster, bootstrap apps, sync dev env"
+    desc: "One-shot setup: check tools, bootstrap cluster + apps, sync dev (DEPLOY_METHOD=scripts|argocd required)"
+    vars:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT | default "retail-lakehouse"}}'
+    requires:
+      vars:
+        - name: DEPLOY_METHOD
+          enum: ["scripts", "argocd"]
+    prompt: |
+      This will take 10-20 minutes and does the following:
+      - Bootstrap a colima VM named '{{.KUBE_CONTEXT}}'
+      - Bootstrap up a minikube K8s cluster named '{{.KUBE_CONTEXT}}'
+      - Bootstrap all K8s apps to the cluster via '{{.DEPLOY_METHOD}}'
+      - Sets up your local dev environment (Python, Node, pre-commit hooks)
+
+      Continue?
     preconditions:
+      - sh: '[ "$(uname -s)" = "Darwin" ]'
+        msg: "Only macOS (Darwin) is supported right now, sorry"
       - sh: command -v colima
         msg: "colima missing, run brew install colima"
       - sh: command -v docker
@@ -81,8 +97,10 @@ tasks:
         msg: "uv missing, run brew install uv"
     cmds:
       - task: cluster:bootstrap
+        vars:
+          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
       - task: apps:bootstrap
         vars:
-          KUBE_CONTEXT: 'retail-lakehouse'
-          DEPLOY_METHOD: 'scripts'
+          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+          DEPLOY_METHOD: '{{.DEPLOY_METHOD}}'
       - task: dev:sync

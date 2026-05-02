@@ -4,9 +4,10 @@ version: '3'
 
 tasks:
   bootstrap:
-    desc: "Bootstrap local colima VM + minikube cluster"
-    vars:
-      PROFILE: 'retail-lakehouse'
+    desc: "Bootstrap local colima VM + minikube cluster (KUBE_CONTEXT required)"
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
     cmds:
       - |
         colima start \
@@ -14,10 +15,10 @@ tasks:
           --memory 28 \
           --disk 120 \
           --runtime docker \
-          --profile {{.PROFILE}}
+          --profile {{.KUBE_CONTEXT}}
       - |
         minikube start \
-          --profile {{.PROFILE}} \
+          --profile {{.KUBE_CONTEXT}} \
           --nodes 1 \
           --cpus 9 \
           --memory 26G \
