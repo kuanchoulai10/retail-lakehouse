@@ -341,6 +341,30 @@ tasks:
       - chmod 600 {{.OUTDIR}}/keystore.p12 {{.OUTDIR}}/truststore.p12 {{.OUTDIR}}/ca.crt {{.OUTDIR}}/password.txt
       - echo "✓ {{.OUTDIR}}/{keystore.p12, truststore.p12, password.txt}"
 
+  trino-smoke-test:
+    desc: 'End-to-end mTLS smoke test (issues throwaway cert, runs SHOW CATALOGS, cleans up)'
+    vars:
+      TUSER: 'smoke-test'
+      OUTDIR: '23-trino/client-certs/smoke-test'
+      CTX: '{{.KUBE_CONTEXT | default "mini"}}'
+    cmds:
+      - task: trino-client-cert
+        vars:
+          USER: '{{.TUSER}}'
+      - defer: kubectl delete -n trino certificate trino-client-{{.TUSER}} --context {{.CTX}} --ignore-not-found
+      - defer: kubectl delete -n trino secret trino-client-{{.TUSER}}-tls --context {{.CTX}} --ignore-not-found
+      - defer: rm -rf {{.OUTDIR}}
+      - defer: pkill -f 'port-forward.*trino.*18443' || true
+      - kubectl port-forward -n trino svc/trino 18443:8443 --context {{.CTX}} &
+      - sleep 2
+      - |
+        trino --server https://localhost:18443 --user {{.TUSER}} \
+          --keystore-path {{.OUTDIR}}/keystore.p12 \
+          --keystore-password "$(cat {{.OUTDIR}}/password.txt)" \
+          --truststore-path {{.OUTDIR}}/truststore.p12 \
+          --truststore-password "$(cat {{.OUTDIR}}/password.txt)" \
+          --execute "SHOW CATALOGS"
+
   validate-thanos:
     internal: true
     env:
