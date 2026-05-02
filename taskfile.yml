@@ -117,11 +117,15 @@ tasks:
       - bash 20-mysql/install.sh
       - bash 20-jaeger-thanos/install.sh
       - bash 20-jaeger-trino/install.sh
+      - bash 20-polaris-db/install.sh
       - bash 20-kafka-cluster/validate.sh
       - bash 20-minio/validate.sh
       - bash 20-mysql/validate.sh
       - bash 20-jaeger-thanos/validate.sh
       - bash 20-jaeger-trino/validate.sh
+      - bash 20-polaris-db/validate.sh
+      - bash 21-polaris/install.sh
+      - bash 21-polaris/validate.sh
       - bash 21-kafka-debezium-mysql-connector/install.sh
       - bash 21-kafka-debezium-mysql-connector/validate.sh
       - bash 22-kafka-iceberg-connector/install.sh
@@ -202,6 +206,12 @@ tasks:
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       - task: validate-thanos
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-polaris-db
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-polaris
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       - task: validate-tbl-maint-db
@@ -318,6 +328,20 @@ tasks:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
       - bash 30-thanos/validate.sh
+
+  validate-polaris-db:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash 20-polaris-db/validate.sh
+
+  validate-polaris:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash 21-polaris/validate.sh
 
   validate-tbl-maint-db:
     internal: true

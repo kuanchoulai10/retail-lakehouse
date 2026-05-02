@@ -1,0 +1,66 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: polaris-create-catalog
+  namespace: polaris
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: create-catalog
+          image: curlimages/curl:8.10.1
+          env:
+            - name: POLARIS_URL
+              value: http://polaris.polaris.svc.cluster.local:8181
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: polaris-storage-secret
+                  key: awsAccessKeyId
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: polaris-storage-secret
+                  key: awsSecretAccessKey
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              TOKEN=$(curl -sf -X POST "$POLARIS_URL/api/catalog/v1/oauth/tokens" \
+                -H "Content-Type: application/x-www-form-urlencoded" \
+                -d 'grant_type=client_credentials&client_id=root&client_secret=secret&scope=PRINCIPAL_ROLE:ALL' \
+                | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
+              [ -n "$TOKEN" ] || { echo "failed to get token"; exit 1; }
+              echo "got token"
+              # Check if catalog already exists
+              EXISTS=$(curl -sf -H "Authorization: Bearer $TOKEN" \
+                "$POLARIS_URL/api/management/v1/catalogs/iceberg" -o /dev/null -w '%{http_code}' || true)
+              if [ "$EXISTS" = "200" ]; then
+                echo "catalog 'iceberg' already exists"
+                exit 0
+              fi
+              curl -sf -X POST "$POLARIS_URL/api/management/v1/catalogs" \
+                -H "Authorization: Bearer $TOKEN" \
+                -H "Content-Type: application/json" \
+                -d '{
+                  "catalog": {
+                    "name": "iceberg",
+                    "type": "INTERNAL",
+                    "properties": {
+                      "default-base-location": "s3://retail-lakehouse-7dj2/warehouse"
+                    },
+                    "storageConfigInfo": {
+                      "storageType": "S3",
+                      "allowedLocations": ["s3://retail-lakehouse-7dj2/"],
+                      "endpoint": "http://minio-api.minio.svc.cluster.local:9000",
+                      "stsEndpoint": "http://minio-api.minio.svc.cluster.local:9000",
+                      "pathStyleAccess": true
+                    }
+                  }
+                }'
+              echo
+              echo "catalog 'iceberg' created"
