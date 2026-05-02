@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
 KUBE_PROMETHEUS_VERSION="${KUBE_PROMETHEUS_VERSION:-v0.17.0}"
 KUBE_PROMETHEUS_SHA="${KUBE_PROMETHEUS_SHA:-d6d094d115093d81d3355bc970a93e4357d6ef05}"
@@ -31,8 +30,5 @@ kubectl create -f kube-prometheus/manifests/ --context "${KUBE_CONTEXT}"
 
 echo "==> Cleaning up"
 rm -rf kube-prometheus
-
-echo "==> Applying Prometheus RBAC for additional namespaces"
-kubectl apply -f "$SCRIPT_DIR/prometheus-rolebinding-trino.yaml" --context "${KUBE_CONTEXT}"
 
 echo "==> Done."

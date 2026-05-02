@@ -18,6 +18,9 @@ kubectl apply -f "$SCRIPT_DIR/trino-certificate.yaml" --context "${KUBE_CONTEXT}
 # Apply KEDA secrets and TriggerAuthentication
 kubectl apply -f "$SCRIPT_DIR/secrets.yaml" --context "${KUBE_CONTEXT}"
 
+# Apply Prometheus RBAC so kube-prometheus can scrape Trino targets
+kubectl apply -f "$SCRIPT_DIR/prometheus-rolebinding.yaml" --context "${KUBE_CONTEXT}"
+
 # Wait for cert-manager to issue the TLS certificate
 echo "==> Waiting for cert-manager to issue TLS certificate..."
 kubectl wait --for=condition=Ready certificate/trino-tls \
