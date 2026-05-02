@@ -7,7 +7,7 @@ image:
 server:
   workers: 2
   config:
-    authenticationType: "oauth2"
+    authenticationType: "certificate,oauth2"
   autoscaling:
     enabled: false
   keda:
@@ -79,6 +79,10 @@ initContainers:
         - name: tls-built
           mountPath: /tls-built
 # --8<-- [end:initContainers]
+
+# Note: additionalConfigProperties (incl. mTLS truststore + user-mapping) lives in
+# values-secret.yaml because Helm replaces (not merges) lists — keeping the OAuth2
+# secret entries and mTLS entries together avoids accidental override.
 
 # --8<-- [start:resource-groups]
 resourceGroups:

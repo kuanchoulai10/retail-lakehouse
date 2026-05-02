@@ -1,3 +1,8 @@
+# Trino PKI:
+#   selfSigned Issuer  →  bootstraps  →  trino-ca (isCA: true, stored in trino-ca-secret)
+#   trino-ca-issuer (ca:)  →  signs  →  trino-tls (server) + trino-client-* (clients)
+# The single trino-ca-issuer is what makes server and client certs share a chain
+# of trust, enabling mTLS validation in both directions.
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
@@ -9,6 +14,34 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
+  name: trino-ca
+  namespace: trino
+spec:
+  isCA: true
+  commonName: trino-ca
+  secretName: trino-ca-secret
+  duration: 87600h         # 10 years
+  renewBefore: 720h
+  issuerRef:
+    name: trino-selfsigned-issuer
+    kind: Issuer
+  privateKey:
+    algorithm: RSA
+    size: 2048
+    encoding: PKCS8
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: trino-ca-issuer
+  namespace: trino
+spec:
+  ca:
+    secretName: trino-ca-secret
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
   name: trino-tls
   namespace: trino
 spec:
@@ -16,7 +49,7 @@ spec:
   duration: 8760h
   renewBefore: 720h
   issuerRef:
-    name: trino-selfsigned-issuer
+    name: trino-ca-issuer
     kind: Issuer
   commonName: trino.trino.svc.cluster.local
   dnsNames:

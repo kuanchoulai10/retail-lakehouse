@@ -8,7 +8,7 @@ spec:
   duration: 8760h
   renewBefore: 720h
   issuerRef:
-    name: trino-selfsigned-issuer
+    name: trino-ca-issuer
     kind: Issuer
   commonName: ${USER}
   subject:

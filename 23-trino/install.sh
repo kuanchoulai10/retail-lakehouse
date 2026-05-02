@@ -21,7 +21,11 @@ kubectl apply -f "$SCRIPT_DIR/secrets.yaml" --context "${KUBE_CONTEXT}"
 # Apply Prometheus RBAC so kube-prometheus can scrape Trino targets
 kubectl apply -f "$SCRIPT_DIR/prometheus-rolebinding.yaml" --context "${KUBE_CONTEXT}"
 
-# Wait for cert-manager to issue the TLS certificate
+# Wait for cert-manager to issue the CA + TLS certificates
+echo "==> Waiting for cert-manager to issue CA certificate..."
+kubectl wait --for=condition=Ready certificate/trino-ca \
+  -n trino --timeout=120s --context "${KUBE_CONTEXT}"
+
 echo "==> Waiting for cert-manager to issue TLS certificate..."
 kubectl wait --for=condition=Ready certificate/trino-tls \
   -n trino --timeout=120s --context "${KUBE_CONTEXT}"
