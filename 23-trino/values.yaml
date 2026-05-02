@@ -5,21 +5,21 @@ image:
 
 # --8<-- [start:server]
 server:
-  workers: 2
+  workers: 1
   config:
     authenticationType: "certificate,oauth2"
   autoscaling:
     enabled: false
   keda:
     enabled: true
-    minReplicaCount: 2
-    maxReplicaCount: 5
+    minReplicaCount: 1
+    maxReplicaCount: 3
     pollingInterval: 15
     initialCooldownPeriod: 0 # default 0s
     cooldownPeriod: 300 # default 300s, only applies when scaling to 0
     fallback:
       failureThreshold: 3
-      replicas: 2
+      replicas: 1
       behavior: "static"
     advanced:
       horizontalPodAutoscalerConfig:

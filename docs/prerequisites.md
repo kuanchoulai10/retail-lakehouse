@@ -24,10 +24,10 @@ Start colima with more resources:
 ```bash
 colima start \
     --cpu 9 \
-    --memory 24 \
+    --memory 28 \
     --disk 120 \
     --runtime docker \
-    --profile data
+    --profile retail-lakehouse
 ```
 
 This will create a local VM with docker runtime. After installing colima, make sure `docker` uses the colima context (`docker context ls`).
@@ -37,19 +37,19 @@ Then start minikube with more resources:
 ```bash
 minikube start \
   --profile retail-lakehouse \
-  --nodes 3 \
-  --cpus 3 \
-  --memory 8G \
-  --disk-size 40G \
+  --nodes 1 \
+  --cpus 9 \
+  --memory 26G \
+  --disk-size 120G \
   --driver docker \
   --container-runtime docker \
-  --kubernetes-version v1.30.2 \
-  --addons registry \
+  --kubernetes-version v1.33.2 \
+  --addons registry --addons metrics-server\
   --insecure-registry "10.0.0.0/24" \
   --delete-on-failure
 ```
 
-This will create a 3-node Kubernetes cluster (3 CPUs, 8GB RAM, 40GB disk each) with a local container registry addon enabled. The `--insecure-registry` flag allows pushing images to the local registry.
+This will create a single-node Kubernetes cluster (9 CPUs, 26GB RAM, 120GB disk) with the local container registry and metrics-server addons enabled. The `--insecure-registry` flag allows pushing images to the local registry; the `metrics-server` addon enables `kubectl top` for nodes and pods.
 
 ![](./assets/k8s-env.excalidraw.svg)
 ///
