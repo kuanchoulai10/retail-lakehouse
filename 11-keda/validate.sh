@@ -6,7 +6,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
 
-log::quiet "KEDA is ready"
+log::on_success "KEDA is ready"
 
 kubectl rollout status deployment/keda-operator \
   -n keda --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"

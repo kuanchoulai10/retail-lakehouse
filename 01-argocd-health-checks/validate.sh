@@ -5,9 +5,9 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 
-log::quiet "Patch applied"
+log::on_success "Patch applied"
 
 kubectl get configmap argocd-cm -n argocd \
   --context "${KUBE_CONTEXT}" \
   -o jsonpath='{.data.resource\.customizations\.health\.argoproj\.io_Application}' \
-  | grep -q "hs.status" || log::fail "Patch not found"
+  | grep -q "hs.status" || log::error "Patch not found"

@@ -6,7 +6,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
 
-log::quiet "Jaeger (thanos) is ready"
+log::on_success "Jaeger (thanos) is ready"
 
 kubectl wait pod \
   -l app.kubernetes.io/managed-by=opentelemetry-operator \

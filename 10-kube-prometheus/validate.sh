@@ -6,7 +6,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
 
-log::quiet "kube-prometheus stack is ready"
+log::on_success "kube-prometheus stack is ready"
 
 kubectl rollout status deployment/prometheus-operator \
   -n monitoring --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"

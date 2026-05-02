@@ -6,7 +6,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
 
-log::quiet "Thanos is ready"
+log::on_success "Thanos is ready"
 
 kubectl rollout status deployment/thanos-query \
   -n thanos --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"

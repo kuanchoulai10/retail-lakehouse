@@ -6,7 +6,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-1200s}"
 
-log::quiet "Iceberg connector is ready"
+log::on_success "Iceberg connector is ready"
 
 kubectl wait kafkaconnect/iceberg-connect-cluster \
   -n kafka-cdc \

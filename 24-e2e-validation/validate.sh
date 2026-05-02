@@ -7,13 +7,13 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 TIMEOUT="${TIMEOUT:-300s}"
 MINIO_POLL_TIMEOUT="${MINIO_POLL_TIMEOUT:-360}"  # seconds to wait for data in MinIO (Iceberg commits every ~5 min)
 
-log::quiet "e2e validation passed: 100 rows inserted into MySQL and data is present in MinIO"
+log::on_success "e2e validation passed: 100 rows inserted into MySQL and data is present in MinIO"
 
-log::step "Waiting for MySQL insert job to complete"
+log::info "Waiting for MySQL insert job to complete"
 kubectl wait --for=condition=complete job/mysql-insert-100-rows \
   -n kafka-cdc --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
 
-log::step "Job completed; fetching MinIO credentials from deployment"
+log::info "Job completed; fetching MinIO credentials from deployment"
 MINIO_USER=$(kubectl get deploy minio -n minio \
   --context "${KUBE_CONTEXT}" \
   -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="MINIO_ROOT_USER")].value}')
@@ -21,8 +21,8 @@ MINIO_PASS=$(kubectl get deploy minio -n minio \
   --context "${KUBE_CONTEXT}" \
   -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="MINIO_ROOT_PASSWORD")].value}')
 
-log::step "Polling MinIO for new Iceberg Parquet files (timeout: ${MINIO_POLL_TIMEOUT}s)"
-log::detail "Path: retail-lakehouse-7dj2/warehouse/inventory/orders/data/"
+log::info "Polling MinIO for new Iceberg Parquet files (timeout: ${MINIO_POLL_TIMEOUT}s)"
+log::debug "Path: retail-lakehouse-7dj2/warehouse/inventory/orders/data/"
 
 kubectl delete pod mc-e2e-validate -n minio \
   --context "${KUBE_CONTEXT}" --ignore-not-found=true 2>/dev/null || true

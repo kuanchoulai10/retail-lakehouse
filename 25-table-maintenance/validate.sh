@@ -3,13 +3,13 @@ set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 
-log::header "Validating table-maintenance"
+log::info "Validating table-maintenance"
 
-log::step "SparkApplication status"
+log::info "SparkApplication status"
 kubectl get sparkapplication table-maintenance-rewrite-data-files -n default \
   -o jsonpath='{.status.applicationState.state}' 2>/dev/null && echo
 
-log::step "MinIO Iceberg data files (inventory.orders)"
+log::info "MinIO Iceberg data files (inventory.orders)"
 kubectl run minio-validate --restart=Never --image=minio/mc --namespace=default \
   --command -- sh -c \
   "mc alias set m http://minio-api.minio.svc.cluster.local:9000 minio_user minio_password \
@@ -25,4 +25,4 @@ sleep 5
 kubectl logs minio-validate 2>/dev/null
 kubectl delete pod minio-validate --ignore-not-found 2>/dev/null
 
-log::footer "table-maintenance check done"
+log::info "table-maintenance check done"
