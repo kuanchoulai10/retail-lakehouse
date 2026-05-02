@@ -10,7 +10,19 @@ tasks:
         - name: KUBE_CONTEXT
         - name: DEPLOY_METHOD
           enum: ["scripts", "argocd"]
+    preconditions:
+      - sh: command -v kubectl
+        msg: "kubectl missing, run: brew install kubectl"
+      - sh: command -v helm
+        msg: "helm missing, run: brew install helm"
+      - sh: command -v sops
+        msg: "sops missing, run: brew install sops"
+      - sh: command -v git
+        msg: "git missing, run: xcode-select --install (or brew install git)"
+      - sh: command -v python3
+        msg: "python3 missing, run: xcode-select --install (or brew install python@3.13)"
     cmds:
+      - kubectl config get-contexts {{.KUBE_CONTEXT}} >/dev/null
       - task: bootstrap-by-{{.DEPLOY_METHOD}}
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"

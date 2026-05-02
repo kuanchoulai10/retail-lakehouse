@@ -68,27 +68,33 @@ tasks:
       - sh: '[ "$(uname -s)" = "Darwin" ]'
         msg: "Only macOS (Darwin) is supported right now, sorry"
       - sh: command -v colima
-        msg: "colima missing, run brew install colima"
+        msg: "colima missing, run: brew install colima"
       - sh: command -v docker
-        msg: "docker missing, run brew install docker"
-      - sh: command -v kubectl
-        msg: "kubectl missing, run brew install kubectl"
+        msg: "docker missing, run: brew install docker"
       - sh: command -v minikube
-        msg: "minikube missing, run brew install minikube"
+        msg: "minikube missing, run: brew install minikube"
+      - sh: command -v kubectl
+        msg: "kubectl missing, run: brew install kubectl"
       - sh: command -v helm
-        msg: "helm missing, run brew install helm"
+        msg: "helm missing, run: brew install helm"
+      - sh: command -v sops
+        msg: "sops missing, run: brew install sops"
+      - sh: command -v git
+        msg: "git missing, run: xcode-select --install (or brew install git)"
+      - sh: command -v python3
+        msg: "python3 missing, run: xcode-select --install (or brew install python@3.13)"
       - sh: command -v jsonnet
-        msg: "jsonnet missing, run brew install jsonnet"
+        msg: "jsonnet missing, run: brew install jsonnet"
       - sh: command -v jb
-        msg: "jb missing, run brew install jsonnet-bundler"
+        msg: "jb missing, run: brew install jsonnet-bundler"
       - sh: command -v envsubst
-        msg: "envsubst missing, run brew install gettext"
+        msg: "envsubst missing, run: brew install gettext"
       - sh: command -v keytool
-        msg: "keytool missing, run brew install openjdk@21"
+        msg: "keytool missing, run: brew install openjdk@21 (or any JDK)"
       - sh: command -v npm
-        msg: "npm missing, run brew install node"
+        msg: "npm missing, run: brew install node"
       - sh: command -v uv
-        msg: "uv missing, run brew install uv"
+        msg: "uv missing, run: brew install uv"
     requires:
       vars:
         - name: KUBE_CONTEXT
