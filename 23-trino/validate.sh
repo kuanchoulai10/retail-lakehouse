@@ -48,4 +48,20 @@ if [ "${TRINO_TARGETS}" -lt 1 ]; then
 fi
 echo "  Found ${TRINO_TARGETS} healthy Trino target(s)"
 
+echo "==> Validating mTLS truststore exists in coordinator"
+kubectl exec -n trino deployment/trino-coordinator --context "${KUBE_CONTEXT}" -- \
+  test -s /etc/trino/truststore/truststore.p12
+
+echo "==> Validating authentication.type includes certificate"
+kubectl exec -n trino deployment/trino-coordinator --context "${KUBE_CONTEXT}" -- \
+  grep -q '^http-server.authentication.type=certificate,oauth2$' /etc/trino/config.properties
+
+echo "==> Validating user-mapping pattern set"
+kubectl exec -n trino deployment/trino-coordinator --context "${KUBE_CONTEXT}" -- \
+  grep -q '^http-server.authentication.certificate.user-mapping.pattern=' /etc/trino/config.properties
+
+echo "==> Validating truststore path set"
+kubectl exec -n trino deployment/trino-coordinator --context "${KUBE_CONTEXT}" -- \
+  grep -q '^http-server.https.truststore.path=' /etc/trino/config.properties
+
 echo "==> Trino is ready."
