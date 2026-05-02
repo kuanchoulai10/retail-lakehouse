@@ -3,8 +3,8 @@
 version: '3'
 
 tasks:
-  up:
-    desc: "Start colima VM + minikube cluster (one-time setup or after cluster-down)"
+  bootstrap:
+    desc: "Bootstrap local colima VM + minikube cluster"
     vars:
       PROFILE: 'retail-lakehouse'
     cmds:
@@ -28,18 +28,3 @@ tasks:
           --addons registry --addons metrics-server \
           --insecure-registry "10.0.0.0/24" \
           --delete-on-failure
-
-  check-tools:
-    desc: "Verify required CLI tools are installed"
-    cmds:
-      - |
-        missing=()
-        for t in colima docker kubectl minikube helm jsonnet jb envsubst keytool; do
-          command -v "$t" >/dev/null 2>&1 || missing+=("$t")
-        done
-        if [ ${#missing[@]} -gt 0 ]; then
-          echo "ERROR missing tools: ${missing[*]}"
-          echo "  install via Homebrew (see docs/prerequisites.md)"
-          exit 1
-        fi
-        echo "✓ tools OK"

@@ -3,27 +3,27 @@
 version: '3'
 
 tasks:
-  init:
-    desc: "Initialize local dev environment"
+  sync:
+    desc: "Sync local dev environment with repo state"
     cmds:
-      - task: install-node
-      - task: install-python
-      - task: install-pre-commit
+      - task: install-commitlint
+      - task: install-python-deps
+      - task: install-pre-commit-hook
 
-  install-node:
-    desc: "Install Node dependencies"
+  install-commitlint:
+    desc: "Install commitlint"
     internal: true
     cmds:
       - npm clean-install --save-dev @commitlint/cli @commitlint/config-conventional
 
-  install-python:
+  install-python-deps:
     desc: "Install Python dependencies"
     internal: true
     cmds:
       - uv sync --locked --all-packages
 
-  install-pre-commit:
-    desc: "Setup pre-commit hooks"
+  install-pre-commit-hook:
+    desc: "Install pre-commit git hook"
     internal: true
     cmds:
       - uv run pre-commit install

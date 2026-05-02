@@ -8,8 +8,8 @@ output:
     end: '::endgroup::'
 
 includes:
-  dev-env:
-    taskfile: ./tasks/dev-env.yml
+  dev:
+    taskfile: ./tasks/dev.yml
     dir: '{{.ROOT_DIR}}'
   checks:
     taskfile: ./tasks/checks.yml
@@ -37,21 +37,52 @@ tasks:
   pre-pr:
     desc: "Run all checks before creating a PR"
     cmds:
-      - task: checks:lint
-      - task: checks:test
-      - task: checks:arch
+      - task: checks:pre-pr
 
   pre-commit:
     desc: "Run pre commit checks"
     cmds:
-      - task: checks:lint
+      - task: checks:pre-commit
 
   unit-test:
     desc: "Run all unit tests in parallel"
     cmds:
-      - task: checks:test
+      - task: checks:unit-test
 
   serve-docs:
     desc: Serve docs locally
     cmds:
       - task: docs:serve
+
+  onboard:
+    desc: "One-shot setup for a new machine: check tools, start cluster, bootstrap apps, sync dev env"
+    preconditions:
+      - sh: command -v colima
+        msg: "colima missing, run brew install colima"
+      - sh: command -v docker
+        msg: "docker missing, run brew install docker"
+      - sh: command -v kubectl
+        msg: "kubectl missing, run brew install kubectl"
+      - sh: command -v minikube
+        msg: "minikube missing, run brew install minikube"
+      - sh: command -v helm
+        msg: "helm missing, run brew install helm"
+      - sh: command -v jsonnet
+        msg: "jsonnet missing, run brew install jsonnet"
+      - sh: command -v jb
+        msg: "jb missing, run brew install jsonnet-bundler"
+      - sh: command -v envsubst
+        msg: "envsubst missing, run brew install gettext"
+      - sh: command -v keytool
+        msg: "keytool missing, run brew install openjdk@21"
+      - sh: command -v npm
+        msg: "npm missing, run brew install node"
+      - sh: command -v uv
+        msg: "uv missing, run brew install uv"
+    cmds:
+      - task: cluster:bootstrap
+      - task: apps:bootstrap
+        vars:
+          KUBE_CONTEXT: 'retail-lakehouse'
+          DEPLOY_METHOD: 'scripts'
+      - task: dev:sync
