@@ -6,7 +6,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
 
-log::header "Validating Trino"
+log::quiet "Trino is ready"
 
 kubectl wait --for=condition=Ready certificate/trino-tls \
   -n trino --timeout=60s --context "${KUBE_CONTEXT}"
@@ -71,5 +71,3 @@ case "$STATUS" in
   401|403) log::detail "Server rejected unauth request with HTTP $STATUS (expected)";;
   *) log::fail "expected 401/403, got $STATUS";;
 esac
-
-log::footer "Trino is ready"

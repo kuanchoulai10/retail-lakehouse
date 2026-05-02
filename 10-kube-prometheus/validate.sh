@@ -6,7 +6,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
 
-log::header "Validating kube-prometheus stack"
+log::quiet "kube-prometheus stack is ready"
 
 kubectl rollout status deployment/prometheus-operator \
   -n monitoring --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
@@ -24,5 +24,3 @@ kubectl rollout status statefulset/alertmanager-main \
   -n monitoring --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
 kubectl rollout status daemonset/node-exporter \
   -n monitoring --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
-
-log::footer "kube-prometheus stack is ready"

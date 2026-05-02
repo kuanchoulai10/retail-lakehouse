@@ -6,7 +6,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
 
-log::header "Validating MinIO"
+log::quiet "MinIO is ready"
 
 kubectl wait pod \
   -l app=minio \
@@ -14,5 +14,3 @@ kubectl wait pod \
   --for=condition=Ready \
   --timeout="${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
-
-log::footer "MinIO is ready"

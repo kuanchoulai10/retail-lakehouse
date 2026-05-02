@@ -7,7 +7,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 TIMEOUT="${TIMEOUT:-300s}"
 MINIO_POLL_TIMEOUT="${MINIO_POLL_TIMEOUT:-360}"  # seconds to wait for data in MinIO (Iceberg commits every ~5 min)
 
-log::header "Validating e2e pipeline: MySQL → Kafka → Iceberg → MinIO"
+log::quiet "e2e validation passed: 100 rows inserted into MySQL and data is present in MinIO"
 
 log::step "Waiting for MySQL insert job to complete"
 kubectl wait --for=condition=complete job/mysql-insert-100-rows \
@@ -55,5 +55,3 @@ kubectl run mc-e2e-validate --rm -i --restart=Never \
       sleep 10
     done
   '
-
-log::footer "e2e validation passed: 100 rows inserted into MySQL and data is present in MinIO"

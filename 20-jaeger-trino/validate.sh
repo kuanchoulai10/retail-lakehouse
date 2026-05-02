@@ -6,7 +6,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
 
-log::header "Validating Jaeger for Trino"
+log::quiet "Jaeger (trino) is ready"
 
 kubectl wait pod \
   -l app.kubernetes.io/managed-by=opentelemetry-operator \
@@ -14,5 +14,3 @@ kubectl wait pod \
   --for=condition=Ready \
   --timeout="${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
-
-log::footer "Jaeger (trino) is ready"

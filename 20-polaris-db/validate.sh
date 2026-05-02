@@ -6,7 +6,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
 
-log::header "Validating PostgreSQL for Polaris"
+log::quiet "PostgreSQL for Polaris is ready"
 
 kubectl wait pod \
   -l app=polaris-db \
@@ -21,5 +21,3 @@ POD=$(kubectl get pod -l app=polaris-db -n polaris \
 
 kubectl exec -n polaris "$POD" --context "${KUBE_CONTEXT}" \
   -- pg_isready -U polaris -d polaris
-
-log::footer "PostgreSQL is ready"

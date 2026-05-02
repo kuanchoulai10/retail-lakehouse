@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # Shared logging helpers for cluster install/validate/uninstall scripts.
 #
-# Usage:
-#   source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
+# Quiet mode (preferred for validate scripts):
+#   log::quiet "Trino is ready"   # buffer all output; on success print "✓ ...",
+#                                 # on failure dump captured stdout+stderr.
+#
+# Verbose helpers (output goes to the active sink — stdout, or buffer under quiet):
 #   log::header "Validating Trino"        # ▸ Validating Trino (context: ...)
 #   log::step   "Checking JMX sidecar"    #   ▸ Checking JMX sidecar
 #   log::ok     "JMX sidecar found"       #   ✓ JMX sidecar found
@@ -66,4 +69,22 @@ log::fail() {
 
 log::footer() {
   printf '%s✓%s %s\n' "$__LOG_GREEN" "$__LOG_RESET" "$1"
+}
+
+log::quiet() {
+  __LOG_FOOTER="${1:-done}"
+  __LOG_BUF=$(mktemp)
+  exec 3>&1 4>&2 >"$__LOG_BUF" 2>&1
+  trap '__log::on_exit $?' EXIT
+}
+
+__log::on_exit() {
+  local rc=$1
+  exec 1>&3 2>&4 3>&- 4>&-
+  if (( rc == 0 )); then
+    log::footer "$__LOG_FOOTER"
+  else
+    cat "$__LOG_BUF" >&2
+  fi
+  rm -f "$__LOG_BUF"
 }
