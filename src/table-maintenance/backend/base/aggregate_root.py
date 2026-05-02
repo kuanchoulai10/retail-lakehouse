@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from base._inheritance_guard import enforce_max_depth
 from base.entity import Entity
 from base.entity_id import EntityId
 
@@ -40,8 +41,9 @@ class AggregateRoot[ID: EntityId](Entity[ID]):
     """
 
     def __init_subclass__(cls, **kwargs: object) -> None:
-        """Initialize subclass and forward keyword arguments to super."""
+        """Forward kwargs to super and enforce flat hierarchy (max depth 1)."""
         super().__init_subclass__(**kwargs)
+        enforce_max_depth(cls, AggregateRoot, 1)
 
     def register_event(self, event: DomainEvent) -> None:
         """Append a domain event to be collected later."""

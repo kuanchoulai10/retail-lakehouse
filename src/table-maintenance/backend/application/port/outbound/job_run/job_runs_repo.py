@@ -2,21 +2,25 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import TYPE_CHECKING
+
+from base.repository import Repository
+
+from application.domain.model.job_run import JobRun
 
 if TYPE_CHECKING:
     from application.domain.model.job import JobId
-    from application.domain.model.job_run import JobRun, JobRunId
 
 
-class JobRunsRepo(ABC):
-    """Port over JobRun execution instances."""
+class JobRunsRepo(Repository[JobRun]):
+    """Repository for JobRun execution instances.
 
-    @abstractmethod
-    def create(self, entity: JobRun) -> JobRun:
-        """Persist a new job run and return it."""
-        ...
+    JobRuns are append-only historical records — once created they are
+    updated through their lifecycle (running → completed/failed/cancelled)
+    but never deleted, so this port does not expose ``delete``. Adds
+    ``save`` for state transitions and aggregate-specific queries.
+    """
 
     @abstractmethod
     def save(self, entity: JobRun) -> JobRun:
@@ -24,18 +28,8 @@ class JobRunsRepo(ABC):
         ...
 
     @abstractmethod
-    def get(self, run_id: JobRunId) -> JobRun:
-        """Retrieve a job run by its identifier."""
-        ...
-
-    @abstractmethod
     def list_for_job(self, job_id: JobId) -> list[JobRun]:
         """Return all job runs for the given job."""
-        ...
-
-    @abstractmethod
-    def list_all(self) -> list[JobRun]:
-        """Return all job runs."""
         ...
 
     @abstractmethod

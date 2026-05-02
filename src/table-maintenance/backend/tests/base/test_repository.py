@@ -57,7 +57,7 @@ def test_repository_is_generic_over_entity():
 
 
 def test_repository_has_abstract_methods():
-    """Repository requires create, get, list_all, delete to be implemented."""
+    """Repository requires create, get, list_all to be implemented."""
 
     class IncompleteRepo(Repository[Item]):
         pass

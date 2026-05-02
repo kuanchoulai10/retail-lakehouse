@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from base._inheritance_guard import enforce_max_depth
+
 
 class UseCase[TInput, TOutput](ABC):
     """A single application-level operation.
@@ -30,6 +32,11 @@ class UseCase[TInput, TOutput](ABC):
             def execute(self, input: JobRequest) -> JobResponse:
                 return self.repo.create(input)
     """
+
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        """Enforce port + service inheritance depth (max 2)."""
+        super().__init_subclass__(**kwargs)
+        enforce_max_depth(cls, UseCase, 2)
 
     @abstractmethod
     def execute(self, request: TInput) -> TOutput:

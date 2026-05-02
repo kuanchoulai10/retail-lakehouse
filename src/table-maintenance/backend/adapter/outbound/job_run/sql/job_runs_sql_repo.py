@@ -15,8 +15,10 @@ from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 if TYPE_CHECKING:
     from sqlalchemy import Engine
 
+    from base.entity_id import EntityId
+
     from application.domain.model.job import JobId
-    from application.domain.model.job_run import JobRun, JobRunId
+    from application.domain.model.job_run import JobRun
 
 
 class JobRunsSqlRepo(JobRunsRepo):
@@ -43,13 +45,13 @@ class JobRunsSqlRepo(JobRunsRepo):
             conn.execute(stmt)
         return entity
 
-    def get(self, run_id: JobRunId) -> JobRun:
+    def get(self, entity_id: EntityId) -> JobRun:
         """Fetch a job run by id or raise JobRunNotFoundError."""
-        stmt = select(job_runs_table).where(job_runs_table.c.id == run_id.value)
+        stmt = select(job_runs_table).where(job_runs_table.c.id == entity_id.value)
         with self._engine.connect() as conn:
             row = conn.execute(stmt).mappings().first()
         if row is None:
-            raise JobRunNotFoundError(run_id.value)
+            raise JobRunNotFoundError(entity_id.value)
         return row_to_job_run(row)
 
     def list_for_job(self, job_id: JobId) -> list[JobRun]:

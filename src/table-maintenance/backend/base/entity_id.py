@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from base._inheritance_guard import enforce_max_depth
 from base.value_object import ValueObject
 
 
@@ -28,6 +29,11 @@ class EntityId(ValueObject):
     """
 
     value: str
+
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        """Enforce flat hierarchy: concrete IDs extend EntityId directly (max depth 1)."""
+        super().__init_subclass__(**kwargs)
+        enforce_max_depth(cls, EntityId, 1)
 
     def __str__(self) -> str:
         """Return the raw identifier string."""

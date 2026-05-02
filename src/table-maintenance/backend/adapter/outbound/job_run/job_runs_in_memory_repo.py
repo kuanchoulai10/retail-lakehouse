@@ -8,8 +8,10 @@ from application.domain.model.job_run import JobRunNotFoundError
 from application.port.outbound.job_run.job_runs_repo import JobRunsRepo
 
 if TYPE_CHECKING:
+    from base.entity_id import EntityId
+
     from application.domain.model.job import JobId
-    from application.domain.model.job_run import JobRun, JobRunId
+    from application.domain.model.job_run import JobRun
 
 
 class JobRunsInMemoryRepo(JobRunsRepo):
@@ -29,12 +31,12 @@ class JobRunsInMemoryRepo(JobRunsRepo):
         self._runs[entity.id.value] = entity
         return entity
 
-    def get(self, run_id: JobRunId) -> JobRun:
+    def get(self, entity_id: EntityId) -> JobRun:
         """Return the job run with the given id or raise JobRunNotFoundError."""
         try:
-            return self._runs[run_id.value]
+            return self._runs[entity_id.value]
         except KeyError:
-            raise JobRunNotFoundError(run_id.value) from None
+            raise JobRunNotFoundError(entity_id.value) from None
 
     def list_for_job(self, job_id: JobId) -> list[JobRun]:
         """Return all job runs belonging to the given job."""

@@ -6,6 +6,8 @@ from abc import ABC
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
+from base._inheritance_guard import enforce_max_depth
+
 
 @dataclass(frozen=True)
 class DomainEvent(ABC):  # noqa: B024
@@ -41,3 +43,8 @@ class DomainEvent(ABC):  # noqa: B024
     occurred_at: datetime = field(
         default_factory=lambda: datetime.now(UTC), kw_only=True
     )
+
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        """Enforce flat hierarchy: concrete events extend DomainEvent directly (max depth 1)."""
+        super().__init_subclass__(**kwargs)
+        enforce_max_depth(cls, DomainEvent, 1)

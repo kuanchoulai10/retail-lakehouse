@@ -5,6 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
+from base._inheritance_guard import enforce_max_depth
 from base.entity import Entity
 
 if TYPE_CHECKING:
@@ -23,6 +24,12 @@ class Repository[E: Entity](ABC):
     Type parameter ``E`` is bound to Entity, ensuring only domain objects
     with identity are managed through repositories.
 
+    The base contract is intentionally minimal: ``create``, ``get``,
+    ``list_all``. Mutation and removal are not universal — historical
+    aggregates (e.g. JobRun) are append-only and never deleted. Concrete
+    repository ports add ``update``, ``delete``, or aggregate-specific
+    queries when their aggregate's lifecycle requires them.
+
     Rules:
         - One Repository per Aggregate/Entity type.
         - Domain code depends on the interface, not the implementation.
@@ -32,11 +39,16 @@ class Repository[E: Entity](ABC):
     Usage::
 
         class JobsRepo(Repository[Job]):
-            def create(self, entity: Job) -> Job: ...
-            def get(self, entity_id: EntityId) -> Job: ...
-            def list_all(self) -> list[Job]: ...
+            @abstractmethod
+            def update(self, entity: Job) -> Job: ...
+            @abstractmethod
             def delete(self, entity_id: EntityId) -> None: ...
     """
+
+    def __init_subclass__(cls, **kwargs: object) -> None:
+        """Enforce port + adapter inheritance depth (max 2)."""
+        super().__init_subclass__(**kwargs)
+        enforce_max_depth(cls, Repository, 2)
 
     @abstractmethod
     def create(self, entity: E) -> E:
@@ -49,7 +61,3 @@ class Repository[E: Entity](ABC):
     @abstractmethod
     def list_all(self) -> list[E]:
         """Return all entities of this type."""
-
-    @abstractmethod
-    def delete(self, entity_id: EntityId) -> None:
-        """Remove an entity by its identifier."""
