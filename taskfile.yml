@@ -322,6 +322,25 @@ tasks:
     cmds:
       - bash 23-trino/validate.sh
 
+  trino-client-cert:
+    desc: 'Issue a Trino mTLS client cert. Usage: task trino-client-cert USER=alice'
+    vars:
+      OUTDIR: '23-trino/client-certs/{{.USER}}'
+      CTX: '{{.KUBE_CONTEXT | default "mini"}}'
+    cmds:
+      - 'test -n "{{.USER}}" || { echo "ERROR USER=<name> required"; exit 1; }'
+      - mkdir -p {{.OUTDIR}}
+      - chmod 700 {{.OUTDIR}}
+      - USER={{.USER}} envsubst < 23-trino/client-certificate-template.yaml | kubectl apply -f - --context {{.CTX}}
+      - kubectl wait --for=condition=Ready certificate/trino-client-{{.USER}} -n trino --timeout=120s --context {{.CTX}}
+      - kubectl get -n trino secret trino-client-{{.USER}}-tls --context {{.CTX}} -o jsonpath='{.data.keystore\.p12}' | base64 -d > {{.OUTDIR}}/keystore.p12
+      - kubectl get -n trino secret trino-client-{{.USER}}-tls --context {{.CTX}} -o jsonpath='{.data.ca\.crt}' | base64 -d > {{.OUTDIR}}/ca.crt
+      - kubectl get -n trino secret trino-keystore-password --context {{.CTX}} -o jsonpath='{.data.password}' | base64 -d > {{.OUTDIR}}/password.txt
+      - rm -f {{.OUTDIR}}/truststore.p12
+      - keytool -importcert -noprompt -alias trino-ca -file {{.OUTDIR}}/ca.crt -keystore {{.OUTDIR}}/truststore.p12 -storetype PKCS12 -storepass "$(cat {{.OUTDIR}}/password.txt)"
+      - chmod 600 {{.OUTDIR}}/keystore.p12 {{.OUTDIR}}/truststore.p12 {{.OUTDIR}}/ca.crt {{.OUTDIR}}/password.txt
+      - echo "✓ {{.OUTDIR}}/{keystore.p12, truststore.p12, password.txt}"
+
   validate-thanos:
     internal: true
     env:
