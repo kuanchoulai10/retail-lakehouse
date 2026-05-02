@@ -11,6 +11,21 @@ tasks:
           enum:
             ref: .AVAILABLE_KUBE_CONTEXTS | splitLines | compact
     cmds:
+      - task: bootstrap-colima
+        vars:
+          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+      - task: bootstrap-minikube
+        vars:
+          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+
+  bootstrap-colima:
+    internal: true
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+    status:
+      - colima status -p {{.KUBE_CONTEXT}} >/dev/null 2>&1
+    cmds:
       - |
         colima start \
           --cpu 9 \
@@ -18,6 +33,15 @@ tasks:
           --disk 120 \
           --runtime docker \
           --profile {{.KUBE_CONTEXT}}
+
+  bootstrap-minikube:
+    internal: true
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+    status:
+      - minikube status -p {{.KUBE_CONTEXT}} >/dev/null 2>&1
+    cmds:
       - |
         minikube start \
           --profile {{.KUBE_CONTEXT}} \
