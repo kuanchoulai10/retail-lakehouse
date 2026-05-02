@@ -326,7 +326,7 @@ tasks:
     desc: 'Issue a Trino mTLS client cert. Usage: task trino-client-cert USER=alice'
     vars:
       OUTDIR: '23-trino/client-certs/{{.USER}}'
-      CTX: '{{.KUBE_CONTEXT | default "mini"}}'
+      CTX: '{{.KUBE_CONTEXT | default "retail-lakehouse"}}'
     cmds:
       - 'test -n "{{.USER}}" || { echo "ERROR USER=<name> required"; exit 1; }'
       - mkdir -p {{.OUTDIR}}
@@ -346,7 +346,7 @@ tasks:
     vars:
       TUSER: 'smoke-test'
       OUTDIR: '23-trino/client-certs/smoke-test'
-      CTX: '{{.KUBE_CONTEXT | default "mini"}}'
+      CTX: '{{.KUBE_CONTEXT | default "retail-lakehouse"}}'
     cmds:
       - task: trino-client-cert
         vars:

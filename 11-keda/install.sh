@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
+KUBE_CONTEXT="${KUBE_CONTEXT:-retail-lakehouse}"
 KEDA_VERSION="${KEDA_VERSION:-2.18.0}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

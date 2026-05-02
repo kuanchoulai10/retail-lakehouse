@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
+KUBE_CONTEXT="${KUBE_CONTEXT:-retail-lakehouse}"
 TIMEOUT="${TIMEOUT:-300s}"
 
 echo "==> Validating ArgoCD root app (context: ${KUBE_CONTEXT})"

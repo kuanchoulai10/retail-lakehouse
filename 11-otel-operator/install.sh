@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
+KUBE_CONTEXT="${KUBE_CONTEXT:-retail-lakehouse}"
 OTEL_OPERATOR_VERSION="${OTEL_OPERATOR_VERSION:-0.98.0}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
+KUBE_CONTEXT="${KUBE_CONTEXT:-retail-lakehouse}"
 TIMEOUT="${TIMEOUT:-1200s}"
 
 echo "==> Validating Iceberg sink connector (context: ${KUBE_CONTEXT})"

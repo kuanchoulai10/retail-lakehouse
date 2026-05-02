@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
+KUBE_CONTEXT="${KUBE_CONTEXT:-retail-lakehouse}"
 STRIMZI_VERSION="${STRIMZI_VERSION:-0.46.1}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
