@@ -64,4 +64,12 @@ echo "==> Validating truststore path set"
 kubectl exec -n trino deployment/trino-coordinator --context "${KUBE_CONTEXT}" -- \
   grep -q '^http-server.https.truststore.path=' /etc/trino/config.properties
 
+echo "==> Validating server rejects unauthenticated HTTPS request"
+STATUS=$(kubectl exec -n trino deployment/trino-coordinator --context "${KUBE_CONTEXT}" -- \
+  curl -sk -o /dev/null -w "%{http_code}" https://localhost:8443/v1/statement -X POST -d 'SELECT 1')
+case "$STATUS" in
+  401|403) echo "  Server rejected unauth request with HTTP $STATUS (expected)";;
+  *) echo "ERROR: expected 401/403, got $STATUS"; exit 1;;
+esac
+
 echo "==> Trino is ready."
