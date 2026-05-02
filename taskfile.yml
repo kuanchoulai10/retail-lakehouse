@@ -132,14 +132,6 @@ tasks:
       - bash 22-kafka-iceberg-connector/validate.sh
       - bash 23-trino/install.sh
       - bash 23-trino/validate.sh
-      - bash 30-thanos/install.sh
-      - bash 30-thanos/validate.sh
-      - bash 25-tbl-maint-db/install.sh
-      - bash 25-tbl-maint-db/validate.sh
-      - bash 25-tbl-maint-bcknd/install.sh
-      - bash 25-tbl-maint-bcknd/validate.sh
-      - bash 25-tbl-maint-schdlr/install.sh
-      - bash 25-tbl-maint-schdlr/validate.sh
 
   bootstrap-apps-by-argocd:
     internal: true
@@ -205,22 +197,10 @@ tasks:
       - task: validate-trino
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
-      - task: validate-thanos
-        vars:
-          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       - task: validate-polaris-db
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       - task: validate-polaris
-        vars:
-          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
-      - task: validate-tbl-maint-db
-        vars:
-          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
-      - task: validate-tbl-maint-bcknd
-        vars:
-          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
-      - task: validate-tbl-maint-schdlr
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
 
@@ -365,13 +345,6 @@ tasks:
           --truststore-password "$(cat {{.OUTDIR}}/password.txt)" \
           --execute "SHOW CATALOGS"
 
-  validate-thanos:
-    internal: true
-    env:
-      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
-    cmds:
-      - bash 30-thanos/validate.sh
-
   validate-polaris-db:
     internal: true
     env:
@@ -385,27 +358,6 @@ tasks:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
       - bash 21-polaris/validate.sh
-
-  validate-tbl-maint-db:
-    internal: true
-    env:
-      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
-    cmds:
-      - bash 25-tbl-maint-db/validate.sh
-
-  validate-tbl-maint-bcknd:
-    internal: true
-    env:
-      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
-    cmds:
-      - bash 25-tbl-maint-bcknd/validate.sh
-
-  validate-tbl-maint-schdlr:
-    internal: true
-    env:
-      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
-    cmds:
-      - bash 25-tbl-maint-schdlr/validate.sh
   # --8<-- [end:validate]
 
   # --8<-- [start:docs]
