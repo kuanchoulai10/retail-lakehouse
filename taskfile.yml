@@ -111,3 +111,19 @@ tasks:
       - Sets up your local dev environment (Python, Node, pre-commit hooks)
 
       Continue?
+
+  offboard:
+    desc: "Tear down: delete minikube cluster and colima VM (no-op if absent)"
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+    status:
+      - "! colima status -p {{.KUBE_CONTEXT}} >/dev/null 2>&1"
+    cmds:
+      - minikube delete -p {{.KUBE_CONTEXT}} || true
+      - colima delete -p {{.KUBE_CONTEXT}} -f
+    prompt: |
+      This will permanently delete the colima VM '{{.KUBE_CONTEXT}}' and
+      everything inside it (minikube cluster, container images, volumes).
+
+      Continue?
