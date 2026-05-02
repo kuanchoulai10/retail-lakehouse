@@ -8,8 +8,11 @@ Deploys Trino, a distributed SQL query engine, via Helm into the `trino` namespa
 Namespace: trino
 ├── trino-coordinator                    (Deployment)
 ├── trino-worker                         (Deployment)
-├── trino-tls                            (Certificate, cert-manager)
-└── trino-selfsigned-issuer              (Issuer, cert-manager)
+├── trino-selfsigned-issuer              (Issuer, cert-manager — bootstrap)
+├── trino-ca                             (Certificate, cert-manager — CA, isCA=true)
+├── trino-ca-issuer                      (Issuer, cert-manager — signs server + clients)
+├── trino-tls                            (Certificate, cert-manager — coordinator HTTPS)
+└── trino-client-<user>                  (Certificate, cert-manager — laptop / service mTLS)
 ```
 
 ## Namespaces
@@ -67,14 +70,82 @@ sops --encrypt --in-place 23-trino/values-secret.yaml
 
 ## TLS Certificates
 
-cert-manager automatically provisions and renews a self-signed TLS certificate for Trino. The `trino-certificate.yaml` manifest defines a namespace-scoped `Issuer` and a `Certificate` resource that targets the `trino-tls-secret` Kubernetes Secret. The coordinator init container concatenates the separate `tls.key` and `tls.crt` files produced by cert-manager into a single PEM file at `/etc/trino/tls/trino-dev.pem`, which Trino's HTTPS keystore requires.
+cert-manager manages a two-tier PKI for Trino, defined in `trino-certificate.yaml`:
+
+1. `trino-selfsigned-issuer` (selfSigned) bootstraps `trino-ca` — a CA cert with `isCA: true`, stored in `trino-ca-secret`.
+2. `trino-ca-issuer` (ca:) references that secret and signs the server cert (`trino-tls`) plus every client cert (`trino-client-<user>`).
+
+Server and client certs sharing the same CA chain is what makes mTLS validation work in both directions. The coordinator init container also runs `keytool` against the same CA cert to build a PKCS12 truststore at `/etc/trino/truststore/truststore.p12`.
+
+## Authentication
+
+Trino is configured with `authenticationType: "certificate,oauth2"`. The coordinator tries client certificate first, then falls back to OAuth2 if no cert is presented.
+
+- **mTLS** for `trino` CLI from a laptop and any future in-cluster service — see [Client Certificates](#client-certificates) below.
+- **OAuth2 (Google SSO)** for the browser Web UI — config lives in SOPS-encrypted `values-secret.yaml`.
+
+## Client Certificates
+
+Issue a client cert for a user (or a service account name):
+
+```bash
+task trino-client-cert USER=alice KUBE_CONTEXT=retail-lakehouse
+```
+
+This applies a `Certificate` CR signed by `trino-ca-issuer` and exports:
+
+- `23-trino/client-certs/alice/keystore.p12` — client identity (CN=alice)
+- `23-trino/client-certs/alice/truststore.p12` — CA cert to trust the Trino server
+- `23-trino/client-certs/alice/password.txt` — keystore password (= `trinopassword`)
+- `23-trino/client-certs/alice/ca.crt` — CA cert in PEM (informational)
+
+Cert is valid 365 days; cert-manager auto-renews 30 days before expiry. Re-run the task to refresh local files after renewal. The output directory is gitignored.
+
+### Querying with mTLS
+
+```bash
+# 1. Port-forward (separate terminal, leave running)
+kubectl port-forward -n trino svc/trino 8443:8443 --context retail-lakehouse
+
+# 2. Query
+trino \
+  --server https://localhost:8443 \
+  --user alice \
+  --keystore-path 23-trino/client-certs/alice/keystore.p12 \
+  --keystore-password "$(cat 23-trino/client-certs/alice/password.txt)" \
+  --truststore-path 23-trino/client-certs/alice/truststore.p12 \
+  --truststore-password "$(cat 23-trino/client-certs/alice/password.txt)" \
+  --execute "SHOW CATALOGS"
+```
+
+The Trino user is derived from the cert's CN (the `USER=` value), via `http-server.authentication.certificate.user-mapping.pattern=CN=([^,]+).*`.
+
+### End-to-End Smoke Test
+
+```bash
+task trino-smoke-test KUBE_CONTEXT=retail-lakehouse
+```
+
+Issues a throwaway cert, runs `SHOW CATALOGS`, then cleans up Certificate CR + secret + local files + port-forward.
+
+### Browser SSO Manual Verification
+
+After deploy, open `https://localhost:8443/ui` in a browser. Expected: redirect to Google SSO, login, see the Trino Web UI.
+
+### Server Cert Rotation
+
+cert-manager auto-renews `trino-tls`, but the truststore-building init container does not rerun on renewal (the `tls-built` emptyDir is recreated only on pod start). After a server cert rotation, manually trigger a coordinator restart:
+
+```bash
+kubectl rollout restart deployment/trino-coordinator -n trino --context retail-lakehouse
+```
 
 ## Services
 
 | Service | Port | Purpose |
 |---------|------|---------|
 | `trino` | 8080 | HTTP (internal) |
-| `trino` | 8443 | HTTPS (coordinator, OAuth2 + KEDA metrics) |
+| `trino` | 8443 | HTTPS (coordinator) — mTLS or OAuth2 |
 
 ## Installation
 
