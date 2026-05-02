@@ -156,7 +156,7 @@ vendor/
 trino/values.yaml
 
 # Trino client cert artifacts produced by `task trino-client-cert`
-23-trino/client-certs/
+platform/23-trino/client-certs/
 
 
 

@@ -12,12 +12,12 @@ tasks:
             ref: .AVAILABLE_KUBE_CONTEXTS | splitLines | compact
         - name: TRINO_USER
     vars:
-      OUTDIR: '23-trino/client-certs/{{.TRINO_USER}}'
+      OUTDIR: 'platform/23-trino/client-certs/{{.TRINO_USER}}'
       CTX: '{{.KUBE_CONTEXT}}'
     cmds:
       - mkdir -p {{.OUTDIR}}
       - chmod 700 {{.OUTDIR}}
-      - USER={{.TRINO_USER}} envsubst < 23-trino/client-certificate-template.yaml | kubectl apply -f - --context {{.CTX}}
+      - USER={{.TRINO_USER}} envsubst < platform/23-trino/client-certificate-template.yaml | kubectl apply -f - --context {{.CTX}}
       - kubectl wait --for=condition=Ready certificate/trino-client-{{.TRINO_USER}} -n trino --timeout=120s --context {{.CTX}}
       - kubectl get -n trino secret trino-client-{{.TRINO_USER}}-tls --context {{.CTX}} -o jsonpath='{.data.keystore\.p12}' | base64 -d > {{.OUTDIR}}/keystore.p12
       - kubectl get -n trino secret trino-client-{{.TRINO_USER}}-tls --context {{.CTX}} -o jsonpath='{.data.ca\.crt}' | base64 -d > {{.OUTDIR}}/ca.crt
@@ -36,7 +36,7 @@ tasks:
             ref: .AVAILABLE_KUBE_CONTEXTS | splitLines | compact
     vars:
       TRINO_USER: 'smoke-test'
-      OUTDIR: '23-trino/client-certs/smoke-test'
+      OUTDIR: 'platform/23-trino/client-certs/smoke-test'
       CTX: '{{.KUBE_CONTEXT}}'
     cmds:
       - task: issue-cert

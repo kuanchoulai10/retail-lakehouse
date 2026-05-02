@@ -56,10 +56,10 @@ tasks:
       - TIMEOUT=10s bash platform/20-jaeger-thanos/validate.sh
       - TIMEOUT=10s bash platform/20-jaeger-trino/validate.sh
       - TIMEOUT=10s bash platform/20-polaris-db/validate.sh
-      - TIMEOUT=10s bash 21-polaris/validate.sh
-      - TIMEOUT=10s bash 21-kafka-debezium-mysql-connector/validate.sh
-      - TIMEOUT=10s bash 22-kafka-iceberg-connector/validate.sh
-      - TIMEOUT=10s bash 23-trino/validate.sh
+      - TIMEOUT=10s bash platform/21-polaris/validate.sh
+      - TIMEOUT=10s bash platform/21-kafka-debezium-mysql-connector/validate.sh
+      - TIMEOUT=10s bash platform/22-kafka-iceberg-connector/validate.sh
+      - TIMEOUT=10s bash platform/23-trino/validate.sh
     cmds:
       - bash platform/10-cert-manager/bootstrap.sh
       - bash platform/10-kube-prometheus/bootstrap.sh
@@ -85,14 +85,14 @@ tasks:
       - bash platform/20-jaeger-thanos/validate.sh
       - bash platform/20-jaeger-trino/validate.sh
       - bash platform/20-polaris-db/validate.sh
-      - bash 21-polaris/bootstrap.sh
-      - bash 21-polaris/validate.sh
-      - bash 21-kafka-debezium-mysql-connector/bootstrap.sh
-      - bash 21-kafka-debezium-mysql-connector/validate.sh
-      - bash 22-kafka-iceberg-connector/bootstrap.sh
-      - bash 22-kafka-iceberg-connector/validate.sh
-      - bash 23-trino/bootstrap.sh
-      - bash 23-trino/validate.sh
+      - bash platform/21-polaris/bootstrap.sh
+      - bash platform/21-polaris/validate.sh
+      - bash platform/21-kafka-debezium-mysql-connector/bootstrap.sh
+      - bash platform/21-kafka-debezium-mysql-connector/validate.sh
+      - bash platform/22-kafka-iceberg-connector/bootstrap.sh
+      - bash platform/22-kafka-iceberg-connector/validate.sh
+      - bash platform/23-trino/bootstrap.sh
+      - bash platform/23-trino/validate.sh
 
   bootstrap-by-argocd:
     internal: true
@@ -245,21 +245,21 @@ tasks:
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
-      - bash 21-kafka-debezium-mysql-connector/validate.sh
+      - bash platform/21-kafka-debezium-mysql-connector/validate.sh
 
   validate-kafka-iceberg-connector:
     internal: true
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
-      - bash 22-kafka-iceberg-connector/validate.sh
+      - bash platform/22-kafka-iceberg-connector/validate.sh
 
   validate-trino:
     internal: true
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
-      - bash 23-trino/validate.sh
+      - bash platform/23-trino/validate.sh
 
   validate-polaris-db:
     internal: true
@@ -273,4 +273,4 @@ tasks:
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
-      - bash 21-polaris/validate.sh
+      - bash platform/21-polaris/validate.sh

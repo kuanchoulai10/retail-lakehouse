@@ -10,7 +10,7 @@ spec:
   project: {{ .Values.project.name }}
   sources:
     - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
-      path: 22-kafka-iceberg-connector
+      path: platform/22-kafka-iceberg-connector
       targetRevision: main
   destination:
     name: {{ .Values.spec.destination.name }}
