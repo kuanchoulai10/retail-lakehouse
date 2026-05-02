@@ -7,6 +7,10 @@ output:
     begin: '::group::{{.TASK}}'
     end: '::endgroup::'
 
+vars:
+  AVAILABLE_KUBE_CONTEXTS:
+    sh: command -v kubectl >/dev/null 2>&1 && kubectl config get-contexts -o name || true
+
 includes:
   dev:
     taskfile: ./tasks/dev.yml
@@ -17,12 +21,18 @@ includes:
   cluster:
     taskfile: ./tasks/cluster.yml
     dir: '{{.ROOT_DIR}}'
+    vars:
+      AVAILABLE_KUBE_CONTEXTS: '{{.AVAILABLE_KUBE_CONTEXTS}}'
   apps:
     taskfile: ./tasks/apps.yml
     dir: '{{.ROOT_DIR}}'
+    vars:
+      AVAILABLE_KUBE_CONTEXTS: '{{.AVAILABLE_KUBE_CONTEXTS}}'
   trino:
     taskfile: ./tasks/trino.yml
     dir: '{{.ROOT_DIR}}'
+    vars:
+      AVAILABLE_KUBE_CONTEXTS: '{{.AVAILABLE_KUBE_CONTEXTS}}'
   docs:
     taskfile: ./tasks/docs.yml
     dir: '{{.ROOT_DIR}}'
@@ -56,20 +66,6 @@ tasks:
 
   onboard:
     desc: "One-shot setup: check tools, bootstrap cluster + apps, sync dev (DEPLOY_METHOD=scripts|argocd required)"
-    vars:
-      KUBE_CONTEXT: '{{.KUBE_CONTEXT | default "retail-lakehouse"}}'
-    requires:
-      vars:
-        - name: DEPLOY_METHOD
-          enum: ["scripts", "argocd"]
-    prompt: |
-      This will take 10-20 minutes and does the following:
-      - Bootstrap a colima VM named '{{.KUBE_CONTEXT}}'
-      - Bootstrap up a minikube K8s cluster named '{{.KUBE_CONTEXT}}'
-      - Bootstrap all K8s apps to the cluster via '{{.DEPLOY_METHOD}}'
-      - Sets up your local dev environment (Python, Node, pre-commit hooks)
-
-      Continue?
     preconditions:
       - sh: '[ "$(uname -s)" = "Darwin" ]'
         msg: "Only macOS (Darwin) is supported right now, sorry"
@@ -95,6 +91,13 @@ tasks:
         msg: "npm missing, run brew install node"
       - sh: command -v uv
         msg: "uv missing, run brew install uv"
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+          enum:
+            ref: .AVAILABLE_KUBE_CONTEXTS | splitLines | compact
+        - name: DEPLOY_METHOD
+          enum: ["scripts", "argocd"]
     cmds:
       - task: cluster:bootstrap
         vars:
@@ -104,3 +107,11 @@ tasks:
           KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
           DEPLOY_METHOD: '{{.DEPLOY_METHOD}}'
       - task: dev:sync
+    prompt: |
+      This will take 10-20 minutes and does the following:
+      - Bootstrap a colima VM named '{{.KUBE_CONTEXT}}'
+      - Bootstrap up a minikube K8s cluster named '{{.KUBE_CONTEXT}}'
+      - Bootstrap all K8s apps to the cluster via '{{.DEPLOY_METHOD}}'
+      - Sets up your local dev environment (Python, Node, pre-commit hooks)
+
+      Continue?

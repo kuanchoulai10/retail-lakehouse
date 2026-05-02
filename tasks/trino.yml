@@ -4,10 +4,15 @@ version: '3'
 
 tasks:
   issue-cert:
-    desc: 'Issue a Trino mTLS client cert. Usage: task trino:issue-cert USER=alice'
+    desc: 'Issue a Trino mTLS client cert. Usage: task trino:issue-cert KUBE_CONTEXT=<ctx> USER=alice'
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+          enum:
+            ref: .AVAILABLE_KUBE_CONTEXTS | splitLines | compact
     vars:
       OUTDIR: '23-trino/client-certs/{{.USER}}'
-      CTX: '{{.KUBE_CONTEXT | default "retail-lakehouse"}}'
+      CTX: '{{.KUBE_CONTEXT}}'
     cmds:
       - 'test -n "{{.USER}}" || { echo "ERROR USER=<name> required"; exit 1; }'
       - mkdir -p {{.OUTDIR}}
@@ -24,13 +29,19 @@ tasks:
 
   smoke-test:
     desc: 'End-to-end mTLS smoke test (issues throwaway cert, runs SHOW CATALOGS, cleans up)'
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+          enum:
+            ref: .AVAILABLE_KUBE_CONTEXTS | splitLines | compact
     vars:
       TUSER: 'smoke-test'
       OUTDIR: '23-trino/client-certs/smoke-test'
-      CTX: '{{.KUBE_CONTEXT | default "retail-lakehouse"}}'
+      CTX: '{{.KUBE_CONTEXT}}'
     cmds:
       - task: issue-cert
         vars:
+          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
           USER: '{{.TUSER}}'
       - defer: kubectl delete -n trino certificate trino-client-{{.TUSER}} --context {{.CTX}} --ignore-not-found
       - defer: kubectl delete -n trino secret trino-client-{{.TUSER}}-tls --context {{.CTX}} --ignore-not-found

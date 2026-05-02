@@ -8,6 +8,8 @@ tasks:
     requires:
       vars:
         - name: KUBE_CONTEXT
+          enum:
+            ref: .AVAILABLE_KUBE_CONTEXTS | splitLines | compact
     cmds:
       - |
         colima start \
