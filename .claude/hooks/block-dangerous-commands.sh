@@ -15,6 +15,14 @@ fi
 # --- Destructive file operations ---
 [[ "$cmd" == *"rm -rf"* ]] && blocked="rm -rf"
 
+# --- kubectl: leading flags before verb (e.g. `kubectl -n ns get pods`).
+# Use `kubectl <verb> <flags>` form instead (e.g. `kubectl get -n ns pods`).
+# Verb-first matches the existing permission allow-list (Bash(kubectl get:*) etc.),
+# so flag-first commands trigger an interactive permission prompt every time. ---
+if echo "$cmd" | grep -qE '\bkubectl[[:space:]]+-'; then
+  blocked="kubectl with leading flags (put verb first: 'kubectl get -n NS pods' not 'kubectl -n NS get pods')"
+fi
+
 # --- kubectl: direct cluster mutation ---
 [[ "$cmd" == *"kubectl delete"* ]]   && blocked="kubectl delete"
 [[ "$cmd" == *"kubectl edit"* ]]     && blocked="kubectl edit"
