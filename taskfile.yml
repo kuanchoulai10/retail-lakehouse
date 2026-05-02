@@ -8,20 +8,17 @@ output:
     end: '::endgroup::'
 
 includes:
-  setup:
-    taskfile: ./tasks/setup.yml
+  dev-env:
+    taskfile: ./tasks/dev-env.yml
     dir: '{{.ROOT_DIR}}'
   checks:
     taskfile: ./tasks/checks.yml
     dir: '{{.ROOT_DIR}}'
-  prereqs:
-    taskfile: ./tasks/prereqs.yml
+  cluster:
+    taskfile: ./tasks/cluster.yml
     dir: '{{.ROOT_DIR}}'
-  bootstrap:
-    taskfile: ./tasks/bootstrap.yml
-    dir: '{{.ROOT_DIR}}'
-  validate:
-    taskfile: ./tasks/validate.yml
+  apps:
+    taskfile: ./tasks/apps.yml
     dir: '{{.ROOT_DIR}}'
   trino:
     taskfile: ./tasks/trino.yml
@@ -38,6 +35,23 @@ tasks:
     silent: true
 
   pre-pr:
-    desc: "Alias for checks:pre-pr (kept for stop-hook compatibility)"
+    desc: "Run all checks before creating a PR"
     cmds:
-      - task: checks:pre-pr
+      - task: checks:lint
+      - task: checks:test
+      - task: checks:arch
+
+  pre-commit:
+    desc: "Run pre commit checks"
+    cmds:
+      - task: checks:lint
+
+  unit-test:
+    desc: "Run all unit tests in parallel"
+    cmds:
+      - task: checks:test
+
+  serve-docs:
+    desc: Serve docs locally
+    cmds:
+      - task: docs:serve

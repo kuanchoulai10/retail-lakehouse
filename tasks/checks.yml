@@ -3,38 +3,30 @@
 version: '3'
 
 tasks:
-  pre-commit:
+  lint:
     desc: "Run pre commit checks"
     cmds:
       - uv run pre-commit run --all-files --show-diff-on-failure
 
-  pre-pr:
-    desc: "Run all checks before creating a PR"
-    cmds:
-      - task: pre-commit
-      - task: unit-test
-      - task: arch-test
-
-  unit-test:
+  test:
     desc: "Run all unit tests in parallel"
     deps:
-      - unit-test-backend
-      - unit-test-spark
+      - test-backend
+      - test-spark
 
-  unit-test-backend:
+  test-backend:
     desc: "Run table-maintenance backend tests"
     internal: true
     cmds:
       - uv run --project src/table-maintenance/backend --directory src/table-maintenance/backend pytest -v
 
-  unit-test-spark:
+  test-spark:
     desc: "Run table-maintenance spark runtime tests"
     internal: true
     cmds:
       - cmd: echo "TODO:// uv run --project src/table-maintenance/runtime/spark --directory src/table-maintenance/runtime/spark pytest -v"
 
-  arch-test:
+  arch:
     desc: "Run architecture boundary tests (import-linter)"
-    internal: true
     cmds:
       - uv run --project src/table-maintenance/backend --directory src/table-maintenance/backend lint-imports

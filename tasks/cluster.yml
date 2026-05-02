@@ -3,7 +3,7 @@
 version: '3'
 
 tasks:
-  cluster-up:
+  up:
     desc: "Start colima VM + minikube cluster (one-time setup or after cluster-down)"
     vars:
       PROFILE: 'retail-lakehouse'

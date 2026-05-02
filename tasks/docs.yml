@@ -3,7 +3,7 @@
 version: '3'
 
 tasks:
-  serve-docs:
+  serve:
     desc: Serve docs locally
     cmds:
       - uv run mkdocs serve --livereload -a localhost:8591

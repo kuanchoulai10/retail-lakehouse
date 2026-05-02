@@ -3,7 +3,74 @@
 version: '3'
 
 tasks:
-  validate-apps:
+  bootstrap:
+    desc: "Bootstrap all K8s components (DEPLOY_METHOD: scripts|argocd)"
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+        - name: DEPLOY_METHOD
+          enum: ["scripts", "argocd"]
+    cmds:
+      - task: bootstrap-by-{{.DEPLOY_METHOD}}
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+
+  bootstrap-by-scripts:
+    internal: true
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash 10-cert-manager/install.sh
+      - bash 10-kube-prometheus/install.sh
+      - bash 10-strimzi-operator/install.sh
+      - bash 10-cert-manager/validate.sh
+      - bash 10-kube-prometheus/validate.sh
+      - bash 10-strimzi-operator/validate.sh
+      - bash 11-keda/install.sh
+      - bash 11-spark-operator/install.sh
+      - bash 11-otel-operator/install.sh
+      - bash 11-keda/validate.sh
+      - bash 11-spark-operator/validate.sh
+      - bash 11-otel-operator/validate.sh
+      - bash 20-kafka-cluster/install.sh
+      - bash 20-minio/install.sh
+      - bash 20-mysql/install.sh
+      - bash 20-jaeger-thanos/install.sh
+      - bash 20-jaeger-trino/install.sh
+      - bash 20-polaris-db/install.sh
+      - bash 20-kafka-cluster/validate.sh
+      - bash 20-minio/validate.sh
+      - bash 20-mysql/validate.sh
+      - bash 20-jaeger-thanos/validate.sh
+      - bash 20-jaeger-trino/validate.sh
+      - bash 20-polaris-db/validate.sh
+      - bash 21-polaris/install.sh
+      - bash 21-polaris/validate.sh
+      - bash 21-kafka-debezium-mysql-connector/install.sh
+      - bash 21-kafka-debezium-mysql-connector/validate.sh
+      - bash 22-kafka-iceberg-connector/install.sh
+      - bash 22-kafka-iceberg-connector/validate.sh
+      - bash 23-trino/install.sh
+      - bash 23-trino/validate.sh
+
+  bootstrap-by-argocd:
+    internal: true
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash 00-argocd/install.sh
+      - bash 00-argocd/validate.sh
+      - bash 01-argocd-health-checks/patch.sh
+      - bash 02-argocd-apps/install.sh
+      - bash 02-argocd-apps/validate.sh
+
+  validate:
     desc: "Validate all K8s components in parallel (KUBE_CONTEXT required)"
     requires:
       vars:
