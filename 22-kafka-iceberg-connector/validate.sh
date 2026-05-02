@@ -10,13 +10,13 @@ log::on_success "Iceberg connector is ready"
 log::on_failure "Iceberg connector is not ready"
 
 kubectl wait kafkaconnect/iceberg-connect-cluster \
-  -n kafka-cdc \
+  --namespace kafka-cdc \
   --for=condition=Ready \
-  --timeout="${TIMEOUT}" \
+  --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
 kubectl wait kafkaconnector/iceberg-connector \
-  -n kafka-cdc \
+  --namespace kafka-cdc \
   --for=condition=Ready \
-  --timeout="${TIMEOUT}" \
+  --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"

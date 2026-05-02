@@ -10,14 +10,14 @@ log::on_success "Kafka cluster is ready"
 log::on_failure "Kafka cluster is not ready"
 
 kubectl wait kafka/kafka-cluster \
-  -n kafka-cdc \
+  --namespace kafka-cdc \
   --for=condition=Ready \
-  --timeout="${TIMEOUT}" \
+  --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
 kubectl wait pod \
-  -l app.kubernetes.io/name=entity-operator \
-  -n kafka-cdc \
+  --selector app.kubernetes.io/name=entity-operator \
+  --namespace kafka-cdc \
   --for=condition=Ready \
-  --timeout="${TIMEOUT}" \
+  --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"

@@ -10,7 +10,7 @@ log::on_success "Root app is Healthy"
 log::on_failure "Root app is not Healthy"
 
 kubectl wait application/root-app \
-  -n argocd \
+  --namespace argocd \
   --for=jsonpath='{.status.health.status}'=Healthy \
-  --timeout="${TIMEOUT}" \
+  --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"

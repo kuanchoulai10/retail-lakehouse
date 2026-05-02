@@ -10,8 +10,16 @@ log::on_success "cert-manager is ready"
 log::on_failure "cert-manager is not ready"
 
 kubectl rollout status deployment/cert-manager \
-  -n cert-manager --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
+  --namespace cert-manager \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"
+
 kubectl rollout status deployment/cert-manager-cainjector \
-  -n cert-manager --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
+  --namespace cert-manager \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"
+
 kubectl rollout status deployment/cert-manager-webhook \
-  -n cert-manager --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
+  --namespace cert-manager \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"

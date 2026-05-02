@@ -10,8 +10,8 @@ log::on_success "Jaeger (trino) is ready"
 log::on_failure "Jaeger (trino) is not ready"
 
 kubectl wait pod \
-  -l app.kubernetes.io/managed-by=opentelemetry-operator \
-  -n trino \
+  --selector app.kubernetes.io/managed-by=opentelemetry-operator \
+  --namespace trino \
   --for=condition=Ready \
-  --timeout="${TIMEOUT}" \
+  --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"

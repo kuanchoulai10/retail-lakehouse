@@ -8,7 +8,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/../scripts/utils/log.sh"
 log::on_success "Patch applied"
 log::on_failure "Patch not applied"
 
-kubectl get configmap argocd-cm -n argocd \
+kubectl get configmap argocd-cm \
+  --namespace argocd \
+  --output jsonpath='{.data.resource\.customizations\.health\.argoproj\.io_Application}' \
   --context "${KUBE_CONTEXT}" \
-  -o jsonpath='{.data.resource\.customizations\.health\.argoproj\.io_Application}' \
-  | grep -q "hs.status" || log::error "Patch not found"
+  | grep -q "hs.status"

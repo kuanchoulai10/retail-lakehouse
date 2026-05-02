@@ -10,4 +10,6 @@ log::on_success "Polaris is ready"
 log::on_failure "Polaris is not ready"
 
 kubectl rollout status deployment/polaris \
-  -n polaris --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
+  --namespace polaris \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"

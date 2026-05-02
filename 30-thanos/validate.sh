@@ -10,8 +10,16 @@ log::on_success "Thanos is ready"
 log::on_failure "Thanos is not ready"
 
 kubectl rollout status deployment/thanos-query \
-  -n thanos --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
+  --namespace thanos \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"
+
 kubectl rollout status deployment/thanos-query-frontend \
-  -n thanos --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
+  --namespace thanos \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"
+
 kubectl rollout status deployment/thanos-receive-router \
-  -n thanos --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
+  --namespace thanos \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"

@@ -9,15 +9,18 @@ TIMEOUT="${TIMEOUT:-300s}"
 log::on_success "PostgreSQL for table-maintenance is ready"
 log::on_failure "PostgreSQL for table-maintenance is not ready"
 
-kubectl wait pod \
-  -l app=tbl-maint-db \
-  -n default \
-  --for=condition=Ready \
-  --timeout="${TIMEOUT}" \
+kubectl rollout status deployment/tbl-maint-db \
+  --namespace default \
+  --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
-log::info "Verifying PostgreSQL is accepting connections"
-kubectl exec -n default \
-  "$(kubectl get pod -l app=tbl-maint-db -n default --context "${KUBE_CONTEXT}" -o jsonpath='{.items[0].metadata.name}')" \
+POD=$(kubectl get pod \
+  --selector app=tbl-maint-db \
+  --namespace default \
+  --output jsonpath='{.items[0].metadata.name}' \
+  --context "${KUBE_CONTEXT}")
+
+kubectl exec "$POD" \
+  --namespace default \
   --context "${KUBE_CONTEXT}" \
   -- pg_isready -U tm -d table_maintenance

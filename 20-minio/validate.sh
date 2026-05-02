@@ -9,9 +9,7 @@ TIMEOUT="${TIMEOUT:-300s}"
 log::on_success "MinIO is ready"
 log::on_failure "MinIO is not ready"
 
-kubectl wait pod \
-  -l app=minio \
-  -n minio \
-  --for=condition=Ready \
-  --timeout="${TIMEOUT}" \
+kubectl rollout status deployment/minio \
+  --namespace minio \
+  --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"

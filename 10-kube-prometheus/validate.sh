@@ -10,18 +10,41 @@ log::on_success "kube-prometheus stack is ready"
 log::on_failure "kube-prometheus stack is not ready"
 
 kubectl rollout status deployment/prometheus-operator \
-  -n monitoring --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
+  --namespace monitoring \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"
+
 kubectl rollout status deployment/grafana \
-  -n monitoring --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
+  --namespace monitoring \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"
+
 kubectl rollout status deployment/kube-state-metrics \
-  -n monitoring --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
+  --namespace monitoring \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"
+
 kubectl rollout status deployment/prometheus-adapter \
-  -n monitoring --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
+  --namespace monitoring \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"
+
 kubectl rollout status deployment/blackbox-exporter \
-  -n monitoring --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
+  --namespace monitoring \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"
+
 kubectl rollout status statefulset/prometheus-k8s \
-  -n monitoring --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
+  --namespace monitoring \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"
+
 kubectl rollout status statefulset/alertmanager-main \
-  -n monitoring --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
+  --namespace monitoring \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"
+
 kubectl rollout status daemonset/node-exporter \
-  -n monitoring --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
+  --namespace monitoring \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"

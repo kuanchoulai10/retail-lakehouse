@@ -9,16 +9,18 @@ TIMEOUT="${TIMEOUT:-300s}"
 log::on_success "PostgreSQL for Polaris is ready"
 log::on_failure "PostgreSQL for Polaris is not ready"
 
-kubectl wait pod \
-  -l app=polaris-db \
-  -n polaris \
-  --for=condition=Ready \
-  --timeout="${TIMEOUT}" \
+kubectl rollout status deployment/polaris-db \
+  --namespace polaris \
+  --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
-log::info "Verifying PostgreSQL is accepting connections"
-POD=$(kubectl get pod -l app=polaris-db -n polaris \
-  --context "${KUBE_CONTEXT}" -o jsonpath='{.items[0].metadata.name}')
+POD=$(kubectl get pod \
+  --selector app=polaris-db \
+  --namespace polaris \
+  --output jsonpath='{.items[0].metadata.name}' \
+  --context "${KUBE_CONTEXT}")
 
-kubectl exec -n polaris "$POD" --context "${KUBE_CONTEXT}" \
+kubectl exec "$POD" \
+  --namespace polaris \
+  --context "${KUBE_CONTEXT}" \
   -- pg_isready -U polaris -d polaris

@@ -9,9 +9,7 @@ TIMEOUT="${TIMEOUT:-300s}"
 log::on_success "MySQL is ready"
 log::on_failure "MySQL is not ready"
 
-kubectl wait pod \
-  -l app=mysql \
-  -n kafka-cdc \
-  --for=condition=Ready \
-  --timeout="${TIMEOUT}" \
+kubectl rollout status deployment/mysql \
+  --namespace kafka-cdc \
+  --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"

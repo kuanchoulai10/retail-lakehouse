@@ -10,6 +10,11 @@ log::on_success "Spark Operator is ready"
 log::on_failure "Spark Operator is not ready"
 
 kubectl rollout status deployment/spark-operator-controller \
-  -n spark-operator --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
+  --namespace spark-operator \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"
+
 kubectl rollout status deployment/spark-operator-webhook \
-  -n spark-operator --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
+  --namespace spark-operator \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"

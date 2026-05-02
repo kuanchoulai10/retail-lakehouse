@@ -10,9 +10,17 @@ log::on_success "Scheduler is ready"
 log::on_failure "Scheduler is not ready"
 
 kubectl rollout status deployment/table-maintenance-scheduler \
-  -n default --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
+  --namespace default \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"
 
-log::info "Checking scheduler logs for tick output"
-POD=$(kubectl get pod -l app=table-maintenance-scheduler -n default \
-  --context "${KUBE_CONTEXT}" -o jsonpath='{.items[0].metadata.name}')
-kubectl logs "$POD" -n default --context "${KUBE_CONTEXT}" --tail=5 | grep -q "Scheduler tick"
+POD=$(kubectl get pod \
+  --selector app=table-maintenance-scheduler \
+  --namespace default \
+  --output jsonpath='{.items[0].metadata.name}' \
+  --context "${KUBE_CONTEXT}")
+
+kubectl logs "$POD" \
+  --namespace default \
+  --tail 5 \
+  --context "${KUBE_CONTEXT}" | grep -q "Scheduler tick"

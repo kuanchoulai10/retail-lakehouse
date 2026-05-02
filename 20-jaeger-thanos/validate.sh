@@ -10,8 +10,8 @@ log::on_success "Jaeger (thanos) is ready"
 log::on_failure "Jaeger (thanos) is not ready"
 
 kubectl wait pod \
-  -l app.kubernetes.io/managed-by=opentelemetry-operator \
-  -n thanos \
+  --selector app.kubernetes.io/managed-by=opentelemetry-operator \
+  --namespace thanos \
   --for=condition=Ready \
-  --timeout="${TIMEOUT}" \
+  --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"

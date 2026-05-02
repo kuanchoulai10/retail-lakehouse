@@ -10,4 +10,6 @@ log::on_success "Strimzi Operator is ready"
 log::on_failure "Strimzi Operator is not ready"
 
 kubectl rollout status deployment/strimzi-cluster-operator \
-  -n strimzi-operator --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
+  --namespace strimzi-operator \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"
