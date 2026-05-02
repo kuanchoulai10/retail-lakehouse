@@ -5,6 +5,8 @@ KUBE_CONTEXT="${KUBE_CONTEXT:-mini}"
 KUBE_PROMETHEUS_VERSION="${KUBE_PROMETHEUS_VERSION:-v0.17.0}"
 KUBE_PROMETHEUS_SHA="${KUBE_PROMETHEUS_SHA:-d6d094d115093d81d3355bc970a93e4357d6ef05}"
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 echo "==> Cloning kube-prometheus ${KUBE_PROMETHEUS_VERSION} (context: ${KUBE_CONTEXT})"
 
 git clone --depth 1 --branch "${KUBE_PROMETHEUS_VERSION}" \
@@ -27,6 +29,13 @@ done
 
 echo "==> Installing remaining resources"
 kubectl create -f kube-prometheus/manifests/ --context "${KUBE_CONTEXT}"
+
+# Single-node minikube dev cluster: upstream HA defaults waste CPU/RAM.
+# Server-side apply with a dedicated field manager so we co-own only
+# spec.replicas and the operator keeps owning the rest.
+echo "==> Applying dev replica overrides (single-node minikube)"
+kubectl apply --server-side --field-manager=dev-overrides --force-conflicts \
+  -f "$SCRIPT_DIR/dev-overrides.yaml" --context "${KUBE_CONTEXT}"
 
 echo "==> Cleaning up"
 rm -rf kube-prometheus
