@@ -137,8 +137,12 @@ tasks:
     cmds:
       - minikube delete -p {{.KUBE_CONTEXT}}
       - colima delete -p {{.KUBE_CONTEXT}} -f
+      - LIMA_HOME=$HOME/.colima/_lima limactl disk delete colima-{{.KUBE_CONTEXT}} 2>/dev/null || true
     prompt: |
       This will permanently delete the colima VM '{{.KUBE_CONTEXT}}' and
       everything inside it (minikube cluster, container images, volumes).
+      It will also delete the lima additionalDisk that backs docker storage
+      (colima delete leaves it behind, which makes minikube re-use stale
+      kubelet/etcd state from the previous run and skip kubeadm init).
 
       Continue?
