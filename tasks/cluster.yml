@@ -8,27 +8,41 @@ tasks:
     requires:
       vars:
         - name: KUBE_CONTEXT
+    vars:
+      CPU: '{{.CPU | default 9}}'
+      MEMORY: '{{.MEMORY | default 28}}'
+      DISK_SIZE: '{{.DISK_SIZE | default 120}}'
+      MINIKUBE_MEMORY: '{{sub (int .MEMORY) 2}}'
     cmds:
       - task: bootstrap-colima
         vars:
           KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+          CPU: '{{.CPU}}'
+          MEMORY: '{{.MEMORY}}'
+          DISK_SIZE: '{{.DISK_SIZE}}'
       - task: bootstrap-minikube
         vars:
           KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+          CPU: '{{.CPU}}'
+          MEMORY: '{{.MINIKUBE_MEMORY}}'
+          DISK_SIZE: '{{.DISK_SIZE}}'
 
   bootstrap-colima:
     internal: true
     requires:
       vars:
         - name: KUBE_CONTEXT
+        - name: CPU
+        - name: MEMORY
+        - name: DISK_SIZE
     status:
       - colima status -p {{.KUBE_CONTEXT}} >/dev/null 2>&1
     cmds:
       - |
         colima start \
-          --cpu 9 \
-          --memory 28 \
-          --disk 120 \
+          --cpu {{.CPU}} \
+          --memory {{.MEMORY}} \
+          --disk {{.DISK_SIZE}} \
           --runtime docker \
           --profile {{.KUBE_CONTEXT}}
 
@@ -37,6 +51,9 @@ tasks:
     requires:
       vars:
         - name: KUBE_CONTEXT
+        - name: CPU
+        - name: MEMORY
+        - name: DISK_SIZE
     status:
       - minikube status -p {{.KUBE_CONTEXT}} >/dev/null 2>&1
     cmds:
@@ -44,9 +61,9 @@ tasks:
         minikube start \
           --profile {{.KUBE_CONTEXT}} \
           --nodes 1 \
-          --cpus 9 \
-          --memory 26G \
-          --disk-size 120G \
+          --cpus {{.CPU}} \
+          --memory {{.MEMORY}}G \
+          --disk-size {{.DISK_SIZE}}G \
           --driver docker \
           --container-runtime docker \
           --kubernetes-version v1.33.2 \

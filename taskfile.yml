@@ -100,17 +100,24 @@ tasks:
         - name: KUBE_CONTEXT
         - name: DEPLOY_METHOD
           enum: ["scripts", "argocd"]
+    vars:
+      CPU: '{{.CPU | default 9}}'
+      MEMORY: '{{.MEMORY | default 28}}'
+      DISK_SIZE: '{{.DISK_SIZE | default 120}}'
     cmds:
       - task: cluster:bootstrap
         vars:
           KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+          CPU: '{{.CPU}}'
+          MEMORY: '{{.MEMORY}}'
+          DISK_SIZE: '{{.DISK_SIZE}}'
       - task: apps:bootstrap-by-{{.DEPLOY_METHOD}}
         vars:
           KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
       - task: dev:sync
     prompt: |
       This will take 10-20 minutes and does the following:
-      - Bootstrap a colima VM named '{{.KUBE_CONTEXT}}'
+      - Bootstrap a colima VM named '{{.KUBE_CONTEXT}}' ({{.CPU}} CPU, {{.MEMORY}}G RAM, {{.DISK_SIZE}}G disk)
       - Bootstrap up a minikube K8s cluster named '{{.KUBE_CONTEXT}}'
       - Bootstrap all K8s apps to the cluster via '{{.DEPLOY_METHOD}}'
       - Sets up your local dev environment (Python, Node, pre-commit hooks)
