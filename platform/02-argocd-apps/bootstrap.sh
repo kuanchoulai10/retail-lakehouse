@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
+
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "==> Applying ArgoCD root app (context: ${KUBE_CONTEXT})"
+log::on_success "ArgoCD root app applied. ArgoCD will now reconcile all child applications."
+log::on_failure "ArgoCD root app apply failed"
 
-kubectl apply -f "$SCRIPT_DIR/root-app.yaml" --context "${KUBE_CONTEXT}"
-
-echo "==> Done. ArgoCD will now reconcile all child applications."
+kubectl apply \
+  -f "$SCRIPT_DIR/root-app.yaml" \
+  --context "${KUBE_CONTEXT}"

@@ -4,9 +4,16 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
+TIMEOUT="${TIMEOUT:-120s}"
 
 log::on_success "table-maintenance check done"
 log::on_failure "table-maintenance check failed"
+
+kubectl wait sparkapplication/table-maintenance-rewrite-data-files \
+  --for=condition=Running \
+  --namespace default \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}" 2>/dev/null || true
 
 kubectl get sparkapplication table-maintenance-rewrite-data-files \
   --namespace default \

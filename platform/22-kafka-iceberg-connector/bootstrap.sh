@@ -1,15 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
+
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "==> Deploying Iceberg sink connector (context: ${KUBE_CONTEXT})"
+log::on_success "Iceberg sink connector deployed"
+log::on_failure "Iceberg sink connector deployment failed"
 
-kubectl apply -f "$SCRIPT_DIR/iceberg-secret.yaml" -n kafka-cdc --context "${KUBE_CONTEXT}"
+kubectl apply \
+  -f "$SCRIPT_DIR/iceberg-secret.yaml" \
+  --namespace kafka-cdc \
+  --context "${KUBE_CONTEXT}"
 
-kubectl apply -f "$SCRIPT_DIR/iceberg-connect-cluster.yaml" -n kafka-cdc --context "${KUBE_CONTEXT}"
-kubectl apply -f "$SCRIPT_DIR/iceberg-connector.yaml" -n kafka-cdc --context "${KUBE_CONTEXT}"
-
-echo "==> Done."
+kubectl apply \
+  -f "$SCRIPT_DIR/iceberg-connect-cluster.yaml" \
+  --namespace kafka-cdc \
+  --context "${KUBE_CONTEXT}"
+kubectl apply \
+  -f "$SCRIPT_DIR/iceberg-connector.yaml" \
+  --namespace kafka-cdc \
+  --context "${KUBE_CONTEXT}"

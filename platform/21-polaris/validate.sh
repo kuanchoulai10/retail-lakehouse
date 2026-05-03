@@ -13,3 +13,9 @@ kubectl rollout status deployment/polaris \
   --namespace polaris \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
+
+kubectl wait \
+  --for=condition=complete job/polaris-create-catalog \
+  --namespace polaris \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"

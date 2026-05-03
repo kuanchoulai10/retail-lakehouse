@@ -1,13 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
+
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "==> Installing Jaeger for Thanos (context: ${KUBE_CONTEXT})"
+log::on_success "Jaeger for Thanos installed"
+log::on_failure "Jaeger for Thanos installation failed"
 
-kubectl create namespace thanos --dry-run=client -o yaml | kubectl apply -f - --context "${KUBE_CONTEXT}"
-kubectl apply -f "$SCRIPT_DIR/jaeger.yaml" -n thanos --context "${KUBE_CONTEXT}"
+kubectl create namespace thanos \
+  --dry-run=client \
+  -o yaml \
+  | kubectl apply \
+    -f - \
+    --context "${KUBE_CONTEXT}"
 
-echo "==> Done."
+kubectl apply \
+  -f "$SCRIPT_DIR/jaeger.yaml" \
+  --namespace thanos \
+  --context "${KUBE_CONTEXT}"

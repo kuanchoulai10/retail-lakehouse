@@ -1,17 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
+
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
-TIMEOUT="${TIMEOUT:-300s}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "==> Deploying table-maintenance scheduler (context: ${KUBE_CONTEXT})"
+log::on_success "table-maintenance scheduler deployed"
+log::on_failure "table-maintenance scheduler deployment failed"
 
-kubectl apply -f "$SCRIPT_DIR/scheduler-deployment.yaml" --context "${KUBE_CONTEXT}"
-
-echo "==> Waiting for rollout..."
-kubectl rollout status deployment/table-maintenance-scheduler \
-  -n default --timeout="${TIMEOUT}" --context "${KUBE_CONTEXT}"
-
-echo "==> Done."
+kubectl apply \
+  -f "$SCRIPT_DIR/scheduler-deployment.yaml" \
+  --context "${KUBE_CONTEXT}"
