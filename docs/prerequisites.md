@@ -1,57 +1,38 @@
 # Prerequisites
 
-For this project, I use a Mac mini (2024) with the following specifications:
+This page lists the macOS host requirements and tools needed before running `task onboard`. Once they're installed, head to [Deployment](deployment.md) to bring the stack up.
+
+## Hardware
+
+This project is developed and tested on a Mac mini (2024) with the following specifications. They define the comfortable working envelope, not a hard floor — but the colima VM defaults (`CPU=9`, `MEMORY=28`, `DISK_SIZE=120`) assume a machine in this ballpark.
 
 - Apple M4 chip
 - 10-core CPU
 - 10-core GPU
 - 16-core Neural Engine
-- 32GB RAM
-- 512GB SSD
+- 32 GB RAM
+- 512 GB SSD
 
-## Installing Required Tools via Homebrew
+## Install required tools
 
-Make sure you have [Homebrew](https://brew.sh/) installed. Then install the required tools:
-
-```
-brew install colima, docker, kubectl, minikube, helm, openjdk@21 jsonnet jsonnet-bundler
-```
-
-## Setting Up a Local Kubernetes Cluster
-
-Start colima with more resources:
+Every tool below is checked by `task onboard` as a precondition; the bootstrap aborts early if anything is missing. Install them all in one go with [Homebrew](https://brew.sh/):
 
 ```bash
-colima start \
-    --cpu 9 \
-    --memory 28 \
-    --disk 120 \
-    --runtime docker \
-    --profile retail-lakehouse
+brew install \
+  colima docker kubectl minikube helm sops git \
+  python@3.13 uv jsonnet jsonnet-bundler gettext \
+  openjdk@21 node
 ```
 
-This will create a local VM with docker runtime. After installing colima, make sure `docker` uses the colima context (`docker context ls`).
+A few entries warrant a one-liner so the names line up with the binaries the preconditions check for:
 
-Then start minikube with more resources:
+- `gettext` provides the `envsubst` binary used for templating Kubernetes manifests.
+- `openjdk@21` provides `keytool`, used to build Java truststores for Trino.
+- `jsonnet-bundler` provides the `jb` binary for vendoring jsonnet libraries.
+- `node` provides `npm`, used by the docs and commit-lint toolchains.
 
-```bash
-minikube start \
-  --profile retail-lakehouse \
-  --nodes 1 \
-  --cpus 9 \
-  --memory 26G \
-  --disk-size 120G \
-  --driver docker \
-  --container-runtime docker \
-  --kubernetes-version v1.33.2 \
-  --addons registry --addons metrics-server\
-  --insecure-registry "10.0.0.0/24" \
-  --delete-on-failure
-```
+After installing, make sure `docker` is using the colima context once colima is started later (`docker context ls`).
 
-This will create a single-node Kubernetes cluster (9 CPUs, 26GB RAM, 120GB disk) with the local container registry and metrics-server addons enabled. The `--insecure-registry` flag allows pushing images to the local registry; the `metrics-server` addon enables `kubectl top` for nodes and pods.
+## Next step
 
-![](./assets/k8s-env.excalidraw.svg)
-///
-K8s Cluster Environment
-///
+Tools installed? Continue to [Deployment](deployment.md).
