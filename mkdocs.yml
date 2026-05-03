@@ -3,6 +3,7 @@ docs_dir: docs
 nav:
   - index.md
   - prerequisites.md
+  - deployment.md
   - Argo CD:
     - argocd/deployment.md
     - argocd/cli.md
