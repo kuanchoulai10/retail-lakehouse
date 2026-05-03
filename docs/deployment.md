@@ -1,16 +1,16 @@
 # Deployment
 
-`task onboard` brings the entire stack — colima VM, minikube cluster, every app under `platform/`, and the local Python/Node toolchain — up in a single command. This page assumes the tools from [Prerequisites](prerequisites.md) are already installed and walks through the one-shot bootstrap, the deploy-method choice, the layering inside `platform/`, validation, and tear-down.
+`task onboard` brings the entire stack up in a single command: the colima VM, the minikube cluster, every app under `platform/`, and the local Python and Node toolchain. This page assumes the tools from [Prerequisites](prerequisites.md) are already installed and walks through the one-shot bootstrap, the deploy-method choice, the layering inside `platform/`, validation, and tear-down.
 
 ## Quick start
 
 Pick a name for the kube context (any string; `retail-lakehouse` is the convention used throughout this repo) and run:
 
 ```bash
-task onboard KUBE_CONTEXT=retail-lakehouse DEPLOY_METHOD=argocd
+task onboard KUBE_CONTEXT=retail-lakehouse DEPLOY_METHOD=scripts
 ```
 
-Expect 10–20 minutes on first run. When it returns, the cluster is up, every `platform/` app is healthy, and the local dev environment is wired.
+Expect 10 to 20 minutes on first run. When it returns, the cluster is up, every `platform/` app is healthy, and the local dev environment is wired.
 
 ## Choose a deploy method
 
@@ -18,8 +18,8 @@ Expect 10–20 minutes on first run. When it returns, the cluster is up, every `
 
 | Method | What it does | When to pick it |
 |--------|--------------|-----------------|
-| `scripts` | Runs each `platform/*/bootstrap.sh` directly in dependency order | First-time exploration; failures surface step-by-step in the terminal |
-| `argocd` | Bootstraps Argo CD itself, then applies the `app-of-apps` manifest under `charts/app-of-apps/` | Recommended; mirrors a real GitOps workflow and gives you a UI to inspect drift and health |
+| `scripts` | Runs each `platform/*/bootstrap.sh` directly in dependency order | Recommended for first-time exploration; failures surface step by step in the terminal |
+| `argocd` | Bootstraps Argo CD itself, then applies the `app-of-apps` manifest under `charts/app-of-apps/` | Mirrors a real GitOps workflow and gives you a UI to inspect drift and health |
 
 You can switch methods later by tearing down (`task offboard`) and re-running `task onboard` with the other value.
 
@@ -27,9 +27,9 @@ You can switch methods later by tearing down (`task offboard`) and re-running `t
 
 `task onboard` is a thin orchestration over three sub-tasks. Knowing what each one does makes failures easier to localise.
 
-### `cluster:bootstrap` — provision the local Kubernetes cluster
+### `cluster:bootstrap`: provision the local Kubernetes cluster
 
-The cluster runs inside a colima-managed Linux VM, with minikube on top. The Taskfile defaults are `CPU=9`, `MEMORY=28` (GiB), `DISK_SIZE=120` (GiB), and minikube is given the VM's memory minus 2 GiB so colima itself has room to breathe. Override any of them as Taskfile vars (e.g. `task onboard KUBE_CONTEXT=… MEMORY=20`).
+The cluster runs inside a colima-managed Linux VM, with minikube on top. The Taskfile defaults are `CPU=9`, `MEMORY=28` (GiB), `DISK_SIZE=120` (GiB), and minikube is given the VM's memory minus 2 GiB so colima itself has room to breathe. Override any of them as Taskfile vars (for example, `task onboard KUBE_CONTEXT=… MEMORY=20`).
 
 The two underlying commands, in case you want to reproduce them by hand or understand what's running on your machine:
 
@@ -64,27 +64,27 @@ minikube start \
 K8s Cluster Environment
 ///
 
-### `apps:bootstrap-by-{scripts|argocd}` — install every app under `platform/`
+### `apps:bootstrap-by-{scripts|argocd}`: install every app under `platform/`
 
-The selected `DEPLOY_METHOD` decides which sub-task runs. Both walk the `platform/` tree in numeric order (see [Platform layering](#platform-layering) below). The `scripts` path interleaves `bootstrap.sh` and `validate.sh` per tier so a failure stops the cascade early; the `argocd` path hands the whole tree to Argo CD via `app-of-apps` and lets sync waves enforce the same ordering.
+The selected `DEPLOY_METHOD` decides which sub-task runs. Both walk the `platform/` tree in numeric order (see [Platform layering](#platform-layering) below). The `scripts` path interleaves `bootstrap.sh` and `validate.sh` per tier so a failure stops the cascade early. The `argocd` path hands the whole tree to Argo CD via `app-of-apps` and lets sync waves enforce the same ordering.
 
-### `dev:sync` — local toolchain
+### `dev:sync`: local toolchain
 
 Wires the host machine up for development against the running cluster: installs Python deps with `uv`, Node deps with `npm`, and the project's `pre-commit` hooks. Safe to re-run.
 
 ## Platform layering
 
-Directories under `platform/` are prefixed with a numeric tier. Lower numbers must be ready before higher numbers — the prefix encodes the dependency order that `bootstrap-by-scripts` walks line-by-line and that the Argo CD `app-of-apps` encodes via sync waves.
+Directories under `platform/` are prefixed with a numeric tier. Lower numbers must be ready before higher numbers. The prefix encodes the dependency order that `bootstrap-by-scripts` walks line by line and that the Argo CD `app-of-apps` encodes via sync waves.
 
 | Prefix | Tier | Examples |
 |--------|------|----------|
-| `00`–`02` | Argo CD itself (only used when `DEPLOY_METHOD=argocd`) | `00-argocd`, `01-argocd-health-checks`, `02-argocd-apps` |
+| `00` to `02` | Argo CD itself (only used when `DEPLOY_METHOD=argocd`) | `00-argocd`, `01-argocd-health-checks`, `02-argocd-apps` |
 | `10` | Cluster-wide operators and control planes | `10-cert-manager`, `10-kube-prometheus`, `10-strimzi-operator` |
 | `11` | Operators that depend on tier 10 | `11-keda`, `11-spark-operator`, `11-otel-operator` |
 | `20` | Stateful infra and standalone services | `20-kafka-cluster`, `20-mysql`, `20-minio`, `20-jaeger-thanos`, `20-jaeger-trino`, `20-polaris-db` |
 | `21` | Apps consuming tier-20 services | `21-polaris`, `21-kafka-debezium-mysql-connector` |
 | `22` | Apps consuming tier-21 outputs | `22-kafka-iceberg-connector` |
-| `23` | Top-level query/UX layer | `23-trino` |
+| `23` | Top-level query and UX layer | `23-trino` |
 | `25` | Application backend (table maintenance) | `25-tbl-maint-db`, `25-tbl-maint-bcknd`, `25-tbl-maint-schdlr` |
 | `30` | Cross-cutting layer above everything | `30-thanos` |
 

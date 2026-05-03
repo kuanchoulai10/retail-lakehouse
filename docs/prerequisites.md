@@ -4,7 +4,7 @@ This page lists the macOS host requirements and tools needed before running `tas
 
 ## Hardware
 
-This project is developed and tested on a Mac mini (2024) with the following specifications. They define the comfortable working envelope, not a hard floor — but the colima VM defaults (`CPU=9`, `MEMORY=28`, `DISK_SIZE=120`) assume a machine in this ballpark.
+This project is developed and tested on a Mac mini (2024) with the following specifications. They define the comfortable working envelope, not a hard floor. The colima VM defaults (`CPU=9`, `MEMORY=28`, `DISK_SIZE=120`) assume a machine in this ballpark.
 
 - Apple M4 chip
 - 10-core CPU
