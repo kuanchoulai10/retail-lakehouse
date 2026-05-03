@@ -134,6 +134,41 @@ tasks:
           --namespace trino \
           --context {{.KUBE_CONTEXT}}
 
+  shell:
+    desc: 'Open an interactive Trino CLI shell as TRINO_USER (issues cert if needed)'
+    silent: true
+    interactive: true
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+          enum:
+            ref: .AVAILABLE_KUBE_CONTEXTS | splitLines | compact
+        - name: TRINO_USER
+    vars:
+      OUTDIR: 'platform/23-trino/client-certs/{{.TRINO_USER}}'
+    cmds:
+      - task: issue-cert
+        vars:
+          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+          TRINO_USER: '{{.TRINO_USER}}'
+          PRINT_USAGE: 'false'
+      - |
+        cleanup() {
+          pkill -f 'port-forward.*trino.*18443' 2>/dev/null || true
+        }
+        trap cleanup EXIT
+
+        kubectl port-forward svc/trino 18443:8443 \
+          --namespace trino \
+          --context {{.KUBE_CONTEXT}} >/dev/null 2>&1 &
+        sleep 2
+
+        trino --server https://localhost:18443 --user {{.TRINO_USER}} \
+          --keystore-path {{.OUTDIR}}/keystore.p12 \
+          --keystore-password "$(cat {{.OUTDIR}}/password.txt)" \
+          --truststore-path {{.OUTDIR}}/truststore.p12 \
+          --truststore-password "$(cat {{.OUTDIR}}/password.txt)"
+
   smoke-test:
     desc: 'End-to-end mTLS smoke test (issues throwaway cert, runs SHOW CATALOGS, cleans up)'
     silent: true
