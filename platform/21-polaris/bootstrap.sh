@@ -12,12 +12,9 @@ echo "==> Installing Apache Polaris ${POLARIS_VERSION} (context: ${KUBE_CONTEXT}
 kubectl create namespace polaris --dry-run=client -o yaml \
   | kubectl apply -f - --context "${KUBE_CONTEXT}"
 
-# Apply SOPS-encrypted secrets
-sops --decrypt "$SCRIPT_DIR/polaris-storage-secret.yaml" \
-  | kubectl apply -f - --context "${KUBE_CONTEXT}"
+kubectl apply -f "$SCRIPT_DIR/polaris-storage-secret.yaml" --context "${KUBE_CONTEXT}"
 
-sops --decrypt "$SCRIPT_DIR/polaris-bootstrap-secret.yaml" \
-  | kubectl apply -f - --context "${KUBE_CONTEXT}"
+kubectl apply -f "$SCRIPT_DIR/polaris-bootstrap-secret.yaml" --context "${KUBE_CONTEXT}"
 
 # Bootstrap Polaris schema in PostgreSQL on first install only.
 # Skip if the Helm release already exists (schema is persisted in polaris-db).

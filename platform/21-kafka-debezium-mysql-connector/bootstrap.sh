@@ -7,8 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "==> Deploying Debezium MySQL connector (context: ${KUBE_CONTEXT})"
 
-sops --decrypt "$SCRIPT_DIR/debezium-secret.yaml" \
-  | kubectl apply -f - -n kafka-cdc --context "${KUBE_CONTEXT}"
+kubectl apply -f "$SCRIPT_DIR/debezium-secret.yaml" -n kafka-cdc --context "${KUBE_CONTEXT}"
 kubectl apply -f "$SCRIPT_DIR/debezium-role.yaml" -n kafka-cdc --context "${KUBE_CONTEXT}"
 kubectl apply -f "$SCRIPT_DIR/debezium-role-binding.yaml" -n kafka-cdc --context "${KUBE_CONTEXT}"
 kubectl apply -f "$SCRIPT_DIR/debezium-connect-cluster.yaml" -n kafka-cdc --context "${KUBE_CONTEXT}"

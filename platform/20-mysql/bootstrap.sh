@@ -10,8 +10,7 @@ echo "==> Deploying MySQL (context: ${KUBE_CONTEXT})"
 kubectl create namespace kafka-cdc --dry-run=client -o yaml \
   | kubectl apply -f - --context "${KUBE_CONTEXT}"
 
-sops --decrypt "$SCRIPT_DIR/mysql-secret.yaml" \
-  | kubectl apply -f - --context "${KUBE_CONTEXT}"
+kubectl apply -f "$SCRIPT_DIR/mysql-secret.yaml" --context "${KUBE_CONTEXT}"
 
 kubectl apply -f "$SCRIPT_DIR/mysql.yaml" -n kafka-cdc --context "${KUBE_CONTEXT}"
 
