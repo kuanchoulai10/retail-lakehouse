@@ -54,6 +54,8 @@ creation_rules:
 
 Secrets are stored in `values-secret.yaml`, encrypted with SOPS/AGE and committed to git. The file contains OAuth2 credentials, AWS keys for Iceberg/S3, and the Trino internal shared secret.
 
+> **Note:** This is the only SOPS-managed file in the project. Other dev-only secrets under `platform/` are committed as plaintext. See `docs/superpowers/specs/2026-05-03-remove-sops-except-trino-design.md` for the rationale.
+
 To edit secrets:
 
 ```bash
