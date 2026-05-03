@@ -91,6 +91,8 @@ tasks:
         msg: "envsubst missing, run: brew install gettext"
       - sh: command -v keytool
         msg: "keytool missing, run: brew install openjdk@21 (or any JDK)"
+      - sh: command -v trino
+        msg: "trino CLI missing, see: https://trino.io/docs/current/client/cli.html (or brew install trino)"
       - sh: command -v npm
         msg: "npm missing, run: brew install node"
       - sh: command -v uv

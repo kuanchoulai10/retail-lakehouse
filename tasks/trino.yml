@@ -13,19 +13,72 @@ tasks:
         - name: TRINO_USER
     vars:
       OUTDIR: 'platform/23-trino/client-certs/{{.TRINO_USER}}'
-      CTX: '{{.KUBE_CONTEXT}}'
     cmds:
       - mkdir -p {{.OUTDIR}}
       - chmod 700 {{.OUTDIR}}
-      - USER={{.TRINO_USER}} envsubst < platform/23-trino/client-certificate-template.yaml | kubectl apply -f - --context {{.CTX}}
-      - kubectl wait --for=condition=Ready certificate/trino-client-{{.TRINO_USER}} -n trino --timeout=120s --context {{.CTX}}
-      - kubectl get -n trino secret trino-client-{{.TRINO_USER}}-tls --context {{.CTX}} -o jsonpath='{.data.keystore\.p12}' | base64 -d > {{.OUTDIR}}/keystore.p12
-      - kubectl get -n trino secret trino-client-{{.TRINO_USER}}-tls --context {{.CTX}} -o jsonpath='{.data.ca\.crt}' | base64 -d > {{.OUTDIR}}/ca.crt
-      - kubectl get -n trino secret trino-keystore-password --context {{.CTX}} -o jsonpath='{.data.password}' | base64 -d > {{.OUTDIR}}/password.txt
+      - |
+        TRINO_USER={{.TRINO_USER}} \
+        envsubst < platform/23-trino/client-certificate-template.yaml \
+          | kubectl apply \
+              -f - \
+              --context {{.KUBE_CONTEXT}}
+      - |
+        kubectl wait \
+          --for=condition=Ready certificate/trino-client-{{.TRINO_USER}} \
+          --namespace trino \
+          --timeout 120s \
+          --context {{.KUBE_CONTEXT}}
+      - |
+        kubectl get secret trino-client-{{.TRINO_USER}}-tls \
+          -o jsonpath='{.data.keystore\.p12}' \
+          --namespace trino \
+          --context {{.KUBE_CONTEXT}} \
+          | base64 -d > {{.OUTDIR}}/keystore.p12
+      - |
+        kubectl get secret trino-client-{{.TRINO_USER}}-tls \
+          -o jsonpath='{.data.ca\.crt}' \
+          --namespace trino \
+          --context {{.KUBE_CONTEXT}} \
+          | base64 -d > {{.OUTDIR}}/ca.crt
+      - |
+        kubectl get secret trino-keystore-password \
+          -o jsonpath='{.data.password}' \
+          --namespace trino \
+          --context {{.KUBE_CONTEXT}} \
+          | base64 -d > {{.OUTDIR}}/password.txt
       - rm -f {{.OUTDIR}}/truststore.p12
-      - keytool -importcert -noprompt -alias trino-ca -file {{.OUTDIR}}/ca.crt -keystore {{.OUTDIR}}/truststore.p12 -storetype PKCS12 -storepass "$(cat {{.OUTDIR}}/password.txt)"
+      - |
+        keytool -importcert -noprompt \
+          -alias trino-ca \
+          -file {{.OUTDIR}}/ca.crt \
+          -keystore {{.OUTDIR}}/truststore.p12 \
+          -storetype PKCS12 \
+          -storepass "$(cat {{.OUTDIR}}/password.txt)"
       - chmod 600 {{.OUTDIR}}/keystore.p12 {{.OUTDIR}}/truststore.p12 {{.OUTDIR}}/ca.crt {{.OUTDIR}}/password.txt
-      - echo "✓ {{.OUTDIR}}/{keystore.p12, truststore.p12, password.txt}"
+      - echo "{{.OUTDIR}}/{keystore.p12, truststore.p12, password.txt} Created"
+
+  delete-cert:
+    desc: 'Delete a Trino mTLS client cert and its local artifacts'
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+          enum:
+            ref: .AVAILABLE_KUBE_CONTEXTS | splitLines | compact
+        - name: TRINO_USER
+    vars:
+      OUTDIR: 'platform/23-trino/client-certs/{{.TRINO_USER}}'
+    cmds:
+      - rm -rf {{.OUTDIR}}
+      - |
+        kubectl delete secret trino-client-{{.TRINO_USER}}-tls \
+          --ignore-not-found \
+          --namespace trino \
+          --context {{.KUBE_CONTEXT}}
+      - |
+        kubectl delete certificate trino-client-{{.TRINO_USER}} \
+          --ignore-not-found \
+          --namespace trino \
+          --context {{.KUBE_CONTEXT}}
 
   smoke-test:
     desc: 'End-to-end mTLS smoke test (issues throwaway cert, runs SHOW CATALOGS, cleans up)'
@@ -37,19 +90,23 @@ tasks:
     vars:
       TRINO_USER: 'smoke-test'
       OUTDIR: 'platform/23-trino/client-certs/smoke-test'
-      CTX: '{{.KUBE_CONTEXT}}'
     cmds:
       - task: issue-cert
         vars:
           KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
           TRINO_USER: '{{.TRINO_USER}}'
-      - defer: kubectl delete -n trino certificate trino-client-{{.TRINO_USER}} --context {{.CTX}} --ignore-not-found
-      - defer: kubectl delete -n trino secret trino-client-{{.TRINO_USER}}-tls --context {{.CTX}} --ignore-not-found
-      - defer: rm -rf {{.OUTDIR}}
-      - defer: pkill -f 'port-forward.*trino.*18443' || true
-      - kubectl port-forward -n trino svc/trino 18443:8443 --context {{.CTX}} &
-      - sleep 2
       - |
+        cleanup() {
+          pkill -f 'port-forward.*trino.*18443' || true
+          task trino:delete-cert TRINO_USER={{.TRINO_USER}} KUBE_CONTEXT={{.KUBE_CONTEXT}}
+        }
+        trap cleanup EXIT
+
+        kubectl port-forward svc/trino 18443:8443 \
+          --namespace trino \
+          --context {{.KUBE_CONTEXT}} &
+        sleep 2
+
         trino --server https://localhost:18443 --user {{.TRINO_USER}} \
           --keystore-path {{.OUTDIR}}/keystore.p12 \
           --keystore-password "$(cat {{.OUTDIR}}/password.txt)" \

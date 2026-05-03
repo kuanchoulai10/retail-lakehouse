@@ -1,16 +1,16 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: trino-client-${USER}
+  name: trino-client-${TRINO_USER}
   namespace: trino
 spec:
-  secretName: trino-client-${USER}-tls
+  secretName: trino-client-${TRINO_USER}-tls
   duration: 8760h
   renewBefore: 720h
   issuerRef:
     name: trino-ca-issuer
     kind: Issuer
-  commonName: ${USER}
+  commonName: ${TRINO_USER}
   subject:
     organizations:
       - Trino
