@@ -1,56 +1,35 @@
 ---
 tags:
-  - Debizium
-  - Apache Kafka
   - Apache Iceberg
-  - Apache Spark
+  - Apache Kafka
+  - Apache Polaris
   - Trino
+  - Argo CD
+  - OpenTelemetry
 ---
-# Retail Lakehouse with Debezium, Kafka, Iceberg, and Trino
+# Retail Lakehouse Platform
+
+A self-hosted retail lakehouse that runs end-to-end on a single Mac, built to showcase three engineering disciplines side-by-side: Domain-Driven Design, streaming data infrastructure, and production-grade observability. Everything from the colima VM up to the Trino query engine is brought up by a single `task onboard` command.
 
 ## 💡 Highlights
 
-=== "Debezium Kafka Source Connector"
+=== "Software Engineering (DDD)"
 
-    !!! success "Highlights"
+    - 🏛️ **Strict Clean Architecture, enforced in CI** — `import-linter` blocks any dependency that crosses layers in the wrong direction (`adapter` → `application` → `domain`, no skipping).
+    - 🧬 **Single image, three roles** — the same container runs as API, Scheduler, or Outbox publisher depending on the `GLAC_COMPONENT` env var, following 12-factor.
+    - 📐 **Full DDD building blocks** — `AggregateRoot`, `ValueObject`, `DomainEvent`, `Repository`, and `Gateway` paired with an explicit outbound port-adapter naming convention (`{Aggregate}{Tech}Repo`, `{Verb}{Noun}{Tech}Gateway`).
 
-        - [x] Implemented **real-time, event-driven data pipelines** by capturing MySQL database change events (**CDC**) with **Debezium** and streaming them into **Kafka**, enabling downstream analytics.
-        - [x] Designed a **non-intrusive CDC architecture** leveraging MySQL/PostgreSQL binary logs, requiring **no changes to source systems** while ensuring **exactly-once delivery** and **high fault tolerance** via **Kafka Connect**.
-        - [x] Improved system **resilience** and **observability** through Debezium's **offset tracking and recovery features**, enabling **resumable** pipelines and reliable data integration across distributed environments.
+=== "Data Engineering"
 
-=== "Kafka Cluster"
+    - 🔄 **End-to-end CDC lakehouse** — MySQL → Debezium → Kafka → Iceberg sink with exactly-once delivery and automatic schema evolution.
+    - 🏔️ **Iceberg + Polaris + MinIO** — a fully self-hosted REST-catalog lakehouse with no cloud dependency; the entire stack runs on local minikube.
+    - 🔍 **Trino federated SQL** across Iceberg, BigQuery, and Faker catalogs, with OAuth2 SSO, fault-tolerant execution, and event listeners.
 
-    !!! success "Highlights"
+=== "Observability Engineering"
 
-        - [x] Provisioned a **fault-tolerant** **Kafka cluster** on **Kubernetes** using the **Strimzi Operator**, enabling declarative configuration and seamless lifecycle management
-        - [x] Enabled **KRaft** (Kafka Raft Metadata mode) with a **dual-role** cluster, removing dependency on ZooKeeper and simplifying cluster architecture
-        - [x] Designed for **high availability** by replicating Kafka topics and internal state across multiple brokers using **replication factor** and **in-sync replicas (ISR)**.
-
-=== "Iceberg Kafka Sink Connector"
-
-    !!! success "Highlights"
-
-        - [x] Ensured **centralized commit coordination** for Apache Iceberg via the Kafka Sink Connector, enabling consistent and atomic writes across distributed systems.
-        - [x] Achieved **exactly-once delivery semantics** between Kafka and Iceberg tables, minimizing data duplication and ensuring data integrity.
-        - [x] Utilized **`DebeziumTransform` SMT** to adapt Debezium CDC messages for compatibility with Iceberg's CDC feature, supporting real-time change propagation.
-        - [x] Enabled **automatic table creation and schema evolution**, simplifying integration and reducing operational overhead when ingesting data into Iceberg tables.
-
-=== "Iceberg Data Lakehouse"
-
-    !!! success "Highlights"
-
-        - [x] Adopted Apache Iceberg to bring ACID-compliant transactions and schema evolution to the data lake architecture.
-        - [x] Managed Iceberg tables using **AWS Glue Data Catalog** as the catalog layer and **Amazon S3** as the storage layer.
-        - [x] Enabled **data debugging** and **auditability** through Iceberg's time travel and snapshot rollback features.
-        - [x] Implemented branching and tagging (WAP) to support isolated writes, data validation, and safe promotion in production workflows
-
-=== "Trino"
-
-    !!! success "Highlights"
-
-        - [x] Integrated Trino to enable **federated SQL queries** across Apache Iceberg (S3) and external systems like BigQuery, **improving analytical agility**.
-        - [x] Simplified **data access across multiple data sources without data duplication**, enabling ad-hoc analytics and reporting from a unified SQL interface.
-        - [x] Integrated **Google OAuth 2.0** with Trino to enable **token-based authentication**, improving platform **auditability** and user **accountability**.
+    - 📊 **Metrics** — `kube-prometheus` plus **Thanos** for long-term storage, backed by the same MinIO that serves the lakehouse.
+    - 🔭 **Traces** — OpenTelemetry Operator handles auto-instrumentation; Jaeger receives traces from both Trino and Thanos.
+    - 🏗️ **GitOps-native** — Argo CD `app-of-apps` deploys the entire platform from a single commit.
 
 ## 🏗️ Architecture
 
@@ -61,44 +40,9 @@ Architecture Overview
 
 ![](trino-otel.drawio.svg)
 /// caption
-Architecture Overview (Observability Engineering)
+Architecture Overview — Observability Engineering
 ///
 
+## 🚀 Try it yourself
 
-
-## 🗂️ What's Inside?
-
-First, clone the repository:
-
-```bash
-mkdir -p ~/Projects
-cd ~/Projects
-git clone git@github.com:kuanchoulai10/retail-lakehouse.git
-```
-
-The project structure looks like this:
-
-```
-.
-├── kafka-cluster
-├── mysql
-├── kafka-debezium-mysql-connector
-├── kafka-iceberg-connector
-├── trino
-├── spark
-└── prometheus-grafana
-```
-
-## 📑 Deployment Steps
-
-The basic deployment path includes the following steps:
-
-!!! success "Deployment Steps"
-
-    - [ ] Deploy a Kafka Cluster via the Strimzi Operator
-    - [ ] Deploy a MySQL Database
-    - [ ] Deploy a Debezium Kafka Source Connector
-    - [ ] Deploy an Iceberg Kafka Sink Connector
-    - [ ] Deploy a Trino Cluster
-    - [ ] Deploy a Spark Cluster (WIP)
-    - [ ] Deploy Prometheus and Grafana (WIP)
+Reproduce the whole platform on your own Mac in two steps: install the tools listed in [Prerequisites](prerequisites.md), then run the one-shot bootstrap in [Deployment](deployment.md).
