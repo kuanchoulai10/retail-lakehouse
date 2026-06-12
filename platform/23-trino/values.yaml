@@ -178,7 +178,7 @@ jmx:
   enabled: true
   exporter:
     enabled: true
-    image: bitnami/jmx-exporter:latest
+    image: soldevelo/jmx-exporter:latest
     configProperties: |-
       hostPort: localhost:{{- .Values.jmx.registryPort }}
       startDelaySeconds: 0
