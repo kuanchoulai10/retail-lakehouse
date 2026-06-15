@@ -97,7 +97,7 @@ curl -s -X POST \
 ```
 
 !!! warning "pathStyleAccess: true 是必要的"
-    如果忘記設定 `s3.pathStyleAccess: true`，Polaris 在嘗試 register table 時會發生 `UnknownHostException`。這是因為 MinIO 預設使用 path-style URL（`http://minio:9000/bucket/key`），而不是 virtual-hosted style（`http://bucket.minio:9000/key`）。後者在本地叢集中無法解析，導致 DNS 查找失敗。詳見下方的 [常見錯誤排查](#_6)。
+    如果忘記設定 `s3.pathStyleAccess: true`，Polaris 在嘗試 register table 時會發生 `UnknownHostException`。這是因為 MinIO 預設使用 path-style URL（`http://minio:9000/bucket/key`），而不是 virtual-hosted style（`http://bucket.minio:9000/key`）。後者在本地叢集中無法解析，導致 DNS 查找失敗。詳見下方的 [常見錯誤排查](#common-errors)。
 
 ---
 
@@ -184,7 +184,7 @@ curl -s \
 
 ---
 
-## 常見錯誤排查
+## 常見錯誤排查 { #common-errors }
 
 ### UnknownHostException：table registration 失敗
 

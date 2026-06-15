@@ -78,7 +78,7 @@ Top-of-page tags and h1 stay. Replace everything below the h1.
 2. **Install required tools via Homebrew** — single `brew install` command listing all tools the `task onboard` preconditions check for. Source of truth is `taskfile.yml` (lines ~50–98) and `tasks/apps.yml` (lines ~13–27). The full list:
    - `colima docker kubectl minikube helm sops git python@3.13 jsonnet jsonnet-bundler gettext openjdk@21 node uv`
    - One sentence per non-obvious tool explaining why (e.g. `gettext` provides `envsubst`; `openjdk@21` provides `keytool`).
-3. **Next step** — one line: "Tools installed? Continue to [Deployment](deployment.md)."
+3. **Next step** — one line: `Tools installed? Continue to [Deployment](deployment.md).`
 
 **Removed sections:**
 

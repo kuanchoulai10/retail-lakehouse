@@ -9,10 +9,10 @@ Make sure you have deployed a Kafka cluster and a MySQL database first.
 
 !!! success "Deployment Steps"
 
-    - [x] [Deploy a Kafka Cluster via the Strimzi Operator](./cdc/deployment-kafka-cluster.md)
-    - [x] [Deploy a MySQL Database](./cdc/deployment-mysql.md)
-    - [ ] [Deploy a Debezium Kafka Source Connector](./cdc/deployment-debezium-mysql-connector.md)
-    - [ ] [Deploy an Iceberg Kafka Sink Connector](./cdc/deployment-iceberg-connector.md)
+    - [x] [Deploy a Kafka Cluster via the Strimzi Operator](./deployment-kafka-cluster.md)
+    - [x] [Deploy a MySQL Database](./deployment-mysql.md)
+    - [ ] [Deploy a Debezium Kafka Source Connector](./deployment-debezium-mysql-connector.md)
+    - [ ] [Deploy an Iceberg Kafka Sink Connector](./deployment-iceberg-connector.md)
 
 After the Kafka cluster and MySQL database are up and running, you can deploy the Debezium MySQL Kafka Connector by running the following commands:
 
@@ -72,7 +72,7 @@ As the first step, a container image for Kafka Connect with the plug-in has to b
 
 ??? info "Prerequisite"
 
-    Make sure you have **enabled the local registry and set up `insecure-registry` in your Minikube cluster**. If you have followed the instructions in the [Prerequisites](../prerequisites.md#setting-up-a-local-kubernetes-cluster) section, you should have already done this step. If not, you can enable it now by running the following command:
+    Make sure you have **enabled the local registry and set up `insecure-registry` in your Minikube cluster**. If you have followed the instructions in the [Prerequisites](../prerequisites.md) section, you should have already done this step. If not, you can enable it now by running the following command:
 
     ```bash
     minikube addons enable registry -p retail-lakehouse
