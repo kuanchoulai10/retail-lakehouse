@@ -4,7 +4,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
-POLARIS_VERSION="${POLARIS_VERSION:-1.3.0-incubating}"
+POLARIS_VERSION="${POLARIS_VERSION:-1.5.0}"
 TIMEOUT="${TIMEOUT:-300s}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
