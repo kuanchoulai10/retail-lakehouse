@@ -80,25 +80,3 @@ polaris:
     ports:
       - name: polaris-http
         port: 8181
-
-  # ---------------------------------------------------------------------------
-  # Advanced Configuration
-  # ---------------------------------------------------------------------------
-  # Enable the built-in `persistence-in-memory-buffer` event listener. It
-  # buffers events in memory then flushes them to the polaris_schema.events
-  # table in the PostgreSQL backing store, which we then treat as an
-  # outbox-style change feed.
-  #
-  # Coverage caveat (verified against Polaris 1.5.0 source): the
-  # PolarisPersistenceEventListener only wires AFTER_CREATE_TABLE and
-  # AFTER_CREATE_CATALOG into processEvent(); all other event types are
-  # dropped by the "default" branch of its onEvent() switch. Downstream
-  # consumers can therefore only rely on catalog and table creation
-  # events being persisted today; snapshot commits and other mutations
-  # are not.
-  #
-  # Defaults for the buffer (kept implicit here so upstream changes flow
-  # through): buffer-time=5000ms, max-buffer-size=5. Flush fires on
-  # whichever threshold trips first.
-  advancedConfig:
-    polaris.event-listener.types: "persistence-in-memory-buffer"
