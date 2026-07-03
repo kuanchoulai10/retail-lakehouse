@@ -1,0 +1,25 @@
+{{- if and (ge 22 (int .Values.deploy.waveFrom)) (le 22 (int .Values.deploy.waveTo)) }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kafka-debezium-polaris-connector
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "22" # after polaris (wave 21)
+spec:
+  project: {{ .Values.project.name }}
+  sources:
+    - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
+      path: platform/22-kafka-debezium-polaris-connector
+      targetRevision: main
+  destination:
+    name: {{ .Values.spec.destination.name }}
+    namespace: kafka-cdc
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    automated:
+      prune: true
+      selfHeal: true
+{{- end }}

@@ -18,6 +18,14 @@ spec:
       containers:
         - name: postgres
           image: postgres:17-alpine
+          args:
+            - postgres
+            - -c
+            - wal_level=logical
+            - -c
+            - max_wal_senders=10
+            - -c
+            - max_replication_slots=10
           env:
             - name: POSTGRES_USER
               valueFrom:

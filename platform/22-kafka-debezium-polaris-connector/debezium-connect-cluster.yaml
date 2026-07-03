@@ -1,0 +1,39 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnect
+metadata:
+  name: polaris-cdc-connect-cluster
+  namespace: kafka-cdc
+  annotations:
+    strimzi.io/use-connector-resources: "true"
+spec:
+  version: 4.0.0
+  replicas: 1
+  bootstrapServers: kafka-cluster-kafka-bootstrap:9092
+  config:
+    config.providers: secrets
+    config.providers.secrets.class: io.strimzi.kafka.KubernetesSecretConfigProvider
+    group.id: polaris-cdc-connect-cluster
+    exactly.once.support: required
+    offset.storage.topic: polaris-cdc-connect-cluster-offsets
+    config.storage.topic: polaris-cdc-connect-cluster-configs
+    status.storage.topic: polaris-cdc-connect-cluster-status
+    offset.storage.replication.factor: -1
+    config.storage.replication.factor: -1
+    status.storage.replication.factor: -1
+  jvmOptions:
+    "-Xms": "128m"
+    "-Xmx": "512m"
+  template:
+    connectContainer:
+      env:
+        - name: STRIMZI_JAVA_OPTS
+          value: "-XX:MaxMetaspaceSize=256m"
+  build:
+    output:
+      type: docker
+      image: ${REGISTRY_IP}/debezium-polaris-connector:latest
+    plugins:
+      - name: debezium-postgres-connector
+        artifacts:
+          - type: tgz
+            url: https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/3.5.0.Final/debezium-connector-postgres-3.5.0.Final-plugin.tar.gz

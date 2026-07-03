@@ -1,0 +1,25 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnector
+metadata:
+  name: polaris-cdc-connector
+  labels:
+    strimzi.io/cluster: polaris-cdc-connect-cluster
+spec:
+  class: io.debezium.connector.postgresql.PostgresConnector
+  tasksMax: 1
+  config:
+    tasks.max: 1
+    database.hostname: polaris-db.polaris.svc.cluster.local
+    database.port: 5432
+    database.user: ${secrets:kafka-cdc/polaris-cdc-secret:username}
+    database.password: ${secrets:kafka-cdc/polaris-cdc-secret:password}
+    database.dbname: polaris
+    plugin.name: pgoutput
+    publication.name: polaris_cdc
+    publication.autocreate.mode: disabled
+    slot.name: debezium_polaris_slot
+    topic.prefix: polaris
+    schema.include.list: polaris_schema
+    table.include.list: polaris_schema.commit_metrics_report
+    snapshot.mode: initial
+    exactly.once.source.support: enabled
