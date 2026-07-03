@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+tasks:
+  open:
+    desc: 'Port-forward Kafbat UI to localhost:18080 and open browser'
+    silent: true
+    interactive: true
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+          enum:
+            ref: .AVAILABLE_KUBE_CONTEXTS | splitLines | compact
+    vars:
+      LOCAL_PORT: '{{.LOCAL_PORT | default 18080}}'
+    cmds:
+      - |
+        cleanup() {
+          pkill -f 'port-forward.*kafka-ui.*{{.LOCAL_PORT}}' 2>/dev/null || true
+        }
+        trap cleanup EXIT
+
+        kubectl port-forward svc/kafka-ui {{.LOCAL_PORT}}:8080 \
+          --namespace kafka-ui \
+          --context {{.KUBE_CONTEXT}} >/dev/null 2>&1 &
+
+        until nc -z localhost {{.LOCAL_PORT}} 2>/dev/null; do sleep 0.3; done
+        echo "Kafbat UI: http://localhost:{{.LOCAL_PORT}}"
+        open http://localhost:{{.LOCAL_PORT}} 2>/dev/null || true
+
+        wait
