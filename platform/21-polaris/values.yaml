@@ -80,3 +80,6 @@ polaris:
     ports:
       - name: polaris-http
         port: 8181
+
+  advancedConfig:
+    polaris.iceberg-metrics.reporting.type: persisting

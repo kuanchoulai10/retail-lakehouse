@@ -35,31 +35,35 @@ spec:
                 | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
               [ -n "$TOKEN" ] || { echo "failed to get token"; exit 1; }
               echo "got token"
-              # Check if catalog already exists
               EXISTS=$(curl -sf -H "Authorization: Bearer $TOKEN" \
                 "$POLARIS_URL/api/management/v1/catalogs/iceberg" -o /dev/null -w '%{http_code}' || true)
               if [ "$EXISTS" = "200" ]; then
                 echo "catalog 'iceberg' already exists"
-                exit 0
+              else
+                curl -sf -X POST "$POLARIS_URL/api/management/v1/catalogs" \
+                  -H "Authorization: Bearer $TOKEN" \
+                  -H "Content-Type: application/json" \
+                  -d '{
+                    "catalog": {
+                      "name": "iceberg",
+                      "type": "INTERNAL",
+                      "properties": {
+                        "default-base-location": "s3://retail-lakehouse-7dj2/warehouse"
+                      },
+                      "storageConfigInfo": {
+                        "storageType": "S3",
+                        "allowedLocations": ["s3://retail-lakehouse-7dj2/"],
+                        "endpoint": "http://minio-api.minio.svc.cluster.local:9000",
+                        "stsEndpoint": "http://minio-api.minio.svc.cluster.local:9000",
+                        "pathStyleAccess": true
+                      }
+                    }
+                  }'
+                echo
+                echo "catalog 'iceberg' created"
               fi
-              curl -sf -X POST "$POLARIS_URL/api/management/v1/catalogs" \
+              curl -sf -X PUT "$POLARIS_URL/api/management/v1/catalogs/iceberg/catalog-roles/catalog_admin/grants" \
                 -H "Authorization: Bearer $TOKEN" \
                 -H "Content-Type: application/json" \
-                -d '{
-                  "catalog": {
-                    "name": "iceberg",
-                    "type": "INTERNAL",
-                    "properties": {
-                      "default-base-location": "s3://retail-lakehouse-7dj2/warehouse"
-                    },
-                    "storageConfigInfo": {
-                      "storageType": "S3",
-                      "allowedLocations": ["s3://retail-lakehouse-7dj2/"],
-                      "endpoint": "http://minio-api.minio.svc.cluster.local:9000",
-                      "stsEndpoint": "http://minio-api.minio.svc.cluster.local:9000",
-                      "pathStyleAccess": true
-                    }
-                  }
-                }'
-              echo
-              echo "catalog 'iceberg' created"
+                -d '{"grant":{"type":"catalog","privilege":"CATALOG_MANAGE_CONTENT"}}'
+              echo "granted CATALOG_MANAGE_CONTENT to catalog_admin"
