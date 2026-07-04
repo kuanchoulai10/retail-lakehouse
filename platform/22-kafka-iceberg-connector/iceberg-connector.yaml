@@ -30,4 +30,5 @@ spec:
     iceberg.catalog.s3.path-style-access: "true"
     transforms: debezium
     transforms.debezium.type: org.apache.iceberg.connect.transforms.DebeziumTransform
+    iceberg.control.commit.interval-ms: "60000"
 
