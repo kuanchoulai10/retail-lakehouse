@@ -30,5 +30,46 @@ spec:
     iceberg.catalog.s3.path-style-access: "true"
     transforms: debezium
     transforms.debezium.type: org.apache.iceberg.connect.transforms.DebeziumTransform
+
+    # How often the Coordinator emits START_COMMIT. Default 300000 (5 min); set to 60000 (1 min) for faster landing.
+    # Higher: fewer, larger snapshots (better query perf); higher end-to-end latency.
+    # Lower: near-real-time visibility; many small files & snapshots — needs compaction eventually.
     iceberg.control.commit.interval-ms: "60000"
 
+    # --- Fix for Worker control-topic consumer (required) ---
+    # KIP-345 static membership: broker remembers this member by a stable id and won't kick it on brief heartbeat gaps.
+    # Default null (dynamic member — every reconnect looks like a new member → triggers rebalance).
+    # Value must be unique within the group. With tasks.max > 1, give each task a distinct id.
+    iceberg.kafka.group.instance.id: iceberg-worker-static-1
+
+    # Worker's control consumer uses a fresh random-UUID group on every start, so there's never a committed offset
+    # and this rule always fires.
+    # Default latest: read only events "after join" → often misses the START_COMMIT emitted right around join completion.
+    # earliest: read from the beginning (replays old control events; Worker buffer is empty so it just returns 0 files → no duplicate data).
+    iceberg.kafka.auto.offset.reset: earliest
+
+    # --- Optional overrides below; not required today. Enable if Iceberg writes get slow. ---
+
+    # Max time the Coordinator waits for Workers to return DATA_FILES. Default 30000 (30 s).
+    # If Worker flush routinely exceeds 30 s (large batches, slow S3), you'll see more "committed to 0 table(s)" — bump to 120000.
+    # iceberg.control.commit.timeout-ms: "120000"
+
+    # Broker evicts consumer if no heartbeat for this long. Default 45000 (45 s).
+    # Static membership usually suffices; only raise (e.g. 600000) if Worker still gets kicked with UNKNOWN_MEMBER_ID.
+    # iceberg.kafka.session.timeout.ms: "600000"
+
+    # Heartbeat cadence. Default 3000 (3 s). Docs recommend ≤ 1/3 of session.timeout.ms.
+    # Raise proportionally when raising session.timeout.ms (e.g. 20000) to cut heartbeat chatter.
+    # iceberg.kafka.heartbeat.interval.ms: "20000"
+
+    # Max delay between poll() calls before consumer is deemed dead. Default 300000 (5 min).
+    # If Iceberg flush (Polaris commit + S3 write) can exceed 5 min, raise to 1200000 to avoid false-positive kicks.
+    # iceberg.kafka.max.poll.interval.ms: "1200000"
+
+    # Max time a single request (fetch / JoinGroup / metadata) waits for broker response. Default 30000 (30 s).
+    # Bump slightly if broker congestion causes request-timeout retry storms.
+    # iceberg.kafka.request.timeout.ms: "60000"
+
+    # Max time broker blocks a fetch when there isn't enough data. Default 500.
+    # Worker polls with Duration.ZERO; lowering to 100 makes small control events return sooner. Latency vs. throughput.
+    # iceberg.kafka.fetch.max.wait.ms: "100"
