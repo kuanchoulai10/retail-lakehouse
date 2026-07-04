@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Istio charts pinned to `ISTIO_VERSION=1.26.2` (override via env var).
+- Istio charts pinned to `ISTIO_VERSION=1.26.8` (override via env var).
 - Gateway API CRDs pinned to `GATEWAY_API_VERSION=v1.3.0`, standard channel.
 - Every `bootstrap.sh`/`validate.sh` must `: "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"` — no fallback.
 - `kubectl` invocations put subcommand first, flags last (e.g. `kubectl rollout status ... --context "${KUBE_CONTEXT}"`, never `kubectl --context ... rollout status`).
@@ -86,7 +86,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
-ISTIO_VERSION="${ISTIO_VERSION:-1.26.2}"
+ISTIO_VERSION="${ISTIO_VERSION:-1.26.8}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -328,7 +328,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
-ISTIO_VERSION="${ISTIO_VERSION:-1.26.2}"
+ISTIO_VERSION="${ISTIO_VERSION:-1.26.8}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -455,7 +455,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
-ISTIO_VERSION="${ISTIO_VERSION:-1.26.2}"
+ISTIO_VERSION="${ISTIO_VERSION:-1.26.8}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -570,7 +570,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
-ISTIO_VERSION="${ISTIO_VERSION:-1.26.2}"
+ISTIO_VERSION="${ISTIO_VERSION:-1.26.8}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -685,7 +685,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
-ISTIO_VERSION="${ISTIO_VERSION:-1.26.2}"
+ISTIO_VERSION="${ISTIO_VERSION:-1.26.8}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -900,7 +900,7 @@ spec:
   sources:
     - repoURL: https://istio-release.storage.googleapis.com/charts
       chart: base
-      targetRevision: 1.26.2
+      targetRevision: 1.26.8
       helm:
         releaseName: istio-base
         valueFiles:
@@ -970,7 +970,7 @@ spec:
   sources:
     - repoURL: https://istio-release.storage.googleapis.com/charts
       chart: istiod
-      targetRevision: 1.26.2
+      targetRevision: 1.26.8
       helm:
         releaseName: istiod
         valueFiles:
@@ -1008,7 +1008,7 @@ spec:
   sources:
     - repoURL: https://istio-release.storage.googleapis.com/charts
       chart: cni
-      targetRevision: 1.26.2
+      targetRevision: 1.26.8
       helm:
         releaseName: istio-cni
         valueFiles:
@@ -1046,7 +1046,7 @@ spec:
   sources:
     - repoURL: https://istio-release.storage.googleapis.com/charts
       chart: ztunnel
-      targetRevision: 1.26.2
+      targetRevision: 1.26.8
       helm:
         releaseName: ztunnel
         valueFiles:
@@ -1084,7 +1084,7 @@ spec:
   sources:
     - repoURL: https://istio-release.storage.googleapis.com/charts
       chart: gateway
-      targetRevision: 1.26.2
+      targetRevision: 1.26.8
       helm:
         releaseName: istio-ingressgateway
         valueFiles:

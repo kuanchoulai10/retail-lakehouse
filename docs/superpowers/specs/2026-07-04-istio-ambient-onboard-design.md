@@ -31,7 +31,7 @@ Introduce Istio ambient mode as the future service mesh substrate for `retail-la
 
 | # | Decision | Choice |
 |---|----------|--------|
-| 1 | Istio version | `1.26.2` (pinned via `ISTIO_VERSION` env var in each bootstrap.sh) |
+| 1 | Istio version | `1.26.8` (pinned via `ISTIO_VERSION` env var in each bootstrap.sh) |
 | 2 | cert-manager integration | None yet — istiod self-signed CA |
 | 3 | Ingress gateway namespace | `istio-ingress` (separate from `istio-system`) |
 | 4 | Gateway API install source | `kubectl apply --server-side` against upstream release YAML |
@@ -138,7 +138,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
-ISTIO_VERSION="${ISTIO_VERSION:-1.26.2}"
+ISTIO_VERSION="${ISTIO_VERSION:-1.26.8}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -227,7 +227,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
-ISTIO_VERSION="${ISTIO_VERSION:-1.26.2}"
+ISTIO_VERSION="${ISTIO_VERSION:-1.26.8}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -269,7 +269,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
-ISTIO_VERSION="${ISTIO_VERSION:-1.26.2}"
+ISTIO_VERSION="${ISTIO_VERSION:-1.26.8}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -311,7 +311,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
-ISTIO_VERSION="${ISTIO_VERSION:-1.26.2}"
+ISTIO_VERSION="${ISTIO_VERSION:-1.26.8}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -353,7 +353,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
-ISTIO_VERSION="${ISTIO_VERSION:-1.26.2}"
+ISTIO_VERSION="${ISTIO_VERSION:-1.26.8}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
