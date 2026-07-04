@@ -1,0 +1,4 @@
+profile: ambient
+
+global:
+  platform: minikube
