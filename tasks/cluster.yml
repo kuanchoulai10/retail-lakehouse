@@ -71,3 +71,7 @@ tasks:
           --addons registry \
           --insecure-registry "10.0.0.0/24" \
           --delete-on-failure
+      - |
+        minikube ssh -p {{.KUBE_CONTEXT}} -- sudo sh -c \
+          "'echo 8192 > /proc/sys/fs/inotify/max_user_instances && \
+            echo 524288 > /proc/sys/fs/inotify/max_user_watches'"
