@@ -1,0 +1,32 @@
+{{- if and (ge 11 (int .Values.deploy.waveFrom)) (le 11 (int .Values.deploy.waveTo)) }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: istio-base
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "11"
+spec:
+  project: {{ .Values.project.name }}
+  sources:
+    - repoURL: https://istio-release.storage.googleapis.com/charts
+      chart: base
+      targetRevision: 1.26.2
+      helm:
+        releaseName: istio-base
+        valueFiles:
+          - '$repo/platform/11-istio-base/values.yaml'
+    - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
+      targetRevision: main
+      ref: repo
+  destination:
+    name: {{ .Values.spec.destination.name }}
+    namespace: istio-system
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    automated:
+      prune: true
+      selfHeal: true
+{{- end }}

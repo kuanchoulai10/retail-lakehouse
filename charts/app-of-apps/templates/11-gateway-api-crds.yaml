@@ -1,0 +1,26 @@
+{{- if and (ge 11 (int .Values.deploy.waveFrom)) (le 11 (int .Values.deploy.waveTo)) }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gateway-api-crds
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "11"
+spec:
+  project: {{ .Values.project.name }}
+  source:
+    repoURL: https://github.com/kuanchoulai10/retail-lakehouse
+    targetRevision: main
+    path: platform/11-gateway-api-crds/manifests
+    directory:
+      recurse: false
+  destination:
+    name: {{ .Values.spec.destination.name }}
+    namespace: default
+  syncPolicy:
+    syncOptions:
+      - ServerSideApply=true
+    automated:
+      prune: true
+      selfHeal: true
+{{- end }}

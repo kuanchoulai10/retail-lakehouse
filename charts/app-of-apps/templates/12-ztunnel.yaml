@@ -1,0 +1,32 @@
+{{- if and (ge 12 (int .Values.deploy.waveFrom)) (le 12 (int .Values.deploy.waveTo)) }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ztunnel
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "12"
+spec:
+  project: {{ .Values.project.name }}
+  sources:
+    - repoURL: https://istio-release.storage.googleapis.com/charts
+      chart: ztunnel
+      targetRevision: 1.26.2
+      helm:
+        releaseName: ztunnel
+        valueFiles:
+          - '$repo/platform/12-ztunnel/values.yaml'
+    - repoURL: https://github.com/kuanchoulai10/retail-lakehouse
+      targetRevision: main
+      ref: repo
+  destination:
+    name: {{ .Values.spec.destination.name }}
+    namespace: istio-system
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    automated:
+      prune: true
+      selfHeal: true
+{{- end }}
