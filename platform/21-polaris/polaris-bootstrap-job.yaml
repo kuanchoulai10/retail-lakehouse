@@ -11,7 +11,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: bootstrap
-          image: apache/polaris-admin-tool:1.3.0-incubating
+          image: apache/polaris-admin-tool:1.5.0
           args:
             - bootstrap
             - --realm=POLARIS
