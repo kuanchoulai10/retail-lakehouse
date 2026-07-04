@@ -12,6 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 log::on_success "kube-prometheus installed"
 log::on_failure "kube-prometheus installation failed"
 
+rm -rf kube-prometheus
 git clone \
   --depth 1 \
   --branch "${KUBE_PROMETHEUS_VERSION}" \
@@ -24,7 +25,9 @@ if [ "$actual_sha" != "$KUBE_PROMETHEUS_SHA" ]; then
   exit 1
 fi
 
-kubectl create \
+kubectl apply \
+  --server-side \
+  --force-conflicts \
   -f kube-prometheus/manifests/setup \
   --context "${KUBE_CONTEXT}"
 
@@ -34,7 +37,9 @@ until kubectl get servicemonitors \
   sleep 1
 done
 
-kubectl create \
+kubectl apply \
+  --server-side \
+  --force-conflicts \
   -f kube-prometheus/manifests/ \
   --context "${KUBE_CONTEXT}"
 
