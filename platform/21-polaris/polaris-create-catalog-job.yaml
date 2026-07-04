@@ -62,8 +62,14 @@ spec:
                 echo
                 echo "catalog 'iceberg' created"
               fi
-              curl -sf -X PUT "$POLARIS_URL/api/management/v1/catalogs/iceberg/catalog-roles/catalog_admin/grants" \
-                -H "Authorization: Bearer $TOKEN" \
-                -H "Content-Type: application/json" \
-                -d '{"grant":{"type":"catalog","privilege":"CATALOG_MANAGE_CONTENT"}}'
-              echo "granted CATALOG_MANAGE_CONTENT to catalog_admin"
+              if curl -sf -H "Authorization: Bearer $TOKEN" \
+                   "$POLARIS_URL/api/management/v1/catalogs/iceberg/catalog-roles/catalog_admin/grants" \
+                   | grep -q '"privilege":"CATALOG_MANAGE_CONTENT"'; then
+                echo "CATALOG_MANAGE_CONTENT already granted to catalog_admin"
+              else
+                curl -sf -X PUT "$POLARIS_URL/api/management/v1/catalogs/iceberg/catalog-roles/catalog_admin/grants" \
+                  -H "Authorization: Bearer $TOKEN" \
+                  -H "Content-Type: application/json" \
+                  -d '{"grant":{"type":"catalog","privilege":"CATALOG_MANAGE_CONTENT"}}'
+                echo "granted CATALOG_MANAGE_CONTENT to catalog_admin"
+              fi
