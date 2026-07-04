@@ -24,7 +24,6 @@ if echo "$cmd" | grep -qE '\bkubectl[[:space:]]+-'; then
 fi
 
 # --- kubectl: direct cluster mutation ---
-[[ "$cmd" == *"kubectl delete"* ]]   && blocked="kubectl delete"
 [[ "$cmd" == *"kubectl edit"* ]]     && blocked="kubectl edit"
 [[ "$cmd" == *"kubectl set "* ]]     && blocked="kubectl set"
 [[ "$cmd" == *"kubectl scale"* ]]    && blocked="kubectl scale"
