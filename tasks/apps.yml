@@ -50,6 +50,12 @@ tasks:
       - TIMEOUT=10s bash platform/11-keda/validate.sh
       - TIMEOUT=10s bash platform/11-spark-operator/validate.sh
       - TIMEOUT=10s bash platform/11-otel-operator/validate.sh
+      - TIMEOUT=10s bash platform/11-istio-base/validate.sh
+      - TIMEOUT=10s bash platform/11-gateway-api-crds/validate.sh
+      - TIMEOUT=10s bash platform/12-istiod/validate.sh
+      - TIMEOUT=10s bash platform/12-istio-cni/validate.sh
+      - TIMEOUT=10s bash platform/12-ztunnel/validate.sh
+      - TIMEOUT=10s bash platform/12-istio-ingressgw/validate.sh
       - TIMEOUT=10s bash platform/20-kafka-cluster/validate.sh
       - TIMEOUT=10s bash platform/20-minio/validate.sh
       - TIMEOUT=10s bash platform/20-mysql/validate.sh
@@ -75,6 +81,18 @@ tasks:
       - bash platform/11-keda/validate.sh
       - bash platform/11-spark-operator/validate.sh
       - bash platform/11-otel-operator/validate.sh
+      - bash platform/11-istio-base/bootstrap.sh
+      - bash platform/11-gateway-api-crds/bootstrap.sh
+      - bash platform/11-istio-base/validate.sh
+      - bash platform/11-gateway-api-crds/validate.sh
+      - bash platform/12-istiod/bootstrap.sh
+      - bash platform/12-istiod/validate.sh
+      - bash platform/12-istio-cni/bootstrap.sh
+      - bash platform/12-ztunnel/bootstrap.sh
+      - bash platform/12-istio-ingressgw/bootstrap.sh
+      - bash platform/12-istio-cni/validate.sh
+      - bash platform/12-ztunnel/validate.sh
+      - bash platform/12-istio-ingressgw/validate.sh
       - bash platform/20-kafka-cluster/bootstrap.sh
       - bash platform/20-minio/bootstrap.sh
       - bash platform/20-mysql/bootstrap.sh
