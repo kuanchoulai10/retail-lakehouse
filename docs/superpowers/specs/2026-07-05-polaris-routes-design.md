@@ -319,6 +319,22 @@ spec:
 
 The template stays inert until `charts/app-of-apps/values.yaml`'s `waveTo` is raised to `>= 22`.
 
+## Service-to-Service Traffic
+
+The Gateway defined here handles **north-south** traffic only — external clients entering the cluster. **East-west** (service-to-service) calls do NOT go through the Gateway.
+
+Concrete rule for backend → Polaris:
+- Backend uses `http://polaris.polaris.svc.cluster.local:8181/api/catalog` via its `GLAC_ICEBERG_CATALOG_URI` env var (already configured this way in `backend-deployment.yaml`).
+- Backend does NOT dial the Gateway hostname or `istio-ingressgateway` Service.
+
+Reasons:
+1. Hairpinning through the Gateway adds two hops (backend → out → ingress → Envoy → Polaris) with no functional gain.
+2. Ingress gateways are semantically for external ingress; east-west should be direct Service DNS.
+3. When the `polaris` namespace is later enrolled in ambient mode, ztunnel will automatically HBONE-encrypt this direct traffic without any Gateway involvement.
+4. Backend stays decoupled from the Gateway's existence and hostname configuration.
+
+Any future service-to-service edge (e.g., scheduler → backend, or a new microservice → backend) follows the same rule: dial the target Service directly.
+
 ## Manual Test Procedure
 
 ```bash
