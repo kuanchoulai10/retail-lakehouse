@@ -29,8 +29,8 @@ nav:
     - polaris/deployment.md
     - polaris/api.md
   - Istio Service Mesh:
-    - istio/deployment.md
-    - istio/routing.md
+    - istio/ambient-mode.md
+    - istio/gateway-api.md
   - Observability:
     - observability/overview.md
     - observability/prometheus/how-prometheus-works.md
