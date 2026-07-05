@@ -28,6 +28,9 @@ nav:
   - Apache Polaris:
     - polaris/deployment.md
     - polaris/api.md
+  - Istio Service Mesh:
+    - istio/deployment.md
+    - istio/routing.md
   - Observability:
     - observability/overview.md
     - observability/prometheus/how-prometheus-works.md
