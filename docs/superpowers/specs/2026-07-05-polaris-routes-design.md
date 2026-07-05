@@ -374,7 +374,7 @@ kubectl get httproutes -n polaris --context retail-lakehouse -o wide
 ## Follow-ups (not in this design)
 
 - **BFF migration path**: once `table-maintenance-backend` matures, promote it to a full Backend-for-Frontend — it fully implements the Iceberg REST spec by proxying Polaris for standard endpoints (`/v1/config`, `/v1/namespaces`, ...) and serving its own extensions (`/v1/jobs`, `/v1/runs`, ...). At that point `polaris-httproute.yaml` can be deleted, `backend-httproute.yaml`'s prefix widened to `/`, and Polaris becomes internal-only accessible via Service DNS. External clients then see one API contract.
-- External exposure: change `istio-ingressgateway` service to `NodePort` or add `minikube tunnel` for LoadBalancer.
+- External exposure: change the auto-created `platform-gateway-istio` Service to `NodePort` (via annotation) or add `minikube tunnel` for LoadBalancer.
 - TLS termination on the Gateway (port 443 listener + cert-manager Certificate).
 - Ambient-mode enrollment of the `polaris` namespace so pod-to-pod traffic is HBONE-encrypted.
 - Prometheus scrape and OTel export for the Envoy ingress metrics.
