@@ -1,0 +1,27 @@
+{{- if and (ge 22 (int .Values.deploy.waveFrom)) (le 22 (int .Values.deploy.waveTo)) }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: polaris-routes
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "22"
+spec:
+  project: {{ .Values.project.name }}
+  source:
+    repoURL: https://github.com/kuanchoulai10/retail-lakehouse
+    targetRevision: main
+    path: platform/22-polaris-routes
+    directory:
+      recurse: false
+      include: '{gateway.yaml,polaris-httproute.yaml,backend-httproute.yaml}'
+  destination:
+    name: {{ .Values.spec.destination.name }}
+    namespace: default
+  syncPolicy:
+    syncOptions:
+      - ServerSideApply=true
+    automated:
+      prune: true
+      selfHeal: true
+{{- end }}
