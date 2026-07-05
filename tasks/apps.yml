@@ -66,6 +66,7 @@ tasks:
       - TIMEOUT=10s bash platform/21-kafka-debezium-mysql-connector/validate.sh
       - TIMEOUT=10s bash platform/22-kafka-debezium-polaris-connector/validate.sh
       - TIMEOUT=10s bash platform/22-kafka-iceberg-connector/validate.sh
+      - TIMEOUT=10s bash platform/22-polaris-routes/validate.sh
       - TIMEOUT=10s bash platform/23-kafka-ui/validate.sh
       - TIMEOUT=10s bash platform/23-trino/validate.sh
     cmds:
@@ -113,6 +114,8 @@ tasks:
       - bash platform/22-kafka-debezium-polaris-connector/validate.sh
       - bash platform/22-kafka-iceberg-connector/bootstrap.sh
       - bash platform/22-kafka-iceberg-connector/validate.sh
+      - bash platform/22-polaris-routes/bootstrap.sh
+      - bash platform/22-polaris-routes/validate.sh
       - bash platform/23-kafka-ui/bootstrap.sh
       - bash platform/23-kafka-ui/validate.sh
       - bash platform/23-trino/bootstrap.sh
