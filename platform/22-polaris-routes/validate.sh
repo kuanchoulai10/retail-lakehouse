@@ -14,12 +14,12 @@ kubectl wait --for=condition=Programmed gateway/platform-gateway \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
-kubectl wait --for=condition=Accepted httproute/polaris-catchall \
+kubectl wait --for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True httproute/polaris-catchall \
   --namespace polaris \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
-kubectl wait --for=condition=Accepted httproute/backend-route \
+kubectl wait --for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True httproute/backend-route \
   --namespace polaris \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
