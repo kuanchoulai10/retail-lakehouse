@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: table-maintenance-scheduler
-  namespace: default
+  namespace: polaris
   labels:
     app: table-maintenance-scheduler
 spec:
@@ -25,6 +25,6 @@ spec:
             - name: GLAC_DATABASE_BACKEND
               value: "postgres"
             - name: GLAC_POSTGRES__DB_URL
-              value: "postgresql+psycopg://tm:tm@tbl-maint-db.default.svc:5432/table_maintenance"
+              value: "postgresql+psycopg://tm:tm@tbl-maint-db.polaris.svc:5432/table_maintenance"
             - name: GLAC_SCHEDULER__INTERVAL_SECONDS
               value: "30"

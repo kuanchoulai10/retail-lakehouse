@@ -10,17 +10,17 @@ log::on_success "Scheduler is ready"
 log::on_failure "Scheduler is not ready"
 
 kubectl rollout status deployment/table-maintenance-scheduler \
-  --namespace default \
+  --namespace polaris \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
 POD=$(kubectl get pod \
   --selector app=table-maintenance-scheduler \
-  --namespace default \
+  --namespace polaris \
   --output jsonpath='{.items[0].metadata.name}' \
   --context "${KUBE_CONTEXT}")
 
 kubectl logs "$POD" \
-  --namespace default \
+  --namespace polaris \
   --tail 5 \
   --context "${KUBE_CONTEXT}" | grep -q "Scheduler tick"

@@ -2,7 +2,7 @@ apiVersion: sparkoperator.k8s.io/v1beta2
 kind: SparkApplication
 metadata:
   name: table-maintenance-rewrite-data-files
-  namespace: default
+  namespace: polaris
 spec:
   type: Python
   pythonVersion: "3"

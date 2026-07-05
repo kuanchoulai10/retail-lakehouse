@@ -11,17 +11,17 @@ log::on_failure "table-maintenance check failed"
 
 kubectl wait sparkapplication/table-maintenance-rewrite-data-files \
   --for=condition=Running \
-  --namespace default \
+  --namespace polaris \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}" 2>/dev/null || true
 
 kubectl get sparkapplication table-maintenance-rewrite-data-files \
-  --namespace default \
+  --namespace polaris \
   --output jsonpath='{.status.applicationState.state}' \
   --context "${KUBE_CONTEXT}" 2>/dev/null
 
 kubectl run minio-validate \
-  --namespace default \
+  --namespace polaris \
   --image minio/mc \
   --restart Never \
   --context "${KUBE_CONTEXT}" \
@@ -32,15 +32,15 @@ kubectl run minio-validate \
    && mc du m/retail-lakehouse-7dj2/warehouse/inventory/orders/ 2>/dev/null"
 
 kubectl wait pod/minio-validate \
-  --namespace default \
+  --namespace polaris \
   --for=condition=ready \
   --timeout 60s \
   --context "${KUBE_CONTEXT}" 2>/dev/null || true
 sleep 5
 kubectl logs minio-validate \
-  --namespace default \
+  --namespace polaris \
   --context "${KUBE_CONTEXT}" 2>/dev/null
 kubectl delete pod minio-validate \
-  --namespace default \
+  --namespace polaris \
   --ignore-not-found \
   --context "${KUBE_CONTEXT}" 2>/dev/null

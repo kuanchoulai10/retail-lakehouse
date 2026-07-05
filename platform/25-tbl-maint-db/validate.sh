@@ -10,17 +10,17 @@ log::on_success "PostgreSQL for table-maintenance is ready"
 log::on_failure "PostgreSQL for table-maintenance is not ready"
 
 kubectl rollout status deployment/tbl-maint-db \
-  --namespace default \
+  --namespace polaris \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
 POD=$(kubectl get pod \
   --selector app=tbl-maint-db \
-  --namespace default \
+  --namespace polaris \
   --output jsonpath='{.items[0].metadata.name}' \
   --context "${KUBE_CONTEXT}")
 
 kubectl exec "$POD" \
-  --namespace default \
+  --namespace polaris \
   --context "${KUBE_CONTEXT}" \
   -- pg_isready -U tm -d table_maintenance

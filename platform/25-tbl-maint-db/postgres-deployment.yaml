@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: tbl-maint-db
-  namespace: default
+  namespace: polaris
   labels:
     app: tbl-maint-db
 spec:

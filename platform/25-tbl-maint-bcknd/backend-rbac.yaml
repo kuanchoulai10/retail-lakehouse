@@ -2,13 +2,13 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: table-maintenance-backend
-  namespace: default
+  namespace: polaris
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: table-maintenance-backend
-  namespace: default
+  namespace: polaris
 rules:
   - apiGroups: ["sparkoperator.k8s.io"]
     resources: ["sparkapplications", "scheduledsparkapplications"]
@@ -18,11 +18,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: table-maintenance-backend
-  namespace: default
+  namespace: polaris
 subjects:
   - kind: ServiceAccount
     name: table-maintenance-backend
-    namespace: default
+    namespace: polaris
 roleRef:
   kind: Role
   name: table-maintenance-backend
