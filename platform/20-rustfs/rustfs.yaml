@@ -2,29 +2,47 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: minio
+  name: rustfs
   namespace: object-storage
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
-      app: minio
+      app: rustfs
   template:
     metadata:
       labels:
-        app: minio
+        app: rustfs
     spec:
+      initContainers:
+        - name: fix-data-permissions
+          image: busybox:1.37.0
+          command:
+            - sh
+            - -c
+            - chown -R 10001:10001 /data
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+            - name: storage
+              mountPath: /data
       containers:
-        - name: minio
-          image: pgsty/silo:RELEASE.2026-10-18T00-00-00Z
-          args:
-            - server
-            - /data
-            - --console-address
-            - :9001
+        - name: rustfs
+          image: rustfs/rustfs:1.0.3
+          env:
+            - name: RUSTFS_VOLUMES
+              value: /data
+            - name: RUSTFS_ADDRESS
+              value: 0.0.0.0:9000
+            - name: RUSTFS_CONSOLE_ENABLE
+              value: "true"
+            - name: RUSTFS_CONSOLE_ADDRESS
+              value: 0.0.0.0:9001
           envFrom:
             - secretRef:
-                name: minio-secret
+                name: rustfs-secret
           ports:
             - containerPort: 9000
               protocol: TCP
@@ -32,7 +50,7 @@ spec:
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /minio/health/live
+              path: /health
               port: 9000
             initialDelaySeconds: 30
             periodSeconds: 20
@@ -40,7 +58,7 @@ spec:
             failureThreshold: 6
           readinessProbe:
             httpGet:
-              path: /minio/health/ready
+              path: /health
               port: 9000
             initialDelaySeconds: 15
             periodSeconds: 10
@@ -52,7 +70,7 @@ spec:
       volumes:
         - name: storage
           hostPath:
-            path: /home/docker/data/minio
+            path: /home/docker/data/rustfs
             type: DirectoryOrCreate
       restartPolicy: Always
 # --8<-- [end:deployment]
@@ -61,11 +79,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: minio-console
+  name: rustfs-console
   namespace: object-storage
 spec:
   selector:
-    app: minio
+    app: rustfs
   type: NodePort
   ports:
     - name: console
@@ -76,11 +94,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: minio-api
+  name: rustfs
   namespace: object-storage
 spec:
   selector:
-    app: minio
+    app: rustfs
   type: ClusterIP
   ports:
     - name: api
@@ -92,7 +110,7 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: minio-create-bucket
+  name: rustfs-create-bucket
   namespace: object-storage
 spec:
   backoffLimit: 6
@@ -100,35 +118,35 @@ spec:
   template:
     metadata:
       labels:
-        job: minio-create-bucket
+        job: rustfs-create-bucket
     spec:
       initContainers:
-        - name: wait-for-minio
-          image: busybox
+        - name: wait-for-rustfs
+          image: busybox:1.37.0
           command:
             - sh
             - -c
             - |
-              until nc -z minio-api.object-storage.svc.cluster.local 9000; do
-                echo "Waiting for MinIO..."
+              until nc -z rustfs.object-storage.svc.cluster.local 9000; do
+                echo "Waiting for RustFS..."
                 sleep 2
               done
-              echo "MinIO is ready!"
+              echo "RustFS is ready!"
       containers:
-        - name: minio-create-buckets
+        - name: rustfs-create-buckets
           image: pgsty/mc:RELEASE.2026-10-18T00-00-00Z
           envFrom:
             - secretRef:
-                name: minio-secret
+                name: rustfs-secret
           command:
             - sh
             - -c
             - |
-              mc alias set minio http://minio-api.object-storage.svc.cluster.local:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" &&
+              mc alias set rustfs http://rustfs.object-storage.svc.cluster.local:9000 "$RUSTFS_ACCESS_KEY" "$RUSTFS_SECRET_KEY" &&
               for bucket in retail-lakehouse-7dj2 trino-fault-tolerance-nkm5 trino-fault-tolerance-cws0 thanos; do
-                if ! mc ls minio/$bucket >/dev/null 2>&1; then
+                if ! mc ls rustfs/$bucket >/dev/null 2>&1; then
                   echo "Creating bucket: $bucket"
-                  mc mb minio/$bucket
+                  mc mb rustfs/$bucket
                   echo "Bucket created: $bucket"
                 else
                   echo "Bucket already exists: $bucket"

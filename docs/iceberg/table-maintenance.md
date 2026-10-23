@@ -254,8 +254,8 @@ Iceberg Spark Extensions 執行
     ```
     沒有這行，`CALL` 語法會報 `ParseException`。
 
-!!! important "AWS/MinIO 憑證"
-    `AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY`、`AWS_REGION` 必須同時設定在 **driver** 和 **executor** 的 env 區塊。Executor 直接讀取 S3/MinIO，缺少憑證會在資料讀寫時失敗，而不是啟動時失敗。
+!!! important "AWS/RustFS 憑證"
+    `AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY`、`AWS_REGION` 必須同時設定在 **driver** 和 **executor** 的 env 區塊。Executor 直接讀取 S3/RustFS，缺少憑證會在資料讀寫時失敗，而不是啟動時失敗。
 
 ### 環境變數設定
 

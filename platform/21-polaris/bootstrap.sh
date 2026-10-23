@@ -59,7 +59,7 @@ kubectl rollout status deployment/polaris \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
-# Create the 'iceberg' catalog pointing to MinIO (idempotent: job skips if exists).
+# Create the 'iceberg' catalog pointing to RustFS (idempotent: job skips if exists).
 # validate.sh waits for the job to complete.
 kubectl delete job polaris-create-catalog \
   --namespace lakehouse-catalog \

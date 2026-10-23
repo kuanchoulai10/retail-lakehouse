@@ -24,10 +24,10 @@ Each `Application` template carries a `argocd.argoproj.io/sync-wave` annotation 
 | 9 | AppProject | Must exist before any `Application` references it |
 | 10 | cert-manager, keda, prometheus-operator, spark-operator, strimzi-operator | No intra-project dependencies |
 | 11 | opentelemetry-operator | Requires cert-manager (wave 10) for webhook TLS |
-| 20 | kafka-cluster, minio, mysql | Requires operators (wave 10) |
+| 20 | kafka-cluster, rustfs, mysql | Requires operators (wave 10) |
 | 21 | kafka-debezium-mysql-connector | Requires kafka-cluster and mysql (wave 20) |
 | 22 | kafka-iceberg-connector | Requires kafka-debezium-mysql-connector (wave 21) |
-| 23 | trino | Requires minio (wave 20) |
+| 23 | trino | Requires rustfs (wave 20) |
 | 30 | thanos | Requires prometheus-operator, cert-manager, and opentelemetry-operator |
 
 ## Controlling Which Waves Are Deployed
@@ -48,7 +48,7 @@ Common milestones:
 |-----------|---------|-------------------|
 | 9 | 9 | AppProject only |
 | 9 | 10 | AppProject + foundation operators |
-| 9 | 20 | Above + Kafka, MySQL, MinIO |
+| 9 | 20 | Above + Kafka, MySQL, RustFS |
 | 9 | 30 | Full stack |
 
 ## Key Files

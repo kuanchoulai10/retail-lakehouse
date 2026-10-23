@@ -27,21 +27,21 @@ Polaris 重啟後，以下設定會全部重置：
 | 元件 | 狀態 |
 |---|---|
 | **Catalog** (`iceberg`) | 消失，需重建 |
-| **Warehouse 路徑** | 消失，需重新設定指向 MinIO |
+| **Warehouse 路徑** | 消失，需重新設定指向 RustFS |
 | **Namespace** (`inventory`) | 消失，需重建 |
 | **Table Registration** | 消失，需從 metadata 重新 register |
 | **Principal Role 授權** | 消失，需重新 grant |
 
-MinIO 上的實際資料檔案（Parquet、metadata JSON）**不受影響**——S3 的資料是持久的，只是 Polaris 不再知道這些表格存在而已。
+RustFS 上的實際資料檔案（Parquet、metadata JSON）**不受影響**——S3 的資料是持久的，只是 Polaris 不再知道這些表格存在而已。
 
 !!! tip "好消息"
-    由於 MinIO 上的 metadata 檔案都還在，重建 catalog 只需要重新「告訴 Polaris 去哪裡找資料」，不需要重新寫入或移動任何資料。
+    由於 RustFS 上的 metadata 檔案都還在，重建 catalog 只需要重新「告訴 Polaris 去哪裡找資料」，不需要重新寫入或移動任何資料。
 
 ---
 
 ## Bootstrap 步驟：重建 Catalog 設定
 
-以下步驟假設你已經有一個正在運行的 Polaris 服務，並且 MinIO 上的資料完好。
+以下步驟假設你已經有一個正在運行的 Polaris 服務，並且 RustFS 上的資料完好。
 
 ### Step 1：取得 OAuth2 Token
 
@@ -72,9 +72,9 @@ TOKEN="<YOUR_JWT_TOKEN>"
 
 ---
 
-### Step 2：建立 Catalog（指向 MinIO）
+### Step 2：建立 Catalog（指向 RustFS）
 
-建立名為 `iceberg` 的 catalog，warehouse 路徑指向 MinIO 上的 S3 bucket：
+建立名為 `iceberg` 的 catalog，warehouse 路徑指向 RustFS 上的 S3 bucket：
 
 ```bash
 curl -s -X POST \
@@ -90,14 +90,14 @@ curl -s -X POST \
     "storageConfigInfo": {
       "storageType": "S3",
       "allowedLocations": ["s3://retail-lakehouse-7dj2/warehouse/"],
-      "s3.endpoint": "http://minio-api.object-storage.svc.cluster.local:9000",
+      "s3.endpoint": "http://rustfs.object-storage.svc.cluster.local:9000",
       "s3.pathStyleAccess": "true"
     }
   }'
 ```
 
 !!! warning "pathStyleAccess: true 是必要的"
-    如果忘記設定 `s3.pathStyleAccess: true`，Polaris 在嘗試 register table 時會發生 `UnknownHostException`。這是因為 MinIO 預設使用 path-style URL（`http://minio:9000/bucket/key`），而不是 virtual-hosted style（`http://bucket.minio:9000/key`）。後者在本地叢集中無法解析，導致 DNS 查找失敗。詳見下方的 [常見錯誤排查](#common-errors)。
+    如果忘記設定 `s3.pathStyleAccess: true`，Polaris 在嘗試 register table 時會發生 `UnknownHostException`。這是因為 RustFS 預設使用 path-style URL（`http://rustfs:9000/bucket/key`），而不是 virtual-hosted style（`http://bucket.minio:9000/key`）。後者在本地叢集中無法解析，導致 DNS 查找失敗。詳見下方的 [常見錯誤排查](#common-errors)。
 
 ---
 
@@ -138,11 +138,11 @@ curl -s -X POST \
 
 ### Step 5：Register 現有的 Table
 
-MinIO 上已有資料，只需要告訴 Polaris metadata 檔案在哪裡。先確認 metadata 路徑：
+RustFS 上已有資料，只需要告訴 Polaris metadata 檔案在哪裡。先確認 metadata 路徑：
 
 ```bash
 # 用 mc 列出最新的 metadata 檔案
-mc ls minio/retail-lakehouse-7dj2/warehouse/inventory/<table_name>/metadata/ \
+mc ls rustfs/retail-lakehouse-7dj2/warehouse/inventory/<table_name>/metadata/ \
   --recursive | sort | tail -5
 ```
 
@@ -191,7 +191,7 @@ curl -s \
 **錯誤訊息：**
 
 ```
-java.net.UnknownHostException: retail-lakehouse-7dj2.minio-api.object-storage.svc.cluster.local
+java.net.UnknownHostException: retail-lakehouse-7dj2.rustfs.object-storage.svc.cluster.local
 ```
 
 **原因：** Polaris 嘗試使用 virtual-hosted style URL，把 bucket name 放到 hostname 前面，導致 DNS 查找失敗。

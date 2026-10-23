@@ -220,16 +220,16 @@ kubectl get pods -A
     bash 21-polaris/setup.sh
     ```
 
-    **2. MinIO（hostPath storage）**
+    **2. RustFS（hostPath storage）**
 
-    MinIO 使用 `hostPath` 把資料存在 Minikube node 的本機路徑上。只要 node 的 volume 沒有被清除，資料通常在重啟後還在。但仍建議確認一下：
+    RustFS 使用 `hostPath` 把資料存在 Minikube node 的本機路徑上。只要 node 的 volume 沒有被清除，資料通常在重啟後還在。但仍建議確認一下：
 
     ```bash
     kubectl get pods -n object-storage
-    kubectl exec -n object-storage deploy/minio -- mc ls local/
+    kubectl run mc-check --rm -it --restart=Never --image=pgsty/mc:RELEASE.2026-10-18T00-00-00Z --env="MC_HOST_local=http://<access-key>:<secret-key>@rustfs.object-storage.svc.cluster.local:9000" --command -- mc ls local/
     ```
 
-    如果 bucket 或物件不見了，表示 hostPath 被清除了，需要重新執行 MinIO 的初始化流程。
+    如果 bucket 或物件不見了，表示 hostPath 被清除了，需要重新執行 RustFS 的初始化流程。
 
 ---
 
@@ -239,7 +239,7 @@ Node 進入 `NotReady` 的根本原因通常是 kubelet 無法正常運行。在
 
 ### 主機資源耗盡（最常見）
 
-Minikube 在 Docker 或虛擬機器裡跑 Kubernetes，它可用的 RAM 和 CPU 受到 Minikube profile 設定的限制。當你同時跑 Kafka cluster、Spark operator、Trino、MinIO、Polaris，很容易把 node 的記憶體壓力推到上限。
+Minikube 在 Docker 或虛擬機器裡跑 Kubernetes，它可用的 RAM 和 CPU 受到 Minikube profile 設定的限制。當你同時跑 Kafka cluster、Spark operator、Trino、RustFS、Polaris，很容易把 node 的記憶體壓力推到上限。
 
 一旦 node 發生 OOM（Out of Memory），kubelet 自己也可能被 kernel 的 OOM killer 終止。kubelet 一死，API server 就收不到心跳，node 狀態切換到 `NotReady`。
 
@@ -273,6 +273,6 @@ kubectl top pods -A --sort-by=memory
 | 少數 pods 卡在 `Terminating` | 逐一 `kubectl delete pod --force --grace-period=0` |
 | 大量 pods 卡住，API server 變慢 | 批次刪除 + 等 operators 自動恢復 |
 | Node 一直無法回到 `Ready` | `minikube stop / start -p lakehouse-demo` |
-| 重啟後服務異常 | 重新初始化 Polaris catalog；驗證 MinIO 資料完整性 |
+| 重啟後服務異常 | 重新初始化 Polaris catalog；驗證 RustFS 資料完整性 |
 
 在 local 開發環境下，Minikube node 的不穩定是正常現象，不需要太緊張。掌握這套診斷和修復流程，大多數狀況都可以在幾分鐘內恢復。

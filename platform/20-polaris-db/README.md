@@ -30,7 +30,7 @@ Namespace: lakehouse-catalog
 
 ## Sync Wave
 
-Wave 20 — deploys in parallel with MinIO (also wave 20). Polaris (wave 21) depends on both.
+Wave 20 — deploys in parallel with RustFS (also wave 20). Polaris (wave 21) depends on both.
 
 ## Connection Info
 

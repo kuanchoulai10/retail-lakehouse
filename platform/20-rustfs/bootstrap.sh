@@ -7,8 +7,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-log::on_success "MinIO deployed"
-log::on_failure "MinIO deployment failed"
+log::on_success "RustFS deployed"
+log::on_failure "RustFS deployment failed"
 
 kubectl create namespace object-storage \
   --dry-run=client \
@@ -18,9 +18,9 @@ kubectl create namespace object-storage \
     --context "${KUBE_CONTEXT}"
 
 kubectl apply \
-  -f "$SCRIPT_DIR/minio-secret.yaml" \
+  -f "$SCRIPT_DIR/rustfs-secret.yaml" \
   --context "${KUBE_CONTEXT}"
 
 kubectl apply \
-  -f "$SCRIPT_DIR/minio.yaml" \
+  -f "$SCRIPT_DIR/rustfs.yaml" \
   --context "${KUBE_CONTEXT}"

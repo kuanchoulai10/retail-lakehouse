@@ -78,7 +78,7 @@ TOKEN=$(curl -s -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
 
 ### Create a Catalog
 
-A catalog is the top-level unit in Polaris. It maps to a storage location on MinIO.
+A catalog is the top-level unit in Polaris. It maps to a storage location on RustFS.
 
 ```bash
 curl -s -X POST http://localhost:8181/api/management/v1/catalogs \
@@ -123,18 +123,18 @@ curl -s -X POST http://localhost:8181/api/management/v1/catalogs \
 
     | 欄位 | 說明 |
     |------|------|
-    | `storageType` | 必填。支援 `S3`、`GCS`、`AZURE`、`FILE`。MinIO 用 `S3`。 |
+    | `storageType` | 必填。支援 `S3`、`GCS`、`AZURE`、`FILE`。RustFS 用 `S3`。 |
     | `allowedLocations` | Polaris 允許存取的 S3 路徑清單。Table location 必須在這個範圍內，否則 Polaris 拒絕操作。 |
     | `default-base-location` | 建立 namespace / table 時，如果沒有指定 location，預設用這個路徑加上資源名稱。 |
-    | `pathStyleAccess` | Boolean。設 `true` 啟用 path-style URL（MinIO 必須）。**注意：這是頂層 boolean 欄位，不是 `s3.pathStyleAccess` 字串。** |
-    | `roleArn` | AWS IAM Role ARN，用於 STS AssumeRole。MinIO 不用 IAM，**省略這個欄位**，不要設空字串（會報錯）。 |
+    | `pathStyleAccess` | Boolean。設 `true` 啟用 path-style URL（RustFS 必須）。**注意：這是頂層 boolean 欄位，不是 `s3.pathStyleAccess` 字串。** |
+    | `roleArn` | AWS IAM Role ARN，用於 STS AssumeRole。RustFS 不用 IAM，**省略這個欄位**，不要設空字串（會報錯）。 |
 
 !!! warning "pathStyleAccess 欄位格式"
 
-    `pathStyleAccess` 是 `S3StorageConfigInfo` 的頂層 boolean 欄位。使用字串 `"s3.pathStyleAccess": "true"` 會被 Polaris 忽略，導致 Polaris 以 virtual-hosted style 存取 MinIO，產生：
+    `pathStyleAccess` 是 `S3StorageConfigInfo` 的頂層 boolean 欄位。使用字串 `"s3.pathStyleAccess": "true"` 會被 Polaris 忽略，導致 Polaris 以 virtual-hosted style 存取 RustFS，產生：
 
     ```
-    UnknownHostException: <bucket-name>.<minio-endpoint>
+    UnknownHostException: <bucket-name>.<rustfs-endpoint>
     ```
 
     正確寫法是 `"pathStyleAccess": true`（boolean，不帶引號，不加 `s3.` prefix）。
@@ -145,7 +145,7 @@ curl -s -X POST http://localhost:8181/api/management/v1/catalogs \
     ```json
     {"error": {"message": "ARN must not be empty", "code": 400}}
     ```
-    MinIO 不使用 IAM Role，正確做法是**完全省略** `roleArn` 欄位。
+    RustFS 不使用 IAM Role，正確做法是**完全省略** `roleArn` 欄位。
 
 ### List Catalogs
 
@@ -244,7 +244,7 @@ curl -s -X POST "http://localhost:8181/api/catalog/v1/iceberg/namespaces" \
 
 ### Create a Table
 
-Creating a table is the first operation that triggers a real S3 write — Polaris writes the initial metadata file to MinIO.
+Creating a table is the first operation that triggers a real S3 write — Polaris writes the initial metadata file to RustFS.
 
 ```bash
 curl -s -X POST "http://localhost:8181/api/catalog/v1/iceberg/namespaces/retail/tables" \
@@ -271,10 +271,10 @@ curl -s -X POST "http://localhost:8181/api/catalog/v1/iceberg/namespaces/retail/
 
     1. 在 in-memory store 記錄 table metadata（schema、partition spec 等）
     2. 決定 table 的 storage location（例如 `s3://retail-lakehouse-7dj2/warehouse/retail/orders/`）
-    3. 呼叫 AWS SDK，在 MinIO 的對應路徑寫入初始的 `metadata.json` 檔案
+    3. 呼叫 AWS SDK，在 RustFS 的對應路徑寫入初始的 `metadata.json` 檔案
     4. 把 table location 和 vended credentials 回傳給呼叫方
 
-    步驟 3 是 Polaris **第一次實際連接 MinIO** 的時機。如果 `AWS_REGION`、`AWS_ENDPOINT_URL_S3` 沒有正確設定，這一步就會失敗：
+    步驟 3 是 Polaris **第一次實際連接 RustFS** 的時機。如果 `AWS_REGION`、`AWS_ENDPOINT_URL_S3` 沒有正確設定，這一步就會失敗：
 
     ```json
     {
@@ -311,13 +311,13 @@ curl -s "http://localhost:8181/api/catalog/v1/iceberg/namespaces/retail/tables/o
   -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
 ```
 
-The response includes the full table metadata: schema, partition spec, sort order, snapshot history, and the `metadata-location` pointing to the metadata file on MinIO.
+The response includes the full table metadata: schema, partition spec, sort order, snapshot history, and the `metadata-location` pointing to the metadata file on RustFS.
 
-## MinIO Connectivity: When Does Polaris Actually Connect?
+## RustFS Connectivity: When Does Polaris Actually Connect?
 
-Polaris does **not** maintain a persistent connection to MinIO. It connects to MinIO only at specific moments:
+Polaris does **not** maintain a persistent connection to RustFS. It connects to RustFS only at specific moments:
 
-| Operation | Does Polaris touch MinIO? |
+| Operation | Does Polaris touch RustFS? |
 |-----------|--------------------------|
 | Start up | No |
 | Create catalog | No (only validates config) |
@@ -345,10 +345,10 @@ Polaris does **not** maintain a persistent connection to MinIO. It connects to M
          }
        }
        ```
-    4. Trino 用這組臨時金鑰直接連 MinIO 讀取 Parquet 檔案
+    4. Trino 用這組臨時金鑰直接連 RustFS 讀取 Parquet 檔案
     5. Polaris 不參與實際的資料傳輸
 
-    這個設計的好處是客戶端不需要持有 MinIO root 密碼，只拿得到時效性的臨時金鑰，每次操作都要重新向 Polaris 取得。
+    這個設計的好處是客戶端不需要持有 RustFS root 密碼，只拿得到時效性的臨時金鑰，每次操作都要重新向 Polaris 取得。
 
 ## Polaris URL Summary
 

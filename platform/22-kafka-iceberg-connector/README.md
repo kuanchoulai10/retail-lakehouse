@@ -1,6 +1,6 @@
 # Iceberg Sink Connector
 
-Deploys a Strimzi KafkaConnect cluster with the Iceberg Kafka Connect sink plugin installed. The connector consumes CDC events from Kafka and writes them as Apache Iceberg tables in the S3-compatible MinIO warehouse, using AWS Glue as the Iceberg catalog.
+Deploys a Strimzi KafkaConnect cluster with the Iceberg Kafka Connect sink plugin installed. The connector consumes CDC events from Kafka and writes them as Apache Iceberg tables in the S3-compatible RustFS warehouse, using AWS Glue as the Iceberg catalog.
 
 ## Deployed Resources
 

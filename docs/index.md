@@ -22,12 +22,12 @@ A self-hosted retail lakehouse that runs end-to-end on a single Mac, built to sh
 === "Data Engineering"
 
     - **End-to-end CDC lakehouse.** MySQL to Debezium to Kafka to Iceberg sink, with exactly-once delivery and automatic schema evolution.
-    - **Iceberg + Polaris + MinIO.** A fully self-hosted REST-catalog lakehouse with no cloud dependency; the entire stack runs on local minikube.
+    - **Iceberg + Polaris + RustFS.** A fully self-hosted REST-catalog lakehouse with no cloud dependency; the entire stack runs on local minikube.
     - **Trino federated SQL** across Iceberg, BigQuery, and Faker catalogs, with OAuth2 SSO, fault-tolerant execution, and event listeners.
 
 === "Observability Engineering"
 
-    - **Metrics.** `kube-prometheus` plus **Thanos** for long-term storage, backed by the same MinIO that serves the lakehouse.
+    - **Metrics.** `kube-prometheus` plus **Thanos** for long-term storage, backed by the same RustFS that serves the lakehouse.
     - **Traces.** OpenTelemetry Operator handles auto-instrumentation; Jaeger receives traces from both Trino and Thanos.
     - **GitOps-native.** Argo CD `app-of-apps` deploys the entire platform from a single commit.
 

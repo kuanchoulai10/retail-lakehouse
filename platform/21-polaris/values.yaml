@@ -21,7 +21,7 @@ polaris:
         jdbcUrl: jdbcUrl
 
   # ---------------------------------------------------------------------------
-  # Storage credentials (MinIO)
+  # Storage credentials (RustFS)
   # ---------------------------------------------------------------------------
   # Injected as polaris.storage.aws.access-key / polaris.storage.aws.secret-key
   # (Polaris-native Quarkus properties). Used by Polaris for catalog storage
@@ -36,16 +36,16 @@ polaris:
   # Environment variables — S3/STS endpoint and bootstrap credentials
   # ---------------------------------------------------------------------------
   # AWS SDK reads AWS_ENDPOINT_URL_S3 / AWS_ENDPOINT_URL_STS to redirect all
-  # S3 and STS calls to MinIO instead of real AWS.
+  # S3 and STS calls to RustFS instead of real AWS.
   # POLARIS_BOOTSTRAP_CREDENTIALS creates the initial admin principal on first start.
   # Format: <realm>,<username>,<password>  (comma-separated, no spaces)
   extraEnv:
     - name: AWS_REGION
       value: "dummy-region"
     - name: AWS_ENDPOINT_URL_S3
-      value: "http://minio-api.object-storage.svc.cluster.local:9000"
+      value: "http://rustfs.object-storage.svc.cluster.local:9000"
     - name: AWS_ENDPOINT_URL_STS
-      value: "http://minio-api.object-storage.svc.cluster.local:9000"
+      value: "http://rustfs.object-storage.svc.cluster.local:9000"
     - name: POLARIS_BOOTSTRAP_CREDENTIALS
       valueFrom:
         secretKeyRef:

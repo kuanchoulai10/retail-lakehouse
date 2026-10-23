@@ -23,8 +23,8 @@ nav:
     - trino/faker.md
     - trino/join-optimization.md
     - trino/event-listeners.md
-  - MinIO:
-    - minio/deployment.md
+  - RustFS:
+    - rustfs/deployment.md
   - Apache Polaris:
     - polaris/deployment.md
     - polaris/api.md
@@ -48,7 +48,7 @@ nav:
     - troubleshooting-minikube-node-recovery.md
     - troubleshooting-minikube-image-pull.md
     - troubleshooting-spark-operator-leader-election.md
-    - minio/troubleshooting-hostpath-data-recovery.md
+    - rustfs/troubleshooting-hostpath-data-recovery.md
     - polaris/troubleshooting-catalog-reset.md
   - Apache Iceberg - Spark Quickstart:
       - iceberg/spark-quickstart/deployment.md

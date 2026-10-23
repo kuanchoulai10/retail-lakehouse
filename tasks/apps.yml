@@ -56,7 +56,7 @@ tasks:
       - TIMEOUT=10s bash platform/12-istio-cni/validate.sh
       - TIMEOUT=10s bash platform/12-ztunnel/validate.sh
       - TIMEOUT=10s bash platform/20-kafka-cluster/validate.sh
-      - TIMEOUT=10s bash platform/20-minio/validate.sh
+      - TIMEOUT=10s bash platform/20-rustfs/validate.sh
       - TIMEOUT=10s bash platform/20-mysql/validate.sh
       - TIMEOUT=10s bash platform/20-jaeger-thanos/validate.sh
       - TIMEOUT=10s bash platform/20-jaeger-trino/validate.sh
@@ -94,14 +94,14 @@ tasks:
       - bash platform/12-istio-cni/validate.sh
       - bash platform/12-ztunnel/validate.sh
       - bash platform/20-kafka-cluster/bootstrap.sh
-      - bash platform/20-minio/bootstrap.sh
+      - bash platform/20-rustfs/bootstrap.sh
       - bash platform/20-mysql/bootstrap.sh
       - bash platform/20-jaeger-thanos/bootstrap.sh
       - bash platform/20-jaeger-trino/bootstrap.sh
       - bash platform/20-polaris-db/bootstrap.sh
       - bash platform/20-temporal/bootstrap.sh
       - bash platform/20-kafka-cluster/validate.sh
-      - bash platform/20-minio/validate.sh
+      - bash platform/20-rustfs/validate.sh
       - bash platform/20-mysql/validate.sh
       - bash platform/20-jaeger-thanos/validate.sh
       - bash platform/20-jaeger-trino/validate.sh
@@ -165,7 +165,7 @@ tasks:
       - task: validate-kafka-cluster
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
-      - task: validate-minio
+      - task: validate-rustfs
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       - task: validate-mysql
@@ -254,12 +254,12 @@ tasks:
     cmds:
       - bash platform/20-kafka-cluster/validate.sh
 
-  validate-minio:
+  validate-rustfs:
     internal: true
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
-      - bash platform/20-minio/validate.sh
+      - bash platform/20-rustfs/validate.sh
 
   validate-mysql:
     internal: true

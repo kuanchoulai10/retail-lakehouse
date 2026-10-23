@@ -1,17 +1,17 @@
 # Apache Polaris Deployment
 
-Apache Polaris is an open-source Iceberg REST catalog. It manages metadata for Iceberg tables (namespaces, schemas, table locations) and issues vended credentials to clients so they can read and write data files directly on object storage. In this project, Polaris acts as the catalog layer sitting between MinIO (storage) and query engines like Trino.
+Apache Polaris is an open-source Iceberg REST catalog. It manages metadata for Iceberg tables (namespaces, schemas, table locations) and issues vended credentials to clients so they can read and write data files directly on object storage. In this project, Polaris acts as the catalog layer sitting between RustFS (storage) and query engines like Trino.
 
 !!! info "Polaris 在整個架構中的角色"
 
-    Polaris 本身**不存資料**，也不做 query。它只存 catalog metadata，然後幫 Trino 和 Kafka Iceberg connector 發放「臨時通行證」(vended credentials) 去直接讀寫 MinIO。
+    Polaris 本身**不存資料**，也不做 query。它只存 catalog metadata，然後幫 Trino 和 Kafka Iceberg connector 發放「臨時通行證」(vended credentials) 去直接讀寫 RustFS。
 
     整個流程長這樣：
 
     1. Trino 向 Polaris 拿 token（OAuth2 client_credentials）
     2. Trino 問 Polaris：`orders` 這張表在哪？schema 是什麼？
     3. Polaris 回傳 table location（例如 `s3://retail-lakehouse-7dj2/warehouse/retail/orders/`）和 vended credentials
-    4. Trino 拿著 vended credentials 直接連 MinIO 讀寫 Parquet 檔
+    4. Trino 拿著 vended credentials 直接連 RustFS 讀寫 Parquet 檔
 
     Polaris 只在步驟 2–3 介入，不參與實際資料傳輸。
 
@@ -20,11 +20,11 @@ Apache Polaris is an open-source Iceberg REST catalog. It manages metadata for I
 Before deploying, create the two Kubernetes secrets that Polaris needs:
 
 ```bash
-# 1. MinIO credentials for vended credentials issuance
+# 1. RustFS credentials for vended credentials issuance
 kubectl create namespace lakehouse-catalog --context mini
 kubectl create secret generic polaris-storage-secret \
-  --from-literal=awsAccessKeyId=minio_user \
-  --from-literal=awsSecretAccessKey=minio_password \
+  --from-literal=awsAccessKeyId=<access-key> \
+  --from-literal=awsSecretAccessKey=<secret-key> \
   -n lakehouse-catalog --context mini
 
 # 2. Bootstrap credentials for the initial admin principal
@@ -129,7 +129,7 @@ This tells Polaris which Kubernetes secret to use when issuing vended credential
 
 !!! info "storage.secret 和 extraEnv 的差別"
 
-    這兩個地方都設定了 MinIO 帳密，用途不同：
+    這兩個地方都設定了 RustFS 帳密，用途不同：
 
     | 設定位置 | 用途 |
     |---------|------|
@@ -155,9 +155,9 @@ extraEnv:
   - name: AWS_REGION
     value: "dummy-region"
   - name: AWS_ENDPOINT_URL_S3
-    value: "http://minio-api.object-storage.svc.cluster.local:9000"
+    value: "http://rustfs.object-storage.svc.cluster.local:9000"
   - name: AWS_ENDPOINT_URL_STS
-    value: "http://minio-api.object-storage.svc.cluster.local:9000"
+    value: "http://rustfs.object-storage.svc.cluster.local:9000"
   - name: POLARIS_BOOTSTRAP_CREDENTIALS
     valueFrom:
       secretKeyRef:
@@ -173,25 +173,25 @@ extraEnv:
     Unable to load region from any of the providers in the chain
     ```
 
-    MinIO 本身不需要 region，但 SDK 需要。設成任意字串（如 `dummy-region`）即可讓 SDK 通過 region 驗證。
+    RustFS 本身不需要 region，但 SDK 需要。設成任意字串（如 `dummy-region`）即可讓 SDK 通過 region 驗證。
 
 !!! info "AWS_ENDPOINT_URL_S3 vs AWS_ENDPOINT_URL_STS"
 
-    AWS SDK v2 支援這兩個環境變數，用於把 API 請求導向非 AWS 的端點（例如 MinIO）：
+    AWS SDK v2 支援這兩個環境變數，用於把 API 請求導向非 AWS 的端點（例如 RustFS）：
 
-    - `AWS_ENDPOINT_URL_S3`：導向 MinIO 的 S3 API（讀寫物件、列出 bucket）
-    - `AWS_ENDPOINT_URL_STS`：導向 MinIO 的 STS API（發放臨時 credential）
+    - `AWS_ENDPOINT_URL_S3`：導向 RustFS 的 S3 API（讀寫物件、列出 bucket）
+    - `AWS_ENDPOINT_URL_STS`：導向 RustFS 的 STS API（發放臨時 credential）
 
-    兩個都指向同一個 MinIO endpoint，因為 MinIO 同時實作 S3 和 STS 兩套 API。
+    兩個都指向同一個 RustFS endpoint，因為 RustFS 同時實作 S3 和 STS 兩套 API。
 
-!!! warning "不要把 MinIO endpoint 放在 advancedConfig"
+!!! warning "不要把 RustFS endpoint 放在 advancedConfig"
 
-    一個常見的錯誤是試圖用 `advancedConfig` 設定 MinIO endpoint：
+    一個常見的錯誤是試圖用 `advancedConfig` 設定 RustFS endpoint：
 
     ```yaml
     # 這樣寫會讓 Polaris 無法啟動！
     advancedConfig:
-      polaris.storage.s3.endpoint: "http://minio-api..."
+      polaris.storage.s3.endpoint: "http://rustfs..."
       polaris.storage.s3.path-style-access: "true"
     ```
 
@@ -232,7 +232,7 @@ bash 21-polaris/install.sh
 The installation script performs these steps:
 
 1. Create the `lakehouse-catalog` namespace
-2. Create `polaris-storage-secret` with MinIO credentials
+2. Create `polaris-storage-secret` with RustFS credentials
 3. Create `polaris-bootstrap-secret` with bootstrap credentials
 4. Deploy Polaris via Helm using the direct `.tgz` URL
 

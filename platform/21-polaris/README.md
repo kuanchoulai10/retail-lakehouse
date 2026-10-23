@@ -1,6 +1,6 @@
 # Apache Polaris
 
-Deploys Apache Polaris (incubating) as the Iceberg REST catalog layer into the `lakehouse-catalog` namespace. Polaris manages Iceberg catalog metadata (namespaces, tables, schemas) while data files reside in MinIO.
+Deploys Apache Polaris (incubating) as the Iceberg REST catalog layer into the `lakehouse-catalog` namespace. Polaris manages Iceberg catalog metadata (namespaces, tables, schemas) while data files reside in RustFS.
 
 ## Deployed Resources
 
@@ -30,17 +30,17 @@ Namespace: lakehouse-catalog
 
 ## Sync Wave
 
-Wave 21 — depends on MinIO (wave 20, S3 storage) and polaris-db (wave 20, catalog persistence). Deploys in parallel with the Debezium CDC connector. The Iceberg Kafka connector (wave 22) and Trino (wave 23) depend on Polaris being ready.
+Wave 21 — depends on RustFS (wave 20, S3 storage) and polaris-db (wave 20, catalog persistence). Deploys in parallel with the Debezium CDC connector. The Iceberg Kafka connector (wave 22) and Trino (wave 23) depend on Polaris being ready.
 
 ## Prerequisites
 
-Before installing, create the storage credentials secret so Polaris can vend credentials to clients (Trino, Iceberg connector) for direct S3 access to MinIO:
+Before installing, create the storage credentials secret so Polaris can vend credentials to clients (Trino, Iceberg connector) for direct S3 access to RustFS:
 
 ```bash
 kubectl create namespace lakehouse-catalog --context mini
 kubectl create secret generic polaris-storage-secret \
-  --from-literal=awsAccessKeyId=<MINIO_ACCESS_KEY> \
-  --from-literal=awsSecretAccessKey=<MINIO_SECRET_KEY> \
+  --from-literal=awsAccessKeyId=<RUSTFS_ACCESS_KEY> \
+  --from-literal=awsSecretAccessKey=<RUSTFS_SECRET_KEY> \
   -n lakehouse-catalog --context mini
 ```
 
@@ -51,8 +51,8 @@ The following fields in `values.yaml` require attention before deploying:
 | Field | Description | Current Value |
 |-------|-------------|---------------|
 | `persistence.type` | Backed by PostgreSQL deployed in wave 20 by [`20-polaris-db/`](../20-polaris-db/README.md). Catalog state is durable across pod restarts. | `relational-jdbc` |
-| `storage.secret.name` | K8s Secret with MinIO credentials for vended credential issuance | `polaris-storage-secret` |
-| `advancedConfig.polaris.storage.s3.endpoint` | MinIO service DNS inside the cluster | `http://minio-api.object-storage.svc.cluster.local:9000` |
+| `storage.secret.name` | K8s Secret with RustFS credentials for vended credential issuance | `polaris-storage-secret` |
+| `advancedConfig.polaris.storage.s3.endpoint` | RustFS service DNS inside the cluster | `http://rustfs.object-storage.svc.cluster.local:9000` |
 | `authentication.tokenBroker.secret.name` | RSA key pair secret; leave blank to auto-generate (keys rotate on restart) | blank |
 | `tracing.endpoint` | OTel collector gRPC endpoint | `http://otel-collector.otel.svc.cluster.local:4317` |
 
@@ -76,7 +76,7 @@ bash 21-polaris/validate.sh
 
 ## Post-Install Bootstrap
 
-After Polaris is running, create the initial catalog pointing to MinIO:
+After Polaris is running, create the initial catalog pointing to RustFS:
 
 ```bash
 # Get the root credentials from the Polaris pod logs on first start

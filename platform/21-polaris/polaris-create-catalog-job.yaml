@@ -53,8 +53,8 @@ spec:
                       "storageConfigInfo": {
                         "storageType": "S3",
                         "allowedLocations": ["s3://retail-lakehouse-7dj2/"],
-                        "endpoint": "http://minio-api.object-storage.svc.cluster.local:9000",
-                        "stsEndpoint": "http://minio-api.object-storage.svc.cluster.local:9000",
+                        "endpoint": "http://rustfs.object-storage.svc.cluster.local:9000",
+                        "stsEndpoint": "http://rustfs.object-storage.svc.cluster.local:9000",
                         "pathStyleAccess": true
                       }
                     }

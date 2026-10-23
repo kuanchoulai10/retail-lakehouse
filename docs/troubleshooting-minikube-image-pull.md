@@ -163,13 +163,13 @@ minikube start -p lakehouse-demo \
 
 !!! warning "重建會清除所有 Persistent Data"
 
-    `minikube delete` 會清除所有 node 的資料，包含 MinIO 的 hostPath 資料。如果 MinIO 上有重要的測試資料，先備份再操作：
+    `minikube delete` 會清除所有 node 的資料，包含 RustFS 的 hostPath 資料。如果 RustFS 上有重要的測試資料，先備份再操作：
 
     ```bash
-    # 備份 MinIO 資料
+    # 備份 RustFS 資料
     minikube ssh -n lakehouse-demo-m02 \
-      -- tar czf /tmp/minio-backup.tar.gz /home/docker/data/minio
-    minikube cp lakehouse-demo-m02:/tmp/minio-backup.tar.gz ./minio-backup.tar.gz
+      -- tar czf /tmp/rustfs-backup.tar.gz /home/docker/data/rustfs
+    minikube cp lakehouse-demo-m02:/tmp/rustfs-backup.tar.gz ./rustfs-backup.tar.gz
     ```
 
 ---

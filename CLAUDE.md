@@ -14,7 +14,7 @@ Respond in the same language as the user's message. The user typically communica
 
 **What it is:** an Iceberg lakehouse platform on minikube plus a self-built Table Maintenance service (`src/table-maintenance`, DDD + Clean Architecture) that schedules Iceberg maintenance (compaction, snapshot expiry). Long-term vision: "GitHub for Data" DataOps SaaS.
 
-**Data flow:** MySQL →(Debezium CDC)→ Kafka →(Iceberg Sink)→ Iceberg on MinIO, catalog = Polaris → queried by Trino. Polaris metrics reports also stream back to Kafka via Debezium (Postgres).
+**Data flow:** MySQL →(Debezium CDC)→ Kafka →(Iceberg Sink)→ Iceberg on RustFS, catalog = Polaris → queried by Trino. Polaris metrics reports also stream back to Kafka via Debezium (Postgres).
 
 **History:**
 - 2025-06 ~ 09: Trino, Kafka/Debezium/Iceberg CDC pipeline, monitoring stack.
@@ -25,7 +25,7 @@ Respond in the same language as the user's message. The user typically communica
 - Wave 10: cert-manager, kube-prometheus, Strimzi
 - Wave 11: KEDA, Spark Operator, OTel Operator, Istio base, Gateway API CRDs
 - Wave 12: istiod, istio-cni, ztunnel
-- Wave 20: Kafka (3 brokers), MinIO, MySQL, Polaris DB, Jaeger (trino / thanos), temporal (namespace only)
+- Wave 20: Kafka (3 brokers), RustFS, MySQL, Polaris DB, Jaeger (trino / thanos), temporal (namespace only)
 - Wave 21–22: Polaris, 3 KafkaConnectors (debezium-mysql, iceberg-sink, polaris-cdc), `platform-gateway` + HTTPRoutes
 - Wave 23: Trino, Kafka UI
 - Wave 25: lakehouse-control-plane (namespaces `lakehouse-control-plane`, `lakehouse-maintenance-operations`; no components yet)
@@ -39,14 +39,14 @@ Respond in the same language as the user's message. The user typically communica
 **Current initiative: namespace re-layout** (one task at a time, each deployed + verified + committed on `main`; developer/reviewer agent prompts in `DEVELOPER_AGENT_PROMPT.md` / `REVIEWER_AGENT_PROMPT.md`):
 1. `mysql`: `kafka-cdc` → `ecommerce-app` (done)
 2. `kafka-cdc` → `kafka` (done)
-3. `minio` → `object-storage` (done)
+3. `minio` → `object-storage` (done; the object store itself was later replaced by RustFS, see 9)
 4. `polaris` → `lakehouse-catalog` (done)
 5. `trino` → `lakehouse-query-engine` (done)
 6. New wave `platform/25-lakehouse-control-plane` creates the `lakehouse-control-plane` + `lakehouse-maintenance-operations` namespaces (namespace only for now). The current `25-table-maintenance` / `25-tbl-maint-*` dirs will later be consolidated into it. (done)
 7. New wave `platform/20-temporal` creates the `temporal` namespace (namespace only for now; Temporal itself deploys here later). (done)
    - 7.5: Replace Docker-Hub-removed minio/minio + minio/mc images with pinned pgsty/silo + pgsty/mc (done)
 8. Full `task offboard` + `task onboard KUBE_CONTEXT=retail-lakehouse` end-to-end run (done; surfaced and fixed missing `istio-ingress` namespace in `22-polaris-routes`)
-9. Replace pgsty Silo with RustFS (after T8 succeeds)
+9. Replace pgsty Silo with RustFS: wave `20-minio` → `20-rustfs`, Service `rustfs` (S3 :9000), `rustfs-console`, image `rustfs/rustfs:1.0.3` (done)
 
 New namespaces are **not** labeled `istio.io/dataplane-mode=ambient` (no namespace is enrolled in the ambient mesh yet).
 
