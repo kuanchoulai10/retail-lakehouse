@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
@@ -31,6 +30,7 @@ from adapter.temporal_contracts.workflow_names import (
     MAINTENANCE_WORKFLOW,
 )
 from application.domain.model.maintenance.workflow_ids import (
+    TASK_QUEUE,
     CAPACITY_WORKFLOW_ID,
     SIGNAL_CAPACITY_ACQUIRE,
     SIGNAL_OPERATION_RESULT,
@@ -128,13 +128,12 @@ def _run(
 ) -> None:
     async def go() -> None:
         async with await WorkflowEnvironment.start_time_skipping() as env:
-            queue = f"q-{uuid.uuid4()}"
+            queue = TASK_QUEUE
             fakes = ScriptedMaintenanceActivities(env.client)
             signals = WorkflowSignalActivities(
                 env.client,
                 capacity_limit=capacity_limit,
                 capacity_lease_seconds=lease_seconds,
-                task_queue=queue,
             )
             async with (
                 Worker(

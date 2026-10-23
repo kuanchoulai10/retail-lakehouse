@@ -41,6 +41,5 @@ def build_activities(
             client,
             capacity_limit=settings.capacity_limit,
             capacity_lease_seconds=CAPACITY_LEASE_SECONDS,
-            task_queue=settings.temporal.task_queue,
         ),
     )

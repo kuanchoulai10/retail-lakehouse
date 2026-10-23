@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from bootstrap.configs import AppSettings, Component, DatabaseBackend
+from bootstrap.configs import AppSettings, Component, DatabaseBackend, TemporalSettings
 
 
 @pytest.fixture(autouse=True)
@@ -23,7 +23,6 @@ def test_defaults_follow_the_brief():
         settings.temporal.address == "temporal-frontend.temporal.svc.cluster.local:7233"
     )
     assert settings.temporal.namespace == "default"
-    assert settings.temporal.task_queue == "table-maintenance"
     assert settings.catalog.uri == (
         "http://polaris.lakehouse-catalog.svc.cluster.local:8181/api/catalog"
     )
@@ -101,3 +100,12 @@ def test_secrets_are_not_rendered(monkeypatch: pytest.MonkeyPatch):
 
     assert "pw@db" not in rendered
     assert "s3cr3t" not in rendered
+
+
+def test_task_queue_is_not_configurable(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("GLAC_TEMPORAL__TASK_QUEUE", "other")
+
+    settings = AppSettings()
+
+    assert "task_queue" not in TemporalSettings.model_fields
+    assert not hasattr(settings.temporal, "task_queue")

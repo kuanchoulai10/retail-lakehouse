@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 from datetime import timedelta
 from typing import Any, cast
 
 from temporalio.client import Client
 
+from adapter.inbound.temporal.ensure_capacity_limiter import ensure_capacity_limiter
+from adapter.inbound.temporal.ensure_discovery_schedule import (
+    ensure_discovery_schedule,
+)
 from adapter.outbound.discovery.sql.discovery_settings_sql_repo import (
     DiscoverySettingsSqlRepo,
 )
@@ -13,7 +18,7 @@ from application.domain.model.discovery.discovery_settings import DiscoverySetti
 from application.service.discovery.get_discovery_settings import (
     GetDiscoverySettingsService,
 )
-from bootstrap.configs import CatalogSettings, TemporalSettings
+from bootstrap.configs import CatalogSettings
 from bootstrap.container import CAPACITY_LEASE_SECONDS, apply_worker_startup
 from tests.bootstrap.container.container_support import (
     NOW,
@@ -34,7 +39,6 @@ def _run(repo: DiscoverySettingsSqlRepo) -> tuple[Recorder, Recorder, object]:
     schedule, limiter, client = Recorder(), Recorder(), object()
     settings = sqlite_settings(
         catalog=CatalogSettings(names=["a", "b"]),
-        temporal=TemporalSettings(task_queue="q"),
         capacity_limit=3,
         discovery_interval_seconds=120,
     )
@@ -79,7 +83,21 @@ def test_capacity_limiter_is_ensured_with_the_configured_limit():
             {
                 "limit": 3,
                 "lease_seconds": CAPACITY_LEASE_SECONDS,
-                "task_queue": "q",
             },
         )
     ]
+
+
+def test_defaults_are_the_real_functions_and_the_kwargs_bind_to_them():
+    parameters = inspect.signature(apply_worker_startup).parameters
+    assert parameters["ensure_schedule"].default is ensure_discovery_schedule
+    assert parameters["ensure_limiter"].default is ensure_capacity_limiter
+
+    schedule, limiter, _ = _run(DiscoverySettingsSqlRepo(sqlite_engine()))
+
+    for real, recorder in (
+        (ensure_discovery_schedule, schedule),
+        (ensure_capacity_limiter, limiter),
+    ):
+        ((args, kwargs),) = recorder.calls
+        inspect.signature(real).bind(*args, **kwargs)

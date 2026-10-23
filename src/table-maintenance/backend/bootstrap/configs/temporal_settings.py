@@ -6,8 +6,11 @@ from pydantic import BaseModel
 
 
 class TemporalSettings(BaseModel):
-    """Temporal frontend address, namespace and task queue."""
+    """Temporal frontend address and namespace.
+
+    The task queue is the domain constant ``TASK_QUEUE``, not a setting: workflows,
+    schedules and gateways all route by it.
+    """
 
     address: str = "temporal-frontend.temporal.svc.cluster.local:7233"
     namespace: str = "default"
-    task_queue: str = "table-maintenance"

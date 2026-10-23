@@ -57,7 +57,7 @@ repos:
     hooks:
       - id: uv-export-backend
         name: uv export (table-maintenance backend requirements)
-        entry: uv export --package table-maintenance-backend --frozen --no-dev --no-emit-project --no-header --quiet -o src/table-maintenance/backend/requirements.txt
+        entry: uv export --package table-maintenance-backend --locked --no-dev --no-emit-project --no-header --quiet -o src/table-maintenance/backend/requirements.txt
         language: system
         files: ^(uv\.lock|src/table-maintenance/backend/(pyproject\.toml|requirements\.txt))$
         pass_filenames: false

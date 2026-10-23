@@ -22,7 +22,6 @@ async def ensure_capacity_limiter(
     *,
     limit: int,
     lease_seconds: int,
-    task_queue: str = TASK_QUEUE,
 ) -> None:
     """Start the capacity limiter unless it is already running.
 
@@ -34,6 +33,6 @@ async def ensure_capacity_limiter(
         CAPACITY_LIMITER_WORKFLOW,
         CapacityLimiterInput(limit=limit, lease_seconds=lease_seconds),
         id=CAPACITY_WORKFLOW_ID,
-        task_queue=task_queue,
+        task_queue=TASK_QUEUE,
         id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
     )

@@ -4,14 +4,9 @@ from __future__ import annotations
 
 import uvicorn
 
-from adapter.inbound.web.create_app import create_app
 from adapter.outbound.temporal.async_loop_bridge import AsyncLoopBridge
 from bootstrap.configs import get_settings
-from bootstrap.container import (
-    build_connected_use_cases,
-    build_web_use_cases,
-    configure_logging,
-)
+from bootstrap.container import build_api_app, configure_logging
 
 HOST = "0.0.0.0"  # noqa: S104
 PORT = 8000
@@ -23,8 +18,7 @@ def main() -> None:
     configure_logging(settings.log_level)
     bridge = AsyncLoopBridge()
     try:
-        use_cases = build_connected_use_cases(settings, bridge)
-        app = create_app(build_web_use_cases(use_cases))
+        app = build_api_app(settings, bridge)
         uvicorn.run(app, host=HOST, port=PORT, log_level=settings.log_level.lower())
     finally:
         bridge.close()

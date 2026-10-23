@@ -39,13 +39,11 @@ class WorkflowSignalActivities:
         *,
         capacity_limit: int,
         capacity_lease_seconds: int,
-        task_queue: str = TASK_QUEUE,
     ) -> None:
         """Bind the client and the limiter start configuration."""
         self._client = client
         self._capacity_limit = capacity_limit
         self._capacity_lease_seconds = capacity_lease_seconds
-        self._task_queue = task_queue
 
     @activity.defn(name=SIGNAL_CAPACITY_ACQUIRE)
     async def signal_capacity_acquire(self, request: dict[str, Any]) -> None:
@@ -57,7 +55,7 @@ class WorkflowSignalActivities:
                 lease_seconds=self._capacity_lease_seconds,
             ),
             id=CAPACITY_WORKFLOW_ID,
-            task_queue=self._task_queue,
+            task_queue=TASK_QUEUE,
             id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
             start_signal=ACQUIRE_SIGNAL_NAME,
             start_signal_args=[

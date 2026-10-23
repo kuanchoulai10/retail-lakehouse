@@ -20,7 +20,7 @@ from adapter.inbound.temporal.workflows import (
     TableReconcileWorkflow,
 )
 from adapter.temporal_contracts import activity_names
-from bootstrap.configs import TemporalSettings
+from application.domain.model.maintenance.workflow_ids import TASK_QUEUE
 from bootstrap.container import (
     CAPACITY_LEASE_SECONDS,
     build_activities,
@@ -96,14 +96,13 @@ def test_worker_registers_all_workflows_and_activities():
         build_worker(
             client,
             _activities(),
-            TemporalSettings(task_queue="q"),
             executor=executor,
             max_concurrent_activities=2,
             worker_factory=factory,
         )
 
     assert factory.args == (client,)
-    assert factory.kwargs["task_queue"] == "q"
+    assert factory.kwargs["task_queue"] == TASK_QUEUE == "table-maintenance"
     assert set(factory.kwargs["workflows"]) == {
         TableReconcileWorkflow,
         DiscoveryWorkflow,

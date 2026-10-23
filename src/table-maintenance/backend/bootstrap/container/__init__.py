@@ -3,6 +3,7 @@
 from bootstrap.container.activities import Activities
 from bootstrap.container.apply_worker_startup import apply_worker_startup
 from bootstrap.container.build_activities import build_activities
+from bootstrap.container.build_api_app import build_api_app
 from bootstrap.container.build_catalog_factory import build_catalog_factory
 from bootstrap.container.build_connected_use_cases import build_connected_use_cases
 from bootstrap.container.build_engine import build_engine
@@ -17,6 +18,7 @@ from bootstrap.container.capacity_lease_seconds import CAPACITY_LEASE_SECONDS
 from bootstrap.container.configure_logging import configure_logging
 from bootstrap.container.connect_temporal import connect_temporal
 from bootstrap.container.gateways import Gateways
+from bootstrap.container.lazy_k8s_api import LazyK8sApi
 from bootstrap.container.repositories import Repositories
 from bootstrap.container.run_event_consumer import run_event_consumer
 from bootstrap.container.run_migrations import run_migrations
@@ -27,10 +29,12 @@ __all__ = [
     "CAPACITY_LEASE_SECONDS",
     "Activities",
     "Gateways",
+    "LazyK8sApi",
     "Repositories",
     "UseCases",
     "apply_worker_startup",
     "build_activities",
+    "build_api_app",
     "build_catalog_factory",
     "build_connected_use_cases",
     "build_engine",

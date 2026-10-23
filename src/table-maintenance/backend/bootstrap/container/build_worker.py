@@ -13,6 +13,7 @@ from adapter.inbound.temporal.workflows import (
     MaintenanceWorkflow,
     TableReconcileWorkflow,
 )
+from application.domain.model.maintenance.workflow_ids import TASK_QUEUE
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -20,7 +21,6 @@ if TYPE_CHECKING:
 
     from temporalio.client import Client
 
-    from bootstrap.configs.temporal_settings import TemporalSettings
     from bootstrap.container.activities import Activities
 
 WORKFLOWS = (
@@ -35,7 +35,6 @@ GRACEFUL_SHUTDOWN = timedelta(seconds=30)
 def build_worker(
     client: Client,
     activities: Activities,
-    temporal: TemporalSettings,
     *,
     executor: ThreadPoolExecutor,
     max_concurrent_activities: int,
@@ -48,7 +47,7 @@ def build_worker(
     """
     return worker_factory(
         client,
-        task_queue=temporal.task_queue,
+        task_queue=TASK_QUEUE,
         workflows=list(WORKFLOWS),
         activities=activities.callables(),
         activity_executor=executor,

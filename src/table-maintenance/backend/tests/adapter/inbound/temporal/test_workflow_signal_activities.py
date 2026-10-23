@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-import uuid
+import inspect
 
 from temporalio import workflow
 from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
@@ -16,6 +16,7 @@ from adapter.temporal_contracts.workflow_names import CAPACITY_LIMITER_WORKFLOW
 from application.domain.model.maintenance.workflow_ids import (
     CAPACITY_WORKFLOW_ID,
     SIGNAL_MAINTENANCE_FINISHED,
+    TASK_QUEUE,
 )
 
 
@@ -64,9 +65,9 @@ class StubParent:
 
 async def _scenario() -> None:
     async with await WorkflowEnvironment.start_time_skipping() as env:
-        queue = f"q-{uuid.uuid4()}"
+        queue = TASK_QUEUE
         activities = WorkflowSignalActivities(
-            env.client, capacity_limit=2, capacity_lease_seconds=60, task_queue=queue
+            env.client, capacity_limit=2, capacity_lease_seconds=60
         )
         async with Worker(
             env.client,
@@ -111,3 +112,8 @@ async def _scenario() -> None:
 
 def test_signal_with_start_limiter_once_and_signal_parent():
     asyncio.run(_scenario())
+
+
+def test_task_queue_is_the_domain_constant_not_a_parameter():
+    parameters = inspect.signature(WorkflowSignalActivities.__init__).parameters
+    assert "task_queue" not in parameters
