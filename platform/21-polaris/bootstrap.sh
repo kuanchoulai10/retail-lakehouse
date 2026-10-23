@@ -38,7 +38,7 @@ if ! kubectl get secret polaris-token-broker \
   --namespace lakehouse-catalog \
   --context "${KUBE_CONTEXT}" >/dev/null 2>&1; then
   KEY_DIR="$(mktemp -d)"
-  trap 'rm -r "${KEY_DIR}"' EXIT
+  trap 'rc=$?; rm -r "${KEY_DIR}"; __log::on_exit "${rc}"' EXIT
   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \
     -out "${KEY_DIR}/private.pem"
   openssl pkey -in "${KEY_DIR}/private.pem" -pubout -out "${KEY_DIR}/public.pem"

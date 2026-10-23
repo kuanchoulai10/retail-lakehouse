@@ -132,5 +132,5 @@ kubectl exec -n lakehouse-catalog "$POD" --context mini \
 Polaris publishes catalog events (key: event UUID, value: JSON with `event_type`, `catalog_name`, `namespace`, `table_name`, `principal`, `request_id`, ...) to the `polaris-catalog-events` topic. Read them with:
 
 ```bash
-kubectl exec kafka-cluster-dual-role-0 -- bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic polaris-catalog-events --from-beginning --namespace kafka --context retail-lakehouse
+kubectl exec kafka-cluster-dual-role-0 --namespace kafka --context retail-lakehouse -- bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic polaris-catalog-events --from-beginning
 ```
