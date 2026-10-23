@@ -18,3 +18,6 @@ def engine() -> Engine:
     )
     create_schema(eng)
     return eng
+
+
+from tests.adapter.outbound.temporal.temporal_harness import harness  # noqa: E402,F401

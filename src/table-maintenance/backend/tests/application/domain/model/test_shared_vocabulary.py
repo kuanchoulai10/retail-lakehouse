@@ -12,6 +12,7 @@ from application.domain.model.maintenance.workflow_ids import (
     DISCOVERY_SCHEDULE_ID,
     SIGNAL_CAPACITY_GRANTED,
     TASK_QUEUE,
+    discovery_adhoc_workflow_id,
     maintenance_workflow_id,
     table_reconcile_workflow_id,
 )
@@ -41,6 +42,11 @@ def test_workflow_ids():
     assert DISCOVERY_SCHEDULE_ID == "table-discovery"
     assert TASK_QUEUE == "table-maintenance"
     assert SIGNAL_CAPACITY_GRANTED == "capacity_granted"
+
+
+def test_discovery_adhoc_workflow_id():
+    assert discovery_adhoc_workflow_id("c", "ns") == "table-discovery-adhoc-c-ns"
+    assert discovery_adhoc_workflow_id("c", None) == "table-discovery-adhoc-c-all"
 
 
 def test_table_name_qualified():

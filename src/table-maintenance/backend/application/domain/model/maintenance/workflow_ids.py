@@ -28,3 +28,8 @@ def table_reconcile_workflow_id(table_uuid: str) -> str:
 def maintenance_workflow_id(run_id: str) -> str:
     """Return the workflow ID of the maintenance workflow for a run."""
     return f"maintenance-{run_id}"
+
+
+def discovery_adhoc_workflow_id(catalog: str, namespace: str | None) -> str:
+    """Return the workflow ID of an ad-hoc discovery run for a catalog or namespace."""
+    return f"table-discovery-adhoc-{catalog}-{namespace or 'all'}"

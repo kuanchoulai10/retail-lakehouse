@@ -49,6 +49,27 @@ layers =
     application.port
     application.domain.model
 
+[importlinter:contract:temporal-contracts-neutral]
+name = Temporal contracts depend only on stdlib and the maintenance domain model
+type = forbidden
+source_modules =
+    adapter.temporal_contracts
+forbidden_modules =
+    adapter.inbound
+    adapter.outbound
+    application.service
+    application.port
+    application.exceptions
+    application.domain.service
+    application.domain.model.managed_table
+    bootstrap
+    temporalio
+    fastapi
+    kubernetes
+    pyiceberg
+    pyarrow
+    sqlalchemy
+
 [importlinter:contract:inbound-outbound-separation]
 name = Inbound adapter does not directly import outbound adapter
 type = forbidden
