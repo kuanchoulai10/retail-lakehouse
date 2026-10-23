@@ -72,7 +72,18 @@ def test_remove_orphan_files_args(make_request):
             procedure_args={"older_than": "2026-10-21T12:00:00+00:00"},
         )
     )
-    assert statement.endswith("older_than => TIMESTAMP '2026-10-21 12:00:00')")
+    assert statement.endswith("older_than => TIMESTAMP '2026-10-21 12:00:00', prefix_listing => true)")
+
+
+def test_remove_orphan_files_lists_through_file_io(make_request):
+    """S3FileIO lists the table location; Hadoop has no FileSystem for the s3 scheme."""
+    (statement,) = build_call_statements(
+        make_request(
+            operation="remove_orphan_files",
+            procedure_args={"older_than": "2026-10-21T12:00:00+00:00"},
+        )
+    )
+    assert "prefix_listing => true" in statement
 
 
 def test_backtick_in_identifier_is_doubled(make_request):

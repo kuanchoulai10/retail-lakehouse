@@ -55,7 +55,7 @@ def _extra_args(request: JobRequest) -> list[str]:
                 f"retain_last => {int(args['retain_last'])}",
             ]
         case "remove_orphan_files":
-            return [f"older_than => {_timestamp(args['older_than'])}"]
+            return [f"older_than => {_timestamp(args['older_than'])}", "prefix_listing => true"]
         case _:
             return []
 
