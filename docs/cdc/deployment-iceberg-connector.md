@@ -261,7 +261,7 @@ Upload the ZIP archive to a publicly accessible S3 bucket so that the Iceberg Ka
 ```
 
 ```bash
-kubectl apply -f iceberg-secret.yaml -n kafka-cdc
+kubectl apply -f iceberg-secret.yaml -n kafka
 ```
 
 ## Create an Iceberg Kafka Connect Cluster
@@ -271,11 +271,11 @@ kubectl apply -f iceberg-secret.yaml -n kafka-cdc
 ```
 
 ```bash
-kubectl apply -f iceberg-connect-cluster.yaml -n kafka-cdc
+kubectl apply -f iceberg-connect-cluster.yaml -n kafka
 ```
 
 ```bash
-kubectl get all -n kafka-cdc
+kubectl get all -n kafka
 
 NAME                                                 READY   STATUS    RESTARTS   AGE
 pod/debezium-connect-cluster-connect-0               1/1     Running   0          8m15s
@@ -307,11 +307,11 @@ replicaset.apps/kafka-cluster-entity-operator-598bb8df8b   1         1         1
 ```
 
 ```bash
-kubectl apply -f iceberg-connector.yaml -n kafka-cdc
+kubectl apply -f iceberg-connector.yaml -n kafka
 ```
 
 ```bash
-kubectl get kafkaconnector -n kafka-cdc
+kubectl get kafkaconnector -n kafka
 
 NAME                 CLUSTER                    CONNECTOR CLASS                                   MAX TASKS   READY
 debezium-connector   debezium-connect-cluster   io.debezium.connector.mysql.MySqlConnector        1           True

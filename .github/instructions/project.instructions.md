@@ -19,7 +19,7 @@ Each Kafka connector runs in its own dedicated Kafka Connect cluster—one Kafka
 - Purpose: Manages and operates the Kafka cluster and related components
 
 ##  Kafka Cluster
-- Kafka namespace: `kafka-cdc`
+- Kafka namespace: `kafka`
 - Kafka version: 4.0.0
 - Kafka cluster setup: 3 brokers, running in KRaft (dual-role) mode
 - Purpose: Acts as the central message broker for capturing and distributing change events

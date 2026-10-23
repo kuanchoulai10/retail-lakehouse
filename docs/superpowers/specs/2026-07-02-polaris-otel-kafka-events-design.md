@@ -58,7 +58,7 @@ wave 23: 23-trino
 The new component sits in wave 22, deployed after Polaris is ready and after
 the Kafka cluster is available. It creates two resources: an
 `OpenTelemetryCollector` in namespace `polaris`, and a `KafkaTopic` in
-namespace `kafka-cdc`.
+namespace `kafka`.
 
 ## Component: `21-polaris/` changes
 
@@ -106,7 +106,7 @@ added by extending this property.
 22-polaris-events/
 ├── README.md
 ├── otel-collector.yaml       # OpenTelemetryCollector CR in namespace polaris
-├── kafka-topic.yaml          # KafkaTopic CR in namespace kafka-cdc
+├── kafka-topic.yaml          # KafkaTopic CR in namespace kafka
 ├── bootstrap.sh              # Apply manifests, wait for readiness
 └── validate.sh               # Wait deployment ready + topic Ready condition
 ```
@@ -143,7 +143,7 @@ processors:
 exporters:
   kafka/table-commits:
     brokers:
-      - kafka-cluster-kafka-bootstrap.kafka-cdc.svc.cluster.local:9092
+      - kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
     topic: polaris.table.commits
     encoding: otlp_json
     message_key_from_metadata_key: kafka.key
@@ -178,7 +178,7 @@ apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaTopic
 metadata:
   name: polaris.table.commits
-  namespace: kafka-cdc
+  namespace: kafka
   labels:
     strimzi.io/cluster: kafka-cluster
 spec:
@@ -202,7 +202,7 @@ Mirror the pattern from `21-polaris/`: idempotent `kubectl apply` with
 
 `validate.sh` waits on two conditions:
 - `kubectl wait --for=condition=available deployment/polaris-events-collector -n polaris`
-- `kubectl wait --for=condition=Ready kafkatopic/polaris.table.commits -n kafka-cdc`
+- `kubectl wait --for=condition=Ready kafkatopic/polaris.table.commits -n kafka`
 
 ## `tasks/apps.yml` integration
 
@@ -234,7 +234,7 @@ An end-to-end validation walks through:
    table.
 3. Consume `polaris.table.commits` on the Strimzi cluster:
    ```
-   kubectl exec -n kafka-cdc kafka-cluster-dual-role-0 -- \
+   kubectl exec -n kafka kafka-cluster-dual-role-0 -- \
      bin/kafka-console-consumer.sh \
        --bootstrap-server localhost:9092 \
        --topic polaris.table.commits \

@@ -115,7 +115,7 @@ kubectl -n kube-system get svc registry -o jsonpath='{.spec.clusterIP}'
     ```
 
 ```bash
-kubectl apply -f debezium-connect-cluster.yaml -n kafka-cdc
+kubectl apply -f debezium-connect-cluster.yaml -n kafka
 ```
 
 ??? info "Result"
@@ -124,10 +124,10 @@ kubectl apply -f debezium-connect-cluster.yaml -n kafka-cdc
     kafkaconnect.kafka.strimzi.io/debezium-connect-cluster created
     ```
 
-Check the current resources in the `kafka-cdc` namespace:
+Check the current resources in the `kafka` namespace:
 
 ```bash
-kubectl get all -n kafka-cdc
+kubectl get all -n kafka
 ```
 
 ??? info "Result"
@@ -179,15 +179,15 @@ kubectl get all -n kafka-cdc
     If the build fails, you can check the logs of the build pod to see what went wrong. You can also describe the pod to get more information about its status.
 
     ```bash
-    kubectl logs pod/debezium-connect-cluster-build -n kafka-cdc
-    kubectl describe pod/debezium-connect-cluster-build -n kafka-cdc
+    kubectl logs pod/debezium-connect-cluster-build -n kafka
+    kubectl describe pod/debezium-connect-cluster-build -n kafka
     ```
 
     If the build success, but the pod is not running successfully, you can check the logs of the running pod to see what went wrong. You can also describe the pod to get more information about its status.
 
     ```bash
-    kubectl logs pod/debezium-connect-cluster-connect-0 -n kafka-cdc
-    kubectl describe pod/debezium-connect-cluster-connect-0 -n kafka-cdc
+    kubectl logs pod/debezium-connect-cluster-connect-0 -n kafka
+    kubectl describe pod/debezium-connect-cluster-connect-0 -n kafka
     ```
 
     You can also check the Minikube configuration to see if the local registry is set up correctly.
@@ -212,7 +212,7 @@ kubectl get all -n kafka-cdc
 ## Create a Debezium Source Connector
 
 ```bash
-kubectl apply -f debezium-connector.yaml -n kafka-cdc
+kubectl apply -f debezium-connector.yaml -n kafka
 ```
 
 ??? info "Result"
@@ -233,7 +233,7 @@ kubectl apply -f debezium-connector.yaml -n kafka-cdc
     - `exactly.once.source.support: enabled`: Enables exactly-once delivery semantics for the source connector.
 
 ```bash
-kubectl get kafkaconnector debezium-connector -n kafka-cdc
+kubectl get kafkaconnector debezium-connector -n kafka
 ```
 
 ??? info "Result"
@@ -258,7 +258,7 @@ List all topics in the Kafka cluster:
 
 ```bash
 kubectl run kafka-topics-cli \
-  -n kafka-cdc \
+  -n kafka \
   -it --rm \
   --image=quay.io/strimzi/kafka:0.46.1-kafka-4.0.0 \
   --restart=Never -- \
@@ -290,7 +290,7 @@ Watch the `mysql.inventory.customers` topic for changes:
 
 ```bash
 kubectl run kafka-cli \
-  -n kafka-cdc \
+  -n kafka \
   -it --rm \
   --image=quay.io/strimzi/kafka:0.46.1-kafka-4.0.0 \
   --restart=Never -- \

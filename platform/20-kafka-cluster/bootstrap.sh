@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 log::on_success "Kafka cluster deployed"
 log::on_failure "Kafka cluster deployment failed"
 
-kubectl create namespace kafka-cdc \
+kubectl create namespace kafka \
   --dry-run=client \
   -o yaml \
   | kubectl apply \
@@ -19,5 +19,5 @@ kubectl create namespace kafka-cdc \
 
 kubectl apply \
   -f "$SCRIPT_DIR/kafka-cluster.yaml" \
-  --namespace kafka-cdc \
+  --namespace kafka \
   --context "${KUBE_CONTEXT}"

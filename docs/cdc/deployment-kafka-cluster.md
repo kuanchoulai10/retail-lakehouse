@@ -26,7 +26,7 @@ bash install.sh
     --8<-- "./retail-lakehouse/kafka-cluster/install.sh"
     ```
 
-This script will deploy a Kafka Cluster using the Strimzi Operator in the `kafka-cdc` namespace.
+This script will deploy a Kafka Cluster using the Strimzi Operator in the `kafka` namespace.
 
 If you don't like my script and want to do it step by step manually, please continue reading. This article will walk you through how to deploy a Kafka Cluster using the Strimzi Operator on Kubernetes step by step, explaining each part along the way.
 
@@ -52,7 +52,7 @@ First, we need to create two separate Kubernetes namespaces, one for the Strimzi
 
 ```bash
 kubectl create namespace strimzi
-kubectl create namespace kafka-cdc
+kubectl create namespace kafka
 ```
 
 Next, we need to add the Strimzi Helm repository to our local Helm setup and install the Strimzi operator with our custom values:
@@ -68,7 +68,7 @@ helm install \
   --version 0.46.1
 ```
 
-Here's our customized `values.yaml` file and the most important settings is `watchNamespaces`, which tells Strimzi to specifically watch the `kafka-cdc` namespace where we'll deploy our Kafka cluster.
+Here's our customized `values.yaml` file and the most important settings is `watchNamespaces`, which tells Strimzi to specifically watch the `kafka` namespace where we'll deploy our Kafka cluster.
 
 ??? info "values.yaml"
 
@@ -129,7 +129,7 @@ kubectl get all -n strimzi
     replicaset.apps/strimzi-cluster-operator-74f577b78   1         1         1       108s
     ```
 
-Perfect! At this point, the Strimzi operator is running and watching for Kafka-related resources in the `kafka-cdc` namespace. It's like having a dedicated Kafka administrator ready to spring into action whenever we create Kafka clusters or related components.
+Perfect! At this point, the Strimzi operator is running and watching for Kafka-related resources in the `kafka` namespace. It's like having a dedicated Kafka administrator ready to spring into action whenever we create Kafka clusters or related components.
 
 
 
@@ -138,10 +138,10 @@ Perfect! At this point, the Strimzi operator is running and watching for Kafka-r
 Now that we have Strimzi operator running, let's deploy our actual Kafka cluster!
 
 ```bash
-kubectl create -f kafka-cluster.yaml -n kafka-cdc
+kubectl create -f kafka-cluster.yaml -n kafka
 ```
 
-This command tells Kubernetes to create both the Kafka cluster and the node pool in our `kafka-cdc` namespace. You should see output confirming both resources were created:
+This command tells Kubernetes to create both the Kafka cluster and the node pool in our `kafka` namespace. You should see output confirming both resources were created:
 
 ??? info "Result"
 
@@ -153,7 +153,7 @@ This command tells Kubernetes to create both the Kafka cluster and the node pool
 Kafka clusters take a bit of time to start up - they need to elect controllers, establish consensus, and create internal topics. Let's check on the progress:
 
 ```bash
-kubectl get all -n kafka-cdc
+kubectl get all -n kafka
 ```
 
 Initially, you might see pods in `Pending` or `ContainerCreating` status. After a minute or two, you should see something like this:

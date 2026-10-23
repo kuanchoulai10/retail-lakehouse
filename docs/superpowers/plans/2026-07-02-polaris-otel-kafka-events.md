@@ -34,7 +34,7 @@ tasks/apps.yml                (modify: add 22-polaris-events into bootstrap-by-s
 ```
 
 Each file has a single responsibility. The two CRs live in separate files because
-they target different namespaces (`polaris` vs `kafka-cdc`) and different operators
+they target different namespaces (`polaris` vs `kafka`) and different operators
 (otel-operator vs Strimzi topic-operator); a future contributor changing one should
 not have to open the other.
 
@@ -224,7 +224,7 @@ apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaTopic
 metadata:
   name: polaris.table.commits
-  namespace: kafka-cdc
+  namespace: kafka
   labels:
     strimzi.io/cluster: kafka-cluster
 spec:
@@ -296,7 +296,7 @@ kubectl rollout status deployment/polaris-events-collector \
 
 kubectl wait \
   --for=condition=Ready kafkatopic/polaris.table.commits \
-  --namespace kafka-cdc \
+  --namespace kafka \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 ```
@@ -317,7 +317,7 @@ Deploys the pipeline that turns Polaris table commit events into Kafka messages:
 
 - `OpenTelemetryCollector` (`polaris-events` in namespace `polaris`) receives OTLP
   logs from Polaris on port 4317 and exports them to Kafka.
-- `KafkaTopic` `polaris.table.commits` (namespace `kafka-cdc`, 1 partition,
+- `KafkaTopic` `polaris.table.commits` (namespace `kafka`, 1 partition,
   7 day retention) receives the events keyed by fully-qualified table id.
 
 Depends on wave 20 (kafka-cluster, polaris-db) and wave 21 (polaris).
@@ -329,7 +329,7 @@ Depends on wave 20 (kafka-cluster, polaris-db) and wave 21 (polaris).
 
 ## Consume events
 
-    kubectl exec -n kafka-cdc kafka-cluster-dual-role-0 -- \
+    kubectl exec -n kafka kafka-cluster-dual-role-0 -- \
       bin/kafka-console-consumer.sh \
         --bootstrap-server localhost:9092 \
         --topic polaris.table.commits \
@@ -524,7 +524,7 @@ spec:
     exporters:
       kafka/table-commits:
         brokers:
-          - kafka-cluster-kafka-bootstrap.kafka-cdc.svc.cluster.local:9092
+          - kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
         topic: polaris.table.commits
         encoding: otlp_json
         message_key_from_metadata_key: kafka.key
@@ -564,7 +564,7 @@ git commit -m "feat(polaris-events): swap debug exporter for Kafka with table-id
 
 Open a terminal:
 ```bash
-kubectl exec -n kafka-cdc kafka-cluster-dual-role-0 --context retail-lakehouse -- \
+kubectl exec -n kafka kafka-cluster-dual-role-0 --context retail-lakehouse -- \
   bin/kafka-console-consumer.sh \
     --bootstrap-server localhost:9092 \
     --topic polaris.table.commits \

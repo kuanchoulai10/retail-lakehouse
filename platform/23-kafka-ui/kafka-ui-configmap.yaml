@@ -8,14 +8,14 @@ data:
     kafka:
       clusters:
         - name: retail-lakehouse
-          bootstrapServers: kafka-cluster-kafka-bootstrap.kafka-cdc.svc.cluster.local:9092
+          bootstrapServers: kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
           kafkaConnect:
             - name: debezium-connect-cluster
-              address: http://debezium-connect-cluster-connect-api.kafka-cdc.svc.cluster.local:8083
+              address: http://debezium-connect-cluster-connect-api.kafka.svc.cluster.local:8083
             - name: polaris-cdc-connect-cluster
-              address: http://polaris-cdc-connect-cluster-connect-api.kafka-cdc.svc.cluster.local:8083
+              address: http://polaris-cdc-connect-cluster-connect-api.kafka.svc.cluster.local:8083
             - name: iceberg-connect-cluster
-              address: http://iceberg-connect-cluster-connect-api.kafka-cdc.svc.cluster.local:8083
+              address: http://iceberg-connect-cluster-connect-api.kafka.svc.cluster.local:8083
     auth:
       type: DISABLED
     management:

@@ -30,15 +30,15 @@ kubectl exec "$POLARIS_DB_POD" \
 
 kubectl apply \
   -f "$SCRIPT_DIR/debezium-secret.yaml" \
-  --namespace kafka-cdc \
+  --namespace kafka \
   --context "${KUBE_CONTEXT}"
 kubectl apply \
   -f "$SCRIPT_DIR/debezium-role.yaml" \
-  --namespace kafka-cdc \
+  --namespace kafka \
   --context "${KUBE_CONTEXT}"
 kubectl apply \
   -f "$SCRIPT_DIR/debezium-role-binding.yaml" \
-  --namespace kafka-cdc \
+  --namespace kafka \
   --context "${KUBE_CONTEXT}"
 
 REGISTRY_IP="$(kubectl get svc registry \
@@ -51,9 +51,9 @@ export REGISTRY_IP
 envsubst '${REGISTRY_IP}' < "$SCRIPT_DIR/debezium-connect-cluster.yaml" \
   | kubectl apply \
     -f - \
-    --namespace kafka-cdc \
+    --namespace kafka \
     --context "${KUBE_CONTEXT}"
 kubectl apply \
   -f "$SCRIPT_DIR/debezium-connector.yaml" \
-  --namespace kafka-cdc \
+  --namespace kafka \
   --context "${KUBE_CONTEXT}"

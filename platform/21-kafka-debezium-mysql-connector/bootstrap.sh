@@ -12,15 +12,15 @@ log::on_failure "Debezium MySQL connector deployment failed"
 
 kubectl apply \
   -f "$SCRIPT_DIR/debezium-secret.yaml" \
-  --namespace kafka-cdc \
+  --namespace kafka \
   --context "${KUBE_CONTEXT}"
 kubectl apply \
   -f "$SCRIPT_DIR/debezium-role.yaml" \
-  --namespace kafka-cdc \
+  --namespace kafka \
   --context "${KUBE_CONTEXT}"
 kubectl apply \
   -f "$SCRIPT_DIR/debezium-role-binding.yaml" \
-  --namespace kafka-cdc \
+  --namespace kafka \
   --context "${KUBE_CONTEXT}"
 # Resolve current minikube registry ClusterIP and render the KafkaConnect
 # manifest. The build.output.image must be an IP because image pull happens
@@ -36,9 +36,9 @@ export REGISTRY_IP
 envsubst '${REGISTRY_IP}' < "$SCRIPT_DIR/debezium-connect-cluster.yaml" \
   | kubectl apply \
     -f - \
-    --namespace kafka-cdc \
+    --namespace kafka \
     --context "${KUBE_CONTEXT}"
 kubectl apply \
   -f "$SCRIPT_DIR/debezium-connector.yaml" \
-  --namespace kafka-cdc \
+  --namespace kafka \
   --context "${KUBE_CONTEXT}"

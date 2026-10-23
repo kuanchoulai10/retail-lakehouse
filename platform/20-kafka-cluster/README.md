@@ -1,11 +1,11 @@
 # Kafka Cluster
 
-Deploys a KRaft-mode Apache Kafka cluster in the `kafka-cdc` namespace using Strimzi custom resources. The cluster runs three dual-role nodes (controller and broker combined) with a replication factor of 3. This cluster serves as the event backbone for the CDC pipeline between MySQL and the Iceberg lakehouse.
+Deploys a KRaft-mode Apache Kafka cluster in the `kafka` namespace using Strimzi custom resources. The cluster runs three dual-role nodes (controller and broker combined) with a replication factor of 3. This cluster serves as the event backbone for the CDC pipeline between MySQL and the Iceberg lakehouse.
 
 ## Deployed Resources
 
 ```
-Namespace: kafka-cdc
+Namespace: kafka
 ├── kafka-cluster-dual-role-0            (Pod, KafkaNodePool)
 ├── kafka-cluster-dual-role-1            (Pod, KafkaNodePool)
 ├── kafka-cluster-dual-role-2            (Pod, KafkaNodePool)
@@ -14,7 +14,7 @@ Namespace: kafka-cdc
 
 ## Namespaces
 
-- `kafka-cdc`
+- `kafka`
 
 ## Pods
 

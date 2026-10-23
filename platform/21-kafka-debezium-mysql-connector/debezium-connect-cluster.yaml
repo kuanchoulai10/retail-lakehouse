@@ -2,7 +2,7 @@ apiVersion: kafka.strimzi.io/v1beta2
 kind: KafkaConnect
 metadata:
   name: debezium-connect-cluster
-  namespace: kafka-cdc
+  namespace: kafka
   annotations:
     strimzi.io/use-connector-resources: "true"
 spec:

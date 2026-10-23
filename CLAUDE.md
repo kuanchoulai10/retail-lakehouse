@@ -36,8 +36,8 @@ Respond in the same language as the user's message. The user typically communica
 - ArgoCD path (`platform/00-argocd`, `01-argocd-health-checks`, `02-argocd-apps`, `charts/app-of-apps`)
 
 **Current initiative: namespace re-layout** (one task at a time, each deployed + verified + committed on `main`; developer/reviewer agent prompts in `DEVELOPER_AGENT_PROMPT.md` / `REVIEWER_AGENT_PROMPT.md`):
-1. `mysql`: `kafka-cdc` → `ecommerce-app`
-2. `kafka-cdc` → `kafka`
+1. `mysql`: `kafka-cdc` → `ecommerce-app` (done)
+2. `kafka-cdc` → `kafka` (done)
 3. `minio` → `object-storage`
 4. `polaris` → `lakehouse-catalog`
 5. `trino` → `lakehouse-query-engine`

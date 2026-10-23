@@ -12,7 +12,7 @@ log::on_failure "Iceberg sink connector deployment failed"
 
 kubectl apply \
   -f "$SCRIPT_DIR/iceberg-secret.yaml" \
-  --namespace kafka-cdc \
+  --namespace kafka \
   --context "${KUBE_CONTEXT}"
 
 # Resolve current minikube registry ClusterIP and render the KafkaConnect
@@ -29,9 +29,9 @@ export REGISTRY_IP
 envsubst '${REGISTRY_IP}' < "$SCRIPT_DIR/iceberg-connect-cluster.yaml" \
   | kubectl apply \
     -f - \
-    --namespace kafka-cdc \
+    --namespace kafka \
     --context "${KUBE_CONTEXT}"
 kubectl apply \
   -f "$SCRIPT_DIR/iceberg-connector.yaml" \
-  --namespace kafka-cdc \
+  --namespace kafka \
   --context "${KUBE_CONTEXT}"

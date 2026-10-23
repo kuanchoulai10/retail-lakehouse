@@ -11,8 +11,8 @@ spec:
     tasks.max: 1
     database.hostname: polaris-db.polaris.svc.cluster.local
     database.port: 5432
-    database.user: ${secrets:kafka-cdc/polaris-cdc-secret:username}
-    database.password: ${secrets:kafka-cdc/polaris-cdc-secret:password}
+    database.user: ${secrets:kafka/polaris-cdc-secret:username}
+    database.password: ${secrets:kafka/polaris-cdc-secret:password}
     database.dbname: polaris
     plugin.name: pgoutput
     publication.name: polaris_cdc

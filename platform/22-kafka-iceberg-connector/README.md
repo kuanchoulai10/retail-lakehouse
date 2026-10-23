@@ -5,14 +5,14 @@ Deploys a Strimzi KafkaConnect cluster with the Iceberg Kafka Connect sink plugi
 ## Deployed Resources
 
 ```
-Namespace: kafka-cdc
+Namespace: kafka
 ├── iceberg-connect-cluster-connect-0    (Pod, KafkaConnect)
 └── iceberg-connector                    (KafkaConnector)
 ```
 
 ## Namespaces
 
-- `kafka-cdc` (pre-existing, created by `20-kafka-cluster`)
+- `kafka` (pre-existing, created by `20-kafka-cluster`)
 
 ## Pods
 

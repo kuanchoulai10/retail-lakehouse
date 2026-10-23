@@ -10,13 +10,13 @@ log::on_success "Debezium connector is ready"
 log::on_failure "Debezium connector is not ready"
 
 kubectl wait kafkaconnect/debezium-connect-cluster \
-  --namespace kafka-cdc \
+  --namespace kafka \
   --for=condition=Ready \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
 kubectl wait kafkaconnector/debezium-connector \
-  --namespace kafka-cdc \
+  --namespace kafka \
   --for=condition=Ready \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"

@@ -10,13 +10,13 @@ log::on_success "Debezium Polaris connector is ready"
 log::on_failure "Debezium Polaris connector is not ready"
 
 kubectl wait kafkaconnect/polaris-cdc-connect-cluster \
-  --namespace kafka-cdc \
+  --namespace kafka \
   --for=condition=Ready \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
 kubectl wait kafkaconnector/polaris-cdc-connector \
-  --namespace kafka-cdc \
+  --namespace kafka \
   --for=condition=Ready \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
