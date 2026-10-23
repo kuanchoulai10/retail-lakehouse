@@ -1,4 +1,8 @@
-"""Run planned Iceberg table maintenance on Spark and post a result callback."""
+"""Run planned Iceberg table maintenance on Spark and post a result callback.
+
+A failure to parse GLAC_REQUEST or to build the Spark session exits non-zero without a
+callback; the workflow then falls back to polling the SparkApplication state.
+"""
 
 from __future__ import annotations
 
@@ -25,7 +29,10 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO)
     request = JobRequest.from_json(os.environ["GLAC_REQUEST"])
     spark = _session(request.catalog)
-    return run_maintenance(request, spark.sql)
+    try:
+        return run_maintenance(request, spark.sql)
+    finally:
+        spark.stop()
 
 
 if __name__ == "__main__":

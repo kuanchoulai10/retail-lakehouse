@@ -1797,12 +1797,12 @@ wheels = [
 
 [[package]]
 name = "pyspark"
-version = "4.1.1"
+version = "4.0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "py4j" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/19/bf/58ee13add151469c25825b7125bbf62c3bdcec05eec4d458fcb5c5516066/pyspark-4.1.1.tar.gz", hash = "sha256:77f78984aa84fbe865c717dd37b49913b4e5c97d76ef6824f932f1aefa6621ec", size = 455359625, upload-time = "2026-01-09T09:38:38.28Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9a/c8/27b5316543a4d724efef4ecc1cfcb42a9afcb8af33cfdff989164b9a4487/pyspark-4.0.4.tar.gz", hash = "sha256:7e119366364d48e3cda1b1efd1ebc6cd672949500667c9cabbeef858daba700f", size = 434312230, upload-time = "2026-07-15T11:15:10.721Z" }
 
 [[package]]
 name = "pytest"
@@ -2334,7 +2334,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pyspark", specifier = ">=4.1.1" }]
+requires-dist = [{ name = "pyspark", specifier = ">=4.0,<4.1" }]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8.0" }]

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import http.client
 import json
 import logging
 import time
@@ -39,7 +40,7 @@ def post_result(
                 if 200 <= response.status < 300:
                     return True
                 logger.warning("Callback returned HTTP %s", response.status)
-        except OSError as exc:
+        except (OSError, http.client.HTTPException, ValueError) as exc:
             logger.warning("Callback attempt %s failed: %s", attempt, exc)
         if attempt < TRIES:
             sleep(DELAY_SECONDS)

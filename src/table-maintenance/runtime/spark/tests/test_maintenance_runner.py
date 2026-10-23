@@ -7,7 +7,7 @@ class _Row:
     def __init__(self, **values):
         self._values = values
 
-    def asDict(self):  # noqa: N802
+    def asDict(self):
         return self._values
 
 
@@ -23,7 +23,7 @@ def test_metrics_summed_across_calls(make_request):
     posted = []
     results = iter(
         [
-            _Result([_Row(rewritten_data_files_count=2, note="x", rate=1.5)]),
+            _Result([_Row(rewritten_data_files_count=2, note="x", rate=1.5, dry_run=True)]),
             _Result([_Row(rewritten_data_files_count=3, added_data_files_count=1)]),
         ]
     )
@@ -72,3 +72,30 @@ def test_invalid_operation_posts_error_and_exits_1(make_request):
 def test_exit_code_ignores_callback_delivery(make_request):
     code = run_maintenance(make_request(), lambda _s: _Result([]), post=lambda url, body: False)
     assert code == 0
+
+
+def test_post_raising_on_success_still_exits_0(make_request):
+    def post(url, body):
+        raise RuntimeError("callback bug")
+
+    assert run_maintenance(make_request(), lambda _s: _Result([]), post=post) == 0
+
+
+def test_failed_run_and_failed_callback_exits_1(make_request):
+    def boom(_sql):
+        raise RuntimeError("catalog down")
+
+    def post(url, body):
+        raise RuntimeError("callback bug")
+
+    assert run_maintenance(make_request(), boom, post=post) == 1
+
+
+def test_error_is_truncated(make_request):
+    posted = []
+
+    def boom(_sql):
+        raise RuntimeError("x" * 10000)
+
+    run_maintenance(make_request(), boom, post=lambda u, b: posted.append(b) or True)
+    assert len(posted[0]["error"]) == 4096

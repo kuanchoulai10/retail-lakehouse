@@ -82,6 +82,11 @@ def test_manifest_snapshot():
     assert conf["spark.sql.extensions"].endswith("IcebergSparkSessionExtensions")
     assert conf["spark.sql.catalog.iceberg"] == "org.apache.iceberg.spark.SparkCatalog"
     assert conf["spark.sql.catalog.iceberg.type"] == "rest"
+    assert (
+        conf["spark.sql.catalog.iceberg.io-impl"]
+        == "org.apache.iceberg.aws.s3.S3FileIO"
+    )
+    assert "credential" in conf["spark.redaction.regex"]
     assert conf["spark.sql.catalog.iceberg.uri"] == CONFIG.catalog_uri
     assert conf["spark.sql.catalog.iceberg.warehouse"] == "iceberg"
     assert conf["spark.sql.catalog.iceberg.scope"] == "PRINCIPAL_ROLE:ALL"
@@ -128,6 +133,7 @@ def test_submit_conflict_is_success():
     api = MagicMock()
     api.create_namespaced_custom_object.side_effect = ApiException(status=409)
     SubmitMaintenanceJobK8sGateway(api, CONFIG).submit(_input())
+    api.create_namespaced_custom_object.assert_called_once()
 
 
 def test_submit_other_errors_propagate():
@@ -147,6 +153,7 @@ def test_submit_other_errors_propagate():
         ({"applicationState": {"state": "RUNNING"}}, "RUNNING", None),
         ({"applicationState": {"state": "PENDING_RERUN"}}, "RUNNING", None),
         ({"applicationState": {"state": "INVALIDATING"}}, "RUNNING", None),
+        ({"applicationState": {"state": "SUCCEEDING"}}, "RUNNING", None),
         ({"applicationState": {"state": "COMPLETED"}}, "COMPLETED", None),
         (
             {"applicationState": {"state": "FAILED", "errorMessage": "boom"}},

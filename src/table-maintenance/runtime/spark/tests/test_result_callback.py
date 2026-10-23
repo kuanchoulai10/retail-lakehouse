@@ -52,3 +52,25 @@ def test_recovers_after_failure():
         return r
 
     assert post_result("http://x/y", {}, sleep=lambda _s: None, opener=opener)
+
+
+def test_non_2xx_status_is_retried():
+    calls = []
+
+    def opener(request, timeout):
+        calls.append(1)
+        return _Response(500)
+
+    assert not post_result("http://x/y", {}, sleep=lambda _s: None, opener=opener)
+    assert len(calls) == 3
+
+
+def test_http_exception_and_value_error_are_retried():
+    import http.client
+
+    errors = iter([http.client.BadStatusLine("x"), ValueError("bad url"), ConnectionError()])
+
+    def opener(request, timeout):
+        raise next(errors)
+
+    assert not post_result("http://x/y", {}, sleep=lambda _s: None, opener=opener)

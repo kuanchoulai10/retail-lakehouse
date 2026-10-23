@@ -19,7 +19,9 @@ def test_call_per_filter_with_escaped_where(make_request):
     statements = build_call_statements(make_request(where=filters))
     assert len(statements) == 2
     assert [unescape_literal(_where_literal(s)) for s in statements] == filters
-    assert statements[1].startswith("CALL `iceberg`.system.rewrite_data_files(table => '`sales`.`eu`.`orders`'")
+    assert statements[1].startswith(
+        "CALL `iceberg`.system.rewrite_data_files(table => '`iceberg`.`sales`.`eu`.`orders`'"
+    )
 
 
 @pytest.mark.parametrize("text", ["a'b", "a\\b", "a\\'b", "trailing\\", "'", "\\\\'"])
@@ -49,7 +51,7 @@ def test_rewrite_data_files_options(make_request):
 
 def test_rewrite_manifests_only_table(make_request):
     (statement,) = build_call_statements(make_request(operation="rewrite_manifests", procedure_args={}))
-    assert statement == ("CALL `iceberg`.system.rewrite_manifests(table => '`sales`.`eu`.`orders`')")
+    assert statement == ("CALL `iceberg`.system.rewrite_manifests(table => '`iceberg`.`sales`.`eu`.`orders`')")
 
 
 def test_expire_snapshots_args(make_request):
@@ -75,7 +77,7 @@ def test_remove_orphan_files_args(make_request):
 
 def test_backtick_in_identifier_is_doubled(make_request):
     (statement,) = build_call_statements(make_request(namespace="a`b", table="t"))
-    assert "table => '`a``b`.`t`'" in statement
+    assert "table => '`iceberg`.`a``b`.`t`'" in statement
 
 
 def test_unknown_operation_rejected(make_request):

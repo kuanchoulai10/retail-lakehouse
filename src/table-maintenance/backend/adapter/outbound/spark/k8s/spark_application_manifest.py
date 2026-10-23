@@ -17,6 +17,7 @@ VERSION = "v1beta2"
 PLURAL = "sparkapplications"
 ICEBERG_EXTENSIONS = "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions"
 MAVEN = "https://repo1.maven.org/maven2/org/apache/iceberg"
+REDACTION_REGEX = "(?i)secret|password|token|credential"
 IVY_OPTIONS = "-Divy.cache.dir=/tmp/.ivy2 -Divy.home=/tmp/.ivy"
 
 
@@ -37,6 +38,7 @@ def _spark_conf(
     return {
         "spark.sql.extensions": ICEBERG_EXTENSIONS,
         "spark.sql.session.timeZone": "UTC",
+        "spark.redaction.regex": REDACTION_REGEX,
         prefix: "org.apache.iceberg.spark.SparkCatalog",
         f"{prefix}.type": "rest",
         f"{prefix}.uri": config.catalog_uri,

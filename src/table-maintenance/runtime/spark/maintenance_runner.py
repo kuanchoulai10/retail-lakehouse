@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+MAX_ERROR_LENGTH = 4096
+
 
 def _sum_integers(rows: list[Any], metrics: dict[str, int]) -> None:
     for row in rows:
@@ -39,7 +41,7 @@ def run_maintenance(
             _sum_integers(sql(statement).collect(), metrics)
     except Exception as exc:
         logger.exception("Maintenance failed")
-        error = f"{type(exc).__name__}: {exc}"
+        error = f"{type(exc).__name__}: {exc}"[:MAX_ERROR_LENGTH]
     succeeded = error is None
     body = {
         "run_id": request.run_id,
@@ -49,6 +51,11 @@ def run_maintenance(
         "metrics": metrics if succeeded else {},
         "error": error,
     }
-    if not post(request.callback_url, body):
+    try:
+        delivered = post(request.callback_url, body)
+    except Exception:
+        logger.exception("Result callback raised")
+        delivered = False
+    if not delivered:
         logger.error("Result callback was not delivered; the workflow will poll")
     return 0 if succeeded else 1

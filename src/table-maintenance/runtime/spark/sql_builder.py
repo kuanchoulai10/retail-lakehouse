@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from job_request import OPERATIONS
@@ -26,15 +26,15 @@ def _quote_identifier(part: str) -> str:
 
 
 def _table_literal(request: JobRequest) -> str:
-    parts = [*request.namespace.split("."), request.table]
+    parts = [request.catalog, *request.namespace.split("."), request.table]
     return sql_literal(".".join(_quote_identifier(p) for p in parts))
 
 
 def _timestamp(value: str) -> str:
     parsed = datetime.fromisoformat(value)
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=UTC)
-    return f"TIMESTAMP '{parsed.astimezone(UTC).strftime('%Y-%m-%d %H:%M:%S')}'"
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return f"TIMESTAMP '{parsed.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}'"
 
 
 def _option_text(value: object) -> str:
