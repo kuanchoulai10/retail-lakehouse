@@ -33,10 +33,13 @@ kubectl apply \
   --context "${KUBE_CONTEXT}"
 
 # Token-broker RSA key pair: generated once, reused across Polaris restarts so
-# issued tokens stay valid. Never written into the repo.
-if ! kubectl get secret polaris-token-broker \
+# issued tokens stay valid. Never written into the repo. Regenerated only if the
+# Secret is missing or lacks either key.
+TOKEN_BROKER_KEYS="$(kubectl get secret polaris-token-broker \
+  -o go-template='{{if and (index .data "private.pem") (index .data "public.pem")}}ok{{end}}' \
   --namespace lakehouse-catalog \
-  --context "${KUBE_CONTEXT}" >/dev/null 2>&1; then
+  --context "${KUBE_CONTEXT}" 2>/dev/null || true)"
+if [[ "${TOKEN_BROKER_KEYS}" != "ok" ]]; then
   KEY_DIR="$(mktemp -d)"
   trap 'rc=$?; rm -r "${KEY_DIR}"; __log::on_exit "${rc}"' EXIT
   openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \
@@ -46,7 +49,11 @@ if ! kubectl get secret polaris-token-broker \
     --from-file=private.pem="${KEY_DIR}/private.pem" \
     --from-file=public.pem="${KEY_DIR}/public.pem" \
     --namespace lakehouse-catalog \
-    --context "${KUBE_CONTEXT}"
+    --dry-run=client \
+    -o yaml \
+    | kubectl apply \
+      -f - \
+      --context "${KUBE_CONTEXT}"
 fi
 
 # Bootstrap Polaris schema in PostgreSQL on first install only.

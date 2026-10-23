@@ -90,3 +90,4 @@ polaris:
     polaris.event-listener.kafka.topic: polaris-catalog-events
     polaris.event-listener.kafka.synchronous-mode: "false"
     polaris.event-listener.kafka.properties.bootstrap.servers: kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
+    polaris.event-listener.kafka.properties.max.block.ms: "5000"

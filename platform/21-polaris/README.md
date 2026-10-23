@@ -37,11 +37,11 @@ Wave 21 — depends on RustFS (wave 20, S3 storage) and polaris-db (wave 20, cat
 Before installing, create the storage credentials secret so Polaris can vend credentials to clients (Trino, Iceberg connector) for direct S3 access to RustFS:
 
 ```bash
-kubectl create namespace lakehouse-catalog --context mini
+kubectl create namespace lakehouse-catalog --context retail-lakehouse
 kubectl create secret generic polaris-storage-secret \
   --from-literal=awsAccessKeyId=<RUSTFS_ACCESS_KEY> \
   --from-literal=awsSecretAccessKey=<RUSTFS_SECRET_KEY> \
-  -n lakehouse-catalog --context mini
+  -n lakehouse-catalog --context retail-lakehouse
 ```
 
 ## Configuration Notes
@@ -83,7 +83,7 @@ After Polaris is running, create the initial catalog pointing to RustFS:
 
 ```bash
 # Get the root credentials from the Polaris pod logs on first start
-kubectl logs -l app.kubernetes.io/name=polaris -n lakehouse-catalog --context mini | grep -i "root credentials"
+kubectl logs -l app.kubernetes.io/name=polaris -n lakehouse-catalog --context retail-lakehouse | grep -i "root credentials"
 
 # Use the Polaris admin CLI or REST API to create a catalog:
 # POST /api/management/v1/catalogs
@@ -107,23 +107,23 @@ Verify that catalog state survives a Polaris pod restart (impossible under the o
 
 ```bash
 # 1. Get the root credentials from the first-start logs
-kubectl logs -l app.kubernetes.io/name=polaris -n lakehouse-catalog --context mini \
+kubectl logs -l app.kubernetes.io/name=polaris -n lakehouse-catalog --context retail-lakehouse \
   | grep -i "root credentials"
 
 # 2. Use the Polaris admin REST API (via kubectl exec) to create a catalog.
 #    See the example POST body above in this section.
 
 # 3. Restart Polaris
-kubectl rollout restart deployment/polaris -n lakehouse-catalog --context mini
-kubectl rollout status deployment/polaris -n lakehouse-catalog --context mini
+kubectl rollout restart deployment/polaris -n lakehouse-catalog --context retail-lakehouse
+kubectl rollout status deployment/polaris -n lakehouse-catalog --context retail-lakehouse
 
 # 4. List catalogs again — the test catalog must still be present.
 #    Use the same admin REST API endpoint.
 
 # 5. Verify the metadata tables exist in PostgreSQL
-POD=$(kubectl get pod -l app=polaris-db -n lakehouse-catalog --context mini \
+POD=$(kubectl get pod -l app=polaris-db -n lakehouse-catalog --context retail-lakehouse \
   -o jsonpath='{.items[0].metadata.name}')
-kubectl exec -n lakehouse-catalog "$POD" --context mini \
+kubectl exec -n lakehouse-catalog "$POD" --context retail-lakehouse \
   -- psql -U polaris -d polaris -c '\dt'
 ```
 

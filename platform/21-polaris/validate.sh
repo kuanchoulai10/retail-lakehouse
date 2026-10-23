@@ -9,9 +9,11 @@ TIMEOUT="${TIMEOUT:-300s}"
 log::on_success "Polaris is ready"
 log::on_failure "Polaris is not ready"
 
-kubectl get secret polaris-token-broker \
+TOKEN_BROKER_KEYS="$(kubectl get secret polaris-token-broker \
+  -o go-template='{{if and (index .data "private.pem") (index .data "public.pem")}}ok{{end}}' \
   --namespace lakehouse-catalog \
-  --context "${KUBE_CONTEXT}" >/dev/null
+  --context "${KUBE_CONTEXT}")"
+[[ "${TOKEN_BROKER_KEYS}" == "ok" ]]
 
 kubectl rollout status deployment/polaris \
   --namespace lakehouse-catalog \
