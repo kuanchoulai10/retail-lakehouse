@@ -1,105 +1,71 @@
-"""Build Iceberg system procedure CALL statements from job settings."""
+"""Build Iceberg system procedure CALL statements from a JobRequest."""
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from configs.base import JobType
+from job_request import OPERATIONS
 
 if TYPE_CHECKING:
-    from configs import JobSettings
+    from job_request import JobRequest
 
 
-def _ts(dt) -> str:
-    return f"TIMESTAMP '{dt.strftime('%Y-%m-%d %H:%M:%S.%f')}'"
+def sql_literal(value: str) -> str:
+    """Return a Spark SQL single-quoted string literal.
+
+    Spark treats backslash as an escape, and a doubled quote concatenates two literals,
+    so backslashes are doubled first and quotes are backslash-escaped second.
+    """
+    escaped = value.replace("\\", "\\\\").replace("'", "\\'")
+    return f"'{escaped}'"
 
 
-def _map_expr(opts: dict[str, str]) -> str:
-    pairs = ", ".join(f"'{k}', '{v}'" for k, v in opts.items())
-    return f"map({pairs})"
+def _quote_identifier(part: str) -> str:
+    return "`" + part.replace("`", "``") + "`"
 
 
-class IcebergCallBuilder:
-    """Build a CALL SQL statement for an Iceberg maintenance procedure."""
+def _table_literal(request: JobRequest) -> str:
+    parts = [*request.namespace.split("."), request.table]
+    return sql_literal(".".join(_quote_identifier(p) for p in parts))
 
-    def __init__(self, settings: JobSettings):
-        """Initialize the builder with the given job settings."""
-        self._settings = settings
 
-    def build_sql(self) -> str:
-        """Return the fully rendered CALL SQL string."""
-        settings = self._settings
-        catalog = settings.catalog
+def _timestamp(value: str) -> str:
+    parsed = datetime.fromisoformat(value)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return f"TIMESTAMP '{parsed.astimezone(UTC).strftime('%Y-%m-%d %H:%M:%S')}'"
 
-        if settings.job_type == JobType.EXPIRE_SNAPSHOTS:
-            return self._expire_snapshots(catalog)
-        if settings.job_type == JobType.REMOVE_ORPHAN_FILES:
-            return self._remove_orphan_files(catalog)
-        if settings.job_type == JobType.REWRITE_DATA_FILES:
-            return self._rewrite_data_files(catalog)
-        if settings.job_type == JobType.REWRITE_MANIFESTS:
-            return self._rewrite_manifests(catalog)
 
-        raise ValueError(f"Unhandled job_type: {settings.job_type}")
+def _option_text(value: object) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
 
-    def _expire_snapshots(self, catalog: str) -> str:
-        s = self._settings.expire_snapshots
-        args = [f"table => '{s.table}'"]
-        if s.older_than is not None:
-            args.append(f"older_than => {_ts(s.older_than)}")
-        args.append(f"retain_last => {s.retain_last}")
-        if s.max_concurrent_deletes is not None:
-            args.append(f"max_concurrent_deletes => {s.max_concurrent_deletes}")
-        if s.stream_results:
-            args.append("stream_results => true")
-        return f"CALL {catalog}.system.expire_snapshots({', '.join(args)})"
 
-    def _remove_orphan_files(self, catalog: str) -> str:
-        s = self._settings.remove_orphan_files
-        args = [f"table => '{s.table}'"]
-        if s.older_than is not None:
-            args.append(f"older_than => {_ts(s.older_than)}")
-        if s.location is not None:
-            args.append(f"location => '{s.location}'")
-        if s.dry_run:
-            args.append("dry_run => true")
-        if s.max_concurrent_deletes is not None:
-            args.append(f"max_concurrent_deletes => {s.max_concurrent_deletes}")
-        return f"CALL {catalog}.system.remove_orphan_files({', '.join(args)})"
+def _extra_args(request: JobRequest) -> list[str]:
+    args = request.procedure_args
+    match request.operation:
+        case "rewrite_data_files":
+            pairs = ", ".join(f"{sql_literal(k)}, {sql_literal(_option_text(v))}" for k, v in args.items())
+            return [f"options => map({pairs})"] if pairs else []
+        case "expire_snapshots":
+            return [
+                f"older_than => {_timestamp(args['older_than'])}",
+                f"retain_last => {int(args['retain_last'])}",
+            ]
+        case "remove_orphan_files":
+            return [f"older_than => {_timestamp(args['older_than'])}"]
+        case _:
+            return []
 
-    def _rewrite_data_files(self, catalog: str) -> str:
-        s = self._settings.rewrite_data_files
-        args = [f"table => '{s.table}'"]
-        args.append(f"strategy => '{s.strategy.value}'")
-        if s.sort_order is not None:
-            args.append(f"sort_order => '{s.sort_order}'")
-        opts: dict[str, str] = {}
-        if s.target_file_size_bytes is not None:
-            opts["target-file-size-bytes"] = str(s.target_file_size_bytes)
-        if s.min_file_size_bytes is not None:
-            opts["min-file-size-bytes"] = str(s.min_file_size_bytes)
-        if s.max_file_size_bytes is not None:
-            opts["max-file-size-bytes"] = str(s.max_file_size_bytes)
-        if s.min_input_files is not None:
-            opts["min-input-files"] = str(s.min_input_files)
-        if s.rewrite_all is not None:
-            opts["rewrite-all"] = str(s.rewrite_all).lower()
-        if s.max_concurrent_file_group_rewrites is not None:
-            opts["max-concurrent-file-group-rewrites"] = str(s.max_concurrent_file_group_rewrites)
-        if s.partial_progress_enabled is not None:
-            opts["partial-progress.enabled"] = str(s.partial_progress_enabled).lower()
-        if s.partial_progress_max_commits is not None:
-            opts["partial-progress.max-commits"] = str(s.partial_progress_max_commits)
-        if opts:
-            args.append(f"options => {_map_expr(opts)}")
-        if s.where is not None:
-            args.append(f"where => '{s.where}'")
-        return f"CALL {catalog}.system.rewrite_data_files({', '.join(args)})"
 
-    def _rewrite_manifests(self, catalog: str) -> str:
-        s = self._settings.rewrite_manifests
-        args = [f"table => '{s.table}'"]
-        args.append(f"use_caching => {'true' if s.use_caching else 'false'}")
-        if s.spec_id is not None:
-            args.append(f"spec_id => {s.spec_id}")
-        return f"CALL {catalog}.system.rewrite_manifests({', '.join(args)})"
+def build_call_statements(request: JobRequest) -> list[str]:
+    """Return one CALL statement per filter, or one whole-table CALL."""
+    if request.operation not in OPERATIONS:
+        raise ValueError(f"Unsupported operation: {request.operation}")
+    base = [f"table => {_table_literal(request)}", *_extra_args(request)]
+    filters = [f for f in request.where if f]
+    where_args = [[f"where => {sql_literal(f)}"] for f in filters] or [[]]
+    catalog = _quote_identifier(request.catalog)
+    return [f"CALL {catalog}.system.{request.operation}({', '.join([*base, *w])})" for w in where_args]

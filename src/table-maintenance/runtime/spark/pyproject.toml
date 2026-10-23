@@ -5,7 +5,14 @@ description = "Spark runtime for Iceberg table maintenance (expire_snapshots, re
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "pydantic>=2.12.5",
-    "pydantic-settings>=2.0",
     "pyspark>=4.1.1",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
