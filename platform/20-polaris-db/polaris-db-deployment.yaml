@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: polaris-db
-  namespace: polaris
+  namespace: lakehouse-catalog
   labels:
     app: polaris-db
 spec:

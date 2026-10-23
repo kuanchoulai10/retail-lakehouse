@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: polaris-create-catalog
-  namespace: polaris
+  namespace: lakehouse-catalog
 spec:
   backoffLimit: 3
   template:
@@ -13,7 +13,7 @@ spec:
           image: curlimages/curl:8.10.1
           env:
             - name: POLARIS_URL
-              value: http://polaris.polaris.svc.cluster.local:8181
+              value: http://polaris.lakehouse-catalog.svc.cluster.local:8181
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:

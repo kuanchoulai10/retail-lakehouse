@@ -21,17 +21,17 @@ Before deploying, create the two Kubernetes secrets that Polaris needs:
 
 ```bash
 # 1. MinIO credentials for vended credentials issuance
-kubectl create namespace polaris --context mini
+kubectl create namespace lakehouse-catalog --context mini
 kubectl create secret generic polaris-storage-secret \
   --from-literal=awsAccessKeyId=minio_user \
   --from-literal=awsSecretAccessKey=minio_password \
-  -n polaris --context mini
+  -n lakehouse-catalog --context mini
 
 # 2. Bootstrap credentials for the initial admin principal
 #    Format: <realm>,<username>,<password>
 kubectl create secret generic polaris-bootstrap-secret \
   --from-literal=credentials="POLARIS,root,secret" \
-  -n polaris --context mini
+  -n lakehouse-catalog --context mini
 ```
 
 !!! info "什麼是 Bootstrap Credentials"
@@ -231,7 +231,7 @@ bash 21-polaris/install.sh
 
 The installation script performs these steps:
 
-1. Create the `polaris` namespace
+1. Create the `lakehouse-catalog` namespace
 2. Create `polaris-storage-secret` with MinIO credentials
 3. Create `polaris-bootstrap-secret` with bootstrap credentials
 4. Deploy Polaris via Helm using the direct `.tgz` URL
@@ -247,7 +247,7 @@ The installation script performs these steps:
 Check that the pod is running:
 
 ```bash
-kubectl get all -n polaris --context mini
+kubectl get all -n lakehouse-catalog --context mini
 ```
 
 ??? info "Result"
@@ -266,7 +266,7 @@ kubectl get all -n polaris --context mini
 Check the health endpoint:
 
 ```bash
-kubectl port-forward svc/polaris-mgmt 8182:8182 -n polaris --context mini &
+kubectl port-forward svc/polaris-mgmt 8182:8182 -n lakehouse-catalog --context mini &
 curl http://localhost:8182/q/health
 ```
 
@@ -287,7 +287,7 @@ curl http://localhost:8182/q/health
 Check the startup logs to confirm bootstrap credentials were applied:
 
 ```bash
-kubectl logs -l app.kubernetes.io/name=polaris -n polaris --context mini
+kubectl logs -l app.kubernetes.io/name=polaris -n lakehouse-catalog --context mini
 ```
 
 If `POLARIS_BOOTSTRAP_CREDENTIALS` was set correctly, you will see:
@@ -320,5 +320,5 @@ realm: POLARIS root principal credentials: b65181da2cd9dba7:5bc240fcb49f808f94be
 
 ```bash
 bash 21-polaris/uninstall.sh
-kubectl delete namespace polaris --context mini
+kubectl delete namespace lakehouse-catalog --context mini
 ```

@@ -2,7 +2,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: polaris-db
-  namespace: polaris
+  namespace: lakehouse-catalog
   labels:
     app: polaris-db
 spec:

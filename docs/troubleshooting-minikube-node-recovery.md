@@ -215,7 +215,7 @@ kubectl get pods -A
     Polaris 預設使用 in-memory persistence。Pod 重啟後，所有 catalog metadata（catalog 定義、namespaces、tables）都會消失。需要重新執行 Polaris 的初始化設定腳本，建立 catalog 和授權規則。
 
     ```bash
-    kubectl get pods -n polaris
+    kubectl get pods -n lakehouse-catalog
     # 確認 polaris pod 是 Running 後，重新執行初始化
     bash 21-polaris/setup.sh
     ```

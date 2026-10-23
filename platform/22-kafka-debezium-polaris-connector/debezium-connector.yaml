@@ -9,7 +9,7 @@ spec:
   tasksMax: 1
   config:
     tasks.max: 1
-    database.hostname: polaris-db.polaris.svc.cluster.local
+    database.hostname: polaris-db.lakehouse-catalog.svc.cluster.local
     database.port: 5432
     database.user: ${secrets:kafka/polaris-cdc-secret:username}
     database.password: ${secrets:kafka/polaris-cdc-secret:password}

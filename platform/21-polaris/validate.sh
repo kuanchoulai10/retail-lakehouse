@@ -10,12 +10,12 @@ log::on_success "Polaris is ready"
 log::on_failure "Polaris is not ready"
 
 kubectl rollout status deployment/polaris \
-  --namespace polaris \
+  --namespace lakehouse-catalog \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
 kubectl wait \
   --for=condition=complete job/polaris-create-catalog \
-  --namespace polaris \
+  --namespace lakehouse-catalog \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"

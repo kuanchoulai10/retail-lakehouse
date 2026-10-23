@@ -11,7 +11,7 @@ log::on_success "PostgreSQL for Polaris deployed"
 log::on_failure "PostgreSQL for Polaris deployment failed"
 
 # Create namespace if not exists (idempotent)
-kubectl create namespace polaris \
+kubectl create namespace lakehouse-catalog \
   --dry-run=client \
   -o yaml \
   | kubectl apply \

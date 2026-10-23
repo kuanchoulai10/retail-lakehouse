@@ -22,7 +22,7 @@ Polaris exposes two distinct APIs on two distinct ports. Understanding which API
 All examples in this article use a local port-forward. Run this before executing any `curl` commands:
 
 ```bash
-kubectl port-forward svc/polaris 8181:8181 -n polaris --context mini &
+kubectl port-forward svc/polaris 8181:8181 -n lakehouse-catalog --context mini &
 ```
 
 ## Authentication

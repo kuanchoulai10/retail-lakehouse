@@ -21,7 +21,7 @@ spec:
     # iceberg.tables.default-id-columns # TODO
     iceberg.catalog: retail
     iceberg.catalog.type: rest
-    iceberg.catalog.uri: http://polaris.polaris.svc.cluster.local:8181/api/catalog
+    iceberg.catalog.uri: http://polaris.lakehouse-catalog.svc.cluster.local:8181/api/catalog
     iceberg.catalog.warehouse: iceberg
     iceberg.catalog.credential: root:secret
     iceberg.catalog.scope: PRINCIPAL_ROLE:ALL

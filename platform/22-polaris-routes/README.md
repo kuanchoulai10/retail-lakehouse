@@ -2,7 +2,7 @@
 
 Installs the north-south routing layer for Polaris + table-maintenance-backend via a single Envoy-backed `Gateway` and two `HTTPRoute`s. External clients hit the ingress on port 80; requests matching `/v1/*` reach the table-maintenance backend, and everything else falls through to Polaris.
 
-Service-to-service (east-west) traffic — for example the backend calling Polaris — does NOT go through this Gateway. In-cluster consumers use Service DNS directly (e.g. `polaris.polaris.svc.cluster.local:8181`).
+Service-to-service (east-west) traffic — for example the backend calling Polaris — does NOT go through this Gateway. In-cluster consumers use Service DNS directly (e.g. `polaris.lakehouse-catalog.svc.cluster.local:8181`).
 
 ## Deployed Resources
 

@@ -12,18 +12,18 @@ log::on_failure "Debezium Polaris connector deployment failed"
 
 POLARIS_DB_POD=$(kubectl get pod \
   --selector app=polaris-db \
-  --namespace polaris \
+  --namespace lakehouse-catalog \
   --output jsonpath='{.items[0].metadata.name}' \
   --context "${KUBE_CONTEXT}")
 
 kubectl exec "$POLARIS_DB_POD" \
-  --namespace polaris \
+  --namespace lakehouse-catalog \
   --context "${KUBE_CONTEXT}" \
   -- psql -U polaris -d polaris -tAc \
     "SELECT 1 FROM pg_publication WHERE pubname = 'polaris_cdc'" \
   | grep -q 1 \
   || kubectl exec "$POLARIS_DB_POD" \
-       --namespace polaris \
+       --namespace lakehouse-catalog \
        --context "${KUBE_CONTEXT}" \
        -- psql -U polaris -d polaris -c \
          "CREATE PUBLICATION polaris_cdc FOR TABLE polaris_schema.commit_metrics_report;"

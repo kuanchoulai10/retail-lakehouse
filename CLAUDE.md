@@ -39,7 +39,7 @@ Respond in the same language as the user's message. The user typically communica
 1. `mysql`: `kafka-cdc` → `ecommerce-app` (done)
 2. `kafka-cdc` → `kafka` (done)
 3. `minio` → `object-storage` (done)
-4. `polaris` → `lakehouse-catalog`
+4. `polaris` → `lakehouse-catalog` (done)
 5. `trino` → `lakehouse-query-engine`
 6. New wave `platform/25-lakehouse-control-plane` creates the `lakehouse-control-plane` + `lakehouse-maintenance-operations` namespaces (namespace only for now). The current `25-table-maintenance` / `25-tbl-maint-*` dirs will later be consolidated into it.
 7. New wave `platform/20-temporal` creates the `temporal` namespace (namespace only for now; Temporal itself deploys here later).
