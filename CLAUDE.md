@@ -30,7 +30,7 @@ Respond in the same language as the user's message. The user typically communica
 - Wave 23: Trino, Kafka UI
 
 **Not deployed / on hold (do not touch unless the user re-opens them):**
-- `platform/25-*` + `src/table-maintenance` (table maintenance: backend / scheduler / db); not wired into `tasks/apps.yml`
+- `platform/25-table-maintenance` + `platform/25-tbl-maint-*` + `src/table-maintenance` (table maintenance: backend / scheduler / db); not wired into `tasks/apps.yml`
 - `platform/30-thanos`
 - `platform/24-e2e-validation`
 - ArgoCD path (`platform/00-argocd`, `01-argocd-health-checks`, `02-argocd-apps`, `charts/app-of-apps`)
@@ -41,11 +41,11 @@ Respond in the same language as the user's message. The user typically communica
 3. `minio` → `object-storage`
 4. `polaris` → `lakehouse-catalog`
 5. `trino` → `lakehouse-query-engine`
-6. New wave `platform/25-lakehouse-control-plane` creates the `lakehouse-control-plane` + `lakehouse-maintenance-operations` namespaces (namespace only for now). The current `25-*` table-maintenance dirs will later be consolidated into it.
+6. New wave `platform/25-lakehouse-control-plane` creates the `lakehouse-control-plane` + `lakehouse-maintenance-operations` namespaces (namespace only for now). The current `25-table-maintenance` / `25-tbl-maint-*` dirs will later be consolidated into it.
 7. New wave `platform/20-temporal` creates the `temporal` namespace (namespace only for now; Temporal itself deploys here later).
+8. Full `task offboard` + `task onboard KUBE_CONTEXT=retail-lakehouse` end-to-end run
 
 New namespaces are **not** labeled `istio.io/dataplane-mode=ambient` (no namespace is enrolled in the ambient mesh yet).
-8. Full `task offboard` + `task onboard KUBE_CONTEXT=retail-lakehouse` end-to-end run
 
 ## Platform (Infra)
 

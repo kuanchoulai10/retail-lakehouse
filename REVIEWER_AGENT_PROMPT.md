@@ -16,7 +16,7 @@ Main session fills `{...}` placeholders and dispatches this after the developer 
 
 ## 審查重點
 
-1. **完整性**：用 grep 在 `platform/`、`tasks/`、`taskfile.yml`、`scripts/`、`docs/` 找有沒有漏改的舊 namespace／舊 DNS。下列刻意不改，不算漏改：`platform/25-*`、`src/table-maintenance`、`platform/30-thanos`、`platform/24-e2e-validation`、ArgoCD（`00/01/02-*`、`charts/app-of-apps`）、`.svg` 圖檔。
+1. **完整性**：用 grep 在 `platform/`、`tasks/`、`taskfile.yml`、`scripts/`、`docs/` 找有沒有漏改的舊 namespace／舊 DNS。下列刻意不改，不算漏改：`platform/25-table-maintenance`、`platform/25-tbl-maint-*`、`src/table-maintenance`、`platform/30-thanos`、`platform/24-e2e-validation`、ArgoCD（`00/01/02-*`、`charts/app-of-apps`）、`.svg` 圖檔。
 2. **範圍**：有沒有動到不該動的檔案，或做了 task 以外的修改。
 3. **正確性**：跨 namespace 的 DNS、connector 設定、catalog URI、HTTPRoute / ReferenceGrant 的引用是否正確；`bootstrap.sh` 是否 idempotent；`validate.sh` 有沒有檢查到新的 namespace。
 4. **可重現性**：從零跑 `bootstrap-by-scripts` 時，順序和依賴是否正確（最後會實際跑 `task offboard` + `task onboard`）。

@@ -21,7 +21,7 @@ Main session fills `{...}` placeholders and dispatches this to a **Sonnet** agen
 
 ## 範圍限制（絕對不可碰）
 
-- `platform/25-*`、`src/table-maintenance`（即使它們引用了舊 namespace，也保持原樣）
+- `platform/25-table-maintenance`、`platform/25-tbl-maint-*`、`src/table-maintenance`（即使它們引用了舊 namespace，也保持原樣）
 - `platform/30-thanos`、`platform/24-e2e-validation`
 - `platform/00-argocd`、`platform/01-argocd-health-checks`、`platform/02-argocd-apps`、`charts/app-of-apps`
 - 不要跑 `task onboard` / `task offboard`，不要重建整個 cluster
