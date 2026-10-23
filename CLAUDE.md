@@ -10,6 +10,48 @@ Respond in the same language as the user's message. The user typically communica
 - Use `uv run` instead of bare `python`, `python3`, `pytest`, or `pip`. Example: `uv run --project src/table-maintenance/backend --directory src/table-maintenance/backend pytest -v`
 - The local minikube/dev cluster context is `retail-lakehouse`. Infra scripts (`*/bootstrap.sh`, `*/validate.sh`, `*/patch.sh`) require `KUBE_CONTEXT` to be set explicitly — there is no fallback (scripts fail fast with `KUBE_CONTEXT is required`). Always pass it when invoking Taskfile entries or running scripts directly, e.g. `task onboard KUBE_CONTEXT=retail-lakehouse`.
 
+## Project Status (snapshot 2026-10-23 — update as work lands)
+
+**What it is:** an Iceberg lakehouse platform on minikube plus a self-built Table Maintenance service (`src/table-maintenance`, DDD + Clean Architecture) that schedules Iceberg maintenance (compaction, snapshot expiry). Long-term vision: "GitHub for Data" DataOps SaaS.
+
+**Data flow:** MySQL →(Debezium CDC)→ Kafka →(Iceberg Sink)→ Iceberg on MinIO, catalog = Polaris → queried by Trino. Polaris metrics reports also stream back to Kafka via Debezium (Postgres).
+
+**History:**
+- 2025-06 ~ 09: Trino, Kafka/Debezium/Iceberg CDC pipeline, monitoring stack.
+- 2026-03 ~ 05: table-maintenance backend (API / scheduler / outbox messaging), naming conventions, import-linter layering.
+- 2026-05 ~ 07: Polaris 1.5.0 + metrics reporter CDC to Kafka; Kafka 1 → 3 brokers; Iceberg sink static-membership fix; Kafka UI; Istio ambient (istiod / CNI / ztunnel) + Gateway API with wave-22 Gateway + HTTPRoutes; table-maintenance manifests moved `default` → `polaris` ns. The "Polaris events via OTEL → Kafka" attempt was fully reverted.
+
+**Deployed on minikube** (via `bootstrap-by-scripts`):
+- Wave 10: cert-manager, kube-prometheus, Strimzi
+- Wave 11: KEDA, Spark Operator, OTel Operator, Istio base, Gateway API CRDs
+- Wave 12: istiod, istio-cni, ztunnel
+- Wave 20: Kafka (3 brokers), MinIO, MySQL, Polaris DB, Jaeger (trino / thanos)
+- Wave 21–22: Polaris, 3 KafkaConnectors (debezium-mysql, iceberg-sink, polaris-cdc), `platform-gateway` + HTTPRoutes
+- Wave 23: Trino, Kafka UI
+
+**Not deployed / on hold (do not touch unless the user re-opens them):**
+- `platform/25-*` + `src/table-maintenance` (table maintenance: backend / scheduler / db); not wired into `tasks/apps.yml`
+- `platform/30-thanos`
+- `platform/24-e2e-validation`
+- ArgoCD path (`platform/00-argocd`, `01-argocd-health-checks`, `02-argocd-apps`, `charts/app-of-apps`)
+
+**Current initiative: namespace re-layout** (one task at a time, each deployed + verified + committed on `main`; developer/reviewer agent prompts in `DEVELOPER_AGENT_PROMPT.md` / `REVIEWER_AGENT_PROMPT.md`):
+1. `mysql`: `kafka-cdc` → `ecommerce-app`
+2. `kafka-cdc` → `kafka`
+3. `minio` → `object-storage`
+4. `polaris` → `lakehouse-catalog`
+5. `trino` → `lakehouse-query-engine`
+6. Create empty `lakehouse-maintenance-operations`, `lakehouse-control-plane` namespaces (new wave)
+7. Create empty `temporal` namespace (new wave)
+8. Full `task offboard` + `task onboard KUBE_CONTEXT=retail-lakehouse` end-to-end run
+
+## Platform (Infra)
+
+- `platform/<NN>-<component>/` — each wave dir has `bootstrap.sh` + `validate.sh` (some `patch.sh`); the `NN` prefix is the deploy order.
+- `tasks/apps.yml` `bootstrap-by-scripts` / `validate` chain the waves; this is the active deploy path. `bootstrap-by-argocd` exists but is on hold.
+- `task onboard` / `task offboard` create / destroy the whole colima + minikube cluster and run all waves.
+- Kubernetes namespaces cannot be renamed: a "rename" means deploy into the new namespace, then delete the old one. Data loss on minikube is acceptable.
+
 ## Code Style
 
 - **One object per file.** Each Python file exports one primary class, enum, or function. If a file grows to contain multiple exported objects, split it.
@@ -59,7 +101,7 @@ backend/
 │   ├── port/outbound/       # Repository interfaces
 │   └── service/             # Use case implementations (application services)
 ├── base/                    # DDD shared kernel
-├── entrypoint.py            # ROLE env var → api, scheduler, or outbox-publisher
+├── entrypoint.py            # GLAC_COMPONENT env var → api, scheduler, or messaging
 └── tests/
 ```
 
@@ -72,7 +114,7 @@ backend/
 - **DTOs live in the adapter.** `JobApiRequest`/`JobApiResponse` are in `adapter/inbound/web/job/dto.py` with plain types (no domain enums).
 - **Use case results live in the application layer.** Services convert domain objects to application-layer result dataclasses so adapters never see domain types.
 - **Bootstrap** is the only layer allowed to import from all other layers. It is the composition root.
-- Architecture boundaries are enforced by `import-linter` (configured in `.importlinter`). Run `lint-imports` to verify.
+- Architecture boundaries are enforced by `import-linter` (configured in `src/table-maintenance/backend/.importlinter`). Run `lint-imports` to verify.
 - **Single image, triple component**: `GLAC_COMPONENT=api` (default), `GLAC_COMPONENT=scheduler`, or `GLAC_COMPONENT=messaging` via `entrypoint.py`.
 - **Unified settings**: All configuration via `GLAC_` prefixed env vars (pydantic-settings). Nested with `__` delimiter: `GLAC_SCHEDULER__INTERVAL_SECONDS=30`.
 
@@ -96,6 +138,8 @@ Shared kernel with zero external dependencies (stdlib only):
 - `Entity[ID]` — identity-based equality, `@dataclass(eq=False)`
 - `AggregateRoot[ID]` — Entity + domain event collection
 - `DomainEvent` — frozen dataclass with auto `occurred_at`
+- `EventHandler[E]` — ABC for handling one domain event type
+- `EventDispatcher` — concrete (non-subclassable) router from events to handlers
 - `Repository[E]` — generic persistence ABC
 - `Store` — infrastructure persistence (not aggregate)
 - `Gateway` — external system interaction
