@@ -55,8 +55,8 @@ class Repository[E: Entity](ABC):
         """Persist a new entity and return it."""
 
     @abstractmethod
-    def get(self, entity_id: EntityId) -> E:
-        """Retrieve an entity by its identifier."""
+    def get(self, entity_id: EntityId) -> E | None:
+        """Retrieve an entity by its identifier, or None when it does not exist."""
 
     @abstractmethod
     def list_all(self) -> list[E]:
