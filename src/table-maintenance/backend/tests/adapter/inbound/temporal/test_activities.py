@@ -213,6 +213,12 @@ def test_sync_passes_catalog_and_namespace():
     result = activities.sync_discovered_tables({"catalog": "iceberg", "namespace": "s"})
     assert sync.requests[0].catalog == "iceberg"
     assert sync.requests[0].namespace == "s"
-    assert result == {"registered": 1, "renamed": 2, "dropped": 3, "skipped": 4}
+    assert result == {
+        "registered": 1,
+        "renamed": 2,
+        "dropped": 3,
+        "skipped": 4,
+        "ensured": 0,
+    }
     activities.sync_discovered_tables({"catalog": "iceberg"})
     assert sync.requests[1].namespace is None

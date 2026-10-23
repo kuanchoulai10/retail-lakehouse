@@ -58,6 +58,10 @@ class ResumeManagedTableService(ResumeManagedTableUseCase):
             table.resume(self._clock())
             self._tables_repo.update(table)
         self._signal_gateway.send(
-            SendTableSignalGatewayInput(table_uuid=table.id.value, signal=SIGNAL_RESUME)
+            SendTableSignalGatewayInput(
+                table_uuid=table.id.value,
+                signal=SIGNAL_RESUME,
+                start_if_missing=table.needs_reconcile_workflow,
+            )
         )
         return ResumeManagedTableUseCaseOutput(**managed_table_output_fields(table))

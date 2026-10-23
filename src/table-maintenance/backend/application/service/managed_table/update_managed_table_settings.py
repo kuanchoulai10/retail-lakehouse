@@ -63,7 +63,9 @@ class UpdateManagedTableSettingsService(UpdateManagedTableSettingsUseCase):
             self._tables_repo.update(table)
         self._signal_gateway.send(
             SendTableSignalGatewayInput(
-                table_uuid=table.id.value, signal=SIGNAL_SETTINGS_CHANGED
+                table_uuid=table.id.value,
+                signal=SIGNAL_SETTINGS_CHANGED,
+                start_if_missing=table.needs_reconcile_workflow,
             )
         )
         return UpdateManagedTableSettingsUseCaseOutput(

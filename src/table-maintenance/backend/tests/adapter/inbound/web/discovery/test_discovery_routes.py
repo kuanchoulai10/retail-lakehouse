@@ -61,6 +61,7 @@ def test_scan_returns_202_with_counts() -> None:
         "renamed": 0,
         "dropped": 1,
         "skipped": 3,
+        "ensured": 0,
     }
     assert stub.requests == [
         SyncDiscoveredTablesUseCaseInput(catalog="iceberg", namespace="sales")

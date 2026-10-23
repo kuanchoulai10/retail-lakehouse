@@ -42,3 +42,4 @@ class ScanDiscoveryApiResponse(BaseModel):
     renamed: int
     dropped: int
     skipped: int
+    ensured: int

@@ -136,7 +136,9 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         if table.needs_reconcile_workflow:
             self._signal_gateway.send(
                 SendTableSignalGatewayInput(
-                    table_uuid=table.id.value, signal=SIGNAL_TABLE_UPDATED
+                    table_uuid=table.id.value,
+                    signal=SIGNAL_TABLE_UPDATED,
+                    start_if_missing=table.needs_reconcile_workflow,
                 )
             )
             if action == TableHintAction.IGNORED:

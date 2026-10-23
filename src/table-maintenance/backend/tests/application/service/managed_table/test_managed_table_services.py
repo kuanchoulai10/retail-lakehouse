@@ -188,7 +188,7 @@ def test_settings_update_signals_workflow(tables_repo, signals, clock, now):
     assert stored.settings.rewrite_data_files.min_reducible_files == 5
     assert out.settings["rewrite_data_files"]["min_reducible_files"] == 5
     assert [_signal(c) for c in signals.calls] == [
-        ("u-1", "settings_changed", {}, False)
+        ("u-1", "settings_changed", {}, True)
     ]
 
 
@@ -231,7 +231,7 @@ def test_pause_and_resume_signal_workflow(tables_repo, signals, clock, now):
     assert resumed.status == "active"
     assert [_signal(c) for c in signals.calls] == [
         ("u-1", "pause", {}, False),
-        ("u-1", "resume", {}, False),
+        ("u-1", "resume", {}, True),
     ]
 
 
@@ -571,3 +571,15 @@ def test_trigger_unknown_table(tables_repo, signals):
                 uuid="nope", operations=["rewrite_data_files"]
             )
         )
+
+
+def test_settings_update_on_paused_table_starts_workflow_if_missing(
+    tables_repo, signals, clock, now
+):
+    _active(tables_repo, now).pause(now)
+    UpdateManagedTableSettingsService(tables_repo, signals, clock=clock).execute(
+        UpdateManagedTableSettingsUseCaseInput(uuid="u-1", settings={})
+    )
+    assert [_signal(c) for c in signals.calls] == [
+        ("u-1", "settings_changed", {}, True)
+    ]

@@ -13,3 +13,4 @@ class SyncDiscoveredTablesUseCaseOutput:
     renamed: int
     dropped: int
     skipped: int
+    ensured: int = 0

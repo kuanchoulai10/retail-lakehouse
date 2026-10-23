@@ -5,7 +5,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.domain.model.maintenance.workflow_ids import SIGNAL_STOP
+from application.domain.model.maintenance.workflow_ids import (
+    SIGNAL_STOP,
+    SIGNAL_TABLE_UPDATED,
+)
 from application.domain.model.managed_table.table_name import TableName
 from application.domain.model.managed_table.table_status import TableStatus
 from application.domain.model.managed_table.table_uuid import TableUuid
@@ -29,7 +32,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
     from application.domain.model.discovery_rule.discovery_rule import DiscoveryRule
-
+    from application.domain.model.managed_table.managed_table import ManagedTable
     from application.port.outbound.catalog.read_catalog import (
         ReadCatalogGateway,
         ReadCatalogGatewayTable,
@@ -87,7 +90,10 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         New tables are registered only while discovery is enabled; renames always run.
         Only a catalog-wide sync (no namespace) marks missing tables dropped, since
         a namespace scan cannot tell a drop from a move. Known tables are never
-        re-decided, and a table that fails is counted in ``skipped``.
+        re-decided, and a table that fails is counted in ``skipped``. A
+        catalog-wide sync also signal-with-starts the reconcile workflow of every
+        known live table that needs one (counted in ``ensured``), so a table whose
+        workflow was never started, or was lost, is picked up again.
         """
         now = self._clock()
         enabled = self._discovery_settings_repo.get_settings().enabled
@@ -96,7 +102,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
             ReadCatalogGatewayListInput(request.catalog, request.namespace)
         )
         seen: set[str] = set()
-        registered = renamed = skipped = 0
+        registered = renamed = skipped = ensured = 0
         for ref in refs:
             found = self._catalog_gateway.load_table(ref)
             if found is None:
@@ -104,19 +110,25 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
             seen.add(found.table_uuid)
             try:
                 with translate_domain_errors():
-                    outcome = self._sync_table(found, enabled, rules, now)
+                    outcome, existing = self._sync_table(found, enabled, rules, now)
             except ConflictError, ValidationError, NotFoundError:
                 skipped += 1
                 continue
             registered += outcome == _REGISTERED
             renamed += outcome == _RENAMED
             skipped += outcome == _SKIPPED
+            if request.namespace is None and existing is not None:
+                ensured += self._ensure_workflow(existing)
         dropped = 0
         if request.namespace is None:
             with translate_domain_errors():
                 dropped = self._drop_missing(request, seen, now)
         return SyncDiscoveredTablesUseCaseOutput(
-            registered=registered, renamed=renamed, dropped=dropped, skipped=skipped
+            registered=registered,
+            renamed=renamed,
+            dropped=dropped,
+            skipped=skipped,
+            ensured=ensured,
         )
 
     def _sync_table(
@@ -125,11 +137,11 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         enabled: bool,
         rules: Sequence[DiscoveryRule],
         now: datetime,
-    ) -> str:
+    ) -> tuple[str, ManagedTable | None]:
         existing = self._tables_repo.get(TableUuid(found.table_uuid))
         if existing is None:
             if not enabled:
-                return ""
+                return "", None
             outcome = register_discovered_table(
                 found,
                 rules,
@@ -139,14 +151,27 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
                 now,
             )
             if outcome == RegistrationOutcome.REGISTERED:
-                return _REGISTERED
-            return _SKIPPED if outcome == RegistrationOutcome.SKIPPED else ""
+                return _REGISTERED, None
+            return (_SKIPPED if outcome == RegistrationOutcome.SKIPPED else ""), None
         name = TableName(found.catalog, found.namespace, found.table)
         if existing.status != TableStatus.DROPPED and existing.name != name:
             existing.rename(name, now)
             self._tables_repo.update(existing)
-            return _RENAMED
-        return ""
+            return _RENAMED, existing
+        return "", existing
+
+    def _ensure_workflow(self, table: ManagedTable) -> bool:
+        """Signal-with-start the table's workflow if it needs one (USE_EXISTING)."""
+        if not table.needs_reconcile_workflow:
+            return False
+        self._signal_gateway.send(
+            SendTableSignalGatewayInput(
+                table_uuid=table.id.value,
+                signal=SIGNAL_TABLE_UPDATED,
+                start_if_missing=True,
+            )
+        )
+        return True
 
     def _drop_missing(
         self,

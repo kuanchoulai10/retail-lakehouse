@@ -314,7 +314,7 @@ def test_sync_rename_keeps_settings(sync, tables_repo, catalog, signals, now):
         "iceberg", "sales", "new"
     )
     assert tables_repo.get(TableUuid("u-1")).settings == settings
-    assert signals.calls == []
+    assert _calls(signals) == [("u-1", "table_updated", True)]
 
 
 def test_sync_never_redecides_manual_tables(
@@ -380,7 +380,7 @@ def test_table_hint_for_registered_table_signals_table_updated(
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     out = hint.execute(_hint())
     assert out.action == "signalled"
-    assert _calls(signals) == [("u-1", "table_updated", False)]
+    assert _calls(signals) == [("u-1", "table_updated", True)]
 
 
 def test_table_hint_for_registered_paused_table_still_signals(
@@ -433,7 +433,7 @@ def test_table_hint_for_registered_table_signals_but_cooldown_blocks_replan(
         catalog.add_table("iceberg", "sales", name, uuid)
         catalog.observations[("iceberg", "sales", name)] = _busy_observation(uuid)
     assert hint.execute(_hint()).action == "signalled"
-    assert _calls(signals) == [("u-1", "table_updated", False)]
+    assert _calls(signals) == [("u-1", "table_updated", True)]
     planner = PlanTableMaintenanceService(tables_repo, catalog)
     blocked = planner.execute(PlanTableMaintenanceUseCaseInput("u-1", now))
     assert (blocked.status, blocked.operations) == ("planned", [])
@@ -449,7 +449,7 @@ def test_table_hint_with_new_name_renames_then_signals(
     out = hint.execute(_hint())
     assert out.action == "renamed"
     assert tables_repo.get(TableUuid("u-1")).name.table == "orders"
-    assert _calls(signals) == [("u-1", "table_updated", False)]
+    assert _calls(signals) == [("u-1", "table_updated", True)]
 
 
 def test_table_hint_registers_unregistered_table_by_rules(
@@ -538,3 +538,104 @@ def test_table_hint_persists_rename(hint, tables_repo, catalog, log, now):
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     hint.execute(_hint())
     assert log == [("tables.update", "u-1")]
+
+
+# --- reconcile workflow is (re-)ensured ---
+
+
+def _fail_first_send(signals, monkeypatch):
+    original = signals.send
+    failed: list[bool] = []
+
+    def send(input):  # noqa: A002
+        if not failed:
+            failed.append(True)
+            raise RuntimeError("temporal unavailable")
+        original(input)
+
+    monkeypatch.setattr(signals, "send", send)
+
+
+def test_sync_retry_after_failed_start_still_starts_workflow(
+    sync, tables_repo, rules_repo, template, catalog, signals, now, monkeypatch
+):
+    _include_all(rules_repo, now)
+    catalog.add_table("iceberg", "sales", "orders", "u-1")
+    _fail_first_send(signals, monkeypatch)
+    with pytest.raises(RuntimeError):
+        sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
+    assert tables_repo.get(TableUuid("u-1")) is not None
+    out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
+    assert (out.registered, out.ensured) == (0, 1)
+    assert _calls(signals) == [("u-1", "table_updated", True)]
+
+
+def test_sync_reensures_workflow_of_every_live_table_that_needs_one(
+    sync, tables_repo, catalog, signals, now
+):
+    _row(tables_repo, now, "u-active", TableName("iceberg", "sales", "a"))
+    _row(tables_repo, now, "u-paused", TableName("iceberg", "sales", "p")).pause(now)
+    tables_repo.create(
+        ManagedTable.exclude_manual(
+            TableUuid("u-excluded"), TableName("iceberg", "sales", "x"), now
+        )
+    )
+    _row(
+        tables_repo, now, "u-dropped", TableName("iceberg", "sales", "d")
+    ).mark_dropped(now)
+    for uuid, name in (
+        ("u-active", "a"),
+        ("u-paused", "p"),
+        ("u-excluded", "x"),
+        ("u-dropped", "d"),
+    ):
+        catalog.add_table("iceberg", "sales", name, uuid)
+    out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
+    assert out.ensured == 2
+    assert sorted(_calls(signals)) == [
+        ("u-active", "table_updated", True),
+        ("u-paused", "table_updated", True),
+    ]
+
+
+def test_sync_reensures_renamed_table(sync, tables_repo, catalog, signals, now):
+    _row(tables_repo, now, "u-1", TableName("iceberg", "sales", "old"))
+    catalog.add_table("iceberg", "sales", "new", "u-1")
+    out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
+    assert (out.renamed, out.ensured) == (1, 1)
+    assert _calls(signals) == [("u-1", "table_updated", True)]
+
+
+def test_sync_does_not_reensure_freshly_registered_table_twice(
+    sync, rules_repo, template, catalog, signals, now
+):
+    _include_all(rules_repo, now)
+    catalog.add_table("iceberg", "sales", "orders", "u-1")
+    out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
+    assert (out.registered, out.ensured) == (1, 0)
+    assert _calls(signals) == [("u-1", "resume", True)]
+
+
+def test_sync_namespace_scope_does_not_reensure(
+    sync, tables_repo, catalog, signals, now
+):
+    _row(tables_repo, now, "u-1", TableName("iceberg", "sales", "orders"))
+    catalog.add_table("iceberg", "sales", "orders", "u-1")
+    out = sync.execute(
+        SyncDiscoveredTablesUseCaseInput(catalog="iceberg", namespace="sales")
+    )
+    assert out.ensured == 0
+    assert signals.calls == []
+
+
+def test_table_hint_retry_after_failed_start_still_starts_workflow(
+    hint, tables_repo, rules_repo, template, catalog, signals, now, monkeypatch
+):
+    _include_all(rules_repo, now)
+    catalog.add_table("iceberg", "sales", "orders", "u-1")
+    _fail_first_send(signals, monkeypatch)
+    with pytest.raises(RuntimeError):
+        hint.execute(_hint())
+    assert tables_repo.get(TableUuid("u-1")) is not None
+    assert hint.execute(_hint()).action == "signalled"
+    assert _calls(signals) == [("u-1", "table_updated", True)]
