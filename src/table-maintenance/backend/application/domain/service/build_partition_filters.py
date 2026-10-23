@@ -48,10 +48,11 @@ def build_partition_filters(
             raise ValueError(f"Unknown partition spec id {partition.spec_id}")
         grouped[partition.spec_id].append(partition)
 
+    quoted_catalog = "`" + catalog.replace("`", "``") + "`"
     return tuple(
         SpecFilter(
             spec_id,
-            _spec_where(catalog, specs_by_id[spec_id], grouped[spec_id]),
+            _spec_where(quoted_catalog, specs_by_id[spec_id], grouped[spec_id]),
         )
         for spec_id in sorted(grouped)
     )
@@ -73,7 +74,7 @@ def _spec_where(
         if not terms:
             return ""
         clauses.append("(" + " AND ".join(terms) + ")")
-    return " OR ".join(clauses)
+    return " OR ".join(sorted(set(clauses)))
 
 
 def _field_terms(catalog: str, field: PartitionFieldInfo, value: _Value) -> list[str]:
@@ -111,7 +112,10 @@ def _time_terms(
         render = _date_literal_from_datetime
     elif source_type in ("timestamp", "timestamptz"):
         start, end = _period_bounds(transform, number)
-        render = _timestamp_literal_from_datetime
+
+        def render(moment: datetime) -> str:
+            return _timestamp_literal(source_type, moment)
+
     else:
         raise ValueError(
             f"Time transform {transform!r} on unsupported type {source_type!r}"
@@ -171,7 +175,8 @@ def _literal(source_type: str, value: _Value) -> str:
     if source_type == "string":
         if not isinstance(value, str):
             raise ValueError(f"Expected a string, got {value!r}")
-        return "'" + value.replace("'", "''") + "'"
+        escaped = value.replace("\\", "\\\\").replace("'", "\\'")
+        return f"'{escaped}'"
     if source_type == "boolean":
         if not isinstance(value, bool):
             raise ValueError(f"Expected a boolean, got {value!r}")
@@ -179,8 +184,8 @@ def _literal(source_type: str, value: _Value) -> str:
     if source_type == "date":
         return _date_literal_from_datetime(_EPOCH + timedelta(days=_as_int(value)))
     if source_type in ("timestamp", "timestamptz"):
-        return _timestamp_literal_from_datetime(
-            _EPOCH + timedelta(microseconds=_as_int(value))
+        return _timestamp_literal(
+            source_type, _EPOCH + timedelta(microseconds=_as_int(value))
         )
     raise ValueError(f"Unsupported partition source type {source_type!r}")
 
@@ -189,8 +194,11 @@ def _date_literal_from_datetime(moment: datetime) -> str:
     return f"DATE '{date(moment.year, moment.month, moment.day).isoformat()}'"
 
 
-def _timestamp_literal_from_datetime(moment: datetime) -> str:
-    return f"TIMESTAMP '{moment.strftime('%Y-%m-%d %H:%M:%S.%f')}'"
+def _timestamp_literal(source_type: str, moment: datetime) -> str:
+    text = moment.strftime("%Y-%m-%d %H:%M:%S.%f")
+    if source_type == "timestamptz":
+        return f"TIMESTAMP '{text}+00:00'"
+    return f"TIMESTAMP_NTZ '{text}'"
 
 
 def _as_int(value: _Value) -> int:
