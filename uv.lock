@@ -2305,9 +2305,11 @@ dependencies = [
     { name = "kubernetes" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pyarrow" },
+    { name = "pydantic-settings" },
     { name = "pyiceberg" },
     { name = "sqlalchemy" },
     { name = "temporalio" },
+    { name = "uvicorn", extra = ["standard"] },
 ]
 
 [package.dev-dependencies]
@@ -2327,9 +2329,11 @@ requires-dist = [
     { name = "kubernetes", specifier = ">=32.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
     { name = "pyarrow", specifier = ">=18" },
+    { name = "pydantic-settings", specifier = ">=2.6" },
     { name = "pyiceberg", specifier = ">=0.9" },
     { name = "sqlalchemy", specifier = ">=2.0" },
     { name = "temporalio", specifier = ">=1.8" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
 ]
 
 [package.metadata.requires-dev]

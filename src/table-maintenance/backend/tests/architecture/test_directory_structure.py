@@ -40,7 +40,7 @@ class TestDirectoryStructure:
 
     @pytest.mark.parametrize(
         "subdir",
-        ["bootstrap/configs", "bootstrap/dependencies"],
+        ["bootstrap/configs", "bootstrap/container"],
     )
     def test_bootstrap_subdirectories_exist(self, subdir: str):
         assert (BACKEND / subdir).is_dir(), f"Missing bootstrap subdirectory: {subdir}/"
@@ -52,3 +52,7 @@ class TestDirectoryStructure:
                 f"{stale}/ should not exist at top level — "
                 f"moved to adapter/inbound/ or bootstrap/"
             )
+
+    def test_no_bootstrap_dependencies_directory(self):
+        """Composition lives in bootstrap/container; the old providers are gone."""
+        assert not list((BACKEND / "bootstrap" / "dependencies").glob("*.py"))

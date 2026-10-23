@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from bootstrap.configs.component import Component
-from bootstrap.dependencies.settings import get_settings
+from bootstrap.configs import Component, get_settings
 
 
 def main() -> None:
