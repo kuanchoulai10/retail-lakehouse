@@ -28,6 +28,7 @@ Respond in the same language as the user's message. The user typically communica
 - Wave 20: Kafka (3 brokers), MinIO, MySQL, Polaris DB, Jaeger (trino / thanos)
 - Wave 21–22: Polaris, 3 KafkaConnectors (debezium-mysql, iceberg-sink, polaris-cdc), `platform-gateway` + HTTPRoutes
 - Wave 23: Trino, Kafka UI
+- Wave 25: lakehouse-control-plane (namespaces `lakehouse-control-plane`, `lakehouse-maintenance-operations`; no components yet)
 
 **Not deployed / on hold (do not touch unless the user re-opens them):**
 - `platform/25-table-maintenance` + `platform/25-tbl-maint-*` + `src/table-maintenance` (table maintenance: backend / scheduler / db); not wired into `tasks/apps.yml`
@@ -41,7 +42,7 @@ Respond in the same language as the user's message. The user typically communica
 3. `minio` → `object-storage` (done)
 4. `polaris` → `lakehouse-catalog` (done)
 5. `trino` → `lakehouse-query-engine` (done)
-6. New wave `platform/25-lakehouse-control-plane` creates the `lakehouse-control-plane` + `lakehouse-maintenance-operations` namespaces (namespace only for now). The current `25-table-maintenance` / `25-tbl-maint-*` dirs will later be consolidated into it.
+6. New wave `platform/25-lakehouse-control-plane` creates the `lakehouse-control-plane` + `lakehouse-maintenance-operations` namespaces (namespace only for now). The current `25-table-maintenance` / `25-tbl-maint-*` dirs will later be consolidated into it. (done)
 7. New wave `platform/20-temporal` creates the `temporal` namespace (namespace only for now; Temporal itself deploys here later).
 8. Full `task offboard` + `task onboard KUBE_CONTEXT=retail-lakehouse` end-to-end run
 
