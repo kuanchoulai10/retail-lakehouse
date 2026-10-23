@@ -30,7 +30,7 @@ Namespace: lakehouse-catalog
 
 ## Sync Wave
 
-Wave 21 — depends on RustFS (wave 20, S3 storage) and polaris-db (wave 20, catalog persistence). Deploys in parallel with the Debezium CDC connector. The Iceberg Kafka connector (wave 22) and Trino (wave 23) depend on Polaris being ready.
+Wave 21 — depends on RustFS (wave 20, S3 storage) and polaris-db (wave 20, catalog persistence). The Iceberg Kafka connector (wave 22) and Trino (wave 23) depend on Polaris being ready.
 
 ## Prerequisites
 

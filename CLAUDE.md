@@ -14,19 +14,19 @@ Respond in the same language as the user's message. The user typically communica
 
 **What it is:** an Iceberg lakehouse platform on minikube plus a self-built Table Maintenance service (`src/table-maintenance`, DDD + Clean Architecture) that schedules Iceberg maintenance (compaction, snapshot expiry). Long-term vision: "GitHub for Data" DataOps SaaS.
 
-**Data flow:** MySQL →(Debezium CDC)→ Kafka →(Iceberg Sink)→ Iceberg on RustFS, catalog = Polaris → queried by Trino. Polaris metrics reports also stream back to Kafka via Debezium (Postgres).
+**Data flow:** MySQL →(Debezium CDC)→ Kafka →(Iceberg Sink)→ Iceberg on RustFS, catalog = Polaris → queried by Trino.
 
 **History:**
 - 2025-06 ~ 09: Trino, Kafka/Debezium/Iceberg CDC pipeline, monitoring stack.
 - 2026-03 ~ 05: table-maintenance backend (API / scheduler / outbox messaging), naming conventions, import-linter layering.
-- 2026-05 ~ 07: Polaris 1.5.0 + metrics reporter CDC to Kafka; Kafka 1 → 3 brokers; Iceberg sink static-membership fix; Kafka UI; Istio ambient (istiod / CNI / ztunnel) + Gateway API with wave-22 Gateway + HTTPRoutes; table-maintenance manifests moved `default` → `polaris` ns. The "Polaris events via OTEL → Kafka" attempt was fully reverted.
+- 2026-05 ~ 07: Polaris 1.5.0 + metrics reporter CDC to Kafka (removed in T10); Kafka 1 → 3 brokers; Iceberg sink static-membership fix; Kafka UI; Istio ambient (istiod / CNI / ztunnel) + Gateway API with wave-22 Gateway + HTTPRoutes; table-maintenance manifests moved `default` → `polaris` ns. The "Polaris events via OTEL → Kafka" attempt was fully reverted.
 
 **Deployed on minikube** (via `bootstrap-by-scripts`):
 - Wave 10: cert-manager, kube-prometheus, Strimzi
 - Wave 11: KEDA, Spark Operator, OTel Operator, Istio base, Gateway API CRDs
 - Wave 12: istiod, istio-cni, ztunnel
 - Wave 20: Kafka (3 brokers), RustFS, MySQL, Polaris DB, Jaeger (trino / thanos), temporal (namespace only)
-- Wave 21–22: Polaris, 3 KafkaConnectors (debezium-mysql, iceberg-sink, polaris-cdc), `platform-gateway` + HTTPRoutes
+- Wave 21–22: Polaris, 2 KafkaConnectors (debezium-mysql, iceberg-sink), `platform-gateway` + HTTPRoutes
 - Wave 23: Trino, Kafka UI
 - Wave 25: lakehouse-control-plane (namespaces `lakehouse-control-plane`, `lakehouse-maintenance-operations`; no components yet)
 
@@ -47,6 +47,11 @@ Respond in the same language as the user's message. The user typically communica
    - 7.5: Replace Docker-Hub-removed minio/minio + minio/mc images with pinned pgsty/silo + pgsty/mc (done)
 8. Full `task offboard` + `task onboard KUBE_CONTEXT=retail-lakehouse` end-to-end run (done; surfaced and fixed missing `istio-ingress` namespace in `22-polaris-routes`)
 9. Replace pgsty Silo with RustFS: wave `20-minio` → `20-rustfs`, Service `rustfs` (S3 :9000), `rustfs-console`, image `rustfs/rustfs:1.0.3` (done; clean `offboard` + `onboard` passed in one run on 2026-10-23, CDC → Iceberg → Trino verified)
+
+**Next initiative: Polaris events via OpenTelemetry** (replaces the removed Polaris DB CDC):
+- T10: Remove Polaris DB CDC (Debezium Postgres connector wave `22-kafka-debezium-polaris-connector`, its Kafka topics / replication slot / publication, `wal_level=logical` on polaris-db, Kafka UI entry) (done)
+- T11: Upgrade Polaris to 1.8.0
+- T12: Add the Polaris OpenTelemetry event listener
 
 **Known follow-ups:**
 - On-hold waves still reference pre-rename names (`minio-api.minio.svc`, `kafka-cdc`, `polaris`, `platform/20-minio`): `30-thanos`, `24-e2e-validation`, `25-table-maintenance` / `25-tbl-maint-*`, `src/table-maintenance`, `charts/app-of-apps`. Fix when those are re-opened.

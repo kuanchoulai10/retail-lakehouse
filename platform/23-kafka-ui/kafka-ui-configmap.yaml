@@ -12,8 +12,6 @@ data:
           kafkaConnect:
             - name: debezium-connect-cluster
               address: http://debezium-connect-cluster-connect-api.kafka.svc.cluster.local:8083
-            - name: polaris-cdc-connect-cluster
-              address: http://polaris-cdc-connect-cluster-connect-api.kafka.svc.cluster.local:8083
             - name: iceberg-connect-cluster
               address: http://iceberg-connect-cluster-connect-api.kafka.svc.cluster.local:8083
     auth:

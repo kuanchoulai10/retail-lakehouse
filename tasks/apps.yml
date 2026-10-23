@@ -64,7 +64,6 @@ tasks:
       - TIMEOUT=10s bash platform/20-temporal/validate.sh
       - TIMEOUT=10s bash platform/21-polaris/validate.sh
       - TIMEOUT=10s bash platform/21-kafka-debezium-mysql-connector/validate.sh
-      - TIMEOUT=10s bash platform/22-kafka-debezium-polaris-connector/validate.sh
       - TIMEOUT=10s bash platform/22-kafka-iceberg-connector/validate.sh
       - TIMEOUT=10s bash platform/22-polaris-routes/validate.sh
       - TIMEOUT=10s bash platform/23-kafka-ui/validate.sh
@@ -111,8 +110,6 @@ tasks:
       - bash platform/21-polaris/validate.sh
       - bash platform/21-kafka-debezium-mysql-connector/bootstrap.sh
       - bash platform/21-kafka-debezium-mysql-connector/validate.sh
-      - bash platform/22-kafka-debezium-polaris-connector/bootstrap.sh
-      - bash platform/22-kafka-debezium-polaris-connector/validate.sh
       - bash platform/22-kafka-iceberg-connector/bootstrap.sh
       - bash platform/22-kafka-iceberg-connector/validate.sh
       - bash platform/22-polaris-routes/bootstrap.sh
@@ -178,9 +175,6 @@ tasks:
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       - task: validate-kafka-debezium-mysql-connector
-        vars:
-          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
-      - task: validate-kafka-debezium-polaris-connector
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       - task: validate-kafka-iceberg-connector
@@ -288,13 +282,6 @@ tasks:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
       - bash platform/21-kafka-debezium-mysql-connector/validate.sh
-
-  validate-kafka-debezium-polaris-connector:
-    internal: true
-    env:
-      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
-    cmds:
-      - bash platform/22-kafka-debezium-polaris-connector/validate.sh
 
   validate-kafka-iceberg-connector:
     internal: true
