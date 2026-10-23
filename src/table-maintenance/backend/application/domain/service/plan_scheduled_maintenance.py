@@ -101,16 +101,11 @@ def _manifests_due(
     settings: MaintenanceSettings, observation: TableObservation
 ) -> bool:
     cfg = settings.rewrite_manifests
-    if cfg.small_manifest_bytes is not None:
-        threshold = cfg.small_manifest_bytes
-    elif MANIFEST_TARGET_SIZE_PROPERTY in observation.properties:
-        threshold = positive_int_property(
-            observation.properties, MANIFEST_TARGET_SIZE_PROPERTY
-        )
-    else:
-        threshold = None
-    if threshold is None:
-        threshold = DEFAULT_SMALL_MANIFEST_BYTES
+    threshold = (
+        cfg.small_manifest_bytes
+        or positive_int_property(observation.properties, MANIFEST_TARGET_SIZE_PROPERTY)
+        or DEFAULT_SMALL_MANIFEST_BYTES
+    )
     small = sum(1 for m in observation.manifests if m.length_bytes < threshold)
     return small >= cfg.min_small_manifests
 

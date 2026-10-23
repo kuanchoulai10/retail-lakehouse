@@ -301,13 +301,20 @@ def test_table_scope_sum_equal_to_threshold_is_planned():
 
 def test_malformed_target_file_size_property_falls_back_to_default():
     s = compact_only()
+    ten_files_5gib = (PartitionStats(0, (1,), 10, 0, 0, 5 * 1024 * MIB),)
     for bad in ("abc", "0", "-5"):
         o = obs(
             properties={"write.target-file-size-bytes": bad},
-            partitions=(part(10),),
+            partitions=ten_files_5gib,
         )
-        plan = plan_scheduled_maintenance(table(s), o, NOW)
-        assert ops(plan) == [Op.REWRITE_DATA_FILES]
+        assert plan_scheduled_maintenance(table(s), o, NOW).is_empty
+    valid = obs(
+        properties={"write.target-file-size-bytes": str(500 * 1024 * 1024 * 1024)},
+        partitions=ten_files_5gib,
+    )
+    assert ops(plan_scheduled_maintenance(table(s), valid, NOW)) == [
+        Op.REWRITE_DATA_FILES
+    ]
 
 
 def test_malformed_manifest_size_property_falls_back_to_default():
