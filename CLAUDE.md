@@ -45,7 +45,7 @@ Respond in the same language as the user's message. The user typically communica
 6. New wave `platform/25-lakehouse-control-plane` creates the `lakehouse-control-plane` + `lakehouse-maintenance-operations` namespaces (namespace only for now). The current `25-table-maintenance` / `25-tbl-maint-*` dirs will later be consolidated into it. (done)
 7. New wave `platform/20-temporal` creates the `temporal` namespace (namespace only for now; Temporal itself deploys here later). (done)
    - 7.5: Replace Docker-Hub-removed minio/minio + minio/mc images with pinned pgsty/silo + pgsty/mc (done)
-8. Full `task offboard` + `task onboard KUBE_CONTEXT=retail-lakehouse` end-to-end run
+8. Full `task offboard` + `task onboard KUBE_CONTEXT=retail-lakehouse` end-to-end run (done; surfaced and fixed missing `istio-ingress` namespace in `22-polaris-routes`)
 9. Replace pgsty Silo with RustFS (after T8 succeeds)
 
 New namespaces are **not** labeled `istio.io/dataplane-mode=ambient` (no namespace is enrolled in the ambient mesh yet).
