@@ -30,6 +30,10 @@ After the CALLs finish, the runtime POSTs JSON to `callback_url` (3 tries, 5 s a
  "metrics": {"rewritten_data_files_count": 5}, "error": null}
 ```
 
+A `rewrite_data_files` CALL runs with partial progress, so a failed commit is not an error
+in Spark. The runtime fails the operation when a CALL reports failed data files and none
+rewritten; when some files were rewritten it succeeds and logs the partial failure.
+
 The exit code is 0 on success and 1 on failure, independent of callback delivery. If the
 callback never arrives, the workflow falls back to polling the SparkApplication state.
 

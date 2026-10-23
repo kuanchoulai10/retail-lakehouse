@@ -19,11 +19,34 @@ logger = logging.getLogger(__name__)
 MAX_ERROR_LENGTH = 4096
 
 
-def _sum_integers(rows: list[Any], metrics: dict[str, int]) -> None:
+REWRITE_DATA_FILES = "rewrite_data_files"
+
+
+def _sum_integers(rows: list[Any]) -> dict[str, int]:
+    totals: dict[str, int] = {}
     for row in rows:
         for name, value in row.asDict().items():
             if isinstance(value, int) and not isinstance(value, bool):
-                metrics[name] = metrics.get(name, 0) + value
+                totals[name] = totals.get(name, 0) + value
+    return totals
+
+
+def _check_rewrite_progress(statement: str, totals: dict[str, int]) -> None:
+    """Fail a partial-progress CALL that committed nothing; log a partial failure."""
+    failed = totals.get("failed_data_files_count", 0)
+    if failed <= 0:
+        return
+    rewritten = totals.get("rewritten_data_files_count", 0)
+    if rewritten == 0:
+        raise RuntimeError(
+            f"rewrite_data_files reported {failed} failed data files and none rewritten; no file group was committed"
+        )
+    logger.warning(
+        "rewrite_data_files partially failed: %d rewritten, %d failed (%s)",
+        rewritten,
+        failed,
+        statement,
+    )
 
 
 def run_maintenance(
@@ -38,7 +61,11 @@ def run_maintenance(
     try:
         for statement in build_call_statements(request):
             logger.info("SQL: %s", statement)
-            _sum_integers(sql(statement).collect(), metrics)
+            totals = _sum_integers(sql(statement).collect())
+            if request.operation == REWRITE_DATA_FILES:
+                _check_rewrite_progress(statement, totals)
+            for name, value in totals.items():
+                metrics[name] = metrics.get(name, 0) + value
     except Exception as exc:
         logger.exception("Maintenance failed")
         error = f"{type(exc).__name__}: {exc}"[:MAX_ERROR_LENGTH]

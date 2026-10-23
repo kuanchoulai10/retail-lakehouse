@@ -99,3 +99,47 @@ def test_error_is_truncated(make_request):
 
     run_maintenance(make_request(), boom, post=lambda u, b: posted.append(b) or True)
     assert len(posted[0]["error"]) == 4096
+
+
+def test_rewrite_call_with_only_failed_files_fails_the_operation(make_request):
+    posted = []
+    results = iter(
+        [
+            _Result([_Row(rewritten_data_files_count=2, failed_data_files_count=0)]),
+            _Result([_Row(rewritten_data_files_count=0, failed_data_files_count=4)]),
+        ]
+    )
+    code = run_maintenance(
+        make_request(where=["a = 1", "a = 2"]),
+        lambda _sql: next(results),
+        post=lambda url, body: posted.append(body) or True,
+    )
+    assert code == 1
+    assert posted[0]["succeeded"] is False
+    assert posted[0]["metrics"] == {}
+    assert "4 failed data files and none rewritten" in posted[0]["error"]
+
+
+def test_rewrite_call_with_partial_failure_still_succeeds(make_request, caplog):
+    posted = []
+    rows = [_Row(rewritten_data_files_count=3, failed_data_files_count=2)]
+    code = run_maintenance(
+        make_request(),
+        lambda _sql: _Result(rows),
+        post=lambda url, body: posted.append(body) or True,
+    )
+    assert code == 0
+    assert posted[0]["succeeded"] is True
+    assert posted[0]["metrics"]["failed_data_files_count"] == 2
+    assert "partially failed" in caplog.text
+
+
+def test_failed_files_count_of_other_operations_is_not_checked(make_request):
+    posted = []
+    rows = [_Row(rewritten_data_files_count=0, failed_data_files_count=1)]
+    code = run_maintenance(
+        make_request(operation="rewrite_manifests"),
+        lambda _sql: _Result(rows),
+        post=lambda url, body: posted.append(body) or True,
+    )
+    assert code == 0
