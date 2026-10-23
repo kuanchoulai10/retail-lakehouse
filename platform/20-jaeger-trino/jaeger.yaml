@@ -2,7 +2,7 @@ apiVersion: opentelemetry.io/v1beta1
 kind: OpenTelemetryCollector
 metadata:
   name: jaeger
-  namespace: trino
+  namespace: lakehouse-query-engine
 spec:
   image: jaegertracing/jaeger:latest
   ports:

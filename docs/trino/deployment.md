@@ -18,7 +18,7 @@ bash install.sh
 The installation script `install.sh` will perform the following steps:
 
 1. Generate `.env` and `values.yaml` files
-2. Create the `trino` namespace.
+2. Create the `lakehouse-query-engine` namespace.
 3. Generate TLS certificates and create the Kubernetes secret.
 4. Generate the BigQuery service account secret and create the Kubernetes secret.
 5. Install Trino using Helm with the generated `values.yaml`.
@@ -80,10 +80,10 @@ source ".env"
 
 ## Creating the Namespace
 
-Create the trino namespace, which is where we deploy our Trino cluster:
+Create the lakehouse-query-engine namespace, which is where we deploy our Trino cluster:
 
 ```bash
-kubectl create namespace trino
+kubectl create namespace lakehouse-query-engine
 ```
 
 ??? info "Result"
@@ -94,7 +94,7 @@ kubectl create namespace trino
 
 ## Setting up TLS Certificates
 
-Execute `generate-tls-certs.sh` to generate TLS certificate and Kubernetes secret and then apply the secret to the `trino` namespace:
+Execute `generate-tls-certs.sh` to generate TLS certificate and Kubernetes secret and then apply the secret to the `lakehouse-query-engine` namespace:
 
 ```bash title="install.sh:tls"
 --8<-- "./retail-lakehouse/trino/install.sh:tls"
@@ -137,7 +137,7 @@ Once executed, the `trino-tls-secret.yaml` file will have the following structur
 
 ## Configuring BigQuery Service Account
 
-Generate the BigQuery service account secret manifest file and apply it to the `trino` namespace:
+Generate the BigQuery service account secret manifest file and apply it to the `lakehouse-query-engine` namespace:
 
 ```bash title="install.sh:bq"
 --8<-- "./retail-lakehouse/trino/install.sh:bq"
@@ -167,7 +167,7 @@ Once executed, the `trino-bigquery-secret.yaml` file will have the following str
 
 ## Installing Trino
 
-First, add and update the Trino Helm repository. Then, deploy Trino in the `trino` namespace using the generated `values.yaml` file:
+First, add and update the Trino Helm repository. Then, deploy Trino in the `lakehouse-query-engine` namespace using the generated `values.yaml` file:
 
 ```bash title="install.sh:bq"
 --8<-- "./retail-lakehouse/trino/install.sh:helm"
@@ -183,7 +183,7 @@ First, add and update the Trino Helm repository. Then, deploy Trino in the `trin
     REVISION: 1
     NOTES:
     Get the application URL by running these commands:
-      kubectl --namespace trino port-forward svc/trino 8080:8080
+      kubectl --namespace lakehouse-query-engine port-forward svc/trino 8080:8080
       echo "Visit http://127.0.0.1:8080 to use your application"
     ```
 
@@ -192,7 +192,7 @@ First, add and update the Trino Helm repository. Then, deploy Trino in the `trin
 After the installation completes, verify that Trino has been deployed successfully. Show the deployed Trino release:
 
 ```bash
-helm list -n trino
+helm list -n lakehouse-query-engine
 ```
 
 ??? info "Result"
@@ -202,10 +202,10 @@ helm list -n trino
     trino   trino           1               2025-06-13 18:08:54.435442 +0800 CST    {==deployed==}        trino-1.39.1    475
     ```
 
-Then, check the status of all resources in the `trino` namespace:
+Then, check the status of all resources in the `lakehouse-query-engine` namespace:
 
 ```bash
-kubectl get all -n trino
+kubectl get all -n lakehouse-query-engine
 ```
 
 ??? info "Result"
@@ -237,7 +237,7 @@ Perfect! The deployment is successful. As you can see, the Trino coordinator and
 To access the Trino Web UI, start by port-forwarding the Trino service to your local machine:
 
 ```bash
-kubectl port-forward svc/trino 8443:8443 --namespace trino
+kubectl port-forward svc/trino 8443:8443 --namespace lakehouse-query-engine
 ```
 
 Once the port forwarding is active, open your browser and navigate to `https://127.0.0.1:8443`. Since we're using a self-signed certificate for development purposes, your browser will display a security warning. This is expected behavior and safe to bypass in a development environment.
@@ -314,6 +314,6 @@ trino --server https://127.0.0.1:8443 \
 To remove the Trino cluster:
 
 ```bash
-helm uninstall trino --namespace trino
-kubectl delete namespace trino
+helm uninstall trino --namespace lakehouse-query-engine
+kubectl delete namespace lakehouse-query-engine
 ```

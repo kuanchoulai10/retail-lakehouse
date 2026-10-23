@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 log::on_success "Jaeger for Trino installed"
 log::on_failure "Jaeger for Trino installation failed"
 
-kubectl create namespace trino \
+kubectl create namespace lakehouse-query-engine \
   --dry-run=client \
   -o yaml \
   | kubectl apply \
@@ -19,5 +19,5 @@ kubectl create namespace trino \
 
 kubectl apply \
   -f "$SCRIPT_DIR/jaeger.yaml" \
-  --namespace trino \
+  --namespace lakehouse-query-engine \
   --context "${KUBE_CONTEXT}"

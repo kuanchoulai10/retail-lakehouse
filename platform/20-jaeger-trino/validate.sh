@@ -11,7 +11,7 @@ log::on_failure "Jaeger (trino) is not ready"
 
 kubectl wait pod \
   --selector app.kubernetes.io/managed-by=opentelemetry-operator \
-  --namespace trino \
+  --namespace lakehouse-query-engine \
   --for=condition=Ready \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"

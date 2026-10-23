@@ -7,7 +7,7 @@ apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: trino-selfsigned-issuer
-  namespace: trino
+  namespace: lakehouse-query-engine
 spec:
   selfSigned: {}
 ---
@@ -15,7 +15,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: trino-ca
-  namespace: trino
+  namespace: lakehouse-query-engine
 spec:
   isCA: true
   commonName: trino-ca
@@ -34,7 +34,7 @@ apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: trino-ca-issuer
-  namespace: trino
+  namespace: lakehouse-query-engine
 spec:
   ca:
     secretName: trino-ca-secret
@@ -43,7 +43,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: trino-tls
-  namespace: trino
+  namespace: lakehouse-query-engine
 spec:
   secretName: trino-tls-secret
   duration: 8760h
@@ -51,9 +51,9 @@ spec:
   issuerRef:
     name: trino-ca-issuer
     kind: Issuer
-  commonName: trino.trino.svc.cluster.local
+  commonName: trino.lakehouse-query-engine.svc.cluster.local
   dnsNames:
-    - trino.trino.svc.cluster.local
+    - trino.lakehouse-query-engine.svc.cluster.local
     - localhost
   ipAddresses:
     - "127.0.0.1"

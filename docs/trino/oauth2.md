@@ -120,7 +120,7 @@ After running the script, you will find the generated files in the `.cert/` dire
 To utilize the generated TLS certificate in your Trino deployment, create a Kubernetes secret and mount it to the coordinator's `/etc/trino/tls` directory.
 
 ```bash
-kubectl apply -f .cert/trino-tls-secret.yaml --namespace trino
+kubectl apply -f .cert/trino-tls-secret.yaml --namespace lakehouse-query-engine
 ```
 
 

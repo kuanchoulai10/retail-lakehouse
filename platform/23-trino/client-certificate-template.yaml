@@ -2,7 +2,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: trino-client-${TRINO_USER}
-  namespace: trino
+  namespace: lakehouse-query-engine
 spec:
   secretName: trino-client-${TRINO_USER}-tls
   duration: 8760h

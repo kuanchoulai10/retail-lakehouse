@@ -61,8 +61,8 @@ The faker connector requires you to create tables with specific generator expres
 Run individual queries from the command line:
 
 ```bash
-kubectl exec -it deployment/trino-coordinator --namespace trino -- trino --execute "SHOW TABLES FROM faker.default;"
-kubectl exec -it deployment/trino-coordinator --namespace trino -- trino --execute "SELECT * FROM faker.default.customer LIMIT 5;"
+kubectl exec -it deployment/trino-coordinator --namespace lakehouse-query-engine -- trino --execute "SHOW TABLES FROM faker.default;"
+kubectl exec -it deployment/trino-coordinator --namespace lakehouse-query-engine -- trino --execute "SELECT * FROM faker.default.customer LIMIT 5;"
 ```
 
 ## Available Faker Tables

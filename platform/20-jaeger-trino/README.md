@@ -1,17 +1,17 @@
 # Jaeger for Trino
 
-Deploys a Jaeger-compatible distributed tracing collector into the `trino` namespace using an OpenTelemetryCollector resource. The collector receives traces over OTLP and stores them in memory, making them queryable through the Jaeger UI.
+Deploys a Jaeger-compatible distributed tracing collector into the `lakehouse-query-engine` namespace using an OpenTelemetryCollector resource. The collector receives traces over OTLP and stores them in memory, making them queryable through the Jaeger UI.
 
 ## Deployed Resources
 
 ```
-Namespace: trino
+Namespace: lakehouse-query-engine
 └── jaeger-collector                     (Deployment, managed by OTel Operator)
 ```
 
 ## Namespaces
 
-- `trino` (created by this component's install.sh)
+- `lakehouse-query-engine` (created by this component's install.sh)
 
 ## Pods
 

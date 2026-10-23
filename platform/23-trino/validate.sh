@@ -10,11 +10,11 @@ log::on_success "Trino is ready"
 log::on_failure "Trino is not ready"
 
 kubectl rollout status deployment/trino-coordinator \
-  --namespace trino \
+  --namespace lakehouse-query-engine \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
 kubectl rollout status deployment/trino-worker \
-  --namespace trino \
+  --namespace lakehouse-query-engine \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"

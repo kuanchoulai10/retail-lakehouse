@@ -20,7 +20,7 @@ tasks:
       - |
         kubectl get certificate trino-client-{{.TRINO_USER}} \
           -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' \
-          --namespace trino \
+          --namespace lakehouse-query-engine \
           --context {{.KUBE_CONTEXT}} \
           2>/dev/null | grep -q True
       - test -f {{.OUTDIR}}/keystore.p12
@@ -39,25 +39,25 @@ tasks:
       - |
         kubectl wait \
           --for=condition=Ready certificate/trino-client-{{.TRINO_USER}} \
-          --namespace trino \
+          --namespace lakehouse-query-engine \
           --timeout 120s \
           --context {{.KUBE_CONTEXT}}
       - |
         kubectl get secret trino-client-{{.TRINO_USER}}-tls \
           -o jsonpath='{.data.keystore\.p12}' \
-          --namespace trino \
+          --namespace lakehouse-query-engine \
           --context {{.KUBE_CONTEXT}} \
           | base64 -d > {{.OUTDIR}}/keystore.p12
       - |
         kubectl get secret trino-client-{{.TRINO_USER}}-tls \
           -o jsonpath='{.data.ca\.crt}' \
-          --namespace trino \
+          --namespace lakehouse-query-engine \
           --context {{.KUBE_CONTEXT}} \
           | base64 -d > {{.OUTDIR}}/ca.crt
       - |
         kubectl get secret trino-keystore-password \
           -o jsonpath='{.data.password}' \
-          --namespace trino \
+          --namespace lakehouse-query-engine \
           --context {{.KUBE_CONTEXT}} \
           | base64 -d > {{.OUTDIR}}/password.txt
       - rm -f {{.OUTDIR}}/truststore.p12
@@ -95,7 +95,7 @@ tasks:
 
           # 1. Port-forward (in another terminal):
           kubectl port-forward svc/trino 18443:8443 \
-            --namespace trino \
+            --namespace lakehouse-query-engine \
             --context {{.KUBE_CONTEXT}}
 
           # 2. Run a query:
@@ -126,12 +126,12 @@ tasks:
       - |
         kubectl delete secret trino-client-{{.TRINO_USER}}-tls \
           --ignore-not-found \
-          --namespace trino \
+          --namespace lakehouse-query-engine \
           --context {{.KUBE_CONTEXT}}
       - |
         kubectl delete certificate trino-client-{{.TRINO_USER}} \
           --ignore-not-found \
-          --namespace trino \
+          --namespace lakehouse-query-engine \
           --context {{.KUBE_CONTEXT}}
 
   shell:
@@ -159,7 +159,7 @@ tasks:
         trap cleanup EXIT
 
         kubectl port-forward svc/trino 18443:8443 \
-          --namespace trino \
+          --namespace lakehouse-query-engine \
           --context {{.KUBE_CONTEXT}} >/dev/null 2>&1 &
         sleep 2
 
@@ -195,7 +195,7 @@ tasks:
         trap cleanup EXIT
 
         kubectl port-forward svc/trino 18443:8443 \
-          --namespace trino \
+          --namespace lakehouse-query-engine \
           --context {{.KUBE_CONTEXT}} >/dev/null 2>&1 &
         sleep 2
 

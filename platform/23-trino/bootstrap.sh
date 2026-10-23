@@ -13,7 +13,7 @@ log::on_success "Trino ${TRINO_VERSION} installed"
 log::on_failure "Trino installation failed"
 
 # Create namespace if not exists
-kubectl create namespace trino \
+kubectl create namespace lakehouse-query-engine \
   --dry-run=client \
   -o yaml \
   | kubectl apply \
@@ -38,13 +38,13 @@ kubectl apply \
 # Wait for cert-manager to issue the CA + TLS certificates
 kubectl wait \
   --for=condition=Ready certificate/trino-ca \
-  --namespace trino \
+  --namespace lakehouse-query-engine \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
 kubectl wait \
   --for=condition=Ready certificate/trino-tls \
-  --namespace trino \
+  --namespace lakehouse-query-engine \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
@@ -59,7 +59,7 @@ SECRETS_YAML="$(sops -d "$SCRIPT_DIR/values-secret.yaml")"
 
 helm upgrade --install trino trino/trino \
   --version "${TRINO_VERSION}" \
-  --namespace trino \
+  --namespace lakehouse-query-engine \
   --values "$SCRIPT_DIR/values.yaml" \
   --values <(printf '%s' "$SECRETS_YAML") \
   --kube-context "${KUBE_CONTEXT}"

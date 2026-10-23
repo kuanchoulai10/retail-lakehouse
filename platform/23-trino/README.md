@@ -1,11 +1,11 @@
 # Trino
 
-Deploys Trino, a distributed SQL query engine, via Helm into the `trino` namespace. Trino federates queries across the Iceberg lakehouse on S3. TLS certificates are managed by cert-manager and secrets are encrypted with SOPS/AGE.
+Deploys Trino, a distributed SQL query engine, via Helm into the `lakehouse-query-engine` namespace. Trino federates queries across the Iceberg lakehouse on S3. TLS certificates are managed by cert-manager and secrets are encrypted with SOPS/AGE.
 
 ## Deployed Resources
 
 ```
-Namespace: trino
+Namespace: lakehouse-query-engine
 ├── trino-coordinator                    (Deployment)
 ├── trino-worker                         (Deployment)
 ├── trino-selfsigned-issuer              (Issuer, cert-manager — bootstrap)
@@ -17,7 +17,7 @@ Namespace: trino
 
 ## Namespaces
 
-- `trino`
+- `lakehouse-query-engine`
 
 ## Pods
 
@@ -107,7 +107,7 @@ Cert is valid 365 days; cert-manager auto-renews 30 days before expiry. Re-run t
 
 ```bash
 # 1. Port-forward (separate terminal, leave running)
-kubectl port-forward -n trino svc/trino 8443:8443 --context retail-lakehouse
+kubectl port-forward -n lakehouse-query-engine svc/trino 8443:8443 --context retail-lakehouse
 
 # 2. Query
 trino \
@@ -139,7 +139,7 @@ After deploy, open `https://localhost:8443/ui` in a browser. Expected: redirect 
 cert-manager auto-renews `trino-tls`, but the truststore-building init container does not rerun on renewal (the `tls-built` emptyDir is recreated only on pod start). After a server cert rotation, manually trigger a coordinator restart:
 
 ```bash
-kubectl rollout restart deployment/trino-coordinator -n trino --context retail-lakehouse
+kubectl rollout restart deployment/trino-coordinator -n lakehouse-query-engine --context retail-lakehouse
 ```
 
 ## Services
