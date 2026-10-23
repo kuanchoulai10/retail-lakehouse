@@ -24,7 +24,7 @@ from application.domain.model.managed_table.table_uuid import TableUuid
 from application.domain.model.policy_template.policy_template_id import (
     PolicyTemplateId,
 )
-from application.exceptions import NotFoundError, ValidationError
+from application.exceptions import ConflictError, NotFoundError, ValidationError
 from application.port.inbound.maintenance_run.create_maintenance_run import (
     CreateMaintenanceRunUseCaseInput,
 )
@@ -55,6 +55,7 @@ from application.service.maintenance_run.process_maintenance_callback import (
 from application.service.maintenance_run.record_maintenance_operation_result import (
     RecordMaintenanceOperationResultService,
 )
+from tests.fakes.track_calls import track_calls
 
 OPS = MaintenanceOperation
 RDF = OPS.REWRITE_DATA_FILES
@@ -183,6 +184,15 @@ def test_record_success_stores_metrics_and_resets_backoff(
     assert table.operation_state(RDF).consecutive_failures == 0
 
 
+def test_record_result_saves_run_then_table(
+    recorder, started_run, table, runs_repo, tables_repo, log, now
+):
+    track_calls(runs_repo, "update", "runs.update", log, lambda r: r.id.value)
+    track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
+    _record(recorder, now)
+    assert log == [("runs.update", "run-1"), ("tables.update", "u-1")]
+
+
 def test_record_result_stale_attempt_is_ignored(recorder, started_run, table, now):
     started_run.fail(RDF, 1, "boom", now)
     started_run.start_attempt(RDF, 2, "tm-rdf-run1-a2", now)
@@ -212,6 +222,7 @@ def test_record_result_for_dropped_table_still_updates_run(
     out = _record(recorder, now)
     assert started_run.operations[0].status.value == "succeeded"
     assert out.status == "running"
+    assert table.operation_states == {}
 
 
 def test_record_result_final_operation_finishes_run(recorder, started_run, table, now):
@@ -226,7 +237,9 @@ def test_record_result_rejects_bad_requests(recorder, started_run, now):
         _record(recorder, now, run_id="nope")
     with pytest.raises(ValidationError):
         _record(recorder, now, operation="defragment")
-    with pytest.raises(Exception, match="never started"):
+    with pytest.raises(ConflictError, match="not part of"):
+        _record(recorder, now, operation="remove_orphan_files")
+    with pytest.raises(ConflictError, match="never started"):
         _record(recorder, now, attempt=2)
 
 

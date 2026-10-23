@@ -89,10 +89,10 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
                 if gateway_observation is None
                 else table_observation_from_gateway(gateway_observation)
             )
+            if observation is None or observation.table_uuid != table.id.value:
+                return _skip("not_found", settings)
             if manual is not None:
                 plan = plan_manual_maintenance(manual)
-            elif observation is None:
-                return _skip("not_found", settings)
             else:
                 plan = plan_scheduled_maintenance(table, observation, request.now)
             return self._render(table, settings, plan, observation, request)
@@ -102,14 +102,14 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         table: ManagedTable,
         settings: MaintenanceSettings,
         plan: MaintenancePlan,
-        observation: TableObservation | None,
+        observation: TableObservation,
         request: PlanTableMaintenanceUseCaseInput,
     ) -> PlanTableMaintenanceUseCaseOutput:
-        properties = {} if observation is None else observation.properties
+        properties = observation.properties
         operations = []
         for planned in plan.operations:
             filters: list[PlanTableMaintenanceUseCaseOutputFilterItem] = []
-            if planned.partitions and observation is not None:
+            if planned.partitions:
                 filters = [
                     PlanTableMaintenanceUseCaseOutputFilterItem(f.spec_id, f.where)
                     for f in build_partition_filters(

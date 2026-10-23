@@ -72,7 +72,7 @@ class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
             )
             run.start_attempt(operation, request.attempt, app_name, request.now)
             self._runs_repo.update(run)
-        wheres = [str(f["where"]) for f in request.filters]
+        wheres = [f.where for f in request.filters]
         self._submit_gateway.submit(
             SubmitMaintenanceJobGatewayInput(
                 app_name=app_name,

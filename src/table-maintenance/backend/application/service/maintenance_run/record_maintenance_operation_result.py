@@ -11,7 +11,7 @@ from application.domain.model.maintenance_run.maintenance_run_id import (
     MaintenanceRunId,
 )
 from application.domain.model.managed_table.table_status import TableStatus
-from application.exceptions import NotFoundError, ValidationError
+from application.exceptions import ConflictError, NotFoundError, ValidationError
 from application.port.inbound.maintenance_run.record_maintenance_operation_result import (
     RecordMaintenanceOperationResultUseCase,
     RecordMaintenanceOperationResultUseCaseInput,
@@ -60,7 +60,13 @@ class RecordMaintenanceOperationResultService(RecordMaintenanceOperationResultUs
         if run is None:
             raise NotFoundError(f"maintenance run {request.run_id} not found")
         with translate_domain_errors():
-            current = next(op for op in run.operations if op.operation == operation)
+            current = next(
+                (op for op in run.operations if op.operation == operation), None
+            )
+            if current is None:
+                raise ConflictError(
+                    f"operation {operation} is not part of run {request.run_id}"
+                )
             if request.attempt >= current.attempts and not _already_recorded(
                 current, request
             ):

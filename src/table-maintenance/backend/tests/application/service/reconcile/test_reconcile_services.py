@@ -40,6 +40,7 @@ from application.port.inbound.reconcile.plan_table_maintenance import (
 )
 from application.port.inbound.reconcile.submit_maintenance_operation import (
     SubmitMaintenanceOperationUseCaseInput,
+    SubmitMaintenanceOperationUseCaseInputFilterItem,
 )
 from application.port.outbound.catalog.read_catalog import (
     ReadCatalogGatewayObservation,
@@ -56,6 +57,7 @@ from application.service.reconcile.plan_table_maintenance import (
 from application.service.reconcile.submit_maintenance_operation import (
     SubmitMaintenanceOperationService,
 )
+from tests.fakes.track_calls import track_calls
 
 NAME = TableName("iceberg", "sales", "orders")
 KEY = ("iceberg", "sales", "orders")
@@ -244,6 +246,9 @@ def test_scheduled_plan_respects_cooldown(planner, tables_repo, catalog, now):
     _observe(catalog, now)
     plan = _plan(planner, now)
     assert (plan.status, plan.operations) == ("planned", [])
+    table.operation_states.clear()
+    control = _plan(planner, now)
+    assert "rewrite_data_files" in [o.operation for o in control.operations]
 
 
 def test_manual_plan_ignores_disabled_and_cooldown(planner, tables_repo, catalog, now):
@@ -265,10 +270,22 @@ def test_manual_plan_ignores_disabled_and_cooldown(planner, tables_repo, catalog
     }
 
 
-def test_manual_plan_works_without_a_catalog_observation(planner, tables_repo, now):
+def test_manual_plan_without_a_catalog_observation_is_skipped_not_found(
+    planner, tables_repo, now
+):
     _table(tables_repo, now)
     plan = _plan(planner, now, ["rewrite_manifests"])
-    assert [o.operation for o in plan.operations] == ["rewrite_manifests"]
+    assert (plan.status, plan.reason, plan.operations) == ("skip", "not_found", [])
+
+
+@pytest.mark.parametrize("manual", [None, ["rewrite_manifests"]])
+def test_plan_skips_when_catalog_table_has_a_different_uuid(
+    planner, tables_repo, catalog, now, manual
+):
+    _table(tables_repo, now)
+    _observe(catalog, now, table_uuid="u-recreated")
+    plan = _plan(planner, now, manual)
+    assert (plan.status, plan.reason, plan.operations) == ("skip", "not_found", [])
 
 
 def test_manual_plan_rejects_unknown_or_empty_operations(planner, tables_repo, now):
@@ -310,12 +327,19 @@ def submitter(runs_repo, tables_repo, submit_job):
     return SubmitMaintenanceOperationService(runs_repo, tables_repo, submit_job)
 
 
+def _filter(spec_id, where):
+    return SubmitMaintenanceOperationUseCaseInputFilterItem(spec_id, where)
+
+
 def _submit(submitter, now, **overrides):
     fields = {
         "run_id": "run-1",
         "operation": "rewrite_data_files",
         "attempt": 1,
-        "filters": [{"spec_id": 0, "where": "a = 1"}, {"spec_id": 1, "where": "b = 2"}],
+        "filters": [
+            SubmitMaintenanceOperationUseCaseInputFilterItem(0, "a = 1"),
+            SubmitMaintenanceOperationUseCaseInputFilterItem(1, "b = 2"),
+        ],
         "procedure_args": {"min-input-files": 2},
         "callback_base_url": "http://tm.example:8000/",
         "now": now,
@@ -343,8 +367,24 @@ def test_submit_starts_attempt_and_submits_job(submitter, run, submit_job, now):
     assert (op.attempts, op.spark_application) == (1, out.app_name)
 
 
+def test_submit_saves_run_before_submitting_job(
+    submitter, run, runs_repo, submit_job, log, now
+):
+    track_calls(runs_repo, "update", "runs.update", log, lambda r: r.id.value)
+    track_calls(submit_job, "submit", "job.submit", log, lambda i: i.app_name)
+    _submit(submitter, now)
+    assert log == [("runs.update", "run-1"), ("job.submit", "tm-rdf-run1-a1")]
+
+
 def test_submit_whole_table_filter_means_no_where(submitter, run, submit_job, now):
-    _submit(submitter, now, filters=[{"spec_id": 0, "where": ""}])
+    _submit(submitter, now, filters=[_filter(0, "")])
+    assert next(iter(submit_job.jobs.values())).where == []
+
+
+def test_submit_any_empty_where_makes_the_whole_table_the_target(
+    submitter, run, submit_job, now
+):
+    _submit(submitter, now, filters=[_filter(0, "a = 1"), _filter(1, "")])
     assert next(iter(submit_job.jobs.values())).where == []
 
 

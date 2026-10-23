@@ -113,7 +113,12 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         name = TableName(request.catalog, request.namespace, request.table or "")
         if self._tables_repo.find_by_name(name) is None:
             return ProcessTableHintUseCaseOutput(action=TableHintAction.IGNORED.value)
-        return self._request_discovery(request)
+        self._discovery_request_gateway.send(
+            SendDiscoveryRequestGatewayInput(request.catalog, None)
+        )
+        return ProcessTableHintUseCaseOutput(
+            action=TableHintAction.DISCOVERY_REQUESTED.value
+        )
 
     def _handle_found(self, found: ReadCatalogGatewayTable) -> TableHintAction:
         now = self._clock()
@@ -143,6 +148,8 @@ class ProcessTableHintService(ProcessTableHintUseCase):
     ) -> TableHintAction:
         if not self._discovery_settings_repo.get_settings().enabled:
             return TableHintAction.IGNORED
+        name = TableName(found.catalog, found.namespace, found.table)
+        stale = self._tables_repo.find_by_name(name)
         outcome = register_discovered_table(
             found,
             self._rules_repo.list_all(),
@@ -152,5 +159,9 @@ class ProcessTableHintService(ProcessTableHintUseCase):
             now,
         )
         if outcome == RegistrationOutcome.REGISTERED:
+            if stale is not None:
+                self._discovery_request_gateway.send(
+                    SendDiscoveryRequestGatewayInput(found.catalog, None)
+                )
             return TableHintAction.REGISTERED
         return TableHintAction.IGNORED

@@ -122,3 +122,8 @@ def results() -> RecordingSendMaintenanceResultGateway:
 @pytest.fixture
 def discovery_requests() -> RecordingSendDiscoveryRequestGateway:
     return RecordingSendDiscoveryRequestGateway()
+
+
+@pytest.fixture
+def log() -> list[tuple[str, str]]:
+    return []
