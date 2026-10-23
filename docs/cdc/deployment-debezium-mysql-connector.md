@@ -313,7 +313,7 @@ kubectl run kafka-cli \
 Create another terminal window, then enter the MySQL pod and update a record in the `customers` table. Specifically, we will change the `first_name` of the customer with `id=1001` from `Sally` to `Sally Marie`:
 
 ```bash
-kubectl exec -n kafka-cdc -it mysql-6b84fd947d-9g9lt -- mysql -uroot -pdebezium
+kubectl exec -n ecommerce-app -it deploy/mysql -- mysql -uroot -pdebezium
 ```
 
 ```bash

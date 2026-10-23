@@ -10,6 +10,6 @@ log::on_success "MySQL is ready"
 log::on_failure "MySQL is not ready"
 
 kubectl rollout status deployment/mysql \
-  --namespace kafka-cdc \
+  --namespace ecommerce-app \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"

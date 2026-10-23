@@ -330,7 +330,7 @@ iceberg-connector    iceberg-connect-cluster    org.apache.iceberg.connect.Icebe
 
 
 ```bash
-kubectl exec -n kafka-cdc -it mysql-6b84fd947d-9g9lt -- mysql -uroot -pdebezium
+kubectl exec -n ecommerce-app -it deploy/mysql -- mysql -uroot -pdebezium
 ```
 
 ```bash

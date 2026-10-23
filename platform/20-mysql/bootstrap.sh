@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 log::on_success "MySQL deployed"
 log::on_failure "MySQL deployment failed"
 
-kubectl create namespace kafka-cdc \
+kubectl create namespace ecommerce-app \
   --dry-run=client \
   -o yaml \
   | kubectl apply \
@@ -23,5 +23,5 @@ kubectl apply \
 
 kubectl apply \
   -f "$SCRIPT_DIR/mysql.yaml" \
-  --namespace kafka-cdc \
+  --namespace ecommerce-app \
   --context "${KUBE_CONTEXT}"

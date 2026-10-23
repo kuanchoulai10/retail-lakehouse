@@ -9,7 +9,7 @@ spec:
   tasksMax: 1
   config:
     tasks.max: 1
-    database.hostname: mysql
+    database.hostname: mysql.ecommerce-app.svc.cluster.local
     database.port: 3306
     database.user: ${secrets:kafka-cdc/debezium-secret:username}
     database.password: ${secrets:kafka-cdc/debezium-secret:password}
