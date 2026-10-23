@@ -41,8 +41,8 @@ Respond in the same language as the user's message. The user typically communica
 3. `minio` → `object-storage`
 4. `polaris` → `lakehouse-catalog`
 5. `trino` → `lakehouse-query-engine`
-6. Create empty `lakehouse-maintenance-operations`, `lakehouse-control-plane` namespaces (new wave)
-7. Create empty `temporal` namespace (new wave)
+6. Create `lakehouse-maintenance-operations`, `lakehouse-control-plane` namespaces, each inside the component wave that will later deploy its workloads (namespace only for now; no standalone "create namespaces" wave)
+7. Create `temporal` namespace the same way, inside the future Temporal component wave
 8. Full `task offboard` + `task onboard KUBE_CONTEXT=retail-lakehouse` end-to-end run
 
 ## Platform (Infra)
