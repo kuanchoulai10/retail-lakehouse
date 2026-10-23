@@ -55,13 +55,10 @@ type = forbidden
 source_modules =
     adapter.temporal_contracts
 forbidden_modules =
+    application
+    base
     adapter.inbound
     adapter.outbound
-    application.service
-    application.port
-    application.exceptions
-    application.domain.service
-    application.domain.model.managed_table
     bootstrap
     temporalio
     fastapi
@@ -69,6 +66,9 @@ forbidden_modules =
     pyiceberg
     pyarrow
     sqlalchemy
+unmatched_ignore_imports_alerting = none
+ignore_imports =
+    adapter.temporal_contracts.** -> application.domain.model.maintenance.**
 
 [importlinter:contract:inbound-outbound-separation]
 name = Inbound adapter does not directly import outbound adapter

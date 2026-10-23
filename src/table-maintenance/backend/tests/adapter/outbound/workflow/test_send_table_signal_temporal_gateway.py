@@ -53,8 +53,12 @@ def test_signal_with_start_creates_one_workflow_and_delivers_both(harness):
         ]
         return len(found)
 
-    time.sleep(1)
-    assert harness.bridge.run(count) == 1
+    found = harness.bridge.run(count)
+    deadline = time.time() + 10
+    while found < 1 and time.time() < deadline:
+        time.sleep(0.1)
+        found = harness.bridge.run(count)
+    assert found == 1
     got = _signals(harness, "swl")
     deadline = time.time() + 5
     while len(got) < 2 and time.time() < deadline:

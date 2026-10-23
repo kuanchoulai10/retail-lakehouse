@@ -54,9 +54,15 @@ def test_update_pauses_and_unpauses_schedule(harness):
         ).describe()
         return desc.schedule.state.paused
 
+    async def delete() -> None:
+        await harness.client.get_schedule_handle(DISCOVERY_SCHEDULE_ID).delete()
+
     harness.bridge.run(create)
-    gateway = UpdateDiscoveryScheduleTemporalGateway(harness.client, harness.bridge)
-    gateway.update(UpdateDiscoveryScheduleGatewayInput(paused=True))
-    assert harness.bridge.run(paused) is True
-    gateway.update(UpdateDiscoveryScheduleGatewayInput(paused=False))
-    assert harness.bridge.run(paused) is False
+    try:
+        gateway = UpdateDiscoveryScheduleTemporalGateway(harness.client, harness.bridge)
+        gateway.update(UpdateDiscoveryScheduleGatewayInput(paused=True))
+        assert harness.bridge.run(paused) is True
+        gateway.update(UpdateDiscoveryScheduleGatewayInput(paused=False))
+        assert harness.bridge.run(paused) is False
+    finally:
+        harness.bridge.run(delete)

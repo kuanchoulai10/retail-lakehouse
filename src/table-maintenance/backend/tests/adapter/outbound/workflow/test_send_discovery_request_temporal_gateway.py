@@ -24,8 +24,12 @@ def test_discovery_request_starts_one_adhoc_workflow(harness):
     for _ in range(2):
         gateway.send(SendDiscoveryRequestGatewayInput("iceberg", "sales"))
     gateway.send(SendDiscoveryRequestGatewayInput("iceberg", None))
-    time.sleep(1)
-    ids = sorted(_ids(harness, "WorkflowId STARTS_WITH 'table-discovery-adhoc-'"))
+    query = "WorkflowId STARTS_WITH 'table-discovery-adhoc-'"
+    ids = sorted(_ids(harness, query))
+    deadline = time.time() + 10
+    while len(ids) < 2 and time.time() < deadline:
+        time.sleep(0.1)
+        ids = sorted(_ids(harness, query))
     assert ids == [
         "table-discovery-adhoc-iceberg-all",
         "table-discovery-adhoc-iceberg-sales",
