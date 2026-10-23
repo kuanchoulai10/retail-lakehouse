@@ -54,7 +54,10 @@ The following fields in `values.yaml` require attention before deploying:
 | `storage.secret.name` | K8s Secret with RustFS credentials for vended credential issuance | `polaris-storage-secret` |
 | `advancedConfig.polaris.storage.s3.endpoint` | RustFS service DNS inside the cluster | `http://rustfs.object-storage.svc.cluster.local:9000` |
 | `authentication.tokenBroker.secret.name` | RSA key pair secret `polaris-token-broker` (`private.pem` / `public.pem`), created once by `bootstrap.sh` if missing, so tokens issued to Trino and the Iceberg sink survive Polaris restarts | `polaris-token-broker` |
-| `tracing.endpoint` | OTel collector gRPC endpoint | `http://otel-collector.otel.svc.cluster.local:4317` |
+| `advancedConfig.polaris.event-listener.types` | Publishes every Polaris catalog event to Kafka (the OpenTelemetry listener cannot be used: the image fixes `quarkus.otel.logs.enabled=false` at build time) | `kafka` |
+| `advancedConfig.polaris.event-listener.kafka.topic` | Topic declared as a `KafkaTopic` by `polaris-events-topic.yaml` (1 partition, 3 replicas, so the UUID-keyed events stay ordered) | `polaris-catalog-events` |
+| `advancedConfig.polaris.event-listener.kafka.properties.bootstrap.servers` | Strimzi plain listener | `kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092` |
+| `tracing.enabled` | OTel tracing is off | `false` |
 
 ## Installation
 
@@ -122,4 +125,12 @@ POD=$(kubectl get pod -l app=polaris-db -n lakehouse-catalog --context mini \
   -o jsonpath='{.items[0].metadata.name}')
 kubectl exec -n lakehouse-catalog "$POD" --context mini \
   -- psql -U polaris -d polaris -c '\dt'
+```
+
+## Event Listener
+
+Polaris publishes catalog events (key: event UUID, value: JSON with `event_type`, `catalog_name`, `namespace`, `table_name`, `principal`, `request_id`, ...) to the `polaris-catalog-events` topic. Read them with:
+
+```bash
+kubectl exec kafka-cluster-dual-role-0 -- bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic polaris-catalog-events --from-beginning --namespace kafka --context retail-lakehouse
 ```

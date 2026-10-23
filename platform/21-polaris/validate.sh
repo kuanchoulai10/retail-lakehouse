@@ -23,3 +23,9 @@ kubectl wait \
   --namespace lakehouse-catalog \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
+
+kubectl wait kafkatopic/polaris-catalog-events \
+  --for=condition=Ready \
+  --timeout "${TIMEOUT}" \
+  --namespace kafka \
+  --context "${KUBE_CONTEXT}"

@@ -28,6 +28,10 @@ kubectl apply \
   -f "$SCRIPT_DIR/polaris-bootstrap-secret.yaml" \
   --context "${KUBE_CONTEXT}"
 
+kubectl apply \
+  -f "$SCRIPT_DIR/polaris-events-topic.yaml" \
+  --context "${KUBE_CONTEXT}"
+
 # Token-broker RSA key pair: generated once, reused across Polaris restarts so
 # issued tokens stay valid. Never written into the repo.
 if ! kubectl get secret polaris-token-broker \

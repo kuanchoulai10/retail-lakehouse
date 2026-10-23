@@ -86,3 +86,7 @@ polaris:
 
   advancedConfig:
     polaris.iceberg-metrics.reporting.type: persisting
+    polaris.event-listener.types: kafka
+    polaris.event-listener.kafka.topic: polaris-catalog-events
+    polaris.event-listener.kafka.synchronous-mode: "false"
+    polaris.event-listener.kafka.properties.bootstrap.servers: kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
