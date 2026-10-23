@@ -51,7 +51,7 @@ Respond in the same language as the user's message. The user typically communica
 **Known follow-ups:**
 - On-hold waves still reference pre-rename names (`minio-api.minio.svc`, `kafka-cdc`, `polaris`, `platform/20-minio`): `30-thanos`, `24-e2e-validation`, `25-table-maintenance` / `25-tbl-maint-*`, `src/table-maintenance`, `charts/app-of-apps`. Fix when those are re-opened.
 - Iceberg sink (Kafka 4.0 + sink 1.10) may commit "0 table(s)" for several minutes after a Connect pod start under low traffic; keep inserting and poll ~5–10 min when verifying snapshots.
-- Unpinned images on the onboard path: `bitnami/jmx-exporter:latest` (Trino), `jaegertracing/jaeger:latest`, OTel operator `busybox:latest`.
+- `bitnami/jmx-exporter` (Trino sidecar) is pinned by digest: Bitnami's free catalog only publishes `latest`, so bumping it means taking the new `latest` digest.
 
 New namespaces are **not** labeled `istio.io/dataplane-mode=ambient` (no namespace is enrolled in the ambient mesh yet).
 

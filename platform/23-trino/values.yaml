@@ -178,7 +178,7 @@ jmx:
   enabled: true
   exporter:
     enabled: true
-    image: bitnami/jmx-exporter:latest
+    image: bitnami/jmx-exporter@sha256:c753bc2da381f9f01e0646c7ae9e7cdb8bd3298355e906952f5337be886d83bf
     configProperties: |-
       hostPort: localhost:{{- .Values.jmx.registryPort }}
       startDelaySeconds: 0

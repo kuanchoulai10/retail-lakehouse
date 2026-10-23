@@ -4,7 +4,7 @@ metadata:
   name: jaeger
   namespace: lakehouse-query-engine
 spec:
-  image: jaegertracing/jaeger:latest
+  image: jaegertracing/jaeger:2.22.0
   ports:
   - name: jaeger
     port: 16686
