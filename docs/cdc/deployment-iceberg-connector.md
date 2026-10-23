@@ -284,7 +284,6 @@ pod/kafka-cluster-dual-role-0                        1/1     Running   0        
 pod/kafka-cluster-dual-role-1                        1/1     Running   0          14m
 pod/kafka-cluster-dual-role-2                        1/1     Running   0          14m
 pod/kafka-cluster-entity-operator-598bb8df8b-q2d4x   2/2     Running   0          13m
-pod/mysql-6b84fd947d-kpdk4                           1/1     Running   0          12m
 
 NAME                                           TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                                        AGE
 service/debezium-connect-cluster-connect       ClusterIP   None             <none>        8083/TCP                                       8m15s
@@ -293,15 +292,12 @@ service/debezium-connect-cluster-connect-api   ClusterIP   10.103.185.205   <non
 {==service/iceberg-connect-cluster-connect-api==}    ClusterIP   10.102.45.63     <none>        8083/TCP                                       73s
 service/kafka-cluster-kafka-bootstrap          ClusterIP   10.105.98.134    <none>        9091/TCP,9092/TCP,9093/TCP                     14m
 service/kafka-cluster-kafka-brokers            ClusterIP   None             <none>        9090/TCP,9091/TCP,8443/TCP,9092/TCP,9093/TCP   14m
-service/mysql                                  ClusterIP   None             <none>        3306/TCP                                       12m
 
 NAME                                            READY   UP-TO-DATE   AVAILABLE   AGE
 deployment.apps/kafka-cluster-entity-operator   1/1     1            1           13m
-deployment.apps/mysql                           1/1     1            1           12m
 
 NAME                                                       DESIRED   CURRENT   READY   AGE
 replicaset.apps/kafka-cluster-entity-operator-598bb8df8b   1         1         1       13m
-replicaset.apps/mysql-6b84fd947d                           1         1         1       12m
 ```
 
 ## Create an Iceberg Sink Connector
