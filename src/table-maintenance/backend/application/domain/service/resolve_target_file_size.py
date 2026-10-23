@@ -6,6 +6,8 @@ from application.domain.model.maintenance_settings.rewrite_data_files_settings i
     RewriteDataFilesSettings,
 )
 
+from application.domain.service.positive_int_property import positive_int_property
+
 DEFAULT_TARGET_FILE_SIZE_BYTES = 536870912
 
 
@@ -15,7 +17,5 @@ def resolve_target_file_size(
     """Return the target size: settings, then table property, then 512 MiB."""
     if settings.target_file_size_bytes is not None:
         return settings.target_file_size_bytes
-    value = properties.get("write.target-file-size-bytes")
-    if value is not None:
-        return int(value)
-    return DEFAULT_TARGET_FILE_SIZE_BYTES
+    value = positive_int_property(properties, "write.target-file-size-bytes")
+    return value if value is not None else DEFAULT_TARGET_FILE_SIZE_BYTES

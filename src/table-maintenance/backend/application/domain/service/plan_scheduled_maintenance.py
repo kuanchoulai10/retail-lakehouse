@@ -19,6 +19,7 @@ from application.domain.model.managed_table.managed_table import ManagedTable
 from application.domain.model.managed_table.table_status import TableStatus
 from application.domain.model.observation.table_observation import TableObservation
 from application.domain.service.compute_reducible_files import compute_reducible_files
+from application.domain.service.positive_int_property import positive_int_property
 from application.domain.service.resolve_target_file_size import (
     resolve_target_file_size,
 )
@@ -90,11 +91,8 @@ def _plan_compaction(
     selected = tuple(p for p, r in reducible if r >= cfg.min_reducible_files)
     if not selected:
         return None
-    unpartitioned = {
-        spec.spec_id for spec in observation.specs if spec.is_unpartitioned
-    }
-    known = {spec.spec_id for spec in observation.specs}
-    if all(p.spec_id in unpartitioned or p.spec_id not in known for p in selected):
+    partitioned = {s.spec_id for s in observation.specs if not s.is_unpartitioned}
+    if any(p.spec_id not in partitioned for p in selected):
         return PlannedOperation(op)
     return PlannedOperation(op, selected)
 
@@ -106,8 +104,12 @@ def _manifests_due(
     if cfg.small_manifest_bytes is not None:
         threshold = cfg.small_manifest_bytes
     elif MANIFEST_TARGET_SIZE_PROPERTY in observation.properties:
-        threshold = int(observation.properties[MANIFEST_TARGET_SIZE_PROPERTY])
+        threshold = positive_int_property(
+            observation.properties, MANIFEST_TARGET_SIZE_PROPERTY
+        )
     else:
+        threshold = None
+    if threshold is None:
         threshold = DEFAULT_SMALL_MANIFEST_BYTES
     small = sum(1 for m in observation.manifests if m.length_bytes < threshold)
     return small >= cfg.min_small_manifests

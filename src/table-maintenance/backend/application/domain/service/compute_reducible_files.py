@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import math
-
 from application.domain.model.observation.partition_stats import PartitionStats
 
 
@@ -15,7 +13,7 @@ def compute_reducible_files(stats: PartitionStats, target_file_size_bytes: int) 
         + stats.equality_delete_file_count
     )
     expected = (
-        math.ceil(stats.total_data_file_size_bytes / target_file_size_bytes)
+        -(-stats.total_data_file_size_bytes // target_file_size_bytes)
         if stats.total_data_file_size_bytes > 0
         else 0
     )
