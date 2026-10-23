@@ -56,6 +56,11 @@ def test_contracts_round_trip():
         assert _round_trip(value) == value
 
 
+def test_maintenance_workflow_input_default_attempt_deadline():
+    value = MaintenanceWorkflowInput("r1", "u1", "p", "scheduled", {})
+    assert value.attempt_deadline_seconds == 21600
+
+
 def test_capacity_limiter_defaults():
     limiter = CapacityLimiterInput(1)
     assert limiter.lease_seconds == 21600

@@ -22,6 +22,7 @@ from application.domain.model.maintenance.workflow_ids import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
     from datetime import datetime
 
     from temporalio.client import Client
@@ -36,7 +37,9 @@ class ScriptedMaintenanceActivities:
     is the job state the status activity reports (RUNNING by default); a list plays
     its states in order and then repeats the last one. ``record_errors`` lists the
     ``(operation, attempt)`` outcomes whose recording fails non-retryably, and
-    ``create_gate``, when set, holds run creation until the test opens it.
+    ``create_gate``, ``submit_gate`` and ``status_gate``, when set, hold that
+    activity until the test opens them; ``status_hook`` runs inside each status
+    call with the app name and the call's scheduled time.
     """
 
     def __init__(self, client: Client) -> None:
@@ -46,6 +49,9 @@ class ScriptedMaintenanceActivities:
         self.states: dict[str, dict[str, Any] | list[dict[str, Any]]] = {}
         self.record_errors: set[tuple[str, int]] = set()
         self.create_gate: asyncio.Event | None = None
+        self.submit_gate: asyncio.Event | None = None
+        self.status_gate: asyncio.Event | None = None
+        self.status_hook: Callable[[str, datetime], Awaitable[None]] | None = None
         self.status_times: list[datetime] = []
         self.created: list[dict] = []
         self.submits: list[dict] = []
@@ -67,6 +73,8 @@ class ScriptedMaintenanceActivities:
     @activity.defn(name=SUBMIT_MAINTENANCE_OPERATION)
     async def submit_maintenance_operation(self, request: dict) -> dict:
         self.submits.append(request)
+        if self.submit_gate is not None:
+            await self.submit_gate.wait()
         key = (request["operation"], request["attempt"])
         if key in self.submit_errors:
             raise ApplicationError(
@@ -96,6 +104,10 @@ class ScriptedMaintenanceActivities:
         app_name = request["app_name"]
         self.status_calls.append(app_name)
         self.status_times.append(activity.info().scheduled_time)
+        if self.status_gate is not None:
+            await self.status_gate.wait()
+        if self.status_hook is not None:
+            await self.status_hook(app_name, activity.info().scheduled_time)
         state = self.states.get(app_name, {"state": "RUNNING", "error": None})
         if isinstance(state, list):
             calls = self.status_calls.count(app_name)

@@ -20,14 +20,12 @@ from adapter.inbound.temporal.workflows import (
     CapacityLimiterWorkflow,
     MaintenanceWorkflow,
 )
-from adapter.inbound.temporal.workflows.maintenance_workflow import (
-    ATTEMPT_DEADLINE_SECONDS,
-)
 from adapter.temporal_contracts.capacity_acquire_signal import CapacityAcquireSignal
 from adapter.temporal_contracts.capacity_limiter_input import CapacityLimiterInput
 from adapter.temporal_contracts.maintenance_workflow_input import (
     MaintenanceWorkflowInput,
 )
+from adapter.temporal_contracts.operation_result_signal import OperationResultSignal
 from adapter.temporal_contracts.workflow_names import (
     CAPACITY_LIMITER_WORKFLOW,
     MAINTENANCE_WORKFLOW,
@@ -35,6 +33,7 @@ from adapter.temporal_contracts.workflow_names import (
 from application.domain.model.maintenance.workflow_ids import (
     CAPACITY_WORKFLOW_ID,
     SIGNAL_CAPACITY_ACQUIRE,
+    SIGNAL_OPERATION_RESULT,
     maintenance_workflow_id,
 )
 from tests.adapter.inbound.temporal.eventually import eventually
@@ -53,6 +52,7 @@ EXPIRE = "expire_snapshots"
 RUN_ID = "run-1"
 PARENT_ID = "parent-1"
 REAL_TIMEOUT_SECONDS = 20
+ATTEMPT_DEADLINE_SECONDS = 21600
 
 
 def _plan(*operations: str) -> dict:
@@ -85,7 +85,10 @@ class Harness:
         await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
 
     async def start_maintenance(
-        self, *operations: str, parent_id: str = PARENT_ID
+        self,
+        *operations: str,
+        parent_id: str = PARENT_ID,
+        attempt_deadline_seconds: int = ATTEMPT_DEADLINE_SECONDS,
     ) -> WorkflowHandle:
         return await self.client.start_workflow(
             MAINTENANCE_WORKFLOW,
@@ -95,6 +98,7 @@ class Harness:
                 parent_workflow_id=parent_id,
                 trigger="scheduled",
                 plan=_plan(*operations),
+                attempt_deadline_seconds=attempt_deadline_seconds,
             ),
             id=maintenance_workflow_id(RUN_ID),
             task_queue=self.queue,
@@ -422,3 +426,91 @@ def test_record_failures_are_counted_in_the_parent_payload():
 
 async def _value(value: object) -> object:
     return value
+
+
+async def _cancel_while_blocked(
+    h: Harness,
+    gate: asyncio.Event,
+    blocked: Callable[[], bool],
+    advance: timedelta = timedelta(0),
+) -> None:
+    handle = await h.start_maintenance(COMPACTION, EXPIRE)
+    try:
+        await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n == 1)
+        if advance:
+            await h.env.sleep(advance)
+        await eventually(lambda: _value(blocked()), bool)
+        await handle.cancel()
+        with pytest.raises(WorkflowFailureError) as caught:
+            await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+    finally:
+        gate.set()
+    assert isinstance(caught.value.cause, CancelledError)
+    assert h.recorded() == [(COMPACTION, 1, False, "cancelled")]
+    assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [
+        (COMPACTION, 1)
+    ]
+    assert h.fakes.deletes == [f"{RUN_ID}-{COMPACTION}-1"]
+    assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
+    assert await h.limiter_holders() == {}
+
+
+def test_cancel_during_status_poll_activity_cancels_the_workflow():
+    async def scenario(h: Harness) -> None:
+        gate = h.fakes.status_gate = asyncio.Event()
+        await _cancel_while_blocked(
+            h,
+            gate,
+            lambda: len(h.fakes.status_calls) == 1,
+            advance=timedelta(seconds=31),
+        )
+        assert h.fakes.status_calls == [f"{RUN_ID}-{COMPACTION}-1"]
+
+    _run(scenario)
+
+
+def test_cancel_during_submit_activity_cancels_the_workflow():
+    async def scenario(h: Harness) -> None:
+        gate = h.fakes.submit_gate = asyncio.Event()
+        await _cancel_while_blocked(h, gate, lambda: len(h.fakes.submits) == 1)
+
+    _run(scenario)
+
+
+def test_result_arriving_during_last_poll_before_deadline_wins():
+    async def scenario(h: Harness) -> None:
+        deadline = timedelta(seconds=100)
+        app = f"{RUN_ID}-{COMPACTION}-1"
+        signalled: list[datetime] = []
+
+        async def hook(app_name: str, scheduled: datetime) -> None:
+            # The poll at 90 s, the last before the 100 s deadline, receives the
+            # callback and returns only after the deadline has passed.
+            submitted = h.submit_times()[0]
+            if (
+                app_name != app
+                or signalled
+                or scheduled - submitted < timedelta(seconds=85)
+            ):
+                return
+            signalled.append(scheduled)
+            await h.client.get_workflow_handle(maintenance_workflow_id(RUN_ID)).signal(
+                SIGNAL_OPERATION_RESULT,
+                OperationResultSignal(RUN_ID, COMPACTION, 1, True, {"files": 7}, None),
+            )
+            await h.env.sleep(timedelta(seconds=30))
+
+        h.fakes.status_hook = hook
+        handle = await h.start_maintenance(
+            COMPACTION, attempt_deadline_seconds=int(deadline.total_seconds())
+        )
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert h.recorded() == [(COMPACTION, 1, True, None)]
+        assert h.fakes.records[0]["metrics"] == {"files": 7}
+        recorded_at = datetime.fromisoformat(h.fakes.records[0]["now"])
+        assert recorded_at >= h.submit_times()[0] + deadline
+        assert len(h.fakes.submits) == 1
+        assert len(signalled) == 1
+
+    _run(scenario)

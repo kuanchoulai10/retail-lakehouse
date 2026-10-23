@@ -10,7 +10,8 @@ class MaintenanceWorkflowInput:
     """Carry one maintenance run: its identity, its parent and its plan.
 
     ``plan`` is the ``plan_table_maintenance`` activity output, with ``operations``
-    in canonical order.
+    in canonical order. ``attempt_deadline_seconds`` bounds each attempt, measured
+    from its submit.
     """
 
     run_id: str
@@ -18,3 +19,4 @@ class MaintenanceWorkflowInput:
     parent_workflow_id: str
     trigger: str
     plan: dict
+    attempt_deadline_seconds: int = 21600

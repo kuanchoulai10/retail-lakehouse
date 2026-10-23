@@ -28,11 +28,8 @@ _FORBIDDEN_MODULES = (
     "temporalio.client",
     "temporalio.worker",
 )
-_FORBIDDEN_CLOCK_CALLS = {
-    ("datetime", "now"),
-    ("datetime", "utcnow"),
-    ("date", "today"),
-}
+_CLOCK_CLASSES = ("datetime", "date")
+_CLOCK_METHODS = ("now", "utcnow", "today")
 
 
 def _is_forbidden(module: str) -> bool:
@@ -47,10 +44,23 @@ def _rightmost_name(node: ast.expr) -> str | None:
     return None
 
 
+def _clock_aliases(tree: ast.Module) -> set[str]:
+    """Return the local names bound to ``datetime.datetime`` or ``datetime.date``."""
+    return {
+        alias.asname or alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom) and node.module == "datetime"
+        for alias in node.names
+        if alias.name in _CLOCK_CLASSES
+    }
+
+
 def violations(source: str) -> list[str]:
     """Return a description of every forbidden import or clock call in ``source``."""
+    tree = ast.parse(source)
+    clock_names = set(_CLOCK_CLASSES) | _clock_aliases(tree)
     found: list[str] = []
-    for node in ast.walk(ast.parse(source)):
+    for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             found += [f"import {a.name}" for a in node.names if _is_forbidden(a.name)]
         elif isinstance(node, ast.ImportFrom) and node.module:
@@ -64,7 +74,7 @@ def violations(source: str) -> list[str]:
                 ]
         elif isinstance(node, ast.Attribute):
             owner = _rightmost_name(node.value)
-            if (owner, node.attr) in _FORBIDDEN_CLOCK_CALLS:
+            if owner in clock_names and node.attr in _CLOCK_METHODS:
                 found.append(f"{owner}.{node.attr}")
     return found
 
@@ -85,6 +95,9 @@ def test_workflow_module_is_deterministic(path: Path):
         "import temporalio.worker",
         "from datetime import datetime\nx = datetime.now()",
         "import datetime\nx = datetime.datetime.utcnow()",
+        "from datetime import datetime\nx = datetime.today()",
+        "from datetime import datetime as dt\nx = dt.now()",
+        "import datetime as d\nx = d.date.today()",
     ],
 )
 def test_checker_flags_forbidden_source(source: str):

@@ -8,7 +8,7 @@ from typing import Any
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
-from temporalio.exceptions import ActivityError, FailureError
+from temporalio.exceptions import ActivityError, FailureError, is_cancelled_exception
 
 from adapter.temporal_contracts.activity_names import (
     CREATE_MAINTENANCE_RUN,
@@ -39,7 +39,6 @@ _ACTIVITY_RETRY = RetryPolicy(
 )
 _MAX_ATTEMPTS = 3
 _BACKOFFS = (timedelta(seconds=60), timedelta(seconds=120))
-ATTEMPT_DEADLINE_SECONDS = 21600
 FAST_POLL_INTERVAL = timedelta(seconds=30)
 FAST_POLL_WINDOW = timedelta(minutes=10)
 SLOW_POLL_INTERVAL = timedelta(minutes=5)
@@ -54,8 +53,8 @@ class MaintenanceWorkflow:
     Each operation gets up to three attempts. An attempt holds one capacity slot
     from the limiter while its Spark job runs, and ends with the job's
     ``operation_result`` callback for that exact attempt, with what polling the
-    job's state reveals, or with a timeout ``ATTEMPT_DEADLINE_SECONDS`` after the
-    submit. Polling runs every 30 s for the first 10 minutes of an attempt and
+    job's state reveals, or with a timeout ``attempt_deadline_seconds`` (input, 6 h by
+    default) after the submit. Polling runs every 30 s for the first 10 minutes of an attempt and
     every 5 minutes after that, which bounds the history. A failed operation
     never fails the run: the next operation still runs. At the end, also after a
     cancellation, the Spark job of every started attempt is deleted and the parent
@@ -67,6 +66,7 @@ class MaintenanceWorkflow:
     def __init__(self, input: MaintenanceWorkflowInput) -> None:  # noqa: A002
         """Prepare the result and grant mailboxes and the attempt log."""
         self._run_id = input.run_id
+        self._attempt_deadline = timedelta(seconds=input.attempt_deadline_seconds)
         self._results: dict[tuple[str, int], OperationResultSignal] = {}
         self._granted: set[str] = set()
         self._current_request: str | None = None
@@ -141,6 +141,7 @@ class MaintenanceWorkflow:
         try:
             await self._acquire(request_id)
         except ActivityError as error:
+            _raise_if_cancelled(error)
             return self._failure(
                 name, attempt, f"capacity acquire failed: {_message(error)}"
             )
@@ -158,6 +159,7 @@ class MaintenanceWorkflow:
                 },
             )
         except ActivityError as error:
+            _raise_if_cancelled(error)
             return self._failure(name, attempt, f"submit failed: {_message(error)}")
         return await self._await_outcome(name, attempt, submitted["app_name"])
 
@@ -191,9 +193,11 @@ class MaintenanceWorkflow:
     ) -> OperationResultSignal:
         key = (name, attempt)
         submitted_at = workflow.now()
-        deadline = submitted_at + timedelta(seconds=ATTEMPT_DEADLINE_SECONDS)
+        deadline = submitted_at + self._attempt_deadline
         completed_since: datetime | None = None
         while True:
+            if key in self._results:
+                return self._results[key]
             now = workflow.now()
             if now >= deadline:
                 return self._failure(name, attempt, "spark job timed out")
@@ -241,6 +245,7 @@ class MaintenanceWorkflow:
                 GET_MAINTENANCE_JOB_STATUS, {"app_name": app_name}
             )
         except ActivityError as error:
+            _raise_if_cancelled(error)
             workflow.logger.warning("status of %s unknown: %s", app_name, error)
             return None
 
@@ -259,6 +264,7 @@ class MaintenanceWorkflow:
                 },
             )
         except ActivityError as error:
+            _raise_if_cancelled(error)
             self._record_failures += 1
             workflow.logger.error(
                 "recording %s attempt %s failed: %s",
@@ -320,3 +326,9 @@ def _now() -> str:
 def _message(error: ActivityError) -> str:
     cause = error.cause
     return cause.message if isinstance(cause, FailureError) else error.message
+
+
+def _raise_if_cancelled(error: ActivityError) -> None:
+    """Turn an activity cancelled by a workflow cancellation back into the cancel."""
+    if is_cancelled_exception(error):
+        raise asyncio.CancelledError from error
