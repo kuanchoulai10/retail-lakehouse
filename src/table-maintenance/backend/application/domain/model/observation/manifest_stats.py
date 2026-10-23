@@ -1,0 +1,14 @@
+"""Define the ManifestStats value object."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from base.value_object import ValueObject
+
+
+@dataclass(frozen=True)
+class ManifestStats(ValueObject):
+    """Hold the size of one manifest file."""
+
+    length_bytes: int
