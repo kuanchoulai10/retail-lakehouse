@@ -10,6 +10,7 @@ dependencies = [
     "pyiceberg>=0.9",
     "pyarrow>=18",
     "temporalio>=1.8",
+    "confluent-kafka>=2.6,<3",
 ]
 
 [dependency-groups]

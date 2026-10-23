@@ -179,3 +179,13 @@ source_modules =
     bootstrap.dependencies
 forbidden_modules =
     adapter.inbound
+
+[importlinter:contract:inbound-event-consumer-no-bootstrap]
+name = Inbound event consumer does not depend on bootstrap or the domain (use cases are injected)
+type = forbidden
+source_modules =
+    adapter.inbound.event_consumer
+forbidden_modules =
+    bootstrap
+    application.domain
+    application.service

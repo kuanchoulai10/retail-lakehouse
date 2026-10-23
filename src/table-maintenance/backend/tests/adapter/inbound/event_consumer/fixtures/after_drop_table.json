@@ -1,0 +1,16 @@
+{
+  "event_type": "AFTER_DROP_TABLE",
+  "event_id": "479d7f92-cf05-4067-bf77-13319a66bbb2",
+  "timestamp": "2026-10-23T14:46:37.123298135Z",
+  "table_name": "t1",
+  "namespace": [
+    "evt_test"
+  ],
+  "catalog_name": "iceberg",
+  "realm_id": "POLARIS",
+  "principal": "root",
+  "activated_roles": [
+    "service_admin"
+  ],
+  "request_id": "e59a03b6-c08f-4cda-86b0-92f2424ab3a6_0000000000000000049"
+}

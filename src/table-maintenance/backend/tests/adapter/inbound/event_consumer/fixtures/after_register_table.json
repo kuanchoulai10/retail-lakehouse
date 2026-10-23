@@ -1,0 +1,12 @@
+{
+  "event_type": "AFTER_REGISTER_TABLE",
+  "event_id": "8d4b7f10-2c63-4e0f-8a55-0b9e3d6c1e21",
+  "timestamp": "2026-10-23T14:51:00.000000000Z",
+  "table_name": "events",
+  "namespace": ["analytics", "web"],
+  "catalog_name": "iceberg",
+  "realm_id": "POLARIS",
+  "principal": "root",
+  "activated_roles": ["service_admin"],
+  "request_id": "e59a03b6-c08f-4cda-86b0-92f2424ab3a6_0000000000000000061"
+}

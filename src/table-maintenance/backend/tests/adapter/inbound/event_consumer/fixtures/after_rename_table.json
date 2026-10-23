@@ -1,0 +1,12 @@
+{
+  "event_type": "AFTER_RENAME_TABLE",
+  "event_id": "5c0e2b34-1f0a-4c55-9c0e-7a1f6f1d2a10",
+  "timestamp": "2026-10-23T14:50:00.000000000Z",
+  "source": ["sales", "orders_old"],
+  "destination": ["sales", "orders"],
+  "catalog_name": "iceberg",
+  "realm_id": "POLARIS",
+  "principal": "root",
+  "activated_roles": ["service_admin"],
+  "request_id": "e59a03b6-c08f-4cda-86b0-92f2424ab3a6_0000000000000000060"
+}

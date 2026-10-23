@@ -1,0 +1,15 @@
+{
+  "event_type": "BEFORE_CREATE_TABLE",
+  "event_id": "1c0284bb-0c36-41aa-b6fd-070b6123e73f",
+  "timestamp": "2026-10-23T14:46:13.635715834Z",
+  "namespace": [
+    "evt_test"
+  ],
+  "catalog_name": "iceberg",
+  "realm_id": "POLARIS",
+  "principal": "root",
+  "activated_roles": [
+    "service_admin"
+  ],
+  "request_id": "e59a03b6-c08f-4cda-86b0-92f2424ab3a6_0000000000000000020"
+}
