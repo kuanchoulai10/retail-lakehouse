@@ -25,7 +25,7 @@ Respond in the same language as the user's message. The user typically communica
 - Wave 10: cert-manager, kube-prometheus, Strimzi
 - Wave 11: KEDA, Spark Operator, OTel Operator, Istio base, Gateway API CRDs
 - Wave 12: istiod, istio-cni, ztunnel
-- Wave 20: Kafka (3 brokers), MinIO, MySQL, Polaris DB, Jaeger (trino / thanos)
+- Wave 20: Kafka (3 brokers), MinIO, MySQL, Polaris DB, Jaeger (trino / thanos), temporal (namespace only)
 - Wave 21–22: Polaris, 3 KafkaConnectors (debezium-mysql, iceberg-sink, polaris-cdc), `platform-gateway` + HTTPRoutes
 - Wave 23: Trino, Kafka UI
 - Wave 25: lakehouse-control-plane (namespaces `lakehouse-control-plane`, `lakehouse-maintenance-operations`; no components yet)
@@ -43,7 +43,7 @@ Respond in the same language as the user's message. The user typically communica
 4. `polaris` → `lakehouse-catalog` (done)
 5. `trino` → `lakehouse-query-engine` (done)
 6. New wave `platform/25-lakehouse-control-plane` creates the `lakehouse-control-plane` + `lakehouse-maintenance-operations` namespaces (namespace only for now). The current `25-table-maintenance` / `25-tbl-maint-*` dirs will later be consolidated into it. (done)
-7. New wave `platform/20-temporal` creates the `temporal` namespace (namespace only for now; Temporal itself deploys here later).
+7. New wave `platform/20-temporal` creates the `temporal` namespace (namespace only for now; Temporal itself deploys here later). (done)
 8. Full `task offboard` + `task onboard KUBE_CONTEXT=retail-lakehouse` end-to-end run
 
 New namespaces are **not** labeled `istio.io/dataplane-mode=ambient` (no namespace is enrolled in the ambient mesh yet).
