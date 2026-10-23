@@ -90,9 +90,7 @@ TEMPLATE_SETTINGS = MaintenanceSettings(
 
 @pytest.fixture
 def template(templates_repo, now):
-    t = PolicyTemplate.create(
-        PolicyTemplateId("t-1"), "gold", MaintenanceSettings(), now
-    )
+    t = PolicyTemplate.create(PolicyTemplateId("t-1"), "gold", TEMPLATE_SETTINGS, now)
     templates_repo.create(t)
     return t
 
