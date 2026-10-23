@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
+from types import SimpleNamespace
 
 import pytest
 from temporalio.client import RPCError
@@ -18,6 +19,7 @@ from adapter.outbound.workflow.temporal.send_maintenance_result_temporal_gateway
 from adapter.outbound.workflow.temporal.send_table_signal_temporal_gateway import (
     SendTableSignalTemporalGateway,
 )
+from application.domain.model.maintenance.workflow_ids import discovery_schedule_id
 from application.exceptions import NotFoundError
 from application.port.outbound.discovery.update_discovery_schedule import (
     UpdateDiscoveryScheduleGatewayInput,
@@ -53,6 +55,12 @@ class _FailingClient:
 
     def get_schedule_handle(self, *args: object, **kwargs: object) -> _FailingHandle:
         return self._handle
+
+    async def list_schedules(self, *args: object, **kwargs: object) -> AsyncIterator:
+        async def listing() -> AsyncIterator[SimpleNamespace]:
+            yield SimpleNamespace(id=discovery_schedule_id("iceberg"))
+
+        return listing()
 
 
 @pytest.fixture

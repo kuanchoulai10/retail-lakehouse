@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from datetime import timedelta
 
 from temporalio.client import (
@@ -17,12 +18,15 @@ from adapter.outbound.discovery.temporal.update_discovery_schedule_temporal_gate
 )
 from adapter.temporal_contracts.workflow_names import DISCOVERY_WORKFLOW
 from application.domain.model.maintenance.workflow_ids import (
-    DISCOVERY_SCHEDULE_ID,
     TASK_QUEUE,
+    discovery_schedule_id,
 )
 from application.port.outbound.discovery.update_discovery_schedule import (
     UpdateDiscoveryScheduleGatewayInput,
 )
+
+CATALOGS = ("gw-a", "gw-b")
+OTHER_SCHEDULE_ID = "unrelated-schedule"
 
 
 def test_update_without_schedule_does_not_raise(harness):
@@ -30,39 +34,52 @@ def test_update_without_schedule_does_not_raise(harness):
     gateway.update(UpdateDiscoveryScheduleGatewayInput(paused=True))
 
 
-def test_update_pauses_and_unpauses_schedule(harness):
-    async def create() -> None:
-        await harness.client.create_schedule(
-            DISCOVERY_SCHEDULE_ID,
-            Schedule(
-                action=ScheduleActionStartWorkflow(
-                    DISCOVERY_WORKFLOW,
-                    {"catalog": "iceberg"},
-                    id="table-discovery-scheduled",
-                    task_queue=TASK_QUEUE,
-                ),
-                spec=ScheduleSpec(
-                    intervals=[ScheduleIntervalSpec(every=timedelta(hours=1))]
-                ),
-                state=ScheduleState(paused=False),
-            ),
-        )
+def _schedule(catalog: str) -> Schedule:
+    return Schedule(
+        action=ScheduleActionStartWorkflow(
+            DISCOVERY_WORKFLOW,
+            {"catalog": catalog},
+            id=discovery_schedule_id(catalog),
+            task_queue=TASK_QUEUE,
+        ),
+        spec=ScheduleSpec(intervals=[ScheduleIntervalSpec(every=timedelta(hours=1))]),
+        state=ScheduleState(paused=False),
+    )
 
-    async def paused() -> bool:
-        desc = await harness.client.get_schedule_handle(
-            DISCOVERY_SCHEDULE_ID
-        ).describe()
+
+def test_update_pauses_and_unpauses_every_catalog_schedule(harness):
+    ids = [discovery_schedule_id(c) for c in CATALOGS]
+
+    async def create() -> None:
+        for catalog, schedule_id in zip(CATALOGS, ids, strict=True):
+            await harness.client.create_schedule(schedule_id, _schedule(catalog))
+        await harness.client.create_schedule(OTHER_SCHEDULE_ID, _schedule("other"))
+
+    async def listed() -> set[str]:
+        return {s.id async for s in await harness.client.list_schedules()}
+
+    async def paused(schedule_id: str) -> bool:
+        desc = await harness.client.get_schedule_handle(schedule_id).describe()
         return desc.schedule.state.paused
 
     async def delete() -> None:
-        await harness.client.get_schedule_handle(DISCOVERY_SCHEDULE_ID).delete()
+        for schedule_id in [*ids, OTHER_SCHEDULE_ID]:
+            await harness.client.get_schedule_handle(schedule_id).delete()
 
     harness.bridge.run(create)
     try:
+        deadline = time.monotonic() + 15
+        while not set(ids) <= harness.bridge.run(listed):
+            assert time.monotonic() < deadline, "schedules never became visible"
+            time.sleep(0.2)
         gateway = UpdateDiscoveryScheduleTemporalGateway(harness.client, harness.bridge)
         gateway.update(UpdateDiscoveryScheduleGatewayInput(paused=True))
-        assert harness.bridge.run(paused) is True
+        assert [harness.bridge.run(lambda i=i: paused(i)) for i in ids] == [True, True]
+        assert harness.bridge.run(lambda: paused(OTHER_SCHEDULE_ID)) is False
         gateway.update(UpdateDiscoveryScheduleGatewayInput(paused=False))
-        assert harness.bridge.run(paused) is False
+        assert [harness.bridge.run(lambda i=i: paused(i)) for i in ids] == [
+            False,
+            False,
+        ]
     finally:
         harness.bridge.run(delete)

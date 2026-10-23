@@ -33,3 +33,8 @@ def maintenance_workflow_id(run_id: str) -> str:
 def discovery_adhoc_workflow_id(catalog: str, namespace: str | None) -> str:
     """Return the workflow ID of an ad-hoc discovery run for a catalog or namespace."""
     return f"table-discovery-adhoc-{catalog}-{namespace or 'all'}"
+
+
+def discovery_schedule_id(catalog: str) -> str:
+    """Return the ID of the discovery schedule of a catalog (one schedule per catalog)."""
+    return f"{DISCOVERY_SCHEDULE_ID}-{catalog}"

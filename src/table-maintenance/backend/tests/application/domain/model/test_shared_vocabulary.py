@@ -13,6 +13,7 @@ from application.domain.model.maintenance.workflow_ids import (
     SIGNAL_CAPACITY_GRANTED,
     TASK_QUEUE,
     discovery_adhoc_workflow_id,
+    discovery_schedule_id,
     maintenance_workflow_id,
     table_reconcile_workflow_id,
 )
@@ -47,6 +48,10 @@ def test_workflow_ids():
 def test_discovery_adhoc_workflow_id():
     assert discovery_adhoc_workflow_id("c", "ns") == "table-discovery-adhoc-c-ns"
     assert discovery_adhoc_workflow_id("c", None) == "table-discovery-adhoc-c-all"
+
+
+def test_discovery_schedule_id_is_per_catalog():
+    assert discovery_schedule_id("iceberg") == "table-discovery-iceberg"
 
 
 def test_table_name_qualified():

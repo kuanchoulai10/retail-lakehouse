@@ -33,6 +33,15 @@ def test_contracts_round_trip():
     plan = {"status": "planned", "operations": [{"operation": "rewrite_data_files"}]}
     values = [
         TableReconcileWorkflowInput("u1"),
+        TableReconcileWorkflowInput(
+            "u1",
+            in_flight_run_id="r1",
+            in_flight_started_at="2026-10-24T00:00:00+00:00",
+            in_flight_operation_count=2,
+            pending_manual=["expire_snapshots"],
+            next_plan_at="2026-10-24T01:00:00+00:00",
+            continue_as_new_after=5,
+        ),
         DiscoveryWorkflowInput("iceberg"),
         DiscoveryWorkflowInput("iceberg", "sales"),
         MaintenanceWorkflowInput("r1", "u1", "table-reconcile-u1", "scheduled", plan),
@@ -70,9 +79,20 @@ def test_capacity_limiter_defaults():
     assert limiter.queue is not CapacityLimiterInput(1).queue
 
 
+def test_table_reconcile_workflow_input_defaults():
+    value = TableReconcileWorkflowInput("u1")
+    assert value.in_flight_run_id is None
+    assert value.in_flight_started_at is None
+    assert value.in_flight_operation_count == 0
+    assert value.pending_manual is None
+    assert value.next_plan_at is None
+    assert value.continue_as_new_after == 200
+
+
 @pytest.mark.parametrize(
     "value",
     [
+        TableReconcileWorkflowInput("u1"),
         CapacityAcquireSignal("r1", "w1"),
         CapacityLimiterInput(1),
         CapacityReleaseSignal("r1"),
