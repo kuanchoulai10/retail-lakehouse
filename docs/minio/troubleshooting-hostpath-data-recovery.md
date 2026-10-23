@@ -130,7 +130,7 @@ Pod 起來後，確認 MinIO 現在看得到正確的資料。
 
 ```bash
 kubectl run mc-verify --rm -it --restart=Never \
-  --image=minio/mc:latest \
+  --image=pgsty/mc:RELEASE.2026-10-18T00-00-00Z \
   --env="MC_HOST_local=http://minio:minio123@minio.object-storage.svc.cluster.local:9000" \
   -- mc ls local/
 ```

@@ -1,6 +1,6 @@
 # MinIO
 
-Deploys a single-node MinIO object storage instance in the `object-storage` namespace. MinIO provides S3-compatible storage for the Iceberg lakehouse warehouse, Trino fault-tolerance spooling, and Thanos long-term metrics storage. A Job runs after deployment to pre-create the required buckets.
+Deploys a single-node MinIO-compatible object storage instance (Pigsty community build: server `pgsty/silo`, client `pgsty/mc`, both pinned to `RELEASE.2026-10-18T00-00-00Z` because the `minio/minio` and `minio/mc` images were removed from Docker Hub) in the `object-storage` namespace. MinIO provides S3-compatible storage for the Iceberg lakehouse warehouse, Trino fault-tolerance spooling, and Thanos long-term metrics storage. A Job runs after deployment to pre-create the required buckets.
 
 ## Deployed Resources
 

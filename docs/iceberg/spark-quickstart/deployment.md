@@ -38,7 +38,7 @@ Apache Iceberg's REST catalog service for metadata management:
 
 S3-compatible object storage for storing Iceberg table data:
 
-- **Image**: `minio/minio` - Open-source S3-compatible storage
+- **Image**: `pgsty/silo` - Community build of MinIO (Silo), S3-compatible storage
 - **Ports**:
     - `9000`: S3 API endpoint
     - `9001`: MinIO web console
