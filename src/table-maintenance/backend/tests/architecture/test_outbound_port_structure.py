@@ -9,7 +9,9 @@ Three port types exist:
 
 Gateway subdirectory must contain:
   Required: __init__.py, gateway.py
-  Optional: input.py, output.py
+  Optional: input.py, output.py, plus the extra single-class files in
+  GATEWAY_EXTRA_FILES (list_input.py, table_ref.py, table.py, observation.py);
+  each defines one class named {Verb}{Noun}Gateway{CamelCaseFileStem}.
 
 Naming convention for Gateway subdirectory {verb}_{noun}/:
   {Verb}{Noun}Gateway        in gateway.py
@@ -45,7 +47,9 @@ AGGREGATE_GROUPS = [
 ]
 
 GATEWAY_REQUIRED_FILES = {"__init__.py", "gateway.py"}
-GATEWAY_ALLOWED_FILES = {"__init__.py", "gateway.py", "input.py", "output.py"}
+GATEWAY_STANDARD_FILES = {"__init__.py", "gateway.py", "input.py", "output.py"}
+GATEWAY_EXTRA_FILES = {"list_input.py", "table_ref.py", "table.py", "observation.py"}
+GATEWAY_ALLOWED_FILES = GATEWAY_STANDARD_FILES | GATEWAY_EXTRA_FILES
 
 # Imports allowed in input.py / output.py (primitive-only constraint).
 # These files must NOT import from application.domain or base (except base.value_object).
@@ -285,3 +289,46 @@ def test_init_reexports_all_symbols(gw_entry: tuple[str, Path]):
         assert f"{prefix}GatewayOutput" in exported, (
             f"{gw_dir.name}/__init__.py must re-export '{prefix}GatewayOutput' in __all__"
         )
+
+
+# --- Rule 8: extra single-class files ---
+
+
+def _extra_files() -> list[tuple[str, Path]]:
+    """Return (group, file) for extra single-class files in gateway dirs."""
+    return [
+        (group, f)
+        for group, gw_dir in _gateway_dirs()
+        for f in sorted(gw_dir.iterdir())
+        if f.name in GATEWAY_EXTRA_FILES
+    ]
+
+
+def _extra_id(param: tuple[str, Path]) -> str:
+    group, f = param
+    return f"{group}/{f.parent.name}/{f.name}"
+
+
+@pytest.mark.parametrize("extra", _extra_files(), ids=_extra_id)
+def test_extra_file_class_naming_and_export(extra: tuple[str, Path]):
+    """Verify an extra file defines {Prefix}Gateway{Stem} and __init__ exports it."""
+    group, f = extra
+    prefix = _pascal_case(f.parent.name)
+    expected = f"{prefix}Gateway{_pascal_case(f.stem)}"
+    module = f"application.port.outbound.{group}.{f.parent.name}"
+    assert expected in _exported_classes(f"{module}.{f.stem}")
+    assert expected in set(getattr(importlib.import_module(module), "__all__", []))
+
+
+@pytest.mark.parametrize("extra", _extra_files(), ids=_extra_id)
+def test_extra_file_primitive_only(extra: tuple[str, Path]):
+    """Verify an extra file imports only primitive-safe modules."""
+    _group, f = extra
+    violations = [
+        imp
+        for imp in _parse_imports(f)
+        if not any(
+            imp.startswith(prefix) for prefix in ALLOWED_INPUT_OUTPUT_IMPORT_PREFIXES
+        )
+    ]
+    assert violations == [], f"{f.name} has non-primitive imports: {violations}"

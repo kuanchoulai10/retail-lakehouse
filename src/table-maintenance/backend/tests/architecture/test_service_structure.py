@@ -27,7 +27,16 @@ from base.use_case import UseCase
 SERVICE_DIR = Path(__file__).resolve().parents[2] / "application" / "service"
 
 # Files that are utilities, not services — excluded from service rules
-UTILITY_FILES = {"event_serializer.py", "table_properties_serializer.py"}
+UTILITY_FILES = {
+    "event_serializer.py",
+    "table_properties_serializer.py",
+    "maintenance_settings_from_dict.py",
+    "maintenance_settings_to_dict.py",
+    "translate_domain_errors.py",
+    "policy_template_output_fields.py",
+    "discovery_rule_output_fields.py",
+    "managed_table_output_fields.py",
+}
 
 # Known verbs for service naming. This is a pre-defined allowlist, not an
 # exhaustive restriction. If a new verb is legitimate, add it here.

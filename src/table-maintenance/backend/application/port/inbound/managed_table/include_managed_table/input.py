@@ -1,0 +1,15 @@
+"""Define the IncludeManagedTableUseCaseInput."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class IncludeManagedTableUseCaseInput:
+    """Carry the request to include a table in maintenance by hand."""
+
+    catalog: str
+    namespace: str
+    table: str
+    template_id: str
