@@ -2,7 +2,7 @@
 
 **Date**: 2026-10-24
 **Status**: Draft
-**Supersedes (for table maintenance)**: the Airflow-style `Job` / `JobRun` / scheduler / outbox design in `src/table-maintenance` (ADR 0003)
+**Supersedes (for table maintenance)**: the Airflow-style `Job` / `JobRun` / scheduler / outbox design in `src/table-maintenance` (its ADRs 0001–0003 were deleted as obsolete)
 
 ## Intent
 
@@ -122,7 +122,7 @@ Exact port/use-case names are left to the builder, following the naming conventi
   - Reset: the operator can return a `MANUAL` table to `AUTO`; discovery rules are then re-applied to it immediately.
   - The reconcile workflow runs only for `ACTIVE` and `PAUSED` tables.
 - Holds the table's own maintenance settings (copied from a template, then editable).
-- Relationship to ADR 0001 / 0002: ADR 0001's single `Table` aggregate and ADR 0002's lifecycle classes were written for the old design. This design's managed table is closest to ADR 0002's "producer of history" class (status enum, never hard-deleted) and keeps Iceberg-side state out of the aggregate (observed state is read fresh by the evaluate activity). The builder should write a new ADR recording this and mark the affected ADRs superseded where they conflict.
+- The old ADRs (0001–0003) were deleted as obsolete. The builder should record the key decisions of this design (table identity by UUID, status lifecycle, entity reconcile workflow) as new ADRs in `docs/adr/`.
 
 ### Maintenance settings (per table)
 
