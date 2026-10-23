@@ -38,7 +38,7 @@ Respond in the same language as the user's message. The user typically communica
 **Current initiative: namespace re-layout** (one task at a time, each deployed + verified + committed on `main`; developer/reviewer agent prompts in `DEVELOPER_AGENT_PROMPT.md` / `REVIEWER_AGENT_PROMPT.md`):
 1. `mysql`: `kafka-cdc` → `ecommerce-app` (done)
 2. `kafka-cdc` → `kafka` (done)
-3. `minio` → `object-storage`
+3. `minio` → `object-storage` (done)
 4. `polaris` → `lakehouse-catalog`
 5. `trino` → `lakehouse-query-engine`
 6. New wave `platform/25-lakehouse-control-plane` creates the `lakehouse-control-plane` + `lakehouse-maintenance-operations` namespaces (namespace only for now). The current `25-table-maintenance` / `25-tbl-maint-*` dirs will later be consolidated into it.

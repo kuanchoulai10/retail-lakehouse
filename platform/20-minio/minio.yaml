@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: minio
-  namespace: minio
+  namespace: object-storage
 spec:
   replicas: 1
   selector:
@@ -62,7 +62,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: minio-console
-  namespace: minio
+  namespace: object-storage
 spec:
   selector:
     app: minio
@@ -77,7 +77,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: minio-api
-  namespace: minio
+  namespace: object-storage
 spec:
   selector:
     app: minio
@@ -93,7 +93,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: minio-create-bucket
-  namespace: minio
+  namespace: object-storage
 spec:
   backoffLimit: 6
   completions: 1
@@ -109,7 +109,7 @@ spec:
             - sh
             - -c
             - |
-              until nc -z minio-api.minio.svc.cluster.local 9000; do
+              until nc -z minio-api.object-storage.svc.cluster.local 9000; do
                 echo "Waiting for MinIO..."
                 sleep 2
               done
@@ -117,6 +117,7 @@ spec:
       containers:
         - name: minio-create-buckets
           image: minio/mc
+          imagePullPolicy: IfNotPresent
           envFrom:
             - secretRef:
                 name: minio-secret
@@ -124,7 +125,7 @@ spec:
             - sh
             - -c
             - |
-              mc alias set minio http://minio-api.minio.svc.cluster.local:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" &&
+              mc alias set minio http://minio-api.object-storage.svc.cluster.local:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" &&
               for bucket in retail-lakehouse-7dj2 trino-fault-tolerance-nkm5 trino-fault-tolerance-cws0 thanos; do
                 if ! mc ls minio/$bucket >/dev/null 2>&1; then
                   echo "Creating bucket: $bucket"

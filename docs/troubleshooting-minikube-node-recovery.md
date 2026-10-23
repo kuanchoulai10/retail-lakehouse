@@ -225,8 +225,8 @@ kubectl get pods -A
     MinIO 使用 `hostPath` 把資料存在 Minikube node 的本機路徑上。只要 node 的 volume 沒有被清除，資料通常在重啟後還在。但仍建議確認一下：
 
     ```bash
-    kubectl get pods -n minio
-    kubectl exec -n minio deploy/minio -- mc ls local/
+    kubectl get pods -n object-storage
+    kubectl exec -n object-storage deploy/minio -- mc ls local/
     ```
 
     如果 bucket 或物件不見了，表示 hostPath 被清除了，需要重新執行 MinIO 的初始化流程。

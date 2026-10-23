@@ -1,18 +1,18 @@
 # MinIO
 
-Deploys a single-node MinIO object storage instance in the `minio` namespace. MinIO provides S3-compatible storage for the Iceberg lakehouse warehouse, Trino fault-tolerance spooling, and Thanos long-term metrics storage. A Job runs after deployment to pre-create the required buckets.
+Deploys a single-node MinIO object storage instance in the `object-storage` namespace. MinIO provides S3-compatible storage for the Iceberg lakehouse warehouse, Trino fault-tolerance spooling, and Thanos long-term metrics storage. A Job runs after deployment to pre-create the required buckets.
 
 ## Deployed Resources
 
 ```
-Namespace: minio
+Namespace: object-storage
 ├── minio                                (Deployment)
 └── minio-create-bucket                  (Job)
 ```
 
 ## Namespaces
 
-- `minio`
+- `object-storage`
 
 ## Pods
 

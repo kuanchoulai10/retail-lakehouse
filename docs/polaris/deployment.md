@@ -155,9 +155,9 @@ extraEnv:
   - name: AWS_REGION
     value: "dummy-region"
   - name: AWS_ENDPOINT_URL_S3
-    value: "http://minio-api.minio.svc.cluster.local:9000"
+    value: "http://minio-api.object-storage.svc.cluster.local:9000"
   - name: AWS_ENDPOINT_URL_STS
-    value: "http://minio-api.minio.svc.cluster.local:9000"
+    value: "http://minio-api.object-storage.svc.cluster.local:9000"
   - name: POLARIS_BOOTSTRAP_CREDENTIALS
     valueFrom:
       secretKeyRef:

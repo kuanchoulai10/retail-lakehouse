@@ -54,7 +54,7 @@ The data is not actually lost. It is still sitting on the original node's filesy
 ### 第一步：確認 Pod 目前跑在哪個節點
 
 ```bash
-kubectl get pod -n minio -o wide
+kubectl get pod -n object-storage -o wide
 ```
 
 輸出範例：
@@ -104,14 +104,14 @@ The fix is to force the MinIO deployment to always run on the node where the dat
 使用 `kubectl patch` 將 deployment 釘到 `lakehouse-demo-m02`：
 
 ```bash
-kubectl patch deployment minio -n minio --type='json' \
+kubectl patch deployment minio -n object-storage --type='json' \
   -p='[{"op":"add","path":"/spec/template/spec/nodeName","value":"lakehouse-demo-m02"}]'
 ```
 
 接著等待 rollout 完成：
 
 ```bash
-kubectl rollout status deployment/minio -n minio
+kubectl rollout status deployment/minio -n object-storage
 ```
 
 等到看到這行訊息就表示成功：
@@ -131,7 +131,7 @@ Pod 起來後，確認 MinIO 現在看得到正確的資料。
 ```bash
 kubectl run mc-verify --rm -it --restart=Never \
   --image=minio/mc:latest \
-  --env="MC_HOST_local=http://minio:minio123@minio.minio.svc.cluster.local:9000" \
+  --env="MC_HOST_local=http://minio:minio123@minio.object-storage.svc.cluster.local:9000" \
   -- mc ls local/
 ```
 

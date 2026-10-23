@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 log::on_success "MinIO deployed"
 log::on_failure "MinIO deployment failed"
 
-kubectl create namespace minio \
+kubectl create namespace object-storage \
   --dry-run=client \
   -o yaml \
   | kubectl apply \

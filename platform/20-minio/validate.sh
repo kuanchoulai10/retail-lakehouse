@@ -10,6 +10,6 @@ log::on_success "MinIO is ready"
 log::on_failure "MinIO is not ready"
 
 kubectl rollout status deployment/minio \
-  --namespace minio \
+  --namespace object-storage \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
