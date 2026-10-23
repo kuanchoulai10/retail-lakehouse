@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -38,7 +39,10 @@ _ACTIVITY_RETRY = RetryPolicy(
 )
 _MAX_ATTEMPTS = 3
 _BACKOFFS = (timedelta(seconds=60), timedelta(seconds=120))
-_POLL_INTERVAL = timedelta(seconds=30)
+ATTEMPT_DEADLINE_SECONDS = 21600
+FAST_POLL_INTERVAL = timedelta(seconds=30)
+FAST_POLL_WINDOW = timedelta(minutes=10)
+SLOW_POLL_INTERVAL = timedelta(minutes=5)
 _CALLBACK_GRACE = timedelta(seconds=120)
 _ACQUIRE_RESEND_INTERVAL = timedelta(minutes=5)
 
@@ -49,19 +53,25 @@ class MaintenanceWorkflow:
 
     Each operation gets up to three attempts. An attempt holds one capacity slot
     from the limiter while its Spark job runs, and ends with the job's
-    ``operation_result`` callback for that exact attempt or, failing that, with
-    what polling the job's state reveals. A failed operation never fails the run:
-    the next operation still runs. At the end every submitted job is deleted and
-    the parent reconcile workflow is told the run finished.
+    ``operation_result`` callback for that exact attempt, with what polling the
+    job's state reveals, or with a timeout ``ATTEMPT_DEADLINE_SECONDS`` after the
+    submit. Polling runs every 30 s for the first 10 minutes of an attempt and
+    every 5 minutes after that, which bounds the history. A failed operation
+    never fails the run: the next operation still runs. At the end, also after a
+    cancellation, the Spark job of every started attempt is deleted and the parent
+    reconcile workflow is told the run finished and how many results could not be
+    recorded.
     """
 
     @workflow.init
     def __init__(self, input: MaintenanceWorkflowInput) -> None:  # noqa: A002
-        """Prepare the result and grant mailboxes."""
+        """Prepare the result and grant mailboxes and the attempt log."""
         self._run_id = input.run_id
         self._results: dict[tuple[str, int], OperationResultSignal] = {}
         self._granted: set[str] = set()
-        self._app_names: list[str] = []
+        self._current_request: str | None = None
+        self._started_attempts: list[tuple[str, int]] = []
+        self._record_failures = 0
 
     @workflow.run
     async def run(self, input: MaintenanceWorkflowInput) -> None:  # noqa: A002
@@ -92,9 +102,13 @@ class MaintenanceWorkflow:
         self._results.setdefault((result.operation, result.attempt), result)
 
     @workflow.signal(name=SIGNAL_CAPACITY_GRANTED)
-    def capacity_granted(self, request_id: str) -> None:
-        """Note that the limiter granted a capacity request."""
-        self._granted.add(request_id)
+    async def capacity_granted(self, request_id: str) -> None:
+        """Take the grant of the awaited request; hand any other grant straight back."""
+        if request_id == self._current_request:
+            self._granted.add(request_id)
+            return
+        workflow.logger.warning("releasing unexpected grant %s", request_id)
+        await self._release(request_id)
 
     async def _run_operation(self, operation: dict[str, Any]) -> None:
         for attempt in range(1, _MAX_ATTEMPTS + 1):
@@ -110,31 +124,42 @@ class MaintenanceWorkflow:
     ) -> OperationResultSignal:
         name = operation["operation"]
         request_id = f"{self._run_id}-{name}-{attempt}"
+        self._current_request = request_id
         try:
-            try:
-                await self._acquire(request_id)
-            except ActivityError as error:
-                return self._failure(
-                    name, attempt, f"capacity acquire failed: {_message(error)}"
-                )
-            try:
-                submitted = await self._activity(
-                    SUBMIT_MAINTENANCE_OPERATION,
-                    {
-                        "run_id": self._run_id,
-                        "operation": name,
-                        "attempt": attempt,
-                        "filters": operation["filters"],
-                        "procedure_args": operation["procedure_args"],
-                        "now": _now(),
-                    },
-                )
-            except ActivityError as error:
-                return self._failure(name, attempt, f"submit failed: {_message(error)}")
-            self._app_names.append(submitted["app_name"])
-            return await self._await_outcome(name, attempt, submitted["app_name"])
+            return await self._attempt_outcome(operation, attempt, request_id)
+        except asyncio.CancelledError:
+            await self._record(self._failure(name, attempt, "cancelled"))
+            raise
         finally:
+            self._current_request = None
             await self._release(request_id)
+
+    async def _attempt_outcome(
+        self, operation: dict[str, Any], attempt: int, request_id: str
+    ) -> OperationResultSignal:
+        name = operation["operation"]
+        try:
+            await self._acquire(request_id)
+        except ActivityError as error:
+            return self._failure(
+                name, attempt, f"capacity acquire failed: {_message(error)}"
+            )
+        self._started_attempts.append((name, attempt))
+        try:
+            submitted = await self._activity(
+                SUBMIT_MAINTENANCE_OPERATION,
+                {
+                    "run_id": self._run_id,
+                    "operation": name,
+                    "attempt": attempt,
+                    "filters": operation["filters"],
+                    "procedure_args": operation["procedure_args"],
+                    "now": _now(),
+                },
+            )
+        except ActivityError as error:
+            return self._failure(name, attempt, f"submit failed: {_message(error)}")
+        return await self._await_outcome(name, attempt, submitted["app_name"])
 
     async def _acquire(self, request_id: str) -> None:
         request = {
@@ -165,15 +190,24 @@ class MaintenanceWorkflow:
         self, name: str, attempt: int, app_name: str
     ) -> OperationResultSignal:
         key = (name, attempt)
+        submitted_at = workflow.now()
+        deadline = submitted_at + timedelta(seconds=ATTEMPT_DEADLINE_SECONDS)
         completed_since: datetime | None = None
         while True:
+            now = workflow.now()
+            if now >= deadline:
+                return self._failure(name, attempt, "spark job timed out")
+            in_fast_window = now - submitted_at < FAST_POLL_WINDOW
+            interval = FAST_POLL_INTERVAL if in_fast_window else SLOW_POLL_INTERVAL
             try:
                 await workflow.wait_condition(
-                    lambda: key in self._results, timeout=_POLL_INTERVAL
+                    lambda: key in self._results, timeout=min(interval, deadline - now)
                 )
                 return self._results[key]
             except TimeoutError:
                 pass
+            if workflow.now() >= deadline:
+                continue
             status = await self._job_status(app_name)
             if status is None:
                 continue
@@ -184,20 +218,22 @@ class MaintenanceWorkflow:
                 )
             if state == "NOT_FOUND":
                 return self._failure(name, attempt, "spark job missing")
-            if state == "COMPLETED":
-                completed_since = completed_since or workflow.now()
-                if workflow.now() - completed_since >= _CALLBACK_GRACE:
-                    workflow.logger.warning(
-                        "%s completed without callback; recording success", app_name
-                    )
-                    return OperationResultSignal(
-                        run_id=self._run_id,
-                        operation=name,
-                        attempt=attempt,
-                        succeeded=True,
-                        metrics={},
-                        error=None,
-                    )
+            if state != "COMPLETED":
+                completed_since = None
+                continue
+            completed_since = completed_since or workflow.now()
+            if workflow.now() - completed_since >= _CALLBACK_GRACE:
+                workflow.logger.warning(
+                    "%s completed without callback; recording success", app_name
+                )
+                return OperationResultSignal(
+                    run_id=self._run_id,
+                    operation=name,
+                    attempt=attempt,
+                    succeeded=True,
+                    metrics={"completed_without_callback": 1},
+                    error=None,
+                )
 
     async def _job_status(self, app_name: str) -> dict[str, Any] | None:
         try:
@@ -223,6 +259,7 @@ class MaintenanceWorkflow:
                 },
             )
         except ActivityError as error:
+            self._record_failures += 1
             workflow.logger.error(
                 "recording %s attempt %s failed: %s",
                 outcome.operation,
@@ -231,22 +268,31 @@ class MaintenanceWorkflow:
             )
 
     async def _finish(self, parent_workflow_id: str) -> None:
-        for app_name in self._app_names:
+        for name, attempt in self._started_attempts:
             try:
-                await self._activity(DELETE_MAINTENANCE_JOB, {"app_name": app_name})
+                await self._activity(
+                    DELETE_MAINTENANCE_JOB,
+                    {"run_id": self._run_id, "operation": name, "attempt": attempt},
+                )
             except ActivityError as error:
-                workflow.logger.warning("deleting %s failed: %s", app_name, error)
+                workflow.logger.warning(
+                    "deleting the job of %s attempt %s failed: %s", name, attempt, error
+                )
         try:
             await self._activity(
                 SIGNAL_PARENT,
                 {
                     "workflow_id": parent_workflow_id,
                     "signal": SIGNAL_MAINTENANCE_FINISHED,
-                    "arg": self._run_id,
+                    "arg": {
+                        "run_id": self._run_id,
+                        "record_failures": self._record_failures,
+                    },
                 },
             )
         except ActivityError as error:
             workflow.logger.warning("signalling the parent failed: %s", error)
+        await workflow.wait_condition(workflow.all_handlers_finished)
 
     def _failure(self, name: str, attempt: int, error: str) -> OperationResultSignal:
         return OperationResultSignal(

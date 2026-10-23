@@ -442,9 +442,26 @@ def test_get_job_status_rejects_unknown_state(read_job):
         )
 
 
-def test_delete_job_forwards_to_the_gateway(delete_job):
+def test_delete_job_derives_the_app_name_and_forwards_to_the_gateway(delete_job):
     out = DeleteMaintenanceJobService(delete_job).execute(
-        DeleteMaintenanceJobUseCaseInput("app-1")
+        DeleteMaintenanceJobUseCaseInput(
+            run_id="run1", operation="rewrite_data_files", attempt=2
+        )
     )
-    assert out.app_name == "app-1"
-    assert [c.app_name for c in delete_job.calls] == ["app-1"]
+    assert out.app_name == "tm-rdf-run1-a2"
+    assert [c.app_name for c in delete_job.calls] == ["tm-rdf-run1-a2"]
+
+
+@pytest.mark.parametrize(
+    ("operation", "attempt"), [("nope", 1), ("expire_snapshots", 0)]
+)
+def test_delete_job_rejects_invalid_operation_or_attempt(
+    delete_job, operation, attempt
+):
+    with pytest.raises(ValidationError):
+        DeleteMaintenanceJobService(delete_job).execute(
+            DeleteMaintenanceJobUseCaseInput(
+                run_id="run1", operation=operation, attempt=attempt
+            )
+        )
+    assert delete_job.calls == []

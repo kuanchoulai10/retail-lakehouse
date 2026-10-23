@@ -7,6 +7,8 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class DeleteMaintenanceJobUseCaseInput:
-    """Carry the request to delete a Spark maintenance job."""
+    """Carry the request to delete the Spark job of one operation attempt."""
 
-    app_name: str
+    run_id: str
+    operation: str
+    attempt: int

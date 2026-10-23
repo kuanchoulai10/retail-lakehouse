@@ -51,6 +51,8 @@ class CapacityLimiterWorkflow:
             await self._grant_free_slots()
             if workflow.info().is_continue_as_new_suggested():
                 await workflow.wait_condition(workflow.all_handlers_finished)
+                while self._regrants:
+                    await self._resend_grants()
                 workflow.continue_as_new(
                     CapacityLimiterInput(
                         limit=self._limit,

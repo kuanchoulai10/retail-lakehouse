@@ -108,7 +108,7 @@ def test_capacity_never_exceeds_limit():
         state = await h.state()
         assert sorted(state["holders"]) == ["r-a", "r-b"]
         assert [e["request_id"] for e in state["queue"]] == ["r-c"]
-        await asyncio.sleep(0.3)
+        await h.env.sleep(timedelta(hours=1))
         assert await h.granted("c") == []
 
         await h.release("r-a")
@@ -137,10 +137,10 @@ def test_capacity_lease_expires_when_holder_never_releases():
         await h.acquire("r-a", a)
         await eventually(lambda: h.granted("a"), lambda g: g == ["r-a"])
         await h.acquire("r-b", b)
-        await asyncio.sleep(0.3)
+        await h.env.sleep(timedelta(seconds=h.lease - 10))
         assert await h.granted("b") == []
 
-        await h.env.sleep(timedelta(seconds=h.lease + 1))
+        await h.env.sleep(timedelta(seconds=11))
         await eventually(lambda: h.granted("b"), lambda g: g == ["r-b"])
         assert list((await h.state())["holders"]) == ["r-b"]
 

@@ -115,9 +115,13 @@ class ReconcileActivities:
 
     @activity.defn(name=DELETE_MAINTENANCE_JOB)
     def delete_maintenance_job(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Delete a Spark maintenance job."""
+        """Delete the Spark job of one ``(run_id, operation, attempt)``."""
         with translate_application_errors():
             output = self._delete.execute(
-                DeleteMaintenanceJobUseCaseInput(app_name=request["app_name"])
+                DeleteMaintenanceJobUseCaseInput(
+                    run_id=request["run_id"],
+                    operation=request["operation"],
+                    attempt=request["attempt"],
+                )
             )
         return activity_payload(output)

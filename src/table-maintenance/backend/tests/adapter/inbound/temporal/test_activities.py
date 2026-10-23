@@ -134,17 +134,27 @@ def test_submit_keeps_other_errors_retryable():
         )
 
 
-def test_status_and_delete_pass_app_name():
+def test_status_passes_app_name():
     activities, fakes = _reconcile()
     assert activities.get_maintenance_job_status({"app_name": "app-9"}) == {
         "state": "FAILED",
         "error": "oom",
     }
-    assert activities.delete_maintenance_job({"app_name": "app-9"}) == {
-        "app_name": "app-9"
-    }
     assert fakes["status"].requests[0].app_name == "app-9"
-    assert fakes["delete"].requests[0].app_name == "app-9"
+
+
+def test_delete_passes_the_attempt_triple():
+    activities, fakes = _reconcile()
+    result = activities.delete_maintenance_job(
+        {"run_id": "r1", "operation": "expire_snapshots", "attempt": 2}
+    )
+    request = fakes["delete"].requests[0]
+    assert (request.run_id, request.operation, request.attempt) == (
+        "r1",
+        "expire_snapshots",
+        2,
+    )
+    assert result == {"app_name": "r1-expire_snapshots-2"}
 
 
 def test_create_run_passes_fields_and_returns_iso_dict():

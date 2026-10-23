@@ -80,6 +80,13 @@ forbidden_modules =
     application.service
     application.exceptions
     application.domain.service
+    application.domain.model.discovery
+    application.domain.model.discovery_rule
+    application.domain.model.maintenance_run
+    application.domain.model.maintenance_settings
+    application.domain.model.managed_table
+    application.domain.model.observation
+    application.domain.model.policy_template
     adapter.inbound.temporal.activities
     adapter.inbound.web
     adapter.inbound.event_consumer

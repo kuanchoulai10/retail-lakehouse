@@ -100,7 +100,9 @@ class FakeDelete(DeleteMaintenanceJobUseCase):
         self, request: DeleteMaintenanceJobUseCaseInput
     ) -> DeleteMaintenanceJobUseCaseOutput:
         self.requests.append(request)
-        return DeleteMaintenanceJobUseCaseOutput(app_name=request.app_name)
+        return DeleteMaintenanceJobUseCaseOutput(
+            app_name=f"{request.run_id}-{request.operation}-{request.attempt}"
+        )
 
 
 class FakeCreateRun(CreateMaintenanceRunUseCase):

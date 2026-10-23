@@ -8,6 +8,10 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
+import pytest
+from temporalio.client import WorkflowFailureError
+from temporalio.common import WorkflowIDConflictPolicy
+from temporalio.exceptions import CancelledError
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import UnsandboxedWorkflowRunner, Worker
 
@@ -16,14 +20,24 @@ from adapter.inbound.temporal.workflows import (
     CapacityLimiterWorkflow,
     MaintenanceWorkflow,
 )
+from adapter.inbound.temporal.workflows.maintenance_workflow import (
+    ATTEMPT_DEADLINE_SECONDS,
+)
+from adapter.temporal_contracts.capacity_acquire_signal import CapacityAcquireSignal
+from adapter.temporal_contracts.capacity_limiter_input import CapacityLimiterInput
 from adapter.temporal_contracts.maintenance_workflow_input import (
     MaintenanceWorkflowInput,
 )
-from adapter.temporal_contracts.workflow_names import MAINTENANCE_WORKFLOW
+from adapter.temporal_contracts.workflow_names import (
+    CAPACITY_LIMITER_WORKFLOW,
+    MAINTENANCE_WORKFLOW,
+)
 from application.domain.model.maintenance.workflow_ids import (
     CAPACITY_WORKFLOW_ID,
+    SIGNAL_CAPACITY_ACQUIRE,
     maintenance_workflow_id,
 )
+from tests.adapter.inbound.temporal.eventually import eventually
 from tests.adapter.inbound.temporal.parent_stub_workflow import ParentStubWorkflow
 from tests.adapter.inbound.temporal.scripted_maintenance_activities import (
     ScriptedMaintenanceActivities,
@@ -32,7 +46,7 @@ from tests.adapter.inbound.temporal.scripted_maintenance_activities import (
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
-    from temporalio.client import Client
+    from temporalio.client import Client, WorkflowHandle
 
 COMPACTION = "rewrite_data_files"
 EXPIRE = "expire_snapshots"
@@ -67,7 +81,13 @@ class Harness:
     async def run_maintenance(
         self, *operations: str, parent_id: str = PARENT_ID
     ) -> None:
-        handle = await self.client.start_workflow(
+        handle = await self.start_maintenance(*operations, parent_id=parent_id)
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+    async def start_maintenance(
+        self, *operations: str, parent_id: str = PARENT_ID
+    ) -> WorkflowHandle:
+        return await self.client.start_workflow(
             MAINTENANCE_WORKFLOW,
             MaintenanceWorkflowInput(
                 run_id=RUN_ID,
@@ -79,7 +99,6 @@ class Harness:
             id=maintenance_workflow_id(RUN_ID),
             task_queue=self.queue,
         )
-        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
 
     def recorded(self) -> list[tuple[str, int, bool, str | None]]:
         return [
@@ -89,6 +108,9 @@ class Harness:
 
     def submit_times(self) -> list[datetime]:
         return [datetime.fromisoformat(s["now"]) for s in self.fakes.submits]
+
+    async def parent_payloads(self) -> list[dict]:
+        return await self.client.get_workflow_handle(PARENT_ID).query("collected")
 
     async def limiter_holders(self) -> dict:
         handle = self.client.get_workflow_handle(CAPACITY_WORKFLOW_ID)
@@ -161,8 +183,7 @@ def test_operations_run_in_order_and_parent_signalled():
             f"{RUN_ID}-{COMPACTION}-1",
             f"{RUN_ID}-{EXPIRE}-1",
         ]
-        parent = h.client.get_workflow_handle(PARENT_ID)
-        assert await parent.query("collected") == [RUN_ID]
+        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
         assert await h.limiter_holders() == {}
 
     _run(scenario)
@@ -190,8 +211,7 @@ def test_failed_operation_retried_three_attempts_total_then_next_operation_runs(
         assert times[2] - times[1] >= timedelta(seconds=120)
         assert times[2] - times[1] < timedelta(seconds=180)
         assert len(h.fakes.deletes) == 4
-        parent = h.client.get_workflow_handle(PARENT_ID)
-        assert await parent.query("collected") == [RUN_ID]
+        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
 
     _run(scenario)
 
@@ -248,7 +268,7 @@ def test_polling_detects_missing_job_and_completed_without_callback():
             (COMPACTION, 1, False, "spark job missing"),
             (COMPACTION, 2, True, None),
         ]
-        assert h.fakes.records[1]["metrics"] == {}
+        assert h.fakes.records[1]["metrics"] == {"completed_without_callback": 1}
         completed_polls = h.fakes.status_calls.count(f"{RUN_ID}-{COMPACTION}-2")
         assert completed_polls == 5
 
@@ -267,7 +287,10 @@ def test_capacity_released_when_submit_activity_fails():
         ]
         times = h.submit_times()
         assert times[1] - times[0] < timedelta(seconds=120)
-        assert h.fakes.deletes == [f"{RUN_ID}-{COMPACTION}-2"]
+        assert h.fakes.deletes == [
+            f"{RUN_ID}-{COMPACTION}-1",
+            f"{RUN_ID}-{COMPACTION}-2",
+        ]
         assert await h.limiter_holders() == {}
 
     _run(scenario, capacity_limit=1)
@@ -280,3 +303,122 @@ def test_missing_parent_does_not_fail_the_workflow():
         assert h.recorded() == [(COMPACTION, 1, True, None)]
 
     _run(scenario)
+
+
+def test_completed_window_restarts_when_state_leaves_completed():
+    async def scenario(h: Harness) -> None:
+        completed = {"state": "COMPLETED", "error": None}
+        running = {"state": "RUNNING", "error": None}
+        h.fakes.states[f"{RUN_ID}-{COMPACTION}-1"] = [completed, running, completed]
+        await h.run_maintenance(COMPACTION)
+
+        assert h.recorded() == [(COMPACTION, 1, True, None)]
+        assert h.fakes.status_calls.count(f"{RUN_ID}-{COMPACTION}-1") == 7
+
+    _run(scenario)
+
+
+def test_attempt_times_out_after_deadline():
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
+        await h.run_maintenance(COMPACTION)
+
+        assert h.recorded() == [
+            (COMPACTION, 1, False, "spark job timed out"),
+            (COMPACTION, 2, True, None),
+        ]
+        times = h.submit_times()
+        deadline = timedelta(seconds=ATTEMPT_DEADLINE_SECONDS)
+        assert deadline <= times[1] - times[0] < deadline + timedelta(seconds=120)
+        assert h.fakes.deletes == [
+            f"{RUN_ID}-{COMPACTION}-1",
+            f"{RUN_ID}-{COMPACTION}-2",
+        ]
+
+    _run(scenario)
+
+
+def test_poll_interval_backs_off_after_ten_minutes():
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
+        await h.run_maintenance(COMPACTION)
+
+        app = f"{RUN_ID}-{COMPACTION}-1"
+        submitted = h.submit_times()[0]
+        polls = [
+            t
+            for t, name in zip(h.fakes.status_times, h.fakes.status_calls)
+            if name == app
+        ]
+        first_hour = [
+            t for t in polls if t - submitted < timedelta(hours=1, seconds=30)
+        ]
+        assert len(first_hour) == 20 + 10
+        gaps = [b - a for a, b in zip(polls, polls[1:])]
+        assert all(g < timedelta(seconds=60) for g in gaps[:19])
+        assert all(g >= timedelta(minutes=5) for g in gaps[20:])
+        assert len(polls) < 100
+
+    _run(scenario)
+
+
+def test_cancelled_workflow_records_releases_deletes_and_notifies():
+    async def scenario(h: Harness) -> None:
+        handle = await h.start_maintenance(COMPACTION, EXPIRE)
+        await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n == 1)
+        await handle.cancel()
+        with pytest.raises(WorkflowFailureError) as caught:
+            await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+        assert isinstance(caught.value.cause, CancelledError)
+
+        assert h.recorded() == [(COMPACTION, 1, False, "cancelled")]
+        assert h.fakes.deletes == [f"{RUN_ID}-{COMPACTION}-1"]
+        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
+        assert await h.limiter_holders() == {}
+
+    _run(scenario)
+
+
+def test_late_grant_for_another_request_is_released_at_once():
+    async def scenario(h: Harness) -> None:
+        h.fakes.create_gate = asyncio.Event()
+        h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)]}
+        handle = await h.start_maintenance(COMPACTION)
+        await eventually(lambda: _value(len(h.fakes.created)), lambda n: n == 1)
+        await h.client.start_workflow(
+            CAPACITY_LIMITER_WORKFLOW,
+            CapacityLimiterInput(limit=1, lease_seconds=30 * 24 * 3600),
+            id=CAPACITY_WORKFLOW_ID,
+            task_queue=h.queue,
+            id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
+            start_signal=SIGNAL_CAPACITY_ACQUIRE,
+            start_signal_args=[CapacityAcquireSignal("stray", handle.id)],
+        )
+        await eventually(h.limiter_holders, lambda holders: holders == {})
+        h.fakes.create_gate.set()
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+        assert h.recorded() == [(COMPACTION, 1, True, None)]
+
+    _run(scenario, capacity_limit=1)
+
+
+def test_record_failures_are_counted_in_the_parent_payload():
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {
+            (COMPACTION, 1): [(1, True, None)],
+            (EXPIRE, 1): [(1, True, None)],
+        }
+        h.fakes.record_errors = {(COMPACTION, 1)}
+        await h.run_maintenance(COMPACTION, EXPIRE)
+
+        assert [(r["operation"], r["attempt"]) for r in h.fakes.records] == [
+            (COMPACTION, 1),
+            (EXPIRE, 1),
+        ]
+        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 1}]
+
+    _run(scenario)
+
+
+async def _value(value: object) -> object:
+    return value

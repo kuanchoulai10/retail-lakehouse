@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Any
 
 from temporalio import activity
@@ -21,6 +22,8 @@ from application.domain.model.maintenance.workflow_ids import (
 )
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from temporalio.client import Client
 
 
@@ -30,14 +33,20 @@ class ScriptedMaintenanceActivities:
     ``callbacks[(operation, attempt)]`` lists the results the fake Spark job sends
     while that attempt is submitted, as ``(attempt, succeeded, error)`` tuples, so a
     script can also send a stale result for another attempt. ``states[app_name]``
-    is the job state the status activity reports (RUNNING by default).
+    is the job state the status activity reports (RUNNING by default); a list plays
+    its states in order and then repeats the last one. ``record_errors`` lists the
+    ``(operation, attempt)`` outcomes whose recording fails non-retryably, and
+    ``create_gate``, when set, holds run creation until the test opens it.
     """
 
     def __init__(self, client: Client) -> None:
         self._client = client
         self.callbacks: dict[tuple[str, int], list[tuple[int, bool, str | None]]] = {}
         self.submit_errors: dict[tuple[str, int], str] = {}
-        self.states: dict[str, dict[str, Any]] = {}
+        self.states: dict[str, dict[str, Any] | list[dict[str, Any]]] = {}
+        self.record_errors: set[tuple[str, int]] = set()
+        self.create_gate: asyncio.Event | None = None
+        self.status_times: list[datetime] = []
         self.created: list[dict] = []
         self.submits: list[dict] = []
         self.records: list[dict] = []
@@ -51,6 +60,8 @@ class ScriptedMaintenanceActivities:
     @activity.defn(name=CREATE_MAINTENANCE_RUN)
     async def create_maintenance_run(self, request: dict) -> dict:
         self.created.append(request)
+        if self.create_gate is not None:
+            await self.create_gate.wait()
         return {"run_id": request["run_id"], "status": "running"}
 
     @activity.defn(name=SUBMIT_MAINTENANCE_OPERATION)
@@ -82,18 +93,29 @@ class ScriptedMaintenanceActivities:
 
     @activity.defn(name=GET_MAINTENANCE_JOB_STATUS)
     async def get_maintenance_job_status(self, request: dict) -> dict:
-        self.status_calls.append(request["app_name"])
-        return self.states.get(request["app_name"], {"state": "RUNNING", "error": None})
+        app_name = request["app_name"]
+        self.status_calls.append(app_name)
+        self.status_times.append(activity.info().scheduled_time)
+        state = self.states.get(app_name, {"state": "RUNNING", "error": None})
+        if isinstance(state, list):
+            calls = self.status_calls.count(app_name)
+            return state[min(calls, len(state)) - 1]
+        return state
 
     @activity.defn(name=RECORD_MAINTENANCE_OPERATION_RESULT)
     async def record_maintenance_operation_result(self, request: dict) -> dict:
         self.records.append(request)
+        if (request["operation"], request["attempt"]) in self.record_errors:
+            raise ApplicationError("db down", type="ConflictError", non_retryable=True)
         return {"run_id": request["run_id"], "status": "running"}
 
     @activity.defn(name=DELETE_MAINTENANCE_JOB)
     async def delete_maintenance_job(self, request: dict) -> dict:
-        self.deletes.append(request["app_name"])
-        return {"app_name": request["app_name"]}
+        app_name = self.app_name(
+            request["run_id"], request["operation"], request["attempt"]
+        )
+        self.deletes.append(app_name)
+        return {"app_name": app_name}
 
     def all(self) -> list:
         return [
