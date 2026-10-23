@@ -11,8 +11,20 @@ source_tag() {
   local source_dir="$1"
   local tag
   tag="$(git -C "${REPO_ROOT}" log -1 --format=%h -- "${source_dir}")"
+  if [[ -z "${tag}" ]]; then
+    echo "no commit touches ${source_dir}; commit the source before building" >&2
+    return 1
+  fi
   if [[ -n "$(git -C "${REPO_ROOT}" status --porcelain -- "${source_dir}")" ]]; then
-    tag="${tag}-dirty"
+    local content_hash
+    content_hash="$(
+      {
+        git -C "${REPO_ROOT}" diff HEAD -- "${source_dir}"
+        git -C "${REPO_ROOT}" ls-files --others --exclude-standard -z -- "${source_dir}" \
+          | xargs -0 -I{} cat "${REPO_ROOT}/{}"
+      } | shasum -a 256 | cut -c1-8
+    )"
+    tag="${tag}-dirty-${content_hash}"
   fi
   printf '%s' "${tag}"
 }

@@ -5,7 +5,6 @@ source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
-CATALOGS="${CATALOGS:-iceberg}"
 NAMESPACE="lakehouse-control-plane"
 
 log::on_success "Lakehouse control plane is ready"
@@ -25,6 +24,24 @@ for deployment in table-maintenance-db table-maintenance-api table-maintenance-w
     --timeout "${TIMEOUT}" \
     --context "${KUBE_CONTEXT}"
 done
+
+RELEASE_REVISION="$(helm status table-maintenance \
+  --namespace "${NAMESPACE}" \
+  --kube-context "${KUBE_CONTEXT}" \
+  -o json \
+  | yq '.version')"
+kubectl wait "job/table-maintenance-migrate-${RELEASE_REVISION}" \
+  --for=condition=complete \
+  --timeout "${TIMEOUT}" \
+  --namespace "${NAMESPACE}" \
+  --context "${KUBE_CONTEXT}"
+
+CATALOGS="$(kubectl get configmap table-maintenance-config \
+  -o jsonpath='{.data.GLAC_CATALOG__NAMES}' \
+  --namespace "${NAMESPACE}" \
+  --context "${KUBE_CONTEXT}" \
+  | yq '.[]')"
+[[ -n "${CATALOGS}" ]] || { echo "no catalogs configured" >&2; exit 1; }
 
 api_get() {
   kubectl exec deployment/table-maintenance-api \
@@ -64,4 +81,4 @@ CONSUMER_GROUP="$(kubectl exec kafka-cluster-dual-role-0 \
   --bootstrap-server localhost:9092 \
   --describe \
   --group table-maintenance-event-consumer)"
-grep -q "polaris-catalog-events" <<<"${CONSUMER_GROUP}"
+awk '$2 == "polaris-catalog-events" && $7 != "-" && $7 != "" {found = 1} END {exit !found}' <<<"${CONSUMER_GROUP}"

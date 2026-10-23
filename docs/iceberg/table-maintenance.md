@@ -305,10 +305,10 @@ CALL retail.system.rewrite_data_files(
 
 ```bash
 # 1. 建立 Docker image 並載入 Minikube
-./25-table-maintenance/build.sh
+KUBE_CONTEXT=retail-lakehouse bash platform/25-lakehouse-control-plane/build.sh
 
-# 2. 提交 SparkApplication
-./25-table-maintenance/install.sh
+# 2. 部署 control plane（worker 會建立 SparkApplication，namespace lakehouse-maintenance-operations）
+KUBE_CONTEXT=retail-lakehouse bash platform/25-lakehouse-control-plane/bootstrap.sh
 
 # 3. 查看 driver log（即時串流）
 kubectl logs -n default \

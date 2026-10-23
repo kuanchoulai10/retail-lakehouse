@@ -85,7 +85,7 @@ spec:
 提交修復後的 manifest 並觀察 driver pod 日誌：
 
 ```bash
-kubectl apply -f 25-table-maintenance/sparkapplication-rewrite-data-files.yaml
+KUBE_CONTEXT=retail-lakehouse bash platform/25-lakehouse-control-plane/bootstrap.sh
 
 kubectl logs -n default \
   -l spark-role=driver \

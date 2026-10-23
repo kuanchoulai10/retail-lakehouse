@@ -10,7 +10,7 @@ Respond in the same language as the user's message. The user typically communica
 - Use `uv run` instead of bare `python`, `python3`, `pytest`, or `pip`. Example: `uv run --project src/table-maintenance/backend --directory src/table-maintenance/backend pytest -v`
 - The local minikube/dev cluster context is `retail-lakehouse`. Infra scripts (`*/bootstrap.sh`, `*/validate.sh`, `*/patch.sh`) require `KUBE_CONTEXT` to be set explicitly — there is no fallback (scripts fail fast with `KUBE_CONTEXT is required`). Always pass it when invoking Taskfile entries or running scripts directly, e.g. `task onboard KUBE_CONTEXT=retail-lakehouse`.
 
-## Project Status (snapshot 2026-10-23 — update as work lands)
+## Project Status (snapshot 2026-10-24 — update as work lands)
 
 **What it is:** an Iceberg lakehouse platform on minikube plus a self-built Table Maintenance service (`src/table-maintenance`, DDD + Clean Architecture) that schedules Iceberg maintenance (compaction, snapshot expiry). Long-term vision: "GitHub for Data" DataOps SaaS.
 
@@ -21,6 +21,7 @@ Respond in the same language as the user's message. The user typically communica
 - 2026-03 ~ 05: table-maintenance backend (API / scheduler / outbox messaging), naming conventions, import-linter layering.
 - 2026-05 ~ 07: Polaris 1.5.0 + metrics reporter CDC to Kafka; Kafka 1 → 3 brokers; Iceberg sink static-membership fix; Kafka UI; Istio ambient (istiod / CNI / ztunnel) + Gateway API with wave-22 Gateway + HTTPRoutes; table-maintenance manifests moved `default` → `polaris` ns. An earlier "Polaris events via OTEL → Kafka" attempt was fully reverted.
 - 2026-10: namespace re-layout (T1–T9); Polaris CDC removed (T10), Polaris upgraded 1.5.0 → 1.8.0 (T11), Polaris events published to Kafka via the Kafka event listener (T12), Temporal server deployed with a dedicated PostgreSQL (T13).
+- 2026-10 ~ 10-24: table-maintenance control plane (plan Tasks 1–18): Temporal-based backend (API / worker / event consumer, Polaris catalog event hints, discovery, Spark maintenance jobs via the Spark operator) and the wave-25 Helm chart `table-maintenance` deployed on minikube; e2e (Task 19) pending.
 
 **Deployed on minikube** (via `bootstrap-by-scripts`):
 - Wave 10: cert-manager, kube-prometheus, Strimzi
@@ -57,7 +58,9 @@ Respond in the same language as the user's message. The user typically communica
 - T13: Temporal server in `temporal` ns (done; `platform/20-temporal-db` = namespace + `temporal-db` Postgres 17.11 (`postgres:17.11-alpine`) with Recreate strategy and plaintext dev Secret; `platform/21-temporal` = official chart 1.7.0, images server/admin-tools 1.32.0 and ui 2.54.1, 1 replica each, databases `temporal` / `temporal_visibility` with schema created by the chart's hook Jobs, `default` namespace created by the chart. Future table-maintenance workers connect to `temporal-frontend.temporal.svc.cluster.local:7233`)
 
 **Known follow-ups:**
-- Table maintenance control plane (wave 25) is deployed but the e2e run (Task 19) is pending. The migrate Job reruns on every `helm upgrade` (name carries the release revision); api / worker / event-consumer gate on the seeded `default` policy template, not on the Job itself.
+- `platform/21-polaris/bootstrap.sh` creates the `polaris-token-broker` Secret with a check that treats any `kubectl get` error (not just NotFound) as missing and uses `apply`, so a transient API error could regenerate the key pair. Make it NotFound-only plus `kubectl create` (as `25-lakehouse-control-plane/bootstrap.sh` does for `table-maintenance-db`).
+- Worker and event-consumer pods have no liveness probes (deferred).
+- Table maintenance control plane (wave 25) is deployed but the e2e run (Task 19) is pending. The migrate Job reruns on every `helm upgrade` (name carries the release revision); `helm upgrade --wait-for-jobs` waits for it and `validate.sh` asserts the current-revision Job completed; api / worker / event-consumer also gate on the seeded `default` policy template.
 - On-hold waves still reference pre-rename names (`minio-api.minio.svc`, `kafka-cdc`, `polaris`, `platform/20-minio`): `30-thanos`, `24-e2e-validation`, `charts/app-of-apps`. Fix when those are re-opened.
 - Iceberg sink (Kafka 4.0 + sink 1.10) may commit "0 table(s)" for several minutes after a Connect pod start under low traffic; keep inserting and poll ~5–10 min when verifying snapshots.
 - `bitnami/jmx-exporter` (Trino sidecar) is pinned by digest: Bitnami's free catalog only publishes `latest`, so bumping it means taking the new `latest` digest.
