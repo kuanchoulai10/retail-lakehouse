@@ -28,6 +28,23 @@ kubectl apply \
   -f "$SCRIPT_DIR/polaris-bootstrap-secret.yaml" \
   --context "${KUBE_CONTEXT}"
 
+# Token-broker RSA key pair: generated once, reused across Polaris restarts so
+# issued tokens stay valid. Never written into the repo.
+if ! kubectl get secret polaris-token-broker \
+  --namespace lakehouse-catalog \
+  --context "${KUBE_CONTEXT}" >/dev/null 2>&1; then
+  KEY_DIR="$(mktemp -d)"
+  trap 'rm -r "${KEY_DIR}"' EXIT
+  openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \
+    -out "${KEY_DIR}/private.pem"
+  openssl pkey -in "${KEY_DIR}/private.pem" -pubout -out "${KEY_DIR}/public.pem"
+  kubectl create secret generic polaris-token-broker \
+    --from-file=private.pem="${KEY_DIR}/private.pem" \
+    --from-file=public.pem="${KEY_DIR}/public.pem" \
+    --namespace lakehouse-catalog \
+    --context "${KUBE_CONTEXT}"
+fi
+
 # Bootstrap Polaris schema in PostgreSQL on first install only.
 # Skip if the Helm release already exists (schema is persisted in polaris-db).
 if ! helm status polaris \

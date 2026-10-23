@@ -53,7 +53,7 @@ The following fields in `values.yaml` require attention before deploying:
 | `persistence.type` | Backed by PostgreSQL deployed in wave 20 by [`20-polaris-db/`](../20-polaris-db/README.md). Catalog state is durable across pod restarts. | `relational-jdbc` |
 | `storage.secret.name` | K8s Secret with RustFS credentials for vended credential issuance | `polaris-storage-secret` |
 | `advancedConfig.polaris.storage.s3.endpoint` | RustFS service DNS inside the cluster | `http://rustfs.object-storage.svc.cluster.local:9000` |
-| `authentication.tokenBroker.secret.name` | RSA key pair secret; leave blank to auto-generate (keys rotate on restart) | blank |
+| `authentication.tokenBroker.secret.name` | RSA key pair secret `polaris-token-broker` (`private.pem` / `public.pem`), created once by `bootstrap.sh` if missing, so tokens issued to Trino and the Iceberg sink survive Polaris restarts | `polaris-token-broker` |
 | `tracing.endpoint` | OTel collector gRPC endpoint | `http://otel-collector.otel.svc.cluster.local:4317` |
 
 ## Installation

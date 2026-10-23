@@ -58,7 +58,10 @@ polaris:
       type: rsa-key-pair
       maxTokenGeneration: PT1H
       secret:
-        name: ~
+        name: polaris-token-broker
+        rsaKeyPair:
+          publicKey: public.pem
+          privateKey: private.pem
 
   realmContext:
     type: default

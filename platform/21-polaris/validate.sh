@@ -9,6 +9,10 @@ TIMEOUT="${TIMEOUT:-300s}"
 log::on_success "Polaris is ready"
 log::on_failure "Polaris is not ready"
 
+kubectl get secret polaris-token-broker \
+  --namespace lakehouse-catalog \
+  --context "${KUBE_CONTEXT}" >/dev/null
+
 kubectl rollout status deployment/polaris \
   --namespace lakehouse-catalog \
   --timeout "${TIMEOUT}" \
