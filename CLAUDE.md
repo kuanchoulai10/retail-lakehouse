@@ -20,14 +20,14 @@ Respond in the same language as the user's message. The user typically communica
 - 2025-06 ~ 09: Trino, Kafka/Debezium/Iceberg CDC pipeline, monitoring stack.
 - 2026-03 ~ 05: table-maintenance backend (API / scheduler / outbox messaging), naming conventions, import-linter layering.
 - 2026-05 ~ 07: Polaris 1.5.0 + metrics reporter CDC to Kafka; Kafka 1 → 3 brokers; Iceberg sink static-membership fix; Kafka UI; Istio ambient (istiod / CNI / ztunnel) + Gateway API with wave-22 Gateway + HTTPRoutes; table-maintenance manifests moved `default` → `polaris` ns. An earlier "Polaris events via OTEL → Kafka" attempt was fully reverted.
-- 2026-10: namespace re-layout (T1–T9); Polaris CDC removed (T10), Polaris upgraded 1.5.0 → 1.8.0 (T11), Polaris events published to Kafka via the Kafka event listener (T12).
+- 2026-10: namespace re-layout (T1–T9); Polaris CDC removed (T10), Polaris upgraded 1.5.0 → 1.8.0 (T11), Polaris events published to Kafka via the Kafka event listener (T12), Temporal server deployed with a dedicated PostgreSQL (T13).
 
 **Deployed on minikube** (via `bootstrap-by-scripts`):
 - Wave 10: cert-manager, kube-prometheus, Strimzi
 - Wave 11: KEDA, Spark Operator, OTel Operator, Istio base, Gateway API CRDs
 - Wave 12: istiod, istio-cni, ztunnel
-- Wave 20: Kafka (3 brokers), RustFS, MySQL, Polaris DB, Jaeger (trino / thanos), temporal (namespace only)
-- Wave 21–22: Polaris (also creates the `polaris-catalog-events` KafkaTopic in `kafka`), 2 KafkaConnectors (debezium-mysql, iceberg-sink), `platform-gateway` + HTTPRoutes
+- Wave 20: Kafka (3 brokers), RustFS, MySQL, Polaris DB, Jaeger (trino / thanos), temporal-db (creates the `temporal` namespace; PostgreSQL for Temporal)
+- Wave 21–22: Temporal server (chart `temporalio/temporal` 1.7.0, server 1.32.0; frontend `temporal-frontend.temporal.svc.cluster.local:7233`, Web UI `temporal-web:8080`, Temporal namespace `default` with 3d retention), Polaris (also creates the `polaris-catalog-events` KafkaTopic in `kafka`), 2 KafkaConnectors (debezium-mysql, iceberg-sink), `platform-gateway` + HTTPRoutes
 - Wave 23: Trino, Kafka UI
 - Wave 25: lakehouse-control-plane (namespaces `lakehouse-control-plane`, `lakehouse-maintenance-operations`; no components yet)
 
@@ -44,7 +44,7 @@ Respond in the same language as the user's message. The user typically communica
 4. `polaris` → `lakehouse-catalog` (done)
 5. `trino` → `lakehouse-query-engine` (done)
 6. New wave `platform/25-lakehouse-control-plane` creates the `lakehouse-control-plane` + `lakehouse-maintenance-operations` namespaces (namespace only for now). The current `25-table-maintenance` / `25-tbl-maint-*` dirs will later be consolidated into it. (done)
-7. New wave `platform/20-temporal` creates the `temporal` namespace (namespace only for now; Temporal itself deploys here later). (done)
+7. New wave `platform/20-temporal` creates the `temporal` namespace (renamed `20-temporal-db` in T13). (done)
    - 7.5: Replace Docker-Hub-removed minio/minio + minio/mc images with pinned pgsty/silo + pgsty/mc (done)
 8. Full `task offboard` + `task onboard KUBE_CONTEXT=retail-lakehouse` end-to-end run (done; surfaced and fixed missing `istio-ingress` namespace in `22-polaris-routes`)
 9. Replace pgsty Silo with RustFS: wave `20-minio` → `20-rustfs`, Service `rustfs` (S3 :9000), `rustfs-console`, image `rustfs/rustfs:1.0.3` (done; clean `offboard` + `onboard` passed in one run on 2026-10-23, CDC → Iceberg → Trino verified)
@@ -53,6 +53,9 @@ Respond in the same language as the user's message. The user typically communica
 - T10: Remove Polaris DB CDC (Debezium Postgres connector wave `22-kafka-debezium-polaris-connector`, its Kafka topics / replication slot / publication, `wal_level=logical` on polaris-db, Kafka UI entry) (done)
 - T11: Upgrade Polaris to 1.8.0 (done; server `apache/polaris:1.8.0`, chart 1.8.0, bootstrap job `apache/polaris-admin-tool:1.8.0`, polaris-db Deployment now `strategy: Recreate`. Polaris 1.8.0 no longer creates the JDBC schema: the bootstrap Job has a `create-schema` init container running `CREATE SCHEMA IF NOT EXISTS polaris_schema` (chart sets `currentSchema=POLARIS_SCHEMA`, folded to lowercase). DB is schema v6; no auto-migration, so the DB was wiped and re-bootstrapped. After the wipe, `inventory.orders` was rebuilt by the Iceberg sink and only holds Kafka offset 37 onward; the older data files stay in RustFS as orphan files (a fresh onboard is not affected). The token-broker RSA key pair used to be regenerated on every Polaris restart, which invalidated the tokens held by the Iceberg sink / Trino ("Failed to verify the token"); it is now persisted in the `polaris-token-broker` Secret, which `21-polaris/bootstrap.sh` creates once if missing, so a Polaris restart no longer requires restarting the Connect pod. The first rollout that switches to the persisted key still needs one Connect pod restart)
 - T12: Polaris events via Kafka event listener (done; `polaris.event-listener.types=kafka`, topic `polaris-catalog-events` 1 partition / 3 replicas, producer `bootstrap.servers=kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092` (plain listener), producer `max.block.ms=5000` so a Kafka outage cannot stall Polaris for the 60 s default, all set under `advancedConfig`, effective at runtime. The OpenTelemetry listener was tried and dropped: it emits events only as OTel logs, the official image fixes `quarkus.otel.logs.enabled=false` at build time ("Build time property cannot be changed at runtime"), and `quarkus.otel.sdk.disabled` defaults to true, so no event ever reaches a collector)
+
+**Initiative: Temporal** (done):
+- T13: Temporal server in `temporal` ns (done; `platform/20-temporal-db` = namespace + `temporal-db` Postgres 17 with Recreate strategy and plaintext dev Secret; `platform/21-temporal` = official chart 1.7.0, images server/admin-tools 1.32.0 and ui 2.54.1, 1 replica each, databases `temporal` / `temporal_visibility` with schema created by the chart's hook Jobs, `default` namespace created by the chart. Future table-maintenance workers connect to `temporal-frontend.temporal.svc.cluster.local:7233`)
 
 **Known follow-ups:**
 - On-hold waves still reference pre-rename names (`minio-api.minio.svc`, `kafka-cdc`, `polaris`, `platform/20-minio`): `30-thanos`, `24-e2e-validation`, `25-table-maintenance` / `25-tbl-maint-*`, `src/table-maintenance`, `charts/app-of-apps`. Fix when those are re-opened.

@@ -61,8 +61,9 @@ tasks:
       - TIMEOUT=10s bash platform/20-jaeger-thanos/validate.sh
       - TIMEOUT=10s bash platform/20-jaeger-trino/validate.sh
       - TIMEOUT=10s bash platform/20-polaris-db/validate.sh
-      - TIMEOUT=10s bash platform/20-temporal/validate.sh
+      - TIMEOUT=10s bash platform/20-temporal-db/validate.sh
       - TIMEOUT=10s bash platform/21-polaris/validate.sh
+      - TIMEOUT=10s bash platform/21-temporal/validate.sh
       - TIMEOUT=10s bash platform/21-kafka-debezium-mysql-connector/validate.sh
       - TIMEOUT=10s bash platform/22-kafka-iceberg-connector/validate.sh
       - TIMEOUT=10s bash platform/22-polaris-routes/validate.sh
@@ -98,16 +99,18 @@ tasks:
       - bash platform/20-jaeger-thanos/bootstrap.sh
       - bash platform/20-jaeger-trino/bootstrap.sh
       - bash platform/20-polaris-db/bootstrap.sh
-      - bash platform/20-temporal/bootstrap.sh
+      - bash platform/20-temporal-db/bootstrap.sh
       - bash platform/20-kafka-cluster/validate.sh
       - bash platform/20-rustfs/validate.sh
       - bash platform/20-mysql/validate.sh
       - bash platform/20-jaeger-thanos/validate.sh
       - bash platform/20-jaeger-trino/validate.sh
       - bash platform/20-polaris-db/validate.sh
-      - bash platform/20-temporal/validate.sh
+      - bash platform/20-temporal-db/validate.sh
       - bash platform/21-polaris/bootstrap.sh
       - bash platform/21-polaris/validate.sh
+      - bash platform/21-temporal/bootstrap.sh
+      - bash platform/21-temporal/validate.sh
       - bash platform/21-kafka-debezium-mysql-connector/bootstrap.sh
       - bash platform/21-kafka-debezium-mysql-connector/validate.sh
       - bash platform/22-kafka-iceberg-connector/bootstrap.sh
@@ -190,6 +193,9 @@ tasks:
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       - task: validate-polaris
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-temporal-db
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       - task: validate-temporal
@@ -325,9 +331,16 @@ tasks:
     cmds:
       - bash platform/25-lakehouse-control-plane/validate.sh
 
+  validate-temporal-db:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash platform/20-temporal-db/validate.sh
+
   validate-temporal:
     internal: true
     env:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
-      - bash platform/20-temporal/validate.sh
+      - bash platform/21-temporal/validate.sh
