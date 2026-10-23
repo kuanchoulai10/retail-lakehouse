@@ -46,7 +46,12 @@ Respond in the same language as the user's message. The user typically communica
 7. New wave `platform/20-temporal` creates the `temporal` namespace (namespace only for now; Temporal itself deploys here later). (done)
    - 7.5: Replace Docker-Hub-removed minio/minio + minio/mc images with pinned pgsty/silo + pgsty/mc (done)
 8. Full `task offboard` + `task onboard KUBE_CONTEXT=retail-lakehouse` end-to-end run (done; surfaced and fixed missing `istio-ingress` namespace in `22-polaris-routes`)
-9. Replace pgsty Silo with RustFS: wave `20-minio` → `20-rustfs`, Service `rustfs` (S3 :9000), `rustfs-console`, image `rustfs/rustfs:1.0.3` (done)
+9. Replace pgsty Silo with RustFS: wave `20-minio` → `20-rustfs`, Service `rustfs` (S3 :9000), `rustfs-console`, image `rustfs/rustfs:1.0.3` (done; clean `offboard` + `onboard` passed in one run on 2026-10-23, CDC → Iceberg → Trino verified)
+
+**Known follow-ups:**
+- On-hold waves still reference pre-rename names (`minio-api.minio.svc`, `kafka-cdc`, `polaris`, `platform/20-minio`): `30-thanos`, `24-e2e-validation`, `25-table-maintenance` / `25-tbl-maint-*`, `src/table-maintenance`, `charts/app-of-apps`. Fix when those are re-opened.
+- Iceberg sink (Kafka 4.0 + sink 1.10) may commit "0 table(s)" for several minutes after a Connect pod start under low traffic; keep inserting and poll ~5–10 min when verifying snapshots.
+- Unpinned images on the onboard path: `bitnami/jmx-exporter:latest` (Trino), `jaegertracing/jaeger:latest`, OTel operator `busybox:latest`.
 
 New namespaces are **not** labeled `istio.io/dataplane-mode=ambient` (no namespace is enrolled in the ambient mesh yet).
 
