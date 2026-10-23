@@ -208,3 +208,26 @@ def test_rename_keeps_identity():
     t.rename(new, T1)
     assert t.id == TableUuid("u1") and t.name == new
     assert t == auto()
+
+
+def test_apply_auto_include_keeps_paused_table_paused():
+    t = auto()
+    t.pause(T1)
+    t.apply_auto_decision(RULE, TEMPLATE, SETTINGS, T1)
+    assert t.status == TableStatus.PAUSED
+
+
+def test_apply_auto_include_without_settings_raises_when_table_has_none():
+    t = excluded()
+    t.reset_to_auto(T1)
+    with pytest.raises(InvalidTableTransition):
+        t.apply_auto_decision(RULE, TEMPLATE, None, T1)
+    assert t.status == TableStatus.EXCLUDED
+    assert t.settings is None
+
+
+def test_apply_auto_include_keeps_source_template_when_settings_kept():
+    t = auto()
+    t.apply_auto_decision(RULE, PolicyTemplateId("t2"), SETTINGS, T1)
+    assert t.source_template_id == TEMPLATE
+    assert t.matched_rule_id == RULE

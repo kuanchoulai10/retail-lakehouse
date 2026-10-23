@@ -197,14 +197,19 @@ class ManagedTable(AggregateRoot[TableUuid]):
         self._ensure_not_dropped()
         if self.selection != TableSelection.AUTO:
             return
+        if template_id is not None and self.settings is None and settings is None:
+            raise InvalidTableTransition(
+                "an include decision needs settings for a table without settings"
+            )
         self.matched_rule_id = rule_id
         if template_id is None:
             self.status = TableStatus.EXCLUDED
         else:
-            self.status = TableStatus.ACTIVE
-            self.source_template_id = template_id
+            if self.status == TableStatus.EXCLUDED:
+                self.status = TableStatus.ACTIVE
             if self.settings is None:
                 self.settings = settings
+                self.source_template_id = template_id
         self.updated_at = now
 
     def update_settings(self, settings: MaintenanceSettings, now: datetime) -> None:
