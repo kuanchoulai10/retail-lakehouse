@@ -1,6 +1,6 @@
 # Temporal PostgreSQL
 
-Deploys PostgreSQL 17 as the persistent store for the Temporal server (default and visibility stores), into the `temporal` namespace. This wave also creates the `temporal` namespace. The Temporal databases (`temporal`, `temporal_visibility`) and their schemas are created by the chart's schema job in `21-temporal`.
+Deploys PostgreSQL 17.11 as the persistent store for the Temporal server (default and visibility stores), into the `temporal` namespace. This wave also creates the `temporal` namespace. The Temporal databases (`temporal`, `temporal_visibility`) and their schemas are created by the chart's schema job in `21-temporal`.
 
 ## Deployed Resources
 
@@ -16,7 +16,7 @@ Namespace: temporal
 
 | Pod | Purpose |
 |-----|---------|
-| `temporal-db` | PostgreSQL 17 storing Temporal workflow state and visibility data |
+| `temporal-db` | PostgreSQL 17.11 storing Temporal workflow state and visibility data |
 
 ## Services
 

@@ -26,4 +26,4 @@ grep -q SERVING <<<"${HEALTH}"
 kubectl exec deployment/temporal-admintools \
   --namespace temporal \
   --context "${KUBE_CONTEXT}" \
-  -- temporal operator namespace describe default
+  -- temporal operator namespace describe -n default
