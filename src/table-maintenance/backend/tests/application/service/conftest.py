@@ -8,6 +8,22 @@ from typing import TYPE_CHECKING
 import pytest
 
 from tests.fakes.fake_read_catalog_gateway import FakeReadCatalogGateway
+from tests.fakes.fake_read_maintenance_job_gateway import (
+    FakeReadMaintenanceJobGateway,
+)
+from tests.fakes.in_memory_maintenance_runs_repo import InMemoryMaintenanceRunsRepo
+from tests.fakes.recording_delete_maintenance_job_gateway import (
+    RecordingDeleteMaintenanceJobGateway,
+)
+from tests.fakes.recording_send_discovery_request_gateway import (
+    RecordingSendDiscoveryRequestGateway,
+)
+from tests.fakes.recording_send_maintenance_result_gateway import (
+    RecordingSendMaintenanceResultGateway,
+)
+from tests.fakes.recording_submit_maintenance_job_gateway import (
+    RecordingSubmitMaintenanceJobGateway,
+)
 from tests.fakes.in_memory_discovery_rules_repo import InMemoryDiscoveryRulesRepo
 from tests.fakes.in_memory_discovery_settings_repo import (
     InMemoryDiscoverySettingsRepo,
@@ -76,3 +92,33 @@ def schedule() -> RecordingUpdateDiscoveryScheduleGateway:
 @pytest.fixture
 def catalog() -> FakeReadCatalogGateway:
     return FakeReadCatalogGateway()
+
+
+@pytest.fixture
+def runs_repo() -> InMemoryMaintenanceRunsRepo:
+    return InMemoryMaintenanceRunsRepo()
+
+
+@pytest.fixture
+def submit_job() -> RecordingSubmitMaintenanceJobGateway:
+    return RecordingSubmitMaintenanceJobGateway()
+
+
+@pytest.fixture
+def read_job() -> FakeReadMaintenanceJobGateway:
+    return FakeReadMaintenanceJobGateway()
+
+
+@pytest.fixture
+def delete_job() -> RecordingDeleteMaintenanceJobGateway:
+    return RecordingDeleteMaintenanceJobGateway()
+
+
+@pytest.fixture
+def results() -> RecordingSendMaintenanceResultGateway:
+    return RecordingSendMaintenanceResultGateway()
+
+
+@pytest.fixture
+def discovery_requests() -> RecordingSendDiscoveryRequestGateway:
+    return RecordingSendDiscoveryRequestGateway()

@@ -36,6 +36,12 @@ UTILITY_FILES = {
     "policy_template_output_fields.py",
     "discovery_rule_output_fields.py",
     "managed_table_output_fields.py",
+    "maintenance_run_output_fields.py",
+    "maintenance_procedure_args.py",
+    "table_observation_from_gateway.py",
+    "register_discovered_table.py",
+    "registration_outcome.py",
+    "table_hint_action.py",
 }
 
 # Known verbs for service naming. This is a pre-defined allowlist, not an
