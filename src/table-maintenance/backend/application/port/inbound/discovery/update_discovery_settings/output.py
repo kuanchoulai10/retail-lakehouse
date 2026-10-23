@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class UpdateDiscoverySettingsUseCaseOutput:
-    """Carry the result."""
+    """Report the discovery switch state."""
 
     enabled: bool
     updated_at: datetime

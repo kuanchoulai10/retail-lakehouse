@@ -11,6 +11,9 @@ from application.domain.model.discovery_rule.table_pattern import TablePattern
 from application.domain.model.maintenance_settings.maintenance_settings import (
     MaintenanceSettings,
 )
+from application.domain.model.maintenance_settings.rewrite_data_files_settings import (
+    RewriteDataFilesSettings,
+)
 from application.domain.model.policy_template.policy_template import PolicyTemplate
 from application.domain.model.policy_template.policy_template_id import (
     PolicyTemplateId,
@@ -51,11 +54,11 @@ from application.service.policy_template.update_policy_template import (
 )
 
 
-def _seed(repo, name="gold", tid="t-1", now=None):
+def _seed(repo, name="gold", tid="t-1", now=None, settings=None):
     from tests.application.service.conftest import NOW
 
     template = PolicyTemplate.create(
-        PolicyTemplateId(tid), name, MaintenanceSettings(), now or NOW
+        PolicyTemplateId(tid), name, settings or MaintenanceSettings(), now or NOW
     )
     repo.create(template)
     return template
@@ -100,7 +103,12 @@ def test_create_template_unknown_setting_is_invalid(templates_repo, clock, new_i
 
 
 def test_update_template_renames_and_replaces_settings(templates_repo, clock):
-    _seed(templates_repo)
+    _seed(
+        templates_repo,
+        settings=MaintenanceSettings(
+            rewrite_data_files=RewriteDataFilesSettings(min_reducible_files=9)
+        ),
+    )
     service = UpdatePolicyTemplateService(templates_repo, clock=clock)
     out = service.execute(
         UpdatePolicyTemplateUseCaseInput(
@@ -112,6 +120,9 @@ def test_update_template_renames_and_replaces_settings(templates_repo, clock):
     assert out.name == "platinum"
     assert out.settings["expire_snapshots"]["retain_last"] == 3
     assert out.settings["rewrite_data_files"]["min_reducible_files"] == 5
+    stored = templates_repo.get(PolicyTemplateId("t-1"))
+    assert stored is not None
+    assert stored.settings.rewrite_data_files.min_reducible_files == 5
 
 
 def test_update_template_keeps_omitted_fields(templates_repo, clock):

@@ -14,6 +14,9 @@ from application.domain.model.maintenance.maintenance_operation import (
 from application.domain.model.maintenance_settings.maintenance_settings import (
     MaintenanceSettings,
 )
+from application.domain.model.maintenance_settings.rewrite_data_files_settings import (
+    RewriteDataFilesSettings,
+)
 from application.domain.model.managed_table.managed_table import ManagedTable
 from application.domain.model.managed_table.table_name import TableName
 from application.domain.model.managed_table.table_status import TableStatus
@@ -50,6 +53,9 @@ from application.port.inbound.managed_table.trigger_maintenance import (
 from application.port.inbound.managed_table.update_managed_table_settings import (
     UpdateManagedTableSettingsUseCaseInput,
 )
+from application.service.maintenance_settings.maintenance_settings_to_dict import (
+    maintenance_settings_to_dict,
+)
 from application.service.managed_table.exclude_managed_table import (
     ExcludeManagedTableService,
 )
@@ -77,6 +83,9 @@ from application.service.managed_table.update_managed_table_settings import (
 )
 
 NAME = TableName("iceberg", "sales", "orders")
+TEMPLATE_SETTINGS = MaintenanceSettings(
+    rewrite_data_files=RewriteDataFilesSettings(min_reducible_files=9)
+)
 
 
 @pytest.fixture
@@ -88,9 +97,13 @@ def template(templates_repo, now):
     return t
 
 
-def _active(repo, now, uuid="u-1", name=NAME):
+def _active(repo, now, uuid="u-1", name=NAME, settings=None):
     table = ManagedTable.include_manual(
-        TableUuid(uuid), name, PolicyTemplateId("t-1"), MaintenanceSettings(), now
+        TableUuid(uuid),
+        name,
+        PolicyTemplateId("t-1"),
+        settings or MaintenanceSettings(),
+        now,
     )
     repo.create(table)
     return table
@@ -162,7 +175,7 @@ def test_get_unknown_table_not_found(tables_repo):
 
 
 def test_settings_update_signals_workflow(tables_repo, signals, clock, now):
-    _active(tables_repo, now)
+    _active(tables_repo, now, settings=TEMPLATE_SETTINGS)
     out = UpdateManagedTableSettingsService(tables_repo, signals, clock=clock).execute(
         UpdateManagedTableSettingsUseCaseInput(
             uuid="u-1", settings={"expire_snapshots": {"retain_last": 2}}
@@ -174,6 +187,8 @@ def test_settings_update_signals_workflow(tables_repo, signals, clock, now):
     assert stored is not None
     assert stored.settings is not None
     assert stored.settings.expire_snapshots.retain_last == 2
+    assert stored.settings.rewrite_data_files.min_reducible_files == 5
+    assert out.settings["rewrite_data_files"]["min_reducible_files"] == 5
     assert [_signal(c) for c in signals.calls] == [
         ("u-1", "settings_changed", {}, False)
     ]
@@ -263,7 +278,7 @@ def test_include_new_table_registers_manual_and_starts_workflow(
     assert out.uuid == "u-9"
     assert (out.status, out.selection) == ("active", "manual")
     assert out.source_template_id == "t-1"
-    assert out.settings is not None
+    assert out.settings == maintenance_settings_to_dict(template.settings)
     assert [_signal(c) for c in signals.calls] == [("u-9", "resume", {}, True)]
 
 
@@ -297,7 +312,7 @@ def test_include_reactivates_excluded_table_as_manual(
         tables_repo, templates_repo, catalog, signals, clock
     ).execute(_include_input())
     assert (out.status, out.selection) == ("active", "manual")
-    assert out.settings is not None
+    assert out.settings == maintenance_settings_to_dict(template.settings)
     assert out.source_template_id == "t-1"
     assert len(tables_repo.list_all()) == 1
     assert [_signal(c) for c in signals.calls] == [("u-9", "resume", {}, True)]
@@ -390,6 +405,21 @@ def test_exclude_dropped_table_conflicts(tables_repo, catalog, signals, clock, n
     catalog.add_table("iceberg", "sales", "orders", "u-9")
     with pytest.raises(ConflictError):
         _exclude_service(tables_repo, catalog, signals, clock).execute(_exclude_input())
+    assert signals.calls == []
+
+
+def test_exclude_renames_existing_row_to_catalog_name(
+    tables_repo, catalog, signals, clock, now
+):
+    _active(tables_repo, now, "u-9", TableName("iceberg", "sales", "old_orders"))
+    catalog.add_table("iceberg", "sales", "orders", "u-9")
+    out = _exclude_service(tables_repo, catalog, signals, clock).execute(
+        _exclude_input()
+    )
+    assert (out.table, out.status) == ("orders", "excluded")
+    stored = tables_repo.get(TableUuid("u-9"))
+    assert stored is not None
+    assert stored.name == NAME
 
 
 # --- reset selection ---
@@ -420,8 +450,20 @@ def test_reset_selection_applies_matching_include_rule(
     assert (out.status, out.selection) == ("active", "auto")
     assert out.matched_rule_id == "r-1"
     assert out.source_template_id == "t-1"
-    assert out.settings is not None
+    assert out.settings == maintenance_settings_to_dict(template.settings)
     assert [_signal(c) for c in signals.calls] == [("u-1", "resume", {}, True)]
+
+
+def test_reset_selection_with_missing_rule_template_not_found(
+    tables_repo, rules_repo, templates_repo, signals, clock, now
+):
+    _excluded(tables_repo, now)
+    _rule(rules_repo, now, RuleEffect.INCLUDE, PolicyTemplateId("gone"))
+    with pytest.raises(NotFoundError):
+        _reset_service(tables_repo, rules_repo, templates_repo, signals, clock).execute(
+            ResetManagedTableSelectionUseCaseInput(uuid="u-1")
+        )
+    assert signals.calls == []
 
 
 def test_reset_selection_with_exclude_rule_stops_workflow(

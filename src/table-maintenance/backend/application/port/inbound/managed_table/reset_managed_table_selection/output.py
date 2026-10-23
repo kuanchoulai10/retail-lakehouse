@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class ResetManagedTableSelectionUseCaseOutput:
-    """Carry the result."""
+    """Describe the managed table after the operation."""
 
     uuid: str
     catalog: str

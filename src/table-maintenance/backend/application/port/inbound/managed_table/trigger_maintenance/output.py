@@ -7,6 +7,6 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class TriggerMaintenanceUseCaseOutput:
-    """Carry the result."""
+    """Report whether the trigger request was accepted."""
 
     accepted: bool

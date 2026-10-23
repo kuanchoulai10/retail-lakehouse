@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class CreatePolicyTemplateUseCaseOutput:
-    """Carry the result."""
+    """Describe the policy template."""
 
     id: str
     name: str

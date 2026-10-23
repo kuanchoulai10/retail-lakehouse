@@ -77,6 +77,7 @@ class ExcludeManagedTableService(ExcludeManagedTableUseCase):
                 self._tables_repo.update(table)
             else:
                 uuid = TableUuid(found.table_uuid)
+                name = TableName(found.catalog, found.namespace, found.table)
                 existing = self._tables_repo.get(uuid)
                 if existing is None:
                     table = ManagedTable.exclude_manual(uuid, name, now)

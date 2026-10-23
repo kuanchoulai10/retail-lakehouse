@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class CreateDiscoveryRuleUseCaseOutput:
-    """Carry the result."""
+    """Describe the discovery rule."""
 
     id: str
     priority: int
