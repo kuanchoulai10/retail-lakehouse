@@ -6,18 +6,20 @@ from collections import Counter
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from adapter.outbound.catalog.pyiceberg.partition_value_codec import (
+from adapter.outbound.catalog.pyiceberg.partition_value_to_primitive import (
     partition_value_to_primitive,
 )
 from application.port.outbound.catalog.read_catalog import (
     ReadCatalogGatewayObservation,
 )
-from pyiceberg.manifest import DataFileContent, ManifestEntryStatus
+from pyiceberg.manifest import DataFileContent
 
 if TYPE_CHECKING:
+    from pyiceberg.manifest import ManifestFile
     from pyiceberg.partitioning import PartitionSpec
     from pyiceberg.schema import Schema
     from pyiceberg.table import Table
+    from pyiceberg.types import IcebergType
 
 
 def observation_from_table(table: Table) -> ReadCatalogGatewayObservation:
@@ -79,26 +81,24 @@ def _source_column(table: Table, source_id: int) -> str:
     raise ValueError(f"Partition source field {source_id} not found in any schema")
 
 
-def _source_field_type(table: Table, source_id: int) -> Any:  # noqa: ANN401
+def _source_field_type(table: Table, source_id: int) -> IcebergType:
     for schema in _schemas(table):
         if schema.find_column_name(source_id) is not None:
             return schema.find_type(source_id)
     raise ValueError(f"Partition source field {source_id} not found in any schema")
 
 
-def _partition_stats(table: Table, manifest_files: list[Any]) -> list[dict[str, Any]]:
+def _partition_stats(
+    table: Table, manifest_files: list[ManifestFile]
+) -> list[dict[str, Any]]:
     files: Counter[tuple[int, tuple[Any, ...], str]] = Counter()
     sizes: Counter[tuple[int, tuple[Any, ...]]] = Counter()
     seen: set[tuple[int, tuple[Any, ...]]] = set()
     for manifest in manifest_files:
         for entry in manifest.fetch_manifest_entry(table.io, discard_deleted=True):
-            if entry.status == ManifestEntryStatus.DELETED:
-                continue
             data_file = entry.data_file
             key = (
-                data_file.spec_id
-                if data_file.spec_id is not None
-                else manifest.partition_spec_id,
+                data_file.spec_id,
                 tuple(partition_value_to_primitive(v) for v in data_file.partition),
             )
             seen.add(key)

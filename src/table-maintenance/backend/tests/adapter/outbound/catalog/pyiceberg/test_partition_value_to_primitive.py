@@ -5,7 +5,7 @@ from decimal import Decimal
 from uuid import UUID
 
 import pytest
-from adapter.outbound.catalog.pyiceberg.partition_value_codec import (
+from adapter.outbound.catalog.pyiceberg.partition_value_to_primitive import (
     partition_value_to_primitive,
 )
 

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections import Counter
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock
 
 import pyarrow as pa
@@ -97,18 +98,21 @@ def test_observe_partitioned_table_groups_by_day_and_bucket(
         == table.refresh().current_snapshot().snapshot_id
     )
     day1 = (datetime(2024, 1, 1) - datetime(1970, 1, 1)).days
-    keys = [(p["spec_id"], tuple(p["values"])) for p in observation.partitions]
-    assert len(keys) == len(set(keys))
-    assert all(isinstance(v, int) for p in observation.partitions for v in p["values"])
-    assert {p["values"][0] for p in observation.partitions} == {day1, day1 + 1}
-    assert sum(p["data_file_count"] for p in observation.partitions) >= 4
+    bucket = BucketTransform(4).transform(LongType())
+    expected: Counter[tuple[int, int]] = Counter()
+    for day, ids in ((day1, [1, 2, 3, 4, 5, 6]), (day1, [1, 2]), (day1 + 1, [1])):
+        for key in {(day, cast("int", bucket(i))) for i in ids}:
+            expected[key] += 1
+    assert {
+        tuple(p["values"]): p["data_file_count"] for p in observation.partitions
+    } == expected
+    assert len(observation.partitions) == len(expected)
     assert all(p["total_data_file_size_bytes"] > 0 for p in observation.partitions)
     assert all(p["position_delete_file_count"] == 0 for p in observation.partitions)
+    assert all(p["equality_delete_file_count"] == 0 for p in observation.partitions)
     assert [p["values"] for p in observation.partitions] == sorted(
         (p["values"] for p in observation.partitions), key=repr
     )
-    id1_day1 = next(p for p in observation.partitions if p["values"][0] == day1 + 1)
-    assert id1_day1["data_file_count"] == 1
     assert len(observation.manifests) == 3
     assert all(m["length_bytes"] > 0 for m in observation.manifests)
     assert len(observation.snapshots) == 3
@@ -197,7 +201,11 @@ def test_observation_round_trips_through_the_domain_converter(
     assert domain.table_uuid == str(table.metadata.table_uuid)
     assert domain.specs[0].fields[0].source_column == "ts"
     assert domain.snapshots[0].committed_at.tzinfo is not None
-    assert len(domain.partitions) >= 1
+    day1 = (datetime(2024, 1, 1) - datetime(1970, 1, 1)).days
+    assert {(p.values, p.data_file_count) for p in domain.partitions} == {
+        ((day1, 0), 1),
+        ((day1, 3), 1),
+    }
 
 
 def test_load_table_returns_metadata_uuid(
@@ -255,19 +263,28 @@ def test_list_tables_of_missing_namespace_is_empty(
 
 
 def _failing_catalog(fail_on: str) -> MagicMock:
+    def list_namespaces(namespace: tuple[str, ...] = ()) -> list[tuple[str, ...]]:
+        if fail_on == "list_namespaces" and namespace == ():
+            raise ServerError("boom")
+        if fail_on == "nested_list_namespaces" and namespace == ("db",):
+            raise ServerError("boom")
+        return [("db",)] if namespace == () else []
+
+    def list_tables(namespace: tuple[str, ...]) -> list[tuple[str, ...]]:
+        if fail_on == "list_tables":
+            raise ServerError("boom")
+        return []
+
     stub = MagicMock(spec=Catalog)
-    stub.list_namespaces.side_effect = (
-        ServerError("boom") if fail_on == "list_namespaces" else None
-    )
-    if fail_on != "list_namespaces":
-        stub.list_namespaces.side_effect = None
-        stub.list_namespaces.return_value = [("db",)]
-    stub.list_tables.side_effect = ServerError("boom")
+    stub.list_namespaces.side_effect = list_namespaces
+    stub.list_tables.side_effect = list_tables
     stub.load_table.side_effect = ServerError("boom")
     return stub
 
 
-@pytest.mark.parametrize("fail_on", ["list_namespaces", "list_tables"])
+@pytest.mark.parametrize(
+    "fail_on", ["list_namespaces", "nested_list_namespaces", "list_tables"]
+)
 def test_catalog_wide_listing_propagates_transient_errors(fail_on: str) -> None:
     gateway = ReadCatalogPyIcebergGateway(lambda name: _failing_catalog(fail_on))
 
@@ -276,7 +293,7 @@ def test_catalog_wide_listing_propagates_transient_errors(fail_on: str) -> None:
 
 
 def test_scoped_listing_and_loading_propagate_transient_errors() -> None:
-    gateway = ReadCatalogPyIcebergGateway(lambda name: _failing_catalog("x"))
+    gateway = ReadCatalogPyIcebergGateway(lambda name: _failing_catalog("list_tables"))
 
     with pytest.raises(ServerError):
         gateway.list_tables(ReadCatalogGatewayListInput(CATALOG, "db"))
