@@ -49,6 +49,60 @@ curl http://localhost:8000/healthz
 curl http://localhost:8000/v1/tables
 ```
 
+No route needs authentication. The main routes, all under `/v1`:
+
+| Route | Use |
+|---|---|
+| `GET /policy-templates` | templates; the migration seeds `default` |
+| `GET, POST /discovery-rules`, `PATCH, DELETE /discovery-rules/{id}` | rules, first match by `priority` wins; `effect` is `include` or `exclude` |
+| `GET, PUT /discovery`, `POST /discovery/scan` | the discovery switch and an on-demand scan |
+| `GET /tables?status=active` | managed tables (`active`, `paused`, `excluded`, `dropped`) |
+| `PUT /tables/{uuid}/settings` | replace a table's settings; omitted keys take the domain defaults |
+| `POST /tables/{uuid}/pause`, `/resume`, `/reset-selection` | operator overrides |
+| `POST /tables/include`, `/tables/exclude` | manual include or exclude by name |
+| `POST /tables/{uuid}/maintenance` | manual run, body `{"operations": [...]}`; runs whole-table, ignores cooldowns |
+| `GET /tables/{uuid}/runs`, `GET /runs/{run_id}` | run history with per-operation status and metrics |
+
+Create a rule (the `default` template id comes from `GET /v1/policy-templates`):
+
+```
+curl -X POST http://localhost:8000/v1/discovery-rules -H 'Content-Type: application/json' \
+  -d '{"priority": 10, "effect": "include", "catalog_pattern": "iceberg",
+       "namespace_pattern": "e2e", "table_pattern": "tm_e2e_*", "template_id": "<id>"}'
+```
+
+Settings keys, per operation: `rewrite_data_files` (`enabled`, `min_interval_seconds`, `scope` = `partition` or `table`, `target_file_size_bytes`, `min_reducible_files`), `rewrite_manifests` (`enabled`, `min_interval_seconds`, `min_small_manifests`, `small_manifest_bytes`), `expire_snapshots` (`enabled`, `min_interval_seconds`, `older_than_seconds`, `retain_last`), `remove_orphan_files` (`enabled`, `min_interval_seconds`, `older_than_seconds` ≥ 86400), plus `reconcile_interval_seconds` at the top level. Unknown keys return 422.
+
+## End-to-end check
+
+`e2e.sh` is a manual check, not part of `validate.sh`. It takes 20 to 40 minutes, mostly Spark start-up (each operation is its own SparkApplication, which downloads the Iceberg jars from Maven Central, so the cluster needs internet access).
+
+```
+KUBE_CONTEXT=retail-lakehouse bash platform/25-lakehouse-control-plane/e2e.sh
+```
+
+It:
+
+1. issues a Trino client certificate for user `tm-e2e` (`task trino:issue-cert`) and port-forwards `service/trino` to `localhost:18445` (`TRINO_PORT`) for each query;
+2. creates the rule `include iceberg / e2e / tm_e2e_*` with the `default` template, priority 10 (reused if it exists);
+3. creates `iceberg.e2e.tm_e2e_orders` (partitioned by `day(order_ts)`, `bucket(id, 4)`) and `iceberg.e2e.tm_e2e_regions` (partitioned by `region`) if missing, pauses them if they are already registered, inserts 20 and 8 single-row commits, and deletes one order to add a delete file; half of the regions are `o'neil`;
+4. waits up to 15 minutes for both tables to be `active`, prints when each `table-reconcile-{uuid}` workflow's current run started next to the discovery schedule's recent runs (on a table's first run, a reconcile start before the next scheduled run means the event path found the table), then pauses both tables and waits for running runs to finish;
+5. while paused, lowers the orders thresholds (`min_reducible_files: 2`, `min_small_manifests: 1`, `expire_snapshots.older_than_seconds: 60`, `retain_last: 1`, `remove_orphan_files.older_than_seconds: 86400`) and sets regions to `scope: partition`, `min_reducible_files: 2`, `min_interval_seconds: 60`;
+6. resumes orders and triggers all four operations manually, then resumes regions so the scheduled plan compacts through a `where` filter that contains the escaped quote;
+7. requires every operation of the new runs to be `succeeded` with `rewritten_data_files_count > 0`, the orders data file count (`$files`) and snapshot count (`$snapshots`) to decrease, `expire_snapshots` to delete files and the RustFS object count under the orders `data/` prefix (one-off `pgsty/mc` pod) to be at most before + files added by the rewrite − files expired (the raw count can grow, because `older_than` is fixed at plan time and the rewrite's partial-progress commits still reference the old files), the regions file count to decrease, the regions `where` filter to contain `'o\'neil'` (read from the `maintenance-{run_id}` workflow history), and both `table-reconcile-{uuid}` workflows to be running.
+
+If a Spark driver cannot deliver its result callback (the API or its database is down), the polling fallback records the operation as `succeeded` with `{"completed_without_callback": 1}` and no procedure metrics; the check then relies on the `$files` count alone and says so. Only `[INFO]` progress lines are printed; on failure the full output is dumped. The script is idempotent: it reuses the tables and the rule, so a rerun adds new small files. `remove_orphan_files` keeps files younger than one day, so it succeeds without deleting the files just written.
+
+The e2e tables and the rule stay in place to show the scheduled path. To remove them:
+
+```
+curl -X DELETE http://localhost:8000/v1/discovery-rules/<rule-id>
+trino> DROP TABLE iceberg.e2e.tm_e2e_orders; DROP TABLE iceberg.e2e.tm_e2e_regions; DROP SCHEMA iceberg.e2e;
+task trino:delete-cert TRINO_USER=tm-e2e KUBE_CONTEXT=retail-lakehouse
+```
+
+Discovery then marks the tables `dropped` and their reconcile workflows end.
+
 ## Logs
 
 ```
