@@ -5,13 +5,63 @@ source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
+CATALOGS="${CATALOGS:-iceberg}"
+NAMESPACE="lakehouse-control-plane"
 
-log::on_success "Lakehouse control plane namespaces are ready"
-log::on_failure "Lakehouse control plane namespaces are not ready"
+log::on_success "Lakehouse control plane is ready"
+log::on_failure "Lakehouse control plane is not ready"
 
-for namespace in lakehouse-control-plane lakehouse-maintenance-operations; do
+for namespace in "${NAMESPACE}" lakehouse-maintenance-operations; do
   kubectl wait "namespace/${namespace}" \
     --for jsonpath='{.status.phase}'=Active \
     --timeout "${TIMEOUT}" \
     --context "${KUBE_CONTEXT}"
 done
+
+for deployment in table-maintenance-db table-maintenance-api table-maintenance-worker \
+  table-maintenance-event-consumer; do
+  kubectl rollout status "deployment/${deployment}" \
+    --namespace "${NAMESPACE}" \
+    --timeout "${TIMEOUT}" \
+    --context "${KUBE_CONTEXT}"
+done
+
+api_get() {
+  kubectl exec deployment/table-maintenance-api \
+    --namespace "${NAMESPACE}" \
+    --context "${KUBE_CONTEXT}" \
+    -- python -c "import sys, urllib.request; r = urllib.request.urlopen('http://localhost:8000' + sys.argv[1], timeout=10); print(sys.argv[1], r.status)" "$1"
+}
+
+api_get /healthz
+api_get /v1/discovery
+api_get /v1/tables
+
+ADMIN_TOOLS="deployment/temporal-admintools"
+
+for catalog in ${CATALOGS}; do
+  kubectl exec "${ADMIN_TOOLS}" \
+    --namespace temporal \
+    --context "${KUBE_CONTEXT}" \
+    -- temporal schedule describe \
+    --address temporal-frontend.temporal.svc.cluster.local:7233 \
+    --schedule-id "table-discovery-${catalog}" >/dev/null
+done
+
+CAPACITY_STATUS="$(kubectl exec "${ADMIN_TOOLS}" \
+  --namespace temporal \
+  --context "${KUBE_CONTEXT}" \
+  -- temporal workflow describe \
+  --address temporal-frontend.temporal.svc.cluster.local:7233 \
+  --workflow-id maintenance-capacity \
+  --output json)"
+grep -q '"status": "WORKFLOW_EXECUTION_STATUS_RUNNING"' <<<"${CAPACITY_STATUS}"
+
+CONSUMER_GROUP="$(kubectl exec kafka-cluster-dual-role-0 \
+  --namespace kafka \
+  --context "${KUBE_CONTEXT}" \
+  -- /opt/kafka/bin/kafka-consumer-groups.sh \
+  --bootstrap-server localhost:9092 \
+  --describe \
+  --group table-maintenance-event-consumer)"
+grep -q "polaris-catalog-events" <<<"${CONSUMER_GROUP}"

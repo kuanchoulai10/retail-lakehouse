@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: table-maintenance-worker
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "table-maintenance.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: table-maintenance-worker
+  namespace: {{ .Values.namespaces.maintenanceOperations }}
+  labels:
+    {{- include "table-maintenance.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["sparkoperator.k8s.io"]
+    resources: ["sparkapplications"]
+    verbs: ["create", "get", "list", "watch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: table-maintenance-worker
+  namespace: {{ .Values.namespaces.maintenanceOperations }}
+  labels:
+    {{- include "table-maintenance.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: table-maintenance-worker
+subjects:
+  - kind: ServiceAccount
+    name: table-maintenance-worker
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.spark.serviceAccount }}
+  namespace: {{ .Values.namespaces.maintenanceOperations }}
+  labels:
+    {{- include "table-maintenance.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Values.spark.serviceAccount }}
+  namespace: {{ .Values.namespaces.maintenanceOperations }}
+  labels:
+    {{- include "table-maintenance.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps", "persistentvolumeclaims"]
+    verbs: ["create", "get", "list", "watch", "update", "patch", "delete", "deletecollection"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Values.spark.serviceAccount }}
+  namespace: {{ .Values.namespaces.maintenanceOperations }}
+  labels:
+    {{- include "table-maintenance.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Values.spark.serviceAccount }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.spark.serviceAccount }}
+    namespace: {{ .Values.namespaces.maintenanceOperations }}

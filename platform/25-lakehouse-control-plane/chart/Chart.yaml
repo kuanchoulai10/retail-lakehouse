@@ -1,0 +1,6 @@
+apiVersion: v2
+name: table-maintenance
+description: Iceberg table maintenance control plane (API, Temporal worker, event consumer, PostgreSQL)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

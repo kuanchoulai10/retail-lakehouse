@@ -1,0 +1,84 @@
+image:
+  backend:
+    repository: table-maintenance-backend
+    tag: ""
+  spark:
+    repository: table-maintenance-spark
+    tag: ""
+  pullPolicy: IfNotPresent
+
+postgres:
+  image: postgres:17.11-alpine
+  user: table_maintenance
+  database: table_maintenance
+  storage: 5Gi
+  secretName: table-maintenance-db
+  secretKey: password
+
+secrets:
+  catalogCredential: table-maintenance-polaris-credential
+  s3: table-maintenance-s3
+
+namespaces:
+  controlPlane: lakehouse-control-plane
+  maintenanceOperations: lakehouse-maintenance-operations
+
+temporal:
+  address: temporal-frontend.temporal.svc.cluster.local:7233
+  namespace: default
+
+catalog:
+  uri: http://polaris.lakehouse-catalog.svc.cluster.local:8181/api/catalog
+  scope: PRINCIPAL_ROLE:ALL
+  names:
+    - iceberg
+  s3Endpoint: http://rustfs.object-storage.svc.cluster.local:9000
+  s3PathStyleAccess: true
+  s3Region: dummy-region
+
+kafka:
+  bootstrapServers: kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
+  topic: polaris-catalog-events
+
+spark:
+  serviceAccount: table-maintenance-spark
+  sparkVersion: 4.0.0
+  icebergVersion: 1.10.1
+
+api:
+  port: 8000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+worker:
+  capacityLimit: 2
+  discoveryIntervalSeconds: 600
+  terminationGracePeriodSeconds: 90
+  resources:
+    requests:
+      cpu: 100m
+      memory: 384Mi
+    limits:
+      memory: 1Gi
+
+eventConsumer:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 192Mi
+    limits:
+      memory: 512Mi
+
+migrate:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 192Mi
+    limits:
+      memory: 512Mi
+
+logLevel: INFO

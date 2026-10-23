@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: table-maintenance-event-consumer
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "table-maintenance.labels" . | nindent 4 }}
+    app: table-maintenance-event-consumer
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: table-maintenance-event-consumer
+  template:
+    metadata:
+      labels:
+        app: table-maintenance-event-consumer
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      {{- include "table-maintenance.podSecurity" . | nindent 6 }}
+      initContainers:
+        {{- include "table-maintenance.waitForSchema" . | nindent 8 }}
+      containers:
+        - name: event-consumer
+          image: {{ include "table-maintenance.backendImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: GLAC_COMPONENT
+              value: event_consumer
+            {{- include "table-maintenance.appEnv" . | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: table-maintenance-config
+          {{- include "table-maintenance.containerSecurity" . | nindent 10 }}
+          resources:
+            {{- toYaml .Values.eventConsumer.resources | nindent 12 }}

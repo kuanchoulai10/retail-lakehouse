@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: table-maintenance-migrate-{{ .Release.Revision }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "table-maintenance.labels" . | nindent 4 }}
+    app: table-maintenance-migrate
+spec:
+  backoffLimit: 6
+  template:
+    metadata:
+      labels:
+        app: table-maintenance-migrate
+    spec:
+      restartPolicy: OnFailure
+      automountServiceAccountToken: false
+      {{- include "table-maintenance.podSecurity" . | nindent 6 }}
+      initContainers:
+        - name: wait-for-db
+          image: {{ .Values.postgres.image }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - until pg_isready -h table-maintenance-db -U {{ .Values.postgres.user }} -d {{ .Values.postgres.database }}; do sleep 2; done
+      containers:
+        - name: migrate
+          image: {{ include "table-maintenance.backendImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: GLAC_COMPONENT
+              value: migrate
+            {{- include "table-maintenance.dbEnv" . | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: table-maintenance-config
+          {{- include "table-maintenance.containerSecurity" . | nindent 10 }}
+          resources:
+            {{- toYaml .Values.migrate.resources | nindent 12 }}

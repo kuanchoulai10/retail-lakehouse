@@ -11,6 +11,13 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 log::on_success "Spark Operator installed"
 log::on_failure "Spark Operator installation failed"
 
+kubectl create namespace lakehouse-maintenance-operations \
+  --dry-run=client \
+  -o yaml \
+  | kubectl apply \
+    -f - \
+    --context "${KUBE_CONTEXT}"
+
 helm repo add spark-operator https://kubeflow.github.io/spark-operator
 helm repo update spark-operator
 

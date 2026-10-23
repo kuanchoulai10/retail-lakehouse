@@ -392,6 +392,7 @@ spark:
   # Make sure the namespaces have already existed.
   jobNamespaces:
   - default
+  - lakehouse-maintenance-operations
 
   serviceAccount:
     # -- Specifies whether to create a service account for spark applications.

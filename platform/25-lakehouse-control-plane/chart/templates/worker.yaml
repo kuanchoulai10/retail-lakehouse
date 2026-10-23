@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: table-maintenance-worker
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "table-maintenance.labels" . | nindent 4 }}
+    app: table-maintenance-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: table-maintenance-worker
+  template:
+    metadata:
+      labels:
+        app: table-maintenance-worker
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: table-maintenance-worker
+      terminationGracePeriodSeconds: {{ .Values.worker.terminationGracePeriodSeconds }}
+      {{- include "table-maintenance.podSecurity" . | nindent 6 }}
+      initContainers:
+        {{- include "table-maintenance.waitForSchema" . | nindent 8 }}
+      containers:
+        - name: worker
+          image: {{ include "table-maintenance.backendImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: GLAC_COMPONENT
+              value: worker
+            {{- include "table-maintenance.appEnv" . | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: table-maintenance-config
+            - secretRef:
+                name: {{ .Values.secrets.s3 }}
+          {{- include "table-maintenance.containerSecurity" . | nindent 10 }}
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}

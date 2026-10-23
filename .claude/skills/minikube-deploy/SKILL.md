@@ -13,7 +13,7 @@ This skill standardizes the cycle of building a Docker image locally, loading it
 - Docker runtime: Colima (Docker runs inside a VM — `localhost` from Docker ≠ host `localhost`)
 - Image naming: `localhost:5001/<name>:<tag>` (convention only — images are loaded directly, not pulled from a registry)
 - `imagePullPolicy: Never` in all manifests (prevents K8s from trying to pull from a registry)
-- K8s manifests live in numbered directories (e.g., `25-table-maintenance/`)
+- K8s manifests live in numbered directories (e.g., `25-lakehouse-control-plane/`)
 
 ### Why `minikube image load` instead of registry push?
 
@@ -23,9 +23,8 @@ Docker runs inside Colima VM. `kubectl port-forward` binds to the host network. 
 
 | Image Name | Dockerfile | Build Context | Deploy Manifest | Deploy Kind |
 |-----------|-----------|--------------|----------------|------------|
-| `table-maintenance-spark` | `src/table-maintenance/runtime/spark/Dockerfile` | `src/table-maintenance/runtime/spark/` | `25-table-maintenance/sparkapplication-rewrite-data-files.yaml` | SparkApplication |
-| `table-maintenance-backend` | `src/table-maintenance/backend/Dockerfile` | `src/table-maintenance/backend/` | `25-tbl-maint-bcknd/backend-deployment.yaml` | Deployment + Service |
-| `table-maintenance-scheduler` | `src/table-maintenance/scheduler/Dockerfile` | `src/table-maintenance/` | `25-tbl-maint-schdlr/scheduler-deployment.yaml` | Deployment |
+| `table-maintenance-spark` | `src/table-maintenance/runtime/spark/Dockerfile` | `src/table-maintenance/runtime/spark/` | `platform/25-lakehouse-control-plane/chart` (`build.sh` + `bootstrap.sh`) | SparkApplication (created by the worker) |
+| `table-maintenance-backend` | `src/table-maintenance/backend/Dockerfile` | `src/table-maintenance/backend/` | `platform/25-lakehouse-control-plane/chart` (`build.sh` + `bootstrap.sh`) | Helm: api, worker, event-consumer, migrate |
 
 When the user asks to deploy something not in this table, ask them for the Dockerfile path, build context, and deploy manifest path. Then add it to this table for future reference.
 

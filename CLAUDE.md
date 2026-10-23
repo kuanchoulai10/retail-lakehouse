@@ -29,10 +29,9 @@ Respond in the same language as the user's message. The user typically communica
 - Wave 20: Kafka (3 brokers), RustFS, MySQL, Polaris DB, Jaeger (trino / thanos), temporal-db (creates the `temporal` namespace; PostgreSQL for Temporal)
 - Wave 21–22: Temporal server (chart `temporalio/temporal` 1.7.0, server 1.32.0; frontend `temporal-frontend.temporal.svc.cluster.local:7233`, Web UI `temporal-web:8080`, Temporal namespace `default` with 3d retention), Polaris (also creates the `polaris-catalog-events` KafkaTopic in `kafka`), 2 KafkaConnectors (debezium-mysql, iceberg-sink), `platform-gateway` + HTTPRoutes
 - Wave 23: Trino, Kafka UI
-- Wave 25: lakehouse-control-plane (namespaces `lakehouse-control-plane`, `lakehouse-maintenance-operations`; no components yet)
+- Wave 25: lakehouse-control-plane (namespaces `lakehouse-control-plane`, `lakehouse-maintenance-operations`; Helm release `table-maintenance` = `table-maintenance-db` PostgreSQL, `migrate` Job, `api` (:8000), `worker`, `event-consumer`; images `table-maintenance-backend` / `table-maintenance-spark` built locally by `build.sh` and loaded into minikube; Spark jobs run in `lakehouse-maintenance-operations`, whose namespace is in the Spark operator `jobNamespaces`)
 
 **Not deployed / on hold (do not touch unless the user re-opens them):**
-- `platform/25-table-maintenance` + `platform/25-tbl-maint-*` + `src/table-maintenance` (table maintenance: backend / scheduler / db); not wired into `tasks/apps.yml`
 - `platform/30-thanos`
 - `platform/24-e2e-validation`
 - ArgoCD path (`platform/00-argocd`, `01-argocd-health-checks`, `02-argocd-apps`, `charts/app-of-apps`)
@@ -43,7 +42,7 @@ Respond in the same language as the user's message. The user typically communica
 3. `minio` → `object-storage` (done; the object store itself was later replaced by RustFS, see 9)
 4. `polaris` → `lakehouse-catalog` (done)
 5. `trino` → `lakehouse-query-engine` (done)
-6. New wave `platform/25-lakehouse-control-plane` creates the `lakehouse-control-plane` + `lakehouse-maintenance-operations` namespaces (namespace only for now). The current `25-table-maintenance` / `25-tbl-maint-*` dirs will later be consolidated into it. (done)
+6. New wave `platform/25-lakehouse-control-plane` creates the `lakehouse-control-plane` + `lakehouse-maintenance-operations` namespaces (done; later the old `25-table-maintenance` / `25-tbl-maint-*` dirs were deleted and the table-maintenance control plane is deployed from this wave's Helm chart)
 7. New wave `platform/20-temporal` creates the `temporal` namespace (renamed `20-temporal-db` in T13). (done)
    - 7.5: Replace Docker-Hub-removed minio/minio + minio/mc images with pinned pgsty/silo + pgsty/mc (done)
 8. Full `task offboard` + `task onboard KUBE_CONTEXT=retail-lakehouse` end-to-end run (done; surfaced and fixed missing `istio-ingress` namespace in `22-polaris-routes`)
@@ -58,7 +57,8 @@ Respond in the same language as the user's message. The user typically communica
 - T13: Temporal server in `temporal` ns (done; `platform/20-temporal-db` = namespace + `temporal-db` Postgres 17.11 (`postgres:17.11-alpine`) with Recreate strategy and plaintext dev Secret; `platform/21-temporal` = official chart 1.7.0, images server/admin-tools 1.32.0 and ui 2.54.1, 1 replica each, databases `temporal` / `temporal_visibility` with schema created by the chart's hook Jobs, `default` namespace created by the chart. Future table-maintenance workers connect to `temporal-frontend.temporal.svc.cluster.local:7233`)
 
 **Known follow-ups:**
-- On-hold waves still reference pre-rename names (`minio-api.minio.svc`, `kafka-cdc`, `polaris`, `platform/20-minio`): `30-thanos`, `24-e2e-validation`, `25-table-maintenance` / `25-tbl-maint-*`, `src/table-maintenance`, `charts/app-of-apps`. Fix when those are re-opened.
+- Table maintenance control plane (wave 25) is deployed but the e2e run (Task 19) is pending. The migrate Job reruns on every `helm upgrade` (name carries the release revision); api / worker / event-consumer gate on the seeded `default` policy template, not on the Job itself.
+- On-hold waves still reference pre-rename names (`minio-api.minio.svc`, `kafka-cdc`, `polaris`, `platform/20-minio`): `30-thanos`, `24-e2e-validation`, `charts/app-of-apps`. Fix when those are re-opened.
 - Iceberg sink (Kafka 4.0 + sink 1.10) may commit "0 table(s)" for several minutes after a Connect pod start under low traffic; keep inserting and poll ~5–10 min when verifying snapshots.
 - `bitnami/jmx-exporter` (Trino sidecar) is pinned by digest: Bitnami's free catalog only publishes `latest`, so bumping it means taking the new `latest` digest.
 

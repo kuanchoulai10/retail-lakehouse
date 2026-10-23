@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: table-maintenance-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "table-maintenance.labels" . | nindent 4 }}
+data:
+  GLAC_DATABASE_BACKEND: postgres
+  GLAC_LOG_LEVEL: {{ .Values.logLevel | quote }}
+  GLAC_TEMPORAL__ADDRESS: {{ .Values.temporal.address | quote }}
+  GLAC_TEMPORAL__NAMESPACE: {{ .Values.temporal.namespace | quote }}
+  GLAC_CATALOG__URI: {{ .Values.catalog.uri | quote }}
+  GLAC_CATALOG__SCOPE: {{ .Values.catalog.scope | quote }}
+  GLAC_CATALOG__NAMES: {{ .Values.catalog.names | toJson | quote }}
+  GLAC_CATALOG__S3_ENDPOINT: {{ .Values.catalog.s3Endpoint | quote }}
+  GLAC_CATALOG__S3_PATH_STYLE_ACCESS: {{ .Values.catalog.s3PathStyleAccess | quote }}
+  GLAC_CATALOG__S3_REGION: {{ .Values.catalog.s3Region | quote }}
+  GLAC_KAFKA__BOOTSTRAP_SERVERS: {{ .Values.kafka.bootstrapServers | quote }}
+  GLAC_KAFKA__TOPIC: {{ .Values.kafka.topic | quote }}
+  GLAC_SPARK__IMAGE: {{ include "table-maintenance.sparkImage" . | quote }}
+  GLAC_SPARK__IMAGE_PULL_POLICY: {{ .Values.image.pullPolicy | quote }}
+  GLAC_SPARK__SERVICE_ACCOUNT: {{ .Values.spark.serviceAccount | quote }}
+  GLAC_SPARK__CATALOG_CREDENTIAL_SECRET: {{ .Values.secrets.catalogCredential | quote }}
+  GLAC_SPARK__S3_SECRET_NAME: {{ .Values.secrets.s3 | quote }}
+  GLAC_SPARK__NAMESPACE: {{ .Values.namespaces.maintenanceOperations | quote }}
+  GLAC_SPARK__SPARK_VERSION: {{ .Values.spark.sparkVersion | quote }}
+  GLAC_SPARK__ICEBERG_VERSION: {{ .Values.spark.icebergVersion | quote }}
+  GLAC_CALLBACK_BASE_URL: http://table-maintenance-api.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.api.port }}
+  GLAC_CAPACITY_LIMIT: {{ .Values.worker.capacityLimit | quote }}
+  GLAC_DISCOVERY_INTERVAL_SECONDS: {{ .Values.worker.discoveryIntervalSeconds | quote }}
