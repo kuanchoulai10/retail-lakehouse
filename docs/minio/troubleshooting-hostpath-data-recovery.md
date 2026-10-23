@@ -131,8 +131,8 @@ Pod 起來後，確認 MinIO 現在看得到正確的資料。
 ```bash
 kubectl run mc-verify --rm -it --restart=Never \
   --image=pgsty/mc:RELEASE.2026-10-18T00-00-00Z \
-  --env="MC_HOST_local=http://minio:minio123@minio.object-storage.svc.cluster.local:9000" \
-  -- mc ls local/
+  --env="MC_HOST_local=http://minio:minio123@minio-api.object-storage.svc.cluster.local:9000" \
+  --command -- mc ls local/
 ```
 
 你應該會看到之前建立的 bucket 重新出現。
