@@ -19,7 +19,7 @@ Respond in the same language as the user's message. The user typically communica
 **History:**
 - 2025-06 ~ 09: Trino, Kafka/Debezium/Iceberg CDC pipeline, monitoring stack.
 - 2026-03 ~ 05: table-maintenance backend (API / scheduler / outbox messaging), naming conventions, import-linter layering.
-- 2026-05 ~ 07: Polaris 1.5.0 + metrics reporter CDC to Kafka (removed in T10); Kafka 1 → 3 brokers; Iceberg sink static-membership fix; Kafka UI; Istio ambient (istiod / CNI / ztunnel) + Gateway API with wave-22 Gateway + HTTPRoutes; table-maintenance manifests moved `default` → `polaris` ns. The "Polaris events via OTEL → Kafka" attempt was fully reverted.
+- 2026-05 ~ 07: Polaris 1.8.0 (upgraded from 1.5.0 in T11) + metrics reporter CDC to Kafka (removed in T10); Kafka 1 → 3 brokers; Iceberg sink static-membership fix; Kafka UI; Istio ambient (istiod / CNI / ztunnel) + Gateway API with wave-22 Gateway + HTTPRoutes; table-maintenance manifests moved `default` → `polaris` ns. The "Polaris events via OTEL → Kafka" attempt was fully reverted.
 
 **Deployed on minikube** (via `bootstrap-by-scripts`):
 - Wave 10: cert-manager, kube-prometheus, Strimzi
@@ -50,7 +50,7 @@ Respond in the same language as the user's message. The user typically communica
 
 **Next initiative: Polaris events via OpenTelemetry** (replaces the removed Polaris DB CDC):
 - T10: Remove Polaris DB CDC (Debezium Postgres connector wave `22-kafka-debezium-polaris-connector`, its Kafka topics / replication slot / publication, `wal_level=logical` on polaris-db, Kafka UI entry) (done)
-- T11: Upgrade Polaris to 1.8.0
+- T11: Upgrade Polaris to 1.8.0 (done; server `apache/polaris:1.8.0`, chart 1.8.0, bootstrap job `apache/polaris-admin-tool:1.8.0`, polaris-db Deployment now `strategy: Recreate`. Polaris 1.8.0 no longer creates the JDBC schema: the bootstrap Job has a `create-schema` init container running `CREATE SCHEMA IF NOT EXISTS polaris_schema` (chart sets `currentSchema=POLARIS_SCHEMA`, folded to lowercase). DB is schema v6; no auto-migration, so the DB was wiped and re-bootstrapped. The token broker key is regenerated on every Polaris restart, so the Iceberg sink Connect pod must be restarted afterwards ("Failed to verify the token"))
 - T12: Add the Polaris OpenTelemetry event listener
 
 **Known follow-ups:**

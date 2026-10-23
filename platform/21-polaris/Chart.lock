@@ -1,6 +1,6 @@
 dependencies:
 - name: polaris
   repository: https://downloads.apache.org/polaris/helm-chart
-  version: 1.5.0
-digest: sha256:1d36f49eab815f5011646b347eccbc404567674adbba37713781d3ad2e235d55
-generated: "2026-07-02T00:40:35.245925+08:00"
+  version: 1.8.0
+digest: sha256:11f6ec28869cdc43b4e29340b3e5dce2c20974a31917e9b9b07c35329a168aa3
+generated: "2026-10-23T21:30:28.572235+08:00"

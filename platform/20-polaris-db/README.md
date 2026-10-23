@@ -1,6 +1,6 @@
 # Polaris PostgreSQL
 
-Deploys PostgreSQL 17 as the persistent backing store for Apache Polaris catalog metadata, into the `lakehouse-catalog` namespace. Polaris connects via JDBC and auto-bootstraps its schema on first start.
+Deploys PostgreSQL 17 as the persistent backing store for Apache Polaris catalog metadata, into the `lakehouse-catalog` namespace. Polaris connects via JDBC; the schema is created by the `polaris-bootstrap` Job in `21-polaris`.
 
 ## Deployed Resources
 
@@ -47,7 +47,7 @@ The PostgreSQL Deployment reads `username`/`password`/`database` via `secretKeyR
 
 ## Schema
 
-Polaris bootstraps its own schema on first connection. No init container or migration tool is required.
+Polaris 1.8.0 does not create the database schema itself. The `polaris-bootstrap` Job in `21-polaris` runs `CREATE SCHEMA IF NOT EXISTS polaris_schema` in an init container, then the admin tool creates the tables (schema v6).
 
 ## Installation
 

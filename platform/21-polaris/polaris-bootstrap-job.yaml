@@ -9,9 +9,32 @@ spec:
   template:
     spec:
       restartPolicy: OnFailure
+      initContainers:
+        - name: create-schema
+          image: postgres:17-alpine
+          command:
+            - /bin/sh
+            - -c
+            - psql "postgresql://$PGUSER@polaris-db.lakehouse-catalog.svc.cluster.local:5432/$PGDATABASE" -v ON_ERROR_STOP=1 -c 'CREATE SCHEMA IF NOT EXISTS polaris_schema'
+          env:
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: polaris-db
+                  key: username
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: polaris-db
+                  key: password
+            - name: PGDATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: polaris-db
+                  key: database
       containers:
         - name: bootstrap
-          image: apache/polaris-admin-tool:1.5.0
+          image: apache/polaris-admin-tool:1.8.0
           args:
             - bootstrap
             - --realm=POLARIS
