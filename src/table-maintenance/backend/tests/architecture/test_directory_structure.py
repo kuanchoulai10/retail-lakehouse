@@ -30,8 +30,8 @@ class TestDirectoryStructure:
         "subdir",
         [
             "adapter/inbound/web",
-            "adapter/inbound/scheduler",
-            "adapter/inbound/messaging/outbox",
+            "adapter/inbound/temporal",
+            "adapter/inbound/event_consumer",
             "adapter/outbound",
         ],
     )

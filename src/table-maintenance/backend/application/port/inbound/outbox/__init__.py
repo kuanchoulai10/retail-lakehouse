@@ -1,1 +1,0 @@
-"""Outbox use case definitions."""

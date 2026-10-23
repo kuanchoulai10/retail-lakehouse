@@ -62,6 +62,13 @@ KNOWN_VERBS = {
     "Sync",
     "Validate",
     "Search",
+    # Control plane
+    "Register",
+    "Include",
+    "Exclude",
+    "Reset",
+    "Plan",
+    "Record",
 }
 
 

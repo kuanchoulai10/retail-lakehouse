@@ -1,1 +1,1 @@
-"""Application services — use case implementations."""
+"""Application services - use case implementations."""

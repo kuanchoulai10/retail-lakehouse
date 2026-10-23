@@ -33,7 +33,16 @@ OUTBOUND_PORT_DIR = (
     Path(__file__).resolve().parents[2] / "application" / "port" / "outbound"
 )
 
-AGGREGATE_GROUPS = ["catalog", "event_outbox", "job", "job_run"]
+AGGREGATE_GROUPS = [
+    "catalog",
+    "discovery",
+    "discovery_rule",
+    "managed_table",
+    "maintenance_run",
+    "policy_template",
+    "spark",
+    "workflow",
+]
 
 GATEWAY_REQUIRED_FILES = {"__init__.py", "gateway.py"}
 GATEWAY_ALLOWED_FILES = {"__init__.py", "gateway.py", "input.py", "output.py"}

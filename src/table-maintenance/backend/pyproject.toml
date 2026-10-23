@@ -3,12 +3,13 @@ name = "table-maintenance-backend"
 version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
-    "croniter>=6.0",
     "fastapi[standard]>=0.115",
     "kubernetes>=32.0",
     "sqlalchemy>=2.0",
     "psycopg[binary]>=3.2",
     "pyiceberg>=0.9",
+    "pyarrow>=18",
+    "temporalio>=1.8",
 ]
 
 [dependency-groups]

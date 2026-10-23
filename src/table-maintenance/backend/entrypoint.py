@@ -1,4 +1,4 @@
-"""Entry point: selects api, scheduler, or messaging component via GLAC_COMPONENT."""
+"""Entry point: selects the component to run via GLAC_COMPONENT."""
 
 from __future__ import annotations
 
@@ -12,17 +12,21 @@ def main() -> None:
 
     match settings.component:
         case Component.API:
-            import uvicorn
+            from bootstrap.api import main as api_main
 
-            uvicorn.run("bootstrap.api:app", host="0.0.0.0", port=8000)
-        case Component.SCHEDULER:
-            from bootstrap.scheduler import main as scheduler_main
+            api_main()
+        case Component.WORKER:
+            from bootstrap.worker import main as worker_main
 
-            scheduler_main()
-        case Component.MESSAGING:
-            from bootstrap.messaging import main as messaging_main
+            worker_main()
+        case Component.EVENT_CONSUMER:
+            from bootstrap.event_consumer import main as event_consumer_main
 
-            messaging_main()
+            event_consumer_main()
+        case Component.MIGRATE:
+            from bootstrap.migrate import main as migrate_main
+
+            migrate_main()
 
 
 if __name__ == "__main__":

@@ -1,1 +1,1 @@
-"""Outbound adapter implementations."""
+"""Outbound adapters."""

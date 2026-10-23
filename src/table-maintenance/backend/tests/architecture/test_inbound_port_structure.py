@@ -1,6 +1,6 @@
 """Guard tests for inbound port directory structure and naming conventions.
 
-Use cases are grouped under port/inbound/{aggregate}/ (e.g. job/, job_run/).
+Use cases are grouped under port/inbound/{aggregate}/ (e.g. managed_table/, reconcile/).
 Each use case directory must contain exactly:
   __init__.py, input.py, output.py, use_case.py
 
@@ -26,8 +26,15 @@ REQUIRED_FILES = {"__init__.py", "input.py", "output.py", "use_case.py"}
 REQUIRED_FILES_NO_INPUT = {"__init__.py", "output.py", "use_case.py"}
 ALLOWED_FILES = REQUIRED_FILES  # input.py is optional for no-input use cases
 
-AGGREGATE_GROUPS = ["catalog", "job", "job_run", "outbox", "scheduling"]
-AGGREGATE_GROUPS_NO_INPUT = {"outbox", "scheduling"}
+AGGREGATE_GROUPS = [
+    "discovery",
+    "discovery_rule",
+    "managed_table",
+    "maintenance_run",
+    "policy_template",
+    "reconcile",
+]
+AGGREGATE_GROUPS_NO_INPUT: set[str] = set()
 
 
 def _group_dirs() -> list[Path]:
@@ -39,6 +46,8 @@ def _use_case_dirs() -> list[tuple[str, Path]]:
     """Return (group, path) for all use case directories under port/inbound/{group}/."""
     result: list[tuple[str, Path]] = []
     for group_dir in _group_dirs():
+        if not group_dir.is_dir():
+            continue
         for d in sorted(group_dir.iterdir()):
             if d.is_dir() and d.name != "__pycache__":
                 result.append((group_dir.name, d))

@@ -9,5 +9,6 @@ class Component(StrEnum):
     """Identifies which application component to run."""
 
     API = "api"
-    SCHEDULER = "scheduler"
-    MESSAGING = "messaging"
+    WORKER = "worker"
+    EVENT_CONSUMER = "event_consumer"
+    MIGRATE = "migrate"

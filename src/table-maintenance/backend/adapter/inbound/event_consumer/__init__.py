@@ -1,0 +1,1 @@
+"""Inbound event consumer adapter."""
