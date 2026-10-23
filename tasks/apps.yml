@@ -68,6 +68,7 @@ tasks:
       - TIMEOUT=10s bash platform/22-polaris-routes/validate.sh
       - TIMEOUT=10s bash platform/23-kafka-ui/validate.sh
       - TIMEOUT=10s bash platform/23-trino/validate.sh
+      - TIMEOUT=10s bash platform/25-lakehouse-control-plane/validate.sh
     cmds:
       - bash platform/10-cert-manager/bootstrap.sh
       - bash platform/10-kube-prometheus/bootstrap.sh
@@ -117,6 +118,8 @@ tasks:
       - bash platform/23-kafka-ui/validate.sh
       - bash platform/23-trino/bootstrap.sh
       - bash platform/23-trino/validate.sh
+      - bash platform/25-lakehouse-control-plane/bootstrap.sh
+      - bash platform/25-lakehouse-control-plane/validate.sh
 
   bootstrap-by-argocd:
     internal: true
@@ -190,6 +193,9 @@ tasks:
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       - task: validate-polaris
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-lakehouse-control-plane
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
 
@@ -318,3 +324,10 @@ tasks:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
       - bash platform/21-polaris/validate.sh
+
+  validate-lakehouse-control-plane:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash platform/25-lakehouse-control-plane/validate.sh
