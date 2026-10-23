@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sqlalchemy import delete, func, insert, select, update
+from sqlalchemy.exc import IntegrityError
 
 from adapter.outbound.discovery_rule.sql.discovery_rule_row_mapper import (
     DiscoveryRuleRowMapper,
@@ -12,6 +13,7 @@ from adapter.outbound.discovery_rule.sql.discovery_rule_row_mapper import (
 from adapter.outbound.discovery_rule.sql.discovery_rules_table import (
     discovery_rules_table as t,
 )
+from application.exceptions import ConflictError
 from application.port.outbound.discovery_rule.discovery_rules_repo import (
     DiscoveryRulesRepo,
 )
@@ -35,8 +37,13 @@ class DiscoveryRulesSqlRepo(DiscoveryRulesRepo):
 
     def create(self, entity: DiscoveryRule) -> DiscoveryRule:
         """Insert a new rule."""
-        with self._engine.begin() as conn:
-            conn.execute(insert(t).values(**DiscoveryRuleRowMapper.to_values(entity)))
+        try:
+            with self._engine.begin() as conn:
+                conn.execute(
+                    insert(t).values(**DiscoveryRuleRowMapper.to_values(entity))
+                )
+        except IntegrityError as exc:
+            raise ConflictError(str(exc.orig)) from exc
         return entity
 
     def get(self, entity_id: EntityId) -> DiscoveryRule | None:
@@ -60,8 +67,8 @@ class DiscoveryRulesSqlRepo(DiscoveryRulesRepo):
             result = conn.execute(
                 update(t).where(t.c.id == rule.id.value).values(**values)
             )
-        if result.rowcount == 0:
-            raise LookupError(f"discovery rule {rule.id.value} does not exist")
+            if result.rowcount == 0:
+                raise LookupError(f"discovery rule {rule.id.value} does not exist")
         return rule
 
     def delete(self, entity_id: EntityId) -> None:

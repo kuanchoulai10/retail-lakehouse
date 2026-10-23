@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sqlalchemy import insert, select, update
+from sqlalchemy.exc import IntegrityError
 
 from adapter.outbound.managed_table.sql.managed_table_row_mapper import (
     ManagedTableRowMapper,
@@ -13,6 +14,7 @@ from adapter.outbound.managed_table.sql.managed_tables_table import (
     managed_tables_table as t,
 )
 from application.domain.model.managed_table.table_status import TableStatus
+from application.exceptions import ConflictError
 from application.port.outbound.managed_table.managed_tables_repo import (
     ManagedTablesRepo,
 )
@@ -38,8 +40,13 @@ class ManagedTablesSqlRepo(ManagedTablesRepo):
 
     def create(self, entity: ManagedTable) -> ManagedTable:
         """Insert a new table."""
-        with self._engine.begin() as conn:
-            conn.execute(insert(t).values(**ManagedTableRowMapper.to_values(entity)))
+        try:
+            with self._engine.begin() as conn:
+                conn.execute(
+                    insert(t).values(**ManagedTableRowMapper.to_values(entity))
+                )
+        except IntegrityError as exc:
+            raise ConflictError(str(exc.orig)) from exc
         return entity
 
     def get(self, entity_id: EntityId) -> ManagedTable | None:
@@ -61,8 +68,8 @@ class ManagedTablesSqlRepo(ManagedTablesRepo):
             result = conn.execute(
                 update(t).where(t.c.uuid == table.id.value).values(**values)
             )
-        if result.rowcount == 0:
-            raise LookupError(f"managed table {table.id.value} does not exist")
+            if result.rowcount == 0:
+                raise LookupError(f"managed table {table.id.value} does not exist")
         return table
 
     def find_by_name(self, name: TableName) -> ManagedTable | None:

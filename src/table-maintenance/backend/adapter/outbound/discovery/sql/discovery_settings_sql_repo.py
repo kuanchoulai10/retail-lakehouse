@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import insert, select, update
+from sqlalchemy.exc import IntegrityError
 
 from adapter.outbound.discovery.sql.discovery_settings_table import (
     discovery_settings_table as t,
@@ -17,6 +18,7 @@ from application.domain.model.discovery.discovery_settings import (
 from application.domain.model.discovery.discovery_settings_id import (
     DiscoverySettingsId,
 )
+from application.exceptions import ConflictError
 from application.port.outbound.discovery.discovery_settings_repo import (
     DiscoverySettingsRepo,
 )
@@ -54,8 +56,11 @@ class DiscoverySettingsSqlRepo(DiscoverySettingsRepo):
 
     def create(self, entity: DiscoverySettings) -> DiscoverySettings:
         """Insert new settings."""
-        with self._engine.begin() as conn:
-            conn.execute(insert(t).values(**_to_values(entity)))
+        try:
+            with self._engine.begin() as conn:
+                conn.execute(insert(t).values(**_to_values(entity)))
+        except IntegrityError as exc:
+            raise ConflictError(str(exc.orig)) from exc
         return entity
 
     def get(self, entity_id: EntityId) -> DiscoverySettings | None:

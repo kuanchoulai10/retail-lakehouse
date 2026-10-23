@@ -9,6 +9,7 @@ from adapter.outbound.managed_table.sql.managed_tables_sql_repo import (
     ManagedTablesSqlRepo,
 )
 from application.domain.model.discovery_rule.discovery_rule_id import DiscoveryRuleId
+from application.exceptions import ConflictError
 from application.domain.model.maintenance.maintenance_operation import (
     MaintenanceOperation,
 )
@@ -176,3 +177,9 @@ def test_list_all_ordered_by_name(repo: ManagedTablesSqlRepo):
     repo.create(_table("3", TableName("a", "n", "z")))
     repo.create(_table("4", TableName("a", "n", "a")))
     assert [t.id.value for t in repo.list_all()] == ["4", "3", "2", "1"]
+
+
+def test_create_duplicate_primary_key_raises_conflict(repo: ManagedTablesSqlRepo):
+    repo.create(_table("dup"))
+    with pytest.raises(ConflictError):
+        repo.create(_table("dup", TableName("c", "n", "other")))

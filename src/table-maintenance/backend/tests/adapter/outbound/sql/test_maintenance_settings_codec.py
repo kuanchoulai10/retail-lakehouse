@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from datetime import timedelta
 
+import pytest
+
 from adapter.outbound.sql.maintenance_settings_codec import MaintenanceSettingsCodec
 from application.domain.model.maintenance_settings.compaction_scope import (
     CompactionScope,
@@ -52,3 +54,20 @@ def test_custom_settings_roundtrip_with_second_integer_durations():
     assert encoded["reconcile_interval_seconds"] == 1800
     assert encoded["remove_orphan_files"]["older_than_seconds"] == 5 * 86400
     assert MaintenanceSettingsCodec.decode(json.loads(json.dumps(encoded))) == settings
+
+
+def test_encode_rejects_sub_second_duration():
+    with pytest.raises(ValueError, match="whole number of seconds"):
+        MaintenanceSettingsCodec.encode(
+            MaintenanceSettings(
+                reconcile_interval=timedelta(seconds=1, milliseconds=500)
+            )
+        )
+    with pytest.raises(ValueError, match="whole number of seconds"):
+        MaintenanceSettingsCodec.encode(
+            MaintenanceSettings(
+                expire_snapshots=ExpireSnapshotsSettings(
+                    older_than=timedelta(days=1, microseconds=1)
+                )
+            )
+        )

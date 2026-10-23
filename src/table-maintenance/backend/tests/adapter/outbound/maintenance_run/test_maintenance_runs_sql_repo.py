@@ -21,6 +21,7 @@ from application.domain.model.maintenance_run.operation_run_status import (
 )
 from application.domain.model.maintenance_run.trigger_type import TriggerType
 from application.domain.model.managed_table.table_uuid import TableUuid
+from application.exceptions import ConflictError
 
 NOW = datetime(2026, 10, 24, 12, tzinfo=UTC)
 
@@ -120,3 +121,9 @@ def test_list_all_newest_first(repo: MaintenanceRunsSqlRepo):
     repo.create(_run("a", at=NOW))
     repo.create(_run("b", at=NOW + timedelta(minutes=1)))
     assert [r.id.value for r in repo.list_all()] == ["b", "a"]
+
+
+def test_create_duplicate_primary_key_raises_conflict(repo: MaintenanceRunsSqlRepo):
+    repo.create(_run("r1"))
+    with pytest.raises(ConflictError):
+        repo.create(_run("r1"))

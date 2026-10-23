@@ -26,13 +26,16 @@ from application.domain.model.maintenance_settings.rewrite_manifests_settings im
 
 
 def _seconds(value: timedelta) -> int:
-    return int(value.total_seconds())
+    if value % timedelta(seconds=1):
+        raise ValueError(f"duration must be a whole number of seconds: {value!r}")
+    return value // timedelta(seconds=1)
 
 
 class MaintenanceSettingsCodec:
     """Convert MaintenanceSettings to and from a JSON-compatible dict.
 
-    Durations are stored as integer seconds.
+    Durations are stored as integer seconds; encoding a duration that is not a
+    whole number of seconds raises ``ValueError``.
     """
 
     @staticmethod

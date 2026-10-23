@@ -17,4 +17,5 @@ def build_engine(settings: AppSettings) -> Engine:
     return create_engine(
         settings.postgres.db_url,
         pool_size=settings.postgres.pool_size,
+        pool_pre_ping=True,
     )

@@ -8,6 +8,7 @@ from sqlalchemy import Engine
 from adapter.outbound.discovery.sql.discovery_settings_sql_repo import (
     DiscoverySettingsSqlRepo,
 )
+from application.exceptions import ConflictError
 from application.domain.model.discovery.discovery_settings import (
     GLOBAL_ID,
     DiscoverySettings,
@@ -54,3 +55,9 @@ def test_create_and_get(repo: DiscoverySettingsSqlRepo):
     assert loaded is not None
     assert loaded.enabled is False
     assert repo.get(GLOBAL_ID.__class__("other")) is None
+
+
+def test_create_duplicate_primary_key_raises_conflict(repo: DiscoverySettingsSqlRepo):
+    repo.create(DiscoverySettings.create(NOW))
+    with pytest.raises(ConflictError):
+        repo.create(DiscoverySettings.create(NOW))

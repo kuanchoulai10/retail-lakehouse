@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sqlalchemy import insert, select, update
+from sqlalchemy.exc import IntegrityError
 
 from adapter.outbound.maintenance_run.sql.maintenance_run_row_mapper import (
     MaintenanceRunRowMapper,
@@ -12,6 +13,7 @@ from adapter.outbound.maintenance_run.sql.maintenance_run_row_mapper import (
 from adapter.outbound.maintenance_run.sql.maintenance_runs_table import (
     maintenance_runs_table as t,
 )
+from application.exceptions import ConflictError
 from application.port.outbound.maintenance_run.maintenance_runs_repo import (
     MaintenanceRunsRepo,
 )
@@ -38,8 +40,13 @@ class MaintenanceRunsSqlRepo(MaintenanceRunsRepo):
 
     def create(self, entity: MaintenanceRun) -> MaintenanceRun:
         """Insert a new run."""
-        with self._engine.begin() as conn:
-            conn.execute(insert(t).values(**MaintenanceRunRowMapper.to_values(entity)))
+        try:
+            with self._engine.begin() as conn:
+                conn.execute(
+                    insert(t).values(**MaintenanceRunRowMapper.to_values(entity))
+                )
+        except IntegrityError as exc:
+            raise ConflictError(str(exc.orig)) from exc
         return entity
 
     def get(self, entity_id: EntityId) -> MaintenanceRun | None:
@@ -65,8 +72,8 @@ class MaintenanceRunsSqlRepo(MaintenanceRunsRepo):
             result = conn.execute(
                 update(t).where(t.c.id == run.id.value).values(**values)
             )
-        if result.rowcount == 0:
-            raise LookupError(f"maintenance run {run.id.value} does not exist")
+            if result.rowcount == 0:
+                raise LookupError(f"maintenance run {run.id.value} does not exist")
         return run
 
     def list_by_table(

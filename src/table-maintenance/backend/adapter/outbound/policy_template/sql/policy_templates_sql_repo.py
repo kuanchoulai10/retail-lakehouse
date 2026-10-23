@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from sqlalchemy import delete, insert, select, update
+from sqlalchemy.exc import IntegrityError
 
 from adapter.outbound.policy_template.sql.policy_template_row_mapper import (
     PolicyTemplateRowMapper,
@@ -12,6 +13,7 @@ from adapter.outbound.policy_template.sql.policy_template_row_mapper import (
 from adapter.outbound.policy_template.sql.policy_templates_table import (
     policy_templates_table as t,
 )
+from application.exceptions import ConflictError
 from application.port.outbound.policy_template.policy_templates_repo import (
     PolicyTemplatesRepo,
 )
@@ -32,8 +34,13 @@ class PolicyTemplatesSqlRepo(PolicyTemplatesRepo):
 
     def create(self, entity: PolicyTemplate) -> PolicyTemplate:
         """Insert a new template; a duplicate name raises IntegrityError."""
-        with self._engine.begin() as conn:
-            conn.execute(insert(t).values(**PolicyTemplateRowMapper.to_values(entity)))
+        try:
+            with self._engine.begin() as conn:
+                conn.execute(
+                    insert(t).values(**PolicyTemplateRowMapper.to_values(entity))
+                )
+        except IntegrityError as exc:
+            raise ConflictError(str(exc.orig)) from exc
         return entity
 
     def get(self, entity_id: EntityId) -> PolicyTemplate | None:
@@ -57,8 +64,8 @@ class PolicyTemplatesSqlRepo(PolicyTemplatesRepo):
             result = conn.execute(
                 update(t).where(t.c.id == template.id.value).values(**values)
             )
-        if result.rowcount == 0:
-            raise LookupError(f"policy template {template.id.value} does not exist")
+            if result.rowcount == 0:
+                raise LookupError(f"policy template {template.id.value} does not exist")
         return template
 
     def delete(self, entity_id: EntityId) -> None:

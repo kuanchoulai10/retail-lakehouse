@@ -12,6 +12,7 @@ from application.domain.model.discovery_rule.discovery_rule import DiscoveryRule
 from application.domain.model.discovery_rule.discovery_rule_id import DiscoveryRuleId
 from application.domain.model.discovery_rule.rule_effect import RuleEffect
 from application.domain.model.discovery_rule.table_pattern import TablePattern
+from application.exceptions import ConflictError
 from application.domain.model.policy_template.policy_template_id import (
     PolicyTemplateId,
 )
@@ -114,3 +115,9 @@ def test_count_by_template(repo: DiscoveryRulesSqlRepo):
     assert repo.count_by_template(PolicyTemplateId("t1")) == 2
     assert repo.count_by_template(PolicyTemplateId("t2")) == 1
     assert repo.count_by_template(PolicyTemplateId("t3")) == 0
+
+
+def test_create_duplicate_primary_key_raises_conflict(repo: DiscoveryRulesSqlRepo):
+    repo.create(_include("r1", 1))
+    with pytest.raises(ConflictError):
+        repo.create(_include("r1", 2))

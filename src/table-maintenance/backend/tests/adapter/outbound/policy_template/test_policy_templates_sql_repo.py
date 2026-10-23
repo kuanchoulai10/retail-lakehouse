@@ -4,11 +4,11 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import Engine
-from sqlalchemy.exc import IntegrityError
 
 from adapter.outbound.policy_template.sql.policy_templates_sql_repo import (
     PolicyTemplatesSqlRepo,
 )
+from application.exceptions import ConflictError
 from application.domain.model.maintenance_settings.maintenance_settings import (
     MaintenanceSettings,
 )
@@ -72,8 +72,14 @@ def test_update_missing_raises(repo: PolicyTemplatesSqlRepo):
 
 def test_name_is_unique(repo: PolicyTemplatesSqlRepo):
     repo.create(_template("t1", "default"))
-    with pytest.raises(IntegrityError):
+    with pytest.raises(ConflictError):
         repo.create(_template("t2", "default"))
+
+
+def test_duplicate_primary_key_raises_conflict(repo: PolicyTemplatesSqlRepo):
+    repo.create(_template("t1", "a"))
+    with pytest.raises(ConflictError):
+        repo.create(_template("t1", "b"))
 
 
 def test_find_by_name_exact(repo: PolicyTemplatesSqlRepo):
