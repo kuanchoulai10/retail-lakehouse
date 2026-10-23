@@ -5,7 +5,7 @@ Deploys PostgreSQL 17 as the persistent backing store for Apache Polaris catalog
 ## Deployed Resources
 
 ```
-Namespace: polaris
+Namespace: lakehouse-catalog
 ├── polaris-db                            (Deployment)
 ├── polaris-db                            (Service, port 5432)
 ├── polaris-db                            (PersistentVolumeClaim, 5Gi)

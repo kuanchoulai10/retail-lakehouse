@@ -10,7 +10,7 @@ Service-to-service (east-west) traffic — for example the backend calling Polar
 Namespace: istio-ingress
 └── platform-gateway  (Gateway)
 
-Namespace: polaris
+Namespace: lakehouse-catalog
 ├── polaris-catchall  (HTTPRoute, catch-all → polaris:8181)
 └── backend-route     (HTTPRoute, /v1/ → table-maintenance-backend:8000)
 ```

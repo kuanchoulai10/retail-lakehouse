@@ -5,7 +5,7 @@ Deploys Apache Polaris (incubating) as the Iceberg REST catalog layer into the `
 ## Deployed Resources
 
 ```
-Namespace: polaris
+Namespace: lakehouse-catalog
 ├── polaris                              (Deployment)
 ├── polaris                              (Service, port 8181)
 └── polaris-management                   (Service headless, port 8182)
