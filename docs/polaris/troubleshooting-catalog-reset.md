@@ -90,7 +90,7 @@ curl -s -X POST \
     "storageConfigInfo": {
       "storageType": "S3",
       "allowedLocations": ["s3://retail-lakehouse-7dj2/warehouse/"],
-      "s3.endpoint": "http://minio-api.minio.svc.cluster.local:9000",
+      "s3.endpoint": "http://minio-api.object-storage.svc.cluster.local:9000",
       "s3.pathStyleAccess": "true"
     }
   }'
@@ -191,7 +191,7 @@ curl -s \
 **錯誤訊息：**
 
 ```
-java.net.UnknownHostException: retail-lakehouse-7dj2.minio-api.minio.svc.cluster.local
+java.net.UnknownHostException: retail-lakehouse-7dj2.minio-api.object-storage.svc.cluster.local
 ```
 
 **原因：** Polaris 嘗試使用 virtual-hosted style URL，把 bucket name 放到 hostname 前面，導致 DNS 查找失敗。

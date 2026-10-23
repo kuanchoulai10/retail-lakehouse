@@ -52,7 +52,7 @@ The following fields in `values.yaml` require attention before deploying:
 |-------|-------------|---------------|
 | `persistence.type` | Backed by PostgreSQL deployed in wave 20 by [`20-polaris-db/`](../20-polaris-db/README.md). Catalog state is durable across pod restarts. | `relational-jdbc` |
 | `storage.secret.name` | K8s Secret with MinIO credentials for vended credential issuance | `polaris-storage-secret` |
-| `advancedConfig.polaris.storage.s3.endpoint` | MinIO service DNS inside the cluster | `http://minio.object-storage.svc.cluster.local:9000` |
+| `advancedConfig.polaris.storage.s3.endpoint` | MinIO service DNS inside the cluster | `http://minio-api.object-storage.svc.cluster.local:9000` |
 | `authentication.tokenBroker.secret.name` | RSA key pair secret; leave blank to auto-generate (keys rotate on restart) | blank |
 | `tracing.endpoint` | OTel collector gRPC endpoint | `http://otel-collector.otel.svc.cluster.local:4317` |
 
