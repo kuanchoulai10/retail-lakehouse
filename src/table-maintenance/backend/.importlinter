@@ -70,6 +70,27 @@ unmatched_ignore_imports_alerting = none
 ignore_imports =
     adapter.temporal_contracts.** -> application.domain.model.maintenance.**
 
+[importlinter:contract:temporal-workflows-sandbox-safe]
+name = Temporal workflows import only contracts and the domain model (sandbox-safe)
+type = forbidden
+source_modules =
+    adapter.inbound.temporal.workflows
+forbidden_modules =
+    application.port
+    application.service
+    application.exceptions
+    application.domain.service
+    adapter.inbound.temporal.activities
+    adapter.inbound.web
+    adapter.inbound.event_consumer
+    adapter.outbound
+    bootstrap
+    fastapi
+    kubernetes
+    pyiceberg
+    pyarrow
+    sqlalchemy
+
 [importlinter:contract:inbound-outbound-separation]
 name = Inbound adapter does not directly import outbound adapter
 type = forbidden
