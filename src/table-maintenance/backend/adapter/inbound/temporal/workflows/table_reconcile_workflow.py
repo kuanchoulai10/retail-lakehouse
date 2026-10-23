@@ -8,7 +8,7 @@ from typing import Any
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
-from temporalio.exceptions import ActivityError, is_cancelled_exception
+from temporalio.exceptions import ActivityError, FailureError, is_cancelled_exception
 from temporalio.workflow import ParentClosePolicy
 
 from adapter.temporal_contracts.activity_names import PLAN_TABLE_MAINTENANCE
@@ -38,7 +38,6 @@ _ACTIVITY_TIMEOUT = timedelta(minutes=2)
 _ACTIVITY_RETRY = RetryPolicy(
     maximum_attempts=5, initial_interval=timedelta(seconds=2), backoff_coefficient=2.0
 )
-_DEFAULT_INTERVAL = timedelta(hours=1)
 _IN_FLIGHT_PER_OPERATION = timedelta(hours=7)
 _IN_FLIGHT_CAP = timedelta(hours=48)
 _ENDING_REASONS = frozenset({"dropped", "excluded"})
@@ -60,7 +59,9 @@ class TableReconcileWorkflow:
     nothing is planned; a ``trigger_now`` is kept and planned once it finishes. A
     run that never reports back is given up after 7 h per planned operation
     (at most 48 h). A skip because the table was dropped or excluded, or a
-    ``stop`` signal, ends the workflow once no run is in flight.
+    ``stop`` signal, ends the workflow once no run is in flight, but never on a
+    stale decision (R31): any other signal after ``stop`` cancels the stop, and a
+    wake that arrives while a plan says dropped or excluded makes it plan again.
     """
 
     @workflow.init
@@ -68,11 +69,13 @@ class TableReconcileWorkflow:
         """Restore the in-flight run, the pending manual trigger and the timer."""
         self._table_uuid = input.table_uuid
         self._in_flight_run_id = input.in_flight_run_id
-        self._in_flight_started_at = (
-            datetime.fromisoformat(input.in_flight_started_at)
-            if input.in_flight_started_at
-            else None
-        )
+        self._in_flight_started_at: datetime | None = None
+        if input.in_flight_started_at:
+            self._in_flight_started_at = datetime.fromisoformat(
+                input.in_flight_started_at
+            )
+        elif input.in_flight_run_id is not None:
+            self._in_flight_started_at = workflow.now()
         self._in_flight_operations = input.in_flight_operation_count
         self._pending_manual = (
             None if input.pending_manual is None else list(input.pending_manual)
@@ -81,15 +84,17 @@ class TableReconcileWorkflow:
             datetime.fromisoformat(input.next_plan_at) if input.next_plan_at else None
         )
         self._continue_as_new_after = input.continue_as_new_after
-        self._interval = _DEFAULT_INTERVAL
+        self._interval = timedelta(seconds=input.reconcile_interval_seconds)
         self._woken = False
         self._stopping = False
+        self._planning = False
+        self._signals_handled = 0
 
     @workflow.run
     async def run(self, input: TableReconcileWorkflowInput) -> None:  # noqa: A002
         """Wait, plan and start runs until the table leaves maintenance."""
         if self._next_plan_at is None:
-            self._next_plan_at = workflow.now() + _DEFAULT_INTERVAL
+            self._next_plan_at = workflow.now() + self._interval
         iterations = 0
         while True:
             if self._stopping and self._in_flight_run_id is None:
@@ -104,45 +109,47 @@ class TableReconcileWorkflow:
             if self._in_flight_run_id is not None:
                 self._give_up_stuck_run()
             if self._in_flight_run_id is None and not self._stopping:
-                if await self._plan_and_start():
+                ends = await self._plan_and_start()
+                if ends and not self._woken:
                     return
 
     @workflow.signal(name=SIGNAL_SETTINGS_CHANGED)
     def settings_changed(self, payload: dict | None = None) -> None:
         """Wake the loop to re-plan with the settings stored in the database."""
-        self._woken = True
+        self._wake(cancels_stop=True)
 
     @workflow.signal(name=SIGNAL_TABLE_UPDATED)
     def table_updated(self, payload: dict | None = None) -> None:
         """Wake the loop because the table changed in the catalog."""
-        self._woken = True
+        self._wake(cancels_stop=True)
 
     @workflow.signal(name=SIGNAL_PAUSE)
     def pause(self, payload: dict | None = None) -> None:
         """Wake the loop; the plan sees the paused table and skips."""
-        self._woken = True
+        self._wake(cancels_stop=True)
 
     @workflow.signal(name=SIGNAL_RESUME)
     def resume(self, payload: dict | None = None) -> None:
         """Wake the loop; the plan sees the resumed table and plans again."""
-        self._woken = True
+        self._wake(cancels_stop=True)
 
     @workflow.signal(name=SIGNAL_TRIGGER_NOW)
     def trigger_now(self, payload: dict | None = None) -> None:
         """Keep a manual trigger, replacing any pending one, and wake the loop."""
         operations = (payload or {}).get("operations") or []
         self._pending_manual = [str(op) for op in operations]
-        self._woken = True
+        self._wake(cancels_stop=True)
 
     @workflow.signal(name=SIGNAL_STOP)
     def stop(self, payload: dict | None = None) -> None:
         """End the workflow once no run is in flight; plan nothing more."""
         self._stopping = True
-        self._woken = True
+        self._wake(cancels_stop=False)
 
     @workflow.signal(name=SIGNAL_MAINTENANCE_FINISHED)
     def maintenance_finished(self, payload: dict | None = None) -> None:
         """Clear the in-flight run it reports; ignore any other run id."""
+        self._signals_handled += 1
         run_id = (payload or {}).get("run_id")
         if run_id is None or run_id != self._in_flight_run_id:
             workflow.logger.warning("ignoring maintenance_finished of run %s", run_id)
@@ -152,13 +159,25 @@ class TableReconcileWorkflow:
 
     @workflow.query
     def state(self) -> dict[str, Any]:
-        """Report the run in flight, the pending manual trigger and the timer."""
+        """Report the run in flight, the pending manual trigger, the timer and the loop."""
         return {
             "in_flight_run_id": self._in_flight_run_id,
+            "in_flight_started_at": _iso(self._in_flight_started_at),
             "pending_manual": self._pending_manual,
             "stopping": self._stopping,
             "next_plan_at": _iso(self._next_plan_at),
+            "reconcile_interval_seconds": int(self._interval.total_seconds()),
+            "woken": self._woken,
+            "planning": self._planning,
+            "signals_handled": self._signals_handled,
         }
+
+    def _wake(self, *, cancels_stop: bool) -> None:
+        """Wake the loop; a decision signal after ``stop`` supersedes it (R31)."""
+        self._signals_handled += 1
+        if cancels_stop:
+            self._stopping = False
+        self._woken = True
 
     def _should_continue_as_new(self, iterations: int) -> bool:
         if self._stopping:
@@ -176,6 +195,7 @@ class TableReconcileWorkflow:
             in_flight_operation_count=self._in_flight_operations,
             pending_manual=self._pending_manual,
             next_plan_at=_iso(self._next_plan_at),
+            reconcile_interval_seconds=int(self._interval.total_seconds()),
             continue_as_new_after=self._continue_as_new_after,
         )
 
@@ -190,9 +210,9 @@ class TableReconcileWorkflow:
             pass
 
     def _in_flight_deadline(self) -> datetime | None:
-        if self._in_flight_run_id is None:
+        if self._in_flight_run_id is None or self._in_flight_started_at is None:
             return None
-        started_at = self._in_flight_started_at or workflow.now()
+        started_at = self._in_flight_started_at
         budget = _IN_FLIGHT_PER_OPERATION * max(self._in_flight_operations, 1)
         return started_at + min(budget, _IN_FLIGHT_CAP)
 
@@ -213,6 +233,13 @@ class TableReconcileWorkflow:
 
     async def _plan_and_start(self) -> bool:
         """Plan once and start a run if anything is planned; True ends the workflow."""
+        self._planning = True
+        try:
+            return await self._plan_and_start_once()
+        finally:
+            self._planning = False
+
+    async def _plan_and_start_once(self) -> bool:
         manual = self._pending_manual
         try:
             plan = await workflow.execute_activity(
@@ -236,6 +263,9 @@ class TableReconcileWorkflow:
             return False
         self._interval = timedelta(seconds=plan["reconcile_interval_seconds"])
         self._next_plan_at = workflow.now() + self._interval
+        if self._stopping:
+            self._consume_manual(manual, "the workflow is stopping")
+            return False
         if plan["status"] == "skip":
             self._consume_manual(manual, f"the table is skipped ({plan['reason']})")
             return plan["reason"] in _ENDING_REASONS
@@ -262,19 +292,30 @@ class TableReconcileWorkflow:
         self._in_flight_run_id = run_id
         self._in_flight_started_at = workflow.now()
         self._in_flight_operations = len(plan["operations"])
-        await workflow.start_child_workflow(
-            MAINTENANCE_WORKFLOW,
-            MaintenanceWorkflowInput(
-                run_id=run_id,
-                table_uuid=self._table_uuid,
-                parent_workflow_id=workflow.info().workflow_id,
-                trigger=_TRIGGER_MANUAL if manual else _TRIGGER_SCHEDULED,
-                plan=plan,
-            ),
-            id=maintenance_workflow_id(run_id),
-            task_queue=TASK_QUEUE,
-            parent_close_policy=ParentClosePolicy.ABANDON,
-        )
+        try:
+            await workflow.start_child_workflow(
+                MAINTENANCE_WORKFLOW,
+                MaintenanceWorkflowInput(
+                    run_id=run_id,
+                    table_uuid=self._table_uuid,
+                    parent_workflow_id=workflow.info().workflow_id,
+                    trigger=_TRIGGER_MANUAL if manual else _TRIGGER_SCHEDULED,
+                    plan=plan,
+                ),
+                id=maintenance_workflow_id(run_id),
+                task_queue=TASK_QUEUE,
+                parent_close_policy=ParentClosePolicy.ABANDON,
+            )
+        except FailureError as error:
+            if is_cancelled_exception(error):
+                raise asyncio.CancelledError from error
+            workflow.logger.error(
+                "starting maintenance run %s failed: %s; next plan at %s",
+                run_id,
+                error,
+                _iso(self._next_plan_at),
+            )
+            self._clear_in_flight()
 
 
 def _iso(value: datetime | None) -> str | None:

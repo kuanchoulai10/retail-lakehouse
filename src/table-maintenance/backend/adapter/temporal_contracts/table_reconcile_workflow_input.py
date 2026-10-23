@@ -16,7 +16,9 @@ class TableReconcileWorkflowInput:
     manual trigger not yet planned: ``None`` means none, ``[]`` means a manual run
     of every due operation, a non-empty list names the requested operations.
     ``next_plan_at`` (ISO-8601) is when the timer plans next; ``None`` means one
-    hour after start. ``continue_as_new_after`` bounds the loop iterations per run.
+    ``reconcile_interval_seconds`` after start. That interval comes from the last
+    plan and is also used after a failed plan. ``continue_as_new_after`` bounds
+    the loop iterations per run.
     """
 
     table_uuid: str
@@ -25,4 +27,5 @@ class TableReconcileWorkflowInput:
     in_flight_operation_count: int = 0
     pending_manual: list[str] | None = None
     next_plan_at: str | None = None
+    reconcile_interval_seconds: int = 3600
     continue_as_new_after: int = 200
