@@ -23,6 +23,8 @@ Respond in the same language as the user's message. The user typically communica
 - 2026-10: namespace re-layout (T1–T9); Polaris CDC removed (T10), Polaris upgraded 1.5.0 → 1.8.0 (T11), Polaris events published to Kafka via the Kafka event listener (T12), Temporal server deployed with a dedicated PostgreSQL (T13).
 - 2026-10 ~ 10-24: table-maintenance control plane (plan Tasks 1–18): Temporal-based backend (API / worker / event consumer, Polaris catalog event hints, discovery, Spark maintenance jobs via the Spark operator) and the wave-25 Helm chart `table-maintenance` deployed on minikube; Task 19 e2e (`platform/25-lakehouse-control-plane/e2e.sh`, ADRs in `docs/adr/0001`–`0004`) ran all four Iceberg procedures SUCCEEDED on real Spark and compacted the `o'neil` partition through an escaped `where`; it surfaced and fixed `remove_orphan_files` listing (`prefix_listing => true`, c8ee993). Initiative done.
 
+**Cluster runtime (2026-10-24):** single minikube node on colima, container runtime `containerd` (was `docker` / cri-dockerd, whose cAdvisor series had no `container` label, so prometheus-adapter served no pod metrics) with `--cni bridge` pinned (with containerd minikube would pick kindnet, which enforces the kube-prometheus and Strimzi NetworkPolicies and blocks KEDA → Prometheus and Kafka UI → Connect REST). `kubectl top nodes` / `kubectl top pods -A` work through prometheus-adapter. `cluster:configure-registry-mirror` writes `/etc/containerd/certs.d/<registry ClusterIP>/hosts.toml` (HTTP) because containerd ignores the CIDR given to `--insecure-registry`; Strimzi KafkaConnect images are pulled from that ClusterIP.
+
 **Deployed on minikube** (via `bootstrap-by-scripts`):
 - Wave 10: cert-manager, kube-prometheus, Strimzi
 - Wave 11: KEDA, Spark Operator, OTel Operator, Istio base, Gateway API CRDs
@@ -78,6 +80,8 @@ Respond in the same language as the user's message. The user typically communica
 - On-hold waves still reference pre-rename names (`minio-api.minio.svc`, `kafka-cdc`, `polaris`, `platform/20-minio`): `30-thanos`, `24-e2e-validation`, `charts/app-of-apps`. Fix when those are re-opened.
 - Iceberg sink (Kafka 4.0 + sink 1.10) may commit "0 table(s)" for several minutes after a Connect pod start under low traffic; keep inserting and poll ~5–10 min when verifying snapshots.
 - `bitnami/jmx-exporter` (Trino sidecar) is pinned by digest: Bitnami's free catalog only publishes `latest`, so bumping it means taking the new `latest` digest.
+- NetworkPolicies are not enforced (bridge CNI). kube-prometheus and Strimzi ship policies that would block KEDA → `prometheus-k8s` and Kafka UI → Connect REST (:8083); before moving to an enforcing CNI (kindnet, Cilium, Calico), add allow rules for those paths.
+- The containerd registry `hosts.toml` is keyed on the registry ClusterIP and written only by `task cluster:bootstrap`; if the `registry` Service is ever recreated, re-run `task cluster:configure-registry-mirror KUBE_CONTEXT=...`.
 
 New namespaces are **not** labeled `istio.io/dataplane-mode=ambient` (no namespace is enrolled in the ambient mesh yet).
 
