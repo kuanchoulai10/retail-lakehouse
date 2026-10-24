@@ -19,6 +19,29 @@ fail() {
   exit 1
 }
 
+upsert_secret() {
+  local name="$1"
+  local namespace="$2"
+  local manifest
+  manifest="$(cat)"
+  local existing
+  existing="$(kubectl get secret "${name}" \
+    --ignore-not-found \
+    -o name \
+    --namespace "${namespace}" \
+    --context "${KUBE_CONTEXT}")"
+  if [[ -z "${existing}" ]]; then
+    kubectl create \
+      -f - \
+      --context "${KUBE_CONTEXT}" >/dev/null <<<"${manifest}"
+  else
+    kubectl apply --server-side --force-conflicts \
+      --field-manager table-maintenance-bootstrap \
+      -f - \
+      --context "${KUBE_CONTEXT}" >/dev/null <<<"${manifest}"
+  fi
+}
+
 for namespace in "${CONTROL_PLANE_NAMESPACE}" "${OPERATIONS_NAMESPACE}"; do
   kubectl create namespace "${namespace}" \
     --dry-run=client \
@@ -79,16 +102,12 @@ for namespace in "${CONTROL_PLANE_NAMESPACE}" "${OPERATIONS_NAMESPACE}"; do
   printf 'apiVersion: v1\nkind: Secret\nmetadata:\n  name: %s\n  namespace: %s\nstringData:\n  credential: "%s:%s"\n' \
     table-maintenance-polaris-credential "${namespace}" \
     "${POLARIS_CLIENT_ID}" "${POLARIS_CLIENT_SECRET}" \
-    | kubectl apply \
-      -f - \
-      --context "${KUBE_CONTEXT}" >/dev/null
+    | upsert_secret table-maintenance-polaris-credential "${namespace}"
 
   printf 'apiVersion: v1\nkind: Secret\nmetadata:\n  name: %s\n  namespace: %s\nstringData:\n  AWS_ACCESS_KEY_ID: "%s"\n  AWS_SECRET_ACCESS_KEY: "%s"\n  AWS_REGION: "%s"\n' \
     table-maintenance-s3 "${namespace}" \
     "${S3_ACCESS_KEY_ID}" "${S3_SECRET_ACCESS_KEY}" "${S3_REGION}" \
-    | kubectl apply \
-      -f - \
-      --context "${KUBE_CONTEXT}" >/dev/null
+    | upsert_secret table-maintenance-s3 "${namespace}"
 done
 unset POLARIS_CLIENT_ID POLARIS_CLIENT_SECRET S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY
 
