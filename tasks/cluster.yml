@@ -65,7 +65,8 @@ tasks:
           --memory {{.MEMORY}}G \
           --disk-size {{.DISK_SIZE}}G \
           --driver docker \
-          --container-runtime docker \
+          --container-runtime containerd \
+          --cni bridge \
           --kubernetes-version v1.33.2 \
           --apiserver-port 32771 \
           --addons registry \
@@ -75,3 +76,41 @@ tasks:
         minikube ssh -p {{.KUBE_CONTEXT}} -- sudo sh -c \
           "'echo 8192 > /proc/sys/fs/inotify/max_user_instances && \
             echo 524288 > /proc/sys/fs/inotify/max_user_watches'"
+      - task: configure-registry-mirror
+        vars:
+          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+
+  configure-registry-mirror:
+    desc: "Let containerd pull from the in-cluster registry ClusterIP over plain HTTP"
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+    cmds:
+      - |
+        set -euo pipefail
+        registry_ip=""
+        for _ in $(seq 1 60); do
+          registry_ip="$(kubectl get svc registry \
+            --namespace kube-system \
+            --output jsonpath='{.spec.clusterIP}' \
+            --context {{.KUBE_CONTEXT}} || true)"
+          [ -n "${registry_ip}" ] && break
+          sleep 2
+        done
+        if [ -z "${registry_ip}" ]; then
+          echo "registry Service in kube-system has no ClusterIP" >&2
+          exit 1
+        fi
+        if ! minikube ssh -p {{.KUBE_CONTEXT}} -- \
+          "sudo grep -q 'config_path = \"/etc/containerd/certs.d\"' /etc/containerd/config.toml"; then
+          echo "containerd config_path is not /etc/containerd/certs.d" >&2
+          exit 1
+        fi
+        hosts_file="$(mktemp)"
+        trap 'rm -f "${hosts_file}"' EXIT
+        printf 'server = "http://%s"\n\n[host."http://%s"]\n  capabilities = ["pull", "resolve", "push"]\n  skip_verify = true\n' \
+          "${registry_ip}" "${registry_ip}" > "${hosts_file}"
+        minikube ssh -p {{.KUBE_CONTEXT}} -- sudo mkdir -p "/etc/containerd/certs.d/${registry_ip}"
+        minikube cp -p {{.KUBE_CONTEXT}} "${hosts_file}" \
+          "{{.KUBE_CONTEXT}}:/etc/containerd/certs.d/${registry_ip}/hosts.toml"
+        minikube ssh -p {{.KUBE_CONTEXT}} -- cat "/etc/containerd/certs.d/${registry_ip}/hosts.toml"

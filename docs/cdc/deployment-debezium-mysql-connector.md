@@ -107,6 +107,15 @@ kubectl -n kube-system get svc registry -o jsonpath='{.spec.clusterIP}'
     10.109.40.28
     ```
 
+!!! note "containerd and the registry ClusterIP"
+
+    The minikube node runs containerd, which does not accept a CIDR as an insecure registry, so
+    `--insecure-registry` alone does not let the kubelet pull from the registry over plain HTTP.
+    `task cluster:bootstrap` runs `cluster:configure-registry-mirror`, which writes
+    `/etc/containerd/certs.d/<registry ClusterIP>/hosts.toml` with an `http://` server inside the
+    node. Re-run it with `task cluster:configure-registry-mirror KUBE_CONTEXT=retail-lakehouse`
+    if the registry Service is ever recreated with a new ClusterIP.
+
 
 ??? info "debezium-connect-cluster.yaml"
 
