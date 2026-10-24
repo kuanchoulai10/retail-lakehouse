@@ -63,9 +63,16 @@ Respond in the same language as the user's message. The user typically communica
 - Table maintenance control plane (wave 25): the migrate Job reruns on every `helm upgrade` (name carries the release revision); `helm upgrade --wait-for-jobs` waits for it and `validate.sh` asserts the current-revision Job completed; api / worker / event-consumer also gate on the seeded `default` policy template. The e2e tables `iceberg.e2e.tm_e2e_orders` / `tm_e2e_regions` and the rule `include iceberg / e2e / tm_e2e_*` stay in place (removal steps in the wave README).
 - Node memory pressure: the 28 GiB minikube node sits at ~90% (Trino ~12 GiB, KEDA keeps a second Trino worker because its HPA metric is `<unknown>`). Concurrent Spark maintenance jobs push it over: RustFS, polaris, temporal-db, table-maintenance-db and spark-operator get probe-killed. Lower Trino memory or the KEDA worker floor before relying on maintenance under load.
 - Spark result callback retries only 3 times 5 s apart (`runtime/spark/result_callback.py`); across a DB / Temporal outage the run is recorded from the polling fallback as `{"completed_without_callback": 1}` and the procedure metrics are lost. Widen the retry window or have the poller read the result from the driver.
-- `rewrite_data_files` runs with `partial-progress.enabled=true`, so a commit that fails (for example during a Polaris restart) is not an error: one e2e run "succeeded" with the callback lost and nothing committed. Treat `failed_data_files_count > 0` (and a lost callback) as a failure or retry.
+- `rewrite_data_files` runs with `partial-progress.enabled=true`; the runtime now fails a CALL with failed and zero rewritten data files, but a lost callback still records success from the poller (`completed_without_callback`).
 - Each SparkApplication downloads the Iceberg jars from Maven Central at submit; bake them into `table-maintenance-spark`.
 - Event-driven runs with the `default` template start while a writer is still committing; the 10-min discovery fallback was not exercised by the e2e (the event path found the tables first).
+- ManagedTable updates can be lost under concurrent writers: add a version column with compare-and-set.
+- A retried `record_maintenance_operation_result` activity can lose the table's backoff update.
+- The discovery enabled switch and the `table-discovery` schedule can drift until the worker restarts.
+- Every CDC commit sends a hint that triggers a full metadata scan in the plan; debounce planning.
+- No auth on the API or the Spark result callback, and no NetworkPolicy.
+- Table maintenance uses the Polaris root principal; switch to a scoped principal.
+- The running `maintenance-capacity` limiter keeps the lease it was started with (21600 s); it adopts the new 22500 s lease only after it is restarted while idle.
 - On-hold waves still reference pre-rename names (`minio-api.minio.svc`, `kafka-cdc`, `polaris`, `platform/20-minio`): `30-thanos`, `24-e2e-validation`, `charts/app-of-apps`. Fix when those are re-opened.
 - Iceberg sink (Kafka 4.0 + sink 1.10) may commit "0 table(s)" for several minutes after a Connect pod start under low traffic; keep inserting and poll ~5–10 min when verifying snapshots.
 - `bitnami/jmx-exporter` (Trino sidecar) is pinned by digest: Bitnami's free catalog only publishes `latest`, so bumping it means taking the new `latest` digest.
