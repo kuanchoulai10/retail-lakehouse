@@ -18,8 +18,3 @@ kubectl wait --for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted"
   --namespace lakehouse-catalog \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
-
-kubectl wait --for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True httproute/backend-route \
-  --namespace lakehouse-catalog \
-  --timeout "${TIMEOUT}" \
-  --context "${KUBE_CONTEXT}"

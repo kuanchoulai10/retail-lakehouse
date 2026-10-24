@@ -1,6 +1,6 @@
 # polaris-routes
 
-Installs the north-south routing layer for Polaris + table-maintenance-backend via a single Envoy-backed `Gateway` and two `HTTPRoute`s. External clients hit the ingress on port 80; requests matching `/v1/*` reach the table-maintenance backend, and everything else falls through to Polaris.
+Installs the north-south routing layer for Polaris via a single Envoy-backed `Gateway` and one catch-all `HTTPRoute`. External clients hit the ingress on port 80 and every request reaches Polaris. The table-maintenance control plane API is not exposed through this Gateway; it runs in `lakehouse-control-plane` (see `platform/25-lakehouse-control-plane`).
 
 Service-to-service (east-west) traffic — for example the backend calling Polaris — does NOT go through this Gateway. In-cluster consumers use Service DNS directly (e.g. `polaris.lakehouse-catalog.svc.cluster.local:8181`).
 
@@ -11,14 +11,13 @@ Namespace: istio-ingress
 └── platform-gateway  (Gateway)
 
 Namespace: lakehouse-catalog
-├── polaris-catchall  (HTTPRoute, catch-all → polaris:8181)
-└── backend-route     (HTTPRoute, /v1/ → table-maintenance-backend:8000)
+└── polaris-catchall  (HTTPRoute, catch-all → polaris:8181)
 ```
 
 ## Namespaces
 
 - `istio-ingress` (Gateway, existing — created by `12-istio-ingressgw`)
-- `polaris` (HTTPRoutes, existing — created by `21-polaris`)
+- `lakehouse-catalog` (HTTPRoute, existing — created by `21-polaris`)
 
 ## Access
 

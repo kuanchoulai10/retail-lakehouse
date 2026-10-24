@@ -310,20 +310,32 @@ KUBE_CONTEXT=retail-lakehouse bash platform/25-lakehouse-control-plane/build.sh
 # 2. 部署 control plane（worker 會建立 SparkApplication，namespace lakehouse-maintenance-operations）
 KUBE_CONTEXT=retail-lakehouse bash platform/25-lakehouse-control-plane/bootstrap.sh
 
-# 3. 查看 driver log（即時串流）
-kubectl logs -n default \
-  -l spark-role=driver,spark-app-name=table-maintenance-rewrite-data-files \
-  -f
+# 3. 查看 driver log（即時串流；app 名稱見下方說明）
+kubectl logs -f \
+  -l spark-role=driver,spark-app-name=tm-rdf-<run-id 前 20 碼>-a1 \
+  --namespace lakehouse-maintenance-operations \
+  --context retail-lakehouse
 ```
+
+每次嘗試會建立一個 `SparkApplication`，名稱為 `tm-<操作代碼>-<run id 去掉連字號後的前 20 碼>-a<attempt>`，
+操作代碼為 `rdf`（`rewrite_data_files`）、`rm`（`rewrite_manifests`）、`es`（`expire_snapshots`）、
+`rof`（`remove_orphan_files`）。每個 app 也帶有 `table-maintenance/run-id`、`table-maintenance/operation`
+與 `table-maintenance/attempt` label。
 
 ### 確認 job 狀態
 
 ```bash
-# 查看 SparkApplication 的狀態
-kubectl get sparkapplication table-maintenance-rewrite-data-files -n default
+# 查看某次 run 的所有 SparkApplication 與狀態
+kubectl get sparkapplications \
+  -l table-maintenance/run-id=<run-id> \
+  --namespace lakehouse-maintenance-operations \
+  --context retail-lakehouse
 
-# 查看所有相關 pods
-kubectl get pods -n default -l spark-app-name=table-maintenance-rewrite-data-files
+# 查看某個 app 的 pods
+kubectl get pods \
+  -l spark-app-name=tm-rdf-<run-id 前 20 碼>-a1 \
+  --namespace lakehouse-maintenance-operations \
+  --context retail-lakehouse
 ```
 
 `SparkApplication` 的 `state` 欄位會顯示 `RUNNING`、`COMPLETED` 或 `FAILED`。

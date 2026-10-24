@@ -20,5 +20,4 @@ kubectl create namespace istio-ingress \
 kubectl apply --server-side \
   -f "$SCRIPT_DIR/gateway.yaml" \
   -f "$SCRIPT_DIR/polaris-httproute.yaml" \
-  -f "$SCRIPT_DIR/backend-httproute.yaml" \
   --context "${KUBE_CONTEXT}"
