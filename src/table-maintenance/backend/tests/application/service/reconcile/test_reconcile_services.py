@@ -239,6 +239,29 @@ def test_plan_whole_table_compaction_has_no_filters(planner, tables_repo, catalo
     assert compaction.filters == []
 
 
+def test_plan_unsupported_partition_field_falls_back_to_whole_table_compaction(
+    planner, tables_repo, catalog, now, caplog
+):
+    _table(tables_repo, now)
+    binary = {**_field("payload"), "source_type": "binary"}
+    _observe(
+        catalog,
+        now,
+        specs=[{"spec_id": 0, "fields": [binary]}],
+        partitions=[_partition(0, ["AAE="], files=20)],
+    )
+    plan = _plan(planner, now)
+    assert [o.operation for o in plan.operations] == [
+        "rewrite_data_files",
+        "rewrite_manifests",
+        "expire_snapshots",
+        "remove_orphan_files",
+    ]
+    assert plan.operations[0].filters == []
+    assert "whole table" in caplog.text
+    assert "binary" in caplog.text
+
+
 def test_scheduled_plan_respects_cooldown(planner, tables_repo, catalog, now):
     table = _table(tables_repo, now)
     for op in OPS.ordered():

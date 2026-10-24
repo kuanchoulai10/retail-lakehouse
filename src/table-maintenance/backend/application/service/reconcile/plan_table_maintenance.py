@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from application.domain.model.maintenance.maintenance_operation import (
@@ -36,6 +37,9 @@ from application.service.reconcile.maintenance_procedure_args import (
 from application.service.translate_domain_errors import translate_domain_errors
 
 if TYPE_CHECKING:
+    from application.domain.model.maintenance.planned_operation import (
+        PlannedOperation,
+    )
     from application.domain.model.managed_table.managed_table import ManagedTable
     from application.domain.model.observation.table_observation import (
         TableObservation,
@@ -44,6 +48,8 @@ if TYPE_CHECKING:
     from application.port.outbound.managed_table.managed_tables_repo import (
         ManagedTablesRepo,
     )
+
+logger = logging.getLogger(__name__)
 
 _SKIP_REASONS = {
     TableStatus.DROPPED: "dropped",
@@ -110,12 +116,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         for planned in plan.operations:
             filters: list[PlanTableMaintenanceUseCaseOutputFilterItem] = []
             if planned.partitions:
-                filters = [
-                    PlanTableMaintenanceUseCaseOutputFilterItem(f.spec_id, f.where)
-                    for f in build_partition_filters(
-                        table.name.catalog, observation.specs, planned.partitions
-                    )
-                ]
+                filters = _partition_filters(table, observation, planned)
             operations.append(
                 PlanTableMaintenanceUseCaseOutputItem(
                     operation=planned.operation.value,
@@ -142,6 +143,31 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             return [MaintenanceOperation(op) for op in raw]
         except ValueError as exc:
             raise ValidationError(str(exc)) from exc
+
+
+def _partition_filters(
+    table: ManagedTable, observation: TableObservation, planned: PlannedOperation
+) -> list[PlanTableMaintenanceUseCaseOutputFilterItem]:
+    """Render the partition filters, or none (the whole table) if one cannot be.
+
+    A partition field the filter builder does not support must not block the
+    plan: that operation targets the whole table instead (R40).
+    """
+    try:
+        built = build_partition_filters(
+            table.name.catalog, observation.specs, planned.partitions
+        )
+    except ValueError as error:
+        logger.warning(
+            "cannot scope %s of %s to partitions (%s); compacting the whole table",
+            planned.operation.value,
+            table.name.qualified(),
+            error,
+        )
+        return []
+    return [
+        PlanTableMaintenanceUseCaseOutputFilterItem(f.spec_id, f.where) for f in built
+    ]
 
 
 def _interval(settings: MaintenanceSettings) -> int:
