@@ -10,6 +10,8 @@ import pytest
 from temporalio.converter import DataConverter
 
 from adapter.temporal_contracts import (
+    DEFAULT_ATTEMPT_DEADLINE_SECONDS,
+    DEFAULT_CAPACITY_LEASE_SECONDS,
     CapacityAcquireSignal,
     CapacityLimiterInput,
     CapacityReleaseSignal,
@@ -68,12 +70,17 @@ def test_contracts_round_trip():
 
 def test_maintenance_workflow_input_default_attempt_deadline():
     value = MaintenanceWorkflowInput("r1", "u1", "p", "scheduled", {})
-    assert value.attempt_deadline_seconds == 21600
+    assert value.attempt_deadline_seconds == 21600 == DEFAULT_ATTEMPT_DEADLINE_SECONDS
+
+
+def test_capacity_lease_outlives_the_attempt_deadline_by_15_minutes():
+    assert DEFAULT_CAPACITY_LEASE_SECONDS == DEFAULT_ATTEMPT_DEADLINE_SECONDS + 15 * 60
+    assert CapacityLimiterInput(1).lease_seconds == DEFAULT_CAPACITY_LEASE_SECONDS
 
 
 def test_capacity_limiter_defaults():
     limiter = CapacityLimiterInput(1)
-    assert limiter.lease_seconds == 21600
+    assert limiter.lease_seconds == 22500
     assert limiter.holders == {}
     assert limiter.queue == []
     assert limiter.holders is not CapacityLimiterInput(1).holders

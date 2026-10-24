@@ -74,7 +74,7 @@ def test_activities_carry_the_callback_url_and_capacity_settings():
     assert (
         activities.workflow_signal._capacity_lease_seconds  # noqa: SLF001
         == CAPACITY_LEASE_SECONDS
-        == 21600
+        == 22500
     )
 
 

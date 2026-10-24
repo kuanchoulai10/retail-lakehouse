@@ -2,4 +2,8 @@
 
 from __future__ import annotations
 
-CAPACITY_LEASE_SECONDS = 21600
+from adapter.temporal_contracts.default_capacity_lease_seconds import (
+    DEFAULT_CAPACITY_LEASE_SECONDS,
+)
+
+CAPACITY_LEASE_SECONDS = DEFAULT_CAPACITY_LEASE_SECONDS

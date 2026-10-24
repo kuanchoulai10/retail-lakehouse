@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from adapter.temporal_contracts.default_attempt_deadline_seconds import (
+    DEFAULT_ATTEMPT_DEADLINE_SECONDS,
+)
+
 
 @dataclass(frozen=True)
 class MaintenanceWorkflowInput:
@@ -19,4 +23,4 @@ class MaintenanceWorkflowInput:
     parent_workflow_id: str
     trigger: str
     plan: dict
-    attempt_deadline_seconds: int = 21600
+    attempt_deadline_seconds: int = DEFAULT_ATTEMPT_DEADLINE_SECONDS
