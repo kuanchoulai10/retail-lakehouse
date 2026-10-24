@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from temporalio import workflow
 
 from adapter.temporal_contracts.maintenance_workflow_input import (
@@ -15,7 +17,11 @@ from application.domain.model.maintenance.workflow_ids import (
 
 @workflow.defn(name=MAINTENANCE_WORKFLOW)
 class MaintenanceStubWorkflow:
-    """Wait for ``complete``, then signal the parent's current run by workflow id."""
+    """Wait for ``complete``, then signal the parent's current run by workflow id.
+
+    A cancellation is reported to the parent like the real child's cleanup does,
+    unless the plan carries ``stub_ignores_cancel``: then the stub keeps waiting.
+    """
 
     @workflow.init
     def __init__(self, input: MaintenanceWorkflowInput) -> None:  # noqa: A002
@@ -24,7 +30,17 @@ class MaintenanceStubWorkflow:
 
     @workflow.run
     async def run(self, input: MaintenanceWorkflowInput) -> None:  # noqa: A002
-        await workflow.wait_condition(lambda: self._complete)
+        try:
+            await workflow.wait_condition(lambda: self._complete)
+        except asyncio.CancelledError:
+            if input.plan.get("stub_ignores_cancel"):
+                await workflow.wait_condition(lambda: self._complete)
+            else:
+                await self._report(input)
+                raise
+        await self._report(input)
+
+    async def _report(self, input: MaintenanceWorkflowInput) -> None:  # noqa: A002
         handle = workflow.get_external_workflow_handle(input.parent_workflow_id)
         await handle.signal(
             SIGNAL_MAINTENANCE_FINISHED, {"run_id": input.run_id, "record_failures": 0}

@@ -133,6 +133,10 @@ class Harness:
         handle = self.client.get_workflow_handle(maintenance_workflow_id(run_id))
         return await handle.query("started_with")
 
+    async def child_status(self, run_id: str) -> WorkflowExecutionStatus | None:
+        handle = self.client.get_workflow_handle(maintenance_workflow_id(run_id))
+        return (await handle.describe()).status
+
     async def complete_child(self, run_id: str) -> None:
         handle = self.client.get_workflow_handle(maintenance_workflow_id(run_id))
         await handle.signal("complete")
@@ -409,21 +413,60 @@ def test_planned_empty_starts_no_child():
     _run(scenario, script=lambda _: _planned())
 
 
-def test_in_flight_run_that_never_finishes_is_cleared_after_cap():
+# Per planned operation: 3 attempts of 6 h, backoffs of 60 s + 120 s, 1 h margin.
+OPERATION_BUDGET = timedelta(hours=19, minutes=3)
+
+
+def test_in_flight_run_is_given_up_only_after_the_child_worst_case():
     async def scenario(h: Harness) -> None:
         await h.start()
         first = await h.in_flight()
         started_at = (await h.state())["in_flight_started_at"]
-        await h.env.sleep(timedelta(hours=13))
+        await h.env.sleep(2 * OPERATION_BUDGET - timedelta(minutes=1))
         state = await h.settle()
         assert state["in_flight_run_id"] == first
         assert state["in_flight_started_at"] == started_at
         assert len(h.plans.requests) == 1
-        await h.env.sleep(timedelta(hours=1, minutes=1))
+        assert await h.child_status(first) == WorkflowExecutionStatus.RUNNING
+        await h.env.sleep(timedelta(minutes=2))
         await h.plan_count(2)
         await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first))
 
     _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE, interval=10**6))
+
+
+def test_give_up_cancels_the_stale_child_before_starting_a_new_run():
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = await h.in_flight()
+        await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=1))
+        await h.plan_count(2)
+        second = (
+            await eventually(
+                h.state, lambda s: s["in_flight_run_id"] not in (None, first)
+            )
+        )["in_flight_run_id"]
+        assert await h.child_status(first) == WorkflowExecutionStatus.CANCELED
+        assert await h.child_status(second) == WorkflowExecutionStatus.RUNNING
+
+    _run(scenario, script=lambda _: _planned(COMPACTION, interval=10**6))
+
+
+def test_give_up_waits_a_grace_for_a_child_that_ignores_its_cancel():
+    plan = {**_planned(COMPACTION, interval=10**6), "stub_ignores_cancel": True}
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = await h.in_flight()
+        await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=14))
+        state = await h.settle()
+        assert state["in_flight_run_id"] == first
+        assert len(h.plans.requests) == 1
+        await h.env.sleep(timedelta(minutes=2))
+        await h.plan_count(2)
+        await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first))
+
+    _run(scenario, script=lambda _: plan)
 
 
 def test_include_after_exclude_while_in_flight_keeps_workflow():
@@ -495,7 +538,12 @@ def test_carried_in_flight_run_without_start_time_gets_a_fixed_deadline():
             start_signal=None, in_flight_run_id="ghost", in_flight_operation_count=1
         )
         state = await eventually(h.state, lambda s: s["in_flight_started_at"])
-        await h.env.sleep(timedelta(hours=7, minutes=1))
+        await h.env.sleep(OPERATION_BUDGET - timedelta(minutes=1))
+        assert (await h.settle())["in_flight_run_id"] == "ghost"
+        assert h.plans.requests == []
+        # The time-skipping test server never resolves a cancel of a missing
+        # workflow, so the give-up falls back to the 15 min grace here.
+        await h.env.sleep(timedelta(minutes=17))
         await h.plan_count(1)
         await h.idle_after(state)
 

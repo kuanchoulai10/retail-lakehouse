@@ -19,6 +19,9 @@ from adapter.temporal_contracts.activity_names import (
     SIGNAL_PARENT,
     SUBMIT_MAINTENANCE_OPERATION,
 )
+from adapter.inbound.temporal.workflows.maintenance_attempt_policy import (
+    MaintenanceAttemptPolicy,
+)
 from adapter.temporal_contracts.capacity_release_signal import CapacityReleaseSignal
 from adapter.temporal_contracts.maintenance_workflow_input import (
     MaintenanceWorkflowInput,
@@ -37,8 +40,6 @@ _ACTIVITY_TIMEOUT = timedelta(minutes=2)
 _ACTIVITY_RETRY = RetryPolicy(
     maximum_attempts=5, initial_interval=timedelta(seconds=2), backoff_coefficient=2.0
 )
-_MAX_ATTEMPTS = 3
-_BACKOFFS = (timedelta(seconds=60), timedelta(seconds=120))
 FAST_POLL_INTERVAL = timedelta(seconds=30)
 FAST_POLL_WINDOW = timedelta(minutes=10)
 SLOW_POLL_INTERVAL = timedelta(minutes=5)
@@ -66,7 +67,9 @@ class MaintenanceWorkflow:
     def __init__(self, input: MaintenanceWorkflowInput) -> None:  # noqa: A002
         """Prepare the result and grant mailboxes and the attempt log."""
         self._run_id = input.run_id
-        self._attempt_deadline = timedelta(seconds=input.attempt_deadline_seconds)
+        self._policy = MaintenanceAttemptPolicy(
+            attempt_deadline=timedelta(seconds=input.attempt_deadline_seconds)
+        )
         self._results: dict[tuple[str, int], OperationResultSignal] = {}
         self._granted: set[str] = set()
         self._current_request: str | None = None
@@ -111,13 +114,13 @@ class MaintenanceWorkflow:
         await self._release(request_id)
 
     async def _run_operation(self, operation: dict[str, Any]) -> None:
-        for attempt in range(1, _MAX_ATTEMPTS + 1):
+        for attempt in range(1, self._policy.max_attempts + 1):
             outcome = await self._run_attempt(operation, attempt)
             await self._record(outcome)
             if outcome.succeeded:
                 return
-            if attempt < _MAX_ATTEMPTS:
-                await workflow.sleep(_BACKOFFS[attempt - 1])
+            if attempt < self._policy.max_attempts:
+                await workflow.sleep(self._policy.backoff_after(attempt))
 
     async def _run_attempt(
         self, operation: dict[str, Any], attempt: int
@@ -193,7 +196,7 @@ class MaintenanceWorkflow:
     ) -> OperationResultSignal:
         key = (name, attempt)
         submitted_at = workflow.now()
-        deadline = submitted_at + self._attempt_deadline
+        deadline = submitted_at + self._policy.attempt_deadline
         completed_since: datetime | None = None
         while True:
             if key in self._results:

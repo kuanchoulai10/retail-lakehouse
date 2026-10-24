@@ -11,6 +11,9 @@ from temporalio.common import RetryPolicy
 from temporalio.exceptions import ActivityError, FailureError, is_cancelled_exception
 from temporalio.workflow import ParentClosePolicy
 
+from adapter.inbound.temporal.workflows.maintenance_attempt_policy import (
+    MaintenanceAttemptPolicy,
+)
 from adapter.temporal_contracts.activity_names import PLAN_TABLE_MAINTENANCE
 from adapter.temporal_contracts.maintenance_workflow_input import (
     MaintenanceWorkflowInput,
@@ -38,8 +41,10 @@ _ACTIVITY_TIMEOUT = timedelta(minutes=2)
 _ACTIVITY_RETRY = RetryPolicy(
     maximum_attempts=5, initial_interval=timedelta(seconds=2), backoff_coefficient=2.0
 )
-_IN_FLIGHT_PER_OPERATION = timedelta(hours=7)
-_IN_FLIGHT_CAP = timedelta(hours=48)
+_IN_FLIGHT_PER_OPERATION = (
+    MaintenanceAttemptPolicy().operation_worst_case() + timedelta(hours=1)
+)
+_CANCEL_GRACE = timedelta(minutes=15)
 _ENDING_REASONS = frozenset({"dropped", "excluded"})
 _TRIGGER_SCHEDULED = "scheduled"
 _TRIGGER_MANUAL = "manual"
@@ -57,8 +62,13 @@ class TableReconcileWorkflow:
     (``ABANDON``) and reports back only through ``maintenance_finished``, which is
     why the run in flight survives continue-as-new. While a run is in flight
     nothing is planned; a ``trigger_now`` is kept and planned once it finishes. A
-    run that never reports back is given up after 7 h per planned operation
-    (at most 48 h). A skip because the table was dropped or excluded, or a
+    run that never reports back is given up once the child's worst case has passed
+    (per planned operation: every attempt timing out, plus the backoffs, plus 1 h):
+    the child is cancelled first, so its cleanup records the result, frees its
+    capacity and deletes its Spark job, and its report is awaited for up to
+    15 minutes (less if the cancel fails because the child is gone), so a new
+    run does not overlap the old one's Spark job. A skip
+    because the table was dropped or excluded, or a
     ``stop`` signal, ends the workflow once no run is in flight, but never on a
     stale decision (R31): any other signal after ``stop`` cancels the stop, and a
     wake that arrives while a plan says dropped or excluded makes it plan again.
@@ -89,6 +99,8 @@ class TableReconcileWorkflow:
         self._stopping = False
         self._planning = False
         self._signals_handled = 0
+        self._cancel_failed = False
+        self._cancel_task: asyncio.Task[None] | None = None
 
     @workflow.run
     async def run(self, input: TableReconcileWorkflowInput) -> None:  # noqa: A002
@@ -107,7 +119,7 @@ class TableReconcileWorkflow:
             self._woken = False
             iterations += 1
             if self._in_flight_run_id is not None:
-                self._give_up_stuck_run()
+                await self._give_up_stuck_run()
             if self._in_flight_run_id is None and not self._stopping:
                 ends = await self._plan_and_start()
                 if ends and not self._woken:
@@ -213,18 +225,46 @@ class TableReconcileWorkflow:
         if self._in_flight_run_id is None or self._in_flight_started_at is None:
             return None
         started_at = self._in_flight_started_at
-        budget = _IN_FLIGHT_PER_OPERATION * max(self._in_flight_operations, 1)
-        return started_at + min(budget, _IN_FLIGHT_CAP)
+        return started_at + _IN_FLIGHT_PER_OPERATION * max(
+            self._in_flight_operations, 1
+        )
 
-    def _give_up_stuck_run(self) -> None:
+    async def _give_up_stuck_run(self) -> None:
+        """Cancel a run past its budget, await its report briefly, then forget it.
+
+        The cancel request runs as its own task: a request the server never
+        resolves must not block the loop, and a failed one (the child is missing
+        or closed, so nothing can report back) ends the wait at once.
+        """
         deadline = self._in_flight_deadline()
-        if deadline is None or workflow.now() < deadline:
+        run_id = self._in_flight_run_id
+        if run_id is None or deadline is None or workflow.now() < deadline:
             return
         workflow.logger.warning(
-            "maintenance run %s never reported back; no longer waiting for it",
-            self._in_flight_run_id,
+            "maintenance run %s never reported back; cancelling it", run_id
         )
-        self._clear_in_flight()
+        self._cancel_failed = False
+        self._cancel_task = asyncio.create_task(self._cancel_child(run_id))
+        try:
+            await workflow.wait_condition(
+                lambda: self._in_flight_run_id != run_id or self._cancel_failed,
+                timeout=_CANCEL_GRACE,
+            )
+        except TimeoutError:
+            workflow.logger.warning(
+                "cancelled run %s did not report back; no longer waiting", run_id
+            )
+        if self._in_flight_run_id == run_id:
+            self._clear_in_flight()
+
+    async def _cancel_child(self, run_id: str) -> None:
+        handle = workflow.get_external_workflow_handle(maintenance_workflow_id(run_id))
+        try:
+            await handle.cancel()
+        except FailureError as error:
+            workflow.logger.info("run %s could not be cancelled: %s", run_id, error)
+            if self._in_flight_run_id == run_id:
+                self._cancel_failed = True
 
     def _clear_in_flight(self) -> None:
         self._in_flight_run_id = None
@@ -293,7 +333,7 @@ class TableReconcileWorkflow:
         self._in_flight_started_at = workflow.now()
         self._in_flight_operations = len(plan["operations"])
         try:
-            await workflow.start_child_workflow(
+            child = await workflow.start_child_workflow(
                 MAINTENANCE_WORKFLOW,
                 MaintenanceWorkflowInput(
                     run_id=run_id,
@@ -306,6 +346,7 @@ class TableReconcileWorkflow:
                 task_queue=TASK_QUEUE,
                 parent_close_policy=ParentClosePolicy.ABANDON,
             )
+            child.add_done_callback(_discard_outcome)
         except FailureError as error:
             if is_cancelled_exception(error):
                 raise asyncio.CancelledError from error
@@ -320,3 +361,9 @@ class TableReconcileWorkflow:
 
 def _iso(value: datetime | None) -> str | None:
     return None if value is None else value.isoformat()
+
+
+def _discard_outcome(child: asyncio.Future[Any]) -> None:
+    """Retrieve a child's outcome; a run reports only through ``maintenance_finished``."""
+    if not child.cancelled():
+        child.exception()
