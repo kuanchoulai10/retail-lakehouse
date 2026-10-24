@@ -73,6 +73,8 @@ Respond in the same language as the user's message. The user typically communica
 - No auth on the API or the Spark result callback, and no NetworkPolicy.
 - Table maintenance uses the Polaris root principal; switch to a scoped principal.
 - The running `maintenance-capacity` limiter keeps the lease it was started with (21600 s); it adopts the new 22500 s lease only after it is restarted while idle.
+- Catalog-wide sync re-ensures every live table's reconcile workflow each run: one Temporal error aborts the rest of the sync (catch per table), and each wake costs a metadata scan (add start-without-signal).
+- `TableReconcileWorkflow` give-up changes have no `workflow.patched` guard; a history holding an old-code give-up would hit nondeterminism on replay. The give-up budget ignores capacity-queue wait time.
 - On-hold waves still reference pre-rename names (`minio-api.minio.svc`, `kafka-cdc`, `polaris`, `platform/20-minio`): `30-thanos`, `24-e2e-validation`, `charts/app-of-apps`. Fix when those are re-opened.
 - Iceberg sink (Kafka 4.0 + sink 1.10) may commit "0 table(s)" for several minutes after a Connect pod start under low traffic; keep inserting and poll ~5–10 min when verifying snapshots.
 - `bitnami/jmx-exporter` (Trino sidecar) is pinned by digest: Bitnami's free catalog only publishes `latest`, so bumping it means taking the new `latest` digest.
