@@ -149,6 +149,31 @@ kubectl rollout restart deployment/trino-coordinator -n lakehouse-query-engine -
 | `trino` | 8080 | HTTP (internal) |
 | `trino` | 8443 | HTTPS (coordinator) — mTLS or OAuth2 |
 
+## Memory Sizing
+
+Trino shares the single minikube node with Kafka, Polaris, Temporal and the Spark maintenance jobs, so it is sized small. Each JVM heap is about 75% of its container memory limit. The rest is left for metaspace, code cache, thread stacks and direct buffers, which measure about 1 GiB per Trino JVM.
+
+| Container | `-Xmx` | Memory request = limit | `query.max-memory-per-node` | `memory.heap-headroom-per-node` |
+|-----------|--------|------------------------|-----------------------------|---------------------------------|
+| `trino-coordinator` | 2G | 2816Mi | 1GB | 600MB |
+| `trino-worker` (each) | 3G | 4Gi | 1536MB | 900MB |
+| `jmx-exporter` sidecar (each pod) | - | 384Mi | - | - |
+
+`query.max-memory` (cluster-wide) is `3GB`, which equals two workers at 1536MB each. The coordinator does not run tasks (`node-scheduler.include-coordinator=false`). With one worker, Trino has a hard ceiling of about 7.5 GiB, and each extra worker adds about 4.4 GiB.
+
+## Worker Autoscaling (KEDA)
+
+The `trino-worker` Deployment is scaled by the KEDA ScaledObject `trino-worker`, which manages the HPA `keda-hpa-trino-worker`:
+
+- Trigger: Prometheus `prometheus-k8s.monitoring:9090`, query `sum(trino_execution_QueryManager_RunningQueries{namespace="lakehouse-query-engine",job="trino"})`. This is the coordinator's JMX metric, scraped through the `jmx-exporter` sidecar by the chart's ServiceMonitor. `prometheus-rolebinding.yaml` grants Prometheus the RBAC to discover these targets. `sum()` keeps the query to a single series during a coordinator rollout.
+- Target: an average of 2 running queries per worker, with 1 to 2 workers. A third concurrent query adds the second worker.
+- Scale-down: one pod per minute, after a 5-minute stabilization window.
+- Fallback: after 3 failed Prometheus polls, KEDA pins the workers to 1.
+
+Check the scaler with `kubectl get hpa keda-hpa-trino-worker -n lakehouse-query-engine --context retail-lakehouse`. `TARGETS` should show a number such as `0/2 (avg)`.
+
+If `TARGETS` shows `<unknown>`, the HPA cannot read the external metric. The usual cause is that `keda-operator-metrics-apiserver` or `prometheus-k8s-0` is restarting, for example under node memory pressure. While the metric is unknown, the HPA keeps the current replica count and never scales down. The fallback does not help in that case, because it only acts when the KEDA operator itself sees the Prometheus query fail.
+
 ## Installation
 
 ```bash

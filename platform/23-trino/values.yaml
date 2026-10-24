@@ -8,12 +8,14 @@ server:
   workers: 1
   config:
     authenticationType: "certificate,oauth2"
+    query:
+      maxMemory: "3GB"
   autoscaling:
     enabled: false
   keda:
     enabled: true
     minReplicaCount: 1
-    maxReplicaCount: 3
+    maxReplicaCount: 2
     pollingInterval: 15
     initialCooldownPeriod: 0 # default 0s
     cooldownPeriod: 300 # default 300s, only applies when scaling to 0
@@ -38,16 +40,15 @@ server:
             stabilizationWindowSeconds: 300
             selectPolicy: Min
             policies:
-              - type: Percent
-                value: 10
+              - type: Pods
+                value: 1
                 periodSeconds: 60
     triggers:
       - type: prometheus
         metadata:
           serverAddress: http://prometheus-k8s.monitoring.svc.cluster.local:9090
-          metricName: trino_running_queries
-          query: trino_execution_QueryManager_RunningQueries{job="trino"}
-          threshold: "1"
+          query: sum(trino_execution_QueryManager_RunningQueries{namespace="lakehouse-query-engine",job="trino"})
+          threshold: "2"
     annotations: {}
 # --8<-- [end:server]
 
@@ -111,7 +112,18 @@ resourceGroups:
 # --8<-- [start:coordinator]
 coordinator:
   jvm:
-    maxHeapSize: "8G"
+    maxHeapSize: "2G"
+  config:
+    memory:
+      heapHeadroomPerNode: "600MB"
+    query:
+      maxMemoryPerNode: "1GB"
+  resources:
+    requests:
+      cpu: 250m
+      memory: 2816Mi
+    limits:
+      memory: 2816Mi
   livenessProbe:
     initialDelaySeconds: 30
     failureThreshold: 20
@@ -156,7 +168,18 @@ coordinator:
 # --8<-- [start:worker]
 worker:
   jvm:
-    maxHeapSize: "8G"
+    maxHeapSize: "3G"
+  config:
+    memory:
+      heapHeadroomPerNode: "900MB"
+    query:
+      maxMemoryPerNode: "1536MB"
+  resources:
+    requests:
+      cpu: 250m
+      memory: 4Gi
+    limits:
+      memory: 4Gi
   livenessProbe:
     initialDelaySeconds: 30
     failureThreshold: 20
@@ -179,6 +202,12 @@ jmx:
   exporter:
     enabled: true
     image: bitnami/jmx-exporter@sha256:c753bc2da381f9f01e0646c7ae9e7cdb8bd3298355e906952f5337be886d83bf
+    resources:
+      requests:
+        cpu: 50m
+        memory: 384Mi
+      limits:
+        memory: 384Mi
     configProperties: |-
       hostPort: localhost:{{- .Values.jmx.registryPort }}
       startDelaySeconds: 0
