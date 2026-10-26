@@ -11,8 +11,9 @@ class TableReconciliationWorkflowInput:
 
     A fresh workflow passes only ``table_uuid``; continue-as-new carries the rest.
     ``in_flight_run_id`` is the maintenance run still awaiting its
-    ``maintenance_finished`` signal, started at ``in_flight_started_at`` (ISO-8601)
-    with ``in_flight_operation_count`` planned operations. ``pending_manual`` is a
+    ``maintenance_finished`` signal, run by the workflow ``in_flight_workflow_id``
+    and started at ``in_flight_started_at`` (ISO-8601) with
+    ``in_flight_operation_count`` planned operations. ``pending_manual`` is a
     manual trigger not yet planned: ``None`` means none, ``[]`` means a manual run
     of every due operation, a non-empty list names the requested operations.
     ``next_plan_at`` (ISO-8601) is when the timer plans next; ``None`` means one
@@ -23,6 +24,7 @@ class TableReconciliationWorkflowInput:
 
     table_uuid: str
     in_flight_run_id: str | None = None
+    in_flight_workflow_id: str | None = None
     in_flight_started_at: str | None = None
     in_flight_operation_count: int = 0
     pending_manual: list[str] | None = None

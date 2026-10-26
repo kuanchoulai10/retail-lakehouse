@@ -52,6 +52,8 @@ if TYPE_CHECKING:
 COMPACTION = "rewrite_data_files"
 EXPIRE = "expire_snapshots"
 RUN_ID = "run-1"
+TABLE = "iceberg.e2e.t"
+WORKFLOW_ID = table_maintenance_workflow_id(TABLE, RUN_ID)
 PARENT_ID = "parent-1"
 REAL_TIMEOUT_SECONDS = 20
 ATTEMPT_DEADLINE_SECONDS = 21600
@@ -62,6 +64,7 @@ def _plan(*operations: str) -> dict:
         "status": "planned",
         "reason": None,
         "reconcile_interval_seconds": 3600,
+        "table_name": TABLE,
         "operations": [
             {
                 "operation": op,
@@ -102,7 +105,7 @@ class Harness:
                 plan=_plan(*operations),
                 attempt_deadline_seconds=attempt_deadline_seconds,
             ),
-            id=table_maintenance_workflow_id(RUN_ID),
+            id=WORKFLOW_ID,
             task_queue=self.queue,
         )
 
@@ -180,9 +183,7 @@ def test_operations_run_in_order_and_parent_signalled():
         assert h.fakes.created[0]["table_uuid"] == "u1"
         assert h.fakes.created[0]["trigger"] == "scheduled"
         assert h.fakes.created[0]["operations"] == [COMPACTION, EXPIRE]
-        assert h.fakes.created[0]["workflow_id"] == table_maintenance_workflow_id(
-            RUN_ID
-        )
+        assert h.fakes.created[0]["workflow_id"] == WORKFLOW_ID
         first = h.fakes.submits[0]
         assert first["filters"] == [{"spec_id": 0, "where": f"{COMPACTION} = 1"}]
         assert first["procedure_args"] == {"op": COMPACTION}
@@ -503,9 +504,7 @@ def test_result_arriving_during_last_poll_before_deadline_wins():
             ):
                 return
             signalled.append(scheduled)
-            await h.client.get_workflow_handle(
-                table_maintenance_workflow_id(RUN_ID)
-            ).signal(
+            await h.client.get_workflow_handle(WORKFLOW_ID).signal(
                 SIGNAL_OPERATION_RESULT,
                 OperationResultSignal(RUN_ID, COMPACTION, 1, True, {"files": 7}, None),
             )

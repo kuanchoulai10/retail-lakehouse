@@ -28,9 +28,14 @@ class PlanTableMaintenanceUseCaseOutputItem:
 
 @dataclass(frozen=True)
 class PlanTableMaintenanceUseCaseOutput:
-    """Carry the result of the request to plan the maintenance operations of a table."""
+    """Carry the result of the request to plan the maintenance operations of a table.
+
+    ``table_name`` is the fully qualified ``catalog.namespace.table`` name, or
+    ``None`` when the table is not managed (any more).
+    """
 
     status: str
     reason: str | None
     reconcile_interval_seconds: int
+    table_name: str | None
     operations: list[PlanTableMaintenanceUseCaseOutputItem]

@@ -9,7 +9,7 @@ from temporalio.client import RPCError
 from temporalio.service import RPCStatusCode
 
 from application.domain.model.maintenance.workflow_ids import (
-    table_discovery_schedule_id,
+    TABLE_DISCOVERY_SCHEDULE_ID_PREFIX,
 )
 from application.port.outbound.discovery.update_discovery_schedule import (
     UpdateDiscoveryScheduleGateway,
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_SCHEDULE_ID_PREFIX = table_discovery_schedule_id("")
+_SCHEDULE_ID_PREFIX = TABLE_DISCOVERY_SCHEDULE_ID_PREFIX
 
 
 class UpdateDiscoveryScheduleTemporalGateway(UpdateDiscoveryScheduleGateway):

@@ -49,7 +49,7 @@ def test_contracts_round_trip():
         TableDiscoveryWorkflowInput("iceberg"),
         TableDiscoveryWorkflowInput("iceberg", "sales"),
         TableMaintenanceWorkflowInput(
-            "r1", "u1", "table-reconcile-u1", "scheduled", plan
+            "r1", "u1", "table-reconciliation:table-uuid=u1", "scheduled", plan
         ),
         TableMaintenanceAdmissionInput(2),
         TableMaintenanceAdmissionInput(

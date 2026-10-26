@@ -9,7 +9,7 @@ from application.domain.model.maintenance.maintenance_operation import (
 )
 from application.domain.model.maintenance.workflow_ids import (
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
-    TABLE_DISCOVERY_SCHEDULE_ID,
+    TABLE_DISCOVERY_SCHEDULE_ID_PREFIX,
     SIGNAL_ADMISSION_GRANTED,
     TASK_QUEUE,
     table_discovery_adhoc_workflow_id,
@@ -37,25 +37,48 @@ def test_maintenance_operation_ordered_follows_spec_order():
 
 
 def test_workflow_ids():
-    assert table_reconciliation_workflow_id("u1") == "table-reconcile-u1"
-    assert table_maintenance_workflow_id("r1") == "maintenance-r1"
-    assert TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID == "maintenance-capacity"
-    assert TABLE_DISCOVERY_SCHEDULE_ID == "table-discovery"
+    assert (
+        table_reconciliation_workflow_id("u1") == "table-reconciliation:table-uuid=u1"
+    )
+    assert (
+        table_maintenance_workflow_id("iceberg.e2e.orders", "r1")
+        == "table-maintenance:table=iceberg.e2e.orders:run=r1"
+    )
+    assert TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID == "table-maintenance-admission"
     assert TASK_QUEUE == "table-maintenance"
     assert SIGNAL_ADMISSION_GRANTED == "admission_granted"
 
 
 def test_discovery_adhoc_workflow_id():
-    assert table_discovery_adhoc_workflow_id("c", "ns") == "table-discovery-adhoc-c-ns"
-    assert table_discovery_adhoc_workflow_id("c", None) == "table-discovery-adhoc-c-all"
+    assert (
+        table_discovery_adhoc_workflow_id("c", "ns")
+        == "table-discovery:catalog=c:namespace=ns:trigger=adhoc"
+    )
+    assert (
+        table_discovery_adhoc_workflow_id("c", None)
+        == "table-discovery:catalog=c:trigger=adhoc"
+    )
+
+
+def test_discovery_adhoc_workflow_id_differs_from_the_schedule_id():
+    assert table_discovery_adhoc_workflow_id("c", None) != table_discovery_schedule_id(
+        "c"
+    )
 
 
 def test_discovery_schedule_id_is_per_catalog():
-    assert table_discovery_schedule_id("iceberg") == "table-discovery-iceberg"
+    assert table_discovery_schedule_id("iceberg") == "table-discovery:catalog=iceberg"
+    assert table_discovery_schedule_id("iceberg").startswith(
+        TABLE_DISCOVERY_SCHEDULE_ID_PREFIX
+    )
 
 
 def test_table_name_qualified():
     assert TableName("iceberg", "a.b", "t").qualified() == "a.b.t"
+
+
+def test_table_name_fully_qualified_includes_the_catalog():
+    assert TableName("iceberg", "a.b", "t").fully_qualified() == "iceberg.a.b.t"
 
 
 def test_table_name_rejects_empty_table():

@@ -57,6 +57,7 @@ class FakePlan(PlanTableMaintenanceUseCase):
             status="planned",
             reason=None,
             reconcile_interval_seconds=3600,
+            table_name="iceberg.sales.orders",
             operations=[
                 PlanTableMaintenanceUseCaseOutputItem(
                     operation="rewrite_data_files",

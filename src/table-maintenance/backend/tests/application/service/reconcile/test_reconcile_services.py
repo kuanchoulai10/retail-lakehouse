@@ -162,6 +162,23 @@ def test_plan_skip_reasons(planner, tables_repo, catalog, now):
     assert results["u-1"].reconcile_interval_seconds == 3600
 
 
+def test_plan_carries_the_fully_qualified_table_name(
+    planner, tables_repo, catalog, now
+):
+    _table(tables_repo, now)
+    _observe(catalog, now)
+    assert _plan(planner, now).table_name == "iceberg.sales.orders"
+
+
+def test_plan_skip_carries_the_table_name_when_the_table_is_known(
+    planner, tables_repo, catalog, now
+):
+    paused = _table(tables_repo, now, uuid="u-p", name=TableName("c", "n", "p"))
+    paused.pause(now)
+    assert _plan(planner, now, uuid="u-p").table_name == "c.n.p"
+    assert _plan(planner, now, uuid="missing").table_name is None
+
+
 def test_plan_compaction_has_one_filter_per_spec(planner, tables_repo, catalog, now):
     _table(tables_repo, now)
     _observe(catalog, now)

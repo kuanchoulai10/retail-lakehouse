@@ -26,3 +26,7 @@ class TableName(ValueObject):
     def qualified(self) -> str:
         """Return ``namespace.table``."""
         return f"{self.namespace}.{self.table}"
+
+    def fully_qualified(self) -> str:
+        """Return ``catalog.namespace.table``."""
+        return f"{self.catalog}.{self.namespace}.{self.table}"

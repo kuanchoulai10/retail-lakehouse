@@ -62,17 +62,17 @@ for catalog in ${CATALOGS}; do
     --context "${KUBE_CONTEXT}" \
     -- temporal schedule describe \
     --address temporal-frontend.temporal.svc.cluster.local:7233 \
-    --schedule-id "table-discovery-${catalog}" >/dev/null
+    --schedule-id "table-discovery:catalog=${catalog}" >/dev/null
 done
 
-CAPACITY_STATUS="$(kubectl exec "${ADMIN_TOOLS}" \
+ADMISSION_STATUS="$(kubectl exec "${ADMIN_TOOLS}" \
   --namespace temporal \
   --context "${KUBE_CONTEXT}" \
   -- temporal workflow describe \
   --address temporal-frontend.temporal.svc.cluster.local:7233 \
-  --workflow-id maintenance-capacity \
+  --workflow-id table-maintenance-admission \
   --output json)"
-grep -q '"status": "WORKFLOW_EXECUTION_STATUS_RUNNING"' <<<"${CAPACITY_STATUS}"
+grep -q '"status": "WORKFLOW_EXECUTION_STATUS_RUNNING"' <<<"${ADMISSION_STATUS}"
 
 CONSUMER_GROUP="$(kubectl exec kafka-cluster-dual-role-0 \
   --namespace kafka \

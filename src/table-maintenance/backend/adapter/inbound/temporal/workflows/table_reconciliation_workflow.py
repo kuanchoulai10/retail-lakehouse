@@ -64,9 +64,11 @@ class TableReconciliationWorkflow:
     nothing is planned; a ``trigger_now`` is kept and planned once it finishes. A
     run that never reports back is given up once the child's worst case has passed
     (per planned operation: every attempt timing out, plus the backoffs, plus 1 h):
-    the child is cancelled first, so its cleanup records the result, releases its
-    admission slot and deletes its Spark job, and its report is awaited for up to
-    15 minutes (less if the cancel fails because the child is gone), so a new
+    the child is cancelled first (by the workflow ID recorded when it started, as
+    the ID carries the table name of that time), so its cleanup records the
+    result, releases its admission slot and deletes its Spark job, and its report
+    is awaited for up to 15 minutes (less if the cancel fails because the child
+    is gone or no workflow ID was recorded), so a new
     run does not overlap the old one's Spark job. A skip
     because the table was dropped or excluded, or a
     ``stop`` signal, ends the workflow once no run is in flight, but never on a
@@ -79,6 +81,7 @@ class TableReconciliationWorkflow:
         """Restore the in-flight run, the pending manual trigger and the timer."""
         self._table_uuid = input.table_uuid
         self._in_flight_run_id = input.in_flight_run_id
+        self._in_flight_workflow_id = input.in_flight_workflow_id
         self._in_flight_started_at: datetime | None = None
         if input.in_flight_started_at:
             self._in_flight_started_at = datetime.fromisoformat(
@@ -174,6 +177,7 @@ class TableReconciliationWorkflow:
         """Report the run in flight, the pending manual trigger, the timer and the loop."""
         return {
             "in_flight_run_id": self._in_flight_run_id,
+            "in_flight_workflow_id": self._in_flight_workflow_id,
             "in_flight_started_at": _iso(self._in_flight_started_at),
             "pending_manual": self._pending_manual,
             "stopping": self._stopping,
@@ -203,6 +207,7 @@ class TableReconciliationWorkflow:
         return TableReconciliationWorkflowInput(
             table_uuid=self._table_uuid,
             in_flight_run_id=self._in_flight_run_id,
+            in_flight_workflow_id=self._in_flight_workflow_id,
             in_flight_started_at=_iso(self._in_flight_started_at),
             in_flight_operation_count=self._in_flight_operations,
             pending_manual=self._pending_manual,
@@ -244,7 +249,9 @@ class TableReconciliationWorkflow:
             "maintenance run %s never reported back; cancelling it", run_id
         )
         self._cancel_failed = False
-        self._cancel_task = asyncio.create_task(self._cancel_child(run_id))
+        self._cancel_task = asyncio.create_task(
+            self._cancel_child(run_id, self._in_flight_workflow_id)
+        )
         try:
             await workflow.wait_condition(
                 lambda: self._in_flight_run_id != run_id or self._cancel_failed,
@@ -257,10 +264,12 @@ class TableReconciliationWorkflow:
         if self._in_flight_run_id == run_id:
             self._clear_in_flight()
 
-    async def _cancel_child(self, run_id: str) -> None:
-        handle = workflow.get_external_workflow_handle(
-            table_maintenance_workflow_id(run_id)
-        )
+    async def _cancel_child(self, run_id: str, workflow_id: str | None) -> None:
+        if workflow_id is None:
+            workflow.logger.info("run %s has no recorded workflow to cancel", run_id)
+            self._cancel_failed = True
+            return
+        handle = workflow.get_external_workflow_handle(workflow_id)
         try:
             await handle.cancel()
         except FailureError as error:
@@ -270,6 +279,7 @@ class TableReconciliationWorkflow:
 
     def _clear_in_flight(self) -> None:
         self._in_flight_run_id = None
+        self._in_flight_workflow_id = None
         self._in_flight_started_at = None
         self._in_flight_operations = 0
 
@@ -331,7 +341,9 @@ class TableReconciliationWorkflow:
 
     async def _start_run(self, plan: dict[str, Any], manual: bool) -> None:
         run_id = str(workflow.uuid4())
+        child_id = table_maintenance_workflow_id(plan["table_name"], run_id)
         self._in_flight_run_id = run_id
+        self._in_flight_workflow_id = child_id
         self._in_flight_started_at = workflow.now()
         self._in_flight_operations = len(plan["operations"])
         try:
@@ -344,7 +356,7 @@ class TableReconciliationWorkflow:
                     trigger=_TRIGGER_MANUAL if manual else _TRIGGER_SCHEDULED,
                     plan=plan,
                 ),
-                id=table_maintenance_workflow_id(run_id),
+                id=child_id,
                 task_queue=TASK_QUEUE,
                 parent_close_policy=ParentClosePolicy.ABANDON,
             )

@@ -18,7 +18,6 @@ from adapter.temporal_contracts.activity_names import (
 from adapter.temporal_contracts.operation_result_signal import OperationResultSignal
 from application.domain.model.maintenance.workflow_ids import (
     SIGNAL_OPERATION_RESULT,
-    table_maintenance_workflow_id,
 )
 
 if TYPE_CHECKING:
@@ -63,6 +62,10 @@ class ScriptedMaintenanceActivities:
     def app_name(run_id: str, operation: str, attempt: int) -> str:
         return f"{run_id}-{operation}-{attempt}"
 
+    def _workflow_id_of(self, run_id: str) -> str:
+        """Look the workflow up on the created run, as the callback path does."""
+        return next(c["workflow_id"] for c in self.created if c["run_id"] == run_id)
+
     @activity.defn(name=CREATE_MAINTENANCE_RUN)
     async def create_maintenance_run(self, request: dict) -> dict:
         self.created.append(request)
@@ -81,7 +84,7 @@ class ScriptedMaintenanceActivities:
                 self.submit_errors[key], type="ConflictError", non_retryable=True
             )
         handle = self._client.get_workflow_handle(
-            table_maintenance_workflow_id(request["run_id"])
+            self._workflow_id_of(request["run_id"])
         )
         for attempt, succeeded, error in self.callbacks.get(key, []):
             await handle.signal(

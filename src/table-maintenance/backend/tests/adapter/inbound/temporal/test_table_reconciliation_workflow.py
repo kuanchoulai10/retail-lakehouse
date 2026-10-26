@@ -43,6 +43,7 @@ if TYPE_CHECKING:
     from temporalio.worker import WorkflowRunner
 
 UUID = "u1"
+TABLE = "iceberg.e2e.t"
 WORKFLOW_ID = table_reconciliation_workflow_id(UUID)
 COMPACTION = "rewrite_data_files"
 EXPIRE = "expire_snapshots"
@@ -54,6 +55,7 @@ def _planned(*operations: str, interval: int = 3600) -> dict[str, Any]:
         "status": "planned",
         "reason": None,
         "reconcile_interval_seconds": interval,
+        "table_name": TABLE,
         "operations": [
             {"operation": op, "filters": [], "procedure_args": {}} for op in operations
         ],
@@ -65,8 +67,13 @@ def _skip(reason: str, interval: int = 3600) -> dict[str, Any]:
         "status": "skip",
         "reason": reason,
         "reconcile_interval_seconds": interval,
+        "table_name": TABLE,
         "operations": [],
     }
+
+
+def _child_id(run_id: str) -> str:
+    return table_maintenance_workflow_id(TABLE, run_id)
 
 
 def _within_a_second(gap: timedelta, seconds: int) -> bool:
@@ -130,15 +137,15 @@ class Harness:
         )
 
     async def child(self, run_id: str) -> dict[str, Any]:
-        handle = self.client.get_workflow_handle(table_maintenance_workflow_id(run_id))
+        handle = self.client.get_workflow_handle(_child_id(run_id))
         return await handle.query("started_with")
 
     async def child_status(self, run_id: str) -> WorkflowExecutionStatus | None:
-        handle = self.client.get_workflow_handle(table_maintenance_workflow_id(run_id))
+        handle = self.client.get_workflow_handle(_child_id(run_id))
         return (await handle.describe()).status
 
     async def complete_child(self, run_id: str) -> None:
-        handle = self.client.get_workflow_handle(table_maintenance_workflow_id(run_id))
+        handle = self.client.get_workflow_handle(_child_id(run_id))
         await handle.signal("complete")
         self.sent += 1
 
@@ -224,6 +231,9 @@ def test_signal_with_start_plans_and_starts_child_with_abandon_semantics():
         assert child["trigger"] == "scheduled"
         assert child["plan"] == _planned(COMPACTION)
         assert len(h.plans.requests) == 1
+        assert (await h.state())["in_flight_workflow_id"] == (
+            f"table-maintenance:table={TABLE}:run={run_id}"
+        )
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
 
@@ -275,6 +285,7 @@ def test_child_result_received_after_continue_as_new():
         await eventually(run_id_now, lambda r: r != first_run)
         state = await h.state()
         assert state["in_flight_run_id"] == run_id
+        assert state["in_flight_workflow_id"] == _child_id(run_id)
         assert state["pending_manual"] == [EXPIRE]
         assert len(h.plans.requests) == 1
         await h.complete_child(run_id)
@@ -535,7 +546,10 @@ def test_continue_as_new_carries_interval_used_after_plan_failure():
 def test_carried_in_flight_run_without_start_time_gets_a_fixed_deadline():
     async def scenario(h: Harness) -> None:
         await h.start(
-            start_signal=None, in_flight_run_id="ghost", in_flight_operation_count=1
+            start_signal=None,
+            in_flight_run_id="ghost",
+            in_flight_workflow_id=_child_id("ghost"),
+            in_flight_operation_count=1,
         )
         state = await eventually(h.state, lambda s: s["in_flight_started_at"])
         await h.env.sleep(OPERATION_BUDGET - timedelta(minutes=1))
@@ -544,6 +558,20 @@ def test_carried_in_flight_run_without_start_time_gets_a_fixed_deadline():
         # The time-skipping test server never resolves a cancel of a missing
         # workflow, so the give-up falls back to the 15 min grace here.
         await h.env.sleep(timedelta(minutes=17))
+        await h.plan_count(1)
+        await h.idle_after(state)
+
+    _run(scenario, script=lambda _: _planned())
+
+
+def test_carried_in_flight_run_without_workflow_id_is_given_up_without_grace():
+    async def scenario(h: Harness) -> None:
+        await h.start(
+            start_signal=None, in_flight_run_id="ghost", in_flight_operation_count=1
+        )
+        state = await eventually(h.state, lambda s: s["in_flight_started_at"])
+        assert state["in_flight_workflow_id"] is None
+        await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=1))
         await h.plan_count(1)
         await h.idle_after(state)
 

@@ -220,18 +220,19 @@ report_runs() {
 
 assert_reconcile_running() {
   local uuid="$1" status
-  status="$(temporal_cli workflow describe --workflow-id "table-reconcile-${uuid}" --output json \
-    | jq -r '.workflowExecutionInfo.status')"
+  status="$(temporal_cli workflow describe --workflow-id "table-reconciliation:table-uuid=${uuid}" \
+    --output json | jq -r '.workflowExecutionInfo.status')"
   [[ "${status}" == "WORKFLOW_EXECUTION_STATUS_RUNNING" ]] || {
-    echo "table-reconcile-${uuid} is ${status}" >&2
+    echo "table-reconciliation:table-uuid=${uuid} is ${status}" >&2
     return 1
   }
-  progress "table-reconcile-${uuid} is RUNNING"
+  progress "table-reconciliation:table-uuid=${uuid} is RUNNING"
 }
 
 assert_partition_filter() {
-  local run_id="$1" filter
-  filter="$(temporal_cli workflow show --workflow-id "maintenance-${run_id}" --output json \
+  local run_id="$1" workflow_id filter
+  workflow_id="$(api GET "/v1/runs/${run_id}" | jq -r '.workflow_id')"
+  filter="$(temporal_cli workflow show --workflow-id "${workflow_id}" --output json \
     | jq -r '.events[0].workflowExecutionStartedEventAttributes.input.payloads[0].data
       | @base64d | fromjson
       | [.plan.operations[] | select(.operation == "rewrite_data_files") | .filters[]?.where]
@@ -297,12 +298,12 @@ progress "waiting for discovery of both tables (up to ${DISCOVERY_TIMEOUT_SECOND
 ORDERS_UUID="$(wait_for_table "${ORDERS}")"
 REGIONS_UUID="$(wait_for_table "${REGIONS}")"
 for uuid in "${ORDERS_UUID}" "${REGIONS_UUID}"; do
-  progress "table-reconcile-${uuid} current run started at $(temporal_cli workflow describe \
-    --workflow-id "table-reconcile-${uuid}" --output json \
+  progress "table-reconciliation:table-uuid=${uuid} current run started at $(temporal_cli \
+    workflow describe --workflow-id "table-reconciliation:table-uuid=${uuid}" --output json \
     | jq -r '.workflowExecutionInfo.startTime')"
 done
 progress "discovery schedule recent runs: $(temporal_cli schedule describe \
-  --schedule-id "table-discovery-${CATALOG}" --output json \
+  --schedule-id "table-discovery:catalog=${CATALOG}" --output json \
   | jq -c '[.info.recentActions[]?.scheduleTime] | .[-3:]')"
 progress "on a first run, a reconcile start before the next scheduled run means the event path found the table (describe shows the current run, which changes on continue-as-new)"
 

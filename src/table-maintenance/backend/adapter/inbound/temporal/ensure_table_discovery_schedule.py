@@ -42,7 +42,7 @@ async def ensure_table_discovery_schedule(
     """Create each catalog's discovery schedule, or bring an existing one up to date.
 
     A Temporal schedule holds one action, so every catalog gets its own schedule
-    ``table-discovery-{catalog}`` starting ``TableDiscoveryWorkflow`` for that catalog
+    ``table-discovery:catalog={catalog}`` starting ``TableDiscoveryWorkflow`` for that catalog
     every ``interval``, skipping a firing while the previous run is still going.
     Calling it again is idempotent: it rewrites the action and the interval and
     applies ``paused``.

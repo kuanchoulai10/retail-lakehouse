@@ -48,7 +48,7 @@ def test_signal_with_start_creates_one_workflow_and_delivers_both(harness):
         found = [
             w.id
             async for w in harness.client.list_workflows(
-                "WorkflowId = 'table-reconcile-swl'"
+                "WorkflowId = 'table-reconciliation:table-uuid=swl'"
             )
         ]
         return len(found)

@@ -80,11 +80,11 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         manual = self._parse_manual(request.manual_operations)
         table = self._tables_repo.get(TableUuid(request.table_uuid))
         if table is None:
-            return _skip("dropped", MaintenanceSettings())
+            return _skip("dropped", MaintenanceSettings(), None)
         settings = table.settings or MaintenanceSettings()
         reason = _SKIP_REASONS.get(table.status)
         if reason is not None:
-            return _skip(reason, settings)
+            return _skip(reason, settings, table)
         ref = ReadCatalogGatewayTableRef(
             table.name.catalog, table.name.namespace, table.name.table
         )
@@ -96,7 +96,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
                 else table_observation_from_gateway(gateway_observation)
             )
             if observation is None or observation.table_uuid != table.id.value:
-                return _skip("not_found", settings)
+                return _skip("not_found", settings, table)
             if manual is not None:
                 plan = plan_manual_maintenance(manual)
             else:
@@ -130,6 +130,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             status="planned",
             reason=None,
             reconcile_interval_seconds=_interval(settings),
+            table_name=table.name.fully_qualified(),
             operations=operations,
         )
 
@@ -175,11 +176,12 @@ def _interval(settings: MaintenanceSettings) -> int:
 
 
 def _skip(
-    reason: str, settings: MaintenanceSettings
+    reason: str, settings: MaintenanceSettings, table: ManagedTable | None
 ) -> PlanTableMaintenanceUseCaseOutput:
     return PlanTableMaintenanceUseCaseOutput(
         status="skip",
         reason=reason,
         reconcile_interval_seconds=_interval(settings),
+        table_name=None if table is None else table.name.fully_qualified(),
         operations=[],
     )
