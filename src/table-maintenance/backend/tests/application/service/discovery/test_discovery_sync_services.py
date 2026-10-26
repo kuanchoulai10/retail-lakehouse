@@ -134,6 +134,7 @@ def test_sync_registers_include_match_with_template_copy(
     assert table.source_template_id == PolicyTemplateId("t-1")
     assert table.matched_rule_id == DiscoveryRuleId("r-1")
     assert _calls(signals) == [("u-1", "resume", True)]
+    assert [c.table_name for c in signals.calls] == ["iceberg.sales.orders"]
 
 
 def test_sync_exclude_match_and_no_match_register_nothing(
@@ -381,6 +382,7 @@ def test_table_hint_for_registered_table_signals_table_updated(
     out = hint.execute(_hint())
     assert out.action == "signalled"
     assert _calls(signals) == [("u-1", "table_updated", True)]
+    assert [c.table_name for c in signals.calls] == ["iceberg.sales.orders"]
 
 
 def test_table_hint_for_registered_paused_table_still_signals(

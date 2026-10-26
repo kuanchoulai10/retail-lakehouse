@@ -51,6 +51,7 @@ class SendTableSignalTemporalGateway(SendTableSignalGateway):
                 start_signal=input.signal,
                 start_signal_args=[input.payload],
                 id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
+                static_summary=input.table_name,
             )
             return
         try:

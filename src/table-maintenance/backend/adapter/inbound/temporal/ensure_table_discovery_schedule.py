@@ -17,6 +17,7 @@ from temporalio.client import (
     ScheduleUpdate,
 )
 
+from adapter.temporal_contracts.table_discovery_summary import table_discovery_summary
 from adapter.temporal_contracts.table_discovery_workflow_input import (
     TableDiscoveryWorkflowInput,
 )
@@ -74,6 +75,7 @@ def _schedule(catalog: str, *, paused: bool, interval: timedelta) -> Schedule:
             TableDiscoveryWorkflowInput(catalog),
             id=table_discovery_schedule_id(catalog),
             task_queue=TASK_QUEUE,
+            static_summary=table_discovery_summary(catalog, None),
         ),
         spec=ScheduleSpec(intervals=[ScheduleIntervalSpec(every=interval)]),
         policy=SchedulePolicy(overlap=ScheduleOverlapPolicy.SKIP),

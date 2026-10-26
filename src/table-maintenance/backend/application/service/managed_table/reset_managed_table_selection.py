@@ -88,6 +88,7 @@ class ResetManagedTableSelectionService(ResetManagedTableSelectionUseCase):
         self._signal_gateway.send(
             SendTableSignalGatewayInput(
                 table_uuid=table.id.value,
+                table_name=table.name.fully_qualified(),
                 signal=SIGNAL_RESUME if table.needs_reconcile_workflow else SIGNAL_STOP,
                 start_if_missing=table.needs_reconcile_workflow,
             )

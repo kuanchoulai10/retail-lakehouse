@@ -91,6 +91,10 @@ class ExcludeManagedTableService(ExcludeManagedTableUseCase):
                     table.exclude(now)
                     self._tables_repo.update(table)
         self._signal_gateway.send(
-            SendTableSignalGatewayInput(table_uuid=table.id.value, signal=SIGNAL_STOP)
+            SendTableSignalGatewayInput(
+                table_uuid=table.id.value,
+                table_name=table.name.fully_qualified(),
+                signal=SIGNAL_STOP,
+            )
         )
         return ExcludeManagedTableUseCaseOutput(**managed_table_output_fields(table))

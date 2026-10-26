@@ -15,6 +15,9 @@ from adapter.inbound.temporal.workflows.table_maintenance_attempt_policy import 
     TableMaintenanceAttemptPolicy,
 )
 from adapter.temporal_contracts.activity_names import PLAN_TABLE_MAINTENANCE
+from adapter.temporal_contracts.table_maintenance_summary import (
+    table_maintenance_summary,
+)
 from adapter.temporal_contracts.table_maintenance_workflow_input import (
     TableMaintenanceWorkflowInput,
 )
@@ -359,6 +362,9 @@ class TableReconciliationWorkflow:
                 id=child_id,
                 task_queue=TASK_QUEUE,
                 parent_close_policy=ParentClosePolicy.ABANDON,
+                static_summary=table_maintenance_summary(
+                    plan["table_name"], [op["operation"] for op in plan["operations"]]
+                ),
             )
             child.add_done_callback(_discard_outcome)
         except FailureError as error:

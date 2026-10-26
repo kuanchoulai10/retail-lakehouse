@@ -17,6 +17,9 @@ from adapter.temporal_contracts.admission_acquire_signal import AdmissionAcquire
 from adapter.temporal_contracts.table_maintenance_admission_input import (
     TableMaintenanceAdmissionInput,
 )
+from adapter.temporal_contracts.table_maintenance_admission_summary import (
+    table_maintenance_admission_summary,
+)
 from adapter.temporal_contracts.workflow_names import (
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
 )
@@ -59,6 +62,7 @@ class WorkflowSignalActivities:
                 lease_seconds=self._admission_lease_seconds,
             ),
             id=TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
+            static_summary=table_maintenance_admission_summary(self._admission_limit),
             task_queue=TASK_QUEUE,
             id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
             start_signal=ACQUIRE_SIGNAL_NAME,

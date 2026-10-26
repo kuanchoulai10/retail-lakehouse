@@ -34,3 +34,19 @@ def test_discovery_request_starts_one_adhoc_workflow(harness):
         "table-discovery:catalog=iceberg:namespace=sales:trigger=adhoc",
         "table-discovery:catalog=iceberg:trigger=adhoc",
     ]
+
+    async def summaries() -> dict[str, str | None]:
+        found = {}
+        for workflow_id in ids:
+            description = await harness.client.get_workflow_handle(
+                workflow_id
+            ).describe()
+            found[workflow_id] = await description.static_summary()
+        return found
+
+    assert harness.bridge.run(summaries) == {
+        "table-discovery:catalog=iceberg:namespace=sales:trigger=adhoc": (
+            "iceberg.sales · ad hoc"
+        ),
+        "table-discovery:catalog=iceberg:trigger=adhoc": "iceberg · ad hoc",
+    }

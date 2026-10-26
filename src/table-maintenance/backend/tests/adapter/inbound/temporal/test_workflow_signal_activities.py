@@ -68,7 +68,8 @@ class StubParent:
 
 
 async def _scenario() -> None:
-    async with await WorkflowEnvironment.start_time_skipping() as env:
+    # The time-skipping server drops the summary of a signal-with-start.
+    async with await WorkflowEnvironment.start_local() as env:
         queue = TASK_QUEUE
         activities = WorkflowSignalActivities(
             env.client, admission_limit=2, admission_lease_seconds=60
@@ -90,6 +91,10 @@ async def _scenario() -> None:
             )
             state = await admission.query("state")
             assert state == {"limit": 2, "lease": 60, "acquires": ["a", "b"]}
+            description = await admission.describe()
+            assert await description.static_summary() == (
+                "global Spark maintenance admission (limit=2)"
+            )
 
             parent = await env.client.start_workflow(
                 "StubParent", id="parent-1", task_queue=queue

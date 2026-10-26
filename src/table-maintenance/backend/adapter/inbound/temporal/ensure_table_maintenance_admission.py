@@ -9,6 +9,9 @@ from temporalio.common import WorkflowIDConflictPolicy
 from adapter.temporal_contracts.table_maintenance_admission_input import (
     TableMaintenanceAdmissionInput,
 )
+from adapter.temporal_contracts.table_maintenance_admission_summary import (
+    table_maintenance_admission_summary,
+)
 from adapter.temporal_contracts.workflow_names import (
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
 )
@@ -37,6 +40,7 @@ async def ensure_table_maintenance_admission(
         TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
         TableMaintenanceAdmissionInput(limit=limit, lease_seconds=lease_seconds),
         id=TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
+        static_summary=table_maintenance_admission_summary(limit),
         task_queue=TASK_QUEUE,
         id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
     )

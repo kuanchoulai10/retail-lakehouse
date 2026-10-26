@@ -22,5 +22,6 @@ class RecordingSendTableSignalGateway(SendTableSignalGateway):
         self.calls: list[SendTableSignalGatewayInput] = []
 
     def send(self, input: SendTableSignalGatewayInput) -> None:  # noqa: A002
-        """Record the call."""
+        """Record the call; every signal must name the table it is about."""
+        assert input.table_name, f"signal {input.signal} carries no table name"
         self.calls.append(input)

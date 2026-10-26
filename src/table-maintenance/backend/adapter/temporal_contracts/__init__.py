@@ -21,6 +21,15 @@ from adapter.temporal_contracts.operation_result_signal import OperationResultSi
 from adapter.temporal_contracts.table_reconciliation_workflow_input import (
     TableReconciliationWorkflowInput,
 )
+from adapter.temporal_contracts.table_discovery_summary import (
+    table_discovery_summary,
+)
+from adapter.temporal_contracts.table_maintenance_admission_summary import (
+    table_maintenance_admission_summary,
+)
+from adapter.temporal_contracts.table_maintenance_summary import (
+    table_maintenance_summary,
+)
 
 __all__ = [
     "DEFAULT_ATTEMPT_DEADLINE_SECONDS",
@@ -32,4 +41,7 @@ __all__ = [
     "TableMaintenanceWorkflowInput",
     "OperationResultSignal",
     "TableReconciliationWorkflowInput",
+    "table_discovery_summary",
+    "table_maintenance_admission_summary",
+    "table_maintenance_summary",
 ]

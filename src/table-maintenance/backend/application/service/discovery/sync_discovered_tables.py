@@ -167,6 +167,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         self._signal_gateway.send(
             SendTableSignalGatewayInput(
                 table_uuid=table.id.value,
+                table_name=table.name.fully_qualified(),
                 signal=SIGNAL_TABLE_UPDATED,
                 start_if_missing=True,
             )
@@ -190,7 +191,9 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
             if had_workflow:
                 self._signal_gateway.send(
                     SendTableSignalGatewayInput(
-                        table_uuid=table.id.value, signal=SIGNAL_STOP
+                        table_uuid=table.id.value,
+                        table_name=table.name.fully_qualified(),
+                        signal=SIGNAL_STOP,
                     )
                 )
         return dropped

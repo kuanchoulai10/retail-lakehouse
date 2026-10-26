@@ -38,6 +38,7 @@ def test_signal_with_start_creates_one_workflow_and_delivers_both(harness):
         gateway.send(
             SendTableSignalGatewayInput(
                 table_uuid="swl",
+                table_name="iceberg.sales.swl",
                 signal=SIGNAL_SETTINGS_CHANGED,
                 payload=payload,
                 start_if_missing=True,
@@ -67,13 +68,38 @@ def test_signal_with_start_creates_one_workflow_and_delivers_both(harness):
     assert [p for _, p in got] == [{"n": 1}, {"n": 2}]
 
 
+def test_signal_with_start_sets_the_table_summary_only_on_the_first_start(harness):
+    gateway = SendTableSignalTemporalGateway(harness.client, harness.bridge)
+    for table_name in ("iceberg.sales.orders", "iceberg.sales.renamed"):
+        gateway.send(
+            SendTableSignalGatewayInput(
+                table_uuid="summary",
+                signal=SIGNAL_SETTINGS_CHANGED,
+                start_if_missing=True,
+                table_name=table_name,
+            )
+        )
+
+    async def summary() -> str | None:
+        handle = harness.client.get_workflow_handle(
+            table_reconciliation_workflow_id("summary")
+        )
+        return await (await handle.describe()).static_summary()
+
+    assert harness.bridge.run(summary) == "iceberg.sales.orders"
+
+
 def test_plain_signal_reaches_existing_workflow(harness):
     gateway = SendTableSignalTemporalGateway(harness.client, harness.bridge)
     gateway.send(
-        SendTableSignalGatewayInput("plain", SIGNAL_SETTINGS_CHANGED, {}, True)
+        SendTableSignalGatewayInput(
+            "plain", "iceberg.sales.plain", SIGNAL_SETTINGS_CHANGED, {}, True
+        )
     )
     gateway.send(
-        SendTableSignalGatewayInput("plain", SIGNAL_TABLE_UPDATED, {"x": 1}, False)
+        SendTableSignalGatewayInput(
+            "plain", "iceberg.sales.plain", SIGNAL_TABLE_UPDATED, {"x": 1}, False
+        )
     )
     deadline = time.time() + 5
     got = _signals(harness, "plain")
@@ -86,5 +112,7 @@ def test_plain_signal_reaches_existing_workflow(harness):
 def test_plain_signal_to_missing_workflow_does_not_raise(harness):
     gateway = SendTableSignalTemporalGateway(harness.client, harness.bridge)
     gateway.send(
-        SendTableSignalGatewayInput("missing", SIGNAL_TABLE_UPDATED, {}, False)
+        SendTableSignalGatewayInput(
+            "missing", "iceberg.sales.missing", SIGNAL_TABLE_UPDATED, {}, False
+        )
     )

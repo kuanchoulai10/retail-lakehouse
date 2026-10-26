@@ -6,6 +6,7 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 
 import pytest
+from temporalio.api.common.v1 import Payload
 from temporalio.client import (
     RPCError,
     ScheduleActionStartWorkflow,
@@ -83,6 +84,13 @@ def test_discovery_schedule_created_once_and_paused_flag_applied(h):
     assert action.workflow == TABLE_DISCOVERY_WORKFLOW
     assert action.id == table_discovery_schedule_id(CATALOG)
     assert action.task_queue == TASK_QUEUE
+    assert isinstance(action.static_summary, Payload)
+    summary = action.static_summary
+
+    async def decoded_summary() -> list:
+        return await h.client.data_converter.decode([summary], [str])
+
+    assert h.bridge.run(decoded_summary) == [CATALOG]
 
     async def decoded_args() -> list:
         converter = h.client.data_converter

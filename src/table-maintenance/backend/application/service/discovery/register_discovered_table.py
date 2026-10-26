@@ -61,7 +61,10 @@ def register_discovered_table(  # noqa: PLR0913
     )
     signal_gateway.send(
         SendTableSignalGatewayInput(
-            table_uuid=uuid.value, signal=SIGNAL_RESUME, start_if_missing=True
+            table_uuid=uuid.value,
+            table_name=name.fully_qualified(),
+            signal=SIGNAL_RESUME,
+            start_if_missing=True,
         )
     )
     return RegistrationOutcome.REGISTERED

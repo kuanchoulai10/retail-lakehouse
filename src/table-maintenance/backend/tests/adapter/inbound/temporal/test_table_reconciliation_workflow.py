@@ -140,6 +140,10 @@ class Harness:
         handle = self.client.get_workflow_handle(_child_id(run_id))
         return await handle.query("started_with")
 
+    async def child_summary(self, run_id: str) -> str | None:
+        handle = self.client.get_workflow_handle(_child_id(run_id))
+        return await (await handle.describe()).static_summary()
+
     async def child_status(self, run_id: str) -> WorkflowExecutionStatus | None:
         handle = self.client.get_workflow_handle(_child_id(run_id))
         return (await handle.describe()).status
@@ -236,6 +240,15 @@ def test_signal_with_start_plans_and_starts_child_with_abandon_semantics():
         )
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+def test_child_summary_names_the_table_and_the_planned_operations():
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        run_id = await h.in_flight()
+        assert await h.child_summary(run_id) == (f"{TABLE} · {COMPACTION}, {EXPIRE}")
+
+    _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE))
 
 
 def test_trigger_now_while_in_flight_runs_after_finish():

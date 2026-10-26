@@ -59,6 +59,7 @@ class TriggerMaintenanceService(TriggerMaintenanceUseCase):
         self._signal_gateway.send(
             SendTableSignalGatewayInput(
                 table_uuid=table.id.value,
+                table_name=table.name.fully_qualified(),
                 signal=SIGNAL_TRIGGER_NOW,
                 payload={
                     "operations": [

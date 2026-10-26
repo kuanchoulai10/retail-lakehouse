@@ -40,7 +40,7 @@ class StubAdmission:
         return {"limit": self.input.limit, "lease": self.input.lease_seconds}
 
 
-async def _scenario() -> tuple[dict, str]:
+async def _scenario() -> tuple[dict, str, str | None]:
     async with await WorkflowEnvironment.start_time_skipping() as env:
         queue = TASK_QUEUE
         async with Worker(
@@ -60,16 +60,18 @@ async def _scenario() -> tuple[dict, str]:
             )
             state = await handle.query(StubAdmission.state)
             description = await handle.describe()
+            summary = await description.static_summary()
             await handle.terminate()
             status = description.status
-            return state, status.name if status is not None else ""
+            return state, status.name if status is not None else "", summary
 
 
 def test_starts_the_admission_workflow_once_and_keeps_a_running_one():
-    state, status = asyncio.run(_scenario())
+    state, status, summary = asyncio.run(_scenario())
 
     assert state == {"limit": 2, "lease": 60}
     assert status == "RUNNING"
+    assert summary == "global Spark maintenance admission (limit=2)"
 
 
 def test_task_queue_is_the_domain_constant_not_a_parameter():

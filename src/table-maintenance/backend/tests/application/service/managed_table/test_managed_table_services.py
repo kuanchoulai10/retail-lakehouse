@@ -278,6 +278,7 @@ def test_include_new_table_registers_manual_and_starts_workflow(
     assert out.source_template_id == "t-1"
     assert out.settings == maintenance_settings_to_dict(template.settings)
     assert [_signal(c) for c in signals.calls] == [("u-9", "resume", {}, True)]
+    assert [c.table_name for c in signals.calls] == ["iceberg.sales.orders"]
 
 
 def test_include_unknown_table_not_found(

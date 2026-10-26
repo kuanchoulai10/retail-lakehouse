@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from temporalio.common import WorkflowIDConflictPolicy
 
+from adapter.temporal_contracts.table_discovery_summary import table_discovery_summary
 from adapter.temporal_contracts.table_discovery_workflow_input import (
     TableDiscoveryWorkflowInput,
 )
@@ -47,4 +48,7 @@ class SendDiscoveryRequestTemporalGateway(SendDiscoveryRequestGateway):
             id=table_discovery_adhoc_workflow_id(input.catalog, input.namespace),
             task_queue=TASK_QUEUE,
             id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
+            static_summary=table_discovery_summary(
+                input.catalog, input.namespace, adhoc=True
+            ),
         )

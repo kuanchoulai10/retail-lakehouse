@@ -98,7 +98,10 @@ class IncludeManagedTableService(IncludeManagedTableUseCase):
                 self._tables_repo.update(table)
         self._signal_gateway.send(
             SendTableSignalGatewayInput(
-                table_uuid=uuid.value, signal=SIGNAL_RESUME, start_if_missing=True
+                table_uuid=uuid.value,
+                table_name=name.fully_qualified(),
+                signal=SIGNAL_RESUME,
+                start_if_missing=True,
             )
         )
         return IncludeManagedTableUseCaseOutput(**managed_table_output_fields(table))
