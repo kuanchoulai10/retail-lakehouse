@@ -1,4 +1,4 @@
-"""Define the TableReconcileWorkflowInput workflow contract."""
+"""Define the TableReconciliationWorkflowInput workflow contract."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class TableReconcileWorkflowInput:
-    """Identify the table a reconcile workflow manages and carry its loop state.
+class TableReconciliationWorkflowInput:
+    """Identify the table a reconciliation workflow manages and carry its loop state.
 
     A fresh workflow passes only ``table_uuid``; continue-as-new carries the rest.
     ``in_flight_run_id`` is the maintenance run still awaiting its

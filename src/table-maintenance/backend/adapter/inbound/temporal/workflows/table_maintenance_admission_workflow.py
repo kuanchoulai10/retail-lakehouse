@@ -1,4 +1,4 @@
-"""Define the CapacityLimiterWorkflow."""
+"""Define the TableMaintenanceAdmissionWorkflow."""
 
 from __future__ import annotations
 
@@ -7,30 +7,34 @@ from datetime import datetime, timedelta
 from temporalio import workflow
 from temporalio.exceptions import FailureError
 
-from adapter.temporal_contracts.capacity_acquire_signal import CapacityAcquireSignal
-from adapter.temporal_contracts.capacity_limiter_input import CapacityLimiterInput
-from adapter.temporal_contracts.capacity_release_signal import CapacityReleaseSignal
-from adapter.temporal_contracts.workflow_names import CAPACITY_LIMITER_WORKFLOW
+from adapter.temporal_contracts.admission_acquire_signal import AdmissionAcquireSignal
+from adapter.temporal_contracts.table_maintenance_admission_input import (
+    TableMaintenanceAdmissionInput,
+)
+from adapter.temporal_contracts.admission_release_signal import AdmissionReleaseSignal
+from adapter.temporal_contracts.workflow_names import (
+    TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
+)
 from application.domain.model.maintenance.workflow_ids import (
-    SIGNAL_CAPACITY_ACQUIRE,
-    SIGNAL_CAPACITY_GRANTED,
-    SIGNAL_CAPACITY_RELEASE,
+    SIGNAL_ADMISSION_ACQUIRE,
+    SIGNAL_ADMISSION_GRANTED,
+    SIGNAL_ADMISSION_RELEASE,
 )
 
 
-@workflow.defn(name=CAPACITY_LIMITER_WORKFLOW)
-class CapacityLimiterWorkflow:
-    """Grant a bounded number of Spark capacity slots, first come first served.
+@workflow.defn(name=TABLE_MAINTENANCE_ADMISSION_WORKFLOW)
+class TableMaintenanceAdmissionWorkflow:
+    """Grant a bounded number of Spark admission slots, first come first served.
 
-    A requester signals ``acquire``; when a slot is free the limiter records it as a
-    holder and signals ``capacity_granted(request_id)`` back to the requester. A
+    A requester signals ``acquire``; when a slot is free the workflow records it as
+    a holder and signals ``admission_granted(request_id)`` back to the requester. A
     holder frees its slot with ``release``, or loses it once its lease runs out, so
-    a crashed requester cannot hold capacity forever. A requester that no longer
+    a crashed requester cannot hold a slot forever. A requester that no longer
     exists when granted is dropped and the next one is granted.
     """
 
     @workflow.init
-    def __init__(self, input: CapacityLimiterInput) -> None:  # noqa: A002
+    def __init__(self, input: TableMaintenanceAdmissionInput) -> None:  # noqa: A002
         """Restore the limit, lease, holders and queue carried by the input."""
         self._limit = input.limit
         self._lease_seconds = input.lease_seconds
@@ -42,7 +46,7 @@ class CapacityLimiterWorkflow:
         self._changed = False
 
     @workflow.run
-    async def run(self, input: CapacityLimiterInput) -> None:  # noqa: A002
+    async def run(self, input: TableMaintenanceAdmissionInput) -> None:  # noqa: A002
         """Grant, evict and wait for signals until continue-as-new is suggested."""
         while True:
             self._changed = False
@@ -54,7 +58,7 @@ class CapacityLimiterWorkflow:
                 while self._regrants:
                     await self._resend_grants()
                 workflow.continue_as_new(
-                    CapacityLimiterInput(
+                    TableMaintenanceAdmissionInput(
                         limit=self._limit,
                         lease_seconds=self._lease_seconds,
                         holders=self._holders,
@@ -68,8 +72,8 @@ class CapacityLimiterWorkflow:
             except TimeoutError:
                 pass
 
-    @workflow.signal(name=SIGNAL_CAPACITY_ACQUIRE)
-    def acquire(self, signal: CapacityAcquireSignal) -> None:
+    @workflow.signal(name=SIGNAL_ADMISSION_ACQUIRE)
+    def acquire(self, signal: AdmissionAcquireSignal) -> None:
         """Queue a request; a held one has its grant re-sent, a queued one is kept."""
         if signal.request_id in self._holders:
             self._regrants.append(signal.request_id)
@@ -82,8 +86,8 @@ class CapacityLimiterWorkflow:
             )
         self._changed = True
 
-    @workflow.signal(name=SIGNAL_CAPACITY_RELEASE)
-    def release(self, signal: CapacityReleaseSignal) -> None:
+    @workflow.signal(name=SIGNAL_ADMISSION_RELEASE)
+    def release(self, signal: AdmissionReleaseSignal) -> None:
         """Free a held slot or withdraw a queued request; unknown ids are ignored."""
         self._holders.pop(signal.request_id, None)
         self._queue = [e for e in self._queue if e["request_id"] != signal.request_id]
@@ -99,7 +103,7 @@ class CapacityLimiterWorkflow:
         for request_id, holder in list(self._holders.items()):
             if self._expires_at(holder) <= now:
                 workflow.logger.warning(
-                    "capacity lease of %s expired; evicting %s",
+                    "admission lease of %s expired; evicting %s",
                     request_id,
                     holder["requester_workflow_id"],
                 )
@@ -129,7 +133,7 @@ class CapacityLimiterWorkflow:
     async def _notify(self, requester_workflow_id: str, request_id: str) -> bool:
         handle = workflow.get_external_workflow_handle(requester_workflow_id)
         try:
-            await handle.signal(SIGNAL_CAPACITY_GRANTED, request_id)
+            await handle.signal(SIGNAL_ADMISSION_GRANTED, request_id)
         except FailureError as error:
             workflow.logger.warning(
                 "requester %s of %s is gone (%s); dropping it",

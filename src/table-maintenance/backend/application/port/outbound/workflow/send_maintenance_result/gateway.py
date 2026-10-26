@@ -18,4 +18,4 @@ class SendMaintenanceResultGateway(Gateway):
 
     @abstractmethod
     def send(self, input: SendMaintenanceResultGatewayInput) -> None:  # noqa: A002
-        """Signal the maintenance workflow with the result."""
+        """Signal the table maintenance workflow with the result."""

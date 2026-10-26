@@ -1,4 +1,4 @@
-"""Define the MaintenanceAttemptPolicy."""
+"""Define the TableMaintenanceAttemptPolicy."""
 
 from __future__ import annotations
 
@@ -11,12 +11,12 @@ from adapter.temporal_contracts.default_attempt_deadline_seconds import (
 
 
 @dataclass(frozen=True)
-class MaintenanceAttemptPolicy:
+class TableMaintenanceAttemptPolicy:
     """Describe how a maintenance run attempts each planned operation.
 
     An operation gets ``max_attempts`` attempts, each bounded by
     ``attempt_deadline`` from its submit, with ``backoffs[n - 1]`` slept after a
-    failed attempt ``n``. The reconcile workflow derives from the same policy how
+    failed attempt ``n``. The reconciliation workflow derives from the same policy how
     long a run in flight may take before it is given up.
     """
 

@@ -91,7 +91,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         Only a catalog-wide sync (no namespace) marks missing tables dropped, since
         a namespace scan cannot tell a drop from a move. Known tables are never
         re-decided, and a table that fails is counted in ``skipped``. A
-        catalog-wide sync also signal-with-starts the reconcile workflow of every
+        catalog-wide sync also signal-with-starts the reconciliation workflow of every
         known live table that needs one (counted in ``ensured``), so a table whose
         workflow was never started, or was lost, is picked up again.
         """

@@ -10,7 +10,7 @@ from adapter.outbound.workflow.temporal.send_table_signal_temporal_gateway impor
 from application.domain.model.maintenance.workflow_ids import (
     SIGNAL_SETTINGS_CHANGED,
     SIGNAL_TABLE_UPDATED,
-    table_reconcile_workflow_id,
+    table_reconciliation_workflow_id,
 )
 from application.port.outbound.workflow.send_table_signal import (
     SendTableSignalGatewayInput,
@@ -19,7 +19,7 @@ from tests.adapter.outbound.temporal.temporal_harness import TemporalHarness
 
 
 def _signals(h: TemporalHarness, table_uuid: str) -> list:
-    handle = h.client.get_workflow_handle(table_reconcile_workflow_id(table_uuid))
+    handle = h.client.get_workflow_handle(table_reconciliation_workflow_id(table_uuid))
 
     async def query() -> list:
         return await handle.query("signals")

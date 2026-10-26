@@ -1,4 +1,4 @@
-"""Test the TableReconcileWorkflow on a time-skipping Temporal test server."""
+"""Test the TableReconciliationWorkflow on a time-skipping Temporal test server."""
 
 from __future__ import annotations
 
@@ -13,11 +13,11 @@ from temporalio.exceptions import WorkflowAlreadyStartedError
 from temporalio.worker import UnsandboxedWorkflowRunner, Worker
 from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner
 
-from adapter.inbound.temporal.workflows import TableReconcileWorkflow
-from adapter.temporal_contracts.table_reconcile_workflow_input import (
-    TableReconcileWorkflowInput,
+from adapter.inbound.temporal.workflows import TableReconciliationWorkflow
+from adapter.temporal_contracts.table_reconciliation_workflow_input import (
+    TableReconciliationWorkflowInput,
 )
-from adapter.temporal_contracts.workflow_names import TABLE_RECONCILE_WORKFLOW
+from adapter.temporal_contracts.workflow_names import TABLE_RECONCILIATION_WORKFLOW
 from application.domain.model.maintenance.workflow_ids import (
     SIGNAL_MAINTENANCE_FINISHED,
     SIGNAL_PAUSE,
@@ -26,12 +26,12 @@ from application.domain.model.maintenance.workflow_ids import (
     SIGNAL_STOP,
     SIGNAL_TRIGGER_NOW,
     TASK_QUEUE,
-    maintenance_workflow_id,
-    table_reconcile_workflow_id,
+    table_maintenance_workflow_id,
+    table_reconciliation_workflow_id,
 )
 from tests.adapter.inbound.temporal.eventually import eventually
-from tests.adapter.inbound.temporal.maintenance_stub_workflow import (
-    MaintenanceStubWorkflow,
+from tests.adapter.inbound.temporal.table_maintenance_stub_workflow import (
+    TableMaintenanceStubWorkflow,
 )
 from tests.adapter.inbound.temporal.scripted_plan_activity import ScriptedPlanActivity
 
@@ -43,7 +43,7 @@ if TYPE_CHECKING:
     from temporalio.worker import WorkflowRunner
 
 UUID = "u1"
-WORKFLOW_ID = table_reconcile_workflow_id(UUID)
+WORKFLOW_ID = table_reconciliation_workflow_id(UUID)
 COMPACTION = "rewrite_data_files"
 EXPIRE = "expire_snapshots"
 REAL_TIMEOUT_SECONDS = 20
@@ -90,8 +90,8 @@ class Harness:
             options = {"start_signal": start_signal, "start_signal_args": [{}]}
             self.sent += 1
         self.handle = await self.client.start_workflow(
-            TABLE_RECONCILE_WORKFLOW,
-            TableReconcileWorkflowInput(table_uuid=UUID, **fields),
+            TABLE_RECONCILIATION_WORKFLOW,
+            TableReconciliationWorkflowInput(table_uuid=UUID, **fields),
             id=WORKFLOW_ID,
             task_queue=TASK_QUEUE,
             **options,
@@ -130,15 +130,15 @@ class Harness:
         )
 
     async def child(self, run_id: str) -> dict[str, Any]:
-        handle = self.client.get_workflow_handle(maintenance_workflow_id(run_id))
+        handle = self.client.get_workflow_handle(table_maintenance_workflow_id(run_id))
         return await handle.query("started_with")
 
     async def child_status(self, run_id: str) -> WorkflowExecutionStatus | None:
-        handle = self.client.get_workflow_handle(maintenance_workflow_id(run_id))
+        handle = self.client.get_workflow_handle(table_maintenance_workflow_id(run_id))
         return (await handle.describe()).status
 
     async def complete_child(self, run_id: str) -> None:
-        handle = self.client.get_workflow_handle(maintenance_workflow_id(run_id))
+        handle = self.client.get_workflow_handle(table_maintenance_workflow_id(run_id))
         await handle.signal("complete")
         self.sent += 1
 
@@ -178,7 +178,7 @@ def _run(
             async with Worker(
                 env.client,
                 task_queue=TASK_QUEUE,
-                workflows=[TableReconcileWorkflow, MaintenanceStubWorkflow],
+                workflows=[TableReconciliationWorkflow, TableMaintenanceStubWorkflow],
                 activities=[plans.plan_table_maintenance],
                 workflow_runner=runner or SandboxedWorkflowRunner(),
             ):

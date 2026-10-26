@@ -5,13 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from adapter.inbound.temporal.activities import (
-    DiscoveryActivities,
-    MaintenanceActivities,
-    ReconcileActivities,
+    TableDiscoveryActivities,
+    TableMaintenanceActivities,
+    TableReconciliationActivities,
     WorkflowSignalActivities,
 )
 from bootstrap.container.activities import Activities
-from bootstrap.container.capacity_lease_seconds import CAPACITY_LEASE_SECONDS
+from bootstrap.container.admission_lease_seconds import ADMISSION_LEASE_SECONDS
 
 if TYPE_CHECKING:
     from temporalio.client import Client
@@ -25,21 +25,21 @@ def build_activities(
 ) -> Activities:
     """Build the activities; ``client`` is the worker's own, on the worker's loop."""
     return Activities(
-        reconcile=ReconcileActivities(
+        reconciliation=TableReconciliationActivities(
             plan=use_cases.plan_table_maintenance,
             submit=use_cases.submit_maintenance_operation,
             status=use_cases.get_maintenance_job_status,
             delete=use_cases.delete_maintenance_job,
             callback_base_url=settings.callback_base_url,
         ),
-        maintenance=MaintenanceActivities(
+        maintenance=TableMaintenanceActivities(
             create_run=use_cases.create_maintenance_run,
             record_result=use_cases.record_maintenance_operation_result,
         ),
-        discovery=DiscoveryActivities(sync=use_cases.sync_discovered_tables),
+        discovery=TableDiscoveryActivities(sync=use_cases.sync_discovered_tables),
         workflow_signal=WorkflowSignalActivities(
             client,
-            capacity_limit=settings.capacity_limit,
-            capacity_lease_seconds=CAPACITY_LEASE_SECONDS,
+            admission_limit=settings.admission_limit,
+            admission_lease_seconds=ADMISSION_LEASE_SECONDS,
         ),
     )

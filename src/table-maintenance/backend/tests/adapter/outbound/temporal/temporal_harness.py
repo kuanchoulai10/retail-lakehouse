@@ -14,14 +14,14 @@ from temporalio.worker import UnsandboxedWorkflowRunner, Worker
 
 from adapter.outbound.temporal.async_loop_bridge import AsyncLoopBridge
 from adapter.temporal_contracts.workflow_names import (
-    DISCOVERY_WORKFLOW,
-    MAINTENANCE_WORKFLOW,
-    TABLE_RECONCILE_WORKFLOW,
+    TABLE_DISCOVERY_WORKFLOW,
+    TABLE_MAINTENANCE_WORKFLOW,
+    TABLE_RECONCILIATION_WORKFLOW,
 )
 from application.domain.model.maintenance.workflow_ids import TASK_QUEUE
 
 
-@workflow.defn(name=TABLE_RECONCILE_WORKFLOW)
+@workflow.defn(name=TABLE_RECONCILIATION_WORKFLOW)
 class StubTableReconcileWorkflow:
     def __init__(self) -> None:
         self.received: list[tuple[str, dict]] = []
@@ -43,7 +43,7 @@ class StubTableReconcileWorkflow:
         return self.received
 
 
-@workflow.defn(name=MAINTENANCE_WORKFLOW)
+@workflow.defn(name=TABLE_MAINTENANCE_WORKFLOW)
 class StubMaintenanceWorkflow:
     def __init__(self) -> None:
         self.results: list[dict] = []
@@ -61,7 +61,7 @@ class StubMaintenanceWorkflow:
         return self.results
 
 
-@workflow.defn(name=DISCOVERY_WORKFLOW)
+@workflow.defn(name=TABLE_DISCOVERY_WORKFLOW)
 class StubDiscoveryWorkflow:
     @workflow.run
     async def run(self, input: dict) -> None:

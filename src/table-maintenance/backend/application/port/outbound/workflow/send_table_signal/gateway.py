@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class SendTableSignalGateway(Gateway):
-    """Signal the reconcile workflow of a table."""
+    """Signal the reconciliation workflow of a table."""
 
     @abstractmethod
     def send(self, input: SendTableSignalGatewayInput) -> None:  # noqa: A002

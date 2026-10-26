@@ -1,4 +1,4 @@
-"""Test ensure_discovery_schedule against a local Temporal dev server."""
+"""Test ensure_table_discovery_schedule against a local Temporal dev server."""
 
 from __future__ import annotations
 
@@ -12,16 +12,16 @@ from temporalio.client import (
     ScheduleOverlapPolicy,
 )
 
-from adapter.inbound.temporal.ensure_discovery_schedule import (
-    ensure_discovery_schedule,
+from adapter.inbound.temporal.ensure_table_discovery_schedule import (
+    ensure_table_discovery_schedule,
 )
-from adapter.temporal_contracts.discovery_workflow_input import (
-    DiscoveryWorkflowInput,
+from adapter.temporal_contracts.table_discovery_workflow_input import (
+    TableDiscoveryWorkflowInput,
 )
-from adapter.temporal_contracts.workflow_names import DISCOVERY_WORKFLOW
+from adapter.temporal_contracts.workflow_names import TABLE_DISCOVERY_WORKFLOW
 from application.domain.model.maintenance.workflow_ids import (
     TASK_QUEUE,
-    discovery_schedule_id,
+    table_discovery_schedule_id,
 )
 from tests.adapter.outbound.temporal.temporal_harness import harness  # noqa: F401
 
@@ -41,7 +41,9 @@ def h(harness: TemporalHarness) -> Iterator[TemporalHarness]:  # noqa: F811
 
     async def delete() -> None:
         for catalog in (CATALOG, f"{CATALOG}-2"):
-            handle = harness.client.get_schedule_handle(discovery_schedule_id(catalog))
+            handle = harness.client.get_schedule_handle(
+                table_discovery_schedule_id(catalog)
+            )
             try:
                 await handle.delete()
             except RPCError:
@@ -58,14 +60,14 @@ def _ensure(
     interval: timedelta = timedelta(minutes=10),
 ) -> None:
     h.bridge.run(
-        lambda: ensure_discovery_schedule(
+        lambda: ensure_table_discovery_schedule(
             h.client, catalogs, paused=paused, interval=interval
         )
     )
 
 
 def _describe(h: TemporalHarness, catalog: str) -> ScheduleDescription:
-    handle = h.client.get_schedule_handle(discovery_schedule_id(catalog))
+    handle = h.client.get_schedule_handle(table_discovery_schedule_id(catalog))
     return h.bridge.run(handle.describe)
 
 
@@ -78,15 +80,15 @@ def test_discovery_schedule_created_once_and_paused_flag_applied(h):
     assert desc.schedule.policy.overlap == ScheduleOverlapPolicy.SKIP
     action = desc.schedule.action
     assert isinstance(action, ScheduleActionStartWorkflow)
-    assert action.workflow == DISCOVERY_WORKFLOW
-    assert action.id == discovery_schedule_id(CATALOG)
+    assert action.workflow == TABLE_DISCOVERY_WORKFLOW
+    assert action.id == table_discovery_schedule_id(CATALOG)
     assert action.task_queue == TASK_QUEUE
 
     async def decoded_args() -> list:
         converter = h.client.data_converter
-        return await converter.decode(action.args, [DiscoveryWorkflowInput])
+        return await converter.decode(action.args, [TableDiscoveryWorkflowInput])
 
-    assert h.bridge.run(decoded_args) == [DiscoveryWorkflowInput(CATALOG)]
+    assert h.bridge.run(decoded_args) == [TableDiscoveryWorkflowInput(CATALOG)]
 
     _ensure(h, [CATALOG], paused=True, interval=timedelta(minutes=5))
     desc = _describe(h, CATALOG)

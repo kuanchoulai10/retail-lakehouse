@@ -27,5 +27,5 @@ data:
   GLAC_SPARK__SPARK_VERSION: {{ .Values.spark.sparkVersion | quote }}
   GLAC_SPARK__ICEBERG_VERSION: {{ .Values.spark.icebergVersion | quote }}
   GLAC_CALLBACK_BASE_URL: http://table-maintenance-api.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.api.port }}
-  GLAC_CAPACITY_LIMIT: {{ .Values.worker.capacityLimit | quote }}
+  GLAC_ADMISSION_LIMIT: {{ .Values.worker.admissionLimit | quote }}
   GLAC_DISCOVERY_INTERVAL_SECONDS: {{ .Values.worker.discoveryIntervalSeconds | quote }}

@@ -1,4 +1,4 @@
-"""Define the DiscoveryWorkflow."""
+"""Define the TableDiscoveryWorkflow."""
 
 from __future__ import annotations
 
@@ -9,10 +9,10 @@ from temporalio import workflow
 from temporalio.common import RetryPolicy
 
 from adapter.temporal_contracts.activity_names import SYNC_DISCOVERED_TABLES
-from adapter.temporal_contracts.discovery_workflow_input import (
-    DiscoveryWorkflowInput,
+from adapter.temporal_contracts.table_discovery_workflow_input import (
+    TableDiscoveryWorkflowInput,
 )
-from adapter.temporal_contracts.workflow_names import DISCOVERY_WORKFLOW
+from adapter.temporal_contracts.workflow_names import TABLE_DISCOVERY_WORKFLOW
 
 _SYNC_TIMEOUT = timedelta(minutes=10)
 _ACTIVITY_RETRY = RetryPolicy(
@@ -20,8 +20,8 @@ _ACTIVITY_RETRY = RetryPolicy(
 )
 
 
-@workflow.defn(name=DISCOVERY_WORKFLOW)
-class DiscoveryWorkflow:
+@workflow.defn(name=TABLE_DISCOVERY_WORKFLOW)
+class TableDiscoveryWorkflow:
     """Synchronise the table registry with one catalog or namespace.
 
     A failure after the activity's retries fails this run; the schedule starts
@@ -29,7 +29,7 @@ class DiscoveryWorkflow:
     """
 
     @workflow.run
-    async def run(self, input: DiscoveryWorkflowInput) -> dict[str, Any]:  # noqa: A002
+    async def run(self, input: TableDiscoveryWorkflowInput) -> dict[str, Any]:  # noqa: A002
         """Run ``sync_discovered_tables`` and return its output."""
         return await workflow.execute_activity(
             SYNC_DISCOVERED_TABLES,

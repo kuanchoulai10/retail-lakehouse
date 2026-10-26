@@ -8,21 +8,21 @@ from temporalio import activity
 from temporalio.worker import Worker
 
 from adapter.inbound.temporal.activities import (
-    DiscoveryActivities,
-    MaintenanceActivities,
-    ReconcileActivities,
+    TableDiscoveryActivities,
+    TableMaintenanceActivities,
+    TableReconciliationActivities,
     WorkflowSignalActivities,
 )
 from adapter.inbound.temporal.workflows import (
-    CapacityLimiterWorkflow,
-    DiscoveryWorkflow,
-    MaintenanceWorkflow,
-    TableReconcileWorkflow,
+    TableMaintenanceAdmissionWorkflow,
+    TableDiscoveryWorkflow,
+    TableMaintenanceWorkflow,
+    TableReconciliationWorkflow,
 )
 from adapter.temporal_contracts import activity_names
 from application.domain.model.maintenance.workflow_ids import TASK_QUEUE
 from bootstrap.container import (
-    CAPACITY_LEASE_SECONDS,
+    ADMISSION_LEASE_SECONDS,
     build_activities,
     build_repositories,
     build_use_cases,
@@ -62,18 +62,18 @@ def test_activities_cover_every_activity_name_once():
     assert sorted(names) == sorted(ALL_ACTIVITY_NAMES)
 
 
-def test_activities_carry_the_callback_url_and_capacity_settings():
-    activities = _activities(callback_base_url="http://api:8000", capacity_limit=5)
+def test_activities_carry_the_callback_url_and_admission_settings():
+    activities = _activities(callback_base_url="http://api:8000", admission_limit=5)
 
-    assert isinstance(activities.reconcile, ReconcileActivities)
-    assert isinstance(activities.maintenance, MaintenanceActivities)
-    assert isinstance(activities.discovery, DiscoveryActivities)
+    assert isinstance(activities.reconciliation, TableReconciliationActivities)
+    assert isinstance(activities.maintenance, TableMaintenanceActivities)
+    assert isinstance(activities.discovery, TableDiscoveryActivities)
     assert isinstance(activities.workflow_signal, WorkflowSignalActivities)
-    assert activities.reconcile._callback_base_url == "http://api:8000"  # noqa: SLF001
-    assert activities.workflow_signal._capacity_limit == 5  # noqa: SLF001
+    assert activities.reconciliation._callback_base_url == "http://api:8000"  # noqa: SLF001
+    assert activities.workflow_signal._admission_limit == 5  # noqa: SLF001
     assert (
-        activities.workflow_signal._capacity_lease_seconds  # noqa: SLF001
-        == CAPACITY_LEASE_SECONDS
+        activities.workflow_signal._admission_lease_seconds  # noqa: SLF001
+        == ADMISSION_LEASE_SECONDS
         == 22500
     )
 
@@ -104,10 +104,10 @@ def test_worker_registers_all_workflows_and_activities():
     assert factory.args == (client,)
     assert factory.kwargs["task_queue"] == TASK_QUEUE == "table-maintenance"
     assert set(factory.kwargs["workflows"]) == {
-        TableReconcileWorkflow,
-        DiscoveryWorkflow,
-        MaintenanceWorkflow,
-        CapacityLimiterWorkflow,
+        TableReconciliationWorkflow,
+        TableDiscoveryWorkflow,
+        TableMaintenanceWorkflow,
+        TableMaintenanceAdmissionWorkflow,
     }
     names = {_activity_name(fn) for fn in factory.kwargs["activities"]}
     assert names == ALL_ACTIVITY_NAMES

@@ -1,4 +1,4 @@
-"""Send a signal to a table's reconcile workflow."""
+"""Send a signal to a table's reconciliation workflow."""
 
 from application.port.outbound.workflow.send_table_signal.gateway import (
     SendTableSignalGateway,

@@ -1,4 +1,4 @@
-"""Define scripted fakes of the activities the maintenance workflow calls."""
+"""Define scripted fakes of the activities the table maintenance workflow calls."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from adapter.temporal_contracts.activity_names import (
 from adapter.temporal_contracts.operation_result_signal import OperationResultSignal
 from application.domain.model.maintenance.workflow_ids import (
     SIGNAL_OPERATION_RESULT,
-    maintenance_workflow_id,
+    table_maintenance_workflow_id,
 )
 
 if TYPE_CHECKING:
@@ -81,7 +81,7 @@ class ScriptedMaintenanceActivities:
                 self.submit_errors[key], type="ConflictError", non_retryable=True
             )
         handle = self._client.get_workflow_handle(
-            maintenance_workflow_id(request["run_id"])
+            table_maintenance_workflow_id(request["run_id"])
         )
         for attempt, succeeded, error in self.callbacks.get(key, []):
             await handle.signal(

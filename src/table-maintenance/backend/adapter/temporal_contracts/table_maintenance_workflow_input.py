@@ -1,4 +1,4 @@
-"""Define the MaintenanceWorkflowInput workflow contract."""
+"""Define the TableMaintenanceWorkflowInput workflow contract."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from adapter.temporal_contracts.default_attempt_deadline_seconds import (
 
 
 @dataclass(frozen=True)
-class MaintenanceWorkflowInput:
+class TableMaintenanceWorkflowInput:
     """Carry one maintenance run: its identity, its parent and its plan.
 
     ``plan`` is the ``plan_table_maintenance`` activity output, with ``operations``

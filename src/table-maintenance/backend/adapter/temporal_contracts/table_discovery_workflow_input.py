@@ -1,4 +1,4 @@
-"""Define the DiscoveryWorkflowInput workflow contract."""
+"""Define the TableDiscoveryWorkflowInput workflow contract."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
-class DiscoveryWorkflowInput:
+class TableDiscoveryWorkflowInput:
     """Scope a discovery run to a catalog or one namespace."""
 
     catalog: str

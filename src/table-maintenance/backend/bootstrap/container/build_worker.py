@@ -8,10 +8,10 @@ from typing import TYPE_CHECKING
 from temporalio.worker import Worker
 
 from adapter.inbound.temporal.workflows import (
-    CapacityLimiterWorkflow,
-    DiscoveryWorkflow,
-    MaintenanceWorkflow,
-    TableReconcileWorkflow,
+    TableMaintenanceAdmissionWorkflow,
+    TableDiscoveryWorkflow,
+    TableMaintenanceWorkflow,
+    TableReconciliationWorkflow,
 )
 from application.domain.model.maintenance.workflow_ids import TASK_QUEUE
 
@@ -24,10 +24,10 @@ if TYPE_CHECKING:
     from bootstrap.container.activities import Activities
 
 WORKFLOWS = (
-    TableReconcileWorkflow,
-    DiscoveryWorkflow,
-    MaintenanceWorkflow,
-    CapacityLimiterWorkflow,
+    TableReconciliationWorkflow,
+    TableDiscoveryWorkflow,
+    TableMaintenanceWorkflow,
+    TableMaintenanceAdmissionWorkflow,
 )
 GRACEFUL_SHUTDOWN = timedelta(seconds=30)
 

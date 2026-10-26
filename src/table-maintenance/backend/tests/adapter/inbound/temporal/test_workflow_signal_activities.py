@@ -10,29 +10,33 @@ from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import UnsandboxedWorkflowRunner, Worker
 
 from adapter.inbound.temporal.activities import WorkflowSignalActivities
-from adapter.temporal_contracts.capacity_acquire_signal import CapacityAcquireSignal
-from adapter.temporal_contracts.capacity_limiter_input import CapacityLimiterInput
-from adapter.temporal_contracts.workflow_names import CAPACITY_LIMITER_WORKFLOW
+from adapter.temporal_contracts.admission_acquire_signal import AdmissionAcquireSignal
+from adapter.temporal_contracts.table_maintenance_admission_input import (
+    TableMaintenanceAdmissionInput,
+)
+from adapter.temporal_contracts.workflow_names import (
+    TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
+)
 from application.domain.model.maintenance.workflow_ids import (
-    CAPACITY_WORKFLOW_ID,
+    TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
     SIGNAL_MAINTENANCE_FINISHED,
     TASK_QUEUE,
 )
 
 
-@workflow.defn(name=CAPACITY_LIMITER_WORKFLOW)
-class StubLimiter:
+@workflow.defn(name=TABLE_MAINTENANCE_ADMISSION_WORKFLOW)
+class StubAdmission:
     def __init__(self) -> None:
-        self.acquires: list[CapacityAcquireSignal] = []
-        self.input: CapacityLimiterInput | None = None
+        self.acquires: list[AdmissionAcquireSignal] = []
+        self.input: TableMaintenanceAdmissionInput | None = None
 
     @workflow.run
-    async def run(self, input: CapacityLimiterInput) -> None:
+    async def run(self, input: TableMaintenanceAdmissionInput) -> None:
         self.input = input
         await workflow.wait_condition(lambda: False)
 
     @workflow.signal(name="acquire")
-    def acquire(self, signal: CapacityAcquireSignal) -> None:
+    def acquire(self, signal: AdmissionAcquireSignal) -> None:
         self.acquires.append(signal)
 
     @workflow.query
@@ -67,22 +71,24 @@ async def _scenario() -> None:
     async with await WorkflowEnvironment.start_time_skipping() as env:
         queue = TASK_QUEUE
         activities = WorkflowSignalActivities(
-            env.client, capacity_limit=2, capacity_lease_seconds=60
+            env.client, admission_limit=2, admission_lease_seconds=60
         )
         async with Worker(
             env.client,
             task_queue=queue,
-            workflows=[StubLimiter, StubParent],
+            workflows=[StubAdmission, StubParent],
             workflow_runner=UnsandboxedWorkflowRunner(),
         ):
             act_env = ActivityEnvironment()
             for request_id in ("a", "b"):
                 await act_env.run(
-                    activities.signal_capacity_acquire,
+                    activities.signal_admission_acquire,
                     {"request_id": request_id, "requester_workflow_id": "w"},
                 )
-            limiter = env.client.get_workflow_handle(CAPACITY_WORKFLOW_ID)
-            state = await limiter.query("state")
+            admission = env.client.get_workflow_handle(
+                TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID
+            )
+            state = await admission.query("state")
             assert state == {"limit": 2, "lease": 60, "acquires": ["a", "b"]}
 
             parent = await env.client.start_workflow(
@@ -110,7 +116,7 @@ async def _scenario() -> None:
             assert missing == {"delivered": False}
 
 
-def test_signal_with_start_limiter_once_and_signal_parent():
+def test_signal_with_start_admission_once_and_signal_parent():
     asyncio.run(_scenario())
 
 

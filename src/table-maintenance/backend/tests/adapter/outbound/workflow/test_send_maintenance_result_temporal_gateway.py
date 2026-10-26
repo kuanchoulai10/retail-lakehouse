@@ -9,10 +9,10 @@ import pytest
 from adapter.outbound.workflow.temporal.send_maintenance_result_temporal_gateway import (
     SendMaintenanceResultTemporalGateway,
 )
-from adapter.temporal_contracts.workflow_names import MAINTENANCE_WORKFLOW
+from adapter.temporal_contracts.workflow_names import TABLE_MAINTENANCE_WORKFLOW
 from application.domain.model.maintenance.workflow_ids import (
     TASK_QUEUE,
-    maintenance_workflow_id,
+    table_maintenance_workflow_id,
 )
 from application.exceptions import NotFoundError
 from application.port.outbound.workflow.send_maintenance_result import (
@@ -34,9 +34,9 @@ def _input(run_id: str) -> SendMaintenanceResultGatewayInput:
 def test_result_reaches_maintenance_workflow(harness):
     async def start() -> None:
         await harness.client.start_workflow(
-            MAINTENANCE_WORKFLOW,
+            TABLE_MAINTENANCE_WORKFLOW,
             {},
-            id=maintenance_workflow_id("r1"),
+            id=table_maintenance_workflow_id("r1"),
             task_queue=TASK_QUEUE,
         )
 
@@ -44,7 +44,7 @@ def test_result_reaches_maintenance_workflow(harness):
     SendMaintenanceResultTemporalGateway(harness.client, harness.bridge).send(
         _input("r1")
     )
-    handle = harness.client.get_workflow_handle(maintenance_workflow_id("r1"))
+    handle = harness.client.get_workflow_handle(table_maintenance_workflow_id("r1"))
 
     async def query() -> list:
         return await handle.query("collected")

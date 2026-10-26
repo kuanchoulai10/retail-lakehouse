@@ -1,15 +1,15 @@
-"""Define a stub requester workflow that records capacity grants."""
+"""Define a stub requester workflow that records admission grant."""
 
 from __future__ import annotations
 
 from temporalio import workflow
 
-from application.domain.model.maintenance.workflow_ids import SIGNAL_CAPACITY_GRANTED
+from application.domain.model.maintenance.workflow_ids import SIGNAL_ADMISSION_GRANTED
 
 
 @workflow.defn(name="RequesterStub")
 class RequesterStubWorkflow:
-    """Wait forever and record every capacity grant it receives."""
+    """Wait forever and record every admission grant it receives."""
 
     def __init__(self) -> None:
         self.grants: list[str] = []
@@ -18,8 +18,8 @@ class RequesterStubWorkflow:
     async def run(self) -> None:
         await workflow.wait_condition(lambda: False)
 
-    @workflow.signal(name=SIGNAL_CAPACITY_GRANTED)
-    def capacity_granted(self, request_id: str) -> None:
+    @workflow.signal(name=SIGNAL_ADMISSION_GRANTED)
+    def admission_granted(self, request_id: str) -> None:
         self.grants.append(request_id)
 
     @workflow.query

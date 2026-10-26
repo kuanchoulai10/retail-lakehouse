@@ -10,7 +10,7 @@ from temporalio.service import RPCStatusCode
 from adapter.temporal_contracts.operation_result_signal import OperationResultSignal
 from application.domain.model.maintenance.workflow_ids import (
     SIGNAL_OPERATION_RESULT,
-    maintenance_workflow_id,
+    table_maintenance_workflow_id,
 )
 from application.exceptions import NotFoundError
 from application.port.outbound.workflow.send_maintenance_result import (
@@ -27,18 +27,20 @@ if TYPE_CHECKING:
 
 
 class SendMaintenanceResultTemporalGateway(SendMaintenanceResultGateway):
-    """Deliver an operation result to a maintenance workflow through Temporal."""
+    """Deliver an operation result to a table maintenance workflow through Temporal."""
 
     def __init__(self, client: Client, bridge: AsyncLoopBridge) -> None:
         self._client = client
         self._bridge = bridge
 
     def send(self, input: SendMaintenanceResultGatewayInput) -> None:  # noqa: A002
-        """Signal the maintenance workflow, raising NotFoundError when it is gone."""
+        """Signal the table maintenance workflow, raising NotFoundError when it is gone."""
         self._bridge.run(lambda: self._send(input))
 
     async def _send(self, input: SendMaintenanceResultGatewayInput) -> None:  # noqa: A002
-        handle = self._client.get_workflow_handle(maintenance_workflow_id(input.run_id))
+        handle = self._client.get_workflow_handle(
+            table_maintenance_workflow_id(input.run_id)
+        )
         result = OperationResultSignal(
             run_id=input.run_id,
             operation=input.operation,
@@ -51,6 +53,6 @@ class SendMaintenanceResultTemporalGateway(SendMaintenanceResultGateway):
             await handle.signal(SIGNAL_OPERATION_RESULT, result)
         except RPCError as error:
             if error.status == RPCStatusCode.NOT_FOUND:
-                msg = f"Maintenance workflow for run {input.run_id} not found"
+                msg = f"Table maintenance workflow for run {input.run_id} not found"
                 raise NotFoundError(msg) from error
             raise

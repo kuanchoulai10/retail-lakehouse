@@ -1,17 +1,17 @@
-"""Define the CapacityLimiterInput workflow contract."""
+"""Define the TableMaintenanceAdmissionInput workflow contract."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from adapter.temporal_contracts.default_capacity_lease_seconds import (
-    DEFAULT_CAPACITY_LEASE_SECONDS,
+from adapter.temporal_contracts.default_admission_lease_seconds import (
+    DEFAULT_ADMISSION_LEASE_SECONDS,
 )
 
 
 @dataclass(frozen=True)
-class CapacityLimiterInput:
-    """Carry the capacity limit, lease, holders and queue across continue-as-new.
+class TableMaintenanceAdmissionInput:
+    """Carry the admission limit, lease, holders and queue across continue-as-new.
 
     The lease defaults to the attempt deadline plus 15 minutes, so a slot is never
     taken from an attempt that is still within its deadline.
@@ -22,6 +22,6 @@ class CapacityLimiterInput:
     """
 
     limit: int
-    lease_seconds: int = DEFAULT_CAPACITY_LEASE_SECONDS
+    lease_seconds: int = DEFAULT_ADMISSION_LEASE_SECONDS
     holders: dict[str, dict] = field(default_factory=dict)
     queue: list[dict] = field(default_factory=list)

@@ -1,4 +1,4 @@
-"""Define the MaintenanceActivities Temporal activities."""
+"""Define the TableMaintenanceActivities Temporal activities."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     )
 
 
-class MaintenanceActivities:
+class TableMaintenanceActivities:
     """Create maintenance runs and record the outcome of their attempts."""
 
     def __init__(

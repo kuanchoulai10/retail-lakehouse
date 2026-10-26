@@ -1,4 +1,4 @@
-"""Define the MaintenanceWorkflow."""
+"""Define the TableMaintenanceWorkflow."""
 
 from __future__ import annotations
 
@@ -15,23 +15,23 @@ from adapter.temporal_contracts.activity_names import (
     DELETE_MAINTENANCE_JOB,
     GET_MAINTENANCE_JOB_STATUS,
     RECORD_MAINTENANCE_OPERATION_RESULT,
-    SIGNAL_CAPACITY_ACQUIRE,
+    SIGNAL_ADMISSION_ACQUIRE,
     SIGNAL_PARENT,
     SUBMIT_MAINTENANCE_OPERATION,
 )
-from adapter.inbound.temporal.workflows.maintenance_attempt_policy import (
-    MaintenanceAttemptPolicy,
+from adapter.inbound.temporal.workflows.table_maintenance_attempt_policy import (
+    TableMaintenanceAttemptPolicy,
 )
-from adapter.temporal_contracts.capacity_release_signal import CapacityReleaseSignal
-from adapter.temporal_contracts.maintenance_workflow_input import (
-    MaintenanceWorkflowInput,
+from adapter.temporal_contracts.admission_release_signal import AdmissionReleaseSignal
+from adapter.temporal_contracts.table_maintenance_workflow_input import (
+    TableMaintenanceWorkflowInput,
 )
 from adapter.temporal_contracts.operation_result_signal import OperationResultSignal
-from adapter.temporal_contracts.workflow_names import MAINTENANCE_WORKFLOW
+from adapter.temporal_contracts.workflow_names import TABLE_MAINTENANCE_WORKFLOW
 from application.domain.model.maintenance.workflow_ids import (
-    CAPACITY_WORKFLOW_ID,
-    SIGNAL_CAPACITY_GRANTED,
-    SIGNAL_CAPACITY_RELEASE,
+    TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
+    SIGNAL_ADMISSION_GRANTED,
+    SIGNAL_ADMISSION_RELEASE,
     SIGNAL_MAINTENANCE_FINISHED,
     SIGNAL_OPERATION_RESULT,
 )
@@ -47,27 +47,27 @@ _CALLBACK_GRACE = timedelta(seconds=120)
 _ACQUIRE_RESEND_INTERVAL = timedelta(minutes=5)
 
 
-@workflow.defn(name=MAINTENANCE_WORKFLOW)
-class MaintenanceWorkflow:
+@workflow.defn(name=TABLE_MAINTENANCE_WORKFLOW)
+class TableMaintenanceWorkflow:
     """Run the planned operations of one maintenance run, in order, on Spark.
 
-    Each operation gets up to three attempts. An attempt holds one capacity slot
-    from the limiter while its Spark job runs, and ends with the job's
+    Each operation gets up to three attempts. An attempt holds one admission slot
+    from the admission workflow while its Spark job runs, and ends with the job's
     ``operation_result`` callback for that exact attempt, with what polling the
     job's state reveals, or with a timeout ``attempt_deadline_seconds`` (input, 6 h by
     default) after the submit. Polling runs every 30 s for the first 10 minutes of an attempt and
     every 5 minutes after that, which bounds the history. A failed operation
     never fails the run: the next operation still runs. At the end, also after a
     cancellation, the Spark job of every started attempt is deleted and the parent
-    reconcile workflow is told the run finished and how many results could not be
+    reconciliation workflow is told the run finished and how many results could not be
     recorded.
     """
 
     @workflow.init
-    def __init__(self, input: MaintenanceWorkflowInput) -> None:  # noqa: A002
+    def __init__(self, input: TableMaintenanceWorkflowInput) -> None:  # noqa: A002
         """Prepare the result and grant mailboxes and the attempt log."""
         self._run_id = input.run_id
-        self._policy = MaintenanceAttemptPolicy(
+        self._policy = TableMaintenanceAttemptPolicy(
             attempt_deadline=timedelta(seconds=input.attempt_deadline_seconds)
         )
         self._results: dict[tuple[str, int], OperationResultSignal] = {}
@@ -77,7 +77,7 @@ class MaintenanceWorkflow:
         self._record_failures = 0
 
     @workflow.run
-    async def run(self, input: MaintenanceWorkflowInput) -> None:  # noqa: A002
+    async def run(self, input: TableMaintenanceWorkflowInput) -> None:  # noqa: A002
         """Create the run, run each operation, then clean up and notify the parent."""
         operations: list[dict[str, Any]] = list(input.plan["operations"])
         try:
@@ -104,8 +104,8 @@ class MaintenanceWorkflow:
             return
         self._results.setdefault((result.operation, result.attempt), result)
 
-    @workflow.signal(name=SIGNAL_CAPACITY_GRANTED)
-    async def capacity_granted(self, request_id: str) -> None:
+    @workflow.signal(name=SIGNAL_ADMISSION_GRANTED)
+    async def admission_granted(self, request_id: str) -> None:
         """Take the grant of the awaited request; hand any other grant straight back."""
         if request_id == self._current_request:
             self._granted.add(request_id)
@@ -146,7 +146,7 @@ class MaintenanceWorkflow:
         except ActivityError as error:
             _raise_if_cancelled(error)
             return self._failure(
-                name, attempt, f"capacity acquire failed: {_message(error)}"
+                name, attempt, f"admission acquire failed: {_message(error)}"
             )
         self._started_attempts.append((name, attempt))
         try:
@@ -171,7 +171,7 @@ class MaintenanceWorkflow:
             "request_id": request_id,
             "requester_workflow_id": workflow.info().workflow_id,
         }
-        await self._activity(SIGNAL_CAPACITY_ACQUIRE, request)
+        await self._activity(SIGNAL_ADMISSION_ACQUIRE, request)
         while True:
             try:
                 await workflow.wait_condition(
@@ -180,13 +180,15 @@ class MaintenanceWorkflow:
                 )
                 return
             except TimeoutError:
-                await self._activity(SIGNAL_CAPACITY_ACQUIRE, request)
+                await self._activity(SIGNAL_ADMISSION_ACQUIRE, request)
 
     async def _release(self, request_id: str) -> None:
-        handle = workflow.get_external_workflow_handle(CAPACITY_WORKFLOW_ID)
+        handle = workflow.get_external_workflow_handle(
+            TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID
+        )
         try:
             await handle.signal(
-                SIGNAL_CAPACITY_RELEASE, CapacityReleaseSignal(request_id)
+                SIGNAL_ADMISSION_RELEASE, AdmissionReleaseSignal(request_id)
             )
         except FailureError as error:
             workflow.logger.warning("release of %s failed: %s", request_id, error)

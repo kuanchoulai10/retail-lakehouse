@@ -16,10 +16,10 @@ from temporalio.client import (
 from adapter.outbound.discovery.temporal.update_discovery_schedule_temporal_gateway import (
     UpdateDiscoveryScheduleTemporalGateway,
 )
-from adapter.temporal_contracts.workflow_names import DISCOVERY_WORKFLOW
+from adapter.temporal_contracts.workflow_names import TABLE_DISCOVERY_WORKFLOW
 from application.domain.model.maintenance.workflow_ids import (
     TASK_QUEUE,
-    discovery_schedule_id,
+    table_discovery_schedule_id,
 )
 from application.port.outbound.discovery.update_discovery_schedule import (
     UpdateDiscoveryScheduleGatewayInput,
@@ -37,9 +37,9 @@ def test_update_without_schedule_does_not_raise(harness):
 def _schedule(catalog: str) -> Schedule:
     return Schedule(
         action=ScheduleActionStartWorkflow(
-            DISCOVERY_WORKFLOW,
+            TABLE_DISCOVERY_WORKFLOW,
             {"catalog": catalog},
-            id=discovery_schedule_id(catalog),
+            id=table_discovery_schedule_id(catalog),
             task_queue=TASK_QUEUE,
         ),
         spec=ScheduleSpec(intervals=[ScheduleIntervalSpec(every=timedelta(hours=1))]),
@@ -48,7 +48,7 @@ def _schedule(catalog: str) -> Schedule:
 
 
 def test_update_pauses_and_unpauses_every_catalog_schedule(harness):
-    ids = [discovery_schedule_id(c) for c in CATALOGS]
+    ids = [table_discovery_schedule_id(c) for c in CATALOGS]
 
     async def create() -> None:
         for catalog, schedule_id in zip(CATALOGS, ids, strict=True):

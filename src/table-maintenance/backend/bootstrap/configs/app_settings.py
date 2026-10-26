@@ -39,5 +39,5 @@ class AppSettings(BaseSettings):
     callback_base_url: str = (
         "http://table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000"
     )
-    capacity_limit: int = 2
+    admission_limit: int = 2
     discovery_interval_seconds: int = 600

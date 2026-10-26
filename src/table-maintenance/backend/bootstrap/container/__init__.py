@@ -14,7 +14,7 @@ from bootstrap.container.build_spark_config import build_spark_config
 from bootstrap.container.build_use_cases import build_use_cases
 from bootstrap.container.build_web_use_cases import build_web_use_cases
 from bootstrap.container.build_worker import build_worker
-from bootstrap.container.capacity_lease_seconds import CAPACITY_LEASE_SECONDS
+from bootstrap.container.admission_lease_seconds import ADMISSION_LEASE_SECONDS
 from bootstrap.container.configure_logging import configure_logging
 from bootstrap.container.connect_temporal import connect_temporal
 from bootstrap.container.gateways import Gateways
@@ -26,7 +26,7 @@ from bootstrap.container.seed_default_template import seed_default_template
 from bootstrap.container.use_cases import UseCases
 
 __all__ = [
-    "CAPACITY_LEASE_SECONDS",
+    "ADMISSION_LEASE_SECONDS",
     "Activities",
     "Gateways",
     "LazyK8sApi",

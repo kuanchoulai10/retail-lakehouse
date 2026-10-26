@@ -19,7 +19,9 @@ from adapter.outbound.workflow.temporal.send_maintenance_result_temporal_gateway
 from adapter.outbound.workflow.temporal.send_table_signal_temporal_gateway import (
     SendTableSignalTemporalGateway,
 )
-from application.domain.model.maintenance.workflow_ids import discovery_schedule_id
+from application.domain.model.maintenance.workflow_ids import (
+    table_discovery_schedule_id,
+)
 from application.exceptions import NotFoundError
 from application.port.outbound.discovery.update_discovery_schedule import (
     UpdateDiscoveryScheduleGatewayInput,
@@ -58,7 +60,7 @@ class _FailingClient:
 
     async def list_schedules(self, *args: object, **kwargs: object) -> AsyncIterator:
         async def listing() -> AsyncIterator[SimpleNamespace]:
-            yield SimpleNamespace(id=discovery_schedule_id("iceberg"))
+            yield SimpleNamespace(id=table_discovery_schedule_id("iceberg"))
 
         return listing()
 

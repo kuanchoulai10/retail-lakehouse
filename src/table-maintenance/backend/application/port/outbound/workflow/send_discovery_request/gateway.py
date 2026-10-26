@@ -18,4 +18,4 @@ class SendDiscoveryRequestGateway(Gateway):
 
     @abstractmethod
     def send(self, input: SendDiscoveryRequestGatewayInput) -> None:  # noqa: A002
-        """Ask the discovery workflow to scan a catalog or namespace."""
+        """Ask the table discovery workflow to scan a catalog or namespace."""

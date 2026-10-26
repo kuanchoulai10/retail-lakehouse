@@ -7,9 +7,11 @@ from typing import Any, cast
 
 from temporalio.client import Client
 
-from adapter.inbound.temporal.ensure_capacity_limiter import ensure_capacity_limiter
-from adapter.inbound.temporal.ensure_discovery_schedule import (
-    ensure_discovery_schedule,
+from adapter.inbound.temporal.ensure_table_maintenance_admission import (
+    ensure_table_maintenance_admission,
+)
+from adapter.inbound.temporal.ensure_table_discovery_schedule import (
+    ensure_table_discovery_schedule,
 )
 from adapter.outbound.discovery.sql.discovery_settings_sql_repo import (
     DiscoverySettingsSqlRepo,
@@ -19,7 +21,7 @@ from application.service.discovery.get_discovery_settings import (
     GetDiscoverySettingsService,
 )
 from bootstrap.configs import CatalogSettings
-from bootstrap.container import CAPACITY_LEASE_SECONDS, apply_worker_startup
+from bootstrap.container import ADMISSION_LEASE_SECONDS, apply_worker_startup
 from tests.bootstrap.container.container_support import (
     NOW,
     sqlite_engine,
@@ -36,10 +38,10 @@ class Recorder:
 
 
 def _run(repo: DiscoverySettingsSqlRepo) -> tuple[Recorder, Recorder, object]:
-    schedule, limiter, client = Recorder(), Recorder(), object()
+    schedule, admission, client = Recorder(), Recorder(), object()
     settings = sqlite_settings(
         catalog=CatalogSettings(names=["a", "b"]),
-        capacity_limit=3,
+        admission_limit=3,
         discovery_interval_seconds=120,
     )
     asyncio.run(
@@ -48,10 +50,10 @@ def _run(repo: DiscoverySettingsSqlRepo) -> tuple[Recorder, Recorder, object]:
             settings,
             GetDiscoverySettingsService(repo),
             ensure_schedule=schedule,
-            ensure_limiter=limiter,
+            ensure_admission=admission,
         )
     )
-    return schedule, limiter, client
+    return schedule, admission, client
 
 
 def test_absent_discovery_row_means_enabled_schedules_unpaused():
@@ -74,15 +76,15 @@ def test_disabled_discovery_pauses_the_schedules():
     assert schedule.calls[0][1]["paused"] is True
 
 
-def test_capacity_limiter_is_ensured_with_the_configured_limit():
-    _, limiter, client = _run(DiscoverySettingsSqlRepo(sqlite_engine()))
+def test_admission_is_ensured_with_the_configured_limit():
+    _, admission, client = _run(DiscoverySettingsSqlRepo(sqlite_engine()))
 
-    assert limiter.calls == [
+    assert admission.calls == [
         (
             (client,),
             {
                 "limit": 3,
-                "lease_seconds": CAPACITY_LEASE_SECONDS,
+                "lease_seconds": ADMISSION_LEASE_SECONDS,
             },
         )
     ]
@@ -90,14 +92,14 @@ def test_capacity_limiter_is_ensured_with_the_configured_limit():
 
 def test_defaults_are_the_real_functions_and_the_kwargs_bind_to_them():
     parameters = inspect.signature(apply_worker_startup).parameters
-    assert parameters["ensure_schedule"].default is ensure_discovery_schedule
-    assert parameters["ensure_limiter"].default is ensure_capacity_limiter
+    assert parameters["ensure_schedule"].default is ensure_table_discovery_schedule
+    assert parameters["ensure_admission"].default is ensure_table_maintenance_admission
 
-    schedule, limiter, _ = _run(DiscoverySettingsSqlRepo(sqlite_engine()))
+    schedule, admission, _ = _run(DiscoverySettingsSqlRepo(sqlite_engine()))
 
     for real, recorder in (
-        (ensure_discovery_schedule, schedule),
-        (ensure_capacity_limiter, limiter),
+        (ensure_table_discovery_schedule, schedule),
+        (ensure_table_maintenance_admission, admission),
     ):
         ((args, kwargs),) = recorder.calls
         inspect.signature(real).bind(*args, **kwargs)

@@ -1,23 +1,25 @@
 """Temporal workflows of the table-maintenance control plane."""
 
-from adapter.inbound.temporal.workflows.capacity_limiter_workflow import (
-    CapacityLimiterWorkflow,
+from adapter.inbound.temporal.workflows.table_maintenance_admission_workflow import (
+    TableMaintenanceAdmissionWorkflow,
 )
-from adapter.inbound.temporal.workflows.discovery_workflow import DiscoveryWorkflow
-from adapter.inbound.temporal.workflows.maintenance_attempt_policy import (
-    MaintenanceAttemptPolicy,
+from adapter.inbound.temporal.workflows.table_discovery_workflow import (
+    TableDiscoveryWorkflow,
 )
-from adapter.inbound.temporal.workflows.maintenance_workflow import (
-    MaintenanceWorkflow,
+from adapter.inbound.temporal.workflows.table_maintenance_attempt_policy import (
+    TableMaintenanceAttemptPolicy,
 )
-from adapter.inbound.temporal.workflows.table_reconcile_workflow import (
-    TableReconcileWorkflow,
+from adapter.inbound.temporal.workflows.table_maintenance_workflow import (
+    TableMaintenanceWorkflow,
+)
+from adapter.inbound.temporal.workflows.table_reconciliation_workflow import (
+    TableReconciliationWorkflow,
 )
 
 __all__ = [
-    "CapacityLimiterWorkflow",
-    "DiscoveryWorkflow",
-    "MaintenanceAttemptPolicy",
-    "MaintenanceWorkflow",
-    "TableReconcileWorkflow",
+    "TableMaintenanceAdmissionWorkflow",
+    "TableDiscoveryWorkflow",
+    "TableMaintenanceAttemptPolicy",
+    "TableMaintenanceWorkflow",
+    "TableReconciliationWorkflow",
 ]

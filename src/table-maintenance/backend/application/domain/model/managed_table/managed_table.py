@@ -110,7 +110,7 @@ class ManagedTable(AggregateRoot[TableUuid]):
 
     @property
     def needs_reconcile_workflow(self) -> bool:
-        """Return whether the table should have a running reconcile workflow."""
+        """Return whether the table should have a running reconciliation workflow."""
         return self.status in (TableStatus.ACTIVE, TableStatus.PAUSED)
 
     def operation_state(self, op: MaintenanceOperation) -> OperationState:

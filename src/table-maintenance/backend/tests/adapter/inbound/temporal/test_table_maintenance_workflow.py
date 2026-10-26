@@ -1,4 +1,4 @@
-"""Test the MaintenanceWorkflow on a time-skipping Temporal test server."""
+"""Test the TableMaintenanceWorkflow on a time-skipping Temporal test server."""
 
 from __future__ import annotations
 
@@ -16,25 +16,27 @@ from temporalio.worker import UnsandboxedWorkflowRunner, Worker
 
 from adapter.inbound.temporal.activities import WorkflowSignalActivities
 from adapter.inbound.temporal.workflows import (
-    CapacityLimiterWorkflow,
-    MaintenanceWorkflow,
+    TableMaintenanceAdmissionWorkflow,
+    TableMaintenanceWorkflow,
 )
-from adapter.temporal_contracts.capacity_acquire_signal import CapacityAcquireSignal
-from adapter.temporal_contracts.capacity_limiter_input import CapacityLimiterInput
-from adapter.temporal_contracts.maintenance_workflow_input import (
-    MaintenanceWorkflowInput,
+from adapter.temporal_contracts.admission_acquire_signal import AdmissionAcquireSignal
+from adapter.temporal_contracts.table_maintenance_admission_input import (
+    TableMaintenanceAdmissionInput,
+)
+from adapter.temporal_contracts.table_maintenance_workflow_input import (
+    TableMaintenanceWorkflowInput,
 )
 from adapter.temporal_contracts.operation_result_signal import OperationResultSignal
 from adapter.temporal_contracts.workflow_names import (
-    CAPACITY_LIMITER_WORKFLOW,
-    MAINTENANCE_WORKFLOW,
+    TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
+    TABLE_MAINTENANCE_WORKFLOW,
 )
 from application.domain.model.maintenance.workflow_ids import (
     TASK_QUEUE,
-    CAPACITY_WORKFLOW_ID,
-    SIGNAL_CAPACITY_ACQUIRE,
+    TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
+    SIGNAL_ADMISSION_ACQUIRE,
     SIGNAL_OPERATION_RESULT,
-    maintenance_workflow_id,
+    table_maintenance_workflow_id,
 )
 from tests.adapter.inbound.temporal.eventually import eventually
 from tests.adapter.inbound.temporal.parent_stub_workflow import ParentStubWorkflow
@@ -91,8 +93,8 @@ class Harness:
         attempt_deadline_seconds: int = ATTEMPT_DEADLINE_SECONDS,
     ) -> WorkflowHandle:
         return await self.client.start_workflow(
-            MAINTENANCE_WORKFLOW,
-            MaintenanceWorkflowInput(
+            TABLE_MAINTENANCE_WORKFLOW,
+            TableMaintenanceWorkflowInput(
                 run_id=RUN_ID,
                 table_uuid="u1",
                 parent_workflow_id=parent_id,
@@ -100,7 +102,7 @@ class Harness:
                 plan=_plan(*operations),
                 attempt_deadline_seconds=attempt_deadline_seconds,
             ),
-            id=maintenance_workflow_id(RUN_ID),
+            id=table_maintenance_workflow_id(RUN_ID),
             task_queue=self.queue,
         )
 
@@ -116,14 +118,16 @@ class Harness:
     async def parent_payloads(self) -> list[dict]:
         return await self.client.get_workflow_handle(PARENT_ID).query("collected")
 
-    async def limiter_holders(self) -> dict:
-        handle = self.client.get_workflow_handle(CAPACITY_WORKFLOW_ID)
+    async def admission_holders(self) -> dict:
+        handle = self.client.get_workflow_handle(
+            TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID
+        )
         return (await handle.query("state"))["holders"]
 
 
 def _run(
     scenario: Callable[[Harness], Awaitable[None]],
-    capacity_limit: int = 1,
+    admission_limit: int = 1,
     lease_seconds: int = 30 * 24 * 3600,
 ) -> None:
     async def go() -> None:
@@ -132,17 +136,20 @@ def _run(
             fakes = ScriptedMaintenanceActivities(env.client)
             signals = WorkflowSignalActivities(
                 env.client,
-                capacity_limit=capacity_limit,
-                capacity_lease_seconds=lease_seconds,
+                admission_limit=admission_limit,
+                admission_lease_seconds=lease_seconds,
             )
             async with (
                 Worker(
                     env.client,
                     task_queue=queue,
-                    workflows=[MaintenanceWorkflow, CapacityLimiterWorkflow],
+                    workflows=[
+                        TableMaintenanceWorkflow,
+                        TableMaintenanceAdmissionWorkflow,
+                    ],
                     activities=[
                         *fakes.all(),
-                        signals.signal_capacity_acquire,
+                        signals.signal_admission_acquire,
                         signals.signal_parent,
                     ],
                 ),
@@ -187,7 +194,7 @@ def test_operations_run_in_order_and_parent_signalled():
             f"{RUN_ID}-{EXPIRE}-1",
         ]
         assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
-        assert await h.limiter_holders() == {}
+        assert await h.admission_holders() == {}
 
     _run(scenario)
 
@@ -278,7 +285,7 @@ def test_polling_detects_missing_job_and_completed_without_callback():
     _run(scenario)
 
 
-def test_capacity_released_when_submit_activity_fails():
+def test_admission_released_when_submit_activity_fails():
     async def scenario(h: Harness) -> None:
         h.fakes.submit_errors = {(COMPACTION, 1): "attempt already started"}
         h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
@@ -294,9 +301,9 @@ def test_capacity_released_when_submit_activity_fails():
             f"{RUN_ID}-{COMPACTION}-1",
             f"{RUN_ID}-{COMPACTION}-2",
         ]
-        assert await h.limiter_holders() == {}
+        assert await h.admission_holders() == {}
 
-    _run(scenario, capacity_limit=1)
+    _run(scenario, admission_limit=1)
 
 
 def test_missing_parent_does_not_fail_the_workflow():
@@ -377,7 +384,7 @@ def test_cancelled_workflow_records_releases_deletes_and_notifies():
         assert h.recorded() == [(COMPACTION, 1, False, "cancelled")]
         assert h.fakes.deletes == [f"{RUN_ID}-{COMPACTION}-1"]
         assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
-        assert await h.limiter_holders() == {}
+        assert await h.admission_holders() == {}
 
     _run(scenario)
 
@@ -389,20 +396,20 @@ def test_late_grant_for_another_request_is_released_at_once():
         handle = await h.start_maintenance(COMPACTION)
         await eventually(lambda: _value(len(h.fakes.created)), lambda n: n == 1)
         await h.client.start_workflow(
-            CAPACITY_LIMITER_WORKFLOW,
-            CapacityLimiterInput(limit=1, lease_seconds=30 * 24 * 3600),
-            id=CAPACITY_WORKFLOW_ID,
+            TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
+            TableMaintenanceAdmissionInput(limit=1, lease_seconds=30 * 24 * 3600),
+            id=TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
             task_queue=h.queue,
             id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
-            start_signal=SIGNAL_CAPACITY_ACQUIRE,
-            start_signal_args=[CapacityAcquireSignal("stray", handle.id)],
+            start_signal=SIGNAL_ADMISSION_ACQUIRE,
+            start_signal_args=[AdmissionAcquireSignal("stray", handle.id)],
         )
-        await eventually(h.limiter_holders, lambda holders: holders == {})
+        await eventually(h.admission_holders, lambda holders: holders == {})
         h.fakes.create_gate.set()
         await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
         assert h.recorded() == [(COMPACTION, 1, True, None)]
 
-    _run(scenario, capacity_limit=1)
+    _run(scenario, admission_limit=1)
 
 
 def test_record_failures_are_counted_in_the_parent_payload():
@@ -451,7 +458,7 @@ async def _cancel_while_blocked(
     ]
     assert h.fakes.deletes == [f"{RUN_ID}-{COMPACTION}-1"]
     assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
-    assert await h.limiter_holders() == {}
+    assert await h.admission_holders() == {}
 
 
 def test_cancel_during_status_poll_activity_cancels_the_workflow():
@@ -493,7 +500,9 @@ def test_result_arriving_during_last_poll_before_deadline_wins():
             ):
                 return
             signalled.append(scheduled)
-            await h.client.get_workflow_handle(maintenance_workflow_id(RUN_ID)).signal(
+            await h.client.get_workflow_handle(
+                table_maintenance_workflow_id(RUN_ID)
+            ).signal(
                 SIGNAL_OPERATION_RESULT,
                 OperationResultSignal(RUN_ID, COMPACTION, 1, True, {"files": 7}, None),
             )

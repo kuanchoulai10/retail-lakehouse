@@ -540,7 +540,7 @@ def test_table_hint_persists_rename(hint, tables_repo, catalog, log, now):
     assert log == [("tables.update", "u-1")]
 
 
-# --- reconcile workflow is (re-)ensured ---
+# --- reconciliation workflow is (re-)ensured ---
 
 
 def _fail_first_send(signals, monkeypatch):

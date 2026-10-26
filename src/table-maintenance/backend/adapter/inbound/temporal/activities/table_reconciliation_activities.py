@@ -1,4 +1,4 @@
-"""Define the ReconcileActivities Temporal activities."""
+"""Define the TableReconciliationActivities Temporal activities."""
 
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     )
 
 
-class ReconcileActivities:
+class TableReconciliationActivities:
     """Plan, submit, poll and delete the Spark jobs of maintenance runs.
 
     Each method wraps exactly one use case. Inputs and outputs are primitive dicts;

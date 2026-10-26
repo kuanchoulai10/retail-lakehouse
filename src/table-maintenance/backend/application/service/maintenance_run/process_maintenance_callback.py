@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
 
 class ProcessMaintenanceCallbackService(ProcessMaintenanceCallbackUseCase):
-    """Forward a Spark job callback to the maintenance workflow."""
+    """Forward a Spark job callback to the table maintenance workflow."""
 
     def __init__(
         self,

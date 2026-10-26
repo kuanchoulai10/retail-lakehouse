@@ -55,7 +55,7 @@ api:
       memory: 512Mi
 
 worker:
-  capacityLimit: 2
+  admissionLimit: 2
   discoveryIntervalSeconds: 600
   terminationGracePeriodSeconds: 90
   resources:

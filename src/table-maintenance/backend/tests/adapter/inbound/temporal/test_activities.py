@@ -8,9 +8,9 @@ import pytest
 from temporalio.exceptions import ApplicationError
 
 from adapter.inbound.temporal.activities import (
-    DiscoveryActivities,
-    MaintenanceActivities,
-    ReconcileActivities,
+    TableDiscoveryActivities,
+    TableMaintenanceActivities,
+    TableReconciliationActivities,
 )
 from application.exceptions import NotFoundError
 from application.port.inbound.reconcile.submit_maintenance_operation import (
@@ -31,14 +31,16 @@ NOW = "2026-10-24T01:02:03+00:00"
 NOW_DT = datetime(2026, 10, 24, 1, 2, 3, tzinfo=UTC)
 
 
-def _reconcile(submit: FakeSubmit | None = None) -> tuple[ReconcileActivities, dict]:
+def _reconcile(
+    submit: FakeSubmit | None = None,
+) -> tuple[TableReconciliationActivities, dict]:
     fakes = {
         "plan": FakePlan(),
         "submit": submit or FakeSubmit(),
         "status": FakeStatus(),
         "delete": FakeDelete(),
     }
-    activities = ReconcileActivities(
+    activities = TableReconciliationActivities(
         plan=fakes["plan"],
         submit=fakes["submit"],
         status=fakes["status"],
@@ -159,7 +161,7 @@ def test_delete_passes_the_attempt_triple():
 
 def test_create_run_passes_fields_and_returns_iso_dict():
     create, record = FakeCreateRun(), FakeRecordResult()
-    activities = MaintenanceActivities(create_run=create, record_result=record)
+    activities = TableMaintenanceActivities(create_run=create, record_result=record)
     result = activities.create_maintenance_run(
         {
             "run_id": "r1",
@@ -182,7 +184,7 @@ def test_create_run_passes_fields_and_returns_iso_dict():
 
 def test_record_result_passes_fields():
     create, record = FakeCreateRun(), FakeRecordResult()
-    activities = MaintenanceActivities(create_run=create, record_result=record)
+    activities = TableMaintenanceActivities(create_run=create, record_result=record)
     result = activities.record_maintenance_operation_result(
         {
             "run_id": "r1",
@@ -209,7 +211,7 @@ def test_record_result_passes_fields():
 
 def test_sync_passes_catalog_and_namespace():
     sync = FakeSync()
-    activities = DiscoveryActivities(sync=sync)
+    activities = TableDiscoveryActivities(sync=sync)
     result = activities.sync_discovered_tables({"catalog": "iceberg", "namespace": "s"})
     assert sync.requests[0].catalog == "iceberg"
     assert sync.requests[0].namespace == "s"

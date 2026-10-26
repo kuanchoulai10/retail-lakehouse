@@ -43,7 +43,7 @@ def register_discovered_table(  # noqa: PLR0913
     """Decide an unknown table by the discovery rules and register it if included.
 
     An INCLUDE match registers the table as AUTO ACTIVE with a copy of the rule's
-    template settings and starts its reconcile workflow. An EXCLUDE match, or no
+    template settings and starts its reconciliation workflow. An EXCLUDE match, or no
     match, registers nothing. A rule whose template is missing is SKIPPED.
     """
     name = TableName(found.catalog, found.namespace, found.table)

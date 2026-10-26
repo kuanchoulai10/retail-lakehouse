@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-TABLE_RECONCILE_WORKFLOW = "TableReconcileWorkflow"
-DISCOVERY_WORKFLOW = "DiscoveryWorkflow"
-MAINTENANCE_WORKFLOW = "MaintenanceWorkflow"
-CAPACITY_LIMITER_WORKFLOW = "CapacityLimiterWorkflow"
+TABLE_DISCOVERY_WORKFLOW = "TableDiscoveryWorkflow"
+TABLE_RECONCILIATION_WORKFLOW = "TableReconciliationWorkflow"
+TABLE_MAINTENANCE_WORKFLOW = "TableMaintenanceWorkflow"
+TABLE_MAINTENANCE_ADMISSION_WORKFLOW = "TableMaintenanceAdmissionWorkflow"

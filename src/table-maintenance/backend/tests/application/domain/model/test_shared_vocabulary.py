@@ -8,14 +8,14 @@ from application.domain.model.maintenance.maintenance_operation import (
     MaintenanceOperation,
 )
 from application.domain.model.maintenance.workflow_ids import (
-    CAPACITY_WORKFLOW_ID,
-    DISCOVERY_SCHEDULE_ID,
-    SIGNAL_CAPACITY_GRANTED,
+    TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
+    TABLE_DISCOVERY_SCHEDULE_ID,
+    SIGNAL_ADMISSION_GRANTED,
     TASK_QUEUE,
-    discovery_adhoc_workflow_id,
-    discovery_schedule_id,
-    maintenance_workflow_id,
-    table_reconcile_workflow_id,
+    table_discovery_adhoc_workflow_id,
+    table_discovery_schedule_id,
+    table_maintenance_workflow_id,
+    table_reconciliation_workflow_id,
 )
 from application.domain.model.managed_table.table_name import TableName
 from application.domain.model.managed_table.table_uuid import TableUuid
@@ -37,21 +37,21 @@ def test_maintenance_operation_ordered_follows_spec_order():
 
 
 def test_workflow_ids():
-    assert table_reconcile_workflow_id("u1") == "table-reconcile-u1"
-    assert maintenance_workflow_id("r1") == "maintenance-r1"
-    assert CAPACITY_WORKFLOW_ID == "maintenance-capacity"
-    assert DISCOVERY_SCHEDULE_ID == "table-discovery"
+    assert table_reconciliation_workflow_id("u1") == "table-reconcile-u1"
+    assert table_maintenance_workflow_id("r1") == "maintenance-r1"
+    assert TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID == "maintenance-capacity"
+    assert TABLE_DISCOVERY_SCHEDULE_ID == "table-discovery"
     assert TASK_QUEUE == "table-maintenance"
-    assert SIGNAL_CAPACITY_GRANTED == "capacity_granted"
+    assert SIGNAL_ADMISSION_GRANTED == "admission_granted"
 
 
 def test_discovery_adhoc_workflow_id():
-    assert discovery_adhoc_workflow_id("c", "ns") == "table-discovery-adhoc-c-ns"
-    assert discovery_adhoc_workflow_id("c", None) == "table-discovery-adhoc-c-all"
+    assert table_discovery_adhoc_workflow_id("c", "ns") == "table-discovery-adhoc-c-ns"
+    assert table_discovery_adhoc_workflow_id("c", None) == "table-discovery-adhoc-c-all"
 
 
 def test_discovery_schedule_id_is_per_catalog():
-    assert discovery_schedule_id("iceberg") == "table-discovery-iceberg"
+    assert table_discovery_schedule_id("iceberg") == "table-discovery-iceberg"
 
 
 def test_table_name_qualified():

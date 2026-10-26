@@ -1,4 +1,4 @@
-"""Define ensure_discovery_schedule, which creates or updates the discovery schedules."""
+"""Define ensure_table_discovery_schedule, which creates or updates the discovery schedules."""
 
 from __future__ import annotations
 
@@ -17,13 +17,13 @@ from temporalio.client import (
     ScheduleUpdate,
 )
 
-from adapter.temporal_contracts.discovery_workflow_input import (
-    DiscoveryWorkflowInput,
+from adapter.temporal_contracts.table_discovery_workflow_input import (
+    TableDiscoveryWorkflowInput,
 )
-from adapter.temporal_contracts.workflow_names import DISCOVERY_WORKFLOW
+from adapter.temporal_contracts.workflow_names import TABLE_DISCOVERY_WORKFLOW
 from application.domain.model.maintenance.workflow_ids import (
     TASK_QUEUE,
-    discovery_schedule_id,
+    table_discovery_schedule_id,
 )
 
 if TYPE_CHECKING:
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 _NOTE = "set by table-maintenance worker start"
 
 
-async def ensure_discovery_schedule(
+async def ensure_table_discovery_schedule(
     client: Client,
     catalogs: list[str],
     *,
@@ -42,13 +42,13 @@ async def ensure_discovery_schedule(
     """Create each catalog's discovery schedule, or bring an existing one up to date.
 
     A Temporal schedule holds one action, so every catalog gets its own schedule
-    ``table-discovery-{catalog}`` starting ``DiscoveryWorkflow`` for that catalog
+    ``table-discovery-{catalog}`` starting ``TableDiscoveryWorkflow`` for that catalog
     every ``interval``, skipping a firing while the previous run is still going.
     Calling it again is idempotent: it rewrites the action and the interval and
     applies ``paused``.
     """
     for catalog in catalogs:
-        schedule_id = discovery_schedule_id(catalog)
+        schedule_id = table_discovery_schedule_id(catalog)
         schedule = _schedule(catalog, paused=paused, interval=interval)
         try:
             await client.create_schedule(schedule_id, schedule)
@@ -70,9 +70,9 @@ async def ensure_discovery_schedule(
 def _schedule(catalog: str, *, paused: bool, interval: timedelta) -> Schedule:
     return Schedule(
         action=ScheduleActionStartWorkflow(
-            DISCOVERY_WORKFLOW,
-            DiscoveryWorkflowInput(catalog),
-            id=discovery_schedule_id(catalog),
+            TABLE_DISCOVERY_WORKFLOW,
+            TableDiscoveryWorkflowInput(catalog),
+            id=table_discovery_schedule_id(catalog),
             task_queue=TASK_QUEUE,
         ),
         spec=ScheduleSpec(intervals=[ScheduleIntervalSpec(every=interval)]),

@@ -10,15 +10,19 @@ from temporalio.common import WorkflowIDConflictPolicy
 from temporalio.service import RPCStatusCode
 
 from adapter.temporal_contracts.activity_names import (
-    SIGNAL_CAPACITY_ACQUIRE,
+    SIGNAL_ADMISSION_ACQUIRE,
     SIGNAL_PARENT,
 )
-from adapter.temporal_contracts.capacity_acquire_signal import CapacityAcquireSignal
-from adapter.temporal_contracts.capacity_limiter_input import CapacityLimiterInput
-from adapter.temporal_contracts.workflow_names import CAPACITY_LIMITER_WORKFLOW
+from adapter.temporal_contracts.admission_acquire_signal import AdmissionAcquireSignal
+from adapter.temporal_contracts.table_maintenance_admission_input import (
+    TableMaintenanceAdmissionInput,
+)
+from adapter.temporal_contracts.workflow_names import (
+    TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
+)
 from application.domain.model.maintenance.workflow_ids import (
-    CAPACITY_WORKFLOW_ID,
-    SIGNAL_CAPACITY_ACQUIRE as ACQUIRE_SIGNAL_NAME,
+    TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
+    SIGNAL_ADMISSION_ACQUIRE as ACQUIRE_SIGNAL_NAME,
     TASK_QUEUE,
 )
 
@@ -29,37 +33,37 @@ if TYPE_CHECKING:
 class WorkflowSignalActivities:
     """Signal other workflows on behalf of a workflow, through the Temporal client.
 
-    The capacity limit and lease only apply when this call starts the limiter; a
-    running limiter keeps the values it was started with.
+    The admission limit and lease only apply when this call starts the admission
+    workflow; a running admission workflow keeps the values it was started with.
     """
 
     def __init__(
         self,
         client: Client,
         *,
-        capacity_limit: int,
-        capacity_lease_seconds: int,
+        admission_limit: int,
+        admission_lease_seconds: int,
     ) -> None:
-        """Bind the client and the limiter start configuration."""
+        """Bind the client and the admission workflow start configuration."""
         self._client = client
-        self._capacity_limit = capacity_limit
-        self._capacity_lease_seconds = capacity_lease_seconds
+        self._admission_limit = admission_limit
+        self._admission_lease_seconds = admission_lease_seconds
 
-    @activity.defn(name=SIGNAL_CAPACITY_ACQUIRE)
-    async def signal_capacity_acquire(self, request: dict[str, Any]) -> None:
-        """Signal-with-start the capacity limiter with an acquire request."""
+    @activity.defn(name=SIGNAL_ADMISSION_ACQUIRE)
+    async def signal_admission_acquire(self, request: dict[str, Any]) -> None:
+        """Signal-with-start the admission workflow with an acquire request."""
         await self._client.start_workflow(
-            CAPACITY_LIMITER_WORKFLOW,
-            CapacityLimiterInput(
-                limit=self._capacity_limit,
-                lease_seconds=self._capacity_lease_seconds,
+            TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
+            TableMaintenanceAdmissionInput(
+                limit=self._admission_limit,
+                lease_seconds=self._admission_lease_seconds,
             ),
-            id=CAPACITY_WORKFLOW_ID,
+            id=TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
             task_queue=TASK_QUEUE,
             id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
             start_signal=ACQUIRE_SIGNAL_NAME,
             start_signal_args=[
-                CapacityAcquireSignal(
+                AdmissionAcquireSignal(
                     request_id=request["request_id"],
                     requester_workflow_id=request["requester_workflow_id"],
                 )

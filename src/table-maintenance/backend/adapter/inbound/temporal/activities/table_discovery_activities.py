@@ -1,4 +1,4 @@
-"""Define the DiscoveryActivities Temporal activities."""
+"""Define the TableDiscoveryActivities Temporal activities."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     )
 
 
-class DiscoveryActivities:
+class TableDiscoveryActivities:
     """Synchronise the table registry with the catalog."""
 
     def __init__(self, *, sync: SyncDiscoveredTablesUseCase) -> None:

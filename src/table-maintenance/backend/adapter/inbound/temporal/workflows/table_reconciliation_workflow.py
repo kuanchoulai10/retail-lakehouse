@@ -1,4 +1,4 @@
-"""Define the TableReconcileWorkflow."""
+"""Define the TableReconciliationWorkflow."""
 
 from __future__ import annotations
 
@@ -11,19 +11,19 @@ from temporalio.common import RetryPolicy
 from temporalio.exceptions import ActivityError, FailureError, is_cancelled_exception
 from temporalio.workflow import ParentClosePolicy
 
-from adapter.inbound.temporal.workflows.maintenance_attempt_policy import (
-    MaintenanceAttemptPolicy,
+from adapter.inbound.temporal.workflows.table_maintenance_attempt_policy import (
+    TableMaintenanceAttemptPolicy,
 )
 from adapter.temporal_contracts.activity_names import PLAN_TABLE_MAINTENANCE
-from adapter.temporal_contracts.maintenance_workflow_input import (
-    MaintenanceWorkflowInput,
+from adapter.temporal_contracts.table_maintenance_workflow_input import (
+    TableMaintenanceWorkflowInput,
 )
-from adapter.temporal_contracts.table_reconcile_workflow_input import (
-    TableReconcileWorkflowInput,
+from adapter.temporal_contracts.table_reconciliation_workflow_input import (
+    TableReconciliationWorkflowInput,
 )
 from adapter.temporal_contracts.workflow_names import (
-    MAINTENANCE_WORKFLOW,
-    TABLE_RECONCILE_WORKFLOW,
+    TABLE_MAINTENANCE_WORKFLOW,
+    TABLE_RECONCILIATION_WORKFLOW,
 )
 from application.domain.model.maintenance.workflow_ids import (
     SIGNAL_MAINTENANCE_FINISHED,
@@ -34,7 +34,7 @@ from application.domain.model.maintenance.workflow_ids import (
     SIGNAL_TABLE_UPDATED,
     SIGNAL_TRIGGER_NOW,
     TASK_QUEUE,
-    maintenance_workflow_id,
+    table_maintenance_workflow_id,
 )
 
 _ACTIVITY_TIMEOUT = timedelta(minutes=2)
@@ -42,7 +42,7 @@ _ACTIVITY_RETRY = RetryPolicy(
     maximum_attempts=5, initial_interval=timedelta(seconds=2), backoff_coefficient=2.0
 )
 _IN_FLIGHT_PER_OPERATION = (
-    MaintenanceAttemptPolicy().operation_worst_case() + timedelta(hours=1)
+    TableMaintenanceAttemptPolicy().operation_worst_case() + timedelta(hours=1)
 )
 _CANCEL_GRACE = timedelta(minutes=15)
 _ENDING_REASONS = frozenset({"dropped", "excluded"})
@@ -50,22 +50,22 @@ _TRIGGER_SCHEDULED = "scheduled"
 _TRIGGER_MANUAL = "manual"
 
 
-@workflow.defn(name=TABLE_RECONCILE_WORKFLOW)
-class TableReconcileWorkflow:
+@workflow.defn(name=TABLE_RECONCILIATION_WORKFLOW)
+class TableReconciliationWorkflow:
     """Plan and start the maintenance runs of one table, one run at a time.
 
     The loop wakes on its timer (the table's reconcile interval, from the last
     plan; one hour at first) or on any signal, and then asks
     ``plan_table_maintenance``, which reloads the table: the database is the
     authority on pause, resume and settings, so those signals only wake the loop.
-    A non-empty plan starts a ``MaintenanceWorkflow`` child that outlives this run
+    A non-empty plan starts a ``TableMaintenanceWorkflow`` child that outlives this run
     (``ABANDON``) and reports back only through ``maintenance_finished``, which is
     why the run in flight survives continue-as-new. While a run is in flight
     nothing is planned; a ``trigger_now`` is kept and planned once it finishes. A
     run that never reports back is given up once the child's worst case has passed
     (per planned operation: every attempt timing out, plus the backoffs, plus 1 h):
-    the child is cancelled first, so its cleanup records the result, frees its
-    capacity and deletes its Spark job, and its report is awaited for up to
+    the child is cancelled first, so its cleanup records the result, releases its
+    admission slot and deletes its Spark job, and its report is awaited for up to
     15 minutes (less if the cancel fails because the child is gone), so a new
     run does not overlap the old one's Spark job. A skip
     because the table was dropped or excluded, or a
@@ -75,7 +75,7 @@ class TableReconcileWorkflow:
     """
 
     @workflow.init
-    def __init__(self, input: TableReconcileWorkflowInput) -> None:  # noqa: A002
+    def __init__(self, input: TableReconciliationWorkflowInput) -> None:  # noqa: A002
         """Restore the in-flight run, the pending manual trigger and the timer."""
         self._table_uuid = input.table_uuid
         self._in_flight_run_id = input.in_flight_run_id
@@ -103,7 +103,7 @@ class TableReconcileWorkflow:
         self._cancel_task: asyncio.Task[None] | None = None
 
     @workflow.run
-    async def run(self, input: TableReconcileWorkflowInput) -> None:  # noqa: A002
+    async def run(self, input: TableReconciliationWorkflowInput) -> None:  # noqa: A002
         """Wait, plan and start runs until the table leaves maintenance."""
         if self._next_plan_at is None:
             self._next_plan_at = workflow.now() + self._interval
@@ -199,8 +199,8 @@ class TableReconcileWorkflow:
             or iterations >= self._continue_as_new_after
         )
 
-    def _carry(self) -> TableReconcileWorkflowInput:
-        return TableReconcileWorkflowInput(
+    def _carry(self) -> TableReconciliationWorkflowInput:
+        return TableReconciliationWorkflowInput(
             table_uuid=self._table_uuid,
             in_flight_run_id=self._in_flight_run_id,
             in_flight_started_at=_iso(self._in_flight_started_at),
@@ -258,7 +258,9 @@ class TableReconcileWorkflow:
             self._clear_in_flight()
 
     async def _cancel_child(self, run_id: str) -> None:
-        handle = workflow.get_external_workflow_handle(maintenance_workflow_id(run_id))
+        handle = workflow.get_external_workflow_handle(
+            table_maintenance_workflow_id(run_id)
+        )
         try:
             await handle.cancel()
         except FailureError as error:
@@ -334,15 +336,15 @@ class TableReconcileWorkflow:
         self._in_flight_operations = len(plan["operations"])
         try:
             child = await workflow.start_child_workflow(
-                MAINTENANCE_WORKFLOW,
-                MaintenanceWorkflowInput(
+                TABLE_MAINTENANCE_WORKFLOW,
+                TableMaintenanceWorkflowInput(
                     run_id=run_id,
                     table_uuid=self._table_uuid,
                     parent_workflow_id=workflow.info().workflow_id,
                     trigger=_TRIGGER_MANUAL if manual else _TRIGGER_SCHEDULED,
                     plan=plan,
                 ),
-                id=maintenance_workflow_id(run_id),
+                id=table_maintenance_workflow_id(run_id),
                 task_queue=TASK_QUEUE,
                 parent_close_policy=ParentClosePolicy.ABANDON,
             )

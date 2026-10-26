@@ -6,17 +6,17 @@ import asyncio
 
 from temporalio import workflow
 
-from adapter.temporal_contracts.maintenance_workflow_input import (
-    MaintenanceWorkflowInput,
+from adapter.temporal_contracts.table_maintenance_workflow_input import (
+    TableMaintenanceWorkflowInput,
 )
-from adapter.temporal_contracts.workflow_names import MAINTENANCE_WORKFLOW
+from adapter.temporal_contracts.workflow_names import TABLE_MAINTENANCE_WORKFLOW
 from application.domain.model.maintenance.workflow_ids import (
     SIGNAL_MAINTENANCE_FINISHED,
 )
 
 
-@workflow.defn(name=MAINTENANCE_WORKFLOW)
-class MaintenanceStubWorkflow:
+@workflow.defn(name=TABLE_MAINTENANCE_WORKFLOW)
+class TableMaintenanceStubWorkflow:
     """Wait for ``complete``, then signal the parent's current run by workflow id.
 
     A cancellation is reported to the parent like the real child's cleanup does,
@@ -24,12 +24,12 @@ class MaintenanceStubWorkflow:
     """
 
     @workflow.init
-    def __init__(self, input: MaintenanceWorkflowInput) -> None:  # noqa: A002
+    def __init__(self, input: TableMaintenanceWorkflowInput) -> None:  # noqa: A002
         self._input = input
         self._complete = False
 
     @workflow.run
-    async def run(self, input: MaintenanceWorkflowInput) -> None:  # noqa: A002
+    async def run(self, input: TableMaintenanceWorkflowInput) -> None:  # noqa: A002
         try:
             await workflow.wait_condition(lambda: self._complete)
         except asyncio.CancelledError:
@@ -40,7 +40,7 @@ class MaintenanceStubWorkflow:
                 raise
         await self._report(input)
 
-    async def _report(self, input: MaintenanceWorkflowInput) -> None:  # noqa: A002
+    async def _report(self, input: TableMaintenanceWorkflowInput) -> None:  # noqa: A002
         handle = workflow.get_external_workflow_handle(input.parent_workflow_id)
         await handle.signal(
             SIGNAL_MAINTENANCE_FINISHED, {"run_id": input.run_id, "record_failures": 0}
