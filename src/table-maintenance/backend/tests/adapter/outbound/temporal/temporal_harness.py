@@ -22,7 +22,7 @@ from application.domain.model.maintenance.workflow_ids import TASK_QUEUE
 
 
 @workflow.defn(name=TABLE_RECONCILIATION_WORKFLOW)
-class StubTableReconcileWorkflow:
+class StubTableReconciliationWorkflow:
     def __init__(self) -> None:
         self.received: list[tuple[str, dict]] = []
 
@@ -44,7 +44,7 @@ class StubTableReconcileWorkflow:
 
 
 @workflow.defn(name=TABLE_MAINTENANCE_WORKFLOW)
-class StubMaintenanceWorkflow:
+class StubTableMaintenanceWorkflow:
     def __init__(self) -> None:
         self.results: list[dict] = []
 
@@ -62,7 +62,7 @@ class StubMaintenanceWorkflow:
 
 
 @workflow.defn(name=TABLE_DISCOVERY_WORKFLOW)
-class StubDiscoveryWorkflow:
+class StubTableDiscoveryWorkflow:
     @workflow.run
     async def run(self, input: dict) -> None:
         await workflow.wait_condition(lambda: False)
@@ -83,9 +83,9 @@ def harness() -> Iterator[TemporalHarness]:
         task_queue=TASK_QUEUE,
         workflow_runner=UnsandboxedWorkflowRunner(),
         workflows=[
-            StubTableReconcileWorkflow,
-            StubMaintenanceWorkflow,
-            StubDiscoveryWorkflow,
+            StubTableReconciliationWorkflow,
+            StubTableMaintenanceWorkflow,
+            StubTableDiscoveryWorkflow,
         ],
     )
 

@@ -18,7 +18,7 @@ Every Iceberg table carries a `table-uuid` in its metadata. It is assigned at cr
 
 ## Decision
 
-Option 3. `ManagedTable` uses `TableUuid` (the Iceberg `table-uuid`) as its identity. `TableName` is an attribute that a rename updates in place. A table that is gone from the catalog is marked `DROPPED`, not deleted. A table recreated under the same name is a new row with a new UUID. The table reconcile workflow ID is derived from the UUID (`table-reconcile-{uuid}`).
+Option 3. `ManagedTable` uses `TableUuid` (the Iceberg `table-uuid`) as its identity. `TableName` is an attribute that a rename updates in place. A table that is gone from the catalog is marked `DROPPED`, not deleted. A table recreated under the same name is a new row with a new UUID. The table reconciliation workflow ID is derived from the UUID (`table-reconciliation:table-uuid={uuid}`).
 
 ## Consequences
 

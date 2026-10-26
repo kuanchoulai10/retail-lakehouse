@@ -16,7 +16,7 @@ Polaris 1.8.0 publishes catalog events to the Kafka topic `polaris-catalog-event
 
 ## Decision
 
-Option 3. The event consumer maps table-level events (`AFTER_CREATE_TABLE`, `AFTER_UPDATE_TABLE`, `AFTER_DROP_TABLE`, `AFTER_REGISTER_TABLE`, `AFTER_RENAME_TABLE`) to a table hint, and `BEFORE_CREATE_TABLE` without a table name to a namespace discovery request. The hint use case loads the table from the catalog: an unknown UUID is evaluated against the discovery rules and registered; a known UUID under a new name is renamed; a known table gets a `table_updated` signal; a table missing from the catalog triggers a catalog-wide discovery, which alone may mark tables `DROPPED`. A Temporal schedule per catalog (`table-discovery-{catalog}`) runs discovery every 10 minutes. Every record is committed after handling, including failed ones; a failing hint is tried at most 3 times.
+Option 3. The event consumer maps table-level events (`AFTER_CREATE_TABLE`, `AFTER_UPDATE_TABLE`, `AFTER_DROP_TABLE`, `AFTER_REGISTER_TABLE`, `AFTER_RENAME_TABLE`) to a table hint, and `BEFORE_CREATE_TABLE` without a table name to a namespace discovery request. The hint use case loads the table from the catalog: an unknown UUID is evaluated against the discovery rules and registered; a known UUID under a new name is renamed; a known table gets a `table_updated` signal; a table missing from the catalog triggers a catalog-wide discovery, which alone may mark tables `DROPPED`. A Temporal schedule per catalog (`table-discovery:catalog={catalog}`) runs discovery every 10 minutes. Every record is committed after handling, including failed ones; a failing hint is tried at most 3 times.
 
 ## Consequences
 
