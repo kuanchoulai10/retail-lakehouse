@@ -36,6 +36,7 @@ def _run(run_id: str, table: str = "u1", at: datetime = NOW) -> MaintenanceRun:
             MaintenanceOperation.REWRITE_DATA_FILES,
         ],
         at,
+        workflow_id=f"wf-{run_id}",
     )
 
 
@@ -66,6 +67,7 @@ def test_roundtrip_with_operation_details(repo: MaintenanceRunsSqlRepo):
     assert loaded is not None
     assert loaded.table_uuid == TableUuid("u1")
     assert loaded.trigger is TriggerType.SCHEDULED
+    assert loaded.workflow_id == "wf-r1"
     assert loaded.created_at == NOW
     assert loaded.created_at.tzinfo is not None
     assert loaded.finished_at == NOW + timedelta(minutes=5)

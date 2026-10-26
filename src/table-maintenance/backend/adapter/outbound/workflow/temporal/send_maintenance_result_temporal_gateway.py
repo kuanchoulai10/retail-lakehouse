@@ -8,10 +8,7 @@ from temporalio.client import RPCError
 from temporalio.service import RPCStatusCode
 
 from adapter.temporal_contracts.operation_result_signal import OperationResultSignal
-from application.domain.model.maintenance.workflow_ids import (
-    SIGNAL_OPERATION_RESULT,
-    table_maintenance_workflow_id,
-)
+from application.domain.model.maintenance.workflow_ids import SIGNAL_OPERATION_RESULT
 from application.exceptions import NotFoundError
 from application.port.outbound.workflow.send_maintenance_result import (
     SendMaintenanceResultGateway,
@@ -38,9 +35,7 @@ class SendMaintenanceResultTemporalGateway(SendMaintenanceResultGateway):
         self._bridge.run(lambda: self._send(input))
 
     async def _send(self, input: SendMaintenanceResultGatewayInput) -> None:  # noqa: A002
-        handle = self._client.get_workflow_handle(
-            table_maintenance_workflow_id(input.run_id)
-        )
+        handle = self._client.get_workflow_handle(input.workflow_id)
         result = OperationResultSignal(
             run_id=input.run_id,
             operation=input.operation,
@@ -53,6 +48,9 @@ class SendMaintenanceResultTemporalGateway(SendMaintenanceResultGateway):
             await handle.signal(SIGNAL_OPERATION_RESULT, result)
         except RPCError as error:
             if error.status == RPCStatusCode.NOT_FOUND:
-                msg = f"Table maintenance workflow for run {input.run_id} not found"
+                msg = (
+                    f"Table maintenance workflow {input.workflow_id} of run "
+                    f"{input.run_id} not found"
+                )
                 raise NotFoundError(msg) from error
             raise

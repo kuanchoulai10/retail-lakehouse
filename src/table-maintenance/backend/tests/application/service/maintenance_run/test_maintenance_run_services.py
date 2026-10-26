@@ -81,6 +81,7 @@ def _create_input(now, run_id="run-1", **overrides):
         "table_uuid": "u-1",
         "trigger": "scheduled",
         "operations": ["expire_snapshots", "rewrite_data_files"],
+        "workflow_id": "wf-run-1",
         "now": now,
     }
     fields.update(overrides)
@@ -97,6 +98,8 @@ def test_create_run_persists_pending_run_in_canonical_order(
 ):
     out = creator.execute(_create_input(now))
     assert (out.run_id, out.table_uuid, out.trigger) == ("run-1", "u-1", "scheduled")
+    assert out.workflow_id == "wf-run-1"
+    assert runs_repo.get(MaintenanceRunId("run-1")).workflow_id == "wf-run-1"
     assert out.status == "pending"
     assert [o["operation"] for o in out.operations] == [
         "rewrite_data_files",
@@ -125,6 +128,8 @@ def test_create_run_validates_input(creator, table, now):
         creator.execute(_create_input(now, operations=["defragment"]))
     with pytest.raises(ValidationError):
         creator.execute(_create_input(now, operations=[]))
+    with pytest.raises(ValidationError):
+        creator.execute(_create_input(now, workflow_id=""))
     with pytest.raises(NotFoundError):
         creator.execute(_create_input(now, table_uuid="missing"))
 
@@ -140,6 +145,7 @@ def started_run(runs_repo, table, now):
         TriggerType.SCHEDULED,
         [RDF, OPS.EXPIRE_SNAPSHOTS],
         now,
+        workflow_id="wf-run-1",
     )
     run.start_attempt(RDF, 1, "tm-rdf-run1-a1", now)
     runs_repo.create(run)
@@ -261,6 +267,7 @@ def test_callback_forwards_result_to_the_workflow(runs_repo, started_run, result
         3,
     )
     assert (call.succeeded, call.metrics, call.error) == (False, {"a": 1}, "OOM")
+    assert call.workflow_id == "wf-run-1"
 
 
 def test_callback_unknown_run_not_found(runs_repo, results):
@@ -303,6 +310,7 @@ def test_list_runs_newest_first_with_limit(runs_repo, table, now):
                 TriggerType.MANUAL,
                 [RDF],
                 now + timedelta(minutes=i),
+                workflow_id=f"wf-run-{i}",
             )
         )
     service = ListMaintenanceRunsService(runs_repo)

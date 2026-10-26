@@ -116,6 +116,7 @@ class FakeCreateRun(CreateMaintenanceRunUseCase):
         return CreateMaintenanceRunUseCaseOutput(
             run_id=request.run_id,
             table_uuid=request.table_uuid,
+            workflow_id=request.workflow_id,
             trigger=request.trigger,
             status="running",
             operations=[{"operation": op} for op in request.operations],

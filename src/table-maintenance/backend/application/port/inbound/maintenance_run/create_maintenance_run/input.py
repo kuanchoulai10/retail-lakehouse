@@ -15,6 +15,7 @@ class CreateMaintenanceRunUseCaseInput:
 
     run_id: str
     table_uuid: str
+    workflow_id: str
     trigger: str
     operations: list[str]
     now: datetime

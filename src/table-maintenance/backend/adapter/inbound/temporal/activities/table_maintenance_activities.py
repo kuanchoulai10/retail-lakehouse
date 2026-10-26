@@ -52,6 +52,7 @@ class TableMaintenanceActivities:
                 CreateMaintenanceRunUseCaseInput(
                     run_id=request["run_id"],
                     table_uuid=request["table_uuid"],
+                    workflow_id=request["workflow_id"],
                     trigger=request["trigger"],
                     operations=list(request["operations"]),
                     now=datetime.fromisoformat(request["now"]),

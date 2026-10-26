@@ -37,6 +37,7 @@ def _run(ops: list[Op] | None = None) -> MaintenanceRun:
         TriggerType.MANUAL,
         ops if ops is not None else [Op.EXPIRE_SNAPSHOTS, Op.REWRITE_DATA_FILES],
         _now(),
+        workflow_id="wf-run-1",
     )
 
 
@@ -199,3 +200,19 @@ def test_unknown_operation_raises():
         run.start_attempt(Op.REMOVE_ORPHAN_FILES, 1, "a", _now(1))
     with pytest.raises(InvalidRunTransition):
         run.skip(Op.REMOVE_ORPHAN_FILES, "r", _now(1))
+
+
+def test_create_records_the_workflow_id():
+    assert _run().workflow_id == "wf-run-1"
+
+
+def test_create_rejects_an_empty_workflow_id():
+    with pytest.raises(ValueError, match="workflow id"):
+        MaintenanceRun.create(
+            MaintenanceRunId("run-1"),
+            TableUuid("t-1"),
+            TriggerType.MANUAL,
+            [Op.EXPIRE_SNAPSHOTS],
+            _now(),
+            workflow_id="",
+        )

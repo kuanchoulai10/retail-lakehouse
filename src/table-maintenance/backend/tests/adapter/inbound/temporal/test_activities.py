@@ -168,11 +168,13 @@ def test_create_run_passes_fields_and_returns_iso_dict():
             "table_uuid": "u1",
             "trigger": "scheduled",
             "operations": ["rewrite_data_files", "expire_snapshots"],
+            "workflow_id": "wf-r1",
             "now": NOW,
         }
     )
     request = create.requests[0]
     assert request.run_id == "r1"
+    assert request.workflow_id == "wf-r1"
     assert request.table_uuid == "u1"
     assert request.trigger == "scheduled"
     assert request.operations == ["rewrite_data_files", "expire_snapshots"]

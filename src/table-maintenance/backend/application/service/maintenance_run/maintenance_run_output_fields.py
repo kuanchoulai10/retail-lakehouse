@@ -13,6 +13,7 @@ def maintenance_run_output_fields(run: MaintenanceRun) -> dict[str, Any]:
     return {
         "run_id": run.id.value,
         "table_uuid": run.table_uuid.value,
+        "workflow_id": run.workflow_id,
         "trigger": run.trigger.value,
         "status": run.status.value,
         "operations": [

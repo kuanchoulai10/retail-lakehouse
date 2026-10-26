@@ -60,6 +60,7 @@ class MaintenanceRunRowMapper:
         return {
             "id": run.id.value,
             "table_uuid": run.table_uuid.value,
+            "workflow_id": run.workflow_id,
             "trigger": run.trigger.value,
             "operations_json": [_encode_operation(op) for op in run.operations],
             "created_at": run.created_at,
@@ -75,5 +76,6 @@ class MaintenanceRunRowMapper:
             trigger=TriggerType(row["trigger"]),
             operations=tuple(_decode_operation(d) for d in row["operations_json"]),
             created_at=row["created_at"],
+            workflow_id=row["workflow_id"],
             finished_at=row["finished_at"],
         )

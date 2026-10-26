@@ -30,6 +30,7 @@ from tests.fakes.recording_send_maintenance_result_gateway import (
 FIELDS: dict[str, Any] = {
     "run_id": "run-1",
     "table_uuid": "u-1",
+    "workflow_id": "wf-run-1",
     "trigger": "scheduled",
     "status": "running",
     "operations": [{"operation": "rewrite_data_files", "status": "running"}],
@@ -69,6 +70,7 @@ def test_get_run() -> None:
 
     assert response.status_code == 200
     assert response.json()["operations"][0]["operation"] == "rewrite_data_files"
+    assert response.json()["workflow_id"] == "wf-run-1"
     assert stub.requests == [GetMaintenanceRunUseCaseInput(run_id="run-1")]
 
 

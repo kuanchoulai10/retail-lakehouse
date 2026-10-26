@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 def run_migrations(engine: Engine) -> None:
     """Create the missing tables, then seed the default template once.
 
-    ``create_all`` only adds missing tables; it never alters existing ones. No
-    discovery rule is seeded.
+    ``create_schema`` adds missing tables and applies its idempotent column
+    upgrades. No discovery rule is seeded.
     """
     create_schema(engine)
     templates = build_repositories(engine).policy_templates

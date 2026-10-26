@@ -15,6 +15,7 @@ class MaintenanceRunApiResponse(BaseModel):
 
     run_id: str
     table_uuid: str
+    workflow_id: str
     trigger: str
     status: str
     operations: list[dict[str, Any]]

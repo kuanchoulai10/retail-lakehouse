@@ -49,10 +49,12 @@ class ProcessMaintenanceCallbackService(ProcessMaintenanceCallbackUseCase):
             operation = MaintenanceOperation(request.operation)
         except ValueError as exc:
             raise ValidationError(str(exc)) from exc
-        if self._runs_repo.get(MaintenanceRunId(request.run_id)) is None:
+        run = self._runs_repo.get(MaintenanceRunId(request.run_id))
+        if run is None:
             raise NotFoundError(f"maintenance run {request.run_id} not found")
         self._result_gateway.send(
             SendMaintenanceResultGatewayInput(
+                workflow_id=run.workflow_id,
                 run_id=request.run_id,
                 operation=operation.value,
                 attempt=request.attempt,

@@ -12,6 +12,7 @@ maintenance_runs_table = Table(
     metadata,
     Column("id", String, primary_key=True),
     Column("table_uuid", String, nullable=False),
+    Column("workflow_id", String, nullable=False),
     Column("trigger", String, nullable=False),
     Column("operations_json", JSON, nullable=False),
     Column("created_at", UtcDateTime, nullable=False),

@@ -73,7 +73,7 @@ def bridge() -> Iterator[AsyncLoopBridge]:
 
 
 def _result_input() -> SendMaintenanceResultGatewayInput:
-    return SendMaintenanceResultGatewayInput("r1", "op", 1, True, {}, None)
+    return SendMaintenanceResultGatewayInput("wf-r1", "r1", "op", 1, True, {}, None)
 
 
 def test_table_signal_propagates_other_rpc_errors(bridge):

@@ -68,6 +68,7 @@ class CreateMaintenanceRunService(CreateMaintenanceRunUseCase):
                         trigger,
                         operations,
                         request.now,
+                        workflow_id=request.workflow_id,
                     )
                 )
         return CreateMaintenanceRunUseCaseOutput(**maintenance_run_output_fields(run))

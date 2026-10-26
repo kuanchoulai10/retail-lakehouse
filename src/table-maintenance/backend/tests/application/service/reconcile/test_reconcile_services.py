@@ -340,6 +340,7 @@ def run(runs_repo, tables_repo, now):
         TriggerType.SCHEDULED,
         [OPS.REWRITE_DATA_FILES, OPS.EXPIRE_SNAPSHOTS],
         now,
+        workflow_id="wf-run-1",
     )
     runs_repo.create(created)
     return created

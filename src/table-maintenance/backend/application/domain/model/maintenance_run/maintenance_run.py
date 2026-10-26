@@ -42,6 +42,7 @@ class MaintenanceRun(AggregateRoot[MaintenanceRunId]):
     trigger: TriggerType
     operations: tuple[OperationRun, ...]
     created_at: datetime
+    workflow_id: str
     finished_at: datetime | None = None
 
     @classmethod
@@ -52,8 +53,17 @@ class MaintenanceRun(AggregateRoot[MaintenanceRunId]):
         trigger: TriggerType,
         operations: Sequence[MaintenanceOperation],
         now: datetime,
+        *,
+        workflow_id: str,
     ) -> MaintenanceRun:
-        """Create a run with the given operations in canonical order, all pending."""
+        """Create a run with the given operations in canonical order, all pending.
+
+        ``workflow_id`` names the workflow execution that runs it, so a result
+        that only carries the run id can still be routed to that workflow.
+        """
+        if not workflow_id:
+            msg = "a maintenance run needs the workflow id that runs it"
+            raise ValueError(msg)
         requested = set(operations)
         if not requested:
             msg = "a maintenance run needs at least one operation"
@@ -68,6 +78,7 @@ class MaintenanceRun(AggregateRoot[MaintenanceRunId]):
                 if op in requested
             ),
             created_at=now,
+            workflow_id=workflow_id,
         )
 
     @property

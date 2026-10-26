@@ -86,6 +86,7 @@ class TableMaintenanceWorkflow:
                 {
                     "run_id": input.run_id,
                     "table_uuid": input.table_uuid,
+                    "workflow_id": workflow.info().workflow_id,
                     "trigger": input.trigger,
                     "operations": [op["operation"] for op in operations],
                     "now": _now(),
