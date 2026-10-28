@@ -10,7 +10,7 @@ from application.port.inbound.table.process_table_hint.input import (
 from application.port.inbound.table.process_table_hint.output import (
     ProcessTableHintUseCaseOutput,
 )
-from base.use_case import UseCase
+from base import UseCase
 
 
 class ProcessTableHintUseCase(

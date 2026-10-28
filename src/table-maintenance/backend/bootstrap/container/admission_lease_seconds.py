@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from adapter.hybrid.temporal.contracts.default_admission_lease_seconds import (
-    DEFAULT_ADMISSION_LEASE_SECONDS,
-)
+from adapter.hybrid.temporal.contracts import DEFAULT_ADMISSION_LEASE_SECONDS
 
 ADMISSION_LEASE_SECONDS = DEFAULT_ADMISSION_LEASE_SECONDS

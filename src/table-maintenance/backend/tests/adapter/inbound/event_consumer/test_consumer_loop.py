@@ -6,10 +6,9 @@ import json
 import threading
 from collections.abc import Sequence
 
-from adapter.inbound.event_consumer.consumer_loop import run_consumer_loop
-from adapter.inbound.event_consumer.event_record import EventRecord
+from adapter.inbound.event_consumer import run_consumer_loop, EventRecord
 from application.exceptions import NotFoundError, ValidationError
-from application.port.inbound.table.process_table_hint import (
+from application.port.inbound.table import (
     ProcessTableHintUseCase,
     ProcessTableHintUseCaseInput,
     ProcessTableHintUseCaseOutput,

@@ -12,13 +12,13 @@ from temporalio.client import Client
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import UnsandboxedWorkflowRunner, Worker
 
-from adapter.hybrid.temporal.outbound.shared.async_loop_bridge import AsyncLoopBridge
-from adapter.hybrid.temporal.contracts.workflow_names import (
+from adapter.hybrid.temporal.outbound.shared import AsyncLoopBridge
+from adapter.hybrid.temporal.contracts import (
     TABLE_DISCOVERY_WORKFLOW,
     TABLE_MAINTENANCE_WORKFLOW,
     TABLE_RECONCILIATION_WORKFLOW,
+    TASK_QUEUE,
 )
-from adapter.hybrid.temporal.contracts.workflow_ids import TASK_QUEUE
 
 
 @workflow.defn(name=TABLE_RECONCILIATION_WORKFLOW)

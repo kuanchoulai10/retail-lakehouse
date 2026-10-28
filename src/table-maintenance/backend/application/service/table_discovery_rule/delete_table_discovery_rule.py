@@ -4,20 +4,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.table_discovery_rule.table_discovery_rule_id import (
-    TableDiscoveryRuleId,
-)
+from application.domain.model.table_discovery_rule import TableDiscoveryRuleId
 from application.exceptions import NotFoundError
-from application.port.inbound.table_discovery_rule.delete_table_discovery_rule import (
+from application.port.inbound.table_discovery_rule import (
     DeleteTableDiscoveryRuleUseCase,
     DeleteTableDiscoveryRuleUseCaseInput,
     DeleteTableDiscoveryRuleUseCaseOutput,
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.table_discovery_rule.table_discovery_rules_repo import (
-        TableDiscoveryRulesRepo,
-    )
+    from application.port.outbound.table_discovery_rule import TableDiscoveryRulesRepo
 
 
 class DeleteTableDiscoveryRuleService(DeleteTableDiscoveryRuleUseCase):

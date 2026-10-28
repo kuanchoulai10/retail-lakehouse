@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.pool import StaticPool
 
-from adapter.outbound.shared.sql.create_schema import create_schema
+from adapter.outbound.shared.sql import create_schema
 
 
 @pytest.fixture

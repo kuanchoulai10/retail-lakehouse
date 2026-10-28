@@ -7,34 +7,18 @@ from typing import Any
 
 import pytest
 
-from application.domain.model.table_discovery_rule.table_discovery_rule_id import (
-    TableDiscoveryRuleId,
-)
-from application.domain.model.shared.maintenance_operation import (
+from application.domain.model.table_discovery_rule import TableDiscoveryRuleId
+from application.domain.model.shared import (
     MaintenanceOperation,
-)
-from application.domain.model.shared.maintenance_settings import (
     MaintenanceSettings,
-)
-from application.domain.model.shared.rewrite_data_files_settings import (
     RewriteDataFilesSettings,
 )
-from application.domain.model.table.table import Table
-from application.domain.model.table.table_name import TableName
-from application.domain.model.table.table_id import TableId
-from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
-    TableMaintenancePresetId,
-)
+from application.domain.model.table import Table, TableName, TableId
+from application.domain.model.table_maintenance_preset import TableMaintenancePresetId
 from application.exceptions import ValidationError
-from application.port.inbound.table.plan_table_maintenance import (
-    PlanTableMaintenanceUseCaseInput,
-)
-from application.port.outbound.table.read_table_metadata import (
-    TableMetadataObservation,
-)
-from application.service.table.plan_table_maintenance import (
-    PlanTableMaintenanceService,
-)
+from application.port.inbound.table import PlanTableMaintenanceUseCaseInput
+from application.port.outbound.table import TableMetadataObservation
+from application.service.table import PlanTableMaintenanceService
 
 NAME = TableName("iceberg", "sales", "orders")
 KEY = ("iceberg", "sales", "orders")

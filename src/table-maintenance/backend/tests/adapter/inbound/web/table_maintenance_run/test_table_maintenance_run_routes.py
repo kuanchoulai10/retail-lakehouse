@@ -5,20 +5,16 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from application.port.inbound.table_maintenance_run.get_table_maintenance_run import (
+from application.port.inbound.table_maintenance_run import (
     GetTableMaintenanceRunUseCaseInput,
     GetTableMaintenanceRunUseCaseOutput,
-)
-from application.port.inbound.table_maintenance_run.list_table_maintenance_runs import (
     ListTableMaintenanceRunsUseCaseInput,
     ListTableMaintenanceRunsUseCaseOutput,
     ListTableMaintenanceRunsUseCaseOutputItem,
-)
-from application.port.inbound.table_maintenance_run.process_table_maintenance_callback import (
     ProcessTableMaintenanceCallbackUseCaseInput,
     ProcessTableMaintenanceCallbackUseCaseOutput,
 )
-from application.service.table_maintenance_run.process_table_maintenance_callback import (
+from application.service.table_maintenance_run import (
     ProcessTableMaintenanceCallbackService,
 )
 from tests.adapter.inbound.web.web_test_support import NOW, StubUseCase, build_client

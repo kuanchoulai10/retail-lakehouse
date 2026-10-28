@@ -10,7 +10,7 @@ from application.port.inbound.table.plan_table_maintenance.input import (
 from application.port.inbound.table.plan_table_maintenance.output import (
     PlanTableMaintenanceUseCaseOutput,
 )
-from base.use_case import UseCase
+from base import UseCase
 
 
 class PlanTableMaintenanceUseCase(

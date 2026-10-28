@@ -5,9 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from application.domain.model.table_discovery_rule.table_discovery_rule import (
-        TableDiscoveryRule,
-    )
+    from application.domain.model.table_discovery_rule import TableDiscoveryRule
 
 
 def table_discovery_rule_output_fields(rule: TableDiscoveryRule) -> dict[str, Any]:

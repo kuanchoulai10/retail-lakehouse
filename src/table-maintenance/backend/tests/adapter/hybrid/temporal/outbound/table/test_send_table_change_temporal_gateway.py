@@ -8,7 +8,7 @@ import pytest
 from temporalio.client import RPCError
 from temporalio.service import RPCStatusCode
 
-from adapter.hybrid.temporal.contracts.workflow_ids import (
+from adapter.hybrid.temporal.contracts import (
     SIGNAL_PAUSE,
     SIGNAL_RESUME,
     SIGNAL_SETTINGS_CHANGED,
@@ -17,13 +17,9 @@ from adapter.hybrid.temporal.contracts.workflow_ids import (
     SIGNAL_TRIGGER_NOW,
     table_reconciliation_workflow_id,
 )
-from adapter.hybrid.temporal.outbound.table.send_table_change_temporal_gateway import (
-    SendTableChangeTemporalGateway,
-)
+from adapter.hybrid.temporal.outbound.table import SendTableChangeTemporalGateway
 from application.domain.model.table import TableChange
-from application.port.outbound.table.send_table_change import (
-    SendTableChangeGatewayInput,
-)
+from application.port.outbound.table import SendTableChangeGatewayInput
 from tests.adapter.hybrid.temporal.outbound.shared.temporal_harness import (
     TemporalHarness,
 )

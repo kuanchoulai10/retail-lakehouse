@@ -10,7 +10,7 @@ from application.port.inbound.table.reset_table_selection.input import (
 from application.port.inbound.table.reset_table_selection.output import (
     ResetTableSelectionUseCaseOutput,
 )
-from base.use_case import UseCase
+from base import UseCase
 
 
 class ResetTableSelectionUseCase(

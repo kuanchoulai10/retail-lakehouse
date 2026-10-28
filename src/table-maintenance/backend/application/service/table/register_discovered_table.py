@@ -4,35 +4,24 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.table.table import Table
-from application.domain.model.table.table_name import TableName
-from application.domain.model.table.table_id import TableId
-from application.domain.model.table.table_change import TableChange
-from application.domain.model.table_discovery_rule.rule_effect import RuleEffect
-from application.domain.service.table_discovery_rule.match_table_discovery_rule import (
-    match_table_discovery_rule,
-)
-from application.port.outbound.table.send_table_change import (
-    SendTableChangeGatewayInput,
-)
+from application.domain.model.table import Table, TableName, TableId, TableChange
+from application.domain.model.table_discovery_rule import RuleEffect
+from application.domain.service.table_discovery_rule import match_table_discovery_rule
+from application.port.outbound.table import SendTableChangeGatewayInput
 from application.service.table.registration_outcome import RegistrationOutcome
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from datetime import datetime
 
-    from application.domain.model.table_discovery_rule.table_discovery_rule import (
-        TableDiscoveryRule,
-    )
-    from application.port.outbound.table.read_table_metadata import TableMetadata
-    from application.port.outbound.table.tables_repo import (
+    from application.domain.model.table_discovery_rule import TableDiscoveryRule
+    from application.port.outbound.table import (
+        TableMetadata,
         TablesRepo,
-    )
-    from application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (
-        TableMaintenancePresetsRepo,
-    )
-    from application.port.outbound.table.send_table_change import (
         SendTableChangeGateway,
+    )
+    from application.port.outbound.table_maintenance_preset import (
+        TableMaintenancePresetsRepo,
     )
 
 

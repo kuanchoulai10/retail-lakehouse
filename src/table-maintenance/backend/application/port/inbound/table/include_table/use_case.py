@@ -10,7 +10,7 @@ from application.port.inbound.table.include_table.input import (
 from application.port.inbound.table.include_table.output import (
     IncludeTableUseCaseOutput,
 )
-from base.use_case import UseCase
+from base import UseCase
 
 
 class IncludeTableUseCase(UseCase[IncludeTableUseCaseInput, IncludeTableUseCaseOutput]):

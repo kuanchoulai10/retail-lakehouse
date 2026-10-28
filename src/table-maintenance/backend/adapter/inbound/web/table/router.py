@@ -12,33 +12,16 @@ from adapter.inbound.web.table.dto import (
     TriggerTableMaintenanceApiResponse,
     UpdateTableSettingsApiRequest,
 )
-from adapter.inbound.web.use_cases_dependency import web_use_cases
-from adapter.inbound.web.web_use_cases import WebUseCases
-from application.port.inbound.table.exclude_table import (
+from adapter.inbound.web import web_use_cases, WebUseCases
+from application.port.inbound.table import (
     ExcludeTableUseCaseInput,
-)
-from application.port.inbound.table.get_table import (
     GetTableUseCaseInput,
-)
-from application.port.inbound.table.include_table import (
     IncludeTableUseCaseInput,
-)
-from application.port.inbound.table.list_tables import (
     ListTablesUseCaseInput,
-)
-from application.port.inbound.table.pause_table import (
     PauseTableUseCaseInput,
-)
-from application.port.inbound.table.reset_table_selection import (
     ResetTableSelectionUseCaseInput,
-)
-from application.port.inbound.table.resume_table import (
     ResumeTableUseCaseInput,
-)
-from application.port.inbound.table.trigger_table_maintenance import (
     TriggerTableMaintenanceUseCaseInput,
-)
-from application.port.inbound.table.update_table_settings import (
     UpdateTableSettingsUseCaseInput,
 )
 from fastapi import APIRouter, Depends, status

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from application.domain.model.shared.partition_field_info import (
     PartitionFieldInfo,
 )
-from base.value_object import ValueObject
+from base import ValueObject
 
 
 @dataclass(frozen=True)

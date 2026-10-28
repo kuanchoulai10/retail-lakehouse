@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-from application.port.inbound.table_discovery_settings.get_table_discovery_settings import (
+from application.port.inbound.table_discovery_settings import (
     GetTableDiscoverySettingsUseCaseOutput,
-)
-from application.port.inbound.table.sync_discovered_tables import (
-    SyncDiscoveredTablesUseCaseInput,
-    SyncDiscoveredTablesUseCaseOutput,
-)
-from application.port.inbound.table_discovery_settings.update_table_discovery_settings import (
     UpdateTableDiscoverySettingsUseCaseInput,
     UpdateTableDiscoverySettingsUseCaseOutput,
+)
+from application.port.inbound.table import (
+    SyncDiscoveredTablesUseCaseInput,
+    SyncDiscoveredTablesUseCaseOutput,
 )
 from tests.adapter.inbound.web.web_test_support import NOW, StubUseCase, build_client
 

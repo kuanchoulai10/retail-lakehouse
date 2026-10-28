@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import threading
 
-from adapter.inbound.event_consumer.event_record import EventRecord
-from adapter.inbound.event_consumer.event_source import EventSource
+from adapter.inbound.event_consumer import EventRecord, EventSource
 
 
 class FakeEventSource(EventSource):

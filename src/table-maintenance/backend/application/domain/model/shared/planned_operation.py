@@ -8,7 +8,7 @@ from application.domain.model.shared.maintenance_operation import (
     MaintenanceOperation,
 )
 from application.domain.model.shared.partition_stats import PartitionStats
-from base.value_object import ValueObject
+from base import ValueObject
 
 
 @dataclass(frozen=True)

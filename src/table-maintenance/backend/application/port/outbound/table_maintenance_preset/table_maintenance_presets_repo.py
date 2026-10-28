@@ -4,11 +4,8 @@ from __future__ import annotations
 
 from abc import abstractmethod
 
-from application.domain.model.table_maintenance_preset.table_maintenance_preset import (
-    TableMaintenancePreset,
-)
-from base.entity_id import EntityId
-from base.repository import Repository
+from application.domain.model.table_maintenance_preset import TableMaintenancePreset
+from base import EntityId, Repository
 
 
 class TableMaintenancePresetsRepo(Repository[TableMaintenancePreset]):

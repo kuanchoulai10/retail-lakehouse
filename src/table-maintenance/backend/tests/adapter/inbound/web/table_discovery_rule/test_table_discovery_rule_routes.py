@@ -4,19 +4,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from application.port.inbound.table_discovery_rule.create_table_discovery_rule import (
+from application.port.inbound.table_discovery_rule import (
     CreateTableDiscoveryRuleUseCaseInput,
     CreateTableDiscoveryRuleUseCaseOutput,
-)
-from application.port.inbound.table_discovery_rule.delete_table_discovery_rule import (
     DeleteTableDiscoveryRuleUseCaseInput,
     DeleteTableDiscoveryRuleUseCaseOutput,
-)
-from application.port.inbound.table_discovery_rule.list_table_discovery_rules import (
     ListTableDiscoveryRulesUseCaseOutput,
     ListTableDiscoveryRulesUseCaseOutputItem,
-)
-from application.port.inbound.table_discovery_rule.update_table_discovery_rule import (
     UpdateTableDiscoveryRuleUseCaseInput,
     UpdateTableDiscoveryRuleUseCaseOutput,
 )

@@ -9,21 +9,12 @@ from adapter.inbound.web.table_maintenance_preset.dto import (
     TableMaintenancePresetApiResponse,
     UpdateTableMaintenancePresetApiRequest,
 )
-from adapter.inbound.web.use_cases_dependency import web_use_cases
-from adapter.inbound.web.web_use_cases import WebUseCases
-from application.port.inbound.table_maintenance_preset.create_table_maintenance_preset import (
+from adapter.inbound.web import web_use_cases, WebUseCases
+from application.port.inbound.table_maintenance_preset import (
     CreateTableMaintenancePresetUseCaseInput,
-)
-from application.port.inbound.table_maintenance_preset.delete_table_maintenance_preset import (
     DeleteTableMaintenancePresetUseCaseInput,
-)
-from application.port.inbound.table_maintenance_preset.get_table_maintenance_preset import (
     GetTableMaintenancePresetUseCaseInput,
-)
-from application.port.inbound.table_maintenance_preset.list_table_maintenance_presets import (
     ListTableMaintenancePresetsUseCaseInput,
-)
-from application.port.inbound.table_maintenance_preset.update_table_maintenance_preset import (
     UpdateTableMaintenancePresetUseCaseInput,
 )
 from fastapi import APIRouter, Depends, Response, status

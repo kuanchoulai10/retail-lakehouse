@@ -1,10 +1,12 @@
 """Temporal workflows of the table-maintenance control plane."""
 
-from adapter.hybrid.temporal.inbound.workflows.table_maintenance_admission_workflow import (
-    TableMaintenanceAdmissionWorkflow,
-)
+from __future__ import annotations
+
 from adapter.hybrid.temporal.inbound.workflows.table_discovery_workflow import (
     TableDiscoveryWorkflow,
+)
+from adapter.hybrid.temporal.inbound.workflows.table_maintenance_admission_workflow import (
+    TableMaintenanceAdmissionWorkflow,
 )
 from adapter.hybrid.temporal.inbound.workflows.table_maintenance_attempt_policy import (
     TableMaintenanceAttemptPolicy,
@@ -17,8 +19,8 @@ from adapter.hybrid.temporal.inbound.workflows.table_reconciliation_workflow imp
 )
 
 __all__ = [
-    "TableMaintenanceAdmissionWorkflow",
     "TableDiscoveryWorkflow",
+    "TableMaintenanceAdmissionWorkflow",
     "TableMaintenanceAttemptPolicy",
     "TableMaintenanceWorkflow",
     "TableReconciliationWorkflow",

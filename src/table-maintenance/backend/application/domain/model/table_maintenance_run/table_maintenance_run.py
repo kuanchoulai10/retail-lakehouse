@@ -6,9 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime
 
-from application.domain.model.shared.maintenance_operation import (
-    MaintenanceOperation,
-)
+from application.domain.model.shared import MaintenanceOperation
 from application.domain.model.table_maintenance_run.invalid_run_transition import (
     InvalidRunTransition,
 )
@@ -21,8 +19,8 @@ from application.domain.model.table_maintenance_run.operation_run_status import 
 )
 from application.domain.model.table_maintenance_run.run_status import RunStatus
 from application.domain.model.table_maintenance_run.trigger_type import TriggerType
-from application.domain.model.table.table_id import TableId
-from base.aggregate_root import AggregateRoot
+from application.domain.model.table import TableId
+from base import AggregateRoot
 
 _TERMINAL = frozenset(
     {

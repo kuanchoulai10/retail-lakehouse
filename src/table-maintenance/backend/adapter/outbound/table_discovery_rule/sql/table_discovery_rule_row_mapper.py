@@ -4,17 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from application.domain.model.table_discovery_rule.table_discovery_rule import (
+from application.domain.model.table_discovery_rule import (
     TableDiscoveryRule,
-)
-from application.domain.model.table_discovery_rule.table_discovery_rule_id import (
     TableDiscoveryRuleId,
+    RuleEffect,
+    TablePattern,
 )
-from application.domain.model.table_discovery_rule.rule_effect import RuleEffect
-from application.domain.model.table_discovery_rule.table_pattern import TablePattern
-from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
-    TableMaintenancePresetId,
-)
+from application.domain.model.table_maintenance_preset import TableMaintenancePresetId
 
 if TYPE_CHECKING:
     from sqlalchemy import RowMapping

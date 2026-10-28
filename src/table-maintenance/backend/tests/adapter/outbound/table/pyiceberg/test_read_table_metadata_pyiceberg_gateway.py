@@ -8,13 +8,11 @@ from unittest.mock import MagicMock
 import pyarrow as pa
 import pytest
 from adapter.outbound.table.pyiceberg import ReadTableMetadataPyIcebergGateway
-from application.port.outbound.table.read_table_metadata import (
+from application.port.outbound.table import (
     ReadTableMetadataGatewayListInput,
     TableMetadataRef,
 )
-from application.service.table.table_observation_from_gateway import (
-    table_observation_from_gateway,
-)
+from application.service.table import table_observation_from_gateway
 from pyiceberg.catalog import Catalog
 from pyiceberg.catalog.sql import SqlCatalog
 from pyiceberg.exceptions import ServerError

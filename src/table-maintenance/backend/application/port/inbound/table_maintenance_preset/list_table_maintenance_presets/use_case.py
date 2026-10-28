@@ -10,7 +10,7 @@ from application.port.inbound.table_maintenance_preset.list_table_maintenance_pr
 from application.port.inbound.table_maintenance_preset.list_table_maintenance_presets.output import (
     ListTableMaintenancePresetsUseCaseOutput,
 )
-from base.use_case import UseCase
+from base import UseCase
 
 
 class ListTableMaintenancePresetsUseCase(

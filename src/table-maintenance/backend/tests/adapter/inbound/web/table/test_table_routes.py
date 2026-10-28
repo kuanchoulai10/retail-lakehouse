@@ -5,40 +5,24 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from application.port.inbound.table.exclude_table import (
+from application.port.inbound.table import (
     ExcludeTableUseCaseInput,
     ExcludeTableUseCaseOutput,
-)
-from application.port.inbound.table.get_table import (
     GetTableUseCaseInput,
     GetTableUseCaseOutput,
-)
-from application.port.inbound.table.include_table import (
     IncludeTableUseCaseInput,
     IncludeTableUseCaseOutput,
-)
-from application.port.inbound.table.list_tables import (
     ListTablesUseCaseInput,
     ListTablesUseCaseOutput,
     ListTablesUseCaseOutputItem,
-)
-from application.port.inbound.table.pause_table import (
     PauseTableUseCaseInput,
     PauseTableUseCaseOutput,
-)
-from application.port.inbound.table.reset_table_selection import (
     ResetTableSelectionUseCaseInput,
     ResetTableSelectionUseCaseOutput,
-)
-from application.port.inbound.table.resume_table import (
     ResumeTableUseCaseInput,
     ResumeTableUseCaseOutput,
-)
-from application.port.inbound.table.trigger_table_maintenance import (
     TriggerTableMaintenanceUseCaseInput,
     TriggerTableMaintenanceUseCaseOutput,
-)
-from application.port.inbound.table.update_table_settings import (
     UpdateTableSettingsUseCaseInput,
     UpdateTableSettingsUseCaseOutput,
 )

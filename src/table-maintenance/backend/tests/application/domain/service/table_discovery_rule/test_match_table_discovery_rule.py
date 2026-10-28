@@ -10,9 +10,7 @@ from application.domain.model.table_discovery_rule import (
 )
 from application.domain.model.table import TableName
 from application.domain.model.table_maintenance_preset import TableMaintenancePresetId
-from application.domain.service.table_discovery_rule.match_table_discovery_rule import (
-    match_table_discovery_rule,
-)
+from application.domain.service.table_discovery_rule import match_table_discovery_rule
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
 

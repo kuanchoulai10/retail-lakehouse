@@ -28,17 +28,19 @@ from pathlib import Path
 
 import pytest
 
-from base.aggregate_root import AggregateRoot
-from base.domain_event import DomainEvent
-from base.entity import Entity
-from base.entity_id import EntityId
-from base.event_dispatcher import EventDispatcher
-from base.event_handler import EventHandler
-from base.gateway import Gateway
-from base.repository import Repository
-from base.store import Store
-from base.use_case import UseCase
-from base.value_object import ValueObject
+from base import (
+    AggregateRoot,
+    DomainEvent,
+    Entity,
+    EntityId,
+    EventDispatcher,
+    EventHandler,
+    Gateway,
+    Repository,
+    Store,
+    UseCase,
+    ValueObject,
+)
 
 BACKEND = Path(__file__).resolve().parents[2]
 SOURCE_PACKAGES = ("base", "application", "adapter", "bootstrap")

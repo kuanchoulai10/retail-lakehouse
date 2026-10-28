@@ -5,9 +5,7 @@ from __future__ import annotations
 import pytest
 from temporalio.exceptions import ApplicationError
 
-from adapter.hybrid.temporal.inbound.activities.translate_application_errors import (
-    translate_application_errors,
-)
+from adapter.hybrid.temporal.inbound.activities import translate_application_errors
 from application.exceptions import ConflictError, NotFoundError, ValidationError
 
 

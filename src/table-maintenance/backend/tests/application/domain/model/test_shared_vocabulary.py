@@ -4,11 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from application.domain.model.shared.maintenance_operation import (
-    MaintenanceOperation,
-)
-from application.domain.model.table.table_name import TableName
-from application.domain.model.table.table_id import TableId
+from application.domain.model.shared import MaintenanceOperation
+from application.domain.model.table import TableName, TableId
 
 
 def test_maintenance_operation_ordered_follows_spec_order():

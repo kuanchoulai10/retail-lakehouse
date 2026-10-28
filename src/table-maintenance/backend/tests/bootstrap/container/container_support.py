@@ -7,7 +7,7 @@ from typing import Any
 
 from sqlalchemy import Engine
 
-from adapter.outbound.shared.sql.create_schema import create_schema
+from adapter.outbound.shared.sql import create_schema
 from bootstrap.configs import AppSettings, DatabaseBackend, SqliteSettings
 from bootstrap.container import Gateways, build_engine
 from tests.fakes.fake_read_table_metadata_gateway import FakeReadTableMetadataGateway

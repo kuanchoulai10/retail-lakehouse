@@ -4,21 +4,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
-    TableMaintenancePresetId,
-)
+from application.domain.model.table_maintenance_preset import TableMaintenancePresetId
 from application.exceptions import ConflictError, NotFoundError
-from application.port.inbound.table_maintenance_preset.delete_table_maintenance_preset import (
+from application.port.inbound.table_maintenance_preset import (
     DeleteTableMaintenancePresetUseCase,
     DeleteTableMaintenancePresetUseCaseInput,
     DeleteTableMaintenancePresetUseCaseOutput,
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.table_discovery_rule.table_discovery_rules_repo import (
-        TableDiscoveryRulesRepo,
-    )
-    from application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (
+    from application.port.outbound.table_discovery_rule import TableDiscoveryRulesRepo
+    from application.port.outbound.table_maintenance_preset import (
         TableMaintenancePresetsRepo,
     )
 

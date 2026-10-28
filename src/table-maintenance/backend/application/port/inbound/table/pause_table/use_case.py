@@ -10,7 +10,7 @@ from application.port.inbound.table.pause_table.input import (
 from application.port.inbound.table.pause_table.output import (
     PauseTableUseCaseOutput,
 )
-from base.use_case import UseCase
+from base import UseCase
 
 
 class PauseTableUseCase(UseCase[PauseTableUseCaseInput, PauseTableUseCaseOutput]):

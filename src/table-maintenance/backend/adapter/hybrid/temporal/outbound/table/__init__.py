@@ -1,5 +1,7 @@
 """Temporal-backed gateways of the table aggregate."""
 
+from __future__ import annotations
+
 from adapter.hybrid.temporal.outbound.table.send_discovery_request_temporal_gateway import (
     SendDiscoveryRequestTemporalGateway,
 )

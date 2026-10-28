@@ -5,14 +5,13 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import TYPE_CHECKING
 
-from application.domain.model.table.table import Table
-from base.repository import Repository
+from application.domain.model.table import Table
+from base import Repository
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from application.domain.model.table.table_name import TableName
-    from application.domain.model.table.table_status import TableStatus
+    from application.domain.model.table import TableName, TableStatus
 
 
 class TablesRepo(Repository[Table]):

@@ -19,11 +19,8 @@ if TYPE_CHECKING:
     from kubernetes.client import CustomObjectsApi
     from temporalio.client import Client
 
-    from adapter.hybrid.temporal.outbound.shared.async_loop_bridge import (
-        AsyncLoopBridge,
-    )
-    from bootstrap.configs.app_settings import AppSettings
-    from bootstrap.configs.temporal_settings import TemporalSettings
+    from adapter.hybrid.temporal.outbound.shared import AsyncLoopBridge
+    from bootstrap.configs import AppSettings, TemporalSettings
     from bootstrap.container.use_cases import UseCases
 
 

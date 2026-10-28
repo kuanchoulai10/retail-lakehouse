@@ -5,8 +5,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from application.domain.model.table_discovery_rule import TableDiscoveryRuleId
-from application.domain.model.shared import MaintenanceOperation
-from application.domain.model.shared import MaintenanceSettings
+from application.domain.model.shared import MaintenanceOperation, MaintenanceSettings
 from application.domain.model.table import (
     InvalidTableTransition,
     Table,

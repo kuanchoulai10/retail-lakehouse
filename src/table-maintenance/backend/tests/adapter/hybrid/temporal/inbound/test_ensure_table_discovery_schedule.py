@@ -13,14 +13,10 @@ from temporalio.client import (
     ScheduleOverlapPolicy,
 )
 
-from adapter.hybrid.temporal.inbound.ensure_table_discovery_schedule import (
-    ensure_table_discovery_schedule,
-)
-from adapter.hybrid.temporal.contracts.table_discovery_workflow_input import (
+from adapter.hybrid.temporal.inbound import ensure_table_discovery_schedule
+from adapter.hybrid.temporal.contracts import (
     TableDiscoveryWorkflowInput,
-)
-from adapter.hybrid.temporal.contracts.workflow_names import TABLE_DISCOVERY_WORKFLOW
-from adapter.hybrid.temporal.contracts.workflow_ids import (
+    TABLE_DISCOVERY_WORKFLOW,
     TASK_QUEUE,
     table_discovery_schedule_id,
 )

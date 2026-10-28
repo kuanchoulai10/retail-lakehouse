@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from temporalio import workflow
 
-from adapter.hybrid.temporal.contracts.workflow_ids import (
-    SIGNAL_MAINTENANCE_FINISHED,
-)
+from adapter.hybrid.temporal.contracts import SIGNAL_MAINTENANCE_FINISHED
 
 
 @workflow.defn(name="ParentStub")

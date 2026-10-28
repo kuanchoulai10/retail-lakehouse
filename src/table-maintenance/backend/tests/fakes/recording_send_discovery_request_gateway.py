@@ -4,14 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.port.outbound.table.send_discovery_request import (
-    SendDiscoveryRequestGateway,
-)
+from application.port.outbound.table import SendDiscoveryRequestGateway
 
 if TYPE_CHECKING:
-    from application.port.outbound.table.send_discovery_request import (
-        SendDiscoveryRequestGatewayInput,
-    )
+    from application.port.outbound.table import SendDiscoveryRequestGatewayInput
 
 
 class RecordingSendDiscoveryRequestGateway(SendDiscoveryRequestGateway):

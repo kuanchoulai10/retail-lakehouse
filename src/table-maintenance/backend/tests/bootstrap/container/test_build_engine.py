@@ -8,7 +8,7 @@ from pydantic import SecretStr
 from sqlalchemy import inspect
 from sqlalchemy.pool import QueuePool
 
-from adapter.outbound.shared.sql.create_schema import create_schema
+from adapter.outbound.shared.sql import create_schema
 from bootstrap.configs import (
     AppSettings,
     DatabaseBackend,

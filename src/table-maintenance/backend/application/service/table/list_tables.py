@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.table.table_status import TableStatus
-from application.port.inbound.table.list_tables import (
+from application.domain.model.table import TableStatus
+from application.port.inbound.table import (
     ListTablesUseCase,
     ListTablesUseCaseInput,
     ListTablesUseCaseOutput,
@@ -14,12 +14,10 @@ from application.port.inbound.table.list_tables import (
 from application.service.table.table_output_fields import (
     table_output_fields,
 )
-from application.service.shared.translate_domain_errors import translate_domain_errors
+from application.service.shared import translate_domain_errors
 
 if TYPE_CHECKING:
-    from application.port.outbound.table.tables_repo import (
-        TablesRepo,
-    )
+    from application.port.outbound.table import TablesRepo
 
 
 class ListTablesService(ListTablesUseCase):

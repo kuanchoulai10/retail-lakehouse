@@ -13,10 +13,8 @@ from application.domain.model.table_discovery_rule.invalid_table_discovery_rule 
 )
 from application.domain.model.table_discovery_rule.rule_effect import RuleEffect
 from application.domain.model.table_discovery_rule.table_pattern import TablePattern
-from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
-    TableMaintenancePresetId,
-)
-from base.aggregate_root import AggregateRoot
+from application.domain.model.table_maintenance_preset import TableMaintenancePresetId
+from base import AggregateRoot
 
 
 def _validate(effect: RuleEffect, preset_id: TableMaintenancePresetId | None) -> None:

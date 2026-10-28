@@ -6,13 +6,12 @@ import time
 
 import pytest
 
-from adapter.hybrid.temporal.outbound.table_maintenance_run.send_maintenance_result_temporal_gateway import (
+from adapter.hybrid.temporal.outbound.table_maintenance_run import (
     SendMaintenanceResultTemporalGateway,
 )
-from adapter.hybrid.temporal.contracts.workflow_names import TABLE_MAINTENANCE_WORKFLOW
-from adapter.hybrid.temporal.contracts.workflow_ids import TASK_QUEUE
+from adapter.hybrid.temporal.contracts import TABLE_MAINTENANCE_WORKFLOW, TASK_QUEUE
 from application.exceptions import NotFoundError
-from application.port.outbound.table_maintenance_run.send_maintenance_result import (
+from application.port.outbound.table_maintenance_run import (
     SendMaintenanceResultGatewayInput,
 )
 

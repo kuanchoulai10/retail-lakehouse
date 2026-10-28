@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import fields
 from typing import TYPE_CHECKING
 
-from adapter.inbound.web.web_use_cases import WebUseCases
+from adapter.inbound.web import WebUseCases
 
 if TYPE_CHECKING:
     from bootstrap.container.use_cases import UseCases

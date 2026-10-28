@@ -6,19 +6,13 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from application.port.outbound.table_discovery_settings.table_discovery_settings_repo import (
+    from application.port.outbound.table_discovery_settings import (
         TableDiscoverySettingsRepo,
     )
-    from application.port.outbound.table_discovery_rule.table_discovery_rules_repo import (
-        TableDiscoveryRulesRepo,
-    )
-    from application.port.outbound.table_maintenance_run.table_maintenance_runs_repo import (
-        TableMaintenanceRunsRepo,
-    )
-    from application.port.outbound.table.tables_repo import (
-        TablesRepo,
-    )
-    from application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (
+    from application.port.outbound.table_discovery_rule import TableDiscoveryRulesRepo
+    from application.port.outbound.table_maintenance_run import TableMaintenanceRunsRepo
+    from application.port.outbound.table import TablesRepo
+    from application.port.outbound.table_maintenance_preset import (
         TableMaintenancePresetsRepo,
     )
 

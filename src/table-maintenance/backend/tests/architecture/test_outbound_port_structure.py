@@ -31,13 +31,15 @@ import pytest
 
 from tests.architecture.aggregates import AGGREGATES
 
-from base.gateway import Gateway
+from base import Gateway
 
 OUTBOUND_PORT_DIR = (
     Path(__file__).resolve().parents[2] / "application" / "port" / "outbound"
 )
 
-AGGREGATE_GROUPS = sorted(AGGREGATES)
+AGGREGATE_GROUPS = sorted(
+    AGGREGATES | ({"shared"} if (OUTBOUND_PORT_DIR / "shared").is_dir() else set())
+)
 
 GATEWAY_REQUIRED_FILES = {"__init__.py", "gateway.py"}
 GATEWAY_STANDARD_FILES = {"__init__.py", "gateway.py", "input.py", "output.py"}

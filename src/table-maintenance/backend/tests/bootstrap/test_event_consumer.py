@@ -8,9 +8,8 @@ from typing import Any, cast
 
 import pytest
 
-from adapter.inbound.event_consumer.event_record import EventRecord
-from adapter.inbound.event_consumer.event_source import EventSource
-from adapter.hybrid.temporal.outbound.shared.async_loop_bridge import AsyncLoopBridge
+from adapter.inbound.event_consumer import EventRecord, EventSource
+from adapter.hybrid.temporal.outbound.shared import AsyncLoopBridge
 from bootstrap.container import build_repositories, build_use_cases
 from bootstrap.event_consumer import run_event_consumer_process
 from tests.bootstrap.container.container_support import (

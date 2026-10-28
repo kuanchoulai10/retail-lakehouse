@@ -4,8 +4,7 @@ from dataclasses import fields
 
 from fastapi.testclient import TestClient
 
-from adapter.inbound.web.create_app import create_app
-from adapter.inbound.web.web_use_cases import WebUseCases
+from adapter.inbound.web import create_app, WebUseCases
 from bootstrap.container import build_repositories, build_use_cases, build_web_use_cases
 from tests.bootstrap.container.container_support import (
     NOW,

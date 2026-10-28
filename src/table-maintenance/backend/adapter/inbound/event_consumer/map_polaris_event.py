@@ -6,9 +6,7 @@ import logging
 
 from adapter.inbound.event_consumer.parse_polaris_event import parse_polaris_event
 from adapter.inbound.event_consumer.polaris_event import PolarisEvent
-from application.port.inbound.table.process_table_hint import (
-    ProcessTableHintUseCaseInput,
-)
+from application.port.inbound.table import ProcessTableHintUseCaseInput
 
 logger = logging.getLogger(__name__)
 

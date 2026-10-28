@@ -10,7 +10,7 @@ from application.port.inbound.table.list_tables.input import (
 from application.port.inbound.table.list_tables.output import (
     ListTablesUseCaseOutput,
 )
-from base.use_case import UseCase
+from base import UseCase
 
 
 class ListTablesUseCase(UseCase[ListTablesUseCaseInput, ListTablesUseCaseOutput]):

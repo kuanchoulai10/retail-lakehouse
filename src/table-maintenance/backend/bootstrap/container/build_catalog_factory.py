@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
     from pyiceberg.catalog import Catalog
 
-    from bootstrap.configs.catalog_settings import CatalogSettings
+    from bootstrap.configs import CatalogSettings
 
 
 def _properties(settings: CatalogSettings, name: str) -> dict[str, Any]:

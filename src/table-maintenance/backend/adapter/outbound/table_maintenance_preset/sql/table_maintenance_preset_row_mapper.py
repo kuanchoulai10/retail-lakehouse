@@ -4,13 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from adapter.outbound.shared.sql.maintenance_settings_codec import (
-    MaintenanceSettingsCodec,
-)
-from application.domain.model.table_maintenance_preset.table_maintenance_preset import (
+from adapter.outbound.shared.sql import MaintenanceSettingsCodec
+from application.domain.model.table_maintenance_preset import (
     TableMaintenancePreset,
-)
-from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
     TableMaintenancePresetId,
 )
 

@@ -6,23 +6,15 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import Engine
 
-from adapter.outbound.table_maintenance_run.sql.table_maintenance_runs_sql_repo import (
-    TableMaintenanceRunsSqlRepo,
-)
-from application.domain.model.shared.maintenance_operation import (
-    MaintenanceOperation,
-)
-from application.domain.model.table_maintenance_run.table_maintenance_run import (
+from adapter.outbound.table_maintenance_run.sql import TableMaintenanceRunsSqlRepo
+from application.domain.model.shared import MaintenanceOperation
+from application.domain.model.table_maintenance_run import (
     TableMaintenanceRun,
-)
-from application.domain.model.table_maintenance_run.table_maintenance_run_id import (
     TableMaintenanceRunId,
-)
-from application.domain.model.table_maintenance_run.operation_run_status import (
     OperationRunStatus,
+    TriggerType,
 )
-from application.domain.model.table_maintenance_run.trigger_type import TriggerType
-from application.domain.model.table.table_id import TableId
+from application.domain.model.table import TableId
 from application.exceptions import ConflictError
 
 NOW = datetime(2026, 10, 24, 12, tzinfo=UTC)

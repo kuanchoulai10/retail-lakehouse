@@ -8,7 +8,7 @@ from datetime import datetime
 from application.domain.model.table_discovery_settings.table_discovery_settings_id import (
     TableDiscoverySettingsId,
 )
-from base.aggregate_root import AggregateRoot
+from base import AggregateRoot
 
 GLOBAL_ID = TableDiscoverySettingsId("global")
 

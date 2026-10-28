@@ -9,18 +9,11 @@ from adapter.inbound.web.table_discovery_rule.dto import (
     TableDiscoveryRuleApiResponse,
     UpdateTableDiscoveryRuleApiRequest,
 )
-from adapter.inbound.web.use_cases_dependency import web_use_cases
-from adapter.inbound.web.web_use_cases import WebUseCases
-from application.port.inbound.table_discovery_rule.create_table_discovery_rule import (
+from adapter.inbound.web import web_use_cases, WebUseCases
+from application.port.inbound.table_discovery_rule import (
     CreateTableDiscoveryRuleUseCaseInput,
-)
-from application.port.inbound.table_discovery_rule.delete_table_discovery_rule import (
     DeleteTableDiscoveryRuleUseCaseInput,
-)
-from application.port.inbound.table_discovery_rule.list_table_discovery_rules import (
     ListTableDiscoveryRulesUseCaseInput,
-)
-from application.port.inbound.table_discovery_rule.update_table_discovery_rule import (
     UpdateTableDiscoveryRuleUseCaseInput,
 )
 from fastapi import APIRouter, Depends, Response, status

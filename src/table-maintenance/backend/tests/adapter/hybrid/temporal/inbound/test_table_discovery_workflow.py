@@ -14,11 +14,11 @@ from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Worker
 
 from adapter.hybrid.temporal.inbound.workflows import TableDiscoveryWorkflow
-from adapter.hybrid.temporal.contracts.activity_names import SYNC_DISCOVERED_TABLES
-from adapter.hybrid.temporal.contracts.table_discovery_workflow_input import (
+from adapter.hybrid.temporal.contracts import (
+    SYNC_DISCOVERED_TABLES,
     TableDiscoveryWorkflowInput,
+    TABLE_DISCOVERY_WORKFLOW,
 )
-from adapter.hybrid.temporal.contracts.workflow_names import TABLE_DISCOVERY_WORKFLOW
 
 
 def _run_discovery(

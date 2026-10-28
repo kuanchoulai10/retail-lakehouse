@@ -5,19 +5,13 @@ from __future__ import annotations
 from datetime import UTC
 from typing import TYPE_CHECKING, Any
 
-from application.domain.model.shared.maintenance_operation import (
-    MaintenanceOperation,
-)
-from application.domain.service.shared.resolve_target_file_size import (
-    resolve_target_file_size,
-)
+from application.domain.model.shared import MaintenanceOperation
+from application.domain.service.shared import resolve_target_file_size
 
 if TYPE_CHECKING:
     from datetime import datetime
 
-    from application.domain.model.shared.maintenance_settings import (
-        MaintenanceSettings,
-    )
+    from application.domain.model.shared import MaintenanceSettings
 
 MIN_INPUT_FILES = 2
 

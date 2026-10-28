@@ -4,39 +4,29 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from application.port.inbound.table.sync_discovered_tables import (
+from application.port.inbound.table import (
     SyncDiscoveredTablesUseCase,
     SyncDiscoveredTablesUseCaseInput,
     SyncDiscoveredTablesUseCaseOutput,
-)
-from application.port.inbound.table_maintenance_run.create_table_maintenance_run import (
-    CreateTableMaintenanceRunUseCase,
-    CreateTableMaintenanceRunUseCaseInput,
-    CreateTableMaintenanceRunUseCaseOutput,
-)
-from application.port.inbound.table_maintenance_run.record_table_maintenance_operation_result import (
-    RecordTableMaintenanceOperationResultUseCase,
-    RecordTableMaintenanceOperationResultUseCaseInput,
-    RecordTableMaintenanceOperationResultUseCaseOutput,
-)
-from application.port.inbound.table_maintenance_run.delete_maintenance_job import (
-    DeleteMaintenanceJobUseCase,
-    DeleteMaintenanceJobUseCaseInput,
-    DeleteMaintenanceJobUseCaseOutput,
-)
-from application.port.inbound.table_maintenance_run.get_maintenance_job_status import (
-    GetMaintenanceJobStatusUseCase,
-    GetMaintenanceJobStatusUseCaseInput,
-    GetMaintenanceJobStatusUseCaseOutput,
-)
-from application.port.inbound.table.plan_table_maintenance import (
     PlanTableMaintenanceUseCase,
     PlanTableMaintenanceUseCaseInput,
     PlanTableMaintenanceUseCaseOutput,
     PlanTableMaintenanceUseCaseOutputFilterItem,
     PlanTableMaintenanceUseCaseOutputItem,
 )
-from application.port.inbound.table_maintenance_run.submit_maintenance_operation import (
+from application.port.inbound.table_maintenance_run import (
+    CreateTableMaintenanceRunUseCase,
+    CreateTableMaintenanceRunUseCaseInput,
+    CreateTableMaintenanceRunUseCaseOutput,
+    RecordTableMaintenanceOperationResultUseCase,
+    RecordTableMaintenanceOperationResultUseCaseInput,
+    RecordTableMaintenanceOperationResultUseCaseOutput,
+    DeleteMaintenanceJobUseCase,
+    DeleteMaintenanceJobUseCaseInput,
+    DeleteMaintenanceJobUseCaseOutput,
+    GetMaintenanceJobStatusUseCase,
+    GetMaintenanceJobStatusUseCaseInput,
+    GetMaintenanceJobStatusUseCaseOutput,
     SubmitMaintenanceOperationUseCase,
     SubmitMaintenanceOperationUseCaseInput,
     SubmitMaintenanceOperationUseCaseOutput,

@@ -10,7 +10,7 @@ from application.port.inbound.table.update_table_settings.input import (
 from application.port.inbound.table.update_table_settings.output import (
     UpdateTableSettingsUseCaseOutput,
 )
-from base.use_case import UseCase
+from base import UseCase
 
 
 class UpdateTableSettingsUseCase(

@@ -6,21 +6,17 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from application.domain.model.table_maintenance_preset.table_maintenance_preset import (
+from application.domain.model.table_maintenance_preset import (
     TableMaintenancePreset,
-)
-from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
     TableMaintenancePresetId,
 )
 from application.exceptions import ConflictError, ValidationError
-from application.port.inbound.table_maintenance_preset.create_table_maintenance_preset import (
+from application.port.inbound.table_maintenance_preset import (
     CreateTableMaintenancePresetUseCase,
     CreateTableMaintenancePresetUseCaseInput,
     CreateTableMaintenancePresetUseCaseOutput,
 )
-from application.service.shared.maintenance_settings_from_dict import (
-    maintenance_settings_from_dict,
-)
+from application.service.shared import maintenance_settings_from_dict
 from application.service.table_maintenance_preset.table_maintenance_preset_output_fields import (
     table_maintenance_preset_output_fields,
 )
@@ -28,7 +24,7 @@ from application.service.table_maintenance_preset.table_maintenance_preset_outpu
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (
+    from application.port.outbound.table_maintenance_preset import (
         TableMaintenancePresetsRepo,
     )
 

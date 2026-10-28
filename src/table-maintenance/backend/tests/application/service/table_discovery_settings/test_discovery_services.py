@@ -2,19 +2,15 @@
 
 from __future__ import annotations
 
-from application.port.inbound.table_discovery_settings.get_table_discovery_settings import (
+from application.port.inbound.table_discovery_settings import (
     GetTableDiscoverySettingsUseCaseInput,
-)
-from application.port.inbound.table_discovery_settings.update_table_discovery_settings import (
     UpdateTableDiscoverySettingsUseCaseInput,
 )
-from application.port.outbound.table_discovery_settings.update_table_discovery_schedule import (
+from application.port.outbound.table_discovery_settings import (
     UpdateTableDiscoveryScheduleGateway,
 )
-from application.service.table_discovery_settings.get_table_discovery_settings import (
+from application.service.table_discovery_settings import (
     GetTableDiscoverySettingsService,
-)
-from application.service.table_discovery_settings.update_table_discovery_settings import (
     UpdateTableDiscoverySettingsService,
 )
 

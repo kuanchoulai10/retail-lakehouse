@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from application.domain.model.shared.rewrite_data_files_settings import (
-    RewriteDataFilesSettings,
-)
+from application.domain.model.shared import RewriteDataFilesSettings
 
 from application.domain.service.shared.positive_int_property import (
     positive_int_property,

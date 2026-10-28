@@ -28,7 +28,9 @@ REQUIRED_FILES = {"__init__.py", "input.py", "output.py", "use_case.py"}
 REQUIRED_FILES_NO_INPUT = {"__init__.py", "output.py", "use_case.py"}
 ALLOWED_FILES = REQUIRED_FILES  # input.py is optional for no-input use cases
 
-AGGREGATE_GROUPS = sorted(AGGREGATES)
+AGGREGATE_GROUPS = sorted(
+    AGGREGATES | ({"shared"} if (INBOUND_PORT_DIR / "shared").is_dir() else set())
+)
 AGGREGATE_GROUPS_NO_INPUT: set[str] = set()
 
 

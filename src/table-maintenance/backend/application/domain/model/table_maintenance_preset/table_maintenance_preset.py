@@ -5,13 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from application.domain.model.shared.maintenance_settings import (
-    MaintenanceSettings,
-)
+from application.domain.model.shared import MaintenanceSettings
 from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
     TableMaintenancePresetId,
 )
-from base.aggregate_root import AggregateRoot
+from base import AggregateRoot
 
 
 @dataclass(eq=False)

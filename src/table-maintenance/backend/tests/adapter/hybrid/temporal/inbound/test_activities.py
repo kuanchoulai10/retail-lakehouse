@@ -13,7 +13,7 @@ from adapter.hybrid.temporal.inbound.activities import (
     TableReconciliationActivities,
 )
 from application.exceptions import NotFoundError
-from application.port.inbound.table_maintenance_run.submit_maintenance_operation import (
+from application.port.inbound.table_maintenance_run import (
     SubmitMaintenanceOperationUseCaseInputFilterItem,
 )
 from tests.adapter.hybrid.temporal.inbound.use_case_fakes import (

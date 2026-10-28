@@ -5,25 +5,13 @@ from datetime import timedelta
 
 import pytest
 
-from adapter.outbound.shared.sql.maintenance_settings_codec import (
-    MaintenanceSettingsCodec,
-)
-from application.domain.model.shared.compaction_scope import (
+from adapter.outbound.shared.sql import MaintenanceSettingsCodec
+from application.domain.model.shared import (
     CompactionScope,
-)
-from application.domain.model.shared.expire_snapshots_settings import (
     ExpireSnapshotsSettings,
-)
-from application.domain.model.shared.maintenance_settings import (
     MaintenanceSettings,
-)
-from application.domain.model.shared.remove_orphan_files_settings import (
     RemoveOrphanFilesSettings,
-)
-from application.domain.model.shared.rewrite_data_files_settings import (
     RewriteDataFilesSettings,
-)
-from application.domain.model.shared.rewrite_manifests_settings import (
     RewriteManifestsSettings,
 )
 

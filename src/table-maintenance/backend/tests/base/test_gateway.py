@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC
 
-from base.gateway import Gateway
+from base import Gateway
 
 
 def test_gateway_is_abc() -> None:

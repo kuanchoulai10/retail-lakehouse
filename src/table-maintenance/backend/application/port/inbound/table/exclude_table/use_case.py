@@ -10,7 +10,7 @@ from application.port.inbound.table.exclude_table.input import (
 from application.port.inbound.table.exclude_table.output import (
     ExcludeTableUseCaseOutput,
 )
-from base.use_case import UseCase
+from base import UseCase
 
 
 class ExcludeTableUseCase(UseCase[ExcludeTableUseCaseInput, ExcludeTableUseCaseOutput]):

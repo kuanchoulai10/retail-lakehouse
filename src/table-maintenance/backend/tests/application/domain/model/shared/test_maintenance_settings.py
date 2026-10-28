@@ -4,8 +4,8 @@ from datetime import timedelta
 
 import pytest
 
-from application.domain.model.shared import MaintenanceOperation
 from application.domain.model.shared import (
+    MaintenanceOperation,
     CompactionScope,
     ExpireSnapshotsSettings,
     InvalidMaintenanceSettings,

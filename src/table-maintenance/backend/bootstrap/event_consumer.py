@@ -7,8 +7,8 @@ import signal
 import threading
 from typing import TYPE_CHECKING
 
-from adapter.inbound.event_consumer.kafka.kafka_event_source import KafkaEventSource
-from adapter.hybrid.temporal.outbound.shared.async_loop_bridge import AsyncLoopBridge
+from adapter.inbound.event_consumer.kafka import KafkaEventSource
+from adapter.hybrid.temporal.outbound.shared import AsyncLoopBridge
 from bootstrap.configs import get_settings
 from bootstrap.container import (
     build_connected_use_cases,
@@ -19,9 +19,9 @@ from bootstrap.container import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from adapter.inbound.event_consumer.event_source import EventSource
+    from adapter.inbound.event_consumer import EventSource
     from bootstrap.configs import AppSettings
-    from bootstrap.container.use_cases import UseCases
+    from bootstrap.container import UseCases
 
 logger = logging.getLogger(__name__)
 

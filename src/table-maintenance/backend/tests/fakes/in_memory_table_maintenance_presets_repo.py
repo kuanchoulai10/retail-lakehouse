@@ -5,15 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from application.exceptions import ConflictError
-from application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (
+from application.port.outbound.table_maintenance_preset import (
     TableMaintenancePresetsRepo,
 )
 
 if TYPE_CHECKING:
-    from application.domain.model.table_maintenance_preset.table_maintenance_preset import (
-        TableMaintenancePreset,
-    )
-    from base.entity_id import EntityId
+    from application.domain.model.table_maintenance_preset import TableMaintenancePreset
+    from base import EntityId
 
 
 class InMemoryTableMaintenancePresetsRepo(TableMaintenancePresetsRepo):

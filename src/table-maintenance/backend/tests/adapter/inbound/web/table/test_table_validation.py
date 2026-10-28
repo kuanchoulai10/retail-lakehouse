@@ -5,22 +5,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
-from application.domain.model.shared.maintenance_settings import (
-    MaintenanceSettings,
-)
-from application.domain.model.table.table import Table
-from application.domain.model.table.table_name import TableName
-from application.domain.model.table.table_id import TableId
-from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
-    TableMaintenancePresetId,
-)
-from application.service.table.list_tables import (
+from application.domain.model.shared import MaintenanceSettings
+from application.domain.model.table import Table, TableName, TableId
+from application.domain.model.table_maintenance_preset import TableMaintenancePresetId
+from application.service.table import (
     ListTablesService,
-)
-from application.service.table.trigger_table_maintenance import (
     TriggerTableMaintenanceService,
-)
-from application.service.table.update_table_settings import (
     UpdateTableSettingsService,
 )
 from tests.adapter.inbound.web.web_test_support import build_client

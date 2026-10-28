@@ -6,16 +6,10 @@ from typing import TYPE_CHECKING
 
 from temporalio.common import WorkflowIDConflictPolicy
 
-from adapter.hybrid.temporal.contracts.table_maintenance_admission_input import (
+from adapter.hybrid.temporal.contracts import (
     TableMaintenanceAdmissionInput,
-)
-from adapter.hybrid.temporal.contracts.table_maintenance_admission_summary import (
     table_maintenance_admission_summary,
-)
-from adapter.hybrid.temporal.contracts.workflow_names import (
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
-)
-from adapter.hybrid.temporal.contracts.workflow_ids import (
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
     TASK_QUEUE,
 )

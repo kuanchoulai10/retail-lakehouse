@@ -4,18 +4,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.table.table_status import TableStatus
+from application.domain.model.table import TableStatus
 from application.exceptions import ConflictError
-from application.port.outbound.table.tables_repo import (
-    TablesRepo,
-)
+from application.port.outbound.table import TablesRepo
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from application.domain.model.table.table import Table
-    from application.domain.model.table.table_name import TableName
-    from base.entity_id import EntityId
+    from application.domain.model.table import Table, TableName
+    from base import EntityId
 
 
 class InMemoryTablesRepo(TablesRepo):

@@ -5,94 +5,46 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.service.table_discovery_settings.get_table_discovery_settings import (
+from application.service.table_discovery_settings import (
     GetTableDiscoverySettingsService,
-)
-from application.service.table.process_table_hint import ProcessTableHintService
-from application.service.table.sync_discovered_tables import (
-    SyncDiscoveredTablesService,
-)
-from application.service.table_discovery_settings.update_table_discovery_settings import (
     UpdateTableDiscoverySettingsService,
 )
-from application.service.table_discovery_rule.create_table_discovery_rule import (
-    CreateTableDiscoveryRuleService,
-)
-from application.service.table_discovery_rule.delete_table_discovery_rule import (
-    DeleteTableDiscoveryRuleService,
-)
-from application.service.table_discovery_rule.list_table_discovery_rules import (
-    ListTableDiscoveryRulesService,
-)
-from application.service.table_discovery_rule.update_table_discovery_rule import (
-    UpdateTableDiscoveryRuleService,
-)
-from application.service.table_maintenance_run.create_table_maintenance_run import (
-    CreateTableMaintenanceRunService,
-)
-from application.service.table_maintenance_run.get_table_maintenance_run import (
-    GetTableMaintenanceRunService,
-)
-from application.service.table_maintenance_run.list_table_maintenance_runs import (
-    ListTableMaintenanceRunsService,
-)
-from application.service.table_maintenance_run.process_table_maintenance_callback import (
-    ProcessTableMaintenanceCallbackService,
-)
-from application.service.table_maintenance_run.record_table_maintenance_operation_result import (
-    RecordTableMaintenanceOperationResultService,
-)
-from application.service.table.exclude_table import (
+from application.service.table import (
+    ProcessTableHintService,
+    SyncDiscoveredTablesService,
     ExcludeTableService,
-)
-from application.service.table.get_table import GetTableService
-from application.service.table.include_table import (
+    GetTableService,
     IncludeTableService,
-)
-from application.service.table.list_tables import (
     ListTablesService,
-)
-from application.service.table.pause_table import (
     PauseTableService,
-)
-from application.service.table.reset_table_selection import (
     ResetTableSelectionService,
-)
-from application.service.table.resume_table import (
     ResumeTableService,
-)
-from application.service.table.trigger_table_maintenance import (
     TriggerTableMaintenanceService,
-)
-from application.service.table.update_table_settings import (
     UpdateTableSettingsService,
-)
-from application.service.table_maintenance_preset.create_table_maintenance_preset import (
-    CreateTableMaintenancePresetService,
-)
-from application.service.table_maintenance_preset.delete_table_maintenance_preset import (
-    DeleteTableMaintenancePresetService,
-)
-from application.service.table_maintenance_preset.get_table_maintenance_preset import (
-    GetTableMaintenancePresetService,
-)
-from application.service.table_maintenance_preset.list_table_maintenance_presets import (
-    ListTableMaintenancePresetsService,
-)
-from application.service.table_maintenance_preset.update_table_maintenance_preset import (
-    UpdateTableMaintenancePresetService,
-)
-from application.service.table_maintenance_run.delete_maintenance_job import (
-    DeleteMaintenanceJobService,
-)
-from application.service.table_maintenance_run.get_maintenance_job_status import (
-    GetMaintenanceJobStatusService,
-)
-from application.service.table.plan_table_maintenance import (
     PlanTableMaintenanceService,
 )
-from application.service.table_maintenance_run.submit_maintenance_operation import (
+from application.service.table_discovery_rule import (
+    CreateTableDiscoveryRuleService,
+    DeleteTableDiscoveryRuleService,
+    ListTableDiscoveryRulesService,
+    UpdateTableDiscoveryRuleService,
+)
+from application.service.table_maintenance_run import (
+    CreateTableMaintenanceRunService,
+    GetTableMaintenanceRunService,
+    ListTableMaintenanceRunsService,
+    ProcessTableMaintenanceCallbackService,
+    RecordTableMaintenanceOperationResultService,
+    DeleteMaintenanceJobService,
+    GetMaintenanceJobStatusService,
     SubmitMaintenanceOperationService,
+)
+from application.service.table_maintenance_preset import (
+    CreateTableMaintenancePresetService,
+    DeleteTableMaintenancePresetService,
+    GetTableMaintenancePresetService,
+    ListTableMaintenancePresetsService,
+    UpdateTableMaintenancePresetService,
 )
 from bootstrap.container.use_cases import UseCases
 

@@ -10,20 +10,12 @@ from adapter.outbound.table_maintenance_run.k8s import (
     SparkK8sConfig,
     SubmitMaintenanceJobK8sGateway,
     build_spark_application,
-)
-from application.domain.model.shared.maintenance_operation import (
-    MaintenanceOperation,
-)
-from adapter.outbound.table_maintenance_run.k8s.spark_application_name import (
     spark_application_name,
 )
-from application.port.outbound.table_maintenance_run.delete_maintenance_job import (
+from application.domain.model.shared import MaintenanceOperation
+from application.port.outbound.table_maintenance_run import (
     DeleteMaintenanceJobGatewayInput,
-)
-from application.port.outbound.table_maintenance_run.read_maintenance_job import (
     ReadMaintenanceJobGatewayInput,
-)
-from application.port.outbound.table_maintenance_run.submit_maintenance_job import (
     SubmitMaintenanceJobGatewayInput,
 )
 from kubernetes.client.exceptions import ApiException

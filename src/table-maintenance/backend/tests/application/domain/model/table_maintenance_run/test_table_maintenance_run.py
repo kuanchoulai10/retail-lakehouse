@@ -6,24 +6,16 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from application.domain.model.shared.maintenance_operation import (
-    MaintenanceOperation as Op,
-)
-from application.domain.model.table_maintenance_run.invalid_run_transition import (
+from application.domain.model.shared import MaintenanceOperation as Op
+from application.domain.model.table_maintenance_run import (
     InvalidRunTransition,
-)
-from application.domain.model.table_maintenance_run.table_maintenance_run import (
     TableMaintenanceRun,
-)
-from application.domain.model.table_maintenance_run.table_maintenance_run_id import (
     TableMaintenanceRunId,
-)
-from application.domain.model.table_maintenance_run.operation_run_status import (
     OperationRunStatus,
+    RunStatus,
+    TriggerType,
 )
-from application.domain.model.table_maintenance_run.run_status import RunStatus
-from application.domain.model.table_maintenance_run.trigger_type import TriggerType
-from application.domain.model.table.table_id import TableId
+from application.domain.model.table import TableId
 
 T0 = datetime(2026, 10, 24, tzinfo=UTC)
 

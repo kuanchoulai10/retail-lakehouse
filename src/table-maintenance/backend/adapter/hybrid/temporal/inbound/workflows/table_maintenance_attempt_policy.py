@@ -5,9 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import timedelta
 
-from adapter.hybrid.temporal.contracts.default_attempt_deadline_seconds import (
-    DEFAULT_ATTEMPT_DEADLINE_SECONDS,
-)
+from adapter.hybrid.temporal.contracts import DEFAULT_ATTEMPT_DEADLINE_SECONDS
 
 
 @dataclass(frozen=True)

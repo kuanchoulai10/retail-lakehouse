@@ -4,33 +4,25 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.shared.maintenance_operation import (
-    MaintenanceOperation,
-)
-from application.domain.model.table_maintenance_run.table_maintenance_run_id import (
-    TableMaintenanceRunId,
-)
+from application.domain.model.shared import MaintenanceOperation
+from application.domain.model.table_maintenance_run import TableMaintenanceRunId
 from application.exceptions import NotFoundError, ValidationError
-from application.port.inbound.table_maintenance_run.submit_maintenance_operation import (
+from application.port.inbound.table_maintenance_run import (
     SubmitMaintenanceOperationUseCase,
     SubmitMaintenanceOperationUseCaseInput,
     SubmitMaintenanceOperationUseCaseOutput,
 )
-from application.port.outbound.table_maintenance_run.submit_maintenance_job import (
+from application.port.outbound.table_maintenance_run import (
     SubmitMaintenanceJobGatewayInput,
 )
-from application.service.shared.translate_domain_errors import translate_domain_errors
+from application.service.shared import translate_domain_errors
 
 if TYPE_CHECKING:
-    from application.port.outbound.table_maintenance_run.table_maintenance_runs_repo import (
+    from application.port.outbound.table_maintenance_run import (
         TableMaintenanceRunsRepo,
-    )
-    from application.port.outbound.table.tables_repo import (
-        TablesRepo,
-    )
-    from application.port.outbound.table_maintenance_run.submit_maintenance_job import (
         SubmitMaintenanceJobGateway,
     )
+    from application.port.outbound.table import TablesRepo
 
 
 class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):

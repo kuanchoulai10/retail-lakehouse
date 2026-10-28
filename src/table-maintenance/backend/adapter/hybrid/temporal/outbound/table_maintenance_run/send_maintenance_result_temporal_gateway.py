@@ -7,22 +7,18 @@ from typing import TYPE_CHECKING
 from temporalio.client import RPCError
 from temporalio.service import RPCStatusCode
 
-from adapter.hybrid.temporal.contracts.operation_result_signal import (
+from adapter.hybrid.temporal.contracts import (
     OperationResultSignal,
+    SIGNAL_OPERATION_RESULT,
 )
-from adapter.hybrid.temporal.contracts.workflow_ids import SIGNAL_OPERATION_RESULT
 from application.exceptions import NotFoundError
-from application.port.outbound.table_maintenance_run.send_maintenance_result import (
-    SendMaintenanceResultGateway,
-)
+from application.port.outbound.table_maintenance_run import SendMaintenanceResultGateway
 
 if TYPE_CHECKING:
     from temporalio.client import Client
 
-    from adapter.hybrid.temporal.outbound.shared.async_loop_bridge import (
-        AsyncLoopBridge,
-    )
-    from application.port.outbound.table_maintenance_run.send_maintenance_result import (
+    from adapter.hybrid.temporal.outbound.shared import AsyncLoopBridge
+    from application.port.outbound.table_maintenance_run import (
         SendMaintenanceResultGatewayInput,
     )
 

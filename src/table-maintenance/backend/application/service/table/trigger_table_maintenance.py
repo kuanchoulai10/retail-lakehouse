@@ -4,28 +4,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.shared.maintenance_operation import (
-    MaintenanceOperation,
-)
-from application.domain.model.table.table_change import TableChange
-from application.domain.model.table.table_id import TableId
+from application.domain.model.shared import MaintenanceOperation
+from application.domain.model.table import TableChange, TableId
 from application.exceptions import ConflictError, NotFoundError, ValidationError
-from application.port.inbound.table.trigger_table_maintenance import (
+from application.port.inbound.table import (
     TriggerTableMaintenanceUseCase,
     TriggerTableMaintenanceUseCaseInput,
     TriggerTableMaintenanceUseCaseOutput,
 )
-from application.port.outbound.table.send_table_change import (
-    SendTableChangeGatewayInput,
-)
+from application.port.outbound.table import SendTableChangeGatewayInput
 
 if TYPE_CHECKING:
-    from application.port.outbound.table.tables_repo import (
-        TablesRepo,
-    )
-    from application.port.outbound.table.send_table_change import (
-        SendTableChangeGateway,
-    )
+    from application.port.outbound.table import TablesRepo, SendTableChangeGateway
 
 
 class TriggerTableMaintenanceService(TriggerTableMaintenanceUseCase):

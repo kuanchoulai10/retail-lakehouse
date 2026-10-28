@@ -6,57 +6,28 @@ from datetime import timedelta
 
 import pytest
 
-from application.domain.model.table_discovery_rule.table_discovery_rule_id import (
-    TableDiscoveryRuleId,
-)
-from application.domain.model.shared.maintenance_operation import (
-    MaintenanceOperation,
-)
-from application.domain.model.table_maintenance_run.table_maintenance_run import (
+from application.domain.model.table_discovery_rule import TableDiscoveryRuleId
+from application.domain.model.shared import MaintenanceOperation, MaintenanceSettings
+from application.domain.model.table_maintenance_run import (
     TableMaintenanceRun,
-)
-from application.domain.model.table_maintenance_run.table_maintenance_run_id import (
     TableMaintenanceRunId,
+    TriggerType,
 )
-from application.domain.model.table_maintenance_run.trigger_type import TriggerType
-from application.domain.model.shared.maintenance_settings import (
-    MaintenanceSettings,
-)
-from application.domain.model.table.table import Table
-from application.domain.model.table.table_name import TableName
-from application.domain.model.table.table_id import TableId
-from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
-    TableMaintenancePresetId,
-)
+from application.domain.model.table import Table, TableName, TableId
+from application.domain.model.table_maintenance_preset import TableMaintenancePresetId
 from application.exceptions import ConflictError, NotFoundError, ValidationError
-from application.port.inbound.table_maintenance_run.create_table_maintenance_run import (
+from application.port.inbound.table_maintenance_run import (
     CreateTableMaintenanceRunUseCaseInput,
-)
-from application.port.inbound.table_maintenance_run.get_table_maintenance_run import (
     GetTableMaintenanceRunUseCaseInput,
-)
-from application.port.inbound.table_maintenance_run.list_table_maintenance_runs import (
     ListTableMaintenanceRunsUseCaseInput,
-)
-from application.port.inbound.table_maintenance_run.process_table_maintenance_callback import (
     ProcessTableMaintenanceCallbackUseCaseInput,
-)
-from application.port.inbound.table_maintenance_run.record_table_maintenance_operation_result import (
     RecordTableMaintenanceOperationResultUseCaseInput,
 )
-from application.service.table_maintenance_run.create_table_maintenance_run import (
+from application.service.table_maintenance_run import (
     CreateTableMaintenanceRunService,
-)
-from application.service.table_maintenance_run.get_table_maintenance_run import (
     GetTableMaintenanceRunService,
-)
-from application.service.table_maintenance_run.list_table_maintenance_runs import (
     ListTableMaintenanceRunsService,
-)
-from application.service.table_maintenance_run.process_table_maintenance_callback import (
     ProcessTableMaintenanceCallbackService,
-)
-from application.service.table_maintenance_run.record_table_maintenance_operation_result import (
     RecordTableMaintenanceOperationResultService,
 )
 from tests.fakes.track_calls import track_calls

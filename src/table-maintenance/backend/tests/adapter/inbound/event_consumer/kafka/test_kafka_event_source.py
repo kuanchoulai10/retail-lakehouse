@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 import pytest
 from confluent_kafka import KafkaException, TopicPartition
 
-from adapter.inbound.event_consumer.event_record import EventRecord
-from adapter.inbound.event_consumer.kafka.kafka_event_source import KafkaEventSource
+from adapter.inbound.event_consumer import EventRecord
+from adapter.inbound.event_consumer.kafka import KafkaEventSource
 
 
 def _message(*, error: object = None) -> MagicMock:

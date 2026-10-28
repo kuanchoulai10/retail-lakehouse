@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
-from adapter.hybrid.temporal.contracts.activity_names import PLAN_TABLE_MAINTENANCE
+from adapter.hybrid.temporal.contracts import PLAN_TABLE_MAINTENANCE
 
 if TYPE_CHECKING:
     from collections.abc import Callable

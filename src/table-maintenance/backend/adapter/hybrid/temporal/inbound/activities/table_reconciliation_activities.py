@@ -11,39 +11,27 @@ from adapter.hybrid.temporal.inbound.activities.activity_payload import activity
 from adapter.hybrid.temporal.inbound.activities.translate_application_errors import (
     translate_application_errors,
 )
-from adapter.hybrid.temporal.contracts.activity_names import (
+from adapter.hybrid.temporal.contracts import (
     DELETE_MAINTENANCE_JOB,
     GET_MAINTENANCE_JOB_STATUS,
     PLAN_TABLE_MAINTENANCE,
     SUBMIT_MAINTENANCE_OPERATION,
 )
-from application.port.inbound.table_maintenance_run.delete_maintenance_job import (
+from application.port.inbound.table_maintenance_run import (
     DeleteMaintenanceJobUseCaseInput,
-)
-from application.port.inbound.table_maintenance_run.get_maintenance_job_status import (
     GetMaintenanceJobStatusUseCaseInput,
-)
-from application.port.inbound.table.plan_table_maintenance import (
-    PlanTableMaintenanceUseCaseInput,
-)
-from application.port.inbound.table_maintenance_run.submit_maintenance_operation import (
     SubmitMaintenanceOperationUseCaseInput,
     SubmitMaintenanceOperationUseCaseInputFilterItem,
 )
+from application.port.inbound.table import PlanTableMaintenanceUseCaseInput
 
 if TYPE_CHECKING:
-    from application.port.inbound.table_maintenance_run.delete_maintenance_job import (
+    from application.port.inbound.table_maintenance_run import (
         DeleteMaintenanceJobUseCase,
-    )
-    from application.port.inbound.table_maintenance_run.get_maintenance_job_status import (
         GetMaintenanceJobStatusUseCase,
-    )
-    from application.port.inbound.table.plan_table_maintenance import (
-        PlanTableMaintenanceUseCase,
-    )
-    from application.port.inbound.table_maintenance_run.submit_maintenance_operation import (
         SubmitMaintenanceOperationUseCase,
     )
+    from application.port.inbound.table import PlanTableMaintenanceUseCase
 
 
 class TableReconciliationActivities:

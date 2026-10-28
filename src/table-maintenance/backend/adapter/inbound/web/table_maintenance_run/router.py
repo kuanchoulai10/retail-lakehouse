@@ -9,15 +9,10 @@ from adapter.inbound.web.table_maintenance_run.dto import (
     ProcessTableMaintenanceCallbackApiRequest,
     ProcessTableMaintenanceCallbackApiResponse,
 )
-from adapter.inbound.web.use_cases_dependency import web_use_cases
-from adapter.inbound.web.web_use_cases import WebUseCases
-from application.port.inbound.table_maintenance_run.get_table_maintenance_run import (
+from adapter.inbound.web import web_use_cases, WebUseCases
+from application.port.inbound.table_maintenance_run import (
     GetTableMaintenanceRunUseCaseInput,
-)
-from application.port.inbound.table_maintenance_run.list_table_maintenance_runs import (
     ListTableMaintenanceRunsUseCaseInput,
-)
-from application.port.inbound.table_maintenance_run.process_table_maintenance_callback import (
     ProcessTableMaintenanceCallbackUseCaseInput,
 )
 from fastapi import APIRouter, Depends, HTTPException, Query, status

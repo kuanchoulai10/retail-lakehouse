@@ -10,7 +10,7 @@ from application.port.inbound.table.sync_discovered_tables.input import (
 from application.port.inbound.table.sync_discovered_tables.output import (
     SyncDiscoveredTablesUseCaseOutput,
 )
-from base.use_case import UseCase
+from base import UseCase
 
 
 class SyncDiscoveredTablesUseCase(

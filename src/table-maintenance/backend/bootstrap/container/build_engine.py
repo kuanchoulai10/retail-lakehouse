@@ -7,12 +7,12 @@ from typing import TYPE_CHECKING
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
-from bootstrap.configs.database_backend import DatabaseBackend
+from bootstrap.configs import DatabaseBackend
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine
 
-    from bootstrap.configs.app_settings import AppSettings
+    from bootstrap.configs import AppSettings
 
 _IN_MEMORY = ":memory:"
 

@@ -6,17 +6,10 @@ from datetime import timedelta
 
 import pytest
 
-from application.domain.model.shared.compaction_scope import (
-    CompactionScope,
-)
-from application.domain.model.shared.maintenance_settings import (
-    MaintenanceSettings,
-)
+from application.domain.model.shared import CompactionScope, MaintenanceSettings
 from application.exceptions import ValidationError
-from application.service.shared.maintenance_settings_from_dict import (
+from application.service.shared import (
     maintenance_settings_from_dict,
-)
-from application.service.shared.maintenance_settings_to_dict import (
     maintenance_settings_to_dict,
 )
 

@@ -4,10 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from application.domain.model.table_discovery_rule.table_discovery_rule import (
-    TableDiscoveryRule,
-)
-from application.domain.model.table.table_name import TableName
+from application.domain.model.table_discovery_rule import TableDiscoveryRule
+from application.domain.model.table import TableName
 
 
 def match_table_discovery_rule(

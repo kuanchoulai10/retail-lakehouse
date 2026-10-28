@@ -4,21 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from adapter.outbound.table_discovery_settings.sql.table_discovery_settings_sql_repo import (
-    TableDiscoverySettingsSqlRepo,
-)
-from adapter.outbound.table_discovery_rule.sql.table_discovery_rules_sql_repo import (
-    TableDiscoveryRulesSqlRepo,
-)
-from adapter.outbound.table_maintenance_run.sql.table_maintenance_runs_sql_repo import (
-    TableMaintenanceRunsSqlRepo,
-)
-from adapter.outbound.table.sql.tables_sql_repo import (
-    TablesSqlRepo,
-)
-from adapter.outbound.table_maintenance_preset.sql.table_maintenance_presets_sql_repo import (
-    TableMaintenancePresetsSqlRepo,
-)
+from adapter.outbound.table_discovery_settings.sql import TableDiscoverySettingsSqlRepo
+from adapter.outbound.table_discovery_rule.sql import TableDiscoveryRulesSqlRepo
+from adapter.outbound.table_maintenance_run.sql import TableMaintenanceRunsSqlRepo
+from adapter.outbound.table.sql import TablesSqlRepo
+from adapter.outbound.table_maintenance_preset.sql import TableMaintenancePresetsSqlRepo
 from bootstrap.container.repositories import Repositories
 
 if TYPE_CHECKING:

@@ -8,14 +8,12 @@ from collections import defaultdict
 from collections.abc import Sequence
 from datetime import UTC, date, datetime, timedelta
 
-from application.domain.model.shared.spec_filter import SpecFilter
-from application.domain.model.shared.partition_field_info import (
+from application.domain.model.shared import (
+    SpecFilter,
     PartitionFieldInfo,
-)
-from application.domain.model.shared.partition_spec_info import (
     PartitionSpecInfo,
+    PartitionStats,
 )
-from application.domain.model.shared.partition_stats import PartitionStats
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 _EPOCH_YEAR = 1970

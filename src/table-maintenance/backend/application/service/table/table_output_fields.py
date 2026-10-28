@@ -4,12 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from application.service.shared.maintenance_settings_to_dict import (
-    maintenance_settings_to_dict,
-)
+from application.service.shared import maintenance_settings_to_dict
 
 if TYPE_CHECKING:
-    from application.domain.model.table.table import Table
+    from application.domain.model.table import Table
 
 
 def table_output_fields(table: Table) -> dict[str, Any]:

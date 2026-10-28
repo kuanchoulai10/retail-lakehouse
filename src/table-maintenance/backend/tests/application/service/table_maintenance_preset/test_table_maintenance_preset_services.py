@@ -4,58 +4,34 @@ from __future__ import annotations
 
 import pytest
 
-from application.domain.model.table_discovery_rule.table_discovery_rule import (
+from application.domain.model.table_discovery_rule import (
     TableDiscoveryRule,
-)
-from application.domain.model.table_discovery_rule.table_discovery_rule_id import (
     TableDiscoveryRuleId,
+    RuleEffect,
+    TablePattern,
 )
-from application.domain.model.table_discovery_rule.rule_effect import RuleEffect
-from application.domain.model.table_discovery_rule.table_pattern import TablePattern
-from application.domain.model.shared.maintenance_settings import (
+from application.domain.model.shared import (
     MaintenanceSettings,
-)
-from application.domain.model.shared.rewrite_data_files_settings import (
     RewriteDataFilesSettings,
 )
-from application.domain.model.table_maintenance_preset.table_maintenance_preset import (
+from application.domain.model.table_maintenance_preset import (
     TableMaintenancePreset,
-)
-from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
     TableMaintenancePresetId,
 )
 from application.exceptions import ConflictError, NotFoundError, ValidationError
-from application.port.inbound.table_maintenance_preset.create_table_maintenance_preset import (
+from application.port.inbound.table_maintenance_preset import (
     CreateTableMaintenancePresetUseCaseInput,
-)
-from application.port.inbound.table_maintenance_preset.delete_table_maintenance_preset import (
     DeleteTableMaintenancePresetUseCaseInput,
-)
-from application.port.inbound.table_maintenance_preset.get_table_maintenance_preset import (
     GetTableMaintenancePresetUseCaseInput,
-)
-from application.port.inbound.table_maintenance_preset.list_table_maintenance_presets import (
     ListTableMaintenancePresetsUseCaseInput,
-)
-from application.port.inbound.table_maintenance_preset.update_table_maintenance_preset import (
     UpdateTableMaintenancePresetUseCaseInput,
 )
-from application.service.shared.maintenance_settings_to_dict import (
-    maintenance_settings_to_dict,
-)
-from application.service.table_maintenance_preset.create_table_maintenance_preset import (
+from application.service.shared import maintenance_settings_to_dict
+from application.service.table_maintenance_preset import (
     CreateTableMaintenancePresetService,
-)
-from application.service.table_maintenance_preset.delete_table_maintenance_preset import (
     DeleteTableMaintenancePresetService,
-)
-from application.service.table_maintenance_preset.get_table_maintenance_preset import (
     GetTableMaintenancePresetService,
-)
-from application.service.table_maintenance_preset.list_table_maintenance_presets import (
     ListTableMaintenancePresetsService,
-)
-from application.service.table_maintenance_preset.update_table_maintenance_preset import (
     UpdateTableMaintenancePresetService,
 )
 

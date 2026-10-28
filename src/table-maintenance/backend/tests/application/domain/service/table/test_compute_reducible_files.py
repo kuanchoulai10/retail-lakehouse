@@ -1,13 +1,8 @@
 from __future__ import annotations
 
-from application.domain.model.shared import RewriteDataFilesSettings
-from application.domain.model.shared import PartitionStats
-from application.domain.service.table.compute_reducible_files import (
-    compute_reducible_files,
-)
-from application.domain.service.shared.resolve_target_file_size import (
-    resolve_target_file_size,
-)
+from application.domain.model.shared import RewriteDataFilesSettings, PartitionStats
+from application.domain.service.table import compute_reducible_files
+from application.domain.service.shared import resolve_target_file_size
 
 MIB = 1024 * 1024
 GIB = 1024 * MIB

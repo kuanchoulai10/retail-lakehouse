@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.table.table_id import TableId
-from application.port.inbound.table_maintenance_run.list_table_maintenance_runs import (
+from application.domain.model.table import TableId
+from application.port.inbound.table_maintenance_run import (
     ListTableMaintenanceRunsUseCase,
     ListTableMaintenanceRunsUseCaseInput,
     ListTableMaintenanceRunsUseCaseOutput,
@@ -16,9 +16,7 @@ from application.service.table_maintenance_run.table_maintenance_run_output_fiel
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.table_maintenance_run.table_maintenance_runs_repo import (
-        TableMaintenanceRunsRepo,
-    )
+    from application.port.outbound.table_maintenance_run import TableMaintenanceRunsRepo
 
 
 class ListTableMaintenanceRunsService(ListTableMaintenanceRunsUseCase):

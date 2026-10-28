@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from adapter.hybrid.temporal.contracts.workflow_ids import (
+from adapter.hybrid.temporal.contracts import (
     SIGNAL_ADMISSION_GRANTED,
     TABLE_DISCOVERY_SCHEDULE_ID_PREFIX,
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,

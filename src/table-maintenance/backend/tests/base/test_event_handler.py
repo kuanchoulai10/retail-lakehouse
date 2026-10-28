@@ -4,8 +4,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from base import DomainEvent
-from base.event_handler import EventHandler
+from base import DomainEvent, EventHandler
 
 
 @dataclass(frozen=True)

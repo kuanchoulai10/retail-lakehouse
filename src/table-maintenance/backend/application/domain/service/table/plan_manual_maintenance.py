@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from application.domain.model.shared.maintenance_operation import (
+from application.domain.model.shared import (
     MaintenanceOperation,
+    MaintenancePlan,
+    PlannedOperation,
 )
-from application.domain.model.shared.maintenance_plan import MaintenancePlan
-from application.domain.model.shared.planned_operation import PlannedOperation
 
 
 def plan_manual_maintenance(

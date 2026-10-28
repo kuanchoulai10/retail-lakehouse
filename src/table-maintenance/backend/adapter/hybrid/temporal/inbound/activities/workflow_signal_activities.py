@@ -9,23 +9,13 @@ from temporalio.client import RPCError
 from temporalio.common import WorkflowIDConflictPolicy
 from temporalio.service import RPCStatusCode
 
-from adapter.hybrid.temporal.contracts.activity_names import (
-    SIGNAL_ADMISSION_ACQUIRE,
+from adapter.hybrid.temporal.contracts import (
+    SIGNAL_ADMISSION_ACQUIRE_ACTIVITY,
     SIGNAL_PARENT,
-)
-from adapter.hybrid.temporal.contracts.admission_acquire_signal import (
     AdmissionAcquireSignal,
-)
-from adapter.hybrid.temporal.contracts.table_maintenance_admission_input import (
     TableMaintenanceAdmissionInput,
-)
-from adapter.hybrid.temporal.contracts.table_maintenance_admission_summary import (
     table_maintenance_admission_summary,
-)
-from adapter.hybrid.temporal.contracts.workflow_names import (
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
-)
-from adapter.hybrid.temporal.contracts.workflow_ids import (
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
     SIGNAL_ADMISSION_ACQUIRE as ACQUIRE_SIGNAL_NAME,
     TASK_QUEUE,
@@ -54,7 +44,7 @@ class WorkflowSignalActivities:
         self._admission_limit = admission_limit
         self._admission_lease_seconds = admission_lease_seconds
 
-    @activity.defn(name=SIGNAL_ADMISSION_ACQUIRE)
+    @activity.defn(name=SIGNAL_ADMISSION_ACQUIRE_ACTIVITY)
     async def signal_admission_acquire(self, request: dict[str, Any]) -> None:
         """Signal-with-start the admission workflow with an acquire request."""
         await self._client.start_workflow(

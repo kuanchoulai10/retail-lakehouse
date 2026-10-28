@@ -5,20 +5,15 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.domain.model.table.table_change import TableChange
-from application.domain.model.table.table_name import TableName
-from application.domain.model.table.table_status import TableStatus
-from application.domain.model.table.table_id import TableId
-from application.port.inbound.table.process_table_hint import (
+from application.domain.model.table import TableChange, TableName, TableStatus, TableId
+from application.port.inbound.table import (
     ProcessTableHintUseCase,
     ProcessTableHintUseCaseInput,
     ProcessTableHintUseCaseOutput,
 )
-from application.port.outbound.table.read_table_metadata import TableMetadataRef
-from application.port.outbound.table.send_discovery_request import (
+from application.port.outbound.table import (
+    TableMetadataRef,
     SendDiscoveryRequestGatewayInput,
-)
-from application.port.outbound.table.send_table_change import (
     SendTableChangeGatewayInput,
 )
 from application.service.table.register_discovered_table import (
@@ -26,32 +21,24 @@ from application.service.table.register_discovered_table import (
 )
 from application.service.table.registration_outcome import RegistrationOutcome
 from application.service.table.table_hint_action import TableHintAction
-from application.service.shared.translate_domain_errors import translate_domain_errors
+from application.service.shared import translate_domain_errors
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from application.port.outbound.table.read_table_metadata import (
+    from application.port.outbound.table import (
         ReadTableMetadataGateway,
         TableMetadata,
+        TablesRepo,
+        SendDiscoveryRequestGateway,
+        SendTableChangeGateway,
     )
-    from application.port.outbound.table_discovery_settings.table_discovery_settings_repo import (
+    from application.port.outbound.table_discovery_settings import (
         TableDiscoverySettingsRepo,
     )
-    from application.port.outbound.table_discovery_rule.table_discovery_rules_repo import (
-        TableDiscoveryRulesRepo,
-    )
-    from application.port.outbound.table.tables_repo import (
-        TablesRepo,
-    )
-    from application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (
+    from application.port.outbound.table_discovery_rule import TableDiscoveryRulesRepo
+    from application.port.outbound.table_maintenance_preset import (
         TableMaintenancePresetsRepo,
-    )
-    from application.port.outbound.table.send_discovery_request import (
-        SendDiscoveryRequestGateway,
-    )
-    from application.port.outbound.table.send_table_change import (
-        SendTableChangeGateway,
     )
 
 

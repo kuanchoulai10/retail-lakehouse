@@ -9,9 +9,7 @@ from typing import TYPE_CHECKING, Any
 from adapter.outbound.table.pyiceberg.partition_value_to_primitive import (
     partition_value_to_primitive,
 )
-from application.port.outbound.table.read_table_metadata import (
-    TableMetadataObservation,
-)
+from application.port.outbound.table import TableMetadataObservation
 from pyiceberg.manifest import DataFileContent
 
 if TYPE_CHECKING:

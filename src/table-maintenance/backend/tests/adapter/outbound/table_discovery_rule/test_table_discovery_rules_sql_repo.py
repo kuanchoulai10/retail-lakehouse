@@ -5,21 +5,15 @@ from datetime import UTC, datetime
 import pytest
 from sqlalchemy import Engine
 
-from adapter.outbound.table_discovery_rule.sql.table_discovery_rules_sql_repo import (
-    TableDiscoveryRulesSqlRepo,
-)
-from application.domain.model.table_discovery_rule.table_discovery_rule import (
+from adapter.outbound.table_discovery_rule.sql import TableDiscoveryRulesSqlRepo
+from application.domain.model.table_discovery_rule import (
     TableDiscoveryRule,
-)
-from application.domain.model.table_discovery_rule.table_discovery_rule_id import (
     TableDiscoveryRuleId,
+    RuleEffect,
+    TablePattern,
 )
-from application.domain.model.table_discovery_rule.rule_effect import RuleEffect
-from application.domain.model.table_discovery_rule.table_pattern import TablePattern
 from application.exceptions import ConflictError
-from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
-    TableMaintenancePresetId,
-)
+from application.domain.model.table_maintenance_preset import TableMaintenancePresetId
 
 NOW = datetime(2026, 10, 24, tzinfo=UTC)
 

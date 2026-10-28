@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.port.outbound.table.read_table_metadata import (
+from application.port.outbound.table import (
     ReadTableMetadataGateway,
     TableMetadata,
     TableMetadataRef,
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.table.read_table_metadata import (
+    from application.port.outbound.table import (
         ReadTableMetadataGatewayListInput,
         TableMetadataObservation,
     )

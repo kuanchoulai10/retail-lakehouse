@@ -19,23 +19,13 @@ from adapter.hybrid.temporal.inbound.workflows import (
     TableMaintenanceAdmissionWorkflow,
     TableMaintenanceWorkflow,
 )
-from adapter.hybrid.temporal.contracts.admission_acquire_signal import (
+from adapter.hybrid.temporal.contracts import (
     AdmissionAcquireSignal,
-)
-from adapter.hybrid.temporal.contracts.table_maintenance_admission_input import (
     TableMaintenanceAdmissionInput,
-)
-from adapter.hybrid.temporal.contracts.table_maintenance_workflow_input import (
     TableMaintenanceWorkflowInput,
-)
-from adapter.hybrid.temporal.contracts.operation_result_signal import (
     OperationResultSignal,
-)
-from adapter.hybrid.temporal.contracts.workflow_names import (
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
     TABLE_MAINTENANCE_WORKFLOW,
-)
-from adapter.hybrid.temporal.contracts.workflow_ids import (
     TASK_QUEUE,
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
     SIGNAL_ADMISSION_ACQUIRE,

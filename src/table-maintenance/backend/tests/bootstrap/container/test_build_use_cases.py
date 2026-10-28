@@ -10,38 +10,28 @@ from unittest.mock import MagicMock
 from pyiceberg.catalog import Catalog
 
 import application.service
-from adapter.outbound.table.pyiceberg.read_table_metadata_pyiceberg_gateway import (
-    ReadTableMetadataPyIcebergGateway,
-)
-from adapter.hybrid.temporal.outbound.table_discovery_settings.update_table_discovery_schedule_temporal_gateway import (
+from adapter.outbound.table.pyiceberg import ReadTableMetadataPyIcebergGateway
+from adapter.hybrid.temporal.outbound.table_discovery_settings import (
     UpdateTableDiscoveryScheduleTemporalGateway,
 )
-from adapter.outbound.table_maintenance_preset.sql.table_maintenance_presets_sql_repo import (
-    TableMaintenancePresetsSqlRepo,
-)
-from adapter.outbound.table_maintenance_run.k8s.delete_maintenance_job_k8s_gateway import (
+from adapter.outbound.table_maintenance_preset.sql import TableMaintenancePresetsSqlRepo
+from adapter.outbound.table_maintenance_run.k8s import (
     DeleteMaintenanceJobK8sGateway,
-)
-from adapter.outbound.table_maintenance_run.k8s.read_maintenance_job_k8s_gateway import (
     ReadMaintenanceJobK8sGateway,
-)
-from adapter.outbound.table_maintenance_run.k8s.submit_maintenance_job_k8s_gateway import (
     SubmitMaintenanceJobK8sGateway,
 )
-from adapter.hybrid.temporal.outbound.shared.async_loop_bridge import AsyncLoopBridge
-from adapter.hybrid.temporal.outbound.table.send_discovery_request_temporal_gateway import (
+from adapter.hybrid.temporal.outbound.shared import AsyncLoopBridge
+from adapter.hybrid.temporal.outbound.table import (
     SendDiscoveryRequestTemporalGateway,
-)
-from adapter.hybrid.temporal.outbound.table_maintenance_run.send_maintenance_result_temporal_gateway import (
-    SendMaintenanceResultTemporalGateway,
-)
-from adapter.hybrid.temporal.outbound.table.send_table_change_temporal_gateway import (
     SendTableChangeTemporalGateway,
 )
-from application.port.inbound.table_maintenance_preset.list_table_maintenance_presets import (
+from adapter.hybrid.temporal.outbound.table_maintenance_run import (
+    SendMaintenanceResultTemporalGateway,
+)
+from application.port.inbound.table_maintenance_preset import (
     ListTableMaintenancePresetsUseCaseInput,
 )
-from base.use_case import UseCase
+from base import UseCase
 from bootstrap.container import (
     build_gateways,
     build_repositories,

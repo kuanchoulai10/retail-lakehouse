@@ -8,10 +8,8 @@ from temporalio.client import RPCError
 from temporalio.common import WorkflowIDConflictPolicy
 from temporalio.service import RPCStatusCode
 
-from adapter.hybrid.temporal.contracts.table_reconciliation_workflow_input import (
+from adapter.hybrid.temporal.contracts import (
     TableReconciliationWorkflowInput,
-)
-from adapter.hybrid.temporal.contracts.workflow_ids import (
     SIGNAL_PAUSE,
     SIGNAL_RESUME,
     SIGNAL_SETTINGS_CHANGED,
@@ -20,23 +18,15 @@ from adapter.hybrid.temporal.contracts.workflow_ids import (
     SIGNAL_TRIGGER_NOW,
     TASK_QUEUE,
     table_reconciliation_workflow_id,
-)
-from adapter.hybrid.temporal.contracts.workflow_names import (
     TABLE_RECONCILIATION_WORKFLOW,
 )
-from application.port.outbound.table.send_table_change import (
-    SendTableChangeGateway,
-)
+from application.port.outbound.table import SendTableChangeGateway
 
 if TYPE_CHECKING:
     from temporalio.client import Client
 
-    from adapter.hybrid.temporal.outbound.shared.async_loop_bridge import (
-        AsyncLoopBridge,
-    )
-    from application.port.outbound.table.send_table_change import (
-        SendTableChangeGatewayInput,
-    )
+    from adapter.hybrid.temporal.outbound.shared import AsyncLoopBridge
+    from application.port.outbound.table import SendTableChangeGatewayInput
 
 _MAINTENANCE_REQUESTED = "maintenance_requested"
 

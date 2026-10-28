@@ -9,16 +9,10 @@ from temporalio import workflow
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import UnsandboxedWorkflowRunner, Worker
 
-from adapter.hybrid.temporal.inbound.ensure_table_maintenance_admission import (
-    ensure_table_maintenance_admission,
-)
-from adapter.hybrid.temporal.contracts.table_maintenance_admission_input import (
+from adapter.hybrid.temporal.inbound import ensure_table_maintenance_admission
+from adapter.hybrid.temporal.contracts import (
     TableMaintenanceAdmissionInput,
-)
-from adapter.hybrid.temporal.contracts.workflow_names import (
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
-)
-from adapter.hybrid.temporal.contracts.workflow_ids import (
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
     TASK_QUEUE,
 )

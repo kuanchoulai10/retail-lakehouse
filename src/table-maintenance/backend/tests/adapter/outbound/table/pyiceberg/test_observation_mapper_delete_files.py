@@ -3,7 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, cast
 
-from adapter.outbound.table.pyiceberg.observation_mapper import observation_from_table
+from adapter.outbound.table.pyiceberg import observation_from_table
 from pyiceberg.manifest import (
     DataFile,
     DataFileContent,

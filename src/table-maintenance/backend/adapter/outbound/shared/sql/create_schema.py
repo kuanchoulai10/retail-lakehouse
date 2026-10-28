@@ -2,37 +2,30 @@
 
 from __future__ import annotations
 
+import importlib
 from typing import TYPE_CHECKING
 
-from adapter.outbound.table_discovery_settings.sql.table_discovery_settings_table import (
-    table_discovery_settings_table as _table_discovery_settings_table,
-)
-from adapter.outbound.table_discovery_rule.sql.table_discovery_rules_table import (
-    table_discovery_rules_table as _table_discovery_rules_table,
-)
-from adapter.outbound.table_maintenance_run.sql.table_maintenance_runs_table import (
-    table_maintenance_runs_table as _table_maintenance_runs_table,
-)
-from adapter.outbound.table.sql.tables_table import (
-    tables_table as _tables_table,
-)
-from adapter.outbound.table_maintenance_preset.sql.table_maintenance_presets_table import (
-    table_maintenance_presets_table as _table_maintenance_presets_table,
-)
 from adapter.outbound.shared.sql.metadata import metadata
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine
 
-_REGISTERED = (
-    _table_discovery_settings_table,
-    _table_discovery_rules_table,
-    _table_maintenance_runs_table,
-    _tables_table,
-    _table_maintenance_presets_table,
+_AGGREGATE_SQL_PACKAGES = (
+    "adapter.outbound.table_discovery_settings.sql",
+    "adapter.outbound.table_discovery_rule.sql",
+    "adapter.outbound.table_maintenance_run.sql",
+    "adapter.outbound.table.sql",
+    "adapter.outbound.table_maintenance_preset.sql",
 )
 
 
 def create_schema(engine: Engine) -> None:
-    """Create every control-plane table that does not exist yet."""
+    """Create every control-plane table that does not exist yet.
+
+    The aggregate SQL packages register their tables on ``metadata`` when they
+    are imported, and they import this package for ``metadata``. They are
+    therefore imported here, on call, so the package import stays acyclic.
+    """
+    for package in _AGGREGATE_SQL_PACKAGES:
+        importlib.import_module(package)
     metadata.create_all(engine)

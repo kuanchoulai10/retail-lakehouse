@@ -8,11 +8,11 @@ from typing import Any
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
-from adapter.hybrid.temporal.contracts.activity_names import SYNC_DISCOVERED_TABLES
-from adapter.hybrid.temporal.contracts.table_discovery_workflow_input import (
+from adapter.hybrid.temporal.contracts import (
+    SYNC_DISCOVERED_TABLES,
     TableDiscoveryWorkflowInput,
+    TABLE_DISCOVERY_WORKFLOW,
 )
-from adapter.hybrid.temporal.contracts.workflow_names import TABLE_DISCOVERY_WORKFLOW
 
 _SYNC_TIMEOUT = timedelta(minutes=10)
 _ACTIVITY_RETRY = RetryPolicy(

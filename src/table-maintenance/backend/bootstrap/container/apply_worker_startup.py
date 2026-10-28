@@ -6,13 +6,11 @@ import asyncio
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
-from adapter.hybrid.temporal.inbound.ensure_table_maintenance_admission import (
+from adapter.hybrid.temporal.inbound import (
     ensure_table_maintenance_admission,
-)
-from adapter.hybrid.temporal.inbound.ensure_table_discovery_schedule import (
     ensure_table_discovery_schedule,
 )
-from application.port.inbound.table_discovery_settings.get_table_discovery_settings import (
+from application.port.inbound.table_discovery_settings import (
     GetTableDiscoverySettingsUseCaseInput,
 )
 from bootstrap.container.admission_lease_seconds import ADMISSION_LEASE_SECONDS
@@ -22,10 +20,10 @@ if TYPE_CHECKING:
 
     from temporalio.client import Client
 
-    from application.port.inbound.table_discovery_settings.get_table_discovery_settings import (
+    from application.port.inbound.table_discovery_settings import (
         GetTableDiscoverySettingsUseCase,
     )
-    from bootstrap.configs.app_settings import AppSettings
+    from bootstrap.configs import AppSettings
 
 
 async def apply_worker_startup(

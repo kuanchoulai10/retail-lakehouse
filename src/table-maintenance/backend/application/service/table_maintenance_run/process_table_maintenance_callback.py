@@ -4,27 +4,21 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.shared.maintenance_operation import (
-    MaintenanceOperation,
-)
-from application.domain.model.table_maintenance_run.table_maintenance_run_id import (
-    TableMaintenanceRunId,
-)
+from application.domain.model.shared import MaintenanceOperation
+from application.domain.model.table_maintenance_run import TableMaintenanceRunId
 from application.exceptions import NotFoundError, ValidationError
-from application.port.inbound.table_maintenance_run.process_table_maintenance_callback import (
+from application.port.inbound.table_maintenance_run import (
     ProcessTableMaintenanceCallbackUseCase,
     ProcessTableMaintenanceCallbackUseCaseInput,
     ProcessTableMaintenanceCallbackUseCaseOutput,
 )
-from application.port.outbound.table_maintenance_run.send_maintenance_result import (
+from application.port.outbound.table_maintenance_run import (
     SendMaintenanceResultGatewayInput,
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.table_maintenance_run.table_maintenance_runs_repo import (
+    from application.port.outbound.table_maintenance_run import (
         TableMaintenanceRunsRepo,
-    )
-    from application.port.outbound.table_maintenance_run.send_maintenance_result import (
         SendMaintenanceResultGateway,
     )
 

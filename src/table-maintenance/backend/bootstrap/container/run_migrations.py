@@ -5,11 +5,9 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from adapter.outbound.shared.sql.create_schema import create_schema
-from application.service.table_maintenance_preset.create_table_maintenance_preset import (
+from adapter.outbound.shared.sql import create_schema
+from application.service.table_maintenance_preset import (
     CreateTableMaintenancePresetService,
-)
-from application.service.table_maintenance_preset.list_table_maintenance_presets import (
     ListTableMaintenancePresetsService,
 )
 from bootstrap.container.build_repositories import build_repositories

@@ -16,7 +16,7 @@ from bootstrap.container.admission_lease_seconds import ADMISSION_LEASE_SECONDS
 if TYPE_CHECKING:
     from temporalio.client import Client
 
-    from bootstrap.configs.app_settings import AppSettings
+    from bootstrap.configs import AppSettings
     from bootstrap.container.use_cases import UseCases
 
 

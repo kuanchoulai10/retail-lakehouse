@@ -1,5 +1,7 @@
 """Table maintenance preset domain vocabulary."""
 
+from __future__ import annotations
+
 from application.domain.model.table_maintenance_preset.table_maintenance_preset import (
     TableMaintenancePreset,
 )
@@ -7,4 +9,7 @@ from application.domain.model.table_maintenance_preset.table_maintenance_preset_
     TableMaintenancePresetId,
 )
 
-__all__ = ["TableMaintenancePreset", "TableMaintenancePresetId"]
+__all__ = [
+    "TableMaintenancePreset",
+    "TableMaintenancePresetId",
+]

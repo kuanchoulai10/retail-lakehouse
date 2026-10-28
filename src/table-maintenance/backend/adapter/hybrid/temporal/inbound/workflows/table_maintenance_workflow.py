@@ -10,34 +10,26 @@ from temporalio import workflow
 from temporalio.common import RetryPolicy
 from temporalio.exceptions import ActivityError, FailureError, is_cancelled_exception
 
-from adapter.hybrid.temporal.contracts.activity_names import (
+from adapter.hybrid.temporal.contracts import (
     CREATE_MAINTENANCE_RUN,
     DELETE_MAINTENANCE_JOB,
     GET_MAINTENANCE_JOB_STATUS,
     RECORD_MAINTENANCE_OPERATION_RESULT,
-    SIGNAL_ADMISSION_ACQUIRE,
+    SIGNAL_ADMISSION_ACQUIRE_ACTIVITY,
     SIGNAL_PARENT,
     SUBMIT_MAINTENANCE_OPERATION,
-)
-from adapter.hybrid.temporal.inbound.workflows.table_maintenance_attempt_policy import (
-    TableMaintenanceAttemptPolicy,
-)
-from adapter.hybrid.temporal.contracts.admission_release_signal import (
     AdmissionReleaseSignal,
-)
-from adapter.hybrid.temporal.contracts.table_maintenance_workflow_input import (
     TableMaintenanceWorkflowInput,
-)
-from adapter.hybrid.temporal.contracts.operation_result_signal import (
     OperationResultSignal,
-)
-from adapter.hybrid.temporal.contracts.workflow_names import TABLE_MAINTENANCE_WORKFLOW
-from adapter.hybrid.temporal.contracts.workflow_ids import (
+    TABLE_MAINTENANCE_WORKFLOW,
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
     SIGNAL_ADMISSION_GRANTED,
     SIGNAL_ADMISSION_RELEASE,
     SIGNAL_MAINTENANCE_FINISHED,
     SIGNAL_OPERATION_RESULT,
+)
+from adapter.hybrid.temporal.inbound.workflows.table_maintenance_attempt_policy import (
+    TableMaintenanceAttemptPolicy,
 )
 
 _ACTIVITY_TIMEOUT = timedelta(minutes=2)
@@ -176,7 +168,7 @@ class TableMaintenanceWorkflow:
             "request_id": request_id,
             "requester_workflow_id": workflow.info().workflow_id,
         }
-        await self._activity(SIGNAL_ADMISSION_ACQUIRE, request)
+        await self._activity(SIGNAL_ADMISSION_ACQUIRE_ACTIVITY, request)
         while True:
             try:
                 await workflow.wait_condition(
@@ -185,7 +177,7 @@ class TableMaintenanceWorkflow:
                 )
                 return
             except TimeoutError:
-                await self._activity(SIGNAL_ADMISSION_ACQUIRE, request)
+                await self._activity(SIGNAL_ADMISSION_ACQUIRE_ACTIVITY, request)
 
     async def _release(self, request_id: str) -> None:
         handle = workflow.get_external_workflow_handle(

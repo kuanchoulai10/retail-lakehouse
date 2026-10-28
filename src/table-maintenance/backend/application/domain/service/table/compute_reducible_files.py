@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from application.domain.model.shared.partition_stats import PartitionStats
+from application.domain.model.shared import PartitionStats
 
 
 def compute_reducible_files(stats: PartitionStats, target_file_size_bytes: int) -> int:

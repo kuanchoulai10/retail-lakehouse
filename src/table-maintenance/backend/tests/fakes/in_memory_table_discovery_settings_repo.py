@@ -4,18 +4,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.table_discovery_settings.table_discovery_settings import (
+from application.domain.model.table_discovery_settings import (
     GLOBAL_ID,
     TableDiscoverySettings,
 )
-from application.port.outbound.table_discovery_settings.table_discovery_settings_repo import (
+from application.port.outbound.table_discovery_settings import (
     TableDiscoverySettingsRepo,
 )
 
 if TYPE_CHECKING:
     from datetime import datetime
 
-    from base.entity_id import EntityId
+    from base import EntityId
 
 
 class InMemoryTableDiscoverySettingsRepo(TableDiscoverySettingsRepo):

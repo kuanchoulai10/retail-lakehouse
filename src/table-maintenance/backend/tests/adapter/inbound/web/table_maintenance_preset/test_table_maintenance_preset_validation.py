@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from application.service.table_maintenance_preset.create_table_maintenance_preset import (
+from application.service.table_maintenance_preset import (
     CreateTableMaintenancePresetService,
 )
 from tests.adapter.inbound.web.web_test_support import build_client

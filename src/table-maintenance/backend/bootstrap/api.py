@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uvicorn
 
-from adapter.hybrid.temporal.outbound.shared.async_loop_bridge import AsyncLoopBridge
+from adapter.hybrid.temporal.outbound.shared import AsyncLoopBridge
 from bootstrap.configs import get_settings
 from bootstrap.container import build_api_app, configure_logging
 

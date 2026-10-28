@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.port.inbound.table_discovery_rule.list_table_discovery_rules import (
+from application.port.inbound.table_discovery_rule import (
     ListTableDiscoveryRulesUseCase,
     ListTableDiscoveryRulesUseCaseInput,
     ListTableDiscoveryRulesUseCaseOutput,
@@ -15,9 +15,7 @@ from application.service.table_discovery_rule.table_discovery_rule_output_fields
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.table_discovery_rule.table_discovery_rules_repo import (
-        TableDiscoveryRulesRepo,
-    )
+    from application.port.outbound.table_discovery_rule import TableDiscoveryRulesRepo
 
 
 class ListTableDiscoveryRulesService(ListTableDiscoveryRulesUseCase):

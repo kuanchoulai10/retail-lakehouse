@@ -5,13 +5,11 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import TYPE_CHECKING
 
-from application.domain.model.table_maintenance_run.table_maintenance_run import (
-    TableMaintenanceRun,
-)
-from base.repository import Repository
+from application.domain.model.table_maintenance_run import TableMaintenanceRun
+from base import Repository
 
 if TYPE_CHECKING:
-    from application.domain.model.table.table_id import TableId
+    from application.domain.model.table import TableId
 
 
 class TableMaintenanceRunsRepo(Repository[TableMaintenanceRun]):

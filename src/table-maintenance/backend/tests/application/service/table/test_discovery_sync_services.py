@@ -6,52 +6,38 @@ from datetime import timedelta
 
 import pytest
 
-from application.domain.model.table_discovery_rule.table_discovery_rule import (
+from application.domain.model.table_discovery_rule import (
     TableDiscoveryRule,
-)
-from application.domain.model.table_discovery_rule.table_discovery_rule_id import (
     TableDiscoveryRuleId,
+    RuleEffect,
+    TablePattern,
 )
-from application.domain.model.table_discovery_rule.rule_effect import RuleEffect
-from application.domain.model.table_discovery_rule.table_pattern import TablePattern
-from application.domain.model.shared.maintenance_operation import (
+from application.domain.model.shared import (
     MaintenanceOperation,
-)
-from application.domain.model.shared.maintenance_settings import (
     MaintenanceSettings,
-)
-from application.domain.model.shared.rewrite_data_files_settings import (
     RewriteDataFilesSettings,
 )
-from application.domain.model.table.table import Table
-from application.domain.model.table.table_name import TableName
-from application.domain.model.table.table_selection import TableSelection
-from application.domain.model.table.table_status import TableStatus
-from application.domain.model.table.table_id import TableId
-from application.domain.model.table_maintenance_preset.table_maintenance_preset import (
-    TableMaintenancePreset,
+from application.domain.model.table import (
+    Table,
+    TableName,
+    TableSelection,
+    TableStatus,
+    TableId,
 )
-from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
+from application.domain.model.table_maintenance_preset import (
+    TableMaintenancePreset,
     TableMaintenancePresetId,
 )
-from application.port.inbound.table.process_table_hint import (
+from application.port.inbound.table import (
     ProcessTableHintUseCaseInput,
-)
-from application.port.inbound.table.sync_discovered_tables import (
     SyncDiscoveredTablesUseCaseInput,
-)
-from application.exceptions import ConflictError
-from application.port.inbound.table.plan_table_maintenance import (
     PlanTableMaintenanceUseCaseInput,
 )
-from application.port.outbound.table.read_table_metadata import (
-    TableMetadataObservation,
-)
-from application.service.table.process_table_hint import ProcessTableHintService
-from application.service.table.sync_discovered_tables import (
+from application.exceptions import ConflictError
+from application.port.outbound.table import TableMetadataObservation
+from application.service.table import (
+    ProcessTableHintService,
     SyncDiscoveredTablesService,
-)
-from application.service.table.plan_table_maintenance import (
     PlanTableMaintenanceService,
 )
 from tests.fakes.track_calls import track_calls

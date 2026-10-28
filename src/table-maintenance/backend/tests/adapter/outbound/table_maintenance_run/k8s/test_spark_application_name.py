@@ -6,13 +6,8 @@ import re
 
 import pytest
 
-from application.domain.model.shared.maintenance_operation import (
-    MaintenanceOperation,
-)
-from adapter.outbound.table_maintenance_run.k8s.spark_application_name import (
-    _CODES,
-    spark_application_name,
-)
+from application.domain.model.shared import MaintenanceOperation
+from adapter.outbound.table_maintenance_run.k8s import spark_application_name
 
 DNS_LABEL = re.compile(r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")
 
@@ -47,5 +42,9 @@ def test_unknown_operation_is_rejected():
         spark_application_name("r", "defragment", 1)
 
 
-def test_every_operation_has_a_code():
-    assert set(_CODES) == {op.value for op in MaintenanceOperation}
+def test_every_operation_has_a_distinct_code():
+    codes = [
+        spark_application_name("r", op.value, 1).split("-")[1]
+        for op in MaintenanceOperation
+    ]
+    assert len(set(codes)) == len(MaintenanceOperation)

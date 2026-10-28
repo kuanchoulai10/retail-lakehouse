@@ -10,17 +10,12 @@ from adapter.inbound.web.table_discovery_settings.dto import (
     ScanDiscoveryApiResponse,
     UpdateTableDiscoverySettingsApiRequest,
 )
-from adapter.inbound.web.use_cases_dependency import web_use_cases
-from adapter.inbound.web.web_use_cases import WebUseCases
-from application.port.inbound.table_discovery_settings.get_table_discovery_settings import (
+from adapter.inbound.web import web_use_cases, WebUseCases
+from application.port.inbound.table_discovery_settings import (
     GetTableDiscoverySettingsUseCaseInput,
-)
-from application.port.inbound.table.sync_discovered_tables import (
-    SyncDiscoveredTablesUseCaseInput,
-)
-from application.port.inbound.table_discovery_settings.update_table_discovery_settings import (
     UpdateTableDiscoverySettingsUseCaseInput,
 )
+from application.port.inbound.table import SyncDiscoveredTablesUseCaseInput
 from fastapi import APIRouter, Depends, status
 
 router = APIRouter(

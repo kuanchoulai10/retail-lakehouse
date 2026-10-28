@@ -14,18 +14,14 @@ from adapter.outbound.table_maintenance_run.sql.table_maintenance_runs_table imp
     table_maintenance_runs_table as t,
 )
 from application.exceptions import ConflictError
-from application.port.outbound.table_maintenance_run.table_maintenance_runs_repo import (
-    TableMaintenanceRunsRepo,
-)
+from application.port.outbound.table_maintenance_run import TableMaintenanceRunsRepo
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine
 
-    from application.domain.model.table_maintenance_run.table_maintenance_run import (
-        TableMaintenanceRun,
-    )
-    from application.domain.model.table.table_id import TableId
-    from base.entity_id import EntityId
+    from application.domain.model.table_maintenance_run import TableMaintenanceRun
+    from application.domain.model.table import TableId
+    from base import EntityId
 
 
 class TableMaintenanceRunsSqlRepo(TableMaintenanceRunsRepo):

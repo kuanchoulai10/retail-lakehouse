@@ -4,14 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.port.outbound.table.send_table_change import (
-    SendTableChangeGateway,
-)
+from application.port.outbound.table import SendTableChangeGateway
 
 if TYPE_CHECKING:
-    from application.port.outbound.table.send_table_change import (
-        SendTableChangeGatewayInput,
-    )
+    from application.port.outbound.table import SendTableChangeGatewayInput
 
 
 class RecordingSendTableChangeGateway(SendTableChangeGateway):

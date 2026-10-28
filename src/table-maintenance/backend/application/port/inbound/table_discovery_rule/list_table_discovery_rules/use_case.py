@@ -10,7 +10,7 @@ from application.port.inbound.table_discovery_rule.list_table_discovery_rules.in
 from application.port.inbound.table_discovery_rule.list_table_discovery_rules.output import (
     ListTableDiscoveryRulesUseCaseOutput,
 )
-from base.use_case import UseCase
+from base import UseCase
 
 
 class ListTableDiscoveryRulesUseCase(

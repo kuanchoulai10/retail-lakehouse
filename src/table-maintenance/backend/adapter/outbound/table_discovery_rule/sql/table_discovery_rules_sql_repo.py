@@ -14,20 +14,16 @@ from adapter.outbound.table_discovery_rule.sql.table_discovery_rules_table impor
     table_discovery_rules_table as t,
 )
 from application.exceptions import ConflictError
-from application.port.outbound.table_discovery_rule.table_discovery_rules_repo import (
-    TableDiscoveryRulesRepo,
-)
+from application.port.outbound.table_discovery_rule import TableDiscoveryRulesRepo
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine
 
-    from application.domain.model.table_discovery_rule.table_discovery_rule import (
-        TableDiscoveryRule,
-    )
-    from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
+    from application.domain.model.table_discovery_rule import TableDiscoveryRule
+    from application.domain.model.table_maintenance_preset import (
         TableMaintenancePresetId,
     )
-    from base.entity_id import EntityId
+    from base import EntityId
 
 
 class TableDiscoveryRulesSqlRepo(TableDiscoveryRulesRepo):

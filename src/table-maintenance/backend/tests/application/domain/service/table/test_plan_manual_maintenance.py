@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from application.domain.model.shared import MaintenanceOperation as Op
-from application.domain.service.table.plan_manual_maintenance import (
-    plan_manual_maintenance,
-)
+from application.domain.service.table import plan_manual_maintenance
 
 
 def test_manual_plan_runs_named_operations_whole_table():

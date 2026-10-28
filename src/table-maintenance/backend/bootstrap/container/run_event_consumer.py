@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from adapter.inbound.event_consumer.consumer_loop import run_consumer_loop
+from adapter.inbound.event_consumer import run_consumer_loop
 
 if TYPE_CHECKING:
     import threading
 
-    from adapter.inbound.event_consumer.event_source import EventSource
+    from adapter.inbound.event_consumer import EventSource
     from bootstrap.container.use_cases import UseCases
 
 

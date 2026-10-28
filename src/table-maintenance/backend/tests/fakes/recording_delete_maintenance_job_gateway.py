@@ -4,12 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.port.outbound.table_maintenance_run.delete_maintenance_job import (
-    DeleteMaintenanceJobGateway,
-)
+from application.port.outbound.table_maintenance_run import DeleteMaintenanceJobGateway
 
 if TYPE_CHECKING:
-    from application.port.outbound.table_maintenance_run.delete_maintenance_job import (
+    from application.port.outbound.table_maintenance_run import (
         DeleteMaintenanceJobGatewayInput,
     )
 

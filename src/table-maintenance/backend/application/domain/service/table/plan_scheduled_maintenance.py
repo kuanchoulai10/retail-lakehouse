@@ -4,27 +4,20 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from application.domain.model.shared.maintenance_operation import (
+from application.domain.model.shared import (
     MaintenanceOperation,
-)
-from application.domain.model.shared.maintenance_plan import MaintenancePlan
-from application.domain.model.shared.planned_operation import PlannedOperation
-from application.domain.model.shared.compaction_scope import (
+    MaintenancePlan,
+    PlannedOperation,
     CompactionScope,
-)
-from application.domain.model.shared.maintenance_settings import (
     MaintenanceSettings,
+    TableObservation,
 )
-from application.domain.model.table.table import Table
-from application.domain.model.table.table_status import TableStatus
-from application.domain.model.shared.table_observation import TableObservation
+from application.domain.model.table import Table, TableStatus
 from application.domain.service.table.compute_reducible_files import (
     compute_reducible_files,
 )
-from application.domain.service.shared.positive_int_property import (
+from application.domain.service.shared import (
     positive_int_property,
-)
-from application.domain.service.shared.resolve_target_file_size import (
     resolve_target_file_size,
 )
 

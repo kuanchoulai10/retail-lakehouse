@@ -8,17 +8,13 @@ from typing import TYPE_CHECKING, Any
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
-from adapter.hybrid.temporal.contracts.activity_names import (
+from adapter.hybrid.temporal.contracts import (
     CREATE_MAINTENANCE_RUN,
     DELETE_MAINTENANCE_JOB,
     GET_MAINTENANCE_JOB_STATUS,
     RECORD_MAINTENANCE_OPERATION_RESULT,
     SUBMIT_MAINTENANCE_OPERATION,
-)
-from adapter.hybrid.temporal.contracts.operation_result_signal import (
     OperationResultSignal,
-)
-from adapter.hybrid.temporal.contracts.workflow_ids import (
     SIGNAL_OPERATION_RESULT,
 )
 

@@ -11,15 +11,13 @@ from sqlalchemy.exc import IntegrityError
 from adapter.outbound.table_discovery_settings.sql.table_discovery_settings_table import (
     table_discovery_settings_table as t,
 )
-from application.domain.model.table_discovery_settings.table_discovery_settings import (
+from application.domain.model.table_discovery_settings import (
     GLOBAL_ID,
     TableDiscoverySettings,
-)
-from application.domain.model.table_discovery_settings.table_discovery_settings_id import (
     TableDiscoverySettingsId,
 )
 from application.exceptions import ConflictError
-from application.port.outbound.table_discovery_settings.table_discovery_settings_repo import (
+from application.port.outbound.table_discovery_settings import (
     TableDiscoverySettingsRepo,
 )
 
@@ -28,7 +26,7 @@ if TYPE_CHECKING:
 
     from sqlalchemy import Engine
 
-    from base.entity_id import EntityId
+    from base import EntityId
 
 
 def _to_values(settings: TableDiscoverySettings) -> dict[str, Any]:

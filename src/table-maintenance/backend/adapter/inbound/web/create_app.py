@@ -4,18 +4,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from adapter.inbound.web.table_discovery_settings.router import (
-    router as discovery_router,
-)
-from adapter.inbound.web.table_discovery_rule.router import (
+from adapter.inbound.web.table_discovery_settings import router as discovery_router
+from adapter.inbound.web.table_discovery_rule import (
     router as table_discovery_rule_router,
 )
 from adapter.inbound.web.error_handlers import register_error_handlers
-from adapter.inbound.web.table_maintenance_run.router import (
+from adapter.inbound.web.table_maintenance_run import (
     router as table_maintenance_run_router,
 )
-from adapter.inbound.web.table.router import router as table_router
-from adapter.inbound.web.table_maintenance_preset.router import (
+from adapter.inbound.web.table import router as table_router
+from adapter.inbound.web.table_maintenance_preset import (
     router as table_maintenance_preset_router,
 )
 from fastapi import FastAPI

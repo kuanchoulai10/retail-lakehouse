@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from temporalio.client import Client
 
 if TYPE_CHECKING:
-    from bootstrap.configs.temporal_settings import TemporalSettings
+    from bootstrap.configs import TemporalSettings
 
 
 async def connect_temporal(settings: TemporalSettings) -> Client:

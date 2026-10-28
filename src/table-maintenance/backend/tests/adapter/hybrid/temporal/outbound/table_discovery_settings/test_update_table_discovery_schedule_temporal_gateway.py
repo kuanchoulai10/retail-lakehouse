@@ -13,15 +13,15 @@ from temporalio.client import (
     ScheduleState,
 )
 
-from adapter.hybrid.temporal.outbound.table_discovery_settings.update_table_discovery_schedule_temporal_gateway import (
+from adapter.hybrid.temporal.outbound.table_discovery_settings import (
     UpdateTableDiscoveryScheduleTemporalGateway,
 )
-from adapter.hybrid.temporal.contracts.workflow_names import TABLE_DISCOVERY_WORKFLOW
-from adapter.hybrid.temporal.contracts.workflow_ids import (
+from adapter.hybrid.temporal.contracts import (
+    TABLE_DISCOVERY_WORKFLOW,
     TASK_QUEUE,
     table_discovery_schedule_id,
 )
-from application.port.outbound.table_discovery_settings.update_table_discovery_schedule import (
+from application.port.outbound.table_discovery_settings import (
     UpdateTableDiscoveryScheduleGatewayInput,
 )
 

@@ -16,13 +16,15 @@ Provides the foundational tactical patterns for structuring domain models:
 - EventDispatcher: Routes domain events to registered handlers.
 """
 
+from __future__ import annotations
+
 from base.aggregate_root import AggregateRoot
 from base.domain_event import DomainEvent
 from base.entity import Entity
-from base.gateway import Gateway
 from base.entity_id import EntityId
 from base.event_dispatcher import EventDispatcher
 from base.event_handler import EventHandler
+from base.gateway import Gateway
 from base.repository import Repository
 from base.store import Store
 from base.use_case import UseCase
@@ -33,9 +35,9 @@ __all__ = [
     "DomainEvent",
     "Entity",
     "EntityId",
-    "Gateway",
     "EventDispatcher",
     "EventHandler",
+    "Gateway",
     "Repository",
     "Store",
     "UseCase",

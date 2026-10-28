@@ -5,8 +5,7 @@ from datetime import UTC, datetime, timedelta, timezone
 import pytest
 from sqlalchemy import Column, Engine, MetaData, Table, insert, select
 
-from adapter.outbound.shared.sql.iso_datetime_codec import IsoDatetimeCodec
-from adapter.outbound.shared.sql.utc_date_time import UtcDateTime
+from adapter.outbound.shared.sql import IsoDatetimeCodec, UtcDateTime
 
 
 def _table() -> Table:

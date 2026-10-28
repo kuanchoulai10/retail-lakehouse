@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.port.outbound.table_maintenance_run.read_maintenance_job import (
+from application.port.outbound.table_maintenance_run import (
     ReadMaintenanceJobGateway,
     ReadMaintenanceJobGatewayOutput,
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.table_maintenance_run.read_maintenance_job import (
+    from application.port.outbound.table_maintenance_run import (
         ReadMaintenanceJobGatewayInput,
     )
 

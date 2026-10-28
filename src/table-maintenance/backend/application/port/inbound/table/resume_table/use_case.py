@@ -10,7 +10,7 @@ from application.port.inbound.table.resume_table.input import (
 from application.port.inbound.table.resume_table.output import (
     ResumeTableUseCaseOutput,
 )
-from base.use_case import UseCase
+from base import UseCase
 
 
 class ResumeTableUseCase(UseCase[ResumeTableUseCaseInput, ResumeTableUseCaseOutput]):

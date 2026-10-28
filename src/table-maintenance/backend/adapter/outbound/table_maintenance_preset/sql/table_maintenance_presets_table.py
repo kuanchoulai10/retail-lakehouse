@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from sqlalchemy import JSON, Column, String, Table
 
-from adapter.outbound.shared.sql.metadata import metadata
-from adapter.outbound.shared.sql.utc_date_time import UtcDateTime
+from adapter.outbound.shared.sql import metadata, UtcDateTime
 
 table_maintenance_presets_table = Table(
     "table_maintenance_presets",

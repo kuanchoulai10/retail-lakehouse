@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.port.inbound.table_discovery_settings.get_table_discovery_settings import (
+from application.port.inbound.table_discovery_settings import (
     GetTableDiscoverySettingsUseCase,
     GetTableDiscoverySettingsUseCaseInput,
     GetTableDiscoverySettingsUseCaseOutput,
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.table_discovery_settings.table_discovery_settings_repo import (
+    from application.port.outbound.table_discovery_settings import (
         TableDiscoverySettingsRepo,
     )
 

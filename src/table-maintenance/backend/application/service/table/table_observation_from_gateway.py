@@ -4,19 +4,15 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from application.domain.model.shared.manifest_stats import ManifestStats
-from application.domain.model.shared.partition_field_info import (
+from application.domain.model.shared import (
+    ManifestStats,
     PartitionFieldInfo,
-)
-from application.domain.model.shared.partition_spec_info import (
     PartitionSpecInfo,
+    PartitionStats,
+    SnapshotInfo,
+    TableObservation,
 )
-from application.domain.model.shared.partition_stats import PartitionStats
-from application.domain.model.shared.snapshot_info import SnapshotInfo
-from application.domain.model.shared.table_observation import TableObservation
-from application.port.outbound.table.read_table_metadata import (
-    TableMetadataObservation,
-)
+from application.port.outbound.table import TableMetadataObservation
 
 
 def _utc(text: str) -> datetime:

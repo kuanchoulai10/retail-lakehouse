@@ -1,28 +1,26 @@
 from __future__ import annotations
 
-from adapter.outbound.shared.sql.create_schema import create_schema
-from application.port.inbound.table_discovery_rule.list_table_discovery_rules import (
+from adapter.outbound.shared.sql import create_schema
+from application.port.inbound.table_discovery_rule import (
     ListTableDiscoveryRulesUseCaseInput,
 )
-from application.port.inbound.table_maintenance_preset.create_table_maintenance_preset import (
+from application.port.inbound.table_maintenance_preset import (
     CreateTableMaintenancePresetUseCaseInput,
-)
-from application.port.inbound.table_maintenance_preset.list_table_maintenance_presets import (
     ListTableMaintenancePresetsUseCaseInput,
 )
-from application.service.shared.maintenance_settings_to_dict import (
-    maintenance_settings_to_dict,
+from application.service.shared import maintenance_settings_to_dict
+from application.domain.model.shared import MaintenanceSettings
+from bootstrap.container import (
+    build_repositories,
+    build_use_cases,
+    run_migrations,
+    build_engine,
 )
-from application.domain.model.shared.maintenance_settings import (
-    MaintenanceSettings,
-)
-from bootstrap.container import build_repositories, build_use_cases, run_migrations
 from tests.bootstrap.container.container_support import (
     NOW,
     fake_gateways,
     sqlite_settings,
 )
-from bootstrap.container import build_engine
 
 
 def _use_cases(engine):

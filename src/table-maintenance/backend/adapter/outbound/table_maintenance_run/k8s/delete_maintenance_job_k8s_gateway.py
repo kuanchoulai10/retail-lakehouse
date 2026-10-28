@@ -12,16 +12,14 @@ from adapter.outbound.table_maintenance_run.k8s.spark_application_manifest impor
 from adapter.outbound.table_maintenance_run.k8s.spark_application_name import (
     spark_application_name,
 )
-from application.port.outbound.table_maintenance_run.delete_maintenance_job import (
-    DeleteMaintenanceJobGateway,
-)
+from application.port.outbound.table_maintenance_run import DeleteMaintenanceJobGateway
 from kubernetes.client.exceptions import ApiException
 
 if TYPE_CHECKING:
     from adapter.outbound.table_maintenance_run.k8s.spark_k8s_config import (
         SparkK8sConfig,
     )
-    from application.port.outbound.table_maintenance_run.delete_maintenance_job import (
+    from application.port.outbound.table_maintenance_run import (
         DeleteMaintenanceJobGatewayInput,
     )
     from kubernetes.client import CustomObjectsApi

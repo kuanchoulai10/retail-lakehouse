@@ -4,19 +4,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.shared.maintenance_operation import (
-    MaintenanceOperation,
-)
-from application.domain.model.table_maintenance_run.table_maintenance_run import (
+from application.domain.model.shared import MaintenanceOperation
+from application.domain.model.table_maintenance_run import (
     TableMaintenanceRun,
-)
-from application.domain.model.table_maintenance_run.table_maintenance_run_id import (
     TableMaintenanceRunId,
+    TriggerType,
 )
-from application.domain.model.table_maintenance_run.trigger_type import TriggerType
-from application.domain.model.table.table_id import TableId
+from application.domain.model.table import TableId
 from application.exceptions import NotFoundError, ValidationError
-from application.port.inbound.table_maintenance_run.create_table_maintenance_run import (
+from application.port.inbound.table_maintenance_run import (
     CreateTableMaintenanceRunUseCase,
     CreateTableMaintenanceRunUseCaseInput,
     CreateTableMaintenanceRunUseCaseOutput,
@@ -24,15 +20,11 @@ from application.port.inbound.table_maintenance_run.create_table_maintenance_run
 from application.service.table_maintenance_run.table_maintenance_run_output_fields import (
     table_maintenance_run_output_fields,
 )
-from application.service.shared.translate_domain_errors import translate_domain_errors
+from application.service.shared import translate_domain_errors
 
 if TYPE_CHECKING:
-    from application.port.outbound.table_maintenance_run.table_maintenance_runs_repo import (
-        TableMaintenanceRunsRepo,
-    )
-    from application.port.outbound.table.tables_repo import (
-        TablesRepo,
-    )
+    from application.port.outbound.table_maintenance_run import TableMaintenanceRunsRepo
+    from application.port.outbound.table import TablesRepo
 
 
 class CreateTableMaintenanceRunService(CreateTableMaintenanceRunUseCase):

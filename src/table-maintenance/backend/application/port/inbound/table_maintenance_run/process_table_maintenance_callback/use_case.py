@@ -10,7 +10,7 @@ from application.port.inbound.table_maintenance_run.process_table_maintenance_ca
 from application.port.inbound.table_maintenance_run.process_table_maintenance_callback.output import (
     ProcessTableMaintenanceCallbackUseCaseOutput,
 )
-from base.use_case import UseCase
+from base import UseCase
 
 
 class ProcessTableMaintenanceCallbackUseCase(

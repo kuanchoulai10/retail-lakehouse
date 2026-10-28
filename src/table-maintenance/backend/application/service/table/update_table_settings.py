@@ -5,34 +5,26 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.domain.model.table.table_change import TableChange
-from application.domain.model.table.table_id import TableId
+from application.domain.model.table import TableChange, TableId
 from application.exceptions import NotFoundError
-from application.port.inbound.table.update_table_settings import (
+from application.port.inbound.table import (
     UpdateTableSettingsUseCase,
     UpdateTableSettingsUseCaseInput,
     UpdateTableSettingsUseCaseOutput,
 )
-from application.port.outbound.table.send_table_change import (
-    SendTableChangeGatewayInput,
-)
-from application.service.shared.maintenance_settings_from_dict import (
+from application.port.outbound.table import SendTableChangeGatewayInput
+from application.service.shared import (
     maintenance_settings_from_dict,
+    translate_domain_errors,
 )
 from application.service.table.table_output_fields import (
     table_output_fields,
 )
-from application.service.shared.translate_domain_errors import translate_domain_errors
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from application.port.outbound.table.tables_repo import (
-        TablesRepo,
-    )
-    from application.port.outbound.table.send_table_change import (
-        SendTableChangeGateway,
-    )
+    from application.port.outbound.table import TablesRepo, SendTableChangeGateway
 
 
 class UpdateTableSettingsService(UpdateTableSettingsUseCase):

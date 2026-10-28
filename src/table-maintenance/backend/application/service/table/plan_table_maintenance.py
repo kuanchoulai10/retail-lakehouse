@@ -5,55 +5,36 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from application.domain.model.shared.maintenance_operation import (
+from application.domain.model.shared import (
     MaintenanceOperation,
-)
-from application.domain.model.shared.maintenance_plan import MaintenancePlan
-from application.domain.model.shared.maintenance_settings import (
+    MaintenancePlan,
     MaintenanceSettings,
 )
-from application.domain.model.table.table_status import TableStatus
-from application.domain.model.table.table_id import TableId
-from application.domain.service.table.build_partition_filters import (
+from application.domain.model.table import TableStatus, TableId
+from application.domain.service.table import (
     build_partition_filters,
-)
-from application.domain.service.table.plan_manual_maintenance import (
     plan_manual_maintenance,
-)
-from application.domain.service.table.plan_scheduled_maintenance import (
     plan_scheduled_maintenance,
 )
 from application.exceptions import ValidationError
-from application.port.inbound.table.plan_table_maintenance import (
+from application.port.inbound.table import (
     PlanTableMaintenanceUseCase,
     PlanTableMaintenanceUseCaseInput,
     PlanTableMaintenanceUseCaseOutput,
     PlanTableMaintenanceUseCaseOutputFilterItem,
     PlanTableMaintenanceUseCaseOutputItem,
 )
-from application.port.outbound.table.read_table_metadata import TableMetadataRef
+from application.port.outbound.table import TableMetadataRef
 from application.service.table.table_observation_from_gateway import (
     table_observation_from_gateway,
 )
-from application.service.table_maintenance_run.maintenance_procedure_args import (
-    maintenance_procedure_args,
-)
-from application.service.shared.translate_domain_errors import translate_domain_errors
+from application.service.table_maintenance_run import maintenance_procedure_args
+from application.service.shared import translate_domain_errors
 
 if TYPE_CHECKING:
-    from application.domain.model.shared.planned_operation import (
-        PlannedOperation,
-    )
-    from application.domain.model.table.table import Table
-    from application.domain.model.shared.table_observation import (
-        TableObservation,
-    )
-    from application.port.outbound.table.read_table_metadata import (
-        ReadTableMetadataGateway,
-    )
-    from application.port.outbound.table.tables_repo import (
-        TablesRepo,
-    )
+    from application.domain.model.shared import PlannedOperation, TableObservation
+    from application.domain.model.table import Table
+    from application.port.outbound.table import ReadTableMetadataGateway, TablesRepo
 
 logger = logging.getLogger(__name__)
 

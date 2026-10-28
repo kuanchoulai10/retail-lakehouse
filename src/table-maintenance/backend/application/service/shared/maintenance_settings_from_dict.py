@@ -5,22 +5,12 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
-from application.domain.model.shared.compaction_scope import (
+from application.domain.model.shared import (
     CompactionScope,
-)
-from application.domain.model.shared.expire_snapshots_settings import (
     ExpireSnapshotsSettings,
-)
-from application.domain.model.shared.maintenance_settings import (
     MaintenanceSettings,
-)
-from application.domain.model.shared.remove_orphan_files_settings import (
     RemoveOrphanFilesSettings,
-)
-from application.domain.model.shared.rewrite_data_files_settings import (
     RewriteDataFilesSettings,
-)
-from application.domain.model.shared.rewrite_manifests_settings import (
     RewriteManifestsSettings,
 )
 from application.exceptions import ValidationError

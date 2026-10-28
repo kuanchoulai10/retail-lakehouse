@@ -13,7 +13,7 @@ from adapter.hybrid.temporal.inbound.workflows import (
     TableMaintenanceWorkflow,
     TableReconciliationWorkflow,
 )
-from adapter.hybrid.temporal.contracts.workflow_ids import TASK_QUEUE
+from adapter.hybrid.temporal.contracts import TASK_QUEUE
 
 if TYPE_CHECKING:
     from collections.abc import Callable

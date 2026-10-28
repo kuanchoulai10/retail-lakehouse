@@ -4,23 +4,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from application.port.inbound.table_maintenance_preset.create_table_maintenance_preset import (
+from application.port.inbound.table_maintenance_preset import (
     CreateTableMaintenancePresetUseCaseInput,
     CreateTableMaintenancePresetUseCaseOutput,
-)
-from application.port.inbound.table_maintenance_preset.delete_table_maintenance_preset import (
     DeleteTableMaintenancePresetUseCaseInput,
     DeleteTableMaintenancePresetUseCaseOutput,
-)
-from application.port.inbound.table_maintenance_preset.get_table_maintenance_preset import (
     GetTableMaintenancePresetUseCaseInput,
     GetTableMaintenancePresetUseCaseOutput,
-)
-from application.port.inbound.table_maintenance_preset.list_table_maintenance_presets import (
     ListTableMaintenancePresetsUseCaseOutput,
     ListTableMaintenancePresetsUseCaseOutputItem,
-)
-from application.port.inbound.table_maintenance_preset.update_table_maintenance_preset import (
     UpdateTableMaintenancePresetUseCaseInput,
     UpdateTableMaintenancePresetUseCaseOutput,
 )

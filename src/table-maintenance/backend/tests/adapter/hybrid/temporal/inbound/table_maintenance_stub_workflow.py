@@ -6,11 +6,9 @@ import asyncio
 
 from temporalio import workflow
 
-from adapter.hybrid.temporal.contracts.table_maintenance_workflow_input import (
+from adapter.hybrid.temporal.contracts import (
     TableMaintenanceWorkflowInput,
-)
-from adapter.hybrid.temporal.contracts.workflow_names import TABLE_MAINTENANCE_WORKFLOW
-from adapter.hybrid.temporal.contracts.workflow_ids import (
+    TABLE_MAINTENANCE_WORKFLOW,
     SIGNAL_MAINTENANCE_FINISHED,
 )
 

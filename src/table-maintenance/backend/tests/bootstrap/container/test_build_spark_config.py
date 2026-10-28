@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from adapter.outbound.table_maintenance_run.k8s.spark_k8s_config import SparkK8sConfig
+from adapter.outbound.table_maintenance_run.k8s import SparkK8sConfig
 from bootstrap.configs import AppSettings, CatalogSettings, SparkSettings
 from bootstrap.container import build_spark_config
 

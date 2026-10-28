@@ -17,14 +17,10 @@ from temporalio.client import (
     ScheduleUpdate,
 )
 
-from adapter.hybrid.temporal.contracts.table_discovery_summary import (
+from adapter.hybrid.temporal.contracts import (
     table_discovery_summary,
-)
-from adapter.hybrid.temporal.contracts.table_discovery_workflow_input import (
     TableDiscoveryWorkflowInput,
-)
-from adapter.hybrid.temporal.contracts.workflow_names import TABLE_DISCOVERY_WORKFLOW
-from adapter.hybrid.temporal.contracts.workflow_ids import (
+    TABLE_DISCOVERY_WORKFLOW,
     TASK_QUEUE,
     table_discovery_schedule_id,
 )

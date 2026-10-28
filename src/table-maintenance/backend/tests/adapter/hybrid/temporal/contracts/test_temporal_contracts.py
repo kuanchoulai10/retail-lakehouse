@@ -9,8 +9,12 @@ from typing import Any
 import pytest
 from temporalio.converter import DataConverter
 
-from adapter.hybrid.temporal.contracts import activity_names, workflow_names
 from adapter.hybrid.temporal.contracts import (
+    SIGNAL_ADMISSION_ACQUIRE_ACTIVITY,
+    TABLE_DISCOVERY_WORKFLOW,
+    TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
+    TABLE_MAINTENANCE_WORKFLOW,
+    TABLE_RECONCILIATION_WORKFLOW,
     DEFAULT_ATTEMPT_DEADLINE_SECONDS,
     DEFAULT_ADMISSION_LEASE_SECONDS,
     AdmissionAcquireSignal,
@@ -121,14 +125,11 @@ def test_contracts_are_frozen(value: Any):  # noqa: ANN401
 
 
 def test_workflow_type_names():
-    assert workflow_names.TABLE_DISCOVERY_WORKFLOW == "TableDiscoveryWorkflow"
-    assert workflow_names.TABLE_RECONCILIATION_WORKFLOW == "TableReconciliationWorkflow"
-    assert workflow_names.TABLE_MAINTENANCE_WORKFLOW == "TableMaintenanceWorkflow"
-    assert (
-        workflow_names.TABLE_MAINTENANCE_ADMISSION_WORKFLOW
-        == "TableMaintenanceAdmissionWorkflow"
-    )
+    assert TABLE_DISCOVERY_WORKFLOW == "TableDiscoveryWorkflow"
+    assert TABLE_RECONCILIATION_WORKFLOW == "TableReconciliationWorkflow"
+    assert TABLE_MAINTENANCE_WORKFLOW == "TableMaintenanceWorkflow"
+    assert TABLE_MAINTENANCE_ADMISSION_WORKFLOW == "TableMaintenanceAdmissionWorkflow"
 
 
 def test_admission_activity_name():
-    assert activity_names.SIGNAL_ADMISSION_ACQUIRE == "signal_admission_acquire"
+    assert SIGNAL_ADMISSION_ACQUIRE_ACTIVITY == "signal_admission_acquire"

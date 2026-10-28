@@ -7,9 +7,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from datetime import timedelta
 
-    from application.domain.model.shared.maintenance_settings import (
-        MaintenanceSettings,
-    )
+    from application.domain.model.shared import MaintenanceSettings
 
 
 def _seconds(value: timedelta) -> int:

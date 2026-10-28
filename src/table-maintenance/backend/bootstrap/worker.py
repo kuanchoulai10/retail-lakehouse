@@ -8,8 +8,8 @@ import signal
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
-from adapter.hybrid.temporal.outbound.shared.async_loop_bridge import AsyncLoopBridge
-from adapter.hybrid.temporal.contracts.workflow_ids import TASK_QUEUE
+from adapter.hybrid.temporal.outbound.shared import AsyncLoopBridge
+from adapter.hybrid.temporal.contracts import TASK_QUEUE
 from bootstrap.configs import get_settings
 from bootstrap.container import (
     apply_worker_startup,
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from temporalio.worker import Worker
 
     from bootstrap.configs import AppSettings, TemporalSettings
-    from bootstrap.container.use_cases import UseCases
+    from bootstrap.container import UseCases
 
 logger = logging.getLogger(__name__)
 

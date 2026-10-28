@@ -4,21 +4,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.shared.maintenance_operation import (
-    MaintenanceOperation,
-)
+from application.domain.model.shared import MaintenanceOperation
 from application.exceptions import ValidationError
-from application.port.inbound.table_maintenance_run.delete_maintenance_job import (
+from application.port.inbound.table_maintenance_run import (
     DeleteMaintenanceJobUseCase,
     DeleteMaintenanceJobUseCaseInput,
     DeleteMaintenanceJobUseCaseOutput,
 )
-from application.port.outbound.table_maintenance_run.delete_maintenance_job import (
+from application.port.outbound.table_maintenance_run import (
     DeleteMaintenanceJobGatewayInput,
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.table_maintenance_run.delete_maintenance_job import (
+    from application.port.outbound.table_maintenance_run import (
         DeleteMaintenanceJobGateway,
     )
 

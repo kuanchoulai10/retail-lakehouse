@@ -2,17 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from application.domain.model.shared.spec_filter import SpecFilter
-from application.domain.model.shared.partition_field_info import (
+from application.domain.model.shared import (
+    SpecFilter,
     PartitionFieldInfo,
-)
-from application.domain.model.shared.partition_spec_info import (
     PartitionSpecInfo,
+    PartitionStats,
 )
-from application.domain.model.shared.partition_stats import PartitionStats
-from application.domain.service.table.build_partition_filters import (
-    build_partition_filters,
-)
+from application.domain.service.table import build_partition_filters
 
 
 def _field(name, column, source_type, transform, field_id=1000):

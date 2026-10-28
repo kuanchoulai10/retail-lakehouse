@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from temporalio import workflow
 
-from adapter.hybrid.temporal.contracts.workflow_ids import SIGNAL_ADMISSION_GRANTED
+from adapter.hybrid.temporal.contracts import SIGNAL_ADMISSION_GRANTED
 
 
 @workflow.defn(name="RequesterStub")

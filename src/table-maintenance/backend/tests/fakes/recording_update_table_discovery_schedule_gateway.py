@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.port.outbound.table_discovery_settings.update_table_discovery_schedule import (
+from application.port.outbound.table_discovery_settings import (
     UpdateTableDiscoveryScheduleGateway,
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.table_discovery_settings.update_table_discovery_schedule import (
+    from application.port.outbound.table_discovery_settings import (
         UpdateTableDiscoveryScheduleGatewayInput,
     )
 

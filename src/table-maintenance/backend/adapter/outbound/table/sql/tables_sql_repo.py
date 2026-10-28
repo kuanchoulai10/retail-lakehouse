@@ -13,20 +13,17 @@ from adapter.outbound.table.sql.table_row_mapper import (
 from adapter.outbound.table.sql.tables_table import (
     tables_table as t,
 )
-from application.domain.model.table.table_status import TableStatus
+from application.domain.model.table import TableStatus
 from application.exceptions import ConflictError
-from application.port.outbound.table.tables_repo import (
-    TablesRepo,
-)
+from application.port.outbound.table import TablesRepo
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from sqlalchemy import Engine
 
-    from application.domain.model.table.table import Table
-    from application.domain.model.table.table_name import TableName
-    from base.entity_id import EntityId
+    from application.domain.model.table import Table, TableName
+    from base import EntityId
 
 _ORDER = (t.c.catalog, t.c.namespace, t.c.table_name)
 

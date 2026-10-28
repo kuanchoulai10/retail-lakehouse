@@ -4,87 +4,44 @@ from __future__ import annotations
 
 import pytest
 
-from application.domain.model.table_discovery_rule.table_discovery_rule import (
+from application.domain.model.table_discovery_rule import (
     TableDiscoveryRule,
-)
-from application.domain.model.table_discovery_rule.table_discovery_rule_id import (
     TableDiscoveryRuleId,
+    RuleEffect,
+    TablePattern,
 )
-from application.domain.model.table_discovery_rule.rule_effect import RuleEffect
-from application.domain.model.table_discovery_rule.table_pattern import TablePattern
-from application.domain.model.shared.maintenance_operation import (
+from application.domain.model.shared import (
     MaintenanceOperation,
-)
-from application.domain.model.shared.maintenance_settings import (
     MaintenanceSettings,
-)
-from application.domain.model.shared.rewrite_data_files_settings import (
     RewriteDataFilesSettings,
 )
-from application.domain.model.table.table import Table
-from application.domain.model.table.table_name import TableName
-from application.domain.model.table.table_status import TableStatus
-from application.domain.model.table.table_id import TableId
-from application.domain.model.table_maintenance_preset.table_maintenance_preset import (
+from application.domain.model.table import Table, TableName, TableStatus, TableId
+from application.domain.model.table_maintenance_preset import (
     TableMaintenancePreset,
-)
-from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
     TableMaintenancePresetId,
 )
 from application.exceptions import ConflictError, NotFoundError, ValidationError
-from application.port.inbound.table.exclude_table import (
+from application.port.inbound.table import (
     ExcludeTableUseCaseInput,
-)
-from application.port.inbound.table.get_table import (
     GetTableUseCaseInput,
-)
-from application.port.inbound.table.include_table import (
     IncludeTableUseCaseInput,
-)
-from application.port.inbound.table.list_tables import (
     ListTablesUseCaseInput,
-)
-from application.port.inbound.table.pause_table import (
     PauseTableUseCaseInput,
-)
-from application.port.inbound.table.reset_table_selection import (
     ResetTableSelectionUseCaseInput,
-)
-from application.port.inbound.table.resume_table import (
     ResumeTableUseCaseInput,
-)
-from application.port.inbound.table.trigger_table_maintenance import (
     TriggerTableMaintenanceUseCaseInput,
-)
-from application.port.inbound.table.update_table_settings import (
     UpdateTableSettingsUseCaseInput,
 )
-from application.service.shared.maintenance_settings_to_dict import (
-    maintenance_settings_to_dict,
-)
-from application.service.table.exclude_table import (
+from application.service.shared import maintenance_settings_to_dict
+from application.service.table import (
     ExcludeTableService,
-)
-from application.service.table.get_table import GetTableService
-from application.service.table.include_table import (
+    GetTableService,
     IncludeTableService,
-)
-from application.service.table.list_tables import (
     ListTablesService,
-)
-from application.service.table.pause_table import (
     PauseTableService,
-)
-from application.service.table.reset_table_selection import (
     ResetTableSelectionService,
-)
-from application.service.table.resume_table import (
     ResumeTableService,
-)
-from application.service.table.trigger_table_maintenance import (
     TriggerTableMaintenanceService,
-)
-from application.service.table.update_table_settings import (
     UpdateTableSettingsService,
 )
 

@@ -5,9 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from application.domain.model.table_maintenance_run.table_maintenance_run import (
-        TableMaintenanceRun,
-    )
+    from application.domain.model.table_maintenance_run import TableMaintenanceRun
 
 
 def table_maintenance_run_output_fields(run: TableMaintenanceRun) -> dict[str, Any]:

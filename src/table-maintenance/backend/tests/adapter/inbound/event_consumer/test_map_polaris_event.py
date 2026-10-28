@@ -7,10 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from adapter.inbound.event_consumer.map_polaris_event import map_polaris_event
-from application.port.inbound.table.process_table_hint import (
-    ProcessTableHintUseCaseInput,
-)
+from adapter.inbound.event_consumer import map_polaris_event
+from application.port.inbound.table import ProcessTableHintUseCaseInput
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

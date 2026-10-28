@@ -4,22 +4,14 @@ from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 from application.domain.model.table_discovery_rule import TableDiscoveryRuleId
-from application.domain.model.shared import MaintenanceOperation as Op
 from application.domain.model.shared import (
+    MaintenanceOperation as Op,
     CompactionScope,
     ExpireSnapshotsSettings,
     MaintenanceSettings,
     RemoveOrphanFilesSettings,
     RewriteDataFilesSettings,
     RewriteManifestsSettings,
-)
-from application.domain.model.table import (
-    Table,
-    OperationState,
-    TableName,
-    TableId,
-)
-from application.domain.model.shared import (
     ManifestStats,
     PartitionFieldInfo,
     PartitionSpecInfo,
@@ -27,10 +19,14 @@ from application.domain.model.shared import (
     SnapshotInfo,
     TableObservation,
 )
-from application.domain.model.table_maintenance_preset import TableMaintenancePresetId
-from application.domain.service.table.plan_scheduled_maintenance import (
-    plan_scheduled_maintenance,
+from application.domain.model.table import (
+    Table,
+    OperationState,
+    TableName,
+    TableId,
 )
+from application.domain.model.table_maintenance_preset import TableMaintenancePresetId
+from application.domain.service.table import plan_scheduled_maintenance
 
 NOW = datetime(2026, 10, 24, 12, tzinfo=UTC)
 MIB = 1024 * 1024

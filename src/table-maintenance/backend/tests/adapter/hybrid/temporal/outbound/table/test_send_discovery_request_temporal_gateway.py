@@ -4,12 +4,8 @@ from __future__ import annotations
 
 import time
 
-from adapter.hybrid.temporal.outbound.table.send_discovery_request_temporal_gateway import (
-    SendDiscoveryRequestTemporalGateway,
-)
-from application.port.outbound.table.send_discovery_request import (
-    SendDiscoveryRequestGatewayInput,
-)
+from adapter.hybrid.temporal.outbound.table import SendDiscoveryRequestTemporalGateway
+from application.port.outbound.table import SendDiscoveryRequestGatewayInput
 
 
 def _ids(harness, query: str) -> list[str]:

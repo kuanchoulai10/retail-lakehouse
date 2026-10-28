@@ -5,16 +5,14 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.domain.model.table_discovery_rule.table_discovery_rule_id import (
+from application.domain.model.table_discovery_rule import (
     TableDiscoveryRuleId,
+    RuleEffect,
+    TablePattern,
 )
-from application.domain.model.table_discovery_rule.rule_effect import RuleEffect
-from application.domain.model.table_discovery_rule.table_pattern import TablePattern
-from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
-    TableMaintenancePresetId,
-)
+from application.domain.model.table_maintenance_preset import TableMaintenancePresetId
 from application.exceptions import NotFoundError
-from application.port.inbound.table_discovery_rule.update_table_discovery_rule import (
+from application.port.inbound.table_discovery_rule import (
     UpdateTableDiscoveryRuleUseCase,
     UpdateTableDiscoveryRuleUseCaseInput,
     UpdateTableDiscoveryRuleUseCaseOutput,
@@ -22,15 +20,13 @@ from application.port.inbound.table_discovery_rule.update_table_discovery_rule i
 from application.service.table_discovery_rule.table_discovery_rule_output_fields import (
     table_discovery_rule_output_fields,
 )
-from application.service.shared.translate_domain_errors import translate_domain_errors
+from application.service.shared import translate_domain_errors
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from application.port.outbound.table_discovery_rule.table_discovery_rules_repo import (
-        TableDiscoveryRulesRepo,
-    )
-    from application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (
+    from application.port.outbound.table_discovery_rule import TableDiscoveryRulesRepo
+    from application.port.outbound.table_maintenance_preset import (
         TableMaintenancePresetsRepo,
     )
 

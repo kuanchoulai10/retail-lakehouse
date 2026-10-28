@@ -10,7 +10,7 @@ from application.port.inbound.table_maintenance_run.delete_maintenance_job.input
 from application.port.inbound.table_maintenance_run.delete_maintenance_job.output import (
     DeleteMaintenanceJobUseCaseOutput,
 )
-from base.use_case import UseCase
+from base import UseCase
 
 
 class DeleteMaintenanceJobUseCase(

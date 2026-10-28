@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.table.table_id import TableId
+from application.domain.model.table import TableId
 from application.exceptions import NotFoundError
-from application.port.inbound.table.get_table import (
+from application.port.inbound.table import (
     GetTableUseCase,
     GetTableUseCaseInput,
     GetTableUseCaseOutput,
@@ -16,9 +16,7 @@ from application.service.table.table_output_fields import (
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.table.tables_repo import (
-        TablesRepo,
-    )
+    from application.port.outbound.table import TablesRepo
 
 
 class GetTableService(GetTableUseCase):

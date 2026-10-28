@@ -10,7 +10,7 @@ from application.port.inbound.table.trigger_table_maintenance.input import (
 from application.port.inbound.table.trigger_table_maintenance.output import (
     TriggerTableMaintenanceUseCaseOutput,
 )
-from base.use_case import UseCase
+from base import UseCase
 
 
 class TriggerTableMaintenanceUseCase(

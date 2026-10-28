@@ -11,22 +11,18 @@ from adapter.hybrid.temporal.inbound.activities.activity_payload import activity
 from adapter.hybrid.temporal.inbound.activities.translate_application_errors import (
     translate_application_errors,
 )
-from adapter.hybrid.temporal.contracts.activity_names import (
+from adapter.hybrid.temporal.contracts import (
     CREATE_MAINTENANCE_RUN,
     RECORD_MAINTENANCE_OPERATION_RESULT,
 )
-from application.port.inbound.table_maintenance_run.create_table_maintenance_run import (
+from application.port.inbound.table_maintenance_run import (
     CreateTableMaintenanceRunUseCaseInput,
-)
-from application.port.inbound.table_maintenance_run.record_table_maintenance_operation_result import (
     RecordTableMaintenanceOperationResultUseCaseInput,
 )
 
 if TYPE_CHECKING:
-    from application.port.inbound.table_maintenance_run.create_table_maintenance_run import (
+    from application.port.inbound.table_maintenance_run import (
         CreateTableMaintenanceRunUseCase,
-    )
-    from application.port.inbound.table_maintenance_run.record_table_maintenance_operation_result import (
         RecordTableMaintenanceOperationResultUseCase,
     )
 

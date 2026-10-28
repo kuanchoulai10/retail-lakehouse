@@ -4,16 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import TYPE_CHECKING
 
-from application.domain.model.table_discovery_rule.table_discovery_rule_id import (
-    TableDiscoveryRuleId,
-)
-from application.domain.model.shared.maintenance_operation import (
-    MaintenanceOperation,
-)
-from application.domain.model.shared.maintenance_settings import (
-    MaintenanceSettings,
-)
+from application.domain.model.shared import MaintenanceOperation, MaintenanceSettings
 from application.domain.model.table.invalid_table_transition import (
     InvalidTableTransition,
 )
@@ -22,10 +15,11 @@ from application.domain.model.table.table_name import TableName
 from application.domain.model.table.table_selection import TableSelection
 from application.domain.model.table.table_status import TableStatus
 from application.domain.model.table.table_id import TableId
-from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
-    TableMaintenancePresetId,
-)
-from base.aggregate_root import AggregateRoot
+from application.domain.model.table_maintenance_preset import TableMaintenancePresetId
+from base import AggregateRoot
+
+if TYPE_CHECKING:
+    from application.domain.model.table_discovery_rule import TableDiscoveryRuleId
 
 
 @dataclass(eq=False)

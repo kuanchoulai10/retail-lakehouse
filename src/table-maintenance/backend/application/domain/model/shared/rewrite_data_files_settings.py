@@ -11,7 +11,7 @@ from application.domain.model.shared.compaction_scope import (
 from application.domain.model.shared.invalid_maintenance_settings import (
     InvalidMaintenanceSettings,
 )
-from base.value_object import ValueObject
+from base import ValueObject
 
 
 @dataclass(frozen=True)

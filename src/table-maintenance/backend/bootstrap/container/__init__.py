@@ -1,6 +1,9 @@
 """Composition building blocks shared by the component entry points."""
 
+from __future__ import annotations
+
 from bootstrap.container.activities import Activities
+from bootstrap.container.admission_lease_seconds import ADMISSION_LEASE_SECONDS
 from bootstrap.container.apply_worker_startup import apply_worker_startup
 from bootstrap.container.build_activities import build_activities
 from bootstrap.container.build_api_app import build_api_app
@@ -14,7 +17,6 @@ from bootstrap.container.build_spark_config import build_spark_config
 from bootstrap.container.build_use_cases import build_use_cases
 from bootstrap.container.build_web_use_cases import build_web_use_cases
 from bootstrap.container.build_worker import build_worker
-from bootstrap.container.admission_lease_seconds import ADMISSION_LEASE_SECONDS
 from bootstrap.container.configure_logging import configure_logging
 from bootstrap.container.connect_temporal import connect_temporal
 from bootstrap.container.gateways import Gateways

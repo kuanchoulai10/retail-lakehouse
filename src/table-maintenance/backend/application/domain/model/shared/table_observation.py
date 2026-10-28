@@ -8,7 +8,7 @@ from application.domain.model.shared.manifest_stats import ManifestStats
 from application.domain.model.shared.partition_spec_info import PartitionSpecInfo
 from application.domain.model.shared.partition_stats import PartitionStats
 from application.domain.model.shared.snapshot_info import SnapshotInfo
-from base.value_object import ValueObject
+from base import ValueObject
 
 
 @dataclass(frozen=True)

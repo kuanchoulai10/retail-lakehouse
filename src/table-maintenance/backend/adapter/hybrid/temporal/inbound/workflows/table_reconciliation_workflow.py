@@ -14,21 +14,13 @@ from temporalio.workflow import ParentClosePolicy
 from adapter.hybrid.temporal.inbound.workflows.table_maintenance_attempt_policy import (
     TableMaintenanceAttemptPolicy,
 )
-from adapter.hybrid.temporal.contracts.activity_names import PLAN_TABLE_MAINTENANCE
-from adapter.hybrid.temporal.contracts.table_maintenance_summary import (
+from adapter.hybrid.temporal.contracts import (
+    PLAN_TABLE_MAINTENANCE,
     table_maintenance_summary,
-)
-from adapter.hybrid.temporal.contracts.table_maintenance_workflow_input import (
     TableMaintenanceWorkflowInput,
-)
-from adapter.hybrid.temporal.contracts.table_reconciliation_workflow_input import (
     TableReconciliationWorkflowInput,
-)
-from adapter.hybrid.temporal.contracts.workflow_names import (
     TABLE_MAINTENANCE_WORKFLOW,
     TABLE_RECONCILIATION_WORKFLOW,
-)
-from adapter.hybrid.temporal.contracts.workflow_ids import (
     SIGNAL_MAINTENANCE_FINISHED,
     SIGNAL_PAUSE,
     SIGNAL_RESUME,

@@ -4,14 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from application.service.shared.maintenance_settings_to_dict import (
-    maintenance_settings_to_dict,
-)
+from application.service.shared import maintenance_settings_to_dict
 
 if TYPE_CHECKING:
-    from application.domain.model.table_maintenance_preset.table_maintenance_preset import (
-        TableMaintenancePreset,
-    )
+    from application.domain.model.table_maintenance_preset import TableMaintenancePreset
 
 
 def table_maintenance_preset_output_fields(

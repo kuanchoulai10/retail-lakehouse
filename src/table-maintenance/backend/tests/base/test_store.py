@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC
 
-from base.store import Store
+from base import Store
 
 
 def test_store_is_abc() -> None:

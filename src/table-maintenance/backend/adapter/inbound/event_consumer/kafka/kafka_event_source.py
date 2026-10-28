@@ -7,8 +7,7 @@ from typing import Any
 
 from confluent_kafka import Consumer, KafkaException, TopicPartition
 
-from adapter.inbound.event_consumer.event_record import EventRecord
-from adapter.inbound.event_consumer.event_source import EventSource
+from adapter.inbound.event_consumer import EventRecord, EventSource
 
 CONSUMER_GROUP_ID = "table-maintenance-event-consumer"
 

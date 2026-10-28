@@ -10,7 +10,7 @@ from application.port.inbound.table_discovery_settings.get_table_discovery_setti
 from application.port.inbound.table_discovery_settings.get_table_discovery_settings.output import (
     GetTableDiscoverySettingsUseCaseOutput,
 )
-from base.use_case import UseCase
+from base import UseCase
 
 
 class GetTableDiscoverySettingsUseCase(

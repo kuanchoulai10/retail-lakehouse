@@ -5,28 +5,19 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import Engine
 
-from adapter.outbound.table.sql.tables_sql_repo import (
-    TablesSqlRepo,
-)
-from application.domain.model.table_discovery_rule.table_discovery_rule_id import (
-    TableDiscoveryRuleId,
-)
+from adapter.outbound.table.sql import TablesSqlRepo
+from application.domain.model.table_discovery_rule import TableDiscoveryRuleId
 from application.exceptions import ConflictError
-from application.domain.model.shared.maintenance_operation import (
-    MaintenanceOperation,
+from application.domain.model.shared import MaintenanceOperation, MaintenanceSettings
+from application.domain.model.table import (
+    Table,
+    OperationState,
+    TableName,
+    TableSelection,
+    TableStatus,
+    TableId,
 )
-from application.domain.model.shared.maintenance_settings import (
-    MaintenanceSettings,
-)
-from application.domain.model.table.table import Table
-from application.domain.model.table.operation_state import OperationState
-from application.domain.model.table.table_name import TableName
-from application.domain.model.table.table_selection import TableSelection
-from application.domain.model.table.table_status import TableStatus
-from application.domain.model.table.table_id import TableId
-from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
-    TableMaintenancePresetId,
-)
+from application.domain.model.table_maintenance_preset import TableMaintenancePresetId
 
 NOW = datetime(2026, 10, 24, 12, 0, tzinfo=UTC)
 
@@ -188,6 +179,6 @@ def test_create_duplicate_primary_key_raises_conflict(repo: TablesSqlRepo):
 
 
 def test_tables_sql_table_name_is_tables():
-    from adapter.outbound.table.sql.tables_table import tables_table
+    from adapter.outbound.table.sql import tables_table
 
     assert tables_table.name == "tables"

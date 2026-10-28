@@ -4,32 +4,22 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.shared.maintenance_operation import (
-    MaintenanceOperation,
-)
-from application.domain.model.table_maintenance_run.table_maintenance_run_id import (
-    TableMaintenanceRunId,
-)
-from application.domain.model.table.table_status import TableStatus
+from application.domain.model.shared import MaintenanceOperation
+from application.domain.model.table_maintenance_run import TableMaintenanceRunId
+from application.domain.model.table import TableStatus
 from application.exceptions import ConflictError, NotFoundError, ValidationError
-from application.port.inbound.table_maintenance_run.record_table_maintenance_operation_result import (
+from application.port.inbound.table_maintenance_run import (
     RecordTableMaintenanceOperationResultUseCase,
     RecordTableMaintenanceOperationResultUseCaseInput,
     RecordTableMaintenanceOperationResultUseCaseOutput,
 )
-from application.service.shared.translate_domain_errors import translate_domain_errors
+from application.service.shared import translate_domain_errors
 
 if TYPE_CHECKING:
-    from application.domain.model.table_maintenance_run.operation_run import (
-        OperationRun,
-    )
-    from application.domain.model.table.table_id import TableId
-    from application.port.outbound.table_maintenance_run.table_maintenance_runs_repo import (
-        TableMaintenanceRunsRepo,
-    )
-    from application.port.outbound.table.tables_repo import (
-        TablesRepo,
-    )
+    from application.domain.model.table_maintenance_run import OperationRun
+    from application.domain.model.table import TableId
+    from application.port.outbound.table_maintenance_run import TableMaintenanceRunsRepo
+    from application.port.outbound.table import TablesRepo
 
 _UNKNOWN_ERROR = "unknown error"
 

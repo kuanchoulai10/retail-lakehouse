@@ -1,5 +1,7 @@
 """Application configuration models and enumerations."""
 
+from __future__ import annotations
+
 from bootstrap.configs.app_settings import AppSettings
 from bootstrap.configs.catalog_settings import CatalogSettings
 from bootstrap.configs.component import Component

@@ -5,17 +5,11 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import Engine
 
-from adapter.outbound.table_maintenance_preset.sql.table_maintenance_presets_sql_repo import (
-    TableMaintenancePresetsSqlRepo,
-)
+from adapter.outbound.table_maintenance_preset.sql import TableMaintenancePresetsSqlRepo
 from application.exceptions import ConflictError
-from application.domain.model.shared.maintenance_settings import (
-    MaintenanceSettings,
-)
-from application.domain.model.table_maintenance_preset.table_maintenance_preset import (
+from application.domain.model.shared import MaintenanceSettings
+from application.domain.model.table_maintenance_preset import (
     TableMaintenancePreset,
-)
-from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
     TableMaintenancePresetId,
 )
 

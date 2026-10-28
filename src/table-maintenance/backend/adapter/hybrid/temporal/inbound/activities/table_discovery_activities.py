@@ -10,15 +10,11 @@ from adapter.hybrid.temporal.inbound.activities.activity_payload import activity
 from adapter.hybrid.temporal.inbound.activities.translate_application_errors import (
     translate_application_errors,
 )
-from adapter.hybrid.temporal.contracts.activity_names import SYNC_DISCOVERED_TABLES
-from application.port.inbound.table.sync_discovered_tables import (
-    SyncDiscoveredTablesUseCaseInput,
-)
+from adapter.hybrid.temporal.contracts import SYNC_DISCOVERED_TABLES
+from application.port.inbound.table import SyncDiscoveredTablesUseCaseInput
 
 if TYPE_CHECKING:
-    from application.port.inbound.table.sync_discovered_tables import (
-        SyncDiscoveredTablesUseCase,
-    )
+    from application.port.inbound.table import SyncDiscoveredTablesUseCase
 
 
 class TableDiscoveryActivities:

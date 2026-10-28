@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.port.inbound.table_maintenance_preset.list_table_maintenance_presets import (
+from application.port.inbound.table_maintenance_preset import (
     ListTableMaintenancePresetsUseCase,
     ListTableMaintenancePresetsUseCaseInput,
     ListTableMaintenancePresetsUseCaseOutput,
@@ -15,7 +15,7 @@ from application.service.table_maintenance_preset.table_maintenance_preset_outpu
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (
+    from application.port.outbound.table_maintenance_preset import (
         TableMaintenancePresetsRepo,
     )
 

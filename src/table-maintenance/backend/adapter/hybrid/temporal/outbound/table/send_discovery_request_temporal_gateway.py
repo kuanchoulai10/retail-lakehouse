@@ -6,30 +6,20 @@ from typing import TYPE_CHECKING
 
 from temporalio.common import WorkflowIDConflictPolicy
 
-from adapter.hybrid.temporal.contracts.table_discovery_summary import (
+from adapter.hybrid.temporal.contracts import (
     table_discovery_summary,
-)
-from adapter.hybrid.temporal.contracts.table_discovery_workflow_input import (
     TableDiscoveryWorkflowInput,
-)
-from adapter.hybrid.temporal.contracts.workflow_names import TABLE_DISCOVERY_WORKFLOW
-from adapter.hybrid.temporal.contracts.workflow_ids import (
+    TABLE_DISCOVERY_WORKFLOW,
     TASK_QUEUE,
     table_discovery_adhoc_workflow_id,
 )
-from application.port.outbound.table.send_discovery_request import (
-    SendDiscoveryRequestGateway,
-)
+from application.port.outbound.table import SendDiscoveryRequestGateway
 
 if TYPE_CHECKING:
     from temporalio.client import Client
 
-    from adapter.hybrid.temporal.outbound.shared.async_loop_bridge import (
-        AsyncLoopBridge,
-    )
-    from application.port.outbound.table.send_discovery_request import (
-        SendDiscoveryRequestGatewayInput,
-    )
+    from adapter.hybrid.temporal.outbound.shared import AsyncLoopBridge
+    from application.port.outbound.table import SendDiscoveryRequestGatewayInput
 
 
 class SendDiscoveryRequestTemporalGateway(SendDiscoveryRequestGateway):

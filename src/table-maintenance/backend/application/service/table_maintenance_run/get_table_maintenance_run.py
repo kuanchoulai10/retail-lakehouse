@@ -4,11 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.table_maintenance_run.table_maintenance_run_id import (
-    TableMaintenanceRunId,
-)
+from application.domain.model.table_maintenance_run import TableMaintenanceRunId
 from application.exceptions import NotFoundError
-from application.port.inbound.table_maintenance_run.get_table_maintenance_run import (
+from application.port.inbound.table_maintenance_run import (
     GetTableMaintenanceRunUseCase,
     GetTableMaintenanceRunUseCaseInput,
     GetTableMaintenanceRunUseCaseOutput,
@@ -18,9 +16,7 @@ from application.service.table_maintenance_run.table_maintenance_run_output_fiel
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.table_maintenance_run.table_maintenance_runs_repo import (
-        TableMaintenanceRunsRepo,
-    )
+    from application.port.outbound.table_maintenance_run import TableMaintenanceRunsRepo
 
 
 class GetTableMaintenanceRunService(GetTableMaintenanceRunUseCase):

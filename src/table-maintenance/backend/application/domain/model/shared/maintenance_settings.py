@@ -23,7 +23,7 @@ from application.domain.model.shared.rewrite_data_files_settings import (
 from application.domain.model.shared.rewrite_manifests_settings import (
     RewriteManifestsSettings,
 )
-from base.value_object import ValueObject
+from base import ValueObject
 
 type OperationSettings = (
     RewriteDataFilesSettings

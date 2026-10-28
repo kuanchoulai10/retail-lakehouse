@@ -4,22 +4,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from adapter.outbound.shared.sql.iso_datetime_codec import IsoDatetimeCodec
-from application.domain.model.shared.maintenance_operation import (
-    MaintenanceOperation,
-)
-from application.domain.model.table_maintenance_run.table_maintenance_run import (
+from adapter.outbound.shared.sql import IsoDatetimeCodec
+from application.domain.model.shared import MaintenanceOperation
+from application.domain.model.table_maintenance_run import (
     TableMaintenanceRun,
-)
-from application.domain.model.table_maintenance_run.table_maintenance_run_id import (
     TableMaintenanceRunId,
-)
-from application.domain.model.table_maintenance_run.operation_run import OperationRun
-from application.domain.model.table_maintenance_run.operation_run_status import (
+    OperationRun,
     OperationRunStatus,
+    TriggerType,
 )
-from application.domain.model.table_maintenance_run.trigger_type import TriggerType
-from application.domain.model.table.table_id import TableId
+from application.domain.model.table import TableId
 
 if TYPE_CHECKING:
     from sqlalchemy import RowMapping

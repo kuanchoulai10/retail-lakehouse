@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
-from base.value_object import ValueObject
+from base import ValueObject
 
 
 @dataclass(frozen=True)

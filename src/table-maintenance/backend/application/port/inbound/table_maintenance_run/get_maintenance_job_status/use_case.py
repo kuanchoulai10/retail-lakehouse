@@ -10,7 +10,7 @@ from application.port.inbound.table_maintenance_run.get_maintenance_job_status.i
 from application.port.inbound.table_maintenance_run.get_maintenance_job_status.output import (
     GetMaintenanceJobStatusUseCaseOutput,
 )
-from base.use_case import UseCase
+from base import UseCase
 
 
 class GetMaintenanceJobStatusUseCase(

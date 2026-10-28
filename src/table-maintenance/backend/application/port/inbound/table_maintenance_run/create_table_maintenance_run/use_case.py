@@ -10,7 +10,7 @@ from application.port.inbound.table_maintenance_run.create_table_maintenance_run
 from application.port.inbound.table_maintenance_run.create_table_maintenance_run.output import (
     CreateTableMaintenanceRunUseCaseOutput,
 )
-from base.use_case import UseCase
+from base import UseCase
 
 
 class CreateTableMaintenanceRunUseCase(

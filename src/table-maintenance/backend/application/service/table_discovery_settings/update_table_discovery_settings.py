@@ -5,22 +5,20 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.port.inbound.table_discovery_settings.update_table_discovery_settings import (
+from application.port.inbound.table_discovery_settings import (
     UpdateTableDiscoverySettingsUseCase,
     UpdateTableDiscoverySettingsUseCaseInput,
     UpdateTableDiscoverySettingsUseCaseOutput,
 )
-from application.port.outbound.table_discovery_settings.update_table_discovery_schedule import (
+from application.port.outbound.table_discovery_settings import (
     UpdateTableDiscoveryScheduleGatewayInput,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from application.port.outbound.table_discovery_settings.table_discovery_settings_repo import (
+    from application.port.outbound.table_discovery_settings import (
         TableDiscoverySettingsRepo,
-    )
-    from application.port.outbound.table_discovery_settings.update_table_discovery_schedule import (
         UpdateTableDiscoveryScheduleGateway,
     )
 

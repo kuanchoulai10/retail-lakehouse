@@ -10,7 +10,7 @@ from application.port.inbound.table_maintenance_run.submit_maintenance_operation
 from application.port.inbound.table_maintenance_run.submit_maintenance_operation.output import (
     SubmitMaintenanceOperationUseCaseOutput,
 )
-from base.use_case import UseCase
+from base import UseCase
 
 
 class SubmitMaintenanceOperationUseCase(

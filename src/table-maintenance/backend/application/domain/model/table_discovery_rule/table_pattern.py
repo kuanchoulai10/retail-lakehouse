@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from fnmatch import fnmatchcase
+from typing import TYPE_CHECKING
 
-from application.domain.model.table.table_name import TableName
-from base.value_object import ValueObject
+from base import ValueObject
+
+if TYPE_CHECKING:
+    from application.domain.model.table import TableName
 
 
 @dataclass(frozen=True)

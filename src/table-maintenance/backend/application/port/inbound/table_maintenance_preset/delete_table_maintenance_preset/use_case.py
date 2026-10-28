@@ -10,7 +10,7 @@ from application.port.inbound.table_maintenance_preset.delete_table_maintenance_
 from application.port.inbound.table_maintenance_preset.delete_table_maintenance_preset.output import (
     DeleteTableMaintenancePresetUseCaseOutput,
 )
-from base.use_case import UseCase
+from base import UseCase
 
 
 class DeleteTableMaintenancePresetUseCase(

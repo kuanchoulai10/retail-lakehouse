@@ -7,7 +7,7 @@ import threading
 
 import pytest
 
-from adapter.hybrid.temporal.outbound.shared.async_loop_bridge import AsyncLoopBridge
+from adapter.hybrid.temporal.outbound.shared import AsyncLoopBridge
 
 
 def test_run_returns_result_from_a_separate_thread():

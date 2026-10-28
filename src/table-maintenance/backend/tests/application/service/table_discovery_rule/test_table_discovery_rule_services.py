@@ -4,46 +4,28 @@ from __future__ import annotations
 
 import pytest
 
-from application.domain.model.table_discovery_rule.table_discovery_rule import (
+from application.domain.model.table_discovery_rule import (
     TableDiscoveryRule,
-)
-from application.domain.model.table_discovery_rule.table_discovery_rule_id import (
     TableDiscoveryRuleId,
+    RuleEffect,
+    TablePattern,
 )
-from application.domain.model.table_discovery_rule.rule_effect import RuleEffect
-from application.domain.model.table_discovery_rule.table_pattern import TablePattern
-from application.domain.model.shared.maintenance_settings import (
-    MaintenanceSettings,
-)
-from application.domain.model.table_maintenance_preset.table_maintenance_preset import (
+from application.domain.model.shared import MaintenanceSettings
+from application.domain.model.table_maintenance_preset import (
     TableMaintenancePreset,
-)
-from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
     TableMaintenancePresetId,
 )
 from application.exceptions import NotFoundError, ValidationError
-from application.port.inbound.table_discovery_rule.create_table_discovery_rule import (
+from application.port.inbound.table_discovery_rule import (
     CreateTableDiscoveryRuleUseCaseInput,
-)
-from application.port.inbound.table_discovery_rule.delete_table_discovery_rule import (
     DeleteTableDiscoveryRuleUseCaseInput,
-)
-from application.port.inbound.table_discovery_rule.list_table_discovery_rules import (
     ListTableDiscoveryRulesUseCaseInput,
-)
-from application.port.inbound.table_discovery_rule.update_table_discovery_rule import (
     UpdateTableDiscoveryRuleUseCaseInput,
 )
-from application.service.table_discovery_rule.create_table_discovery_rule import (
+from application.service.table_discovery_rule import (
     CreateTableDiscoveryRuleService,
-)
-from application.service.table_discovery_rule.delete_table_discovery_rule import (
     DeleteTableDiscoveryRuleService,
-)
-from application.service.table_discovery_rule.list_table_discovery_rules import (
     ListTableDiscoveryRulesService,
-)
-from application.service.table_discovery_rule.update_table_discovery_rule import (
     UpdateTableDiscoveryRuleService,
 )
 

@@ -5,9 +5,7 @@ from decimal import Decimal
 from uuid import UUID
 
 import pytest
-from adapter.outbound.table.pyiceberg.partition_value_to_primitive import (
-    partition_value_to_primitive,
-)
+from adapter.outbound.table.pyiceberg import partition_value_to_primitive
 
 
 @pytest.mark.parametrize(

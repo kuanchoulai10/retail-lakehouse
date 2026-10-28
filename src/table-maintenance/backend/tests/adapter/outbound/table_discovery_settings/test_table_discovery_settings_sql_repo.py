@@ -5,11 +5,9 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import Engine
 
-from adapter.outbound.table_discovery_settings.sql.table_discovery_settings_sql_repo import (
-    TableDiscoverySettingsSqlRepo,
-)
+from adapter.outbound.table_discovery_settings.sql import TableDiscoverySettingsSqlRepo
 from application.exceptions import ConflictError
-from application.domain.model.table_discovery_settings.table_discovery_settings import (
+from application.domain.model.table_discovery_settings import (
     GLOBAL_ID,
     TableDiscoverySettings,
 )
