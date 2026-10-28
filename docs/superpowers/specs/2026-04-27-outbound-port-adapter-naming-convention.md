@@ -74,6 +74,8 @@ Class name converted to snake_case becomes the filename. One class per file.
 
 ## Directory Structure
 
+> **Update 2026-10-29:** ports are grouped by aggregate: `application/port/outbound/{aggregate}/` (for example `table/`, `table_maintenance_run/`), and adapters mirror it under `adapter/outbound/{aggregate}/` or `adapter/hybrid/<tech>/outbound/{aggregate}/`. The `jobs`-era tree below is historical. Gateway directories may also hold extra single-class files whose class is named after the file stem in CamelCase (`{CamelCaseStem}`), primitive-only like `input.py`. See `docs/superpowers/specs/2026-10-29-backend-architecture-conformance-design.md`.
+
 ### Port (application layer)
 
 ```

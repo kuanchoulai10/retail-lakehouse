@@ -6,7 +6,7 @@ Status: Accepted
 
 ## Context
 
-The table maintenance control plane keeps a registry of managed tables, their settings and their maintenance history. Tables can be renamed, dropped and recreated under the same name. History must stay attached to the table it belongs to, and registry rows are never deleted.
+The table maintenance control plane keeps a registry of tables, their settings and their maintenance history. Tables can be renamed, dropped and recreated under the same name. History must stay attached to the table it belongs to, and registry rows are never deleted.
 
 Every Iceberg table carries a `table-uuid` in its metadata. It is assigned at creation and survives renames. A table that is dropped and recreated with the same name gets a new UUID.
 
@@ -18,7 +18,7 @@ Every Iceberg table carries a `table-uuid` in its metadata. It is assigned at cr
 
 ## Decision
 
-Option 3. `ManagedTable` uses `TableUuid` (the Iceberg `table-uuid`) as its identity. `TableName` is an attribute that a rename updates in place. A table that is gone from the catalog is marked `DROPPED`, not deleted. A table recreated under the same name is a new row with a new UUID. The table reconciliation workflow ID is derived from the UUID (`table-reconciliation:table-uuid={uuid}`).
+Option 3. The `Table` aggregate (then called `ManagedTable`) uses `TableId`, which holds the Iceberg `table-uuid`, as its identity (then `TableUuid`). `TableName` is an attribute that a rename updates in place. A table that is gone from the catalog is marked `DROPPED`, not deleted. A table recreated under the same name is a new row with a new UUID. The table reconciliation workflow ID is derived from the UUID (`table-reconciliation:table-uuid={uuid}`).
 
 ## Consequences
 

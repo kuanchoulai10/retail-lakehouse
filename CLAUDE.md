@@ -23,6 +23,7 @@ Respond in the same language as the user's message. The user typically communica
 - 2026-10: namespace re-layout (T1–T9); Polaris CDC removed (T10), Polaris upgraded 1.5.0 → 1.8.0 (T11), Polaris events published to Kafka via the Kafka event listener (T12), Temporal server deployed with a dedicated PostgreSQL (T13).
 - 2026-10 ~ 10-24: table-maintenance control plane (plan Tasks 1–18): Temporal-based backend (API / worker / event consumer, Polaris catalog event hints, discovery, Spark maintenance jobs via the Spark operator) and the wave-25 Helm chart `table-maintenance` deployed on minikube; Task 19 e2e (`platform/25-lakehouse-control-plane/e2e.sh`, ADRs in `docs/adr/0001`–`0004`) ran all four Iceberg procedures SUCCEEDED on real Spark and compacted the `o'neil` partition through an escaped `where`; it surfaced and fixed `remove_orphan_files` listing (`prefix_listing => true`, c8ee993). Initiative done.
 - 2026-10-26: Temporal workflows renamed `TableDiscoveryWorkflow` / `TableReconciliationWorkflow` / `TableMaintenanceWorkflow` / `TableMaintenanceAdmissionWorkflow` (setting `GLAC_ADMISSION_LIMIT`); IDs are `key=value` segments (`table-reconciliation:table-uuid=…`, `table-maintenance:table=…:run=…`, `table-maintenance-admission`, `table-discovery:catalog=…[:trigger=adhoc]`; table in the wave-25 README); maintenance runs store their `workflow_id` (result callback signals by it); every start sets a static summary.
+- 2026-10-29: table-maintenance backend conformed to one layout (spec `docs/superpowers/specs/2026-10-29-backend-architecture-conformance-design.md`): aggregate axis in every layer, `adapter/{inbound,outbound,hybrid}` with Temporal as a hybrid adapter, no infrastructure terms in `application/`, boundary-only imports, 13 import-linter contracts with no `ignore_imports`, each enforced by `tests/architecture/`. Renames: `ManagedTable` → `Table`, `PolicyTemplate` → `TableMaintenancePreset`, `DiscoveryRule` → `TableDiscoveryRule`, `DiscoverySettings` → `TableDiscoverySettings`, `MaintenanceRun` → `TableMaintenanceRun` (run fields `workflow_id` → `execution_ref`, `spark_application` → `job_name`); API routes `/v1/table-maintenance-presets`, `/v1/table-discovery-rules`, `/v1/table-discovery-settings`, `/v1/table-maintenance-runs`; Workflow IDs unchanged.
 
 **Cluster runtime (2026-10-24):** single minikube node on colima, container runtime `containerd` (was `docker` / cri-dockerd, whose cAdvisor series had no `container` label, so prometheus-adapter served no pod metrics) with `--cni bridge` pinned (with containerd minikube would pick kindnet, which enforces the kube-prometheus and Strimzi NetworkPolicies and blocks KEDA → Prometheus and Kafka UI → Connect REST). `kubectl top nodes` / `kubectl top pods -A` work through prometheus-adapter. `cluster:configure-registry-mirror` writes `/etc/containerd/certs.d/<registry ClusterIP>/hosts.toml` (HTTP) because containerd ignores the CIDR given to `--insecure-registry`; Strimzi KafkaConnect images are pulled from that ClusterIP.
 
@@ -63,13 +64,13 @@ Respond in the same language as the user's message. The user typically communica
 **Known follow-ups:**
 - `platform/21-polaris/bootstrap.sh` creates the `polaris-token-broker` Secret with a check that treats any `kubectl get` error (not just NotFound) as missing and uses `apply`, so a transient API error could regenerate the key pair. Make it NotFound-only plus `kubectl create` (as `25-lakehouse-control-plane/bootstrap.sh` does for `table-maintenance-db`).
 - Worker and event-consumer pods have no liveness probes (deferred).
-- Table maintenance control plane (wave 25): the migrate Job reruns on every `helm upgrade` (name carries the release revision); `helm upgrade --wait-for-jobs` waits for it and `validate.sh` asserts the current-revision Job completed; api / worker / event-consumer also gate on the seeded `default` policy template. The e2e tables `iceberg.e2e.tm_e2e_orders` / `tm_e2e_regions` and the rule `include iceberg / e2e / tm_e2e_*` stay in place (removal steps in the wave README).
+- Table maintenance control plane (wave 25): the migrate Job reruns on every `helm upgrade` (name carries the release revision); `helm upgrade --wait-for-jobs` waits for it and `validate.sh` asserts the current-revision Job completed; api / worker / event-consumer also gate on the seeded `default` table maintenance preset. The e2e tables `iceberg.e2e.tm_e2e_orders` / `tm_e2e_regions` and the rule `include iceberg / e2e / tm_e2e_*` stay in place (removal steps in the wave README).
 - Node memory pressure (eased 2026-10-24): Trino now has memory limits (coordinator `-Xmx2G` / 2816Mi, worker `-Xmx3G` / 4Gi, jmx-exporter 384Mi) and KEDA scales workers 1 → 2 (max 2, 2 running queries per worker), so Trino uses ~5.3 GiB at 1 worker (was ~8 GiB idle and unbounded under load) and the node dropped from 75% to 64%. The earlier `<unknown>` HPA metric was not a KEDA misconfiguration: under memory pressure `prometheus-k8s-0` and `keda-operator-metrics-apiserver` restarted, and while the metric is unknown the HPA keeps its replica count. Concurrent Spark maintenance jobs under load were not re-tested.
 - Spark result callback retries only 3 times 5 s apart (`runtime/spark/result_callback.py`); across a DB / Temporal outage the run is recorded from the polling fallback as `{"completed_without_callback": 1}` and the procedure metrics are lost. Widen the retry window or have the poller read the result from the driver.
 - `rewrite_data_files` runs with `partial-progress.enabled=true`; the runtime now fails a CALL with failed and zero rewritten data files, but a lost callback still records success from the poller (`completed_without_callback`).
 - Each SparkApplication downloads the Iceberg jars from Maven Central at submit; bake them into `table-maintenance-spark`.
 - Event-driven runs with the `default` template start while a writer is still committing; the 10-min discovery fallback was not exercised by the e2e (the event path found the tables first).
-- ManagedTable updates can be lost under concurrent writers: add a version column with compare-and-set.
+- `Table` (formerly `ManagedTable`) updates can be lost under concurrent writers: add a version column with compare-and-set.
 - A retried `record_maintenance_operation_result` activity can lose the table's backoff update.
 - The discovery enabled switch and the `table-discovery` schedule can drift until the worker restarts.
 - Every CDC commit sends a hint that triggers a full metadata scan in the plan; debounce planning.
@@ -115,49 +116,66 @@ This project follows "Get Your Hands Dirty on Clean Architecture" with an additi
 ```
 adapter/inbound  ──> application ──> domain
 adapter/outbound ──> application ──> domain
+adapter/hybrid   ──> application ──> domain
                      application ──> base (shared kernel)
 adapter/*        ──✗──> domain (forbidden: must go through application)
 ```
 
+Inside `application/` the order is `service` → `port` → `domain/service` → `domain/model`; each ring imports only the next one down.
+
 ### Backend Structure
+
+One **aggregate axis** runs through every layer: each layer directory is split into the same aggregate directories (`table`, `table_discovery_rule`, `table_discovery_settings`, `table_maintenance_preset`, `table_maintenance_run`) plus `shared` for what spans aggregates.
 
 ```
 backend/
-├── bootstrap/               # Composition roots (knows all layers)
-│   ├── configs/             # AppSettings, adapter enums
-│   ├── dependencies/        # FastAPI dependency injection
-│   ├── api.py               # API entry point
-│   ├── scheduler.py         # Scheduler entry point
-│   └── messaging.py         # Outbox publisher entry point
-├── adapter/                 # Outermost ring
+├── bootstrap/                    # Composition roots (knows all layers)
+│   ├── configs/                  # AppSettings, Component enum, adapter enums
+│   ├── container/                # Wiring of services, ports and adapters
+│   ├── api.py                    # GLAC_COMPONENT=api
+│   ├── worker.py                 # GLAC_COMPONENT=worker (Temporal worker)
+│   ├── event_consumer.py         # GLAC_COMPONENT=event_consumer
+│   └── migrate.py                # GLAC_COMPONENT=migrate
+├── adapter/                      # Outermost ring: inbound | outbound | hybrid
 │   ├── inbound/
-│   │   ├── web/             # FastAPI routes, API DTOs
-│   │   ├── scheduler/       # Scheduler polling loop
-│   │   └── messaging/
-│   │       └── outbox/      # Outbox publisher polling loop
-│   └── outbound/            # Repository implementations (SQL, K8s, in-memory)
-├── application/             # Middle ring
-│   ├── domain/model/        # Entities, Value Objects, Domain Events, Exceptions
-│   ├── port/inbound/        # Use case interfaces + result types
-│   ├── port/outbound/       # Repository interfaces
-│   └── service/             # Use case implementations (application services)
-├── base/                    # DDD shared kernel
-├── entrypoint.py            # GLAC_COMPONENT env var → api, scheduler, or messaging
+│   │   ├── web/{aggregate}/      # FastAPI routers, API DTOs
+│   │   └── event_consumer/       # Polaris catalog event consumer loop
+│   ├── outbound/{aggregate}/     # SQL, in-memory, catalog, Spark repo/store/gateway adapters
+│   └── hybrid/                   # Technologies that are both directions
+│       └── temporal/
+│           ├── inbound/          # Workflows, activities, schedule setup
+│           ├── outbound/{aggregate}/  # Signal, start and schedule gateways
+│           └── contracts/        # Workflow names/IDs, signals, workflow inputs
+├── application/                  # Middle ring
+│   ├── domain/model/{aggregate}/ # Entities, Value Objects, Domain Events
+│   ├── domain/service/{aggregate}/  # Domain services (planning, rule matching)
+│   ├── port/inbound/{aggregate}/ # Use case interfaces + input/output types
+│   ├── port/outbound/{aggregate}/  # Repo, Store and Gateway interfaces
+│   ├── service/{aggregate}/      # Use case implementations
+│   └── exceptions/               # Application-layer exceptions
+├── base/                         # DDD shared kernel
+├── entrypoint.py                 # GLAC_COMPONENT env var → api, worker, event_consumer, or migrate
 └── tests/
 ```
 
 ### Rules
 
-- **Domain** depends on nothing except `base/` and stdlib. No Pydantic — use dataclasses.
-- **Application** depends on domain and base. No adapter, no framework, no infra imports.
-- **Adapter** depends on application only (not domain directly). Web adapter catches application-layer exceptions, not domain exceptions.
-- **Configs** (`bootstrap/configs/`) is cross-cutting configuration. It must not depend on any bounded context.
-- **DTOs live in the adapter.** `JobApiRequest`/`JobApiResponse` are in `adapter/inbound/web/job/dto.py` with plain types (no domain enums).
+- **Domain** depends on nothing except `base/` and stdlib. No Pydantic — use dataclasses. Enforced by contract `domain-pure`.
+- **Application** depends on domain and base, in ring order. No adapter, no bootstrap, no framework imports. Enforced by contracts `application-ring-order` and `application-no-outer-rings`.
+- **Adapter** imports application only through ports and exceptions (not domain directly). Web adapter catches application-layer exceptions, not domain exceptions. Enforced by contract `adapters-see-only-ports`.
+- **Adapter directions are independent.** `inbound`, `outbound` and `hybrid` do not import each other, a hybrid technology's `inbound` and `outbound` sides do not import each other, and inbound channels (`web`, `event_consumer`) are independent. Contracts `adapter-directions-separate`, `hybrid-directions-separate`, `inbound-channels-independent`. Layout: `tests/architecture/test_adapter_layout.py`.
+- **Hybrid contracts** (`adapter/hybrid/<tech>/contracts/`) depend only on stdlib, base and ports, and only the same technology imports them. Contracts `hybrid-contracts-neutral`, `hybrid-contracts-private`. Temporal workflows import only Temporal and their contracts: contract `temporal-workflows-sandbox-safe`, plus `tests/architecture/test_temporal_workflow_sandbox.py` (Temporal's own sandbox validation) and `test_temporal_workflow_determinism.py`.
+- **Adapters do not import bootstrap**, and **Configs** (`bootstrap/configs/`) is cross-cutting: it must not depend on any bounded context. Contracts `adapters-no-bootstrap`, `configs-leaf`. **Base** depends on nothing project-internal: contract `base-isolation`.
+- **Aggregate axis.** Every layer directory is split by the same aggregate names, with no loose modules at a layer root (the web adapter's root modules are exempt). Enforced by `tests/architecture/test_aggregate_axis.py`.
+- **Ports speak intent, not infrastructure.** Names in `application/` carry no infrastructure vocabulary (`temporal`, `workflow`, `signal`, `activity`, `spark`, `k8s`, `kubernetes`, `sql`, `pyiceberg`, `iceberg_rest`, `kafka`, `polaris`); a port names what the application wants (`SendTableChangeGateway` with a `TableChange`), the adapter picks the mechanism. Enforced by `tests/architecture/test_no_infrastructure_terms.py`.
+- **Boundary-only imports.** A package with an `__init__.py` is a boundary; other packages import from it with `from <boundary> import Name`, never from a module inside it. Boundaries do not nest. Enforced by `tests/architecture/test_import_boundary.py` (derived rules in `tests/architecture/boundaries.py`).
+- **Import-linter has no exemptions.** `.importlinter` holds 13 named contracts and no `ignore_imports`. Enforced by `tests/architecture/test_importlinter_config.py`; run `lint-imports` to verify.
+- **Naming and structure.** Inbound ports, outbound ports, services and web DTOs follow the naming tables below: `test_inbound_port_structure.py`, `test_outbound_port_structure.py`, `test_service_structure.py`, `test_dto_naming.py`; top-level layout `test_directory_structure.py`; inheritance depth `test_inheritance_depth.py`.
+- **DTOs live in the adapter.** `CreateTableDiscoveryRuleApiRequest`/`TableDiscoveryRuleApiResponse` are in `adapter/inbound/web/table_discovery_rule/dto.py` with plain types (no domain enums).
 - **Use case results live in the application layer.** Services convert domain objects to application-layer result dataclasses so adapters never see domain types.
 - **Bootstrap** is the only layer allowed to import from all other layers. It is the composition root.
-- Architecture boundaries are enforced by `import-linter` (configured in `src/table-maintenance/backend/.importlinter`). Run `lint-imports` to verify.
-- **Single image, triple component**: `GLAC_COMPONENT=api` (default), `GLAC_COMPONENT=scheduler`, or `GLAC_COMPONENT=messaging` via `entrypoint.py`.
-- **Unified settings**: All configuration via `GLAC_` prefixed env vars (pydantic-settings). Nested with `__` delimiter: `GLAC_SCHEDULER__INTERVAL_SECONDS=30`.
+- **Single image, four components**: `GLAC_COMPONENT=api` (default), `worker`, `event_consumer`, or `migrate` via `entrypoint.py`.
+- **Unified settings**: All configuration via `GLAC_` prefixed env vars (pydantic-settings). Nested with `__` delimiter: `GLAC_ADMISSION_LIMIT`, `GLAC_TEMPORAL__ADDRESS`.
 
 ## Development Workflow
 
@@ -169,7 +187,7 @@ backend/
 
 ## Project Vision
 
-This is being built as a **multi-tenant SaaS** platform. The current `jobs` bounded context is the first of several planned domains (customers, catalogs, tables, jobs, job runs). Design decisions should consider future extensibility across bounded contexts.
+This is being built as a **multi-tenant SaaS** platform. The current bounded context is table maintenance (aggregates `Table`, `TableMaintenancePreset`, `TableDiscoveryRule`, `TableDiscoverySettings`, `TableMaintenanceRun`); customers and catalogs are planned next. Design decisions should consider future extensibility across bounded contexts.
 
 ## DDD Base Types (`base/`)
 
@@ -206,6 +224,8 @@ Three base classes define all outbound ports (in `base/`):
 ├── input.py          # {Verb}{Noun}GatewayInput (optional, primitive-only)
 └── output.py         # {Verb}{Noun}GatewayOutput (optional, primitive-only)
 ```
+
+A gateway directory may also hold extra single-class files (for example `list_input.py`). Except `list_input.py`, which defines `{Verb}{Noun}GatewayListInput`, each defines one class named after its file stem in CamelCase (`{CamelCaseStem}`), primitive-only like `input.py`. Enforced by `test_outbound_port_structure.py` (the extra files used to be an allowlist of fixed names).
 
 Input/output files must only use primitive types (`str`, `int`, `float`, `bool`, `dict`, `list`, `None`). They may import `base.value_object.ValueObject` but nothing from `application.domain` or other `base.*` modules. This is enforced by `test_outbound_port_structure.py`.
 

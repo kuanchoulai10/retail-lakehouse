@@ -49,7 +49,7 @@ Ambient mode reinforces this separation. Once the source and destination namespa
 
 ### Path-Prefix Routing Beats Endpoint Enumeration
 
-Two competing patterns exist for mapping paths to backends. The first is **explicit enumeration**: list every endpoint (`/v1/jobs`, `/v1/runs`, `/v1/tables`) with its backend. The second is **prefix routing**: everything under `/v1/*` goes to one backend, everything else to another.
+Two competing patterns exist for mapping paths to backends. The first is **explicit enumeration**: list every endpoint (`/v1/tables`, `/v1/table-maintenance-runs`, `/v1/table-discovery-rules`) with its backend. The second is **prefix routing**: everything under `/v1/*` goes to one backend, everything else to another.
 
 Prefix routing wins when the backend's API surface evolves independently of the Gateway. Adding a new endpoint doesn't require an HTTPRoute edit. It fails when different sub-paths of the same prefix legitimately need different backends, but that's a design smell in itself, usually pointing at a service that should be split.
 

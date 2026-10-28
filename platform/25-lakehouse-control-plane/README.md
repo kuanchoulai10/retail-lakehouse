@@ -7,7 +7,7 @@ Wave 25. Creates the `lakehouse-control-plane` and `lakehouse-maintenance-operat
 ```
 Namespace: lakehouse-control-plane
   Deployment table-maintenance-db             PostgreSQL 17.11 (PVC, Recreate), Service table-maintenance-db:5432
-  Job        table-maintenance-migrate-<rev>  creates the schema, seeds the "default" policy template
+  Job        table-maintenance-migrate-<rev>  creates the schema, seeds the "default" table maintenance preset
   Deployment table-maintenance-api            Service table-maintenance-api:8000
   Deployment table-maintenance-worker         Temporal worker (task queue table-maintenance)
   Deployment table-maintenance-event-consumer Polaris catalog events from Kafka (1 replica)
@@ -49,7 +49,7 @@ All run on task queue `table-maintenance` in Temporal namespace `default`. IDs a
 |---|---|---|
 | `TableDiscoveryWorkflow` | schedule `table-discovery:catalog={catalog}` (Temporal appends the firing time); ad hoc `table-discovery:catalog={catalog}[:namespace={namespace}]:trigger=adhoc` | `{catalog}`; ad hoc `{catalog}[.{namespace}] · ad hoc` |
 | `TableReconciliationWorkflow` | `table-reconciliation:table-uuid={uuid}` | `{catalog}.{namespace}.{table}` at first start |
-| `TableMaintenanceWorkflow` | `table-maintenance:table={catalog}.{namespace}.{table}:run={run_id}` (table name as of the run start; stored on the run as `workflow_id`) | `{catalog}.{namespace}.{table} · {operations}` |
+| `TableMaintenanceWorkflow` | `table-maintenance:table={catalog}.{namespace}.{table}:run={run_id}` (table name as of the run start; stored on the run as `execution_ref`) | `{catalog}.{namespace}.{table} · {operations}` |
 | `TableMaintenanceAdmissionWorkflow` | `table-maintenance-admission` | `global Spark maintenance admission (limit={limit})` |
 
 ## Call the API
@@ -64,20 +64,20 @@ No route needs authentication. The main routes, all under `/v1`:
 
 | Route | Use |
 |---|---|
-| `GET /policy-templates` | templates; the migration seeds `default` |
-| `GET, POST /discovery-rules`, `PATCH, DELETE /discovery-rules/{id}` | rules, first match by `priority` wins; `effect` is `include` or `exclude` |
-| `GET, PUT /discovery`, `POST /discovery/scan` | the discovery switch and an on-demand scan |
-| `GET /tables?status=active` | managed tables (`active`, `paused`, `excluded`, `dropped`) |
+| `GET, POST /table-maintenance-presets`, `GET, PATCH, DELETE /table-maintenance-presets/{preset_id}` | presets; the migration seeds `default` |
+| `GET, POST /table-discovery-rules`, `PATCH, DELETE /table-discovery-rules/{rule_id}` | rules, first match by `priority` wins; `effect` is `include` or `exclude` |
+| `GET, PUT /table-discovery-settings`, `POST /table-discovery-settings/scan` | the discovery switch and an on-demand scan |
+| `GET /tables?status=active` | tables (formerly managed tables; `active`, `paused`, `excluded`, `dropped`) |
 | `PUT /tables/{uuid}/settings` | replace a table's settings; omitted keys take the domain defaults |
 | `POST /tables/{uuid}/pause`, `/resume`, `/reset-selection` | operator overrides |
 | `POST /tables/include`, `/tables/exclude` | manual include or exclude by name |
 | `POST /tables/{uuid}/maintenance` | manual run, body `{"operations": [...]}`; runs whole-table, ignores cooldowns |
-| `GET /tables/{uuid}/runs`, `GET /runs/{run_id}` | run history with per-operation status and metrics |
+| `GET /tables/{uuid}/table-maintenance-runs`, `GET /table-maintenance-runs/{run_id}` | run history with per-operation status and metrics |
 
-Create a rule (the `default` template id comes from `GET /v1/policy-templates`):
+Create a rule (the `default` preset id comes from `GET /v1/table-maintenance-presets`):
 
 ```
-curl -X POST http://localhost:8000/v1/discovery-rules -H 'Content-Type: application/json' \
+curl -X POST http://localhost:8000/v1/table-discovery-rules -H 'Content-Type: application/json' \
   -d '{"priority": 10, "effect": "include", "catalog_pattern": "iceberg",
        "namespace_pattern": "e2e", "table_pattern": "tm_e2e_*", "template_id": "<id>"}'
 ```
@@ -95,19 +95,19 @@ KUBE_CONTEXT=retail-lakehouse bash platform/25-lakehouse-control-plane/e2e.sh
 It:
 
 1. issues a Trino client certificate for user `tm-e2e` (`task trino:issue-cert`) and port-forwards `service/trino` to `localhost:18445` (`TRINO_PORT`) for each query;
-2. creates the rule `include iceberg / e2e / tm_e2e_*` with the `default` template, priority 10 (reused if it exists);
+2. creates the rule `include iceberg / e2e / tm_e2e_*` with the `default` preset, priority 10 (reused if it exists);
 3. creates `iceberg.e2e.tm_e2e_orders` (partitioned by `day(order_ts)`, `bucket(id, 4)`) and `iceberg.e2e.tm_e2e_regions` (partitioned by `region`) if missing, pauses them if they are already registered, inserts 20 and 8 single-row commits, and deletes one order to add a delete file; half of the regions are `o'neil`;
 4. waits up to 15 minutes for both tables to be `active`, prints when each `table-reconciliation:table-uuid={uuid}` workflow's current run started next to the discovery schedule's recent runs (on a table's first run, a reconcile start before the next scheduled run means the event path found the table), then pauses both tables and waits for running runs to finish;
 5. while paused, lowers the orders thresholds (`min_reducible_files: 2`, `min_small_manifests: 1`, `expire_snapshots.older_than_seconds: 60`, `retain_last: 1`, `remove_orphan_files.older_than_seconds: 86400`) and sets regions to `scope: partition`, `min_reducible_files: 2`, `min_interval_seconds: 60`;
 6. resumes orders and triggers all four operations manually, then resumes regions so the scheduled plan compacts through a `where` filter that contains the escaped quote;
-7. requires every operation of the new runs to be `succeeded` with `rewritten_data_files_count > 0`, the orders data file count (`$files`) and snapshot count (`$snapshots`) to decrease, `expire_snapshots` to delete files and the RustFS object count under the orders `data/` prefix (one-off `pgsty/mc` pod) to be at most before + files added by the rewrite − files expired (the raw count can grow, because `older_than` is fixed at plan time and the rewrite's partial-progress commits still reference the old files), the regions file count to decrease, the regions `where` filter to contain `'o\'neil'` (read from the history of the run's maintenance workflow, whose ID the API returns as `workflow_id`), and both `table-reconciliation:table-uuid={uuid}` workflows to be running.
+7. requires every operation of the new runs to be `succeeded` with `rewritten_data_files_count > 0`, the orders data file count (`$files`) and snapshot count (`$snapshots`) to decrease, `expire_snapshots` to delete files and the RustFS object count under the orders `data/` prefix (one-off `pgsty/mc` pod) to be at most before + files added by the rewrite − files expired (the raw count can grow, because `older_than` is fixed at plan time and the rewrite's partial-progress commits still reference the old files), the regions file count to decrease, the regions `where` filter to contain `'o\'neil'` (read from the history of the run's maintenance workflow, whose ID the API returns as `execution_ref`), and both `table-reconciliation:table-uuid={uuid}` workflows to be running.
 
 If a Spark driver cannot deliver its result callback (the API or its database is down), the polling fallback records the operation as `succeeded` with `{"completed_without_callback": 1}` and no procedure metrics; the check then relies on the `$files` count alone and says so. Only `[INFO]` progress lines are printed; on failure the full output is dumped. The script is idempotent: it reuses the tables and the rule, so a rerun adds new small files. `remove_orphan_files` keeps files younger than one day, so it succeeds without deleting the files just written.
 
 The e2e tables and the rule stay in place to show the scheduled path. To remove them:
 
 ```
-curl -X DELETE http://localhost:8000/v1/discovery-rules/<rule-id>
+curl -X DELETE http://localhost:8000/v1/table-discovery-rules/<rule-id>
 trino> DROP TABLE iceberg.e2e.tm_e2e_orders; DROP TABLE iceberg.e2e.tm_e2e_regions; DROP SCHEMA iceberg.e2e;
 task trino:delete-cert TRINO_USER=tm-e2e KUBE_CONTEXT=retail-lakehouse
 ```
