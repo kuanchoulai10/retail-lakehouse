@@ -50,12 +50,13 @@ class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
     def execute(
         self, request: SubmitMaintenanceOperationUseCaseInput
     ) -> SubmitMaintenanceOperationUseCaseOutput:
-        """Check the attempt, submit the job, then record the attempt on the run.
+        """Record the attempt as running, submit the job, then attach its name.
 
-        No job is submitted for an attempt the run would reject. The gateway
-        deduplicates by ``(run_id, operation, attempt)`` and recording an attempt
-        that is already running with the same job name is a no-op, so a retried
-        call leaves exactly one job.
+        No job is submitted for an attempt the run rejects. The attempt is saved
+        before the submit so a failed submit can still be recorded as a failure.
+        The gateway deduplicates by ``(run_id, operation, attempt)`` and starting
+        or attaching the same thing twice is a no-op, so a retried call leaves
+        exactly one job.
         """
         try:
             operation = MaintenanceOperation(request.operation)
@@ -68,7 +69,8 @@ class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
         if table is None:
             raise NotFoundError(f"table {run.table_uuid.value} not found")
         with translate_domain_errors():
-            run.ensure_attempt_startable(operation, request.attempt)
+            run.start_attempt(operation, request.attempt, None, request.now)
+            self._runs_repo.update(run)
         wheres = [f.where for f in request.filters]
         submitted = self._submit_gateway.submit(
             SubmitMaintenanceJobGatewayInput(
@@ -88,8 +90,6 @@ class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
             )
         )
         with translate_domain_errors():
-            run.start_attempt(
-                operation, request.attempt, submitted.job_name, request.now
-            )
+            run.attach_job_name(operation, request.attempt, submitted.job_name)
             self._runs_repo.update(run)
         return SubmitMaintenanceOperationUseCaseOutput(job_name=submitted.job_name)

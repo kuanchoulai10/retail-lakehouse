@@ -1,4 +1,4 @@
-"""Test the reconcile planning, submission and job services."""
+"""Test the submit, job status and job delete services."""
 
 from __future__ import annotations
 
@@ -46,6 +46,15 @@ from application.service.table_maintenance_run.delete_maintenance_job import (
 )
 from application.service.table_maintenance_run.get_maintenance_job_status import (
     GetMaintenanceJobStatusService,
+)
+from application.port.outbound.table_maintenance_run.submit_maintenance_job import (
+    SubmitMaintenanceJobGateway,
+)
+from application.port.inbound.table_maintenance_run.record_table_maintenance_operation_result import (
+    RecordTableMaintenanceOperationResultUseCaseInput,
+)
+from application.service.table_maintenance_run.record_table_maintenance_operation_result import (
+    RecordTableMaintenanceOperationResultService,
 )
 from application.service.table_maintenance_run.submit_maintenance_operation import (
     SubmitMaintenanceOperationService,
@@ -133,16 +142,20 @@ def test_submit_submits_job_then_records_attempt_with_its_job_name(
     assert (op.attempts, op.job_name) == (1, out.job_name)
 
 
-def test_submit_submits_job_before_saving_the_run(
+def test_submit_records_the_attempt_before_submitting_then_attaches_the_job(
     submitter, run, runs_repo, submit_job, log, now
 ):
     track_calls(runs_repo, "update", "runs.update", log, lambda r: r.id.value)
     track_calls(submit_job, "submit", "job.submit", log, lambda i: i.run_id)
     _submit(submitter, now)
-    assert log == [("job.submit", "run-1"), ("runs.update", "run-1")]
+    assert log == [
+        ("runs.update", "run-1"),
+        ("job.submit", "run-1"),
+        ("runs.update", "run-1"),
+    ]
 
 
-def test_submit_never_calls_the_gateway_for_a_rejected_transition(
+def test_submit_never_calls_the_gateway_for_a_rejected_attempt(
     submitter, run, runs_repo, submit_job, now
 ):
     with pytest.raises(ConflictError):
@@ -150,8 +163,33 @@ def test_submit_never_calls_the_gateway_for_a_rejected_transition(
     with pytest.raises(ConflictError):
         _submit(submitter, now, operation="remove_orphan_files")
     assert submit_job.calls == []
-    assert run.operations[0].attempts == 0
     assert runs_repo.get(TableMaintenanceRunId("run-1")).operations[0].attempts == 0
+
+
+class _FailingSubmitGateway(SubmitMaintenanceJobGateway):
+    def submit(self, input):  # noqa: A002
+        raise RuntimeError("k8s down")
+
+
+def test_failed_submit_can_be_recorded_and_the_next_attempt_goes_through(
+    runs_repo, tables_repo, run, submit_job, now
+):
+    failing = SubmitMaintenanceOperationService(
+        runs_repo, tables_repo, _FailingSubmitGateway()
+    )
+    with pytest.raises(RuntimeError, match="k8s down"):
+        _submit(failing, now)
+    recorder = RecordTableMaintenanceOperationResultService(runs_repo, tables_repo)
+    recorder.execute(
+        RecordTableMaintenanceOperationResultUseCaseInput(
+            "run-1", "rewrite_data_files", 1, False, {}, "submit failed", now
+        )
+    )
+    op = runs_repo.get(TableMaintenanceRunId("run-1")).operations[0]
+    assert (op.status.value, op.attempts) == ("failed", 1)
+    working = SubmitMaintenanceOperationService(runs_repo, tables_repo, submit_job)
+    out = _submit(working, now, attempt=2)
+    assert out.job_name == "job-run-1-rewrite_data_files-2"
 
 
 def test_submit_whole_table_filter_means_no_where(submitter, run, submit_job, now):

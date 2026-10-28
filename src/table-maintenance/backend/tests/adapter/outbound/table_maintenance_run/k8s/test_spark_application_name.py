@@ -10,6 +10,7 @@ from application.domain.model.maintenance.maintenance_operation import (
     MaintenanceOperation,
 )
 from adapter.outbound.table_maintenance_run.k8s.spark_application_name import (
+    _CODES,
     spark_application_name,
 )
 
@@ -44,3 +45,7 @@ def test_attempt_must_be_positive():
 def test_unknown_operation_is_rejected():
     with pytest.raises(ValueError):
         spark_application_name("r", "defragment", 1)
+
+
+def test_every_operation_has_a_code():
+    assert set(_CODES) == {op.value for op in MaintenanceOperation}

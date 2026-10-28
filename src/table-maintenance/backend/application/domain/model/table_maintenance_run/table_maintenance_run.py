@@ -96,32 +96,22 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             return RunStatus.FAILED
         return RunStatus.PARTIALLY_FAILED
 
-    def ensure_attempt_startable(
-        self, operation: MaintenanceOperation, attempt: int
-    ) -> None:
-        """Reject an attempt that ``start_attempt`` would reject, without changing the run.
-
-        The attempt already running counts as startable, so a retried submit passes.
-        """
-        current = self._get(operation)
-        if attempt == current.attempts and current.status is OperationRunStatus.RUNNING:
-            return
-        self._require_startable(current, operation, attempt)
-
     def start_attempt(
         self,
         operation: MaintenanceOperation,
         attempt: int,
-        job_name: str,
+        job_name: str | None,
         now: datetime,
     ) -> None:
-        """Mark an attempt of an operation as running."""
+        """Mark an attempt of an operation as running.
+
+        Starting the attempt that is already running is a no-op, except that a
+        given ``job_name`` is attached when none is recorded yet.
+        """
         current = self._get(operation)
-        if (
-            attempt == current.attempts
-            and current.status is OperationRunStatus.RUNNING
-            and current.job_name == job_name
-        ):
+        if attempt == current.attempts and current.status is OperationRunStatus.RUNNING:
+            if job_name is not None:
+                self.attach_job_name(operation, attempt, job_name)
             return
         self._require_startable(current, operation, attempt)
         self._replace(
@@ -136,6 +126,30 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
                 metrics={},
             ),
             now,
+        )
+
+    def attach_job_name(
+        self, operation: MaintenanceOperation, attempt: int, job_name: str
+    ) -> None:
+        """Record the job of the running attempt; repeating the same name is a no-op."""
+        current = self._get(operation)
+        if (
+            attempt != current.attempts
+            or current.status is not OperationRunStatus.RUNNING
+        ):
+            msg = (
+                f"cannot attach a job to attempt {attempt} of {operation} "
+                f"(status {current.status}, attempts {current.attempts})"
+            )
+            raise InvalidRunTransition(msg)
+        if current.job_name == job_name:
+            return
+        if current.job_name is not None:
+            msg = f"attempt {attempt} of {operation} already has job {current.job_name}"
+            raise InvalidRunTransition(msg)
+        self.operations = tuple(
+            replace(run, job_name=job_name) if run.operation == operation else run
+            for run in self.operations
         )
 
     def succeed(

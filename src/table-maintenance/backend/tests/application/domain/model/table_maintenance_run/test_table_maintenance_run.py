@@ -220,24 +220,28 @@ def test_create_rejects_an_empty_execution_ref():
         )
 
 
-def test_ensure_attempt_startable_accepts_what_start_attempt_accepts():
+def test_start_attempt_without_a_job_name_then_attach_it():
     run = _run([Op.REWRITE_DATA_FILES])
-    run.ensure_attempt_startable(Op.REWRITE_DATA_FILES, 1)
-    run.start_attempt(Op.REWRITE_DATA_FILES, 1, "a1", _now(1))
-    run.ensure_attempt_startable(Op.REWRITE_DATA_FILES, 1)
-    run.fail(Op.REWRITE_DATA_FILES, 1, "boom", _now(2))
-    run.ensure_attempt_startable(Op.REWRITE_DATA_FILES, 2)
+    run.start_attempt(Op.REWRITE_DATA_FILES, 1, None, _now(1))
+    assert _op(run, Op.REWRITE_DATA_FILES).job_name is None
+    run.start_attempt(Op.REWRITE_DATA_FILES, 1, None, _now(2))
+    run.attach_job_name(Op.REWRITE_DATA_FILES, 1, "j1")
+    run.attach_job_name(Op.REWRITE_DATA_FILES, 1, "j1")
+    run.start_attempt(Op.REWRITE_DATA_FILES, 1, None, _now(3))
+    op = _op(run, Op.REWRITE_DATA_FILES)
+    assert (op.attempts, op.job_name, op.started_at) == (1, "j1", _now(1))
 
 
-def test_ensure_attempt_startable_rejects_without_changing_the_run():
+def test_attach_job_name_is_guarded():
     run = _run([Op.REWRITE_DATA_FILES])
-    before = _op(run, Op.REWRITE_DATA_FILES)
     with pytest.raises(InvalidRunTransition):
-        run.ensure_attempt_startable(Op.REWRITE_DATA_FILES, 2)
+        run.attach_job_name(Op.REWRITE_DATA_FILES, 1, "j1")
+    run.start_attempt(Op.REWRITE_DATA_FILES, 1, None, _now(1))
+    run.attach_job_name(Op.REWRITE_DATA_FILES, 1, "j1")
     with pytest.raises(InvalidRunTransition):
-        run.ensure_attempt_startable(Op.EXPIRE_SNAPSHOTS, 1)
-    assert _op(run, Op.REWRITE_DATA_FILES) == before
-    run.start_attempt(Op.REWRITE_DATA_FILES, 1, "a1", _now(1))
+        run.attach_job_name(Op.REWRITE_DATA_FILES, 1, "other")
+    with pytest.raises(InvalidRunTransition):
+        run.attach_job_name(Op.REWRITE_DATA_FILES, 2, "j2")
     run.succeed(Op.REWRITE_DATA_FILES, 1, {}, _now(2))
     with pytest.raises(InvalidRunTransition):
-        run.ensure_attempt_startable(Op.REWRITE_DATA_FILES, 1)
+        run.attach_job_name(Op.REWRITE_DATA_FILES, 1, "j1")
