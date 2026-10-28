@@ -29,19 +29,15 @@ from pathlib import Path
 
 import pytest
 
+from tests.architecture.aggregates import AGGREGATES
+
 from base.gateway import Gateway
 
 OUTBOUND_PORT_DIR = (
     Path(__file__).resolve().parents[2] / "application" / "port" / "outbound"
 )
 
-AGGREGATE_GROUPS = [
-    "table_discovery_settings",
-    "table_discovery_rule",
-    "table",
-    "table_maintenance_run",
-    "table_maintenance_preset",
-]
+AGGREGATE_GROUPS = sorted(AGGREGATES)
 
 GATEWAY_REQUIRED_FILES = {"__init__.py", "gateway.py"}
 GATEWAY_STANDARD_FILES = {"__init__.py", "gateway.py", "input.py", "output.py"}

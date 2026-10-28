@@ -19,6 +19,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.architecture.aggregates import AGGREGATES
+
 INBOUND_PORT_DIR = (
     Path(__file__).resolve().parents[2] / "application" / "port" / "inbound"
 )
@@ -26,13 +28,7 @@ REQUIRED_FILES = {"__init__.py", "input.py", "output.py", "use_case.py"}
 REQUIRED_FILES_NO_INPUT = {"__init__.py", "output.py", "use_case.py"}
 ALLOWED_FILES = REQUIRED_FILES  # input.py is optional for no-input use cases
 
-AGGREGATE_GROUPS = [
-    "table_discovery_settings",
-    "table_discovery_rule",
-    "table",
-    "table_maintenance_run",
-    "table_maintenance_preset",
-]
+AGGREGATE_GROUPS = sorted(AGGREGATES)
 AGGREGATE_GROUPS_NO_INPUT: set[str] = set()
 
 
