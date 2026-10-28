@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 
 import pytest
 
@@ -24,13 +25,18 @@ from application.port.inbound.table_maintenance_run import (
 )
 from application.port.outbound.table_maintenance_run import (
     SubmitMaintenanceJobGatewayInput,
+    SubmitMaintenanceJobGatewayOutput,
     SubmitMaintenanceJobGateway,
+    TableMaintenanceRunsRepo,
 )
 from application.service.table_maintenance_run import (
     DeleteMaintenanceJobService,
     GetMaintenanceJobStatusService,
     RecordTableMaintenanceOperationResultService,
     SubmitMaintenanceOperationService,
+)
+from tests.fakes.in_memory_table_maintenance_runs_repo import (
+    InMemoryTableMaintenanceRunsRepo,
 )
 from tests.fakes.track_calls import track_calls
 
@@ -298,3 +304,71 @@ def test_delete_job_rejects_invalid_operation_or_attempt(
             )
         )
     assert delete_job.calls == []
+
+
+class _CopyingRunsRepo(TableMaintenanceRunsRepo):
+    """Hand out and store copies, like a SQL repo that overwrites the row."""
+
+    def __init__(self):
+        self.inner = InMemoryTableMaintenanceRunsRepo()
+
+    def create(self, entity):
+        return self.inner.create(copy.deepcopy(entity))
+
+    def get(self, entity_id):
+        stored = self.inner.get(entity_id)
+        return None if stored is None else copy.deepcopy(stored)
+
+    def list_all(self):
+        return [copy.deepcopy(r) for r in self.inner.list_all()]
+
+    def update(self, run):
+        return self.inner.update(copy.deepcopy(run))
+
+    def list_by_table(self, table_uuid, limit=50):
+        return [copy.deepcopy(r) for r in self.inner.list_by_table(table_uuid, limit)]
+
+
+class _CancelDuringSubmitGateway(SubmitMaintenanceJobGateway):
+    """Record the attempt as failed while the submit is still running."""
+
+    def __init__(self, recorder, now):
+        self.recorder = recorder
+        self.now = now
+
+    def submit(self, input):  # noqa: A002
+        self.recorder.execute(
+            RecordTableMaintenanceOperationResultUseCaseInput(
+                input.run_id,
+                input.operation,
+                input.attempt,
+                False,
+                {},
+                "cancelled",
+                self.now,
+            )
+        )
+        return SubmitMaintenanceJobGatewayOutput(job_name="job-cancelled")
+
+
+def test_submit_does_not_overwrite_a_run_cancelled_during_the_submit(tables_repo, now):
+    runs_repo = _CopyingRunsRepo()
+    _table(tables_repo, now)
+    runs_repo.create(
+        TableMaintenanceRun.create(
+            TableMaintenanceRunId("run-1"),
+            TableId("u-1"),
+            TriggerType.SCHEDULED,
+            [OPS.REWRITE_DATA_FILES],
+            now,
+            execution_ref="wf-run-1",
+        )
+    )
+    recorder = RecordTableMaintenanceOperationResultService(runs_repo, tables_repo)
+    submitter = SubmitMaintenanceOperationService(
+        runs_repo, tables_repo, _CancelDuringSubmitGateway(recorder, now)
+    )
+    out = _submit(submitter, now)
+    assert out.job_name == "job-cancelled"
+    op = runs_repo.get(TableMaintenanceRunId("run-1")).operations[0]
+    assert (op.status.value, op.attempts, op.job_name) == ("failed", 1, None)

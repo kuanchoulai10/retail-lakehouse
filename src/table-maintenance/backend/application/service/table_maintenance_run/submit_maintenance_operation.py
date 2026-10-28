@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from application.domain.model.shared import MaintenanceOperation
-from application.domain.model.table_maintenance_run import TableMaintenanceRunId
+from application.domain.model.table_maintenance_run import (
+    InvalidRunTransition,
+    TableMaintenanceRunId,
+)
 from application.exceptions import NotFoundError, ValidationError
 from application.port.inbound.table_maintenance_run import (
     SubmitMaintenanceOperationUseCase,
@@ -23,6 +27,8 @@ if TYPE_CHECKING:
         SubmitMaintenanceJobGateway,
     )
     from application.port.outbound.table import TablesRepo
+
+logger = logging.getLogger(__name__)
 
 
 class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
@@ -48,7 +54,10 @@ class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
         before the submit so a failed submit can still be recorded as a failure.
         The gateway deduplicates by ``(run_id, operation, attempt)`` and starting
         or attaching the same thing twice is a no-op, so a retried call leaves
-        exactly one job.
+        exactly one job. The run is read again after the submit, because the
+        attempt can be recorded (for example as cancelled) while the submit runs;
+        an attempt that is no longer running keeps its recorded outcome and the
+        job name, which is informational, is dropped.
         """
         try:
             operation = MaintenanceOperation(request.operation)
@@ -81,7 +90,20 @@ class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
                 ),
             )
         )
+        output = SubmitMaintenanceOperationUseCaseOutput(job_name=submitted.job_name)
+        current = self._runs_repo.get(run.id)
+        if current is None:
+            raise NotFoundError(f"maintenance run {request.run_id} not found")
+        try:
+            current.attach_job_name(operation, request.attempt, submitted.job_name)
+        except InvalidRunTransition as exc:
+            logger.warning(
+                "not attaching job %s to run %s: %s",
+                submitted.job_name,
+                request.run_id,
+                exc,
+            )
+            return output
         with translate_domain_errors():
-            run.attach_job_name(operation, request.attempt, submitted.job_name)
-            self._runs_repo.update(run)
-        return SubmitMaintenanceOperationUseCaseOutput(job_name=submitted.job_name)
+            self._runs_repo.update(current)
+        return output
