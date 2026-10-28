@@ -19,8 +19,10 @@ from application.port.outbound.table_maintenance_run import TableMaintenanceRuns
 if TYPE_CHECKING:
     from sqlalchemy import Engine
 
-    from application.domain.model.table_maintenance_run import TableMaintenanceRun
-    from application.domain.model.table import TableId
+    from application.port.outbound.table_maintenance_run import (
+        TableId,
+        TableMaintenanceRun,
+    )
     from base import EntityId
 
 

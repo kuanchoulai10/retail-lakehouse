@@ -21,7 +21,9 @@ from application.port.outbound.table_maintenance_preset import (
 if TYPE_CHECKING:
     from sqlalchemy import Engine
 
-    from application.domain.model.table_maintenance_preset import TableMaintenancePreset
+    from application.port.outbound.table_maintenance_preset import (
+        TableMaintenancePreset,
+    )
     from base import EntityId
 
 

@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from application.domain.model.shared import MaintenanceOperation
+from application.domain.model.table_maintenance_run import (
+    OperationRun,
+    OperationRunStatus,
+    TriggerType,
+)
 from application.domain.model.table import TableId
 from application.domain.model.table_maintenance_run import (
     TableMaintenanceRun,
@@ -42,6 +48,10 @@ from application.port.outbound.table_maintenance_run.table_maintenance_runs_repo
 )
 
 __all__ = [
+    "MaintenanceOperation",
+    "OperationRun",
+    "OperationRunStatus",
+    "TriggerType",
     "TableMaintenanceRunId",
     "DeleteMaintenanceJobGateway",
     "DeleteMaintenanceJobGatewayInput",

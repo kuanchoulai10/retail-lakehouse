@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from application.domain.model.table_discovery_rule import RuleEffect, TablePattern
 from application.domain.model.table_discovery_rule import (
     TableDiscoveryRule,
     TableDiscoveryRuleId,
@@ -12,6 +13,8 @@ from application.port.outbound.table_discovery_rule.table_discovery_rules_repo i
 )
 
 __all__ = [
+    "RuleEffect",
+    "TablePattern",
     "TableDiscoveryRuleId",
     "TableDiscoveryRule",
     "TableDiscoveryRulesRepo",

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import Any
 
-from application.domain.model.shared import (
+from application.port.outbound.table_maintenance_preset import (
     CompactionScope,
     ExpireSnapshotsSettings,
     MaintenanceSettings,

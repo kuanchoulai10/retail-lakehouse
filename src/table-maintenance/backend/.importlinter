@@ -6,116 +6,144 @@ root_packages =
     bootstrap
 include_external_packages = True
 
-[importlinter:contract:domain-core-isolation]
-name = Domain core (entities, value objects) does not depend on application or adapter
+[importlinter:contract:domain-pure]
+name = Domain depends only on base and the stdlib
 type = forbidden
 source_modules =
-    application.domain.model
+    application.domain
 forbidden_modules =
     application.port
-    application.exceptions
     application.service
-    application.domain.service
+    application.exceptions
     adapter
     bootstrap
-    fastapi
-    kubernetes
     temporalio
     pyiceberg
     pyarrow
     sqlalchemy
+    fastapi
+    kubernetes
+    confluent_kafka
+    pydantic
 
-[importlinter:contract:application-isolation]
-name = Application does not depend on adapter or bootstrap
+[importlinter:contract:application-ring-order]
+name = Application ring order: service, port, domain service, domain model
+type = layers
+layers =
+    application.service
+    application.port
+    application.domain.service
+    application.domain.model
+
+[importlinter:contract:application-no-outer-rings]
+name = Application does not depend on adapters, bootstrap or frameworks
 type = forbidden
 source_modules =
     application
 forbidden_modules =
     adapter
     bootstrap
-    fastapi
-    kubernetes
     temporalio
     pyiceberg
     pyarrow
     sqlalchemy
+    fastapi
+    kubernetes
+    confluent_kafka
+    pydantic
 
-[importlinter:contract:clean-architecture-layers]
-name = Clean Architecture layer ordering
-type = layers
-layers =
-    adapter.inbound.web | adapter.hybrid.temporal.inbound | adapter.inbound.event_consumer
+[importlinter:contract:adapters-see-only-ports]
+name = Adapters import application only through ports and exceptions
+type = forbidden
+source_modules =
+    adapter
+forbidden_modules =
+    application.domain
     application.service
-    application.port
-    application.domain.model
+allow_indirect_imports = true
 
-[importlinter:contract:temporal-contracts-neutral]
-name = Temporal contracts depend only on stdlib
+[importlinter:contract:adapter-directions-separate]
+name = Inbound, outbound and hybrid adapters are independent
+type = independence
+modules =
+    adapter.inbound
+    adapter.outbound
+    adapter.hybrid
+
+[importlinter:contract:hybrid-directions-separate]
+name = Hybrid inbound and outbound adapters are independent
+type = independence
+modules =
+    adapter.hybrid.temporal.inbound
+    adapter.hybrid.temporal.outbound
+
+[importlinter:contract:hybrid-contracts-neutral]
+name = Hybrid contracts depend only on the stdlib, base and ports
 type = forbidden
 source_modules =
     adapter.hybrid.temporal.contracts
 forbidden_modules =
-    application
-    base
+    application.domain
+    application.service
     adapter.inbound
     adapter.outbound
     adapter.hybrid.temporal.inbound
     adapter.hybrid.temporal.outbound
     bootstrap
     temporalio
-    fastapi
-    kubernetes
     pyiceberg
     pyarrow
     sqlalchemy
+    fastapi
+    kubernetes
+    confluent_kafka
+    pydantic
+
+[importlinter:contract:hybrid-contracts-private]
+name = Hybrid contracts are private to their technology
+type = forbidden
+source_modules =
+    adapter.inbound
+    adapter.outbound
+    application
+forbidden_modules =
+    adapter.hybrid.temporal.contracts
 
 [importlinter:contract:temporal-workflows-sandbox-safe]
-name = Temporal workflows import only Temporal contracts (sandbox-safe)
+name = Temporal workflows import only Temporal and their contracts (sandbox-safe)
 type = forbidden
 source_modules =
     adapter.hybrid.temporal.inbound.workflows
 forbidden_modules =
-    application.port
-    application.service
-    application.exceptions
-    application.domain.service
-    application.domain.model.shared
-    application.domain.model.table_discovery_settings
-    application.domain.model.table_discovery_rule
-    application.domain.model.table_maintenance_run
-    application.domain.model.table
-    application.domain.model.table_maintenance_preset
+    application
     adapter.hybrid.temporal.inbound.activities
-    adapter.inbound.web
-    adapter.inbound.event_consumer
+    adapter.inbound
     adapter.outbound
     adapter.hybrid.temporal.outbound
     bootstrap
-    fastapi
-    kubernetes
     pyiceberg
     pyarrow
     sqlalchemy
+    fastapi
+    kubernetes
+    confluent_kafka
+    pydantic
 
-[importlinter:contract:inbound-outbound-separation]
-name = Inbound adapter does not directly import outbound adapter
+[importlinter:contract:inbound-channels-independent]
+name = Inbound channels are independent of each other
+type = independence
+modules =
+    adapter.inbound.web
+    adapter.inbound.event_consumer
+    adapter.hybrid.temporal.inbound
+
+[importlinter:contract:adapters-no-bootstrap]
+name = Adapters do not depend on bootstrap (the composition root depends on them)
 type = forbidden
 source_modules =
-    adapter.inbound
-    adapter.hybrid.temporal.inbound
+    adapter
 forbidden_modules =
-    adapter.outbound
-    adapter.hybrid.temporal.outbound
-
-[importlinter:contract:outbound-inbound-separation]
-name = Outbound adapter does not depend on inbound adapter
-type = forbidden
-source_modules =
-    adapter.outbound
-    adapter.hybrid.temporal.outbound
-forbidden_modules =
-    adapter.inbound
-    adapter.hybrid.temporal.inbound
+    bootstrap
 
 [importlinter:contract:configs-leaf]
 name = Configs does not depend on bounded contexts
@@ -135,52 +163,3 @@ forbidden_modules =
     application
     adapter
     bootstrap
-
-[importlinter:contract:service-isolation]
-name = Application service does not depend on adapter or framework
-type = forbidden
-source_modules =
-    application.service
-forbidden_modules =
-    adapter
-    bootstrap
-    fastapi
-    kubernetes
-    temporalio
-    pyiceberg
-    pyarrow
-    sqlalchemy
-
-[importlinter:contract:adapter-no-bootstrap]
-name = Adapters do not depend on bootstrap (the composition root depends on them)
-type = forbidden
-source_modules =
-    adapter
-forbidden_modules =
-    bootstrap
-
-[importlinter:contract:inbound-web-no-bootstrap]
-name = Inbound web adapter does not depend on bootstrap (use cases are injected)
-type = forbidden
-source_modules =
-    adapter.inbound.web
-forbidden_modules =
-    bootstrap
-
-[importlinter:contract:inbound-adapter-independence]
-name = Inbound adapters are independent of each other
-type = independence
-modules =
-    adapter.inbound.web
-    adapter.hybrid.temporal.inbound
-    adapter.inbound.event_consumer
-
-[importlinter:contract:inbound-event-consumer-no-bootstrap]
-name = Inbound event consumer does not depend on bootstrap or the domain (use cases are injected)
-type = forbidden
-source_modules =
-    adapter.inbound.event_consumer
-forbidden_modules =
-    bootstrap
-    application.domain
-    application.service

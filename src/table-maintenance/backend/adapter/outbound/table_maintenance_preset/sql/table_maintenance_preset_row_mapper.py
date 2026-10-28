@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from adapter.outbound.shared.sql import MaintenanceSettingsCodec
-from application.domain.model.table_maintenance_preset import (
+from application.port.outbound.table_maintenance_preset import (
     TableMaintenancePreset,
     TableMaintenancePresetId,
 )

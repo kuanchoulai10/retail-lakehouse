@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from adapter.outbound.table_discovery_settings.sql.table_discovery_settings_table import (
     table_discovery_settings_table as t,
 )
-from application.domain.model.table_discovery_settings import (
+from application.port.outbound.table_discovery_settings import (
     GLOBAL_ID,
     TableDiscoverySettings,
     TableDiscoverySettingsId,

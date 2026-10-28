@@ -19,8 +19,8 @@ from application.port.outbound.table_discovery_rule import TableDiscoveryRulesRe
 if TYPE_CHECKING:
     from sqlalchemy import Engine
 
-    from application.domain.model.table_discovery_rule import TableDiscoveryRule
-    from application.domain.model.table_maintenance_preset import (
+    from application.port.outbound.table_discovery_rule import (
+        TableDiscoveryRule,
         TableMaintenancePresetId,
     )
     from base import EntityId

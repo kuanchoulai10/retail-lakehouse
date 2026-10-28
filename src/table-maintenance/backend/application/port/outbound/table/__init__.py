@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from application.domain.model.shared import MaintenanceOperation
+from application.domain.model.table import OperationState, TableSelection
+from application.domain.model.table_discovery_rule import TableDiscoveryRuleId
+from application.domain.model.table_maintenance_preset import TableMaintenancePresetId
 from application.domain.model.table import Table, TableId, TableName, TableStatus
 from application.port.outbound.table.read_table_metadata.gateway import (
     ReadTableMetadataGateway,
@@ -33,6 +37,11 @@ from application.port.outbound.table.send_table_change.input import (
 from application.port.outbound.table.tables_repo import TablesRepo
 
 __all__ = [
+    "MaintenanceOperation",
+    "OperationState",
+    "TableSelection",
+    "TableDiscoveryRuleId",
+    "TableMaintenancePresetId",
     "TableId",
     "ReadTableMetadataGateway",
     "ReadTableMetadataGatewayListInput",

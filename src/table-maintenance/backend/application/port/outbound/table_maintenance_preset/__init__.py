@@ -2,6 +2,14 @@
 
 from __future__ import annotations
 
+from application.domain.model.shared import (
+    CompactionScope,
+    ExpireSnapshotsSettings,
+    MaintenanceSettings,
+    RemoveOrphanFilesSettings,
+    RewriteDataFilesSettings,
+    RewriteManifestsSettings,
+)
 from application.domain.model.table_maintenance_preset import (
     TableMaintenancePreset,
     TableMaintenancePresetId,
@@ -11,6 +19,12 @@ from application.port.outbound.table_maintenance_preset.table_maintenance_preset
 )
 
 __all__ = [
+    "CompactionScope",
+    "ExpireSnapshotsSettings",
+    "MaintenanceSettings",
+    "RemoveOrphanFilesSettings",
+    "RewriteDataFilesSettings",
+    "RewriteManifestsSettings",
     "TableMaintenancePresetId",
     "TableMaintenancePreset",
     "TableMaintenancePresetsRepo",

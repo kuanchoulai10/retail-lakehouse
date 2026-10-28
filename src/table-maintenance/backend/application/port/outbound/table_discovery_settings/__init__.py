@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from application.domain.model.table_discovery_settings import GLOBAL_ID
 from application.domain.model.table_discovery_settings import (
     TableDiscoverySettings,
     TableDiscoverySettingsId,
@@ -17,6 +18,7 @@ from application.port.outbound.table_discovery_settings.update_table_discovery_s
 )
 
 __all__ = [
+    "GLOBAL_ID",
     "TableDiscoverySettingsId",
     "TableDiscoverySettings",
     "TableDiscoverySettingsRepo",

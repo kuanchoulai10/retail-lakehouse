@@ -5,15 +5,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from adapter.outbound.shared.sql import IsoDatetimeCodec
-from application.domain.model.shared import MaintenanceOperation
-from application.domain.model.table_maintenance_run import (
-    TableMaintenanceRun,
-    TableMaintenanceRunId,
+from application.port.outbound.table_maintenance_run import (
+    MaintenanceOperation,
     OperationRun,
     OperationRunStatus,
+    TableId,
+    TableMaintenanceRun,
+    TableMaintenanceRunId,
     TriggerType,
 )
-from application.domain.model.table import TableId
 
 if TYPE_CHECKING:
     from sqlalchemy import RowMapping
