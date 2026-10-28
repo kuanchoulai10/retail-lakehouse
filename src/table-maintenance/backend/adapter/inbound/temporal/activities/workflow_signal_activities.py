@@ -23,7 +23,7 @@ from adapter.temporal_contracts.table_maintenance_admission_summary import (
 from adapter.temporal_contracts.workflow_names import (
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
 )
-from application.domain.model.maintenance.workflow_ids import (
+from application.domain.model.shared.workflow_ids import (
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
     SIGNAL_ADMISSION_ACQUIRE as ACQUIRE_SIGNAL_NAME,
     TASK_QUEUE,

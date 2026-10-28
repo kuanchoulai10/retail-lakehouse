@@ -14,7 +14,7 @@ from application.port.inbound.table.list_tables import (
 from application.service.table.table_output_fields import (
     table_output_fields,
 )
-from application.service.translate_domain_errors import translate_domain_errors
+from application.service.shared.translate_domain_errors import translate_domain_errors
 
 if TYPE_CHECKING:
     from application.port.outbound.table.tables_repo import (

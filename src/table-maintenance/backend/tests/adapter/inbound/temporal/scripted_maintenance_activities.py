@@ -16,7 +16,7 @@ from adapter.temporal_contracts.activity_names import (
     SUBMIT_MAINTENANCE_OPERATION,
 )
 from adapter.temporal_contracts.operation_result_signal import OperationResultSignal
-from application.domain.model.maintenance.workflow_ids import (
+from application.domain.model.shared.workflow_ids import (
     SIGNAL_OPERATION_RESULT,
 )
 

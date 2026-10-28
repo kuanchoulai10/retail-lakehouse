@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from application.domain.model.table.table import Table
 from application.domain.model.table.table_name import TableName
 from application.domain.model.table.table_id import TableId
-from application.domain.model.maintenance.workflow_ids import SIGNAL_RESUME
+from application.domain.model.shared.workflow_ids import SIGNAL_RESUME
 from application.domain.model.table_discovery_rule.rule_effect import RuleEffect
 from application.domain.service.table_discovery_rule.match_table_discovery_rule import (
     match_table_discovery_rule,

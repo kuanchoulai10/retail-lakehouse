@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from temporalio.client import RPCError
 from temporalio.service import RPCStatusCode
 
-from application.domain.model.maintenance.workflow_ids import (
+from application.domain.model.shared.workflow_ids import (
     TABLE_DISCOVERY_SCHEDULE_ID_PREFIX,
 )
 from application.port.outbound.table_discovery_settings.update_table_discovery_schedule import (

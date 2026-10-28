@@ -6,15 +6,15 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from application.domain.model.observation.manifest_stats import ManifestStats
-from application.domain.model.observation.partition_field_info import (
+from application.domain.model.shared.manifest_stats import ManifestStats
+from application.domain.model.shared.partition_field_info import (
     PartitionFieldInfo,
 )
-from application.domain.model.observation.partition_spec_info import (
+from application.domain.model.shared.partition_spec_info import (
     PartitionSpecInfo,
 )
-from application.domain.model.observation.partition_stats import PartitionStats
-from application.domain.model.observation.snapshot_info import SnapshotInfo
+from application.domain.model.shared.partition_stats import PartitionStats
+from application.domain.model.shared.snapshot_info import SnapshotInfo
 from application.port.outbound.table.read_table_metadata import (
     TableMetadataObservation,
 )

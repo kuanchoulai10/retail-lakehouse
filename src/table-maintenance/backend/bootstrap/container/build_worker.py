@@ -13,7 +13,7 @@ from adapter.inbound.temporal.workflows import (
     TableMaintenanceWorkflow,
     TableReconciliationWorkflow,
 )
-from application.domain.model.maintenance.workflow_ids import TASK_QUEUE
+from application.domain.model.shared.workflow_ids import TASK_QUEUE
 
 if TYPE_CHECKING:
     from collections.abc import Callable

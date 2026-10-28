@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.maintenance.maintenance_operation import (
+from application.domain.model.shared.maintenance_operation import (
     MaintenanceOperation,
 )
-from application.domain.model.maintenance.workflow_ids import SIGNAL_TRIGGER_NOW
+from application.domain.model.shared.workflow_ids import SIGNAL_TRIGGER_NOW
 from application.domain.model.table.table_id import TableId
 from application.exceptions import ConflictError, NotFoundError, ValidationError
 from application.port.inbound.table.trigger_table_maintenance import (

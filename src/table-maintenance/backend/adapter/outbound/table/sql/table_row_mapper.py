@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from adapter.outbound.sql.iso_datetime_codec import IsoDatetimeCodec
-from adapter.outbound.sql.maintenance_settings_codec import MaintenanceSettingsCodec
+from adapter.outbound.shared.sql.iso_datetime_codec import IsoDatetimeCodec
+from adapter.outbound.shared.sql.maintenance_settings_codec import (
+    MaintenanceSettingsCodec,
+)
 from application.domain.model.table_discovery_rule.table_discovery_rule_id import (
     TableDiscoveryRuleId,
 )
-from application.domain.model.maintenance.maintenance_operation import (
+from application.domain.model.shared.maintenance_operation import (
     MaintenanceOperation,
 )
 from application.domain.model.table.table import Table

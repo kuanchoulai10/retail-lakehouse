@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.domain.model.maintenance.workflow_ids import SIGNAL_RESUME
+from application.domain.model.shared.workflow_ids import SIGNAL_RESUME
 from application.domain.model.table.table import Table
 from application.domain.model.table.table_name import TableName
 from application.domain.model.table.table_status import TableStatus
@@ -26,7 +26,7 @@ from application.port.outbound.workflow.send_table_signal import (
 from application.service.table.table_output_fields import (
     table_output_fields,
 )
-from application.service.translate_domain_errors import translate_domain_errors
+from application.service.shared.translate_domain_errors import translate_domain_errors
 
 if TYPE_CHECKING:
     from collections.abc import Callable

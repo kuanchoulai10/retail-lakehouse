@@ -9,7 +9,7 @@ from adapter.outbound.table_maintenance_preset.sql.table_maintenance_presets_sql
     TableMaintenancePresetsSqlRepo,
 )
 from application.exceptions import ConflictError
-from application.domain.model.maintenance_settings.maintenance_settings import (
+from application.domain.model.shared.maintenance_settings import (
     MaintenanceSettings,
 )
 from application.domain.model.table_maintenance_preset.table_maintenance_preset import (

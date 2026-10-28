@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.domain.model.maintenance.workflow_ids import SIGNAL_SETTINGS_CHANGED
+from application.domain.model.shared.workflow_ids import SIGNAL_SETTINGS_CHANGED
 from application.domain.model.table.table_id import TableId
 from application.exceptions import NotFoundError
 from application.port.inbound.table.update_table_settings import (
@@ -16,13 +16,13 @@ from application.port.inbound.table.update_table_settings import (
 from application.port.outbound.workflow.send_table_signal import (
     SendTableSignalGatewayInput,
 )
-from application.service.maintenance_settings.maintenance_settings_from_dict import (
+from application.service.shared.maintenance_settings_from_dict import (
     maintenance_settings_from_dict,
 )
 from application.service.table.table_output_fields import (
     table_output_fields,
 )
-from application.service.translate_domain_errors import translate_domain_errors
+from application.service.shared.translate_domain_errors import translate_domain_errors
 
 if TYPE_CHECKING:
     from collections.abc import Callable

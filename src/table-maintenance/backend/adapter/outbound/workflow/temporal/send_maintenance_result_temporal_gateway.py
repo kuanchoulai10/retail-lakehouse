@@ -8,7 +8,7 @@ from temporalio.client import RPCError
 from temporalio.service import RPCStatusCode
 
 from adapter.temporal_contracts.operation_result_signal import OperationResultSignal
-from application.domain.model.maintenance.workflow_ids import SIGNAL_OPERATION_RESULT
+from application.domain.model.shared.workflow_ids import SIGNAL_OPERATION_RESULT
 from application.exceptions import NotFoundError
 from application.port.outbound.workflow.send_maintenance_result import (
     SendMaintenanceResultGateway,

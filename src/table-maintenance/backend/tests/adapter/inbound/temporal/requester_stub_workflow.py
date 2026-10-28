@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from temporalio import workflow
 
-from application.domain.model.maintenance.workflow_ids import SIGNAL_ADMISSION_GRANTED
+from application.domain.model.shared.workflow_ids import SIGNAL_ADMISSION_GRANTED
 
 
 @workflow.defn(name="RequesterStub")

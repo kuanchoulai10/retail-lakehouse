@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from application.domain.model.maintenance_settings import MaintenanceSettings
+from application.domain.model.shared import MaintenanceSettings
 from application.domain.model.table_maintenance_preset import (
     TableMaintenancePreset,
     TableMaintenancePresetId,

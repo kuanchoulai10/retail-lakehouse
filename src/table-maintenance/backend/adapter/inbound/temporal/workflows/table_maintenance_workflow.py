@@ -28,7 +28,7 @@ from adapter.temporal_contracts.table_maintenance_workflow_input import (
 )
 from adapter.temporal_contracts.operation_result_signal import OperationResultSignal
 from adapter.temporal_contracts.workflow_names import TABLE_MAINTENANCE_WORKFLOW
-from application.domain.model.maintenance.workflow_ids import (
+from application.domain.model.shared.workflow_ids import (
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
     SIGNAL_ADMISSION_GRANTED,
     SIGNAL_ADMISSION_RELEASE,

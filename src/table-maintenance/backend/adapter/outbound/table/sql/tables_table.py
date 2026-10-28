@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from sqlalchemy import JSON, Column, Index, String, Table
 
-from adapter.outbound.sql.metadata import metadata
-from adapter.outbound.sql.utc_date_time import UtcDateTime
+from adapter.outbound.shared.sql.metadata import metadata
+from adapter.outbound.shared.sql.utc_date_time import UtcDateTime
 
 tables_table = Table(
     "tables",

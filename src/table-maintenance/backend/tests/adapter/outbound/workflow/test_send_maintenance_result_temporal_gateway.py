@@ -10,7 +10,7 @@ from adapter.outbound.workflow.temporal.send_maintenance_result_temporal_gateway
     SendMaintenanceResultTemporalGateway,
 )
 from adapter.temporal_contracts.workflow_names import TABLE_MAINTENANCE_WORKFLOW
-from application.domain.model.maintenance.workflow_ids import TASK_QUEUE
+from application.domain.model.shared.workflow_ids import TASK_QUEUE
 from application.exceptions import NotFoundError
 from application.port.outbound.workflow.send_maintenance_result import (
     SendMaintenanceResultGatewayInput,

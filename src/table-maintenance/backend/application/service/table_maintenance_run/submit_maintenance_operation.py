@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.maintenance.maintenance_operation import (
+from application.domain.model.shared.maintenance_operation import (
     MaintenanceOperation,
 )
 from application.domain.model.table_maintenance_run.table_maintenance_run_id import (
@@ -19,7 +19,7 @@ from application.port.inbound.table_maintenance_run.submit_maintenance_operation
 from application.port.outbound.table_maintenance_run.submit_maintenance_job import (
     SubmitMaintenanceJobGatewayInput,
 )
-from application.service.translate_domain_errors import translate_domain_errors
+from application.service.shared.translate_domain_errors import translate_domain_errors
 
 if TYPE_CHECKING:
     from application.port.outbound.table_maintenance_run.table_maintenance_runs_repo import (

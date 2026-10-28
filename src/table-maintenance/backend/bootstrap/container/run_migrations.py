@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from adapter.outbound.sql.create_schema import create_schema
+from adapter.outbound.shared.sql.create_schema import create_schema
 from application.service.table_maintenance_preset.create_table_maintenance_preset import (
     CreateTableMaintenancePresetService,
 )

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from adapter.outbound.sql.iso_datetime_codec import IsoDatetimeCodec
-from application.domain.model.maintenance.maintenance_operation import (
+from adapter.outbound.shared.sql.iso_datetime_codec import IsoDatetimeCodec
+from application.domain.model.shared.maintenance_operation import (
     MaintenanceOperation,
 )
 from application.domain.model.table_maintenance_run.table_maintenance_run import (

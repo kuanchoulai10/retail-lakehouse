@@ -10,7 +10,7 @@ from adapter.temporal_contracts.table_maintenance_workflow_input import (
     TableMaintenanceWorkflowInput,
 )
 from adapter.temporal_contracts.workflow_names import TABLE_MAINTENANCE_WORKFLOW
-from application.domain.model.maintenance.workflow_ids import (
+from application.domain.model.shared.workflow_ids import (
     SIGNAL_MAINTENANCE_FINISHED,
 )
 

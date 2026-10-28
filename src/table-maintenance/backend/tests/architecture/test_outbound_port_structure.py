@@ -41,7 +41,6 @@ AGGREGATE_GROUPS = [
     "table",
     "table_maintenance_run",
     "table_maintenance_preset",
-    "spark",
     "workflow",
 ]
 

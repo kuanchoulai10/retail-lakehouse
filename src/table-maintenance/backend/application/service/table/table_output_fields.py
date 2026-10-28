@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from application.service.maintenance_settings.maintenance_settings_to_dict import (
+from application.service.shared.maintenance_settings_to_dict import (
     maintenance_settings_to_dict,
 )
 

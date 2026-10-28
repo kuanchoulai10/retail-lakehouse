@@ -12,7 +12,7 @@ from adapter.temporal_contracts.table_reconciliation_workflow_input import (
     TableReconciliationWorkflowInput,
 )
 from adapter.temporal_contracts.workflow_names import TABLE_RECONCILIATION_WORKFLOW
-from application.domain.model.maintenance.workflow_ids import (
+from application.domain.model.shared.workflow_ids import (
     TASK_QUEUE,
     table_reconciliation_workflow_id,
 )

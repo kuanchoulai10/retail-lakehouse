@@ -12,13 +12,13 @@ from application.domain.model.table_discovery_rule.table_discovery_rule_id impor
 )
 from application.domain.model.table_discovery_rule.rule_effect import RuleEffect
 from application.domain.model.table_discovery_rule.table_pattern import TablePattern
-from application.domain.model.maintenance.maintenance_operation import (
+from application.domain.model.shared.maintenance_operation import (
     MaintenanceOperation,
 )
-from application.domain.model.maintenance_settings.maintenance_settings import (
+from application.domain.model.shared.maintenance_settings import (
     MaintenanceSettings,
 )
-from application.domain.model.maintenance_settings.rewrite_data_files_settings import (
+from application.domain.model.shared.rewrite_data_files_settings import (
     RewriteDataFilesSettings,
 )
 from application.domain.model.table.table import Table
@@ -59,7 +59,7 @@ from application.port.inbound.table.trigger_table_maintenance import (
 from application.port.inbound.table.update_table_settings import (
     UpdateTableSettingsUseCaseInput,
 )
-from application.service.maintenance_settings.maintenance_settings_to_dict import (
+from application.service.shared.maintenance_settings_to_dict import (
     maintenance_settings_to_dict,
 )
 from application.service.table.exclude_table import (

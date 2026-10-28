@@ -9,7 +9,7 @@ from sqlalchemy import Engine
 from adapter.outbound.table_maintenance_run.sql.table_maintenance_runs_sql_repo import (
     TableMaintenanceRunsSqlRepo,
 )
-from application.domain.model.maintenance.maintenance_operation import (
+from application.domain.model.shared.maintenance_operation import (
     MaintenanceOperation,
 )
 from application.domain.model.table_maintenance_run.table_maintenance_run import (

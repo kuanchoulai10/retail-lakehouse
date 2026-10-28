@@ -18,7 +18,7 @@ from application.port.inbound.table_maintenance_preset.create_table_maintenance_
     CreateTableMaintenancePresetUseCaseInput,
     CreateTableMaintenancePresetUseCaseOutput,
 )
-from application.service.maintenance_settings.maintenance_settings_from_dict import (
+from application.service.shared.maintenance_settings_from_dict import (
     maintenance_settings_from_dict,
 )
 from application.service.table_maintenance_preset.table_maintenance_preset_output_fields import (

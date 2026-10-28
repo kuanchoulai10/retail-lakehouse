@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from adapter.outbound.sql.create_schema import create_schema
+from adapter.outbound.shared.sql.create_schema import create_schema
 from application.port.inbound.table_discovery_rule.list_table_discovery_rules import (
     ListTableDiscoveryRulesUseCaseInput,
 )
@@ -10,10 +10,10 @@ from application.port.inbound.table_maintenance_preset.create_table_maintenance_
 from application.port.inbound.table_maintenance_preset.list_table_maintenance_presets import (
     ListTableMaintenancePresetsUseCaseInput,
 )
-from application.service.maintenance_settings.maintenance_settings_to_dict import (
+from application.service.shared.maintenance_settings_to_dict import (
     maintenance_settings_to_dict,
 )
-from application.domain.model.maintenance_settings.maintenance_settings import (
+from application.domain.model.shared.maintenance_settings import (
     MaintenanceSettings,
 )
 from bootstrap.container import build_repositories, build_use_cases, run_migrations

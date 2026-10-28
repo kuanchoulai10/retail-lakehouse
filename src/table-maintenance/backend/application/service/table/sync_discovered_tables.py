@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.domain.model.maintenance.workflow_ids import (
+from application.domain.model.shared.workflow_ids import (
     SIGNAL_STOP,
     SIGNAL_TABLE_UPDATED,
 )
@@ -28,7 +28,7 @@ from application.service.table.register_discovered_table import (
     register_discovered_table,
 )
 from application.service.table.registration_outcome import RegistrationOutcome
-from application.service.translate_domain_errors import translate_domain_errors
+from application.service.shared.translate_domain_errors import translate_domain_errors
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence

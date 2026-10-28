@@ -12,7 +12,7 @@ from application.domain.model.table_discovery_rule.table_discovery_rule_id impor
 )
 from application.domain.model.table_discovery_rule.rule_effect import RuleEffect
 from application.domain.model.table_discovery_rule.table_pattern import TablePattern
-from application.domain.model.maintenance_settings.maintenance_settings import (
+from application.domain.model.shared.maintenance_settings import (
     MaintenanceSettings,
 )
 from application.domain.model.table_maintenance_preset.table_maintenance_preset import (

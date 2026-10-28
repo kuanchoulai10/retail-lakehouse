@@ -50,7 +50,7 @@ layers =
     application.domain.model
 
 [importlinter:contract:temporal-contracts-neutral]
-name = Temporal contracts depend only on stdlib and the maintenance domain model
+name = Temporal contracts depend only on stdlib and the shared domain model
 type = forbidden
 source_modules =
     adapter.temporal_contracts
@@ -68,7 +68,7 @@ forbidden_modules =
     sqlalchemy
 unmatched_ignore_imports_alerting = none
 ignore_imports =
-    adapter.temporal_contracts.** -> application.domain.model.maintenance.**
+    adapter.temporal_contracts.** -> application.domain.model.shared.**
 
 [importlinter:contract:temporal-workflows-sandbox-safe]
 name = Temporal workflows import only contracts and the domain model (sandbox-safe)
@@ -83,9 +83,7 @@ forbidden_modules =
     application.domain.model.table_discovery_settings
     application.domain.model.table_discovery_rule
     application.domain.model.table_maintenance_run
-    application.domain.model.maintenance_settings
     application.domain.model.table
-    application.domain.model.observation
     application.domain.model.table_maintenance_preset
     adapter.inbound.temporal.activities
     adapter.inbound.web

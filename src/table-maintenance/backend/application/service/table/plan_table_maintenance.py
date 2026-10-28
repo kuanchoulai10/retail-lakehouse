@@ -5,18 +5,22 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from application.domain.model.maintenance.maintenance_operation import (
+from application.domain.model.shared.maintenance_operation import (
     MaintenanceOperation,
 )
-from application.domain.model.maintenance.maintenance_plan import MaintenancePlan
-from application.domain.model.maintenance_settings.maintenance_settings import (
+from application.domain.model.shared.maintenance_plan import MaintenancePlan
+from application.domain.model.shared.maintenance_settings import (
     MaintenanceSettings,
 )
 from application.domain.model.table.table_status import TableStatus
 from application.domain.model.table.table_id import TableId
-from application.domain.service.build_partition_filters import build_partition_filters
-from application.domain.service.plan_manual_maintenance import plan_manual_maintenance
-from application.domain.service.plan_scheduled_maintenance import (
+from application.domain.service.table.build_partition_filters import (
+    build_partition_filters,
+)
+from application.domain.service.table.plan_manual_maintenance import (
+    plan_manual_maintenance,
+)
+from application.domain.service.table.plan_scheduled_maintenance import (
     plan_scheduled_maintenance,
 )
 from application.exceptions import ValidationError
@@ -34,14 +38,14 @@ from application.service.table.table_observation_from_gateway import (
 from application.service.table_maintenance_run.maintenance_procedure_args import (
     maintenance_procedure_args,
 )
-from application.service.translate_domain_errors import translate_domain_errors
+from application.service.shared.translate_domain_errors import translate_domain_errors
 
 if TYPE_CHECKING:
-    from application.domain.model.maintenance.planned_operation import (
+    from application.domain.model.shared.planned_operation import (
         PlannedOperation,
     )
     from application.domain.model.table.table import Table
-    from application.domain.model.observation.table_observation import (
+    from application.domain.model.shared.table_observation import (
         TableObservation,
     )
     from application.port.outbound.table.read_table_metadata import (

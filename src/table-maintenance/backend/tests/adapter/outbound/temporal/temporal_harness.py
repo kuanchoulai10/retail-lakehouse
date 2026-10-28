@@ -18,7 +18,7 @@ from adapter.temporal_contracts.workflow_names import (
     TABLE_MAINTENANCE_WORKFLOW,
     TABLE_RECONCILIATION_WORKFLOW,
 )
-from application.domain.model.maintenance.workflow_ids import TASK_QUEUE
+from application.domain.model.shared.workflow_ids import TASK_QUEUE
 
 
 @workflow.defn(name=TABLE_RECONCILIATION_WORKFLOW)

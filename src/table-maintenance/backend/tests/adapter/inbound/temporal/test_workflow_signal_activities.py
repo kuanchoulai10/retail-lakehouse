@@ -17,7 +17,7 @@ from adapter.temporal_contracts.table_maintenance_admission_input import (
 from adapter.temporal_contracts.workflow_names import (
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
 )
-from application.domain.model.maintenance.workflow_ids import (
+from application.domain.model.shared.workflow_ids import (
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
     SIGNAL_MAINTENANCE_FINISHED,
     TASK_QUEUE,

@@ -22,7 +22,7 @@ from application.port.inbound.table_discovery_rule.update_table_discovery_rule i
 from application.service.table_discovery_rule.table_discovery_rule_output_fields import (
     table_discovery_rule_output_fields,
 )
-from application.service.translate_domain_errors import translate_domain_errors
+from application.service.shared.translate_domain_errors import translate_domain_errors
 
 if TYPE_CHECKING:
     from collections.abc import Callable

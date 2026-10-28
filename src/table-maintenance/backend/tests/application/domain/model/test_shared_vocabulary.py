@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from application.domain.model.maintenance.maintenance_operation import (
+from application.domain.model.shared.maintenance_operation import (
     MaintenanceOperation,
 )
-from application.domain.model.maintenance.workflow_ids import (
+from application.domain.model.shared.workflow_ids import (
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
     TABLE_DISCOVERY_SCHEDULE_ID_PREFIX,
     SIGNAL_ADMISSION_GRANTED,

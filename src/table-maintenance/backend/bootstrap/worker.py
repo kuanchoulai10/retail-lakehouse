@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
 from adapter.outbound.temporal.async_loop_bridge import AsyncLoopBridge
-from application.domain.model.maintenance.workflow_ids import TASK_QUEUE
+from application.domain.model.shared.workflow_ids import TASK_QUEUE
 from bootstrap.configs import get_settings
 from bootstrap.container import (
     apply_worker_startup,

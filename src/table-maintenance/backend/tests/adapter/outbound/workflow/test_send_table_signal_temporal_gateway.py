@@ -7,7 +7,7 @@ import time
 from adapter.outbound.workflow.temporal.send_table_signal_temporal_gateway import (
     SendTableSignalTemporalGateway,
 )
-from application.domain.model.maintenance.workflow_ids import (
+from application.domain.model.shared.workflow_ids import (
     SIGNAL_SETTINGS_CHANGED,
     SIGNAL_TABLE_UPDATED,
     table_reconciliation_workflow_id,

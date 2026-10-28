@@ -20,7 +20,7 @@ from adapter.inbound.temporal.workflows import (
     TableReconciliationWorkflow,
 )
 from adapter.temporal_contracts import activity_names
-from application.domain.model.maintenance.workflow_ids import TASK_QUEUE
+from application.domain.model.shared.workflow_ids import TASK_QUEUE
 from bootstrap.container import (
     ADMISSION_LEASE_SECONDS,
     build_activities,

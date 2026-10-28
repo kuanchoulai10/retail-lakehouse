@@ -10,13 +10,13 @@ import pytest
 from application.domain.model.table_discovery_rule.table_discovery_rule_id import (
     TableDiscoveryRuleId,
 )
-from application.domain.model.maintenance.maintenance_operation import (
+from application.domain.model.shared.maintenance_operation import (
     MaintenanceOperation,
 )
-from application.domain.model.maintenance_settings.maintenance_settings import (
+from application.domain.model.shared.maintenance_settings import (
     MaintenanceSettings,
 )
-from application.domain.model.maintenance_settings.rewrite_data_files_settings import (
+from application.domain.model.shared.rewrite_data_files_settings import (
     RewriteDataFilesSettings,
 )
 from application.domain.model.table.table import Table

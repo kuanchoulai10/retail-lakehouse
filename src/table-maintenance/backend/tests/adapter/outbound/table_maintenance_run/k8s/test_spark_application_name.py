@@ -6,7 +6,7 @@ import re
 
 import pytest
 
-from application.domain.model.maintenance.maintenance_operation import (
+from application.domain.model.shared.maintenance_operation import (
     MaintenanceOperation,
 )
 from adapter.outbound.table_maintenance_run.k8s.spark_application_name import (

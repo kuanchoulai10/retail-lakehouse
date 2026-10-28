@@ -17,7 +17,7 @@ from adapter.outbound.table_discovery_settings.temporal.update_table_discovery_s
     UpdateTableDiscoveryScheduleTemporalGateway,
 )
 from adapter.temporal_contracts.workflow_names import TABLE_DISCOVERY_WORKFLOW
-from application.domain.model.maintenance.workflow_ids import (
+from application.domain.model.shared.workflow_ids import (
     TASK_QUEUE,
     table_discovery_schedule_id,
 )
