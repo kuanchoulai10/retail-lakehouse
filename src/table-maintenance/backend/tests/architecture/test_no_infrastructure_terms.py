@@ -38,8 +38,15 @@ def banned_terms(name: str) -> set[str]:
     found: set[str] = set()
     for term in BANNED:
         words = term.split("_")
-        for start in range(len(tokens) - len(words) + 1):
+        joined = "".join(words)
+        for start in range(len(tokens)):
             if tokens[start : start + len(words)] == words:
+                found.add(term)
+                break
+            if any(
+                "".join(tokens[start:end]) == joined
+                for end in range(start + 1, len(tokens) + 1)
+            ):
                 found.add(term)
                 break
     return found
@@ -110,6 +117,11 @@ def test_banned_term_detector_catches_camel_and_snake():
     assert banned_terms("SparkK8sConfig") == {"spark", "k8s"}
     assert banned_terms("read_iceberg_rest_catalog") == {"iceberg_rest"}
     assert banned_terms("iceberg_table_rest") == set()
+    assert banned_terms("PyIceberg") == {"pyiceberg"}
+    assert banned_terms("pyIcebergCatalog") == {"pyiceberg"}
+    assert banned_terms("py_iceberg_catalog") == {"pyiceberg"}
+    assert banned_terms("iceberg_py") == set()
+    assert banned_terms("PyTable") == set()
 
 
 def test_application_names_have_no_infrastructure_terms():

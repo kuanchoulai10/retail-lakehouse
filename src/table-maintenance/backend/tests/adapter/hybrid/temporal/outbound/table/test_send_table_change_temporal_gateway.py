@@ -20,6 +20,7 @@ from adapter.hybrid.temporal.contracts.workflow_ids import (
 from adapter.hybrid.temporal.outbound.table.send_table_change_temporal_gateway import (
     SendTableChangeTemporalGateway,
 )
+from application.domain.model.table import TableChange
 from application.port.outbound.table.send_table_change import (
     SendTableChangeGatewayInput,
 )
@@ -90,6 +91,24 @@ def test_each_change_maps_to_its_signal(harness, change, signal):
     gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
     gateway.send(_change(f"map-{change}", change, is_enrolled=True))
     assert _signals(harness, f"map-{change}") == [[signal, {}]]
+
+
+_SIGNAL_BY_TABLE_CHANGE = {
+    TableChange.UPDATED: [SIGNAL_TABLE_UPDATED, {}],
+    TableChange.SETTINGS_CHANGED: [SIGNAL_SETTINGS_CHANGED, {}],
+    TableChange.PAUSED: [SIGNAL_PAUSE, {}],
+    TableChange.RESUMED: [SIGNAL_RESUME, {}],
+    TableChange.STOPPED: [SIGNAL_STOP, {}],
+    TableChange.MAINTENANCE_REQUESTED: [SIGNAL_TRIGGER_NOW, {"operations": []}],
+}
+
+
+@pytest.mark.parametrize("change", list(TableChange), ids=lambda c: c.value)
+def test_every_table_change_member_is_sent_as_its_signal(harness, change):
+    gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
+    uuid = f"member-{change.value}"
+    gateway.send(_change(uuid, change.value, is_enrolled=True))
+    assert _signals(harness, uuid) == [_SIGNAL_BY_TABLE_CHANGE[change]]
 
 
 def test_maintenance_requested_carries_the_operations(harness):
