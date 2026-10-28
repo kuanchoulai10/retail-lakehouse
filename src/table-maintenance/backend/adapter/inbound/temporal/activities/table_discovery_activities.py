@@ -11,12 +11,12 @@ from adapter.inbound.temporal.activities.translate_application_errors import (
     translate_application_errors,
 )
 from adapter.temporal_contracts.activity_names import SYNC_DISCOVERED_TABLES
-from application.port.inbound.discovery.sync_discovered_tables import (
+from application.port.inbound.table.sync_discovered_tables import (
     SyncDiscoveredTablesUseCaseInput,
 )
 
 if TYPE_CHECKING:
-    from application.port.inbound.discovery.sync_discovered_tables import (
+    from application.port.inbound.table.sync_discovered_tables import (
         SyncDiscoveredTablesUseCase,
     )
 

@@ -10,8 +10,8 @@ Three port types exist:
 Gateway subdirectory must contain:
   Required: __init__.py, gateway.py
   Optional: input.py, output.py, plus the extra single-class files in
-  GATEWAY_EXTRA_FILES (list_input.py, table_ref.py, table.py, observation.py);
-  each defines one class named {Verb}{Noun}Gateway{CamelCaseFileStem}.
+  GATEWAY_EXTRA_FILES; list_input.py defines {Verb}{Noun}GatewayListInput and
+  every other extra file defines one class named {CamelCaseFileStem}.
 
 Naming convention for Gateway subdirectory {verb}_{noun}/:
   {Verb}{Noun}Gateway        in gateway.py
@@ -36,10 +36,9 @@ OUTBOUND_PORT_DIR = (
 )
 
 AGGREGATE_GROUPS = [
-    "catalog",
     "discovery",
     "discovery_rule",
-    "managed_table",
+    "table",
     "maintenance_run",
     "table_maintenance_preset",
     "spark",
@@ -48,7 +47,12 @@ AGGREGATE_GROUPS = [
 
 GATEWAY_REQUIRED_FILES = {"__init__.py", "gateway.py"}
 GATEWAY_STANDARD_FILES = {"__init__.py", "gateway.py", "input.py", "output.py"}
-GATEWAY_EXTRA_FILES = {"list_input.py", "table_ref.py", "table.py", "observation.py"}
+GATEWAY_EXTRA_FILES = {
+    "list_input.py",
+    "table_metadata.py",
+    "table_metadata_ref.py",
+    "table_metadata_observation.py",
+}
 GATEWAY_ALLOWED_FILES = GATEWAY_STANDARD_FILES | GATEWAY_EXTRA_FILES
 
 # Imports allowed in input.py / output.py (primitive-only constraint).
@@ -314,7 +318,11 @@ def test_extra_file_class_naming_and_export(extra: tuple[str, Path]):
     """Verify an extra file defines {Prefix}Gateway{Stem} and __init__ exports it."""
     group, f = extra
     prefix = _pascal_case(f.parent.name)
-    expected = f"{prefix}Gateway{_pascal_case(f.stem)}"
+    expected = (
+        f"{prefix}Gateway{_pascal_case(f.stem)}"
+        if f.stem == "list_input"
+        else _pascal_case(f.stem)
+    )
     module = f"application.port.outbound.{group}.{f.parent.name}"
     assert expected in _exported_classes(f"{module}.{f.stem}")
     assert expected in set(getattr(importlib.import_module(module), "__all__", []))

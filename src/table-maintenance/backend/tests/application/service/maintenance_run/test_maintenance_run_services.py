@@ -18,9 +18,9 @@ from application.domain.model.maintenance_run.trigger_type import TriggerType
 from application.domain.model.maintenance_settings.maintenance_settings import (
     MaintenanceSettings,
 )
-from application.domain.model.managed_table.managed_table import ManagedTable
-from application.domain.model.managed_table.table_name import TableName
-from application.domain.model.managed_table.table_uuid import TableUuid
+from application.domain.model.table.table import Table
+from application.domain.model.table.table_name import TableName
+from application.domain.model.table.table_id import TableId
 from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
     TableMaintenancePresetId,
 )
@@ -63,8 +63,8 @@ RDF = OPS.REWRITE_DATA_FILES
 
 @pytest.fixture
 def table(tables_repo, now):
-    t = ManagedTable.register_auto(
-        TableUuid("u-1"),
+    t = Table.register_auto(
+        TableId("u-1"),
         TableName("iceberg", "sales", "orders"),
         DiscoveryRuleId("r-1"),
         TableMaintenancePresetId("t-1"),

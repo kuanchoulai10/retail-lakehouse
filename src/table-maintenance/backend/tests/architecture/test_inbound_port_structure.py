@@ -1,6 +1,6 @@
 """Guard tests for inbound port directory structure and naming conventions.
 
-Use cases are grouped under port/inbound/{aggregate}/ (e.g. managed_table/, reconcile/).
+Use cases are grouped under port/inbound/{aggregate}/ (e.g. table/, reconcile/).
 Each use case directory must contain exactly:
   __init__.py, input.py, output.py, use_case.py
 
@@ -29,7 +29,7 @@ ALLOWED_FILES = REQUIRED_FILES  # input.py is optional for no-input use cases
 AGGREGATE_GROUPS = [
     "discovery",
     "discovery_rule",
-    "managed_table",
+    "table",
     "maintenance_run",
     "table_maintenance_preset",
     "reconcile",

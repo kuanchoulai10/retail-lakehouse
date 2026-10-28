@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 from application.service.discovery.get_discovery_settings import (
     GetDiscoverySettingsService,
 )
-from application.service.discovery.process_table_hint import ProcessTableHintService
-from application.service.discovery.sync_discovered_tables import (
+from application.service.table.process_table_hint import ProcessTableHintService
+from application.service.table.sync_discovered_tables import (
     SyncDiscoveredTablesService,
 )
 from application.service.discovery.update_discovery_settings import (
@@ -42,30 +42,30 @@ from application.service.maintenance_run.process_maintenance_callback import (
 from application.service.maintenance_run.record_maintenance_operation_result import (
     RecordMaintenanceOperationResultService,
 )
-from application.service.managed_table.exclude_managed_table import (
-    ExcludeManagedTableService,
+from application.service.table.exclude_table import (
+    ExcludeTableService,
 )
-from application.service.managed_table.get_managed_table import GetManagedTableService
-from application.service.managed_table.include_managed_table import (
-    IncludeManagedTableService,
+from application.service.table.get_table import GetTableService
+from application.service.table.include_table import (
+    IncludeTableService,
 )
-from application.service.managed_table.list_managed_tables import (
-    ListManagedTablesService,
+from application.service.table.list_tables import (
+    ListTablesService,
 )
-from application.service.managed_table.pause_managed_table import (
-    PauseManagedTableService,
+from application.service.table.pause_table import (
+    PauseTableService,
 )
-from application.service.managed_table.reset_managed_table_selection import (
-    ResetManagedTableSelectionService,
+from application.service.table.reset_table_selection import (
+    ResetTableSelectionService,
 )
-from application.service.managed_table.resume_managed_table import (
-    ResumeManagedTableService,
+from application.service.table.resume_table import (
+    ResumeTableService,
 )
-from application.service.managed_table.trigger_maintenance import (
-    TriggerMaintenanceService,
+from application.service.table.trigger_table_maintenance import (
+    TriggerTableMaintenanceService,
 )
-from application.service.managed_table.update_managed_table_settings import (
-    UpdateManagedTableSettingsService,
+from application.service.table.update_table_settings import (
+    UpdateTableSettingsService,
 )
 from application.service.table_maintenance_preset.create_table_maintenance_preset import (
     CreateTableMaintenancePresetService,
@@ -114,12 +114,12 @@ def build_use_cases(
     clock: Callable[[], datetime] = _utc_now,
 ) -> UseCases:
     """Build every application service on the given repositories and gateways."""
-    tables = repos.managed_tables
+    tables = repos.tables
     rules = repos.discovery_rules
     presets = repos.table_maintenance_presets
     runs = repos.maintenance_runs
     discovery = repos.discovery_settings
-    catalog = gateways.read_catalog
+    catalog = gateways.read_table_metadata
     signals = gateways.send_table_signal
     return UseCases(
         get_discovery_settings=GetDiscoverySettingsService(discovery),
@@ -154,23 +154,19 @@ def build_use_cases(
         update_table_maintenance_preset=UpdateTableMaintenancePresetService(
             presets, clock=clock
         ),
-        exclude_managed_table=ExcludeManagedTableService(
-            tables, catalog, signals, clock=clock
-        ),
-        get_managed_table=GetManagedTableService(tables),
-        include_managed_table=IncludeManagedTableService(
+        exclude_table=ExcludeTableService(tables, catalog, signals, clock=clock),
+        get_table=GetTableService(tables),
+        include_table=IncludeTableService(
             tables, presets, catalog, signals, clock=clock
         ),
-        list_managed_tables=ListManagedTablesService(tables),
-        pause_managed_table=PauseManagedTableService(tables, signals, clock=clock),
-        reset_managed_table_selection=ResetManagedTableSelectionService(
+        list_tables=ListTablesService(tables),
+        pause_table=PauseTableService(tables, signals, clock=clock),
+        reset_table_selection=ResetTableSelectionService(
             tables, rules, presets, signals, clock=clock
         ),
-        resume_managed_table=ResumeManagedTableService(tables, signals, clock=clock),
-        trigger_maintenance=TriggerMaintenanceService(tables, signals),
-        update_managed_table_settings=UpdateManagedTableSettingsService(
-            tables, signals, clock=clock
-        ),
+        resume_table=ResumeTableService(tables, signals, clock=clock),
+        trigger_table_maintenance=TriggerTableMaintenanceService(tables, signals),
+        update_table_settings=UpdateTableSettingsService(tables, signals, clock=clock),
         create_maintenance_run=CreateMaintenanceRunService(runs, tables),
         get_maintenance_run=GetMaintenanceRunService(runs),
         list_maintenance_runs=ListMaintenanceRunsService(runs),

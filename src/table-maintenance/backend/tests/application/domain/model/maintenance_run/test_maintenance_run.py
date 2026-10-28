@@ -21,7 +21,7 @@ from application.domain.model.maintenance_run.operation_run_status import (
 )
 from application.domain.model.maintenance_run.run_status import RunStatus
 from application.domain.model.maintenance_run.trigger_type import TriggerType
-from application.domain.model.managed_table.table_uuid import TableUuid
+from application.domain.model.table.table_id import TableId
 
 T0 = datetime(2026, 10, 24, tzinfo=UTC)
 
@@ -33,7 +33,7 @@ def _now(minutes: int = 0) -> datetime:
 def _run(ops: list[Op] | None = None) -> MaintenanceRun:
     return MaintenanceRun.create(
         MaintenanceRunId("run-1"),
-        TableUuid("t-1"),
+        TableId("t-1"),
         TriggerType.MANUAL,
         ops if ops is not None else [Op.EXPIRE_SNAPSHOTS, Op.REWRITE_DATA_FILES],
         _now(),
@@ -210,7 +210,7 @@ def test_create_rejects_an_empty_workflow_id():
     with pytest.raises(ValueError, match="workflow id"):
         MaintenanceRun.create(
             MaintenanceRunId("run-1"),
-            TableUuid("t-1"),
+            TableId("t-1"),
             TriggerType.MANUAL,
             [Op.EXPIRE_SNAPSHOTS],
             _now(),

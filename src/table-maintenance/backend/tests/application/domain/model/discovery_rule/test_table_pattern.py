@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from application.domain.model.discovery_rule import TablePattern
-from application.domain.model.managed_table import TableName
+from application.domain.model.table import TableName
 
 
 def test_defaults_match_all():

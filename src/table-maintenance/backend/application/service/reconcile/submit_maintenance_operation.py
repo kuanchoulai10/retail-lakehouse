@@ -26,8 +26,8 @@ if TYPE_CHECKING:
     from application.port.outbound.maintenance_run.maintenance_runs_repo import (
         MaintenanceRunsRepo,
     )
-    from application.port.outbound.managed_table.managed_tables_repo import (
-        ManagedTablesRepo,
+    from application.port.outbound.table.tables_repo import (
+        TablesRepo,
     )
     from application.port.outbound.spark.submit_maintenance_job import (
         SubmitMaintenanceJobGateway,
@@ -40,7 +40,7 @@ class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
     def __init__(
         self,
         runs_repo: MaintenanceRunsRepo,
-        tables_repo: ManagedTablesRepo,
+        tables_repo: TablesRepo,
         submit_gateway: SubmitMaintenanceJobGateway,
     ) -> None:
         """Bind the repos and the submit gateway."""
@@ -65,7 +65,7 @@ class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
             raise NotFoundError(f"maintenance run {request.run_id} not found")
         table = self._tables_repo.get(run.table_uuid)
         if table is None:
-            raise NotFoundError(f"managed table {run.table_uuid.value} not found")
+            raise NotFoundError(f"table {run.table_uuid.value} not found")
         with translate_domain_errors():
             app_name = spark_application_name(
                 request.run_id, operation, request.attempt

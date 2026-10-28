@@ -12,7 +12,7 @@ from application.domain.model.maintenance_run.maintenance_run_id import (
     MaintenanceRunId,
 )
 from application.domain.model.maintenance_run.trigger_type import TriggerType
-from application.domain.model.managed_table.table_uuid import TableUuid
+from application.domain.model.table.table_id import TableId
 from application.exceptions import NotFoundError, ValidationError
 from application.port.inbound.maintenance_run.create_maintenance_run import (
     CreateMaintenanceRunUseCase,
@@ -28,17 +28,15 @@ if TYPE_CHECKING:
     from application.port.outbound.maintenance_run.maintenance_runs_repo import (
         MaintenanceRunsRepo,
     )
-    from application.port.outbound.managed_table.managed_tables_repo import (
-        ManagedTablesRepo,
+    from application.port.outbound.table.tables_repo import (
+        TablesRepo,
     )
 
 
 class CreateMaintenanceRunService(CreateMaintenanceRunUseCase):
     """Create the run that tracks one execution of maintenance operations."""
 
-    def __init__(
-        self, runs_repo: MaintenanceRunsRepo, tables_repo: ManagedTablesRepo
-    ) -> None:
+    def __init__(self, runs_repo: MaintenanceRunsRepo, tables_repo: TablesRepo) -> None:
         """Bind the repos."""
         self._runs_repo = runs_repo
         self._tables_repo = tables_repo
@@ -58,9 +56,9 @@ class CreateMaintenanceRunService(CreateMaintenanceRunUseCase):
             operations = [MaintenanceOperation(op) for op in request.operations]
             run = self._runs_repo.get(MaintenanceRunId(request.run_id))
             if run is None:
-                table_uuid = TableUuid(request.table_uuid)
+                table_uuid = TableId(request.table_uuid)
                 if self._tables_repo.get(table_uuid) is None:
-                    raise NotFoundError(f"managed table {request.table_uuid} not found")
+                    raise NotFoundError(f"table {request.table_uuid} not found")
                 run = self._runs_repo.create(
                     MaintenanceRun.create(
                         MaintenanceRunId(request.run_id),

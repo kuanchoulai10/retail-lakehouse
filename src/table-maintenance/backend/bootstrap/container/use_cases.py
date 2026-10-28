@@ -9,10 +9,10 @@ if TYPE_CHECKING:
     from application.port.inbound.discovery.get_discovery_settings import (
         GetDiscoverySettingsUseCase,
     )
-    from application.port.inbound.discovery.process_table_hint import (
+    from application.port.inbound.table.process_table_hint import (
         ProcessTableHintUseCase,
     )
-    from application.port.inbound.discovery.sync_discovered_tables import (
+    from application.port.inbound.table.sync_discovered_tables import (
         SyncDiscoveredTablesUseCase,
     )
     from application.port.inbound.discovery.update_discovery_settings import (
@@ -45,32 +45,32 @@ if TYPE_CHECKING:
     from application.port.inbound.table_maintenance_preset.update_table_maintenance_preset import (
         UpdateTableMaintenancePresetUseCase,
     )
-    from application.port.inbound.managed_table.exclude_managed_table import (
-        ExcludeManagedTableUseCase,
+    from application.port.inbound.table.exclude_table import (
+        ExcludeTableUseCase,
     )
-    from application.port.inbound.managed_table.get_managed_table import (
-        GetManagedTableUseCase,
+    from application.port.inbound.table.get_table import (
+        GetTableUseCase,
     )
-    from application.port.inbound.managed_table.include_managed_table import (
-        IncludeManagedTableUseCase,
+    from application.port.inbound.table.include_table import (
+        IncludeTableUseCase,
     )
-    from application.port.inbound.managed_table.list_managed_tables import (
-        ListManagedTablesUseCase,
+    from application.port.inbound.table.list_tables import (
+        ListTablesUseCase,
     )
-    from application.port.inbound.managed_table.pause_managed_table import (
-        PauseManagedTableUseCase,
+    from application.port.inbound.table.pause_table import (
+        PauseTableUseCase,
     )
-    from application.port.inbound.managed_table.reset_managed_table_selection import (
-        ResetManagedTableSelectionUseCase,
+    from application.port.inbound.table.reset_table_selection import (
+        ResetTableSelectionUseCase,
     )
-    from application.port.inbound.managed_table.resume_managed_table import (
-        ResumeManagedTableUseCase,
+    from application.port.inbound.table.resume_table import (
+        ResumeTableUseCase,
     )
-    from application.port.inbound.managed_table.trigger_maintenance import (
-        TriggerMaintenanceUseCase,
+    from application.port.inbound.table.trigger_table_maintenance import (
+        TriggerTableMaintenanceUseCase,
     )
-    from application.port.inbound.managed_table.update_managed_table_settings import (
-        UpdateManagedTableSettingsUseCase,
+    from application.port.inbound.table.update_table_settings import (
+        UpdateTableSettingsUseCase,
     )
     from application.port.inbound.maintenance_run.create_maintenance_run import (
         CreateMaintenanceRunUseCase,
@@ -118,15 +118,15 @@ class UseCases:
     get_table_maintenance_preset: GetTableMaintenancePresetUseCase
     list_table_maintenance_presets: ListTableMaintenancePresetsUseCase
     update_table_maintenance_preset: UpdateTableMaintenancePresetUseCase
-    exclude_managed_table: ExcludeManagedTableUseCase
-    get_managed_table: GetManagedTableUseCase
-    include_managed_table: IncludeManagedTableUseCase
-    list_managed_tables: ListManagedTablesUseCase
-    pause_managed_table: PauseManagedTableUseCase
-    reset_managed_table_selection: ResetManagedTableSelectionUseCase
-    resume_managed_table: ResumeManagedTableUseCase
-    trigger_maintenance: TriggerMaintenanceUseCase
-    update_managed_table_settings: UpdateManagedTableSettingsUseCase
+    exclude_table: ExcludeTableUseCase
+    get_table: GetTableUseCase
+    include_table: IncludeTableUseCase
+    list_tables: ListTablesUseCase
+    pause_table: PauseTableUseCase
+    reset_table_selection: ResetTableSelectionUseCase
+    resume_table: ResumeTableUseCase
+    trigger_table_maintenance: TriggerTableMaintenanceUseCase
+    update_table_settings: UpdateTableSettingsUseCase
     create_maintenance_run: CreateMaintenanceRunUseCase
     get_maintenance_run: GetMaintenanceRunUseCase
     list_maintenance_runs: ListMaintenanceRunsUseCase

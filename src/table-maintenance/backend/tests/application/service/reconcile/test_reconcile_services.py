@@ -22,9 +22,9 @@ from application.domain.model.maintenance_settings.maintenance_settings import (
 from application.domain.model.maintenance_settings.rewrite_data_files_settings import (
     RewriteDataFilesSettings,
 )
-from application.domain.model.managed_table.managed_table import ManagedTable
-from application.domain.model.managed_table.table_name import TableName
-from application.domain.model.managed_table.table_uuid import TableUuid
+from application.domain.model.table.table import Table
+from application.domain.model.table.table_name import TableName
+from application.domain.model.table.table_id import TableId
 from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
     TableMaintenancePresetId,
 )
@@ -42,8 +42,8 @@ from application.port.inbound.reconcile.submit_maintenance_operation import (
     SubmitMaintenanceOperationUseCaseInput,
     SubmitMaintenanceOperationUseCaseInputFilterItem,
 )
-from application.port.outbound.catalog.read_catalog import (
-    ReadCatalogGatewayObservation,
+from application.port.outbound.table.read_table_metadata import (
+    TableMetadataObservation,
 )
 from application.service.reconcile.delete_maintenance_job import (
     DeleteMaintenanceJobService,
@@ -65,8 +65,8 @@ OPS = MaintenanceOperation
 
 
 def _table(repo, now, settings=None, uuid="u-1", name=NAME):
-    table = ManagedTable.register_auto(
-        TableUuid(uuid),
+    table = Table.register_auto(
+        TableId(uuid),
         name,
         DiscoveryRuleId("r-1"),
         TableMaintenancePresetId("t-1"),
@@ -118,7 +118,7 @@ def _observe(catalog, now, **overrides):
     }
     fields.update(overrides)
     catalog.add_table(*KEY, "u-1")
-    catalog.observations[KEY] = ReadCatalogGatewayObservation(**fields)
+    catalog.observations[KEY] = TableMetadataObservation(**fields)
 
 
 @pytest.fixture
@@ -141,9 +141,7 @@ def test_plan_skip_reasons(planner, tables_repo, catalog, now):
     assert _plan(planner, now, uuid="missing").reason == "dropped"
     dropped = _table(tables_repo, now, uuid="u-d", name=TableName("c", "n", "d"))
     dropped.mark_dropped(now)
-    excluded = ManagedTable.exclude_manual(
-        TableUuid("u-e"), TableName("c", "n", "e"), now
-    )
+    excluded = Table.exclude_manual(TableId("u-e"), TableName("c", "n", "e"), now)
     tables_repo.create(excluded)
     paused = _table(tables_repo, now, uuid="u-p", name=TableName("c", "n", "p"))
     paused.pause(now)
@@ -353,7 +351,7 @@ def run(runs_repo, tables_repo, now):
     _table(tables_repo, now)
     created = MaintenanceRun.create(
         MaintenanceRunId("run-1"),
-        TableUuid("u-1"),
+        TableId("u-1"),
         TriggerType.SCHEDULED,
         [OPS.REWRITE_DATA_FILES, OPS.EXPIRE_SNAPSHOTS],
         now,

@@ -13,11 +13,11 @@ from application.domain.model.maintenance_settings import (
     RewriteDataFilesSettings,
     RewriteManifestsSettings,
 )
-from application.domain.model.managed_table import (
-    ManagedTable,
+from application.domain.model.table import (
+    Table,
     OperationState,
     TableName,
-    TableUuid,
+    TableId,
 )
 from application.domain.model.observation import (
     ManifestStats,
@@ -40,9 +40,9 @@ DAY_SPEC = PartitionSpecInfo(
 NO_SPEC = PartitionSpecInfo(1, ())
 
 
-def table(settings=None) -> ManagedTable:
-    return ManagedTable.register_auto(
-        TableUuid("u"),
+def table(settings=None) -> Table:
+    return Table.register_auto(
+        TableId("u"),
         TableName("c", "n", "t"),
         DiscoveryRuleId("r"),
         TableMaintenancePresetId("t"),
@@ -264,9 +264,7 @@ def test_paused_excluded_or_settingless_table_yields_empty_plan():
     paused = table()
     paused.pause(NOW)
     assert plan_scheduled_maintenance(paused, o, NOW).is_empty
-    excluded = ManagedTable.exclude_manual(
-        TableUuid("u"), TableName("c", "n", "t"), NOW
-    )
+    excluded = Table.exclude_manual(TableId("u"), TableName("c", "n", "t"), NOW)
     assert plan_scheduled_maintenance(excluded, o, NOW).is_empty
     dropped = table()
     dropped.mark_dropped(NOW)

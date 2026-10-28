@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from adapter.outbound.catalog.pyiceberg.read_catalog_pyiceberg_gateway import (
-    ReadCatalogPyIcebergGateway,
+from adapter.outbound.table.pyiceberg.read_table_metadata_pyiceberg_gateway import (
+    ReadTableMetadataPyIcebergGateway,
 )
 from adapter.outbound.discovery.temporal.update_discovery_schedule_temporal_gateway import (
     UpdateDiscoveryScheduleTemporalGateway,
@@ -57,7 +57,7 @@ def build_gateways(
     """
     spark_config = build_spark_config(settings)
     return Gateways(
-        read_catalog=ReadCatalogPyIcebergGateway(catalog_factory),
+        read_table_metadata=ReadTableMetadataPyIcebergGateway(catalog_factory),
         send_table_signal=SendTableSignalTemporalGateway(client, bridge),
         send_discovery_request=SendDiscoveryRequestTemporalGateway(client, bridge),
         send_maintenance_result=SendMaintenanceResultTemporalGateway(client, bridge),

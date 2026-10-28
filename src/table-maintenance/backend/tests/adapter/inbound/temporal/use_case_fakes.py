@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from application.port.inbound.discovery.sync_discovered_tables import (
+from application.port.inbound.table.sync_discovered_tables import (
     SyncDiscoveredTablesUseCase,
     SyncDiscoveredTablesUseCaseInput,
     SyncDiscoveredTablesUseCaseOutput,

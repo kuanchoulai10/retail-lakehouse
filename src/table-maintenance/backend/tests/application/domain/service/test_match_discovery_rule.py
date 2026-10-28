@@ -8,7 +8,7 @@ from application.domain.model.discovery_rule import (
     RuleEffect,
     TablePattern,
 )
-from application.domain.model.managed_table import TableName
+from application.domain.model.table import TableName
 from application.domain.model.table_maintenance_preset import TableMaintenancePresetId
 from application.domain.service.match_discovery_rule import match_discovery_rule
 

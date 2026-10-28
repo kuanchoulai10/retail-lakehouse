@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from fnmatch import fnmatchcase
 
-from application.domain.model.managed_table.table_name import TableName
+from application.domain.model.table.table_name import TableName
 from base.value_object import ValueObject
 
 

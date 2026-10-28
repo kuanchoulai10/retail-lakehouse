@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from adapter.inbound.event_consumer.map_polaris_event import map_polaris_event
-from application.port.inbound.discovery.process_table_hint import (
+from application.port.inbound.table.process_table_hint import (
     ProcessTableHintUseCaseInput,
 )
 

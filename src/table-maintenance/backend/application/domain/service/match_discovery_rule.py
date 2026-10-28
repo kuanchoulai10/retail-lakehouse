@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from application.domain.model.discovery_rule.discovery_rule import DiscoveryRule
-from application.domain.model.managed_table.table_name import TableName
+from application.domain.model.table.table_name import TableName
 
 
 def match_discovery_rule(

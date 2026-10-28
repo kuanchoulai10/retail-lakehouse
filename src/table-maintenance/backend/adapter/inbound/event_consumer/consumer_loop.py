@@ -11,7 +11,7 @@ from adapter.inbound.event_consumer.event_record import EventRecord
 from adapter.inbound.event_consumer.event_source import EventSource
 from adapter.inbound.event_consumer.map_polaris_event import map_polaris_event
 from application.exceptions import NotFoundError, ValidationError
-from application.port.inbound.discovery.process_table_hint import (
+from application.port.inbound.table.process_table_hint import (
     ProcessTableHintUseCase,
     ProcessTableHintUseCaseInput,
 )

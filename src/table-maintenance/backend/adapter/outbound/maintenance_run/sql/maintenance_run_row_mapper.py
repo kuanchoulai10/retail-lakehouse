@@ -17,7 +17,7 @@ from application.domain.model.maintenance_run.operation_run_status import (
     OperationRunStatus,
 )
 from application.domain.model.maintenance_run.trigger_type import TriggerType
-from application.domain.model.managed_table.table_uuid import TableUuid
+from application.domain.model.table.table_id import TableId
 
 if TYPE_CHECKING:
     from sqlalchemy import RowMapping
@@ -72,7 +72,7 @@ class MaintenanceRunRowMapper:
         """Rebuild the aggregate from a row without registering events."""
         return MaintenanceRun(
             id=MaintenanceRunId(row["id"]),
-            table_uuid=TableUuid(row["table_uuid"]),
+            table_uuid=TableId(row["table_uuid"]),
             trigger=TriggerType(row["trigger"]),
             operations=tuple(_decode_operation(d) for d in row["operations_json"]),
             created_at=row["created_at"],

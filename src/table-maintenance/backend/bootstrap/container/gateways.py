@@ -6,7 +6,9 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from application.port.outbound.catalog.read_catalog import ReadCatalogGateway
+    from application.port.outbound.table.read_table_metadata import (
+        ReadTableMetadataGateway,
+    )
     from application.port.outbound.discovery.update_discovery_schedule import (
         UpdateDiscoveryScheduleGateway,
     )
@@ -34,7 +36,7 @@ if TYPE_CHECKING:
 class Gateways:
     """Hold one implementation of every outbound gateway port."""
 
-    read_catalog: ReadCatalogGateway
+    read_table_metadata: ReadTableMetadataGateway
     send_table_signal: SendTableSignalGateway
     send_discovery_request: SendDiscoveryRequestGateway
     send_maintenance_result: SendMaintenanceResultGateway

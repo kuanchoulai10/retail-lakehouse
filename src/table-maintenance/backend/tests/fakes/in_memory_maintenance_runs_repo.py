@@ -10,7 +10,7 @@ from application.port.outbound.maintenance_run.maintenance_runs_repo import (
 
 if TYPE_CHECKING:
     from application.domain.model.maintenance_run.maintenance_run import MaintenanceRun
-    from application.domain.model.managed_table.table_uuid import TableUuid
+    from application.domain.model.table.table_id import TableId
     from base.entity_id import EntityId
 
 
@@ -42,7 +42,7 @@ class InMemoryMaintenanceRunsRepo(MaintenanceRunsRepo):
         return run
 
     def list_by_table(
-        self, table_uuid: TableUuid, limit: int = 50
+        self, table_uuid: TableId, limit: int = 50
     ) -> list[MaintenanceRun]:
         """Return up to ``limit`` runs of the table, newest first."""
         runs = [r for r in self.items.values() if r.table_uuid == table_uuid]

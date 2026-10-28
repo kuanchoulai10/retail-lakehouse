@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from adapter.inbound.event_consumer.consumer_loop import run_consumer_loop
 from adapter.inbound.event_consumer.event_record import EventRecord
 from application.exceptions import NotFoundError, ValidationError
-from application.port.inbound.discovery.process_table_hint import (
+from application.port.inbound.table.process_table_hint import (
     ProcessTableHintUseCase,
     ProcessTableHintUseCaseInput,
     ProcessTableHintUseCaseOutput,

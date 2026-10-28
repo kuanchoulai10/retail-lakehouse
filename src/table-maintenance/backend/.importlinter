@@ -84,7 +84,7 @@ forbidden_modules =
     application.domain.model.discovery_rule
     application.domain.model.maintenance_run
     application.domain.model.maintenance_settings
-    application.domain.model.managed_table
+    application.domain.model.table
     application.domain.model.observation
     application.domain.model.table_maintenance_preset
     adapter.inbound.temporal.activities

@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from application.port.inbound.discovery.get_discovery_settings import (
         GetDiscoverySettingsUseCase,
     )
-    from application.port.inbound.discovery.sync_discovered_tables import (
+    from application.port.inbound.table.sync_discovered_tables import (
         SyncDiscoveredTablesUseCase,
     )
     from application.port.inbound.discovery.update_discovery_settings import (
@@ -36,32 +36,32 @@ if TYPE_CHECKING:
     from application.port.inbound.maintenance_run.process_maintenance_callback import (
         ProcessMaintenanceCallbackUseCase,
     )
-    from application.port.inbound.managed_table.exclude_managed_table import (
-        ExcludeManagedTableUseCase,
+    from application.port.inbound.table.exclude_table import (
+        ExcludeTableUseCase,
     )
-    from application.port.inbound.managed_table.get_managed_table import (
-        GetManagedTableUseCase,
+    from application.port.inbound.table.get_table import (
+        GetTableUseCase,
     )
-    from application.port.inbound.managed_table.include_managed_table import (
-        IncludeManagedTableUseCase,
+    from application.port.inbound.table.include_table import (
+        IncludeTableUseCase,
     )
-    from application.port.inbound.managed_table.list_managed_tables import (
-        ListManagedTablesUseCase,
+    from application.port.inbound.table.list_tables import (
+        ListTablesUseCase,
     )
-    from application.port.inbound.managed_table.pause_managed_table import (
-        PauseManagedTableUseCase,
+    from application.port.inbound.table.pause_table import (
+        PauseTableUseCase,
     )
-    from application.port.inbound.managed_table.reset_managed_table_selection import (
-        ResetManagedTableSelectionUseCase,
+    from application.port.inbound.table.reset_table_selection import (
+        ResetTableSelectionUseCase,
     )
-    from application.port.inbound.managed_table.resume_managed_table import (
-        ResumeManagedTableUseCase,
+    from application.port.inbound.table.resume_table import (
+        ResumeTableUseCase,
     )
-    from application.port.inbound.managed_table.trigger_maintenance import (
-        TriggerMaintenanceUseCase,
+    from application.port.inbound.table.trigger_table_maintenance import (
+        TriggerTableMaintenanceUseCase,
     )
-    from application.port.inbound.managed_table.update_managed_table_settings import (
-        UpdateManagedTableSettingsUseCase,
+    from application.port.inbound.table.update_table_settings import (
+        UpdateTableSettingsUseCase,
     )
     from application.port.inbound.table_maintenance_preset.create_table_maintenance_preset import (
         CreateTableMaintenancePresetUseCase,
@@ -96,15 +96,15 @@ class WebUseCases:
     get_table_maintenance_preset: GetTableMaintenancePresetUseCase
     update_table_maintenance_preset: UpdateTableMaintenancePresetUseCase
     delete_table_maintenance_preset: DeleteTableMaintenancePresetUseCase
-    list_managed_tables: ListManagedTablesUseCase
-    get_managed_table: GetManagedTableUseCase
-    update_managed_table_settings: UpdateManagedTableSettingsUseCase
-    pause_managed_table: PauseManagedTableUseCase
-    resume_managed_table: ResumeManagedTableUseCase
-    reset_managed_table_selection: ResetManagedTableSelectionUseCase
-    include_managed_table: IncludeManagedTableUseCase
-    exclude_managed_table: ExcludeManagedTableUseCase
-    trigger_maintenance: TriggerMaintenanceUseCase
+    list_tables: ListTablesUseCase
+    get_table: GetTableUseCase
+    update_table_settings: UpdateTableSettingsUseCase
+    pause_table: PauseTableUseCase
+    resume_table: ResumeTableUseCase
+    reset_table_selection: ResetTableSelectionUseCase
+    include_table: IncludeTableUseCase
+    exclude_table: ExcludeTableUseCase
+    trigger_table_maintenance: TriggerTableMaintenanceUseCase
     list_maintenance_runs: ListMaintenanceRunsUseCase
     get_maintenance_run: GetMaintenanceRunUseCase
     process_maintenance_callback: ProcessMaintenanceCallbackUseCase

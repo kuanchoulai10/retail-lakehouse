@@ -1,0 +1,1 @@
+"""Table use case implementations."""

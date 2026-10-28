@@ -9,7 +9,7 @@ from application.domain.model.maintenance_run.maintenance_run import Maintenance
 from base.repository import Repository
 
 if TYPE_CHECKING:
-    from application.domain.model.managed_table.table_uuid import TableUuid
+    from application.domain.model.table.table_id import TableId
 
 
 class MaintenanceRunsRepo(Repository[MaintenanceRun]):
@@ -21,6 +21,6 @@ class MaintenanceRunsRepo(Repository[MaintenanceRun]):
 
     @abstractmethod
     def list_by_table(
-        self, table_uuid: TableUuid, limit: int = 50
+        self, table_uuid: TableId, limit: int = 50
     ) -> list[MaintenanceRun]:
         """Return up to ``limit`` runs of the table, newest first."""

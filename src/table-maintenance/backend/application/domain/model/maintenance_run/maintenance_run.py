@@ -21,7 +21,7 @@ from application.domain.model.maintenance_run.operation_run_status import (
 )
 from application.domain.model.maintenance_run.run_status import RunStatus
 from application.domain.model.maintenance_run.trigger_type import TriggerType
-from application.domain.model.managed_table.table_uuid import TableUuid
+from application.domain.model.table.table_id import TableId
 from base.aggregate_root import AggregateRoot
 
 _TERMINAL = frozenset(
@@ -38,7 +38,7 @@ class MaintenanceRun(AggregateRoot[MaintenanceRunId]):
     """Track one execution of maintenance operations against a table."""
 
     id: MaintenanceRunId
-    table_uuid: TableUuid
+    table_uuid: TableId
     trigger: TriggerType
     operations: tuple[OperationRun, ...]
     created_at: datetime
@@ -49,7 +49,7 @@ class MaintenanceRun(AggregateRoot[MaintenanceRunId]):
     def create(
         cls,
         id: MaintenanceRunId,  # noqa: A002
-        table_uuid: TableUuid,
+        table_uuid: TableId,
         trigger: TriggerType,
         operations: Sequence[MaintenanceOperation],
         now: datetime,

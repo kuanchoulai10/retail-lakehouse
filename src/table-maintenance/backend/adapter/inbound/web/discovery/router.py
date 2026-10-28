@@ -15,7 +15,7 @@ from adapter.inbound.web.web_use_cases import WebUseCases
 from application.port.inbound.discovery.get_discovery_settings import (
     GetDiscoverySettingsUseCaseInput,
 )
-from application.port.inbound.discovery.sync_discovered_tables import (
+from application.port.inbound.table.sync_discovered_tables import (
     SyncDiscoveredTablesUseCaseInput,
 )
 from application.port.inbound.discovery.update_discovery_settings import (

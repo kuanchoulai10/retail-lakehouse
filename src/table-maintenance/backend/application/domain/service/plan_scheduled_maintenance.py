@@ -15,8 +15,8 @@ from application.domain.model.maintenance_settings.compaction_scope import (
 from application.domain.model.maintenance_settings.maintenance_settings import (
     MaintenanceSettings,
 )
-from application.domain.model.managed_table.managed_table import ManagedTable
-from application.domain.model.managed_table.table_status import TableStatus
+from application.domain.model.table.table import Table
+from application.domain.model.table.table_status import TableStatus
 from application.domain.model.observation.table_observation import TableObservation
 from application.domain.service.compute_reducible_files import compute_reducible_files
 from application.domain.service.positive_int_property import positive_int_property
@@ -29,7 +29,7 @@ MANIFEST_TARGET_SIZE_PROPERTY = "commit.manifest.target-size-bytes"
 
 
 def plan_scheduled_maintenance(
-    table: ManagedTable, observation: TableObservation, now: datetime
+    table: Table, observation: TableObservation, now: datetime
 ) -> MaintenancePlan:
     """Decide which operations are due for a table given its observation."""
     settings = table.settings
@@ -46,7 +46,7 @@ def plan_scheduled_maintenance(
 
 
 def _in_cooldown(
-    table: ManagedTable,
+    table: Table,
     settings: MaintenanceSettings,
     op: MaintenanceOperation,
     now: datetime,

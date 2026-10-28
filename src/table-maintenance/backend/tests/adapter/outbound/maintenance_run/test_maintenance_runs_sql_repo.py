@@ -20,7 +20,7 @@ from application.domain.model.maintenance_run.operation_run_status import (
     OperationRunStatus,
 )
 from application.domain.model.maintenance_run.trigger_type import TriggerType
-from application.domain.model.managed_table.table_uuid import TableUuid
+from application.domain.model.table.table_id import TableId
 from application.exceptions import ConflictError
 
 NOW = datetime(2026, 10, 24, 12, tzinfo=UTC)
@@ -29,7 +29,7 @@ NOW = datetime(2026, 10, 24, 12, tzinfo=UTC)
 def _run(run_id: str, table: str = "u1", at: datetime = NOW) -> MaintenanceRun:
     return MaintenanceRun.create(
         MaintenanceRunId(run_id),
-        TableUuid(table),
+        TableId(table),
         TriggerType.SCHEDULED,
         [
             MaintenanceOperation.EXPIRE_SNAPSHOTS,
@@ -65,7 +65,7 @@ def test_roundtrip_with_operation_details(repo: MaintenanceRunsSqlRepo):
     repo.create(run)
     loaded = repo.get(MaintenanceRunId("r1"))
     assert loaded is not None
-    assert loaded.table_uuid == TableUuid("u1")
+    assert loaded.table_uuid == TableId("u1")
     assert loaded.trigger is TriggerType.SCHEDULED
     assert loaded.workflow_id == "wf-r1"
     assert loaded.created_at == NOW
@@ -112,11 +112,11 @@ def test_list_by_table_newest_first_with_limit(repo: MaintenanceRunsSqlRepo):
     for i in range(5):
         repo.create(_run(f"r{i}", "u1", NOW + timedelta(minutes=i)))
     repo.create(_run("other", "u2", NOW + timedelta(hours=9)))
-    got = repo.list_by_table(TableUuid("u1"))
+    got = repo.list_by_table(TableId("u1"))
     assert [r.id.value for r in got] == ["r4", "r3", "r2", "r1", "r0"]
-    limited = repo.list_by_table(TableUuid("u1"), limit=2)
+    limited = repo.list_by_table(TableId("u1"), limit=2)
     assert [r.id.value for r in limited] == ["r4", "r3"]
-    assert repo.list_by_table(TableUuid("none")) == []
+    assert repo.list_by_table(TableId("none")) == []
 
 
 def test_list_all_newest_first(repo: MaintenanceRunsSqlRepo):

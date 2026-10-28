@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.domain.model.managed_table.table_uuid import TableUuid
+from application.domain.model.table.table_id import TableId
 from application.port.inbound.maintenance_run.list_maintenance_runs import (
     ListMaintenanceRunsUseCase,
     ListMaintenanceRunsUseCaseInput,
@@ -32,9 +32,7 @@ class ListMaintenanceRunsService(ListMaintenanceRunsUseCase):
         self, request: ListMaintenanceRunsUseCaseInput
     ) -> ListMaintenanceRunsUseCaseOutput:
         """Return up to ``limit`` runs of the table."""
-        runs = self._runs_repo.list_by_table(
-            TableUuid(request.table_uuid), request.limit
-        )
+        runs = self._runs_repo.list_by_table(TableId(request.table_uuid), request.limit)
         return ListMaintenanceRunsUseCaseOutput(
             items=[
                 ListMaintenanceRunsUseCaseOutputItem(

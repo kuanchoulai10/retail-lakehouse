@@ -16,8 +16,8 @@ from adapter.outbound.maintenance_run.sql.add_maintenance_run_workflow_id_column
 from adapter.outbound.maintenance_run.sql.maintenance_runs_table import (
     maintenance_runs_table as _maintenance_runs_table,
 )
-from adapter.outbound.managed_table.sql.managed_tables_table import (
-    managed_tables_table as _managed_tables_table,
+from adapter.outbound.table.sql.tables_table import (
+    tables_table as _tables_table,
 )
 from adapter.outbound.table_maintenance_preset.sql.table_maintenance_presets_table import (
     table_maintenance_presets_table as _table_maintenance_presets_table,
@@ -31,7 +31,7 @@ _REGISTERED = (
     _discovery_settings_table,
     _discovery_rules_table,
     _maintenance_runs_table,
-    _managed_tables_table,
+    _tables_table,
     _table_maintenance_presets_table,
 )
 

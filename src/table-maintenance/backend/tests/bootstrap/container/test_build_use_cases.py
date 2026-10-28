@@ -10,8 +10,8 @@ from unittest.mock import MagicMock
 from pyiceberg.catalog import Catalog
 
 import application.service
-from adapter.outbound.catalog.pyiceberg.read_catalog_pyiceberg_gateway import (
-    ReadCatalogPyIcebergGateway,
+from adapter.outbound.table.pyiceberg.read_table_metadata_pyiceberg_gateway import (
+    ReadTableMetadataPyIcebergGateway,
 )
 from adapter.outbound.discovery.temporal.update_discovery_schedule_temporal_gateway import (
     UpdateDiscoveryScheduleTemporalGateway,
@@ -99,7 +99,7 @@ def test_gateways_are_built_without_connecting():
     finally:
         bridge.close()
 
-    assert isinstance(gateways.read_catalog, ReadCatalogPyIcebergGateway)
+    assert isinstance(gateways.read_table_metadata, ReadTableMetadataPyIcebergGateway)
     assert isinstance(gateways.send_table_signal, SendTableSignalTemporalGateway)
     assert isinstance(
         gateways.send_discovery_request, SendDiscoveryRequestTemporalGateway

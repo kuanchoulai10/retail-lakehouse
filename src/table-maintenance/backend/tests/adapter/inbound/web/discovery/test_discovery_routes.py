@@ -5,7 +5,7 @@ from __future__ import annotations
 from application.port.inbound.discovery.get_discovery_settings import (
     GetDiscoverySettingsUseCaseOutput,
 )
-from application.port.inbound.discovery.sync_discovered_tables import (
+from application.port.inbound.table.sync_discovered_tables import (
     SyncDiscoveredTablesUseCaseInput,
     SyncDiscoveredTablesUseCaseOutput,
 )

@@ -17,8 +17,8 @@ from application.domain.model.maintenance.workflow_ids import (
     table_maintenance_workflow_id,
     table_reconciliation_workflow_id,
 )
-from application.domain.model.managed_table.table_name import TableName
-from application.domain.model.managed_table.table_uuid import TableUuid
+from application.domain.model.table.table_name import TableName
+from application.domain.model.table.table_id import TableId
 
 
 def test_maintenance_operation_ordered_follows_spec_order():
@@ -87,4 +87,4 @@ def test_table_name_rejects_empty_table():
 
 
 def test_table_uuid_wraps_value():
-    assert str(TableUuid("abc")) == "abc"
+    assert str(TableId("abc")) == "abc"

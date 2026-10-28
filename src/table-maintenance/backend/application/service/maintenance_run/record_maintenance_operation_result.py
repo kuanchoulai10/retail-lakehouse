@@ -10,7 +10,7 @@ from application.domain.model.maintenance.maintenance_operation import (
 from application.domain.model.maintenance_run.maintenance_run_id import (
     MaintenanceRunId,
 )
-from application.domain.model.managed_table.table_status import TableStatus
+from application.domain.model.table.table_status import TableStatus
 from application.exceptions import ConflictError, NotFoundError, ValidationError
 from application.port.inbound.maintenance_run.record_maintenance_operation_result import (
     RecordMaintenanceOperationResultUseCase,
@@ -21,12 +21,12 @@ from application.service.translate_domain_errors import translate_domain_errors
 
 if TYPE_CHECKING:
     from application.domain.model.maintenance_run.operation_run import OperationRun
-    from application.domain.model.managed_table.table_uuid import TableUuid
+    from application.domain.model.table.table_id import TableId
     from application.port.outbound.maintenance_run.maintenance_runs_repo import (
         MaintenanceRunsRepo,
     )
-    from application.port.outbound.managed_table.managed_tables_repo import (
-        ManagedTablesRepo,
+    from application.port.outbound.table.tables_repo import (
+        TablesRepo,
     )
 
 _UNKNOWN_ERROR = "unknown error"
@@ -35,9 +35,7 @@ _UNKNOWN_ERROR = "unknown error"
 class RecordMaintenanceOperationResultService(RecordMaintenanceOperationResultUseCase):
     """Record the outcome of an operation attempt on the run and the table."""
 
-    def __init__(
-        self, runs_repo: MaintenanceRunsRepo, tables_repo: ManagedTablesRepo
-    ) -> None:
+    def __init__(self, runs_repo: MaintenanceRunsRepo, tables_repo: TablesRepo) -> None:
         """Bind the repos."""
         self._runs_repo = runs_repo
         self._tables_repo = tables_repo
@@ -89,7 +87,7 @@ class RecordMaintenanceOperationResultService(RecordMaintenanceOperationResultUs
 
     def _record_on_table(
         self,
-        table_uuid: TableUuid,
+        table_uuid: TableId,
         operation: MaintenanceOperation,
         request: RecordMaintenanceOperationResultUseCaseInput,
     ) -> None:

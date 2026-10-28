@@ -15,8 +15,8 @@ if TYPE_CHECKING:
     from application.port.outbound.maintenance_run.maintenance_runs_repo import (
         MaintenanceRunsRepo,
     )
-    from application.port.outbound.managed_table.managed_tables_repo import (
-        ManagedTablesRepo,
+    from application.port.outbound.table.tables_repo import (
+        TablesRepo,
     )
     from application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (
         TableMaintenancePresetsRepo,
@@ -30,5 +30,5 @@ class Repositories:
     discovery_settings: DiscoverySettingsRepo
     discovery_rules: DiscoveryRulesRepo
     maintenance_runs: MaintenanceRunsRepo
-    managed_tables: ManagedTablesRepo
+    tables: TablesRepo
     table_maintenance_presets: TableMaintenancePresetsRepo

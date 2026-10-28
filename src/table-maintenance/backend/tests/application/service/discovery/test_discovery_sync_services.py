@@ -19,32 +19,32 @@ from application.domain.model.maintenance_settings.maintenance_settings import (
 from application.domain.model.maintenance_settings.rewrite_data_files_settings import (
     RewriteDataFilesSettings,
 )
-from application.domain.model.managed_table.managed_table import ManagedTable
-from application.domain.model.managed_table.table_name import TableName
-from application.domain.model.managed_table.table_selection import TableSelection
-from application.domain.model.managed_table.table_status import TableStatus
-from application.domain.model.managed_table.table_uuid import TableUuid
+from application.domain.model.table.table import Table
+from application.domain.model.table.table_name import TableName
+from application.domain.model.table.table_selection import TableSelection
+from application.domain.model.table.table_status import TableStatus
+from application.domain.model.table.table_id import TableId
 from application.domain.model.table_maintenance_preset.table_maintenance_preset import (
     TableMaintenancePreset,
 )
 from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
     TableMaintenancePresetId,
 )
-from application.port.inbound.discovery.process_table_hint import (
+from application.port.inbound.table.process_table_hint import (
     ProcessTableHintUseCaseInput,
 )
-from application.port.inbound.discovery.sync_discovered_tables import (
+from application.port.inbound.table.sync_discovered_tables import (
     SyncDiscoveredTablesUseCaseInput,
 )
 from application.exceptions import ConflictError
 from application.port.inbound.reconcile.plan_table_maintenance import (
     PlanTableMaintenanceUseCaseInput,
 )
-from application.port.outbound.catalog.read_catalog import (
-    ReadCatalogGatewayObservation,
+from application.port.outbound.table.read_table_metadata import (
+    TableMetadataObservation,
 )
-from application.service.discovery.process_table_hint import ProcessTableHintService
-from application.service.discovery.sync_discovered_tables import (
+from application.service.table.process_table_hint import ProcessTableHintService
+from application.service.table.sync_discovered_tables import (
     SyncDiscoveredTablesService,
 )
 from application.service.reconcile.plan_table_maintenance import (
@@ -80,16 +80,16 @@ def _include_all(rules_repo, now):
 
 def _row(repo, now, uuid, name, manual=False):
     if manual:
-        table = ManagedTable.include_manual(
-            TableUuid(uuid),
+        table = Table.include_manual(
+            TableId(uuid),
             name,
             TableMaintenancePresetId("t-1"),
             MaintenanceSettings(),
             now,
         )
     else:
-        table = ManagedTable.register_auto(
-            TableUuid(uuid),
+        table = Table.register_auto(
+            TableId(uuid),
             name,
             DiscoveryRuleId("r-1"),
             TableMaintenancePresetId("t-1"),
@@ -135,7 +135,7 @@ def test_sync_registers_include_match_with_preset_copy(
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
     assert (out.registered, out.renamed, out.dropped, out.skipped) == (1, 0, 0, 0)
-    table = tables_repo.get(TableUuid("u-1"))
+    table = tables_repo.get(TableId("u-1"))
     assert table.selection == TableSelection.AUTO
     assert table.status == TableStatus.ACTIVE
     assert table.settings == PRESET_SETTINGS
@@ -192,8 +192,8 @@ def test_sync_disabled_still_renames_and_drops(
     catalog.add_table("iceberg", "sales", "new", "u-1")
     out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
     assert (out.registered, out.renamed, out.dropped) == (0, 1, 1)
-    assert tables_repo.get(TableUuid("u-1")).name.table == "new"
-    assert tables_repo.get(TableUuid("u-2")).status == TableStatus.DROPPED
+    assert tables_repo.get(TableId("u-1")).name.table == "new"
+    assert tables_repo.get(TableId("u-2")).status == TableStatus.DROPPED
 
 
 def test_sync_skips_table_whose_rule_preset_is_missing(
@@ -214,8 +214,8 @@ def test_sync_namespace_scope_never_drops(sync, tables_repo, catalog, signals, n
         SyncDiscoveredTablesUseCaseInput(catalog="iceberg", namespace="sales")
     )
     assert out.dropped == 0
-    assert tables_repo.get(TableUuid("u-in")).status == TableStatus.ACTIVE
-    assert tables_repo.get(TableUuid("u-other-ns")).status == TableStatus.ACTIVE
+    assert tables_repo.get(TableId("u-in")).status == TableStatus.ACTIVE
+    assert tables_repo.get(TableId("u-other-ns")).status == TableStatus.ACTIVE
     assert signals.calls == []
 
 
@@ -240,9 +240,9 @@ def test_sync_catalog_wide_drops_only_rows_of_that_catalog(
     _row(tables_repo, now, "u-other-cat", TableName("other", "sales", "gone"))
     out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
     assert out.dropped == 2
-    assert tables_repo.get(TableUuid("u-1")).status == TableStatus.DROPPED
-    assert tables_repo.get(TableUuid("u-2")).status == TableStatus.DROPPED
-    assert tables_repo.get(TableUuid("u-other-cat")).status == TableStatus.ACTIVE
+    assert tables_repo.get(TableId("u-1")).status == TableStatus.DROPPED
+    assert tables_repo.get(TableId("u-2")).status == TableStatus.DROPPED
+    assert tables_repo.get(TableId("u-other-cat")).status == TableStatus.ACTIVE
     assert sorted(_calls(signals)) == [("u-1", "stop", False), ("u-2", "stop", False)]
 
 
@@ -250,15 +250,13 @@ def test_sync_drops_excluded_without_stop_signal_and_ignores_dropped(
     sync, tables_repo, catalog, signals, now
 ):
     tables_repo.create(
-        ManagedTable.exclude_manual(
-            TableUuid("u-1"), TableName("iceberg", "sales", "x"), now
-        )
+        Table.exclude_manual(TableId("u-1"), TableName("iceberg", "sales", "x"), now)
     )
     already = _row(tables_repo, now, "u-2", TableName("iceberg", "sales", "y"))
     already.mark_dropped(now)
     out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
     assert out.dropped == 1
-    assert tables_repo.get(TableUuid("u-1")).status == TableStatus.DROPPED
+    assert tables_repo.get(TableId("u-1")).status == TableStatus.DROPPED
     assert signals.calls == []
 
 
@@ -270,7 +268,7 @@ def test_sync_dropped_row_whose_uuid_reappears_is_not_renamed_or_revived(
     catalog.add_table("iceberg", "sales", "new", "u-1")
     out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
     assert (out.registered, out.renamed, out.dropped, out.skipped) == (0, 0, 0, 0)
-    stored = tables_repo.get(TableUuid("u-1"))
+    stored = tables_repo.get(TableId("u-1"))
     assert stored.status == TableStatus.DROPPED
     assert stored.name.table == "old"
     assert signals.calls == []
@@ -302,7 +300,7 @@ def test_sync_one_bad_table_is_skipped_not_fatal(
     monkeypatch.setattr(tables_repo, "create", create)
     out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
     assert (out.registered, out.skipped) == (1, 1)
-    assert tables_repo.get(TableUuid("u-ok")) is not None
+    assert tables_repo.get(TableId("u-ok")) is not None
 
 
 def test_sync_persists_rename(sync, tables_repo, catalog, log, now):
@@ -319,10 +317,8 @@ def test_sync_rename_keeps_settings(sync, tables_repo, catalog, signals, now):
     catalog.add_table("iceberg", "sales", "new", "u-1")
     out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
     assert (out.registered, out.renamed, out.dropped) == (0, 1, 0)
-    assert tables_repo.get(TableUuid("u-1")).name == TableName(
-        "iceberg", "sales", "new"
-    )
-    assert tables_repo.get(TableUuid("u-1")).settings == settings
+    assert tables_repo.get(TableId("u-1")).name == TableName("iceberg", "sales", "new")
+    assert tables_repo.get(TableId("u-1")).settings == settings
     assert _calls(signals) == [("u-1", "table_updated", True)]
 
 
@@ -406,8 +402,8 @@ def test_table_hint_for_excluded_registered_table_is_ignored(
     hint, tables_repo, catalog, signals, now
 ):
     tables_repo.create(
-        ManagedTable.exclude_manual(
-            TableUuid("u-1"), TableName("iceberg", "sales", "orders"), now
+        Table.exclude_manual(
+            TableId("u-1"), TableName("iceberg", "sales", "orders"), now
         )
     )
     catalog.add_table("iceberg", "sales", "orders", "u-1")
@@ -416,7 +412,7 @@ def test_table_hint_for_excluded_registered_table_is_ignored(
 
 
 def _busy_observation(uuid):
-    return ReadCatalogGatewayObservation(
+    return TableMetadataObservation(
         table_uuid=uuid,
         specs=[{"spec_id": 0, "fields": []}],
         partitions=[
@@ -458,7 +454,7 @@ def test_table_hint_with_new_name_renames_then_signals(
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     out = hint.execute(_hint())
     assert out.action == "renamed"
-    assert tables_repo.get(TableUuid("u-1")).name.table == "orders"
+    assert tables_repo.get(TableId("u-1")).name.table == "orders"
     assert _calls(signals) == [("u-1", "table_updated", True)]
 
 
@@ -468,7 +464,7 @@ def test_table_hint_registers_unregistered_table_by_rules(
     _include_all(rules_repo, now)
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     assert hint.execute(_hint()).action == "registered"
-    assert tables_repo.get(TableUuid("u-1")).selection == TableSelection.AUTO
+    assert tables_repo.get(TableId("u-1")).selection == TableSelection.AUTO
     assert _calls(signals) == [("u-1", "resume", True)]
 
 
@@ -527,7 +523,7 @@ def test_table_hint_new_uuid_over_live_same_name_row_requests_catalog_discovery(
     _row(tables_repo, now, "u-old", TableName("iceberg", "sales", "orders"))
     catalog.add_table("iceberg", "sales", "orders", "u-new")
     assert hint.execute(_hint()).action == "registered"
-    assert tables_repo.get(TableUuid("u-new")) is not None
+    assert tables_repo.get(TableId("u-new")) is not None
     assert [(c.catalog, c.namespace) for c in discovery_requests.calls] == [
         ("iceberg", None)
     ]
@@ -574,7 +570,7 @@ def test_sync_retry_after_failed_start_still_starts_workflow(
     _fail_first_send(signals, monkeypatch)
     with pytest.raises(RuntimeError):
         sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
-    assert tables_repo.get(TableUuid("u-1")) is not None
+    assert tables_repo.get(TableId("u-1")) is not None
     out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
     assert (out.registered, out.ensured) == (0, 1)
     assert _calls(signals) == [("u-1", "table_updated", True)]
@@ -586,8 +582,8 @@ def test_sync_reensures_workflow_of_every_live_table_that_needs_one(
     _row(tables_repo, now, "u-active", TableName("iceberg", "sales", "a"))
     _row(tables_repo, now, "u-paused", TableName("iceberg", "sales", "p")).pause(now)
     tables_repo.create(
-        ManagedTable.exclude_manual(
-            TableUuid("u-excluded"), TableName("iceberg", "sales", "x"), now
+        Table.exclude_manual(
+            TableId("u-excluded"), TableName("iceberg", "sales", "x"), now
         )
     )
     _row(
@@ -646,6 +642,6 @@ def test_table_hint_retry_after_failed_start_still_starts_workflow(
     _fail_first_send(signals, monkeypatch)
     with pytest.raises(RuntimeError):
         hint.execute(_hint())
-    assert tables_repo.get(TableUuid("u-1")) is not None
+    assert tables_repo.get(TableId("u-1")) is not None
     assert hint.execute(_hint()).action == "signalled"
     assert _calls(signals) == [("u-1", "table_updated", True)]

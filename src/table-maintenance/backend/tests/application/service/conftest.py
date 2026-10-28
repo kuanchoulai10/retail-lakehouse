@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.fakes.fake_read_catalog_gateway import FakeReadCatalogGateway
+from tests.fakes.fake_read_table_metadata_gateway import FakeReadTableMetadataGateway
 from tests.fakes.fake_read_maintenance_job_gateway import (
     FakeReadMaintenanceJobGateway,
 )
@@ -28,7 +28,7 @@ from tests.fakes.in_memory_discovery_rules_repo import InMemoryDiscoveryRulesRep
 from tests.fakes.in_memory_discovery_settings_repo import (
     InMemoryDiscoverySettingsRepo,
 )
-from tests.fakes.in_memory_managed_tables_repo import InMemoryManagedTablesRepo
+from tests.fakes.in_memory_tables_repo import InMemoryTablesRepo
 from tests.fakes.in_memory_table_maintenance_presets_repo import (
     InMemoryTableMaintenancePresetsRepo,
 )
@@ -77,8 +77,8 @@ def discovery_settings_repo() -> InMemoryDiscoverySettingsRepo:
 
 
 @pytest.fixture
-def tables_repo() -> InMemoryManagedTablesRepo:
-    return InMemoryManagedTablesRepo()
+def tables_repo() -> InMemoryTablesRepo:
+    return InMemoryTablesRepo()
 
 
 @pytest.fixture
@@ -92,8 +92,8 @@ def schedule() -> RecordingUpdateDiscoveryScheduleGateway:
 
 
 @pytest.fixture
-def catalog() -> FakeReadCatalogGateway:
-    return FakeReadCatalogGateway()
+def catalog() -> FakeReadTableMetadataGateway:
+    return FakeReadTableMetadataGateway()
 
 
 @pytest.fixture

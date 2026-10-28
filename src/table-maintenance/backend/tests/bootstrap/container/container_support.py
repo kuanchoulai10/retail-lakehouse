@@ -10,7 +10,7 @@ from sqlalchemy import Engine
 from adapter.outbound.sql.create_schema import create_schema
 from bootstrap.configs import AppSettings, DatabaseBackend, SqliteSettings
 from bootstrap.container import Gateways, build_engine
-from tests.fakes.fake_read_catalog_gateway import FakeReadCatalogGateway
+from tests.fakes.fake_read_table_metadata_gateway import FakeReadTableMetadataGateway
 from tests.fakes.fake_read_maintenance_job_gateway import FakeReadMaintenanceJobGateway
 from tests.fakes.recording_delete_maintenance_job_gateway import (
     RecordingDeleteMaintenanceJobGateway,
@@ -54,7 +54,7 @@ def sqlite_engine() -> Engine:
 def fake_gateways() -> Gateways:
     """Return a Gateways bundle made only of in-process fakes."""
     return Gateways(
-        read_catalog=FakeReadCatalogGateway(),
+        read_table_metadata=FakeReadTableMetadataGateway(),
         send_table_signal=RecordingSendTableSignalGateway(),
         send_discovery_request=RecordingSendDiscoveryRequestGateway(),
         send_maintenance_result=RecordingSendMaintenanceResultGateway(),

@@ -6,7 +6,7 @@ import logging
 
 from adapter.inbound.event_consumer.parse_polaris_event import parse_polaris_event
 from adapter.inbound.event_consumer.polaris_event import PolarisEvent
-from application.port.inbound.discovery.process_table_hint import (
+from application.port.inbound.table.process_table_hint import (
     ProcessTableHintUseCaseInput,
 )
 

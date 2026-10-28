@@ -12,8 +12,8 @@ from application.domain.model.maintenance.maintenance_plan import MaintenancePla
 from application.domain.model.maintenance_settings.maintenance_settings import (
     MaintenanceSettings,
 )
-from application.domain.model.managed_table.table_status import TableStatus
-from application.domain.model.managed_table.table_uuid import TableUuid
+from application.domain.model.table.table_status import TableStatus
+from application.domain.model.table.table_id import TableId
 from application.domain.service.build_partition_filters import build_partition_filters
 from application.domain.service.plan_manual_maintenance import plan_manual_maintenance
 from application.domain.service.plan_scheduled_maintenance import (
@@ -27,8 +27,8 @@ from application.port.inbound.reconcile.plan_table_maintenance import (
     PlanTableMaintenanceUseCaseOutputFilterItem,
     PlanTableMaintenanceUseCaseOutputItem,
 )
-from application.port.outbound.catalog.read_catalog import ReadCatalogGatewayTableRef
-from application.service.catalog.table_observation_from_gateway import (
+from application.port.outbound.table.read_table_metadata import TableMetadataRef
+from application.service.table.table_observation_from_gateway import (
     table_observation_from_gateway,
 )
 from application.service.reconcile.maintenance_procedure_args import (
@@ -40,13 +40,15 @@ if TYPE_CHECKING:
     from application.domain.model.maintenance.planned_operation import (
         PlannedOperation,
     )
-    from application.domain.model.managed_table.managed_table import ManagedTable
+    from application.domain.model.table.table import Table
     from application.domain.model.observation.table_observation import (
         TableObservation,
     )
-    from application.port.outbound.catalog.read_catalog import ReadCatalogGateway
-    from application.port.outbound.managed_table.managed_tables_repo import (
-        ManagedTablesRepo,
+    from application.port.outbound.table.read_table_metadata import (
+        ReadTableMetadataGateway,
+    )
+    from application.port.outbound.table.tables_repo import (
+        TablesRepo,
     )
 
 logger = logging.getLogger(__name__)
@@ -62,7 +64,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
     """Decide which maintenance operations a table needs right now."""
 
     def __init__(
-        self, tables_repo: ManagedTablesRepo, catalog_gateway: ReadCatalogGateway
+        self, tables_repo: TablesRepo, catalog_gateway: ReadTableMetadataGateway
     ) -> None:
         """Bind the repo and the catalog gateway."""
         self._tables_repo = tables_repo
@@ -78,14 +80,14 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         paused or gone from the catalog; otherwise it is planned, possibly empty.
         """
         manual = self._parse_manual(request.manual_operations)
-        table = self._tables_repo.get(TableUuid(request.table_uuid))
+        table = self._tables_repo.get(TableId(request.table_uuid))
         if table is None:
             return _skip("dropped", MaintenanceSettings(), None)
         settings = table.settings or MaintenanceSettings()
         reason = _SKIP_REASONS.get(table.status)
         if reason is not None:
             return _skip(reason, settings, table)
-        ref = ReadCatalogGatewayTableRef(
+        ref = TableMetadataRef(
             table.name.catalog, table.name.namespace, table.name.table
         )
         gateway_observation = self._catalog_gateway.observe_table(ref)
@@ -105,7 +107,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
 
     def _render(
         self,
-        table: ManagedTable,
+        table: Table,
         settings: MaintenanceSettings,
         plan: MaintenancePlan,
         observation: TableObservation,
@@ -147,7 +149,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
 
 
 def _partition_filters(
-    table: ManagedTable, observation: TableObservation, planned: PlannedOperation
+    table: Table, observation: TableObservation, planned: PlannedOperation
 ) -> list[PlanTableMaintenanceUseCaseOutputFilterItem]:
     """Render the partition filters, or none (the whole table) if one cannot be.
 
@@ -176,7 +178,7 @@ def _interval(settings: MaintenanceSettings) -> int:
 
 
 def _skip(
-    reason: str, settings: MaintenanceSettings, table: ManagedTable | None
+    reason: str, settings: MaintenanceSettings, table: Table | None
 ) -> PlanTableMaintenanceUseCaseOutput:
     return PlanTableMaintenanceUseCaseOutput(
         status="skip",
