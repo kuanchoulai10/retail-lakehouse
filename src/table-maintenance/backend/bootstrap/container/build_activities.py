@@ -33,8 +33,8 @@ def build_activities(
             callback_base_url=settings.callback_base_url,
         ),
         maintenance=TableMaintenanceActivities(
-            create_run=use_cases.create_maintenance_run,
-            record_result=use_cases.record_maintenance_operation_result,
+            create_run=use_cases.create_table_maintenance_run,
+            record_result=use_cases.record_table_maintenance_operation_result,
         ),
         discovery=TableDiscoveryActivities(sync=use_cases.sync_discovered_tables),
         workflow_signal=WorkflowSignalActivities(

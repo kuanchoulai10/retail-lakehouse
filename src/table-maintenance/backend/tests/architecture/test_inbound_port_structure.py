@@ -30,7 +30,7 @@ AGGREGATE_GROUPS = [
     "table_discovery_settings",
     "table_discovery_rule",
     "table",
-    "maintenance_run",
+    "table_maintenance_run",
     "table_maintenance_preset",
     "reconcile",
 ]

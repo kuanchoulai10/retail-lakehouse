@@ -5,7 +5,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
-from application.domain.model.maintenance_run.invalid_run_transition import (
+from application.domain.model.table_maintenance_run.invalid_run_transition import (
     InvalidRunTransition,
 )
 from application.domain.model.table.invalid_table_transition import (

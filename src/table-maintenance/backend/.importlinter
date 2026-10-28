@@ -82,7 +82,7 @@ forbidden_modules =
     application.domain.service
     application.domain.model.table_discovery_settings
     application.domain.model.table_discovery_rule
-    application.domain.model.maintenance_run
+    application.domain.model.table_maintenance_run
     application.domain.model.maintenance_settings
     application.domain.model.table
     application.domain.model.observation

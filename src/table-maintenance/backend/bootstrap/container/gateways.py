@@ -12,13 +12,13 @@ if TYPE_CHECKING:
     from application.port.outbound.table_discovery_settings.update_table_discovery_schedule import (
         UpdateTableDiscoveryScheduleGateway,
     )
-    from application.port.outbound.spark.delete_maintenance_job import (
+    from application.port.outbound.table_maintenance_run.delete_maintenance_job import (
         DeleteMaintenanceJobGateway,
     )
-    from application.port.outbound.spark.read_maintenance_job import (
+    from application.port.outbound.table_maintenance_run.read_maintenance_job import (
         ReadMaintenanceJobGateway,
     )
-    from application.port.outbound.spark.submit_maintenance_job import (
+    from application.port.outbound.table_maintenance_run.submit_maintenance_job import (
         SubmitMaintenanceJobGateway,
     )
     from application.port.outbound.workflow.send_discovery_request import (

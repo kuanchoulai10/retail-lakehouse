@@ -86,7 +86,7 @@ class TableMaintenanceWorkflow:
                 {
                     "run_id": input.run_id,
                     "table_uuid": input.table_uuid,
-                    "workflow_id": workflow.info().workflow_id,
+                    "execution_ref": workflow.info().workflow_id,
                     "trigger": input.trigger,
                     "operations": [op["operation"] for op in operations],
                     "now": _now(),
@@ -165,7 +165,7 @@ class TableMaintenanceWorkflow:
         except ActivityError as error:
             _raise_if_cancelled(error)
             return self._failure(name, attempt, f"submit failed: {_message(error)}")
-        return await self._await_outcome(name, attempt, submitted["app_name"])
+        return await self._await_outcome(name, attempt, submitted["job_name"])
 
     async def _acquire(self, request_id: str) -> None:
         request = {
@@ -195,7 +195,7 @@ class TableMaintenanceWorkflow:
             workflow.logger.warning("release of %s failed: %s", request_id, error)
 
     async def _await_outcome(
-        self, name: str, attempt: int, app_name: str
+        self, name: str, attempt: int, job_name: str
     ) -> OperationResultSignal:
         key = (name, attempt)
         submitted_at = workflow.now()
@@ -218,7 +218,7 @@ class TableMaintenanceWorkflow:
                 pass
             if workflow.now() >= deadline:
                 continue
-            status = await self._job_status(app_name)
+            status = await self._job_status(name, attempt)
             if status is None:
                 continue
             state = status["state"]
@@ -234,7 +234,7 @@ class TableMaintenanceWorkflow:
             completed_since = completed_since or workflow.now()
             if workflow.now() - completed_since >= _CALLBACK_GRACE:
                 workflow.logger.warning(
-                    "%s completed without callback; recording success", app_name
+                    "%s completed without callback; recording success", job_name
                 )
                 return OperationResultSignal(
                     run_id=self._run_id,
@@ -245,14 +245,17 @@ class TableMaintenanceWorkflow:
                     error=None,
                 )
 
-    async def _job_status(self, app_name: str) -> dict[str, Any] | None:
+    async def _job_status(self, name: str, attempt: int) -> dict[str, Any] | None:
         try:
             return await self._activity(
-                GET_MAINTENANCE_JOB_STATUS, {"app_name": app_name}
+                GET_MAINTENANCE_JOB_STATUS,
+                {"run_id": self._run_id, "operation": name, "attempt": attempt},
             )
         except ActivityError as error:
             _raise_if_cancelled(error)
-            workflow.logger.warning("status of %s unknown: %s", app_name, error)
+            workflow.logger.warning(
+                "status of %s attempt %s unknown: %s", name, attempt, error
+            )
             return None
 
     async def _record(self, outcome: OperationResultSignal) -> None:

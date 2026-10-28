@@ -72,31 +72,31 @@ if TYPE_CHECKING:
     from application.port.inbound.table.update_table_settings import (
         UpdateTableSettingsUseCase,
     )
-    from application.port.inbound.maintenance_run.create_maintenance_run import (
-        CreateMaintenanceRunUseCase,
+    from application.port.inbound.table_maintenance_run.create_table_maintenance_run import (
+        CreateTableMaintenanceRunUseCase,
     )
-    from application.port.inbound.maintenance_run.get_maintenance_run import (
-        GetMaintenanceRunUseCase,
+    from application.port.inbound.table_maintenance_run.get_table_maintenance_run import (
+        GetTableMaintenanceRunUseCase,
     )
-    from application.port.inbound.maintenance_run.list_maintenance_runs import (
-        ListMaintenanceRunsUseCase,
+    from application.port.inbound.table_maintenance_run.list_table_maintenance_runs import (
+        ListTableMaintenanceRunsUseCase,
     )
-    from application.port.inbound.maintenance_run.process_maintenance_callback import (
-        ProcessMaintenanceCallbackUseCase,
+    from application.port.inbound.table_maintenance_run.process_table_maintenance_callback import (
+        ProcessTableMaintenanceCallbackUseCase,
     )
-    from application.port.inbound.maintenance_run.record_maintenance_operation_result import (
-        RecordMaintenanceOperationResultUseCase,
+    from application.port.inbound.table_maintenance_run.record_table_maintenance_operation_result import (
+        RecordTableMaintenanceOperationResultUseCase,
     )
-    from application.port.inbound.reconcile.delete_maintenance_job import (
+    from application.port.inbound.table_maintenance_run.delete_maintenance_job import (
         DeleteMaintenanceJobUseCase,
     )
-    from application.port.inbound.reconcile.get_maintenance_job_status import (
+    from application.port.inbound.table_maintenance_run.get_maintenance_job_status import (
         GetMaintenanceJobStatusUseCase,
     )
-    from application.port.inbound.reconcile.plan_table_maintenance import (
+    from application.port.inbound.table.plan_table_maintenance import (
         PlanTableMaintenanceUseCase,
     )
-    from application.port.inbound.reconcile.submit_maintenance_operation import (
+    from application.port.inbound.table_maintenance_run.submit_maintenance_operation import (
         SubmitMaintenanceOperationUseCase,
     )
 
@@ -127,11 +127,13 @@ class UseCases:
     resume_table: ResumeTableUseCase
     trigger_table_maintenance: TriggerTableMaintenanceUseCase
     update_table_settings: UpdateTableSettingsUseCase
-    create_maintenance_run: CreateMaintenanceRunUseCase
-    get_maintenance_run: GetMaintenanceRunUseCase
-    list_maintenance_runs: ListMaintenanceRunsUseCase
-    process_maintenance_callback: ProcessMaintenanceCallbackUseCase
-    record_maintenance_operation_result: RecordMaintenanceOperationResultUseCase
+    create_table_maintenance_run: CreateTableMaintenanceRunUseCase
+    get_table_maintenance_run: GetTableMaintenanceRunUseCase
+    list_table_maintenance_runs: ListTableMaintenanceRunsUseCase
+    process_table_maintenance_callback: ProcessTableMaintenanceCallbackUseCase
+    record_table_maintenance_operation_result: (
+        RecordTableMaintenanceOperationResultUseCase
+    )
     delete_maintenance_job: DeleteMaintenanceJobUseCase
     get_maintenance_job_status: GetMaintenanceJobStatusUseCase
     plan_table_maintenance: PlanTableMaintenanceUseCase

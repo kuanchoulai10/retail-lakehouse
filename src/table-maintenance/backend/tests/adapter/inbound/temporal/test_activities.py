@@ -13,7 +13,7 @@ from adapter.inbound.temporal.activities import (
     TableReconciliationActivities,
 )
 from application.exceptions import NotFoundError
-from application.port.inbound.reconcile.submit_maintenance_operation import (
+from application.port.inbound.table_maintenance_run.submit_maintenance_operation import (
     SubmitMaintenanceOperationUseCaseInputFilterItem,
 )
 from tests.adapter.inbound.temporal.use_case_fakes import (
@@ -102,7 +102,7 @@ def test_submit_injects_callback_base_url_and_converts_filters():
     assert request.procedure_args == {"a": 1}
     assert request.callback_base_url == "http://cp:8000"
     assert request.now == NOW_DT
-    assert result == {"app_name": "app-1"}
+    assert result == {"job_name": "app-1"}
 
 
 def test_submit_translates_not_found_to_non_retryable():
@@ -137,13 +137,23 @@ def test_submit_keeps_other_errors_retryable():
         )
 
 
-def test_status_passes_app_name():
+def test_status_passes_the_attempt_triple():
     activities, fakes = _reconcile()
-    assert activities.get_maintenance_job_status({"app_name": "app-9"}) == {
+    request = {"run_id": "r9", "operation": "expire_snapshots", "attempt": 3}
+    assert activities.get_maintenance_job_status(request) == {
         "state": "FAILED",
         "error": "oom",
     }
-    assert fakes["status"].requests[0].app_name == "app-9"
+    status_request = fakes["status"].requests[0]
+    assert (
+        status_request.run_id,
+        status_request.operation,
+        status_request.attempt,
+    ) == (
+        "r9",
+        "expire_snapshots",
+        3,
+    )
 
 
 def test_delete_passes_the_attempt_triple():
@@ -157,25 +167,29 @@ def test_delete_passes_the_attempt_triple():
         "expire_snapshots",
         2,
     )
-    assert result == {"app_name": "r1-expire_snapshots-2"}
+    assert result == {
+        "run_id": "r1",
+        "operation": "expire_snapshots",
+        "attempt": 2,
+    }
 
 
 def test_create_run_passes_fields_and_returns_iso_dict():
     create, record = FakeCreateRun(), FakeRecordResult()
     activities = TableMaintenanceActivities(create_run=create, record_result=record)
-    result = activities.create_maintenance_run(
+    result = activities.create_table_maintenance_run(
         {
             "run_id": "r1",
             "table_uuid": "u1",
             "trigger": "scheduled",
             "operations": ["rewrite_data_files", "expire_snapshots"],
-            "workflow_id": "wf-r1",
+            "execution_ref": "wf-r1",
             "now": NOW,
         }
     )
     request = create.requests[0]
     assert request.run_id == "r1"
-    assert request.workflow_id == "wf-r1"
+    assert request.execution_ref == "wf-r1"
     assert request.table_uuid == "u1"
     assert request.trigger == "scheduled"
     assert request.operations == ["rewrite_data_files", "expire_snapshots"]
@@ -188,7 +202,7 @@ def test_create_run_passes_fields_and_returns_iso_dict():
 def test_record_result_passes_fields():
     create, record = FakeCreateRun(), FakeRecordResult()
     activities = TableMaintenanceActivities(create_run=create, record_result=record)
-    result = activities.record_maintenance_operation_result(
+    result = activities.record_table_maintenance_operation_result(
         {
             "run_id": "r1",
             "operation": "expire_snapshots",

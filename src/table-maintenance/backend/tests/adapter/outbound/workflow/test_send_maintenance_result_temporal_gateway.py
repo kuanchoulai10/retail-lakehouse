@@ -19,7 +19,7 @@ from application.port.outbound.workflow.send_maintenance_result import (
 
 def _input(run_id: str, workflow_id: str) -> SendMaintenanceResultGatewayInput:
     return SendMaintenanceResultGatewayInput(
-        workflow_id=workflow_id,
+        execution_ref=workflow_id,
         run_id=run_id,
         operation="rewrite_data_files",
         attempt=1,

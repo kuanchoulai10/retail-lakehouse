@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.port.outbound.spark.read_maintenance_job import (
+from application.port.outbound.table_maintenance_run.read_maintenance_job import (
     ReadMaintenanceJobGateway,
     ReadMaintenanceJobGatewayOutput,
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.spark.read_maintenance_job import (
+    from application.port.outbound.table_maintenance_run.read_maintenance_job import (
         ReadMaintenanceJobGatewayInput,
     )
 
@@ -20,12 +20,21 @@ class FakeReadMaintenanceJobGateway(ReadMaintenanceJobGateway):
 
     def __init__(self) -> None:
         """Start with no configured jobs."""
-        self.states: dict[str, ReadMaintenanceJobGatewayOutput] = {}
+        self.states: dict[tuple[str, str, int], ReadMaintenanceJobGatewayOutput] = {}
         self.calls: list[ReadMaintenanceJobGatewayInput] = []
 
-    def set_state(self, app_name: str, state: str, error: str | None = None) -> None:
-        """Configure the state returned for an application name."""
-        self.states[app_name] = ReadMaintenanceJobGatewayOutput(state, error)
+    def set_state(
+        self,
+        run_id: str,
+        operation: str,
+        attempt: int,
+        state: str,
+        error: str | None = None,
+    ) -> None:
+        """Configure the state returned for one operation attempt."""
+        self.states[(run_id, operation, attempt)] = ReadMaintenanceJobGatewayOutput(
+            state, error
+        )
 
     def read(
         self,
@@ -34,5 +43,6 @@ class FakeReadMaintenanceJobGateway(ReadMaintenanceJobGateway):
         """Return the configured state, or NOT_FOUND."""
         self.calls.append(input)
         return self.states.get(
-            input.app_name, ReadMaintenanceJobGatewayOutput("NOT_FOUND")
+            (input.run_id, input.operation, input.attempt),
+            ReadMaintenanceJobGatewayOutput("NOT_FOUND"),
         )

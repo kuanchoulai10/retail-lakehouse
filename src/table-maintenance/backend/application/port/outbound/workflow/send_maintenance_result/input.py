@@ -9,11 +9,11 @@ from dataclasses import dataclass
 class SendMaintenanceResultGatewayInput:
     """Carry the arguments to send a maintenance result to the workflow.
 
-    ``workflow_id`` is the workflow execution recorded on the run, never rebuilt
+    ``execution_ref`` is the workflow execution recorded on the run, never rebuilt
     from ``run_id``.
     """
 
-    workflow_id: str
+    execution_ref: str
     run_id: str
     operation: str
     attempt: int

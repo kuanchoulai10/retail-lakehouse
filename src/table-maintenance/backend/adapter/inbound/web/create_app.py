@@ -11,7 +11,9 @@ from adapter.inbound.web.table_discovery_rule.router import (
     router as table_discovery_rule_router,
 )
 from adapter.inbound.web.error_handlers import register_error_handlers
-from adapter.inbound.web.maintenance_run.router import router as maintenance_run_router
+from adapter.inbound.web.table_maintenance_run.router import (
+    router as table_maintenance_run_router,
+)
 from adapter.inbound.web.table.router import router as table_router
 from adapter.inbound.web.table_maintenance_preset.router import (
     router as table_maintenance_preset_router,
@@ -34,7 +36,7 @@ def create_app(use_cases: WebUseCases) -> FastAPI:
         discovery_router,
         table_maintenance_preset_router,
         table_router,
-        maintenance_run_router,
+        table_maintenance_run_router,
     ):
         app.include_router(router, prefix=_API_PREFIX)
 

@@ -64,10 +64,10 @@ class ScriptedMaintenanceActivities:
 
     def _workflow_id_of(self, run_id: str) -> str:
         """Look the workflow up on the created run, as the callback path does."""
-        return next(c["workflow_id"] for c in self.created if c["run_id"] == run_id)
+        return next(c["execution_ref"] for c in self.created if c["run_id"] == run_id)
 
     @activity.defn(name=CREATE_MAINTENANCE_RUN)
-    async def create_maintenance_run(self, request: dict) -> dict:
+    async def create_table_maintenance_run(self, request: dict) -> dict:
         self.created.append(request)
         if self.create_gate is not None:
             await self.create_gate.wait()
@@ -99,12 +99,14 @@ class ScriptedMaintenanceActivities:
                 ),
             )
         return {
-            "app_name": self.app_name(request["run_id"], *key),
+            "job_name": self.app_name(request["run_id"], *key),
         }
 
     @activity.defn(name=GET_MAINTENANCE_JOB_STATUS)
     async def get_maintenance_job_status(self, request: dict) -> dict:
-        app_name = request["app_name"]
+        app_name = self.app_name(
+            request["run_id"], request["operation"], request["attempt"]
+        )
         self.status_calls.append(app_name)
         self.status_times.append(activity.info().scheduled_time)
         if self.status_gate is not None:
@@ -118,7 +120,7 @@ class ScriptedMaintenanceActivities:
         return state
 
     @activity.defn(name=RECORD_MAINTENANCE_OPERATION_RESULT)
-    async def record_maintenance_operation_result(self, request: dict) -> dict:
+    async def record_table_maintenance_operation_result(self, request: dict) -> dict:
         self.records.append(request)
         if (request["operation"], request["attempt"]) in self.record_errors:
             raise ApplicationError("db down", type="ConflictError", non_retryable=True)
@@ -130,13 +132,17 @@ class ScriptedMaintenanceActivities:
             request["run_id"], request["operation"], request["attempt"]
         )
         self.deletes.append(app_name)
-        return {"app_name": app_name}
+        return {
+            "run_id": request["run_id"],
+            "operation": request["operation"],
+            "attempt": request["attempt"],
+        }
 
     def all(self) -> list:
         return [
-            self.create_maintenance_run,
+            self.create_table_maintenance_run,
             self.submit_maintenance_operation,
             self.get_maintenance_job_status,
-            self.record_maintenance_operation_result,
+            self.record_table_maintenance_operation_result,
             self.delete_maintenance_job,
         ]

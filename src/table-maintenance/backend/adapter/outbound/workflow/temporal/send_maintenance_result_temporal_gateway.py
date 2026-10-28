@@ -35,7 +35,7 @@ class SendMaintenanceResultTemporalGateway(SendMaintenanceResultGateway):
         self._bridge.run(lambda: self._send(input))
 
     async def _send(self, input: SendMaintenanceResultGatewayInput) -> None:  # noqa: A002
-        handle = self._client.get_workflow_handle(input.workflow_id)
+        handle = self._client.get_workflow_handle(input.execution_ref)
         result = OperationResultSignal(
             run_id=input.run_id,
             operation=input.operation,
@@ -49,7 +49,7 @@ class SendMaintenanceResultTemporalGateway(SendMaintenanceResultGateway):
         except RPCError as error:
             if error.status == RPCStatusCode.NOT_FOUND:
                 msg = (
-                    f"Table maintenance workflow {input.workflow_id} of run "
+                    f"Table maintenance workflow {input.execution_ref} of run "
                     f"{input.run_id} not found"
                 )
                 raise NotFoundError(msg) from error

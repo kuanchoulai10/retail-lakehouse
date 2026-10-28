@@ -183,7 +183,7 @@ def test_operations_run_in_order_and_parent_signalled():
         assert h.fakes.created[0]["table_uuid"] == "u1"
         assert h.fakes.created[0]["trigger"] == "scheduled"
         assert h.fakes.created[0]["operations"] == [COMPACTION, EXPIRE]
-        assert h.fakes.created[0]["workflow_id"] == WORKFLOW_ID
+        assert h.fakes.created[0]["execution_ref"] == WORKFLOW_ID
         first = h.fakes.submits[0]
         assert first["filters"] == [{"spec_id": 0, "where": f"{COMPACTION} = 1"}]
         assert first["procedure_args"] == {"op": COMPACTION}

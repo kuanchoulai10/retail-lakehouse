@@ -10,11 +10,8 @@ from adapter.outbound.table_discovery_settings.sql.table_discovery_settings_tabl
 from adapter.outbound.table_discovery_rule.sql.table_discovery_rules_table import (
     table_discovery_rules_table as _table_discovery_rules_table,
 )
-from adapter.outbound.maintenance_run.sql.add_maintenance_run_workflow_id_column import (
-    add_maintenance_run_workflow_id_column,
-)
-from adapter.outbound.maintenance_run.sql.maintenance_runs_table import (
-    maintenance_runs_table as _maintenance_runs_table,
+from adapter.outbound.table_maintenance_run.sql.table_maintenance_runs_table import (
+    table_maintenance_runs_table as _table_maintenance_runs_table,
 )
 from adapter.outbound.table.sql.tables_table import (
     tables_table as _tables_table,
@@ -30,17 +27,12 @@ if TYPE_CHECKING:
 _REGISTERED = (
     _table_discovery_settings_table,
     _table_discovery_rules_table,
-    _maintenance_runs_table,
+    _table_maintenance_runs_table,
     _tables_table,
     _table_maintenance_presets_table,
 )
 
 
 def create_schema(engine: Engine) -> None:
-    """Create every control-plane table that does not exist yet, then upgrade.
-
-    ``create_all`` only adds missing tables; each upgrade adds what an older
-    table lacks and is idempotent.
-    """
+    """Create every control-plane table that does not exist yet."""
     metadata.create_all(engine)
-    add_maintenance_run_workflow_id_column(engine)

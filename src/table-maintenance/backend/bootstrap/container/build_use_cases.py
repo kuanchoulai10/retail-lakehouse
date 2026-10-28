@@ -27,20 +27,20 @@ from application.service.table_discovery_rule.list_table_discovery_rules import 
 from application.service.table_discovery_rule.update_table_discovery_rule import (
     UpdateTableDiscoveryRuleService,
 )
-from application.service.maintenance_run.create_maintenance_run import (
-    CreateMaintenanceRunService,
+from application.service.table_maintenance_run.create_table_maintenance_run import (
+    CreateTableMaintenanceRunService,
 )
-from application.service.maintenance_run.get_maintenance_run import (
-    GetMaintenanceRunService,
+from application.service.table_maintenance_run.get_table_maintenance_run import (
+    GetTableMaintenanceRunService,
 )
-from application.service.maintenance_run.list_maintenance_runs import (
-    ListMaintenanceRunsService,
+from application.service.table_maintenance_run.list_table_maintenance_runs import (
+    ListTableMaintenanceRunsService,
 )
-from application.service.maintenance_run.process_maintenance_callback import (
-    ProcessMaintenanceCallbackService,
+from application.service.table_maintenance_run.process_table_maintenance_callback import (
+    ProcessTableMaintenanceCallbackService,
 )
-from application.service.maintenance_run.record_maintenance_operation_result import (
-    RecordMaintenanceOperationResultService,
+from application.service.table_maintenance_run.record_table_maintenance_operation_result import (
+    RecordTableMaintenanceOperationResultService,
 )
 from application.service.table.exclude_table import (
     ExcludeTableService,
@@ -82,16 +82,16 @@ from application.service.table_maintenance_preset.list_table_maintenance_presets
 from application.service.table_maintenance_preset.update_table_maintenance_preset import (
     UpdateTableMaintenancePresetService,
 )
-from application.service.reconcile.delete_maintenance_job import (
+from application.service.table_maintenance_run.delete_maintenance_job import (
     DeleteMaintenanceJobService,
 )
-from application.service.reconcile.get_maintenance_job_status import (
+from application.service.table_maintenance_run.get_maintenance_job_status import (
     GetMaintenanceJobStatusService,
 )
-from application.service.reconcile.plan_table_maintenance import (
+from application.service.table.plan_table_maintenance import (
     PlanTableMaintenanceService,
 )
-from application.service.reconcile.submit_maintenance_operation import (
+from application.service.table_maintenance_run.submit_maintenance_operation import (
     SubmitMaintenanceOperationService,
 )
 from bootstrap.container.use_cases import UseCases
@@ -117,7 +117,7 @@ def build_use_cases(
     tables = repos.tables
     rules = repos.table_discovery_rules
     presets = repos.table_maintenance_presets
-    runs = repos.maintenance_runs
+    runs = repos.table_maintenance_runs
     discovery = repos.table_discovery_settings
     catalog = gateways.read_table_metadata
     signals = gateways.send_table_signal
@@ -171,13 +171,13 @@ def build_use_cases(
         resume_table=ResumeTableService(tables, signals, clock=clock),
         trigger_table_maintenance=TriggerTableMaintenanceService(tables, signals),
         update_table_settings=UpdateTableSettingsService(tables, signals, clock=clock),
-        create_maintenance_run=CreateMaintenanceRunService(runs, tables),
-        get_maintenance_run=GetMaintenanceRunService(runs),
-        list_maintenance_runs=ListMaintenanceRunsService(runs),
-        process_maintenance_callback=ProcessMaintenanceCallbackService(
+        create_table_maintenance_run=CreateTableMaintenanceRunService(runs, tables),
+        get_table_maintenance_run=GetTableMaintenanceRunService(runs),
+        list_table_maintenance_runs=ListTableMaintenanceRunsService(runs),
+        process_table_maintenance_callback=ProcessTableMaintenanceCallbackService(
             runs, gateways.send_maintenance_result
         ),
-        record_maintenance_operation_result=RecordMaintenanceOperationResultService(
+        record_table_maintenance_operation_result=RecordTableMaintenanceOperationResultService(
             runs, tables
         ),
         delete_maintenance_job=DeleteMaintenanceJobService(

@@ -27,14 +27,14 @@ if TYPE_CHECKING:
     from application.port.inbound.table_discovery_rule.update_table_discovery_rule import (
         UpdateTableDiscoveryRuleUseCase,
     )
-    from application.port.inbound.maintenance_run.get_maintenance_run import (
-        GetMaintenanceRunUseCase,
+    from application.port.inbound.table_maintenance_run.get_table_maintenance_run import (
+        GetTableMaintenanceRunUseCase,
     )
-    from application.port.inbound.maintenance_run.list_maintenance_runs import (
-        ListMaintenanceRunsUseCase,
+    from application.port.inbound.table_maintenance_run.list_table_maintenance_runs import (
+        ListTableMaintenanceRunsUseCase,
     )
-    from application.port.inbound.maintenance_run.process_maintenance_callback import (
-        ProcessMaintenanceCallbackUseCase,
+    from application.port.inbound.table_maintenance_run.process_table_maintenance_callback import (
+        ProcessTableMaintenanceCallbackUseCase,
     )
     from application.port.inbound.table.exclude_table import (
         ExcludeTableUseCase,
@@ -105,6 +105,6 @@ class WebUseCases:
     include_table: IncludeTableUseCase
     exclude_table: ExcludeTableUseCase
     trigger_table_maintenance: TriggerTableMaintenanceUseCase
-    list_maintenance_runs: ListMaintenanceRunsUseCase
-    get_maintenance_run: GetMaintenanceRunUseCase
-    process_maintenance_callback: ProcessMaintenanceCallbackUseCase
+    list_table_maintenance_runs: ListTableMaintenanceRunsUseCase
+    get_table_maintenance_run: GetTableMaintenanceRunUseCase
+    process_table_maintenance_callback: ProcessTableMaintenanceCallbackUseCase

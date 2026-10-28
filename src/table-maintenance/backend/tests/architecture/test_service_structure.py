@@ -36,7 +36,7 @@ UTILITY_FILES = {
     "table_maintenance_preset_output_fields.py",
     "table_discovery_rule_output_fields.py",
     "table_output_fields.py",
-    "maintenance_run_output_fields.py",
+    "table_maintenance_run_output_fields.py",
     "maintenance_procedure_args.py",
     "table_observation_from_gateway.py",
     "register_discovered_table.py",

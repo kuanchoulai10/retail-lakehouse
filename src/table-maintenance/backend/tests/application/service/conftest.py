@@ -11,7 +11,9 @@ from tests.fakes.fake_read_table_metadata_gateway import FakeReadTableMetadataGa
 from tests.fakes.fake_read_maintenance_job_gateway import (
     FakeReadMaintenanceJobGateway,
 )
-from tests.fakes.in_memory_maintenance_runs_repo import InMemoryMaintenanceRunsRepo
+from tests.fakes.in_memory_table_maintenance_runs_repo import (
+    InMemoryTableMaintenanceRunsRepo,
+)
 from tests.fakes.recording_delete_maintenance_job_gateway import (
     RecordingDeleteMaintenanceJobGateway,
 )
@@ -99,8 +101,8 @@ def catalog() -> FakeReadTableMetadataGateway:
 
 
 @pytest.fixture
-def runs_repo() -> InMemoryMaintenanceRunsRepo:
-    return InMemoryMaintenanceRunsRepo()
+def runs_repo() -> InMemoryTableMaintenanceRunsRepo:
+    return InMemoryTableMaintenanceRunsRepo()
 
 
 @pytest.fixture

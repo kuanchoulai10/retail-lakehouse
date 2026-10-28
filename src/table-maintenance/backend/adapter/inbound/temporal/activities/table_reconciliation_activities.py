@@ -17,31 +17,31 @@ from adapter.temporal_contracts.activity_names import (
     PLAN_TABLE_MAINTENANCE,
     SUBMIT_MAINTENANCE_OPERATION,
 )
-from application.port.inbound.reconcile.delete_maintenance_job import (
+from application.port.inbound.table_maintenance_run.delete_maintenance_job import (
     DeleteMaintenanceJobUseCaseInput,
 )
-from application.port.inbound.reconcile.get_maintenance_job_status import (
+from application.port.inbound.table_maintenance_run.get_maintenance_job_status import (
     GetMaintenanceJobStatusUseCaseInput,
 )
-from application.port.inbound.reconcile.plan_table_maintenance import (
+from application.port.inbound.table.plan_table_maintenance import (
     PlanTableMaintenanceUseCaseInput,
 )
-from application.port.inbound.reconcile.submit_maintenance_operation import (
+from application.port.inbound.table_maintenance_run.submit_maintenance_operation import (
     SubmitMaintenanceOperationUseCaseInput,
     SubmitMaintenanceOperationUseCaseInputFilterItem,
 )
 
 if TYPE_CHECKING:
-    from application.port.inbound.reconcile.delete_maintenance_job import (
+    from application.port.inbound.table_maintenance_run.delete_maintenance_job import (
         DeleteMaintenanceJobUseCase,
     )
-    from application.port.inbound.reconcile.get_maintenance_job_status import (
+    from application.port.inbound.table_maintenance_run.get_maintenance_job_status import (
         GetMaintenanceJobStatusUseCase,
     )
-    from application.port.inbound.reconcile.plan_table_maintenance import (
+    from application.port.inbound.table.plan_table_maintenance import (
         PlanTableMaintenanceUseCase,
     )
-    from application.port.inbound.reconcile.submit_maintenance_operation import (
+    from application.port.inbound.table_maintenance_run.submit_maintenance_operation import (
         SubmitMaintenanceOperationUseCase,
     )
 
@@ -109,7 +109,11 @@ class TableReconciliationActivities:
         """Report the state of a Spark maintenance job."""
         with translate_application_errors():
             output = self._status.execute(
-                GetMaintenanceJobStatusUseCaseInput(app_name=request["app_name"])
+                GetMaintenanceJobStatusUseCaseInput(
+                    run_id=request["run_id"],
+                    operation=request["operation"],
+                    attempt=request["attempt"],
+                )
             )
         return activity_payload(output)
 

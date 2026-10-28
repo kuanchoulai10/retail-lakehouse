@@ -41,7 +41,7 @@ from application.port.inbound.table.sync_discovered_tables import (
     SyncDiscoveredTablesUseCaseInput,
 )
 from application.exceptions import ConflictError
-from application.port.inbound.reconcile.plan_table_maintenance import (
+from application.port.inbound.table.plan_table_maintenance import (
     PlanTableMaintenanceUseCaseInput,
 )
 from application.port.outbound.table.read_table_metadata import (
@@ -51,7 +51,7 @@ from application.service.table.process_table_hint import ProcessTableHintService
 from application.service.table.sync_discovered_tables import (
     SyncDiscoveredTablesService,
 )
-from application.service.reconcile.plan_table_maintenance import (
+from application.service.table.plan_table_maintenance import (
     PlanTableMaintenanceService,
 )
 from tests.fakes.track_calls import track_calls

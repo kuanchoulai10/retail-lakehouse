@@ -9,34 +9,34 @@ from application.port.inbound.table.sync_discovered_tables import (
     SyncDiscoveredTablesUseCaseInput,
     SyncDiscoveredTablesUseCaseOutput,
 )
-from application.port.inbound.maintenance_run.create_maintenance_run import (
-    CreateMaintenanceRunUseCase,
-    CreateMaintenanceRunUseCaseInput,
-    CreateMaintenanceRunUseCaseOutput,
+from application.port.inbound.table_maintenance_run.create_table_maintenance_run import (
+    CreateTableMaintenanceRunUseCase,
+    CreateTableMaintenanceRunUseCaseInput,
+    CreateTableMaintenanceRunUseCaseOutput,
 )
-from application.port.inbound.maintenance_run.record_maintenance_operation_result import (
-    RecordMaintenanceOperationResultUseCase,
-    RecordMaintenanceOperationResultUseCaseInput,
-    RecordMaintenanceOperationResultUseCaseOutput,
+from application.port.inbound.table_maintenance_run.record_table_maintenance_operation_result import (
+    RecordTableMaintenanceOperationResultUseCase,
+    RecordTableMaintenanceOperationResultUseCaseInput,
+    RecordTableMaintenanceOperationResultUseCaseOutput,
 )
-from application.port.inbound.reconcile.delete_maintenance_job import (
+from application.port.inbound.table_maintenance_run.delete_maintenance_job import (
     DeleteMaintenanceJobUseCase,
     DeleteMaintenanceJobUseCaseInput,
     DeleteMaintenanceJobUseCaseOutput,
 )
-from application.port.inbound.reconcile.get_maintenance_job_status import (
+from application.port.inbound.table_maintenance_run.get_maintenance_job_status import (
     GetMaintenanceJobStatusUseCase,
     GetMaintenanceJobStatusUseCaseInput,
     GetMaintenanceJobStatusUseCaseOutput,
 )
-from application.port.inbound.reconcile.plan_table_maintenance import (
+from application.port.inbound.table.plan_table_maintenance import (
     PlanTableMaintenanceUseCase,
     PlanTableMaintenanceUseCaseInput,
     PlanTableMaintenanceUseCaseOutput,
     PlanTableMaintenanceUseCaseOutputFilterItem,
     PlanTableMaintenanceUseCaseOutputItem,
 )
-from application.port.inbound.reconcile.submit_maintenance_operation import (
+from application.port.inbound.table_maintenance_run.submit_maintenance_operation import (
     SubmitMaintenanceOperationUseCase,
     SubmitMaintenanceOperationUseCaseInput,
     SubmitMaintenanceOperationUseCaseOutput,
@@ -79,7 +79,7 @@ class FakeSubmit(SubmitMaintenanceOperationUseCase):
         self.requests.append(request)
         if self._error is not None:
             raise self._error
-        return SubmitMaintenanceOperationUseCaseOutput(app_name="app-1")
+        return SubmitMaintenanceOperationUseCaseOutput(job_name="app-1")
 
 
 class FakeStatus(GetMaintenanceJobStatusUseCase):
@@ -102,22 +102,24 @@ class FakeDelete(DeleteMaintenanceJobUseCase):
     ) -> DeleteMaintenanceJobUseCaseOutput:
         self.requests.append(request)
         return DeleteMaintenanceJobUseCaseOutput(
-            app_name=f"{request.run_id}-{request.operation}-{request.attempt}"
+            run_id=request.run_id,
+            operation=request.operation,
+            attempt=request.attempt,
         )
 
 
-class FakeCreateRun(CreateMaintenanceRunUseCase):
+class FakeCreateRun(CreateTableMaintenanceRunUseCase):
     def __init__(self) -> None:
-        self.requests: list[CreateMaintenanceRunUseCaseInput] = []
+        self.requests: list[CreateTableMaintenanceRunUseCaseInput] = []
 
     def execute(
-        self, request: CreateMaintenanceRunUseCaseInput
-    ) -> CreateMaintenanceRunUseCaseOutput:
+        self, request: CreateTableMaintenanceRunUseCaseInput
+    ) -> CreateTableMaintenanceRunUseCaseOutput:
         self.requests.append(request)
-        return CreateMaintenanceRunUseCaseOutput(
+        return CreateTableMaintenanceRunUseCaseOutput(
             run_id=request.run_id,
             table_uuid=request.table_uuid,
-            workflow_id=request.workflow_id,
+            execution_ref=request.execution_ref,
             trigger=request.trigger,
             status="running",
             operations=[{"operation": op} for op in request.operations],
@@ -126,15 +128,15 @@ class FakeCreateRun(CreateMaintenanceRunUseCase):
         )
 
 
-class FakeRecordResult(RecordMaintenanceOperationResultUseCase):
+class FakeRecordResult(RecordTableMaintenanceOperationResultUseCase):
     def __init__(self) -> None:
-        self.requests: list[RecordMaintenanceOperationResultUseCaseInput] = []
+        self.requests: list[RecordTableMaintenanceOperationResultUseCaseInput] = []
 
     def execute(
-        self, request: RecordMaintenanceOperationResultUseCaseInput
-    ) -> RecordMaintenanceOperationResultUseCaseOutput:
+        self, request: RecordTableMaintenanceOperationResultUseCaseInput
+    ) -> RecordTableMaintenanceOperationResultUseCaseOutput:
         self.requests.append(request)
-        return RecordMaintenanceOperationResultUseCaseOutput(
+        return RecordTableMaintenanceOperationResultUseCaseOutput(
             run_id=request.run_id, status="running"
         )
 

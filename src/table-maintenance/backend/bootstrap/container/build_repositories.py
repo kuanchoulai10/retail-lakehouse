@@ -10,8 +10,8 @@ from adapter.outbound.table_discovery_settings.sql.table_discovery_settings_sql_
 from adapter.outbound.table_discovery_rule.sql.table_discovery_rules_sql_repo import (
     TableDiscoveryRulesSqlRepo,
 )
-from adapter.outbound.maintenance_run.sql.maintenance_runs_sql_repo import (
-    MaintenanceRunsSqlRepo,
+from adapter.outbound.table_maintenance_run.sql.table_maintenance_runs_sql_repo import (
+    TableMaintenanceRunsSqlRepo,
 )
 from adapter.outbound.table.sql.tables_sql_repo import (
     TablesSqlRepo,
@@ -30,7 +30,7 @@ def build_repositories(engine: Engine) -> Repositories:
     return Repositories(
         table_discovery_settings=TableDiscoverySettingsSqlRepo(engine),
         table_discovery_rules=TableDiscoveryRulesSqlRepo(engine),
-        maintenance_runs=MaintenanceRunsSqlRepo(engine),
+        table_maintenance_runs=TableMaintenanceRunsSqlRepo(engine),
         tables=TablesSqlRepo(engine),
         table_maintenance_presets=TableMaintenancePresetsSqlRepo(engine),
     )
