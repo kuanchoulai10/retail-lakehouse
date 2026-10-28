@@ -10,6 +10,11 @@ from tests.architecture.aggregates import AGGREGATES
 
 BACKEND = Path(__file__).resolve().parents[2]
 
+HYBRID_OUTBOUND_DIRS = sorted(
+    str(path.relative_to(BACKEND))
+    for path in (BACKEND / "adapter" / "hybrid").glob("*/outbound")
+    if (path / "__init__.py").is_file()
+)
 LAYER_DIRS = [
     "application/domain/model",
     "application/domain/service",
@@ -18,9 +23,11 @@ LAYER_DIRS = [
     "adapter/inbound/web",
     "application/port/outbound",
     "adapter/outbound",
-    "adapter/hybrid/temporal/outbound",
+    *HYBRID_OUTBOUND_DIRS,
 ]
-ROOT_MODULE_EXEMPT = {"adapter/inbound/web"}
+ROOT_MODULES_ALLOWED = {
+    "adapter/inbound/web": {"create_app.py", "error_handlers.py"},
+}
 
 
 def subdirs(layer: str) -> set[str]:
@@ -45,9 +52,12 @@ def test_inbound_ports_match_services():
     assert ports == subdirs("application/service") - {"shared"}
 
 
-@pytest.mark.parametrize(
-    "layer", [layer for layer in LAYER_DIRS if layer not in ROOT_MODULE_EXEMPT]
-)
+def test_hybrid_outbound_dirs_are_found():
+    assert "adapter/hybrid/temporal/outbound" in HYBRID_OUTBOUND_DIRS
+
+
+@pytest.mark.parametrize("layer", LAYER_DIRS)
 def test_no_modules_at_layer_root(layer: str):
     modules = {p.name for p in (BACKEND / layer).glob("*.py")}
-    assert modules == {"__init__.py"}, f"{layer} root holds modules: {sorted(modules)}"
+    allowed = {"__init__.py"} | ROOT_MODULES_ALLOWED.get(layer, set())
+    assert modules == allowed, f"{layer} root holds modules: {sorted(modules)}"

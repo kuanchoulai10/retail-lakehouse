@@ -163,3 +163,15 @@ forbidden_modules =
     application
     adapter
     bootstrap
+
+[importlinter:contract:application-exceptions-leaf]
+name = Application exceptions depend on no other application ring or outer layer
+type = forbidden
+source_modules =
+    application.exceptions
+forbidden_modules =
+    application.domain
+    application.port
+    application.service
+    adapter
+    bootstrap

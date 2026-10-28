@@ -22,6 +22,7 @@ REQUIRED_CONTRACTS = {
     "adapters-no-bootstrap",
     "configs-leaf",
     "base-isolation",
+    "application-exceptions-leaf",
 }
 
 

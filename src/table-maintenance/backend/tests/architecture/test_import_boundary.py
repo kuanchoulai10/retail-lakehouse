@@ -319,3 +319,26 @@ def test_repository_port_exports_its_aggregate_and_id(boundary: str, repo: type)
 
 def test_every_aggregate_has_a_repository_port():
     assert len(_repository_ports()) >= 5
+
+
+BOUNDARY_FREE_MODULES = {
+    "bootstrap.api",
+    "bootstrap.worker",
+    "bootstrap.event_consumer",
+    "bootstrap.migrate",
+}
+
+
+def test_every_project_module_belongs_to_a_boundary():
+    """A new module cannot escape the boundary test by living outside every boundary."""
+    known = boundaries()
+    outside = [
+        _module_name(path)
+        for path in _source_files()
+        if _is_project(_module_name(path))
+        and path.name != "__init__.py"
+        and innermost_boundary(_module_name(path), known) is None
+    ]
+    assert sorted(outside) == sorted(BOUNDARY_FREE_MODULES), (
+        "Modules outside every boundary:\n" + "\n".join(sorted(outside))
+    )
