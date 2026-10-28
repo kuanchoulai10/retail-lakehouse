@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.port.outbound.workflow.send_maintenance_result import (
+from application.port.outbound.table_maintenance_run.send_maintenance_result import (
     SendMaintenanceResultGateway,
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.workflow.send_maintenance_result import (
+    from application.port.outbound.table_maintenance_run.send_maintenance_result import (
         SendMaintenanceResultGatewayInput,
     )
 

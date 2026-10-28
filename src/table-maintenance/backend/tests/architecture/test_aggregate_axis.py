@@ -16,6 +16,9 @@ LAYER_DIRS = [
     "application/port/inbound",
     "application/service",
     "adapter/inbound/web",
+    "application/port/outbound",
+    "adapter/outbound",
+    "adapter/hybrid/temporal/outbound",
 ]
 ROOT_MODULE_EXEMPT = {"adapter/inbound/web"}
 

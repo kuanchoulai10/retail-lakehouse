@@ -13,7 +13,7 @@ import application.service
 from adapter.outbound.table.pyiceberg.read_table_metadata_pyiceberg_gateway import (
     ReadTableMetadataPyIcebergGateway,
 )
-from adapter.outbound.table_discovery_settings.temporal.update_table_discovery_schedule_temporal_gateway import (
+from adapter.hybrid.temporal.outbound.table_discovery_settings.update_table_discovery_schedule_temporal_gateway import (
     UpdateTableDiscoveryScheduleTemporalGateway,
 )
 from adapter.outbound.table_maintenance_preset.sql.table_maintenance_presets_sql_repo import (
@@ -28,15 +28,15 @@ from adapter.outbound.table_maintenance_run.k8s.read_maintenance_job_k8s_gateway
 from adapter.outbound.table_maintenance_run.k8s.submit_maintenance_job_k8s_gateway import (
     SubmitMaintenanceJobK8sGateway,
 )
-from adapter.outbound.temporal.async_loop_bridge import AsyncLoopBridge
-from adapter.outbound.workflow.temporal.send_discovery_request_temporal_gateway import (
+from adapter.hybrid.temporal.outbound.shared.async_loop_bridge import AsyncLoopBridge
+from adapter.hybrid.temporal.outbound.table.send_discovery_request_temporal_gateway import (
     SendDiscoveryRequestTemporalGateway,
 )
-from adapter.outbound.workflow.temporal.send_maintenance_result_temporal_gateway import (
+from adapter.hybrid.temporal.outbound.table_maintenance_run.send_maintenance_result_temporal_gateway import (
     SendMaintenanceResultTemporalGateway,
 )
-from adapter.outbound.workflow.temporal.send_table_signal_temporal_gateway import (
-    SendTableSignalTemporalGateway,
+from adapter.hybrid.temporal.outbound.table.send_table_change_temporal_gateway import (
+    SendTableChangeTemporalGateway,
 )
 from application.port.inbound.table_maintenance_preset.list_table_maintenance_presets import (
     ListTableMaintenancePresetsUseCaseInput,
@@ -100,7 +100,7 @@ def test_gateways_are_built_without_connecting():
         bridge.close()
 
     assert isinstance(gateways.read_table_metadata, ReadTableMetadataPyIcebergGateway)
-    assert isinstance(gateways.send_table_signal, SendTableSignalTemporalGateway)
+    assert isinstance(gateways.send_table_change, SendTableChangeTemporalGateway)
     assert isinstance(
         gateways.send_discovery_request, SendDiscoveryRequestTemporalGateway
     )

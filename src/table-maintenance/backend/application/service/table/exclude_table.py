@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.domain.model.shared.workflow_ids import SIGNAL_STOP
+from application.domain.model.table.table_change import TableChange
 from application.domain.model.table.table import Table
 from application.domain.model.table.table_name import TableName
 from application.domain.model.table.table_status import TableStatus
@@ -17,8 +17,8 @@ from application.port.inbound.table.exclude_table import (
     ExcludeTableUseCaseOutput,
 )
 from application.port.outbound.table.read_table_metadata import TableMetadataRef
-from application.port.outbound.workflow.send_table_signal import (
-    SendTableSignalGatewayInput,
+from application.port.outbound.table.send_table_change import (
+    SendTableChangeGatewayInput,
 )
 from application.service.table.table_output_fields import (
     table_output_fields,
@@ -34,8 +34,8 @@ if TYPE_CHECKING:
     from application.port.outbound.table.tables_repo import (
         TablesRepo,
     )
-    from application.port.outbound.workflow.send_table_signal import (
-        SendTableSignalGateway,
+    from application.port.outbound.table.send_table_change import (
+        SendTableChangeGateway,
     )
 
 
@@ -46,14 +46,14 @@ class ExcludeTableService(ExcludeTableUseCase):
         self,
         tables_repo: TablesRepo,
         catalog_gateway: ReadTableMetadataGateway,
-        signal_gateway: SendTableSignalGateway,
+        table_change_gateway: SendTableChangeGateway,
         *,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         """Bind the repo, the gateways and the clock."""
         self._tables_repo = tables_repo
         self._catalog_gateway = catalog_gateway
-        self._signal_gateway = signal_gateway
+        self._table_change_gateway = table_change_gateway
         self._clock = clock
 
     def execute(self, request: ExcludeTableUseCaseInput) -> ExcludeTableUseCaseOutput:
@@ -88,11 +88,12 @@ class ExcludeTableService(ExcludeTableUseCase):
                         table.rename(name, now)
                     table.exclude(now)
                     self._tables_repo.update(table)
-        self._signal_gateway.send(
-            SendTableSignalGatewayInput(
+        self._table_change_gateway.send(
+            SendTableChangeGatewayInput(
                 table_uuid=table.id.value,
                 table_name=table.name.fully_qualified(),
-                signal=SIGNAL_STOP,
+                change=TableChange.STOPPED.value,
+                is_enrolled=table.is_enrolled,
             )
         )
         return ExcludeTableUseCaseOutput(**table_output_fields(table))

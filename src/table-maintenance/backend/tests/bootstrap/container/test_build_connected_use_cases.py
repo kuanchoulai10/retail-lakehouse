@@ -3,7 +3,7 @@ from __future__ import annotations
 import threading
 from unittest.mock import MagicMock
 
-from adapter.outbound.temporal.async_loop_bridge import AsyncLoopBridge
+from adapter.hybrid.temporal.outbound.shared.async_loop_bridge import AsyncLoopBridge
 from application.port.inbound.table_maintenance_preset.list_table_maintenance_presets import (
     ListTableMaintenancePresetsUseCaseInput,
 )

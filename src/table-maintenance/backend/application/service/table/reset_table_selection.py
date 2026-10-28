@@ -5,10 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.domain.model.shared.workflow_ids import (
-    SIGNAL_RESUME,
-    SIGNAL_STOP,
-)
+from application.domain.model.table.table_change import TableChange
 from application.domain.model.table.table_id import TableId
 from application.domain.service.table_discovery_rule.match_table_discovery_rule import (
     match_table_discovery_rule,
@@ -19,8 +16,8 @@ from application.port.inbound.table.reset_table_selection import (
     ResetTableSelectionUseCaseInput,
     ResetTableSelectionUseCaseOutput,
 )
-from application.port.outbound.workflow.send_table_signal import (
-    SendTableSignalGatewayInput,
+from application.port.outbound.table.send_table_change import (
+    SendTableChangeGatewayInput,
 )
 from application.service.table.table_output_fields import (
     table_output_fields,
@@ -39,8 +36,8 @@ if TYPE_CHECKING:
     from application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (
         TableMaintenancePresetsRepo,
     )
-    from application.port.outbound.workflow.send_table_signal import (
-        SendTableSignalGateway,
+    from application.port.outbound.table.send_table_change import (
+        SendTableChangeGateway,
     )
 
 
@@ -52,15 +49,15 @@ class ResetTableSelectionService(ResetTableSelectionUseCase):
         tables_repo: TablesRepo,
         rules_repo: TableDiscoveryRulesRepo,
         presets_repo: TableMaintenancePresetsRepo,
-        signal_gateway: SendTableSignalGateway,
+        table_change_gateway: SendTableChangeGateway,
         *,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
-        """Bind the repos, the signal gateway and the clock."""
+        """Bind the repos, the table change gateway and the clock."""
         self._tables_repo = tables_repo
         self._rules_repo = rules_repo
         self._presets_repo = presets_repo
-        self._signal_gateway = signal_gateway
+        self._table_change_gateway = table_change_gateway
         self._clock = clock
 
     def execute(
@@ -87,12 +84,14 @@ class ResetTableSelectionService(ResetTableSelectionUseCase):
                     )
                 table.apply_auto_decision(rule.id, preset.id, preset.settings, now)
             self._tables_repo.update(table)
-        self._signal_gateway.send(
-            SendTableSignalGatewayInput(
+        self._table_change_gateway.send(
+            SendTableChangeGatewayInput(
                 table_uuid=table.id.value,
                 table_name=table.name.fully_qualified(),
-                signal=SIGNAL_RESUME if table.needs_reconcile_workflow else SIGNAL_STOP,
-                start_if_missing=table.needs_reconcile_workflow,
+                change=(
+                    TableChange.RESUMED if table.is_enrolled else TableChange.STOPPED
+                ).value,
+                is_enrolled=table.is_enrolled,
             )
         )
         return ResetTableSelectionUseCaseOutput(**table_output_fields(table))

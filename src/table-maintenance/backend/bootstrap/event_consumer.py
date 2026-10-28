@@ -8,7 +8,7 @@ import threading
 from typing import TYPE_CHECKING
 
 from adapter.inbound.event_consumer.kafka.kafka_event_source import KafkaEventSource
-from adapter.outbound.temporal.async_loop_bridge import AsyncLoopBridge
+from adapter.hybrid.temporal.outbound.shared.async_loop_bridge import AsyncLoopBridge
 from bootstrap.configs import get_settings
 from bootstrap.container import (
     build_connected_use_cases,

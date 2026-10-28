@@ -87,7 +87,7 @@ def test_pause_resume_only_from_active_paused():
 
 def test_exclude_manual_has_no_settings_and_no_workflow():
     t = excluded()
-    assert t.needs_reconcile_workflow is False
+    assert t.is_enrolled is False
     assert t.settings is None
     assert t.selection == TableSelection.MANUAL
     assert t.status == TableStatus.EXCLUDED
@@ -99,11 +99,11 @@ def test_exclude_sets_manual():
     assert (t.status, t.selection) == (TableStatus.EXCLUDED, TableSelection.MANUAL)
 
 
-def test_needs_reconcile_workflow():
+def test_is_enrolled_when_active_or_paused():
     t = auto()
-    assert t.needs_reconcile_workflow
+    assert t.is_enrolled
     t.pause(T1)
-    assert t.needs_reconcile_workflow
+    assert t.is_enrolled
 
 
 def test_reset_to_auto_then_apply_include_decision():

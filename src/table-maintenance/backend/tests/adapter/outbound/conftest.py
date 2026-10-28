@@ -7,7 +7,6 @@ from sqlalchemy import Engine, create_engine
 from sqlalchemy.pool import StaticPool
 
 from adapter.outbound.shared.sql.create_schema import create_schema
-from tests.adapter.outbound.temporal.temporal_harness import harness  # noqa: F401
 
 
 @pytest.fixture

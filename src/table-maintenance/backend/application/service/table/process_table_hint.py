@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.domain.model.shared.workflow_ids import SIGNAL_TABLE_UPDATED
+from application.domain.model.table.table_change import TableChange
 from application.domain.model.table.table_name import TableName
 from application.domain.model.table.table_status import TableStatus
 from application.domain.model.table.table_id import TableId
@@ -15,11 +15,11 @@ from application.port.inbound.table.process_table_hint import (
     ProcessTableHintUseCaseOutput,
 )
 from application.port.outbound.table.read_table_metadata import TableMetadataRef
-from application.port.outbound.workflow.send_discovery_request import (
+from application.port.outbound.table.send_discovery_request import (
     SendDiscoveryRequestGatewayInput,
 )
-from application.port.outbound.workflow.send_table_signal import (
-    SendTableSignalGatewayInput,
+from application.port.outbound.table.send_table_change import (
+    SendTableChangeGatewayInput,
 )
 from application.service.table.register_discovered_table import (
     register_discovered_table,
@@ -47,11 +47,11 @@ if TYPE_CHECKING:
     from application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (
         TableMaintenancePresetsRepo,
     )
-    from application.port.outbound.workflow.send_discovery_request import (
+    from application.port.outbound.table.send_discovery_request import (
         SendDiscoveryRequestGateway,
     )
-    from application.port.outbound.workflow.send_table_signal import (
-        SendTableSignalGateway,
+    from application.port.outbound.table.send_table_change import (
+        SendTableChangeGateway,
     )
 
 
@@ -65,7 +65,7 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         presets_repo: TableMaintenancePresetsRepo,
         table_discovery_settings_repo: TableDiscoverySettingsRepo,
         catalog_gateway: ReadTableMetadataGateway,
-        signal_gateway: SendTableSignalGateway,
+        table_change_gateway: SendTableChangeGateway,
         discovery_request_gateway: SendDiscoveryRequestGateway,
         *,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
@@ -76,7 +76,7 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         self._presets_repo = presets_repo
         self._table_discovery_settings_repo = table_discovery_settings_repo
         self._catalog_gateway = catalog_gateway
-        self._signal_gateway = signal_gateway
+        self._table_change_gateway = table_change_gateway
         self._discovery_request_gateway = discovery_request_gateway
         self._clock = clock
 
@@ -131,13 +131,13 @@ class ProcessTableHintService(ProcessTableHintUseCase):
             table.rename(name, now)
             self._tables_repo.update(table)
             action = TableHintAction.RENAMED
-        if table.needs_reconcile_workflow:
-            self._signal_gateway.send(
-                SendTableSignalGatewayInput(
+        if table.is_enrolled:
+            self._table_change_gateway.send(
+                SendTableChangeGatewayInput(
                     table_uuid=table.id.value,
                     table_name=table.name.fully_qualified(),
-                    signal=SIGNAL_TABLE_UPDATED,
-                    start_if_missing=table.needs_reconcile_workflow,
+                    change=TableChange.UPDATED.value,
+                    is_enrolled=table.is_enrolled,
                 )
             )
             if action == TableHintAction.IGNORED:
@@ -154,7 +154,7 @@ class ProcessTableHintService(ProcessTableHintUseCase):
             self._rules_repo.list_all(),
             self._tables_repo,
             self._presets_repo,
-            self._signal_gateway,
+            self._table_change_gateway,
             now,
         )
         if outcome == RegistrationOutcome.REGISTERED:

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.domain.model.shared.workflow_ids import SIGNAL_SETTINGS_CHANGED
+from application.domain.model.table.table_change import TableChange
 from application.domain.model.table.table_id import TableId
 from application.exceptions import NotFoundError
 from application.port.inbound.table.update_table_settings import (
@@ -13,8 +13,8 @@ from application.port.inbound.table.update_table_settings import (
     UpdateTableSettingsUseCaseInput,
     UpdateTableSettingsUseCaseOutput,
 )
-from application.port.outbound.workflow.send_table_signal import (
-    SendTableSignalGatewayInput,
+from application.port.outbound.table.send_table_change import (
+    SendTableChangeGatewayInput,
 )
 from application.service.shared.maintenance_settings_from_dict import (
     maintenance_settings_from_dict,
@@ -30,8 +30,8 @@ if TYPE_CHECKING:
     from application.port.outbound.table.tables_repo import (
         TablesRepo,
     )
-    from application.port.outbound.workflow.send_table_signal import (
-        SendTableSignalGateway,
+    from application.port.outbound.table.send_table_change import (
+        SendTableChangeGateway,
     )
 
 
@@ -41,13 +41,13 @@ class UpdateTableSettingsService(UpdateTableSettingsUseCase):
     def __init__(
         self,
         tables_repo: TablesRepo,
-        signal_gateway: SendTableSignalGateway,
+        table_change_gateway: SendTableChangeGateway,
         *,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
-        """Bind the repo, the signal gateway and the clock."""
+        """Bind the repo, the table change gateway and the clock."""
         self._tables_repo = tables_repo
-        self._signal_gateway = signal_gateway
+        self._table_change_gateway = table_change_gateway
         self._clock = clock
 
     def execute(
@@ -61,12 +61,12 @@ class UpdateTableSettingsService(UpdateTableSettingsUseCase):
         with translate_domain_errors():
             table.update_settings(settings, self._clock())
             self._tables_repo.update(table)
-        self._signal_gateway.send(
-            SendTableSignalGatewayInput(
+        self._table_change_gateway.send(
+            SendTableChangeGatewayInput(
                 table_uuid=table.id.value,
                 table_name=table.name.fully_qualified(),
-                signal=SIGNAL_SETTINGS_CHANGED,
-                start_if_missing=table.needs_reconcile_workflow,
+                change=TableChange.SETTINGS_CHANGED.value,
+                is_enrolled=table.is_enrolled,
             )
         )
         return UpdateTableSettingsUseCaseOutput(**table_output_fields(table))

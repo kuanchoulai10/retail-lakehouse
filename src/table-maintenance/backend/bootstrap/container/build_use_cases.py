@@ -120,7 +120,7 @@ def build_use_cases(
     runs = repos.table_maintenance_runs
     discovery = repos.table_discovery_settings
     catalog = gateways.read_table_metadata
-    signals = gateways.send_table_signal
+    table_changes = gateways.send_table_change
     return UseCases(
         get_table_discovery_settings=GetTableDiscoverySettingsService(discovery),
         process_table_hint=ProcessTableHintService(
@@ -129,12 +129,12 @@ def build_use_cases(
             presets,
             discovery,
             catalog,
-            signals,
+            table_changes,
             gateways.send_discovery_request,
             clock=clock,
         ),
         sync_discovered_tables=SyncDiscoveredTablesService(
-            tables, rules, presets, discovery, catalog, signals, clock=clock
+            tables, rules, presets, discovery, catalog, table_changes, clock=clock
         ),
         update_table_discovery_settings=UpdateTableDiscoverySettingsService(
             discovery, gateways.update_table_discovery_schedule, clock=clock
@@ -158,19 +158,21 @@ def build_use_cases(
         update_table_maintenance_preset=UpdateTableMaintenancePresetService(
             presets, clock=clock
         ),
-        exclude_table=ExcludeTableService(tables, catalog, signals, clock=clock),
+        exclude_table=ExcludeTableService(tables, catalog, table_changes, clock=clock),
         get_table=GetTableService(tables),
         include_table=IncludeTableService(
-            tables, presets, catalog, signals, clock=clock
+            tables, presets, catalog, table_changes, clock=clock
         ),
         list_tables=ListTablesService(tables),
-        pause_table=PauseTableService(tables, signals, clock=clock),
+        pause_table=PauseTableService(tables, table_changes, clock=clock),
         reset_table_selection=ResetTableSelectionService(
-            tables, rules, presets, signals, clock=clock
+            tables, rules, presets, table_changes, clock=clock
         ),
-        resume_table=ResumeTableService(tables, signals, clock=clock),
-        trigger_table_maintenance=TriggerTableMaintenanceService(tables, signals),
-        update_table_settings=UpdateTableSettingsService(tables, signals, clock=clock),
+        resume_table=ResumeTableService(tables, table_changes, clock=clock),
+        trigger_table_maintenance=TriggerTableMaintenanceService(tables, table_changes),
+        update_table_settings=UpdateTableSettingsService(
+            tables, table_changes, clock=clock
+        ),
         create_table_maintenance_run=CreateTableMaintenanceRunService(runs, tables),
         get_table_maintenance_run=GetTableMaintenanceRunService(runs),
         list_table_maintenance_runs=ListTableMaintenanceRunsService(runs),

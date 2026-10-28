@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.port.outbound.workflow.send_discovery_request import (
+from application.port.outbound.table.send_discovery_request import (
     SendDiscoveryRequestGateway,
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.workflow.send_discovery_request import (
+    from application.port.outbound.table.send_discovery_request import (
         SendDiscoveryRequestGatewayInput,
     )
 

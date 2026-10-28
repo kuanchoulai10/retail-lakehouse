@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from adapter.temporal_contracts.default_admission_lease_seconds import (
+from adapter.hybrid.temporal.contracts.default_admission_lease_seconds import (
     DEFAULT_ADMISSION_LEASE_SECONDS,
 )
 

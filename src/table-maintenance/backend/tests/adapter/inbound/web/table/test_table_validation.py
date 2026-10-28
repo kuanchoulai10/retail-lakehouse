@@ -25,8 +25,8 @@ from application.service.table.update_table_settings import (
 )
 from tests.adapter.inbound.web.web_test_support import build_client
 from tests.fakes.in_memory_tables_repo import InMemoryTablesRepo
-from tests.fakes.recording_send_table_signal_gateway import (
-    RecordingSendTableSignalGateway,
+from tests.fakes.recording_send_table_change_gateway import (
+    RecordingSendTableChangeGateway,
 )
 
 NOW = datetime(2026, 10, 24, tzinfo=UTC)
@@ -48,8 +48,8 @@ def repo() -> InMemoryTablesRepo:
 
 
 @pytest.fixture
-def signals() -> RecordingSendTableSignalGateway:
-    return RecordingSendTableSignalGateway()
+def signals() -> RecordingSendTableChangeGateway:
+    return RecordingSendTableChangeGateway()
 
 
 @pytest.fixture
@@ -94,7 +94,7 @@ def test_trigger_signals_the_workflow(client, signals) -> None:
     )
 
     assert response.status_code == 202
-    assert [c.signal for c in signals.calls] == ["trigger_now"]
+    assert [c.change for c in signals.calls] == ["maintenance_requested"]
 
 
 def test_orphan_older_than_below_one_day_returns_422(client) -> None:

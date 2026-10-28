@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from adapter.outbound.table.pyiceberg.read_table_metadata_pyiceberg_gateway import (
     ReadTableMetadataPyIcebergGateway,
 )
-from adapter.outbound.table_discovery_settings.temporal.update_table_discovery_schedule_temporal_gateway import (
+from adapter.hybrid.temporal.outbound.table_discovery_settings.update_table_discovery_schedule_temporal_gateway import (
     UpdateTableDiscoveryScheduleTemporalGateway,
 )
 from adapter.outbound.table_maintenance_run.k8s.delete_maintenance_job_k8s_gateway import (
@@ -19,14 +19,14 @@ from adapter.outbound.table_maintenance_run.k8s.read_maintenance_job_k8s_gateway
 from adapter.outbound.table_maintenance_run.k8s.submit_maintenance_job_k8s_gateway import (
     SubmitMaintenanceJobK8sGateway,
 )
-from adapter.outbound.workflow.temporal.send_discovery_request_temporal_gateway import (
+from adapter.hybrid.temporal.outbound.table.send_discovery_request_temporal_gateway import (
     SendDiscoveryRequestTemporalGateway,
 )
-from adapter.outbound.workflow.temporal.send_maintenance_result_temporal_gateway import (
+from adapter.hybrid.temporal.outbound.table_maintenance_run.send_maintenance_result_temporal_gateway import (
     SendMaintenanceResultTemporalGateway,
 )
-from adapter.outbound.workflow.temporal.send_table_signal_temporal_gateway import (
-    SendTableSignalTemporalGateway,
+from adapter.hybrid.temporal.outbound.table.send_table_change_temporal_gateway import (
+    SendTableChangeTemporalGateway,
 )
 from bootstrap.container.build_spark_config import build_spark_config
 from bootstrap.container.gateways import Gateways
@@ -38,7 +38,9 @@ if TYPE_CHECKING:
     from pyiceberg.catalog import Catalog
     from temporalio.client import Client
 
-    from adapter.outbound.temporal.async_loop_bridge import AsyncLoopBridge
+    from adapter.hybrid.temporal.outbound.shared.async_loop_bridge import (
+        AsyncLoopBridge,
+    )
     from bootstrap.configs.app_settings import AppSettings
 
 
@@ -58,7 +60,7 @@ def build_gateways(
     spark_config = build_spark_config(settings)
     return Gateways(
         read_table_metadata=ReadTableMetadataPyIcebergGateway(catalog_factory),
-        send_table_signal=SendTableSignalTemporalGateway(client, bridge),
+        send_table_change=SendTableChangeTemporalGateway(client, bridge),
         send_discovery_request=SendDiscoveryRequestTemporalGateway(client, bridge),
         send_maintenance_result=SendMaintenanceResultTemporalGateway(client, bridge),
         update_table_discovery_schedule=UpdateTableDiscoveryScheduleTemporalGateway(

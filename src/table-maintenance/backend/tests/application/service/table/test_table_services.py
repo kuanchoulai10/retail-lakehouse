@@ -127,8 +127,8 @@ def _dropped(repo, now, uuid="u-1", name=NAME):
     return table
 
 
-def _signal(call):
-    return (call.table_uuid, call.signal, call.payload, call.start_if_missing)
+def _change(call):
+    return (call.table_uuid, call.change, call.operations, call.is_enrolled)
 
 
 # --- list / get ---
@@ -191,8 +191,8 @@ def test_settings_update_signals_workflow(tables_repo, signals, clock, now):
     assert stored.settings.expire_snapshots.retain_last == 2
     assert stored.settings.rewrite_data_files.min_reducible_files == 5
     assert out.settings["rewrite_data_files"]["min_reducible_files"] == 5
-    assert [_signal(c) for c in signals.calls] == [
-        ("u-1", "settings_changed", {}, True)
+    assert [_change(c) for c in signals.calls] == [
+        ("u-1", "settings_changed", [], True)
     ]
 
 
@@ -233,9 +233,9 @@ def test_pause_and_resume_signal_workflow(tables_repo, signals, clock, now):
         ResumeTableUseCaseInput(uuid="u-1")
     )
     assert resumed.status == "active"
-    assert [_signal(c) for c in signals.calls] == [
-        ("u-1", "pause", {}, False),
-        ("u-1", "resume", {}, True),
+    assert [_change(c) for c in signals.calls] == [
+        ("u-1", "paused", [], True),
+        ("u-1", "resumed", [], True),
     ]
 
 
@@ -279,7 +279,7 @@ def test_include_new_table_registers_manual_and_starts_workflow(
     assert (out.status, out.selection) == ("active", "manual")
     assert out.source_preset_id == "t-1"
     assert out.settings == maintenance_settings_to_dict(preset.settings)
-    assert [_signal(c) for c in signals.calls] == [("u-9", "resume", {}, True)]
+    assert [_change(c) for c in signals.calls] == [("u-9", "resumed", [], True)]
     assert [c.table_name for c in signals.calls] == ["iceberg.sales.orders"]
 
 
@@ -316,7 +316,7 @@ def test_include_reactivates_excluded_table_as_manual(
     assert out.settings == maintenance_settings_to_dict(preset.settings)
     assert out.source_preset_id == "t-1"
     assert len(tables_repo.list_all()) == 1
-    assert [_signal(c) for c in signals.calls] == [("u-9", "resume", {}, True)]
+    assert [_change(c) for c in signals.calls] == [("u-9", "resumed", [], True)]
 
 
 def test_include_renames_row_when_catalog_name_changed(
@@ -366,7 +366,7 @@ def test_exclude_registered_table_stops_workflow(
     )
     assert (out.status, out.selection) == ("excluded", "manual")
     assert out.settings is not None
-    assert [_signal(c) for c in signals.calls] == [("u-9", "stop", {}, False)]
+    assert [_change(c) for c in signals.calls] == [("u-9", "stopped", [], False)]
 
 
 def test_exclude_unregistered_table_creates_row_without_settings(
@@ -381,7 +381,7 @@ def test_exclude_unregistered_table_creates_row_without_settings(
     stored = tables_repo.get(TableId("u-9"))
     assert stored is not None
     assert stored.settings is None
-    assert [_signal(c) for c in signals.calls] == [("u-9", "stop", {}, False)]
+    assert [_change(c) for c in signals.calls] == [("u-9", "stopped", [], False)]
 
 
 def test_exclude_table_gone_from_catalog_uses_row_by_name(
@@ -392,7 +392,7 @@ def test_exclude_table_gone_from_catalog_uses_row_by_name(
         _exclude_input()
     )
     assert out.status == "excluded"
-    assert [_signal(c) for c in signals.calls] == [("u-9", "stop", {}, False)]
+    assert [_change(c) for c in signals.calls] == [("u-9", "stopped", [], False)]
 
 
 def test_exclude_unknown_table_not_found(tables_repo, catalog, signals, clock):
@@ -452,7 +452,7 @@ def test_reset_selection_applies_matching_include_rule(
     assert out.matched_rule_id == "r-1"
     assert out.source_preset_id == "t-1"
     assert out.settings == maintenance_settings_to_dict(preset.settings)
-    assert [_signal(c) for c in signals.calls] == [("u-1", "resume", {}, True)]
+    assert [_change(c) for c in signals.calls] == [("u-1", "resumed", [], True)]
 
 
 def test_reset_selection_with_missing_rule_preset_not_found(
@@ -480,7 +480,7 @@ def test_reset_selection_with_exclude_rule_stops_workflow(
         "auto",
         "r-1",
     )
-    assert [_signal(c) for c in signals.calls] == [("u-1", "stop", {}, False)]
+    assert [_change(c) for c in signals.calls] == [("u-1", "stopped", [], False)]
 
 
 def test_reset_selection_without_matching_rule_excludes(
@@ -491,7 +491,7 @@ def test_reset_selection_without_matching_rule_excludes(
         ResetTableSelectionUseCaseInput(uuid="u-1")
     )
     assert (out.status, out.matched_rule_id) == ("excluded", None)
-    assert [_signal(c) for c in signals.calls] == [("u-1", "stop", {}, False)]
+    assert [_change(c) for c in signals.calls] == [("u-1", "stopped", [], False)]
 
 
 def test_reset_selection_unknown_table(
@@ -526,11 +526,11 @@ def test_trigger_signals_operations_in_canonical_order(tables_repo, signals, now
         )
     )
     assert out.accepted is True
-    assert [_signal(c) for c in signals.calls] == [
+    assert [_change(c) for c in signals.calls] == [
         (
             "u-1",
-            "trigger_now",
-            {"operations": ["rewrite_data_files", "expire_snapshots"]},
+            "maintenance_requested",
+            ["rewrite_data_files", "expire_snapshots"],
             True,
         )
     ]
@@ -583,6 +583,6 @@ def test_settings_update_on_paused_table_starts_workflow_if_missing(
     UpdateTableSettingsService(tables_repo, signals, clock=clock).execute(
         UpdateTableSettingsUseCaseInput(uuid="u-1", settings={})
     )
-    assert [_signal(c) for c in signals.calls] == [
-        ("u-1", "settings_changed", {}, True)
+    assert [_change(c) for c in signals.calls] == [
+        ("u-1", "settings_changed", [], True)
     ]

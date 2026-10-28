@@ -36,8 +36,8 @@ from tests.fakes.in_memory_tables_repo import InMemoryTablesRepo
 from tests.fakes.in_memory_table_maintenance_presets_repo import (
     InMemoryTableMaintenancePresetsRepo,
 )
-from tests.fakes.recording_send_table_signal_gateway import (
-    RecordingSendTableSignalGateway,
+from tests.fakes.recording_send_table_change_gateway import (
+    RecordingSendTableChangeGateway,
 )
 from tests.fakes.recording_update_table_discovery_schedule_gateway import (
     RecordingUpdateTableDiscoveryScheduleGateway,
@@ -86,8 +86,8 @@ def tables_repo() -> InMemoryTablesRepo:
 
 
 @pytest.fixture
-def signals() -> RecordingSendTableSignalGateway:
-    return RecordingSendTableSignalGateway()
+def signals() -> RecordingSendTableChangeGateway:
+    return RecordingSendTableChangeGateway()
 
 
 @pytest.fixture

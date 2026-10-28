@@ -5,10 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.domain.model.shared.workflow_ids import (
-    SIGNAL_STOP,
-    SIGNAL_TABLE_UPDATED,
-)
+from application.domain.model.table.table_change import TableChange
 from application.domain.model.table.table_name import TableName
 from application.domain.model.table.table_status import TableStatus
 from application.domain.model.table.table_id import TableId
@@ -21,8 +18,8 @@ from application.port.inbound.table.sync_discovered_tables import (
 from application.port.outbound.table.read_table_metadata import (
     ReadTableMetadataGatewayListInput,
 )
-from application.port.outbound.workflow.send_table_signal import (
-    SendTableSignalGatewayInput,
+from application.port.outbound.table.send_table_change import (
+    SendTableChangeGatewayInput,
 )
 from application.service.table.register_discovered_table import (
     register_discovered_table,
@@ -53,8 +50,8 @@ if TYPE_CHECKING:
     from application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (
         TableMaintenancePresetsRepo,
     )
-    from application.port.outbound.workflow.send_table_signal import (
-        SendTableSignalGateway,
+    from application.port.outbound.table.send_table_change import (
+        SendTableChangeGateway,
     )
 
 _REGISTERED = "registered"
@@ -73,7 +70,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         presets_repo: TableMaintenancePresetsRepo,
         table_discovery_settings_repo: TableDiscoverySettingsRepo,
         catalog_gateway: ReadTableMetadataGateway,
-        signal_gateway: SendTableSignalGateway,
+        table_change_gateway: SendTableChangeGateway,
         *,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
@@ -83,7 +80,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         self._presets_repo = presets_repo
         self._table_discovery_settings_repo = table_discovery_settings_repo
         self._catalog_gateway = catalog_gateway
-        self._signal_gateway = signal_gateway
+        self._table_change_gateway = table_change_gateway
         self._clock = clock
 
     def execute(
@@ -122,7 +119,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
             renamed += outcome == _RENAMED
             skipped += outcome == _SKIPPED
             if request.namespace is None and existing is not None:
-                ensured += self._ensure_workflow(existing)
+                ensured += self._ensure_enrolled(existing)
         dropped = 0
         if request.namespace is None:
             with translate_domain_errors():
@@ -151,7 +148,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
                 rules,
                 self._tables_repo,
                 self._presets_repo,
-                self._signal_gateway,
+                self._table_change_gateway,
                 now,
             )
             if outcome == RegistrationOutcome.REGISTERED:
@@ -164,16 +161,16 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
             return _RENAMED, existing
         return "", existing
 
-    def _ensure_workflow(self, table: Table) -> bool:
-        """Signal-with-start the table's workflow if it needs one (USE_EXISTING)."""
-        if not table.needs_reconcile_workflow:
+    def _ensure_enrolled(self, table: Table) -> bool:
+        """Tell the runtime an enrolled table was seen, so it is kept under maintenance."""
+        if not table.is_enrolled:
             return False
-        self._signal_gateway.send(
-            SendTableSignalGatewayInput(
+        self._table_change_gateway.send(
+            SendTableChangeGatewayInput(
                 table_uuid=table.id.value,
                 table_name=table.name.fully_qualified(),
-                signal=SIGNAL_TABLE_UPDATED,
-                start_if_missing=True,
+                change=TableChange.UPDATED.value,
+                is_enrolled=table.is_enrolled,
             )
         )
         return True
@@ -188,16 +185,17 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         for table in self._tables_repo.list_by_statuses(_DROP_SCAN_STATUSES):
             if table.id.value in seen or not _in_scope(table.name, request):
                 continue
-            had_workflow = table.needs_reconcile_workflow
+            was_enrolled = table.is_enrolled
             table.mark_dropped(now)
             self._tables_repo.update(table)
             dropped += 1
-            if had_workflow:
-                self._signal_gateway.send(
-                    SendTableSignalGatewayInput(
+            if was_enrolled:
+                self._table_change_gateway.send(
+                    SendTableChangeGatewayInput(
                         table_uuid=table.id.value,
                         table_name=table.name.fully_qualified(),
-                        signal=SIGNAL_STOP,
+                        change=TableChange.STOPPED.value,
+                        is_enrolled=table.is_enrolled,
                     )
                 )
         return dropped

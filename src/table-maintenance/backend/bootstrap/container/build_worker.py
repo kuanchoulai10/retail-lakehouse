@@ -7,13 +7,13 @@ from typing import TYPE_CHECKING
 
 from temporalio.worker import Worker
 
-from adapter.inbound.temporal.workflows import (
+from adapter.hybrid.temporal.inbound.workflows import (
     TableMaintenanceAdmissionWorkflow,
     TableDiscoveryWorkflow,
     TableMaintenanceWorkflow,
     TableReconciliationWorkflow,
 )
-from application.domain.model.shared.workflow_ids import TASK_QUEUE
+from adapter.hybrid.temporal.contracts.workflow_ids import TASK_QUEUE
 
 if TYPE_CHECKING:
     from collections.abc import Callable

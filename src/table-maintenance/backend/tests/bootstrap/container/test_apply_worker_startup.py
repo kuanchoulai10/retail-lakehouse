@@ -7,10 +7,10 @@ from typing import Any, cast
 
 from temporalio.client import Client
 
-from adapter.inbound.temporal.ensure_table_maintenance_admission import (
+from adapter.hybrid.temporal.inbound.ensure_table_maintenance_admission import (
     ensure_table_maintenance_admission,
 )
-from adapter.inbound.temporal.ensure_table_discovery_schedule import (
+from adapter.hybrid.temporal.inbound.ensure_table_discovery_schedule import (
     ensure_table_discovery_schedule,
 )
 from adapter.outbound.table_discovery_settings.sql.table_discovery_settings_sql_repo import (

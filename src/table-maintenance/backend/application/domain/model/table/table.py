@@ -111,8 +111,8 @@ class Table(AggregateRoot[TableId]):
         )
 
     @property
-    def needs_reconcile_workflow(self) -> bool:
-        """Return whether the table should have a running reconciliation workflow."""
+    def is_enrolled(self) -> bool:
+        """Return whether the table is enrolled in maintenance (ACTIVE or PAUSED)."""
         return self.status in (TableStatus.ACTIVE, TableStatus.PAUSED)
 
     def operation_state(self, op: MaintenanceOperation) -> OperationState:

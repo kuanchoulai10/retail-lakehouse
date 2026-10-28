@@ -30,9 +30,11 @@ class TestDirectoryStructure:
         "subdir",
         [
             "adapter/inbound/web",
-            "adapter/inbound/temporal",
             "adapter/inbound/event_consumer",
             "adapter/outbound",
+            "adapter/hybrid/temporal/inbound",
+            "adapter/hybrid/temporal/outbound",
+            "adapter/hybrid/temporal/contracts",
         ],
     )
     def test_adapter_subdirectories_exist(self, subdir: str):

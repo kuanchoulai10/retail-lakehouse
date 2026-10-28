@@ -16,7 +16,7 @@ from application.port.inbound.table_maintenance_run.process_table_maintenance_ca
     ProcessTableMaintenanceCallbackUseCaseInput,
     ProcessTableMaintenanceCallbackUseCaseOutput,
 )
-from application.port.outbound.workflow.send_maintenance_result import (
+from application.port.outbound.table_maintenance_run.send_maintenance_result import (
     SendMaintenanceResultGatewayInput,
 )
 
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from application.port.outbound.table_maintenance_run.table_maintenance_runs_repo import (
         TableMaintenanceRunsRepo,
     )
-    from application.port.outbound.workflow.send_maintenance_result import (
+    from application.port.outbound.table_maintenance_run.send_maintenance_result import (
         SendMaintenanceResultGateway,
     )
 

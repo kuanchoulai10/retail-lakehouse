@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.domain.model.shared.workflow_ids import SIGNAL_RESUME
+from application.domain.model.table.table_change import TableChange
 from application.domain.model.table.table import Table
 from application.domain.model.table.table_name import TableName
 from application.domain.model.table.table_status import TableStatus
@@ -20,8 +20,8 @@ from application.port.inbound.table.include_table import (
     IncludeTableUseCaseOutput,
 )
 from application.port.outbound.table.read_table_metadata import TableMetadataRef
-from application.port.outbound.workflow.send_table_signal import (
-    SendTableSignalGatewayInput,
+from application.port.outbound.table.send_table_change import (
+    SendTableChangeGatewayInput,
 )
 from application.service.table.table_output_fields import (
     table_output_fields,
@@ -40,8 +40,8 @@ if TYPE_CHECKING:
     from application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (
         TableMaintenancePresetsRepo,
     )
-    from application.port.outbound.workflow.send_table_signal import (
-        SendTableSignalGateway,
+    from application.port.outbound.table.send_table_change import (
+        SendTableChangeGateway,
     )
 
 
@@ -53,7 +53,7 @@ class IncludeTableService(IncludeTableUseCase):
         tables_repo: TablesRepo,
         presets_repo: TableMaintenancePresetsRepo,
         catalog_gateway: ReadTableMetadataGateway,
-        signal_gateway: SendTableSignalGateway,
+        table_change_gateway: SendTableChangeGateway,
         *,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
@@ -61,7 +61,7 @@ class IncludeTableService(IncludeTableUseCase):
         self._tables_repo = tables_repo
         self._presets_repo = presets_repo
         self._catalog_gateway = catalog_gateway
-        self._signal_gateway = signal_gateway
+        self._table_change_gateway = table_change_gateway
         self._clock = clock
 
     def execute(self, request: IncludeTableUseCaseInput) -> IncludeTableUseCaseOutput:
@@ -96,12 +96,12 @@ class IncludeTableService(IncludeTableUseCase):
                     table.rename(name, now)
                 table.include_manually(preset.id, preset.settings, now)
                 self._tables_repo.update(table)
-        self._signal_gateway.send(
-            SendTableSignalGatewayInput(
+        self._table_change_gateway.send(
+            SendTableChangeGatewayInput(
                 table_uuid=uuid.value,
                 table_name=name.fully_qualified(),
-                signal=SIGNAL_RESUME,
-                start_if_missing=True,
+                change=TableChange.RESUMED.value,
+                is_enrolled=table.is_enrolled,
             )
         )
         return IncludeTableUseCaseOutput(**table_output_fields(table))

@@ -44,21 +44,23 @@ forbidden_modules =
 name = Clean Architecture layer ordering
 type = layers
 layers =
-    adapter.inbound.web | adapter.inbound.temporal | adapter.inbound.event_consumer
+    adapter.inbound.web | adapter.hybrid.temporal.inbound | adapter.inbound.event_consumer
     application.service
     application.port
     application.domain.model
 
 [importlinter:contract:temporal-contracts-neutral]
-name = Temporal contracts depend only on stdlib and the shared domain model
+name = Temporal contracts depend only on stdlib
 type = forbidden
 source_modules =
-    adapter.temporal_contracts
+    adapter.hybrid.temporal.contracts
 forbidden_modules =
     application
     base
     adapter.inbound
     adapter.outbound
+    adapter.hybrid.temporal.inbound
+    adapter.hybrid.temporal.outbound
     bootstrap
     temporalio
     fastapi
@@ -66,29 +68,28 @@ forbidden_modules =
     pyiceberg
     pyarrow
     sqlalchemy
-unmatched_ignore_imports_alerting = none
-ignore_imports =
-    adapter.temporal_contracts.** -> application.domain.model.shared.**
 
 [importlinter:contract:temporal-workflows-sandbox-safe]
-name = Temporal workflows import only contracts and the domain model (sandbox-safe)
+name = Temporal workflows import only Temporal contracts (sandbox-safe)
 type = forbidden
 source_modules =
-    adapter.inbound.temporal.workflows
+    adapter.hybrid.temporal.inbound.workflows
 forbidden_modules =
     application.port
     application.service
     application.exceptions
     application.domain.service
+    application.domain.model.shared
     application.domain.model.table_discovery_settings
     application.domain.model.table_discovery_rule
     application.domain.model.table_maintenance_run
     application.domain.model.table
     application.domain.model.table_maintenance_preset
-    adapter.inbound.temporal.activities
+    adapter.hybrid.temporal.inbound.activities
     adapter.inbound.web
     adapter.inbound.event_consumer
     adapter.outbound
+    adapter.hybrid.temporal.outbound
     bootstrap
     fastapi
     kubernetes
@@ -101,16 +102,20 @@ name = Inbound adapter does not directly import outbound adapter
 type = forbidden
 source_modules =
     adapter.inbound
+    adapter.hybrid.temporal.inbound
 forbidden_modules =
     adapter.outbound
+    adapter.hybrid.temporal.outbound
 
 [importlinter:contract:outbound-inbound-separation]
 name = Outbound adapter does not depend on inbound adapter
 type = forbidden
 source_modules =
     adapter.outbound
+    adapter.hybrid.temporal.outbound
 forbidden_modules =
     adapter.inbound
+    adapter.hybrid.temporal.inbound
 
 [importlinter:contract:configs-leaf]
 name = Configs does not depend on bounded contexts
@@ -167,7 +172,7 @@ name = Inbound adapters are independent of each other
 type = independence
 modules =
     adapter.inbound.web
-    adapter.inbound.temporal
+    adapter.hybrid.temporal.inbound
     adapter.inbound.event_consumer
 
 [importlinter:contract:inbound-event-consumer-no-bootstrap]

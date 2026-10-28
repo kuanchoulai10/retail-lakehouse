@@ -21,8 +21,8 @@ from tests.fakes.recording_send_discovery_request_gateway import (
 from tests.fakes.recording_send_maintenance_result_gateway import (
     RecordingSendMaintenanceResultGateway,
 )
-from tests.fakes.recording_send_table_signal_gateway import (
-    RecordingSendTableSignalGateway,
+from tests.fakes.recording_send_table_change_gateway import (
+    RecordingSendTableChangeGateway,
 )
 from tests.fakes.recording_submit_maintenance_job_gateway import (
     RecordingSubmitMaintenanceJobGateway,
@@ -55,7 +55,7 @@ def fake_gateways() -> Gateways:
     """Return a Gateways bundle made only of in-process fakes."""
     return Gateways(
         read_table_metadata=FakeReadTableMetadataGateway(),
-        send_table_signal=RecordingSendTableSignalGateway(),
+        send_table_change=RecordingSendTableChangeGateway(),
         send_discovery_request=RecordingSendDiscoveryRequestGateway(),
         send_maintenance_result=RecordingSendMaintenanceResultGateway(),
         update_table_discovery_schedule=RecordingUpdateTableDiscoveryScheduleGateway(),

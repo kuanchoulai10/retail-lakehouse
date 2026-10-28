@@ -1,0 +1,80 @@
+"""Define the TableMaintenanceActivities Temporal activities."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from typing import TYPE_CHECKING, Any
+
+from temporalio import activity
+
+from adapter.hybrid.temporal.inbound.activities.activity_payload import activity_payload
+from adapter.hybrid.temporal.inbound.activities.translate_application_errors import (
+    translate_application_errors,
+)
+from adapter.hybrid.temporal.contracts.activity_names import (
+    CREATE_MAINTENANCE_RUN,
+    RECORD_MAINTENANCE_OPERATION_RESULT,
+)
+from application.port.inbound.table_maintenance_run.create_table_maintenance_run import (
+    CreateTableMaintenanceRunUseCaseInput,
+)
+from application.port.inbound.table_maintenance_run.record_table_maintenance_operation_result import (
+    RecordTableMaintenanceOperationResultUseCaseInput,
+)
+
+if TYPE_CHECKING:
+    from application.port.inbound.table_maintenance_run.create_table_maintenance_run import (
+        CreateTableMaintenanceRunUseCase,
+    )
+    from application.port.inbound.table_maintenance_run.record_table_maintenance_operation_result import (
+        RecordTableMaintenanceOperationResultUseCase,
+    )
+
+
+class TableMaintenanceActivities:
+    """Create maintenance runs and record the outcome of their attempts."""
+
+    def __init__(
+        self,
+        *,
+        create_run: CreateTableMaintenanceRunUseCase,
+        record_result: RecordTableMaintenanceOperationResultUseCase,
+    ) -> None:
+        """Bind the use cases."""
+        self._create_run = create_run
+        self._record_result = record_result
+
+    @activity.defn(name=CREATE_MAINTENANCE_RUN)
+    def create_table_maintenance_run(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Create the run with its planned operations."""
+        with translate_application_errors():
+            output = self._create_run.execute(
+                CreateTableMaintenanceRunUseCaseInput(
+                    run_id=request["run_id"],
+                    table_uuid=request["table_uuid"],
+                    execution_ref=request["execution_ref"],
+                    trigger=request["trigger"],
+                    operations=list(request["operations"]),
+                    now=datetime.fromisoformat(request["now"]),
+                )
+            )
+        return activity_payload(output)
+
+    @activity.defn(name=RECORD_MAINTENANCE_OPERATION_RESULT)
+    def record_table_maintenance_operation_result(
+        self, request: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Record the outcome of one operation attempt."""
+        with translate_application_errors():
+            output = self._record_result.execute(
+                RecordTableMaintenanceOperationResultUseCaseInput(
+                    run_id=request["run_id"],
+                    operation=request["operation"],
+                    attempt=request["attempt"],
+                    succeeded=request["succeeded"],
+                    metrics=dict(request["metrics"]),
+                    error=request["error"],
+                    now=datetime.fromisoformat(request["now"]),
+                )
+            )
+        return activity_payload(output)

@@ -6,10 +6,10 @@ import asyncio
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
-from adapter.inbound.temporal.ensure_table_maintenance_admission import (
+from adapter.hybrid.temporal.inbound.ensure_table_maintenance_admission import (
     ensure_table_maintenance_admission,
 )
-from adapter.inbound.temporal.ensure_table_discovery_schedule import (
+from adapter.hybrid.temporal.inbound.ensure_table_discovery_schedule import (
     ensure_table_discovery_schedule,
 )
 from application.port.inbound.table_discovery_settings.get_table_discovery_settings import (

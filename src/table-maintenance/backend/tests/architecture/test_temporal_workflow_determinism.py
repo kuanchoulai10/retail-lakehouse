@@ -15,8 +15,9 @@ import pytest
 _WORKFLOWS = (
     Path(__file__).resolve().parents[2]
     / "adapter"
-    / "inbound"
+    / "hybrid"
     / "temporal"
+    / "inbound"
     / "workflows"
 )
 _FORBIDDEN_MODULES = (
@@ -77,6 +78,10 @@ def violations(source: str) -> list[str]:
             if owner in clock_names and node.attr in _CLOCK_METHODS:
                 found.append(f"{owner}.{node.attr}")
     return found
+
+
+def test_workflow_modules_are_found():
+    assert sorted(_WORKFLOWS.glob("*.py"))
 
 
 @pytest.mark.parametrize("path", sorted(_WORKFLOWS.glob("*.py")), ids=lambda p: p.name)
