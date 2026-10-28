@@ -31,8 +31,8 @@ def test_api_builds_and_serves_without_a_kubeconfig(tmp_path):
         client = TestClient(app)
 
         assert client.get("/healthz").status_code == 200
-        templates = client.get("/v1/policy-templates").json()
+        presets = client.get("/v1/table-maintenance-presets").json()
     finally:
         bridge.close()
 
-    assert [t["name"] for t in templates] == ["default"]
+    assert [t["name"] for t in presets] == ["default"]

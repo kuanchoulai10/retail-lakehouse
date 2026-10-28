@@ -21,9 +21,11 @@ from application.domain.model.managed_table.managed_table import ManagedTable
 from application.domain.model.managed_table.table_name import TableName
 from application.domain.model.managed_table.table_status import TableStatus
 from application.domain.model.managed_table.table_uuid import TableUuid
-from application.domain.model.policy_template.policy_template import PolicyTemplate
-from application.domain.model.policy_template.policy_template_id import (
-    PolicyTemplateId,
+from application.domain.model.table_maintenance_preset.table_maintenance_preset import (
+    TableMaintenancePreset,
+)
+from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
+    TableMaintenancePresetId,
 )
 from application.exceptions import ConflictError, NotFoundError, ValidationError
 from application.port.inbound.managed_table.exclude_managed_table import (
@@ -83,15 +85,17 @@ from application.service.managed_table.update_managed_table_settings import (
 )
 
 NAME = TableName("iceberg", "sales", "orders")
-TEMPLATE_SETTINGS = MaintenanceSettings(
+PRESET_SETTINGS = MaintenanceSettings(
     rewrite_data_files=RewriteDataFilesSettings(min_reducible_files=9)
 )
 
 
 @pytest.fixture
-def template(templates_repo, now):
-    t = PolicyTemplate.create(PolicyTemplateId("t-1"), "gold", TEMPLATE_SETTINGS, now)
-    templates_repo.create(t)
+def preset(presets_repo, now):
+    t = TableMaintenancePreset.create(
+        TableMaintenancePresetId("t-1"), "gold", PRESET_SETTINGS, now
+    )
+    presets_repo.create(t)
     return t
 
 
@@ -99,7 +103,7 @@ def _active(repo, now, uuid="u-1", name=NAME, settings=None):
     table = ManagedTable.include_manual(
         TableUuid(uuid),
         name,
-        PolicyTemplateId("t-1"),
+        TableMaintenancePresetId("t-1"),
         settings or MaintenanceSettings(),
         now,
     )
@@ -155,7 +159,7 @@ def test_get_table_includes_settings_and_operation_states(tables_repo, now):
     assert out.selection == "manual"
     assert out.settings is not None
     assert out.settings["reconcile_interval_seconds"] == 3600
-    assert out.source_template_id == "t-1"
+    assert out.source_preset_id == "t-1"
     assert out.operation_states["expire_snapshots"] == {
         "last_attempt_at": now,
         "consecutive_failures": 1,
@@ -173,7 +177,7 @@ def test_get_unknown_table_not_found(tables_repo):
 
 
 def test_settings_update_signals_workflow(tables_repo, signals, clock, now):
-    _active(tables_repo, now, settings=TEMPLATE_SETTINGS)
+    _active(tables_repo, now, settings=PRESET_SETTINGS)
     out = UpdateManagedTableSettingsService(tables_repo, signals, clock=clock).execute(
         UpdateManagedTableSettingsUseCaseInput(
             uuid="u-1", settings={"expire_snapshots": {"retain_last": 2}}
@@ -254,88 +258,88 @@ def test_pause_unknown_table(tables_repo, signals, clock):
 # --- include ---
 
 
-def _include_service(tables_repo, templates_repo, catalog, signals, clock):
+def _include_service(tables_repo, presets_repo, catalog, signals, clock):
     return IncludeManagedTableService(
-        tables_repo, templates_repo, catalog, signals, clock=clock
+        tables_repo, presets_repo, catalog, signals, clock=clock
     )
 
 
 def _include_input():
     return IncludeManagedTableUseCaseInput(
-        catalog="iceberg", namespace="sales", table="orders", template_id="t-1"
+        catalog="iceberg", namespace="sales", table="orders", preset_id="t-1"
     )
 
 
 def test_include_new_table_registers_manual_and_starts_workflow(
-    tables_repo, templates_repo, template, catalog, signals, clock
+    tables_repo, presets_repo, preset, catalog, signals, clock
 ):
     catalog.add_table("iceberg", "sales", "orders", "u-9")
-    out = _include_service(
-        tables_repo, templates_repo, catalog, signals, clock
-    ).execute(_include_input())
+    out = _include_service(tables_repo, presets_repo, catalog, signals, clock).execute(
+        _include_input()
+    )
     assert out.uuid == "u-9"
     assert (out.status, out.selection) == ("active", "manual")
-    assert out.source_template_id == "t-1"
-    assert out.settings == maintenance_settings_to_dict(template.settings)
+    assert out.source_preset_id == "t-1"
+    assert out.settings == maintenance_settings_to_dict(preset.settings)
     assert [_signal(c) for c in signals.calls] == [("u-9", "resume", {}, True)]
     assert [c.table_name for c in signals.calls] == ["iceberg.sales.orders"]
 
 
 def test_include_unknown_table_not_found(
-    tables_repo, templates_repo, template, catalog, signals, clock
+    tables_repo, presets_repo, preset, catalog, signals, clock
 ):
     with pytest.raises(NotFoundError):
-        _include_service(tables_repo, templates_repo, catalog, signals, clock).execute(
+        _include_service(tables_repo, presets_repo, catalog, signals, clock).execute(
             _include_input()
         )
     assert signals.calls == []
 
 
-def test_include_unknown_template_not_found(
-    tables_repo, templates_repo, catalog, signals, clock
+def test_include_unknown_preset_not_found(
+    tables_repo, presets_repo, catalog, signals, clock
 ):
     catalog.add_table("iceberg", "sales", "orders", "u-9")
     with pytest.raises(NotFoundError):
-        _include_service(tables_repo, templates_repo, catalog, signals, clock).execute(
+        _include_service(tables_repo, presets_repo, catalog, signals, clock).execute(
             _include_input()
         )
     assert tables_repo.list_all() == []
 
 
 def test_include_reactivates_excluded_table_as_manual(
-    tables_repo, templates_repo, template, catalog, signals, clock, now
+    tables_repo, presets_repo, preset, catalog, signals, clock, now
 ):
     _excluded(tables_repo, now, "u-9")
     catalog.add_table("iceberg", "sales", "orders", "u-9")
-    out = _include_service(
-        tables_repo, templates_repo, catalog, signals, clock
-    ).execute(_include_input())
+    out = _include_service(tables_repo, presets_repo, catalog, signals, clock).execute(
+        _include_input()
+    )
     assert (out.status, out.selection) == ("active", "manual")
-    assert out.settings == maintenance_settings_to_dict(template.settings)
-    assert out.source_template_id == "t-1"
+    assert out.settings == maintenance_settings_to_dict(preset.settings)
+    assert out.source_preset_id == "t-1"
     assert len(tables_repo.list_all()) == 1
     assert [_signal(c) for c in signals.calls] == [("u-9", "resume", {}, True)]
 
 
 def test_include_renames_row_when_catalog_name_changed(
-    tables_repo, templates_repo, template, catalog, signals, clock, now
+    tables_repo, presets_repo, preset, catalog, signals, clock, now
 ):
     _excluded(tables_repo, now, "u-9", TableName("iceberg", "sales", "old_orders"))
     catalog.add_table("iceberg", "sales", "orders", "u-9")
-    out = _include_service(
-        tables_repo, templates_repo, catalog, signals, clock
-    ).execute(_include_input())
+    out = _include_service(tables_repo, presets_repo, catalog, signals, clock).execute(
+        _include_input()
+    )
     assert out.table == "orders"
 
 
 def test_include_dropped_table_conflicts(
-    tables_repo, templates_repo, template, catalog, signals, clock, now
+    tables_repo, presets_repo, preset, catalog, signals, clock, now
 ):
     dropped = _dropped(tables_repo, now, "u-9")
     assert dropped.status == TableStatus.DROPPED
     catalog.add_table("iceberg", "sales", "orders", "u-9")
     with pytest.raises(ConflictError):
-        _include_service(tables_repo, templates_repo, catalog, signals, clock).execute(
+        _include_service(tables_repo, presets_repo, catalog, signals, clock).execute(
             _include_input()
         )
     assert signals.calls == []
@@ -424,55 +428,55 @@ def test_exclude_renames_existing_row_to_catalog_name(
 # --- reset selection ---
 
 
-def _reset_service(tables_repo, rules_repo, templates_repo, signals, clock):
+def _reset_service(tables_repo, rules_repo, presets_repo, signals, clock):
     return ResetManagedTableSelectionService(
-        tables_repo, rules_repo, templates_repo, signals, clock=clock
+        tables_repo, rules_repo, presets_repo, signals, clock=clock
     )
 
 
-def _rule(rules_repo, now, effect, template_id, pattern=TablePattern(), rid="r-1"):
+def _rule(rules_repo, now, effect, preset_id, pattern=TablePattern(), rid="r-1"):
     rules_repo.create(
         DiscoveryRule.create(
-            DiscoveryRuleId(rid), 10, effect, pattern, template_id, True, now
+            DiscoveryRuleId(rid), 10, effect, pattern, preset_id, True, now
         )
     )
 
 
 def test_reset_selection_applies_matching_include_rule(
-    tables_repo, rules_repo, templates_repo, template, signals, clock, now
+    tables_repo, rules_repo, presets_repo, preset, signals, clock, now
 ):
     _excluded(tables_repo, now)
-    _rule(rules_repo, now, RuleEffect.INCLUDE, PolicyTemplateId("t-1"))
-    out = _reset_service(
-        tables_repo, rules_repo, templates_repo, signals, clock
-    ).execute(ResetManagedTableSelectionUseCaseInput(uuid="u-1"))
+    _rule(rules_repo, now, RuleEffect.INCLUDE, TableMaintenancePresetId("t-1"))
+    out = _reset_service(tables_repo, rules_repo, presets_repo, signals, clock).execute(
+        ResetManagedTableSelectionUseCaseInput(uuid="u-1")
+    )
     assert (out.status, out.selection) == ("active", "auto")
     assert out.matched_rule_id == "r-1"
-    assert out.source_template_id == "t-1"
-    assert out.settings == maintenance_settings_to_dict(template.settings)
+    assert out.source_preset_id == "t-1"
+    assert out.settings == maintenance_settings_to_dict(preset.settings)
     assert [_signal(c) for c in signals.calls] == [("u-1", "resume", {}, True)]
 
 
-def test_reset_selection_with_missing_rule_template_not_found(
-    tables_repo, rules_repo, templates_repo, signals, clock, now
+def test_reset_selection_with_missing_rule_preset_not_found(
+    tables_repo, rules_repo, presets_repo, signals, clock, now
 ):
     _excluded(tables_repo, now)
-    _rule(rules_repo, now, RuleEffect.INCLUDE, PolicyTemplateId("gone"))
+    _rule(rules_repo, now, RuleEffect.INCLUDE, TableMaintenancePresetId("gone"))
     with pytest.raises(NotFoundError):
-        _reset_service(tables_repo, rules_repo, templates_repo, signals, clock).execute(
+        _reset_service(tables_repo, rules_repo, presets_repo, signals, clock).execute(
             ResetManagedTableSelectionUseCaseInput(uuid="u-1")
         )
     assert signals.calls == []
 
 
 def test_reset_selection_with_exclude_rule_stops_workflow(
-    tables_repo, rules_repo, templates_repo, signals, clock, now
+    tables_repo, rules_repo, presets_repo, signals, clock, now
 ):
     _active(tables_repo, now)
     _rule(rules_repo, now, RuleEffect.EXCLUDE, None)
-    out = _reset_service(
-        tables_repo, rules_repo, templates_repo, signals, clock
-    ).execute(ResetManagedTableSelectionUseCaseInput(uuid="u-1"))
+    out = _reset_service(tables_repo, rules_repo, presets_repo, signals, clock).execute(
+        ResetManagedTableSelectionUseCaseInput(uuid="u-1")
+    )
     assert (out.status, out.selection, out.matched_rule_id) == (
         "excluded",
         "auto",
@@ -482,31 +486,31 @@ def test_reset_selection_with_exclude_rule_stops_workflow(
 
 
 def test_reset_selection_without_matching_rule_excludes(
-    tables_repo, rules_repo, templates_repo, signals, clock, now
+    tables_repo, rules_repo, presets_repo, signals, clock, now
 ):
     _active(tables_repo, now)
-    out = _reset_service(
-        tables_repo, rules_repo, templates_repo, signals, clock
-    ).execute(ResetManagedTableSelectionUseCaseInput(uuid="u-1"))
+    out = _reset_service(tables_repo, rules_repo, presets_repo, signals, clock).execute(
+        ResetManagedTableSelectionUseCaseInput(uuid="u-1")
+    )
     assert (out.status, out.matched_rule_id) == ("excluded", None)
     assert [_signal(c) for c in signals.calls] == [("u-1", "stop", {}, False)]
 
 
 def test_reset_selection_unknown_table(
-    tables_repo, rules_repo, templates_repo, signals, clock
+    tables_repo, rules_repo, presets_repo, signals, clock
 ):
     with pytest.raises(NotFoundError):
-        _reset_service(tables_repo, rules_repo, templates_repo, signals, clock).execute(
+        _reset_service(tables_repo, rules_repo, presets_repo, signals, clock).execute(
             ResetManagedTableSelectionUseCaseInput(uuid="nope")
         )
 
 
 def test_reset_selection_dropped_table_conflicts(
-    tables_repo, rules_repo, templates_repo, signals, clock, now
+    tables_repo, rules_repo, presets_repo, signals, clock, now
 ):
     _dropped(tables_repo, now)
     with pytest.raises(ConflictError):
-        _reset_service(tables_repo, rules_repo, templates_repo, signals, clock).execute(
+        _reset_service(tables_repo, rules_repo, presets_repo, signals, clock).execute(
             ResetManagedTableSelectionUseCaseInput(uuid="u-1")
         )
     assert signals.calls == []

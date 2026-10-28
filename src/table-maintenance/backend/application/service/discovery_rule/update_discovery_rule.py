@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 from application.domain.model.discovery_rule.discovery_rule_id import DiscoveryRuleId
 from application.domain.model.discovery_rule.rule_effect import RuleEffect
 from application.domain.model.discovery_rule.table_pattern import TablePattern
-from application.domain.model.policy_template.policy_template_id import (
-    PolicyTemplateId,
+from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
+    TableMaintenancePresetId,
 )
 from application.exceptions import NotFoundError
 from application.port.inbound.discovery_rule.update_discovery_rule import (
@@ -28,8 +28,8 @@ if TYPE_CHECKING:
     from application.port.outbound.discovery_rule.discovery_rules_repo import (
         DiscoveryRulesRepo,
     )
-    from application.port.outbound.policy_template.policy_templates_repo import (
-        PolicyTemplatesRepo,
+    from application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (
+        TableMaintenancePresetsRepo,
     )
 
 
@@ -39,13 +39,13 @@ class UpdateDiscoveryRuleService(UpdateDiscoveryRuleUseCase):
     def __init__(
         self,
         rules_repo: DiscoveryRulesRepo,
-        templates_repo: PolicyTemplatesRepo,
+        presets_repo: TableMaintenancePresetsRepo,
         *,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         """Bind the repos and the clock."""
         self._rules_repo = rules_repo
-        self._templates_repo = templates_repo
+        self._presets_repo = presets_repo
         self._clock = clock
 
     def execute(
@@ -57,16 +57,13 @@ class UpdateDiscoveryRuleService(UpdateDiscoveryRuleUseCase):
             raise NotFoundError(f"discovery rule {request.id} not found")
         with translate_domain_errors():
             effect = RuleEffect(request.effect)
-            template_id = (
+            preset_id = (
                 None
-                if request.template_id is None
-                else PolicyTemplateId(request.template_id)
+                if request.preset_id is None
+                else TableMaintenancePresetId(request.preset_id)
             )
-            if (
-                template_id is not None
-                and self._templates_repo.get(template_id) is None
-            ):
-                raise NotFoundError(f"policy template {template_id} not found")
+            if preset_id is not None and self._presets_repo.get(preset_id) is None:
+                raise NotFoundError(f"table maintenance preset {preset_id} not found")
             rule.update(
                 request.priority,
                 effect,
@@ -75,7 +72,7 @@ class UpdateDiscoveryRuleService(UpdateDiscoveryRuleUseCase):
                     request.namespace_pattern,
                     request.table_pattern,
                 ),
-                template_id,
+                preset_id,
                 request.enabled,
                 self._clock(),
             )

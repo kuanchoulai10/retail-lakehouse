@@ -16,7 +16,7 @@ discovery_rules_table = Table(
     Column("pattern_catalog", String, nullable=False),
     Column("pattern_namespace", String, nullable=False),
     Column("pattern_table", String, nullable=False),
-    Column("template_id", String, nullable=True, index=True),
+    Column("preset_id", String, nullable=True, index=True),
     Column("enabled", Boolean, nullable=False),
     Column("created_at", UtcDateTime, nullable=False),
     Column("updated_at", UtcDateTime, nullable=False),

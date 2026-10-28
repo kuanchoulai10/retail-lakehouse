@@ -34,8 +34,8 @@ if TYPE_CHECKING:
     from application.port.outbound.managed_table.managed_tables_repo import (
         ManagedTablesRepo,
     )
-    from application.port.outbound.policy_template.policy_templates_repo import (
-        PolicyTemplatesRepo,
+    from application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (
+        TableMaintenancePresetsRepo,
     )
     from application.port.outbound.workflow.send_table_signal import (
         SendTableSignalGateway,
@@ -49,7 +49,7 @@ class ResetManagedTableSelectionService(ResetManagedTableSelectionUseCase):
         self,
         tables_repo: ManagedTablesRepo,
         rules_repo: DiscoveryRulesRepo,
-        templates_repo: PolicyTemplatesRepo,
+        presets_repo: TableMaintenancePresetsRepo,
         signal_gateway: SendTableSignalGateway,
         *,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
@@ -57,7 +57,7 @@ class ResetManagedTableSelectionService(ResetManagedTableSelectionUseCase):
         """Bind the repos, the signal gateway and the clock."""
         self._tables_repo = tables_repo
         self._rules_repo = rules_repo
-        self._templates_repo = templates_repo
+        self._presets_repo = presets_repo
         self._signal_gateway = signal_gateway
         self._clock = clock
 
@@ -74,16 +74,16 @@ class ResetManagedTableSelectionService(ResetManagedTableSelectionUseCase):
             rule = match_discovery_rule(self._rules_repo.list_all(), table.name)
             if rule is None:
                 table.apply_auto_decision(None, None, None, now)
-            elif rule.template_id is None:
+            elif rule.preset_id is None:
                 table.apply_auto_decision(rule.id, None, None, now)
             else:
-                template = self._templates_repo.get(rule.template_id)
-                if template is None:
+                preset = self._presets_repo.get(rule.preset_id)
+                if preset is None:
                     raise NotFoundError(
-                        f"policy template {rule.template_id} of rule {rule.id} "
+                        f"table maintenance preset {rule.preset_id} of rule {rule.id} "
                         "not found"
                     )
-                table.apply_auto_decision(rule.id, template.id, template.settings, now)
+                table.apply_auto_decision(rule.id, preset.id, preset.settings, now)
             self._tables_repo.update(table)
         self._signal_gateway.send(
             SendTableSignalGatewayInput(

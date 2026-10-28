@@ -22,8 +22,8 @@ if TYPE_CHECKING:
     from sqlalchemy import Engine
 
     from application.domain.model.discovery_rule.discovery_rule import DiscoveryRule
-    from application.domain.model.policy_template.policy_template_id import (
-        PolicyTemplateId,
+    from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
+        TableMaintenancePresetId,
     )
     from base.entity_id import EntityId
 
@@ -76,12 +76,10 @@ class DiscoveryRulesSqlRepo(DiscoveryRulesRepo):
         with self._engine.begin() as conn:
             conn.execute(delete(t).where(t.c.id == entity_id.value))
 
-    def count_by_template(self, template_id: PolicyTemplateId) -> int:
-        """Return how many rules reference the template."""
+    def count_by_preset(self, preset_id: TableMaintenancePresetId) -> int:
+        """Return how many rules reference the preset."""
         stmt = (
-            select(func.count())
-            .select_from(t)
-            .where(t.c.template_id == template_id.value)
+            select(func.count()).select_from(t).where(t.c.preset_id == preset_id.value)
         )
         with self._engine.connect() as conn:
             return int(conn.execute(stmt).scalar_one())

@@ -9,7 +9,7 @@ from application.domain.model.discovery_rule import (
     TablePattern,
 )
 from application.domain.model.managed_table import TableName
-from application.domain.model.policy_template import PolicyTemplateId
+from application.domain.model.table_maintenance_preset import TableMaintenancePresetId
 from application.domain.service.match_discovery_rule import match_discovery_rule
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
@@ -21,7 +21,9 @@ def rule(rid, priority, effect, pattern, enabled=True) -> DiscoveryRule:
         priority=priority,
         effect=effect,
         pattern=pattern,
-        template_id=PolicyTemplateId("t") if effect == RuleEffect.INCLUDE else None,
+        preset_id=TableMaintenancePresetId("t")
+        if effect == RuleEffect.INCLUDE
+        else None,
         enabled=enabled,
         now=NOW,
     )

@@ -30,20 +30,20 @@ if TYPE_CHECKING:
     from application.port.inbound.discovery_rule.update_discovery_rule import (
         UpdateDiscoveryRuleUseCase,
     )
-    from application.port.inbound.policy_template.create_policy_template import (
-        CreatePolicyTemplateUseCase,
+    from application.port.inbound.table_maintenance_preset.create_table_maintenance_preset import (
+        CreateTableMaintenancePresetUseCase,
     )
-    from application.port.inbound.policy_template.delete_policy_template import (
-        DeletePolicyTemplateUseCase,
+    from application.port.inbound.table_maintenance_preset.delete_table_maintenance_preset import (
+        DeleteTableMaintenancePresetUseCase,
     )
-    from application.port.inbound.policy_template.get_policy_template import (
-        GetPolicyTemplateUseCase,
+    from application.port.inbound.table_maintenance_preset.get_table_maintenance_preset import (
+        GetTableMaintenancePresetUseCase,
     )
-    from application.port.inbound.policy_template.list_policy_templates import (
-        ListPolicyTemplatesUseCase,
+    from application.port.inbound.table_maintenance_preset.list_table_maintenance_presets import (
+        ListTableMaintenancePresetsUseCase,
     )
-    from application.port.inbound.policy_template.update_policy_template import (
-        UpdatePolicyTemplateUseCase,
+    from application.port.inbound.table_maintenance_preset.update_table_maintenance_preset import (
+        UpdateTableMaintenancePresetUseCase,
     )
     from application.port.inbound.managed_table.exclude_managed_table import (
         ExcludeManagedTableUseCase,
@@ -113,11 +113,11 @@ class UseCases:
     delete_discovery_rule: DeleteDiscoveryRuleUseCase
     list_discovery_rules: ListDiscoveryRulesUseCase
     update_discovery_rule: UpdateDiscoveryRuleUseCase
-    create_policy_template: CreatePolicyTemplateUseCase
-    delete_policy_template: DeletePolicyTemplateUseCase
-    get_policy_template: GetPolicyTemplateUseCase
-    list_policy_templates: ListPolicyTemplatesUseCase
-    update_policy_template: UpdatePolicyTemplateUseCase
+    create_table_maintenance_preset: CreateTableMaintenancePresetUseCase
+    delete_table_maintenance_preset: DeleteTableMaintenancePresetUseCase
+    get_table_maintenance_preset: GetTableMaintenancePresetUseCase
+    list_table_maintenance_presets: ListTableMaintenancePresetsUseCase
+    update_table_maintenance_preset: UpdateTableMaintenancePresetUseCase
     exclude_managed_table: ExcludeManagedTableUseCase
     get_managed_table: GetManagedTableUseCase
     include_managed_table: IncludeManagedTableUseCase

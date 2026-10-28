@@ -16,8 +16,8 @@ from adapter.outbound.catalog.pyiceberg.read_catalog_pyiceberg_gateway import (
 from adapter.outbound.discovery.temporal.update_discovery_schedule_temporal_gateway import (
     UpdateDiscoveryScheduleTemporalGateway,
 )
-from adapter.outbound.policy_template.sql.policy_templates_sql_repo import (
-    PolicyTemplatesSqlRepo,
+from adapter.outbound.table_maintenance_preset.sql.table_maintenance_presets_sql_repo import (
+    TableMaintenancePresetsSqlRepo,
 )
 from adapter.outbound.spark.k8s.delete_maintenance_job_k8s_gateway import (
     DeleteMaintenanceJobK8sGateway,
@@ -38,8 +38,8 @@ from adapter.outbound.workflow.temporal.send_maintenance_result_temporal_gateway
 from adapter.outbound.workflow.temporal.send_table_signal_temporal_gateway import (
     SendTableSignalTemporalGateway,
 )
-from application.port.inbound.policy_template.list_policy_templates import (
-    ListPolicyTemplatesUseCaseInput,
+from application.port.inbound.table_maintenance_preset.list_table_maintenance_presets import (
+    ListTableMaintenancePresetsUseCaseInput,
 )
 from base.use_case import UseCase
 from bootstrap.container import (
@@ -74,7 +74,7 @@ def _all_service_classes() -> set[type]:
 def test_repositories_are_sql_repos_on_the_engine():
     repos = build_repositories(sqlite_engine())
 
-    assert isinstance(repos.policy_templates, PolicyTemplatesSqlRepo)
+    assert isinstance(repos.table_maintenance_presets, TableMaintenancePresetsSqlRepo)
     assert all(getattr(repos, f.name) is not None for f in fields(repos))
 
 
@@ -134,6 +134,8 @@ def test_use_cases_work_against_the_sql_repos():
         build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW
     )
 
-    listing = use_cases.list_policy_templates.execute(ListPolicyTemplatesUseCaseInput())
+    listing = use_cases.list_table_maintenance_presets.execute(
+        ListTableMaintenancePresetsUseCaseInput()
+    )
 
     assert listing.items == []

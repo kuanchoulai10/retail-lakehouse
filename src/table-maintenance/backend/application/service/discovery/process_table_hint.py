@@ -44,8 +44,8 @@ if TYPE_CHECKING:
     from application.port.outbound.managed_table.managed_tables_repo import (
         ManagedTablesRepo,
     )
-    from application.port.outbound.policy_template.policy_templates_repo import (
-        PolicyTemplatesRepo,
+    from application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (
+        TableMaintenancePresetsRepo,
     )
     from application.port.outbound.workflow.send_discovery_request import (
         SendDiscoveryRequestGateway,
@@ -62,7 +62,7 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         self,
         tables_repo: ManagedTablesRepo,
         rules_repo: DiscoveryRulesRepo,
-        templates_repo: PolicyTemplatesRepo,
+        presets_repo: TableMaintenancePresetsRepo,
         discovery_settings_repo: DiscoverySettingsRepo,
         catalog_gateway: ReadCatalogGateway,
         signal_gateway: SendTableSignalGateway,
@@ -73,7 +73,7 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         """Bind the repos, the gateways and the clock."""
         self._tables_repo = tables_repo
         self._rules_repo = rules_repo
-        self._templates_repo = templates_repo
+        self._presets_repo = presets_repo
         self._discovery_settings_repo = discovery_settings_repo
         self._catalog_gateway = catalog_gateway
         self._signal_gateway = signal_gateway
@@ -157,7 +157,7 @@ class ProcessTableHintService(ProcessTableHintUseCase):
             found,
             self._rules_repo.list_all(),
             self._tables_repo,
-            self._templates_repo,
+            self._presets_repo,
             self._signal_gateway,
             now,
         )

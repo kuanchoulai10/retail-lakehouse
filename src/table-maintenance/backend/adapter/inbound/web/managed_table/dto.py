@@ -21,7 +21,7 @@ class ManagedTableApiResponse(BaseModel):
     selection: str
     settings: dict[str, Any] | None
     matched_rule_id: str | None
-    source_template_id: str | None
+    source_preset_id: str | None
     operation_states: dict[str, dict[str, Any]]
     registered_at: datetime
     updated_at: datetime
@@ -39,7 +39,7 @@ class IncludeManagedTableApiRequest(BaseModel):
     catalog: str
     namespace: str
     table: str
-    template_id: str
+    preset_id: str
 
 
 class ExcludeManagedTableApiRequest(BaseModel):

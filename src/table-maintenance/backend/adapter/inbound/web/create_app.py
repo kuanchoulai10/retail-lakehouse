@@ -9,7 +9,9 @@ from adapter.inbound.web.discovery_rule.router import router as discovery_rule_r
 from adapter.inbound.web.error_handlers import register_error_handlers
 from adapter.inbound.web.maintenance_run.router import router as maintenance_run_router
 from adapter.inbound.web.managed_table.router import router as managed_table_router
-from adapter.inbound.web.policy_template.router import router as policy_template_router
+from adapter.inbound.web.table_maintenance_preset.router import (
+    router as table_maintenance_preset_router,
+)
 from fastapi import FastAPI
 
 if TYPE_CHECKING:
@@ -26,7 +28,7 @@ def create_app(use_cases: WebUseCases) -> FastAPI:
     for router in (
         discovery_rule_router,
         discovery_router,
-        policy_template_router,
+        table_maintenance_preset_router,
         managed_table_router,
         maintenance_run_router,
     ):

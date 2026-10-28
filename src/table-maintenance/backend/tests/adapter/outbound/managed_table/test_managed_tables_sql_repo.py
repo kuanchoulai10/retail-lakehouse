@@ -22,8 +22,8 @@ from application.domain.model.managed_table.table_name import TableName
 from application.domain.model.managed_table.table_selection import TableSelection
 from application.domain.model.managed_table.table_status import TableStatus
 from application.domain.model.managed_table.table_uuid import TableUuid
-from application.domain.model.policy_template.policy_template_id import (
-    PolicyTemplateId,
+from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
+    TableMaintenancePresetId,
 )
 
 NOW = datetime(2026, 10, 24, 12, 0, tzinfo=UTC)
@@ -42,7 +42,7 @@ def _table(
         selection=TableSelection.AUTO,
         settings=MaintenanceSettings(reconcile_interval=timedelta(minutes=45)),
         matched_rule_id=DiscoveryRuleId("r1"),
-        source_template_id=PolicyTemplateId("t1"),
+        source_preset_id=TableMaintenancePresetId("t1"),
         registered_at=NOW,
         updated_at=updated_at,
         operation_states={
@@ -70,7 +70,7 @@ def test_roundtrip_field_by_field(repo: ManagedTablesSqlRepo):
     assert loaded.selection is TableSelection.AUTO
     assert loaded.settings == original.settings
     assert loaded.matched_rule_id == DiscoveryRuleId("r1")
-    assert loaded.source_template_id == PolicyTemplateId("t1")
+    assert loaded.source_preset_id == TableMaintenancePresetId("t1")
     assert loaded.registered_at == NOW
     assert loaded.registered_at.tzinfo is not None
     assert loaded.updated_at == NOW
@@ -86,14 +86,14 @@ def test_roundtrip_with_none_settings_and_links(repo: ManagedTablesSqlRepo):
     table = _table()
     table.settings = None
     table.matched_rule_id = None
-    table.source_template_id = None
+    table.source_preset_id = None
     table.operation_states = {}
     repo.create(table)
     loaded = repo.get(table.id)
     assert loaded is not None
     assert loaded.settings is None
     assert loaded.matched_rule_id is None
-    assert loaded.source_template_id is None
+    assert loaded.source_preset_id is None
     assert loaded.operation_states == {}
 
 

@@ -43,7 +43,7 @@ def test_app_serves_requests_end_to_end_on_sqlite():
     client = TestClient(create_app(_web_use_cases()))
 
     assert client.get("/healthz").json() == {"status": "ok"}
-    created = client.post("/v1/policy-templates", json={"name": "nightly"})
+    created = client.post("/v1/table-maintenance-presets", json={"name": "nightly"})
     assert created.status_code == 201
-    listing = client.get("/v1/policy-templates")
+    listing = client.get("/v1/table-maintenance-presets")
     assert [item["name"] for item in listing.json()] == ["nightly"]

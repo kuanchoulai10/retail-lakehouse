@@ -10,8 +10,8 @@ from base.entity_id import EntityId
 from base.repository import Repository
 
 if TYPE_CHECKING:
-    from application.domain.model.policy_template.policy_template_id import (
-        PolicyTemplateId,
+    from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
+        TableMaintenancePresetId,
     )
 
 
@@ -27,5 +27,5 @@ class DiscoveryRulesRepo(Repository[DiscoveryRule]):
         """Delete the rule with the given id."""
 
     @abstractmethod
-    def count_by_template(self, template_id: PolicyTemplateId) -> int:
-        """Return how many rules reference the template."""
+    def count_by_preset(self, preset_id: TableMaintenancePresetId) -> int:
+        """Return how many rules reference the preset."""

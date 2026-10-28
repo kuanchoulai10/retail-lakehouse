@@ -33,7 +33,7 @@ UTILITY_FILES = {
     "maintenance_settings_from_dict.py",
     "maintenance_settings_to_dict.py",
     "translate_domain_errors.py",
-    "policy_template_output_fields.py",
+    "table_maintenance_preset_output_fields.py",
     "discovery_rule_output_fields.py",
     "managed_table_output_fields.py",
     "maintenance_run_output_fields.py",

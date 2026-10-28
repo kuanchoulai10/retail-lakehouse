@@ -67,20 +67,20 @@ from application.service.managed_table.trigger_maintenance import (
 from application.service.managed_table.update_managed_table_settings import (
     UpdateManagedTableSettingsService,
 )
-from application.service.policy_template.create_policy_template import (
-    CreatePolicyTemplateService,
+from application.service.table_maintenance_preset.create_table_maintenance_preset import (
+    CreateTableMaintenancePresetService,
 )
-from application.service.policy_template.delete_policy_template import (
-    DeletePolicyTemplateService,
+from application.service.table_maintenance_preset.delete_table_maintenance_preset import (
+    DeleteTableMaintenancePresetService,
 )
-from application.service.policy_template.get_policy_template import (
-    GetPolicyTemplateService,
+from application.service.table_maintenance_preset.get_table_maintenance_preset import (
+    GetTableMaintenancePresetService,
 )
-from application.service.policy_template.list_policy_templates import (
-    ListPolicyTemplatesService,
+from application.service.table_maintenance_preset.list_table_maintenance_presets import (
+    ListTableMaintenancePresetsService,
 )
-from application.service.policy_template.update_policy_template import (
-    UpdatePolicyTemplateService,
+from application.service.table_maintenance_preset.update_table_maintenance_preset import (
+    UpdateTableMaintenancePresetService,
 )
 from application.service.reconcile.delete_maintenance_job import (
     DeleteMaintenanceJobService,
@@ -116,7 +116,7 @@ def build_use_cases(
     """Build every application service on the given repositories and gateways."""
     tables = repos.managed_tables
     rules = repos.discovery_rules
-    templates = repos.policy_templates
+    presets = repos.table_maintenance_presets
     runs = repos.maintenance_runs
     discovery = repos.discovery_settings
     catalog = gateways.read_catalog
@@ -126,7 +126,7 @@ def build_use_cases(
         process_table_hint=ProcessTableHintService(
             tables,
             rules,
-            templates,
+            presets,
             discovery,
             catalog,
             signals,
@@ -134,31 +134,37 @@ def build_use_cases(
             clock=clock,
         ),
         sync_discovered_tables=SyncDiscoveredTablesService(
-            tables, rules, templates, discovery, catalog, signals, clock=clock
+            tables, rules, presets, discovery, catalog, signals, clock=clock
         ),
         update_discovery_settings=UpdateDiscoverySettingsService(
             discovery, gateways.update_discovery_schedule, clock=clock
         ),
-        create_discovery_rule=CreateDiscoveryRuleService(rules, templates, clock=clock),
+        create_discovery_rule=CreateDiscoveryRuleService(rules, presets, clock=clock),
         delete_discovery_rule=DeleteDiscoveryRuleService(rules),
         list_discovery_rules=ListDiscoveryRulesService(rules),
-        update_discovery_rule=UpdateDiscoveryRuleService(rules, templates, clock=clock),
-        create_policy_template=CreatePolicyTemplateService(templates, clock=clock),
-        delete_policy_template=DeletePolicyTemplateService(templates, rules),
-        get_policy_template=GetPolicyTemplateService(templates),
-        list_policy_templates=ListPolicyTemplatesService(templates),
-        update_policy_template=UpdatePolicyTemplateService(templates, clock=clock),
+        update_discovery_rule=UpdateDiscoveryRuleService(rules, presets, clock=clock),
+        create_table_maintenance_preset=CreateTableMaintenancePresetService(
+            presets, clock=clock
+        ),
+        delete_table_maintenance_preset=DeleteTableMaintenancePresetService(
+            presets, rules
+        ),
+        get_table_maintenance_preset=GetTableMaintenancePresetService(presets),
+        list_table_maintenance_presets=ListTableMaintenancePresetsService(presets),
+        update_table_maintenance_preset=UpdateTableMaintenancePresetService(
+            presets, clock=clock
+        ),
         exclude_managed_table=ExcludeManagedTableService(
             tables, catalog, signals, clock=clock
         ),
         get_managed_table=GetManagedTableService(tables),
         include_managed_table=IncludeManagedTableService(
-            tables, templates, catalog, signals, clock=clock
+            tables, presets, catalog, signals, clock=clock
         ),
         list_managed_tables=ListManagedTablesService(tables),
         pause_managed_table=PauseManagedTableService(tables, signals, clock=clock),
         reset_managed_table_selection=ResetManagedTableSelectionService(
-            tables, rules, templates, signals, clock=clock
+            tables, rules, presets, signals, clock=clock
         ),
         resume_managed_table=ResumeManagedTableService(tables, signals, clock=clock),
         trigger_maintenance=TriggerMaintenanceService(tables, signals),

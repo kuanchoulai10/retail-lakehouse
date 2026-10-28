@@ -4,8 +4,8 @@ import threading
 from unittest.mock import MagicMock
 
 from adapter.outbound.temporal.async_loop_bridge import AsyncLoopBridge
-from application.port.inbound.policy_template.list_policy_templates import (
-    ListPolicyTemplatesUseCaseInput,
+from application.port.inbound.table_maintenance_preset.list_table_maintenance_presets import (
+    ListTableMaintenancePresetsUseCaseInput,
 )
 from bootstrap.configs import TemporalSettings
 from bootstrap.container import build_connected_use_cases, run_migrations
@@ -32,8 +32,8 @@ def test_connects_the_gateway_client_on_the_bridge_loop(tmp_path):
             connect=connect,
             k8s_api_factory=MagicMock,
         )
-        listing = use_cases.list_policy_templates.execute(
-            ListPolicyTemplatesUseCaseInput()
+        listing = use_cases.list_table_maintenance_presets.execute(
+            ListTableMaintenancePresetsUseCaseInput()
         )
     finally:
         bridge.close()

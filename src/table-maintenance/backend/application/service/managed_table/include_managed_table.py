@@ -10,8 +10,8 @@ from application.domain.model.managed_table.managed_table import ManagedTable
 from application.domain.model.managed_table.table_name import TableName
 from application.domain.model.managed_table.table_status import TableStatus
 from application.domain.model.managed_table.table_uuid import TableUuid
-from application.domain.model.policy_template.policy_template_id import (
-    PolicyTemplateId,
+from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
+    TableMaintenancePresetId,
 )
 from application.exceptions import ConflictError, NotFoundError
 from application.port.inbound.managed_table.include_managed_table import (
@@ -35,8 +35,8 @@ if TYPE_CHECKING:
     from application.port.outbound.managed_table.managed_tables_repo import (
         ManagedTablesRepo,
     )
-    from application.port.outbound.policy_template.policy_templates_repo import (
-        PolicyTemplatesRepo,
+    from application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (
+        TableMaintenancePresetsRepo,
     )
     from application.port.outbound.workflow.send_table_signal import (
         SendTableSignalGateway,
@@ -49,7 +49,7 @@ class IncludeManagedTableService(IncludeManagedTableUseCase):
     def __init__(  # noqa: PLR0913
         self,
         tables_repo: ManagedTablesRepo,
-        templates_repo: PolicyTemplatesRepo,
+        presets_repo: TableMaintenancePresetsRepo,
         catalog_gateway: ReadCatalogGateway,
         signal_gateway: SendTableSignalGateway,
         *,
@@ -57,7 +57,7 @@ class IncludeManagedTableService(IncludeManagedTableUseCase):
     ) -> None:
         """Bind the repos, the gateways and the clock."""
         self._tables_repo = tables_repo
-        self._templates_repo = templates_repo
+        self._presets_repo = presets_repo
         self._catalog_gateway = catalog_gateway
         self._signal_gateway = signal_gateway
         self._clock = clock
@@ -76,9 +76,11 @@ class IncludeManagedTableService(IncludeManagedTableUseCase):
                 f"table {request.catalog}.{request.namespace}.{request.table} "
                 "not found in the catalog"
             )
-        template = self._templates_repo.get(PolicyTemplateId(request.template_id))
-        if template is None:
-            raise NotFoundError(f"policy template {request.template_id} not found")
+        preset = self._presets_repo.get(TableMaintenancePresetId(request.preset_id))
+        if preset is None:
+            raise NotFoundError(
+                f"table maintenance preset {request.preset_id} not found"
+            )
         now = self._clock()
         with translate_domain_errors():
             name = TableName(found.catalog, found.namespace, found.table)
@@ -86,7 +88,7 @@ class IncludeManagedTableService(IncludeManagedTableUseCase):
             table = self._tables_repo.get(uuid)
             if table is None:
                 table = ManagedTable.include_manual(
-                    uuid, name, template.id, template.settings, now
+                    uuid, name, preset.id, preset.settings, now
                 )
                 self._tables_repo.create(table)
             else:
@@ -94,7 +96,7 @@ class IncludeManagedTableService(IncludeManagedTableUseCase):
                     raise ConflictError(f"managed table {uuid} is dropped")
                 if table.name != name:
                     table.rename(name, now)
-                table.include_manually(template.id, template.settings, now)
+                table.include_manually(preset.id, preset.settings, now)
                 self._tables_repo.update(table)
         self._signal_gateway.send(
             SendTableSignalGatewayInput(

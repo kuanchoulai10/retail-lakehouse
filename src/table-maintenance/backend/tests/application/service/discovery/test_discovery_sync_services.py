@@ -24,9 +24,11 @@ from application.domain.model.managed_table.table_name import TableName
 from application.domain.model.managed_table.table_selection import TableSelection
 from application.domain.model.managed_table.table_status import TableStatus
 from application.domain.model.managed_table.table_uuid import TableUuid
-from application.domain.model.policy_template.policy_template import PolicyTemplate
-from application.domain.model.policy_template.policy_template_id import (
-    PolicyTemplateId,
+from application.domain.model.table_maintenance_preset.table_maintenance_preset import (
+    TableMaintenancePreset,
+)
+from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
+    TableMaintenancePresetId,
 )
 from application.port.inbound.discovery.process_table_hint import (
     ProcessTableHintUseCaseInput,
@@ -50,41 +52,47 @@ from application.service.reconcile.plan_table_maintenance import (
 )
 from tests.fakes.track_calls import track_calls
 
-TEMPLATE_SETTINGS = MaintenanceSettings(
+PRESET_SETTINGS = MaintenanceSettings(
     rewrite_data_files=RewriteDataFilesSettings(min_reducible_files=9)
 )
 
 
 @pytest.fixture
-def template(templates_repo, now):
-    t = PolicyTemplate.create(PolicyTemplateId("t-1"), "gold", TEMPLATE_SETTINGS, now)
-    templates_repo.create(t)
+def preset(presets_repo, now):
+    t = TableMaintenancePreset.create(
+        TableMaintenancePresetId("t-1"), "gold", PRESET_SETTINGS, now
+    )
+    presets_repo.create(t)
     return t
 
 
-def _rule(rules_repo, now, effect, template_id, pattern=TablePattern(), rid="r-1"):
+def _rule(rules_repo, now, effect, preset_id, pattern=TablePattern(), rid="r-1"):
     rules_repo.create(
         DiscoveryRule.create(
-            DiscoveryRuleId(rid), 10, effect, pattern, template_id, True, now
+            DiscoveryRuleId(rid), 10, effect, pattern, preset_id, True, now
         )
     )
 
 
 def _include_all(rules_repo, now):
-    _rule(rules_repo, now, RuleEffect.INCLUDE, PolicyTemplateId("t-1"))
+    _rule(rules_repo, now, RuleEffect.INCLUDE, TableMaintenancePresetId("t-1"))
 
 
 def _row(repo, now, uuid, name, manual=False):
     if manual:
         table = ManagedTable.include_manual(
-            TableUuid(uuid), name, PolicyTemplateId("t-1"), MaintenanceSettings(), now
+            TableUuid(uuid),
+            name,
+            TableMaintenancePresetId("t-1"),
+            MaintenanceSettings(),
+            now,
         )
     else:
         table = ManagedTable.register_auto(
             TableUuid(uuid),
             name,
             DiscoveryRuleId("r-1"),
-            PolicyTemplateId("t-1"),
+            TableMaintenancePresetId("t-1"),
             MaintenanceSettings(),
             now,
         )
@@ -96,7 +104,7 @@ def _row(repo, now, uuid, name, manual=False):
 def sync(
     tables_repo,
     rules_repo,
-    templates_repo,
+    presets_repo,
     discovery_settings_repo,
     catalog,
     signals,
@@ -105,7 +113,7 @@ def sync(
     return SyncDiscoveredTablesService(
         tables_repo,
         rules_repo,
-        templates_repo,
+        presets_repo,
         discovery_settings_repo,
         catalog,
         signals,
@@ -120,8 +128,8 @@ def _calls(signals):
 # --- sync ---
 
 
-def test_sync_registers_include_match_with_template_copy(
-    sync, tables_repo, rules_repo, template, catalog, signals, now
+def test_sync_registers_include_match_with_preset_copy(
+    sync, tables_repo, rules_repo, preset, catalog, signals, now
 ):
     _include_all(rules_repo, now)
     catalog.add_table("iceberg", "sales", "orders", "u-1")
@@ -130,15 +138,15 @@ def test_sync_registers_include_match_with_template_copy(
     table = tables_repo.get(TableUuid("u-1"))
     assert table.selection == TableSelection.AUTO
     assert table.status == TableStatus.ACTIVE
-    assert table.settings == TEMPLATE_SETTINGS
-    assert table.source_template_id == PolicyTemplateId("t-1")
+    assert table.settings == PRESET_SETTINGS
+    assert table.source_preset_id == TableMaintenancePresetId("t-1")
     assert table.matched_rule_id == DiscoveryRuleId("r-1")
     assert _calls(signals) == [("u-1", "resume", True)]
     assert [c.table_name for c in signals.calls] == ["iceberg.sales.orders"]
 
 
 def test_sync_exclude_match_and_no_match_register_nothing(
-    sync, tables_repo, rules_repo, template, catalog, signals, now
+    sync, tables_repo, rules_repo, preset, catalog, signals, now
 ):
     _rule(
         rules_repo,
@@ -160,7 +168,7 @@ def test_sync_skips_when_discovery_disabled(
     sync,
     tables_repo,
     rules_repo,
-    template,
+    preset,
     catalog,
     signals,
     discovery_settings_repo,
@@ -188,7 +196,7 @@ def test_sync_disabled_still_renames_and_drops(
     assert tables_repo.get(TableUuid("u-2")).status == TableStatus.DROPPED
 
 
-def test_sync_skips_table_whose_rule_template_is_missing(
+def test_sync_skips_table_whose_rule_preset_is_missing(
     sync, tables_repo, rules_repo, catalog, now
 ):
     _include_all(rules_repo, now)
@@ -212,7 +220,7 @@ def test_sync_namespace_scope_never_drops(sync, tables_repo, catalog, signals, n
 
 
 def test_sync_namespace_scope_still_registers_and_renames(
-    sync, tables_repo, rules_repo, template, catalog, now
+    sync, tables_repo, rules_repo, preset, catalog, now
 ):
     _include_all(rules_repo, now)
     _row(tables_repo, now, "u-1", TableName("iceberg", "sales", "old"))
@@ -269,7 +277,7 @@ def test_sync_dropped_row_whose_uuid_reappears_is_not_renamed_or_revived(
 
 
 def test_sync_registers_when_no_discovery_settings_row_exists(
-    sync, tables_repo, rules_repo, template, discovery_settings_repo, catalog, now
+    sync, tables_repo, rules_repo, preset, discovery_settings_repo, catalog, now
 ):
     assert discovery_settings_repo.get_settings().enabled is True
     _include_all(rules_repo, now)
@@ -279,7 +287,7 @@ def test_sync_registers_when_no_discovery_settings_row_exists(
 
 
 def test_sync_one_bad_table_is_skipped_not_fatal(
-    sync, tables_repo, rules_repo, template, catalog, now, monkeypatch
+    sync, tables_repo, rules_repo, preset, catalog, now, monkeypatch
 ):
     _include_all(rules_repo, now)
     catalog.add_table("iceberg", "sales", "a_bad", "u-bad")
@@ -319,7 +327,7 @@ def test_sync_rename_keeps_settings(sync, tables_repo, catalog, signals, now):
 
 
 def test_sync_never_redecides_manual_tables(
-    sync, tables_repo, rules_repo, template, catalog, now
+    sync, tables_repo, rules_repo, preset, catalog, now
 ):
     _rule(rules_repo, now, RuleEffect.EXCLUDE, None)
     manual = _row(tables_repo, now, "u-1", TableName("iceberg", "sales", "old"), True)
@@ -340,7 +348,7 @@ def test_sync_never_redecides_manual_tables(
 def hint(
     tables_repo,
     rules_repo,
-    templates_repo,
+    presets_repo,
     discovery_settings_repo,
     catalog,
     signals,
@@ -350,7 +358,7 @@ def hint(
     return ProcessTableHintService(
         tables_repo,
         rules_repo,
-        templates_repo,
+        presets_repo,
         discovery_settings_repo,
         catalog,
         signals,
@@ -455,7 +463,7 @@ def test_table_hint_with_new_name_renames_then_signals(
 
 
 def test_table_hint_registers_unregistered_table_by_rules(
-    hint, tables_repo, rules_repo, template, catalog, signals, now
+    hint, tables_repo, rules_repo, preset, catalog, signals, now
 ):
     _include_all(rules_repo, now)
     catalog.add_table("iceberg", "sales", "orders", "u-1")
@@ -465,7 +473,7 @@ def test_table_hint_registers_unregistered_table_by_rules(
 
 
 def test_table_hint_ignores_unregistered_table_without_match_or_when_disabled(
-    hint, tables_repo, rules_repo, template, catalog, discovery_settings_repo, now
+    hint, tables_repo, rules_repo, preset, catalog, discovery_settings_repo, now
 ):
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     assert hint.execute(_hint()).action == "ignored"
@@ -502,7 +510,7 @@ def test_table_hint_for_dropped_registered_row_is_ignored(
     assert signals.calls == []
 
 
-def test_table_hint_unregistered_with_missing_template_is_ignored(
+def test_table_hint_unregistered_with_missing_preset_is_ignored(
     hint, tables_repo, rules_repo, catalog, signals, now
 ):
     _include_all(rules_repo, now)
@@ -513,7 +521,7 @@ def test_table_hint_unregistered_with_missing_template_is_ignored(
 
 
 def test_table_hint_new_uuid_over_live_same_name_row_requests_catalog_discovery(
-    hint, tables_repo, rules_repo, template, catalog, discovery_requests, now
+    hint, tables_repo, rules_repo, preset, catalog, discovery_requests, now
 ):
     _include_all(rules_repo, now)
     _row(tables_repo, now, "u-old", TableName("iceberg", "sales", "orders"))
@@ -526,7 +534,7 @@ def test_table_hint_new_uuid_over_live_same_name_row_requests_catalog_discovery(
 
 
 def test_table_hint_fresh_registration_requests_no_discovery(
-    hint, rules_repo, template, catalog, discovery_requests, now
+    hint, rules_repo, preset, catalog, discovery_requests, now
 ):
     _include_all(rules_repo, now)
     catalog.add_table("iceberg", "sales", "orders", "u-1")
@@ -559,7 +567,7 @@ def _fail_first_send(signals, monkeypatch):
 
 
 def test_sync_retry_after_failed_start_still_starts_workflow(
-    sync, tables_repo, rules_repo, template, catalog, signals, now, monkeypatch
+    sync, tables_repo, rules_repo, preset, catalog, signals, now, monkeypatch
 ):
     _include_all(rules_repo, now)
     catalog.add_table("iceberg", "sales", "orders", "u-1")
@@ -609,7 +617,7 @@ def test_sync_reensures_renamed_table(sync, tables_repo, catalog, signals, now):
 
 
 def test_sync_does_not_reensure_freshly_registered_table_twice(
-    sync, rules_repo, template, catalog, signals, now
+    sync, rules_repo, preset, catalog, signals, now
 ):
     _include_all(rules_repo, now)
     catalog.add_table("iceberg", "sales", "orders", "u-1")
@@ -631,7 +639,7 @@ def test_sync_namespace_scope_does_not_reensure(
 
 
 def test_table_hint_retry_after_failed_start_still_starts_workflow(
-    hint, tables_repo, rules_repo, template, catalog, signals, now, monkeypatch
+    hint, tables_repo, rules_repo, preset, catalog, signals, now, monkeypatch
 ):
     _include_all(rules_repo, now)
     catalog.add_table("iceberg", "sales", "orders", "u-1")

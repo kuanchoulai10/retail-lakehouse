@@ -19,8 +19,8 @@ from adapter.outbound.maintenance_run.sql.maintenance_runs_table import (
 from adapter.outbound.managed_table.sql.managed_tables_table import (
     managed_tables_table as _managed_tables_table,
 )
-from adapter.outbound.policy_template.sql.policy_templates_table import (
-    policy_templates_table as _policy_templates_table,
+from adapter.outbound.table_maintenance_preset.sql.table_maintenance_presets_table import (
+    table_maintenance_presets_table as _table_maintenance_presets_table,
 )
 from adapter.outbound.sql.metadata import metadata
 
@@ -32,7 +32,7 @@ _REGISTERED = (
     _discovery_rules_table,
     _maintenance_runs_table,
     _managed_tables_table,
-    _policy_templates_table,
+    _table_maintenance_presets_table,
 )
 
 

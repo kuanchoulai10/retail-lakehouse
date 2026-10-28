@@ -16,25 +16,23 @@ from application.domain.model.managed_table import (
     TableStatus,
     TableUuid,
 )
-from application.domain.model.policy_template import PolicyTemplateId
+from application.domain.model.table_maintenance_preset import TableMaintenancePresetId
 
 T0 = datetime(2026, 1, 1, tzinfo=UTC)
 T1 = T0 + timedelta(hours=1)
 NAME = TableName(catalog="iceberg", namespace="inventory", table="orders")
 RULE = DiscoveryRuleId("r1")
-TEMPLATE = PolicyTemplateId("t1")
+PRESET = TableMaintenancePresetId("t1")
 SETTINGS = MaintenanceSettings()
 OP = MaintenanceOperation.REWRITE_DATA_FILES
 
 
 def auto() -> ManagedTable:
-    return ManagedTable.register_auto(
-        TableUuid("u1"), NAME, RULE, TEMPLATE, SETTINGS, T0
-    )
+    return ManagedTable.register_auto(TableUuid("u1"), NAME, RULE, PRESET, SETTINGS, T0)
 
 
 def manual() -> ManagedTable:
-    return ManagedTable.include_manual(TableUuid("u1"), NAME, TEMPLATE, SETTINGS, T0)
+    return ManagedTable.include_manual(TableUuid("u1"), NAME, PRESET, SETTINGS, T0)
 
 
 def excluded() -> ManagedTable:
@@ -44,7 +42,7 @@ def excluded() -> ManagedTable:
 def test_factories():
     a = auto()
     assert (a.status, a.selection) == (TableStatus.ACTIVE, TableSelection.AUTO)
-    assert a.matched_rule_id == RULE and a.source_template_id == TEMPLATE
+    assert a.matched_rule_id == RULE and a.source_preset_id == PRESET
     assert a.registered_at == a.updated_at == T0
     m = manual()
     assert (m.status, m.selection) == (TableStatus.ACTIVE, TableSelection.MANUAL)
@@ -62,9 +60,9 @@ def test_dropped_is_terminal():
         lambda: t.exclude(T1),
         lambda: t.rename(NAME, T1),
         lambda: t.reset_to_auto(T1),
-        lambda: t.apply_auto_decision(RULE, TEMPLATE, SETTINGS, T1),
+        lambda: t.apply_auto_decision(RULE, PRESET, SETTINGS, T1),
         lambda: t.update_settings(SETTINGS, T1),
-        lambda: t.include_manually(TEMPLATE, SETTINGS, T1),
+        lambda: t.include_manually(PRESET, SETTINGS, T1),
         lambda: t.record_operation_result(OP, True, T1),
     ]
     for command in commands:
@@ -112,18 +110,18 @@ def test_reset_to_auto_then_apply_include_decision():
     t = excluded()
     t.reset_to_auto(T1)
     assert t.selection == TableSelection.AUTO
-    t.apply_auto_decision(RULE, TEMPLATE, SETTINGS, T1)
+    t.apply_auto_decision(RULE, PRESET, SETTINGS, T1)
     assert t.status == TableStatus.ACTIVE
     assert t.settings == SETTINGS
     assert t.selection == TableSelection.AUTO
-    assert t.matched_rule_id == RULE and t.source_template_id == TEMPLATE
+    assert t.matched_rule_id == RULE and t.source_preset_id == PRESET
 
 
 def test_apply_include_keeps_existing_settings():
     t = auto()
     own = MaintenanceSettings(reconcile_interval=timedelta(hours=2))
     t.update_settings(own, T1)
-    t.apply_auto_decision(RULE, TEMPLATE, SETTINGS, T1)
+    t.apply_auto_decision(RULE, PRESET, SETTINGS, T1)
     assert t.settings == own
 
 
@@ -161,17 +159,17 @@ def test_update_settings_requires_settings_capable_status():
 
 def test_include_manually_reactivates_excluded_table():
     t = excluded()
-    t.include_manually(TEMPLATE, SETTINGS, T1)
+    t.include_manually(PRESET, SETTINGS, T1)
     assert (t.status, t.selection) == (TableStatus.ACTIVE, TableSelection.MANUAL)
     assert t.settings == SETTINGS
-    assert t.source_template_id == TEMPLATE
+    assert t.source_preset_id == PRESET
     assert t.matched_rule_id is None
 
 
 def test_include_manually_from_paused_auto_table():
     t = auto()
     t.pause(T1)
-    t.include_manually(TEMPLATE, SETTINGS, T1)
+    t.include_manually(PRESET, SETTINGS, T1)
     assert t.status == TableStatus.ACTIVE
     assert t.selection == TableSelection.MANUAL
     assert t.matched_rule_id is None
@@ -213,7 +211,7 @@ def test_rename_keeps_identity():
 def test_apply_auto_include_keeps_paused_table_paused():
     t = auto()
     t.pause(T1)
-    t.apply_auto_decision(RULE, TEMPLATE, SETTINGS, T1)
+    t.apply_auto_decision(RULE, PRESET, SETTINGS, T1)
     assert t.status == TableStatus.PAUSED
 
 
@@ -221,13 +219,13 @@ def test_apply_auto_include_without_settings_raises_when_table_has_none():
     t = excluded()
     t.reset_to_auto(T1)
     with pytest.raises(InvalidTableTransition):
-        t.apply_auto_decision(RULE, TEMPLATE, None, T1)
+        t.apply_auto_decision(RULE, PRESET, None, T1)
     assert t.status == TableStatus.EXCLUDED
     assert t.settings is None
 
 
-def test_apply_auto_include_keeps_source_template_when_settings_kept():
+def test_apply_auto_include_keeps_source_preset_when_settings_kept():
     t = auto()
-    t.apply_auto_decision(RULE, PolicyTemplateId("t2"), SETTINGS, T1)
-    assert t.source_template_id == TEMPLATE
+    t.apply_auto_decision(RULE, TableMaintenancePresetId("t2"), SETTINGS, T1)
+    assert t.source_preset_id == PRESET
     assert t.matched_rule_id == RULE

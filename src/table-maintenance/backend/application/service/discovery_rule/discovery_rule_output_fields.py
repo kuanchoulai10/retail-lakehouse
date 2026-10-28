@@ -17,7 +17,7 @@ def discovery_rule_output_fields(rule: DiscoveryRule) -> dict[str, Any]:
         "catalog_pattern": rule.pattern.catalog,
         "namespace_pattern": rule.pattern.namespace,
         "table_pattern": rule.pattern.table,
-        "template_id": None if rule.template_id is None else rule.template_id.value,
+        "preset_id": None if rule.preset_id is None else rule.preset_id.value,
         "enabled": rule.enabled,
         "created_at": rule.created_at,
         "updated_at": rule.updated_at,

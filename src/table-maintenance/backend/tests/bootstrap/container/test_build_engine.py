@@ -46,7 +46,7 @@ def test_sqlite_in_memory_engine_shares_one_database():
     engine = build_engine(settings)
     create_schema(engine)
 
-    assert "policy_templates" in inspect(engine).get_table_names()
+    assert "table_maintenance_presets" in inspect(engine).get_table_names()
 
 
 def test_sqlite_file_engine(tmp_path: Path):

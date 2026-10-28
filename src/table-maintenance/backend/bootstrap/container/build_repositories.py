@@ -16,8 +16,8 @@ from adapter.outbound.maintenance_run.sql.maintenance_runs_sql_repo import (
 from adapter.outbound.managed_table.sql.managed_tables_sql_repo import (
     ManagedTablesSqlRepo,
 )
-from adapter.outbound.policy_template.sql.policy_templates_sql_repo import (
-    PolicyTemplatesSqlRepo,
+from adapter.outbound.table_maintenance_preset.sql.table_maintenance_presets_sql_repo import (
+    TableMaintenancePresetsSqlRepo,
 )
 from bootstrap.container.repositories import Repositories
 
@@ -32,5 +32,5 @@ def build_repositories(engine: Engine) -> Repositories:
         discovery_rules=DiscoveryRulesSqlRepo(engine),
         maintenance_runs=MaintenanceRunsSqlRepo(engine),
         managed_tables=ManagedTablesSqlRepo(engine),
-        policy_templates=PolicyTemplatesSqlRepo(engine),
+        table_maintenance_presets=TableMaintenancePresetsSqlRepo(engine),
     )

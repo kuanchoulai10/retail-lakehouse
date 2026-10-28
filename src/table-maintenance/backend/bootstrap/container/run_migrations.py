@@ -6,14 +6,14 @@ import logging
 from typing import TYPE_CHECKING
 
 from adapter.outbound.sql.create_schema import create_schema
-from application.service.policy_template.create_policy_template import (
-    CreatePolicyTemplateService,
+from application.service.table_maintenance_preset.create_table_maintenance_preset import (
+    CreateTableMaintenancePresetService,
 )
-from application.service.policy_template.list_policy_templates import (
-    ListPolicyTemplatesService,
+from application.service.table_maintenance_preset.list_table_maintenance_presets import (
+    ListTableMaintenancePresetsService,
 )
 from bootstrap.container.build_repositories import build_repositories
-from bootstrap.container.seed_default_template import seed_default_template
+from bootstrap.container.seed_default_preset import seed_default_preset
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine
@@ -22,14 +22,15 @@ logger = logging.getLogger(__name__)
 
 
 def run_migrations(engine: Engine) -> None:
-    """Create the missing tables, then seed the default template once.
+    """Create the missing tables, then seed the default preset once.
 
     ``create_schema`` adds missing tables and applies its idempotent column
     upgrades. No discovery rule is seeded.
     """
     create_schema(engine)
-    templates = build_repositories(engine).policy_templates
-    created = seed_default_template(
-        ListPolicyTemplatesService(templates), CreatePolicyTemplateService(templates)
+    presets = build_repositories(engine).table_maintenance_presets
+    created = seed_default_preset(
+        ListTableMaintenancePresetsService(presets),
+        CreateTableMaintenancePresetService(presets),
     )
-    logger.info("schema ready; default template %s", "created" if created else "kept")
+    logger.info("schema ready; default preset %s", "created" if created else "kept")

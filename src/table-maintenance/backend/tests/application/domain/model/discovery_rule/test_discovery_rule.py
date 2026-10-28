@@ -11,21 +11,21 @@ from application.domain.model.discovery_rule import (
     RuleEffect,
     TablePattern,
 )
-from application.domain.model.policy_template import PolicyTemplateId
+from application.domain.model.table_maintenance_preset import TableMaintenancePresetId
 
 T0 = datetime(2026, 1, 1, tzinfo=UTC)
 T1 = T0 + timedelta(hours=1)
 
 
 def make(
-    effect=RuleEffect.INCLUDE, template_id=PolicyTemplateId("t1")
+    effect=RuleEffect.INCLUDE, preset_id=TableMaintenancePresetId("t1")
 ) -> DiscoveryRule:
     return DiscoveryRule.create(
         id=DiscoveryRuleId("r1"),
         priority=10,
         effect=effect,
         pattern=TablePattern(),
-        template_id=template_id,
+        preset_id=preset_id,
         enabled=True,
         now=T0,
     )
@@ -38,15 +38,15 @@ def test_create():
     assert r.created_at == r.updated_at == T0
 
 
-def test_include_rule_requires_template():
+def test_include_rule_requires_preset():
     with pytest.raises(InvalidDiscoveryRule):
         make(RuleEffect.INCLUDE, None)
 
 
-def test_exclude_rule_rejects_template():
+def test_exclude_rule_rejects_preset():
     with pytest.raises(InvalidDiscoveryRule):
-        make(RuleEffect.EXCLUDE, PolicyTemplateId("t1"))
-    assert make(RuleEffect.EXCLUDE, None).template_id is None
+        make(RuleEffect.EXCLUDE, TableMaintenancePresetId("t1"))
+    assert make(RuleEffect.EXCLUDE, None).preset_id is None
 
 
 def test_update():
@@ -55,13 +55,13 @@ def test_update():
         priority=5,
         effect=RuleEffect.EXCLUDE,
         pattern=TablePattern(table="tmp_*"),
-        template_id=None,
+        preset_id=None,
         enabled=False,
         now=T1,
     )
     assert r.priority == 5
     assert r.effect == RuleEffect.EXCLUDE
-    assert r.template_id is None
+    assert r.preset_id is None
     assert not r.enabled
     assert r.updated_at == T1
     assert r.created_at == T0
@@ -74,7 +74,7 @@ def test_invalid_update_leaves_state_unchanged():
             priority=5,
             effect=RuleEffect.INCLUDE,
             pattern=TablePattern(),
-            template_id=None,
+            preset_id=None,
             enabled=False,
             now=T1,
         )

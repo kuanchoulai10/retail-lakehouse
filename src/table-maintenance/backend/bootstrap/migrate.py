@@ -7,7 +7,7 @@ from bootstrap.container import build_engine, configure_logging, run_migrations
 
 
 def main() -> None:
-    """Create the schema and seed the default template, then exit."""
+    """Create the schema and seed the default preset, then exit."""
     settings = get_settings()
     configure_logging(settings.log_level)
     engine = build_engine(settings)

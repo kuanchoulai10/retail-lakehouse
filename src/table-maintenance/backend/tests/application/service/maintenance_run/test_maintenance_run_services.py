@@ -21,8 +21,8 @@ from application.domain.model.maintenance_settings.maintenance_settings import (
 from application.domain.model.managed_table.managed_table import ManagedTable
 from application.domain.model.managed_table.table_name import TableName
 from application.domain.model.managed_table.table_uuid import TableUuid
-from application.domain.model.policy_template.policy_template_id import (
-    PolicyTemplateId,
+from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
+    TableMaintenancePresetId,
 )
 from application.exceptions import ConflictError, NotFoundError, ValidationError
 from application.port.inbound.maintenance_run.create_maintenance_run import (
@@ -67,7 +67,7 @@ def table(tables_repo, now):
         TableUuid("u-1"),
         TableName("iceberg", "sales", "orders"),
         DiscoveryRuleId("r-1"),
-        PolicyTemplateId("t-1"),
+        TableMaintenancePresetId("t-1"),
         MaintenanceSettings(),
         now,
     )

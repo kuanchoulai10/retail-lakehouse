@@ -15,5 +15,5 @@ class UpdateDiscoveryRuleUseCaseInput:
     catalog_pattern: str = "*"
     namespace_pattern: str = "*"
     table_pattern: str = "*"
-    template_id: str | None = None
+    preset_id: str | None = None
     enabled: bool = True

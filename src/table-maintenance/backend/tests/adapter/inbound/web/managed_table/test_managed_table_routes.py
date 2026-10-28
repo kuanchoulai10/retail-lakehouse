@@ -53,7 +53,7 @@ FIELDS: dict[str, Any] = {
     "selection": "auto",
     "settings": {"reconcile_interval_seconds": 3600},
     "matched_rule_id": "r-1",
-    "source_template_id": "t-1",
+    "source_preset_id": "t-1",
     "operation_states": {
         "rewrite_data_files": {"last_attempt_at": NOW, "consecutive_failures": 0}
     },
@@ -151,7 +151,7 @@ def test_include_table() -> None:
         "catalog": "iceberg",
         "namespace": "sales",
         "table": "orders",
-        "template_id": "t-1",
+        "preset_id": "t-1",
     }
 
     response = client.post("/v1/tables/include", json=body)

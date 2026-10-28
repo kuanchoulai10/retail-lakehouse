@@ -86,7 +86,7 @@ forbidden_modules =
     application.domain.model.maintenance_settings
     application.domain.model.managed_table
     application.domain.model.observation
-    application.domain.model.policy_template
+    application.domain.model.table_maintenance_preset
     adapter.inbound.temporal.activities
     adapter.inbound.web
     adapter.inbound.event_consumer

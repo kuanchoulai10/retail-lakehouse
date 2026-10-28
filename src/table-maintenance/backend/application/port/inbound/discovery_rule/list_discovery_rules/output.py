@@ -20,7 +20,7 @@ class ListDiscoveryRulesUseCaseOutputItem:
     catalog_pattern: str
     namespace_pattern: str
     table_pattern: str
-    template_id: str | None
+    preset_id: str | None
     enabled: bool
     created_at: datetime
     updated_at: datetime

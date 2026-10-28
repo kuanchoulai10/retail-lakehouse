@@ -20,8 +20,8 @@ from application.domain.model.managed_table.table_name import TableName
 from application.domain.model.managed_table.table_selection import TableSelection
 from application.domain.model.managed_table.table_status import TableStatus
 from application.domain.model.managed_table.table_uuid import TableUuid
-from application.domain.model.policy_template.policy_template_id import (
-    PolicyTemplateId,
+from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
+    TableMaintenancePresetId,
 )
 from base.aggregate_root import AggregateRoot
 
@@ -36,7 +36,7 @@ class ManagedTable(AggregateRoot[TableUuid]):
     selection: TableSelection
     settings: MaintenanceSettings | None
     matched_rule_id: DiscoveryRuleId | None
-    source_template_id: PolicyTemplateId | None
+    source_preset_id: TableMaintenancePresetId | None
     registered_at: datetime
     updated_at: datetime
     operation_states: dict[MaintenanceOperation, OperationState] = field(
@@ -49,7 +49,7 @@ class ManagedTable(AggregateRoot[TableUuid]):
         id: TableUuid,  # noqa: A002
         name: TableName,
         rule_id: DiscoveryRuleId,
-        template_id: PolicyTemplateId,
+        preset_id: TableMaintenancePresetId,
         settings: MaintenanceSettings,
         now: datetime,
     ) -> ManagedTable:
@@ -61,7 +61,7 @@ class ManagedTable(AggregateRoot[TableUuid]):
             selection=TableSelection.AUTO,
             settings=settings,
             matched_rule_id=rule_id,
-            source_template_id=template_id,
+            source_preset_id=preset_id,
             registered_at=now,
             updated_at=now,
         )
@@ -71,7 +71,7 @@ class ManagedTable(AggregateRoot[TableUuid]):
         cls,
         id: TableUuid,  # noqa: A002
         name: TableName,
-        template_id: PolicyTemplateId,
+        preset_id: TableMaintenancePresetId,
         settings: MaintenanceSettings,
         now: datetime,
     ) -> ManagedTable:
@@ -83,7 +83,7 @@ class ManagedTable(AggregateRoot[TableUuid]):
             selection=TableSelection.MANUAL,
             settings=settings,
             matched_rule_id=None,
-            source_template_id=template_id,
+            source_preset_id=preset_id,
             registered_at=now,
             updated_at=now,
         )
@@ -103,7 +103,7 @@ class ManagedTable(AggregateRoot[TableUuid]):
             selection=TableSelection.MANUAL,
             settings=None,
             matched_rule_id=None,
-            source_template_id=None,
+            source_preset_id=None,
             registered_at=now,
             updated_at=now,
         )
@@ -169,7 +169,7 @@ class ManagedTable(AggregateRoot[TableUuid]):
 
     def include_manually(
         self,
-        template_id: PolicyTemplateId,
+        preset_id: TableMaintenancePresetId,
         settings: MaintenanceSettings,
         now: datetime,
     ) -> None:
@@ -178,38 +178,38 @@ class ManagedTable(AggregateRoot[TableUuid]):
         self.status = TableStatus.ACTIVE
         self.selection = TableSelection.MANUAL
         self.settings = settings
-        self.source_template_id = template_id
+        self.source_preset_id = preset_id
         self.matched_rule_id = None
         self.updated_at = now
 
     def apply_auto_decision(
         self,
         rule_id: DiscoveryRuleId | None,
-        template_id: PolicyTemplateId | None,
+        preset_id: TableMaintenancePresetId | None,
         settings: MaintenanceSettings | None,
         now: datetime,
     ) -> None:
         """Apply a discovery rule decision to an AUTO table; MANUAL tables are ignored.
 
-        An include decision carries a template and settings; no rule, or an exclude
-        rule (no template), excludes the table and keeps its settings.
+        An include decision carries a preset and settings; no rule, or an exclude
+        rule (no preset), excludes the table and keeps its settings.
         """
         self._ensure_not_dropped()
         if self.selection != TableSelection.AUTO:
             return
-        if template_id is not None and self.settings is None and settings is None:
+        if preset_id is not None and self.settings is None and settings is None:
             raise InvalidTableTransition(
                 "an include decision needs settings for a table without settings"
             )
         self.matched_rule_id = rule_id
-        if template_id is None:
+        if preset_id is None:
             self.status = TableStatus.EXCLUDED
         else:
             if self.status == TableStatus.EXCLUDED:
                 self.status = TableStatus.ACTIVE
             if self.settings is None:
                 self.settings = settings
-                self.source_template_id = template_id
+                self.source_preset_id = preset_id
         self.updated_at = now
 
     def update_settings(self, settings: MaintenanceSettings, now: datetime) -> None:

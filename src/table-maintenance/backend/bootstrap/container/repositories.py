@@ -18,8 +18,8 @@ if TYPE_CHECKING:
     from application.port.outbound.managed_table.managed_tables_repo import (
         ManagedTablesRepo,
     )
-    from application.port.outbound.policy_template.policy_templates_repo import (
-        PolicyTemplatesRepo,
+    from application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (
+        TableMaintenancePresetsRepo,
     )
 
 
@@ -31,4 +31,4 @@ class Repositories:
     discovery_rules: DiscoveryRulesRepo
     maintenance_runs: MaintenanceRunsRepo
     managed_tables: ManagedTablesRepo
-    policy_templates: PolicyTemplatesRepo
+    table_maintenance_presets: TableMaintenancePresetsRepo

@@ -12,4 +12,4 @@ class IncludeManagedTableUseCaseInput:
     catalog: str
     namespace: str
     table: str
-    template_id: str
+    preset_id: str

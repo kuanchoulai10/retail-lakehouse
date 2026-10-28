@@ -16,8 +16,8 @@ from application.domain.model.managed_table.table_name import TableName
 from application.domain.model.managed_table.table_selection import TableSelection
 from application.domain.model.managed_table.table_status import TableStatus
 from application.domain.model.managed_table.table_uuid import TableUuid
-from application.domain.model.policy_template.policy_template_id import (
-    PolicyTemplateId,
+from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
+    TableMaintenancePresetId,
 )
 
 if TYPE_CHECKING:
@@ -45,10 +45,8 @@ class ManagedTableRowMapper:
             "matched_rule_id": (
                 None if table.matched_rule_id is None else table.matched_rule_id.value
             ),
-            "source_template_id": (
-                None
-                if table.source_template_id is None
-                else table.source_template_id.value
+            "source_preset_id": (
+                None if table.source_preset_id is None else table.source_preset_id.value
             ),
             "registered_at": table.registered_at,
             "updated_at": table.updated_at,
@@ -66,7 +64,7 @@ class ManagedTableRowMapper:
         """Rebuild the aggregate from a row without registering events."""
         settings = row["settings_json"]
         matched = row["matched_rule_id"]
-        template = row["source_template_id"]
+        preset = row["source_preset_id"]
         return ManagedTable(
             id=TableUuid(row["uuid"]),
             name=TableName(
@@ -80,7 +78,9 @@ class ManagedTableRowMapper:
             if settings is None
             else MaintenanceSettingsCodec.decode(settings),
             matched_rule_id=None if matched is None else DiscoveryRuleId(matched),
-            source_template_id=None if template is None else PolicyTemplateId(template),
+            source_preset_id=None
+            if preset is None
+            else TableMaintenancePresetId(preset),
             registered_at=row["registered_at"],
             updated_at=row["updated_at"],
             operation_states={

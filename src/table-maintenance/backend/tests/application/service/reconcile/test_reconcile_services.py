@@ -25,8 +25,8 @@ from application.domain.model.maintenance_settings.rewrite_data_files_settings i
 from application.domain.model.managed_table.managed_table import ManagedTable
 from application.domain.model.managed_table.table_name import TableName
 from application.domain.model.managed_table.table_uuid import TableUuid
-from application.domain.model.policy_template.policy_template_id import (
-    PolicyTemplateId,
+from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
+    TableMaintenancePresetId,
 )
 from application.exceptions import ConflictError, NotFoundError, ValidationError
 from application.port.inbound.reconcile.delete_maintenance_job import (
@@ -69,7 +69,7 @@ def _table(repo, now, settings=None, uuid="u-1", name=NAME):
         TableUuid(uuid),
         name,
         DiscoveryRuleId("r-1"),
-        PolicyTemplateId("t-1"),
+        TableMaintenancePresetId("t-1"),
         settings or MaintenanceSettings(),
         now,
     )

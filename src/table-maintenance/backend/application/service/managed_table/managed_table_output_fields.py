@@ -29,8 +29,8 @@ def managed_table_output_fields(table: ManagedTable) -> dict[str, Any]:
         "matched_rule_id": (
             None if table.matched_rule_id is None else table.matched_rule_id.value
         ),
-        "source_template_id": (
-            None if table.source_template_id is None else table.source_template_id.value
+        "source_preset_id": (
+            None if table.source_preset_id is None else table.source_preset_id.value
         ),
         "operation_states": {
             op.value: {

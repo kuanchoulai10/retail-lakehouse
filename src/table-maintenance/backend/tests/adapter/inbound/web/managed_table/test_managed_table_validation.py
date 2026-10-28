@@ -11,8 +11,8 @@ from application.domain.model.maintenance_settings.maintenance_settings import (
 from application.domain.model.managed_table.managed_table import ManagedTable
 from application.domain.model.managed_table.table_name import TableName
 from application.domain.model.managed_table.table_uuid import TableUuid
-from application.domain.model.policy_template.policy_template_id import (
-    PolicyTemplateId,
+from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
+    TableMaintenancePresetId,
 )
 from application.service.managed_table.list_managed_tables import (
     ListManagedTablesService,
@@ -39,7 +39,7 @@ def repo() -> InMemoryManagedTablesRepo:
         ManagedTable.include_manual(
             TableUuid("u-1"),
             TableName("iceberg", "sales", "orders"),
-            PolicyTemplateId("t-1"),
+            TableMaintenancePresetId("t-1"),
             MaintenanceSettings(),
             NOW,
         )

@@ -63,20 +63,20 @@ if TYPE_CHECKING:
     from application.port.inbound.managed_table.update_managed_table_settings import (
         UpdateManagedTableSettingsUseCase,
     )
-    from application.port.inbound.policy_template.create_policy_template import (
-        CreatePolicyTemplateUseCase,
+    from application.port.inbound.table_maintenance_preset.create_table_maintenance_preset import (
+        CreateTableMaintenancePresetUseCase,
     )
-    from application.port.inbound.policy_template.delete_policy_template import (
-        DeletePolicyTemplateUseCase,
+    from application.port.inbound.table_maintenance_preset.delete_table_maintenance_preset import (
+        DeleteTableMaintenancePresetUseCase,
     )
-    from application.port.inbound.policy_template.get_policy_template import (
-        GetPolicyTemplateUseCase,
+    from application.port.inbound.table_maintenance_preset.get_table_maintenance_preset import (
+        GetTableMaintenancePresetUseCase,
     )
-    from application.port.inbound.policy_template.list_policy_templates import (
-        ListPolicyTemplatesUseCase,
+    from application.port.inbound.table_maintenance_preset.list_table_maintenance_presets import (
+        ListTableMaintenancePresetsUseCase,
     )
-    from application.port.inbound.policy_template.update_policy_template import (
-        UpdatePolicyTemplateUseCase,
+    from application.port.inbound.table_maintenance_preset.update_table_maintenance_preset import (
+        UpdateTableMaintenancePresetUseCase,
     )
 
 
@@ -91,11 +91,11 @@ class WebUseCases:
     get_discovery_settings: GetDiscoverySettingsUseCase
     update_discovery_settings: UpdateDiscoverySettingsUseCase
     sync_discovered_tables: SyncDiscoveredTablesUseCase
-    create_policy_template: CreatePolicyTemplateUseCase
-    list_policy_templates: ListPolicyTemplatesUseCase
-    get_policy_template: GetPolicyTemplateUseCase
-    update_policy_template: UpdatePolicyTemplateUseCase
-    delete_policy_template: DeletePolicyTemplateUseCase
+    create_table_maintenance_preset: CreateTableMaintenancePresetUseCase
+    list_table_maintenance_presets: ListTableMaintenancePresetsUseCase
+    get_table_maintenance_preset: GetTableMaintenancePresetUseCase
+    update_table_maintenance_preset: UpdateTableMaintenancePresetUseCase
+    delete_table_maintenance_preset: DeleteTableMaintenancePresetUseCase
     list_managed_tables: ListManagedTablesUseCase
     get_managed_table: GetManagedTableUseCase
     update_managed_table_settings: UpdateManagedTableSettingsUseCase

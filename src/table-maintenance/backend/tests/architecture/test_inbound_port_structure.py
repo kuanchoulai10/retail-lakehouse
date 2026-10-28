@@ -31,7 +31,7 @@ AGGREGATE_GROUPS = [
     "discovery_rule",
     "managed_table",
     "maintenance_run",
-    "policy_template",
+    "table_maintenance_preset",
     "reconcile",
 ]
 AGGREGATE_GROUPS_NO_INPUT: set[str] = set()

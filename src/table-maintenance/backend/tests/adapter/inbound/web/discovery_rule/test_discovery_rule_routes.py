@@ -29,7 +29,7 @@ FIELDS: dict[str, Any] = {
     "catalog_pattern": "*",
     "namespace_pattern": "sales",
     "table_pattern": "*",
-    "template_id": "t-1",
+    "preset_id": "t-1",
     "enabled": True,
     "created_at": NOW,
     "updated_at": NOW,
@@ -59,7 +59,7 @@ def test_create_discovery_rule_returns_201() -> None:
             "priority": 10,
             "effect": "include",
             "namespace_pattern": "sales",
-            "template_id": "t-1",
+            "preset_id": "t-1",
         },
     )
 
@@ -70,7 +70,7 @@ def test_create_discovery_rule_returns_201() -> None:
             priority=10,
             effect="include",
             namespace_pattern="sales",
-            template_id="t-1",
+            preset_id="t-1",
         )
     ]
 

@@ -29,7 +29,9 @@ from tests.fakes.in_memory_discovery_settings_repo import (
     InMemoryDiscoverySettingsRepo,
 )
 from tests.fakes.in_memory_managed_tables_repo import InMemoryManagedTablesRepo
-from tests.fakes.in_memory_policy_templates_repo import InMemoryPolicyTemplatesRepo
+from tests.fakes.in_memory_table_maintenance_presets_repo import (
+    InMemoryTableMaintenancePresetsRepo,
+)
 from tests.fakes.recording_send_table_signal_gateway import (
     RecordingSendTableSignalGateway,
 )
@@ -60,8 +62,8 @@ def new_id() -> Callable[[], str]:
 
 
 @pytest.fixture
-def templates_repo() -> InMemoryPolicyTemplatesRepo:
-    return InMemoryPolicyTemplatesRepo()
+def presets_repo() -> InMemoryTableMaintenancePresetsRepo:
+    return InMemoryTableMaintenancePresetsRepo()
 
 
 @pytest.fixture

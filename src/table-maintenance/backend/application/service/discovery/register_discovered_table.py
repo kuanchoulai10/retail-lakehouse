@@ -24,8 +24,8 @@ if TYPE_CHECKING:
     from application.port.outbound.managed_table.managed_tables_repo import (
         ManagedTablesRepo,
     )
-    from application.port.outbound.policy_template.policy_templates_repo import (
-        PolicyTemplatesRepo,
+    from application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (
+        TableMaintenancePresetsRepo,
     )
     from application.port.outbound.workflow.send_table_signal import (
         SendTableSignalGateway,
@@ -36,28 +36,26 @@ def register_discovered_table(  # noqa: PLR0913
     found: ReadCatalogGatewayTable,
     rules: Sequence[DiscoveryRule],
     tables_repo: ManagedTablesRepo,
-    templates_repo: PolicyTemplatesRepo,
+    presets_repo: TableMaintenancePresetsRepo,
     signal_gateway: SendTableSignalGateway,
     now: datetime,
 ) -> RegistrationOutcome:
     """Decide an unknown table by the discovery rules and register it if included.
 
     An INCLUDE match registers the table as AUTO ACTIVE with a copy of the rule's
-    template settings and starts its reconciliation workflow. An EXCLUDE match, or no
-    match, registers nothing. A rule whose template is missing is SKIPPED.
+    preset settings and starts its reconciliation workflow. An EXCLUDE match, or no
+    match, registers nothing. A rule whose preset is missing is SKIPPED.
     """
     name = TableName(found.catalog, found.namespace, found.table)
     rule = match_discovery_rule(rules, name)
-    if rule is None or rule.effect != RuleEffect.INCLUDE or rule.template_id is None:
+    if rule is None or rule.effect != RuleEffect.INCLUDE or rule.preset_id is None:
         return RegistrationOutcome.NOT_SELECTED
-    template = templates_repo.get(rule.template_id)
-    if template is None:
+    preset = presets_repo.get(rule.preset_id)
+    if preset is None:
         return RegistrationOutcome.SKIPPED
     uuid = TableUuid(found.table_uuid)
     tables_repo.create(
-        ManagedTable.register_auto(
-            uuid, name, rule.id, template.id, template.settings, now
-        )
+        ManagedTable.register_auto(uuid, name, rule.id, preset.id, preset.settings, now)
     )
     signal_gateway.send(
         SendTableSignalGatewayInput(

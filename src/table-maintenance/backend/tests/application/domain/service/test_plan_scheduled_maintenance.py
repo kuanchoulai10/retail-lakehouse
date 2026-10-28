@@ -27,7 +27,7 @@ from application.domain.model.observation import (
     SnapshotInfo,
     TableObservation,
 )
-from application.domain.model.policy_template import PolicyTemplateId
+from application.domain.model.table_maintenance_preset import TableMaintenancePresetId
 from application.domain.service.plan_scheduled_maintenance import (
     plan_scheduled_maintenance,
 )
@@ -45,7 +45,7 @@ def table(settings=None) -> ManagedTable:
         TableUuid("u"),
         TableName("c", "n", "t"),
         DiscoveryRuleId("r"),
-        PolicyTemplateId("t"),
+        TableMaintenancePresetId("t"),
         settings or MaintenanceSettings(),
         NOW - timedelta(days=30),
     )

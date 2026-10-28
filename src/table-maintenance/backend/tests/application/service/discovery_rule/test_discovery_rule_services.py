@@ -11,9 +11,11 @@ from application.domain.model.discovery_rule.table_pattern import TablePattern
 from application.domain.model.maintenance_settings.maintenance_settings import (
     MaintenanceSettings,
 )
-from application.domain.model.policy_template.policy_template import PolicyTemplate
-from application.domain.model.policy_template.policy_template_id import (
-    PolicyTemplateId,
+from application.domain.model.table_maintenance_preset.table_maintenance_preset import (
+    TableMaintenancePreset,
+)
+from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
+    TableMaintenancePresetId,
 )
 from application.exceptions import NotFoundError, ValidationError
 from application.port.inbound.discovery_rule.create_discovery_rule import (
@@ -43,11 +45,11 @@ from application.service.discovery_rule.update_discovery_rule import (
 
 
 @pytest.fixture
-def template(templates_repo, now):
-    t = PolicyTemplate.create(
-        PolicyTemplateId("t-1"), "gold", MaintenanceSettings(), now
+def preset(presets_repo, now):
+    t = TableMaintenancePreset.create(
+        TableMaintenancePresetId("t-1"), "gold", MaintenanceSettings(), now
     )
-    templates_repo.create(t)
+    presets_repo.create(t)
     return t
 
 
@@ -57,7 +59,7 @@ def _rule(rules_repo, now, rid="r-1", priority=10):
         priority,
         RuleEffect.INCLUDE,
         TablePattern(),
-        PolicyTemplateId("t-1"),
+        TableMaintenancePresetId("t-1"),
         True,
         now,
     )
@@ -65,32 +67,30 @@ def _rule(rules_repo, now, rid="r-1", priority=10):
     return rule
 
 
-def test_create_include_rule(rules_repo, templates_repo, template, clock, new_id):
+def test_create_include_rule(rules_repo, presets_repo, preset, clock, new_id):
     service = CreateDiscoveryRuleService(
-        rules_repo, templates_repo, clock=clock, new_id=new_id
+        rules_repo, presets_repo, clock=clock, new_id=new_id
     )
     out = service.execute(
         CreateDiscoveryRuleUseCaseInput(
             priority=5,
             effect="include",
             namespace_pattern="sales*",
-            template_id="t-1",
+            preset_id="t-1",
         )
     )
     assert out.id == "id-1"
     assert out.catalog_pattern == "*"
     assert out.namespace_pattern == "sales*"
     assert out.table_pattern == "*"
-    assert out.template_id == "t-1"
+    assert out.preset_id == "t-1"
     assert out.enabled is True
     assert rules_repo.get(DiscoveryRuleId("id-1")) is not None
 
 
-def test_create_exclude_rule_without_template(
-    rules_repo, templates_repo, clock, new_id
-):
+def test_create_exclude_rule_without_preset(rules_repo, presets_repo, clock, new_id):
     service = CreateDiscoveryRuleService(
-        rules_repo, templates_repo, clock=clock, new_id=new_id
+        rules_repo, presets_repo, clock=clock, new_id=new_id
     )
     out = service.execute(
         CreateDiscoveryRuleUseCaseInput(
@@ -98,52 +98,48 @@ def test_create_exclude_rule_without_template(
         )
     )
     assert out.effect == "exclude"
-    assert out.template_id is None
+    assert out.preset_id is None
 
 
-def test_create_rule_unknown_template_not_found(
-    rules_repo, templates_repo, clock, new_id
-):
+def test_create_rule_unknown_preset_not_found(rules_repo, presets_repo, clock, new_id):
     service = CreateDiscoveryRuleService(
-        rules_repo, templates_repo, clock=clock, new_id=new_id
+        rules_repo, presets_repo, clock=clock, new_id=new_id
     )
     with pytest.raises(NotFoundError):
         service.execute(
             CreateDiscoveryRuleUseCaseInput(
-                priority=1, effect="include", template_id="missing"
+                priority=1, effect="include", preset_id="missing"
             )
         )
 
 
 @pytest.mark.parametrize(
-    "effect, template_id",
+    "effect, preset_id",
     [("include", None), ("bogus", "t-1"), ("exclude", "t-1")],
 )
 def test_create_rule_invalid_combination(
-    rules_repo, templates_repo, template, clock, new_id, effect, template_id
+    rules_repo, presets_repo, preset, clock, new_id, effect, preset_id
 ):
     service = CreateDiscoveryRuleService(
-        rules_repo, templates_repo, clock=clock, new_id=new_id
+        rules_repo, presets_repo, clock=clock, new_id=new_id
     )
     with pytest.raises(ValidationError):
         service.execute(
             CreateDiscoveryRuleUseCaseInput(
-                priority=1, effect=effect, template_id=template_id
+                priority=1, effect=effect, preset_id=preset_id
             )
         )
     assert rules_repo.list_all() == []
 
 
-def test_update_rule_replaces_definition(
-    rules_repo, templates_repo, template, clock, now
-):
+def test_update_rule_replaces_definition(rules_repo, presets_repo, preset, clock, now):
     _rule(rules_repo, now)
-    out = UpdateDiscoveryRuleService(rules_repo, templates_repo, clock=clock).execute(
+    out = UpdateDiscoveryRuleService(rules_repo, presets_repo, clock=clock).execute(
         UpdateDiscoveryRuleUseCaseInput(
             id="r-1", priority=2, effect="exclude", table_pattern="x*", enabled=False
         )
     )
-    assert (out.priority, out.effect, out.template_id, out.enabled) == (
+    assert (out.priority, out.effect, out.preset_id, out.enabled) == (
         2,
         "exclude",
         None,
@@ -153,31 +149,31 @@ def test_update_rule_replaces_definition(
     assert out.catalog_pattern == "*"
 
 
-def test_update_unknown_rule_not_found(rules_repo, templates_repo, clock):
+def test_update_unknown_rule_not_found(rules_repo, presets_repo, clock):
     with pytest.raises(NotFoundError):
-        UpdateDiscoveryRuleService(rules_repo, templates_repo, clock=clock).execute(
+        UpdateDiscoveryRuleService(rules_repo, presets_repo, clock=clock).execute(
             UpdateDiscoveryRuleUseCaseInput(id="nope", priority=1, effect="exclude")
         )
 
 
-def test_update_rule_unknown_template_not_found(
-    rules_repo, templates_repo, template, clock, now
+def test_update_rule_unknown_preset_not_found(
+    rules_repo, presets_repo, preset, clock, now
 ):
     _rule(rules_repo, now)
     with pytest.raises(NotFoundError):
-        UpdateDiscoveryRuleService(rules_repo, templates_repo, clock=clock).execute(
+        UpdateDiscoveryRuleService(rules_repo, presets_repo, clock=clock).execute(
             UpdateDiscoveryRuleUseCaseInput(
-                id="r-1", priority=1, effect="include", template_id="missing"
+                id="r-1", priority=1, effect="include", preset_id="missing"
             )
         )
 
 
 def test_update_rule_invalid_leaves_rule_unchanged(
-    rules_repo, templates_repo, template, clock, now
+    rules_repo, presets_repo, preset, clock, now
 ):
     _rule(rules_repo, now)
     with pytest.raises(ValidationError):
-        UpdateDiscoveryRuleService(rules_repo, templates_repo, clock=clock).execute(
+        UpdateDiscoveryRuleService(rules_repo, presets_repo, clock=clock).execute(
             UpdateDiscoveryRuleUseCaseInput(id="r-1", priority=99, effect="include")
         )
     stored = rules_repo.get(DiscoveryRuleId("r-1"))

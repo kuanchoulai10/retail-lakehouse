@@ -10,8 +10,8 @@ from application.port.outbound.discovery_rule.discovery_rules_repo import (
 
 if TYPE_CHECKING:
     from application.domain.model.discovery_rule.discovery_rule import DiscoveryRule
-    from application.domain.model.policy_template.policy_template_id import (
-        PolicyTemplateId,
+    from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
+        TableMaintenancePresetId,
     )
     from base.entity_id import EntityId
 
@@ -47,6 +47,6 @@ class InMemoryDiscoveryRulesRepo(DiscoveryRulesRepo):
         """Remove a rule if present."""
         self.items.pop(entity_id.value, None)
 
-    def count_by_template(self, template_id: PolicyTemplateId) -> int:
-        """Count the rules that reference the template."""
-        return sum(1 for r in self.items.values() if r.template_id == template_id)
+    def count_by_preset(self, preset_id: TableMaintenancePresetId) -> int:
+        """Count the rules that reference the preset."""
+        return sum(1 for r in self.items.values() if r.preset_id == preset_id)

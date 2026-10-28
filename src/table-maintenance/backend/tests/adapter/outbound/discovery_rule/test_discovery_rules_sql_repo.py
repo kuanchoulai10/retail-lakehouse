@@ -13,20 +13,20 @@ from application.domain.model.discovery_rule.discovery_rule_id import DiscoveryR
 from application.domain.model.discovery_rule.rule_effect import RuleEffect
 from application.domain.model.discovery_rule.table_pattern import TablePattern
 from application.exceptions import ConflictError
-from application.domain.model.policy_template.policy_template_id import (
-    PolicyTemplateId,
+from application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
+    TableMaintenancePresetId,
 )
 
 NOW = datetime(2026, 10, 24, tzinfo=UTC)
 
 
-def _include(rule_id: str, priority: int, template: str = "t1") -> DiscoveryRule:
+def _include(rule_id: str, priority: int, preset: str = "t1") -> DiscoveryRule:
     return DiscoveryRule.create(
         DiscoveryRuleId(rule_id),
         priority,
         RuleEffect.INCLUDE,
         TablePattern("iceberg", "inv*", "*"),
-        PolicyTemplateId(template),
+        TableMaintenancePresetId(preset),
         True,
         NOW,
     )
@@ -44,7 +44,7 @@ def test_roundtrip(repo: DiscoveryRulesSqlRepo):
     assert loaded.priority == 5
     assert loaded.effect is RuleEffect.INCLUDE
     assert loaded.pattern == TablePattern("iceberg", "inv*", "*")
-    assert loaded.template_id == PolicyTemplateId("t1")
+    assert loaded.preset_id == TableMaintenancePresetId("t1")
     assert loaded.enabled is True
     assert loaded.created_at == NOW
     assert loaded.created_at.tzinfo is not None
@@ -52,7 +52,7 @@ def test_roundtrip(repo: DiscoveryRulesSqlRepo):
     assert loaded.collect_events() == []
 
 
-def test_exclude_rule_roundtrip_without_template(repo: DiscoveryRulesSqlRepo):
+def test_exclude_rule_roundtrip_without_preset(repo: DiscoveryRulesSqlRepo):
     rule = DiscoveryRule.create(
         DiscoveryRuleId("x"),
         1,
@@ -65,7 +65,7 @@ def test_exclude_rule_roundtrip_without_template(repo: DiscoveryRulesSqlRepo):
     repo.create(rule)
     loaded = repo.get(rule.id)
     assert loaded is not None
-    assert loaded.template_id is None
+    assert loaded.preset_id is None
     assert loaded.enabled is False
 
 
@@ -84,7 +84,7 @@ def test_update_persists(repo: DiscoveryRulesSqlRepo):
     assert loaded.priority == 9
     assert loaded.effect is RuleEffect.EXCLUDE
     assert loaded.pattern == TablePattern("c", "n", "t")
-    assert loaded.template_id is None
+    assert loaded.preset_id is None
     assert loaded.enabled is False
     assert loaded.updated_at == later
 
@@ -108,13 +108,13 @@ def test_list_all_ordered_by_priority_then_id(repo: DiscoveryRulesSqlRepo):
     assert [r.id.value for r in repo.list_all()] == ["c", "a", "b"]
 
 
-def test_count_by_template(repo: DiscoveryRulesSqlRepo):
+def test_count_by_preset(repo: DiscoveryRulesSqlRepo):
     repo.create(_include("r1", 1, "t1"))
     repo.create(_include("r2", 2, "t1"))
     repo.create(_include("r3", 3, "t2"))
-    assert repo.count_by_template(PolicyTemplateId("t1")) == 2
-    assert repo.count_by_template(PolicyTemplateId("t2")) == 1
-    assert repo.count_by_template(PolicyTemplateId("t3")) == 0
+    assert repo.count_by_preset(TableMaintenancePresetId("t1")) == 2
+    assert repo.count_by_preset(TableMaintenancePresetId("t2")) == 1
+    assert repo.count_by_preset(TableMaintenancePresetId("t3")) == 0
 
 
 def test_create_duplicate_primary_key_raises_conflict(repo: DiscoveryRulesSqlRepo):
