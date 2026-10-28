@@ -69,7 +69,7 @@ Respond in the same language as the user's message. The user typically communica
 - Spark result callback retries only 3 times 5 s apart (`runtime/spark/result_callback.py`); across a DB / Temporal outage the run is recorded from the polling fallback as `{"completed_without_callback": 1}` and the procedure metrics are lost. Widen the retry window or have the poller read the result from the driver.
 - `rewrite_data_files` runs with `partial-progress.enabled=true`; the runtime now fails a CALL with failed and zero rewritten data files, but a lost callback still records success from the poller (`completed_without_callback`).
 - Each SparkApplication downloads the Iceberg jars from Maven Central at submit; bake them into `table-maintenance-spark`.
-- Event-driven runs with the `default` template start while a writer is still committing; the 10-min discovery fallback was not exercised by the e2e (the event path found the tables first).
+- Event-driven runs with the `default` preset start while a writer is still committing; the 10-min discovery fallback was not exercised by the e2e (the event path found the tables first).
 - `Table` (formerly `ManagedTable`) updates can be lost under concurrent writers: add a version column with compare-and-set.
 - A retried `record_maintenance_operation_result` activity can lose the table's backoff update.
 - The discovery enabled switch and the `table-discovery` schedule can drift until the worker restarts.
@@ -121,7 +121,7 @@ adapter/hybrid   ──> application ──> domain
 adapter/*        ──✗──> domain (forbidden: must go through application)
 ```
 
-Inside `application/` the order is `service` → `port` → `domain/service` → `domain/model`; each ring imports only the next one down.
+Inside `application/` the order is `service` → `port` → `domain/service` → `domain/model`; a ring may import only rings below it, never above (contract `application-ring-order`).
 
 ### Backend Structure
 
