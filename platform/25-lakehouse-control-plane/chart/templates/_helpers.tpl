@@ -45,7 +45,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
     - sh
     - -c
     - >-
-      until [ "$(psql -h table-maintenance-db -U {{ .Values.postgres.user }} -d {{ .Values.postgres.database }} -tAc "select count(*) from policy_templates where name = 'default'")" = "1" ]; do
+      until [ "$(psql -h table-maintenance-db -U {{ .Values.postgres.user }} -d {{ .Values.postgres.database }} -tAc "select count(*) from table_maintenance_presets where name = 'default'")" = "1" ]; do
       echo "waiting for the migrate job to seed the schema"; sleep 3; done
 {{- end -}}
 

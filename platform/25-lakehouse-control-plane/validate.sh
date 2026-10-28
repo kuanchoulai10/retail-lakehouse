@@ -51,8 +51,25 @@ api_get() {
 }
 
 api_get /healthz
-api_get /v1/discovery
+api_get /v1/table-discovery-settings
 api_get /v1/tables
+
+PRESETS="$(kubectl exec deployment/table-maintenance-api \
+  --namespace "${NAMESPACE}" \
+  --context "${KUBE_CONTEXT}" \
+  -- python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/v1/table-maintenance-presets', timeout=10).read().decode())")"
+grep -q '"name":"default"' <<<"${PRESETS}" || { echo "preset default is not listed" >&2; exit 1; }
+
+OLD_ROUTE_STATUS="$(kubectl exec deployment/table-maintenance-api \
+  --namespace "${NAMESPACE}" \
+  --context "${KUBE_CONTEXT}" \
+  -- python -c "
+import urllib.error, urllib.request
+try:
+    print(urllib.request.urlopen('http://localhost:8000/v1/policy-templates', timeout=10).status)
+except urllib.error.HTTPError as e:
+    print(e.code)")"
+[[ "${OLD_ROUTE_STATUS}" == "404" ]] || { echo "/v1/policy-templates returned ${OLD_ROUTE_STATUS}, expected 404" >&2; exit 1; }
 
 ADMIN_TOOLS="deployment/temporal-admintools"
 

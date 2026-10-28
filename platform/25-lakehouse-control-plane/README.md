@@ -79,7 +79,7 @@ Create a rule (the `default` preset id comes from `GET /v1/table-maintenance-pre
 ```
 curl -X POST http://localhost:8000/v1/table-discovery-rules -H 'Content-Type: application/json' \
   -d '{"priority": 10, "effect": "include", "catalog_pattern": "iceberg",
-       "namespace_pattern": "e2e", "table_pattern": "tm_e2e_*", "template_id": "<id>"}'
+       "namespace_pattern": "e2e", "table_pattern": "tm_e2e_*", "preset_id": "<id>"}'
 ```
 
 Settings keys, per operation: `rewrite_data_files` (`enabled`, `min_interval_seconds`, `scope` = `partition` or `table`, `target_file_size_bytes`, `min_reducible_files`), `rewrite_manifests` (`enabled`, `min_interval_seconds`, `min_small_manifests`, `small_manifest_bytes`), `expire_snapshots` (`enabled`, `min_interval_seconds`, `older_than_seconds`, `retain_last`), `remove_orphan_files` (`enabled`, `min_interval_seconds`, `older_than_seconds` ≥ 86400), plus `reconcile_interval_seconds` at the top level. Unknown keys return 422.

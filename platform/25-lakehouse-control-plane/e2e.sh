@@ -108,14 +108,24 @@ mc ls --recursive "s3/$PREFIX" | wc -l'
       envFrom: [{secretRef: {name: "table-maintenance-s3"}}],
       env: [{name: "S3_ENDPOINT", value: $endpoint}, {name: "PREFIX", value: $prefix}],
       command: ["sh", "-ec", $script]}]}}')"
-  kubectl run "tm-e2e-mc-$(date +%s)" \
-    --rm -i --quiet \
-    --restart Never \
-    --image "${MC_IMAGE}" \
-    --overrides "${overrides}" \
-    --namespace "${NAMESPACE}" \
-    --context "${KUBE_CONTEXT}" \
-    | tr -d '[:space:]'
+  local count=""
+  for _ in 1 2 3; do
+    count="$(kubectl run "tm-e2e-mc-$(date +%s)" \
+      --rm -i --quiet \
+      --restart Never \
+      --image "${MC_IMAGE}" \
+      --overrides "${overrides}" \
+      --namespace "${NAMESPACE}" \
+      --context "${KUBE_CONTEXT}" \
+      | tr -d '[:space:]')" || count=""
+    if [[ "${count}" =~ ^[0-9]+$ ]]; then
+      echo "${count}"
+      return 0
+    fi
+    sleep 5
+  done
+  echo "object count of ${prefix} failed after 3 attempts" >&2
+  return 1
 }
 
 data_prefix() {
@@ -155,14 +165,14 @@ wait_for_table() {
 }
 
 run_ids() {
-  api GET "/v1/tables/$1/runs?limit=500" | jq -c '[.[].run_id]'
+  api GET "/v1/tables/$1/table-maintenance-runs?limit=500" | jq -c '[.[].run_id]'
 }
 
 wait_for_quiet_table() {
   local uuid="$1" deadline active
   deadline=$(( $(date +%s) + RUN_TIMEOUT_SECONDS ))
   while (( $(date +%s) < deadline )); do
-    active="$(api GET "/v1/tables/${uuid}/runs?limit=500" \
+    active="$(api GET "/v1/tables/${uuid}/table-maintenance-runs?limit=500" \
       | jq '[.[] | select(.status == "pending" or .status == "running")] | length')"
     (( active == 0 )) && return 0
     sleep 15
@@ -175,7 +185,7 @@ wait_for_new_run() {
   local uuid="$1" before="$2" selector="$3" deadline runs found active
   deadline=$(( $(date +%s) + RUN_TIMEOUT_SECONDS ))
   while (( $(date +%s) < deadline )); do
-    runs="$(api GET "/v1/tables/${uuid}/runs?limit=500" \
+    runs="$(api GET "/v1/tables/${uuid}/table-maintenance-runs?limit=500" \
       | jq -c --argjson before "${before}" '[.[] | select(.run_id as $id | $before | index($id) | not)]')"
     found="$(jq -r "[.[] | select(${selector}) | select(.status != \"pending\" and .status != \"running\")] | .[0].run_id // empty" <<<"${runs}")"
     active="$(jq '[.[] | select(.status == "pending" or .status == "running")] | length' <<<"${runs}")"
@@ -230,9 +240,9 @@ assert_reconcile_running() {
 }
 
 assert_partition_filter() {
-  local run_id="$1" workflow_id filter
-  workflow_id="$(api GET "/v1/runs/${run_id}" | jq -r '.workflow_id')"
-  filter="$(temporal_cli workflow show --workflow-id "${workflow_id}" --output json \
+  local run_id="$1" execution_ref filter
+  execution_ref="$(api GET "/v1/table-maintenance-runs/${run_id}" | jq -r '.execution_ref')"
+  filter="$(temporal_cli workflow show --workflow-id "${execution_ref}" --output json \
     | jq -r '.events[0].workflowExecutionStartedEventAttributes.input.payloads[0].data
       | @base64d | fromjson
       | [.plan.operations[] | select(.operation == "rewrite_data_files") | .filters[]?.where]
@@ -250,15 +260,15 @@ task --dir "${ROOT}" trino:issue-cert \
   TRINO_USER="${TRINO_USER}" PRINT_USAGE=false KUBE_CONTEXT="${KUBE_CONTEXT}"
 
 progress "ensuring the discovery rule ${CATALOG} / ${SCHEMA} / tm_e2e_*"
-TEMPLATE_ID="$(api GET /v1/policy-templates | jq -r '.[] | select(.name == "default") | .id')"
-[[ -n "${TEMPLATE_ID}" ]] || { echo "policy template default is missing" >&2; exit 1; }
-RULE_ID="$(api GET /v1/discovery-rules | jq -r --arg ns "${SCHEMA}" \
+PRESET_ID="$(api GET /v1/table-maintenance-presets | jq -r '.[] | select(.name == "default") | .id')"
+[[ -n "${PRESET_ID}" ]] || { echo "table maintenance preset default is missing" >&2; exit 1; }
+RULE_ID="$(api GET /v1/table-discovery-rules | jq -r --arg ns "${SCHEMA}" \
   '.[] | select(.effect == "include" and .catalog_pattern == "iceberg"
     and .namespace_pattern == $ns and .table_pattern == "tm_e2e_*") | .id' | head -n 1)"
 if [[ -z "${RULE_ID}" ]]; then
-  RULE_ID="$(api POST /v1/discovery-rules "$(jq -cn --arg t "${TEMPLATE_ID}" --arg ns "${SCHEMA}" \
+  RULE_ID="$(api POST /v1/table-discovery-rules "$(jq -cn --arg t "${PRESET_ID}" --arg ns "${SCHEMA}" \
     '{priority: 10, effect: "include", catalog_pattern: "iceberg", namespace_pattern: $ns,
-      table_pattern: "tm_e2e_*", template_id: $t, enabled: true}')" | jq -r '.id')"
+      table_pattern: "tm_e2e_*", preset_id: $t, enabled: true}')" | jq -r '.id')"
 fi
 progress "discovery rule ${RULE_ID}"
 
