@@ -25,9 +25,9 @@ def test_healthz_returns_200() -> None:
 def test_application_errors_map_to_status_and_detail(
     error: Exception, status: int
 ) -> None:
-    client = build_client(get_discovery_settings=StubUseCase(error=error))
+    client = build_client(get_table_discovery_settings=StubUseCase(error=error))
 
-    response = client.get("/v1/discovery")
+    response = client.get("/v1/table-discovery-settings")
 
     assert response.status_code == status
     assert response.json() == {"detail": str(error)}

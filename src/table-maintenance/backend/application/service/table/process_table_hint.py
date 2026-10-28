@@ -35,11 +35,11 @@ if TYPE_CHECKING:
         ReadTableMetadataGateway,
         TableMetadata,
     )
-    from application.port.outbound.discovery.discovery_settings_repo import (
-        DiscoverySettingsRepo,
+    from application.port.outbound.table_discovery_settings.table_discovery_settings_repo import (
+        TableDiscoverySettingsRepo,
     )
-    from application.port.outbound.discovery_rule.discovery_rules_repo import (
-        DiscoveryRulesRepo,
+    from application.port.outbound.table_discovery_rule.table_discovery_rules_repo import (
+        TableDiscoveryRulesRepo,
     )
     from application.port.outbound.table.tables_repo import (
         TablesRepo,
@@ -61,9 +61,9 @@ class ProcessTableHintService(ProcessTableHintUseCase):
     def __init__(  # noqa: PLR0913
         self,
         tables_repo: TablesRepo,
-        rules_repo: DiscoveryRulesRepo,
+        rules_repo: TableDiscoveryRulesRepo,
         presets_repo: TableMaintenancePresetsRepo,
-        discovery_settings_repo: DiscoverySettingsRepo,
+        table_discovery_settings_repo: TableDiscoverySettingsRepo,
         catalog_gateway: ReadTableMetadataGateway,
         signal_gateway: SendTableSignalGateway,
         discovery_request_gateway: SendDiscoveryRequestGateway,
@@ -74,7 +74,7 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         self._tables_repo = tables_repo
         self._rules_repo = rules_repo
         self._presets_repo = presets_repo
-        self._discovery_settings_repo = discovery_settings_repo
+        self._table_discovery_settings_repo = table_discovery_settings_repo
         self._catalog_gateway = catalog_gateway
         self._signal_gateway = signal_gateway
         self._discovery_request_gateway = discovery_request_gateway
@@ -145,7 +145,7 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         return action
 
     def _register(self, found: TableMetadata, now: datetime) -> TableHintAction:
-        if not self._discovery_settings_repo.get_settings().enabled:
+        if not self._table_discovery_settings_repo.get_settings().enabled:
             return TableHintAction.IGNORED
         name = TableName(found.catalog, found.namespace, found.table)
         stale = self._tables_repo.find_by_name(name)

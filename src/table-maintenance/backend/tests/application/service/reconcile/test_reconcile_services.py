@@ -7,7 +7,9 @@ from typing import Any
 
 import pytest
 
-from application.domain.model.discovery_rule.discovery_rule_id import DiscoveryRuleId
+from application.domain.model.table_discovery_rule.table_discovery_rule_id import (
+    TableDiscoveryRuleId,
+)
 from application.domain.model.maintenance.maintenance_operation import (
     MaintenanceOperation,
 )
@@ -68,7 +70,7 @@ def _table(repo, now, settings=None, uuid="u-1", name=NAME):
     table = Table.register_auto(
         TableId(uuid),
         name,
-        DiscoveryRuleId("r-1"),
+        TableDiscoveryRuleId("r-1"),
         TableMaintenancePresetId("t-1"),
         settings or MaintenanceSettings(),
         now,

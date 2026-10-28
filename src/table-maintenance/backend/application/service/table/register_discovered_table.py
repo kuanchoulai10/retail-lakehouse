@@ -8,8 +8,10 @@ from application.domain.model.table.table import Table
 from application.domain.model.table.table_name import TableName
 from application.domain.model.table.table_id import TableId
 from application.domain.model.maintenance.workflow_ids import SIGNAL_RESUME
-from application.domain.model.discovery_rule.rule_effect import RuleEffect
-from application.domain.service.match_discovery_rule import match_discovery_rule
+from application.domain.model.table_discovery_rule.rule_effect import RuleEffect
+from application.domain.service.table_discovery_rule.match_table_discovery_rule import (
+    match_table_discovery_rule,
+)
 from application.port.outbound.workflow.send_table_signal import (
     SendTableSignalGatewayInput,
 )
@@ -19,7 +21,9 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from datetime import datetime
 
-    from application.domain.model.discovery_rule.discovery_rule import DiscoveryRule
+    from application.domain.model.table_discovery_rule.table_discovery_rule import (
+        TableDiscoveryRule,
+    )
     from application.port.outbound.table.read_table_metadata import TableMetadata
     from application.port.outbound.table.tables_repo import (
         TablesRepo,
@@ -34,7 +38,7 @@ if TYPE_CHECKING:
 
 def register_discovered_table(  # noqa: PLR0913
     found: TableMetadata,
-    rules: Sequence[DiscoveryRule],
+    rules: Sequence[TableDiscoveryRule],
     tables_repo: TablesRepo,
     presets_repo: TableMaintenancePresetsRepo,
     signal_gateway: SendTableSignalGateway,
@@ -47,7 +51,7 @@ def register_discovered_table(  # noqa: PLR0913
     match, registers nothing. A rule whose preset is missing is SKIPPED.
     """
     name = TableName(found.catalog, found.namespace, found.table)
-    rule = match_discovery_rule(rules, name)
+    rule = match_table_discovery_rule(rules, name)
     if rule is None or rule.effect != RuleEffect.INCLUDE or rule.preset_id is None:
         return RegistrationOutcome.NOT_SELECTED
     preset = presets_repo.get(rule.preset_id)

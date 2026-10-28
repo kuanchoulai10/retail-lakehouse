@@ -9,8 +9,8 @@ if TYPE_CHECKING:
     from application.port.outbound.table.read_table_metadata import (
         ReadTableMetadataGateway,
     )
-    from application.port.outbound.discovery.update_discovery_schedule import (
-        UpdateDiscoveryScheduleGateway,
+    from application.port.outbound.table_discovery_settings.update_table_discovery_schedule import (
+        UpdateTableDiscoveryScheduleGateway,
     )
     from application.port.outbound.spark.delete_maintenance_job import (
         DeleteMaintenanceJobGateway,
@@ -40,7 +40,7 @@ class Gateways:
     send_table_signal: SendTableSignalGateway
     send_discovery_request: SendDiscoveryRequestGateway
     send_maintenance_result: SendMaintenanceResultGateway
-    update_discovery_schedule: UpdateDiscoveryScheduleGateway
+    update_table_discovery_schedule: UpdateTableDiscoveryScheduleGateway
     submit_maintenance_job: SubmitMaintenanceJobGateway
     read_maintenance_job: ReadMaintenanceJobGateway
     delete_maintenance_job: DeleteMaintenanceJobGateway

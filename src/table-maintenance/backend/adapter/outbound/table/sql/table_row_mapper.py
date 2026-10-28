@@ -6,7 +6,9 @@ from typing import TYPE_CHECKING, Any
 
 from adapter.outbound.sql.iso_datetime_codec import IsoDatetimeCodec
 from adapter.outbound.sql.maintenance_settings_codec import MaintenanceSettingsCodec
-from application.domain.model.discovery_rule.discovery_rule_id import DiscoveryRuleId
+from application.domain.model.table_discovery_rule.table_discovery_rule_id import (
+    TableDiscoveryRuleId,
+)
 from application.domain.model.maintenance.maintenance_operation import (
     MaintenanceOperation,
 )
@@ -77,7 +79,7 @@ class TableRowMapper:
             settings=None
             if settings is None
             else MaintenanceSettingsCodec.decode(settings),
-            matched_rule_id=None if matched is None else DiscoveryRuleId(matched),
+            matched_rule_id=None if matched is None else TableDiscoveryRuleId(matched),
             source_preset_id=None
             if preset is None
             else TableMaintenancePresetId(preset),

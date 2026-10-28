@@ -13,12 +13,14 @@ from adapter.inbound.temporal.ensure_table_maintenance_admission import (
 from adapter.inbound.temporal.ensure_table_discovery_schedule import (
     ensure_table_discovery_schedule,
 )
-from adapter.outbound.discovery.sql.discovery_settings_sql_repo import (
-    DiscoverySettingsSqlRepo,
+from adapter.outbound.table_discovery_settings.sql.table_discovery_settings_sql_repo import (
+    TableDiscoverySettingsSqlRepo,
 )
-from application.domain.model.discovery.discovery_settings import DiscoverySettings
-from application.service.discovery.get_discovery_settings import (
-    GetDiscoverySettingsService,
+from application.domain.model.table_discovery_settings.table_discovery_settings import (
+    TableDiscoverySettings,
+)
+from application.service.table_discovery_settings.get_table_discovery_settings import (
+    GetTableDiscoverySettingsService,
 )
 from bootstrap.configs import CatalogSettings
 from bootstrap.container import ADMISSION_LEASE_SECONDS, apply_worker_startup
@@ -37,7 +39,7 @@ class Recorder:
         self.calls.append((args, kwargs))
 
 
-def _run(repo: DiscoverySettingsSqlRepo) -> tuple[Recorder, Recorder, object]:
+def _run(repo: TableDiscoverySettingsSqlRepo) -> tuple[Recorder, Recorder, object]:
     schedule, admission, client = Recorder(), Recorder(), object()
     settings = sqlite_settings(
         catalog=CatalogSettings(names=["a", "b"]),
@@ -48,7 +50,7 @@ def _run(repo: DiscoverySettingsSqlRepo) -> tuple[Recorder, Recorder, object]:
         apply_worker_startup(
             cast("Client", client),
             settings,
-            GetDiscoverySettingsService(repo),
+            GetTableDiscoverySettingsService(repo),
             ensure_schedule=schedule,
             ensure_admission=admission,
         )
@@ -57,7 +59,7 @@ def _run(repo: DiscoverySettingsSqlRepo) -> tuple[Recorder, Recorder, object]:
 
 
 def test_absent_discovery_row_means_enabled_schedules_unpaused():
-    schedule, _, client = _run(DiscoverySettingsSqlRepo(sqlite_engine()))
+    schedule, _, client = _run(TableDiscoverySettingsSqlRepo(sqlite_engine()))
 
     assert schedule.calls == [
         (
@@ -68,8 +70,8 @@ def test_absent_discovery_row_means_enabled_schedules_unpaused():
 
 
 def test_disabled_discovery_pauses_the_schedules():
-    repo = DiscoverySettingsSqlRepo(sqlite_engine())
-    repo.save(DiscoverySettings.create(NOW, enabled=False))
+    repo = TableDiscoverySettingsSqlRepo(sqlite_engine())
+    repo.save(TableDiscoverySettings.create(NOW, enabled=False))
 
     schedule, _, _ = _run(repo)
 
@@ -77,7 +79,7 @@ def test_disabled_discovery_pauses_the_schedules():
 
 
 def test_admission_is_ensured_with_the_configured_limit():
-    _, admission, client = _run(DiscoverySettingsSqlRepo(sqlite_engine()))
+    _, admission, client = _run(TableDiscoverySettingsSqlRepo(sqlite_engine()))
 
     assert admission.calls == [
         (
@@ -95,7 +97,7 @@ def test_defaults_are_the_real_functions_and_the_kwargs_bind_to_them():
     assert parameters["ensure_schedule"].default is ensure_table_discovery_schedule
     assert parameters["ensure_admission"].default is ensure_table_maintenance_admission
 
-    schedule, admission, _ = _run(DiscoverySettingsSqlRepo(sqlite_engine()))
+    schedule, admission, _ = _run(TableDiscoverySettingsSqlRepo(sqlite_engine()))
 
     for real, recorder in (
         (ensure_table_discovery_schedule, schedule),

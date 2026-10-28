@@ -34,7 +34,7 @@ UTILITY_FILES = {
     "maintenance_settings_to_dict.py",
     "translate_domain_errors.py",
     "table_maintenance_preset_output_fields.py",
-    "discovery_rule_output_fields.py",
+    "table_discovery_rule_output_fields.py",
     "table_output_fields.py",
     "maintenance_run_output_fields.py",
     "maintenance_procedure_args.py",

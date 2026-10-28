@@ -36,8 +36,8 @@ OUTBOUND_PORT_DIR = (
 )
 
 AGGREGATE_GROUPS = [
-    "discovery",
-    "discovery_rule",
+    "table_discovery_settings",
+    "table_discovery_rule",
     "table",
     "maintenance_run",
     "table_maintenance_preset",

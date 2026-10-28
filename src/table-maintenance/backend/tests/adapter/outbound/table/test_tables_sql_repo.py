@@ -8,7 +8,9 @@ from sqlalchemy import Engine
 from adapter.outbound.table.sql.tables_sql_repo import (
     TablesSqlRepo,
 )
-from application.domain.model.discovery_rule.discovery_rule_id import DiscoveryRuleId
+from application.domain.model.table_discovery_rule.table_discovery_rule_id import (
+    TableDiscoveryRuleId,
+)
 from application.exceptions import ConflictError
 from application.domain.model.maintenance.maintenance_operation import (
     MaintenanceOperation,
@@ -41,7 +43,7 @@ def _table(
         status=status,
         selection=TableSelection.AUTO,
         settings=MaintenanceSettings(reconcile_interval=timedelta(minutes=45)),
-        matched_rule_id=DiscoveryRuleId("r1"),
+        matched_rule_id=TableDiscoveryRuleId("r1"),
         source_preset_id=TableMaintenancePresetId("t1"),
         registered_at=NOW,
         updated_at=updated_at,
@@ -69,7 +71,7 @@ def test_roundtrip_field_by_field(repo: TablesSqlRepo):
     assert loaded.status is TableStatus.ACTIVE
     assert loaded.selection is TableSelection.AUTO
     assert loaded.settings == original.settings
-    assert loaded.matched_rule_id == DiscoveryRuleId("r1")
+    assert loaded.matched_rule_id == TableDiscoveryRuleId("r1")
     assert loaded.source_preset_id == TableMaintenancePresetId("t1")
     assert loaded.registered_at == NOW
     assert loaded.registered_at.tzinfo is not None

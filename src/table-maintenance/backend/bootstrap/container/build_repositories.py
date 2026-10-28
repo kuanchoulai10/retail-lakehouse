@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from adapter.outbound.discovery.sql.discovery_settings_sql_repo import (
-    DiscoverySettingsSqlRepo,
+from adapter.outbound.table_discovery_settings.sql.table_discovery_settings_sql_repo import (
+    TableDiscoverySettingsSqlRepo,
 )
-from adapter.outbound.discovery_rule.sql.discovery_rules_sql_repo import (
-    DiscoveryRulesSqlRepo,
+from adapter.outbound.table_discovery_rule.sql.table_discovery_rules_sql_repo import (
+    TableDiscoveryRulesSqlRepo,
 )
 from adapter.outbound.maintenance_run.sql.maintenance_runs_sql_repo import (
     MaintenanceRunsSqlRepo,
@@ -28,8 +28,8 @@ if TYPE_CHECKING:
 def build_repositories(engine: Engine) -> Repositories:
     """Build the SQL repositories on one engine."""
     return Repositories(
-        discovery_settings=DiscoverySettingsSqlRepo(engine),
-        discovery_rules=DiscoveryRulesSqlRepo(engine),
+        table_discovery_settings=TableDiscoverySettingsSqlRepo(engine),
+        table_discovery_rules=TableDiscoveryRulesSqlRepo(engine),
         maintenance_runs=MaintenanceRunsSqlRepo(engine),
         tables=TablesSqlRepo(engine),
         table_maintenance_presets=TableMaintenancePresetsSqlRepo(engine),

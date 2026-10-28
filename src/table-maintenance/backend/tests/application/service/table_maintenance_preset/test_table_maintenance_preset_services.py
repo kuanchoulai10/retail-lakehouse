@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from application.domain.model.discovery_rule.discovery_rule import DiscoveryRule
-from application.domain.model.discovery_rule.discovery_rule_id import DiscoveryRuleId
-from application.domain.model.discovery_rule.rule_effect import RuleEffect
-from application.domain.model.discovery_rule.table_pattern import TablePattern
+from application.domain.model.table_discovery_rule.table_discovery_rule import (
+    TableDiscoveryRule,
+)
+from application.domain.model.table_discovery_rule.table_discovery_rule_id import (
+    TableDiscoveryRuleId,
+)
+from application.domain.model.table_discovery_rule.rule_effect import RuleEffect
+from application.domain.model.table_discovery_rule.table_pattern import TablePattern
 from application.domain.model.maintenance_settings.maintenance_settings import (
     MaintenanceSettings,
 )
@@ -187,8 +191,8 @@ def test_delete_preset_removes_it(presets_repo, rules_repo):
 def test_delete_preset_in_use_conflicts(presets_repo, rules_repo, now):
     _seed(presets_repo)
     rules_repo.create(
-        DiscoveryRule.create(
-            DiscoveryRuleId("r-1"),
+        TableDiscoveryRule.create(
+            TableDiscoveryRuleId("r-1"),
             10,
             RuleEffect.INCLUDE,
             TablePattern(),

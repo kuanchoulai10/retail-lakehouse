@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from application.domain.model.discovery_rule.discovery_rule import DiscoveryRule
-from application.domain.model.discovery_rule.discovery_rule_id import DiscoveryRuleId
-from application.domain.model.discovery_rule.rule_effect import RuleEffect
-from application.domain.model.discovery_rule.table_pattern import TablePattern
+from application.domain.model.table_discovery_rule.table_discovery_rule import (
+    TableDiscoveryRule,
+)
+from application.domain.model.table_discovery_rule.table_discovery_rule_id import (
+    TableDiscoveryRuleId,
+)
+from application.domain.model.table_discovery_rule.rule_effect import RuleEffect
+from application.domain.model.table_discovery_rule.table_pattern import TablePattern
 from application.domain.model.maintenance.maintenance_operation import (
     MaintenanceOperation,
 )
@@ -430,8 +434,8 @@ def _reset_service(tables_repo, rules_repo, presets_repo, signals, clock):
 
 def _rule(rules_repo, now, effect, preset_id, pattern=TablePattern(), rid="r-1"):
     rules_repo.create(
-        DiscoveryRule.create(
-            DiscoveryRuleId(rid), 10, effect, pattern, preset_id, True, now
+        TableDiscoveryRule.create(
+            TableDiscoveryRuleId(rid), 10, effect, pattern, preset_id, True, now
         )
     )
 

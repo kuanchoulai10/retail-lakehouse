@@ -5,27 +5,27 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.service.discovery.get_discovery_settings import (
-    GetDiscoverySettingsService,
+from application.service.table_discovery_settings.get_table_discovery_settings import (
+    GetTableDiscoverySettingsService,
 )
 from application.service.table.process_table_hint import ProcessTableHintService
 from application.service.table.sync_discovered_tables import (
     SyncDiscoveredTablesService,
 )
-from application.service.discovery.update_discovery_settings import (
-    UpdateDiscoverySettingsService,
+from application.service.table_discovery_settings.update_table_discovery_settings import (
+    UpdateTableDiscoverySettingsService,
 )
-from application.service.discovery_rule.create_discovery_rule import (
-    CreateDiscoveryRuleService,
+from application.service.table_discovery_rule.create_table_discovery_rule import (
+    CreateTableDiscoveryRuleService,
 )
-from application.service.discovery_rule.delete_discovery_rule import (
-    DeleteDiscoveryRuleService,
+from application.service.table_discovery_rule.delete_table_discovery_rule import (
+    DeleteTableDiscoveryRuleService,
 )
-from application.service.discovery_rule.list_discovery_rules import (
-    ListDiscoveryRulesService,
+from application.service.table_discovery_rule.list_table_discovery_rules import (
+    ListTableDiscoveryRulesService,
 )
-from application.service.discovery_rule.update_discovery_rule import (
-    UpdateDiscoveryRuleService,
+from application.service.table_discovery_rule.update_table_discovery_rule import (
+    UpdateTableDiscoveryRuleService,
 )
 from application.service.maintenance_run.create_maintenance_run import (
     CreateMaintenanceRunService,
@@ -115,14 +115,14 @@ def build_use_cases(
 ) -> UseCases:
     """Build every application service on the given repositories and gateways."""
     tables = repos.tables
-    rules = repos.discovery_rules
+    rules = repos.table_discovery_rules
     presets = repos.table_maintenance_presets
     runs = repos.maintenance_runs
-    discovery = repos.discovery_settings
+    discovery = repos.table_discovery_settings
     catalog = gateways.read_table_metadata
     signals = gateways.send_table_signal
     return UseCases(
-        get_discovery_settings=GetDiscoverySettingsService(discovery),
+        get_table_discovery_settings=GetTableDiscoverySettingsService(discovery),
         process_table_hint=ProcessTableHintService(
             tables,
             rules,
@@ -136,13 +136,17 @@ def build_use_cases(
         sync_discovered_tables=SyncDiscoveredTablesService(
             tables, rules, presets, discovery, catalog, signals, clock=clock
         ),
-        update_discovery_settings=UpdateDiscoverySettingsService(
-            discovery, gateways.update_discovery_schedule, clock=clock
+        update_table_discovery_settings=UpdateTableDiscoverySettingsService(
+            discovery, gateways.update_table_discovery_schedule, clock=clock
         ),
-        create_discovery_rule=CreateDiscoveryRuleService(rules, presets, clock=clock),
-        delete_discovery_rule=DeleteDiscoveryRuleService(rules),
-        list_discovery_rules=ListDiscoveryRulesService(rules),
-        update_discovery_rule=UpdateDiscoveryRuleService(rules, presets, clock=clock),
+        create_table_discovery_rule=CreateTableDiscoveryRuleService(
+            rules, presets, clock=clock
+        ),
+        delete_table_discovery_rule=DeleteTableDiscoveryRuleService(rules),
+        list_table_discovery_rules=ListTableDiscoveryRulesService(rules),
+        update_table_discovery_rule=UpdateTableDiscoveryRuleService(
+            rules, presets, clock=clock
+        ),
         create_table_maintenance_preset=CreateTableMaintenancePresetService(
             presets, clock=clock
         ),

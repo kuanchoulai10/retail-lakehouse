@@ -15,8 +15,8 @@ from application.port.inbound.table_maintenance_preset.delete_table_maintenance_
 )
 
 if TYPE_CHECKING:
-    from application.port.outbound.discovery_rule.discovery_rules_repo import (
-        DiscoveryRulesRepo,
+    from application.port.outbound.table_discovery_rule.table_discovery_rules_repo import (
+        TableDiscoveryRulesRepo,
     )
     from application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (
         TableMaintenancePresetsRepo,
@@ -27,7 +27,9 @@ class DeleteTableMaintenancePresetService(DeleteTableMaintenancePresetUseCase):
     """Delete a table maintenance preset that no discovery rule references."""
 
     def __init__(
-        self, presets_repo: TableMaintenancePresetsRepo, rules_repo: DiscoveryRulesRepo
+        self,
+        presets_repo: TableMaintenancePresetsRepo,
+        rules_repo: TableDiscoveryRulesRepo,
     ) -> None:
         """Bind the preset and rule repos."""
         self._presets_repo = presets_repo

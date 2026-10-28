@@ -24,9 +24,11 @@ from tests.fakes.recording_send_maintenance_result_gateway import (
 from tests.fakes.recording_submit_maintenance_job_gateway import (
     RecordingSubmitMaintenanceJobGateway,
 )
-from tests.fakes.in_memory_discovery_rules_repo import InMemoryDiscoveryRulesRepo
-from tests.fakes.in_memory_discovery_settings_repo import (
-    InMemoryDiscoverySettingsRepo,
+from tests.fakes.in_memory_table_discovery_rules_repo import (
+    InMemoryTableDiscoveryRulesRepo,
+)
+from tests.fakes.in_memory_table_discovery_settings_repo import (
+    InMemoryTableDiscoverySettingsRepo,
 )
 from tests.fakes.in_memory_tables_repo import InMemoryTablesRepo
 from tests.fakes.in_memory_table_maintenance_presets_repo import (
@@ -35,8 +37,8 @@ from tests.fakes.in_memory_table_maintenance_presets_repo import (
 from tests.fakes.recording_send_table_signal_gateway import (
     RecordingSendTableSignalGateway,
 )
-from tests.fakes.recording_update_discovery_schedule_gateway import (
-    RecordingUpdateDiscoveryScheduleGateway,
+from tests.fakes.recording_update_table_discovery_schedule_gateway import (
+    RecordingUpdateTableDiscoveryScheduleGateway,
 )
 
 if TYPE_CHECKING:
@@ -67,13 +69,13 @@ def presets_repo() -> InMemoryTableMaintenancePresetsRepo:
 
 
 @pytest.fixture
-def rules_repo() -> InMemoryDiscoveryRulesRepo:
-    return InMemoryDiscoveryRulesRepo()
+def rules_repo() -> InMemoryTableDiscoveryRulesRepo:
+    return InMemoryTableDiscoveryRulesRepo()
 
 
 @pytest.fixture
-def discovery_settings_repo() -> InMemoryDiscoverySettingsRepo:
-    return InMemoryDiscoverySettingsRepo(NOW)
+def table_discovery_settings_repo() -> InMemoryTableDiscoverySettingsRepo:
+    return InMemoryTableDiscoverySettingsRepo(NOW)
 
 
 @pytest.fixture
@@ -87,8 +89,8 @@ def signals() -> RecordingSendTableSignalGateway:
 
 
 @pytest.fixture
-def schedule() -> RecordingUpdateDiscoveryScheduleGateway:
-    return RecordingUpdateDiscoveryScheduleGateway()
+def schedule() -> RecordingUpdateTableDiscoveryScheduleGateway:
+    return RecordingUpdateTableDiscoveryScheduleGateway()
 
 
 @pytest.fixture

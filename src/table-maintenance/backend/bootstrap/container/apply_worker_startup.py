@@ -12,8 +12,8 @@ from adapter.inbound.temporal.ensure_table_maintenance_admission import (
 from adapter.inbound.temporal.ensure_table_discovery_schedule import (
     ensure_table_discovery_schedule,
 )
-from application.port.inbound.discovery.get_discovery_settings import (
-    GetDiscoverySettingsUseCaseInput,
+from application.port.inbound.table_discovery_settings.get_table_discovery_settings import (
+    GetTableDiscoverySettingsUseCaseInput,
 )
 from bootstrap.container.admission_lease_seconds import ADMISSION_LEASE_SECONDS
 
@@ -22,8 +22,8 @@ if TYPE_CHECKING:
 
     from temporalio.client import Client
 
-    from application.port.inbound.discovery.get_discovery_settings import (
-        GetDiscoverySettingsUseCase,
+    from application.port.inbound.table_discovery_settings.get_table_discovery_settings import (
+        GetTableDiscoverySettingsUseCase,
     )
     from bootstrap.configs.app_settings import AppSettings
 
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 async def apply_worker_startup(
     client: Client,
     settings: AppSettings,
-    get_discovery_settings: GetDiscoverySettingsUseCase,
+    get_table_discovery_settings: GetTableDiscoverySettingsUseCase,
     *,
     ensure_schedule: Callable[..., Awaitable[None]] = ensure_table_discovery_schedule,
     ensure_admission: Callable[
@@ -44,7 +44,7 @@ async def apply_worker_startup(
     worker start re-applies it to the per-catalog schedules.
     """
     discovery = await asyncio.to_thread(
-        get_discovery_settings.execute, GetDiscoverySettingsUseCaseInput()
+        get_table_discovery_settings.execute, GetTableDiscoverySettingsUseCaseInput()
     )
     await ensure_schedule(
         client,

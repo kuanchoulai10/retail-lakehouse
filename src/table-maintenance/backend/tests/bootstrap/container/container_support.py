@@ -27,8 +27,8 @@ from tests.fakes.recording_send_table_signal_gateway import (
 from tests.fakes.recording_submit_maintenance_job_gateway import (
     RecordingSubmitMaintenanceJobGateway,
 )
-from tests.fakes.recording_update_discovery_schedule_gateway import (
-    RecordingUpdateDiscoveryScheduleGateway,
+from tests.fakes.recording_update_table_discovery_schedule_gateway import (
+    RecordingUpdateTableDiscoveryScheduleGateway,
 )
 
 NOW = datetime(2026, 10, 24, 12, 0, tzinfo=UTC)
@@ -58,7 +58,7 @@ def fake_gateways() -> Gateways:
         send_table_signal=RecordingSendTableSignalGateway(),
         send_discovery_request=RecordingSendDiscoveryRequestGateway(),
         send_maintenance_result=RecordingSendMaintenanceResultGateway(),
-        update_discovery_schedule=RecordingUpdateDiscoveryScheduleGateway(),
+        update_table_discovery_schedule=RecordingUpdateTableDiscoveryScheduleGateway(),
         submit_maintenance_job=RecordingSubmitMaintenanceJobGateway(),
         read_maintenance_job=FakeReadMaintenanceJobGateway(),
         delete_maintenance_job=RecordingDeleteMaintenanceJobGateway(),

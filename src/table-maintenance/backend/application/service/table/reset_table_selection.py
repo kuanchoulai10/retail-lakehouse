@@ -10,7 +10,9 @@ from application.domain.model.maintenance.workflow_ids import (
     SIGNAL_STOP,
 )
 from application.domain.model.table.table_id import TableId
-from application.domain.service.match_discovery_rule import match_discovery_rule
+from application.domain.service.table_discovery_rule.match_table_discovery_rule import (
+    match_table_discovery_rule,
+)
 from application.exceptions import NotFoundError
 from application.port.inbound.table.reset_table_selection import (
     ResetTableSelectionUseCase,
@@ -28,8 +30,8 @@ from application.service.translate_domain_errors import translate_domain_errors
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from application.port.outbound.discovery_rule.discovery_rules_repo import (
-        DiscoveryRulesRepo,
+    from application.port.outbound.table_discovery_rule.table_discovery_rules_repo import (
+        TableDiscoveryRulesRepo,
     )
     from application.port.outbound.table.tables_repo import (
         TablesRepo,
@@ -48,7 +50,7 @@ class ResetTableSelectionService(ResetTableSelectionUseCase):
     def __init__(  # noqa: PLR0913
         self,
         tables_repo: TablesRepo,
-        rules_repo: DiscoveryRulesRepo,
+        rules_repo: TableDiscoveryRulesRepo,
         presets_repo: TableMaintenancePresetsRepo,
         signal_gateway: SendTableSignalGateway,
         *,
@@ -71,7 +73,7 @@ class ResetTableSelectionService(ResetTableSelectionUseCase):
         now = self._clock()
         with translate_domain_errors():
             table.reset_to_auto(now)
-            rule = match_discovery_rule(self._rules_repo.list_all(), table.name)
+            rule = match_table_discovery_rule(self._rules_repo.list_all(), table.name)
             if rule is None:
                 table.apply_auto_decision(None, None, None, now)
             elif rule.preset_id is None:

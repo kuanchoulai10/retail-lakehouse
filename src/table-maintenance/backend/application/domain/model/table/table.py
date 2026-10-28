@@ -5,7 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from application.domain.model.discovery_rule.discovery_rule_id import DiscoveryRuleId
+from application.domain.model.table_discovery_rule.table_discovery_rule_id import (
+    TableDiscoveryRuleId,
+)
 from application.domain.model.maintenance.maintenance_operation import (
     MaintenanceOperation,
 )
@@ -35,7 +37,7 @@ class Table(AggregateRoot[TableId]):
     status: TableStatus
     selection: TableSelection
     settings: MaintenanceSettings | None
-    matched_rule_id: DiscoveryRuleId | None
+    matched_rule_id: TableDiscoveryRuleId | None
     source_preset_id: TableMaintenancePresetId | None
     registered_at: datetime
     updated_at: datetime
@@ -48,7 +50,7 @@ class Table(AggregateRoot[TableId]):
         cls,
         id: TableId,  # noqa: A002
         name: TableName,
-        rule_id: DiscoveryRuleId,
+        rule_id: TableDiscoveryRuleId,
         preset_id: TableMaintenancePresetId,
         settings: MaintenanceSettings,
         now: datetime,
@@ -184,7 +186,7 @@ class Table(AggregateRoot[TableId]):
 
     def apply_auto_decision(
         self,
-        rule_id: DiscoveryRuleId | None,
+        rule_id: TableDiscoveryRuleId | None,
         preset_id: TableMaintenancePresetId | None,
         settings: MaintenanceSettings | None,
         now: datetime,

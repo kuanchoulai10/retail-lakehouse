@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from application.domain.model.discovery_rule import DiscoveryRuleId
+from application.domain.model.table_discovery_rule import TableDiscoveryRuleId
 from application.domain.model.maintenance import MaintenanceOperation
 from application.domain.model.maintenance_settings import MaintenanceSettings
 from application.domain.model.table import (
@@ -21,7 +21,7 @@ from application.domain.model.table_maintenance_preset import TableMaintenancePr
 T0 = datetime(2026, 1, 1, tzinfo=UTC)
 T1 = T0 + timedelta(hours=1)
 NAME = TableName(catalog="iceberg", namespace="inventory", table="orders")
-RULE = DiscoveryRuleId("r1")
+RULE = TableDiscoveryRuleId("r1")
 PRESET = TableMaintenancePresetId("t1")
 SETTINGS = MaintenanceSettings()
 OP = MaintenanceOperation.REWRITE_DATA_FILES
@@ -135,9 +135,9 @@ def test_apply_auto_decision_without_rule_excludes_auto_table():
 
 def test_apply_exclude_rule_excludes_auto_table():
     t = auto()
-    t.apply_auto_decision(DiscoveryRuleId("r2"), None, None, T1)
+    t.apply_auto_decision(TableDiscoveryRuleId("r2"), None, None, T1)
     assert t.status == TableStatus.EXCLUDED
-    assert t.matched_rule_id == DiscoveryRuleId("r2")
+    assert t.matched_rule_id == TableDiscoveryRuleId("r2")
 
 
 def test_apply_auto_decision_ignored_for_manual():

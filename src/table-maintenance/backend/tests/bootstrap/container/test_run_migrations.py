@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from adapter.outbound.sql.create_schema import create_schema
-from application.port.inbound.discovery_rule.list_discovery_rules import (
-    ListDiscoveryRulesUseCaseInput,
+from application.port.inbound.table_discovery_rule.list_table_discovery_rules import (
+    ListTableDiscoveryRulesUseCaseInput,
 )
 from application.port.inbound.table_maintenance_preset.create_table_maintenance_preset import (
     CreateTableMaintenancePresetUseCaseInput,
@@ -41,7 +41,9 @@ def test_migrate_seeds_default_preset_once():
     presets = use_cases.list_table_maintenance_presets.execute(
         ListTableMaintenancePresetsUseCaseInput()
     ).items
-    rules = use_cases.list_discovery_rules.execute(ListDiscoveryRulesUseCaseInput())
+    rules = use_cases.list_table_discovery_rules.execute(
+        ListTableDiscoveryRulesUseCaseInput()
+    )
     assert [t.name for t in presets] == ["default"]
     assert presets[0].settings == maintenance_settings_to_dict(MaintenanceSettings())
     assert rules.items == []

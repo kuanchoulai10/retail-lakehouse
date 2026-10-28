@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
-from application.domain.model.discovery_rule import DiscoveryRuleId
+from application.domain.model.table_discovery_rule import TableDiscoveryRuleId
 from application.domain.model.maintenance import MaintenanceOperation as Op
 from application.domain.model.maintenance_settings import (
     CompactionScope,
@@ -44,7 +44,7 @@ def table(settings=None) -> Table:
     return Table.register_auto(
         TableId("u"),
         TableName("c", "n", "t"),
-        DiscoveryRuleId("r"),
+        TableDiscoveryRuleId("r"),
         TableMaintenancePresetId("t"),
         settings or MaintenanceSettings(),
         NOW - timedelta(days=30),

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from adapter.outbound.discovery.sql.discovery_settings_table import (
-    discovery_settings_table as _discovery_settings_table,
+from adapter.outbound.table_discovery_settings.sql.table_discovery_settings_table import (
+    table_discovery_settings_table as _table_discovery_settings_table,
 )
-from adapter.outbound.discovery_rule.sql.discovery_rules_table import (
-    discovery_rules_table as _discovery_rules_table,
+from adapter.outbound.table_discovery_rule.sql.table_discovery_rules_table import (
+    table_discovery_rules_table as _table_discovery_rules_table,
 )
 from adapter.outbound.maintenance_run.sql.add_maintenance_run_workflow_id_column import (
     add_maintenance_run_workflow_id_column,
@@ -28,8 +28,8 @@ if TYPE_CHECKING:
     from sqlalchemy import Engine
 
 _REGISTERED = (
-    _discovery_settings_table,
-    _discovery_rules_table,
+    _table_discovery_settings_table,
+    _table_discovery_rules_table,
     _maintenance_runs_table,
     _tables_table,
     _table_maintenance_presets_table,

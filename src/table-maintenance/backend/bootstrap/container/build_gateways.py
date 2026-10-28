@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 from adapter.outbound.table.pyiceberg.read_table_metadata_pyiceberg_gateway import (
     ReadTableMetadataPyIcebergGateway,
 )
-from adapter.outbound.discovery.temporal.update_discovery_schedule_temporal_gateway import (
-    UpdateDiscoveryScheduleTemporalGateway,
+from adapter.outbound.table_discovery_settings.temporal.update_table_discovery_schedule_temporal_gateway import (
+    UpdateTableDiscoveryScheduleTemporalGateway,
 )
 from adapter.outbound.spark.k8s.delete_maintenance_job_k8s_gateway import (
     DeleteMaintenanceJobK8sGateway,
@@ -61,7 +61,7 @@ def build_gateways(
         send_table_signal=SendTableSignalTemporalGateway(client, bridge),
         send_discovery_request=SendDiscoveryRequestTemporalGateway(client, bridge),
         send_maintenance_result=SendMaintenanceResultTemporalGateway(client, bridge),
-        update_discovery_schedule=UpdateDiscoveryScheduleTemporalGateway(
+        update_table_discovery_schedule=UpdateTableDiscoveryScheduleTemporalGateway(
             client, bridge
         ),
         submit_maintenance_job=SubmitMaintenanceJobK8sGateway(k8s_api, spark_config),

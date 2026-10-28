@@ -6,26 +6,26 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from application.port.inbound.discovery.get_discovery_settings import (
-        GetDiscoverySettingsUseCase,
+    from application.port.inbound.table_discovery_settings.get_table_discovery_settings import (
+        GetTableDiscoverySettingsUseCase,
     )
     from application.port.inbound.table.sync_discovered_tables import (
         SyncDiscoveredTablesUseCase,
     )
-    from application.port.inbound.discovery.update_discovery_settings import (
-        UpdateDiscoverySettingsUseCase,
+    from application.port.inbound.table_discovery_settings.update_table_discovery_settings import (
+        UpdateTableDiscoverySettingsUseCase,
     )
-    from application.port.inbound.discovery_rule.create_discovery_rule import (
-        CreateDiscoveryRuleUseCase,
+    from application.port.inbound.table_discovery_rule.create_table_discovery_rule import (
+        CreateTableDiscoveryRuleUseCase,
     )
-    from application.port.inbound.discovery_rule.delete_discovery_rule import (
-        DeleteDiscoveryRuleUseCase,
+    from application.port.inbound.table_discovery_rule.delete_table_discovery_rule import (
+        DeleteTableDiscoveryRuleUseCase,
     )
-    from application.port.inbound.discovery_rule.list_discovery_rules import (
-        ListDiscoveryRulesUseCase,
+    from application.port.inbound.table_discovery_rule.list_table_discovery_rules import (
+        ListTableDiscoveryRulesUseCase,
     )
-    from application.port.inbound.discovery_rule.update_discovery_rule import (
-        UpdateDiscoveryRuleUseCase,
+    from application.port.inbound.table_discovery_rule.update_table_discovery_rule import (
+        UpdateTableDiscoveryRuleUseCase,
     )
     from application.port.inbound.maintenance_run.get_maintenance_run import (
         GetMaintenanceRunUseCase,
@@ -84,12 +84,12 @@ if TYPE_CHECKING:
 class WebUseCases:
     """Hold every use case the web API calls; the composition root builds it."""
 
-    create_discovery_rule: CreateDiscoveryRuleUseCase
-    list_discovery_rules: ListDiscoveryRulesUseCase
-    update_discovery_rule: UpdateDiscoveryRuleUseCase
-    delete_discovery_rule: DeleteDiscoveryRuleUseCase
-    get_discovery_settings: GetDiscoverySettingsUseCase
-    update_discovery_settings: UpdateDiscoverySettingsUseCase
+    create_table_discovery_rule: CreateTableDiscoveryRuleUseCase
+    list_table_discovery_rules: ListTableDiscoveryRulesUseCase
+    update_table_discovery_rule: UpdateTableDiscoveryRuleUseCase
+    delete_table_discovery_rule: DeleteTableDiscoveryRuleUseCase
+    get_table_discovery_settings: GetTableDiscoverySettingsUseCase
+    update_table_discovery_settings: UpdateTableDiscoverySettingsUseCase
     sync_discovered_tables: SyncDiscoveredTablesUseCase
     create_table_maintenance_preset: CreateTableMaintenancePresetUseCase
     list_table_maintenance_presets: ListTableMaintenancePresetsUseCase

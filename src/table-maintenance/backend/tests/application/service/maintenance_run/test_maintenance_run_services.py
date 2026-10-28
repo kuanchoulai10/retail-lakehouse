@@ -6,7 +6,9 @@ from datetime import timedelta
 
 import pytest
 
-from application.domain.model.discovery_rule.discovery_rule_id import DiscoveryRuleId
+from application.domain.model.table_discovery_rule.table_discovery_rule_id import (
+    TableDiscoveryRuleId,
+)
 from application.domain.model.maintenance.maintenance_operation import (
     MaintenanceOperation,
 )
@@ -66,7 +68,7 @@ def table(tables_repo, now):
     t = Table.register_auto(
         TableId("u-1"),
         TableName("iceberg", "sales", "orders"),
-        DiscoveryRuleId("r-1"),
+        TableDiscoveryRuleId("r-1"),
         TableMaintenancePresetId("t-1"),
         MaintenanceSettings(),
         now,

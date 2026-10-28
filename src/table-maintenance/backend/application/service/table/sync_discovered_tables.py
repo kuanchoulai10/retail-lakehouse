@@ -33,17 +33,19 @@ from application.service.translate_domain_errors import translate_domain_errors
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
-    from application.domain.model.discovery_rule.discovery_rule import DiscoveryRule
+    from application.domain.model.table_discovery_rule.table_discovery_rule import (
+        TableDiscoveryRule,
+    )
     from application.domain.model.table.table import Table
     from application.port.outbound.table.read_table_metadata import (
         ReadTableMetadataGateway,
         TableMetadata,
     )
-    from application.port.outbound.discovery.discovery_settings_repo import (
-        DiscoverySettingsRepo,
+    from application.port.outbound.table_discovery_settings.table_discovery_settings_repo import (
+        TableDiscoverySettingsRepo,
     )
-    from application.port.outbound.discovery_rule.discovery_rules_repo import (
-        DiscoveryRulesRepo,
+    from application.port.outbound.table_discovery_rule.table_discovery_rules_repo import (
+        TableDiscoveryRulesRepo,
     )
     from application.port.outbound.table.tables_repo import (
         TablesRepo,
@@ -67,9 +69,9 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
     def __init__(  # noqa: PLR0913
         self,
         tables_repo: TablesRepo,
-        rules_repo: DiscoveryRulesRepo,
+        rules_repo: TableDiscoveryRulesRepo,
         presets_repo: TableMaintenancePresetsRepo,
-        discovery_settings_repo: DiscoverySettingsRepo,
+        table_discovery_settings_repo: TableDiscoverySettingsRepo,
         catalog_gateway: ReadTableMetadataGateway,
         signal_gateway: SendTableSignalGateway,
         *,
@@ -79,7 +81,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         self._tables_repo = tables_repo
         self._rules_repo = rules_repo
         self._presets_repo = presets_repo
-        self._discovery_settings_repo = discovery_settings_repo
+        self._table_discovery_settings_repo = table_discovery_settings_repo
         self._catalog_gateway = catalog_gateway
         self._signal_gateway = signal_gateway
         self._clock = clock
@@ -98,7 +100,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         workflow was never started, or was lost, is picked up again.
         """
         now = self._clock()
-        enabled = self._discovery_settings_repo.get_settings().enabled
+        enabled = self._table_discovery_settings_repo.get_settings().enabled
         rules = self._rules_repo.list_all() if enabled else []
         refs = self._catalog_gateway.list_tables(
             ReadTableMetadataGatewayListInput(request.catalog, request.namespace)
@@ -137,7 +139,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         self,
         found: TableMetadata,
         enabled: bool,
-        rules: Sequence[DiscoveryRule],
+        rules: Sequence[TableDiscoveryRule],
         now: datetime,
     ) -> tuple[str, Table | None]:
         existing = self._tables_repo.get(TableId(found.table_uuid))

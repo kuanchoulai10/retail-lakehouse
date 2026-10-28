@@ -9,8 +9,8 @@ import pytest
 from temporalio.client import RPCError
 from temporalio.service import RPCStatusCode
 
-from adapter.outbound.discovery.temporal.update_discovery_schedule_temporal_gateway import (
-    UpdateDiscoveryScheduleTemporalGateway,
+from adapter.outbound.table_discovery_settings.temporal.update_table_discovery_schedule_temporal_gateway import (
+    UpdateTableDiscoveryScheduleTemporalGateway,
 )
 from adapter.outbound.temporal.async_loop_bridge import AsyncLoopBridge
 from adapter.outbound.workflow.temporal.send_maintenance_result_temporal_gateway import (
@@ -23,8 +23,8 @@ from application.domain.model.maintenance.workflow_ids import (
     table_discovery_schedule_id,
 )
 from application.exceptions import NotFoundError
-from application.port.outbound.discovery.update_discovery_schedule import (
-    UpdateDiscoveryScheduleGatewayInput,
+from application.port.outbound.table_discovery_settings.update_table_discovery_schedule import (
+    UpdateTableDiscoveryScheduleGatewayInput,
 )
 from application.port.outbound.workflow.send_maintenance_result import (
     SendMaintenanceResultGatewayInput,
@@ -104,6 +104,6 @@ def test_maintenance_result_not_found_maps_to_not_found_error(bridge):
 @pytest.mark.parametrize("paused", [True, False])
 def test_schedule_update_propagates_other_rpc_errors(bridge, paused):
     client = _FailingClient(RPCStatusCode.INVALID_ARGUMENT)
-    gateway = UpdateDiscoveryScheduleTemporalGateway(client, bridge)  # ty: ignore[invalid-argument-type]
+    gateway = UpdateTableDiscoveryScheduleTemporalGateway(client, bridge)  # ty: ignore[invalid-argument-type]
     with pytest.raises(RPCError):
-        gateway.update(UpdateDiscoveryScheduleGatewayInput(paused=paused))
+        gateway.update(UpdateTableDiscoveryScheduleGatewayInput(paused=paused))

@@ -1,0 +1,26 @@
+"""Define the table_discovery_rule_output_fields function."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from application.domain.model.table_discovery_rule.table_discovery_rule import (
+        TableDiscoveryRule,
+    )
+
+
+def table_discovery_rule_output_fields(rule: TableDiscoveryRule) -> dict[str, Any]:
+    """Return the primitive fields shared by every discovery rule output."""
+    return {
+        "id": rule.id.value,
+        "priority": rule.priority,
+        "effect": rule.effect.value,
+        "catalog_pattern": rule.pattern.catalog,
+        "namespace_pattern": rule.pattern.namespace,
+        "table_pattern": rule.pattern.table,
+        "preset_id": None if rule.preset_id is None else rule.preset_id.value,
+        "enabled": rule.enabled,
+        "created_at": rule.created_at,
+        "updated_at": rule.updated_at,
+    }

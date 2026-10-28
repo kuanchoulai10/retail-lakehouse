@@ -27,8 +27,8 @@ REQUIRED_FILES_NO_INPUT = {"__init__.py", "output.py", "use_case.py"}
 ALLOWED_FILES = REQUIRED_FILES  # input.py is optional for no-input use cases
 
 AGGREGATE_GROUPS = [
-    "discovery",
-    "discovery_rule",
+    "table_discovery_settings",
+    "table_discovery_rule",
     "table",
     "maintenance_run",
     "table_maintenance_preset",

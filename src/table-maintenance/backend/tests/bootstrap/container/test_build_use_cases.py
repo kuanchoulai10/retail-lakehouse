@@ -13,8 +13,8 @@ import application.service
 from adapter.outbound.table.pyiceberg.read_table_metadata_pyiceberg_gateway import (
     ReadTableMetadataPyIcebergGateway,
 )
-from adapter.outbound.discovery.temporal.update_discovery_schedule_temporal_gateway import (
-    UpdateDiscoveryScheduleTemporalGateway,
+from adapter.outbound.table_discovery_settings.temporal.update_table_discovery_schedule_temporal_gateway import (
+    UpdateTableDiscoveryScheduleTemporalGateway,
 )
 from adapter.outbound.table_maintenance_preset.sql.table_maintenance_presets_sql_repo import (
     TableMaintenancePresetsSqlRepo,
@@ -108,7 +108,8 @@ def test_gateways_are_built_without_connecting():
         gateways.send_maintenance_result, SendMaintenanceResultTemporalGateway
     )
     assert isinstance(
-        gateways.update_discovery_schedule, UpdateDiscoveryScheduleTemporalGateway
+        gateways.update_table_discovery_schedule,
+        UpdateTableDiscoveryScheduleTemporalGateway,
     )
     assert isinstance(gateways.submit_maintenance_job, SubmitMaintenanceJobK8sGateway)
     assert isinstance(gateways.read_maintenance_job, ReadMaintenanceJobK8sGateway)
