@@ -19,7 +19,7 @@ from adapter.inbound.web.table_maintenance_preset import (
 from fastapi import FastAPI
 
 if TYPE_CHECKING:
-    from adapter.inbound.web.web_use_cases import WebUseCases
+    from adapter.inbound.web.shared import WebUseCases
 
 _API_PREFIX = "/v1"
 

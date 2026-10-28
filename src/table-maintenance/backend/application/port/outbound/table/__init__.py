@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from application.domain.model.table import Table, TableName, TableStatus
+from application.domain.model.table import Table, TableId, TableName, TableStatus
 from application.port.outbound.table.read_table_metadata.gateway import (
     ReadTableMetadataGateway,
 )
@@ -33,6 +33,7 @@ from application.port.outbound.table.send_table_change.input import (
 from application.port.outbound.table.tables_repo import TablesRepo
 
 __all__ = [
+    "TableId",
     "ReadTableMetadataGateway",
     "ReadTableMetadataGatewayListInput",
     "SendDiscoveryRequestGateway",

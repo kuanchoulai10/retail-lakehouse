@@ -16,7 +16,7 @@ from bootstrap.container.build_repositories import build_repositories
 from bootstrap.container.build_spark_config import build_spark_config
 from bootstrap.container.build_use_cases import build_use_cases
 from bootstrap.container.build_web_use_cases import build_web_use_cases
-from bootstrap.container.build_worker import build_worker
+from bootstrap.container.build_worker import WORKFLOWS, build_worker
 from bootstrap.container.configure_logging import configure_logging
 from bootstrap.container.connect_temporal import connect_temporal
 from bootstrap.container.gateways import Gateways
@@ -28,6 +28,7 @@ from bootstrap.container.seed_default_preset import seed_default_preset
 from bootstrap.container.use_cases import UseCases
 
 __all__ = [
+    "WORKFLOWS",
     "ADMISSION_LEASE_SECONDS",
     "Activities",
     "Gateways",

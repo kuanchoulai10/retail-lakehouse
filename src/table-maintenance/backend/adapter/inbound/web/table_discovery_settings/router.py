@@ -10,7 +10,7 @@ from adapter.inbound.web.table_discovery_settings.dto import (
     ScanDiscoveryApiResponse,
     UpdateTableDiscoverySettingsApiRequest,
 )
-from adapter.inbound.web import web_use_cases, WebUseCases
+from adapter.inbound.web.shared import WebUseCases, use_cases_dependency
 from application.port.inbound.table_discovery_settings import (
     GetTableDiscoverySettingsUseCaseInput,
     UpdateTableDiscoverySettingsUseCaseInput,
@@ -22,7 +22,7 @@ router = APIRouter(
     prefix="/table-discovery-settings", tags=["table-discovery-settings"]
 )
 
-UseCases = Annotated[WebUseCases, Depends(web_use_cases)]
+UseCases = Annotated[WebUseCases, Depends(use_cases_dependency)]
 
 
 @router.get("")

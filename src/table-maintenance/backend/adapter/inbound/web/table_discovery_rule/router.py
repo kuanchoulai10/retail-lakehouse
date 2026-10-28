@@ -9,7 +9,7 @@ from adapter.inbound.web.table_discovery_rule.dto import (
     TableDiscoveryRuleApiResponse,
     UpdateTableDiscoveryRuleApiRequest,
 )
-from adapter.inbound.web import web_use_cases, WebUseCases
+from adapter.inbound.web.shared import WebUseCases, use_cases_dependency
 from application.port.inbound.table_discovery_rule import (
     CreateTableDiscoveryRuleUseCaseInput,
     DeleteTableDiscoveryRuleUseCaseInput,
@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, Response, status
 
 router = APIRouter(prefix="/table-discovery-rules", tags=["table-discovery-rules"])
 
-UseCases = Annotated[WebUseCases, Depends(web_use_cases)]
+UseCases = Annotated[WebUseCases, Depends(use_cases_dependency)]
 
 
 @router.get("")

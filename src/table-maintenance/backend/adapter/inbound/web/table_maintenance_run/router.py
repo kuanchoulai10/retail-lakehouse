@@ -9,7 +9,7 @@ from adapter.inbound.web.table_maintenance_run.dto import (
     ProcessTableMaintenanceCallbackApiRequest,
     ProcessTableMaintenanceCallbackApiResponse,
 )
-from adapter.inbound.web import web_use_cases, WebUseCases
+from adapter.inbound.web.shared import WebUseCases, use_cases_dependency
 from application.port.inbound.table_maintenance_run import (
     GetTableMaintenanceRunUseCaseInput,
     ListTableMaintenanceRunsUseCaseInput,
@@ -19,7 +19,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 router = APIRouter(tags=["table-maintenance-runs"])
 
-UseCases = Annotated[WebUseCases, Depends(web_use_cases)]
+UseCases = Annotated[WebUseCases, Depends(use_cases_dependency)]
 
 
 @router.get("/tables/{table_uuid}/table-maintenance-runs")

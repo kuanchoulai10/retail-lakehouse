@@ -9,7 +9,7 @@ from adapter.inbound.web.table_maintenance_preset.dto import (
     TableMaintenancePresetApiResponse,
     UpdateTableMaintenancePresetApiRequest,
 )
-from adapter.inbound.web import web_use_cases, WebUseCases
+from adapter.inbound.web.shared import WebUseCases, use_cases_dependency
 from application.port.inbound.table_maintenance_preset import (
     CreateTableMaintenancePresetUseCaseInput,
     DeleteTableMaintenancePresetUseCaseInput,
@@ -23,7 +23,7 @@ router = APIRouter(
     prefix="/table-maintenance-presets", tags=["table-maintenance-presets"]
 )
 
-UseCases = Annotated[WebUseCases, Depends(web_use_cases)]
+UseCases = Annotated[WebUseCases, Depends(use_cases_dependency)]
 
 
 @router.get("")

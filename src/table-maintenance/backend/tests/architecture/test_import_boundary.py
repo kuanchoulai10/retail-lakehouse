@@ -6,12 +6,15 @@ See ``tests/architecture/boundaries.py`` for how boundaries are derived.
 from __future__ import annotations
 
 import ast
+import importlib
 import subprocess
 import sys
+import typing
 from pathlib import Path
 
 import pytest
 
+from base import AggregateRoot, Repository
 from tests.architecture.boundaries import (
     BACKEND,
     PROJECT_PACKAGES,
@@ -209,6 +212,24 @@ def test_boundary_exports_are_unambiguous():
     assert not clashes, "\n".join(clashes)
 
 
+def test_exports_do_not_shadow_a_sibling_module():
+    """An exported name equal to a module of the boundary must be that module's own export.
+
+    Otherwise importing that submodule rebinds the package attribute to the module
+    object, depending on import order.
+    """
+    known = boundaries()
+    problems: list[str] = []
+    for boundary in sorted(known):
+        directory = _boundary_dir(boundary)
+        declared = _declared_all(directory / "__init__.py") or []
+        for name in declared:
+            module = directory / f"{name}.py"
+            if module.is_file() and name not in _primary_exports(module):
+                problems.append(f"{boundary}: {name} shadows module {module.name}")
+    assert not problems, "\n".join(problems)
+
+
 def test_boundaries_follow_the_directory_rules():
     known = boundaries()
     for expected in (
@@ -221,6 +242,7 @@ def test_boundaries_follow_the_directory_rules():
         "application.service.shared",
         "adapter.inbound.web",
         "adapter.inbound.web.table",
+        "adapter.inbound.web.shared",
         "adapter.inbound.event_consumer",
         "adapter.outbound.table.sql",
         "adapter.outbound.shared.sql",
@@ -248,3 +270,52 @@ def test_every_boundary_imports_in_isolation(boundary: str):
         check=False,
     )
     assert result.returncode == 0, result.stderr
+
+
+def _generic_argument(cls: type, origin: type) -> type:
+    """Return the type argument ``cls`` passes to the generic base ``origin``."""
+    for klass in cls.__mro__:
+        for base in getattr(klass, "__orig_bases__", ()):
+            if typing.get_origin(base) is origin:
+                (argument,) = typing.get_args(base)
+                return argument
+    msg = f"{cls.__name__} does not subclass {origin.__name__}[...]"
+    raise AssertionError(msg)
+
+
+def _repository_ports() -> list[tuple[str, type]]:
+    ports: list[tuple[str, type]] = []
+    for boundary in sorted(boundaries()):
+        if not boundary.startswith("application.port.outbound."):
+            continue
+        package = importlib.import_module(boundary)
+        for name in package.__all__:
+            value = getattr(package, name)
+            if (
+                isinstance(value, type)
+                and issubclass(value, Repository)
+                and value is not Repository
+            ):
+                ports.append((boundary, value))
+    return ports
+
+
+@pytest.mark.parametrize(
+    ("boundary", "repo"),
+    _repository_ports(),
+    ids=lambda value: value if isinstance(value, str) else value.__name__,
+)
+def test_repository_port_exports_its_aggregate_and_id(boundary: str, repo: type):
+    """Adapters see only ports, so a repo port re-exports its aggregate and the id type."""
+    aggregate = _generic_argument(repo, Repository)
+    entity_id = _generic_argument(aggregate, AggregateRoot)
+    package = importlib.import_module(boundary)
+    for exported in (aggregate, entity_id):
+        assert getattr(package, exported.__name__, None) is exported, (
+            f"{boundary} must re-export {exported.__name__} (used by {repo.__name__})"
+        )
+        assert exported.__name__ in package.__all__, exported.__name__
+
+
+def test_every_aggregate_has_a_repository_port():
+    assert len(_repository_ports()) >= 5

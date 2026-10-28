@@ -6,7 +6,10 @@ type, the JSON codecs and ``create_schema``.
 
 from __future__ import annotations
 
-from adapter.outbound.shared.sql.create_schema import create_schema
+from adapter.outbound.shared.sql.create_schema import (
+    AGGREGATE_SQL_PACKAGES,
+    create_schema,
+)
 from adapter.outbound.shared.sql.iso_datetime_codec import IsoDatetimeCodec
 from adapter.outbound.shared.sql.maintenance_settings_codec import (
     MaintenanceSettingsCodec,
@@ -15,6 +18,7 @@ from adapter.outbound.shared.sql.metadata import metadata
 from adapter.outbound.shared.sql.utc_date_time import UtcDateTime
 
 __all__ = [
+    "AGGREGATE_SQL_PACKAGES",
     "IsoDatetimeCodec",
     "MaintenanceSettingsCodec",
     "UtcDateTime",

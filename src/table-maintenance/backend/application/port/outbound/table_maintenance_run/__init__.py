@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from application.domain.model.table import TableId
-from application.domain.model.table_maintenance_run import TableMaintenanceRun
+from application.domain.model.table_maintenance_run import (
+    TableMaintenanceRun,
+    TableMaintenanceRunId,
+)
 from application.port.outbound.table_maintenance_run.delete_maintenance_job.gateway import (
     DeleteMaintenanceJobGateway,
 )
@@ -39,6 +42,7 @@ from application.port.outbound.table_maintenance_run.table_maintenance_runs_repo
 )
 
 __all__ = [
+    "TableMaintenanceRunId",
     "DeleteMaintenanceJobGateway",
     "DeleteMaintenanceJobGatewayInput",
     "ReadMaintenanceJobGateway",

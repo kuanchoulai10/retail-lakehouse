@@ -10,7 +10,7 @@ from adapter.outbound.shared.sql.metadata import metadata
 if TYPE_CHECKING:
     from sqlalchemy import Engine
 
-_AGGREGATE_SQL_PACKAGES = (
+AGGREGATE_SQL_PACKAGES = (
     "adapter.outbound.table_discovery_settings.sql",
     "adapter.outbound.table_discovery_rule.sql",
     "adapter.outbound.table_maintenance_run.sql",
@@ -26,6 +26,6 @@ def create_schema(engine: Engine) -> None:
     are imported, and they import this package for ``metadata``. They are
     therefore imported here, on call, so the package import stays acyclic.
     """
-    for package in _AGGREGATE_SQL_PACKAGES:
+    for package in AGGREGATE_SQL_PACKAGES:
         importlib.import_module(package)
     metadata.create_all(engine)
