@@ -35,7 +35,7 @@ The Spark operator (wave 11) must watch `lakehouse-maintenance-operations` (`spa
 
 ## Ordering
 
-The `migrate` Job is a regular Job named with the Helm release revision, so each upgrade runs it again. A pre-install hook would run before the PostgreSQL Deployment exists. The Job waits for `pg_isready`. The api, worker and event-consumer pods have an init container that waits until the `default` policy template exists, which means the migration finished.
+The `migrate` Job is a regular Job named with the Helm release revision, so each upgrade runs it again. A pre-install hook would run before the PostgreSQL Deployment exists. The Job waits for `pg_isready`. The api, worker and event-consumer pods have an init container that waits until the `default` preset exists, which means the migration finished.
 
 ## Configuration
 
