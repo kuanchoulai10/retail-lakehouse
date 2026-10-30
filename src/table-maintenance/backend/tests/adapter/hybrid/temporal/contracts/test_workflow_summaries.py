@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from adapter.hybrid.temporal.contracts import (
-    table_discovery_summary,
-    table_maintenance_admission_summary,
+from adapter.hybrid.temporal.contracts.table_discovery import table_discovery_summary
+from adapter.hybrid.temporal.contracts.table_maintenance import (
     table_maintenance_summary,
+)
+from adapter.hybrid.temporal.contracts.table_maintenance_admission import (
+    table_maintenance_admission_summary,
 )
 
 

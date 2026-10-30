@@ -5,7 +5,9 @@ from __future__ import annotations
 from datetime import timedelta
 
 from adapter.hybrid.temporal.inbound.workflows import TableMaintenanceAttemptPolicy
-from adapter.hybrid.temporal.contracts import DEFAULT_ATTEMPT_DEADLINE_SECONDS
+from adapter.hybrid.temporal.contracts.table_maintenance import (
+    DEFAULT_ATTEMPT_DEADLINE_SECONDS,
+)
 
 
 def test_default_policy_matches_the_maintenance_workflow_defaults():

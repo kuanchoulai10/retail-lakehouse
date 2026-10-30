@@ -8,17 +8,12 @@ from temporalio.client import RPCError
 from temporalio.common import WorkflowIDConflictPolicy
 from temporalio.service import RPCStatusCode
 
-from adapter.hybrid.temporal.contracts import (
-    TableReconciliationWorkflowInput,
-    SIGNAL_PAUSE,
-    SIGNAL_RESUME,
-    SIGNAL_SETTINGS_CHANGED,
-    SIGNAL_STOP,
-    SIGNAL_TABLE_UPDATED,
-    SIGNAL_TRIGGER_NOW,
-    TASK_QUEUE,
-    table_reconciliation_workflow_id,
+from adapter.hybrid.temporal.contracts.shared import TASK_QUEUE
+from adapter.hybrid.temporal.contracts.table_reconciliation import (
     TABLE_RECONCILIATION_WORKFLOW,
+    TableReconciliationSignal,
+    TableReconciliationWorkflowInput,
+    table_reconciliation_workflow_id,
 )
 from application.port.outbound.table import SendTableChangeGateway
 
@@ -31,12 +26,12 @@ if TYPE_CHECKING:
 _MAINTENANCE_REQUESTED = "maintenance_requested"
 
 _SIGNAL_BY_CHANGE = {
-    "updated": SIGNAL_TABLE_UPDATED,
-    "settings_changed": SIGNAL_SETTINGS_CHANGED,
-    "paused": SIGNAL_PAUSE,
-    "resumed": SIGNAL_RESUME,
-    "stopped": SIGNAL_STOP,
-    _MAINTENANCE_REQUESTED: SIGNAL_TRIGGER_NOW,
+    "updated": TableReconciliationSignal.TABLE_UPDATED,
+    "settings_changed": TableReconciliationSignal.SETTINGS_CHANGED,
+    "paused": TableReconciliationSignal.PAUSE,
+    "resumed": TableReconciliationSignal.RESUME,
+    "stopped": TableReconciliationSignal.STOP,
+    _MAINTENANCE_REQUESTED: TableReconciliationSignal.TRIGGER_NOW,
 }
 
 

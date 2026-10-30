@@ -16,9 +16,9 @@ from temporalio.client import (
 from adapter.hybrid.temporal.outbound.table_discovery_settings import (
     UpdateTableDiscoveryScheduleTemporalGateway,
 )
-from adapter.hybrid.temporal.contracts import (
+from adapter.hybrid.temporal.contracts.shared import TASK_QUEUE
+from adapter.hybrid.temporal.contracts.table_discovery import (
     TABLE_DISCOVERY_WORKFLOW,
-    TASK_QUEUE,
     table_discovery_schedule_id,
 )
 from application.port.outbound.table_discovery_settings import (

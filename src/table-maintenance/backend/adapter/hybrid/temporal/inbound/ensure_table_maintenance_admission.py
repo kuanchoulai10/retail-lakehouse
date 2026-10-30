@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING
 
 from temporalio.common import WorkflowIDConflictPolicy
 
-from adapter.hybrid.temporal.contracts import (
-    TableMaintenanceAdmissionInput,
-    table_maintenance_admission_summary,
+from adapter.hybrid.temporal.contracts.shared import TASK_QUEUE
+from adapter.hybrid.temporal.contracts.table_maintenance_admission import (
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
-    TASK_QUEUE,
+    TableMaintenanceAdmissionWorkflowInput,
+    table_maintenance_admission_summary,
 )
 
 if TYPE_CHECKING:
@@ -32,7 +32,9 @@ async def ensure_table_maintenance_admission(
     """
     await client.start_workflow(
         TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
-        TableMaintenanceAdmissionInput(limit=limit, lease_seconds=lease_seconds),
+        TableMaintenanceAdmissionWorkflowInput(
+            limit=limit, lease_seconds=lease_seconds
+        ),
         id=TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
         static_summary=table_maintenance_admission_summary(limit),
         task_queue=TASK_QUEUE,

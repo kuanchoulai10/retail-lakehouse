@@ -14,22 +14,18 @@ from temporalio.workflow import ParentClosePolicy
 from adapter.hybrid.temporal.inbound.workflows.table_maintenance_attempt_policy import (
     TableMaintenanceAttemptPolicy,
 )
-from adapter.hybrid.temporal.contracts import (
-    PLAN_TABLE_MAINTENANCE,
-    table_maintenance_summary,
-    TableMaintenanceWorkflowInput,
-    TableReconciliationWorkflowInput,
+from adapter.hybrid.temporal.contracts.shared import TASK_QUEUE
+from adapter.hybrid.temporal.contracts.table_maintenance import (
     TABLE_MAINTENANCE_WORKFLOW,
-    TABLE_RECONCILIATION_WORKFLOW,
-    SIGNAL_MAINTENANCE_FINISHED,
-    SIGNAL_PAUSE,
-    SIGNAL_RESUME,
-    SIGNAL_SETTINGS_CHANGED,
-    SIGNAL_STOP,
-    SIGNAL_TABLE_UPDATED,
-    SIGNAL_TRIGGER_NOW,
-    TASK_QUEUE,
+    TableMaintenanceWorkflowInput,
+    table_maintenance_summary,
     table_maintenance_workflow_id,
+)
+from adapter.hybrid.temporal.contracts.table_reconciliation import (
+    TABLE_RECONCILIATION_WORKFLOW,
+    TableReconciliationActivity,
+    TableReconciliationSignal,
+    TableReconciliationWorkflowInput,
 )
 
 _ACTIVITY_TIMEOUT = timedelta(minutes=2)
@@ -123,40 +119,40 @@ class TableReconciliationWorkflow:
                 if ends and not self._woken:
                     return
 
-    @workflow.signal(name=SIGNAL_SETTINGS_CHANGED)
+    @workflow.signal(name=TableReconciliationSignal.SETTINGS_CHANGED)
     def settings_changed(self, payload: dict | None = None) -> None:
         """Wake the loop to re-plan with the settings stored in the database."""
         self._wake(cancels_stop=True)
 
-    @workflow.signal(name=SIGNAL_TABLE_UPDATED)
+    @workflow.signal(name=TableReconciliationSignal.TABLE_UPDATED)
     def table_updated(self, payload: dict | None = None) -> None:
         """Wake the loop because the table changed in the catalog."""
         self._wake(cancels_stop=True)
 
-    @workflow.signal(name=SIGNAL_PAUSE)
+    @workflow.signal(name=TableReconciliationSignal.PAUSE)
     def pause(self, payload: dict | None = None) -> None:
         """Wake the loop; the plan sees the paused table and skips."""
         self._wake(cancels_stop=True)
 
-    @workflow.signal(name=SIGNAL_RESUME)
+    @workflow.signal(name=TableReconciliationSignal.RESUME)
     def resume(self, payload: dict | None = None) -> None:
         """Wake the loop; the plan sees the resumed table and plans again."""
         self._wake(cancels_stop=True)
 
-    @workflow.signal(name=SIGNAL_TRIGGER_NOW)
+    @workflow.signal(name=TableReconciliationSignal.TRIGGER_NOW)
     def trigger_now(self, payload: dict | None = None) -> None:
         """Keep a manual trigger, replacing any pending one, and wake the loop."""
         operations = (payload or {}).get("operations") or []
         self._pending_manual = [str(op) for op in operations]
         self._wake(cancels_stop=True)
 
-    @workflow.signal(name=SIGNAL_STOP)
+    @workflow.signal(name=TableReconciliationSignal.STOP)
     def stop(self, payload: dict | None = None) -> None:
         """End the workflow once no run is in flight; plan nothing more."""
         self._stopping = True
         self._wake(cancels_stop=False)
 
-    @workflow.signal(name=SIGNAL_MAINTENANCE_FINISHED)
+    @workflow.signal(name=TableReconciliationSignal.MAINTENANCE_FINISHED)
     def maintenance_finished(self, payload: dict | None = None) -> None:
         """Clear the in-flight run it reports; ignore any other run id."""
         self._signals_handled += 1
@@ -290,7 +286,7 @@ class TableReconciliationWorkflow:
         manual = self._pending_manual
         try:
             plan = await workflow.execute_activity(
-                PLAN_TABLE_MAINTENANCE,
+                TableReconciliationActivity.PLAN_TABLE_MAINTENANCE,
                 {
                     "table_uuid": self._table_uuid,
                     "now": workflow.now().isoformat(),

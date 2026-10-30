@@ -10,7 +10,7 @@ from adapter.hybrid.temporal.inbound.activities.activity_payload import activity
 from adapter.hybrid.temporal.inbound.activities.translate_application_errors import (
     translate_application_errors,
 )
-from adapter.hybrid.temporal.contracts import SYNC_DISCOVERED_TABLES
+from adapter.hybrid.temporal.contracts.table_discovery import TableDiscoveryActivity
 from application.port.inbound.table import SyncDiscoveredTablesUseCaseInput
 
 if TYPE_CHECKING:
@@ -24,7 +24,7 @@ class TableDiscoveryActivities:
         """Bind the sync use case."""
         self._sync = sync
 
-    @activity.defn(name=SYNC_DISCOVERED_TABLES)
+    @activity.defn(name=TableDiscoveryActivity.SYNC_DISCOVERED_TABLES)
     def sync_discovered_tables(self, request: dict[str, Any]) -> dict[str, Any]:
         """Synchronise the registry with one catalog or namespace."""
         with translate_application_errors():

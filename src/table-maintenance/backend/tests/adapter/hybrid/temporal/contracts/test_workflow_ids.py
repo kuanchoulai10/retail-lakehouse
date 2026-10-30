@@ -2,14 +2,20 @@
 
 from __future__ import annotations
 
-from adapter.hybrid.temporal.contracts import (
-    SIGNAL_ADMISSION_GRANTED,
+from adapter.hybrid.temporal.contracts.shared import TASK_QUEUE
+from adapter.hybrid.temporal.contracts.table_discovery import (
     TABLE_DISCOVERY_SCHEDULE_ID_PREFIX,
-    TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
-    TASK_QUEUE,
     table_discovery_adhoc_workflow_id,
     table_discovery_schedule_id,
+)
+from adapter.hybrid.temporal.contracts.table_maintenance import (
+    TableMaintenanceSignal,
     table_maintenance_workflow_id,
+)
+from adapter.hybrid.temporal.contracts.table_maintenance_admission import (
+    TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
+)
+from adapter.hybrid.temporal.contracts.table_reconciliation import (
     table_reconciliation_workflow_id,
 )
 
@@ -24,7 +30,7 @@ def test_workflow_ids():
     )
     assert TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID == "table-maintenance-admission"
     assert TASK_QUEUE == "table-maintenance"
-    assert SIGNAL_ADMISSION_GRANTED == "admission_granted"
+    assert TableMaintenanceSignal.ADMISSION_GRANTED == "admission_granted"
 
 
 def test_discovery_adhoc_workflow_id():

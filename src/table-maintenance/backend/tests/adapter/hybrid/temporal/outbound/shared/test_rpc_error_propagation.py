@@ -17,7 +17,9 @@ from adapter.hybrid.temporal.outbound.table_maintenance_run import (
     SendMaintenanceResultTemporalGateway,
 )
 from adapter.hybrid.temporal.outbound.table import SendTableChangeTemporalGateway
-from adapter.hybrid.temporal.contracts import table_discovery_schedule_id
+from adapter.hybrid.temporal.contracts.table_discovery import (
+    table_discovery_schedule_id,
+)
 from application.exceptions import NotFoundError
 from application.port.outbound.table_discovery_settings import (
     UpdateTableDiscoveryScheduleGatewayInput,

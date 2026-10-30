@@ -12,14 +12,13 @@ from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import UnsandboxedWorkflowRunner, Worker
 
 from adapter.hybrid.temporal.inbound.workflows import TableMaintenanceAdmissionWorkflow
-from adapter.hybrid.temporal.contracts import (
+from adapter.hybrid.temporal.contracts.table_maintenance_admission import (
     AdmissionAcquireSignal,
-    TableMaintenanceAdmissionInput,
     AdmissionReleaseSignal,
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
-    SIGNAL_ADMISSION_ACQUIRE,
-    SIGNAL_ADMISSION_RELEASE,
+    TableMaintenanceAdmissionSignal,
+    TableMaintenanceAdmissionWorkflowInput,
 )
 from tests.adapter.hybrid.temporal.inbound.eventually import eventually
 from tests.adapter.hybrid.temporal.inbound.requester_stub_workflow import (
@@ -51,11 +50,13 @@ class AdmissionHarness:
     async def acquire(self, request_id: str, requester_workflow_id: str) -> None:
         await self.client.start_workflow(
             TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
-            TableMaintenanceAdmissionInput(limit=self.limit, lease_seconds=self.lease),
+            TableMaintenanceAdmissionWorkflowInput(
+                limit=self.limit, lease_seconds=self.lease
+            ),
             id=TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
             task_queue=self.queue,
             id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
-            start_signal=SIGNAL_ADMISSION_ACQUIRE,
+            start_signal=TableMaintenanceAdmissionSignal.ACQUIRE,
             start_signal_args=[
                 AdmissionAcquireSignal(request_id, requester_workflow_id)
             ],
@@ -66,7 +67,7 @@ class AdmissionHarness:
             TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID
         )
         await handle.signal(
-            SIGNAL_ADMISSION_RELEASE, AdmissionReleaseSignal(request_id)
+            TableMaintenanceAdmissionSignal.RELEASE, AdmissionReleaseSignal(request_id)
         )
 
     async def granted(self, name: str) -> list[str]:

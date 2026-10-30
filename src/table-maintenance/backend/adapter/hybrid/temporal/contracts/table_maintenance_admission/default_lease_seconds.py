@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from adapter.hybrid.temporal.contracts.default_attempt_deadline_seconds import (
+from adapter.hybrid.temporal.contracts.table_maintenance import (
     DEFAULT_ATTEMPT_DEADLINE_SECONDS,
 )
 

@@ -8,14 +8,10 @@ from typing import TYPE_CHECKING, Any
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
-from adapter.hybrid.temporal.contracts import (
-    CREATE_MAINTENANCE_RUN,
-    DELETE_MAINTENANCE_JOB,
-    GET_MAINTENANCE_JOB_STATUS,
-    RECORD_MAINTENANCE_OPERATION_RESULT,
-    SUBMIT_MAINTENANCE_OPERATION,
+from adapter.hybrid.temporal.contracts.table_maintenance import (
     OperationResultSignal,
-    SIGNAL_OPERATION_RESULT,
+    TableMaintenanceActivity,
+    TableMaintenanceSignal,
 )
 
 if TYPE_CHECKING:
@@ -64,14 +60,14 @@ class ScriptedMaintenanceActivities:
         """Look the workflow up on the created run, as the callback path does."""
         return next(c["execution_ref"] for c in self.created if c["run_id"] == run_id)
 
-    @activity.defn(name=CREATE_MAINTENANCE_RUN)
+    @activity.defn(name=TableMaintenanceActivity.CREATE_MAINTENANCE_RUN)
     async def create_table_maintenance_run(self, request: dict) -> dict:
         self.created.append(request)
         if self.create_gate is not None:
             await self.create_gate.wait()
         return {"run_id": request["run_id"], "status": "running"}
 
-    @activity.defn(name=SUBMIT_MAINTENANCE_OPERATION)
+    @activity.defn(name=TableMaintenanceActivity.SUBMIT_MAINTENANCE_OPERATION)
     async def submit_maintenance_operation(self, request: dict) -> dict:
         self.submits.append(request)
         if self.submit_gate is not None:
@@ -86,7 +82,7 @@ class ScriptedMaintenanceActivities:
         )
         for attempt, succeeded, error in self.callbacks.get(key, []):
             await handle.signal(
-                SIGNAL_OPERATION_RESULT,
+                TableMaintenanceSignal.OPERATION_RESULT,
                 OperationResultSignal(
                     run_id=request["run_id"],
                     operation=request["operation"],
@@ -100,7 +96,7 @@ class ScriptedMaintenanceActivities:
             "job_name": self.app_name(request["run_id"], *key),
         }
 
-    @activity.defn(name=GET_MAINTENANCE_JOB_STATUS)
+    @activity.defn(name=TableMaintenanceActivity.GET_MAINTENANCE_JOB_STATUS)
     async def get_maintenance_job_status(self, request: dict) -> dict:
         app_name = self.app_name(
             request["run_id"], request["operation"], request["attempt"]
@@ -117,14 +113,14 @@ class ScriptedMaintenanceActivities:
             return state[min(calls, len(state)) - 1]
         return state
 
-    @activity.defn(name=RECORD_MAINTENANCE_OPERATION_RESULT)
+    @activity.defn(name=TableMaintenanceActivity.RECORD_MAINTENANCE_OPERATION_RESULT)
     async def record_table_maintenance_operation_result(self, request: dict) -> dict:
         self.records.append(request)
         if (request["operation"], request["attempt"]) in self.record_errors:
             raise ApplicationError("db down", type="ConflictError", non_retryable=True)
         return {"run_id": request["run_id"], "status": "running"}
 
-    @activity.defn(name=DELETE_MAINTENANCE_JOB)
+    @activity.defn(name=TableMaintenanceActivity.DELETE_MAINTENANCE_JOB)
     async def delete_maintenance_job(self, request: dict) -> dict:
         app_name = self.app_name(
             request["run_id"], request["operation"], request["attempt"]

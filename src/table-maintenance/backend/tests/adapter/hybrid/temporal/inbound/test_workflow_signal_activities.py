@@ -10,13 +10,15 @@ from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import UnsandboxedWorkflowRunner, Worker
 
 from adapter.hybrid.temporal.inbound.activities import WorkflowSignalActivities
-from adapter.hybrid.temporal.contracts import (
+from adapter.hybrid.temporal.contracts.shared import TASK_QUEUE
+from adapter.hybrid.temporal.contracts.table_maintenance_admission import (
     AdmissionAcquireSignal,
-    TableMaintenanceAdmissionInput,
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
-    SIGNAL_MAINTENANCE_FINISHED,
-    TASK_QUEUE,
+    TableMaintenanceAdmissionWorkflowInput,
+)
+from adapter.hybrid.temporal.contracts.table_reconciliation import (
+    TableReconciliationSignal,
 )
 
 
@@ -24,10 +26,10 @@ from adapter.hybrid.temporal.contracts import (
 class StubAdmission:
     def __init__(self) -> None:
         self.acquires: list[AdmissionAcquireSignal] = []
-        self.input: TableMaintenanceAdmissionInput | None = None
+        self.input: TableMaintenanceAdmissionWorkflowInput | None = None
 
     @workflow.run
-    async def run(self, input: TableMaintenanceAdmissionInput) -> None:
+    async def run(self, input: TableMaintenanceAdmissionWorkflowInput) -> None:
         self.input = input
         await workflow.wait_condition(lambda: False)
 
@@ -54,7 +56,7 @@ class StubParent:
     async def run(self) -> None:
         await workflow.wait_condition(lambda: False)
 
-    @workflow.signal(name=SIGNAL_MAINTENANCE_FINISHED)
+    @workflow.signal(name=TableReconciliationSignal.MAINTENANCE_FINISHED)
     def maintenance_finished(self, run_id: str) -> None:
         self.finished.append(run_id)
 
@@ -99,7 +101,7 @@ async def _scenario() -> None:
                 activities.signal_parent,
                 {
                     "workflow_id": "parent-1",
-                    "signal": SIGNAL_MAINTENANCE_FINISHED,
+                    "signal": TableReconciliationSignal.MAINTENANCE_FINISHED,
                     "arg": "r1",
                 },
             )
@@ -110,7 +112,7 @@ async def _scenario() -> None:
                 activities.signal_parent,
                 {
                     "workflow_id": "no-such-parent",
-                    "signal": SIGNAL_MAINTENANCE_FINISHED,
+                    "signal": TableReconciliationSignal.MAINTENANCE_FINISHED,
                     "arg": "r1",
                 },
             )

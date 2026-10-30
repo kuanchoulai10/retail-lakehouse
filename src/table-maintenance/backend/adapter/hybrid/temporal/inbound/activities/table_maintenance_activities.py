@@ -11,10 +11,7 @@ from adapter.hybrid.temporal.inbound.activities.activity_payload import activity
 from adapter.hybrid.temporal.inbound.activities.translate_application_errors import (
     translate_application_errors,
 )
-from adapter.hybrid.temporal.contracts import (
-    CREATE_MAINTENANCE_RUN,
-    RECORD_MAINTENANCE_OPERATION_RESULT,
-)
+from adapter.hybrid.temporal.contracts.table_maintenance import TableMaintenanceActivity
 from application.port.inbound.table_maintenance_run import (
     CreateTableMaintenanceRunUseCaseInput,
     RecordTableMaintenanceOperationResultUseCaseInput,
@@ -40,7 +37,7 @@ class TableMaintenanceActivities:
         self._create_run = create_run
         self._record_result = record_result
 
-    @activity.defn(name=CREATE_MAINTENANCE_RUN)
+    @activity.defn(name=TableMaintenanceActivity.CREATE_MAINTENANCE_RUN)
     def create_table_maintenance_run(self, request: dict[str, Any]) -> dict[str, Any]:
         """Create the run with its planned operations."""
         with translate_application_errors():
@@ -56,7 +53,7 @@ class TableMaintenanceActivities:
             )
         return activity_payload(output)
 
-    @activity.defn(name=RECORD_MAINTENANCE_OPERATION_RESULT)
+    @activity.defn(name=TableMaintenanceActivity.RECORD_MAINTENANCE_OPERATION_RESULT)
     def record_table_maintenance_operation_result(
         self, request: dict[str, Any]
     ) -> dict[str, Any]:

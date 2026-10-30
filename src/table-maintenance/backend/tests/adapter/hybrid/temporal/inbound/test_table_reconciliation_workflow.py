@@ -14,17 +14,14 @@ from temporalio.worker import UnsandboxedWorkflowRunner, Worker
 from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner
 
 from adapter.hybrid.temporal.inbound.workflows import TableReconciliationWorkflow
-from adapter.hybrid.temporal.contracts import (
-    TableReconciliationWorkflowInput,
-    TABLE_RECONCILIATION_WORKFLOW,
-    SIGNAL_MAINTENANCE_FINISHED,
-    SIGNAL_PAUSE,
-    SIGNAL_RESUME,
-    SIGNAL_SETTINGS_CHANGED,
-    SIGNAL_STOP,
-    SIGNAL_TRIGGER_NOW,
-    TASK_QUEUE,
+from adapter.hybrid.temporal.contracts.shared import TASK_QUEUE
+from adapter.hybrid.temporal.contracts.table_maintenance import (
     table_maintenance_workflow_id,
+)
+from adapter.hybrid.temporal.contracts.table_reconciliation import (
+    TABLE_RECONCILIATION_WORKFLOW,
+    TableReconciliationSignal,
+    TableReconciliationWorkflowInput,
     table_reconciliation_workflow_id,
 )
 from tests.adapter.hybrid.temporal.inbound.eventually import eventually
@@ -90,7 +87,7 @@ class Harness:
     sent: int = 0
 
     async def start(
-        self, start_signal: str | None = SIGNAL_RESUME, **fields: Any
+        self, start_signal: str | None = TableReconciliationSignal.RESUME, **fields: Any
     ) -> WorkflowHandle:
         options: dict[str, Any] = {}
         if start_signal is not None:
@@ -255,8 +252,10 @@ def test_trigger_now_while_in_flight_runs_after_finish():
     async def scenario(h: Harness) -> None:
         await h.start()
         first = await h.in_flight()
-        await h.signal(SIGNAL_TRIGGER_NOW, {"operations": [COMPACTION]})
-        await h.signal(SIGNAL_TRIGGER_NOW, {"operations": [EXPIRE]})
+        await h.signal(
+            TableReconciliationSignal.TRIGGER_NOW, {"operations": [COMPACTION]}
+        )
+        await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE]})
         await h.settle()
         assert len(h.plans.requests) == 1
         assert (await h.state())["pending_manual"] == [EXPIRE]
@@ -275,7 +274,7 @@ def test_trigger_now_while_in_flight_runs_after_finish():
 
 def test_trigger_now_without_operations_plans_all_due_as_manual():
     async def scenario(h: Harness) -> None:
-        await h.start(start_signal=SIGNAL_TRIGGER_NOW)
+        await h.start(start_signal=TableReconciliationSignal.TRIGGER_NOW)
         run_id = await h.in_flight()
         assert h.plans.requests[0]["manual_operations"] is None
         assert (await h.child(run_id))["trigger"] == "manual"
@@ -288,9 +287,9 @@ def test_child_result_received_after_continue_as_new():
         handle = await h.start(continue_as_new_after=2)
         first_run = handle.result_run_id
         run_id = await h.in_flight()
-        await h.signal(SIGNAL_TRIGGER_NOW, {"operations": [EXPIRE]})
+        await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE]})
         for _ in range(3):
-            await h.signal(SIGNAL_SETTINGS_CHANGED)
+            await h.signal(TableReconciliationSignal.SETTINGS_CHANGED)
 
         async def run_id_now() -> str | None:
             return (await h.client.get_workflow_handle(WORKFLOW_ID).describe()).run_id
@@ -313,7 +312,8 @@ def test_stale_maintenance_finished_is_ignored():
         await h.start()
         run_id = await h.in_flight()
         await h.signal(
-            SIGNAL_MAINTENANCE_FINISHED, {"run_id": "other", "record_failures": 0}
+            TableReconciliationSignal.MAINTENANCE_FINISHED,
+            {"run_id": "other", "record_failures": 0},
         )
         await h.settle()
         assert (await h.state())["in_flight_run_id"] == run_id
@@ -326,7 +326,7 @@ def test_dropped_signal_ends_workflow_after_in_flight_run():
     async def scenario(h: Harness) -> None:
         await h.start()
         run_id = await h.in_flight()
-        await h.signal(SIGNAL_STOP)
+        await h.signal(TableReconciliationSignal.STOP)
         state = await h.settle()
         assert state["stopping"] is True
         assert state["in_flight_run_id"] == run_id
@@ -341,7 +341,7 @@ def test_dropped_signal_ends_workflow_after_in_flight_run():
 def test_stop_with_nothing_in_flight_ends_immediately():
     async def scenario(h: Harness) -> None:
         await h.start(start_signal=None)
-        await h.signal(SIGNAL_STOP)
+        await h.signal(TableReconciliationSignal.STOP)
         await h.ended()
         assert h.plans.requests == []
 
@@ -374,13 +374,13 @@ def test_pause_skips_plans_resume_restores():
     async def scenario(h: Harness) -> None:
         await h.start()
         await h.plan_count(1)
-        await h.signal(SIGNAL_PAUSE)
+        await h.signal(TableReconciliationSignal.PAUSE)
         await h.plan_count(2)
         await h.settle()
         assert (await h.state())["in_flight_run_id"] is None
         assert await h.status() == WorkflowExecutionStatus.RUNNING
         paused["value"] = False
-        await h.signal(SIGNAL_RESUME)
+        await h.signal(TableReconciliationSignal.RESUME)
         run_id = await h.in_flight()
         assert (await h.child(run_id))["trigger"] == "scheduled"
         assert len(h.plans.requests) == 3
@@ -396,12 +396,12 @@ def test_manual_trigger_on_paused_table_is_dropped():
 
     async def scenario(h: Harness) -> None:
         await h.start(start_signal=None)
-        await h.signal(SIGNAL_TRIGGER_NOW, {"operations": [EXPIRE]})
+        await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE]})
         assert (await h.plan_count(1))[0]["manual_operations"] == [EXPIRE]
         await h.settle()
         assert (await h.state())["pending_manual"] is None
         paused["value"] = False
-        await h.signal(SIGNAL_RESUME)
+        await h.signal(TableReconciliationSignal.RESUME)
         assert (await h.plan_count(2))[1]["manual_operations"] is None
         run_id = await h.in_flight()
         assert (await h.child(run_id))["trigger"] == "scheduled"
@@ -419,7 +419,7 @@ def test_plan_failure_does_not_fail_workflow():
         due = datetime.fromisoformat(state["next_plan_at"])
         assert _within_a_second(due - datetime.fromisoformat(failed["now"]), 3600)
         assert await h.status() == WorkflowExecutionStatus.RUNNING
-        await h.signal(SIGNAL_SETTINGS_CHANGED)
+        await h.signal(TableReconciliationSignal.SETTINGS_CHANGED)
         await h.plan_count(2)
         await h.in_flight()
 
@@ -497,8 +497,8 @@ def test_include_after_exclude_while_in_flight_keeps_workflow():
     async def scenario(h: Harness) -> None:
         await h.start()
         first = await h.in_flight()
-        await h.signal(SIGNAL_STOP)
-        await h.signal(SIGNAL_RESUME)
+        await h.signal(TableReconciliationSignal.STOP)
+        await h.signal(TableReconciliationSignal.RESUME)
         assert (await h.settle())["stopping"] is False
         await h.complete_child(first)
         await h.plan_count(2)
@@ -515,7 +515,7 @@ def test_excluded_plan_with_wake_during_activity_replans():
         h.plans.gate = asyncio.Event()
         await h.start()
         await h.plan_count(1)
-        await h.signal(SIGNAL_RESUME)
+        await h.signal(TableReconciliationSignal.RESUME)
         await eventually(h.state, lambda s: s["signals_handled"] >= h.sent)
         h.plans.gate.set()
         await h.plan_count(2)
@@ -530,7 +530,7 @@ def test_stop_during_plan_starts_no_child():
         h.plans.gate = asyncio.Event()
         await h.start()
         await h.plan_count(1)
-        await h.signal(SIGNAL_STOP)
+        await h.signal(TableReconciliationSignal.STOP)
         await eventually(h.state, lambda s: s["stopping"])
         h.plans.gate.set()
         await h.ended()
@@ -612,7 +612,7 @@ def test_child_start_failure_keeps_workflow_alive(monkeypatch: pytest.MonkeyPatc
         assert state["in_flight_run_id"] is None
         assert state["in_flight_started_at"] is None
         assert await h.status() == WorkflowExecutionStatus.RUNNING
-        await h.signal(SIGNAL_SETTINGS_CHANGED)
+        await h.signal(TableReconciliationSignal.SETTINGS_CHANGED)
         await h.plan_count(2)
         run_id = await h.in_flight()
         assert (await h.child(run_id))["plan"] == _planned(EXPIRE)

@@ -19,18 +19,20 @@ from adapter.hybrid.temporal.inbound.workflows import (
     TableMaintenanceAdmissionWorkflow,
     TableMaintenanceWorkflow,
 )
-from adapter.hybrid.temporal.contracts import (
-    AdmissionAcquireSignal,
-    TableMaintenanceAdmissionInput,
-    TableMaintenanceWorkflowInput,
+from adapter.hybrid.temporal.contracts.shared import TASK_QUEUE
+from adapter.hybrid.temporal.contracts.table_maintenance import (
     OperationResultSignal,
-    TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
     TABLE_MAINTENANCE_WORKFLOW,
-    TASK_QUEUE,
-    TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
-    SIGNAL_ADMISSION_ACQUIRE,
-    SIGNAL_OPERATION_RESULT,
+    TableMaintenanceSignal,
+    TableMaintenanceWorkflowInput,
     table_maintenance_workflow_id,
+)
+from adapter.hybrid.temporal.contracts.table_maintenance_admission import (
+    AdmissionAcquireSignal,
+    TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
+    TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
+    TableMaintenanceAdmissionSignal,
+    TableMaintenanceAdmissionWorkflowInput,
 )
 from tests.adapter.hybrid.temporal.inbound.eventually import eventually
 from tests.adapter.hybrid.temporal.inbound.parent_stub_workflow import (
@@ -397,11 +399,13 @@ def test_late_grant_for_another_request_is_released_at_once():
         await eventually(lambda: _value(len(h.fakes.created)), lambda n: n == 1)
         await h.client.start_workflow(
             TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
-            TableMaintenanceAdmissionInput(limit=1, lease_seconds=30 * 24 * 3600),
+            TableMaintenanceAdmissionWorkflowInput(
+                limit=1, lease_seconds=30 * 24 * 3600
+            ),
             id=TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
             task_queue=h.queue,
             id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
-            start_signal=SIGNAL_ADMISSION_ACQUIRE,
+            start_signal=TableMaintenanceAdmissionSignal.ACQUIRE,
             start_signal_args=[AdmissionAcquireSignal("stray", handle.id)],
         )
         await eventually(h.admission_holders, lambda holders: holders == {})
@@ -501,7 +505,7 @@ def test_result_arriving_during_last_poll_before_deadline_wins():
                 return
             signalled.append(scheduled)
             await h.client.get_workflow_handle(WORKFLOW_ID).signal(
-                SIGNAL_OPERATION_RESULT,
+                TableMaintenanceSignal.OPERATION_RESULT,
                 OperationResultSignal(RUN_ID, COMPACTION, 1, True, {"files": 7}, None),
             )
             await h.env.sleep(timedelta(seconds=30))

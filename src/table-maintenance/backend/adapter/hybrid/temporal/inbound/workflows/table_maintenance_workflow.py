@@ -10,23 +10,20 @@ from temporalio import workflow
 from temporalio.common import RetryPolicy
 from temporalio.exceptions import ActivityError, FailureError, is_cancelled_exception
 
-from adapter.hybrid.temporal.contracts import (
-    CREATE_MAINTENANCE_RUN,
-    DELETE_MAINTENANCE_JOB,
-    GET_MAINTENANCE_JOB_STATUS,
-    RECORD_MAINTENANCE_OPERATION_RESULT,
-    SIGNAL_ADMISSION_ACQUIRE_ACTIVITY,
-    SIGNAL_PARENT,
-    SUBMIT_MAINTENANCE_OPERATION,
-    AdmissionReleaseSignal,
-    TableMaintenanceWorkflowInput,
+from adapter.hybrid.temporal.contracts.table_maintenance import (
     OperationResultSignal,
     TABLE_MAINTENANCE_WORKFLOW,
+    TableMaintenanceActivity,
+    TableMaintenanceSignal,
+    TableMaintenanceWorkflowInput,
+)
+from adapter.hybrid.temporal.contracts.table_maintenance_admission import (
+    AdmissionReleaseSignal,
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
-    SIGNAL_ADMISSION_GRANTED,
-    SIGNAL_ADMISSION_RELEASE,
-    SIGNAL_MAINTENANCE_FINISHED,
-    SIGNAL_OPERATION_RESULT,
+    TableMaintenanceAdmissionSignal,
+)
+from adapter.hybrid.temporal.contracts.table_reconciliation import (
+    TableReconciliationSignal,
 )
 from adapter.hybrid.temporal.inbound.workflows.table_maintenance_attempt_policy import (
     TableMaintenanceAttemptPolicy,
@@ -78,7 +75,7 @@ class TableMaintenanceWorkflow:
         operations: list[dict[str, Any]] = list(input.plan["operations"])
         try:
             await self._activity(
-                CREATE_MAINTENANCE_RUN,
+                TableMaintenanceActivity.CREATE_MAINTENANCE_RUN,
                 {
                     "run_id": input.run_id,
                     "table_uuid": input.table_uuid,
@@ -93,7 +90,7 @@ class TableMaintenanceWorkflow:
         finally:
             await self._finish(input.parent_workflow_id)
 
-    @workflow.signal(name=SIGNAL_OPERATION_RESULT)
+    @workflow.signal(name=TableMaintenanceSignal.OPERATION_RESULT)
     def operation_result(self, result: OperationResultSignal) -> None:
         """Store a Spark job result under its operation and attempt."""
         if result.run_id != self._run_id:
@@ -101,7 +98,7 @@ class TableMaintenanceWorkflow:
             return
         self._results.setdefault((result.operation, result.attempt), result)
 
-    @workflow.signal(name=SIGNAL_ADMISSION_GRANTED)
+    @workflow.signal(name=TableMaintenanceSignal.ADMISSION_GRANTED)
     async def admission_granted(self, request_id: str) -> None:
         """Take the grant of the awaited request; hand any other grant straight back."""
         if request_id == self._current_request:
@@ -148,7 +145,7 @@ class TableMaintenanceWorkflow:
         self._started_attempts.append((name, attempt))
         try:
             submitted = await self._activity(
-                SUBMIT_MAINTENANCE_OPERATION,
+                TableMaintenanceActivity.SUBMIT_MAINTENANCE_OPERATION,
                 {
                     "run_id": self._run_id,
                     "operation": name,
@@ -168,7 +165,7 @@ class TableMaintenanceWorkflow:
             "request_id": request_id,
             "requester_workflow_id": workflow.info().workflow_id,
         }
-        await self._activity(SIGNAL_ADMISSION_ACQUIRE_ACTIVITY, request)
+        await self._activity(TableMaintenanceActivity.SIGNAL_ADMISSION_ACQUIRE, request)
         while True:
             try:
                 await workflow.wait_condition(
@@ -177,7 +174,9 @@ class TableMaintenanceWorkflow:
                 )
                 return
             except TimeoutError:
-                await self._activity(SIGNAL_ADMISSION_ACQUIRE_ACTIVITY, request)
+                await self._activity(
+                    TableMaintenanceActivity.SIGNAL_ADMISSION_ACQUIRE, request
+                )
 
     async def _release(self, request_id: str) -> None:
         handle = workflow.get_external_workflow_handle(
@@ -185,7 +184,8 @@ class TableMaintenanceWorkflow:
         )
         try:
             await handle.signal(
-                SIGNAL_ADMISSION_RELEASE, AdmissionReleaseSignal(request_id)
+                TableMaintenanceAdmissionSignal.RELEASE,
+                AdmissionReleaseSignal(request_id),
             )
         except FailureError as error:
             workflow.logger.warning("release of %s failed: %s", request_id, error)
@@ -244,7 +244,7 @@ class TableMaintenanceWorkflow:
     async def _job_status(self, name: str, attempt: int) -> dict[str, Any] | None:
         try:
             return await self._activity(
-                GET_MAINTENANCE_JOB_STATUS,
+                TableMaintenanceActivity.GET_MAINTENANCE_JOB_STATUS,
                 {"run_id": self._run_id, "operation": name, "attempt": attempt},
             )
         except ActivityError as error:
@@ -257,7 +257,7 @@ class TableMaintenanceWorkflow:
     async def _record(self, outcome: OperationResultSignal) -> None:
         try:
             await self._activity(
-                RECORD_MAINTENANCE_OPERATION_RESULT,
+                TableMaintenanceActivity.RECORD_MAINTENANCE_OPERATION_RESULT,
                 {
                     "run_id": outcome.run_id,
                     "operation": outcome.operation,
@@ -282,7 +282,7 @@ class TableMaintenanceWorkflow:
         for name, attempt in self._started_attempts:
             try:
                 await self._activity(
-                    DELETE_MAINTENANCE_JOB,
+                    TableMaintenanceActivity.DELETE_MAINTENANCE_JOB,
                     {"run_id": self._run_id, "operation": name, "attempt": attempt},
                 )
             except ActivityError as error:
@@ -291,10 +291,10 @@ class TableMaintenanceWorkflow:
                 )
         try:
             await self._activity(
-                SIGNAL_PARENT,
+                TableMaintenanceActivity.SIGNAL_PARENT,
                 {
                     "workflow_id": parent_workflow_id,
-                    "signal": SIGNAL_MAINTENANCE_FINISHED,
+                    "signal": TableReconciliationSignal.MAINTENANCE_FINISHED,
                     "arg": {
                         "run_id": self._run_id,
                         "record_failures": self._record_failures,

@@ -6,10 +6,12 @@ import asyncio
 
 from temporalio import workflow
 
-from adapter.hybrid.temporal.contracts import (
-    TableMaintenanceWorkflowInput,
+from adapter.hybrid.temporal.contracts.table_maintenance import (
     TABLE_MAINTENANCE_WORKFLOW,
-    SIGNAL_MAINTENANCE_FINISHED,
+    TableMaintenanceWorkflowInput,
+)
+from adapter.hybrid.temporal.contracts.table_reconciliation import (
+    TableReconciliationSignal,
 )
 
 
@@ -41,7 +43,8 @@ class TableMaintenanceStubWorkflow:
     async def _report(self, input: TableMaintenanceWorkflowInput) -> None:  # noqa: A002
         handle = workflow.get_external_workflow_handle(input.parent_workflow_id)
         await handle.signal(
-            SIGNAL_MAINTENANCE_FINISHED, {"run_id": input.run_id, "record_failures": 0}
+            TableReconciliationSignal.MAINTENANCE_FINISHED,
+            {"run_id": input.run_id, "record_failures": 0},
         )
 
     @workflow.signal(name="complete")

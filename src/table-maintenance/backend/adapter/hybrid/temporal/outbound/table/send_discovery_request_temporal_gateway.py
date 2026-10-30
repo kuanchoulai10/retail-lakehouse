@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING
 
 from temporalio.common import WorkflowIDConflictPolicy
 
-from adapter.hybrid.temporal.contracts import (
-    table_discovery_summary,
-    TableDiscoveryWorkflowInput,
+from adapter.hybrid.temporal.contracts.shared import TASK_QUEUE
+from adapter.hybrid.temporal.contracts.table_discovery import (
     TABLE_DISCOVERY_WORKFLOW,
-    TASK_QUEUE,
+    TableDiscoveryWorkflowInput,
     table_discovery_adhoc_workflow_id,
+    table_discovery_summary,
 )
 from application.port.outbound.table import SendDiscoveryRequestGateway
 

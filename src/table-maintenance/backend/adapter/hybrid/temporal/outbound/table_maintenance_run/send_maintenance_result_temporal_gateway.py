@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING
 from temporalio.client import RPCError
 from temporalio.service import RPCStatusCode
 
-from adapter.hybrid.temporal.contracts import (
+from adapter.hybrid.temporal.contracts.table_maintenance import (
     OperationResultSignal,
-    SIGNAL_OPERATION_RESULT,
+    TableMaintenanceSignal,
 )
 from application.exceptions import NotFoundError
 from application.port.outbound.table_maintenance_run import SendMaintenanceResultGateway
@@ -45,7 +45,7 @@ class SendMaintenanceResultTemporalGateway(SendMaintenanceResultGateway):
             error=input.error,
         )
         try:
-            await handle.signal(SIGNAL_OPERATION_RESULT, result)
+            await handle.signal(TableMaintenanceSignal.OPERATION_RESULT, result)
         except RPCError as error:
             if error.status == RPCStatusCode.NOT_FOUND:
                 msg = (

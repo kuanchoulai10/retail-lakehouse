@@ -1,16 +1,16 @@
-"""Define the TableMaintenanceAdmissionInput workflow contract."""
+"""Define the TableMaintenanceAdmissionWorkflowInput workflow contract."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from adapter.hybrid.temporal.contracts.default_admission_lease_seconds import (
+from adapter.hybrid.temporal.contracts.table_maintenance_admission.default_lease_seconds import (
     DEFAULT_ADMISSION_LEASE_SECONDS,
 )
 
 
 @dataclass(frozen=True)
-class TableMaintenanceAdmissionInput:
+class TableMaintenanceAdmissionWorkflowInput:
     """Carry the admission limit, lease, holders and queue across continue-as-new.
 
     The lease defaults to the attempt deadline plus 15 minutes, so a slot is never

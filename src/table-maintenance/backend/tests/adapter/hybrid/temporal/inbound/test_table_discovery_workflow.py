@@ -14,10 +14,10 @@ from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Worker
 
 from adapter.hybrid.temporal.inbound.workflows import TableDiscoveryWorkflow
-from adapter.hybrid.temporal.contracts import (
-    SYNC_DISCOVERED_TABLES,
-    TableDiscoveryWorkflowInput,
+from adapter.hybrid.temporal.contracts.table_discovery import (
     TABLE_DISCOVERY_WORKFLOW,
+    TableDiscoveryActivity,
+    TableDiscoveryWorkflowInput,
 )
 
 
@@ -26,7 +26,7 @@ def _run_discovery(
 ) -> tuple[Any, list[dict[str, Any]]]:
     requests: list[dict[str, Any]] = []
 
-    @activity.defn(name=SYNC_DISCOVERED_TABLES)
+    @activity.defn(name=TableDiscoveryActivity.SYNC_DISCOVERED_TABLES)
     async def sync_discovered_tables(request: dict[str, Any]) -> dict[str, Any]:
         requests.append(request)
         if fail:

@@ -247,6 +247,7 @@ def test_boundaries_follow_the_directory_rules():
         "adapter.outbound.table.sql",
         "adapter.outbound.shared.sql",
         "adapter.hybrid.temporal.contracts",
+        "adapter.hybrid.temporal.contracts.table_maintenance",
         "adapter.hybrid.temporal.inbound",
         "adapter.hybrid.temporal.inbound.workflows",
         "adapter.hybrid.temporal.outbound.table",

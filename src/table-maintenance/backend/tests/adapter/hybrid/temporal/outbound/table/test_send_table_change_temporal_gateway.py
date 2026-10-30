@@ -8,13 +8,8 @@ import pytest
 from temporalio.client import RPCError
 from temporalio.service import RPCStatusCode
 
-from adapter.hybrid.temporal.contracts import (
-    SIGNAL_PAUSE,
-    SIGNAL_RESUME,
-    SIGNAL_SETTINGS_CHANGED,
-    SIGNAL_STOP,
-    SIGNAL_TABLE_UPDATED,
-    SIGNAL_TRIGGER_NOW,
+from adapter.hybrid.temporal.contracts.table_reconciliation import (
+    TableReconciliationSignal,
     table_reconciliation_workflow_id,
 )
 from adapter.hybrid.temporal.outbound.table import SendTableChangeTemporalGateway
@@ -76,11 +71,11 @@ def _change(
 @pytest.mark.parametrize(
     ("change", "signal"),
     [
-        ("updated", SIGNAL_TABLE_UPDATED),
-        ("settings_changed", SIGNAL_SETTINGS_CHANGED),
-        ("paused", SIGNAL_PAUSE),
-        ("resumed", SIGNAL_RESUME),
-        ("stopped", SIGNAL_STOP),
+        ("updated", TableReconciliationSignal.TABLE_UPDATED),
+        ("settings_changed", TableReconciliationSignal.SETTINGS_CHANGED),
+        ("paused", TableReconciliationSignal.PAUSE),
+        ("resumed", TableReconciliationSignal.RESUME),
+        ("stopped", TableReconciliationSignal.STOP),
     ],
 )
 def test_each_change_maps_to_its_signal(harness, change, signal):
@@ -90,12 +85,15 @@ def test_each_change_maps_to_its_signal(harness, change, signal):
 
 
 _SIGNAL_BY_TABLE_CHANGE = {
-    TableChange.UPDATED: [SIGNAL_TABLE_UPDATED, {}],
-    TableChange.SETTINGS_CHANGED: [SIGNAL_SETTINGS_CHANGED, {}],
-    TableChange.PAUSED: [SIGNAL_PAUSE, {}],
-    TableChange.RESUMED: [SIGNAL_RESUME, {}],
-    TableChange.STOPPED: [SIGNAL_STOP, {}],
-    TableChange.MAINTENANCE_REQUESTED: [SIGNAL_TRIGGER_NOW, {"operations": []}],
+    TableChange.UPDATED: [TableReconciliationSignal.TABLE_UPDATED, {}],
+    TableChange.SETTINGS_CHANGED: [TableReconciliationSignal.SETTINGS_CHANGED, {}],
+    TableChange.PAUSED: [TableReconciliationSignal.PAUSE, {}],
+    TableChange.RESUMED: [TableReconciliationSignal.RESUME, {}],
+    TableChange.STOPPED: [TableReconciliationSignal.STOP, {}],
+    TableChange.MAINTENANCE_REQUESTED: [
+        TableReconciliationSignal.TRIGGER_NOW,
+        {"operations": []},
+    ],
 }
 
 
@@ -119,7 +117,7 @@ def test_maintenance_requested_carries_the_operations(harness):
     )
     assert _signals(harness, "trigger") == [
         [
-            SIGNAL_TRIGGER_NOW,
+            TableReconciliationSignal.TRIGGER_NOW,
             {"operations": ["expire_snapshots", "rewrite_data_files"]},
         ]
     ]
@@ -129,7 +127,7 @@ def test_pause_of_an_enrolled_table_starts_the_missing_workflow_paused(harness):
     gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
     assert not _workflow_exists(harness, "pause-start")
     gateway.send(_change("pause-start", "paused", is_enrolled=True))
-    assert _signals(harness, "pause-start") == [[SIGNAL_PAUSE, {}]]
+    assert _signals(harness, "pause-start") == [[TableReconciliationSignal.PAUSE, {}]]
 
 
 def test_enrolled_changes_start_one_workflow_and_deliver_both(harness):
@@ -153,8 +151,8 @@ def test_enrolled_changes_start_one_workflow_and_deliver_both(harness):
         found = harness.bridge.run(count)
     assert found == 1
     assert [s for s, _ in _signals(harness, "swl", want=2)] == [
-        SIGNAL_SETTINGS_CHANGED,
-        SIGNAL_TABLE_UPDATED,
+        TableReconciliationSignal.SETTINGS_CHANGED,
+        TableReconciliationSignal.TABLE_UPDATED,
     ]
 
 
@@ -181,8 +179,8 @@ def test_not_enrolled_change_reaches_a_running_workflow(harness):
     gateway.send(_change("plain", "settings_changed", is_enrolled=True))
     gateway.send(_change("plain", "stopped", is_enrolled=False))
     assert [s for s, _ in _signals(harness, "plain", want=2)] == [
-        SIGNAL_SETTINGS_CHANGED,
-        SIGNAL_STOP,
+        TableReconciliationSignal.SETTINGS_CHANGED,
+        TableReconciliationSignal.STOP,
     ]
 
 

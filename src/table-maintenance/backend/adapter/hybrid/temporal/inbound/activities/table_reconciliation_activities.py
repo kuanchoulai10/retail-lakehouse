@@ -11,11 +11,9 @@ from adapter.hybrid.temporal.inbound.activities.activity_payload import activity
 from adapter.hybrid.temporal.inbound.activities.translate_application_errors import (
     translate_application_errors,
 )
-from adapter.hybrid.temporal.contracts import (
-    DELETE_MAINTENANCE_JOB,
-    GET_MAINTENANCE_JOB_STATUS,
-    PLAN_TABLE_MAINTENANCE,
-    SUBMIT_MAINTENANCE_OPERATION,
+from adapter.hybrid.temporal.contracts.table_maintenance import TableMaintenanceActivity
+from adapter.hybrid.temporal.contracts.table_reconciliation import (
+    TableReconciliationActivity,
 )
 from application.port.inbound.table_maintenance_run import (
     DeleteMaintenanceJobUseCaseInput,
@@ -57,7 +55,7 @@ class TableReconciliationActivities:
         self._delete = delete
         self._callback_base_url = callback_base_url
 
-    @activity.defn(name=PLAN_TABLE_MAINTENANCE)
+    @activity.defn(name=TableReconciliationActivity.PLAN_TABLE_MAINTENANCE)
     def plan_table_maintenance(self, request: dict[str, Any]) -> dict[str, Any]:
         """Plan the maintenance operations of a table."""
         with translate_application_errors():
@@ -70,7 +68,7 @@ class TableReconciliationActivities:
             )
         return activity_payload(output)
 
-    @activity.defn(name=SUBMIT_MAINTENANCE_OPERATION)
+    @activity.defn(name=TableMaintenanceActivity.SUBMIT_MAINTENANCE_OPERATION)
     def submit_maintenance_operation(self, request: dict[str, Any]) -> dict[str, Any]:
         """Start one attempt of an operation and submit its Spark job."""
         with translate_application_errors():
@@ -92,7 +90,7 @@ class TableReconciliationActivities:
             )
         return activity_payload(output)
 
-    @activity.defn(name=GET_MAINTENANCE_JOB_STATUS)
+    @activity.defn(name=TableMaintenanceActivity.GET_MAINTENANCE_JOB_STATUS)
     def get_maintenance_job_status(self, request: dict[str, Any]) -> dict[str, Any]:
         """Report the state of a Spark maintenance job."""
         with translate_application_errors():
@@ -105,7 +103,7 @@ class TableReconciliationActivities:
             )
         return activity_payload(output)
 
-    @activity.defn(name=DELETE_MAINTENANCE_JOB)
+    @activity.defn(name=TableMaintenanceActivity.DELETE_MAINTENANCE_JOB)
     def delete_maintenance_job(self, request: dict[str, Any]) -> dict[str, Any]:
         """Delete the Spark job of one ``(run_id, operation, attempt)``."""
         with translate_application_errors():

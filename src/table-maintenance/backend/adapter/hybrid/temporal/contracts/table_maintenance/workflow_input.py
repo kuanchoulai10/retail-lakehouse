@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from adapter.hybrid.temporal.contracts.default_attempt_deadline_seconds import (
+from adapter.hybrid.temporal.contracts.table_maintenance.default_attempt_deadline_seconds import (
     DEFAULT_ATTEMPT_DEADLINE_SECONDS,
 )
 

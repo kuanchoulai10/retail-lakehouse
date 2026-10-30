@@ -9,20 +9,26 @@ from typing import Any
 import pytest
 from temporalio.converter import DataConverter
 
-from adapter.hybrid.temporal.contracts import (
-    SIGNAL_ADMISSION_ACQUIRE_ACTIVITY,
+from adapter.hybrid.temporal.contracts.table_discovery import (
     TABLE_DISCOVERY_WORKFLOW,
-    TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
-    TABLE_MAINTENANCE_WORKFLOW,
-    TABLE_RECONCILIATION_WORKFLOW,
-    DEFAULT_ATTEMPT_DEADLINE_SECONDS,
-    DEFAULT_ADMISSION_LEASE_SECONDS,
-    AdmissionAcquireSignal,
-    TableMaintenanceAdmissionInput,
-    AdmissionReleaseSignal,
     TableDiscoveryWorkflowInput,
-    TableMaintenanceWorkflowInput,
+)
+from adapter.hybrid.temporal.contracts.table_maintenance import (
+    DEFAULT_ATTEMPT_DEADLINE_SECONDS,
     OperationResultSignal,
+    TABLE_MAINTENANCE_WORKFLOW,
+    TableMaintenanceActivity,
+    TableMaintenanceWorkflowInput,
+)
+from adapter.hybrid.temporal.contracts.table_maintenance_admission import (
+    AdmissionAcquireSignal,
+    AdmissionReleaseSignal,
+    DEFAULT_ADMISSION_LEASE_SECONDS,
+    TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
+    TableMaintenanceAdmissionWorkflowInput,
+)
+from adapter.hybrid.temporal.contracts.table_reconciliation import (
+    TABLE_RECONCILIATION_WORKFLOW,
     TableReconciliationWorkflowInput,
 )
 
@@ -55,8 +61,8 @@ def test_contracts_round_trip():
         TableMaintenanceWorkflowInput(
             "r1", "u1", "table-reconciliation:table-uuid=u1", "scheduled", plan
         ),
-        TableMaintenanceAdmissionInput(2),
-        TableMaintenanceAdmissionInput(
+        TableMaintenanceAdmissionWorkflowInput(2),
+        TableMaintenanceAdmissionWorkflowInput(
             2,
             60,
             {
@@ -83,18 +89,18 @@ def test_maintenance_workflow_input_default_attempt_deadline():
 def test_admission_lease_outlives_the_attempt_deadline_by_15_minutes():
     assert DEFAULT_ADMISSION_LEASE_SECONDS == DEFAULT_ATTEMPT_DEADLINE_SECONDS + 15 * 60
     assert (
-        TableMaintenanceAdmissionInput(1).lease_seconds
+        TableMaintenanceAdmissionWorkflowInput(1).lease_seconds
         == DEFAULT_ADMISSION_LEASE_SECONDS
     )
 
 
 def test_admission_input_defaults():
-    admission = TableMaintenanceAdmissionInput(1)
+    admission = TableMaintenanceAdmissionWorkflowInput(1)
     assert admission.lease_seconds == 22500
     assert admission.holders == {}
     assert admission.queue == []
-    assert admission.holders is not TableMaintenanceAdmissionInput(1).holders
-    assert admission.queue is not TableMaintenanceAdmissionInput(1).queue
+    assert admission.holders is not TableMaintenanceAdmissionWorkflowInput(1).holders
+    assert admission.queue is not TableMaintenanceAdmissionWorkflowInput(1).queue
 
 
 def test_table_reconcile_workflow_input_defaults():
@@ -113,7 +119,7 @@ def test_table_reconcile_workflow_input_defaults():
     [
         TableReconciliationWorkflowInput("u1"),
         AdmissionAcquireSignal("r1", "w1"),
-        TableMaintenanceAdmissionInput(1),
+        TableMaintenanceAdmissionWorkflowInput(1),
         AdmissionReleaseSignal("r1"),
         TableMaintenanceWorkflowInput("r1", "u1", "p", "scheduled", {}),
     ],
@@ -132,4 +138,6 @@ def test_workflow_type_names():
 
 
 def test_admission_activity_name():
-    assert SIGNAL_ADMISSION_ACQUIRE_ACTIVITY == "signal_admission_acquire"
+    assert (
+        TableMaintenanceActivity.SIGNAL_ADMISSION_ACQUIRE == "signal_admission_acquire"
+    )

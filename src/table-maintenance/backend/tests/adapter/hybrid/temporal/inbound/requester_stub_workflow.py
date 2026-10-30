@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from temporalio import workflow
 
-from adapter.hybrid.temporal.contracts import SIGNAL_ADMISSION_GRANTED
+from adapter.hybrid.temporal.contracts.table_maintenance import TableMaintenanceSignal
 
 
 @workflow.defn(name="RequesterStub")
@@ -18,7 +18,7 @@ class RequesterStubWorkflow:
     async def run(self) -> None:
         await workflow.wait_condition(lambda: False)
 
-    @workflow.signal(name=SIGNAL_ADMISSION_GRANTED)
+    @workflow.signal(name=TableMaintenanceSignal.ADMISSION_GRANTED)
     def admission_granted(self, request_id: str) -> None:
         self.grants.append(request_id)
 

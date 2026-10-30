@@ -8,10 +8,10 @@ from typing import Any
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
-from adapter.hybrid.temporal.contracts import (
-    SYNC_DISCOVERED_TABLES,
-    TableDiscoveryWorkflowInput,
+from adapter.hybrid.temporal.contracts.table_discovery import (
     TABLE_DISCOVERY_WORKFLOW,
+    TableDiscoveryActivity,
+    TableDiscoveryWorkflowInput,
 )
 
 _SYNC_TIMEOUT = timedelta(minutes=10)
@@ -32,7 +32,7 @@ class TableDiscoveryWorkflow:
     async def run(self, input: TableDiscoveryWorkflowInput) -> dict[str, Any]:  # noqa: A002
         """Run ``sync_discovered_tables`` and return its output."""
         return await workflow.execute_activity(
-            SYNC_DISCOVERED_TABLES,
+            TableDiscoveryActivity.SYNC_DISCOVERED_TABLES,
             {"catalog": input.catalog, "namespace": input.namespace},
             start_to_close_timeout=_SYNC_TIMEOUT,
             retry_policy=_ACTIVITY_RETRY,

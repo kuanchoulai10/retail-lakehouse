@@ -9,16 +9,15 @@ from temporalio.client import RPCError
 from temporalio.common import WorkflowIDConflictPolicy
 from temporalio.service import RPCStatusCode
 
-from adapter.hybrid.temporal.contracts import (
-    SIGNAL_ADMISSION_ACQUIRE_ACTIVITY,
-    SIGNAL_PARENT,
+from adapter.hybrid.temporal.contracts.shared import TASK_QUEUE
+from adapter.hybrid.temporal.contracts.table_maintenance import TableMaintenanceActivity
+from adapter.hybrid.temporal.contracts.table_maintenance_admission import (
     AdmissionAcquireSignal,
-    TableMaintenanceAdmissionInput,
-    table_maintenance_admission_summary,
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
-    SIGNAL_ADMISSION_ACQUIRE as ACQUIRE_SIGNAL_NAME,
-    TASK_QUEUE,
+    TableMaintenanceAdmissionSignal,
+    TableMaintenanceAdmissionWorkflowInput,
+    table_maintenance_admission_summary,
 )
 
 if TYPE_CHECKING:
@@ -44,12 +43,12 @@ class WorkflowSignalActivities:
         self._admission_limit = admission_limit
         self._admission_lease_seconds = admission_lease_seconds
 
-    @activity.defn(name=SIGNAL_ADMISSION_ACQUIRE_ACTIVITY)
+    @activity.defn(name=TableMaintenanceActivity.SIGNAL_ADMISSION_ACQUIRE)
     async def signal_admission_acquire(self, request: dict[str, Any]) -> None:
         """Signal-with-start the admission workflow with an acquire request."""
         await self._client.start_workflow(
             TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
-            TableMaintenanceAdmissionInput(
+            TableMaintenanceAdmissionWorkflowInput(
                 limit=self._admission_limit,
                 lease_seconds=self._admission_lease_seconds,
             ),
@@ -57,7 +56,7 @@ class WorkflowSignalActivities:
             static_summary=table_maintenance_admission_summary(self._admission_limit),
             task_queue=TASK_QUEUE,
             id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
-            start_signal=ACQUIRE_SIGNAL_NAME,
+            start_signal=TableMaintenanceAdmissionSignal.ACQUIRE,
             start_signal_args=[
                 AdmissionAcquireSignal(
                     request_id=request["request_id"],
@@ -66,7 +65,7 @@ class WorkflowSignalActivities:
             ],
         )
 
-    @activity.defn(name=SIGNAL_PARENT)
+    @activity.defn(name=TableMaintenanceActivity.SIGNAL_PARENT)
     async def signal_parent(self, request: dict[str, Any]) -> dict[str, bool]:
         """Signal a workflow by id; a missing workflow is reported, not raised."""
         handle = self._client.get_workflow_handle(request["workflow_id"])

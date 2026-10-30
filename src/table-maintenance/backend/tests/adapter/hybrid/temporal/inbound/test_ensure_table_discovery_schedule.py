@@ -14,10 +14,10 @@ from temporalio.client import (
 )
 
 from adapter.hybrid.temporal.inbound import ensure_table_discovery_schedule
-from adapter.hybrid.temporal.contracts import (
-    TableDiscoveryWorkflowInput,
+from adapter.hybrid.temporal.contracts.shared import TASK_QUEUE
+from adapter.hybrid.temporal.contracts.table_discovery import (
     TABLE_DISCOVERY_WORKFLOW,
-    TASK_QUEUE,
+    TableDiscoveryWorkflowInput,
     table_discovery_schedule_id,
 )
 from tests.adapter.hybrid.temporal.outbound.shared.temporal_harness import harness  # noqa: F401

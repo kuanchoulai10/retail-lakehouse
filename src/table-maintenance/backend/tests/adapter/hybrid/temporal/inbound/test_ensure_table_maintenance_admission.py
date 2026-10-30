@@ -10,21 +10,21 @@ from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import UnsandboxedWorkflowRunner, Worker
 
 from adapter.hybrid.temporal.inbound import ensure_table_maintenance_admission
-from adapter.hybrid.temporal.contracts import (
-    TableMaintenanceAdmissionInput,
+from adapter.hybrid.temporal.contracts.shared import TASK_QUEUE
+from adapter.hybrid.temporal.contracts.table_maintenance_admission import (
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
-    TASK_QUEUE,
+    TableMaintenanceAdmissionWorkflowInput,
 )
 
 
 @workflow.defn(name=TABLE_MAINTENANCE_ADMISSION_WORKFLOW)
 class StubAdmission:
     def __init__(self) -> None:
-        self.input: TableMaintenanceAdmissionInput | None = None
+        self.input: TableMaintenanceAdmissionWorkflowInput | None = None
 
     @workflow.run
-    async def run(self, input: TableMaintenanceAdmissionInput) -> None:  # noqa: A002
+    async def run(self, input: TableMaintenanceAdmissionWorkflowInput) -> None:  # noqa: A002
         self.input = input
         await workflow.wait_condition(lambda: False)
 

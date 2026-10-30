@@ -8,7 +8,9 @@ from typing import TYPE_CHECKING, Any
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
-from adapter.hybrid.temporal.contracts import PLAN_TABLE_MAINTENANCE
+from adapter.hybrid.temporal.contracts.table_reconciliation import (
+    TableReconciliationActivity,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -27,7 +29,7 @@ class ScriptedPlanActivity:
         self.gate: asyncio.Event | None = None
         self.requests: list[dict[str, Any]] = []
 
-    @activity.defn(name=PLAN_TABLE_MAINTENANCE)
+    @activity.defn(name=TableReconciliationActivity.PLAN_TABLE_MAINTENANCE)
     async def plan_table_maintenance(self, request: dict[str, Any]) -> dict[str, Any]:
         self.requests.append(request)
         if self.gate is not None:

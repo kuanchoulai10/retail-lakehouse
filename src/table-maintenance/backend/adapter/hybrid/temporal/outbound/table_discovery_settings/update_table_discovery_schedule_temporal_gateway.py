@@ -8,7 +8,9 @@ from typing import TYPE_CHECKING
 from temporalio.client import RPCError
 from temporalio.service import RPCStatusCode
 
-from adapter.hybrid.temporal.contracts import TABLE_DISCOVERY_SCHEDULE_ID_PREFIX
+from adapter.hybrid.temporal.contracts.table_discovery import (
+    TABLE_DISCOVERY_SCHEDULE_ID_PREFIX,
+)
 from application.port.outbound.table_discovery_settings import (
     UpdateTableDiscoveryScheduleGateway,
 )

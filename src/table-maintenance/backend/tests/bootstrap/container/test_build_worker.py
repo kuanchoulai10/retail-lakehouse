@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, cast
 from unittest.mock import MagicMock
@@ -20,7 +19,12 @@ from adapter.hybrid.temporal.inbound.workflows import (
     TableMaintenanceWorkflow,
     TableReconciliationWorkflow,
 )
-from adapter.hybrid.temporal.contracts import TASK_QUEUE
+from adapter.hybrid.temporal.contracts.shared import TASK_QUEUE
+from adapter.hybrid.temporal.contracts.table_discovery import TableDiscoveryActivity
+from adapter.hybrid.temporal.contracts.table_maintenance import TableMaintenanceActivity
+from adapter.hybrid.temporal.contracts.table_reconciliation import (
+    TableReconciliationActivity,
+)
 from bootstrap.container import (
     ADMISSION_LEASE_SECONDS,
     build_activities,
@@ -35,14 +39,15 @@ from tests.bootstrap.container.container_support import (
     sqlite_settings,
 )
 
-# The module namespace, not one name, is under test: every constant it defines.
-_ACTIVITY_NAMES_MODULE = importlib.import_module(
-    "adapter.hybrid.temporal.contracts.activity_names"
-)
+# Every member of every workflow's activity enum, not one name, is under test.
 ALL_ACTIVITY_NAMES = {
-    value
-    for name, value in vars(_ACTIVITY_NAMES_MODULE).items()
-    if name.isupper() and isinstance(value, str)
+    str(member)
+    for enum in (
+        TableDiscoveryActivity,
+        TableMaintenanceActivity,
+        TableReconciliationActivity,
+    )
+    for member in enum
 }
 
 

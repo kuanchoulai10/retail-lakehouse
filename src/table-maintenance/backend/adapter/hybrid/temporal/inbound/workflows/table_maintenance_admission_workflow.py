@@ -7,14 +7,13 @@ from datetime import datetime, timedelta
 from temporalio import workflow
 from temporalio.exceptions import FailureError
 
-from adapter.hybrid.temporal.contracts import (
+from adapter.hybrid.temporal.contracts.table_maintenance import TableMaintenanceSignal
+from adapter.hybrid.temporal.contracts.table_maintenance_admission import (
     AdmissionAcquireSignal,
-    TableMaintenanceAdmissionInput,
     AdmissionReleaseSignal,
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
-    SIGNAL_ADMISSION_ACQUIRE,
-    SIGNAL_ADMISSION_GRANTED,
-    SIGNAL_ADMISSION_RELEASE,
+    TableMaintenanceAdmissionSignal,
+    TableMaintenanceAdmissionWorkflowInput,
 )
 
 
@@ -30,7 +29,7 @@ class TableMaintenanceAdmissionWorkflow:
     """
 
     @workflow.init
-    def __init__(self, input: TableMaintenanceAdmissionInput) -> None:  # noqa: A002
+    def __init__(self, input: TableMaintenanceAdmissionWorkflowInput) -> None:  # noqa: A002
         """Restore the limit, lease, holders and queue carried by the input."""
         self._limit = input.limit
         self._lease_seconds = input.lease_seconds
@@ -42,7 +41,7 @@ class TableMaintenanceAdmissionWorkflow:
         self._changed = False
 
     @workflow.run
-    async def run(self, input: TableMaintenanceAdmissionInput) -> None:  # noqa: A002
+    async def run(self, input: TableMaintenanceAdmissionWorkflowInput) -> None:  # noqa: A002
         """Grant, evict and wait for signals until continue-as-new is suggested."""
         while True:
             self._changed = False
@@ -54,7 +53,7 @@ class TableMaintenanceAdmissionWorkflow:
                 while self._regrants:
                     await self._resend_grants()
                 workflow.continue_as_new(
-                    TableMaintenanceAdmissionInput(
+                    TableMaintenanceAdmissionWorkflowInput(
                         limit=self._limit,
                         lease_seconds=self._lease_seconds,
                         holders=self._holders,
@@ -68,7 +67,7 @@ class TableMaintenanceAdmissionWorkflow:
             except TimeoutError:
                 pass
 
-    @workflow.signal(name=SIGNAL_ADMISSION_ACQUIRE)
+    @workflow.signal(name=TableMaintenanceAdmissionSignal.ACQUIRE)
     def acquire(self, signal: AdmissionAcquireSignal) -> None:
         """Queue a request; a held one has its grant re-sent, a queued one is kept."""
         if signal.request_id in self._holders:
@@ -82,7 +81,7 @@ class TableMaintenanceAdmissionWorkflow:
             )
         self._changed = True
 
-    @workflow.signal(name=SIGNAL_ADMISSION_RELEASE)
+    @workflow.signal(name=TableMaintenanceAdmissionSignal.RELEASE)
     def release(self, signal: AdmissionReleaseSignal) -> None:
         """Free a held slot or withdraw a queued request; unknown ids are ignored."""
         self._holders.pop(signal.request_id, None)
@@ -129,7 +128,7 @@ class TableMaintenanceAdmissionWorkflow:
     async def _notify(self, requester_workflow_id: str, request_id: str) -> bool:
         handle = workflow.get_external_workflow_handle(requester_workflow_id)
         try:
-            await handle.signal(SIGNAL_ADMISSION_GRANTED, request_id)
+            await handle.signal(TableMaintenanceSignal.ADMISSION_GRANTED, request_id)
         except FailureError as error:
             workflow.logger.warning(
                 "requester %s of %s is gone (%s); dropping it",
