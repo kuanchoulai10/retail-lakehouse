@@ -6,6 +6,7 @@ from application.service.table.exclude_table import ExcludeTableService
 from application.service.table.get_table import GetTableService
 from application.service.table.get_table_metadata import GetTableMetadataService
 from application.service.table.include_table import IncludeTableService
+from application.service.table.list_table_commits import ListTableCommitsService
 from application.service.table.list_tables import ListTablesService
 from application.service.table.pause_table import PauseTableService
 from application.service.table.plan_table_maintenance import PlanTableMaintenanceService
@@ -34,6 +35,7 @@ __all__ = [
     "GetTableService",
     "GetTableMetadataService",
     "IncludeTableService",
+    "ListTableCommitsService",
     "ListTablesService",
     "PauseTableService",
     "PlanTableMaintenanceService",

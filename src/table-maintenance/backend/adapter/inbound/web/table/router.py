@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import datetime  # noqa: TC003
 from typing import Annotated
 
 from adapter.inbound.web.table.dto import (
     ExcludeTableApiRequest,
     IncludeTableApiRequest,
     TableApiResponse,
+    TableCommitsApiResponse,
     TableMetadataApiResponse,
     TriggerTableMaintenanceApiRequest,
     TriggerTableMaintenanceApiResponse,
@@ -19,6 +21,7 @@ from application.port.inbound.table import (
     GetTableMetadataUseCaseInput,
     GetTableUseCaseInput,
     IncludeTableUseCaseInput,
+    ListTableCommitsUseCaseInput,
     ListTablesUseCaseInput,
     PauseTableUseCaseInput,
     ResetTableSelectionUseCaseInput,
@@ -26,7 +29,7 @@ from application.port.inbound.table import (
     TriggerTableMaintenanceUseCaseInput,
     UpdateTableSettingsUseCaseInput,
 )
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
 router = APIRouter(prefix="/tables", tags=["tables"])
 
@@ -80,6 +83,20 @@ def get_table_metadata(
         GetTableMetadataUseCaseInput(uuid=table_uuid)
     )
     return TableMetadataApiResponse.model_validate(output)
+
+
+@router.get("/{table_uuid}/commits")
+def list_table_commits(
+    table_uuid: str,
+    use_cases: UseCases,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 100,
+    since: datetime | None = None,
+) -> TableCommitsApiResponse:
+    """Return the commits of one table, newest first."""
+    output = use_cases.list_table_commits.execute(
+        ListTableCommitsUseCaseInput(uuid=table_uuid, limit=limit, since=since)
+    )
+    return TableCommitsApiResponse.model_validate(output)
 
 
 @router.put("/{table_uuid}/settings")

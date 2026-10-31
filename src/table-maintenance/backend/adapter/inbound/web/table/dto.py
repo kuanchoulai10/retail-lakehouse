@@ -47,6 +47,34 @@ class TableMetadataApiResponse(BaseModel):
     total_files_size_bytes: int | None
 
 
+class TableCommitApiResponse(BaseModel):
+    """Describe one commit of a table."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    snapshot_id: int
+    parent_id: int | None
+    committed_at: datetime
+    operation: str | None
+    writer: str
+    added_records: int | None
+    deleted_records: int | None
+    added_data_files: int | None
+    deleted_data_files: int | None
+    added_delete_files: int | None
+    removed_delete_files: int | None
+    summary: dict[str, str]
+
+
+class TableCommitsApiResponse(BaseModel):
+    """Carry the commits of a table, newest first."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    items: list[TableCommitApiResponse]
+    truncated: bool
+
+
 class UpdateTableSettingsApiRequest(RootModel[dict[str, Any]]):
     """Carry the settings object that replaces the table settings."""
 

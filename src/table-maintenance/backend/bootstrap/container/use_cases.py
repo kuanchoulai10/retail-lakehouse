@@ -17,6 +17,7 @@ if TYPE_CHECKING:
         GetTableMetadataUseCase,
         GetTableUseCase,
         IncludeTableUseCase,
+        ListTableCommitsUseCase,
         ListTablesUseCase,
         PauseTableUseCase,
         ResetTableSelectionUseCase,
@@ -70,6 +71,7 @@ class UseCases:
     exclude_table: ExcludeTableUseCase
     get_table: GetTableUseCase
     get_table_metadata: GetTableMetadataUseCase
+    list_table_commits: ListTableCommitsUseCase
     include_table: IncludeTableUseCase
     list_tables: ListTablesUseCase
     pause_table: PauseTableUseCase

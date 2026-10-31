@@ -20,6 +20,16 @@ from application.port.inbound.table.get_table_metadata.use_case import (
     GetTableMetadataUseCase,
 )
 from application.port.inbound.table.include_table.input import IncludeTableUseCaseInput
+from application.port.inbound.table.list_table_commits.input import (
+    ListTableCommitsUseCaseInput,
+)
+from application.port.inbound.table.list_table_commits.output import (
+    ListTableCommitsUseCaseOutput,
+    ListTableCommitsUseCaseOutputItem,
+)
+from application.port.inbound.table.list_table_commits.use_case import (
+    ListTableCommitsUseCase,
+)
 from application.port.inbound.table.include_table.output import (
     IncludeTableUseCaseOutput,
 )
@@ -103,6 +113,10 @@ __all__ = [
     "GetTableMetadataUseCase",
     "GetTableMetadataUseCaseInput",
     "GetTableMetadataUseCaseOutput",
+    "ListTableCommitsUseCase",
+    "ListTableCommitsUseCaseInput",
+    "ListTableCommitsUseCaseOutput",
+    "ListTableCommitsUseCaseOutputItem",
     "IncludeTableUseCase",
     "IncludeTableUseCaseInput",
     "IncludeTableUseCaseOutput",
