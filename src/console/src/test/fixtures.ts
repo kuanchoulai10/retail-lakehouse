@@ -35,7 +35,7 @@ export function metadataFixture(
     properties: { "write.format.default": "parquet", "commit.retry.num-retries": "4" },
     schema_fields: [],
     specs: [],
-    current_snapshot_id: 42,
+    current_snapshot_id: "3051729675574597004",
     snapshot_count: 17,
     last_committed_at: new Date(Date.now() - 3 * 3600_000).toISOString(),
     total_records: 1204331,

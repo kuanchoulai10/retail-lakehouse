@@ -6,7 +6,7 @@ const NOW = new Date("2026-10-31T10:20:00Z");
 
 function commit(minutesAgo: number, overrides: Partial<TableCommitApiResponse> = {}) {
   return {
-    snapshot_id: minutesAgo,
+    snapshot_id: String(minutesAgo),
     parent_id: null,
     committed_at: new Date(NOW.getTime() - minutesAgo * 60_000).toISOString(),
     operation: "append",

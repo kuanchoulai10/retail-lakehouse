@@ -25,7 +25,7 @@ export interface TableMetadataApiResponse {
   properties: Record<string, string>;
   schema_fields: JsonObject[];
   specs: JsonObject[];
-  current_snapshot_id: number | null;
+  current_snapshot_id: string | null;
   snapshot_count: number;
   last_committed_at: string | null;
   total_records: number | null;
@@ -77,8 +77,8 @@ export interface TableStorageApiResponse {
 }
 
 export interface TableCommitApiResponse {
-  snapshot_id: number;
-  parent_id: number | null;
+  snapshot_id: string;
+  parent_id: string | null;
   committed_at: string;
   operation: string | null;
   writer: string;

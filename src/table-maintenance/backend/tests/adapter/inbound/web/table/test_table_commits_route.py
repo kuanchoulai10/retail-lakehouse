@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import dataclasses
+
 from application.exceptions import NotFoundError
 from application.port.inbound.table import (
     ListTableCommitsUseCaseInput,
@@ -38,11 +40,25 @@ def test_commits_returns_200() -> None:
     body = response.json()
     assert response.status_code == 200
     assert body["truncated"] is True
-    assert body["items"][0]["snapshot_id"] == 7
+    assert body["items"][0]["snapshot_id"] == "7"
     assert body["items"][0]["parent_id"] is None
     assert body["items"][0]["added_records"] == 10
     assert body["items"][0]["committed_at"].startswith("2026-10-24T12:00:00")
     assert stub.requests == [ListTableCommitsUseCaseInput(uuid="u-1")]
+
+
+def test_commits_return_large_snapshot_ids_as_exact_strings() -> None:
+    output = _output()
+    item = dataclasses.replace(
+        output.items[0], snapshot_id=3051729675574597004, parent_id=3051729675574597003
+    )
+    stub = StubUseCase(dataclasses.replace(output, items=[item]))
+    client = build_client(list_table_commits=stub)
+
+    body = client.get("/v1/tables/u-1/commits").json()
+
+    assert body["items"][0]["snapshot_id"] == "3051729675574597004"
+    assert body["items"][0]["parent_id"] == "3051729675574597003"
 
 
 def test_commits_limit_over_1000_is_422() -> None:

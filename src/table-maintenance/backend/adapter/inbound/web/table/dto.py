@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, RootModel
+from pydantic import BaseModel, ConfigDict, RootModel, field_validator
 
 
 class TableApiResponse(BaseModel):
@@ -38,13 +38,19 @@ class TableMetadataApiResponse(BaseModel):
     properties: dict[str, str]
     schema_fields: list[dict[str, Any]]
     specs: list[dict[str, Any]]
-    current_snapshot_id: int | None
+    current_snapshot_id: str | None
     snapshot_count: int
     last_committed_at: datetime | None
     total_records: int | None
     total_data_files: int | None
     total_delete_files: int | None
     total_files_size_bytes: int | None
+
+    @field_validator("current_snapshot_id", mode="before")
+    @classmethod
+    def _snapshot_id_as_string(cls, value: object) -> object:
+        """Carry the 64-bit snapshot id as a string so JavaScript keeps every digit."""
+        return str(value) if isinstance(value, int) else value
 
 
 class TableHealthOperationApiResponse(BaseModel):
@@ -93,8 +99,8 @@ class TableCommitApiResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    snapshot_id: int
-    parent_id: int | None
+    snapshot_id: str
+    parent_id: str | None
     committed_at: datetime
     operation: str | None
     writer: str
@@ -105,6 +111,12 @@ class TableCommitApiResponse(BaseModel):
     added_delete_files: int | None
     removed_delete_files: int | None
     summary: dict[str, str]
+
+    @field_validator("snapshot_id", "parent_id", mode="before")
+    @classmethod
+    def _snapshot_ids_as_strings(cls, value: object) -> object:
+        """Carry the 64-bit snapshot ids as strings so JavaScript keeps every digit."""
+        return str(value) if isinstance(value, int) else value
 
 
 class TableCommitsApiResponse(BaseModel):

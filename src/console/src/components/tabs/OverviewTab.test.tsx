@@ -121,7 +121,7 @@ describe("OverviewTab", () => {
             jsonResponse({
               items: [
                 {
-                  snapshot_id: 1,
+                  snapshot_id: "1",
                   parent_id: null,
                   committed_at: new Date().toISOString(),
                   operation: "append",

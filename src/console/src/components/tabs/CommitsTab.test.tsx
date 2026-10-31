@@ -8,7 +8,7 @@ import { CommitsTab } from "./CommitsTab";
 
 function commit(overrides: Partial<TableCommitApiResponse>): TableCommitApiResponse {
   return {
-    snapshot_id: 1,
+    snapshot_id: "1",
     parent_id: null,
     committed_at: "2026-10-31T10:00:00Z",
     operation: "append",
@@ -25,10 +25,14 @@ function commit(overrides: Partial<TableCommitApiResponse>): TableCommitApiRespo
 }
 
 const ITEMS = [
-  commit({ snapshot_id: 100, parent_id: 99, committed_at: "2026-10-31T10:00:00Z" }),
   commit({
-    snapshot_id: 200,
-    parent_id: 100,
+    snapshot_id: "3051729675574597004",
+    parent_id: "3051729675574597003",
+    committed_at: "2026-10-31T10:00:00Z",
+  }),
+  commit({
+    snapshot_id: "3051729675574597005",
+    parent_id: "3051729675574597004",
     committed_at: "2026-10-31T11:00:00Z",
     operation: "replace",
     writer: "spark",
@@ -73,13 +77,13 @@ describe("CommitsTab", () => {
     expect(within(row).getAllByText("—").length).toBeGreaterThanOrEqual(2);
   });
 
-  it("expands a row to show the snapshot id and summary JSON", async () => {
+  it("expands a row to show the exact 64-bit snapshot id and summary JSON", async () => {
     const user = userEvent.setup();
     renderTab();
     await screen.findByText("Spark");
     await user.click(screen.getAllByTestId("commit-row")[1] as HTMLElement);
-    expect(screen.getByText("Snapshot id: 100")).toBeInTheDocument();
-    expect(screen.getByText("Parent id: 99")).toBeInTheDocument();
+    expect(screen.getByText("Snapshot id: 3051729675574597004")).toBeInTheDocument();
+    expect(screen.getByText("Parent id: 3051729675574597003")).toBeInTheDocument();
     expect(screen.getByText(/"kafka.connect.task-id": "0"/)).toBeInTheDocument();
   });
 });
