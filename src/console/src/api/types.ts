@@ -1,0 +1,99 @@
+// Mirrors of the table-maintenance API response DTOs (snake_case kept).
+// Datetimes arrive as ISO-8601 strings.
+
+export type JsonObject = Record<string, unknown>;
+
+export interface TableApiResponse {
+  uuid: string;
+  catalog: string;
+  namespace: string;
+  table: string;
+  status: string;
+  selection: string;
+  settings: JsonObject | null;
+  matched_rule_id: string | null;
+  source_preset_id: string | null;
+  operation_states: Record<string, JsonObject>;
+  registered_at: string;
+  updated_at: string;
+}
+
+export interface TableMetadataApiResponse {
+  uuid: string;
+  format_version: number;
+  location: string;
+  properties: Record<string, string>;
+  schema_fields: JsonObject[];
+  specs: JsonObject[];
+  current_snapshot_id: number | null;
+  snapshot_count: number;
+  last_committed_at: string | null;
+  total_records: number | null;
+  total_data_files: number | null;
+  total_delete_files: number | null;
+  total_files_size_bytes: number | null;
+}
+
+export interface TableHealthOperationApiResponse {
+  operation: string;
+  verdict: string;
+  measured: number | null;
+  threshold: number | null;
+  next_eligible_at: string | null;
+  qualifying_partitions: number | null;
+  size_bytes: number | null;
+  size_source: string | null;
+}
+
+export interface TableHealthApiResponse {
+  scheduled: boolean;
+  not_scheduled_reason: string | null;
+  operations: TableHealthOperationApiResponse[];
+  position_delete_files: number;
+  equality_delete_files: number;
+}
+
+export interface TableStorageApiResponse {
+  current_bytes: number;
+  current_files: number;
+  old_snapshot_bytes: number;
+  old_snapshot_files: number;
+  window_days: number;
+  reclaimed: Record<string, number>;
+  attempts_without_metrics: number;
+}
+
+export interface TableCommitApiResponse {
+  snapshot_id: number;
+  parent_id: number | null;
+  committed_at: string;
+  operation: string | null;
+  writer: string;
+  added_records: number | null;
+  deleted_records: number | null;
+  added_data_files: number | null;
+  deleted_data_files: number | null;
+  added_delete_files: number | null;
+  removed_delete_files: number | null;
+  summary: Record<string, string>;
+}
+
+export interface TableCommitsApiResponse {
+  items: TableCommitApiResponse[];
+  truncated: boolean;
+}
+
+export interface TriggerTableMaintenanceApiResponse {
+  accepted: boolean;
+}
+
+export interface TableMaintenanceRunApiResponse {
+  run_id: string;
+  table_uuid: string;
+  execution_ref: string;
+  trigger: string;
+  status: string;
+  operations: JsonObject[];
+  created_at: string;
+  finished_at: string | null;
+}
