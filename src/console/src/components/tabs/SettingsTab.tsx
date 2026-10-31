@@ -1,3 +1,4 @@
+import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "../../api/client";
 import type { TableApiResponse } from "../../api/types";
@@ -14,7 +15,7 @@ export function SettingsTab({ tableUuid }: Props) {
     queryKey: ["table", tableUuid],
     queryFn: () => apiGet<TableApiResponse>(`/v1/tables/${tableUuid}`),
   });
-  if (table.isPending) return <p>Loading settings…</p>;
+  if (table.isPending) return <PanelSkeleton label="Loading settings…" />;
   if (table.isError) {
     return (
       <Alert variant="destructive">Could not load settings: {errorMessage(table.error)}</Alert>

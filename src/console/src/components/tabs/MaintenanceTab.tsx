@@ -1,3 +1,4 @@
+import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { useState } from "react";
@@ -81,7 +82,7 @@ export function MaintenanceTab({ tableUuid }: { tableUuid: string }) {
       apiGet<TableMaintenanceRunApiResponse[]>(`/v1/tables/${tableUuid}/table-maintenance-runs`),
   });
 
-  if (runs.isPending) return <p className="text-sm text-muted-foreground">Loading runs…</p>;
+  if (runs.isPending) return <PanelSkeleton label="Loading runs…" />;
   if (runs.isError) {
     return (
       <p role="alert" className="text-sm text-destructive">

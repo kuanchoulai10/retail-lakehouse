@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -49,6 +49,14 @@ describe("TablePage", () => {
     await user.click(screen.getByRole("tab", { name: "Commits" }));
     expect(await screen.findByText("No commits.")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Commits" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("does not switch the page on a modified mousedown", async () => {
+    renderAt("/tables/uuid-orders/properties");
+    await screen.findByText("iceberg.inventory.orders");
+    const commits = screen.getByRole("tab", { name: "Commits" });
+    fireEvent.mouseDown(commits, { button: 0, metaKey: true });
+    expect(screen.getByRole("tab", { name: "Properties" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("navigates when a tab is activated with the keyboard", async () => {

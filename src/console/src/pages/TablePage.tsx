@@ -1,5 +1,7 @@
+import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate, useParams } from "react-router";
+import type { MouseEvent } from "react";
+import { Link,useNavigate, useParams } from "react-router";
 import { ApiError, apiGet } from "@/api/client";
 import type { TableApiResponse, TableMetadataApiResponse } from "@/api/types";
 import { TableHeader } from "@/components/TableHeader";
@@ -25,6 +27,10 @@ function tabOf(segment: string | undefined): TabKey {
   return TABS.find((t) => t.key === segment)?.key ?? "overview";
 }
 
+function keepPageOnModifiedClick(event: MouseEvent<HTMLElement>) {
+  if (event.metaKey || event.shiftKey || event.altKey) event.preventDefault();
+}
+
 function isNotInCatalog(error: unknown): error is ApiError {
   return (
     error instanceof ApiError && error.status === 404 && error.detail.endsWith("is not in the catalog")
@@ -44,7 +50,7 @@ export function TablePage() {
     queryFn: () => apiGet<TableMetadataApiResponse>(`/v1/tables/${uuid}/metadata`),
   });
 
-  if (table.isPending) return <p className="text-sm text-muted-foreground">Loading table…</p>;
+  if (table.isPending) return <PanelSkeleton label="Loading table…" />;
   if (table.isError) {
     return (
       <p role="alert" className="text-sm text-destructive">
@@ -76,12 +82,12 @@ export function TablePage() {
       case "maintenance":
         return <MaintenanceTab tableUuid={uuid} />;
       case "properties":
-        return metadata.data ? <PropertiesTab metadata={metadata.data} /> : <p className="text-sm text-muted-foreground">Loading…</p>;
+        return metadata.data ? <PropertiesTab metadata={metadata.data} /> : <PanelSkeleton label="Loading…" />;
       case "overview":
         return metadata.data ? (
           <OverviewTab tableUuid={uuid} metadata={metadata.data} />
         ) : (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <PanelSkeleton label="Loading…" />
         );
       case "settings":
         return <SettingsTab tableUuid={uuid} />;
@@ -100,12 +106,16 @@ export function TablePage() {
           className="mb-4 max-w-full justify-start overflow-x-auto border-b border-border"
         >
           {TABS.map((t) => (
-            <TabsTrigger key={t.key} value={t.key} asChild>
+            <TabsTrigger key={t.key} value={t.key} asChild onMouseDown={keepPageOnModifiedClick}>
               <Link to={`/tables/${uuid}/${t.key}`}>{t.label}</Link>
             </TabsTrigger>
           ))}
         </TabsList>
-        <TabsContent value={tab}>{body()}</TabsContent>
+        {TABS.map((t) => (
+          <TabsContent key={t.key} value={t.key} forceMount>
+            {t.key === tab ? body() : null}
+          </TabsContent>
+        ))}
       </Tabs>
     </section>
   );

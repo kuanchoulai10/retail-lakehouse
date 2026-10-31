@@ -11,6 +11,8 @@ const legacyStylesheet = import.meta.glob<string>("../styles.css", {
 
 const RAW_HEX = /#[0-9a-fA-F]{3,8}\b/;
 const ARBITRARY_COLOUR = /\[#/;
+const PALETTE_COLOUR =
+  /\b(?:bg|text|border|ring|fill|stroke|from|via|to|outline|divide|decoration|shadow|accent|caret)-(?:red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|neutral|stone|black|white)(?:-\d{2,3})?\b/;
 
 describe("design tokens", () => {
   it("finds the feature sources", () => {
@@ -24,6 +26,9 @@ describe("design tokens", () => {
     expect(RAW_HEX.test('style={{ color: "#a35200" }}')).toBe(true);
     expect(ARBITRARY_COLOUR.test('className="bg-[#fafafa]"')).toBe(true);
     expect(RAW_HEX.test('className="text-muted-foreground"')).toBe(false);
+    expect(PALETTE_COLOUR.test('className="text-red-600"')).toBe(true);
+    expect(PALETTE_COLOUR.test('className="hover:bg-amber-100"')).toBe(true);
+    expect(PALETTE_COLOUR.test('className="text-destructive bg-card"')).toBe(false);
   });
 
   it("uses token classes only in feature code", () => {
@@ -31,7 +36,8 @@ describe("design tokens", () => {
       source
         .split("\n")
         .map((line, index) => ({ line, index }))
-        .filter(({ line }) => RAW_HEX.test(line) || ARBITRARY_COLOUR.test(line))
+        .filter(({ line }) => RAW_HEX.test(line) || ARBITRARY_COLOUR.test(line) || PALETTE_COLOUR.test(line),
+        )
         .map(({ line, index }) => `${path}:${index + 1}: ${line.trim()}`),
     );
     expect(offenders).toEqual([]);

@@ -1,3 +1,4 @@
+import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/api/client";
 import type {
@@ -64,18 +65,18 @@ export function OverviewTab({ tableUuid, metadata }: Props) {
     <div className="grid gap-4">
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <div className="grid gap-4">
-          {health.isPending && <p className="text-sm text-muted-foreground">Loading health…</p>}
+          {health.isPending && <PanelSkeleton label="Loading health…" />}
           {health.isError && <Failure what="health" error={health.error} />}
           {health.data && <HealthPanel tableUuid={tableUuid} health={health.data} />}
         </div>
         <div className="grid gap-4">
-          {storage.isPending && <p className="text-sm text-muted-foreground">Loading storage…</p>}
+          {storage.isPending && <PanelSkeleton label="Loading storage…" />}
           {storage.isError && <Failure what="storage" error={storage.error} />}
           {storage.data && <StoragePanel storage={storage.data} />}
         </div>
       </div>
 
-      {freshness.isPending && <p className="text-sm text-muted-foreground">Loading freshness…</p>}
+      {freshness.isPending && <PanelSkeleton label="Loading freshness…" />}
       {freshness.isError && <Failure what="freshness" error={freshness.error} />}
       {freshness.data && (
         <FreshnessPanel
@@ -88,11 +89,11 @@ export function OverviewTab({ tableUuid, metadata }: Props) {
 
       <SchemaPanel metadata={metadata} />
 
-      {recent.isPending && <p className="text-sm text-muted-foreground">Loading commits…</p>}
+      {recent.isPending && <PanelSkeleton label="Loading commits…" />}
       {recent.isError && <Failure what="commits" error={recent.error} />}
       {recent.data && <RecentCommitsPanel commits={recent.data.items} />}
 
-      {runs.isPending && <p className="text-sm text-muted-foreground">Loading runs…</p>}
+      {runs.isPending && <PanelSkeleton label="Loading runs…" />}
       {runs.isError && <Failure what="maintenance runs" error={runs.error} />}
       {runs.data && <LastRunPanel runs={runs.data} />}
     </div>

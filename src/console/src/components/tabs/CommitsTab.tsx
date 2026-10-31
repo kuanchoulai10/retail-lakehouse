@@ -1,3 +1,4 @@
+import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { useState } from "react";
@@ -29,7 +30,7 @@ function CommitRow({ commit }: { commit: TableCommitApiResponse }) {
             <span className="tabular-nums">{formatTimestamp(commit.committed_at)}</span>
           </button>
         </TableCell>
-        <TableCell>{commit.operation ?? "—"}</TableCell>
+        <TableCell className="font-mono">{commit.operation ?? "—"}</TableCell>
         <TableCell>{writerLabel(commit.writer)}</TableCell>
         <TableCell className="text-right tabular-nums">{formatCount(commit.added_records)}</TableCell>
         <TableCell className="text-right tabular-nums">{formatCount(commit.deleted_records)}</TableCell>
@@ -57,7 +58,7 @@ export function CommitsTab({ tableUuid }: { tableUuid: string }) {
     queryFn: () => apiGet<TableCommitsApiResponse>(`/v1/tables/${tableUuid}/commits`),
   });
 
-  if (commits.isPending) return <p className="text-sm text-muted-foreground">Loading commits…</p>;
+  if (commits.isPending) return <PanelSkeleton label="Loading commits…" />;
   if (commits.isError) {
     return (
       <p role="alert" className="text-sm text-destructive">
