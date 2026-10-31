@@ -34,7 +34,7 @@ describe("TableHeader", () => {
   it("shows the name, status, preset and rule", () => {
     renderHeader();
     expect(screen.getByText("iceberg.inventory.orders")).toBeInTheDocument();
-    expect(screen.getByText("ACTIVE")).toBeInTheDocument();
+    expect(screen.getByText("Active")).toBeInTheDocument();
     expect(screen.getByText(/Preset: default/)).toBeInTheDocument();
     expect(screen.getByText(/Rule: rule-1/)).toBeInTheDocument();
   });
@@ -95,7 +95,22 @@ describe("TableHeader", () => {
     renderHeader("paused");
     const button = screen.getByRole("button", { name: "Run maintenance" });
     expect(button).toBeDisabled();
-    expect(button).toHaveAttribute("title", "Only an active table can run maintenance");
+    expect(button).toHaveAccessibleDescription("Only an active table can run maintenance");
+  });
+
+  it("gives the title a break-words class so a long name cannot overflow", () => {
+    renderHeader();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveClass("break-words");
+  });
+
+  it("opens the dialog as role dialog and closes it on Escape without posting", async () => {
+    const user = userEvent.setup();
+    renderHeader();
+    await user.click(screen.getByRole("button", { name: "Run maintenance" }));
+    expect(screen.getByRole("dialog", { name: "Run maintenance" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("enables Run maintenance on an active table", () => {

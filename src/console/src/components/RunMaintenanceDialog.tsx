@@ -1,7 +1,18 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { apiSend } from "../api/client";
-import { errorMessage } from "../format";
+import { apiSend } from "@/api/client";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { errorMessage } from "@/format";
 
 export const ALL_OPERATIONS = [
   "rewrite_data_files",
@@ -43,37 +54,44 @@ export function RunMaintenanceDialog({
   }
 
   return (
-    <div role="dialog" aria-label="Run maintenance" className="dialog">
-      <h2>Run maintenance</h2>
-      <p className="muted">Runs on the whole table, ignoring thresholds</p>
-      {ALL_OPERATIONS.map((operation) => (
-        <label key={operation} className="check">
-          <input
-            type="checkbox"
-            checked={selected.includes(operation)}
-            onChange={() => toggle(operation)}
-          />
-          {operation}
-        </label>
-      ))}
-      {run.isError && (
-        <p role="alert" className="error">
-          Could not start maintenance: {errorMessage(run.error)}
-        </p>
-      )}
-      <div className="actions">
-        <button type="button" onClick={onClose}>
-          Cancel
-        </button>
-        <button
-          type="button"
-          className="primary"
-          disabled={selected.length === 0 || run.isPending}
-          onClick={() => run.mutate()}
-        >
-          Run
-        </button>
-      </div>
-    </div>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Run maintenance</DialogTitle>
+          <DialogDescription>Runs on the whole table, ignoring thresholds</DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col gap-3">
+          {ALL_OPERATIONS.map((operation) => (
+            <div key={operation} className="flex items-center gap-2">
+              <Checkbox
+                id={`operation-${operation}`}
+                checked={selected.includes(operation)}
+                onCheckedChange={() => toggle(operation)}
+              />
+              <Label htmlFor={`operation-${operation}`} className="font-mono text-[13px]">
+                {operation}
+              </Label>
+            </div>
+          ))}
+        </div>
+        {run.isError && (
+          <p role="alert" className="text-sm text-destructive">
+            Could not start maintenance: {errorMessage(run.error)}
+          </p>
+        )}
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            disabled={selected.length === 0 || run.isPending}
+            onClick={() => run.mutate()}
+          >
+            Run
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

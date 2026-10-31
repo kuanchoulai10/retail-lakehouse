@@ -53,7 +53,7 @@ describe("MaintenanceTab", () => {
       </QueryClientProvider>,
     );
     expect(await screen.findByText("manual")).toBeInTheDocument();
-    expect(screen.getByText("FAILED")).toBeInTheDocument();
+    expect(screen.getByText("Failed")).toHaveClass("text-destructive");
     expect(screen.getByText("2m 30s")).toBeInTheDocument();
     expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe(
       "/console/api/v1/tables/uuid-orders/table-maintenance-runs",

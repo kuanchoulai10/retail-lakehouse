@@ -1,9 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
+import { ChevronRight } from "lucide-react";
 import { useState } from "react";
-import { apiGet } from "../../api/client";
-import type { TableCommitApiResponse, TableCommitsApiResponse } from "../../api/types";
-import { errorMessage, formatCount, formatTimestamp } from "../../format";
-import { writerLabel } from "../../writerLabel";
+import { apiGet } from "@/api/client";
+import type { TableCommitApiResponse, TableCommitsApiResponse } from "@/api/types";
+import { Panel } from "@/components/Panel";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { errorMessage, formatCount, formatTimestamp } from "@/format";
+import { cn } from "@/lib/utils";
+import { writerLabel } from "@/writerLabel";
 
 function sortedNewestFirst(items: TableCommitApiResponse[]): TableCommitApiResponse[] {
   return [...items].sort((a, b) => b.committed_at.localeCompare(a.committed_at));
@@ -13,23 +17,35 @@ function CommitRow({ commit }: { commit: TableCommitApiResponse }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <tr data-testid="commit-row" className="clickable" onClick={() => setOpen(!open)}>
-        <td>{formatTimestamp(commit.committed_at)}</td>
-        <td>{commit.operation ?? "—"}</td>
-        <td>{writerLabel(commit.writer)}</td>
-        <td>{formatCount(commit.added_records)}</td>
-        <td>{formatCount(commit.deleted_records)}</td>
-        <td>{formatCount(commit.added_data_files)}</td>
-        <td>{formatCount(commit.deleted_data_files)}</td>
-      </tr>
+      <TableRow data-testid="commit-row" className="cursor-pointer" onClick={() => setOpen(!open)}>
+        <TableCell>
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-label={`${open ? "Collapse" : "Expand"} commit ${commit.snapshot_id}`}
+            className="flex items-center gap-1"
+          >
+            <ChevronRight className={cn("size-4 text-muted-foreground", open && "rotate-90")} />
+            <span className="tabular-nums">{formatTimestamp(commit.committed_at)}</span>
+          </button>
+        </TableCell>
+        <TableCell>{commit.operation ?? "—"}</TableCell>
+        <TableCell>{writerLabel(commit.writer)}</TableCell>
+        <TableCell className="text-right tabular-nums">{formatCount(commit.added_records)}</TableCell>
+        <TableCell className="text-right tabular-nums">{formatCount(commit.deleted_records)}</TableCell>
+        <TableCell className="text-right tabular-nums">{formatCount(commit.added_data_files)}</TableCell>
+        <TableCell className="text-right tabular-nums">{formatCount(commit.deleted_data_files)}</TableCell>
+      </TableRow>
       {open && (
-        <tr>
-          <td colSpan={7}>
-            <p>Snapshot id: {commit.snapshot_id}</p>
-            <p>Parent id: {commit.parent_id ?? "—"}</p>
-            <pre>{JSON.stringify(commit.summary, null, 2)}</pre>
-          </td>
-        </tr>
+        <TableRow>
+          <TableCell colSpan={7} className="bg-card whitespace-normal">
+            <p className="font-mono text-[13px]">Snapshot id: {commit.snapshot_id}</p>
+            <p className="font-mono text-[13px]">Parent id: {commit.parent_id ?? "—"}</p>
+            <pre className="mt-2 overflow-x-auto font-mono text-[13px]">
+              {JSON.stringify(commit.summary, null, 2)}
+            </pre>
+          </TableCell>
+        </TableRow>
       )}
     </>
   );
@@ -41,42 +57,46 @@ export function CommitsTab({ tableUuid }: { tableUuid: string }) {
     queryFn: () => apiGet<TableCommitsApiResponse>(`/v1/tables/${tableUuid}/commits`),
   });
 
-  if (commits.isPending) return <p>Loading commits…</p>;
+  if (commits.isPending) return <p className="text-sm text-muted-foreground">Loading commits…</p>;
   if (commits.isError) {
     return (
-      <p role="alert" className="error">
+      <p role="alert" className="text-sm text-destructive">
         Could not load commits: {errorMessage(commits.error)}
       </p>
     );
   }
   return (
     <>
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Committed</th>
-            <th>Operation</th>
-            <th>Writer</th>
-            <th>Rows added</th>
-            <th>Rows removed</th>
-            <th>Files added</th>
-            <th>Files removed</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sortedNewestFirst(commits.data.items).map((c) => (
-            <CommitRow key={c.snapshot_id} commit={c} />
-          ))}
-          {commits.data.items.length === 0 && (
-            <tr>
-              <td colSpan={7} className="empty">
-                No commits.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-      {commits.data.truncated && <p className="muted">Showing the newest commits only.</p>}
+      <Panel title="Commits">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Committed</TableHead>
+              <TableHead>Operation</TableHead>
+              <TableHead>Writer</TableHead>
+              <TableHead className="text-right">Rows added</TableHead>
+              <TableHead className="text-right">Rows removed</TableHead>
+              <TableHead className="text-right">Files added</TableHead>
+              <TableHead className="text-right">Files removed</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedNewestFirst(commits.data.items).map((c) => (
+              <CommitRow key={c.snapshot_id} commit={c} />
+            ))}
+            {commits.data.items.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  No commits.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </Panel>
+      {commits.data.truncated && (
+        <p className="mt-3 text-[13px] text-warning">Showing the newest commits only.</p>
+      )}
     </>
   );
 }

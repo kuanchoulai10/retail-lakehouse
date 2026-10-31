@@ -14,7 +14,7 @@ export function PageHeader({ title, breadcrumb, actions, children }: Props) {
         <p className="text-[13px] text-muted-foreground">{breadcrumb}</p>
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight break-words min-w-0">{title}</h1>
         {actions !== undefined && <div className="flex items-center gap-2">{actions}</div>}
       </div>
       {children !== undefined && (

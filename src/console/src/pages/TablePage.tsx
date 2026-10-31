@@ -1,14 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
-import { ApiError, apiGet } from "../api/client";
-import type { TableApiResponse, TableMetadataApiResponse } from "../api/types";
-import { TableHeader } from "../components/TableHeader";
-import { CommitsTab } from "../components/tabs/CommitsTab";
-import { MaintenanceTab } from "../components/tabs/MaintenanceTab";
-import { OverviewTab } from "../components/tabs/OverviewTab";
-import { PropertiesTab } from "../components/tabs/PropertiesTab";
-import { SettingsTab } from "../components/tabs/SettingsTab";
-import { errorMessage } from "../format";
+import { ApiError, apiGet } from "@/api/client";
+import type { TableApiResponse, TableMetadataApiResponse } from "@/api/types";
+import { TableHeader } from "@/components/TableHeader";
+import { CommitsTab } from "@/components/tabs/CommitsTab";
+import { MaintenanceTab } from "@/components/tabs/MaintenanceTab";
+import { OverviewTab } from "@/components/tabs/OverviewTab";
+import { PropertiesTab } from "@/components/tabs/PropertiesTab";
+import { SettingsTab } from "@/components/tabs/SettingsTab";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { errorMessage } from "@/format";
 
 const TABS = [
   { key: "overview", label: "Overview" },
@@ -42,10 +43,10 @@ export function TablePage() {
     queryFn: () => apiGet<TableMetadataApiResponse>(`/v1/tables/${uuid}/metadata`),
   });
 
-  if (table.isPending) return <p>Loading table…</p>;
+  if (table.isPending) return <p className="text-sm text-muted-foreground">Loading table…</p>;
   if (table.isError) {
     return (
-      <p role="alert" className="error">
+      <p role="alert" className="text-sm text-destructive">
         Could not load table: {errorMessage(table.error)}
       </p>
     );
@@ -56,14 +57,14 @@ export function TablePage() {
   function body() {
     if (needsCatalog && isNotInCatalog(metadata.error)) {
       return (
-        <p role="status" className="notice">
+        <p role="status" className="rounded-lg border border-border bg-card px-4 py-3 text-sm">
           {metadata.error.detail}
         </p>
       );
     }
     if (needsCatalog && metadata.isError) {
       return (
-        <p role="alert" className="error">
+        <p role="alert" className="text-sm text-destructive">
           Could not load table metadata: {errorMessage(metadata.error)}
         </p>
       );
@@ -74,12 +75,12 @@ export function TablePage() {
       case "maintenance":
         return <MaintenanceTab tableUuid={uuid} />;
       case "properties":
-        return metadata.data ? <PropertiesTab metadata={metadata.data} /> : <p>Loading…</p>;
+        return metadata.data ? <PropertiesTab metadata={metadata.data} /> : <p className="text-sm text-muted-foreground">Loading…</p>;
       case "overview":
         return metadata.data ? (
           <OverviewTab tableUuid={uuid} metadata={metadata.data} />
         ) : (
-          <p>Loading…</p>
+          <p className="text-sm text-muted-foreground">Loading…</p>
         );
       case "settings":
         return <SettingsTab tableUuid={uuid} />;
@@ -91,18 +92,16 @@ export function TablePage() {
   return (
     <section>
       <TableHeader table={table.data} metadata={metadata.data} />
-      <nav className="tabs" aria-label="Table sections">
-        {TABS.map((t) => (
-          <Link
-            key={t.key}
-            to={`/tables/${uuid}/${t.key}`}
-            aria-current={t.key === tab ? "page" : undefined}
-          >
-            {t.label}
-          </Link>
-        ))}
-      </nav>
-      {body()}
+      <Tabs value={tab}>
+        <TabsList variant="line" aria-label="Table sections" className="mb-4 border-b border-border">
+          {TABS.map((t) => (
+            <TabsTrigger key={t.key} value={t.key} asChild>
+              <Link to={`/tables/${uuid}/${t.key}`}>{t.label}</Link>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <TabsContent value={tab}>{body()}</TabsContent>
+      </Tabs>
     </section>
   );
 }

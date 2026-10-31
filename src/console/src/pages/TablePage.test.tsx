@@ -38,13 +38,13 @@ describe("TablePage", () => {
   it("falls back to Overview for an unknown tab segment", async () => {
     renderAt("/tables/uuid-orders/nonsense");
     expect(await screen.findByText("iceberg.inventory.orders")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("selects the tab named in the URL", async () => {
     renderAt("/tables/uuid-orders/properties");
     expect(await screen.findByText("write.format.default")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Properties" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("tab", { name: "Properties" })).toHaveAttribute("aria-selected", "true");
   });
 
   it("shows not-in-catalog notice when metadata answers 404", async () => {
@@ -54,6 +54,6 @@ describe("TablePage", () => {
     renderAt("/tables/uuid-orders/commits");
     expect(await screen.findByText(/is not in the catalog/)).toBeInTheDocument();
     expect(screen.getByText("iceberg.inventory.orders")).toBeInTheDocument();
-    expect(screen.getByText("ACTIVE")).toBeInTheDocument();
+    expect(screen.getByText("Active")).toBeInTheDocument();
   });
 });
