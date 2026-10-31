@@ -12,6 +12,7 @@ from adapter.inbound.web.table.dto import (
     TableCommitsApiResponse,
     TableHealthApiResponse,
     TableMetadataApiResponse,
+    TableStorageApiResponse,
     TriggerTableMaintenanceApiRequest,
     TriggerTableMaintenanceApiResponse,
     UpdateTableSettingsApiRequest,
@@ -21,6 +22,7 @@ from application.port.inbound.table import (
     ExcludeTableUseCaseInput,
     GetTableHealthUseCaseInput,
     GetTableMetadataUseCaseInput,
+    GetTableStorageUseCaseInput,
     GetTableUseCaseInput,
     IncludeTableUseCaseInput,
     ListTableCommitsUseCaseInput,
@@ -94,6 +96,15 @@ def get_table_health(table_uuid: str, use_cases: UseCases) -> TableHealthApiResp
         GetTableHealthUseCaseInput(uuid=table_uuid)
     )
     return TableHealthApiResponse.model_validate(output)
+
+
+@router.get("/{table_uuid}/storage")
+def get_table_storage(table_uuid: str, use_cases: UseCases) -> TableStorageApiResponse:
+    """Return the current and old-snapshot storage of one table."""
+    output = use_cases.get_table_storage.execute(
+        GetTableStorageUseCaseInput(uuid=table_uuid)
+    )
+    return TableStorageApiResponse.model_validate(output)
 
 
 @router.get("/{table_uuid}/commits")

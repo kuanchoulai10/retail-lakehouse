@@ -74,6 +74,20 @@ class TableHealthApiResponse(BaseModel):
     equality_delete_files: int
 
 
+class TableStorageApiResponse(BaseModel):
+    """Describe the storage of a table and what maintenance reclaimed."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    current_bytes: int
+    current_files: int
+    old_snapshot_bytes: int
+    old_snapshot_files: int
+    window_days: int
+    reclaimed: dict[str, int]
+    attempts_without_metrics: int
+
+
 class TableCommitApiResponse(BaseModel):
     """Describe one commit of a table."""
 

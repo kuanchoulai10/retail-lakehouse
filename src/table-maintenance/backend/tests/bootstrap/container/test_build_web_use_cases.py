@@ -24,7 +24,7 @@ def _web_use_cases() -> WebUseCases:
 def test_every_web_use_case_is_populated():
     web = _web_use_cases()
 
-    assert len(fields(web)) == 27
+    assert len(fields(web)) == 28
     assert all(getattr(web, f.name) is not None for f in fields(web))
 
 

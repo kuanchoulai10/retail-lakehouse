@@ -17,6 +17,8 @@ from application.exceptions import ConflictError
 from application.port.outbound.table_maintenance_run import TableMaintenanceRunsRepo
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from sqlalchemy import Engine
 
     from application.port.outbound.table_maintenance_run import (
@@ -85,6 +87,19 @@ class TableMaintenanceRunsSqlRepo(TableMaintenanceRunsRepo):
             .where(t.c.table_uuid == table_uuid.value)
             .order_by(t.c.created_at.desc(), t.c.id.desc())
             .limit(limit)
+        )
+        with self._engine.connect() as conn:
+            rows = conn.execute(stmt).all()
+        return [TableMaintenanceRunRowMapper.to_aggregate(r._mapping) for r in rows]
+
+    def list_by_table_since(
+        self, table_uuid: TableId, since: datetime
+    ) -> list[TableMaintenanceRun]:
+        """Return the table's runs created at or after since, newest first."""
+        stmt = (
+            select(t)
+            .where(t.c.table_uuid == table_uuid.value, t.c.created_at >= since)
+            .order_by(t.c.created_at.desc(), t.c.id.desc())
         )
         with self._engine.connect() as conn:
             rows = conn.execute(stmt).all()

@@ -15,6 +15,7 @@ if TYPE_CHECKING:
         ExcludeTableUseCase,
         GetTableHealthUseCase,
         GetTableMetadataUseCase,
+        GetTableStorageUseCase,
         GetTableUseCase,
         IncludeTableUseCase,
         ListTableCommitsUseCase,
@@ -65,6 +66,7 @@ class WebUseCases:
     get_table: GetTableUseCase
     get_table_health: GetTableHealthUseCase
     get_table_metadata: GetTableMetadataUseCase
+    get_table_storage: GetTableStorageUseCase
     list_table_commits: ListTableCommitsUseCase
     update_table_settings: UpdateTableSettingsUseCase
     pause_table: PauseTableUseCase

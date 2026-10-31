@@ -328,6 +328,11 @@ class _CopyingRunsRepo(TableMaintenanceRunsRepo):
     def list_by_table(self, table_uuid, limit=50):
         return [copy.deepcopy(r) for r in self.inner.list_by_table(table_uuid, limit)]
 
+    def list_by_table_since(self, table_uuid, since):
+        return [
+            copy.deepcopy(r) for r in self.inner.list_by_table_since(table_uuid, since)
+        ]
+
 
 class _CancelDuringSubmitGateway(SubmitMaintenanceJobGateway):
     """Record the attempt as failed while the submit is still running."""

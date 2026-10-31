@@ -20,6 +20,15 @@ from application.port.inbound.table.get_table_health.output import (
 from application.port.inbound.table.get_table_health.use_case import (
     GetTableHealthUseCase,
 )
+from application.port.inbound.table.get_table_storage.input import (
+    GetTableStorageUseCaseInput,
+)
+from application.port.inbound.table.get_table_storage.output import (
+    GetTableStorageUseCaseOutput,
+)
+from application.port.inbound.table.get_table_storage.use_case import (
+    GetTableStorageUseCase,
+)
 from application.port.inbound.table.get_table_metadata.input import (
     GetTableMetadataUseCaseInput,
 )
@@ -124,6 +133,9 @@ __all__ = [
     "GetTableHealthUseCaseInput",
     "GetTableHealthUseCaseOutput",
     "GetTableHealthUseCaseOutputItem",
+    "GetTableStorageUseCase",
+    "GetTableStorageUseCaseInput",
+    "GetTableStorageUseCaseOutput",
     "GetTableMetadataUseCase",
     "GetTableMetadataUseCaseInput",
     "GetTableMetadataUseCaseOutput",

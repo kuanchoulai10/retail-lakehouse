@@ -16,6 +16,7 @@ if TYPE_CHECKING:
         ExcludeTableUseCase,
         GetTableHealthUseCase,
         GetTableMetadataUseCase,
+        GetTableStorageUseCase,
         GetTableUseCase,
         IncludeTableUseCase,
         ListTableCommitsUseCase,
@@ -73,6 +74,7 @@ class UseCases:
     get_table: GetTableUseCase
     get_table_health: GetTableHealthUseCase
     get_table_metadata: GetTableMetadataUseCase
+    get_table_storage: GetTableStorageUseCase
     list_table_commits: ListTableCommitsUseCase
     include_table: IncludeTableUseCase
     list_tables: ListTablesUseCase

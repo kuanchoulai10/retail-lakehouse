@@ -125,3 +125,13 @@ def test_create_duplicate_primary_key_raises_conflict(
     repo.create(_run("r1"))
     with pytest.raises(ConflictError):
         repo.create(_run("r1"))
+
+
+def test_list_by_table_since_filters_by_created_at(repo: TableMaintenanceRunsSqlRepo):
+    since = NOW - timedelta(days=30)
+    repo.create(_run("old", "u1", since - timedelta(seconds=1)))
+    repo.create(_run("edge", "u1", since))
+    repo.create(_run("new", "u1", NOW))
+    repo.create(_run("other", "u2", NOW))
+    got = repo.list_by_table_since(TableId("u1"), since)
+    assert [r.id.value for r in got] == ["new", "edge"]

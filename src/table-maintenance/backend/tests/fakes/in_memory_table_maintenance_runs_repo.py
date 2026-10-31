@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING
 from application.port.outbound.table_maintenance_run import TableMaintenanceRunsRepo
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from application.domain.model.table_maintenance_run import TableMaintenanceRun
     from application.domain.model.table import TableId
     from base import EntityId
@@ -46,3 +48,15 @@ class InMemoryTableMaintenanceRunsRepo(TableMaintenanceRunsRepo):
         runs = [r for r in self.items.values() if r.table_uuid == table_uuid]
         runs.sort(key=lambda r: r.created_at, reverse=True)
         return runs[:limit]
+
+    def list_by_table_since(
+        self, table_uuid: TableId, since: datetime
+    ) -> list[TableMaintenanceRun]:
+        """Return the table's runs created at or after since, newest first."""
+        runs = [
+            r
+            for r in self.items.values()
+            if r.table_uuid == table_uuid and r.created_at >= since
+        ]
+        runs.sort(key=lambda r: r.created_at, reverse=True)
+        return runs
