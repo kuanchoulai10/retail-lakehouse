@@ -34,7 +34,7 @@ class GetTableMetadataService(GetTableMetadataUseCase):
         """Return the catalog metadata or raise NotFoundError."""
         table, ref = load_catalog_table(self._tables_repo, request.uuid)
         description = self._catalog_gateway.describe_table(ref)
-        if description is None:
+        if description is None or description.table_uuid != table.id.value:
             raise_not_in_catalog(table)
         summary = description.current_summary
         committed = description.last_committed_at

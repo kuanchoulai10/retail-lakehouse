@@ -12,11 +12,13 @@ if TYPE_CHECKING:
 
 def storage_measure_from_table(table: Table) -> TableStorageMeasure:
     """Measure the current snapshot's files and every snapshot's distinct files."""
+    table_uuid = str(table.metadata.table_uuid)
     if table.current_snapshot() is None:
-        return TableStorageMeasure(0, 0, 0, 0)
+        return TableStorageMeasure(table_uuid, 0, 0, 0, 0)
     current = _sizes(table.inspect.files().to_pylist())
     referenced = _sizes(table.inspect.all_files().to_pylist())
     return TableStorageMeasure(
+        table_uuid=table_uuid,
         current_bytes=sum(current.values()),
         current_files=len(current),
         referenced_bytes=sum(referenced.values()),

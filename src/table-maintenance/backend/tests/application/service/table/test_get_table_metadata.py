@@ -100,3 +100,10 @@ def test_metadata_unknown_table_raises_not_found(service):
 def test_metadata_404_when_not_in_catalog(service):
     with pytest.raises(NotFoundError, match="is not in the catalog$"):
         service.execute(GetTableMetadataUseCaseInput(uuid="u-1"))
+
+
+def test_metadata_404_when_catalog_table_has_another_uuid(service, catalog):
+    _describe(catalog, table_uuid="u-recreated")
+
+    with pytest.raises(NotFoundError, match="is not in the catalog$"):
+        service.execute(GetTableMetadataUseCaseInput(uuid="u-1"))

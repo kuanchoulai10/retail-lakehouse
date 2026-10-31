@@ -38,6 +38,7 @@ def _register(repo, now):
 
 def _measure(catalog, **overrides):
     fields = {
+        "table_uuid": "u-1",
         "current_bytes": 1000,
         "current_files": 10,
         "referenced_bytes": 4000,
@@ -226,4 +227,14 @@ def test_table_missing_in_catalog_raises_not_found(service, tables_repo, now):
     _register(tables_repo, now)
 
     with pytest.raises(NotFoundError, match="is not in the catalog"):
+        _storage(service)
+
+
+def test_storage_404_when_catalog_table_has_another_uuid(
+    service, tables_repo, catalog, now
+):
+    _register(tables_repo, now)
+    _measure(catalog, table_uuid="u-recreated")
+
+    with pytest.raises(NotFoundError, match="is not in the catalog$"):
         _storage(service)

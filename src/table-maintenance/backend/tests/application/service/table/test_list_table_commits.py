@@ -55,7 +55,7 @@ def test_commits_map_counters_and_writer(service, catalog):
         "removed-delete-files": "5",
     }
     catalog.commit_pages[KEY] = TableCommitPage(
-        commits=[_commit(summary, writer="spark")], truncated=False
+        table_uuid="u-1", commits=[_commit(summary, writer="spark")], truncated=False
     )
 
     output = service.execute(ListTableCommitsUseCaseInput(uuid="u-1"))
@@ -78,7 +78,7 @@ def test_commits_map_counters_and_writer(service, catalog):
 
 def test_commit_with_partial_summary(service, catalog):
     catalog.commit_pages[KEY] = TableCommitPage(
-        commits=[_commit({"added-records": "abc"})], truncated=False
+        table_uuid="u-1", commits=[_commit({"added-records": "abc"})], truncated=False
     )
 
     item = service.execute(ListTableCommitsUseCaseInput(uuid="u-1")).items[0]
@@ -89,7 +89,9 @@ def test_commit_with_partial_summary(service, catalog):
 
 
 def test_truncated_passes_through(service, catalog):
-    catalog.commit_pages[KEY] = TableCommitPage(commits=[_commit({})], truncated=True)
+    catalog.commit_pages[KEY] = TableCommitPage(
+        table_uuid="u-1", commits=[_commit({})], truncated=True
+    )
 
     output = service.execute(ListTableCommitsUseCaseInput(uuid="u-1"))
 
@@ -97,7 +99,9 @@ def test_truncated_passes_through(service, catalog):
 
 
 def test_limit_and_since_are_forwarded(service, catalog):
-    catalog.commit_pages[KEY] = TableCommitPage(commits=[], truncated=False)
+    catalog.commit_pages[KEY] = TableCommitPage(
+        table_uuid="u-1", commits=[], truncated=False
+    )
     since = datetime(2026, 10, 1, tzinfo=UTC)
 
     service.execute(ListTableCommitsUseCaseInput(uuid="u-1", limit=5, since=since))
@@ -114,5 +118,14 @@ def test_commits_unknown_table_raises_not_found(service):
 
 
 def test_commits_404_when_not_in_catalog(service):
+    with pytest.raises(NotFoundError, match="is not in the catalog$"):
+        service.execute(ListTableCommitsUseCaseInput(uuid="u-1"))
+
+
+def test_commits_404_when_catalog_table_has_another_uuid(service, catalog):
+    catalog.commit_pages[KEY] = TableCommitPage(
+        table_uuid="u-recreated", commits=[_commit({})], truncated=False
+    )
+
     with pytest.raises(NotFoundError, match="is not in the catalog$"):
         service.execute(ListTableCommitsUseCaseInput(uuid="u-1"))

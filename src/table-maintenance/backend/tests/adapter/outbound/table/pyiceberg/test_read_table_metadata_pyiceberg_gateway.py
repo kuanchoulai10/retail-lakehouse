@@ -365,6 +365,7 @@ def test_list_commits_newest_first_with_limit(
     page = gateway.list_commits(_ref(), since=None, limit=2)
 
     assert page is not None
+    assert page.table_uuid == str(table.metadata.table_uuid)
     assert page.truncated is True
     assert [c["snapshot_id"] for c in page.commits] == [
         snapshots[2].snapshot_id,
@@ -405,6 +406,7 @@ def test_measure_storage_counts_files_kept_by_old_snapshots(
     measure = gateway.measure_storage(_ref())
 
     assert measure is not None
+    assert measure.table_uuid == str(table.metadata.table_uuid)
     assert measure.current_files > 0
     assert measure.referenced_files > measure.current_files
     assert measure.referenced_bytes > measure.current_bytes > 0
@@ -414,11 +416,12 @@ def test_measure_storage_of_empty_table_is_zero(
     catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
 ) -> None:
     catalog.create_namespace("db")
-    catalog.create_table("db.events", SCHEMA)
+    table = catalog.create_table("db.events", SCHEMA)
 
     measure = gateway.measure_storage(_ref())
 
     assert measure is not None
+    assert measure.table_uuid == str(table.metadata.table_uuid)
     assert (
         measure.current_bytes,
         measure.current_files,

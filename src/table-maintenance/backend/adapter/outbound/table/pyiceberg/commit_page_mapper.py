@@ -28,6 +28,7 @@ def commit_page_from_table(
         reverse=True,
     )
     return TableCommitPage(
+        table_uuid=str(table.metadata.table_uuid),
         commits=[_commit(s) for s in snapshots[:limit]],
         truncated=len(snapshots) > limit,
     )

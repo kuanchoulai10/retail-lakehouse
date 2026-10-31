@@ -56,7 +56,7 @@ class ListTableCommitsService(ListTableCommitsUseCase):
         table, ref = load_catalog_table(self._tables_repo, request.uuid)
         since = None if request.since is None else request.since.isoformat()
         page = self._catalog_gateway.list_commits(ref, since, request.limit)
-        if page is None:
+        if page is None or page.table_uuid != table.id.value:
             raise_not_in_catalog(table)
         return ListTableCommitsUseCaseOutput(
             items=[_to_item(commit) for commit in page.commits],

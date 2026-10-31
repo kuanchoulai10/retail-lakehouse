@@ -93,7 +93,7 @@ class GetTableStorageService(GetTableStorageUseCase):
         """Measure the table and sum its recent reclaimed space, or raise NotFoundError."""
         table, ref = load_catalog_table(self._tables_repo, request.uuid)
         measure = self._catalog_gateway.measure_storage(ref)
-        if measure is None:
+        if measure is None or measure.table_uuid != table.id.value:
             raise_not_in_catalog(table)
         since = self._clock() - timedelta(days=_WINDOW_DAYS)
         reclaimed = dict.fromkeys(_RECLAIMED_KEYS, 0)
