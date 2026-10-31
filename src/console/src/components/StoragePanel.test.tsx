@@ -41,6 +41,12 @@ describe("StoragePanel", () => {
     expect(screen.getByText("320.0 MB")).toBeInTheDocument();
   });
 
+  it("splits the bar into current and old-snapshot segments with labels", () => {
+    render(<StoragePanel storage={storage()} />);
+    expect(screen.getByLabelText("Current snapshot")).toBeInTheDocument();
+    expect(screen.getByLabelText("Only in old snapshots")).toBeInTheDocument();
+  });
+
   it("shows what maintenance reclaimed in the window", () => {
     render(<StoragePanel storage={storage()} />);
     expect(screen.getByText("Reclaimed in the last 30 days")).toBeInTheDocument();

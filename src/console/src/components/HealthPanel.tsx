@@ -1,7 +1,10 @@
-import { useState } from "react";
-import type { TableHealthApiResponse, TableHealthOperationApiResponse } from "../api/types";
-import { formatTimestamp } from "../format";
-import { RunMaintenanceDialog } from "./RunMaintenanceDialog";
+import { useRef, useState } from "react";
+import type { TableHealthApiResponse, TableHealthOperationApiResponse } from "@/api/types";
+import { Panel } from "@/components/Panel";
+import { RunMaintenanceDialog } from "@/components/RunMaintenanceDialog";
+import { Button } from "@/components/ui/button";
+import { formatTimestamp } from "@/format";
+import { cn } from "@/lib/utils";
 
 function measurement(line: TableHealthOperationApiResponse): string {
   const { measured, threshold } = line;
@@ -46,38 +49,60 @@ interface Props {
 
 export function HealthPanel({ tableUuid, health }: Props) {
   const [runOperation, setRunOperation] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [openCount, setOpenCount] = useState(0);
+  const triggerRef = useRef<HTMLElement | null>(null);
   return (
-    <section className="panel" aria-label="Health">
-      <h2>Health</h2>
+    <Panel title="Health">
       {!health.scheduled && (
-        <p role="status" className="notice">
+        <p role="status" className="border-b border-border bg-card px-4 py-2.5 text-[13px] text-warning">
           {`The scheduler skips this table: ${health.not_scheduled_reason ?? "unknown"}`}
         </p>
       )}
-      <ul className="health-lines">
+      <ul className="divide-y divide-border">
         {health.operations.map((line) => (
-          <li key={line.operation}>
-            <strong>{line.operation}</strong>
-            <span className={`health-${line.verdict}`}>{lineText(line, health.scheduled)}</span>
+          <li key={line.operation} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+            <span className="min-w-44 font-mono text-[13px]">{line.operation}</span>
+            <span
+              className={cn(
+                "flex-1 tabular-nums",
+                line.verdict === "due" ? "text-warning" : "text-muted-foreground",
+              )}
+            >
+              {lineText(line, health.scheduled)}
+            </span>
             {health.scheduled && line.verdict === "due" && (
-              <button type="button" onClick={() => setRunOperation(line.operation)}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={(event) => {
+                  triggerRef.current = event.currentTarget;
+                  setRunOperation(line.operation);
+                  setOpenCount((count) => count + 1);
+                  setDialogOpen(true);
+                }}
+              >
                 Run now
-              </button>
+              </Button>
             )}
           </li>
         ))}
       </ul>
-      <dl className="facts">
-        <dt>Delete files</dt>
-        <dd>{`${health.position_delete_files} position, ${health.equality_delete_files} equality`}</dd>
+      <dl className="flex items-baseline gap-4 border-t border-border px-4 py-2.5 text-[13px]">
+        <dt className="text-muted-foreground">Delete files</dt>
+        <dd className="tabular-nums">{`${health.position_delete_files} position, ${health.equality_delete_files} equality`}</dd>
       </dl>
       {runOperation !== null && (
         <RunMaintenanceDialog
+          key={openCount}
           tableUuid={tableUuid}
           initialOperations={[runOperation]}
-          onClose={() => setRunOperation(null)}
+          open={dialogOpen}
+          returnFocusTo={triggerRef}
+          onClose={() => setDialogOpen(false)}
         />
       )}
-    </section>
+    </Panel>
   );
 }

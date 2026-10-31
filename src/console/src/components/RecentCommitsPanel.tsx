@@ -1,40 +1,50 @@
-import type { TableCommitApiResponse } from "../api/types";
-import { formatCount, formatTimestamp } from "../format";
+import type { TableCommitApiResponse } from "@/api/types";
+import { Panel } from "@/components/Panel";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { formatCount, formatTimestamp } from "@/format";
 
 export function RecentCommitsPanel({ commits }: { commits: TableCommitApiResponse[] }) {
   const latest = [...commits]
     .sort((a, b) => b.committed_at.localeCompare(a.committed_at))
     .slice(0, 5);
   return (
-    <section className="panel" aria-label="Recent commits">
-      <h2>Recent commits</h2>
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Committed</th>
-            <th>Operation</th>
-            <th>Added records</th>
-            <th>Added files</th>
-          </tr>
-        </thead>
-        <tbody>
+    <Panel title="Recent commits">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="px-4">Committed</TableHead>
+            <TableHead>Operation</TableHead>
+            <TableHead className="text-right">Added records</TableHead>
+            <TableHead className="px-4 text-right">Added files</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {latest.map((commit) => (
-            <tr key={commit.snapshot_id}>
-              <td>{formatTimestamp(commit.committed_at)}</td>
-              <td>{commit.operation ?? "—"}</td>
-              <td>{formatCount(commit.added_records)}</td>
-              <td>{formatCount(commit.added_data_files)}</td>
-            </tr>
+            <TableRow key={commit.snapshot_id}>
+              <TableCell className="px-4 tabular-nums">{formatTimestamp(commit.committed_at)}</TableCell>
+              <TableCell className="font-mono text-[13px]">{commit.operation ?? "—"}</TableCell>
+              <TableCell className="text-right tabular-nums">{formatCount(commit.added_records)}</TableCell>
+              <TableCell className="px-4 text-right tabular-nums">
+                {formatCount(commit.added_data_files)}
+              </TableCell>
+            </TableRow>
           ))}
           {latest.length === 0 && (
-            <tr>
-              <td colSpan={4} className="empty">
+            <TableRow>
+              <TableCell colSpan={4} className="p-4 text-center text-muted-foreground">
                 No commits yet.
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           )}
-        </tbody>
-      </table>
-    </section>
+        </TableBody>
+      </Table>
+    </Panel>
   );
 }

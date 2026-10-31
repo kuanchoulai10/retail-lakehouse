@@ -1,19 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiGet } from "../../api/client";
+import { apiGet } from "@/api/client";
 import type {
   TableCommitsApiResponse,
   TableHealthApiResponse,
   TableMaintenanceRunApiResponse,
   TableMetadataApiResponse,
   TableStorageApiResponse,
-} from "../../api/types";
-import { errorMessage } from "../../format";
-import { FreshnessPanel } from "../FreshnessPanel";
-import { HealthPanel } from "../HealthPanel";
-import { LastRunPanel } from "../LastRunPanel";
-import { RecentCommitsPanel } from "../RecentCommitsPanel";
-import { SchemaPanel } from "../SchemaPanel";
-import { StoragePanel } from "../StoragePanel";
+} from "@/api/types";
+import { errorMessage } from "@/format";
+import { FreshnessPanel } from "@/components/FreshnessPanel";
+import { HealthPanel } from "@/components/HealthPanel";
+import { LastRunPanel } from "@/components/LastRunPanel";
+import { RecentCommitsPanel } from "@/components/RecentCommitsPanel";
+import { SchemaPanel } from "@/components/SchemaPanel";
+import { StoragePanel } from "@/components/StoragePanel";
 
 const DAY_MS = 24 * 3_600_000;
 
@@ -24,7 +24,7 @@ interface Props {
 
 function Failure({ what, error }: { what: string; error: unknown }) {
   return (
-    <p role="alert" className="error">
+    <p role="alert" className="text-sm text-destructive">
       {`Could not load ${what}: ${errorMessage(error)}`}
     </p>
   );
@@ -61,16 +61,21 @@ export function OverviewTab({ tableUuid, metadata }: Props) {
   });
 
   return (
-    <div className="overview">
-      {health.isPending && <p>Loading health…</p>}
-      {health.isError && <Failure what="health" error={health.error} />}
-      {health.data && <HealthPanel tableUuid={tableUuid} health={health.data} />}
+    <div className="grid gap-4">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <div className="grid gap-4">
+          {health.isPending && <p className="text-sm text-muted-foreground">Loading health…</p>}
+          {health.isError && <Failure what="health" error={health.error} />}
+          {health.data && <HealthPanel tableUuid={tableUuid} health={health.data} />}
+        </div>
+        <div className="grid gap-4">
+          {storage.isPending && <p className="text-sm text-muted-foreground">Loading storage…</p>}
+          {storage.isError && <Failure what="storage" error={storage.error} />}
+          {storage.data && <StoragePanel storage={storage.data} />}
+        </div>
+      </div>
 
-      {storage.isPending && <p>Loading storage…</p>}
-      {storage.isError && <Failure what="storage" error={storage.error} />}
-      {storage.data && <StoragePanel storage={storage.data} />}
-
-      {freshness.isPending && <p>Loading freshness…</p>}
+      {freshness.isPending && <p className="text-sm text-muted-foreground">Loading freshness…</p>}
       {freshness.isError && <Failure what="freshness" error={freshness.error} />}
       {freshness.data && (
         <FreshnessPanel
@@ -83,11 +88,11 @@ export function OverviewTab({ tableUuid, metadata }: Props) {
 
       <SchemaPanel metadata={metadata} />
 
-      {recent.isPending && <p>Loading commits…</p>}
+      {recent.isPending && <p className="text-sm text-muted-foreground">Loading commits…</p>}
       {recent.isError && <Failure what="commits" error={recent.error} />}
       {recent.data && <RecentCommitsPanel commits={recent.data.items} />}
 
-      {runs.isPending && <p>Loading runs…</p>}
+      {runs.isPending && <p className="text-sm text-muted-foreground">Loading runs…</p>}
       {runs.isError && <Failure what="maintenance runs" error={runs.error} />}
       {runs.data && <LastRunPanel runs={runs.data} />}
     </div>

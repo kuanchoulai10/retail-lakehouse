@@ -1,20 +1,23 @@
-import type { TableCommitApiResponse } from "../api/types";
-import { formatCount, formatRelativeTime } from "../format";
-import { hourlyCommitBuckets, writerMix } from "../freshness";
-import { writerLabel } from "../writerLabel";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import type { TableCommitApiResponse } from "@/api/types";
+import { Panel } from "@/components/Panel";
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import { formatCount, formatRelativeTime } from "@/format";
+import { hourlyCommitBuckets, writerMix } from "@/freshness";
+import { writerLabel } from "@/writerLabel";
 
-const FALLBACK_COLOR = "#8c959f";
-
-const OPERATION_COLORS: Record<string, string> = {
-  append: "#2da44e",
-  overwrite: "#bf8700",
-  delete: "#cf222e",
-  replace: "#0969da",
+const OPERATION_STEPS: Record<string, string> = {
+  append: "var(--chart-1)",
+  overwrite: "var(--chart-2)",
+  delete: "var(--chart-3)",
+  replace: "var(--chart-4)",
 };
-
-const WIDTH = 480;
-const HEIGHT = 120;
-const BAR_GAP = 2;
+const FALLBACK_STEP = "var(--chart-5)";
 
 interface Props {
   commits: TableCommitApiResponse[];
@@ -23,79 +26,94 @@ interface Props {
   lastCommittedAt: string | null;
 }
 
+function hourLabel(hourStart: string): string {
+  return new Date(hourStart).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 export function FreshnessPanel({ commits, truncated, now, lastCommittedAt }: Props) {
   const buckets = hourlyCommitBuckets(commits, now);
-  const totals = buckets.map((b) => Object.values(b.byOperation).reduce((a, c) => a + c, 0));
-  const peak = Math.max(1, ...totals);
-  const barWidth = WIDTH / buckets.length;
   const prefix = truncated ? "≥ " : "";
   const mix = Object.entries(writerMix(commits));
   const operations = [...new Set(buckets.flatMap((b) => Object.keys(b.byOperation)))];
+  const config: ChartConfig = Object.fromEntries(
+    operations.map((operation) => [
+      operation,
+      { label: operation, color: OPERATION_STEPS[operation] ?? FALLBACK_STEP },
+    ]),
+  );
+  const data = buckets.map((bucket) => ({
+    hourStart: bucket.hourStart,
+    ...bucket.byOperation,
+  }));
   const newest = [...commits].sort((a, b) => b.committed_at.localeCompare(a.committed_at))[0];
   return (
-    <section className="panel" aria-label="Freshness">
-      <h2>Freshness &amp; activity</h2>
-      <p>
-        {lastCommittedAt === null
-          ? "Last commit: none"
-          : `Last commit ${formatRelativeTime(lastCommittedAt, now)}`}
-        {newest !== undefined && lastCommittedAt !== null && (
-          <span className="muted">{` by ${writerLabel(newest.writer)}`}</span>
-        )}
-      </p>
-      <p>{`${prefix}${formatCount(commits.length)} commits in the last 24 h`}</p>
-      <svg
-        role="img"
-        aria-label="Commits per hour over the last 24 hours"
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        className="commit-chart"
-      >
-        {buckets.map((bucket, index) => {
-          let y = HEIGHT;
-          return (
-            <g key={bucket.hourStart}>
-              <title>{`${bucket.hourStart}: ${totals[index]} commits`}</title>
-              {Object.entries(bucket.byOperation).map(([operation, count]) => {
-                const height = (count / peak) * (HEIGHT - 4);
-                y -= height;
-                return (
-                  <rect
-                    key={operation}
-                    x={index * barWidth + BAR_GAP / 2}
-                    y={y}
-                    width={barWidth - BAR_GAP}
-                    height={height}
-                    fill={OPERATION_COLORS[operation] ?? FALLBACK_COLOR}
-                  />
-                );
-              })}
-            </g>
-          );
-        })}
-      </svg>
-      {operations.length > 0 && (
-        <ul className="legend">
-          {operations.map((operation) => (
-            <li key={operation}>
-              <span
-                className="swatch"
-                style={{ background: OPERATION_COLORS[operation] ?? FALLBACK_COLOR }}
+    <Panel title="Freshness & activity">
+      <div className="space-y-1 p-4 pb-0 text-sm">
+        <p>
+          {lastCommittedAt === null
+            ? "Last commit: none"
+            : `Last commit ${formatRelativeTime(lastCommittedAt, now)}`}
+          {newest !== undefined && lastCommittedAt !== null && (
+            <span className="text-muted-foreground">{` by ${writerLabel(newest.writer)}`}</span>
+          )}
+        </p>
+        <p className={truncated ? "tabular-nums text-warning" : "tabular-nums"}>
+          {`${prefix}${formatCount(commits.length)} commits in the last 24 h`}
+        </p>
+      </div>
+      <div className="p-4">
+        <ChartContainer
+          config={config}
+          className="aspect-auto h-32 w-full"
+          role="img"
+          aria-label="Commits per hour over the last 24 hours"
+        >
+          <BarChart data={data} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="hourStart"
+              tickLine={false}
+              axisLine={false}
+              interval={5}
+              tickFormatter={hourLabel}
+            />
+            <YAxis hide allowDecimals={false} />
+            <ChartTooltip
+              content={<ChartTooltipContent labelFormatter={(_, items) => hourLabel(String(items[0]?.payload?.hourStart ?? ""))} />}
+            />
+            {operations.map((operation) => (
+              <Bar
+                key={operation}
+                dataKey={operation}
+                stackId="commits"
+                fill={`var(--color-${operation})`}
+                isAnimationActive={false}
               />
-              {operation}
-            </li>
-          ))}
-        </ul>
-      )}
+            ))}
+          </BarChart>
+        </ChartContainer>
+        {operations.length > 0 && (
+          <ul aria-label="Operations" className="mt-2 flex flex-wrap gap-4 text-[13px]">
+            {operations.map((operation) => (
+              <li key={operation} className="flex items-center gap-1.5 font-mono">
+                <span
+                  aria-hidden
+                  className="size-2.5 rounded-sm"
+                  style={{ background: OPERATION_STEPS[operation] ?? FALLBACK_STEP }}
+                />
+                {operation}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       {mix.length > 0 && (
-        <p className="muted">
+        <p className="border-t border-border px-4 py-2.5 text-[13px] text-muted-foreground">
           {`Writers: ${mix
-            .map(
-              ([writer, count]) =>
-                `${writerLabel(writer)} ${prefix}${formatCount(count)}`,
-            )
+            .map(([writer, count]) => `${writerLabel(writer)} ${prefix}${formatCount(count)}`)
             .join(", ")}`}
         </p>
       )}
-    </section>
+    </Panel>
   );
 }

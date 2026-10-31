@@ -85,6 +85,21 @@ describe("HealthPanel", () => {
     expect(screen.getByRole("checkbox", { name: "expire_snapshots" })).not.toBeChecked();
   });
 
+  it("colours a due line with the warning token and a cooldown line neutral", () => {
+    renderPanel(health());
+    expect(screen.getByText(/12 reducible files in 3 partitions/)).toHaveClass("text-warning");
+    expect(screen.getByText(/in cooldown until/)).not.toHaveClass("text-warning");
+  });
+
+  it("returns focus to the Run now button when the dialog closes", async () => {
+    const user = userEvent.setup();
+    renderPanel(health());
+    const trigger = screen.getByRole("button", { name: "Run now" });
+    await user.click(trigger);
+    await user.keyboard("{Escape}");
+    expect(trigger).toHaveFocus();
+  });
+
   it("reads a not-due line without a measurement once", () => {
     renderPanel(health());
     expect(screen.getByText("not due")).toBeInTheDocument();

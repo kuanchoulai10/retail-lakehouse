@@ -1,4 +1,13 @@
-import type { JsonObject, TableMetadataApiResponse } from "../api/types";
+import type { JsonObject, TableMetadataApiResponse } from "@/api/types";
+import { Panel } from "@/components/Panel";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 function fieldsOf(spec: JsonObject | undefined): JsonObject[] {
   return Array.isArray(spec?.fields) ? (spec.fields as JsonObject[]) : [];
@@ -7,49 +16,48 @@ function fieldsOf(spec: JsonObject | undefined): JsonObject[] {
 export function SchemaPanel({ metadata }: { metadata: TableMetadataApiResponse }) {
   const partitionFields = fieldsOf(metadata.specs.at(-1));
   return (
-    <section className="panel" aria-label="Schema">
-      <h2>Schema</h2>
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th>Column</th>
-            <th>Type</th>
-            <th>Required</th>
-          </tr>
-        </thead>
-        <tbody>
+    <Panel title="Schema">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="px-4">Column</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>Required</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {metadata.schema_fields.map((field) => (
-            <tr key={String(field.field_id)}>
-              <td>{String(field.name)}</td>
-              <td>{String(field.type)}</td>
-              <td>{field.required ? "yes" : "no"}</td>
-            </tr>
+            <TableRow key={String(field.field_id)}>
+              <TableCell className="px-4 font-mono text-[13px]">{String(field.name)}</TableCell>
+              <TableCell className="font-mono text-[13px]">{String(field.type)}</TableCell>
+              <TableCell>{field.required ? "yes" : "no"}</TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
-      <h3>Partition spec</h3>
+        </TableBody>
+      </Table>
+      <h3 className="border-y border-border bg-card px-4 py-2 text-sm font-medium">Partition spec</h3>
       {partitionFields.length === 0 ? (
-        <p className="muted">Unpartitioned.</p>
+        <p className="p-4 text-[13px] text-muted-foreground">Unpartitioned.</p>
       ) : (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Field</th>
-              <th>Source column</th>
-              <th>Transform</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="px-4">Field</TableHead>
+              <TableHead>Source column</TableHead>
+              <TableHead>Transform</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {partitionFields.map((field) => (
-              <tr key={String(field.field_id)}>
-                <td>{String(field.name)}</td>
-                <td>{String(field.source_column)}</td>
-                <td>{String(field.transform)}</td>
-              </tr>
+              <TableRow key={String(field.field_id)}>
+                <TableCell className="px-4 font-mono text-[13px]">{String(field.name)}</TableCell>
+                <TableCell className="font-mono text-[13px]">{String(field.source_column)}</TableCell>
+                <TableCell className="font-mono text-[13px]">{String(field.transform)}</TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       )}
-    </section>
+    </Panel>
   );
 }
