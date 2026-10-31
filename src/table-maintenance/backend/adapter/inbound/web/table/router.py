@@ -8,6 +8,7 @@ from adapter.inbound.web.table.dto import (
     ExcludeTableApiRequest,
     IncludeTableApiRequest,
     TableApiResponse,
+    TableMetadataApiResponse,
     TriggerTableMaintenanceApiRequest,
     TriggerTableMaintenanceApiResponse,
     UpdateTableSettingsApiRequest,
@@ -15,6 +16,7 @@ from adapter.inbound.web.table.dto import (
 from adapter.inbound.web.shared import WebUseCases, use_cases_dependency
 from application.port.inbound.table import (
     ExcludeTableUseCaseInput,
+    GetTableMetadataUseCaseInput,
     GetTableUseCaseInput,
     IncludeTableUseCaseInput,
     ListTablesUseCaseInput,
@@ -67,6 +69,17 @@ def get_table(table_uuid: str, use_cases: UseCases) -> TableApiResponse:
     """Return one table."""
     output = use_cases.get_table.execute(GetTableUseCaseInput(uuid=table_uuid))
     return TableApiResponse.model_validate(output)
+
+
+@router.get("/{table_uuid}/metadata")
+def get_table_metadata(
+    table_uuid: str, use_cases: UseCases
+) -> TableMetadataApiResponse:
+    """Return the catalog metadata of one table."""
+    output = use_cases.get_table_metadata.execute(
+        GetTableMetadataUseCaseInput(uuid=table_uuid)
+    )
+    return TableMetadataApiResponse.model_validate(output)
 
 
 @router.put("/{table_uuid}/settings")

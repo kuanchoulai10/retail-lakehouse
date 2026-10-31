@@ -27,6 +27,26 @@ class TableApiResponse(BaseModel):
     updated_at: datetime
 
 
+class TableMetadataApiResponse(BaseModel):
+    """Describe the catalog definition and current totals of a table."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    uuid: str
+    format_version: int
+    location: str
+    properties: dict[str, str]
+    schema_fields: list[dict[str, Any]]
+    specs: list[dict[str, Any]]
+    current_snapshot_id: int | None
+    snapshot_count: int
+    last_committed_at: datetime | None
+    total_records: int | None
+    total_data_files: int | None
+    total_delete_files: int | None
+    total_files_size_bytes: int | None
+
+
 class UpdateTableSettingsApiRequest(RootModel[dict[str, Any]]):
     """Carry the settings object that replaces the table settings."""
 

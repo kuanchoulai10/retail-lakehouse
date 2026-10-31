@@ -41,6 +41,8 @@ UTILITY_FILES = {
     "register_discovered_table.py",
     "registration_outcome.py",
     "table_hint_action.py",
+    "load_catalog_table.py",
+    "raise_not_in_catalog.py",
 }
 
 # Known verbs for service naming. This is a pre-defined allowlist, not an

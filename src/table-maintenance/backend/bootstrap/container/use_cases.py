@@ -14,6 +14,7 @@ if TYPE_CHECKING:
         ProcessTableHintUseCase,
         SyncDiscoveredTablesUseCase,
         ExcludeTableUseCase,
+        GetTableMetadataUseCase,
         GetTableUseCase,
         IncludeTableUseCase,
         ListTablesUseCase,
@@ -68,6 +69,7 @@ class UseCases:
     update_table_maintenance_preset: UpdateTableMaintenancePresetUseCase
     exclude_table: ExcludeTableUseCase
     get_table: GetTableUseCase
+    get_table_metadata: GetTableMetadataUseCase
     include_table: IncludeTableUseCase
     list_tables: ListTablesUseCase
     pause_table: PauseTableUseCase

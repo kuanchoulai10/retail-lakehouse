@@ -10,6 +10,15 @@ from application.port.inbound.table.exclude_table.use_case import ExcludeTableUs
 from application.port.inbound.table.get_table.input import GetTableUseCaseInput
 from application.port.inbound.table.get_table.output import GetTableUseCaseOutput
 from application.port.inbound.table.get_table.use_case import GetTableUseCase
+from application.port.inbound.table.get_table_metadata.input import (
+    GetTableMetadataUseCaseInput,
+)
+from application.port.inbound.table.get_table_metadata.output import (
+    GetTableMetadataUseCaseOutput,
+)
+from application.port.inbound.table.get_table_metadata.use_case import (
+    GetTableMetadataUseCase,
+)
 from application.port.inbound.table.include_table.input import IncludeTableUseCaseInput
 from application.port.inbound.table.include_table.output import (
     IncludeTableUseCaseOutput,
@@ -91,6 +100,9 @@ __all__ = [
     "GetTableUseCase",
     "GetTableUseCaseInput",
     "GetTableUseCaseOutput",
+    "GetTableMetadataUseCase",
+    "GetTableMetadataUseCaseInput",
+    "GetTableMetadataUseCaseOutput",
     "IncludeTableUseCase",
     "IncludeTableUseCaseInput",
     "IncludeTableUseCaseOutput",

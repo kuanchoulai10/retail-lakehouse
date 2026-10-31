@@ -13,6 +13,7 @@ from application.service.table import (
     ProcessTableHintService,
     SyncDiscoveredTablesService,
     ExcludeTableService,
+    GetTableMetadataService,
     GetTableService,
     IncludeTableService,
     ListTablesService,
@@ -112,6 +113,7 @@ def build_use_cases(
         ),
         exclude_table=ExcludeTableService(tables, catalog, table_changes, clock=clock),
         get_table=GetTableService(tables),
+        get_table_metadata=GetTableMetadataService(tables, catalog),
         include_table=IncludeTableService(
             tables, presets, catalog, table_changes, clock=clock
         ),

@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from application.port.inbound.table import (
         SyncDiscoveredTablesUseCase,
         ExcludeTableUseCase,
+        GetTableMetadataUseCase,
         GetTableUseCase,
         IncludeTableUseCase,
         ListTablesUseCase,
@@ -60,6 +61,7 @@ class WebUseCases:
     delete_table_maintenance_preset: DeleteTableMaintenancePresetUseCase
     list_tables: ListTablesUseCase
     get_table: GetTableUseCase
+    get_table_metadata: GetTableMetadataUseCase
     update_table_settings: UpdateTableSettingsUseCase
     pause_table: PauseTableUseCase
     resume_table: ResumeTableUseCase
