@@ -43,6 +43,7 @@ UTILITY_FILES = {
     "table_hint_action.py",
     "load_catalog_table.py",
     "raise_not_in_catalog.py",
+    "summary_int.py",
 }
 
 # Known verbs for service naming. This is a pre-defined allowlist, not an

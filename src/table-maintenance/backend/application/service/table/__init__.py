@@ -20,6 +20,7 @@ from application.service.table.resume_table import ResumeTableService
 from application.service.table.sync_discovered_tables import SyncDiscoveredTablesService
 from application.service.table.load_catalog_table import load_catalog_table
 from application.service.table.raise_not_in_catalog import raise_not_in_catalog
+from application.service.table.summary_int import summary_int
 from application.service.table.table_hint_action import TableHintAction
 from application.service.table.table_observation_from_gateway import (
     table_observation_from_gateway,
@@ -50,6 +51,7 @@ __all__ = [
     "load_catalog_table",
     "raise_not_in_catalog",
     "register_discovered_table",
+    "summary_int",
     "table_observation_from_gateway",
     "table_output_fields",
 ]

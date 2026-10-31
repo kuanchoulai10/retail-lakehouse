@@ -13,18 +13,12 @@ from application.port.inbound.table import (
 )
 from application.service.table.load_catalog_table import load_catalog_table
 from application.service.table.raise_not_in_catalog import raise_not_in_catalog
+from application.service.table.summary_int import summary_int
 
 if TYPE_CHECKING:
     from typing import Any
 
     from application.port.outbound.table import ReadTableMetadataGateway, TablesRepo
-
-
-def _summary_int(summary: dict[str, str], key: str) -> int | None:
-    try:
-        return int(summary[key])
-    except KeyError, ValueError:
-        return None
 
 
 def _to_item(commit: dict[str, Any]) -> ListTableCommitsUseCaseOutputItem:
@@ -35,12 +29,12 @@ def _to_item(commit: dict[str, Any]) -> ListTableCommitsUseCaseOutputItem:
         committed_at=datetime.fromisoformat(commit["committed_at"]),
         operation=commit["operation"],
         writer=commit["writer"],
-        added_records=_summary_int(summary, "added-records"),
-        deleted_records=_summary_int(summary, "deleted-records"),
-        added_data_files=_summary_int(summary, "added-data-files"),
-        deleted_data_files=_summary_int(summary, "deleted-data-files"),
-        added_delete_files=_summary_int(summary, "added-delete-files"),
-        removed_delete_files=_summary_int(summary, "removed-delete-files"),
+        added_records=summary_int(summary, "added-records"),
+        deleted_records=summary_int(summary, "deleted-records"),
+        added_data_files=summary_int(summary, "added-data-files"),
+        deleted_data_files=summary_int(summary, "deleted-data-files"),
+        added_delete_files=summary_int(summary, "added-delete-files"),
+        removed_delete_files=summary_int(summary, "removed-delete-files"),
         summary=summary,
     )
 

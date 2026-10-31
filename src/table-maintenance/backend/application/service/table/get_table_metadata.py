@@ -12,16 +12,10 @@ from application.port.inbound.table import (
 )
 from application.service.table.load_catalog_table import load_catalog_table
 from application.service.table.raise_not_in_catalog import raise_not_in_catalog
+from application.service.table.summary_int import summary_int
 
 if TYPE_CHECKING:
     from application.port.outbound.table import ReadTableMetadataGateway, TablesRepo
-
-
-def _summary_int(summary: dict[str, str], key: str) -> int | None:
-    try:
-        return int(summary[key])
-    except KeyError, ValueError:
-        return None
 
 
 class GetTableMetadataService(GetTableMetadataUseCase):
@@ -56,8 +50,8 @@ class GetTableMetadataService(GetTableMetadataUseCase):
             last_committed_at=(
                 None if committed is None else datetime.fromisoformat(committed)
             ),
-            total_records=_summary_int(summary, "total-records"),
-            total_data_files=_summary_int(summary, "total-data-files"),
-            total_delete_files=_summary_int(summary, "total-delete-files"),
-            total_files_size_bytes=_summary_int(summary, "total-files-size"),
+            total_records=summary_int(summary, "total-records"),
+            total_data_files=summary_int(summary, "total-data-files"),
+            total_delete_files=summary_int(summary, "total-delete-files"),
+            total_files_size_bytes=summary_int(summary, "total-files-size"),
         )
