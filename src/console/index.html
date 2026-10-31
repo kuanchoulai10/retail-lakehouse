@@ -4,6 +4,27 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Data Platform Console</title>
+    <script>
+      (function () {
+        var choice = "system";
+        try {
+          var stored = window.localStorage.getItem("console-theme");
+          if (stored === "light" || stored === "dark" || stored === "system") {
+            choice = stored;
+          }
+        } catch (error) {
+          choice = "system";
+        }
+        var dark =
+          choice === "dark" ||
+          (choice === "system" &&
+            typeof window.matchMedia === "function" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches);
+        if (dark) {
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
