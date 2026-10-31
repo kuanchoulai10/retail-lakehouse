@@ -97,3 +97,11 @@ export interface TableMaintenanceRunApiResponse {
   created_at: string;
   finished_at: string | null;
 }
+
+export interface TableMaintenancePresetApiResponse {
+  id: string;
+  name: string;
+  settings: JsonObject;
+  created_at: string;
+  updated_at: string;
+}

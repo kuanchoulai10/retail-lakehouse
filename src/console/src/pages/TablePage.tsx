@@ -7,6 +7,7 @@ import { CommitsTab } from "../components/tabs/CommitsTab";
 import { MaintenanceTab } from "../components/tabs/MaintenanceTab";
 import { OverviewTab } from "../components/tabs/OverviewTab";
 import { PropertiesTab } from "../components/tabs/PropertiesTab";
+import { SettingsTab } from "../components/tabs/SettingsTab";
 import { errorMessage } from "../format";
 
 const TABS = [
@@ -80,8 +81,10 @@ export function TablePage() {
         ) : (
           <p>Loading…</p>
         );
+      case "settings":
+        return <SettingsTab tableUuid={uuid} />;
       default:
-        return <p className="muted">The {tab} tab arrives in a later release.</p>;
+        return null;
     }
   }
 
