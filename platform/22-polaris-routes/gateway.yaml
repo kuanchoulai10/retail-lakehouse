@@ -15,5 +15,9 @@ spec:
         namespaces:
           from: Selector
           selector:
-            matchLabels:
-              kubernetes.io/metadata.name: lakehouse-catalog
+            matchExpressions:
+              - key: kubernetes.io/metadata.name
+                operator: In
+                values:
+                  - lakehouse-catalog
+                  - lakehouse-control-plane

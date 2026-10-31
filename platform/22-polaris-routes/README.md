@@ -1,6 +1,6 @@
 # polaris-routes
 
-Installs the north-south routing layer for Polaris via a single Envoy-backed `Gateway` and one catch-all `HTTPRoute`. External clients hit the ingress on port 80 and every request reaches Polaris. The table-maintenance control plane API is not exposed through this Gateway; it runs in `lakehouse-control-plane` (see `platform/25-lakehouse-control-plane`).
+Installs the north-south routing layer for Polaris via a single Envoy-backed `Gateway` and one catch-all `HTTPRoute`. External clients hit the ingress on port 80 and every request reaches Polaris, except `/console`, which the `console` HTTPRoute of wave 25 sends to the data platform console. The Gateway admits routes from `lakehouse-catalog` and `lakehouse-control-plane`. The table-maintenance control plane API is not exposed directly; the console proxies `/console/api/` to it (see `platform/25-lakehouse-control-plane`).
 
 Service-to-service (east-west) traffic — for example the backend calling Polaris — does NOT go through this Gateway. In-cluster consumers use Service DNS directly (e.g. `polaris.lakehouse-catalog.svc.cluster.local:8181`).
 

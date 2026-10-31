@@ -6,6 +6,7 @@ set -euo pipefail
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 BACKEND_DIR="${REPO_ROOT}/src/table-maintenance/backend"
 SPARK_DIR="${REPO_ROOT}/src/table-maintenance/runtime/spark"
+CONSOLE_DIR="${REPO_ROOT}/src/console"
 
 source_tag() {
   local source_dir="$1"
@@ -42,9 +43,12 @@ build_and_load() {
 
 BACKEND_TAG="$(source_tag "${BACKEND_DIR}")"
 SPARK_TAG="$(source_tag "${SPARK_DIR}")"
+CONSOLE_TAG="$(source_tag "${CONSOLE_DIR}")"
 
 build_and_load table-maintenance-backend "${BACKEND_DIR}" "${BACKEND_TAG}"
 build_and_load table-maintenance-spark "${SPARK_DIR}" "${SPARK_TAG}"
+build_and_load console "${CONSOLE_DIR}" "${CONSOLE_TAG}"
 
 printf 'BACKEND_TAG=%s\n' "${BACKEND_TAG}"
 printf 'SPARK_TAG=%s\n' "${SPARK_TAG}"
+printf 'CONSOLE_TAG=%s\n' "${CONSOLE_TAG}"

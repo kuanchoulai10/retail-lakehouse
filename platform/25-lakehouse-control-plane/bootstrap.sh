@@ -114,12 +114,15 @@ unset POLARIS_CLIENT_ID POLARIS_CLIENT_SECRET S3_ACCESS_KEY_ID S3_SECRET_ACCESS_
 BUILD_OUTPUT="$(KUBE_CONTEXT="${KUBE_CONTEXT}" bash "${SCRIPT_DIR}/build.sh")"
 BACKEND_TAG="$(sed -n 's/^BACKEND_TAG=//p' <<<"${BUILD_OUTPUT}")"
 SPARK_TAG="$(sed -n 's/^SPARK_TAG=//p' <<<"${BUILD_OUTPUT}")"
-[[ -n "${BACKEND_TAG}" && -n "${SPARK_TAG}" ]] || fail "build.sh did not print image tags"
+CONSOLE_TAG="$(sed -n 's/^CONSOLE_TAG=//p' <<<"${BUILD_OUTPUT}")"
+[[ -n "${BACKEND_TAG}" && -n "${SPARK_TAG}" && -n "${CONSOLE_TAG}" ]] \
+  || fail "build.sh did not print image tags"
 
 helm upgrade --install table-maintenance "${SCRIPT_DIR}/chart" \
   --namespace "${CONTROL_PLANE_NAMESPACE}" \
   --set image.backend.tag="${BACKEND_TAG}" \
   --set image.spark.tag="${SPARK_TAG}" \
+  --set image.console.tag="${CONSOLE_TAG}" \
   --wait \
   --wait-for-jobs \
   --timeout "${TIMEOUT}" \

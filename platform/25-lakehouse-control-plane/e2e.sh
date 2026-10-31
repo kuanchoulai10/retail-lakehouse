@@ -385,6 +385,39 @@ REGIONS_OBJECTS_AFTER="$(object_count "${REGIONS_PREFIX}")"
 progress "after: ${ORDERS} files=${ORDERS_FILES_AFTER} snapshots=${ORDERS_SNAPSHOTS_AFTER} objects=${ORDERS_OBJECTS_AFTER}"
 progress "after: ${REGIONS} files=${REGIONS_FILES_AFTER} snapshots=${REGIONS_SNAPSHOTS_AFTER} objects=${REGIONS_OBJECTS_AFTER}"
 
+progress "reading ${ORDERS} metadata, commits, health and storage through the API"
+ORDERS_METADATA="$(api GET "/v1/tables/${ORDERS_UUID}/metadata")"
+ORDERS_COMMITS="$(api GET "/v1/tables/${ORDERS_UUID}/commits?limit=1000")"
+ORDERS_HEALTH="$(api GET "/v1/tables/${ORDERS_UUID}/health")"
+ORDERS_STORAGE="$(api GET "/v1/tables/${ORDERS_UUID}/storage")"
+METADATA_FILES="$(jq '(.total_data_files // 0) + (.total_delete_files // 0)' <<<"${ORDERS_METADATA}")"
+METADATA_SNAPSHOTS="$(jq '.snapshot_count' <<<"${ORDERS_METADATA}")"
+progress "metadata: ${ORDERS} data+delete files=${METADATA_FILES} snapshots=${METADATA_SNAPSHOTS}"
+(( METADATA_FILES == ORDERS_FILES_AFTER )) || {
+  echo "metadata counts ${METADATA_FILES} data+delete files, \$files counts ${ORDERS_FILES_AFTER}" >&2
+  exit 1
+}
+(( METADATA_SNAPSHOTS == ORDERS_SNAPSHOTS_AFTER )) || {
+  echo "metadata counts ${METADATA_SNAPSHOTS} snapshots, \$snapshots counts ${ORDERS_SNAPSHOTS_AFTER}" >&2
+  exit 1
+}
+jq -e '[.items[].committed_at | sub("\\.[0-9]+"; "") | sub("\\+00:00$"; "Z") | fromdateiso8601]
+  | length > 0 and .[0] == max' <<<"${ORDERS_COMMITS}" >/dev/null \
+  || { echo "${ORDERS} commits are not newest first" >&2; exit 1; }
+jq -e '.operations | length == 4' <<<"${ORDERS_HEALTH}" >/dev/null \
+  || { echo "${ORDERS} health does not report four operations" >&2; exit 1; }
+RECLAIMED_REWRITTEN="$(jq '.reclaimed.rewritten_data_files // 0' <<<"${ORDERS_STORAGE}")"
+progress "storage: ${ORDERS} reclaimed rewritten_data_files=${RECLAIMED_REWRITTEN}"
+if (( RECLAIMED_REWRITTEN < 20 )); then
+  if jq -e '[.[] | .operations[] | select(.operation == "rewrite_data_files")
+      | .metrics.completed_without_callback] | any' <<<"${ORDERS_RUNS}" >/dev/null; then
+    progress "${ORDERS}: the compaction callback was lost; skipping the reclaimed check"
+  else
+    echo "${ORDERS} storage reclaimed ${RECLAIMED_REWRITTEN} rewritten data files, expected >= 20" >&2
+    exit 1
+  fi
+fi
+
 (( ORDERS_FILES_AFTER < ORDERS_FILES_BEFORE )) \
   || { echo "${ORDERS} file count did not decrease" >&2; exit 1; }
 (( ORDERS_SNAPSHOTS_AFTER < ORDERS_SNAPSHOTS_BEFORE )) \

@@ -6,6 +6,10 @@
 {{ .Values.image.spark.repository }}:{{ required "image.spark.tag is required" .Values.image.spark.tag }}
 {{- end -}}
 
+{{- define "table-maintenance.consoleImage" -}}
+{{ .Values.image.console.repository }}:{{ required "image.console.tag is required" .Values.image.console.tag }}
+{{- end -}}
+
 {{- define "table-maintenance.labels" -}}
 app.kubernetes.io/name: table-maintenance
 app.kubernetes.io/instance: {{ .Release.Name }}

@@ -5,6 +5,9 @@ image:
   spark:
     repository: table-maintenance-spark
     tag: ""
+  console:
+    repository: console
+    tag: ""
   pullPolicy: IfNotPresent
 
 postgres:
@@ -72,6 +75,19 @@ eventConsumer:
       memory: 192Mi
     limits:
       memory: 512Mi
+
+console:
+  port: 8080
+  gateway:
+    name: platform-gateway
+    namespace: istio-ingress
+  pathPrefix: /console
+  resources:
+    requests:
+      cpu: 20m
+      memory: 32Mi
+    limits:
+      memory: 128Mi
 
 migrate:
   resources:
