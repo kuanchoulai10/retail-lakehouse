@@ -81,10 +81,10 @@ unstable, and that the memory pressure has to be solved first.
   takes part in. A failure means removing the label and recording why before going on.
 - Canary risk to check first: istio-cni has never redirected traffic on this bridge-CNI node. If the canary fails
   for a CNI reason, stop and bring it back to the owner instead of working around it.
-- Metrics: kube-prometheus scrapes ztunnel (PodMonitor or ServiceMonitor in the ztunnel wave) so
+- Metrics: kube-prometheus scrapes ztunnel (PodMonitor or ServiceMonitor in wave `26-ambient-mesh`) so
   `istio_tcp_*` series exist.
-- Kiali: in wave `platform/26-ambient-mesh` (see "Settled after the builder check"), after Prometheus and
-  istiod), official `kiali-server` Helm chart pinned, anonymous auth (dev cluster, no auth today anywhere), pointing
+- Kiali: in wave `platform/26-ambient-mesh` (see "Settled after the builder check"),
+  official `kiali-server` Helm chart pinned, anonymous auth (dev cluster, no auth today anywhere), pointing
   at `prometheus-k8s.monitoring`, memory limit about 256 MiB. Exposed through an HTTPRoute on `platform-gateway`
   (path prefix, like the console).
 - CLAUDE.md: replace "New namespaces are not labeled ambient…" with the enrolled list and the rule for new
