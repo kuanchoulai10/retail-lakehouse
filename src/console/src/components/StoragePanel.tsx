@@ -1,4 +1,4 @@
-import type { TableStorageApiResponse } from "../api/types";
+import type { TableStorageApiResponse, TableStorageReclaimedApiResponse } from "../api/types";
 import { formatBytes, formatCount } from "../format";
 
 interface Props {
@@ -10,37 +10,32 @@ interface ReclaimedRow {
   value: string;
 }
 
-const DELETED_KEYS = [
-  "deleted_data_files_count",
-  "deleted_manifest_files_count",
-  "deleted_position_delete_files_count",
-  "deleted_equality_delete_files_count",
-];
-
-function reclaimedRows(reclaimed: Record<string, number>): ReclaimedRow[] {
+function reclaimedRows(reclaimed: TableStorageReclaimedApiResponse): ReclaimedRow[] {
   const rows: ReclaimedRow[] = [];
-  const rewritten = reclaimed.rewritten_data_files_count;
-  if (rewritten !== undefined) {
+  if (reclaimed.rewritten_data_files > 0 || reclaimed.added_data_files > 0) {
     rows.push({
       label: "Data files rewritten",
-      value: `${formatCount(rewritten)} → ${formatCount(reclaimed.added_data_files_count ?? 0)}`,
+      value: `${formatCount(reclaimed.rewritten_data_files)} → ${formatCount(reclaimed.added_data_files)}`,
     });
   }
-  const bytes = reclaimed.rewritten_bytes_count;
-  if (bytes !== undefined) rows.push({ label: "Bytes rewritten", value: formatBytes(bytes) });
-  const manifests = reclaimed.rewritten_manifests_count;
-  if (manifests !== undefined) {
+  if (reclaimed.rewritten_bytes > 0) {
+    rows.push({ label: "Bytes rewritten", value: formatBytes(reclaimed.rewritten_bytes) });
+  }
+  if (reclaimed.rewritten_manifests > 0 || reclaimed.added_manifests > 0) {
     rows.push({
       label: "Manifests rewritten",
-      value: `${formatCount(manifests)} → ${formatCount(reclaimed.added_manifests_count ?? 0)}`,
+      value: `${formatCount(reclaimed.rewritten_manifests)} → ${formatCount(reclaimed.added_manifests)}`,
     });
   }
-  const expired = reclaimed.deleted_manifest_lists_count;
-  if (expired !== undefined) rows.push({ label: "Snapshots expired", value: formatCount(expired) });
-  if (DELETED_KEYS.some((key) => reclaimed[key] !== undefined)) {
-    const total = DELETED_KEYS.reduce((sum, key) => sum + (reclaimed[key] ?? 0), 0);
-    rows.push({ label: "Files deleted by expiry", value: formatCount(total) });
+  if (reclaimed.expired_snapshots > 0) {
+    rows.push({ label: "Snapshots expired", value: formatCount(reclaimed.expired_snapshots) });
   }
+  const deleted =
+    reclaimed.deleted_data_files +
+    reclaimed.deleted_manifest_files +
+    reclaimed.deleted_position_delete_files +
+    reclaimed.deleted_equality_delete_files;
+  if (deleted > 0) rows.push({ label: "Files deleted by expiry", value: formatCount(deleted) });
   return rows;
 }
 

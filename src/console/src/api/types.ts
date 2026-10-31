@@ -53,13 +53,26 @@ export interface TableHealthApiResponse {
   equality_delete_files: number;
 }
 
+export interface TableStorageReclaimedApiResponse {
+  rewritten_data_files: number;
+  added_data_files: number;
+  rewritten_bytes: number;
+  rewritten_manifests: number;
+  added_manifests: number;
+  expired_snapshots: number;
+  deleted_data_files: number;
+  deleted_manifest_files: number;
+  deleted_position_delete_files: number;
+  deleted_equality_delete_files: number;
+}
+
 export interface TableStorageApiResponse {
   current_bytes: number;
   current_files: number;
   old_snapshot_bytes: number;
   old_snapshot_files: number;
   window_days: number;
-  reclaimed: Record<string, number>;
+  reclaimed: TableStorageReclaimedApiResponse;
   attempts_without_metrics: number;
 }
 

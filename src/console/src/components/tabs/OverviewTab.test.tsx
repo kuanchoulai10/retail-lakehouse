@@ -29,7 +29,18 @@ const STORAGE = {
   old_snapshot_bytes: 2048,
   old_snapshot_files: 2,
   window_days: 30,
-  reclaimed: {},
+  reclaimed: {
+    rewritten_data_files: 0,
+    added_data_files: 0,
+    rewritten_bytes: 0,
+    rewritten_manifests: 0,
+    added_manifests: 0,
+    expired_snapshots: 0,
+    deleted_data_files: 0,
+    deleted_manifest_files: 0,
+    deleted_position_delete_files: 0,
+    deleted_equality_delete_files: 0,
+  },
   attempts_without_metrics: 0,
 };
 
