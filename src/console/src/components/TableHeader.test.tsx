@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
@@ -6,15 +6,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse, metadataFixture, tableFixture } from "../test/fixtures";
 import { TableHeader } from "./TableHeader";
 
-function renderHeader(status = "active") {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+function newClient() {
+  return new QueryClient({ defaultOptions: { queries: { retry: false } } });
+}
+
+function renderHeader(status = "active", client = newClient(), extra: React.ReactNode = null) {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
         <TableHeader table={tableFixture({ status })} metadata={metadataFixture()} />
+        {extra}
       </MemoryRouter>
     </QueryClientProvider>,
   );
+}
+
+function HealthProbe({ queryFn }: { queryFn: () => Promise<unknown> }) {
+  useQuery({ queryKey: ["health", "uuid-orders"], queryFn });
+  return null;
 }
 
 describe("TableHeader", () => {
@@ -56,6 +65,42 @@ describe("TableHeader", () => {
     expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe(
       "/console/api/v1/tables/uuid-orders/resume",
     );
+  });
+
+  it("refetches health after Pause", async () => {
+    const user = userEvent.setup();
+    const healthFn = vi.fn().mockResolvedValue({});
+    renderHeader("active", newClient(), <HealthProbe queryFn={healthFn} />);
+    await vi.waitFor(() => expect(healthFn).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole("button", { name: "Pause" }));
+    await vi.waitFor(() => expect(healthFn).toHaveBeenCalledTimes(2));
+  });
+
+  it("marks runs and health stale after a maintenance trigger", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ accepted: true }, 202)));
+    const client = newClient();
+    client.setQueryData(["runs", "uuid-orders"], []);
+    client.setQueryData(["health", "uuid-orders"], {});
+    renderHeader("active", client);
+    await user.click(screen.getByRole("button", { name: "Run maintenance" }));
+    await user.click(screen.getByRole("button", { name: "Run" }));
+    await vi.waitFor(() => {
+      expect(client.getQueryState(["runs", "uuid-orders"])?.isInvalidated).toBe(true);
+      expect(client.getQueryState(["health", "uuid-orders"])?.isInvalidated).toBe(true);
+    });
+  });
+
+  it("disables Run maintenance unless the table is active", () => {
+    renderHeader("paused");
+    const button = screen.getByRole("button", { name: "Run maintenance" });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("title", "Only an active table can run maintenance");
+  });
+
+  it("enables Run maintenance on an active table", () => {
+    renderHeader("active");
+    expect(screen.getByRole("button", { name: "Run maintenance" })).toBeEnabled();
   });
 
   it("posts the checked operations from the run maintenance dialog", async () => {

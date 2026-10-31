@@ -59,7 +59,7 @@ export function HealthPanel({ tableUuid, health }: Props) {
           <li key={line.operation}>
             <strong>{line.operation}</strong>
             <span className={`health-${line.verdict}`}>{lineText(line, health.scheduled)}</span>
-            {line.verdict === "due" && (
+            {health.scheduled && line.verdict === "due" && (
               <button type="button" onClick={() => setRunOperation(line.operation)}>
                 Run now
               </button>

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { apiGet, apiSend } from "../api/client";
+import { invalidateTableState } from "../api/invalidateTableState";
 import type { JsonObject, TableApiResponse, TableMaintenancePresetApiResponse } from "../api/types";
 import { errorMessage } from "../format";
 import { SettingsFieldGroup, type SettingsField } from "./SettingsFieldGroup";
@@ -56,7 +57,7 @@ export function SettingsForm({ table }: Props) {
   const save = useMutation({
     mutationFn: (settings: JsonObject) =>
       apiSend("PUT", `/v1/tables/${table.uuid}/settings`, settings),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["table", table.uuid] }),
+    onSuccess: () => invalidateTableState(queryClient, table.uuid),
   });
   const reset = useMutation({
     mutationFn: async (presetId: string) => {
@@ -67,7 +68,7 @@ export function SettingsForm({ table }: Props) {
     },
     onSuccess: () => {
       setConfirming(false);
-      return queryClient.invalidateQueries({ queryKey: ["table", table.uuid] });
+      return invalidateTableState(queryClient, table.uuid);
     },
   });
 

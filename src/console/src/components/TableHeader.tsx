@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { apiSend } from "../api/client";
+import { invalidateTableState } from "../api/invalidateTableState";
 import type { TableApiResponse, TableMetadataApiResponse } from "../api/types";
 import { errorMessage, formatBytes, formatCount, formatRelativeTime } from "../format";
 import { RunMaintenanceDialog } from "./RunMaintenanceDialog";
@@ -20,9 +21,10 @@ export function TableHeader({ table, metadata }: Props) {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const paused = table.status.toLowerCase() === "paused";
+  const active = table.status.toLowerCase() === "active";
   const toggle = useMutation({
     mutationFn: () => apiSend("POST", `/v1/tables/${table.uuid}/${paused ? "resume" : "pause"}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["table", table.uuid] }),
+    onSuccess: () => invalidateTableState(queryClient, table.uuid),
   });
 
   return (
@@ -35,7 +37,12 @@ export function TableHeader({ table, metadata }: Props) {
         <span className="muted">Preset: {table.source_preset_id ?? "—"}</span>
         <span className="muted">Rule: {table.matched_rule_id ?? "—"}</span>
         <span className="spacer" />
-        <button type="button" onClick={() => setDialogOpen(true)}>
+        <button
+          type="button"
+          disabled={!active}
+          title={active ? undefined : "Only an active table can run maintenance"}
+          onClick={() => setDialogOpen(true)}
+        >
           Run maintenance
         </button>
         <button type="button" disabled={toggle.isPending} onClick={() => toggle.mutate()}>

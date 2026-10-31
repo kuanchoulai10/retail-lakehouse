@@ -39,11 +39,18 @@ function mockApi(table: TableApiResponse, putResponse: () => Response) {
 
 function renderTab() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  client.setQueryData(["health", "uuid-orders"], {});
+  client.setQueryData(["metadata", "uuid-orders"], {});
   render(
     <QueryClientProvider client={client}>
       <SettingsTab tableUuid="uuid-orders" />
     </QueryClientProvider>,
   );
+  return client;
+}
+
+function isStale(client: QueryClient, key: string) {
+  return client.getQueryState([key, "uuid-orders"])?.isInvalidated;
 }
 
 function puts(fetchMock: ReturnType<typeof mockApi>) {
@@ -90,6 +97,28 @@ describe("SettingsTab", () => {
     await userEvent.click(screen.getByRole("button", { name: "Confirm reset" }));
     await vi.waitFor(() => expect(puts(fetchMock)).toHaveLength(1));
     expect(JSON.parse(String(puts(fetchMock)[0]?.[1]?.body))).toEqual(PRESET_SETTINGS);
+  });
+
+  it("marks health and metadata stale after a save", async () => {
+    mockApi(table, () => jsonResponse(table));
+    const client = renderTab();
+    await screen.findByRole("group", { name: "rewrite_data_files" });
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await vi.waitFor(() => {
+      expect(isStale(client, "health")).toBe(true);
+      expect(isStale(client, "metadata")).toBe(true);
+    });
+  });
+
+  it("marks health and metadata stale after a reset", async () => {
+    mockApi(table, () => jsonResponse(table));
+    const client = renderTab();
+    await userEvent.click(await screen.findByRole("button", { name: "Reset to preset" }));
+    await userEvent.click(screen.getByRole("button", { name: "Confirm reset" }));
+    await vi.waitFor(() => {
+      expect(isStale(client, "health")).toBe(true);
+      expect(isStale(client, "metadata")).toBe(true);
+    });
   });
 
   it("hides Reset to preset when the table has no source preset", async () => {

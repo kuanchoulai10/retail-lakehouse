@@ -72,6 +72,11 @@ describe("HealthPanel", () => {
     expect(screen.getByText("disabled")).toBeInTheDocument();
   });
 
+  it("hides Run now while the scheduler skips the table", () => {
+    renderPanel(health({ scheduled: false, not_scheduled_reason: "paused" }));
+    expect(screen.queryByRole("button", { name: "Run now" })).not.toBeInTheDocument();
+  });
+
   it("opens the run dialog with only that operation selected", async () => {
     const user = userEvent.setup();
     renderPanel(health());

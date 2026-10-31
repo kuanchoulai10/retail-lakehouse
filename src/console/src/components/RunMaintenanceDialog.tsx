@@ -29,7 +29,9 @@ export function RunMaintenanceDialog({
         operations: ALL_OPERATIONS.filter((op) => selected.includes(op)),
       }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["runs", tableUuid] });
+      await Promise.all(
+        ["runs", "health"].map((key) => queryClient.invalidateQueries({ queryKey: [key, tableUuid] })),
+      );
       onClose();
     },
   });
