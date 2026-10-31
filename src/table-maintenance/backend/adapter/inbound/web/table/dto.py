@@ -47,6 +47,33 @@ class TableMetadataApiResponse(BaseModel):
     total_files_size_bytes: int | None
 
 
+class TableHealthOperationApiResponse(BaseModel):
+    """Describe the scheduler's verdict on one maintenance operation."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    operation: str
+    verdict: str
+    measured: int | None
+    threshold: int | None
+    next_eligible_at: datetime | None
+    qualifying_partitions: int | None
+    size_bytes: int | None
+    size_source: str | None
+
+
+class TableHealthApiResponse(BaseModel):
+    """Describe the maintenance health of a table."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    scheduled: bool
+    not_scheduled_reason: str | None
+    operations: list[TableHealthOperationApiResponse]
+    position_delete_files: int
+    equality_delete_files: int
+
+
 class TableCommitApiResponse(BaseModel):
     """Describe one commit of a table."""
 

@@ -10,6 +10,7 @@ from adapter.inbound.web.table.dto import (
     IncludeTableApiRequest,
     TableApiResponse,
     TableCommitsApiResponse,
+    TableHealthApiResponse,
     TableMetadataApiResponse,
     TriggerTableMaintenanceApiRequest,
     TriggerTableMaintenanceApiResponse,
@@ -18,6 +19,7 @@ from adapter.inbound.web.table.dto import (
 from adapter.inbound.web.shared import WebUseCases, use_cases_dependency
 from application.port.inbound.table import (
     ExcludeTableUseCaseInput,
+    GetTableHealthUseCaseInput,
     GetTableMetadataUseCaseInput,
     GetTableUseCaseInput,
     IncludeTableUseCaseInput,
@@ -83,6 +85,15 @@ def get_table_metadata(
         GetTableMetadataUseCaseInput(uuid=table_uuid)
     )
     return TableMetadataApiResponse.model_validate(output)
+
+
+@router.get("/{table_uuid}/health")
+def get_table_health(table_uuid: str, use_cases: UseCases) -> TableHealthApiResponse:
+    """Return the scheduler's maintenance evaluation of one table."""
+    output = use_cases.get_table_health.execute(
+        GetTableHealthUseCaseInput(uuid=table_uuid)
+    )
+    return TableHealthApiResponse.model_validate(output)
 
 
 @router.get("/{table_uuid}/commits")

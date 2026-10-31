@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from application.service.table.exclude_table import ExcludeTableService
 from application.service.table.get_table import GetTableService
+from application.service.table.get_table_health import GetTableHealthService
 from application.service.table.get_table_metadata import GetTableMetadataService
 from application.service.table.include_table import IncludeTableService
 from application.service.table.list_table_commits import ListTableCommitsService
@@ -34,6 +35,7 @@ from application.service.table.update_table_settings import UpdateTableSettingsS
 __all__ = [
     "ExcludeTableService",
     "GetTableService",
+    "GetTableHealthService",
     "GetTableMetadataService",
     "IncludeTableService",
     "ListTableCommitsService",

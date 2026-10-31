@@ -10,6 +10,16 @@ from application.port.inbound.table.exclude_table.use_case import ExcludeTableUs
 from application.port.inbound.table.get_table.input import GetTableUseCaseInput
 from application.port.inbound.table.get_table.output import GetTableUseCaseOutput
 from application.port.inbound.table.get_table.use_case import GetTableUseCase
+from application.port.inbound.table.get_table_health.input import (
+    GetTableHealthUseCaseInput,
+)
+from application.port.inbound.table.get_table_health.output import (
+    GetTableHealthUseCaseOutput,
+    GetTableHealthUseCaseOutputItem,
+)
+from application.port.inbound.table.get_table_health.use_case import (
+    GetTableHealthUseCase,
+)
 from application.port.inbound.table.get_table_metadata.input import (
     GetTableMetadataUseCaseInput,
 )
@@ -110,6 +120,10 @@ __all__ = [
     "GetTableUseCase",
     "GetTableUseCaseInput",
     "GetTableUseCaseOutput",
+    "GetTableHealthUseCase",
+    "GetTableHealthUseCaseInput",
+    "GetTableHealthUseCaseOutput",
+    "GetTableHealthUseCaseOutputItem",
     "GetTableMetadataUseCase",
     "GetTableMetadataUseCaseInput",
     "GetTableMetadataUseCaseOutput",
