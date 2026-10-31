@@ -36,33 +36,6 @@
     margin: 0 0 16px;
   }
 
-  .filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    margin-bottom: 16px;
-  }
-
-  .filters label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--legacy-muted);
-  }
-
-  .filters select,
-  .filters input {
-    padding: 6px 8px;
-    border: 1px solid var(--legacy-border);
-    border-radius: 6px;
-    font: inherit;
-    background: var(--legacy-surface);
-  }
-
-  .filters input {
-    min-width: 280px;
-  }
-
   .data-table {
     width: 100%;
     border-collapse: collapse;

@@ -36,6 +36,31 @@ const TABLES: TableApiResponse[] = [
   }),
 ];
 
+function stubTables(tables: TableApiResponse[]) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(tables), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    ),
+  );
+}
+
+function rowNames(): string[] {
+  return screen
+    .getAllByRole("row")
+    .slice(1)
+    .map((row) => within(row).getByRole("link").textContent ?? "");
+}
+
+const SORTABLE: TableApiResponse[] = [
+  table({ uuid: "u-b", table: "b_table", updated_at: "2026-10-31T09:00:00Z" }),
+  table({ uuid: "u-a", table: "a_table", updated_at: "2026-10-31T07:00:00Z" }),
+  table({ uuid: "u-c", table: "c_table", updated_at: "2026-10-31T08:00:00Z" }),
+];
+
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
@@ -74,7 +99,7 @@ describe("TableListPage", () => {
     const row = (await screen.findByText("iceberg.e2e.tm_e2e_regions")).closest("tr");
     expect(row).not.toBeNull();
     const cells = within(row as HTMLElement);
-    expect(cells.getByText("PAUSED")).toBeInTheDocument();
+    expect(cells.getByText("Paused")).toBeInTheDocument();
     expect(cells.getByText("manual")).toBeInTheDocument();
     expect(cells.getByText("nightly")).toBeInTheDocument();
   });
@@ -84,7 +109,8 @@ describe("TableListPage", () => {
     renderPage();
     await screen.findByText("iceberg.inventory.orders");
 
-    await user.selectOptions(screen.getByLabelText("Status"), "PAUSED");
+    await user.click(screen.getByRole("combobox", { name: "Status" }));
+    await user.click(await screen.findByRole("option", { name: "Paused" }));
 
     expect(screen.queryByText("iceberg.inventory.orders")).not.toBeInTheDocument();
     expect(screen.getByText("iceberg.e2e.tm_e2e_regions")).toBeInTheDocument();
@@ -123,5 +149,56 @@ describe("TableListPage", () => {
     renderPage();
 
     expect(await screen.findByRole("alert")).toHaveTextContent("database unavailable");
+  });
+
+  it("sorts by name ascending by default", async () => {
+    stubTables(SORTABLE);
+    renderPage();
+    await screen.findByText("iceberg.inventory.a_table");
+
+    expect(rowNames()).toEqual([
+      "iceberg.inventory.a_table",
+      "iceberg.inventory.b_table",
+      "iceberg.inventory.c_table",
+    ]);
+  });
+
+  it("clicking the Updated header sorts by updated_at descending then ascending", async () => {
+    const user = userEvent.setup();
+    stubTables(SORTABLE);
+    renderPage();
+    await screen.findByText("iceberg.inventory.a_table");
+
+    await user.click(screen.getByRole("button", { name: /Updated/ }));
+    expect(rowNames()).toEqual([
+      "iceberg.inventory.b_table",
+      "iceberg.inventory.c_table",
+      "iceberg.inventory.a_table",
+    ]);
+
+    await user.click(screen.getByRole("button", { name: /Updated/ }));
+    expect(rowNames()).toEqual([
+      "iceberg.inventory.a_table",
+      "iceberg.inventory.c_table",
+      "iceberg.inventory.b_table",
+    ]);
+  });
+
+  it("shows skeleton rows in a busy container while loading", () => {
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
+    const { container } = renderPage();
+
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(container.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThan(0);
+  });
+
+  it("shows an empty state when no table matches", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("iceberg.inventory.orders");
+
+    await user.type(screen.getByLabelText("Search"), "nothing-like-this");
+
+    expect(screen.getByText("No tables match.")).toBeInTheDocument();
   });
 });

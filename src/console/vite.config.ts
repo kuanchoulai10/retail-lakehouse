@@ -8,6 +8,18 @@ export default defineConfig({
   resolve: {
     alias: { "@": "/src" },
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            { name: "radix", test: /node_modules[\\/](@radix-ui|radix-ui)[\\/]/ },
+            { name: "react", test: /node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/ },
+          ],
+        },
+      },
+    },
+  },
   server: {
     proxy: {
       "/console/api": {
