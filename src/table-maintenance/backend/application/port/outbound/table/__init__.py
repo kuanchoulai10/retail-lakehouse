@@ -13,6 +13,15 @@ from application.port.outbound.table.read_table_metadata.gateway import (
 from application.port.outbound.table.read_table_metadata.list_input import (
     ReadTableMetadataGatewayListInput,
 )
+from application.port.outbound.table.read_table_metadata.table_commit_page import (
+    TableCommitPage,
+)
+from application.port.outbound.table.read_table_metadata.table_description import (
+    TableDescription,
+)
+from application.port.outbound.table.read_table_metadata.table_storage_measure import (
+    TableStorageMeasure,
+)
 from application.port.outbound.table.read_table_metadata.table_metadata import (
     TableMetadata,
 )
@@ -50,6 +59,9 @@ __all__ = [
     "SendTableChangeGateway",
     "SendTableChangeGatewayInput",
     "Table",
+    "TableCommitPage",
+    "TableDescription",
+    "TableStorageMeasure",
     "TableMetadata",
     "TableMetadataObservation",
     "TableMetadataRef",

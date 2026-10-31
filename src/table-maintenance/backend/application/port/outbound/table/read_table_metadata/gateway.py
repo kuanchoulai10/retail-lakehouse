@@ -11,8 +11,17 @@ if TYPE_CHECKING:
     from application.port.outbound.table.read_table_metadata.list_input import (
         ReadTableMetadataGatewayListInput,
     )
+    from application.port.outbound.table.read_table_metadata.table_commit_page import (
+        TableCommitPage,
+    )
+    from application.port.outbound.table.read_table_metadata.table_description import (
+        TableDescription,
+    )
     from application.port.outbound.table.read_table_metadata.table_metadata_observation import (
         TableMetadataObservation,
+    )
+    from application.port.outbound.table.read_table_metadata.table_storage_measure import (
+        TableStorageMeasure,
     )
     from application.port.outbound.table.read_table_metadata.table_metadata import (
         TableMetadata,
@@ -39,3 +48,20 @@ class ReadTableMetadataGateway(Gateway):
     @abstractmethod
     def observe_table(self, ref: TableMetadataRef) -> TableMetadataObservation | None:
         """Return the table's statistics, or None when it does not exist."""
+
+    @abstractmethod
+    def describe_table(self, ref: TableMetadataRef) -> TableDescription | None:
+        """Return the table's definition, or None when it does not exist."""
+
+    @abstractmethod
+    def list_commits(
+        self, ref: TableMetadataRef, since: str | None, limit: int
+    ) -> TableCommitPage | None:
+        """Return up to ``limit`` commits at or after ``since``, newest first.
+
+        None when the table does not exist.
+        """
+
+    @abstractmethod
+    def measure_storage(self, ref: TableMetadataRef) -> TableStorageMeasure | None:
+        """Return the table's current and referenced storage, or None."""

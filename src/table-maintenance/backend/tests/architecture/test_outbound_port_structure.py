@@ -48,6 +48,9 @@ GATEWAY_EXTRA_FILES = {
     "table_metadata.py",
     "table_metadata_ref.py",
     "table_metadata_observation.py",
+    "table_description.py",
+    "table_commit_page.py",
+    "table_storage_measure.py",
 }
 GATEWAY_ALLOWED_FILES = GATEWAY_STANDARD_FILES | GATEWAY_EXTRA_FILES
 

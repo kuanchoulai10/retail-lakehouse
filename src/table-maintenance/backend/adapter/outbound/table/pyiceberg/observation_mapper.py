@@ -34,7 +34,7 @@ def observation_from_table(table: Table) -> TableMetadataObservation:
         table_uuid=str(metadata.table_uuid),
         properties=dict(metadata.properties),
         current_snapshot_id=snapshot.snapshot_id if snapshot else None,
-        specs=[_spec(table, spec) for spec in metadata.partition_specs],
+        specs=[spec_of(table, spec) for spec in metadata.partition_specs],
         partitions=partitions,
         manifests=manifests,
         snapshots=[
@@ -49,7 +49,7 @@ def observation_from_table(table: Table) -> TableMetadataObservation:
     )
 
 
-def _spec(table: Table, spec: PartitionSpec) -> dict[str, Any]:
+def spec_of(table: Table, spec: PartitionSpec) -> dict[str, Any]:
     return {
         "spec_id": spec.spec_id,
         "fields": [

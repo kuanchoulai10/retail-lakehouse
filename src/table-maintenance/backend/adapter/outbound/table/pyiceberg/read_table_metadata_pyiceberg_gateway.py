@@ -4,13 +4,23 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from adapter.outbound.table.pyiceberg.commit_page_mapper import (
+    commit_page_from_table,
+)
+from adapter.outbound.table.pyiceberg.description_mapper import description_from_table
 from adapter.outbound.table.pyiceberg.observation_mapper import observation_from_table
+from adapter.outbound.table.pyiceberg.storage_measure_mapper import (
+    storage_measure_from_table,
+)
 from application.port.outbound.table import (
     ReadTableMetadataGateway,
     ReadTableMetadataGatewayListInput,
+    TableCommitPage,
+    TableDescription,
     TableMetadataObservation,
     TableMetadata,
     TableMetadataRef,
+    TableStorageMeasure,
 )
 from pyiceberg.exceptions import NoSuchNamespaceError, NoSuchTableError
 
@@ -68,6 +78,26 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
         if table is None:
             return None
         return observation_from_table(table)
+
+    def describe_table(self, ref: TableMetadataRef) -> TableDescription | None:
+        table = self._load(ref)
+        if table is None:
+            return None
+        return description_from_table(table)
+
+    def list_commits(
+        self, ref: TableMetadataRef, since: str | None, limit: int
+    ) -> TableCommitPage | None:
+        table = self._load(ref)
+        if table is None:
+            return None
+        return commit_page_from_table(table, since, limit)
+
+    def measure_storage(self, ref: TableMetadataRef) -> TableStorageMeasure | None:
+        table = self._load(ref)
+        if table is None:
+            return None
+        return storage_measure_from_table(table)
 
     def _load(self, ref: TableMetadataRef) -> Table | None:
         catalog = self._catalog_factory(ref.catalog)

@@ -303,3 +303,136 @@ def test_scoped_listing_and_loading_propagate_transient_errors() -> None:
         gateway.load_table(_ref())
     with pytest.raises(ServerError):
         gateway.observe_table(_ref())
+
+
+def test_describe_partitioned_table(
+    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
+) -> None:
+    table = _partitioned(catalog)
+    table.append(_rows([1, 2], day=1))
+    table.append(_rows([3], day=2))
+    current = catalog.load_table("db.events")
+
+    description = gateway.describe_table(_ref())
+
+    assert description is not None
+    assert description.table_uuid == str(current.metadata.table_uuid)
+    assert description.format_version == current.metadata.format_version
+    assert description.location == current.location()
+    assert [f["name"] for f in description.schema_fields] == ["id", "ts", "region"]
+    assert description.schema_fields[0] == {
+        "field_id": 1,
+        "name": "id",
+        "type": "long",
+        "required": False,
+    }
+    assert [f["name"] for f in description.specs[0]["fields"]] == [
+        "ts_day",
+        "id_bucket",
+    ]
+    assert description.snapshot_count == 2
+    snapshot = current.current_snapshot()
+    assert snapshot is not None
+    assert description.current_snapshot_id == snapshot.snapshot_id
+    assert description.current_summary["operation"] == "append"
+    assert description.last_committed_at is not None
+    assert datetime.fromisoformat(description.last_committed_at).tzinfo is not None
+
+
+def test_describe_empty_table(
+    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
+) -> None:
+    catalog.create_namespace("db")
+    catalog.create_table("db.events", SCHEMA)
+
+    description = gateway.describe_table(_ref())
+
+    assert description is not None
+    assert description.current_snapshot_id is None
+    assert description.snapshot_count == 0
+    assert description.current_summary == {}
+    assert description.last_committed_at is None
+
+
+def test_list_commits_newest_first_with_limit(
+    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
+) -> None:
+    table = _partitioned(catalog)
+    for day in (1, 2, 3):
+        table.append(_rows([day], day=day))
+    snapshots = catalog.load_table("db.events").metadata.snapshots
+
+    page = gateway.list_commits(_ref(), since=None, limit=2)
+
+    assert page is not None
+    assert page.truncated is True
+    assert [c["snapshot_id"] for c in page.commits] == [
+        snapshots[2].snapshot_id,
+        snapshots[1].snapshot_id,
+    ]
+    assert page.commits[0]["parent_id"] == snapshots[1].snapshot_id
+    assert page.commits[0]["operation"] == "append"
+    assert page.commits[0]["summary"]["operation"] == "append"
+    assert page.commits[0]["writer"] == "unknown"
+    assert datetime.fromisoformat(page.commits[0]["committed_at"]).tzinfo is not None
+
+
+def test_list_commits_since(
+    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
+) -> None:
+    table = _partitioned(catalog)
+    for day in (1, 2, 3):
+        table.append(_rows([day], day=day))
+    everything = gateway.list_commits(_ref(), since=None, limit=10)
+    assert everything is not None
+    assert everything.truncated is False
+    second = everything.commits[1]["committed_at"]
+
+    page = gateway.list_commits(_ref(), since=second, limit=10)
+
+    assert page is not None
+    assert len(page.commits) == 2
+    assert page.truncated is False
+
+
+def test_measure_storage_counts_files_kept_by_old_snapshots(
+    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
+) -> None:
+    table = _partitioned(catalog)
+    table.append(_rows([1, 2], day=1))
+    table.overwrite(_rows([5, 6], day=2))
+
+    measure = gateway.measure_storage(_ref())
+
+    assert measure is not None
+    assert measure.current_files > 0
+    assert measure.referenced_files > measure.current_files
+    assert measure.referenced_bytes > measure.current_bytes > 0
+
+
+def test_measure_storage_of_empty_table_is_zero(
+    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
+) -> None:
+    catalog.create_namespace("db")
+    catalog.create_table("db.events", SCHEMA)
+
+    measure = gateway.measure_storage(_ref())
+
+    assert measure is not None
+    assert (
+        measure.current_bytes,
+        measure.current_files,
+        measure.referenced_bytes,
+        measure.referenced_files,
+    ) == (0, 0, 0, 0)
+
+
+def test_reads_return_none_for_missing_table(
+    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
+) -> None:
+    catalog.create_namespace("db")
+    ref = _ref(table="nope")
+
+    assert gateway.describe_table(ref) is None
+    assert gateway.list_commits(ref, since=None, limit=5) is None
+    assert gateway.measure_storage(ref) is None
