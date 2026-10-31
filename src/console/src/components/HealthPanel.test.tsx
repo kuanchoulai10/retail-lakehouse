@@ -80,6 +80,18 @@ describe("HealthPanel", () => {
     expect(screen.getByRole("checkbox", { name: "expire_snapshots" })).not.toBeChecked();
   });
 
+  it("reads a not-due line without a measurement once", () => {
+    renderPanel(health());
+    expect(screen.getByText("not due")).toBeInTheDocument();
+  });
+
+  it("pluralises a single qualifying partition", () => {
+    renderPanel(
+      health({ operations: [line({ measured: 6, qualifying_partitions: 1 })] }),
+    );
+    expect(screen.getByText("6 reducible files in 1 partition, threshold 5")).toBeInTheDocument();
+  });
+
   it("shows the delete file counts", () => {
     renderPanel(health());
     expect(screen.getByText("3 position, 1 equality")).toBeInTheDocument();

@@ -10,7 +10,7 @@ function measurement(line: TableHealthOperationApiResponse): string {
   switch (line.operation) {
     case "rewrite_data_files": {
       const partitions =
-        line.qualifying_partitions === null ? "" : ` in ${line.qualifying_partitions} partitions`;
+        line.qualifying_partitions === null ? "" : ` in ${line.qualifying_partitions} ${line.qualifying_partitions === 1 ? "partition" : "partitions"}`;
       return `${measured} reducible files${partitions}${suffix}`;
     }
     case "rewrite_manifests":
@@ -33,7 +33,7 @@ function lineText(line: TableHealthOperationApiResponse, scheduled: boolean): st
     case "due":
       return scheduled ? measurement(line) : `${measurement(line)} (would be due when resumed)`;
     case "not_due":
-      return `${measurement(line)} (not due)`;
+      return line.measured === null ? measurement(line) : `${measurement(line)} (not due)`;
     default:
       return `${line.verdict}: ${measurement(line)}`;
   }
