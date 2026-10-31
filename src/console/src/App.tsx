@@ -1,20 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Link, Route, Routes, useParams } from "react-router";
+import { BrowserRouter, Link, Route, Routes } from "react-router";
 import { TableListPage } from "./pages/TableListPage";
+import { TablePage } from "./pages/TablePage";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } },
 });
 
-function TablePagePlaceholder() {
-  const { uuid } = useParams();
-  return (
-    <section>
-      <h1>Table</h1>
-      <p>Table {uuid} — the table page arrives in a later release.</p>
-    </section>
-  );
-}
 
 function NotFound() {
   return (
@@ -39,7 +31,7 @@ export function App() {
         <main className="content">
           <Routes>
             <Route path="/" element={<TableListPage />} />
-            <Route path="/tables/:uuid/:tab?" element={<TablePagePlaceholder />} />
+            <Route path="/tables/:uuid/:tab?" element={<TablePage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>

@@ -133,3 +133,141 @@ h1 {
 .error {
   color: var(--danger);
 }
+
+.muted {
+  color: var(--muted);
+}
+
+.table-header {
+  margin-bottom: 16px;
+}
+
+.table-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.table-title h1 {
+  margin: 0;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-top: 8px;
+  color: var(--muted);
+}
+
+button {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  font: inherit;
+  cursor: pointer;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dialog {
+  margin-top: 12px;
+  padding: 16px;
+  max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.dialog h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.check {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs a {
+  padding: 8px 12px;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+}
+
+.tabs a[aria-current="page"] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.notice {
+  padding: 12px;
+  background: #fff8c5;
+  border: 1px solid #d4a72c;
+  border-radius: 6px;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+pre {
+  margin: 0;
+  padding: 8px;
+  background: var(--bg);
+  overflow-x: auto;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+}
+
+.facts dt {
+  color: var(--muted);
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.badge-succeeded {
+  background: #dafbe1;
+  color: #1a7f37;
+}
+
+.badge-failed {
+  background: #ffebe9;
+  color: var(--danger);
+}

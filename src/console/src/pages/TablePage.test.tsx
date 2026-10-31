@@ -1,0 +1,59 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { jsonResponse, metadataFixture, tableFixture } from "../test/fixtures";
+import { TablePage } from "./TablePage";
+
+function renderAt(path: string) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/tables/:uuid/:tab?" element={<TablePage />} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+function stubFetch(metadata: () => Response) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => {
+      if (url.endsWith("/metadata")) return Promise.resolve(metadata());
+      if (url.endsWith("/v1/tables/uuid-orders")) return Promise.resolve(jsonResponse(tableFixture()));
+      if (url.includes("/commits")) return Promise.resolve(jsonResponse({ items: [], truncated: false }));
+      return Promise.resolve(jsonResponse([]));
+    }),
+  );
+}
+
+describe("TablePage", () => {
+  beforeEach(() => {
+    stubFetch(() => jsonResponse(metadataFixture()));
+  });
+
+  it("falls back to Overview for an unknown tab segment", async () => {
+    renderAt("/tables/uuid-orders/nonsense");
+    expect(await screen.findByText("iceberg.inventory.orders")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("selects the tab named in the URL", async () => {
+    renderAt("/tables/uuid-orders/properties");
+    expect(await screen.findByText("write.format.default")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Properties" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("shows not-in-catalog notice when metadata answers 404", async () => {
+    stubFetch(() =>
+      jsonResponse({ detail: "table iceberg.inventory.orders is not in the catalog" }, 404),
+    );
+    renderAt("/tables/uuid-orders/commits");
+    expect(await screen.findByText(/is not in the catalog/)).toBeInTheDocument();
+    expect(screen.getByText("iceberg.inventory.orders")).toBeInTheDocument();
+    expect(screen.getByText("ACTIVE")).toBeInTheDocument();
+  });
+});
