@@ -55,7 +55,7 @@ export function HealthPanel({ tableUuid, health }: Props) {
   return (
     <Panel title="Health">
       {!health.scheduled && (
-        <p role="status" className="border-b border-border bg-card px-4 py-2.5 text-[13px] text-warning">
+        <p role="status" className="border-b border-border bg-card px-4 py-2.5 text-[13px] text-muted-foreground">
           {`The scheduler skips this table: ${health.not_scheduled_reason ?? "unknown"}`}
         </p>
       )}

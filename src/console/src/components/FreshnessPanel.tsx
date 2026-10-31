@@ -79,7 +79,13 @@ export function FreshnessPanel({ commits, truncated, now, lastCommittedAt }: Pro
             />
             <YAxis hide allowDecimals={false} />
             <ChartTooltip
-              content={<ChartTooltipContent labelFormatter={(_, items) => hourLabel(String(items[0]?.payload?.hourStart ?? ""))} />}
+              content={
+                <ChartTooltipContent
+                  labelFormatter={(_, items) =>
+                    hourLabel(String(items[0]?.payload?.hourStart ?? ""))
+                  }
+                />
+              }
             />
             {operations.map((operation) => (
               <Bar

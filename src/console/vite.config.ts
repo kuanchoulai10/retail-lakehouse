@@ -14,6 +14,10 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             { name: "radix", test: /node_modules[\\/](@radix-ui|radix-ui)[\\/]/ },
+            {
+              name: "recharts",
+              test: /node_modules[\\/](recharts|d3-[^\\/]+|victory-vendor|internmap|decimal\.js-light|es-toolkit|immer|reselect|redux|@reduxjs|react-redux|use-sync-external-store)[\\/]/,
+            },
             { name: "react", test: /node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/ },
           ],
         },

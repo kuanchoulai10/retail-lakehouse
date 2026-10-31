@@ -60,6 +60,13 @@ describe("HealthPanel", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps the not-scheduled notice neutral", () => {
+    renderPanel(health({ scheduled: false, not_scheduled_reason: "paused" }));
+    expect(screen.getByText("The scheduler skips this table: paused")).not.toHaveClass(
+      "text-warning",
+    );
+  });
+
   it("shows no banner for a scheduled table", () => {
     renderPanel(health());
     expect(screen.queryByText(/The scheduler skips this table/)).not.toBeInTheDocument();
