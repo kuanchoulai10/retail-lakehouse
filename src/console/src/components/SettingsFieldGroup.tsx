@@ -1,3 +1,14 @@
+import { Panel } from "@/components/Panel";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import type { JsonObject } from "../api/types";
 
 export interface SettingsField {
@@ -21,35 +32,49 @@ export function SettingsFieldGroup({ operation, fields, values, onChange }: Prop
   function set(key: string, value: unknown) {
     onChange({ ...values, [key]: value });
   }
+  const enabledId = `${operation}-enabled`;
 
   return (
-    <fieldset aria-label={operation} className="settings-group">
-      <legend>{operation}</legend>
-      <label className="check">
-        <input
-          type="checkbox"
-          checked={values.enabled === true}
-          onChange={(event) => set("enabled", event.target.checked)}
-        />
-        enabled
-      </label>
-      {fields.map(({ key, kind }) => (
-        <label key={key} className="field">
-          {key}
-          {kind === "scope" ? (
-            <select value={String(values[key] ?? "table")} onChange={(e) => set(key, e.target.value)}>
-              <option value="table">table</option>
-              <option value="partition">partition</option>
-            </select>
-          ) : (
-            <input
-              type="number"
-              value={values[key] == null ? "" : String(values[key])}
-              onChange={(e) => set(key, numberOrNull(e.target.value))}
-            />
-          )}
-        </label>
-      ))}
-    </fieldset>
+    <Panel title={operation}>
+      <fieldset aria-label={operation} className="m-0 flex min-w-0 flex-col gap-4 border-0 p-4">
+        <div className="flex items-center gap-2">
+          <Switch
+            id={enabledId}
+            checked={values.enabled === true}
+            onCheckedChange={(checked) => set("enabled", checked)}
+          />
+          <Label htmlFor={enabledId}>enabled</Label>
+        </div>
+        {fields.map(({ key, kind }) => {
+          const id = `${operation}-${key}`;
+          return (
+            <div key={key} className="flex flex-col gap-1.5">
+              <Label htmlFor={id} className="font-mono text-[13px]">
+                {key}
+              </Label>
+              {kind === "scope" ? (
+                <Select value={String(values[key] ?? "table")} onValueChange={(v) => set(key, v)}>
+                  <SelectTrigger id={id} className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="table">table</SelectItem>
+                    <SelectItem value="partition">partition</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id={id}
+                  type="number"
+                  className="tabular-nums"
+                  value={values[key] == null ? "" : String(values[key])}
+                  onChange={(e) => set(key, numberOrNull(e.target.value))}
+                />
+              )}
+            </div>
+          );
+        })}
+      </fieldset>
+    </Panel>
   );
 }

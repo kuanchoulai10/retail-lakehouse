@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "../../api/client";
 import type { TableApiResponse } from "../../api/types";
+import { Alert } from "@/components/ui/alert";
 import { errorMessage } from "../../format";
 import { SettingsForm } from "../SettingsForm";
 
@@ -16,9 +17,7 @@ export function SettingsTab({ tableUuid }: Props) {
   if (table.isPending) return <p>Loading settings…</p>;
   if (table.isError) {
     return (
-      <p role="alert" className="error">
-        Could not load settings: {errorMessage(table.error)}
-      </p>
+      <Alert variant="destructive">Could not load settings: {errorMessage(table.error)}</Alert>
     );
   }
   return <SettingsForm key={table.data.updated_at} table={table.data} />;

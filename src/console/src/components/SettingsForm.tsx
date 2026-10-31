@@ -1,5 +1,20 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { Panel } from "@/components/Panel";
+import { Alert } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { apiGet, apiSend } from "../api/client";
 import { invalidateTableState } from "../api/invalidateTableState";
 import type { JsonObject, TableApiResponse, TableMaintenancePresetApiResponse } from "../api/types";
@@ -53,6 +68,7 @@ export function SettingsForm({ table }: Props) {
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState<JsonObject>(table.settings ?? {});
   const [confirming, setConfirming] = useState(false);
+  const resetRef = useRef<HTMLButtonElement>(null);
 
   const save = useMutation({
     mutationFn: (settings: JsonObject) =>
@@ -66,10 +82,7 @@ export function SettingsForm({ table }: Props) {
       );
       await apiSend("PUT", `/v1/tables/${table.uuid}/settings`, preset.settings);
     },
-    onSuccess: () => {
-      setConfirming(false);
-      return invalidateTableState(queryClient, table.uuid);
-    },
+    onSuccess: () => invalidateTableState(queryClient, table.uuid),
   });
 
   const error = save.isError ? save.error : reset.isError ? reset.error : null;
@@ -77,7 +90,7 @@ export function SettingsForm({ table }: Props) {
 
   return (
     <form
-      className="settings"
+      className="flex flex-col gap-4"
       onSubmit={(event) => {
         event.preventDefault();
         reset.reset();
@@ -85,23 +98,29 @@ export function SettingsForm({ table }: Props) {
       }}
     >
       {table.settings === null && (
-        <p role="status" className="notice">
-          This table has no maintenance settings yet.
-        </p>
+        <Alert role="status">This table has no maintenance settings yet.</Alert>
       )}
-      <label className="field">
-        reconcile_interval_seconds
-        <input
-          type="number"
-          value={draft.reconcile_interval_seconds == null ? "" : String(draft.reconcile_interval_seconds)}
-          onChange={(e) =>
-            setDraft({
-              ...draft,
-              reconcile_interval_seconds: e.target.value === "" ? null : Number(e.target.value),
-            })
-          }
-        />
-      </label>
+      <Panel title="Reconciliation">
+        <div className="flex flex-col gap-1.5 p-4">
+          <Label htmlFor="reconcile_interval_seconds" className="font-mono text-[13px]">
+            reconcile_interval_seconds
+          </Label>
+          <Input
+            id="reconcile_interval_seconds"
+            type="number"
+            className="tabular-nums"
+            value={
+              draft.reconcile_interval_seconds == null ? "" : String(draft.reconcile_interval_seconds)
+            }
+            onChange={(e) =>
+              setDraft({
+                ...draft,
+                reconcile_interval_seconds: e.target.value === "" ? null : Number(e.target.value),
+              })
+            }
+          />
+        </div>
+      </Panel>
       {OPERATIONS.map(({ operation, fields }) => (
         <SettingsFieldGroup
           key={operation}
@@ -111,40 +130,44 @@ export function SettingsForm({ table }: Props) {
           onChange={(values) => setDraft({ ...draft, [operation]: values })}
         />
       ))}
-      {error && (
-        <p role="alert" className="error">
-          Could not save settings: {errorMessage(error)}
-        </p>
-      )}
-      <div className="actions">
-        {table.source_preset_id !== null &&
-          (confirming ? (
-            <span role="group" aria-label="Confirm reset">
-              Replace these settings with the preset's?
-              <button type="button" onClick={() => setConfirming(false)}>
-                Keep editing
-              </button>
-              <button
-                type="button"
-                className="primary"
-                disabled={busy}
-                onClick={() => {
-                  save.reset();
-                  reset.mutate(table.source_preset_id as string);
-                }}
-              >
-                Confirm reset
-              </button>
-            </span>
-          ) : (
-            <button type="button" onClick={() => setConfirming(true)}>
-              Reset to preset
-            </button>
-          ))}
-        <button type="submit" className="primary" disabled={busy}>
+      {error && <Alert variant="destructive">Could not save settings: {errorMessage(error)}</Alert>}
+      <div className="sticky bottom-0 flex justify-end gap-2 border-t border-border bg-background py-3">
+        {table.source_preset_id !== null && (
+          <Button ref={resetRef} type="button" variant="outline" onClick={() => setConfirming(true)}>
+            Reset to preset
+          </Button>
+        )}
+        <Button type="submit" disabled={busy}>
           Save
-        </button>
+        </Button>
       </div>
+      <AlertDialog open={confirming} onOpenChange={setConfirming}>
+        <AlertDialogContent
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            resetRef.current?.focus();
+          }}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset to preset</AlertDialogTitle>
+            <AlertDialogDescription>
+              Replace these settings with the preset's? Unsaved edits are discarded.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={busy}
+              onClick={() => {
+                save.reset();
+                reset.mutate(table.source_preset_id as string);
+              }}
+            >
+              Confirm reset
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   );
 }

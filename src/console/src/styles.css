@@ -114,25 +114,8 @@
     cursor: not-allowed;
   }
 
-  .check {
-    display: flex;
-    gap: 8px;
-    margin: 4px 0;
-  }
 
-  .actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 12px;
-  }
 
-  .notice {
-    padding: 12px;
-    background: #fff8c5;
-    border: 1px solid #d4a72c;
-    border-radius: 6px;
-  }
 
   pre {
     margin: 0;

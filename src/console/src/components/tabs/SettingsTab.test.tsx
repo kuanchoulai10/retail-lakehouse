@@ -89,10 +89,11 @@ describe("SettingsTab", () => {
     );
   });
 
-  it("resets to the preset settings after an inline confirm", async () => {
+  it("resets to the preset settings after confirming in the dialog", async () => {
     const fetchMock = mockApi(table, () => jsonResponse(table));
     renderTab();
     await userEvent.click(await screen.findByRole("button", { name: "Reset to preset" }));
+    expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
     expect(puts(fetchMock)).toHaveLength(0);
     await userEvent.click(screen.getByRole("button", { name: "Confirm reset" }));
     await vi.waitFor(() => expect(puts(fetchMock)).toHaveLength(1));
@@ -126,5 +127,44 @@ describe("SettingsTab", () => {
     renderTab();
     await screen.findByRole("group", { name: "rewrite_data_files" });
     expect(screen.queryByRole("button", { name: "Reset to preset" })).not.toBeInTheDocument();
+  });
+
+  it("closes the reset dialog on Escape without saving and returns focus", async () => {
+    const fetchMock = mockApi(table, () => jsonResponse(table));
+    renderTab();
+    const trigger = await screen.findByRole("button", { name: "Reset to preset" });
+    await userEvent.click(trigger);
+    expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    await vi.waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+    expect(puts(fetchMock)).toHaveLength(0);
+    expect(trigger).toHaveFocus();
+  });
+
+  it("renders each operation in a panel titled with its procedure name", async () => {
+    mockApi(table, () => jsonResponse(table));
+    renderTab();
+    for (const name of [
+      "rewrite_data_files",
+      "rewrite_manifests",
+      "expire_snapshots",
+      "remove_orphan_files",
+    ]) {
+      const heading = await screen.findByRole("heading", { name });
+      expect(within(heading.closest("section") as HTMLElement).getByRole("group", { name })).toBeInTheDocument();
+    }
+  });
+
+  it("toggles an operation with a switch", async () => {
+    const fetchMock = mockApi(table, () => jsonResponse(table));
+    renderTab();
+    const group = await screen.findByRole("group", { name: "remove_orphan_files" });
+    const toggle = within(group).getByRole("switch", { name: "enabled" });
+    expect(toggle).not.toBeChecked();
+    await userEvent.click(toggle);
+    expect(toggle).toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    const body = JSON.parse(String(puts(fetchMock)[0]?.[1]?.body));
+    expect(body.remove_orphan_files.enabled).toBe(true);
   });
 });
