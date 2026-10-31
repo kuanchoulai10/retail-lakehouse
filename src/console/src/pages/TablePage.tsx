@@ -5,6 +5,7 @@ import type { TableApiResponse, TableMetadataApiResponse } from "../api/types";
 import { TableHeader } from "../components/TableHeader";
 import { CommitsTab } from "../components/tabs/CommitsTab";
 import { MaintenanceTab } from "../components/tabs/MaintenanceTab";
+import { OverviewTab } from "../components/tabs/OverviewTab";
 import { PropertiesTab } from "../components/tabs/PropertiesTab";
 import { errorMessage } from "../format";
 
@@ -73,6 +74,12 @@ export function TablePage() {
         return <MaintenanceTab tableUuid={uuid} />;
       case "properties":
         return metadata.data ? <PropertiesTab metadata={metadata.data} /> : <p>Loading…</p>;
+      case "overview":
+        return metadata.data ? (
+          <OverviewTab tableUuid={uuid} metadata={metadata.data} />
+        ) : (
+          <p>Loading…</p>
+        );
       default:
         return <p className="muted">The {tab} tab arrives in a later release.</p>;
     }
