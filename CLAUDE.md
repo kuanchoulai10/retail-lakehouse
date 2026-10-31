@@ -25,6 +25,7 @@ Respond in the same language as the user's message. The user typically communica
 - 2026-10-26: Temporal workflows renamed `TableDiscoveryWorkflow` / `TableReconciliationWorkflow` / `TableMaintenanceWorkflow` / `TableMaintenanceAdmissionWorkflow` (setting `GLAC_ADMISSION_LIMIT`); IDs are `key=value` segments (`table-reconciliation:table-uuid=…`, `table-maintenance:table=…:run=…`, `table-maintenance-admission`, `table-discovery:catalog=…[:trigger=adhoc]`; table in the wave-25 README); maintenance runs store their `workflow_id` (result callback signals by it); every start sets a static summary.
 - 2026-10-29: table-maintenance backend conformed to one layout (spec `docs/superpowers/specs/2026-10-29-backend-architecture-conformance-design.md`): aggregate axis in every layer, `adapter/{inbound,outbound,hybrid}` with Temporal as a hybrid adapter, no infrastructure terms in `application/`, boundary-only imports, 14 import-linter contracts with no `ignore_imports`, each enforced by `tests/architecture/`. Renames: `ManagedTable` → `Table`, `PolicyTemplate` → `TableMaintenancePreset`, `DiscoveryRule` → `TableDiscoveryRule`, `DiscoverySettings` → `TableDiscoverySettings`, `MaintenanceRun` → `TableMaintenanceRun` (run fields `workflow_id` → `execution_ref`, `spark_application` → `job_name`); API routes `/v1/table-maintenance-presets`, `/v1/table-discovery-rules`, `/v1/table-discovery-settings`, `/v1/table-maintenance-runs`; Workflow IDs unchanged.
 - 2026-10-31: data platform console (spec `docs/superpowers/specs/2026-10-31-data-platform-console-design.md`): `src/console` (React + Vite, nginx image `console`) with table list, overview (health, storage, freshness), commits, maintenance runs, properties and settings; backend endpoints `GET /v1/tables/{uuid}/metadata`, `/commits`, `/health`, `/storage`; deployed in wave 25 behind `platform-gateway` at `/console/` (gateway `allowedRoutes` widened to `lakehouse-control-plane`); `e2e.sh` checks the endpoints against Trino's `$files` / `$snapshots`.
+- 2026-10-31: console visual redesign (spec `docs/superpowers/specs/2026-10-31-console-visual-redesign-design.md`): Tailwind CSS v4 + shadcn/ui primitives in `src/console/src/components/ui/`, Geist / Geist Mono via fontsource, neutral design tokens with Light / Dark / System theme (`localStorage` key `console-theme`), app shell with sidebar, restyled table list, table page tabs, overview panels and settings; legacy `styles.css` removed and raw colours in feature code blocked by `noRawColors.test.ts`; UI rules in "Console UI" below.
 
 **Cluster runtime (2026-10-24):** single minikube node on colima, container runtime `containerd` (was `docker` / cri-dockerd, whose cAdvisor series had no `container` label, so prometheus-adapter served no pod metrics) with `--cni bridge` pinned (with containerd minikube would pick kindnet, which enforces the kube-prometheus and Strimzi NetworkPolicies and blocks KEDA → Prometheus and Kafka UI → Connect REST). `kubectl top nodes` / `kubectl top pods -A` work through prometheus-adapter. `cluster:configure-registry-mirror` writes `/etc/containerd/certs.d/<registry ClusterIP>/hosts.toml` (HTTP) because containerd ignores the CIDR given to `--insecure-registry`; Strimzi KafkaConnect images are pulled from that ClusterIP.
 
@@ -104,6 +105,16 @@ New namespaces are **not** labeled `istio.io/dataplane-mode=ambient` (no namespa
 - **ABC over Protocol** for interface definitions. Use `abc.ABC` with `@abstractmethod`, not `typing.Protocol`.
 - **StrEnum** for string-valued enumerations.
 - **`from __future__ import annotations`** in every module for deferred type evaluation.
+
+## Console UI
+
+Rules for `src/console` pages (spec `docs/superpowers/specs/2026-10-31-console-visual-redesign-design.md`):
+
+- **Build from `components/ui/` primitives.** Add a missing primitive with the shadcn CLI rather than hand-rolling one.
+- **Token classes only.** Use tokens via Tailwind classes (`bg-background`, `text-muted-foreground`, `border-border`); no raw hex values or arbitrary colour classes (`[#…]`) in feature code (`src/components/` except `ui/`, `src/pages/`). Enforced by `src/test/noRawColors.test.ts`.
+- **Colour only for status.** Neutral for everything else (including not due, cooldown, disabled); `warning` = due operation or truncated count; `destructive` = error or failed run; `success` = succeeded run only.
+- **Identifiers in Geist Mono** (procedure names, snapshot ids, file paths, `execution_ref`, property keys / values, schema types); `tabular-nums` on number columns; sentence case, no all-caps labels.
+- **No shadows on panels** (one subtle shadow on overlays only), no gradients, no entrance animations.
 
 ## Architecture Mindset
 

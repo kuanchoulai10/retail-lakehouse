@@ -192,7 +192,7 @@ export function TableListPage() {
                         <button
                           type="button"
                           className={cn(
-                            "inline-flex items-center gap-1 rounded-md font-medium",
+                            "inline-flex cursor-pointer items-center gap-1 rounded-md font-medium",
                             "hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 outline-none",
                           )}
                           onClick={header.column.getToggleSortingHandler()}

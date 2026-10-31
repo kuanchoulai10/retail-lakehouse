@@ -41,7 +41,7 @@ function CommitRow({ commit }: { commit: TableCommitApiResponse }) {
           <TableCell colSpan={7} className="bg-card whitespace-normal">
             <p className="font-mono text-[13px]">Snapshot id: {commit.snapshot_id}</p>
             <p className="font-mono text-[13px]">Parent id: {commit.parent_id ?? "—"}</p>
-            <pre className="mt-2 overflow-x-auto font-mono text-[13px]">
+            <pre className="mt-2 overflow-x-auto rounded-md bg-muted p-2 font-mono text-[13px]">
               {JSON.stringify(commit.summary, null, 2)}
             </pre>
           </TableCell>

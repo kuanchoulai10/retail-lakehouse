@@ -94,7 +94,11 @@ export function TablePage() {
     <section>
       <TableHeader table={table.data} metadata={metadata.data} />
       <Tabs value={tab} onValueChange={(next) => navigate(`/tables/${uuid}/${next}`)}>
-        <TabsList variant="line" aria-label="Table sections" className="mb-4 border-b border-border">
+        <TabsList
+          variant="line"
+          aria-label="Table sections"
+          className="mb-4 max-w-full justify-start overflow-x-auto border-b border-border"
+        >
           {TABS.map((t) => (
             <TabsTrigger key={t.key} value={t.key} asChild>
               <Link to={`/tables/${uuid}/${t.key}`}>{t.label}</Link>

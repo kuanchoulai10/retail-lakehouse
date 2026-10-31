@@ -15,10 +15,12 @@ const queryClient = new QueryClient({
 
 function NotFound() {
   return (
-    <section>
-      <h1>Page not found</h1>
+    <section className="flex flex-col gap-2">
+      <h1 className="text-2xl font-semibold tracking-tight">Page not found</h1>
       <p>
-        <Link to="/">Back to tables</Link>
+        <Link to="/" className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+          Back to tables
+        </Link>
       </p>
     </section>
   );

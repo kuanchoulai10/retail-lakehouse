@@ -68,7 +68,7 @@ export function FreshnessPanel({ commits, truncated, now, lastCommittedAt }: Pro
           role="img"
           aria-label="Commits per hour over the last 24 hours"
         >
-          <BarChart data={data} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+          <BarChart data={data} margin={{ top: 4, right: 16, bottom: 0, left: 16 }}>
             <CartesianGrid vertical={false} />
             <XAxis
               dataKey="hourStart"
