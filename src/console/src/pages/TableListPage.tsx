@@ -1,24 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { ApiError, apiGet } from "../api/client";
+import { apiGet } from "../api/client";
 import type { TableApiResponse } from "../api/types";
+import { errorMessage, formatTimestamp } from "../format";
 
 const STATUSES = ["ACTIVE", "PAUSED", "EXCLUDED", "DROPPED"] as const;
 
 function fullName(table: TableApiResponse): string {
   return `${table.catalog}.${table.namespace}.${table.table}`;
-}
-
-function formatTimestamp(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
-}
-
-function errorMessage(error: unknown): string {
-  if (error instanceof ApiError) return error.detail;
-  if (error instanceof Error) return error.message;
-  return String(error);
 }
 
 export function TableListPage() {

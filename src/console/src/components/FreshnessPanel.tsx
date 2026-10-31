@@ -1,12 +1,7 @@
 import type { TableCommitApiResponse } from "../api/types";
 import { formatCount, formatRelativeTime } from "../format";
 import { hourlyCommitBuckets, writerMix } from "../freshness";
-
-const WRITER_LABELS: Record<string, string> = {
-  kafka_connect: "Kafka Connect",
-  spark: "Spark",
-  unknown: "Unknown",
-};
+import { writerLabel } from "../writerLabel";
 
 const FALLBACK_COLOR = "#8c959f";
 
@@ -45,7 +40,7 @@ export function FreshnessPanel({ commits, truncated, now, lastCommittedAt }: Pro
           ? "Last commit: none"
           : `Last commit ${formatRelativeTime(lastCommittedAt, now)}`}
         {newest !== undefined && lastCommittedAt !== null && (
-          <span className="muted">{` by ${WRITER_LABELS[newest.writer] ?? newest.writer}`}</span>
+          <span className="muted">{` by ${writerLabel(newest.writer)}`}</span>
         )}
       </p>
       <p>{`${prefix}${formatCount(commits.length)} commits in the last 24 h`}</p>
@@ -96,7 +91,7 @@ export function FreshnessPanel({ commits, truncated, now, lastCommittedAt }: Pro
           {`Writers: ${mix
             .map(
               ([writer, count]) =>
-                `${WRITER_LABELS[writer] ?? writer} ${prefix}${formatCount(count)}`,
+                `${writerLabel(writer)} ${prefix}${formatCount(count)}`,
             )
             .join(", ")}`}
         </p>

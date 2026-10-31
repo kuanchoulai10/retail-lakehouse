@@ -3,12 +3,7 @@ import { useState } from "react";
 import { apiGet } from "../../api/client";
 import type { TableCommitApiResponse, TableCommitsApiResponse } from "../../api/types";
 import { errorMessage, formatCount, formatTimestamp } from "../../format";
-
-const WRITER_LABELS: Record<string, string> = {
-  kafka_connect: "Kafka Connect",
-  spark: "Spark",
-  unknown: "Unknown",
-};
+import { writerLabel } from "../../writerLabel";
 
 function sortedNewestFirst(items: TableCommitApiResponse[]): TableCommitApiResponse[] {
   return [...items].sort((a, b) => b.committed_at.localeCompare(a.committed_at));
@@ -21,7 +16,7 @@ function CommitRow({ commit }: { commit: TableCommitApiResponse }) {
       <tr data-testid="commit-row" className="clickable" onClick={() => setOpen(!open)}>
         <td>{formatTimestamp(commit.committed_at)}</td>
         <td>{commit.operation ?? "—"}</td>
-        <td>{WRITER_LABELS[commit.writer] ?? commit.writer}</td>
+        <td>{writerLabel(commit.writer)}</td>
         <td>{formatCount(commit.added_records)}</td>
         <td>{formatCount(commit.deleted_records)}</td>
         <td>{formatCount(commit.added_data_files)}</td>
