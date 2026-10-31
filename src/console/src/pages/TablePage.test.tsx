@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse, metadataFixture, tableFixture } from "../test/fixtures";
@@ -39,6 +40,24 @@ describe("TablePage", () => {
     renderAt("/tables/uuid-orders/nonsense");
     expect(await screen.findByText("iceberg.inventory.orders")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("navigates to the commits route when the Commits tab is activated", async () => {
+    const user = userEvent.setup();
+    renderAt("/tables/uuid-orders/properties");
+    await screen.findByText("iceberg.inventory.orders");
+    await user.click(screen.getByRole("tab", { name: "Commits" }));
+    expect(await screen.findByText("No commits.")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Commits" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("navigates when a tab is activated with the keyboard", async () => {
+    const user = userEvent.setup();
+    renderAt("/tables/uuid-orders/properties");
+    await screen.findByText("iceberg.inventory.orders");
+    screen.getByRole("tab", { name: "Properties" }).focus();
+    await user.keyboard("{ArrowLeft}");
+    expect(await screen.findByText("No maintenance runs yet.")).toBeInTheDocument();
   });
 
   it("selects the tab named in the URL", async () => {

@@ -76,6 +76,24 @@ describe("TableHeader", () => {
     await vi.waitFor(() => expect(healthFn).toHaveBeenCalledTimes(2));
   });
 
+  it("returns focus to Run maintenance after Escape", async () => {
+    const user = userEvent.setup();
+    renderHeader();
+    const trigger = screen.getByRole("button", { name: "Run maintenance" });
+    await user.click(trigger);
+    await user.keyboard("{Escape}");
+    await vi.waitFor(() => expect(trigger).toHaveFocus());
+  });
+
+  it("returns focus to Run maintenance after Cancel", async () => {
+    const user = userEvent.setup();
+    renderHeader();
+    const trigger = screen.getByRole("button", { name: "Run maintenance" });
+    await user.click(trigger);
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await vi.waitFor(() => expect(trigger).toHaveFocus());
+  });
+
   it("marks runs and health stale after a maintenance trigger", async () => {
     const user = userEvent.setup();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ accepted: true }, 202)));

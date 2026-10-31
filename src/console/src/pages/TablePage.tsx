@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { ApiError, apiGet } from "@/api/client";
 import type { TableApiResponse, TableMetadataApiResponse } from "@/api/types";
 import { TableHeader } from "@/components/TableHeader";
@@ -34,6 +34,7 @@ function isNotInCatalog(error: unknown): error is ApiError {
 export function TablePage() {
   const { uuid = "", tab: segment } = useParams();
   const tab = tabOf(segment);
+  const navigate = useNavigate();
   const table = useQuery({
     queryKey: ["table", uuid],
     queryFn: () => apiGet<TableApiResponse>(`/v1/tables/${uuid}`),
@@ -92,7 +93,7 @@ export function TablePage() {
   return (
     <section>
       <TableHeader table={table.data} metadata={metadata.data} />
-      <Tabs value={tab}>
+      <Tabs value={tab} onValueChange={(next) => navigate(`/tables/${uuid}/${next}`)}>
         <TabsList variant="line" aria-label="Table sections" className="mb-4 border-b border-border">
           {TABS.map((t) => (
             <TabsTrigger key={t.key} value={t.key} asChild>

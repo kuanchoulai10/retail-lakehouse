@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { apiSend } from "@/api/client";
 import { invalidateTableState } from "@/api/invalidateTableState";
 import type { TableApiResponse, TableMetadataApiResponse } from "@/api/types";
@@ -25,6 +25,8 @@ function averageFileSize(metadata: TableMetadataApiResponse): string {
 export function TableHeader({ table, metadata }: Props) {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [openCount, setOpenCount] = useState(0);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const paused = table.status.toLowerCase() === "paused";
   const active = table.status.toLowerCase() === "active";
   const toggle = useMutation({
@@ -35,11 +37,15 @@ export function TableHeader({ table, metadata }: Props) {
   const actions = (
     <>
       <Button
+        ref={triggerRef}
         type="button"
         disabled={!active}
         title={active ? undefined : DISABLED_REASON}
         aria-describedby={active ? undefined : "run-maintenance-reason"}
-        onClick={() => setDialogOpen(true)}
+        onClick={() => {
+          setOpenCount((count) => count + 1);
+          setDialogOpen(true);
+        }}
       >
         Run maintenance
       </Button>
@@ -89,8 +95,14 @@ export function TableHeader({ table, metadata }: Props) {
           Could not change the table: {errorMessage(toggle.error)}
         </p>
       )}
-      {dialogOpen && (
-        <RunMaintenanceDialog tableUuid={table.uuid} onClose={() => setDialogOpen(false)} />
+      {openCount > 0 && (
+        <RunMaintenanceDialog
+          key={openCount}
+          tableUuid={table.uuid}
+          open={dialogOpen}
+          returnFocusTo={triggerRef}
+          onClose={() => setDialogOpen(false)}
+        />
       )}
     </>
   );

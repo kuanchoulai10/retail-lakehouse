@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, type RefObject } from "react";
 import { apiSend } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -24,12 +24,16 @@ export const ALL_OPERATIONS = [
 interface Props {
   tableUuid: string;
   initialOperations?: string[];
+  open?: boolean;
+  returnFocusTo?: RefObject<HTMLElement | null>;
   onClose: () => void;
 }
 
 export function RunMaintenanceDialog({
   tableUuid,
   initialOperations = ALL_OPERATIONS,
+  open = true,
+  returnFocusTo,
   onClose,
 }: Props) {
   const queryClient = useQueryClient();
@@ -54,8 +58,14 @@ export function RunMaintenanceDialog({
   }
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          if (returnFocusTo === undefined) return;
+          event.preventDefault();
+          returnFocusTo.current?.focus();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Run maintenance</DialogTitle>
           <DialogDescription>Runs on the whole table, ignoring thresholds</DialogDescription>
