@@ -104,20 +104,35 @@ object_count() {
 mc ls --recursive "s3/$PREFIX" | wc -l'
   overrides="$(jq -cn --arg image "${MC_IMAGE}" --arg script "${script}" \
     --arg endpoint "${S3_ENDPOINT}" --arg prefix "${prefix}" '{spec: {containers: [{
-      name: "mc", image: $image, stdin: true,
+      name: "mc", image: $image,
       envFrom: [{secretRef: {name: "table-maintenance-s3"}}],
       env: [{name: "S3_ENDPOINT", value: $endpoint}, {name: "PREFIX", value: $prefix}],
       command: ["sh", "-ec", $script]}]}}')"
-  local count=""
+  local count="" pod
   for _ in 1 2 3; do
-    count="$(kubectl run "tm-e2e-mc-$(date +%s)" \
-      --rm -i --quiet \
-      --restart Never \
-      --image "${MC_IMAGE}" \
-      --overrides "${overrides}" \
+    pod="tm-e2e-mc-$(date +%s)"
+    count=""
+    if kubectl run "${pod}" \
+        --restart Never \
+        --image "${MC_IMAGE}" \
+        --overrides "${overrides}" \
+        --namespace "${NAMESPACE}" \
+        --context "${KUBE_CONTEXT}" >/dev/null \
+      && kubectl wait "pod/${pod}" \
+        --for jsonpath='{.status.phase}'=Succeeded \
+        --timeout 120s \
+        --namespace "${NAMESPACE}" \
+        --context "${KUBE_CONTEXT}" >/dev/null; then
+      count="$(kubectl logs "pod/${pod}" \
+        --namespace "${NAMESPACE}" \
+        --context "${KUBE_CONTEXT}" \
+        | tr -d '[:space:]')" || count=""
+    fi
+    kubectl delete "pod/${pod}" \
+      --ignore-not-found \
+      --wait=false \
       --namespace "${NAMESPACE}" \
-      --context "${KUBE_CONTEXT}" \
-      | tr -d '[:space:]')" || count=""
+      --context "${KUBE_CONTEXT}" >/dev/null || true
     if [[ "${count}" =~ ^[0-9]+$ ]]; then
       echo "${count}"
       return 0
