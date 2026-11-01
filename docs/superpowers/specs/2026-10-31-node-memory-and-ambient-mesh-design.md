@@ -150,7 +150,11 @@ unstable, and that the memory pressure has to be solved first.
 
 - In CLAUDE.md:
   - Replace "New namespaces are not labeled ambient…" with the enrolled list and this rule: a new application
-    namespace is created with the ambient label unless it is an operator or infrastructure namespace.
+    namespace is created with the ambient label. The exceptions and their reasons:
+    - Never enrolled: Istio's own `istio-system` (a circular dependency), the gateway's `istio-ingress` (already
+      a mesh proxy) and `kube-system` (host-network pods, excluded by istio-cni, and DNS is at risk).
+    - Not enrolled by default: operator namespaces (their traffic goes to the apiserver, which is outside the mesh
+      and already TLS) and `monitoring` (kept outside so that it can still diagnose a broken mesh).
   - Add `23-kiali` to the deployed list.
   - Update the memory follow-up.
 
