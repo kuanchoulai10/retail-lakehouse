@@ -47,7 +47,7 @@ spec:
             requests:
               memory: 832Mi
             limits:
-              memory: 2176Mi
+              memory: 3072Mi
           ports:
             - containerPort: 9000
               protocol: TCP
