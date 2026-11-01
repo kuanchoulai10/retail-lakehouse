@@ -2,6 +2,7 @@
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/namespace.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 SPARK_OPERATOR_VERSION="${SPARK_OPERATOR_VERSION:-2.3.0}"
@@ -11,12 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 log::on_success "Spark Operator installed"
 log::on_failure "Spark Operator installation failed"
 
-kubectl create namespace lakehouse-maintenance-operations \
-  --dry-run=client \
-  -o yaml \
-  | kubectl apply \
-    -f - \
-    --context "${KUBE_CONTEXT}"
+namespace::apply_ambient lakehouse-maintenance-operations
 
 helm repo add spark-operator https://kubeflow.github.io/spark-operator
 helm repo update spark-operator

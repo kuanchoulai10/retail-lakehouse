@@ -2,6 +2,7 @@
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/namespace.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 POLARIS_VERSION="${POLARIS_VERSION:-1.8.0}"
@@ -12,13 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 log::on_success "Apache Polaris ${POLARIS_VERSION} installed"
 log::on_failure "Apache Polaris installation failed"
 
-# Create namespace if not exists
-kubectl create namespace lakehouse-catalog \
-  --dry-run=client \
-  -o yaml \
-  | kubectl apply \
-    -f - \
-    --context "${KUBE_CONTEXT}"
+namespace::apply_ambient lakehouse-catalog
 
 kubectl apply \
   -f "$SCRIPT_DIR/polaris-storage-secret.yaml" \

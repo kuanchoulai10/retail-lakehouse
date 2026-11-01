@@ -2,6 +2,7 @@
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/namespace.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-600s}"
@@ -43,12 +44,7 @@ upsert_secret() {
 }
 
 for namespace in "${CONTROL_PLANE_NAMESPACE}" "${OPERATIONS_NAMESPACE}"; do
-  kubectl create namespace "${namespace}" \
-    --dry-run=client \
-    -o yaml \
-    | kubectl apply \
-      -f - \
-      --context "${KUBE_CONTEXT}"
+  namespace::apply_ambient "${namespace}"
 done
 
 EXISTING_DB_SECRET="$(kubectl get secret table-maintenance-db \

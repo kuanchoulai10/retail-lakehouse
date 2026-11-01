@@ -2,12 +2,15 @@
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/namespace.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
 
 log::on_success "Polaris is ready"
 log::on_failure "Polaris is not ready"
+
+namespace::assert_ambient lakehouse-catalog
 
 TOKEN_BROKER_KEYS="$(kubectl get secret polaris-token-broker \
   -o go-template='{{if and (index .data "private.pem") (index .data "public.pem")}}ok{{end}}' \

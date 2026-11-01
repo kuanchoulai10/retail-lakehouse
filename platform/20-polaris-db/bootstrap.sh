@@ -2,6 +2,7 @@
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/namespace.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 
@@ -10,13 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 log::on_success "PostgreSQL for Polaris deployed"
 log::on_failure "PostgreSQL for Polaris deployment failed"
 
-# Create namespace if not exists (idempotent)
-kubectl create namespace lakehouse-catalog \
-  --dry-run=client \
-  -o yaml \
-  | kubectl apply \
-    -f - \
-    --context "${KUBE_CONTEXT}"
+namespace::apply_ambient lakehouse-catalog
 
 # Apply in order: Secret first (Deployment depends on it via secretKeyRef)
 kubectl apply \

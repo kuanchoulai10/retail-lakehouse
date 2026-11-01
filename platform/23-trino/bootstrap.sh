@@ -2,6 +2,7 @@
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/namespace.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TRINO_VERSION="${TRINO_VERSION:-1.39.1}"
@@ -12,13 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 log::on_success "Trino ${TRINO_VERSION} installed"
 log::on_failure "Trino installation failed"
 
-# Create namespace if not exists
-kubectl create namespace lakehouse-query-engine \
-  --dry-run=client \
-  -o yaml \
-  | kubectl apply \
-    -f - \
-    --context "${KUBE_CONTEXT}"
+namespace::apply_ambient lakehouse-query-engine
 
 # Apply cert-manager Issuer and Certificate
 kubectl apply \

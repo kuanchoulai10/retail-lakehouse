@@ -37,7 +37,14 @@ Wave 21 — depends on RustFS (wave 20, S3 storage) and polaris-db (wave 20, cat
 Before installing, create the storage credentials secret so Polaris can vend credentials to clients (Trino, Iceberg connector) for direct S3 access to RustFS:
 
 ```bash
-kubectl create namespace lakehouse-catalog --context retail-lakehouse
+kubectl apply -f - --context retail-lakehouse <<EOF
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lakehouse-catalog
+  labels:
+    istio.io/dataplane-mode: ambient
+EOF
 kubectl create secret generic polaris-storage-secret \
   --from-literal=awsAccessKeyId=<RUSTFS_ACCESS_KEY> \
   --from-literal=awsSecretAccessKey=<RUSTFS_SECRET_KEY> \

@@ -72,9 +72,10 @@ mesh::assert_hbone() {
     ztunnel=$(kubectl get pods \
       -l app=ztunnel \
       --field-selector "spec.nodeName=${node}" \
-      -o jsonpath='{.items[0].metadata.name}' \
+      -o jsonpath='{.items[*].metadata.name}' \
       --namespace istio-system \
       --context "${KUBE_CONTEXT}")
+    ztunnel=${ztunnel%% *}
     if [[ -z "$ztunnel" ]]; then
       echo "no ztunnel pod on node $node" >&2
       return 1

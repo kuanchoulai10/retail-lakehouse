@@ -2,6 +2,7 @@
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/namespace.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
@@ -11,6 +12,9 @@ GATEWAY_PID=""
 
 log::on_success "Lakehouse control plane is ready"
 log::on_failure "Lakehouse control plane is not ready"
+
+namespace::assert_ambient lakehouse-control-plane
+namespace::assert_ambient lakehouse-maintenance-operations
 
 cleanup() {
   if [[ -n "${GATEWAY_PID}" ]]; then
