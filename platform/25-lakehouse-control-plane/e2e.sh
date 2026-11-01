@@ -108,21 +108,27 @@ mc ls --recursive "s3/$PREFIX" | wc -l'
       envFrom: [{secretRef: {name: "table-maintenance-s3"}}],
       env: [{name: "S3_ENDPOINT", value: $endpoint}, {name: "PREFIX", value: $prefix}],
       command: ["sh", "-ec", $script]}]}}')"
-  local count="" pod
+  local count="" pod phase
   for _ in 1 2 3; do
     pod="tm-e2e-mc-$(date +%s)"
     count=""
+    phase=""
     if kubectl run "${pod}" \
         --restart Never \
         --image "${MC_IMAGE}" \
         --overrides "${overrides}" \
         --namespace "${NAMESPACE}" \
-        --context "${KUBE_CONTEXT}" >/dev/null \
-      && kubectl wait "pod/${pod}" \
-        --for jsonpath='{.status.phase}'=Succeeded \
-        --timeout 120s \
-        --namespace "${NAMESPACE}" \
         --context "${KUBE_CONTEXT}" >/dev/null; then
+      for _ in $(seq 1 120); do
+        phase="$(kubectl get "pod/${pod}" \
+          --output jsonpath='{.status.phase}' \
+          --namespace "${NAMESPACE}" \
+          --context "${KUBE_CONTEXT}")" || phase=""
+        [[ "${phase}" == "Succeeded" || "${phase}" == "Failed" ]] && break
+        sleep 1
+      done
+    fi
+    if [[ "${phase}" == "Succeeded" ]]; then
       count="$(kubectl logs "pod/${pod}" \
         --namespace "${NAMESPACE}" \
         --context "${KUBE_CONTEXT}" \
