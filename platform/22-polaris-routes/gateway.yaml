@@ -21,3 +21,4 @@ spec:
                 values:
                   - lakehouse-catalog
                   - lakehouse-control-plane
+                  - istio-system

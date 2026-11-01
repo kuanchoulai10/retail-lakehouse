@@ -19,3 +19,10 @@ helm upgrade --install ztunnel istio/ztunnel \
   --namespace istio-system \
   --values "$SCRIPT_DIR/values.yaml" \
   --kube-context "${KUBE_CONTEXT}"
+
+kubectl apply \
+  -f "$SCRIPT_DIR/ztunnel-podmonitor.yaml" \
+  --context "${KUBE_CONTEXT}"
+kubectl apply \
+  -f "$SCRIPT_DIR/ztunnel-prometheus-rbac.yaml" \
+  --context "${KUBE_CONTEXT}"

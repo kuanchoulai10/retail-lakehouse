@@ -1,0 +1,18 @@
+auth:
+  strategy: anonymous
+deployment:
+  view_only_mode: true
+  resources:
+    requests:
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+external_services:
+  prometheus:
+    url: http://prometheus-k8s.monitoring:9090
+  grafana:
+    enabled: false
+  tracing:
+    enabled: false
+server:
+  web_root: /kiali
