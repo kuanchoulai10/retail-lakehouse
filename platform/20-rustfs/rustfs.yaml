@@ -43,6 +43,11 @@ spec:
           envFrom:
             - secretRef:
                 name: rustfs-secret
+          resources:
+            requests:
+              memory: 2176Mi
+            limits:
+              memory: 2176Mi
           ports:
             - containerPort: 9000
               protocol: TCP

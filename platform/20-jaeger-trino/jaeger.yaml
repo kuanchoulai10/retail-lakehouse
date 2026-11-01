@@ -5,6 +5,11 @@ metadata:
   namespace: lakehouse-query-engine
 spec:
   image: jaegertracing/jaeger:2.22.0
+  resources:
+    requests:
+      memory: 512Mi
+    limits:
+      memory: 512Mi
   ports:
   - name: jaeger
     port: 16686
@@ -27,7 +32,7 @@ spec:
         backends:
           memstore:
             memory:
-              max_traces: 100000
+              max_traces: 20000
     service:
       extensions: [jaeger_storage, jaeger_query]
       pipelines:

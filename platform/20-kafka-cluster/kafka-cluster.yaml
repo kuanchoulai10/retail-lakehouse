@@ -49,6 +49,14 @@ spec:
   roles:
     - controller
     - broker
+  jvmOptions:
+    "-Xms": 1g
+    "-Xmx": 1g
+  resources:
+    requests:
+      memory: 2560Mi
+    limits:
+      memory: 2560Mi
   storage:
     type: jbod
     volumes:

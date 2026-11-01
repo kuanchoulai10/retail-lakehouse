@@ -29,3 +29,7 @@ Namespace: kafka
 |---------|------|---------|
 | `kafka-cluster-kafka-bootstrap` | 9092 (PLAINTEXT), 9093 (TLS), 9091 (replication) | Client connection entry point |
 | `kafka-cluster-kafka-brokers` | 9090, 9091, 9092, 9093, 8443 | Headless service for broker-to-broker communication |
+
+## Memory
+
+The `dual-role` node pool sets the JVM heap to `-Xms1g -Xmx1g` and the pod memory request and limit to `2560Mi` (heap plus page cache and off-heap headroom). Before the change the brokers were unbounded and used about 3.7 / 3.4 / 1.9 GiB; right after the rolling restart they use about 1.0 / 1.1 / 0.9 GiB and can grow to the 2.5 GiB limit as the page cache fills. The node went from 85% to 58% memory in the same run. Check there is no under-replicated partition after a roll with `kafka-topics.sh --describe --under-replicated-partitions` inside a broker pod.

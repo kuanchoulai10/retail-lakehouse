@@ -26,3 +26,7 @@ Namespace: kafka
 |---------|------|---------|
 | `debezium-connect-cluster-connect-api` | 8083 | Kafka Connect REST API |
 | `debezium-connect-cluster-connect` | 8083 | Headless service for Connect worker pods |
+
+## Memory
+
+The KafkaConnect has a memory request and limit of `1Gi` with heap `-Xms128m -Xmx512m` and `MaxMetaspaceSize=256m`. The pod used about 454 MiB before the limit and about 500 MiB after.

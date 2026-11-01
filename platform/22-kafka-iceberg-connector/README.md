@@ -19,3 +19,7 @@ Namespace: kafka
 | Pod | Purpose |
 |-----|---------|
 | `iceberg-connect-cluster-connect-0` | Runs the Iceberg sink connector worker |
+
+## Memory
+
+The KafkaConnect has a memory request and limit of `1Gi` with heap `-Xms512m -Xmx512m`. It had no limit and an unset heap before, and used about 537 MiB; after the change it uses about 780 MiB, which leaves about 240 MiB below the limit.

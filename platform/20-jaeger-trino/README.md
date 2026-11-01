@@ -27,3 +27,7 @@ Namespace: lakehouse-query-engine
 | `jaeger-collector-extension` | 16686 | Jaeger query UI extension |
 | `jaeger-collector-headless` | 16686, 4317, 4318 | Headless service for direct pod access |
 | `jaeger-collector-monitoring` | 8888 | Collector metrics endpoint |
+
+## Memory
+
+The collector keeps traces in memory (`max_traces: 20000`, was `100000`) with a memory request and limit of `512Mi`. It used about 520 MiB before the change (long-running, 100000 traces) and about 100 MiB after the restart; the 512Mi limit is the brief value, kept as headroom while the in-memory store refills.
