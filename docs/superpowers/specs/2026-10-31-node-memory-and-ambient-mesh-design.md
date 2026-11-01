@@ -28,8 +28,8 @@ unstable, and that the memory pressure has to be solved first.
    between two enrolled pods is mTLS (HBONE) through ztunnel without changing any service.
 3. Phase 2: Kiali shows the service graph from ztunnel's L4 metrics (who connects to whom, connection and byte
    counts, mTLS shown), reachable through `platform-gateway`.
-4. Both phases reproducible from `task onboard KUBE_CONTEXT=retail-lakehouse` (labels and Kiali in the wave
-   scripts, not applied by hand).
+4. Both phases reproducible from `task onboard KUBE_CONTEXT=retail-lakehouse`: labels, limits and Kiali live in
+   the wave manifests and scripts, never applied by hand.
 
 ## Non-goals
 
@@ -39,111 +39,124 @@ unstable, and that the memory pressure has to be solved first.
 - No distributed tracing through the mesh, no new Grafana dashboards.
 - No change to the on-hold waves (`30-thanos`, `24-e2e-validation`, ArgoCD path).
 - No CNI change (bridge stays).
+- No separate enrolment wave and no per-workload restarts to bring running pods into the mesh.
 
 ## Anti-goals
 
 - The cluster or a data path breaking because of the mesh: CDC MySQL → Kafka → Iceberg → Trino, the table
-  maintenance control plane (Temporal, Spark jobs) and the console must keep working after each enrolment.
+  maintenance control plane (Temporal, Spark jobs) and the console must keep working.
 - A memory fix that trades pressure for OOM kills or restart loops.
-- Enrolling everything in one step, so that a failure cannot be traced to one namespace.
+- A failure that cannot be traced to one namespace.
 
 ## Decided with the owner
 
 - Order: memory first, then the mesh.
 - L4 only (ztunnel), no waypoints; "who calls whom" at the most basic level is enough.
-- Visualisation: the lightest option that does not risk the cluster (owner left the choice to Claude → Kiali, below).
-- Namespaces are enrolled one at a time, each verified before the next, with rollback by removing the label.
+- Visualisation: the lightest option that does not risk the cluster (owner left the choice to Claude → Kiali).
+- **65% is a target, not a gate.** After Kafka, RustFS, Jaeger and the two KafkaConnect clusters are bounded, the
+  mesh goes ahead as long as nothing is OOM-killed or restart-looping. Expect roughly 66–70%. Do not cut further:
+  no Prometheus retention change, no Trino change, no broker count change, no colima resize.
+- **The enrolment label lives in each wave's own namespace manifest**, not in a separate wave. A namespace is
+  created with `istio.io/dataplane-mode: ambient`, so its pods start inside the mesh and nothing has to be
+  restarted.
+- **Rollout:**
+  1. A `kafka-ui` canary on the running cluster.
+  2. If the canary passes, add the labels and memory limits to every wave.
+  3. Run one clean `task offboard` + `task onboard KUBE_CONTEXT=retail-lakehouse`. Onboard deploys and validates
+     the waves in order, so a failure points at one wave, and so at one namespace.
+- **If the `kafka-ui` canary fails for a CNI reason, stop.** Ship the memory work alone, with its own clean
+  onboard, and report back with the evidence. No CNI change.
 
 ## Design (Claude's calls — the owner can override)
 
-### Phase 1: memory
+### Memory
 
-- Kafka (`dual-role` KafkaNodePool): set `jvmOptions` (`-Xms` / `-Xmx`, about 1 GiB heap) and `resources` (memory
-  request and limit around 2 GiB). Strimzi rolls the brokers one at a time; `min.insync.replicas: 2` keeps topics
-  writable during the roll.
-- Bound the next largest unbounded pods where it is safe: RustFS, Jaeger collector (also cap its in-memory trace
-  count if it uses memory storage), the two KafkaConnect clusters. Each limit is set from its measured usage with
-  headroom; the builder checks each one is not already bounded.
-- Measure with `kubectl top` before and after; record the numbers in the wave READMEs and the CLAUDE.md
-  "Node memory pressure" follow-up.
+- Kafka (`dual-role` KafkaNodePool in `platform/20-kafka-cluster/kafka-cluster.yaml`): `jvmOptions` with a 1 GiB
+  heap (`-Xms` / `-Xmx`) and a memory request and limit of about 2.5 GiB. Lower these later only from
+  measurements.
+- Bound the next largest unbounded pods, each from its measured usage plus headroom: RustFS, the Jaeger
+  collector (also cap its in-memory trace count if it uses memory storage) and the two KafkaConnect clusters. The
+  builder first checks that each one is not already bounded.
+- Measure with `kubectl top` before the change and again after the clean onboard. "Nothing OOM-killed" means no
+  OOMKilled status and no rise in restart count over a 30-minute soak after onboard. Record the numbers in the wave
+  READMEs and in the CLAUDE.md "Node memory pressure" follow-up.
 
-### Phase 2: mesh
+### Which namespaces
 
-- Enrolment is a namespace label set by wave `26-ambient-mesh` (see "Settled after the builder check"), and checked by
-  that wave's `validate.sh`.
-- Namespaces to enrol: `kafka-ui` first (canary: stateless, low impact), then `ecommerce-app`, `object-storage`,
-  `lakehouse-catalog`, `kafka`, `lakehouse-query-engine`, `temporal`, `lakehouse-control-plane`,
-  `lakehouse-maintenance-operations`. Not enrolled: `kube-system`, `istio-system`, `istio-ingress` (the gateway is
-  its own proxy), `monitoring`, and operator namespaces (cert-manager, strimzi-operator, keda, spark-operator,
-  otel-operator).
-- Per enrolment: label, then restart nothing unless needed (ambient captures without restarts), then verify that
-  namespace's validate.sh, that ztunnel lists its workloads with protocol HBONE, and the end-to-end data paths it
-  takes part in. A failure means removing the label and recording why before going on.
-- Canary risk to check first: istio-cni has never redirected traffic on this bridge-CNI node. If the canary fails
-  for a CNI reason, stop and bring it back to the owner instead of working around it.
-- Metrics: kube-prometheus scrapes ztunnel (PodMonitor or ServiceMonitor in wave `26-ambient-mesh`) so
+- Enrolled: `kafka-ui`, `ecommerce-app`, `object-storage`, `lakehouse-catalog`, `kafka`, `lakehouse-query-engine`,
+  `temporal`, `lakehouse-control-plane`, `lakehouse-maintenance-operations`.
+- Not enrolled: `kube-system`, `istio-system`, `istio-ingress` (the gateway is its own proxy), `monitoring`, and the
+  operator namespaces (cert-manager, strimzi-operator, keda, spark-operator, otel-operator).
+
+### Where the label goes
+
+- Every place that creates an enrolled namespace sets the label. Several waves create the same namespace:
+  - `lakehouse-catalog`: `20-polaris-db` and `21-polaris`
+  - `lakehouse-query-engine`: `20-jaeger-trino` and `23-trino`
+  - `temporal`: `20-temporal-db` and `21-temporal`
+  - `lakehouse-control-plane` and `lakehouse-maintenance-operations`: wave 25's loop, and `11-spark-operator` for
+    the latter
+
+  All of them set the label, so whichever runs first and any later `apply` agree. The builder finds every creation
+  site, including Helm `createNamespace` and `kubectl create namespace` in scripts.
+- Timing: Istio is installed in waves 11–12, before any enrolled workload starts.
+  `lakehouse-maintenance-operations` is created in wave 11, before ztunnel, but its Spark pods start only later
+  from wave 25, so they are captured.
+- Every wave that creates an enrolled namespace has a `validate.sh` that checks the label is present.
+
+### Metrics and Kiali
+
+- `12-ztunnel` adds a PodMonitor (or ServiceMonitor) so kube-prometheus scrapes ztunnel, which makes the
   `istio_tcp_*` series exist.
-- Kiali: in wave `platform/26-ambient-mesh` (see "Settled after the builder check"),
-  official `kiali-server` Helm chart pinned, anonymous auth (dev cluster, no auth today anywhere), pointing
-  at `prometheus-k8s.monitoring`, memory limit about 256 MiB. Exposed through an HTTPRoute on `platform-gateway`
-  (path prefix, like the console).
-- CLAUDE.md: replace "New namespaces are not labeled ambient…" with the enrolled list and the rule for new
-  namespaces; add the waves to the deployed list.
+- New wave `23-kiali`. It has to come after `platform-gateway` (wave 22), because its HTTPRoute can only be
+  validated against a live gateway.
+  - Use the official `kiali-server` Helm chart, pinned to a version that supports ambient.
+  - Kiali runs in `istio-system`, view-only, with anonymous auth and the chart's standard read-only cluster RBAC.
+    Its memory limit is about 256 MiB, and it points at `prometheus-k8s.monitoring`.
+  - Its HTTPRoute lives in `istio-system` and attaches to `platform-gateway` by path prefix, like the console.
+    The gateway's `allowedRoutes` is widened to `istio-system`.
+- Kiali pass condition: the graph for `kafka`, `ecommerce-app` and `lakehouse-catalog` shows edges between
+  enrolled workloads, with mTLS shown, for at least Debezium → Kafka and Iceberg Connect → Polaris / RustFS.
+  - Callers outside the mesh (Prometheus, operators, KEDA, the gateway) stay plaintext under the permissive
+    default. They may show up as unknown or non-mTLS sources, which is accepted.
+  - If Kiali cannot draw an ambient L4 graph, the fallback is a Grafana panel over `istio_tcp_*`; record the reason.
 
-## Settled after the builder check
+### Canary (on the running cluster, before any wave change)
 
-Decided by the owner:
+- Steps:
+  1. Label the `kafka-ui` namespace.
+  2. Restart its one Deployment once, so it reconnects. This is the canary only; nothing else is restarted.
+  3. Confirm that ztunnel lists the pod with protocol HBONE (`istioctl ztunnel-config workloads` or ztunnel's
+     admin endpoint).
+  4. Confirm that Kafka UI's own `validate.sh` passes and that the page loads.
+- Kafka is not enrolled yet, so mTLS to it cannot be shown. The canary proves only that capture works on the
+  bridge CNI.
+- After the canary, the label stays. The later wave change makes it permanent.
 
-- **65% is a target, not a gate.** Phase 1 bounds Kafka, RustFS, Jaeger and the two KafkaConnect clusters, then
-  Phase 2 starts, provided nothing is OOM-killed or restart-looping. Expect roughly 66–70%. Do not cut further
-  (no Prometheus retention change, no Trino change, no broker count change, no colima resize).
-- **If the `kafka-ui` canary fails for a CNI reason, stop.** Ship Phase 1 alone and report back with the
-  evidence. No CNI change.
+### Verification after the clean onboard
 
-Claude's calls:
+- `task validate` passes. That covers every wave, including each label check.
+- Every enrolled workload shows HBONE in ztunnel.
+- Data paths:
+  - CDC: insert a row in MySQL and see it in Trino. Allow the known 5–10 min Iceberg sink delay.
+  - `platform/25-lakehouse-control-plane/e2e.sh` passes.
+  - The console and Kiali load through `platform-gateway`.
+- Kiali's pass condition holds.
+- The memory soak holds.
+- If one namespace's workloads fail because of the mesh, take its label out of its waves, record why, and
+  re-onboard the rest. A failure shared by all namespaces stops the work.
 
-- **Kafka roll.**
-  - CDC may lag or stall for a few minutes during the roll; data loss on minikube is acceptable.
-  - Between brokers, check that there are no under-replicated partitions (Strimzi rolls one at a time).
-  - After the roll, insert a row in MySQL and see it in Trino. Allow the known 5–10 min Iceberg sink delay.
-- **Memory limits.**
-  - Start the Kafka limit generously, about 2.5 GiB with a 1 GiB heap, and lower it later only from measurements.
-  - "Nothing OOM-killed" means no OOMKilled or restart increase over a 30-minute soak after the last change.
-- **Where enrolment lives.** A new last wave, `platform/26-ambient-mesh`, labels the namespaces listed in its
-  bootstrap script, and its validate checks each one.
-  - The rollout grows that list one namespace per commit, in the order above.
-  - A fresh `task onboard` runs the same script after every other wave, so both use one code path, and no earlier
-    wave enrols anything at namespace creation.
-  - The wave also holds the ztunnel scrape config, Kiali and the Kiali HTTPRoute.
-- **Verification per namespace.**
-  - That namespace's `validate.sh` passes.
-  - Its workloads show protocol HBONE in ztunnel (`istioctl ztunnel-config workloads`, or ztunnel's admin
-    endpoint).
-  - The data paths it is part of still work: CDC insert → Trino for `ecommerce-app`, `kafka`, `object-storage`,
-    `lakehouse-catalog` and `lakehouse-query-engine`; `platform/25-lakehouse-control-plane/e2e.sh` for `temporal`,
-    `lakehouse-control-plane` and `lakehouse-maintenance-operations`; the console through `platform-gateway`.
-  - If a namespace fails for a reason specific to it, remove its label, record why, and continue with the rest.
-    If it fails for a reason shared by all namespaces, stop.
-- **Restarts.**
-  - Existing connections stay plaintext until they reconnect, so after labelling, restart that namespace's
-    workloads (`kubectl rollout restart`, one workload at a time).
-  - Strimzi pods are deleted one at a time, waiting for the cluster to be ready in between.
-  - "mTLS verified" means the connections made after that restart.
-- **Callers outside the mesh** (Prometheus, operators, KEDA, the gateway) stay plaintext under the permissive
-  default. They may appear in Kiali as unknown or non-mTLS sources; that is accepted.
-- **Kiali.**
-  - It runs in `istio-system`, with view-only mode, anonymous auth and the chart's standard read-only cluster
-    RBAC.
-  - Pick a chart version that supports ambient.
-  - The HTTPRoute lives in `istio-system`, and the `platform-gateway` `allowedRoutes` is widened to `istio-system`.
-  - Pass condition: the graph for `kafka`, `ecommerce-app` and `lakehouse-catalog` shows edges between enrolled
-    workloads, with mTLS shown, for at least Debezium → Kafka and Iceberg Connect → Polaris / RustFS.
-  - If Kiali cannot draw an ambient L4 graph, a Grafana panel over `istio_tcp_*` is the fallback; record the
-    reason.
+### Docs
+
+- In CLAUDE.md:
+  - Replace "New namespaces are not labeled ambient…" with the enrolled list and this rule: a new application
+    namespace is created with the ambient label unless it is an operator or infrastructure namespace.
+  - Add `23-kiali` to the deployed list.
+  - Update the memory follow-up.
 
 ## Left to the builder
 
 - Exact heap and limit values, chosen from measurements.
-- Kiali chart version and wave number, HTTPRoute path.
+- Kiali chart version and HTTPRoute path.
 - How validate.sh checks HBONE (istioctl, ztunnel admin endpoint or Kiali API).
-- Number of commits (one per namespace enrolment is fine).
+- Number of commits.
