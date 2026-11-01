@@ -2,3 +2,6 @@ profile: ambient
 
 global:
   platform: minikube
+
+cni:
+  cniNetnsDir: /var/run/netns
