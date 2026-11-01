@@ -29,4 +29,4 @@ Namespace: kafka
 
 ## Memory
 
-The KafkaConnect has a memory request and limit of `1Gi` with heap `-Xms128m -Xmx512m` and `MaxMetaspaceSize=256m`. The pod used about 454 MiB before the limit and about 500 MiB after.
+The KafkaConnect has a memory limit of `1Gi` and a request of `640Mi` (it used 408 MiB after a 30 minute soak) with heap `-Xms128m -Xmx512m` and `MaxMetaspaceSize=256m`. The pod used about 454 MiB before the limit and about 500 MiB after. The request is sized from usage, not set equal to the limit: with request = limit on Kafka, both KafkaConnects, RustFS and Jaeger the node had 27013Mi of 28005Mi allocatable requested, and Spark maintenance executors (1433Mi each) could not be scheduled.

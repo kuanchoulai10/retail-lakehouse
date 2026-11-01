@@ -54,7 +54,7 @@ spec:
     "-Xmx": 1g
   resources:
     requests:
-      memory: 2560Mi
+      memory: 1536Mi
     limits:
       memory: 2560Mi
   storage:

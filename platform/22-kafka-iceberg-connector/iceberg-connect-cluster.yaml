@@ -22,7 +22,7 @@ spec:
     status.storage.replication.factor: -1
   resources:
     requests:
-      memory: 1Gi
+      memory: 896Mi
     limits:
       memory: 1Gi
   jvmOptions:

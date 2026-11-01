@@ -30,4 +30,4 @@ Namespace: lakehouse-query-engine
 
 ## Memory
 
-The collector keeps traces in memory (`max_traces: 20000`, was `100000`) with a memory request and limit of `512Mi`. It used about 520 MiB before the change (long-running, 100000 traces) and about 100 MiB after the restart; the 512Mi limit is the brief value, kept as headroom while the in-memory store refills.
+The collector keeps traces in memory (`max_traces: 20000`, was `100000`) with a memory limit of `512Mi` and a request of `256Mi` (it used 157 MiB after a 30 minute soak). The request is sized from usage, not set equal to the limit: with request = limit on Kafka, both KafkaConnects, RustFS and Jaeger the node had 27013Mi of 28005Mi allocatable requested, and Spark maintenance executors (1433Mi each) could not be scheduled. It used about 520 MiB before the change (long-running, 100000 traces) and about 100 MiB after the restart; the 512Mi limit is the brief value, kept as headroom while the in-memory store refills.

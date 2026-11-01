@@ -22,4 +22,4 @@ Namespace: kafka
 
 ## Memory
 
-The KafkaConnect has a memory request and limit of `1Gi` with heap `-Xms512m -Xmx512m`. It had no limit and an unset heap before, and used about 537 MiB; after the change it uses about 780 MiB, which leaves about 240 MiB below the limit.
+The KafkaConnect has a memory limit of `1Gi` and a request of `896Mi` (it used 767 MiB after a 30 minute soak) with heap `-Xms512m -Xmx512m`. The request is sized from usage, not set equal to the limit: with request = limit on Kafka, both KafkaConnects, RustFS and Jaeger the node had 27013Mi of 28005Mi allocatable requested, and Spark maintenance executors (1433Mi each) could not be scheduled. It had no limit and an unset heap before, and used about 537 MiB; after the change it uses about 780 MiB, which leaves about 240 MiB below the limit.
