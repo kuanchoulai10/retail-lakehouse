@@ -165,6 +165,15 @@ tasks:
       - task: validate-otel-operator
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-istiod
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-istio-cni
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-ztunnel
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       - task: validate-kafka-cluster
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
@@ -252,6 +261,27 @@ tasks:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
       - bash platform/11-otel-operator/validate.sh
+
+  validate-istiod:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash platform/12-istiod/validate.sh
+
+  validate-istio-cni:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash platform/12-istio-cni/validate.sh
+
+  validate-ztunnel:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash platform/12-ztunnel/validate.sh
 
   validate-kafka-cluster:
     internal: true

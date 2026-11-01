@@ -29,7 +29,7 @@ assert_kiali_status_through_gateway() {
     cat "$pf_log" >&2
     return 1
   fi
-  status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:${port}/kiali/api/status")
+  status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:${port}/kiali/api/status") || status=000
   if [[ "$status" != "200" ]]; then
     echo "GET /kiali/api/status returned ${status}" >&2
     return 1

@@ -54,7 +54,7 @@ __mesh::fetch_workloads() {
     cat "$pf_log" >&2
     return 1
   fi
-  curl -sf --max-time 5 "http://127.0.0.1:${port}/config_dump"
+  curl -sf --max-time 5 "http://127.0.0.1:${port}/config_dump" || return 1
 }
 
 mesh::assert_hbone() {

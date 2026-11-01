@@ -85,8 +85,8 @@ unstable, and that the memory pressure has to be solved first.
 
 - Enrolled: `kafka-ui`, `ecommerce-app`, `object-storage`, `lakehouse-catalog`, `kafka`, `lakehouse-query-engine`,
   `temporal`, `lakehouse-control-plane`, `lakehouse-maintenance-operations`.
-- Not enrolled: `kube-system`, `istio-system`, `istio-ingress` (the gateway is its own proxy), `monitoring`, and the
-  operator namespaces (cert-manager, strimzi-operator, keda, spark-operator, otel-operator).
+- Not enrolled: `thanos` (on hold), `kube-system`, `istio-system`, `istio-ingress` (the gateway is its own proxy), `monitoring`, and the
+  operator namespaces (cert-manager, strimzi-operator, keda, spark-operator, opentelemetry-operator).
 
 ### Where the label goes
 

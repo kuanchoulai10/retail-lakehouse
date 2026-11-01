@@ -92,8 +92,8 @@ Respond in the same language as the user's message. The user typically communica
 **Ambient mesh (L4, ztunnel only; no waypoints, no PeerAuthentication).** Enrolled namespaces (label `istio.io/dataplane-mode=ambient`): `kafka-ui`, `ecommerce-app`, `object-storage`, `lakehouse-catalog`, `kafka`, `lakehouse-query-engine`, `temporal`, `lakehouse-control-plane`, `lakehouse-maintenance-operations`. Every wave that creates one of them creates it with the label (`namespace::apply_ambient` in `scripts/utils/namespace.sh`) and its `validate.sh` asserts it (`namespace::assert_ambient`); `mesh::assert_hbone <namespace>` checks every Running pod is HBONE in ztunnel. Callers outside the mesh (Prometheus, operators, KEDA, the gateway) stay plaintext under the permissive default.
 
 Rule: a new application namespace is created with the ambient label. Exceptions:
-- Never enrolled: `istio-system` (Istio's own namespace: a circular dependency), `istio-ingress` (the gateway is already a mesh proxy) and `kube-system` (host-network pods, excluded by istio-cni, and DNS is at risk).
-- Not enrolled by default: operator namespaces (cert-manager, strimzi-operator, keda, spark-operator, otel-operator; their traffic goes to the apiserver, which is outside the mesh and already TLS) and `monitoring` (kept outside so that it can still diagnose a broken mesh).
+- Never enrolled: `thanos` (on hold), `istio-system` (Istio's own namespace: a circular dependency), `istio-ingress` (the gateway is already a mesh proxy) and `kube-system` (host-network pods, excluded by istio-cni, and DNS is at risk).
+- Not enrolled by default: operator namespaces (cert-manager, strimzi-operator, keda, spark-operator, opentelemetry-operator; their traffic goes to the apiserver, which is outside the mesh and already TLS) and `monitoring` (kept outside so that it can still diagnose a broken mesh).
 
 ## Platform (Infra)
 
