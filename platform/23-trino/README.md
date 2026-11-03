@@ -151,15 +151,19 @@ kubectl rollout restart deployment/trino-coordinator -n lakehouse-query-engine -
 
 ## Memory Sizing
 
-Trino shares the single minikube node with Kafka, Polaris, Temporal and the Spark maintenance jobs, so it is sized small. Each JVM heap is about 75% of its container memory limit. The rest is left for metaspace, code cache, thread stacks and direct buffers, which measure about 1 GiB per Trino JVM.
+Trino shares the single minikube node with Kafka, Polaris, Temporal and the Spark maintenance jobs, so it is sized small. The coordinator heap is about 70% of its container memory limit. The rest is left for metaspace, code cache, thread stacks and direct buffers.
 
-| Container | `-Xmx` | Memory request = limit | `query.max-memory-per-node` | `memory.heap-headroom-per-node` |
+| Container | `-Xmx` | Memory request / limit | `query.max-memory-per-node` | `memory.heap-headroom-per-node` |
 |-----------|--------|------------------------|-----------------------------|---------------------------------|
-| `trino-coordinator` | 2G | 2816Mi | 1GB | 600MB |
-| `trino-worker` (each) | 3G | 4Gi | 1536MB | 900MB |
-| `jmx-exporter` sidecar (each pod) | - | 384Mi | - | - |
+| `trino-coordinator` | 2G | 2816Mi / 2816Mi | 1GB | 600MB |
+| `trino-worker` (each) | 3G | 4Gi / 5Gi | 1536MB | 900MB |
+| `jmx-exporter` sidecar (each pod) | - | 384Mi / 384Mi | - | - |
 
-`query.max-memory` (cluster-wide) is `3GB`, which equals two workers at 1536MB each. The coordinator does not run tasks (`node-scheduler.include-coordinator=false`). With one worker, Trino has a hard ceiling of about 7.5 GiB, and each extra worker adds about 4.4 GiB.
+`query.max-memory` (cluster-wide) is `3GB`, which equals two workers at 1536MB each. The coordinator does not run tasks (`node-scheduler.include-coordinator=false`). With one worker, Trino has a hard ceiling of about 8.5 GiB, and each extra worker adds about 5.4 GiB.
+
+The worker limit was `4Gi` (request = limit) until 2026-11-03. With a 3G heap that left about 1 GiB for non-heap memory (metaspace, threads, JIT and code cache, and the direct buffers of the Iceberg / Parquet writers and the S3 client), and the container was OOMKilled at the limit twice during the table maintenance `e2e.sh` INSERT burst on 2026-11-01. It was a container OOMKill, not a Java heap OOM. The limit is now `5Gi` with the request kept at `4Gi`, so scheduling headroom for the Spark maintenance jobs is unchanged; the heap and query memory settings are unchanged.
+
+Measured on 2026-11-03 after a clean onboard, sampling the worker's cgroup `memory.current` every 10 s: the worker peaked at 4155 MiB in the first `e2e.sh` run and 4331 MiB in the second (both above the old 4096 MiB limit, 85% of the new limit), with no OOMKill or restart; KEDA kept one worker. During the following 30 minute soak it fell from 4266 to 2567 MiB. The coordinator peaked at 1907 MiB.
 
 ## Worker Autoscaling (KEDA)
 

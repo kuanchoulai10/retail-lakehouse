@@ -30,6 +30,8 @@ Namespace: lakehouse-query-engine
 
 ## Memory
 
-The collector keeps traces in memory (`max_traces: 20000`, was `100000`) with a memory request of `256Mi` and a limit of `512Mi`. The request is sized from usage, not set equal to the limit: with request = limit on Kafka, both KafkaConnects, RustFS and Jaeger the node had 27013Mi of 28005Mi allocatable requested, and Spark maintenance executors (1433Mi each) could not be scheduled.
+The collector keeps traces in memory (`max_traces: 20000`, was `100000`) with a memory request of `448Mi` and a limit of `512Mi`. The request is sized from usage, not set equal to the limit: with request = limit on Kafka, both KafkaConnects, RustFS and Jaeger the node had 27013Mi of 28005Mi allocatable requested, and Spark maintenance executors (1433Mi each) could not be scheduled.
 
-Measured on the deployed configuration (2026-11-01, after a clean onboard, a table maintenance `e2e.sh` run and a 30 minute soak with no changes, 14:05–14:35): 157 MiB with little Trino traffic, 393–408 MiB after the e2e's Trino queries filled the store, no restart. It used about 520 MiB before the change (100000 traces). The working set after load is above the request; raise the request to about 448Mi if scheduling headroom allows.
+Measured on the deployed configuration (2026-11-01, after a clean onboard, a table maintenance `e2e.sh` run and a 30 minute soak with no changes, 14:05–14:35): 157 MiB with little Trino traffic, 393–408 MiB after the e2e's Trino queries filled the store, no restart. It used about 520 MiB before the change (100000 traces). The working set after load was above the `256Mi` request, so on 2026-11-03 the request was raised to `448Mi`; the limit is unchanged.
+
+Measured on 2026-11-03 after a clean onboard, two `e2e.sh` runs and a 30 minute soak (00:44–01:14): 277 MiB right after the e2e, 285 MiB at the end of the soak (also the peak), no restart.

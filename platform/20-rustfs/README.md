@@ -30,8 +30,10 @@ Namespace: object-storage
 
 ## Memory
 
-The `rustfs` container has a memory request of `832Mi` and a limit of `3072Mi`. The request is sized from usage, not set equal to the limit: with request = limit on Kafka, both KafkaConnects, RustFS and Jaeger the node had 27013Mi of 28005Mi allocatable requested, and Spark maintenance executors (1433Mi each) could not be scheduled.
+The `rustfs` container has a memory request of `1638Mi` and a limit of `3072Mi`. The request is sized from usage, not set equal to the limit: with request = limit on Kafka, both KafkaConnects, RustFS and Jaeger the node had 27013Mi of 28005Mi allocatable requested, and Spark maintenance executors (1433Mi each) could not be scheduled.
 
 The limit was first `2176Mi` (1630 MiB measured before plus about 30%). Under the table maintenance e2e load the container reached that limit and was OOMKilled once; the next e2e run peaked at 2316 MiB, so the limit is that load peak plus about 30%. RustFS 1.0.3 has no documented cache or memory cap setting, so the limit is raised instead.
 
-Measured on the deployed configuration (2026-11-01, after a clean onboard, a table maintenance `e2e.sh` run and a 30 minute soak with no changes, 14:05–14:35): 765 MiB idle before any load, 2316 MiB right after the e2e, 1527 MiB at the end of the soak, no restart. The working set after load stays above the request; raise the request to about 1.6Gi if scheduling headroom allows.
+Measured on the deployed configuration (2026-11-01, after a clean onboard, a table maintenance `e2e.sh` run and a 30 minute soak with no changes, 14:05–14:35): 765 MiB idle before any load, 2316 MiB right after the e2e, 1527 MiB at the end of the soak, no restart. The working set after load stayed above the `832Mi` request, so on 2026-11-03 the request was raised to `1638Mi` (about 1.6Gi); the limit is unchanged.
+
+Measured on 2026-11-03 after a clean onboard, two `e2e.sh` runs and a 30 minute soak (00:44–01:14): peak 1666 MiB, 1628 MiB right after the e2e, 1224 MiB at the end of the soak, no restart.
