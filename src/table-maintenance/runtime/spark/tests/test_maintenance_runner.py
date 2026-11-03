@@ -143,3 +143,46 @@ def test_failed_files_count_of_other_operations_is_not_checked(make_request):
         post=lambda url, body: posted.append(body) or True,
     )
     assert code == 0
+
+
+def test_session_is_stopped_before_the_callback_is_posted(make_request):
+    calls = []
+    run_maintenance(
+        make_request(),
+        lambda _sql: calls.append("sql") or _Result([]),
+        stop=lambda: calls.append("stop"),
+        post=lambda url, body: calls.append("post") or True,
+    )
+    assert calls == ["sql", "stop", "post"]
+
+
+def test_session_is_stopped_before_a_failure_is_posted(make_request):
+    calls = []
+
+    def boom(_sql):
+        raise RuntimeError("x")
+
+    code = run_maintenance(
+        make_request(),
+        boom,
+        stop=lambda: calls.append("stop"),
+        post=lambda url, body: calls.append("post") or True,
+    )
+    assert code == 1
+    assert calls == ["stop", "post"]
+
+
+def test_stop_raising_still_posts_the_result(make_request):
+    posted = []
+
+    def stop():
+        raise RuntimeError("stop failed")
+
+    code = run_maintenance(
+        make_request(),
+        lambda _sql: _Result([]),
+        stop=stop,
+        post=lambda url, body: posted.append(body) or True,
+    )
+    assert code == 0
+    assert posted[0]["succeeded"] is True

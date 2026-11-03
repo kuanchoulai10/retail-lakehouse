@@ -23,7 +23,11 @@ Integer result columns are summed by name across the CALLs and reported as `metr
 
 ## Callback
 
-After the CALLs finish, the runtime POSTs JSON to `callback_url` (3 tries, 5 s apart):
+After the CALLs finish, the runtime stops the Spark session and then POSTs JSON to
+`callback_url` (3 tries, 5 s apart). The session stops first because the control plane
+deletes the SparkApplication once the callback of a run's last operation arrives; stopping
+first lets Spark close its event log and rename `appstatus_<appId>.inprogress` before the
+driver can be killed. The body:
 
 ```json
 {"run_id": "...", "operation": "...", "attempt": 1, "succeeded": true,

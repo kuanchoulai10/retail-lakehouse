@@ -29,10 +29,7 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO)
     request = JobRequest.from_json(os.environ["GLAC_REQUEST"])
     spark = _session(request.catalog)
-    try:
-        return run_maintenance(request, spark.sql)
-    finally:
-        spark.stop()
+    return run_maintenance(request, spark.sql, stop=spark.stop)
 
 
 if __name__ == "__main__":

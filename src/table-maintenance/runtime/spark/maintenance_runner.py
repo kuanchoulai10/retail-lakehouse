@@ -53,9 +53,15 @@ def run_maintenance(
     request: JobRequest,
     sql: Callable[[str], Any],
     *,
+    stop: Callable[[], None] | None = None,
     post: Callable[[str, dict[str, Any]], bool] = post_result,
 ) -> int:
-    """Run every planned CALL, post the result and return the process exit code."""
+    """Run every planned CALL, stop the session, post the result and return the exit code.
+
+    ``stop`` runs before the callback because the control plane deletes the
+    SparkApplication once the callback of its last operation arrives; stopping first
+    lets Spark finish its event log before the driver can be killed.
+    """
     metrics: dict[str, int] = {}
     error: str | None = None
     try:
@@ -78,6 +84,11 @@ def run_maintenance(
         "metrics": metrics if succeeded else {},
         "error": error,
     }
+    if stop is not None:
+        try:
+            stop()
+        except Exception:
+            logger.exception("Stopping the Spark session failed")
     try:
         delivered = post(request.callback_url, body)
     except Exception:
