@@ -19,6 +19,9 @@ class SparkK8sConfig:
     image_pull_policy: str = "Never"
     spark_version: str = "4.0.0"
     iceberg_version: str = "1.10.1"
+    hadoop_version: str = "3.4.1"
+    aws_sdk_version: str = "2.33.0"
+    event_log_dir: str = "s3a://spark-event-logs/"
     catalog_scope: str = "PRINCIPAL_ROLE:ALL"
     s3_path_style_access: bool = True
     s3_region: str = "dummy-region"

@@ -22,6 +22,9 @@ class SparkSettings(BaseModel):
     namespace: str = "lakehouse-maintenance-operations"
     spark_version: str = "4.0.0"
     iceberg_version: str = "1.10.1"
+    hadoop_version: str = "3.4.1"
+    aws_sdk_version: str = "2.33.0"
+    event_log_dir: str = "s3a://spark-event-logs/"
     main_application_file: str = "local:///opt/spark/work-dir/main.py"
     driver_cores: int = 1
     driver_memory: str = "1g"

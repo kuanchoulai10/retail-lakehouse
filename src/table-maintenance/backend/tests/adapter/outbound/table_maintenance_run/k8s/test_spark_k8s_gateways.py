@@ -73,6 +73,9 @@ def test_manifest_snapshot():
         "iceberg-spark-runtime-4.0_2.13/1.10.1/iceberg-spark-runtime-4.0_2.13-1.10.1.jar",
         "https://repo1.maven.org/maven2/org/apache/iceberg/"
         "iceberg-aws-bundle/1.10.1/iceberg-aws-bundle-1.10.1.jar",
+        "https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.4.1/hadoop-aws-3.4.1.jar",
+        "https://repo1.maven.org/maven2/software/amazon/awssdk/"
+        "s3-transfer-manager/2.33.0/s3-transfer-manager-2.33.0.jar",
     ]
     conf = spec["sparkConf"]
     assert conf["spark.sql.session.timeZone"] == "UTC"
@@ -89,7 +92,9 @@ def test_manifest_snapshot():
     assert conf["spark.sql.catalog.iceberg.scope"] == "PRINCIPAL_ROLE:ALL"
     assert conf["spark.sql.catalog.iceberg.s3.path-style-access"] == "true"
     assert conf["spark.sql.catalog.iceberg.s3.endpoint"] == CONFIG.s3_endpoint
-    assert not any("credential" in key for key in conf)
+    assert {key for key in conf if "credential" in key} == {
+        "spark.hadoop.fs.s3a.aws.credentials.provider"
+    }
 
 
 def test_manifest_driver_and_executor_env():

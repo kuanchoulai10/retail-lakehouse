@@ -19,6 +19,11 @@ VERSION = "v1beta2"
 PLURAL = "sparkapplications"
 ICEBERG_EXTENSIONS = "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions"
 MAVEN = "https://repo1.maven.org/maven2/org/apache/iceberg"
+HADOOP_MAVEN = "https://repo1.maven.org/maven2/org/apache/hadoop"
+AWS_SDK_MAVEN = "https://repo1.maven.org/maven2/software/amazon/awssdk"
+ENV_CREDENTIALS_PROVIDER = (
+    "software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider"
+)
 REDACTION_REGEX = "(?i)secret|password|token|credential"
 IVY_OPTIONS = "-Divy.cache.dir=/tmp/.ivy2 -Divy.home=/tmp/.ivy"
 
@@ -29,7 +34,36 @@ def _jars(config: SparkK8sConfig) -> list[str]:
         f"{MAVEN}/iceberg-spark-runtime-4.0_2.13/{version}/"
         f"iceberg-spark-runtime-4.0_2.13-{version}.jar",
         f"{MAVEN}/iceberg-aws-bundle/{version}/iceberg-aws-bundle-{version}.jar",
+        f"{HADOOP_MAVEN}/hadoop-aws/{config.hadoop_version}/"
+        f"hadoop-aws-{config.hadoop_version}.jar",
+        f"{AWS_SDK_MAVEN}/s3-transfer-manager/{config.aws_sdk_version}/"
+        f"s3-transfer-manager-{config.aws_sdk_version}.jar",
     ]
+
+
+def _event_log_conf(config: SparkK8sConfig) -> dict[str, str]:
+    return {
+        "spark.eventLog.enabled": "true",
+        "spark.eventLog.dir": config.event_log_dir,
+        "spark.eventLog.compress": "true",
+        "spark.eventLog.compression.codec": "zstd",
+        "spark.eventLog.logStageExecutorMetrics": "true",
+        "spark.eventLog.rolling.enabled": "true",
+        "spark.eventLog.rolling.maxFileSize": "128m",
+    }
+
+
+def _s3a_conf(config: SparkK8sConfig) -> dict[str, str]:
+    ssl = not config.s3_endpoint.startswith("http://")
+    return {
+        "spark.hadoop.fs.s3a.endpoint": config.s3_endpoint,
+        "spark.hadoop.fs.s3a.endpoint.region": config.s3_region,
+        "spark.hadoop.fs.s3a.path.style.access": str(
+            config.s3_path_style_access
+        ).lower(),
+        "spark.hadoop.fs.s3a.connection.ssl.enabled": str(ssl).lower(),
+        "spark.hadoop.fs.s3a.aws.credentials.provider": ENV_CREDENTIALS_PROVIDER,
+    }
 
 
 def _spark_conf(
@@ -49,6 +83,8 @@ def _spark_conf(
         f"{prefix}.io-impl": "org.apache.iceberg.aws.s3.S3FileIO",
         f"{prefix}.s3.endpoint": config.s3_endpoint,
         f"{prefix}.s3.path-style-access": str(config.s3_path_style_access).lower(),
+        **_event_log_conf(config),
+        **_s3a_conf(config),
     }
 
 

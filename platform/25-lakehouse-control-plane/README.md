@@ -128,6 +128,91 @@ task trino:delete-cert TRINO_USER=tm-e2e KUBE_CONTEXT=retail-lakehouse
 
 Discovery then marks the tables `dropped` and their reconcile workflows end.
 
+## Spark event logs
+
+Every maintenance SparkApplication writes its Spark event log to the RustFS bucket `spark-event-logs` (wave `20-rustfs`, 3-day expiry): `spark.eventLog.enabled=true`, `spark.eventLog.dir=s3a://spark-event-logs/` (`GLAC_SPARK__EVENT_LOG_DIR`), `compress=true` with `zstd`, `logStageExecutorMetrics=true` and rolling at `128m`. S3A gets `fs.s3a.endpoint` / `fs.s3a.endpoint.region` from the catalog settings, `path.style.access`, `connection.ssl.enabled=false` for an `http://` endpoint and `EnvironmentVariableCredentialsProvider`, which reads `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` from the `table-maintenance-s3` Secret the driver and executor already load. The jars are `hadoop-aws` 3.4.1 (the Hadoop bundled in `apache/spark:4.0.0`, `GLAC_SPARK__HADOOP_VERSION`) and `s3-transfer-manager` 2.33.0 (`GLAC_SPARK__AWS_SDK_VERSION`): `iceberg-aws-bundle` 1.10.1 already ships AWS SDK v2.33.0 but not the transfer manager, which S3A uses for uploads and the rename copy.
+
+Each run leaves `eventlog_v2_<appId>/` with `events_<N>_<appId>.zstd` files and an `appstatus_<appId>` marker. Spark creates `appstatus_<appId>.inprogress` at start and renames it (S3 CopyObject + DeleteObject) at `spark.stop()`; the bucket notification sends only that copy (`s3:ObjectCreated:Copy`, prefix `eventlog_v2_`) to the Kafka topic `spark-event-log-completions` in `kafka`, so the topic gets one message per finished application. The runtime stops the Spark session before posting its result callback, because the workflow deletes a run's SparkApplications as soon as the last callback arrives: with the old order a run's last driver could be killed inside `spark.stop()` and its `.inprogress` marker was never renamed. A driver that crashes or is killed still leaves `.inprogress` and sends no message.
+
+Event contract, from a `rewrite_data_files` run of the e2e (Kafka key, then value; the record timestamp is the broker's append time, use `eventTime`; `principalId` replaced here):
+
+```
+spark-event-logs/eventlog_v2_spark-5c92a6295b194c75832331bc5bfc3aa1%2Fappstatus_spark-5c92a6295b194c75832331bc5bfc3aa1
+```
+
+```json
+{
+  "EventName": "s3:ObjectCreated:Copy",
+  "Key": "spark-event-logs/eventlog_v2_spark-5c92a6295b194c75832331bc5bfc3aa1/appstatus_spark-5c92a6295b194c75832331bc5bfc3aa1",
+  "Records": [
+    {
+      "eventVersion": "2.1",
+      "eventSource": "rustfs:s3",
+      "awsRegion": "",
+      "eventTime": "2026-11-03T17:56:37.450Z",
+      "eventName": "s3:ObjectCreated:Copy",
+      "userIdentity": {
+        "principalId": "<RustFS access key id>"
+      },
+      "requestParameters": {
+        "connection": "Keep-Alive",
+        "content-type": "application/octet-stream",
+        "x-amz-date": "20261103T175637Z",
+        "host": "rustfs.object-storage.svc.cluster.local:9000",
+        "content-length": "0",
+        "authorization": "***redacted***",
+        "user-agent": "Hadoop 3.4.1 aws-sdk-java/2.33.0 md/io#sync md/http#Apache ua/2.1 api/S3#2.33.x os/Linux#6.8.0-90-generic lang/java#17.0.15 md/OpenJDK_64-Bit_Server_VM#17.0.15+6 md/vendor#Eclipse_Adoptium md/en_US md/scala/2.13.16 cfg/auth-source#env m/F,N,N,G",
+        "amz-sdk-request": "attempt=1; max=6",
+        "x-amz-content-sha256": "***redacted***",
+        "x-amz-copy-source-if-match": "\"d41d8cd98f00b204e9800998ecf8427e\"",
+        "x-amz-metadata-directive": "REPLACE",
+        "x-request-id": "d7123c68-fa5e-4930-85c2-33be9f0956d1",
+        "principalId": "<RustFS access key id>",
+        "referer": "https://audit.example.org/hadoop/1/op_rename/3077fa29-343e-45e5-93ed-1a7d848971dc-00000014/?op=op_rename&p1=s3a://spark-event-logs/eventlog_v2_spark-5c92a6295b194c75832331bc5bfc3aa1/appstatus_spark-5c92a6295b194c75832331bc5bfc3aa1.inprogress&pr=spark&p2=s3a://spark-event-logs/eventlog_v2_spark-5c92a6295b194c75832331bc5bfc3aa1/appstatus_spark-5c92a6295b194c75832331bc5bfc3aa1&ps=57a6ae8d-74c2-4a7b-b620-d1c563f65ba6&id=3077fa29-343e-45e5-93ed-1a7d848971dc-00000014&t0=23&fs=3077fa29-343e-45e5-93ed-1a7d848971dc&t1=23&ts=1793728597308",
+        "x-amz-copy-source": "spark-event-logs/eventlog_v2_spark-5c92a6295b194c75832331bc5bfc3aa1/appstatus_spark-5c92a6295b194c75832331bc5bfc3aa1.inprogress",
+        "amz-sdk-invocation-id": "abc40a28-47de-026d-4f72-1d98368f057e"
+      },
+      "responseElements": {
+        "x-amz-request-id": "d7123c68-fa5e-4930-85c2-33be9f0956d1",
+        "x-amz-id-2": ""
+      },
+      "s3": {
+        "s3SchemaVersion": "1.0",
+        "configurationId": "Config",
+        "bucket": {
+          "name": "spark-event-logs",
+          "ownerIdentity": {
+            "principalId": "<RustFS access key id>"
+          },
+          "arn": "arn:aws:s3:::spark-event-logs"
+        },
+        "object": {
+          "key": "eventlog_v2_spark-5c92a6295b194c75832331bc5bfc3aa1%2Fappstatus_spark-5c92a6295b194c75832331bc5bfc3aa1",
+          "size": 0,
+          "eTag": "d41d8cd98f00b204e9800998ecf8427e",
+          "contentType": "application/octet-stream",
+          "userMetadata": {
+            "content-type": "application/octet-stream"
+          },
+          "sequencer": "18E49AA7E1F4B8EB"
+        }
+      },
+      "source": {
+        "host": "rustfs.object-storage.svc.cluster.local:9000",
+        "port": "9000",
+        "userAgent": "Hadoop 3.4.1 aws-sdk-java/2.33.0 md/io#sync md/http#Apache ua/2.1 api/S3#2.33.x os/Linux#6.8.0-90-generic lang/java#17.0.15 md/OpenJDK_64-Bit_Server_VM#17.0.15+6 md/vendor#Eclipse_Adoptium md/en_US md/scala/2.13.16 cfg/auth-source#env m/F,N,N,G"
+      }
+    }
+  ]
+}
+```
+
+The application id is the `eventlog_v2_` directory in `Key` (or `Records[0].s3.object.key` URL-decoded); delivery is at least once, so consumers must be idempotent on that key. Read the topic:
+
+```
+kubectl exec kafka-cluster-dual-role-0 --namespace kafka --context retail-lakehouse -- /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic spark-event-log-completions --from-beginning --property print.key=true
+```
+
 ## Logs
 
 ```

@@ -9,7 +9,10 @@ from adapter.outbound.table_maintenance_run.k8s.read_maintenance_job_k8s_gateway
     ReadMaintenanceJobK8sGateway,
 )
 from adapter.outbound.table_maintenance_run.k8s.spark_application_manifest import (
+    AWS_SDK_MAVEN,
+    ENV_CREDENTIALS_PROVIDER,
     GROUP,
+    HADOOP_MAVEN,
     ICEBERG_EXTENSIONS,
     IVY_OPTIONS,
     MAVEN,
@@ -27,8 +30,11 @@ from adapter.outbound.table_maintenance_run.k8s.submit_maintenance_job_k8s_gatew
 )
 
 __all__ = [
+    "AWS_SDK_MAVEN",
     "DeleteMaintenanceJobK8sGateway",
+    "ENV_CREDENTIALS_PROVIDER",
     "GROUP",
+    "HADOOP_MAVEN",
     "ICEBERG_EXTENSIONS",
     "IVY_OPTIONS",
     "MAVEN",
