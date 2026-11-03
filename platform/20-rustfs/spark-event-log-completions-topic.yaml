@@ -8,3 +8,5 @@ metadata:
 spec:
   partitions: 1
   replicas: 3
+  config:
+    message.timestamp.type: LogAppendTime

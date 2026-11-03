@@ -34,6 +34,14 @@ kubectl wait kafkatopic/spark-event-log-completions \
   --namespace kafka \
   --context "${KUBE_CONTEXT}"
 
+timestamp_type="$(kubectl get kafkatopic/spark-event-log-completions \
+  -o jsonpath='{.spec.config.message\.timestamp\.type}' \
+  --namespace kafka \
+  --context "${KUBE_CONTEXT}")"
+if [[ "${timestamp_type}" != "LogAppendTime" ]]; then
+  log::error "Topic spark-event-log-completions must use LogAppendTime (found '${timestamp_type}')"
+fi
+
 s3api() {
   local pod args overrides rc=0
   args="$(printf '%s\n' "$@" | jq -R . | jq -cs .)"
