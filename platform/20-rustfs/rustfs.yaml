@@ -22,12 +22,14 @@ spec:
           command:
             - sh
             - -c
-            - chown -R 10001:10001 /data
+            - chown -R 10001:10001 /data /notify-queue
           securityContext:
             runAsUser: 0
           volumeMounts:
             - name: storage
               mountPath: /data
+            - name: notify-queue
+              mountPath: /notify-queue
       containers:
         - name: rustfs
           image: rustfs/rustfs:1.0.3
@@ -40,6 +42,18 @@ spec:
               value: "true"
             - name: RUSTFS_CONSOLE_ADDRESS
               value: 0.0.0.0:9001
+            - name: RUSTFS_NOTIFY_ENABLE
+              value: "true"
+            - name: RUSTFS_NOTIFY_KAFKA_ENABLE_SPARK_EVENT_LOGS
+              value: "on"
+            - name: RUSTFS_NOTIFY_KAFKA_BROKERS_SPARK_EVENT_LOGS
+              value: kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
+            - name: RUSTFS_NOTIFY_KAFKA_TOPIC_SPARK_EVENT_LOGS
+              value: spark-event-log-completions
+            - name: RUSTFS_NOTIFY_KAFKA_ACKS_SPARK_EVENT_LOGS
+              value: "-1"
+            - name: RUSTFS_NOTIFY_KAFKA_QUEUE_DIR_SPARK_EVENT_LOGS
+              value: /notify-queue/spark-event-logs
           envFrom:
             - secretRef:
                 name: rustfs-secret
@@ -72,10 +86,16 @@ spec:
           volumeMounts:
             - name: storage
               mountPath: /data
+            - name: notify-queue
+              mountPath: /notify-queue
       volumes:
         - name: storage
           hostPath:
             path: /home/docker/data/rustfs
+            type: DirectoryOrCreate
+        - name: notify-queue
+          hostPath:
+            path: /home/docker/data/rustfs-notify-queue
             type: DirectoryOrCreate
       restartPolicy: Always
 # --8<-- [end:deployment]
@@ -137,7 +157,6 @@ spec:
                 sleep 2
               done
               echo "RustFS is ready!"
-      containers:
         - name: rustfs-create-buckets
           image: pgsty/mc:RELEASE.2026-10-18T00-00-00Z
           envFrom:
@@ -148,7 +167,7 @@ spec:
             - -c
             - |
               mc alias set rustfs http://rustfs.object-storage.svc.cluster.local:9000 "$RUSTFS_ACCESS_KEY" "$RUSTFS_SECRET_KEY" &&
-              for bucket in retail-lakehouse-7dj2 trino-fault-tolerance-nkm5 trino-fault-tolerance-cws0 thanos; do
+              for bucket in retail-lakehouse-7dj2 trino-fault-tolerance-nkm5 trino-fault-tolerance-cws0 thanos spark-event-logs; do
                 if ! mc ls rustfs/$bucket >/dev/null 2>&1; then
                   echo "Creating bucket: $bucket"
                   mc mb rustfs/$bucket
@@ -157,6 +176,31 @@ spec:
                   echo "Bucket already exists: $bucket"
                 fi
               done
+      containers:
+        - name: rustfs-configure-spark-event-logs
+          image: amazon/aws-cli:2.38.1
+          envFrom:
+            - secretRef:
+                name: rustfs-secret
+          env:
+            - name: AWS_REGION
+              value: us-east-1
+            - name: AWS_REQUEST_CHECKSUM_CALCULATION
+              value: when_required
+          command:
+            - sh
+            - -ec
+            - |
+              export AWS_ACCESS_KEY_ID="$RUSTFS_ACCESS_KEY" AWS_SECRET_ACCESS_KEY="$RUSTFS_SECRET_KEY"
+              endpoint=http://rustfs.object-storage.svc.cluster.local:9000
+              aws --endpoint-url "$endpoint" s3api put-bucket-lifecycle-configuration \
+                --bucket spark-event-logs \
+                --lifecycle-configuration '{"Rules":[{"ID":"expire-after-3-days","Status":"Enabled","Filter":{"Prefix":""},"Expiration":{"Days":3}}]}'
+              echo "Lifecycle set: spark-event-logs expires objects after 3 days"
+              aws --endpoint-url "$endpoint" s3api put-bucket-notification-configuration \
+                --bucket spark-event-logs \
+                --notification-configuration '{"QueueConfigurations":[{"Id":"spark-event-log-completions","QueueArn":"arn:rustfs:sqs:us-east-1:spark_event_logs:kafka","Events":["s3:ObjectCreated:Copy"],"Filter":{"Key":{"FilterRules":[{"Name":"prefix","Value":"eventlog_v2_"}]}}}]}'
+              echo "Notification set: spark-event-logs s3:ObjectCreated:Copy eventlog_v2_* -> spark_event_logs Kafka target"
       restartPolicy: OnFailure
       terminationGracePeriodSeconds: 30
 # --8<-- [end:job]

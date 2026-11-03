@@ -18,5 +18,14 @@ kubectl apply \
   --context "${KUBE_CONTEXT}"
 
 kubectl apply \
+  -f "$SCRIPT_DIR/spark-event-log-completions-topic.yaml" \
+  --context "${KUBE_CONTEXT}"
+
+kubectl delete job/rustfs-create-bucket \
+  --ignore-not-found \
+  --namespace object-storage \
+  --context "${KUBE_CONTEXT}"
+
+kubectl apply \
   -f "$SCRIPT_DIR/rustfs.yaml" \
   --context "${KUBE_CONTEXT}"
