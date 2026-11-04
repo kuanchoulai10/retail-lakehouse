@@ -4,7 +4,7 @@ metadata:
   name: table-maintenance-worker
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" . | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "worker") | nindent 4 }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -12,7 +12,7 @@ metadata:
   name: table-maintenance-worker
   namespace: {{ .Values.namespaces.maintenanceOperations }}
   labels:
-    {{- include "table-maintenance.labels" . | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "worker") | nindent 4 }}
 rules:
   - apiGroups: ["sparkoperator.k8s.io"]
     resources: ["sparkapplications"]
@@ -24,7 +24,7 @@ metadata:
   name: table-maintenance-worker
   namespace: {{ .Values.namespaces.maintenanceOperations }}
   labels:
-    {{- include "table-maintenance.labels" . | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "worker") | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -40,7 +40,7 @@ metadata:
   name: {{ .Values.spark.serviceAccount }}
   namespace: {{ .Values.namespaces.maintenanceOperations }}
   labels:
-    {{- include "table-maintenance.labels" . | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "spark-job") | nindent 4 }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -48,7 +48,7 @@ metadata:
   name: {{ .Values.spark.serviceAccount }}
   namespace: {{ .Values.namespaces.maintenanceOperations }}
   labels:
-    {{- include "table-maintenance.labels" . | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "spark-job") | nindent 4 }}
 rules:
   - apiGroups: [""]
     resources: ["pods", "services", "configmaps", "persistentvolumeclaims"]
@@ -63,7 +63,7 @@ metadata:
   name: {{ .Values.spark.serviceAccount }}
   namespace: {{ .Values.namespaces.maintenanceOperations }}
   labels:
-    {{- include "table-maintenance.labels" . | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "spark-job") | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

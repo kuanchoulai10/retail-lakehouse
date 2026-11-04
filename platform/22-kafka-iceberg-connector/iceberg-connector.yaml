@@ -4,6 +4,11 @@ metadata:
   name: iceberg-connector
   labels:
     strimzi.io/cluster: iceberg-connect-cluster
+    app.kubernetes.io/name: iceberg-kafka-connect
+    app.kubernetes.io/instance: iceberg-sink
+    app.kubernetes.io/component: cdc-sink
+    app.kubernetes.io/part-of: cdc
+    app.kubernetes.io/managed-by: kubectl
 spec:
   class: org.apache.iceberg.connect.IcebergSinkConnector
   tasksMax: 1

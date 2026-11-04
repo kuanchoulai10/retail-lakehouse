@@ -3,6 +3,12 @@ kind: PodMonitor
 metadata:
   name: ztunnel
   namespace: istio-system
+  labels:
+    app.kubernetes.io/name: ztunnel
+    app.kubernetes.io/instance: ztunnel
+    app.kubernetes.io/component: metrics
+    app.kubernetes.io/part-of: istio
+    app.kubernetes.io/managed-by: kubectl
 spec:
   selector:
     matchLabels:

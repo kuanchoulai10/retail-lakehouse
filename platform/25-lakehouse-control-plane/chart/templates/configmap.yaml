@@ -4,7 +4,7 @@ metadata:
   name: table-maintenance-config
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" . | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "config") | nindent 4 }}
 data:
   GLAC_DATABASE_BACKEND: postgres
   GLAC_LOG_LEVEL: {{ .Values.logLevel | quote }}

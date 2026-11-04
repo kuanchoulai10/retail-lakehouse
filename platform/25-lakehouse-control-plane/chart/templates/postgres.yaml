@@ -4,8 +4,7 @@ metadata:
   name: table-maintenance-db
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" . | nindent 4 }}
-    app: table-maintenance-db
+    {{- include "table-maintenance.labels" (dict "root" . "name" "postgres" "component" "database") | nindent 4 }}
 spec:
   accessModes:
     - ReadWriteOnce
@@ -19,19 +18,18 @@ metadata:
   name: table-maintenance-db
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" . | nindent 4 }}
-    app: table-maintenance-db
+    {{- include "table-maintenance.labels" (dict "root" . "name" "postgres" "component" "database") | nindent 4 }}
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: table-maintenance-db
+      {{- include "table-maintenance.selectorLabels" (dict "root" . "name" "postgres" "component" "database") | nindent 6 }}
   template:
     metadata:
       labels:
-        app: table-maintenance-db
+        {{- include "table-maintenance.labels" (dict "root" . "name" "postgres" "component" "database") | nindent 8 }}
     spec:
       containers:
         - name: postgres
@@ -76,11 +74,10 @@ metadata:
   name: table-maintenance-db
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" . | nindent 4 }}
-    app: table-maintenance-db
+    {{- include "table-maintenance.labels" (dict "root" . "name" "postgres" "component" "database") | nindent 4 }}
 spec:
   selector:
-    app: table-maintenance-db
+    {{- include "table-maintenance.selectorLabels" (dict "root" . "name" "postgres" "component" "database") | nindent 4 }}
   ports:
     - name: postgres
       port: 5432

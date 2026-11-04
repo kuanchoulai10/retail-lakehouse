@@ -10,10 +10,17 @@
 {{ .Values.image.console.repository }}:{{ required "image.console.tag is required" .Values.image.console.tag }}
 {{- end -}}
 
+{{- define "table-maintenance.selectorLabels" -}}
+app.kubernetes.io/name: {{ .name }}
+app.kubernetes.io/instance: {{ .root.Release.Name }}
+app.kubernetes.io/component: {{ .component }}
+{{- end -}}
+
 {{- define "table-maintenance.labels" -}}
-app.kubernetes.io/name: table-maintenance
-app.kubernetes.io/instance: {{ .Release.Name }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{ include "table-maintenance.selectorLabels" . }}
+app.kubernetes.io/part-of: table-maintenance
+app.kubernetes.io/version: {{ .root.Chart.AppVersion | quote }}
+app.kubernetes.io/managed-by: {{ .root.Release.Service }}
 {{- end -}}
 
 {{- define "table-maintenance.dbEnv" -}}

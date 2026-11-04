@@ -18,7 +18,7 @@ kubectl rollout status deployment/temporal-db \
   --context "${KUBE_CONTEXT}"
 
 POD=$(kubectl get pod \
-  --selector app=temporal-db \
+  --selector app.kubernetes.io/name=postgres,app.kubernetes.io/instance=temporal-db \
   --namespace temporal \
   --output jsonpath='{.items[0].metadata.name}' \
   --context "${KUBE_CONTEXT}")

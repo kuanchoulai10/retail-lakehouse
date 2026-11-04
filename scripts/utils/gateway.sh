@@ -10,7 +10,7 @@
 [[ -n "${__GATEWAY_SH_LOADED:-}" ]] && return 0
 __GATEWAY_SH_LOADED=1
 
-GATEWAY_ROUTES_LABEL="platform-gateway/routes"
+GATEWAY_ROUTES_LABEL="retail-lakehouse.io/gateway-routes"
 
 gateway::allow_routes() {
   local name=$1
@@ -30,7 +30,7 @@ EOF
 gateway::assert_routes_allowed() {
   local name=$1 value
   value=$(kubectl get namespace "$name" \
-    -o jsonpath='{.metadata.labels.platform-gateway/routes}' \
+    -o jsonpath='{.metadata.labels.retail-lakehouse\.io/gateway-routes}' \
     --context "${KUBE_CONTEXT}")
   if [[ "$value" != "allowed" ]]; then
     echo "namespace $name is missing label ${GATEWAY_ROUTES_LABEL}=allowed (found '${value}')" >&2

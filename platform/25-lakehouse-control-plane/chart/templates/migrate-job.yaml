@@ -4,14 +4,13 @@ metadata:
   name: table-maintenance-migrate-{{ .Release.Revision }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" . | nindent 4 }}
-    app: table-maintenance-migrate
+    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "migrate") | nindent 4 }}
 spec:
   backoffLimit: 6
   template:
     metadata:
       labels:
-        app: table-maintenance-migrate
+        {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "migrate") | nindent 8 }}
     spec:
       restartPolicy: OnFailure
       automountServiceAccountToken: false

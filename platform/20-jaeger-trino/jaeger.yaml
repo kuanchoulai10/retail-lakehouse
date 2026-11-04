@@ -3,6 +3,12 @@ kind: OpenTelemetryCollector
 metadata:
   name: jaeger
   namespace: lakehouse-query-engine
+  labels:
+    app.kubernetes.io/name: jaeger
+    app.kubernetes.io/instance: jaeger-trino
+    app.kubernetes.io/component: tracing
+    app.kubernetes.io/part-of: trino
+    app.kubernetes.io/managed-by: kubectl
 spec:
   image: jaegertracing/jaeger:2.22.0
   resources:

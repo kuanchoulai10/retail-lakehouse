@@ -4,16 +4,25 @@ metadata:
   name: kafka-ui
   namespace: kafka-ui
   labels:
-    app: kafka-ui
+    app.kubernetes.io/name: kafka-ui
+    app.kubernetes.io/instance: kafka-ui
+    app.kubernetes.io/component: ui
+    app.kubernetes.io/part-of: kafka-ui
+    app.kubernetes.io/managed-by: kubectl
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: kafka-ui
+      app.kubernetes.io/name: kafka-ui
+      app.kubernetes.io/instance: kafka-ui
   template:
     metadata:
       labels:
-        app: kafka-ui
+        app.kubernetes.io/name: kafka-ui
+        app.kubernetes.io/instance: kafka-ui
+        app.kubernetes.io/component: ui
+        app.kubernetes.io/part-of: kafka-ui
+        app.kubernetes.io/managed-by: kubectl
     spec:
       containers:
         - name: kafka-ui

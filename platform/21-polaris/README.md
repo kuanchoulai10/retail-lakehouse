@@ -128,7 +128,7 @@ kubectl rollout status deployment/polaris -n lakehouse-catalog --context retail-
 #    Use the same admin REST API endpoint.
 
 # 5. Verify the metadata tables exist in PostgreSQL
-POD=$(kubectl get pod -l app=polaris-db -n lakehouse-catalog --context retail-lakehouse \
+POD=$(kubectl get pod -l app.kubernetes.io/name=postgres,app.kubernetes.io/instance=polaris-db -n lakehouse-catalog --context retail-lakehouse \
   -o jsonpath='{.items[0].metadata.name}')
 kubectl exec -n lakehouse-catalog "$POD" --context retail-lakehouse \
   -- psql -U polaris -d polaris -c '\dt'

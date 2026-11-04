@@ -5,6 +5,12 @@ metadata:
   namespace: kafka
   annotations:
     strimzi.io/use-connector-resources: "true"
+  labels:
+    app.kubernetes.io/name: iceberg-kafka-connect
+    app.kubernetes.io/instance: iceberg-sink
+    app.kubernetes.io/component: cdc-sink
+    app.kubernetes.io/part-of: cdc
+    app.kubernetes.io/managed-by: kubectl
 spec:
   version: 4.0.0
   replicas: 1

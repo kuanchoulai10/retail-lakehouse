@@ -18,7 +18,7 @@ kubectl rollout status deployment/polaris-db \
   --context "${KUBE_CONTEXT}"
 
 POD=$(kubectl get pod \
-  --selector app=polaris-db \
+  --selector app.kubernetes.io/name=postgres,app.kubernetes.io/instance=polaris-db \
   --namespace lakehouse-catalog \
   --output jsonpath='{.items[0].metadata.name}' \
   --context "${KUBE_CONTEXT}")

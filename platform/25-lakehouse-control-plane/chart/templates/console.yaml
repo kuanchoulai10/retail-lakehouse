@@ -4,17 +4,16 @@ metadata:
   name: console
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" . | nindent 4 }}
-    app: console
+    {{- include "table-maintenance.labels" (dict "root" . "name" "console" "component" "ui") | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: console
+      {{- include "table-maintenance.selectorLabels" (dict "root" . "name" "console" "component" "ui") | nindent 6 }}
   template:
     metadata:
       labels:
-        app: console
+        {{- include "table-maintenance.labels" (dict "root" . "name" "console" "component" "ui") | nindent 8 }}
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -52,11 +51,10 @@ metadata:
   name: console
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" . | nindent 4 }}
-    app: console
+    {{- include "table-maintenance.labels" (dict "root" . "name" "console" "component" "ui") | nindent 4 }}
 spec:
   selector:
-    app: console
+    {{- include "table-maintenance.selectorLabels" (dict "root" . "name" "console" "component" "ui") | nindent 4 }}
   ports:
     - name: http
       port: {{ .Values.console.port }}
@@ -68,8 +66,7 @@ metadata:
   name: console
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" . | nindent 4 }}
-    app: console
+    {{- include "table-maintenance.labels" (dict "root" . "name" "console" "component" "ui") | nindent 4 }}
 spec:
   parentRefs:
     - name: {{ .Values.console.gateway.name }}

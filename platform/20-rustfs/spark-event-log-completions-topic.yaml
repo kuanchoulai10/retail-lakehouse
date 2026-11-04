@@ -5,6 +5,11 @@ metadata:
   namespace: kafka
   labels:
     strimzi.io/cluster: kafka-cluster
+    app.kubernetes.io/name: rustfs
+    app.kubernetes.io/instance: rustfs
+    app.kubernetes.io/component: notifications
+    app.kubernetes.io/part-of: object-storage
+    app.kubernetes.io/managed-by: kubectl
 spec:
   partitions: 1
   replicas: 3

@@ -3,6 +3,12 @@ kind: HTTPRoute
 metadata:
   name: polaris
   namespace: lakehouse-catalog
+  labels:
+    app.kubernetes.io/name: polaris
+    app.kubernetes.io/instance: polaris
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: polaris
+    app.kubernetes.io/managed-by: kubectl
 spec:
   parentRefs:
     - name: platform-gateway

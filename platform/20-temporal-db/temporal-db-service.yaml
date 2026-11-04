@@ -4,10 +4,15 @@ metadata:
   name: temporal-db
   namespace: temporal
   labels:
-    app: temporal-db
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/instance: temporal-db
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: temporal
+    app.kubernetes.io/managed-by: kubectl
 spec:
   selector:
-    app: temporal-db
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/instance: temporal-db
   ports:
     - name: postgres
       port: 5432

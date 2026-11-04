@@ -4,18 +4,27 @@ metadata:
   name: polaris-db
   namespace: lakehouse-catalog
   labels:
-    app: polaris-db
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/instance: polaris-db
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: polaris
+    app.kubernetes.io/managed-by: kubectl
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: polaris-db
+      app.kubernetes.io/name: postgres
+      app.kubernetes.io/instance: polaris-db
   template:
     metadata:
       labels:
-        app: polaris-db
+        app.kubernetes.io/name: postgres
+        app.kubernetes.io/instance: polaris-db
+        app.kubernetes.io/component: database
+        app.kubernetes.io/part-of: polaris
+        app.kubernetes.io/managed-by: kubectl
     spec:
       containers:
         - name: postgres

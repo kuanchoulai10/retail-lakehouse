@@ -26,7 +26,7 @@ A request whose `Host` matches no route gets a 404 from Envoy.
 
 ## Which namespaces may attach routes
 
-The listener admits `HTTPRoute`s only from namespaces labelled `platform-gateway/routes=allowed`. A wave that adds a route calls `gateway::allow_routes <namespace>` (`scripts/utils/gateway.sh`) before applying it, and its `validate.sh` calls `gateway::assert_routes_allowed`, `gateway::assert_route_accepted` and `gateway::curl` (curl through the gateway with a given `Host`).
+The listener admits `HTTPRoute`s only from namespaces labelled `retail-lakehouse.io/gateway-routes=allowed`. A wave that adds a route calls `gateway::allow_routes <namespace>` (`scripts/utils/gateway.sh`) before applying it, and its `validate.sh` calls `gateway::assert_routes_allowed`, `gateway::assert_route_accepted` and `gateway::curl` (curl through the gateway with a given `Host`).
 
 The label is applied with server-side apply under the field manager `platform-gateway-routes`, and `namespace::apply_ambient` applies the ambient label under `namespace-ambient`, so the two never remove each other's label. Do not add either label with a client-side `kubectl apply` of a partial Namespace manifest: kubectl's client-side → server-side migration then hands every field to the new manager and drops the labels that manifest leaves out.
 

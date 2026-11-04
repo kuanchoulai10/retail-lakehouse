@@ -3,6 +3,12 @@ kind: ConfigMap
 metadata:
   name: kafka-ui-config
   namespace: kafka-ui
+  labels:
+    app.kubernetes.io/name: kafka-ui
+    app.kubernetes.io/instance: kafka-ui
+    app.kubernetes.io/component: ui
+    app.kubernetes.io/part-of: kafka-ui
+    app.kubernetes.io/managed-by: kubectl
 data:
   config.yml: |
     kafka:

@@ -78,6 +78,6 @@ bash 20-polaris-db/validate.sh
 After Polaris has connected at least once, you can inspect the bootstrapped tables directly:
 
 ```bash
-POD=$(kubectl get pod -l app=polaris-db -n lakehouse-catalog -o jsonpath='{.items[0].metadata.name}')
+POD=$(kubectl get pod -l app.kubernetes.io/name=postgres,app.kubernetes.io/instance=polaris-db -n lakehouse-catalog -o jsonpath='{.items[0].metadata.name}')
 kubectl exec -n lakehouse-catalog "$POD" -- psql -U polaris -d polaris -c '\dt'
 ```

@@ -33,6 +33,14 @@ repos:
         types: [shell]
   - repo: local
     hooks:
+      - id: k8s-labels
+        name: Kubernetes label standard
+        entry: uv run --no-project --with pyyaml python scripts/check_k8s_labels.py
+        language: system
+        pass_filenames: false
+        files: ^(platform/|scripts/check_k8s_labels\.py$)
+  - repo: local
+    hooks:
       - id: commitlint
         name: Commitlint
         entry: npx --no -- commitlint --edit

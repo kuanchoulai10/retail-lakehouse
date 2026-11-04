@@ -3,9 +3,22 @@ kind: Job
 metadata:
   name: polaris-create-catalog
   namespace: lakehouse-catalog
+  labels:
+    app.kubernetes.io/name: polaris
+    app.kubernetes.io/instance: polaris-create-catalog
+    app.kubernetes.io/component: create-catalog
+    app.kubernetes.io/part-of: polaris
+    app.kubernetes.io/managed-by: kubectl
 spec:
   backoffLimit: 3
   template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: polaris
+        app.kubernetes.io/instance: polaris-create-catalog
+        app.kubernetes.io/component: create-catalog
+        app.kubernetes.io/part-of: polaris
+        app.kubernetes.io/managed-by: kubectl
     spec:
       restartPolicy: OnFailure
       containers:

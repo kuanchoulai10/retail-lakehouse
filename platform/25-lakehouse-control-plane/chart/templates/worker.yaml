@@ -4,17 +4,16 @@ metadata:
   name: table-maintenance-worker
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" . | nindent 4 }}
-    app: table-maintenance-worker
+    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "worker") | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: table-maintenance-worker
+      {{- include "table-maintenance.selectorLabels" (dict "root" . "name" "table-maintenance" "component" "worker") | nindent 6 }}
   template:
     metadata:
       labels:
-        app: table-maintenance-worker
+        {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "worker") | nindent 8 }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:

@@ -4,17 +4,16 @@ metadata:
   name: table-maintenance-api
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" . | nindent 4 }}
-    app: table-maintenance-api
+    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "api") | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: table-maintenance-api
+      {{- include "table-maintenance.selectorLabels" (dict "root" . "name" "table-maintenance" "component" "api") | nindent 6 }}
   template:
     metadata:
       labels:
-        app: table-maintenance-api
+        {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "api") | nindent 8 }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
@@ -60,11 +59,10 @@ metadata:
   name: table-maintenance-api
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" . | nindent 4 }}
-    app: table-maintenance-api
+    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "api") | nindent 4 }}
 spec:
   selector:
-    app: table-maintenance-api
+    {{- include "table-maintenance.selectorLabels" (dict "root" . "name" "table-maintenance" "component" "api") | nindent 4 }}
   ports:
     - name: http
       port: {{ .Values.api.port }}

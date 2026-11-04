@@ -3,11 +3,18 @@ kind: Service
 metadata:
   name: mysql
   namespace: ecommerce-app
+  labels:
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/instance: mysql
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: ecommerce-app
+    app.kubernetes.io/managed-by: kubectl
 spec:
   ports:
   - port: 3306
   selector:
-    app: mysql
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/instance: mysql
   clusterIP: None
 ---
 apiVersion: apps/v1
@@ -15,16 +22,27 @@ kind: Deployment
 metadata:
   name: mysql
   namespace: ecommerce-app
+  labels:
+    app.kubernetes.io/name: mysql
+    app.kubernetes.io/instance: mysql
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: ecommerce-app
+    app.kubernetes.io/managed-by: kubectl
 spec:
   selector:
     matchLabels:
-      app: mysql
+      app.kubernetes.io/name: mysql
+      app.kubernetes.io/instance: mysql
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
-        app: mysql
+        app.kubernetes.io/name: mysql
+        app.kubernetes.io/instance: mysql
+        app.kubernetes.io/component: database
+        app.kubernetes.io/part-of: ecommerce-app
+        app.kubernetes.io/managed-by: kubectl
     spec:
       containers:
       - image: quay.io/debezium/example-mysql:2.7.3.Final

@@ -7,6 +7,12 @@ metadata:
   annotations:
     strimzi.io/node-pools: enabled
     strimzi.io/kraft: enabled
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/instance: kafka-cluster
+    app.kubernetes.io/component: broker
+    app.kubernetes.io/part-of: kafka
+    app.kubernetes.io/managed-by: kubectl
 spec:
   kafka:
     version: 4.0.0
@@ -44,6 +50,11 @@ metadata:
   namespace: kafka
   labels:
     strimzi.io/cluster: kafka-cluster
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/instance: kafka-cluster
+    app.kubernetes.io/component: broker
+    app.kubernetes.io/part-of: kafka
+    app.kubernetes.io/managed-by: kubectl
 spec:
   replicas: 3
   roles:

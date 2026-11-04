@@ -3,6 +3,12 @@ kind: Role
 metadata:
   name: prometheus-k8s
   namespace: lakehouse-query-engine
+  labels:
+    app.kubernetes.io/name: trino
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/component: metrics
+    app.kubernetes.io/part-of: trino
+    app.kubernetes.io/managed-by: kubectl
 rules:
   - apiGroups: [""]
     resources: ["services", "pods"]
@@ -19,6 +25,12 @@ kind: RoleBinding
 metadata:
   name: prometheus-k8s
   namespace: lakehouse-query-engine
+  labels:
+    app.kubernetes.io/name: trino
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/component: metrics
+    app.kubernetes.io/part-of: trino
+    app.kubernetes.io/managed-by: kubectl
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

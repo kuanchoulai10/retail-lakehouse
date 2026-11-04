@@ -20,6 +20,7 @@ tasks:
     deps:
       - unit-test-backend
       - unit-test-spark
+      - unit-test-scripts
 
   unit-test-backend:
     desc: "Run table-maintenance backend tests"
@@ -32,6 +33,12 @@ tasks:
     internal: true
     cmds:
       - cmd: echo "TODO:// uv run --project src/table-maintenance/runtime/spark --directory src/table-maintenance/runtime/spark pytest -v"
+
+  unit-test-scripts:
+    desc: "Run repository script tests"
+    internal: true
+    cmds:
+      - uv run --no-project --with pyyaml --with pytest pytest scripts/tests -v
 
   arch-test:
     desc: "Run architecture boundary tests (import-linter)"

@@ -5,6 +5,12 @@ metadata:
   namespace: istio-ingress
   annotations:
     networking.istio.io/service-type: ClusterIP
+  labels:
+    app.kubernetes.io/name: platform-gateway
+    app.kubernetes.io/instance: platform-gateway
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: platform-gateway
+    app.kubernetes.io/managed-by: kubectl
 spec:
   gatewayClassName: istio
   listeners:
@@ -17,4 +23,4 @@ spec:
           from: Selector
           selector:
             matchLabels:
-              platform-gateway/routes: allowed
+              retail-lakehouse.io/gateway-routes: allowed

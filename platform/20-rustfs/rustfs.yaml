@@ -4,17 +4,28 @@ kind: Deployment
 metadata:
   name: rustfs
   namespace: object-storage
+  labels:
+    app.kubernetes.io/name: rustfs
+    app.kubernetes.io/instance: rustfs
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: object-storage
+    app.kubernetes.io/managed-by: kubectl
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: rustfs
+      app.kubernetes.io/name: rustfs
+      app.kubernetes.io/instance: rustfs
   template:
     metadata:
       labels:
-        app: rustfs
+        app.kubernetes.io/name: rustfs
+        app.kubernetes.io/instance: rustfs
+        app.kubernetes.io/component: server
+        app.kubernetes.io/part-of: object-storage
+        app.kubernetes.io/managed-by: kubectl
     spec:
       initContainers:
         - name: fix-data-permissions
@@ -106,9 +117,16 @@ kind: Service
 metadata:
   name: rustfs-console
   namespace: object-storage
+  labels:
+    app.kubernetes.io/name: rustfs
+    app.kubernetes.io/instance: rustfs
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: object-storage
+    app.kubernetes.io/managed-by: kubectl
 spec:
   selector:
-    app: rustfs
+    app.kubernetes.io/name: rustfs
+    app.kubernetes.io/instance: rustfs
   type: NodePort
   ports:
     - name: console
@@ -121,9 +139,16 @@ kind: Service
 metadata:
   name: rustfs
   namespace: object-storage
+  labels:
+    app.kubernetes.io/name: rustfs
+    app.kubernetes.io/instance: rustfs
+    app.kubernetes.io/component: server
+    app.kubernetes.io/part-of: object-storage
+    app.kubernetes.io/managed-by: kubectl
 spec:
   selector:
-    app: rustfs
+    app.kubernetes.io/name: rustfs
+    app.kubernetes.io/instance: rustfs
   type: ClusterIP
   ports:
     - name: api
@@ -137,13 +162,23 @@ kind: Job
 metadata:
   name: rustfs-create-bucket
   namespace: object-storage
+  labels:
+    app.kubernetes.io/name: rustfs
+    app.kubernetes.io/instance: rustfs-create-bucket
+    app.kubernetes.io/component: bucket-setup
+    app.kubernetes.io/part-of: object-storage
+    app.kubernetes.io/managed-by: kubectl
 spec:
   backoffLimit: 6
   completions: 1
   template:
     metadata:
       labels:
-        job: rustfs-create-bucket
+        app.kubernetes.io/name: rustfs
+        app.kubernetes.io/instance: rustfs-create-bucket
+        app.kubernetes.io/component: bucket-setup
+        app.kubernetes.io/part-of: object-storage
+        app.kubernetes.io/managed-by: kubectl
     spec:
       initContainers:
         - name: wait-for-rustfs

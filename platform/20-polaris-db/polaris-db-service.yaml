@@ -4,10 +4,15 @@ metadata:
   name: polaris-db
   namespace: lakehouse-catalog
   labels:
-    app: polaris-db
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/instance: polaris-db
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: polaris
+    app.kubernetes.io/managed-by: kubectl
 spec:
   selector:
-    app: polaris-db
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/instance: polaris-db
   ports:
     - name: postgres
       port: 5432

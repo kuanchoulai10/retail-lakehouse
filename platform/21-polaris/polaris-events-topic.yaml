@@ -5,6 +5,11 @@ metadata:
   namespace: kafka
   labels:
     strimzi.io/cluster: kafka-cluster
+    app.kubernetes.io/name: polaris
+    app.kubernetes.io/instance: polaris
+    app.kubernetes.io/component: events
+    app.kubernetes.io/part-of: polaris
+    app.kubernetes.io/managed-by: kubectl
 spec:
   partitions: 1
   replicas: 3

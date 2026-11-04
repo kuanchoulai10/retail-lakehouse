@@ -3,6 +3,12 @@ kind: Role
 metadata:
   name: debezium-role
   namespace: kafka
+  labels:
+    app.kubernetes.io/name: debezium
+    app.kubernetes.io/instance: debezium-mysql
+    app.kubernetes.io/component: cdc-source
+    app.kubernetes.io/part-of: cdc
+    app.kubernetes.io/managed-by: kubectl
 rules:
 - apiGroups: [""]
   resources: ["secrets"]

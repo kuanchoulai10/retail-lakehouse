@@ -3,6 +3,12 @@ kind: OpenTelemetryCollector
 metadata:
   name: jaeger-thanos
   namespace: thanos
+  labels:
+    app.kubernetes.io/name: jaeger
+    app.kubernetes.io/instance: jaeger-thanos
+    app.kubernetes.io/component: tracing
+    app.kubernetes.io/part-of: thanos
+    app.kubernetes.io/managed-by: kubectl
 spec:
   image: jaegertracing/jaeger:latest
   ports:

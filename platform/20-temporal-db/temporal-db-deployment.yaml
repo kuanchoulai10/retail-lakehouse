@@ -4,18 +4,27 @@ metadata:
   name: temporal-db
   namespace: temporal
   labels:
-    app: temporal-db
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/instance: temporal-db
+    app.kubernetes.io/component: database
+    app.kubernetes.io/part-of: temporal
+    app.kubernetes.io/managed-by: kubectl
 spec:
   replicas: 1
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: temporal-db
+      app.kubernetes.io/name: postgres
+      app.kubernetes.io/instance: temporal-db
   template:
     metadata:
       labels:
-        app: temporal-db
+        app.kubernetes.io/name: postgres
+        app.kubernetes.io/instance: temporal-db
+        app.kubernetes.io/component: database
+        app.kubernetes.io/part-of: temporal
+        app.kubernetes.io/managed-by: kubectl
     spec:
       containers:
         - name: postgres
