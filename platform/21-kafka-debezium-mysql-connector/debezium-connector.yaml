@@ -12,6 +12,8 @@ metadata:
 spec:
   class: io.debezium.connector.mysql.MySqlConnector
   tasksMax: 1
+  autoRestart:
+    enabled: true
   config:
     tasks.max: 1
     database.hostname: mysql.ecommerce-app.svc.cluster.local

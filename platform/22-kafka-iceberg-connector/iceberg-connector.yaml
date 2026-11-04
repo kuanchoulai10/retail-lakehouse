@@ -12,6 +12,8 @@ metadata:
 spec:
   class: org.apache.iceberg.connect.IcebergSinkConnector
   tasksMax: 1
+  autoRestart:
+    enabled: true
   config:
     tasks.max: 1
     topics: mysql.inventory.orders
