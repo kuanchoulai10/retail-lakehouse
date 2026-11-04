@@ -16,3 +16,9 @@ kubectl rollout status deployment/mysql \
   --namespace ecommerce-app \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
+
+kubectl wait pvc/mysql \
+  --for=jsonpath='{.status.phase}'=Bound \
+  --namespace ecommerce-app \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"

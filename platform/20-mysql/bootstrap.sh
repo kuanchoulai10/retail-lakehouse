@@ -18,6 +18,10 @@ kubectl apply \
   --context "${KUBE_CONTEXT}"
 
 kubectl apply \
+  -f "$SCRIPT_DIR/mysql-pvc.yaml" \
+  --context "${KUBE_CONTEXT}"
+
+kubectl apply \
   -f "$SCRIPT_DIR/mysql.yaml" \
   --namespace ecommerce-app \
   --context "${KUBE_CONTEXT}"
