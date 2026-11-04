@@ -3,6 +3,7 @@ set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/namespace.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/gateway.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-600s}"
@@ -46,6 +47,7 @@ upsert_secret() {
 for namespace in "${CONTROL_PLANE_NAMESPACE}" "${OPERATIONS_NAMESPACE}"; do
   namespace::apply_ambient "${namespace}"
 done
+gateway::allow_routes "${CONTROL_PLANE_NAMESPACE}"
 
 EXISTING_DB_SECRET="$(kubectl get secret table-maintenance-db \
   --ignore-not-found \

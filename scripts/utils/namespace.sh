@@ -11,7 +11,8 @@ __NAMESPACE_SH_LOADED=1
 
 namespace::apply_ambient() {
   local name=$1
-  kubectl apply \
+  kubectl apply --server-side \
+    --field-manager namespace-ambient \
     -f - \
     --context "${KUBE_CONTEXT}" <<EOF
 apiVersion: v1

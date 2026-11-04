@@ -55,6 +55,7 @@ tasks:
       - TIMEOUT=10s bash platform/12-istiod/validate.sh
       - TIMEOUT=10s bash platform/12-istio-cni/validate.sh
       - TIMEOUT=10s bash platform/12-ztunnel/validate.sh
+      - TIMEOUT=10s bash platform/12-platform-gateway/validate.sh
       - TIMEOUT=10s bash platform/20-kafka-cluster/validate.sh
       - TIMEOUT=10s bash platform/20-rustfs/validate.sh
       - TIMEOUT=10s bash platform/20-mysql/validate.sh
@@ -66,7 +67,6 @@ tasks:
       - TIMEOUT=10s bash platform/21-temporal/validate.sh
       - TIMEOUT=10s bash platform/21-kafka-debezium-mysql-connector/validate.sh
       - TIMEOUT=10s bash platform/22-kafka-iceberg-connector/validate.sh
-      - TIMEOUT=10s bash platform/22-polaris-routes/validate.sh
       - TIMEOUT=10s bash platform/23-kafka-ui/validate.sh
       - TIMEOUT=10s bash platform/23-trino/validate.sh
       - TIMEOUT=10s bash platform/23-kiali/validate.sh
@@ -94,6 +94,8 @@ tasks:
       - bash platform/12-ztunnel/bootstrap.sh
       - bash platform/12-istio-cni/validate.sh
       - bash platform/12-ztunnel/validate.sh
+      - bash platform/12-platform-gateway/bootstrap.sh
+      - bash platform/12-platform-gateway/validate.sh
       - bash platform/20-kafka-cluster/bootstrap.sh
       - bash platform/20-rustfs/bootstrap.sh
       - bash platform/20-mysql/bootstrap.sh
@@ -116,8 +118,6 @@ tasks:
       - bash platform/21-kafka-debezium-mysql-connector/validate.sh
       - bash platform/22-kafka-iceberg-connector/bootstrap.sh
       - bash platform/22-kafka-iceberg-connector/validate.sh
-      - bash platform/22-polaris-routes/bootstrap.sh
-      - bash platform/22-polaris-routes/validate.sh
       - bash platform/23-kafka-ui/bootstrap.sh
       - bash platform/23-kafka-ui/validate.sh
       - bash platform/23-trino/bootstrap.sh
@@ -172,6 +172,9 @@ tasks:
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       - task: validate-ztunnel
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-platform-gateway
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       - task: validate-kafka-cluster
@@ -282,6 +285,13 @@ tasks:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
       - bash platform/12-ztunnel/validate.sh
+
+  validate-platform-gateway:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash platform/12-platform-gateway/validate.sh
 
   validate-kafka-cluster:
     internal: true

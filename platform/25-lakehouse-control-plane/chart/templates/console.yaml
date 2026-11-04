@@ -74,11 +74,9 @@ spec:
   parentRefs:
     - name: {{ .Values.console.gateway.name }}
       namespace: {{ .Values.console.gateway.namespace }}
+  hostnames:
+    - {{ .Values.console.hostname }}
   rules:
-    - matches:
-        - path:
-            type: PathPrefix
-            value: {{ .Values.console.pathPrefix }}
-      backendRefs:
+    - backendRefs:
         - name: console
           port: {{ .Values.console.port }}

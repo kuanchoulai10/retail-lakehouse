@@ -7,8 +7,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-log::on_success "polaris-routes installed"
-log::on_failure "polaris-routes installation failed"
+log::on_success "platform-gateway installed"
+log::on_failure "platform-gateway installation failed"
 
 kubectl create namespace istio-ingress \
   --dry-run=client \
@@ -19,5 +19,4 @@ kubectl create namespace istio-ingress \
 
 kubectl apply --server-side \
   -f "$SCRIPT_DIR/gateway.yaml" \
-  -f "$SCRIPT_DIR/polaris-httproute.yaml" \
   --context "${KUBE_CONTEXT}"

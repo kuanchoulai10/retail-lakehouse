@@ -3,6 +3,7 @@ set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/namespace.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/gateway.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TEMPORAL_CHART_VERSION="${TEMPORAL_CHART_VERSION:-1.7.0}"
@@ -24,3 +25,8 @@ helm upgrade --install temporal temporalio/temporal \
   --values "$SCRIPT_DIR/values.yaml" \
   --timeout "${TIMEOUT}" \
   --kube-context "${KUBE_CONTEXT}"
+
+gateway::allow_routes temporal
+kubectl apply \
+  -f "$SCRIPT_DIR/temporal-web-route.yaml" \
+  --context "${KUBE_CONTEXT}"

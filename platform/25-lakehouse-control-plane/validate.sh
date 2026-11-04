@@ -3,12 +3,11 @@ set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/namespace.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/gateway.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
 NAMESPACE="lakehouse-control-plane"
-GATEWAY_PORT="${GATEWAY_PORT:-18080}"
-GATEWAY_PID=""
 
 log::on_success "Lakehouse control plane is ready"
 log::on_failure "Lakehouse control plane is not ready"
@@ -16,12 +15,6 @@ log::on_failure "Lakehouse control plane is not ready"
 namespace::assert_ambient lakehouse-control-plane
 namespace::assert_ambient lakehouse-maintenance-operations
 
-cleanup() {
-  if [[ -n "${GATEWAY_PID}" ]]; then
-    kill "${GATEWAY_PID}" 2>/dev/null || true
-  fi
-}
-trap '__log::on_exit $?; cleanup' EXIT
 
 for namespace in "${NAMESPACE}" lakehouse-maintenance-operations; do
   kubectl wait "namespace/${namespace}" \
@@ -113,30 +106,12 @@ CONSUMER_GROUP="$(kubectl exec kafka-cluster-dual-role-0 \
   --group table-maintenance-event-consumer)"
 awk '$2 == "polaris-catalog-events" && $7 != "-" && $7 != "" {found = 1} END {exit !found}' <<<"${CONSUMER_GROUP}"
 
-kubectl wait --for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True httproute/console \
-  --namespace "${NAMESPACE}" \
-  --timeout "${TIMEOUT}" \
-  --context "${KUBE_CONTEXT}"
-
-( exec kubectl port-forward service/platform-gateway-istio "${GATEWAY_PORT}:80" \
-    --namespace istio-ingress \
-    --context "${KUBE_CONTEXT}" ) >/dev/null 2>&1 &
-GATEWAY_PID=$!
-GATEWAY_READY=""
-for _ in $(seq 1 30); do
-  if nc -z localhost "${GATEWAY_PORT}" 2>/dev/null; then
-    GATEWAY_READY=1
-    break
-  fi
-  sleep 1
-done
-[[ -n "${GATEWAY_READY}" ]] || { echo "gateway port-forward did not start" >&2; exit 1; }
-
-GATEWAY_URL="http://localhost:${GATEWAY_PORT}"
-for path in /console/ /console/tables/x/commits; do
-  PAGE="$(curl -fsS "${GATEWAY_URL}${path}")"
+gateway::assert_routes_allowed "${NAMESPACE}"
+gateway::assert_route_accepted "${NAMESPACE}" console
+for path in / /console/ /console/tables/x/commits; do
+  PAGE="$(gateway::curl console.localhost "${path}" -fsSL)"
   grep -qF '<div id="root">' <<<"${PAGE}" \
-    || { echo "${path} through the gateway is not the console" >&2; exit 1; }
+    || { echo "console.localhost${path} through the gateway is not the console" >&2; exit 1; }
 done
-curl -fsS "${GATEWAY_URL}/console/api/v1/tables" | jq -e 'type == "array"' >/dev/null \
-  || { echo "/console/api/v1/tables through the gateway is not a JSON array" >&2; exit 1; }
+gateway::curl console.localhost /console/api/v1/tables -fsS | jq -e 'type == "array"' >/dev/null \
+  || { echo "console.localhost/console/api/v1/tables through the gateway is not a JSON array" >&2; exit 1; }

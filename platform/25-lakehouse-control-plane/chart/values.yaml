@@ -81,7 +81,7 @@ console:
   gateway:
     name: platform-gateway
     namespace: istio-ingress
-  pathPrefix: /console
+  hostname: console.localhost
   resources:
     requests:
       cpu: 20m

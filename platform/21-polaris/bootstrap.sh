@@ -3,6 +3,7 @@ set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/namespace.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/gateway.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 POLARIS_VERSION="${POLARIS_VERSION:-1.8.0}"
@@ -90,4 +91,9 @@ kubectl delete job polaris-create-catalog \
   --context "${KUBE_CONTEXT}"
 kubectl apply \
   -f "$SCRIPT_DIR/polaris-create-catalog-job.yaml" \
+  --context "${KUBE_CONTEXT}"
+
+gateway::allow_routes lakehouse-catalog
+kubectl apply \
+  -f "$SCRIPT_DIR/polaris-route.yaml" \
   --context "${KUBE_CONTEXT}"

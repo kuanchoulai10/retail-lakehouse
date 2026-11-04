@@ -3,6 +3,7 @@ set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/namespace.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/gateway.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
@@ -34,3 +35,10 @@ kubectl wait kafkatopic/polaris-catalog-events \
   --timeout "${TIMEOUT}" \
   --namespace kafka \
   --context "${KUBE_CONTEXT}"
+
+gateway::assert_routes_allowed lakehouse-catalog
+gateway::assert_route_accepted lakehouse-catalog polaris
+POLARIS_STATUS="$(gateway::curl polaris.localhost /api/catalog/v1/config -s -o /dev/null -w '%{http_code}')" \
+  || POLARIS_STATUS=000
+[[ "${POLARIS_STATUS}" == "401" ]] \
+  || { echo "polaris.localhost /api/catalog/v1/config returned ${POLARIS_STATUS}, expected 401" >&2; exit 1; }

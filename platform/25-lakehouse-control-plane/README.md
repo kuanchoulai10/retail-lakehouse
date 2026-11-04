@@ -12,7 +12,7 @@ Namespace: lakehouse-control-plane
   Deployment table-maintenance-worker         Temporal worker (task queue table-maintenance)
   Deployment table-maintenance-event-consumer Polaris catalog events from Kafka (1 replica)
   Deployment console                          data platform console (nginx), Service console:8080
-  HTTPRoute  console                          PathPrefix /console on platform-gateway (istio-ingress)
+  HTTPRoute  console                          console.localhost on platform-gateway (istio-ingress)
 Namespace: lakehouse-maintenance-operations
   ServiceAccount/Role/RoleBinding table-maintenance-spark   Spark driver
   Role/RoleBinding table-maintenance-worker                 worker may manage SparkApplications
@@ -37,14 +37,14 @@ The Spark operator (wave 11) must watch `lakehouse-maintenance-operations` (`spa
 
 ## Console
 
-The console is a static app served by nginx at `/console/`; nginx proxies `/console/api/` to `table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000`, so the browser talks to one origin. nginx resolves that name at start-up, which works because the api Service is in the same release. The `console` HTTPRoute attaches to `platform-gateway` (wave 22), whose `allowedRoutes` admits `lakehouse-catalog` and `lakehouse-control-plane`; `PathPrefix /console` is more specific than the Polaris catch-all on `/`.
+The console is a static app served by nginx at `/console/`; nginx proxies `/console/api/` to `table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000`, so the browser talks to one origin. nginx resolves that name at start-up, which works because the api Service is in the same release. The `console` HTTPRoute attaches to `platform-gateway` (wave `12-platform-gateway`) with hostname `console.localhost`; `bootstrap.sh` labels `lakehouse-control-plane` with `gateway::allow_routes` so the Gateway admits it. nginx redirects `/` to `/console/` with a relative `Location` (`absolute_redirect off`), so the redirect keeps whatever local port the browser used.
 
 ```
-kubectl port-forward service/platform-gateway-istio 8080:80 --namespace istio-ingress --context retail-lakehouse
-open http://localhost:8080/console/
+kubectl port-forward service/platform-gateway-istio 8591:80 --namespace istio-ingress --context retail-lakehouse
+open http://console.localhost:8591/
 ```
 
-`validate.sh` waits for the `console` rollout and the route's `Accepted` condition, then port-forwards the gateway to `localhost:18080` (`GATEWAY_PORT`) and checks that `/console/` and the deep link `/console/tables/x/commits` return the app and `/console/api/v1/tables` returns a JSON array.
+`validate.sh` waits for the `console` rollout and the route's `Accepted` condition, then curls the gateway with `Host: console.localhost` (`gateway::curl`) and checks that `/`, `/console/` and the deep link `/console/tables/x/commits` return the app and `/console/api/v1/tables` returns a JSON array.
 
 ## Ordering
 

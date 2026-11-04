@@ -9,16 +9,12 @@ spec:
   gatewayClassName: istio
   listeners:
     - name: http
+      hostname: "*.localhost"
       port: 80
       protocol: HTTP
       allowedRoutes:
         namespaces:
           from: Selector
           selector:
-            matchExpressions:
-              - key: kubernetes.io/metadata.name
-                operator: In
-                values:
-                  - lakehouse-catalog
-                  - lakehouse-control-plane
-                  - istio-system
+            matchLabels:
+              platform-gateway/routes: allowed

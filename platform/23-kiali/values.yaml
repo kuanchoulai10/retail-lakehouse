@@ -15,4 +15,4 @@ external_services:
   tracing:
     enabled: false
 server:
-  web_root: /kiali
+  web_root: /

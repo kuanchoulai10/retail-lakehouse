@@ -3,6 +3,7 @@ set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/namespace.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/gateway.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
@@ -30,3 +31,7 @@ kubectl exec deployment/temporal-admintools \
   --namespace temporal \
   --context "${KUBE_CONTEXT}" \
   -- temporal operator namespace describe -n default
+
+gateway::assert_routes_allowed temporal
+gateway::assert_route_accepted temporal temporal-web
+gateway::curl temporal.localhost / -fsS -o /dev/null

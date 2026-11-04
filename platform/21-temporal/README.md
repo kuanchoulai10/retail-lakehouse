@@ -62,6 +62,14 @@ kubectl exec deployment/temporal-admintools -n temporal --context retail-lakehou
 
 ## Web UI
 
+Through `platform-gateway` (HTTPRoute `temporal-web`, hostname `temporal.localhost`):
+
+```bash
+kubectl port-forward service/platform-gateway-istio 8591:80 --namespace istio-ingress --context retail-lakehouse
+```
+
+Then browse `http://temporal.localhost:8591/`. Directly, without the gateway:
+
 ```bash
 kubectl port-forward svc/temporal-web 8080:8080 -n temporal --context retail-lakehouse
 ```

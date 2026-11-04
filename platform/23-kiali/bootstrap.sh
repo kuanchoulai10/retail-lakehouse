@@ -2,6 +2,7 @@
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/gateway.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 KIALI_VERSION="${KIALI_VERSION:-2.20.0}"
@@ -20,9 +21,7 @@ helm upgrade --install kiali-server kiali/kiali-server \
   --values "$SCRIPT_DIR/values.yaml" \
   --kube-context "${KUBE_CONTEXT}"
 
-kubectl apply \
-  -f "$SCRIPT_DIR/../22-polaris-routes/gateway.yaml" \
-  --context "${KUBE_CONTEXT}"
+gateway::allow_routes istio-system
 kubectl apply \
   -f "$SCRIPT_DIR/kiali-route.yaml" \
   --context "${KUBE_CONTEXT}"
