@@ -4,7 +4,7 @@ metadata:
   name: table-maintenance-event-consumer
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "event-consumer") | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "event-consumer" "version" .Values.image.backend.tag) | nindent 4 }}
 spec:
   replicas: 1
   strategy:
@@ -15,7 +15,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "event-consumer") | nindent 8 }}
+        {{- include "table-maintenance.labels" (dict "root" . "name" "table-maintenance" "component" "event-consumer" "version" .Values.image.backend.tag) | nindent 8 }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:

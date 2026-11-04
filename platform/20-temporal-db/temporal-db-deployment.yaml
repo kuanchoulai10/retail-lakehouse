@@ -25,6 +25,7 @@ spec:
         app.kubernetes.io/component: database
         app.kubernetes.io/part-of: temporal
         app.kubernetes.io/managed-by: kubectl
+        app.kubernetes.io/version: "17.11-alpine"
     spec:
       containers:
         - name: postgres

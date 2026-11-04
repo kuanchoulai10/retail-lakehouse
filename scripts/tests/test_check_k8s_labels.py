@@ -20,22 +20,37 @@ LABELS = {
     "app.kubernetes.io/part-of": "polaris",
     "app.kubernetes.io/managed-by": "kubectl",
 }
+VERSION = "app.kubernetes.io/version"
+POD_LABELS = {**LABELS, VERSION: "17-alpine"}
+CONTAINERS = [{"name": "postgres", "image": "postgres:17-alpine"}]
 SELECTOR = {
     "app.kubernetes.io/name": "postgres",
     "app.kubernetes.io/instance": "polaris-db",
 }
 
 
-def deployment(labels=None, selector=None, pod_labels=None):
-    """Build a Deployment, defaulting every label block to the valid set."""
+def deployment(labels=None, selector=None, pod_labels=None, containers=None):
+    """Build a Deployment, defaulting every label block and container to the valid set."""
     return {
         "kind": "Deployment",
         "metadata": {"name": "polaris-db", "labels": dict(LABELS if labels is None else labels)},
         "spec": {
             "selector": {"matchLabels": dict(SELECTOR if selector is None else selector)},
-            "template": {"metadata": {"labels": dict(LABELS if pod_labels is None else pod_labels)}},
+            "template": {
+                "metadata": {"labels": dict(POD_LABELS if pod_labels is None else pod_labels)},
+                "spec": {"containers": CONTAINERS if containers is None else containers},
+            },
         },
     }
+
+
+def strimzi(kind, version, pod_labels, path):
+    """Build a Strimzi custom resource whose pod template sits at path under spec."""
+    template = {"pod": {"metadata": {"labels": pod_labels}}} if pod_labels is not None else {}
+    spec = {"version": version, "template": template}
+    for key in reversed(path):
+        spec = {key: spec}
+    return {"kind": kind, "metadata": {"name": "k", "labels": dict(LABELS)}, "spec": spec}
 
 
 def test_valid_deployment_has_no_violations():
@@ -64,7 +79,7 @@ def test_unprefixed_label_key_is_reported():
 
 def test_pod_template_must_carry_the_same_recommended_labels():
     """Pod template values must equal the object's."""
-    pod = {**LABELS, "app.kubernetes.io/component": "cache"}
+    pod = {**POD_LABELS, "app.kubernetes.io/component": "cache"}
     violations = check_document(deployment(pod_labels=pod), "f.yaml")
     assert violations == [
         "f.yaml: Deployment/polaris-db pod template label app.kubernetes.io/component "
@@ -126,3 +141,49 @@ def test_job_pod_template_is_checked_without_selector():
 def test_document_without_kind_is_ignored():
     """A YAML document without kind is ignored."""
     assert check_document({"foo": "bar"}, "f.yaml") == []
+
+
+def test_pod_template_without_version_is_reported():
+    """Workload pod templates must carry app.kubernetes.io/version."""
+    violations = check_document(deployment(pod_labels=dict(LABELS)), "f.yaml")
+    assert violations == ["f.yaml: Deployment/polaris-db pod template labels is missing app.kubernetes.io/version"]
+
+
+def test_version_must_match_a_container_image_tag():
+    """The version label is the tag of one of the pod's containers."""
+    violations = check_document(deployment(pod_labels={**LABELS, VERSION: "16"}), "f.yaml")
+    assert violations == [
+        "f.yaml: Deployment/polaris-db pod template app.kubernetes.io/version '16' "
+        "is not the tag of any container image (17-alpine)"
+    ]
+
+
+def test_version_matches_any_container_but_not_an_init_container():
+    """A sidecar's tag counts; an init container's does not."""
+    containers = [{"name": "mc", "image": "pgsty/mc:R1"}, {"name": "aws", "image": "amazon/aws-cli:2.38.1"}]
+    assert check_document(deployment(pod_labels={**LABELS, VERSION: "2.38.1"}, containers=containers), "f.yaml") == []
+    job = deployment(pod_labels={**LABELS, VERSION: "1.37.0"})
+    job["spec"]["template"]["spec"]["initContainers"] = [{"name": "init", "image": "busybox:1.37.0"}]
+    assert "is not the tag of any container image" in check_document(job, "f.yaml")[0]
+
+
+def test_strimzi_kafka_pod_version_must_match_kafka_version():
+    """Kafka broker pods carry spec.kafka.version as their version label."""
+    good = strimzi("Kafka", "4.0.0", {"version": "4.0.0"}, ["kafka"])
+    assert check_document(good, "f.yaml") == []
+    bad = strimzi("Kafka", "4.0.0", {"version": "3.9.0"}, ["kafka"])
+    assert check_document(bad, "f.yaml") == [
+        "f.yaml: Kafka/k pod template version '3.9.0' is not spec.kafka.version '4.0.0'"
+    ]
+
+
+def test_strimzi_pod_version_uses_the_plain_version_key():
+    """Strimzi strips app.kubernetes.io/* from pod templates, so the prefixed key does not count."""
+    violations = check_document(strimzi("KafkaConnect", "4.0.0", {VERSION: "4.0.0"}, []), "f.yaml")
+    assert violations == ["f.yaml: KafkaConnect/k pod template labels is missing version"]
+
+
+def test_strimzi_connect_without_pod_version_is_reported():
+    """KafkaConnect pods carry spec.version as their version label."""
+    violations = check_document(strimzi("KafkaConnect", "4.0.0", None, []), "f.yaml")
+    assert violations == ["f.yaml: KafkaConnect/k pod template labels is missing version"]

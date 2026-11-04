@@ -4,6 +4,9 @@ polaris:
     tag: "1.8.0"
     pullPolicy: IfNotPresent
 
+  podLabels:
+    app.kubernetes.io/version: "1.8.0"
+
   replicaCount: 1
 
   # ---------------------------------------------------------------------------

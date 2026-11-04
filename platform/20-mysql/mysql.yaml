@@ -43,6 +43,7 @@ spec:
         app.kubernetes.io/component: database
         app.kubernetes.io/part-of: ecommerce-app
         app.kubernetes.io/managed-by: kubectl
+        app.kubernetes.io/version: "2.7.3.Final"
     spec:
       containers:
       - image: quay.io/debezium/example-mysql:2.7.3.Final

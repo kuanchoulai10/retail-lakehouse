@@ -36,6 +36,10 @@ spec:
     "-Xms": "128m"
     "-Xmx": "512m"
   template:
+    pod:
+      metadata:
+        labels:
+          version: "4.0.0"
     connectContainer:
       env:
         - name: STRIMZI_JAVA_OPTS

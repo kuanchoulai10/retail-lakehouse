@@ -2,8 +2,11 @@
 
 Every object carries the recommended labels app.kubernetes.io/{name,instance,part-of,managed-by}
 and no unprefixed label key. Workload pod templates carry the same app.kubernetes.io/* values as
-their object. Deployment / StatefulSet / DaemonSet / Service selectors use only
-app.kubernetes.io/{name,instance,component}, always name and instance, and match the pod template.
+their object plus app.kubernetes.io/version, the tag of one of their container images. Strimzi
+Kafka / KafkaConnect pod templates carry the plain `version` label = the Kafka version in the spec,
+because Strimzi strips every app.kubernetes.io/* key from pod-template labels. Deployment / StatefulSet /
+DaemonSet / Service selectors use only app.kubernetes.io/{name,instance,component}, always name
+and instance, and match the pod template.
 
 Scope: every platform/**/*.yaml we write (third-party Helm values, vendored charts, CRD bundles,
 on-hold waves and patches of third-party objects are excluded) plus the rendered wave-25 chart.
@@ -24,6 +27,9 @@ SELECTOR_KEYS = tuple(PREFIX + key for key in ("name", "instance", "component"))
 SELECTOR_REQUIRED = SELECTOR_KEYS[:2]
 WORKLOAD_KINDS = {"Deployment", "StatefulSet", "DaemonSet", "Job"}
 SELECTED_WORKLOAD_KINDS = WORKLOAD_KINDS - {"Job"}
+VERSION = PREFIX + "version"
+STRIMZI_VERSION = "version"
+STRIMZI_POD_SPECS = {"Kafka": ("kafka",), "KafkaConnect": ()}
 
 EXCLUDED = re.compile(
     r"^platform/("
@@ -60,6 +66,32 @@ def _selector_violations(selector: dict, pod_labels: dict | None, where: str) ->
     return violations
 
 
+def _image_tag(image: str) -> str | None:
+    if "@" in image:
+        return None
+    name, _, tag = image.rpartition(":")
+    return tag if name and "/" not in tag else None
+
+
+def _version_violations(
+    pod_labels: dict, expected: list[str], source: str, where: str, key: str = VERSION
+) -> list[str]:
+    if key not in pod_labels:
+        return [f"{where} pod template labels is missing {key}"]
+    if pod_labels[key] in expected:
+        return []
+    return [f"{where} pod template {key} '{pod_labels[key]}' is not {source}"]
+
+
+def _strimzi_violations(spec: dict, path: tuple[str, ...], where: str) -> list[str]:
+    for key in path:
+        spec = spec.get(key) or {}
+    pod_labels = (((spec.get("template") or {}).get("pod") or {}).get("metadata") or {}).get("labels") or {}
+    field = ".".join(("spec", *path, "version"))
+    expected = spec.get("version")
+    return _version_violations(pod_labels, [str(expected)], f"{field} '{expected}'", where, STRIMZI_VERSION)
+
+
 def check_document(doc: dict, source: str) -> list[str]:
     """Return the label-standard violations of one Kubernetes object."""
     if not isinstance(doc, dict) or "kind" not in doc:
@@ -75,6 +107,11 @@ def check_document(doc: dict, source: str) -> list[str]:
     if kind in WORKLOAD_KINDS:
         pod_labels = ((spec.get("template") or {}).get("metadata") or {}).get("labels") or {}
         violations += _label_violations(pod_labels, f"{where} pod template labels")
+        containers = ((spec.get("template") or {}).get("spec") or {}).get("containers") or []
+        tags = [tag for c in containers if (tag := _image_tag(str(c.get("image", ""))))]
+        violations += _version_violations(
+            pod_labels, tags, f"the tag of any container image ({', '.join(tags)})", where
+        )
         violations += [
             f"{where} pod template label {key} is '{pod_labels[key]}', metadata has '{value}'"
             for key, value in labels.items()
@@ -84,6 +121,8 @@ def check_document(doc: dict, source: str) -> list[str]:
     if kind in SELECTED_WORKLOAD_KINDS:
         selector = (spec.get("selector") or {}).get("matchLabels") or {}
         violations += _selector_violations(selector, pod_labels, where)
+    elif kind in STRIMZI_POD_SPECS:
+        violations += _strimzi_violations(spec, STRIMZI_POD_SPECS[kind], where)
     elif kind == "Service" and spec.get("selector"):
         violations += _selector_violations(spec["selector"], None, where)
     return violations

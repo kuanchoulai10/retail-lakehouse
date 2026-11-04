@@ -20,6 +20,7 @@ spec:
         app.kubernetes.io/component: bootstrap
         app.kubernetes.io/part-of: polaris
         app.kubernetes.io/managed-by: kubectl
+        app.kubernetes.io/version: "1.8.0"
     spec:
       restartPolicy: OnFailure
       initContainers:

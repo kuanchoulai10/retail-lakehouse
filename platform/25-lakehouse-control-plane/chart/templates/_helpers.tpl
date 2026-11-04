@@ -19,7 +19,9 @@ app.kubernetes.io/component: {{ .component }}
 {{- define "table-maintenance.labels" -}}
 {{ include "table-maintenance.selectorLabels" . }}
 app.kubernetes.io/part-of: table-maintenance
-app.kubernetes.io/version: {{ .root.Chart.AppVersion | quote }}
+{{- with .version }}
+app.kubernetes.io/version: {{ . | quote }}
+{{- end }}
 app.kubernetes.io/managed-by: {{ .root.Release.Service }}
 {{- end -}}
 

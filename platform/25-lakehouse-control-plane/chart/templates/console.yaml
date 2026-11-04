@@ -4,7 +4,7 @@ metadata:
   name: console
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "table-maintenance.labels" (dict "root" . "name" "console" "component" "ui") | nindent 4 }}
+    {{- include "table-maintenance.labels" (dict "root" . "name" "console" "component" "ui" "version" .Values.image.console.tag) | nindent 4 }}
 spec:
   replicas: 1
   selector:
@@ -13,7 +13,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "table-maintenance.labels" (dict "root" . "name" "console" "component" "ui") | nindent 8 }}
+        {{- include "table-maintenance.labels" (dict "root" . "name" "console" "component" "ui" "version" .Values.image.console.tag) | nindent 8 }}
     spec:
       automountServiceAccountToken: false
       securityContext:

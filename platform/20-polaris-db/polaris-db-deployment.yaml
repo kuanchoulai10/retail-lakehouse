@@ -25,6 +25,7 @@ spec:
         app.kubernetes.io/component: database
         app.kubernetes.io/part-of: polaris
         app.kubernetes.io/managed-by: kubectl
+        app.kubernetes.io/version: "17-alpine"
     spec:
       containers:
         - name: postgres
