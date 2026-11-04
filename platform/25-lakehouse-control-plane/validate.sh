@@ -108,10 +108,10 @@ awk '$2 == "polaris-catalog-events" && $7 != "-" && $7 != "" {found = 1} END {ex
 
 gateway::assert_routes_allowed "${NAMESPACE}"
 gateway::assert_route_accepted "${NAMESPACE}" console
-for path in / /console/ /console/tables/x/commits; do
-  PAGE="$(gateway::curl console.localhost "${path}" -fsSL)"
+for path in /console /console/ /console/tables/x/commits; do
+  PAGE="$(gateway::curl "${path}" -fsSL)"
   grep -qF '<div id="root">' <<<"${PAGE}" \
-    || { echo "console.localhost${path} through the gateway is not the console" >&2; exit 1; }
+    || { echo "${path} through the gateway is not the console" >&2; exit 1; }
 done
-gateway::curl console.localhost /console/api/v1/tables -fsS | jq -e 'type == "array"' >/dev/null \
-  || { echo "console.localhost/console/api/v1/tables through the gateway is not a JSON array" >&2; exit 1; }
+gateway::curl /console/api/v1/tables -fsS | jq -e 'type == "array"' >/dev/null \
+  || { echo "/console/api/v1/tables through the gateway is not a JSON array" >&2; exit 1; }

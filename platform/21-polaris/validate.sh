@@ -38,7 +38,7 @@ kubectl wait kafkatopic/polaris-catalog-events \
 
 gateway::assert_routes_allowed lakehouse-catalog
 gateway::assert_route_accepted lakehouse-catalog polaris
-POLARIS_STATUS="$(gateway::curl polaris.localhost /api/catalog/v1/config -s -o /dev/null -w '%{http_code}')" \
+POLARIS_STATUS="$(gateway::curl /polaris/api/catalog/v1/config -s -o /dev/null -w '%{http_code}')" \
   || POLARIS_STATUS=000
 [[ "${POLARIS_STATUS}" == "401" ]] \
-  || { echo "polaris.localhost /api/catalog/v1/config returned ${POLARIS_STATUS}, expected 401" >&2; exit 1; }
+  || { echo "/polaris/api/catalog/v1/config returned ${POLARIS_STATUS}, expected 401" >&2; exit 1; }

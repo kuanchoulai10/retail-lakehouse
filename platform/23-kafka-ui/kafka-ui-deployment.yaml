@@ -31,6 +31,8 @@ spec:
           env:
             - name: SPRING_CONFIG_ADDITIONAL_LOCATION
               value: /etc/kafka-ui/config.yml
+            - name: SERVER_SERVLET_CONTEXT_PATH
+              value: /kafka-ui
           ports:
             - name: http
               containerPort: 8080
@@ -40,13 +42,13 @@ spec:
               readOnly: true
           readinessProbe:
             httpGet:
-              path: /actuator/health/readiness
+              path: /kafka-ui/actuator/health/readiness
               port: 8080
             initialDelaySeconds: 15
             periodSeconds: 5
           livenessProbe:
             httpGet:
-              path: /actuator/health/liveness
+              path: /kafka-ui/actuator/health/liveness
               port: 8080
             initialDelaySeconds: 60
             periodSeconds: 15

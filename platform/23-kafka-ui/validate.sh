@@ -22,4 +22,4 @@ mesh::assert_hbone kafka-ui
 
 gateway::assert_routes_allowed kafka-ui
 gateway::assert_route_accepted kafka-ui kafka-ui
-gateway::curl kafka-ui.localhost /actuator/health -fsS -o /dev/null
+gateway::curl /kafka-ui/actuator/health -fsS -o /dev/null

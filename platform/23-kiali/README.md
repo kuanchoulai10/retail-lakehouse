@@ -1,6 +1,6 @@
 # 23-kiali
 
-Kiali (view-only, anonymous auth) in `istio-system`, served at `kiali.localhost` on `platform-gateway` (web root `/`).
+Kiali (view-only, anonymous auth) in `istio-system`, served at `/kiali` on `platform-gateway` (web root `/kiali`).
 Metrics come from Prometheus (`http://prometheus-k8s.monitoring:9090`), which scrapes ztunnel through
 the `ztunnel` PodMonitor in `12-ztunnel`.
 
@@ -15,10 +15,10 @@ Istio 1.26 for Kiali 2.9 to 2.20, so 2.20 is the newest supported version. Overr
 kubectl port-forward service/platform-gateway-istio 8591:80 --namespace istio-ingress --context retail-lakehouse
 ```
 
-Browse `http://kiali.localhost:8591/`. The graph shows only traffic of namespaces labelled
+Browse `http://localhost:8591/kiali/`. The graph shows only traffic of namespaces labelled
 `istio.io/dataplane-mode=ambient`.
 
 ## Gateway
 
 `bootstrap.sh` labels `istio-system` with `gateway::allow_routes` and applies the `kiali` HTTPRoute
-(hostname `kiali.localhost`). The Gateway itself is owned by `12-platform-gateway`.
+(path prefix `/kiali`). The Gateway itself is owned by `12-platform-gateway`.

@@ -13,9 +13,17 @@ spec:
   parentRefs:
     - name: platform-gateway
       namespace: istio-ingress
-  hostnames:
-    - polaris.localhost
   rules:
-    - backendRefs:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /polaris
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
         - name: polaris
           port: 8181

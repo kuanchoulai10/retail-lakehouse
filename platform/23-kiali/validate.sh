@@ -17,4 +17,4 @@ kubectl rollout status deployment/kiali \
 
 gateway::assert_routes_allowed istio-system
 gateway::assert_route_accepted istio-system kiali
-gateway::curl kiali.localhost /api/status -fsS -o /dev/null
+gateway::curl /kiali/api/status -fsS -o /dev/null

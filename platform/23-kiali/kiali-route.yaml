@@ -13,9 +13,11 @@ spec:
   parentRefs:
     - name: platform-gateway
       namespace: istio-ingress
-  hostnames:
-    - kiali.localhost
   rules:
-    - backendRefs:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /kiali
+      backendRefs:
         - name: kiali
           port: 20001

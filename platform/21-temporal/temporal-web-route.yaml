@@ -13,9 +13,11 @@ spec:
   parentRefs:
     - name: platform-gateway
       namespace: istio-ingress
-  hostnames:
-    - temporal.localhost
   rules:
-    - backendRefs:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /temporal
+      backendRefs:
         - name: temporal-web
           port: 8080

@@ -5,7 +5,7 @@
 #   gateway::allow_routes <namespace>             # label the namespace so its HTTPRoutes may attach
 #   gateway::assert_routes_allowed <namespace>    # fail unless the namespace carries that label
 #   gateway::assert_route_accepted <ns> <route>   # wait until the HTTPRoute is Accepted (TIMEOUT)
-#   gateway::curl <hostname> <path> [curl args]   # curl the gateway with the given Host header
+#   gateway::curl <path> [curl args]              # curl a path through the gateway
 
 [[ -n "${__GATEWAY_SH_LOADED:-}" ]] && return 0
 __GATEWAY_SH_LOADED=1
@@ -48,8 +48,8 @@ gateway::assert_route_accepted() {
 }
 
 gateway::curl() {
-  local hostname=$1 path=$2 pf_pid pf_log port=""
-  shift 2
+  local path=$1 pf_pid pf_log port=""
+  shift
   pf_log=$(mktemp)
   kubectl port-forward service/platform-gateway-istio :80 \
     --namespace istio-ingress \
@@ -68,5 +68,5 @@ gateway::curl() {
     cat "$pf_log" >&2
     return 1
   fi
-  curl --max-time 10 -H "Host: ${hostname}:${port}" "$@" "http://127.0.0.1:${port}${path}"
+  curl --max-time 10 "$@" "http://127.0.0.1:${port}${path}"
 }

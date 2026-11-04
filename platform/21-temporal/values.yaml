@@ -88,6 +88,9 @@ web:
   image:
     repository: temporalio/ui
     tag: 2.54.1
+  additionalEnv:
+    - name: TEMPORAL_UI_PUBLIC_PATH
+      value: /temporal
   service:
     type: ClusterIP
   resources:

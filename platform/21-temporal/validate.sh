@@ -34,4 +34,4 @@ kubectl exec deployment/temporal-admintools \
 
 gateway::assert_routes_allowed temporal
 gateway::assert_route_accepted temporal temporal-web
-gateway::curl temporal.localhost / -fsS -o /dev/null
+gateway::curl /temporal/ -fsS -o /dev/null
