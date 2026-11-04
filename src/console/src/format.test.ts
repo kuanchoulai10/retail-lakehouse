@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatBytes, formatCount, formatRelativeTime } from "./format";
+import { formatBytes, formatCount, formatRelativeTime, formatSeconds } from "./format";
 
 describe("formatBytes", () => {
   it("formats bytes in binary units", () => {
@@ -27,5 +27,15 @@ describe("formatRelativeTime", () => {
   });
   it("dashes a missing time", () => {
     expect(formatRelativeTime(null, now)).toBe("—");
+  });
+});
+
+describe("formatSeconds", () => {
+  it("uses the largest whole unit", () => {
+    expect(formatSeconds(604800)).toBe("7 d");
+    expect(formatSeconds(86400)).toBe("1 d");
+    expect(formatSeconds(21600)).toBe("6 h");
+    expect(formatSeconds(300)).toBe("5 min");
+    expect(formatSeconds(90)).toBe("90 s");
   });
 });

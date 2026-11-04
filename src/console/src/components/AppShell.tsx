@@ -1,4 +1,4 @@
-import { Menu, Table2 } from "lucide-react";
+import { Menu, ScanSearch, SlidersHorizontal, Table2, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,33 @@ import { ThemeSwitch } from "./ThemeSwitch";
 
 const PRODUCT_NAME = "Lakehouse";
 
-function isTablesPath(pathname: string): boolean {
-  return pathname === "/" || pathname.startsWith("/tables/");
+interface NavItem {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  isActive: (pathname: string) => boolean;
 }
+
+const NAV_ITEMS: NavItem[] = [
+  {
+    to: "/",
+    label: "Tables",
+    icon: Table2,
+    isActive: (pathname) => pathname === "/" || pathname.startsWith("/tables/"),
+  },
+  {
+    to: "/presets",
+    label: "Presets",
+    icon: SlidersHorizontal,
+    isActive: (pathname) => pathname.startsWith("/presets"),
+  },
+  {
+    to: "/discovery-rules",
+    label: "Discovery rules",
+    icon: ScanSearch,
+    isActive: (pathname) => pathname.startsWith("/discovery-rules"),
+  },
+];
 
 function Brand({ onNavigate }: { onNavigate?: () => void }) {
   return (
@@ -26,22 +50,27 @@ function Brand({ onNavigate }: { onNavigate?: () => void }) {
 
 function MainNav({ onNavigate }: { onNavigate?: () => void }) {
   const { pathname } = useLocation();
-  const active = isTablesPath(pathname);
   return (
     <nav aria-label="Main" className="flex flex-col gap-0.5">
-      <Link
-        to="/"
-        onClick={onNavigate}
-        aria-current={active ? "page" : undefined}
-        className={cn(
-          "flex h-8 items-center gap-2 rounded-md px-2 text-sm text-muted-foreground",
-          "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:no-underline",
-          active && "bg-sidebar-accent font-medium text-sidebar-accent-foreground",
-        )}
-      >
-        <Table2 aria-hidden="true" className="size-4" />
-        Tables
-      </Link>
+      {NAV_ITEMS.map(({ to, label, icon: Icon, isActive }) => {
+        const active = isActive(pathname);
+        return (
+          <Link
+            key={to}
+            to={to}
+            onClick={onNavigate}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "flex h-8 items-center gap-2 rounded-md px-2 text-sm text-muted-foreground",
+              "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:no-underline",
+              active && "bg-sidebar-accent font-medium text-sidebar-accent-foreground",
+            )}
+          >
+            <Icon aria-hidden="true" className="size-4" />
+            {label}
+          </Link>
+        );
+      })}
     </nav>
   );
 }

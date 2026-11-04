@@ -38,6 +38,19 @@ export function formatDuration(startIso: string, endIso: string | null): string 
   return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
 }
 
+const SECOND_UNITS: [number, string][] = [
+  [86_400, "d"],
+  [3_600, "h"],
+  [60, "min"],
+];
+
+export function formatSeconds(seconds: number): string {
+  for (const [size, unit] of SECOND_UNITS) {
+    if (seconds >= size && seconds % size === 0) return `${seconds / size} ${unit}`;
+  }
+  return `${seconds} s`;
+}
+
 export function formatTimestamp(value: string): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();

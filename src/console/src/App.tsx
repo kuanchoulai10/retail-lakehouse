@@ -3,6 +3,8 @@ import { BrowserRouter, Link, Route, Routes } from "react-router";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { retryQuery } from "./api/retryQuery";
 import { AppShell } from "./components/AppShell";
+import { DiscoveryRulesPage } from "./pages/DiscoveryRulesPage";
+import { PresetsPage } from "./pages/PresetsPage";
 import { TableListPage } from "./pages/TableListPage";
 import { TablePage } from "./pages/TablePage";
 import { ThemeProvider } from "./theme/ThemeProvider";
@@ -36,6 +38,8 @@ export function App() {
               <Routes>
                 <Route path="/" element={<TableListPage />} />
                 <Route path="/tables/:uuid/:tab?" element={<TablePage />} />
+                <Route path="/presets" element={<PresetsPage />} />
+                <Route path="/discovery-rules" element={<DiscoveryRulesPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AppShell>

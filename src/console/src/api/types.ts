@@ -118,3 +118,21 @@ export interface TableMaintenancePresetApiResponse {
   created_at: string;
   updated_at: string;
 }
+
+export interface TableDiscoveryRuleApiResponse {
+  id: string;
+  priority: number;
+  effect: string;
+  catalog_pattern: string;
+  namespace_pattern: string;
+  table_pattern: string;
+  preset_id: string | null;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TableDiscoverySettingsApiResponse {
+  enabled: boolean;
+  updated_at: string;
+}
