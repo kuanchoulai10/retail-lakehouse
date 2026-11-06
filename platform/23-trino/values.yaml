@@ -50,7 +50,85 @@ server:
           query: sum(trino_execution_QueryManager_RunningQueries{namespace="lakehouse-query-engine",job="trino"})
           threshold: "2"
     annotations: {}
+  coordinatorExtraConfig: |-
+    http-server.https.enabled=true
+    http-server.https.port=8443
+    http-server.https.keystore.path=/etc/trino/tls/keystore.p12
+    http-server.https.keystore.key=${ENV:TRINO_KEYSTORE_PASSWORD}
+    http-server.https.truststore.path=/etc/trino/truststore/truststore.p12
+    http-server.https.truststore.key=${ENV:TRINO_KEYSTORE_PASSWORD}
+    http-server.authentication.certificate.user-mapping.pattern=CN=([^,]+).*
+    http-server.process-forwarded=true
+    web-ui.authentication.type=oauth2
+    http-server.authentication.oauth2.issuer=${ENV:PUBLIC_ORIGIN}/keycloak/realms/retail-lakehouse
+    http-server.authentication.oauth2.auth-url=${ENV:PUBLIC_ORIGIN}/keycloak/realms/retail-lakehouse/protocol/openid-connect/auth
+    http-server.authentication.oauth2.token-url=http://keycloak.identity.svc.cluster.local:8080/keycloak/realms/retail-lakehouse/protocol/openid-connect/token
+    http-server.authentication.oauth2.jwks-url=http://keycloak.identity.svc.cluster.local:8080/keycloak/realms/retail-lakehouse/protocol/openid-connect/certs
+    http-server.authentication.oauth2.oidc.discovery=false
+    http-server.authentication.oauth2.client-id=trino
+    http-server.authentication.oauth2.client-secret=${ENV:TRINO_OAUTH2_CLIENT_SECRET}
+    http-server.authentication.oauth2.principal-field=preferred_username
+    http-server.authentication.oauth2.scopes=openid
+  exchangeManager:
+    name: filesystem
+    baseDir:
+      - s3://trino-fault-tolerance-nkm5
+      - s3://trino-fault-tolerance-cws0
 # --8<-- [end:server]
+
+# --8<-- [start:additionalProperties]
+additionalConfigProperties:
+  - internal-communication.shared-secret=${ENV:TRINO_SHARED_SECRET}
+  - retry-policy=TASK
+  - tracing.enabled=true
+  - tracing.exporter.endpoint=http://jaeger-collector.lakehouse-query-engine.svc.cluster.local:4317
+
+additionalExchangeManagerProperties:
+  - exchange.s3.region=dummy-region
+  - exchange.s3.endpoint=http://rustfs.object-storage.svc.cluster.local:9000
+  - exchange.s3.aws-access-key=${ENV:TRINO_EXCHANGE_S3_ACCESS_KEY}
+  - exchange.s3.aws-secret-key=${ENV:TRINO_EXCHANGE_S3_SECRET_KEY}
+  - exchange.s3.path-style-access=true
+# --8<-- [end:additionalProperties]
+
+# --8<-- [start:env]
+env:
+  - name: PUBLIC_ORIGIN
+    valueFrom:
+      configMapKeyRef:
+        name: trino-public-origin
+        key: origin
+  - name: TRINO_KEYSTORE_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: trino-keystore-password
+        key: password
+  - name: TRINO_SHARED_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: trino-internal-shared-secret
+        key: shared-secret
+  - name: TRINO_POLARIS_CREDENTIAL
+    valueFrom:
+      secretKeyRef:
+        name: trino-credentials
+        key: polaris-credential
+  - name: TRINO_EXCHANGE_S3_ACCESS_KEY
+    valueFrom:
+      secretKeyRef:
+        name: trino-credentials
+        key: exchange-s3-access-key
+  - name: TRINO_EXCHANGE_S3_SECRET_KEY
+    valueFrom:
+      secretKeyRef:
+        name: trino-credentials
+        key: exchange-s3-secret-key
+  - name: TRINO_OAUTH2_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: trino-credentials
+        key: oauth2-client-secret
+# --8<-- [end:env]
 
 # --8<-- [start:initContainers]
 initContainers:
@@ -80,10 +158,6 @@ initContainers:
         - name: tls-built
           mountPath: /tls-built
 # --8<-- [end:initContainers]
-
-# Note: additionalConfigProperties (incl. mTLS truststore + user-mapping) lives in
-# values-secret.yaml because Helm replaces (not merges) lists — keeping the OAuth2
-# secret entries and mTLS entries together avoids accidental override.
 
 # --8<-- [start:resource-groups]
 resourceGroups:
@@ -143,6 +217,8 @@ coordinator:
     - name: tls-built
       mountPath: /etc/trino/truststore
       readOnly: true
+  annotations:
+    checksum/trino-env: '{{ list (lookup "v1" "ConfigMap" .Release.Namespace "trino-public-origin").data (lookup "v1" "Secret" .Release.Namespace "trino-keystore-password").data (lookup "v1" "Secret" .Release.Namespace "trino-internal-shared-secret").data (lookup "v1" "Secret" .Release.Namespace "trino-credentials").data | toJson | sha256sum }}'
   additionalExposedPorts:
     https:
       servicePort: 8443
@@ -167,6 +243,8 @@ coordinator:
 
 # --8<-- [start:worker]
 worker:
+  annotations:
+    checksum/trino-env: '{{ list (lookup "v1" "ConfigMap" .Release.Namespace "trino-public-origin").data (lookup "v1" "Secret" .Release.Namespace "trino-keystore-password").data (lookup "v1" "Secret" .Release.Namespace "trino-internal-shared-secret").data (lookup "v1" "Secret" .Release.Namespace "trino-credentials").data | toJson | sha256sum }}'
   jvm:
     maxHeapSize: "3G"
   config:
@@ -231,6 +309,19 @@ catalogs:
     faker.null-probability=0.1
     faker.default-limit=1000
     faker.locale=en
+  iceberg: |
+    connector.name=iceberg
+    iceberg.catalog.type=rest
+    iceberg.rest-catalog.uri=http://polaris.lakehouse-catalog.svc.cluster.local:8181/api/catalog
+    iceberg.rest-catalog.warehouse=iceberg
+    iceberg.rest-catalog.security=OAUTH2
+    iceberg.rest-catalog.oauth2.credential=${ENV:TRINO_POLARIS_CREDENTIAL}
+    iceberg.rest-catalog.oauth2.scope=PRINCIPAL_ROLE:ALL
+    iceberg.rest-catalog.vended-credentials-enabled=true
+    fs.native-s3.enabled=true
+    s3.region=dummy-region
+    s3.path-style-access=true
+    s3.endpoint=http://rustfs.object-storage.svc.cluster.local:9000
 
 # https://trino.io/docs/current/connector/iceberg.html#authorization
 # https://trino.io/docs/current/object-storage/file-system-s3.html

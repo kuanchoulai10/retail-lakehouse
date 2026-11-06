@@ -1,6 +1,6 @@
 # Trino
 
-Deploys Trino, a distributed SQL query engine, via Helm into the `lakehouse-query-engine` namespace. Trino federates queries across the Iceberg lakehouse on S3. TLS certificates are managed by cert-manager and secrets are encrypted with SOPS/AGE.
+Deploys Trino, a distributed SQL query engine, via Helm into the `lakehouse-query-engine` namespace. Trino federates queries across the Iceberg lakehouse on S3. TLS certificates are managed by cert-manager. The CLI authenticates with mTLS and the web UI logs in through Keycloak (wave `13-identity`).
 
 ## Deployed Resources
 
@@ -26,49 +26,20 @@ Namespace: lakehouse-query-engine
 | `trino-coordinator` | Parses queries, builds execution plans, and coordinates workers |
 | `trino-worker` | Executes query fragments and reads data from sources |
 
-## Prerequisites
+## Secrets
 
-The following tools must be installed before running the installation scripts:
+No secret is committed. `bootstrap.sh` creates them before `helm upgrade`, and Trino reads each one from an environment variable (`${ENV:…}` in the rendered properties), so the `trino-coordinator`, `trino-worker` and `trino-catalog` ConfigMaps hold only references. `validate.sh` fails if a secret property in them is not an `${ENV:}` reference, or if the coordinator still points at Google.
 
-- [SOPS](https://github.com/getsops/sops): `brew install sops`
-- [AGE](https://github.com/FiloSottile/age): `brew install age`
-- [helm-secrets](https://github.com/jkroepke/helm-secrets): `helm plugin install https://github.com/jkroepke/helm-secrets`
+| Secret | Keys | Source | Env vars |
+|--------|------|--------|----------|
+| `trino-internal-shared-secret` | `shared-secret` | generated once (`openssl rand -hex 32`), never rotated by a rerun | `TRINO_SHARED_SECRET` |
+| `trino-credentials` | `polaris-credential` | `lakehouse-catalog/polaris-bootstrap-secret` `credentials`, as `clientId:clientSecret` | `TRINO_POLARIS_CREDENTIAL` |
+| | `exchange-s3-access-key`, `exchange-s3-secret-key` | `object-storage/rustfs-secret` `RUSTFS_ACCESS_KEY`, `RUSTFS_SECRET_KEY` | `TRINO_EXCHANGE_S3_ACCESS_KEY`, `TRINO_EXCHANGE_S3_SECRET_KEY` |
+| | `oauth2-client-secret` | `identity/keycloak-clients` `trino-client-secret` | `TRINO_OAUTH2_CLIENT_SECRET` |
 
-## First-time Setup
+`trino-credentials` is rebuilt from its sources on every bootstrap. Two more inputs come from existing objects: `TRINO_KEYSTORE_PASSWORD` from `trino-keystore-password` (`secrets.yaml`), and `PUBLIC_ORIGIN` from the ConfigMap `trino-public-origin` (key `origin`), which `bootstrap.sh` writes from `origin::public` (`scripts/utils/origin.sh`) on every run.
 
-Generate an AGE key pair (one-time per machine):
-
-```bash
-age-keygen -o ~/.config/sops/age/keys.txt
-```
-
-Copy the public key (starts with `age1...`) into `.sops.yaml` at the project root:
-
-```yaml
-creation_rules:
-  - path_regex: .*/values-secret\.yaml$
-    age: "age1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-```
-
-## Secrets Management
-
-Secrets are stored in `values-secret.yaml`, encrypted with SOPS/AGE and committed to git. The file contains OAuth2 credentials, AWS keys for Iceberg/S3, and the Trino internal shared secret.
-
-> **Note:** This is the only SOPS-managed file in the project. Other dev-only secrets under `platform/` are committed as plaintext. See `docs/superpowers/specs/2026-05-03-remove-sops-except-trino-design.md` for the rationale.
-
-To edit secrets:
-
-```bash
-sops 23-trino/values-secret.yaml
-```
-
-SOPS decrypts the file into your editor and re-encrypts on save. The AGE private key at `~/.config/sops/age/keys.txt` is used automatically.
-
-To encrypt a new plaintext `values-secret.yaml`:
-
-```bash
-sops --encrypt --in-place 23-trino/values-secret.yaml
-```
+Coordinator and worker pods carry the annotation `checksum/trino-env`, a hash of these Secrets and the origin ConfigMap computed by Helm `lookup` at upgrade time, so a changed credential or origin rolls the pods on the next bootstrap. `helm template` without `--dry-run=server` renders the hash of empty lookups.
 
 ## TLS Certificates
 
@@ -84,7 +55,9 @@ Server and client certs sharing the same CA chain is what makes mTLS validation 
 Trino is configured with `authenticationType: "certificate,oauth2"`. The coordinator tries client certificate first, then falls back to OAuth2 if no cert is presented.
 
 - **mTLS** for `trino` CLI from a laptop and any future in-cluster service — see [Client Certificates](#client-certificates) below.
-- **OAuth2 (Google SSO)** for the browser Web UI — config lives in SOPS-encrypted `values-secret.yaml`.
+- **OAuth2 (Keycloak)** for the browser web UI: client `trino` in realm `retail-lakehouse`. The browser goes to the public issuer `${PUBLIC_ORIGIN}/keycloak/realms/retail-lakehouse`; the coordinator fetches tokens and keys from the in-cluster realm (`http://keycloak.identity.svc.cluster.local:8080/keycloak/realms/retail-lakehouse`), with OIDC discovery off. The principal is `preferred_username`. `http-server.process-forwarded=true` lets a gateway route on the HTTP port 8080 present the request as HTTPS.
+
+The Google OAuth client that the web UI used before is no longer referenced; the owner deletes it in Google Cloud Console.
 
 ## Client Certificates
 
@@ -125,14 +98,14 @@ The Trino user is derived from the cert's CN (the `USER=` value), via `http-serv
 ### End-to-End Smoke Test
 
 ```bash
-task trino-smoke-test KUBE_CONTEXT=retail-lakehouse
+task trino:smoke-test KUBE_CONTEXT=retail-lakehouse
 ```
 
 Issues a throwaway cert, runs `SHOW CATALOGS`, then cleans up Certificate CR + secret + local files + port-forward.
 
 ### Browser SSO Manual Verification
 
-After deploy, open `https://localhost:8443/ui` in a browser. Expected: redirect to Google SSO, login, see the Trino Web UI.
+After deploy, port-forward `service/trino` 8443 and open `https://localhost:8443/ui` in a browser on the tailnet. Expected: redirect to the Keycloak login at the public origin (no prompt if the browser already holds a Keycloak session), then the Trino web UI. Keycloak's `trino` client allows `https://localhost:8443/oauth2/callback` for this.
 
 ### Server Cert Rotation
 

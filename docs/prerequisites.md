@@ -19,7 +19,7 @@ Every tool below is checked by `task onboard` as a precondition; the bootstrap a
 
 ```bash
 brew install \
-  colima docker kubectl minikube helm sops git \
+  colima docker kubectl minikube helm git \
   python@3.13 uv jsonnet jsonnet-bundler gettext \
   openjdk@21 node
 ```

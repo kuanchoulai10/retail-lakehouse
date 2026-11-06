@@ -19,8 +19,6 @@ tasks:
         msg: "kubectl missing, run: brew install kubectl"
       - sh: command -v helm
         msg: "helm missing, run: brew install helm"
-      - sh: command -v sops
-        msg: "sops missing, run: brew install sops"
       - sh: command -v git
         msg: "git missing, run: xcode-select --install (or brew install git)"
       - sh: command -v python3
