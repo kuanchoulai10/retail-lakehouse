@@ -12,13 +12,14 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ORIGIN_SH = REPO_ROOT / "scripts" / "utils" / "origin.sh"
+NEEDED_TOOLS = ("bash", "sh", "jq", "tr", "cat")
 
 
 def _run(path: str, env_extra: dict[str, str]) -> subprocess.CompletedProcess[str]:
     env = {"PATH": path, "HOME": os.environ.get("HOME", "")}
     env.update(env_extra)
     return subprocess.run(
-        [shutil.which("bash") or "bash", "-c", f"source {ORIGIN_SH}; origin::public"],
+        [str(Path(path) / "bash"), "-c", f"source {ORIGIN_SH}; origin::public"],
         capture_output=True,
         text=True,
         env=env,
@@ -27,24 +28,29 @@ def _run(path: str, env_extra: dict[str, str]) -> subprocess.CompletedProcess[st
 
 
 @pytest.fixture
-def fake_tailscale(tmp_path: Path):
-    """Build a PATH holding a fake tailscale that reports the given DNS name."""
+def bin_dir(tmp_path: Path) -> Path:
+    """Directory of symlinks to only the tools the helper needs, used as the whole PATH."""
+    directory = tmp_path / "bin"
+    directory.mkdir()
+    for tool in NEEDED_TOOLS:
+        found = shutil.which(tool)
+        assert found, f"{tool} is required to run this test"
+        (directory / tool).symlink_to(found)
+    return directory
+
+
+@pytest.fixture
+def fake_tailscale(bin_dir: Path):
+    """Add a fake tailscale that reports the given DNS name; return the PATH."""
 
     def make(dns_name: str) -> str:
-        bin_dir = tmp_path / "fakebin"
-        bin_dir.mkdir(exist_ok=True)
         script = bin_dir / "tailscale"
         payload = json.dumps({"Self": {"DNSName": dns_name}})
         script.write_text(f"#!/bin/sh\ncat <<'JSON'\n{payload}\nJSON\n")
         script.chmod(0o755)
-        return f"{bin_dir}:{_base_path()}"
+        return str(bin_dir)
 
     return make
-
-
-def _base_path() -> str:
-    dirs = {str(Path(shutil.which(tool) or "").parent) for tool in ("bash", "jq")}
-    return ":".join(sorted(d for d in dirs if d and d != "."))
 
 
 def test_override_wins(fake_tailscale) -> None:
@@ -63,10 +69,10 @@ def test_detects_tailscale_name(fake_tailscale) -> None:
     assert result.stdout.strip() == "https://host.tail1.ts.net:8591"
 
 
-def test_fails_without_tailscale(tmp_path: Path) -> None:
+def test_fails_without_tailscale(bin_dir: Path) -> None:
     """Without tailscale and an override the helper fails."""
-    result = _run(_base_path(), {})
-    assert not (tmp_path / "tailscale").exists()
+    assert shutil.which("tailscale", path=str(bin_dir)) is None
+    result = _run(str(bin_dir), {})
     assert result.returncode == 1
     assert "public origin unknown" in result.stderr
 
