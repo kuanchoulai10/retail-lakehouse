@@ -26,7 +26,9 @@ Namespace: identity
 └── oauth2-proxy-cookie   (Secret: cookie-secret, 32 random bytes, URL-safe base64)
 
 Namespace: istio-ingress
-└── platform-gateway-sso  (AuthorizationPolicy, action CUSTOM, provider oauth2-proxy,
+├── platform-gateway-sso  (AuthorizationPolicy, action CUSTOM, provider oauth2-proxy,
+│                          targetRefs Gateway platform-gateway)
+└── platform-gateway-sso-builtins (AuthorizationPolicy, action DENY on /robots.txt, port 80,
                            targetRefs Gateway platform-gateway)
 ```
 
@@ -92,7 +94,9 @@ The gate is the Istio extension provider `oauth2-proxy` (HTTP ext_authz, registe
 
 Ungated paths (the policy's `notPaths`): `/keycloak`, `/keycloak/*`, `/sso`, `/sso/*` (the login flow itself) and `/polaris`, `/polaris/*` (an API with its own Polaris tokens; the Polaris console spike sends `Authorization: Bearer <Polaris token>`, which the gate must not see). Every other path is gated, including `/` and any route added later: a new UI registers nothing. Istio normalizes the path before matching, so `/keycloak/../console/` is gated.
 
-`bootstrap.sh` applies the policy only after the oauth2-proxy rollout succeeds, so a rerun never locks validation out behind a gate with no proxy.
+oauth2-proxy answers some paths itself, with 200 and no session, before its auth logic: `/robots.txt` at the root (hard-wired in v7.15.6), the ping and ready paths, and everything under its proxy prefix. An ext_authz 200 means allow, so such a path would reach the upstream behind the gate. Ping and ready are moved under `/sso` (`--ping-path=/sso/ping`, `--ready-path=/sso/ready`), and `/sso` is ungated anyway. `/robots.txt` cannot be moved, so the DENY policy `platform-gateway-sso-builtins` (`platform-gateway-sso-builtins-policy.yaml`) answers it with 403 for everyone. Istio evaluates CUSTOM before DENY. When upgrading oauth2-proxy, check its `buildServeMux` and `buildPreAuthChain` for new root-level handlers; `validate.sh` probes the known ones.
+
+`bootstrap.sh` applies both policies (DENY first) only after the oauth2-proxy rollout succeeds, so a rerun never locks validation out behind a gate with no proxy.
 
 ### oauth2-proxy settings
 
@@ -147,8 +151,13 @@ Checks the ambient and gateway labels, the key names of the four Secrets, the `k
 
 - `gateway::curl_anonymous /console/` gets a 302 to `<origin>/keycloak/realms/retail-lakehouse/protocol/openid-connect/auth`;
 - `gateway::curl /console/` (with the `platform-validate` bearer token) succeeds;
-- `gateway::curl_anonymous /polaris/api/catalog/v1/config` gets Polaris's own 401 (ungated).
+- `gateway::curl_anonymous /polaris/api/catalog/v1/config` gets Polaris's own 401 (ungated);
+- `gateway::curl_anonymous` on `/robots.txt`, `/robots.txt?x=1`, `/ping` and `/ready` gets 302 or 403, never an oauth2-proxy built-in 200.
 
 ## Validating through the gate
 
-`gateway::curl <path> [curl args]` gets a token with `gateway::token` and sends `Authorization: Bearer <token>` (through a file descriptor, never on the command line); when `identity/keycloak-clients` does not exist (a fresh onboard below wave 13) it sends no header, and when the Secret exists but no token comes back it warns and sends none. Wave validate scripts call it unchanged. `gateway::curl_anonymous <path> [curl args]` is the same call without a token, for checking what an anonymous browser gets.
+`gateway::curl <path> [curl args]` gets a token with `gateway::token` and sends `Authorization: Bearer <token>` (through a free file descriptor, never on the command line). Wave validate scripts call it unchanged:
+
+- When `identity/keycloak-clients` does not exist (a fresh onboard below wave 13), it sends no header.
+- When the Secret exists but no token comes back, it fails with an error instead of calling anonymously.
+- When a token was sent but a response redirects to `<origin>/keycloak/realms/retail-lakehouse/protocol/openid-connect/auth`, it fails: the gate rejected the token. Without this, a caller with `curl -fsS -o /dev/null` would accept the 302 as success. The origin comes from `origin::public`, or the `public-origin` ConfigMap when that fails. `gateway::curl_anonymous <path> [curl args]` is the same call without a token, for checking what an anonymous browser gets.

@@ -5,13 +5,18 @@
 #   gateway::allow_routes <namespace>             # label the namespace so its HTTPRoutes may attach
 #   gateway::assert_routes_allowed <namespace>    # fail unless the namespace carries that label
 #   gateway::assert_route_accepted <ns> <route>   # wait until the HTTPRoute is Accepted (TIMEOUT)
-#   gateway::curl <path> [curl args]              # curl a path through the gateway, with a
-#                                                 # platform-validate bearer token when one is available
+#   gateway::curl <path> [curl args]              # curl a path through the gateway with a
+#                                                 # platform-validate bearer token; anonymous only
+#                                                 # while identity/keycloak-clients does not exist.
+#                                                 # Fails when no token is obtained, or when the gate
+#                                                 # still redirects to the Keycloak login
 #   gateway::curl_anonymous <path> [curl args]    # the same call, never with a token
 #   gateway::token                                # print a platform-validate access token
 
 [[ -n "${__GATEWAY_SH_LOADED:-}" ]] && return 0
 __GATEWAY_SH_LOADED=1
+
+source "$(dirname "${BASH_SOURCE[0]}")/origin.sh"
 
 GATEWAY_ROUTES_LABEL="retail-lakehouse.io/gateway-routes"
 
@@ -82,20 +87,54 @@ __gateway::has_clients_secret() {
     --context "${KUBE_CONTEXT}")" ]]
 }
 
+__gateway::login_url() {
+  local origin
+  origin=$(origin::public 2>/dev/null) \
+    || origin=$(kubectl get configmap public-origin \
+      -o jsonpath='{.data.origin}' \
+      --namespace identity \
+      --context "${KUBE_CONTEXT}")
+  [[ -n "$origin" ]] || return 1
+  printf '%s/keycloak/realms/retail-lakehouse/protocol/openid-connect/auth\n' "$origin"
+}
+
+__gateway::free_fd() {
+  local fd
+  for fd in $(seq 10 99); do
+    [[ -e "/dev/fd/${fd}" ]] || { printf '%s\n' "$fd"; return 0; }
+  done
+  return 1
+}
+
 gateway::curl() {
-  local path=$1 token rc=0
+  local path=$1 token login_url fd headers rc=0
   shift
-  if __gateway::has_clients_secret; then
-    if token=$(gateway::token); then
-      exec 7< <(printf 'Authorization: Bearer %s\n' "$token")
-      unset token
-      __gateway::request "$path" -H @/dev/fd/7 "$@" || rc=$?
-      exec 7<&-
-      return "$rc"
-    fi
-    echo "gateway::curl: no platform-validate token, calling ${path} without one" >&2
+  if ! __gateway::has_clients_secret; then
+    __gateway::request "$path" "$@"
+    return
   fi
-  __gateway::request "$path" "$@"
+  if ! token=$(gateway::token); then
+    echo "gateway::curl: identity/keycloak-clients exists but no platform-validate token was obtained for ${path}" >&2
+    return 1
+  fi
+  if ! login_url=$(__gateway::login_url); then
+    echo "gateway::curl: public origin unknown, cannot recognise a redirect to the Keycloak login" >&2
+    return 1
+  fi
+  fd=$(__gateway::free_fd) || { echo "gateway::curl: no free file descriptor" >&2; return 1; }
+  headers=$(mktemp)
+  eval "exec ${fd}< <(printf 'Authorization: Bearer %s\\n' \"\$token\")"
+  unset token
+  __gateway::request "$path" -H "@/dev/fd/${fd}" -D "$headers" "$@" || rc=$?
+  eval "exec ${fd}<&-"
+  if tr -d '\r' <"$headers" \
+    | awk -v url="$login_url" 'tolower($1) == "location:" && index($2, url) == 1 {found = 1} END {exit !found}'; then
+    echo "gateway::curl: ${path} was redirected to the Keycloak login although a platform-validate token was sent (the gate rejected it)" >&2
+    rm -f "$headers"
+    return 1
+  fi
+  rm -f "$headers"
+  return "$rc"
 }
 
 gateway::curl_anonymous() {

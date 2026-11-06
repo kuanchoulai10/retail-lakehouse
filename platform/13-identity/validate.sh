@@ -99,3 +99,11 @@ POLARIS_STATUS="$(gateway::curl_anonymous /polaris/api/catalog/v1/config -s -o /
 [[ "${POLARIS_STATUS}" == "401" ]] \
   || fail "anonymous /polaris/api/catalog/v1/config returned ${POLARIS_STATUS}, expected 401"
 echo "/polaris is not gated (Polaris answers 401 itself)"
+
+for path in /robots.txt '/robots.txt?x=1' /ping /ready; do
+  BUILTIN_STATUS="$(gateway::curl_anonymous "${path}" -s -o /dev/null -w '%{http_code}')" \
+    || BUILTIN_STATUS=000
+  [[ "${BUILTIN_STATUS}" == "302" || "${BUILTIN_STATUS}" == "403" ]] \
+    || fail "anonymous ${path} returned ${BUILTIN_STATUS}, expected 302 or 403 (an oauth2-proxy built-in bypasses the gate)"
+done
+echo "oauth2-proxy built-in paths outside /sso do not pass the gate"

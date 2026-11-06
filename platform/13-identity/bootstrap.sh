@@ -177,6 +177,8 @@ kubectl rollout status deployment/oauth2-proxy \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
-kubectl apply \
-  -f "${SCRIPT_DIR}/platform-gateway-sso-policy.yaml" \
-  --context "${KUBE_CONTEXT}"
+for manifest in platform-gateway-sso-builtins-policy platform-gateway-sso-policy; do
+  kubectl apply \
+    -f "${SCRIPT_DIR}/${manifest}.yaml" \
+    --context "${KUBE_CONTEXT}"
+done
