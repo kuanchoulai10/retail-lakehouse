@@ -4,7 +4,6 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/namespace.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/gateway.sh"
-source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/origin.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 TIMEOUT="${TIMEOUT:-300s}"
@@ -63,7 +62,8 @@ mesh::assert_hbone "${NAMESPACE}"
 gateway::assert_route_accepted "${NAMESPACE}" keycloak
 gateway::assert_route_accepted "${NAMESPACE}" oauth2-proxy
 
-EXPECTED_ISSUER="$(origin::public)/keycloak/realms/${REALM}"
+ORIGIN="$(gateway::origin)" || fail "public origin unknown"
+EXPECTED_ISSUER="${ORIGIN}/keycloak/realms/${REALM}"
 
 ISSUER="$(gateway::curl "/keycloak/realms/${REALM}/.well-known/openid-configuration" -fsS \
   | jq -r .issuer)"
@@ -83,7 +83,12 @@ jq -e '(.aud | if type == "array" then . else [.] end) | index("oauth2-proxy") !
   || fail "token aud does not contain oauth2-proxy"
 echo "platform-validate token has iss ${TOKEN_ISSUER} and aud oauth2-proxy"
 
-LOGIN_URL="$(origin::public)/keycloak/realms/${REALM}/protocol/openid-connect/auth"
+gateway::assert_redirect_uri oauth2-proxy "${ORIGIN}/sso/callback"
+echo "realm client oauth2-proxy accepts redirect_uri ${ORIGIN}/sso/callback"
+gateway::assert_redirect_uri trino "${ORIGIN}/oauth2/callback"
+echo "realm client trino accepts redirect_uri ${ORIGIN}/oauth2/callback"
+
+LOGIN_URL="${ORIGIN}/keycloak/realms/${REALM}/protocol/openid-connect/auth"
 PROBE=/identity-gate-probe/
 read -r STATUS LOCATION < <(gateway::curl_anonymous "${PROBE}" -s -o /dev/null \
   -w '%{http_code} %{redirect_url}\n') || true
@@ -94,6 +99,23 @@ echo "anonymous ${PROBE} is redirected to the Keycloak login"
 gateway::curl "${PROBE}" -fsS -o /dev/null \
   || fail "${PROBE} with a platform-validate bearer token did not pass the gate"
 echo "${PROBE} with a platform-validate bearer token passes the gate"
+
+PROXY_CALLBACK="$(printf '%s/sso/callback' "${ORIGIN}" | jq -sRr @uri | tr '[:upper:]' '[:lower:]')"
+for path in /keycloak/admin /keycloak/admin/master/console/; do
+  read -r STATUS LOCATION < <(gateway::curl_anonymous "${path}" -s -o /dev/null \
+    -w '%{http_code} %{redirect_url}\n') || true
+  if [[ "${STATUS}" != "302" || "${LOCATION}" != "${LOGIN_URL}"* ]] \
+    || ! grep -qF "redirect_uri=${PROXY_CALLBACK}" <<<"$(tr '[:upper:]' '[:lower:]' <<<"${LOCATION}")"; then
+    fail "anonymous ${path} returned '${STATUS} ${LOCATION%%\?*}', expected 302 to ${LOGIN_URL} with redirect_uri ${ORIGIN}/sso/callback"
+  fi
+done
+echo "anonymous /keycloak/admin is redirected to the oauth2-proxy login"
+
+DISCOVERY_STATUS="$(gateway::curl_anonymous "/keycloak/realms/${REALM}/.well-known/openid-configuration" \
+  -s -o /dev/null -w '%{http_code}')" || DISCOVERY_STATUS=000
+[[ "${DISCOVERY_STATUS}" == "200" ]] \
+  || fail "anonymous /keycloak/realms/${REALM}/.well-known/openid-configuration returned ${DISCOVERY_STATUS}, expected 200"
+echo "anonymous /keycloak/realms/${REALM} stays ungated"
 
 route_exists() {
   kubectl get httproute "$2" \

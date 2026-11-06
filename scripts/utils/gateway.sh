@@ -12,6 +12,11 @@
 #                                                 # still redirects to the Keycloak login for oauth2-proxy (redirect_uri = <origin>/sso/callback)
 #   gateway::curl_anonymous <path> [curl args]    # the same call, never with a token
 #   gateway::token                                # print a platform-validate access token
+#   gateway::origin                               # print the deployed public origin (ConfigMap
+#                                                 # identity/public-origin, key origin); origin::public
+#                                                 # only while that ConfigMap does not exist
+#   gateway::assert_redirect_uri <client> <uri>   # fail unless the Keycloak realm accepts <uri> as a
+#                                                 # redirect_uri of <client> (anonymous auth request: 200)
 
 [[ -n "${__GATEWAY_SH_LOADED:-}" ]] && return 0
 __GATEWAY_SH_LOADED=1
@@ -87,28 +92,49 @@ __gateway::has_clients_secret() {
     --context "${KUBE_CONTEXT}")" ]]
 }
 
-__gateway::origin() {
-  local origin
-  origin=$(kubectl get configmap public-origin \
+gateway::origin() {
+  local configmap origin
+  configmap=$(kubectl get configmap public-origin \
     --ignore-not-found \
-    -o jsonpath='{.data.origin}' \
+    -o json \
     --namespace identity \
-    --context "${KUBE_CONTEXT}")
-  if [[ -z "$origin" ]]; then
-    origin=$(origin::public 2>/dev/null) || return 1
+    --context "${KUBE_CONTEXT}") || {
+    echo "gateway::origin: could not read ConfigMap identity/public-origin" >&2
+    return 1
+  }
+  if [[ -z "$configmap" ]]; then
+    origin=$(origin::public) || return 1
+  else
+    origin=$(jq -r '.data.origin // empty' <<<"$configmap")
+    if [[ -z "$origin" ]]; then
+      echo "gateway::origin: ConfigMap identity/public-origin has no origin" >&2
+      return 1
+    fi
   fi
   printf '%s\n' "${origin%/}"
 }
 
+gateway::assert_redirect_uri() {
+  local client=$1 redirect_uri=$2 encoded status
+  encoded=$(printf '%s' "$redirect_uri" | jq -sRr @uri)
+  status=$(gateway::curl_anonymous \
+    "/keycloak/realms/retail-lakehouse/protocol/openid-connect/auth?client_id=${client}&response_type=code&scope=openid&redirect_uri=${encoded}" \
+    -s -o /dev/null -w '%{http_code}') || status=000
+  if [[ "$status" != "200" ]]; then
+    echo "Keycloak answered ${status} to an auth request of client ${client} with redirect_uri ${redirect_uri}, expected 200 (400 means the realm does not list that redirect URI)" >&2
+    return 1
+  fi
+}
+
 __gateway::login_url() {
   local origin
-  origin=$(__gateway::origin) || return 1
+  origin=$(gateway::origin) || return 1
   printf '%s/keycloak/realms/retail-lakehouse/protocol/openid-connect/auth\n' "$origin"
 }
 
 __gateway::proxy_callback() {
   local origin
-  origin=$(__gateway::origin) || return 1
+  origin=$(gateway::origin) || return 1
   printf '%s/sso/callback' "$origin" | jq -sRr @uri
 }
 

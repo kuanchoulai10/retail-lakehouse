@@ -26,6 +26,8 @@ spec:
         app.kubernetes.io/part-of: identity
         app.kubernetes.io/managed-by: kubectl
         app.kubernetes.io/version: "26.8.2"
+      annotations:
+        retail-lakehouse.io/public-origin: "${PUBLIC_ORIGIN}"
     spec:
       containers:
         - name: keycloak

@@ -18,7 +18,5 @@ spec:
   rules:
     - to:
         - operation:
-            ports:
-              - "80"
             paths:
               - /robots.txt

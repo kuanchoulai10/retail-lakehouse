@@ -24,6 +24,8 @@ spec:
         app.kubernetes.io/part-of: identity
         app.kubernetes.io/managed-by: kubectl
         app.kubernetes.io/version: v7.15.6
+      annotations:
+        retail-lakehouse.io/public-origin: "${PUBLIC_ORIGIN}"
     spec:
       containers:
         - name: oauth2-proxy

@@ -131,24 +131,26 @@ kubectl rollout status deployment/keycloak-db \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
-for manifest in keycloak-realm-configmap keycloak-deployment keycloak-service; do
-  kubectl apply \
-    -f "${SCRIPT_DIR}/${manifest}.yaml" \
-    --context "${KUBE_CONTEXT}"
-done
+apply_with_origin() {
+  # shellcheck disable=SC2016 # envsubst takes a literal '${VAR}' to restrict substitution
+  PUBLIC_ORIGIN="${ORIGIN}" envsubst '${PUBLIC_ORIGIN}' <"${SCRIPT_DIR}/$1.yaml" \
+    | kubectl apply \
+      -f - \
+      --context "${KUBE_CONTEXT}"
+}
 
-ORIGIN_CHANGED=false
 if [[ -n "${PREVIOUS_ORIGIN}" && "${PREVIOUS_ORIGIN}" != "${ORIGIN}" ]]; then
-  ORIGIN_CHANGED=true
+  echo "public origin changed from ${PREVIOUS_ORIGIN} to ${ORIGIN}: Keycloak and oauth2-proxy roll"
+  echo "the realm keeps its old redirect URIs; follow README 'Origin changed'"
 fi
 
-if [[ "${ORIGIN_CHANGED}" == true ]]; then
-  echo "public origin changed from ${PREVIOUS_ORIGIN} to ${ORIGIN}: restarting Keycloak"
-  echo "the realm keeps its old redirect URIs; update them by hand (see README)"
-  kubectl rollout restart deployment/keycloak \
-    --namespace "${NAMESPACE}" \
-    --context "${KUBE_CONTEXT}"
-fi
+kubectl apply \
+  -f "${SCRIPT_DIR}/keycloak-realm-configmap.yaml" \
+  --context "${KUBE_CONTEXT}"
+apply_with_origin keycloak-deployment
+kubectl apply \
+  -f "${SCRIPT_DIR}/keycloak-service.yaml" \
+  --context "${KUBE_CONTEXT}"
 
 kubectl apply \
   -f "${SCRIPT_DIR}/keycloak-route.yaml" \
@@ -159,18 +161,12 @@ kubectl rollout status deployment/keycloak \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
-for manifest in oauth2-proxy-deployment oauth2-proxy-service oauth2-proxy-route; do
+apply_with_origin oauth2-proxy-deployment
+for manifest in oauth2-proxy-service oauth2-proxy-route; do
   kubectl apply \
     -f "${SCRIPT_DIR}/${manifest}.yaml" \
     --context "${KUBE_CONTEXT}"
 done
-
-if [[ "${ORIGIN_CHANGED}" == true ]]; then
-  echo "public origin changed: restarting oauth2-proxy"
-  kubectl rollout restart deployment/oauth2-proxy \
-    --namespace "${NAMESPACE}" \
-    --context "${KUBE_CONTEXT}"
-fi
 
 kubectl rollout status deployment/oauth2-proxy \
   --namespace "${NAMESPACE}" \

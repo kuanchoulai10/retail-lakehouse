@@ -27,3 +27,8 @@ spec:
               - /sso/*
               - /polaris
               - /polaris/*
+    - to:
+        - operation:
+            paths:
+              - /keycloak/admin
+              - /keycloak/admin/*
