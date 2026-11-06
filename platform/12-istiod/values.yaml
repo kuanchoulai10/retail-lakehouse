@@ -10,6 +10,7 @@ meshConfig:
       envoyExtAuthzHttp:
         service: oauth2-proxy.identity.svc.cluster.local
         port: 4180
+        timeout: 5s
         includeRequestHeadersInCheck:
           - cookie
           - authorization
