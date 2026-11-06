@@ -44,8 +44,8 @@ kubectl apply \
   --context "${KUBE_CONTEXT}"
 
 # Single-node minikube dev cluster: upstream HA defaults waste CPU/RAM.
-# Server-side apply with a dedicated field manager so we co-own only
-# spec.replicas and the operator keeps owning the rest.
+# Server-side apply with a dedicated field manager so we co-own only the
+# fields in dev-overrides.yaml and the operator keeps owning the rest.
 kubectl apply \
   --server-side \
   --field-manager=dev-overrides \

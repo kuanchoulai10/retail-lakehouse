@@ -16,6 +16,13 @@ Namespace: monitoring
 └── node-exporter                        (DaemonSet)
 ```
 
+## Dev Overrides
+
+`dev-overrides.yaml` is applied after the upstream manifests with field manager `dev-overrides`:
+
+- Prometheus `k8s`: 1 replica, 6h retention, CPU request 100m, memory request 400Mi, memory limit 1Gi. The upstream manifest sets only a 400Mi memory request, so the pod had no CPU request and no memory limit.
+- Alertmanager `main` and `prometheus-adapter`: 1 replica.
+
 ## Namespaces
 
 - `monitoring`

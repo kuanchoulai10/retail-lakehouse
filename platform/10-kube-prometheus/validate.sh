@@ -48,3 +48,24 @@ kubectl rollout status daemonset/node-exporter \
   --namespace monitoring \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
+
+expected_resources='{"limits":{"memory":"1Gi"},"requests":{"cpu":"100m","memory":"400Mi"}}'
+for _ in $(seq 1 30); do
+  prometheus_resources=$(kubectl get statefulset prometheus-k8s \
+    --output jsonpath='{.spec.template.spec.containers[?(@.name=="prometheus")].resources}' \
+    --namespace monitoring \
+    --context "${KUBE_CONTEXT}")
+  if [ "$(jq --compact-output --sort-keys . <<<"${prometheus_resources}")" = "${expected_resources}" ]; then
+    break
+  fi
+  sleep 2
+done
+if [ "$(jq --compact-output --sort-keys . <<<"${prometheus_resources}")" != "${expected_resources}" ]; then
+  echo "prometheus container resources are ${prometheus_resources}, expected ${expected_resources}" >&2
+  exit 1
+fi
+
+kubectl rollout status statefulset/prometheus-k8s \
+  --namespace monitoring \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"
