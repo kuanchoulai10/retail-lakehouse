@@ -57,3 +57,23 @@ if kubectl get configmap trino-coordinator \
   echo "trino-coordinator config.properties still points at accounts.google.com" >&2
   exit 1
 fi
+
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/gateway.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/origin.sh"
+
+gateway::assert_routes_allowed lakehouse-query-engine
+gateway::assert_route_accepted lakehouse-query-engine trino-ui
+
+ORIGIN="$(origin::public)"
+ENCODED_CALLBACK="$(printf '%s/oauth2/callback' "${ORIGIN}" | jq -sRr @uri)"
+UI_RESPONSE="$(gateway::curl /ui/ -s -o /dev/null -w '%{http_code} %{redirect_url}')"
+UI_STATUS="${UI_RESPONSE%% *}"
+UI_REDIRECT="${UI_RESPONSE#* }"
+EXPECTED_AUTH="${ORIGIN}/keycloak/realms/retail-lakehouse/protocol/openid-connect/auth"
+if [[ ! "${UI_STATUS}" =~ ^3[0-9][0-9]$ ]] \
+  || [[ "${UI_REDIRECT}" != "${EXPECTED_AUTH}"* ]] \
+  || ! tr '[:upper:]' '[:lower:]' <<<"${UI_REDIRECT}" \
+    | grep -qF "redirect_uri=$(tr '[:upper:]' '[:lower:]' <<<"${ENCODED_CALLBACK}")"; then
+  echo "/ui/ did not redirect to the Keycloak login with ${ORIGIN}/oauth2/callback (status ${UI_STATUS})" >&2
+  exit 1
+fi

@@ -21,6 +21,9 @@ Namespace: istio-ingress
 | `/kafka-ui` | `kafka-ui:8080` in `kafka-ui` | `kafka-ui` (`23-kafka-ui`) | `SERVER_SERVLET_CONTEXT_PATH=/kafka-ui` |
 | `/temporal` | `temporal-web:8080` in `temporal` | `temporal-web` (`21-temporal`) | `TEMPORAL_UI_PUBLIC_PATH=/temporal` |
 | `/polaris` | `polaris:8181` in `lakehouse-catalog` | `polaris` (`21-polaris`) | the route rewrites `/polaris` to `/` (`URLRewrite` `ReplacePrefixMatch`), so `/polaris/api/catalog/...` reaches Polaris as `/api/catalog/...`; in-cluster clients keep calling `polaris:8181` directly |
+| `/keycloak` | `keycloak:8080` in `identity` | `keycloak` (`13-identity`) | Keycloak's HTTP relative path is `/keycloak`; ungated |
+| `/sso` | `oauth2-proxy:4180` in `identity` | `oauth2-proxy` (`13-identity`) | oauth2-proxy proxy prefix `/sso`; ungated |
+| `/ui`, `/oauth2` | `trino:8080` in `lakehouse-query-engine` | `trino-ui` (`23-trino`) | no rewrite; the route sets `X-Forwarded-Proto/Host/Port` from the public origin and Trino runs with `http-server.process-forwarded=true`; `/oauth2/callback` is Trino's OAuth2 redirect URI |
 
 Each app serves under its own prefix rather than the route stripping it, so the links and assets it generates carry the prefix. `/` has no route: a request that matches no prefix gets a 404 from Envoy. A new service picks an unused prefix; an app that cannot serve under a prefix would need `/`, and only one can.
 

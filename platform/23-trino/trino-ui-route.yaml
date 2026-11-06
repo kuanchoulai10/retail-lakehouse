@@ -1,0 +1,36 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: trino-ui
+  namespace: lakehouse-query-engine
+  labels:
+    app.kubernetes.io/name: trino
+    app.kubernetes.io/instance: trino
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: trino
+    app.kubernetes.io/managed-by: kubectl
+spec:
+  parentRefs:
+    - name: platform-gateway
+      namespace: istio-ingress
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /ui
+        - path:
+            type: PathPrefix
+            value: /oauth2
+      filters:
+        - type: RequestHeaderModifier
+          requestHeaderModifier:
+            set:
+              - name: X-Forwarded-Proto
+                value: https
+              - name: X-Forwarded-Host
+                value: ${ORIGIN_HOST}
+              - name: X-Forwarded-Port
+                value: "${ORIGIN_PORT}"
+      backendRefs:
+        - name: trino
+          port: 8080

@@ -105,7 +105,7 @@ Issues a throwaway cert, runs `SHOW CATALOGS`, then cleans up Certificate CR + s
 
 ### Browser SSO Manual Verification
 
-After deploy, port-forward `service/trino` 8443 and open `https://localhost:8443/ui` in a browser on the tailnet. Expected: redirect to the Keycloak login at the public origin (no prompt if the browser already holds a Keycloak session), then the Trino web UI. Keycloak's `trino` client allows `https://localhost:8443/oauth2/callback` for this.
+The web UI is served through `platform-gateway` at `${PUBLIC_ORIGIN}/ui/` by HTTPRoute `trino-ui` (`trino-ui-route.yaml`, rendered by `bootstrap.sh`): `/ui` and `/oauth2` go to Service `trino:8080` with no rewrite, and the route sets `X-Forwarded-Proto: https`, `X-Forwarded-Host` (the origin host) and `X-Forwarded-Port` (the origin port, 443 when it has none). Open `${PUBLIC_ORIGIN}/ui/` in a browser: the gateway sign-in (oauth2-proxy) comes first, then Trino redirects to the Keycloak login for client `trino` (no prompt when the Keycloak session exists), returns to `${PUBLIC_ORIGIN}/oauth2/callback`, and shows the Trino web UI. `validate.sh` checks that `/ui/` answers a redirect to the Keycloak auth URL carrying that callback as `redirect_uri`. Keycloak's `trino` client also allows `https://localhost:8443/oauth2/callback` for a direct port-forward of `service/trino` 8443.
 
 ### Server Cert Rotation
 

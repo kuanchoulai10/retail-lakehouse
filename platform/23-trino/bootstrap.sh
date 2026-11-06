@@ -3,6 +3,7 @@ set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/log.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/namespace.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/gateway.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/../../scripts/utils/origin.sh"
 
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
@@ -144,3 +145,18 @@ helm upgrade --install trino trino/trino \
   --namespace "${NAMESPACE}" \
   --values "$SCRIPT_DIR/values.yaml" \
   --kube-context "${KUBE_CONTEXT}"
+
+ORIGIN_AUTHORITY="${ORIGIN#*://}"
+ORIGIN_HOST="${ORIGIN_AUTHORITY%%:*}"
+if [[ "${ORIGIN_AUTHORITY}" == *:* ]]; then
+  ORIGIN_PORT="${ORIGIN_AUTHORITY##*:}"
+else
+  ORIGIN_PORT=443
+fi
+export ORIGIN_HOST ORIGIN_PORT
+
+gateway::allow_routes "${NAMESPACE}"
+
+# shellcheck disable=SC2016 # envsubst takes literal '${VAR}' to restrict substitution
+envsubst '${ORIGIN_HOST} ${ORIGIN_PORT}' < "$SCRIPT_DIR/trino-ui-route.yaml" \
+  | kubectl apply -f - --context "${KUBE_CONTEXT}"

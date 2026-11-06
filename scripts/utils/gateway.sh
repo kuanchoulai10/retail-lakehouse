@@ -9,7 +9,7 @@
 #                                                 # platform-validate bearer token; anonymous only
 #                                                 # while identity/keycloak-clients does not exist.
 #                                                 # Fails when no token is obtained, or when the gate
-#                                                 # still redirects to the Keycloak login
+#                                                 # still redirects to the Keycloak login for oauth2-proxy (redirect_uri = <origin>/sso/callback)
 #   gateway::curl_anonymous <path> [curl args]    # the same call, never with a token
 #   gateway::token                                # print a platform-validate access token
 
@@ -87,15 +87,29 @@ __gateway::has_clients_secret() {
     --context "${KUBE_CONTEXT}")" ]]
 }
 
+__gateway::origin() {
+  local origin
+  origin=$(kubectl get configmap public-origin \
+    --ignore-not-found \
+    -o jsonpath='{.data.origin}' \
+    --namespace identity \
+    --context "${KUBE_CONTEXT}")
+  if [[ -z "$origin" ]]; then
+    origin=$(origin::public 2>/dev/null) || return 1
+  fi
+  printf '%s\n' "${origin%/}"
+}
+
 __gateway::login_url() {
   local origin
-  origin=$(origin::public 2>/dev/null) \
-    || origin=$(kubectl get configmap public-origin \
-      -o jsonpath='{.data.origin}' \
-      --namespace identity \
-      --context "${KUBE_CONTEXT}")
-  [[ -n "$origin" ]] || return 1
+  origin=$(__gateway::origin) || return 1
   printf '%s/keycloak/realms/retail-lakehouse/protocol/openid-connect/auth\n' "$origin"
+}
+
+__gateway::proxy_callback() {
+  local origin
+  origin=$(__gateway::origin) || return 1
+  printf '%s/sso/callback' "$origin" | jq -sRr @uri
 }
 
 __gateway::free_fd() {
@@ -107,7 +121,7 @@ __gateway::free_fd() {
 }
 
 gateway::curl() {
-  local path=$1 token login_url fd headers rc=0
+  local path=$1 token login_url callback fd headers rc=0
   shift
   if ! __gateway::has_clients_secret; then
     __gateway::request "$path" "$@"
@@ -117,7 +131,7 @@ gateway::curl() {
     echo "gateway::curl: identity/keycloak-clients exists but no platform-validate token was obtained for ${path}" >&2
     return 1
   fi
-  if ! login_url=$(__gateway::login_url); then
+  if ! login_url=$(__gateway::login_url) || ! callback=$(__gateway::proxy_callback); then
     echo "gateway::curl: public origin unknown, cannot recognise a redirect to the Keycloak login" >&2
     return 1
   fi
@@ -128,8 +142,11 @@ gateway::curl() {
   __gateway::request "$path" -H "@/dev/fd/${fd}" -D "$headers" "$@" || rc=$?
   eval "exec ${fd}<&-"
   if tr -d '\r' <"$headers" \
-    | awk -v url="$login_url" 'tolower($1) == "location:" && index($2, url) == 1 {found = 1} END {exit !found}'; then
-    echo "gateway::curl: ${path} was redirected to the Keycloak login although a platform-validate token was sent (the gate rejected it)" >&2
+    | awk -v url="$login_url" -v callback="redirect_uri=${callback}" '
+      {location = tolower($2)}
+      tolower($1) == "location:" && index(location, tolower(url)) == 1 && index(location, tolower(callback)) > 0 {found = 1}
+      END {exit !found}'; then
+    echo "gateway::curl: ${path} was redirected to the oauth2-proxy login although a platform-validate token was sent (the gate rejected it)" >&2
     rm -f "$headers"
     return 1
   fi
