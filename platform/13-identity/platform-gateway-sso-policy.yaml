@@ -1,0 +1,29 @@
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: platform-gateway-sso
+  namespace: istio-ingress
+  labels:
+    app.kubernetes.io/name: oauth2-proxy
+    app.kubernetes.io/instance: platform-gateway-sso
+    app.kubernetes.io/component: authorization
+    app.kubernetes.io/part-of: identity
+    app.kubernetes.io/managed-by: kubectl
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: platform-gateway
+  action: CUSTOM
+  provider:
+    name: oauth2-proxy
+  rules:
+    - to:
+        - operation:
+            notPaths:
+              - /keycloak
+              - /keycloak/*
+              - /sso
+              - /sso/*
+              - /polaris
+              - /polaris/*

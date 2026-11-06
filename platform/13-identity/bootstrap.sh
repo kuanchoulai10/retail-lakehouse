@@ -12,8 +12,8 @@ TIMEOUT="${TIMEOUT:-600s}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NAMESPACE="identity"
 
-log::on_success "Keycloak deployed"
-log::on_failure "Keycloak deployment failed"
+log::on_success "Keycloak, oauth2-proxy and the platform-gateway login gate deployed"
+log::on_failure "Keycloak, oauth2-proxy or the login gate deployment failed"
 
 fail() {
   echo "$1" >&2
@@ -137,7 +137,12 @@ for manifest in keycloak-realm-configmap keycloak-deployment keycloak-service; d
     --context "${KUBE_CONTEXT}"
 done
 
+ORIGIN_CHANGED=false
 if [[ -n "${PREVIOUS_ORIGIN}" && "${PREVIOUS_ORIGIN}" != "${ORIGIN}" ]]; then
+  ORIGIN_CHANGED=true
+fi
+
+if [[ "${ORIGIN_CHANGED}" == true ]]; then
   echo "public origin changed from ${PREVIOUS_ORIGIN} to ${ORIGIN}: restarting Keycloak"
   echo "the realm keeps its old redirect URIs; update them by hand (see README)"
   kubectl rollout restart deployment/keycloak \
@@ -152,4 +157,26 @@ kubectl apply \
 kubectl rollout status deployment/keycloak \
   --namespace "${NAMESPACE}" \
   --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"
+
+for manifest in oauth2-proxy-deployment oauth2-proxy-service oauth2-proxy-route; do
+  kubectl apply \
+    -f "${SCRIPT_DIR}/${manifest}.yaml" \
+    --context "${KUBE_CONTEXT}"
+done
+
+if [[ "${ORIGIN_CHANGED}" == true ]]; then
+  echo "public origin changed: restarting oauth2-proxy"
+  kubectl rollout restart deployment/oauth2-proxy \
+    --namespace "${NAMESPACE}" \
+    --context "${KUBE_CONTEXT}"
+fi
+
+kubectl rollout status deployment/oauth2-proxy \
+  --namespace "${NAMESPACE}" \
+  --timeout "${TIMEOUT}" \
+  --context "${KUBE_CONTEXT}"
+
+kubectl apply \
+  -f "${SCRIPT_DIR}/platform-gateway-sso-policy.yaml" \
   --context "${KUBE_CONTEXT}"

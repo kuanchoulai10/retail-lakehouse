@@ -5,7 +5,9 @@
 #   gateway::allow_routes <namespace>             # label the namespace so its HTTPRoutes may attach
 #   gateway::assert_routes_allowed <namespace>    # fail unless the namespace carries that label
 #   gateway::assert_route_accepted <ns> <route>   # wait until the HTTPRoute is Accepted (TIMEOUT)
-#   gateway::curl <path> [curl args]              # curl a path through the gateway
+#   gateway::curl <path> [curl args]              # curl a path through the gateway, with a
+#                                                 # platform-validate bearer token when one is available
+#   gateway::curl_anonymous <path> [curl args]    # the same call, never with a token
 #   gateway::token                                # print a platform-validate access token
 
 [[ -n "${__GATEWAY_SH_LOADED:-}" ]] && return 0
@@ -72,17 +74,37 @@ __gateway::request() {
   curl --max-time 10 "$@" "http://127.0.0.1:${port}${path}"
 }
 
+__gateway::has_clients_secret() {
+  [[ -n "$(kubectl get secret keycloak-clients \
+    --ignore-not-found \
+    -o name \
+    --namespace identity \
+    --context "${KUBE_CONTEXT}")" ]]
+}
+
 gateway::curl() {
+  local path=$1 token rc=0
+  shift
+  if __gateway::has_clients_secret; then
+    if token=$(gateway::token); then
+      exec 7< <(printf 'Authorization: Bearer %s\n' "$token")
+      unset token
+      __gateway::request "$path" -H @/dev/fd/7 "$@" || rc=$?
+      exec 7<&-
+      return "$rc"
+    fi
+    echo "gateway::curl: no platform-validate token, calling ${path} without one" >&2
+  fi
+  __gateway::request "$path" "$@"
+}
+
+gateway::curl_anonymous() {
   __gateway::request "$@"
 }
 
 gateway::token() {
   local secret response token
-  if [[ -z "$(kubectl get secret keycloak-clients \
-    --ignore-not-found \
-    -o name \
-    --namespace identity \
-    --context "${KUBE_CONTEXT}")" ]]; then
+  if ! __gateway::has_clients_secret; then
     echo "secret identity/keycloak-clients does not exist" >&2
     return 1
   fi

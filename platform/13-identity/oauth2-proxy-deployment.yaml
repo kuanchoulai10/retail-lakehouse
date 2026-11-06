@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oauth2-proxy
+  namespace: identity
+  labels:
+    app.kubernetes.io/name: oauth2-proxy
+    app.kubernetes.io/instance: oauth2-proxy
+    app.kubernetes.io/component: auth-proxy
+    app.kubernetes.io/part-of: identity
+    app.kubernetes.io/managed-by: kubectl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: oauth2-proxy
+      app.kubernetes.io/instance: oauth2-proxy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: oauth2-proxy
+        app.kubernetes.io/instance: oauth2-proxy
+        app.kubernetes.io/component: auth-proxy
+        app.kubernetes.io/part-of: identity
+        app.kubernetes.io/managed-by: kubectl
+        app.kubernetes.io/version: v7.15.6
+    spec:
+      containers:
+        - name: oauth2-proxy
+          image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.6
+          args:
+            - --http-address=0.0.0.0:4180
+            - --provider=keycloak-oidc
+            - --provider-display-name=Keycloak
+            - --client-id=oauth2-proxy
+            - --oidc-issuer-url=$(PUBLIC_ORIGIN)/keycloak/realms/retail-lakehouse
+            - --skip-oidc-discovery=true
+            - --login-url=$(PUBLIC_ORIGIN)/keycloak/realms/retail-lakehouse/protocol/openid-connect/auth
+            - --redeem-url=http://keycloak.identity.svc.cluster.local:8080/keycloak/realms/retail-lakehouse/protocol/openid-connect/token
+            - --oidc-jwks-url=http://keycloak.identity.svc.cluster.local:8080/keycloak/realms/retail-lakehouse/protocol/openid-connect/certs
+            - --profile-url=http://keycloak.identity.svc.cluster.local:8080/keycloak/realms/retail-lakehouse/protocol/openid-connect/userinfo
+            - --scope=openid email profile
+            - --code-challenge-method=S256
+            - --redirect-url=$(PUBLIC_ORIGIN)/sso/callback
+            - --proxy-prefix=/sso
+            - --ping-path=/sso/ping
+            - --ready-path=/sso/ready
+            - --silence-ping-logging=true
+            - --reverse-proxy=true
+            - --upstream=static://200
+            - --set-xauthrequest=true
+            - --skip-jwt-bearer-tokens=true
+            - --skip-provider-button=true
+            - --email-domain=*
+            - --cookie-secure=true
+            - --cookie-samesite=lax
+            - --cookie-expire=12h
+          env:
+            - name: PUBLIC_ORIGIN
+              valueFrom:
+                configMapKeyRef:
+                  name: public-origin
+                  key: origin
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-clients
+                  key: oauth2-proxy-client-secret
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-cookie
+                  key: cookie-secret
+          ports:
+            - name: http
+              containerPort: 4180
+          resources:
+            requests:
+              memory: 16Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          readinessProbe:
+            httpGet:
+              path: /sso/ready
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /sso/ping
+              port: http
+            periodSeconds: 15
+            failureThreshold: 4

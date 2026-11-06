@@ -12,8 +12,8 @@ TIMEOUT="${TIMEOUT:-300s}"
 NAMESPACE="identity"
 REALM="retail-lakehouse"
 
-log::on_success "Keycloak is ready"
-log::on_failure "Keycloak is not ready"
+log::on_success "Keycloak and the platform-gateway login gate are ready"
+log::on_failure "Keycloak or the platform-gateway login gate is not ready"
 
 fail() {
   echo "$1" >&2
@@ -51,7 +51,7 @@ assert_secret_keys keycloak-clients \
   platform-validate-client-secret platform-admin-password
 assert_secret_keys oauth2-proxy-cookie cookie-secret
 
-for deploy in keycloak-db keycloak; do
+for deploy in keycloak-db keycloak oauth2-proxy; do
   kubectl rollout status "deployment/${deploy}" \
     --namespace "${NAMESPACE}" \
     --timeout "${TIMEOUT}" \
@@ -61,6 +61,7 @@ done
 mesh::assert_hbone "${NAMESPACE}"
 
 gateway::assert_route_accepted "${NAMESPACE}" keycloak
+gateway::assert_route_accepted "${NAMESPACE}" oauth2-proxy
 
 EXPECTED_ISSUER="$(origin::public)/keycloak/realms/${REALM}"
 
@@ -81,3 +82,20 @@ jq -e '(.aud | if type == "array" then . else [.] end) | index("oauth2-proxy") !
   <<<"${PAYLOAD}" >/dev/null \
   || fail "token aud does not contain oauth2-proxy"
 echo "platform-validate token has iss ${TOKEN_ISSUER} and aud oauth2-proxy"
+
+LOGIN_URL="$(origin::public)/keycloak/realms/${REALM}/protocol/openid-connect/auth"
+read -r STATUS LOCATION < <(gateway::curl_anonymous /console/ -s -o /dev/null \
+  -w '%{http_code} %{redirect_url}\n') || true
+[[ "${STATUS}" == "302" && "${LOCATION}" == "${LOGIN_URL}"* ]] \
+  || fail "anonymous /console/ returned '${STATUS} ${LOCATION%%\?*}', expected 302 to ${LOGIN_URL}"
+echo "anonymous /console/ is redirected to the Keycloak login"
+
+gateway::curl /console/ -fsS -o /dev/null \
+  || fail "/console/ with a platform-validate bearer token did not pass the gate"
+echo "/console/ with a platform-validate bearer token passes the gate"
+
+POLARIS_STATUS="$(gateway::curl_anonymous /polaris/api/catalog/v1/config -s -o /dev/null \
+  -w '%{http_code}')" || POLARIS_STATUS=000
+[[ "${POLARIS_STATUS}" == "401" ]] \
+  || fail "anonymous /polaris/api/catalog/v1/config returned ${POLARIS_STATUS}, expected 401"
+echo "/polaris is not gated (Polaris answers 401 itself)"
