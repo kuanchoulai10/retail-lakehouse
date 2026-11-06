@@ -56,6 +56,7 @@ tasks:
       - TIMEOUT=10s bash platform/12-istio-cni/validate.sh
       - TIMEOUT=10s bash platform/12-ztunnel/validate.sh
       - TIMEOUT=10s bash platform/12-platform-gateway/validate.sh
+      - TIMEOUT=10s bash platform/13-identity/validate.sh
       - TIMEOUT=10s bash platform/20-kafka-cluster/validate.sh
       - TIMEOUT=10s bash platform/20-rustfs/validate.sh
       - TIMEOUT=10s bash platform/20-mysql/validate.sh
@@ -96,6 +97,8 @@ tasks:
       - bash platform/12-ztunnel/validate.sh
       - bash platform/12-platform-gateway/bootstrap.sh
       - bash platform/12-platform-gateway/validate.sh
+      - bash platform/13-identity/bootstrap.sh
+      - bash platform/13-identity/validate.sh
       - bash platform/20-kafka-cluster/bootstrap.sh
       - bash platform/20-rustfs/bootstrap.sh
       - bash platform/20-mysql/bootstrap.sh
@@ -175,6 +178,9 @@ tasks:
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       - task: validate-platform-gateway
+        vars:
+          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      - task: validate-identity
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       - task: validate-kafka-cluster
@@ -292,6 +298,13 @@ tasks:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     cmds:
       - bash platform/12-platform-gateway/validate.sh
+
+  validate-identity:
+    internal: true
+    env:
+      KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+    cmds:
+      - bash platform/13-identity/validate.sh
 
   validate-kafka-cluster:
     internal: true

@@ -6,6 +6,7 @@
 #   gateway::assert_routes_allowed <namespace>    # fail unless the namespace carries that label
 #   gateway::assert_route_accepted <ns> <route>   # wait until the HTTPRoute is Accepted (TIMEOUT)
 #   gateway::curl <path> [curl args]              # curl a path through the gateway
+#   gateway::token                                # print a platform-validate access token
 
 [[ -n "${__GATEWAY_SH_LOADED:-}" ]] && return 0
 __GATEWAY_SH_LOADED=1
@@ -47,7 +48,7 @@ gateway::assert_route_accepted() {
     --context "${KUBE_CONTEXT}"
 }
 
-gateway::curl() {
+__gateway::request() {
   local path=$1 pf_pid pf_log port=""
   shift
   pf_log=$(mktemp)
@@ -69,4 +70,37 @@ gateway::curl() {
     return 1
   fi
   curl --max-time 10 "$@" "http://127.0.0.1:${port}${path}"
+}
+
+gateway::curl() {
+  __gateway::request "$@"
+}
+
+gateway::token() {
+  local secret response token
+  if [[ -z "$(kubectl get secret keycloak-clients \
+    --ignore-not-found \
+    -o name \
+    --namespace identity \
+    --context "${KUBE_CONTEXT}")" ]]; then
+    echo "secret identity/keycloak-clients does not exist" >&2
+    return 1
+  fi
+  secret=$(kubectl get secret keycloak-clients \
+    -o jsonpath='{.data.platform-validate-client-secret}' \
+    --namespace identity \
+    --context "${KUBE_CONTEXT}" | base64 -d)
+  if [[ -z "$secret" ]]; then
+    echo "secret identity/keycloak-clients has an empty platform-validate-client-secret" >&2
+    return 1
+  fi
+  response=$(printf 'grant_type=client_credentials&client_id=platform-validate&client_secret=%s' "$secret" \
+    | __gateway::request /keycloak/realms/retail-lakehouse/protocol/openid-connect/token \
+      -fsS --data @-) || return 1
+  token=$(jq -r '.access_token // empty' <<<"$response")
+  if [[ -z "$token" ]]; then
+    echo "the token endpoint returned no access_token" >&2
+    return 1
+  fi
+  printf '%s\n' "$token"
 }

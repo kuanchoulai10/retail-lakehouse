@@ -1,0 +1,137 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realm
+  namespace: identity
+  labels:
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/instance: keycloak
+    app.kubernetes.io/component: identity-provider
+    app.kubernetes.io/part-of: identity
+    app.kubernetes.io/managed-by: kubectl
+data:
+  retail-lakehouse-realm.json: |
+    {
+      "realm": "retail-lakehouse",
+      "enabled": true,
+      "sslRequired": "external",
+      "registrationAllowed": false,
+      "resetPasswordAllowed": false,
+      "loginWithEmailAllowed": true,
+      "ssoSessionIdleTimeout": 43200,
+      "ssoSessionMaxLifespan": 43200,
+      "clients": [
+        {
+          "clientId": "oauth2-proxy",
+          "name": "oauth2-proxy",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "${OAUTH2_PROXY_CLIENT_SECRET}",
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": false,
+          "serviceAccountsEnabled": false,
+          "redirectUris": ["${PUBLIC_ORIGIN}/sso/callback"],
+          "webOrigins": ["${PUBLIC_ORIGIN}"],
+          "attributes": {
+            "post.logout.redirect.uris": "${PUBLIC_ORIGIN}/*"
+          },
+          "protocolMappers": [
+            {
+              "name": "audience-oauth2-proxy",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-audience-mapper",
+              "config": {
+                "included.client.audience": "oauth2-proxy",
+                "access.token.claim": "true",
+                "id.token.claim": "true",
+                "introspection.token.claim": "true"
+              }
+            }
+          ]
+        },
+        {
+          "clientId": "trino",
+          "name": "trino",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "${TRINO_CLIENT_SECRET}",
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": false,
+          "serviceAccountsEnabled": false,
+          "redirectUris": [
+            "${PUBLIC_ORIGIN}/oauth2/callback",
+            "https://localhost:8443/oauth2/callback"
+          ],
+          "protocolMappers": [
+            {
+              "name": "audience-trino",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-audience-mapper",
+              "config": {
+                "included.client.audience": "trino",
+                "access.token.claim": "true",
+                "id.token.claim": "true",
+                "introspection.token.claim": "true"
+              }
+            }
+          ]
+        },
+        {
+          "clientId": "platform-validate",
+          "name": "platform-validate",
+          "enabled": true,
+          "protocol": "openid-connect",
+          "publicClient": false,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "${PLATFORM_VALIDATE_CLIENT_SECRET}",
+          "standardFlowEnabled": false,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": false,
+          "serviceAccountsEnabled": true,
+          "protocolMappers": [
+            {
+              "name": "audience-oauth2-proxy",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-audience-mapper",
+              "config": {
+                "included.client.audience": "oauth2-proxy",
+                "access.token.claim": "true",
+                "id.token.claim": "true",
+                "introspection.token.claim": "true"
+              }
+            }
+          ]
+        }
+      ],
+      "users": [
+        {
+          "username": "platform-admin",
+          "enabled": true,
+          "email": "platform-admin@retail-lakehouse.local",
+          "emailVerified": true,
+          "firstName": "Platform",
+          "lastName": "Admin",
+          "requiredActions": [],
+          "credentials": [
+            {
+              "type": "password",
+              "value": "${PLATFORM_ADMIN_PASSWORD}",
+              "temporary": false
+            }
+          ]
+        },
+        {
+          "username": "service-account-platform-validate",
+          "enabled": true,
+          "email": "platform-validate@retail-lakehouse.local",
+          "emailVerified": true,
+          "serviceAccountClientId": "platform-validate"
+        }
+      ]
+    }
