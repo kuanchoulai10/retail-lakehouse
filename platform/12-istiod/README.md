@@ -27,3 +27,7 @@ Namespace: istio-system
 | `istiod` | 15012 | mTLS xDS (used by ztunnel and waypoints) |
 | `istiod` | 15014 | Monitoring |
 | `istiod` | 15017 | Sidecar-injector webhook |
+
+## Extension providers
+
+Mesh config registers the ext_authz provider `oauth2-proxy` (`envoyExtAuthzHttp`, `oauth2-proxy.identity.svc.cluster.local:4180`). It forwards the original request path, so oauth2-proxy can build its redirect, and returns `location`, `set-cookie` and `content-type` on deny. Nothing references it until an `AuthorizationPolicy` with action `CUSTOM` names it.

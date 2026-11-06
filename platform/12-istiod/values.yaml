@@ -5,6 +5,25 @@ global:
 
 meshConfig:
   accessLogFile: /dev/stdout
+  extensionProviders:
+    - name: oauth2-proxy
+      envoyExtAuthzHttp:
+        service: oauth2-proxy.identity.svc.cluster.local
+        port: 4180
+        includeRequestHeadersInCheck:
+          - cookie
+          - authorization
+          - x-forwarded-proto
+          - x-forwarded-host
+          - x-forwarded-for
+        headersToUpstreamOnAllow:
+          - x-auth-request-user
+          - x-auth-request-email
+          - x-auth-request-preferred-username
+        headersToDownstreamOnDeny:
+          - location
+          - set-cookie
+          - content-type
 
 pilot:
   resources:

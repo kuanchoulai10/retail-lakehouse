@@ -13,3 +13,12 @@ kubectl rollout status deployment/istiod \
   --namespace istio-system \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
+
+mesh_config="$(kubectl get configmap istio \
+  --output jsonpath='{.data.mesh}' \
+  --namespace istio-system \
+  --context "${KUBE_CONTEXT}")"
+grep -Eq '^\s*-?\s*name: oauth2-proxy$' <<<"${mesh_config}" || {
+  echo "meshConfig has no extension provider named oauth2-proxy" >&2
+  exit 1
+}
