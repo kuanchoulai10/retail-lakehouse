@@ -30,4 +30,4 @@ Namespace: istio-system
 
 ## Extension providers
 
-Mesh config registers the ext_authz provider `oauth2-proxy` (`envoyExtAuthzHttp`, `oauth2-proxy.identity.svc.cluster.local:4180`). It forwards the original request path, so oauth2-proxy can build its redirect, and returns `location`, `set-cookie` and `content-type` on deny. Nothing references it until an `AuthorizationPolicy` with action `CUSTOM` names it.
+Mesh config registers the ext_authz provider `oauth2-proxy` (`envoyExtAuthzHttp`, `oauth2-proxy.identity.svc.cluster.local:4180`). It forwards the original request path, so oauth2-proxy can build its redirect, and returns `location`, `set-cookie` and `content-type` on deny. Each check times out after 5 s (`timeout: 5s`; Istio's default is 600 s), and a timeout denies. Nothing references it until an `AuthorizationPolicy` with action `CUSTOM` names it.
