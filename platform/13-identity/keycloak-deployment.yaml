@@ -113,7 +113,7 @@ spec:
               containerPort: 9000
           resources:
             requests:
-              memory: 576Mi
+              memory: 640Mi
             limits:
               memory: 1Gi
           volumeMounts:

@@ -112,7 +112,7 @@ oauth2-proxy answers some paths itself, with 200 and no session, before its auth
 | Bearer tokens | `--skip-jwt-bearer-tokens`: a Keycloak JWT with the public issuer and audience `oauth2-proxy` (and an email) is accepted instead of a cookie |
 | Cookie | `_oauth2_proxy`, `Secure`, `HttpOnly`, `SameSite=Lax`, 12 h (`--cookie-expire=12h`, the same as the realm's SSO session), session stored in the cookie (no Redis), no refresh; secret `oauth2-proxy-cookie/cookie-secret` |
 | Users | `--email-domain=*`: every Keycloak user of the realm may pass |
-| Memory | request 16Mi, limit 128Mi (7Mi measured idle) |
+| Memory | request 16Mi, limit 128Mi (see Memory) |
 
 The origin reaches oauth2-proxy as `$(PUBLIC_ORIGIN)` from the ConfigMap `public-origin`; the bootstrap restarts oauth2-proxy along with Keycloak when the origin changes. After the 12 hours, or when the cookie is gone, the next page load goes through the login again (a background `fetch` from an open page may fail until it is reloaded).
 
@@ -131,6 +131,16 @@ The gate fails closed (see above). To reach a UI while Keycloak or oauth2-proxy 
 ```bash
 kubectl port-forward service/temporal-web 8080:8080 --namespace temporal --context retail-lakehouse
 ```
+
+## Memory
+
+| Pod | Request | Limit | Measured (2026-11-06, fresh onboard) |
+|-----|---------|-------|--------------------------------------|
+| `keycloak` | 640Mi | 1Gi | 645–647Mi working set over a 15 minute idle soak after onboard and two `e2e.sh` runs; peak 647Mi (`kubectl top`), cgroup `memory.peak` 787 MiB including page cache; heap `-Xmx512m` |
+| `keycloak-db` | 48Mi | 256Mi | 40Mi idle, peak 50Mi; cgroup `memory.peak` 120 MiB including page cache |
+| `oauth2-proxy` | 16Mi | 128Mi | 6Mi idle and peak |
+
+Requests follow the idle working set and limits leave headroom over the peak, as for the other bounded pods (CLAUDE.md, node memory pressure). Keycloak runs `start` without `--optimized`, so every start re-augments the server; the peak above includes that.
 
 ## Sync Wave
 

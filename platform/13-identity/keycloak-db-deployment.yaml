@@ -53,7 +53,7 @@ spec:
               containerPort: 5432
           resources:
             requests:
-              memory: 64Mi
+              memory: 48Mi
             limits:
               memory: 256Mi
           volumeMounts:
