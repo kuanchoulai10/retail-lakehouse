@@ -16,7 +16,8 @@ Namespace: identity
 ├── oauth2-proxy          (Deployment, quay.io/oauth2-proxy/oauth2-proxy:v7.15.6)
 ├── oauth2-proxy          (Service, http 4180)
 ├── oauth2-proxy          (HTTPRoute on platform-gateway, PathPrefix /sso, no rewrite,
-│                          sets X-Forwarded-Proto: https)
+│                          sets X-Forwarded-Proto: https; PathPrefix /identity-gate-probe,
+│                          gated, answered by oauth2-proxy's static 200)
 ├── keycloak-realm        (ConfigMap, realm JSON with ${…} placeholders)
 ├── public-origin         (ConfigMap, key origin, rewritten on every bootstrap)
 ├── keycloak-db           (Secret: username, password, database)
@@ -149,10 +150,12 @@ KUBE_CONTEXT=retail-lakehouse bash platform/13-identity/validate.sh
 
 Checks the ambient and gateway labels, the key names of the four Secrets, the `keycloak-db`, `keycloak` and `oauth2-proxy` rollouts, HBONE for every pod, both HTTPRoutes, the discovery `issuer` through the gateway, and that `gateway::token` returns a token whose `iss` is the public issuer and whose `aud` contains `oauth2-proxy`. Then the gate:
 
-- `gateway::curl_anonymous /console/` gets a 302 to `<origin>/keycloak/realms/retail-lakehouse/protocol/openid-connect/auth`;
-- `gateway::curl /console/` (with the `platform-validate` bearer token) succeeds;
-- `gateway::curl_anonymous /polaris/api/catalog/v1/config` gets Polaris's own 401 (ungated);
-- `gateway::curl_anonymous` on `/robots.txt`, `/robots.txt?x=1`, `/ping` and `/ready` gets 302 or 403, never an oauth2-proxy built-in 200.
+- `gateway::curl_anonymous /identity-gate-probe/` gets a 302 to `<origin>/keycloak/realms/retail-lakehouse/protocol/openid-connect/auth`;
+- `gateway::curl /identity-gate-probe/` (with the `platform-validate` bearer token) succeeds;
+- `gateway::curl_anonymous /polaris/api/catalog/v1/config` gets Polaris's own 401 (ungated), once the `polaris` HTTPRoute exists (wave 21);
+- `gateway::curl_anonymous` on `/robots.txt`, `/robots.txt?x=1`, `/ping` and `/ready` gets 302 or 403, never an oauth2-proxy built-in 200; 404 is accepted only while no HTTPRoute on `platform-gateway` takes `/`.
+
+The gate probe is a second rule of the `oauth2-proxy` HTTPRoute. Envoy answers a path that matches no route with 404 before the ext_authz check, so on a fresh onboard (no UI route before wave 21) a check on `/console/` could not see the gate; the probe path exists from wave 13 on. `task apps:validate` reruns this script after every wave, which also runs the `/polaris` check.
 
 ## Validating through the gate
 

@@ -84,26 +84,49 @@ jq -e '(.aud | if type == "array" then . else [.] end) | index("oauth2-proxy") !
 echo "platform-validate token has iss ${TOKEN_ISSUER} and aud oauth2-proxy"
 
 LOGIN_URL="$(origin::public)/keycloak/realms/${REALM}/protocol/openid-connect/auth"
-read -r STATUS LOCATION < <(gateway::curl_anonymous /console/ -s -o /dev/null \
+PROBE=/identity-gate-probe/
+read -r STATUS LOCATION < <(gateway::curl_anonymous "${PROBE}" -s -o /dev/null \
   -w '%{http_code} %{redirect_url}\n') || true
 [[ "${STATUS}" == "302" && "${LOCATION}" == "${LOGIN_URL}"* ]] \
-  || fail "anonymous /console/ returned '${STATUS} ${LOCATION%%\?*}', expected 302 to ${LOGIN_URL}"
-echo "anonymous /console/ is redirected to the Keycloak login"
+  || fail "anonymous ${PROBE} returned '${STATUS} ${LOCATION%%\?*}', expected 302 to ${LOGIN_URL}"
+echo "anonymous ${PROBE} is redirected to the Keycloak login"
 
-gateway::curl /console/ -fsS -o /dev/null \
-  || fail "/console/ with a platform-validate bearer token did not pass the gate"
-echo "/console/ with a platform-validate bearer token passes the gate"
+gateway::curl "${PROBE}" -fsS -o /dev/null \
+  || fail "${PROBE} with a platform-validate bearer token did not pass the gate"
+echo "${PROBE} with a platform-validate bearer token passes the gate"
 
-POLARIS_STATUS="$(gateway::curl_anonymous /polaris/api/catalog/v1/config -s -o /dev/null \
-  -w '%{http_code}')" || POLARIS_STATUS=000
-[[ "${POLARIS_STATUS}" == "401" ]] \
-  || fail "anonymous /polaris/api/catalog/v1/config returned ${POLARIS_STATUS}, expected 401"
-echo "/polaris is not gated (Polaris answers 401 itself)"
+route_exists() {
+  kubectl get httproute "$2" \
+    --namespace "$1" \
+    --context "${KUBE_CONTEXT}" >/dev/null 2>&1
+}
+
+if route_exists lakehouse-catalog polaris; then
+  POLARIS_STATUS="$(gateway::curl_anonymous /polaris/api/catalog/v1/config -s -o /dev/null \
+    -w '%{http_code}')" || POLARIS_STATUS=000
+  [[ "${POLARIS_STATUS}" == "401" ]] \
+    || fail "anonymous /polaris/api/catalog/v1/config returned ${POLARIS_STATUS}, expected 401"
+  echo "/polaris is not gated (Polaris answers 401 itself)"
+else
+  echo "HTTPRoute lakehouse-catalog/polaris does not exist yet; /polaris check skipped"
+fi
+
+ROOT_ROUTES="$(kubectl get httproute \
+  -o json \
+  --all-namespaces \
+  --context "${KUBE_CONTEXT}" \
+  | jq '[.items[]
+      | select(any(.spec.parentRefs[]?; .name == "platform-gateway"))
+      | select(any(.spec.rules[]?.matches[]?; .path.type == "PathPrefix" and .path.value == "/"))]
+    | length')"
 
 for path in /robots.txt '/robots.txt?x=1' /ping /ready; do
   BUILTIN_STATUS="$(gateway::curl_anonymous "${path}" -s -o /dev/null -w '%{http_code}')" \
     || BUILTIN_STATUS=000
-  [[ "${BUILTIN_STATUS}" == "302" || "${BUILTIN_STATUS}" == "403" ]] \
-    || fail "anonymous ${path} returned ${BUILTIN_STATUS}, expected 302 or 403 (an oauth2-proxy built-in bypasses the gate)"
+  if [[ "${BUILTIN_STATUS}" == "302" || "${BUILTIN_STATUS}" == "403" ]]; then
+    continue
+  fi
+  [[ "${BUILTIN_STATUS}" == "404" && "${ROOT_ROUTES}" == "0" ]] \
+    || fail "anonymous ${path} returned ${BUILTIN_STATUS}, expected 302 or 403, or 404 while no route takes / (an oauth2-proxy built-in bypasses the gate)"
 done
 echo "oauth2-proxy built-in paths outside /sso do not pass the gate"

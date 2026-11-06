@@ -27,3 +27,10 @@ spec:
       backendRefs:
         - name: oauth2-proxy
           port: 4180
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /identity-gate-probe
+      backendRefs:
+        - name: oauth2-proxy
+          port: 4180
