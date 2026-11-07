@@ -7,25 +7,25 @@ import signal
 import threading
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.adapter.inbound.event_consumer.kafka import (
-    KafkaEventSource,
-)
-from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
-    AsyncLoopBridge,
-)
 from bootstrap.configs import get_settings
 from bootstrap.container import (
     build_connected_use_cases,
     configure_logging,
     run_event_consumer,
 )
+from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
+    AsyncLoopBridge,
+)
+from context.table_maintenance.adapter.inbound.event_consumer.kafka import (
+    KafkaEventSource,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from context.table_maintenance.adapter.inbound.event_consumer import EventSource
     from bootstrap.configs import AppSettings
     from bootstrap.container import UseCases
+    from context.table_maintenance.adapter.inbound.event_consumer import EventSource
 
 logger = logging.getLogger(__name__)
 

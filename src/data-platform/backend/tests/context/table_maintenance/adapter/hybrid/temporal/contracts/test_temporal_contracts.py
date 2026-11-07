@@ -15,16 +15,16 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
     DEFAULT_ATTEMPT_DEADLINE_SECONDS,
-    OperationResultSignal,
     TABLE_MAINTENANCE_WORKFLOW,
+    OperationResultSignal,
     TableMaintenanceActivity,
     TableMaintenanceWorkflowInput,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission import (
-    AdmissionAcquireSignal,
-    AdmissionReleaseSignal,
     DEFAULT_ADMISSION_LEASE_SECONDS,
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
+    AdmissionAcquireSignal,
+    AdmissionReleaseSignal,
     TableMaintenanceAdmissionWorkflowInput,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (

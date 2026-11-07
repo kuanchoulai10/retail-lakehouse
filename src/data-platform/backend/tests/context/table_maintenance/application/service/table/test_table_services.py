@@ -4,12 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from context.table_maintenance.application.domain.model.table_discovery_rule import (
-    TableDiscoveryRule,
-    TableDiscoveryRuleId,
-    RuleEffect,
-    TablePattern,
-)
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     MaintenanceSettings,
@@ -17,9 +11,15 @@ from context.table_maintenance.application.domain.model.shared import (
 )
 from context.table_maintenance.application.domain.model.table import (
     Table,
+    TableId,
     TableName,
     TableStatus,
-    TableId,
+)
+from context.table_maintenance.application.domain.model.table_discovery_rule import (
+    RuleEffect,
+    TableDiscoveryRule,
+    TableDiscoveryRuleId,
+    TablePattern,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_preset import (
     TableMaintenancePreset,

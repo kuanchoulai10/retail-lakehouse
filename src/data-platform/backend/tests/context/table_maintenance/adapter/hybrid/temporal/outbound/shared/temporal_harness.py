@@ -12,9 +12,6 @@ from temporalio.client import Client
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import UnsandboxedWorkflowRunner, Worker
 
-from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
-    AsyncLoopBridge,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
 )
@@ -26,6 +23,9 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (
     TABLE_RECONCILIATION_WORKFLOW,
+)
+from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
+    AsyncLoopBridge,
 )
 
 

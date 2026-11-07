@@ -7,9 +7,6 @@ from typing import Any
 
 import pytest
 
-from context.table_maintenance.application.domain.model.table_discovery_rule import (
-    TableDiscoveryRuleId,
-)
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     MaintenanceSettings,
@@ -17,8 +14,11 @@ from context.table_maintenance.application.domain.model.shared import (
 )
 from context.table_maintenance.application.domain.model.table import (
     Table,
-    TableName,
     TableId,
+    TableName,
+)
+from context.table_maintenance.application.domain.model.table_discovery_rule import (
+    TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_preset import (
     TableMaintenancePresetId,

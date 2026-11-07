@@ -5,6 +5,12 @@ from __future__ import annotations
 from datetime import datetime  # noqa: TC003
 from typing import Annotated
 
+from fastapi import APIRouter, Depends, Query, status
+
+from context.table_maintenance.adapter.inbound.web.shared import (
+    WebUseCases,
+    use_cases_dependency,
+)
 from context.table_maintenance.adapter.inbound.web.table.dto import (
     ExcludeTableApiRequest,
     IncludeTableApiRequest,
@@ -16,10 +22,6 @@ from context.table_maintenance.adapter.inbound.web.table.dto import (
     TriggerTableMaintenanceApiRequest,
     TriggerTableMaintenanceApiResponse,
     UpdateTableSettingsApiRequest,
-)
-from context.table_maintenance.adapter.inbound.web.shared import (
-    WebUseCases,
-    use_cases_dependency,
 )
 from context.table_maintenance.application.port.inbound.table import (
     ExcludeTableUseCaseInput,
@@ -36,7 +38,6 @@ from context.table_maintenance.application.port.inbound.table import (
     TriggerTableMaintenanceUseCaseInput,
     UpdateTableSettingsUseCaseInput,
 )
-from fastapi import APIRouter, Depends, Query, status
 
 router = APIRouter(prefix="/tables", tags=["tables"])
 

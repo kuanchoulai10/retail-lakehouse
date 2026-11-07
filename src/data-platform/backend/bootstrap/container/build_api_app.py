@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.adapter.inbound.web import create_app
 from bootstrap.container.build_connected_use_cases import build_connected_use_cases
 from bootstrap.container.build_k8s_api import build_k8s_api
 from bootstrap.container.build_web_use_cases import build_web_use_cases
 from bootstrap.container.connect_temporal import connect_temporal
+from context.table_maintenance.adapter.inbound.web import create_app
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -17,10 +17,10 @@ if TYPE_CHECKING:
     from kubernetes.client import CustomObjectsApi
     from temporalio.client import Client
 
+    from bootstrap.configs import AppSettings, TemporalSettings
     from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
         AsyncLoopBridge,
     )
-    from bootstrap.configs import AppSettings, TemporalSettings
 
 
 def build_api_app(

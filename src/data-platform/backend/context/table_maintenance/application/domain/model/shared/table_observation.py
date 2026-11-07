@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from base import ValueObject
 from context.table_maintenance.application.domain.model.shared.manifest_stats import (
     ManifestStats,
 )
@@ -16,7 +17,6 @@ from context.table_maintenance.application.domain.model.shared.partition_stats i
 from context.table_maintenance.application.domain.model.shared.snapshot_info import (
     SnapshotInfo,
 )
-from base import ValueObject
 
 
 @dataclass(frozen=True)

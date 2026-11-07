@@ -6,13 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from context.table_maintenance.application.port.inbound.table_discovery_settings import (
-        GetTableDiscoverySettingsUseCase,
-        UpdateTableDiscoverySettingsUseCase,
-    )
     from context.table_maintenance.application.port.inbound.table import (
-        ProcessTableHintUseCase,
-        SyncDiscoveredTablesUseCase,
         ExcludeTableUseCase,
         GetTableHealthUseCase,
         GetTableMetadataUseCase,
@@ -22,17 +16,23 @@ if TYPE_CHECKING:
         ListTableCommitsUseCase,
         ListTablesUseCase,
         PauseTableUseCase,
+        PlanTableMaintenanceUseCase,
+        ProcessTableHintUseCase,
         ResetTableSelectionUseCase,
         ResumeTableUseCase,
+        SyncDiscoveredTablesUseCase,
         TriggerTableMaintenanceUseCase,
         UpdateTableSettingsUseCase,
-        PlanTableMaintenanceUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_discovery_rule import (
         CreateTableDiscoveryRuleUseCase,
         DeleteTableDiscoveryRuleUseCase,
         ListTableDiscoveryRulesUseCase,
         UpdateTableDiscoveryRuleUseCase,
+    )
+    from context.table_maintenance.application.port.inbound.table_discovery_settings import (
+        GetTableDiscoverySettingsUseCase,
+        UpdateTableDiscoverySettingsUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_maintenance_preset import (
         CreateTableMaintenancePresetUseCase,
@@ -43,12 +43,12 @@ if TYPE_CHECKING:
     )
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
         CreateTableMaintenanceRunUseCase,
+        DeleteMaintenanceJobUseCase,
+        GetMaintenanceJobStatusUseCase,
         GetTableMaintenanceRunUseCase,
         ListTableMaintenanceRunsUseCase,
         ProcessTableMaintenanceCallbackUseCase,
         RecordTableMaintenanceOperationResultUseCase,
-        DeleteMaintenanceJobUseCase,
-        GetMaintenanceJobStatusUseCase,
         SubmitMaintenanceOperationUseCase,
     )
 

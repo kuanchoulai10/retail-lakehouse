@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.table import (
     TableChange,
+    TableId,
     TableName,
     TableStatus,
-    TableId,
 )
 from context.table_maintenance.application.exceptions import (
     ConflictError,
@@ -25,32 +25,32 @@ from context.table_maintenance.application.port.outbound.table import (
     ReadTableMetadataGatewayListInput,
     SendTableChangeGatewayInput,
 )
+from context.table_maintenance.application.service.shared import translate_domain_errors
 from context.table_maintenance.application.service.table.register_discovered_table import (
     register_discovered_table,
 )
 from context.table_maintenance.application.service.table.registration_outcome import (
     RegistrationOutcome,
 )
-from context.table_maintenance.application.service.shared import translate_domain_errors
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
+    from context.table_maintenance.application.domain.model.table import Table
     from context.table_maintenance.application.domain.model.table_discovery_rule import (
         TableDiscoveryRule,
     )
-    from context.table_maintenance.application.domain.model.table import Table
     from context.table_maintenance.application.port.outbound.table import (
         ReadTableMetadataGateway,
+        SendTableChangeGateway,
         TableMetadata,
         TablesRepo,
-        SendTableChangeGateway,
-    )
-    from context.table_maintenance.application.port.outbound.table_discovery_settings import (
-        TableDiscoverySettingsRepo,
     )
     from context.table_maintenance.application.port.outbound.table_discovery_rule import (
         TableDiscoveryRulesRepo,
+    )
+    from context.table_maintenance.application.port.outbound.table_discovery_settings import (
+        TableDiscoverySettingsRepo,
     )
     from context.table_maintenance.application.port.outbound.table_maintenance_preset import (
         TableMaintenancePresetsRepo,

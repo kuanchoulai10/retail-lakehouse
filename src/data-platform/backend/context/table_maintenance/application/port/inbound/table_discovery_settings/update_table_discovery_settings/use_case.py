@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from abc import abstractmethod
 
+from base import UseCase
 from context.table_maintenance.application.port.inbound.table_discovery_settings.update_table_discovery_settings.input import (
     UpdateTableDiscoverySettingsUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_discovery_settings.update_table_discovery_settings.output import (
     UpdateTableDiscoverySettingsUseCaseOutput,
 )
-from base import UseCase
 
 
 class UpdateTableDiscoverySettingsUseCase(

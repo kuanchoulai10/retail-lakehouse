@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from pyiceberg.catalog import Catalog
-
 from pydantic import SecretStr
+from pyiceberg.catalog import Catalog
 
 from bootstrap.configs import CatalogSettings
 from bootstrap.container import build_catalog_factory

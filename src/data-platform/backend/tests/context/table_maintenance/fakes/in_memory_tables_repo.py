@@ -11,11 +11,11 @@ from context.table_maintenance.application.port.outbound.table import TablesRepo
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from base import EntityId
     from context.table_maintenance.application.domain.model.table import (
         Table,
         TableName,
     )
-    from base import EntityId
 
 
 class InMemoryTablesRepo(TablesRepo):

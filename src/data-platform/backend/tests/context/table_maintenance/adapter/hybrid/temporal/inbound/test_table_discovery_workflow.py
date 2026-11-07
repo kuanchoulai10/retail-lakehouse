@@ -13,13 +13,13 @@ from temporalio.exceptions import ApplicationError
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Worker
 
-from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
-    TableDiscoveryWorkflow,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery import (
     TABLE_DISCOVERY_WORKFLOW,
     TableDiscoveryActivity,
     TableDiscoveryWorkflowInput,
+)
+from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
+    TableDiscoveryWorkflow,
 )
 
 

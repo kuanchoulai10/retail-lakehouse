@@ -8,7 +8,6 @@ import pytest
 from context.table_maintenance.application.domain.model.shared import (
     CompactionScope,
     ExpireSnapshotsSettings,
-    MaintenanceOperation as Op,
     MaintenanceSettings,
     ManifestStats,
     OperationAssessment,
@@ -21,6 +20,9 @@ from context.table_maintenance.application.domain.model.shared import (
     SizeSource,
     SnapshotInfo,
     TableObservation,
+)
+from context.table_maintenance.application.domain.model.shared import (
+    MaintenanceOperation as Op,
 )
 from context.table_maintenance.application.domain.model.table import (
     OperationState,

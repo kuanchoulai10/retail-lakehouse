@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import uvicorn
 
+from bootstrap.configs import get_settings
+from bootstrap.container import build_api_app, configure_logging
 from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
     AsyncLoopBridge,
 )
-from bootstrap.configs import get_settings
-from bootstrap.container import build_api_app, configure_logging
 
 HOST = "0.0.0.0"  # noqa: S104
 PORT = 8000

@@ -4,26 +4,26 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.adapter.outbound.table.pyiceberg import (
-    ReadTableMetadataPyIcebergGateway,
+from bootstrap.container.build_spark_config import build_spark_config
+from bootstrap.container.gateways import Gateways
+from context.table_maintenance.adapter.hybrid.temporal.outbound.table import (
+    SendDiscoveryRequestTemporalGateway,
+    SendTableChangeTemporalGateway,
 )
 from context.table_maintenance.adapter.hybrid.temporal.outbound.table_discovery_settings import (
     UpdateTableDiscoveryScheduleTemporalGateway,
+)
+from context.table_maintenance.adapter.hybrid.temporal.outbound.table_maintenance_run import (
+    SendMaintenanceResultTemporalGateway,
+)
+from context.table_maintenance.adapter.outbound.table.pyiceberg import (
+    ReadTableMetadataPyIcebergGateway,
 )
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import (
     DeleteMaintenanceJobK8sGateway,
     ReadMaintenanceJobK8sGateway,
     SubmitMaintenanceJobK8sGateway,
 )
-from context.table_maintenance.adapter.hybrid.temporal.outbound.table import (
-    SendDiscoveryRequestTemporalGateway,
-    SendTableChangeTemporalGateway,
-)
-from context.table_maintenance.adapter.hybrid.temporal.outbound.table_maintenance_run import (
-    SendMaintenanceResultTemporalGateway,
-)
-from bootstrap.container.build_spark_config import build_spark_config
-from bootstrap.container.gateways import Gateways
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -32,10 +32,10 @@ if TYPE_CHECKING:
     from pyiceberg.catalog import Catalog
     from temporalio.client import Client
 
+    from bootstrap.configs import AppSettings
     from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
         AsyncLoopBridge,
     )
-    from bootstrap.configs import AppSettings
 
 
 def build_gateways(

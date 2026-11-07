@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from base import ValueObject
 from context.table_maintenance.application.domain.model.shared.planned_operation import (
     PlannedOperation,
 )
-from base import ValueObject
 
 
 @dataclass(frozen=True)

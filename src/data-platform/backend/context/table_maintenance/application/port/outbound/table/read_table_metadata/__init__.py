@@ -12,11 +12,11 @@ from context.table_maintenance.application.port.outbound.table.read_table_metada
 from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_description import (
     TableDescription,
 )
-from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_metadata_observation import (
-    TableMetadataObservation,
-)
 from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_metadata import (
     TableMetadata,
+)
+from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_metadata_observation import (
+    TableMetadataObservation,
 )
 from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_metadata_ref import (
     TableMetadataRef,

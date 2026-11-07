@@ -23,11 +23,11 @@ if TYPE_CHECKING:
 
     from sqlalchemy import Engine
 
+    from base import EntityId
     from context.table_maintenance.application.port.outbound.table_maintenance_run import (
         TableId,
         TableMaintenanceRun,
     )
-    from base import EntityId
 
 
 class TableMaintenanceRunsSqlRepo(TableMaintenanceRunsRepo):

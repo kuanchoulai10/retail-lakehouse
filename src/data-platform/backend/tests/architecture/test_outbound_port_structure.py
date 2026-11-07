@@ -29,10 +29,9 @@ from pathlib import Path
 
 import pytest
 
+from base import Gateway
 from tests.architecture.aggregates import aggregates
 from tests.architecture.contexts import context_dir, context_module, context_names
-
-from base import Gateway
 
 OUTBOUND_PORT = ("application", "port", "outbound")
 

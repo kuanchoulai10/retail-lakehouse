@@ -9,13 +9,13 @@ from context.table_maintenance.application.port.outbound.table_discovery_rule im
 )
 
 if TYPE_CHECKING:
+    from base import EntityId
     from context.table_maintenance.application.domain.model.table_discovery_rule import (
         TableDiscoveryRule,
     )
     from context.table_maintenance.application.domain.model.table_maintenance_preset import (
         TableMaintenancePresetId,
     )
-    from base import EntityId
 
 
 class InMemoryTableDiscoveryRulesRepo(TableDiscoveryRulesRepo):

@@ -7,14 +7,14 @@ from typing import TYPE_CHECKING
 
 from temporalio.worker import Worker
 
-from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
-    TableMaintenanceAdmissionWorkflow,
-    TableDiscoveryWorkflow,
-    TableMaintenanceWorkflow,
-    TableReconciliationWorkflow,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
+)
+from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
+    TableDiscoveryWorkflow,
+    TableMaintenanceAdmissionWorkflow,
+    TableMaintenanceWorkflow,
+    TableReconciliationWorkflow,
 )
 
 if TYPE_CHECKING:

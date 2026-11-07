@@ -17,8 +17,8 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table_maintenance_run import (
         DeleteMaintenanceJobGateway,
         ReadMaintenanceJobGateway,
-        SubmitMaintenanceJobGateway,
         SendMaintenanceResultGateway,
+        SubmitMaintenanceJobGateway,
     )
 
 

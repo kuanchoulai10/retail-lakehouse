@@ -5,10 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from base import AggregateRoot
 from context.table_maintenance.application.domain.model.table_discovery_settings.table_discovery_settings_id import (
     TableDiscoverySettingsId,
 )
-from base import AggregateRoot
 
 GLOBAL_ID = TableDiscoverySettingsId("global")
 

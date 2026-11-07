@@ -11,20 +11,16 @@ from sqlalchemy.exc import IntegrityError
 from context.table_maintenance.adapter.outbound.table_discovery_settings.sql.table_discovery_settings_table import (
     table_discovery_settings_table as t,
 )
+from context.table_maintenance.application.exceptions import ConflictError
 from context.table_maintenance.application.port.outbound.table_discovery_settings import (
     GLOBAL_ID,
     TableDiscoverySettings,
     TableDiscoverySettingsId,
-)
-from context.table_maintenance.application.exceptions import ConflictError
-from context.table_maintenance.application.port.outbound.table_discovery_settings import (
     TableDiscoverySettingsRepo,
 )
 
 if TYPE_CHECKING:
-    from sqlalchemy import RowMapping
-
-    from sqlalchemy import Engine
+    from sqlalchemy import Engine, RowMapping
 
     from base import EntityId
 

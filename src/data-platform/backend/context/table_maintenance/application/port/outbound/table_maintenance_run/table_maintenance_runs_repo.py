@@ -5,10 +5,10 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import TYPE_CHECKING
 
+from base import Repository
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRun,
 )
-from base import Repository
 
 if TYPE_CHECKING:
     from datetime import datetime

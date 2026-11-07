@@ -8,11 +8,11 @@ from sqlalchemy import Engine
 from context.table_maintenance.adapter.outbound.table_discovery_settings.sql import (
     TableDiscoverySettingsSqlRepo,
 )
-from context.table_maintenance.application.exceptions import ConflictError
 from context.table_maintenance.application.domain.model.table_discovery_settings import (
     GLOBAL_ID,
     TableDiscoverySettings,
 )
+from context.table_maintenance.application.exceptions import ConflictError
 
 NOW = datetime(2026, 10, 24, tzinfo=UTC)
 

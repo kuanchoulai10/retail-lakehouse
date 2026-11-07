@@ -6,12 +6,6 @@ from datetime import timedelta
 
 import pytest
 
-from context.table_maintenance.application.domain.model.table_discovery_rule import (
-    TableDiscoveryRule,
-    TableDiscoveryRuleId,
-    RuleEffect,
-    TablePattern,
-)
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     MaintenanceSettings,
@@ -19,28 +13,34 @@ from context.table_maintenance.application.domain.model.shared import (
 )
 from context.table_maintenance.application.domain.model.table import (
     Table,
+    TableId,
     TableName,
     TableSelection,
     TableStatus,
-    TableId,
+)
+from context.table_maintenance.application.domain.model.table_discovery_rule import (
+    RuleEffect,
+    TableDiscoveryRule,
+    TableDiscoveryRuleId,
+    TablePattern,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_preset import (
     TableMaintenancePreset,
     TableMaintenancePresetId,
 )
+from context.table_maintenance.application.exceptions import ConflictError
 from context.table_maintenance.application.port.inbound.table import (
+    PlanTableMaintenanceUseCaseInput,
     ProcessTableHintUseCaseInput,
     SyncDiscoveredTablesUseCaseInput,
-    PlanTableMaintenanceUseCaseInput,
 )
-from context.table_maintenance.application.exceptions import ConflictError
 from context.table_maintenance.application.port.outbound.table import (
     TableMetadataObservation,
 )
 from context.table_maintenance.application.service.table import (
+    PlanTableMaintenanceService,
     ProcessTableHintService,
     SyncDiscoveredTablesService,
-    PlanTableMaintenanceService,
 )
 from tests.context.table_maintenance.fakes.track_calls import track_calls
 

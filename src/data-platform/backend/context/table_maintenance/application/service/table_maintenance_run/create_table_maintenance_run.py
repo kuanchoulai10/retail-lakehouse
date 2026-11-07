@@ -7,12 +7,12 @@ from typing import TYPE_CHECKING
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
 )
+from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRun,
     TableMaintenanceRunId,
     TriggerType,
 )
-from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.exceptions import (
     NotFoundError,
     ValidationError,
@@ -22,16 +22,16 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
     CreateTableMaintenanceRunUseCaseInput,
     CreateTableMaintenanceRunUseCaseOutput,
 )
+from context.table_maintenance.application.service.shared import translate_domain_errors
 from context.table_maintenance.application.service.table_maintenance_run.table_maintenance_run_output_fields import (
     table_maintenance_run_output_fields,
 )
-from context.table_maintenance.application.service.shared import translate_domain_errors
 
 if TYPE_CHECKING:
+    from context.table_maintenance.application.port.outbound.table import TablesRepo
     from context.table_maintenance.application.port.outbound.table_maintenance_run import (
         TableMaintenanceRunsRepo,
     )
-    from context.table_maintenance.application.port.outbound.table import TablesRepo
 
 
 class CreateTableMaintenanceRunService(CreateTableMaintenanceRunUseCase):

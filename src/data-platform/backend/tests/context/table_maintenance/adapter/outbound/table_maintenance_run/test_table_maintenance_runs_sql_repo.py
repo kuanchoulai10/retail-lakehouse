@@ -12,13 +12,13 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.sql import
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
 )
+from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
+    OperationRunStatus,
     TableMaintenanceRun,
     TableMaintenanceRunId,
-    OperationRunStatus,
     TriggerType,
 )
-from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.exceptions import ConflictError
 
 NOW = datetime(2026, 10, 24, 12, tzinfo=UTC)

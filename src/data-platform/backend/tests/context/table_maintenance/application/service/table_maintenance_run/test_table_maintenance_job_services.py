@@ -6,25 +6,25 @@ import copy
 
 import pytest
 
-from context.table_maintenance.application.domain.model.table_discovery_rule import (
-    TableDiscoveryRuleId,
-)
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     MaintenanceSettings,
+)
+from context.table_maintenance.application.domain.model.table import (
+    Table,
+    TableId,
+    TableName,
+)
+from context.table_maintenance.application.domain.model.table_discovery_rule import (
+    TableDiscoveryRuleId,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_preset import (
+    TableMaintenancePresetId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRun,
     TableMaintenanceRunId,
     TriggerType,
-)
-from context.table_maintenance.application.domain.model.table import (
-    Table,
-    TableName,
-    TableId,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-    TableMaintenancePresetId,
 )
 from context.table_maintenance.application.exceptions import (
     ConflictError,
@@ -34,14 +34,14 @@ from context.table_maintenance.application.exceptions import (
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     DeleteMaintenanceJobUseCaseInput,
     GetMaintenanceJobStatusUseCaseInput,
+    RecordTableMaintenanceOperationResultUseCaseInput,
     SubmitMaintenanceOperationUseCaseInput,
     SubmitMaintenanceOperationUseCaseInputFilterItem,
-    RecordTableMaintenanceOperationResultUseCaseInput,
 )
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
+    SubmitMaintenanceJobGateway,
     SubmitMaintenanceJobGatewayInput,
     SubmitMaintenanceJobGatewayOutput,
-    SubmitMaintenanceJobGateway,
     TableMaintenanceRunsRepo,
 )
 from context.table_maintenance.application.service.table_maintenance_run import (

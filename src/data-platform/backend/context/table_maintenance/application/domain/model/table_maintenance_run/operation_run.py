@@ -5,13 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from base import ValueObject
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run.operation_run_status import (
     OperationRunStatus,
 )
-from base import ValueObject
 
 
 @dataclass(frozen=True)

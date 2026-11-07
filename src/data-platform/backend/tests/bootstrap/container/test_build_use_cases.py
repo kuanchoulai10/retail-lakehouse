@@ -10,11 +10,27 @@ from unittest.mock import MagicMock
 from pyiceberg.catalog import Catalog
 
 import context.table_maintenance.application.service
-from context.table_maintenance.adapter.outbound.table.pyiceberg import (
-    ReadTableMetadataPyIcebergGateway,
+from base import UseCase
+from bootstrap.container import (
+    build_gateways,
+    build_repositories,
+    build_use_cases,
+)
+from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
+    AsyncLoopBridge,
+)
+from context.table_maintenance.adapter.hybrid.temporal.outbound.table import (
+    SendDiscoveryRequestTemporalGateway,
+    SendTableChangeTemporalGateway,
 )
 from context.table_maintenance.adapter.hybrid.temporal.outbound.table_discovery_settings import (
     UpdateTableDiscoveryScheduleTemporalGateway,
+)
+from context.table_maintenance.adapter.hybrid.temporal.outbound.table_maintenance_run import (
+    SendMaintenanceResultTemporalGateway,
+)
+from context.table_maintenance.adapter.outbound.table.pyiceberg import (
+    ReadTableMetadataPyIcebergGateway,
 )
 from context.table_maintenance.adapter.outbound.table_maintenance_preset.sql import (
     TableMaintenancePresetsSqlRepo,
@@ -24,24 +40,8 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import
     ReadMaintenanceJobK8sGateway,
     SubmitMaintenanceJobK8sGateway,
 )
-from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
-    AsyncLoopBridge,
-)
-from context.table_maintenance.adapter.hybrid.temporal.outbound.table import (
-    SendDiscoveryRequestTemporalGateway,
-    SendTableChangeTemporalGateway,
-)
-from context.table_maintenance.adapter.hybrid.temporal.outbound.table_maintenance_run import (
-    SendMaintenanceResultTemporalGateway,
-)
 from context.table_maintenance.application.port.inbound.table_maintenance_preset import (
     ListTableMaintenancePresetsUseCaseInput,
-)
-from base import UseCase
-from bootstrap.container import (
-    build_gateways,
-    build_repositories,
-    build_use_cases,
 )
 from tests.bootstrap.container.container_support import (
     NOW,

@@ -7,8 +7,8 @@ import threading
 from collections.abc import Sequence
 
 from context.table_maintenance.adapter.inbound.event_consumer import (
-    run_consumer_loop,
     EventRecord,
+    run_consumer_loop,
 )
 from context.table_maintenance.application.exceptions import (
     NotFoundError,

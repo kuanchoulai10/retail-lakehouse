@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.application.port.inbound.table import (
+    SyncDiscoveredTablesUseCaseInput,
+    SyncDiscoveredTablesUseCaseOutput,
+)
 from context.table_maintenance.application.port.inbound.table_discovery_settings import (
     GetTableDiscoverySettingsUseCaseOutput,
     UpdateTableDiscoverySettingsUseCaseInput,
     UpdateTableDiscoverySettingsUseCaseOutput,
-)
-from context.table_maintenance.application.port.inbound.table import (
-    SyncDiscoveredTablesUseCaseInput,
-    SyncDiscoveredTablesUseCaseOutput,
 )
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import (
     NOW,

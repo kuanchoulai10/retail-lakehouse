@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from context.table_maintenance.application.domain.model.table import TableName
 from context.table_maintenance.application.domain.model.table_discovery_rule import (
+    RuleEffect,
     TableDiscoveryRule,
     TableDiscoveryRuleId,
-    RuleEffect,
     TablePattern,
 )
-from context.table_maintenance.application.domain.model.table import TableName
 from context.table_maintenance.application.domain.model.table_maintenance_preset import (
     TableMaintenancePresetId,
 )

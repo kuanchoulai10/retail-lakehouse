@@ -21,20 +21,20 @@ from context.table_maintenance.application.port.inbound.table import (
 from context.table_maintenance.application.port.outbound.table import (
     SendTableChangeGatewayInput,
 )
+from context.table_maintenance.application.service.shared import translate_domain_errors
 from context.table_maintenance.application.service.table.table_output_fields import (
     table_output_fields,
 )
-from context.table_maintenance.application.service.shared import translate_domain_errors
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from context.table_maintenance.application.port.outbound.table import (
+        SendTableChangeGateway,
+        TablesRepo,
+    )
     from context.table_maintenance.application.port.outbound.table_discovery_rule import (
         TableDiscoveryRulesRepo,
-    )
-    from context.table_maintenance.application.port.outbound.table import (
-        TablesRepo,
-        SendTableChangeGateway,
     )
     from context.table_maintenance.application.port.outbound.table_maintenance_preset import (
         TableMaintenancePresetsRepo,

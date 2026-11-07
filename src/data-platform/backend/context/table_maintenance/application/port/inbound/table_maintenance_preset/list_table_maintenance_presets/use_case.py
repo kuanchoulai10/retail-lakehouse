@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from abc import abstractmethod
 
+from base import UseCase
 from context.table_maintenance.application.port.inbound.table_maintenance_preset.list_table_maintenance_presets.input import (
     ListTableMaintenancePresetsUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_preset.list_table_maintenance_presets.output import (
     ListTableMaintenancePresetsUseCaseOutput,
 )
-from base import UseCase
 
 
 class ListTableMaintenancePresetsUseCase(

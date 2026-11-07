@@ -9,8 +9,8 @@ from context.table_maintenance.adapter.inbound.event_consumer import run_consume
 if TYPE_CHECKING:
     import threading
 
-    from context.table_maintenance.adapter.inbound.event_consumer import EventSource
     from bootstrap.container.use_cases import UseCases
+    from context.table_maintenance.adapter.inbound.event_consumer import EventSource
 
 
 def run_event_consumer(use_cases: UseCases, source: EventSource, stop_event: threading.Event) -> None:

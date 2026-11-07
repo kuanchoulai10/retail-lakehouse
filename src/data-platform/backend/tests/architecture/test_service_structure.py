@@ -24,7 +24,6 @@ import pytest
 from base import EventHandler, UseCase
 from tests.architecture.contexts import BACKEND, context_dir, context_names
 
-
 # Files that are utilities, not services — excluded from service rules
 UTILITY_FILES = {
     "event_serializer.py",

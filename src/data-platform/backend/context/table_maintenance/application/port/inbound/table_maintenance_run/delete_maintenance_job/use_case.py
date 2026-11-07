@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from abc import abstractmethod
 
+from base import UseCase
 from context.table_maintenance.application.port.inbound.table_maintenance_run.delete_maintenance_job.input import (
     DeleteMaintenanceJobUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run.delete_maintenance_job.output import (
     DeleteMaintenanceJobUseCaseOutput,
 )
-from base import UseCase
 
 
 class DeleteMaintenanceJobUseCase(UseCase[DeleteMaintenanceJobUseCaseInput, DeleteMaintenanceJobUseCaseOutput]):

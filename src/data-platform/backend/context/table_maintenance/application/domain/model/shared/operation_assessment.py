@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from base import ValueObject
 from context.table_maintenance.application.domain.model.shared.maintenance_operation import (
     MaintenanceOperation,
 )
@@ -17,7 +18,6 @@ from context.table_maintenance.application.domain.model.shared.planned_operation
 from context.table_maintenance.application.domain.model.shared.size_source import (
     SizeSource,
 )
-from base import ValueObject
 
 
 @dataclass(frozen=True)

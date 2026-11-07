@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from base import ValueObject
 from context.table_maintenance.application.domain.model.shared.maintenance_plan import (
     MaintenancePlan,
 )
 from context.table_maintenance.application.domain.model.shared.operation_assessment import (
     OperationAssessment,
 )
-from base import ValueObject
 
 
 @dataclass(frozen=True)

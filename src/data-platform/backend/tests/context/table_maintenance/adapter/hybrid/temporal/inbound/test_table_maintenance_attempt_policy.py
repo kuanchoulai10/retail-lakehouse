@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
-    TableMaintenanceAttemptPolicy,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
     DEFAULT_ATTEMPT_DEADLINE_SECONDS,
+)
+from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
+    TableMaintenanceAttemptPolicy,
 )
 
 

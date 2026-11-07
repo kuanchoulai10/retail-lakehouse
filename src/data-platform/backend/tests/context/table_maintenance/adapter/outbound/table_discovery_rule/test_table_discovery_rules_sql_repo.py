@@ -9,15 +9,15 @@ from context.table_maintenance.adapter.outbound.table_discovery_rule.sql import 
     TableDiscoveryRulesSqlRepo,
 )
 from context.table_maintenance.application.domain.model.table_discovery_rule import (
+    RuleEffect,
     TableDiscoveryRule,
     TableDiscoveryRuleId,
-    RuleEffect,
     TablePattern,
 )
-from context.table_maintenance.application.exceptions import ConflictError
 from context.table_maintenance.application.domain.model.table_maintenance_preset import (
     TableMaintenancePresetId,
 )
+from context.table_maintenance.application.exceptions import ConflictError
 
 NOW = datetime(2026, 10, 24, tzinfo=UTC)
 

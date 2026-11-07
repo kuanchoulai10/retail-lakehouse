@@ -6,11 +6,11 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.table import (
-    TableChange,
     Table,
+    TableChange,
+    TableId,
     TableName,
     TableStatus,
-    TableId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_preset import (
     TableMaintenancePresetId,
@@ -25,21 +25,21 @@ from context.table_maintenance.application.port.inbound.table import (
     IncludeTableUseCaseOutput,
 )
 from context.table_maintenance.application.port.outbound.table import (
-    TableMetadataRef,
     SendTableChangeGatewayInput,
+    TableMetadataRef,
 )
+from context.table_maintenance.application.service.shared import translate_domain_errors
 from context.table_maintenance.application.service.table.table_output_fields import (
     table_output_fields,
 )
-from context.table_maintenance.application.service.shared import translate_domain_errors
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from context.table_maintenance.application.port.outbound.table import (
         ReadTableMetadataGateway,
-        TablesRepo,
         SendTableChangeGateway,
+        TablesRepo,
     )
     from context.table_maintenance.application.port.outbound.table_maintenance_preset import (
         TableMaintenancePresetsRepo,

@@ -7,14 +7,26 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway import (
-    FakeReadTableMetadataGateway,
-)
 from tests.context.table_maintenance.fakes.fake_read_maintenance_job_gateway import (
     FakeReadMaintenanceJobGateway,
 )
+from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway import (
+    FakeReadTableMetadataGateway,
+)
+from tests.context.table_maintenance.fakes.in_memory_table_discovery_rules_repo import (
+    InMemoryTableDiscoveryRulesRepo,
+)
+from tests.context.table_maintenance.fakes.in_memory_table_discovery_settings_repo import (
+    InMemoryTableDiscoverySettingsRepo,
+)
+from tests.context.table_maintenance.fakes.in_memory_table_maintenance_presets_repo import (
+    InMemoryTableMaintenancePresetsRepo,
+)
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_runs_repo import (
     InMemoryTableMaintenanceRunsRepo,
+)
+from tests.context.table_maintenance.fakes.in_memory_tables_repo import (
+    InMemoryTablesRepo,
 )
 from tests.context.table_maintenance.fakes.recording_delete_maintenance_job_gateway import (
     RecordingDeleteMaintenanceJobGateway,
@@ -25,23 +37,11 @@ from tests.context.table_maintenance.fakes.recording_send_discovery_request_gate
 from tests.context.table_maintenance.fakes.recording_send_maintenance_result_gateway import (
     RecordingSendMaintenanceResultGateway,
 )
-from tests.context.table_maintenance.fakes.recording_submit_maintenance_job_gateway import (
-    RecordingSubmitMaintenanceJobGateway,
-)
-from tests.context.table_maintenance.fakes.in_memory_table_discovery_rules_repo import (
-    InMemoryTableDiscoveryRulesRepo,
-)
-from tests.context.table_maintenance.fakes.in_memory_table_discovery_settings_repo import (
-    InMemoryTableDiscoverySettingsRepo,
-)
-from tests.context.table_maintenance.fakes.in_memory_tables_repo import (
-    InMemoryTablesRepo,
-)
-from tests.context.table_maintenance.fakes.in_memory_table_maintenance_presets_repo import (
-    InMemoryTableMaintenancePresetsRepo,
-)
 from tests.context.table_maintenance.fakes.recording_send_table_change_gateway import (
     RecordingSendTableChangeGateway,
+)
+from tests.context.table_maintenance.fakes.recording_submit_maintenance_job_gateway import (
+    RecordingSubmitMaintenanceJobGateway,
 )
 from tests.context.table_maintenance.fakes.recording_update_table_discovery_schedule_gateway import (
     RecordingUpdateTableDiscoveryScheduleGateway,

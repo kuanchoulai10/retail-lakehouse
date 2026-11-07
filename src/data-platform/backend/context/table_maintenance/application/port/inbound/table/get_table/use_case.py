@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from abc import abstractmethod
 
+from base import UseCase
 from context.table_maintenance.application.port.inbound.table.get_table.input import (
     GetTableUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table.get_table.output import (
     GetTableUseCaseOutput,
 )
-from base import UseCase
 
 
 class GetTableUseCase(UseCase[GetTableUseCaseInput, GetTableUseCaseOutput]):

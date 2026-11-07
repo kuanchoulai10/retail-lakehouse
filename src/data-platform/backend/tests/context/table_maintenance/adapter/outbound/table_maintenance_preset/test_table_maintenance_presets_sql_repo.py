@@ -8,7 +8,6 @@ from sqlalchemy import Engine
 from context.table_maintenance.adapter.outbound.table_maintenance_preset.sql import (
     TableMaintenancePresetsSqlRepo,
 )
-from context.table_maintenance.application.exceptions import ConflictError
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceSettings,
 )
@@ -16,6 +15,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_preset
     TableMaintenancePreset,
     TableMaintenancePresetId,
 )
+from context.table_maintenance.application.exceptions import ConflictError
 
 NOW = datetime(2026, 10, 24, tzinfo=UTC)
 

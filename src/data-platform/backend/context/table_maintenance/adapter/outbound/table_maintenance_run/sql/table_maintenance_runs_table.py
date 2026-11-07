@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from sqlalchemy import JSON, Column, Index, String, Table
 
-from context.table_maintenance.adapter.outbound.shared.sql import metadata, UtcDateTime
+from context.table_maintenance.adapter.outbound.shared.sql import UtcDateTime, metadata
 
 table_maintenance_runs_table = Table(
     "table_maintenance_runs",

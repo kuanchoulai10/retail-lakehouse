@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from context.table_maintenance.application.domain.model.table_discovery_rule import (
+    RuleEffect,
     TableDiscoveryRule,
     TableDiscoveryRuleId,
-    RuleEffect,
     TablePattern,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_preset import (
@@ -21,10 +21,10 @@ from context.table_maintenance.application.port.inbound.table_discovery_rule imp
     CreateTableDiscoveryRuleUseCaseInput,
     CreateTableDiscoveryRuleUseCaseOutput,
 )
+from context.table_maintenance.application.service.shared import translate_domain_errors
 from context.table_maintenance.application.service.table_discovery_rule.table_discovery_rule_output_fields import (
     table_discovery_rule_output_fields,
 )
-from context.table_maintenance.application.service.shared import translate_domain_errors
 
 if TYPE_CHECKING:
     from collections.abc import Callable

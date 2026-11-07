@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from abc import abstractmethod
 
+from base import UseCase
 from context.table_maintenance.application.port.inbound.table.pause_table.input import (
     PauseTableUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table.pause_table.output import (
     PauseTableUseCaseOutput,
 )
-from base import UseCase
 
 
 class PauseTableUseCase(UseCase[PauseTableUseCaseInput, PauseTableUseCaseOutput]):

@@ -4,11 +4,9 @@ from __future__ import annotations
 
 from context.table_maintenance.application.domain.model.table_discovery_rule import (
     RuleEffect,
-    TablePattern,
-)
-from context.table_maintenance.application.domain.model.table_discovery_rule import (
     TableDiscoveryRule,
     TableDiscoveryRuleId,
+    TablePattern,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_preset import (
     TableMaintenancePresetId,

@@ -27,8 +27,8 @@ from context.table_maintenance.application.port.outbound.table import (
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table import (
-        TablesRepo,
         SendTableChangeGateway,
+        TablesRepo,
     )
 
 

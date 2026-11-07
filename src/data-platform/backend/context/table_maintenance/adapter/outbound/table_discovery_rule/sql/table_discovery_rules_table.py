@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from sqlalchemy import Boolean, Column, Integer, String, Table
 
-from context.table_maintenance.adapter.outbound.shared.sql import metadata, UtcDateTime
+from context.table_maintenance.adapter.outbound.shared.sql import UtcDateTime, metadata
 
 table_discovery_rules_table = Table(
     "table_discovery_rules",

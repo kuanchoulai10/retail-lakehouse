@@ -6,24 +6,24 @@ import asyncio
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
+from bootstrap.container.admission_lease_seconds import ADMISSION_LEASE_SECONDS
 from context.table_maintenance.adapter.hybrid.temporal.inbound import (
-    ensure_table_maintenance_admission,
     ensure_table_discovery_schedule,
+    ensure_table_maintenance_admission,
 )
 from context.table_maintenance.application.port.inbound.table_discovery_settings import (
     GetTableDiscoverySettingsUseCaseInput,
 )
-from bootstrap.container.admission_lease_seconds import ADMISSION_LEASE_SECONDS
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
     from temporalio.client import Client
 
+    from bootstrap.configs import AppSettings
     from context.table_maintenance.application.port.inbound.table_discovery_settings import (
         GetTableDiscoverySettingsUseCase,
     )
-    from bootstrap.configs import AppSettings
 
 
 async def apply_worker_startup(

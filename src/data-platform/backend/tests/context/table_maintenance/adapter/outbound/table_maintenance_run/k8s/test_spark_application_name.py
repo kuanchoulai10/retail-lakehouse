@@ -6,11 +6,11 @@ import re
 
 import pytest
 
-from context.table_maintenance.application.domain.model.shared import (
-    MaintenanceOperation,
-)
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import (
     spark_application_name,
+)
+from context.table_maintenance.application.domain.model.shared import (
+    MaintenanceOperation,
 )
 
 DNS_LABEL = re.compile(r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")

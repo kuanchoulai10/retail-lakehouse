@@ -19,11 +19,11 @@ if TYPE_CHECKING:
     from kubernetes.client import CustomObjectsApi
     from temporalio.client import Client
 
+    from bootstrap.configs import AppSettings, TemporalSettings
+    from bootstrap.container.use_cases import UseCases
     from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
         AsyncLoopBridge,
     )
-    from bootstrap.configs import AppSettings, TemporalSettings
-    from bootstrap.container.use_cases import UseCases
 
 
 def build_connected_use_cases(

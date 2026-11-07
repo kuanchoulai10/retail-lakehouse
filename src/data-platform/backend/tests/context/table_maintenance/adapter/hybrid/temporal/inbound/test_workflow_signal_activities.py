@@ -9,20 +9,20 @@ from temporalio import workflow
 from temporalio.testing import ActivityEnvironment, WorkflowEnvironment
 from temporalio.worker import UnsandboxedWorkflowRunner, Worker
 
-from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
-    WorkflowSignalActivities,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission import (
-    AdmissionAcquireSignal,
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
+    AdmissionAcquireSignal,
     TableMaintenanceAdmissionWorkflowInput,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (
     TableReconciliationSignal,
+)
+from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
+    WorkflowSignalActivities,
 )
 
 

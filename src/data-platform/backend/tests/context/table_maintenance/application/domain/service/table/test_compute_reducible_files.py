@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from context.table_maintenance.application.domain.model.shared import (
-    RewriteDataFilesSettings,
     PartitionStats,
-)
-from context.table_maintenance.application.domain.service.table import (
-    compute_reducible_files,
+    RewriteDataFilesSettings,
 )
 from context.table_maintenance.application.domain.service.shared import (
     resolve_target_file_size,
+)
+from context.table_maintenance.application.domain.service.table import (
+    compute_reducible_files,
 )
 
 MIB = 1024 * 1024

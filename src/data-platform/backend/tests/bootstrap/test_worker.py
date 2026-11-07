@@ -3,14 +3,13 @@ from __future__ import annotations
 import asyncio
 import os
 import signal
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 
-from collections.abc import Iterator
-
+from bootstrap.container import build_repositories, build_use_cases
 from bootstrap.worker import run_worker
 from tests.bootstrap.container.container_support import (
     NOW,
@@ -18,7 +17,6 @@ from tests.bootstrap.container.container_support import (
     sqlite_engine,
     sqlite_settings,
 )
-from bootstrap.container import build_repositories, build_use_cases
 
 
 class FakeBridge:

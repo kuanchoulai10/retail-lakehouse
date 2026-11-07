@@ -21,11 +21,11 @@ from context.table_maintenance.application.port.outbound.table_discovery_rule im
 if TYPE_CHECKING:
     from sqlalchemy import Engine
 
+    from base import EntityId
     from context.table_maintenance.application.port.outbound.table_discovery_rule import (
         TableDiscoveryRule,
         TableMaintenancePresetId,
     )
-    from base import EntityId
 
 
 class TableDiscoveryRulesSqlRepo(TableDiscoveryRulesRepo):

@@ -9,30 +9,30 @@ import pytest
 from temporalio.client import RPCError
 from temporalio.service import RPCStatusCode
 
-from context.table_maintenance.adapter.hybrid.temporal.outbound.table_discovery_settings import (
-    UpdateTableDiscoveryScheduleTemporalGateway,
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery import (
+    table_discovery_schedule_id,
 )
 from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
     AsyncLoopBridge,
 )
-from context.table_maintenance.adapter.hybrid.temporal.outbound.table_maintenance_run import (
-    SendMaintenanceResultTemporalGateway,
-)
 from context.table_maintenance.adapter.hybrid.temporal.outbound.table import (
     SendTableChangeTemporalGateway,
 )
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery import (
-    table_discovery_schedule_id,
+from context.table_maintenance.adapter.hybrid.temporal.outbound.table_discovery_settings import (
+    UpdateTableDiscoveryScheduleTemporalGateway,
+)
+from context.table_maintenance.adapter.hybrid.temporal.outbound.table_maintenance_run import (
+    SendMaintenanceResultTemporalGateway,
 )
 from context.table_maintenance.application.exceptions import NotFoundError
+from context.table_maintenance.application.port.outbound.table import (
+    SendTableChangeGatewayInput,
+)
 from context.table_maintenance.application.port.outbound.table_discovery_settings import (
     UpdateTableDiscoveryScheduleGatewayInput,
 )
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
     SendMaintenanceResultGatewayInput,
-)
-from context.table_maintenance.application.port.outbound.table import (
-    SendTableChangeGatewayInput,
 )
 
 

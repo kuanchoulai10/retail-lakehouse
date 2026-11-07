@@ -6,14 +6,14 @@ from typing import TYPE_CHECKING, Any
 
 from temporalio import activity
 
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery import (
+    TableDiscoveryActivity,
+)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.activity_payload import (
     activity_payload,
 )
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.translate_application_errors import (
     translate_application_errors,
-)
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery import (
-    TableDiscoveryActivity,
 )
 from context.table_maintenance.application.port.inbound.table import (
     SyncDiscoveredTablesUseCaseInput,

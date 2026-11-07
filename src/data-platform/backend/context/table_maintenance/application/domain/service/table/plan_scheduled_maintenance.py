@@ -11,7 +11,11 @@ from context.table_maintenance.application.domain.model.shared import (
 from context.table_maintenance.application.domain.model.table import Table, TableStatus
 from context.table_maintenance.application.domain.service.table.assess_maintenance import (
     DEFAULT_SMALL_MANIFEST_BYTES as DEFAULT_SMALL_MANIFEST_BYTES,
+)
+from context.table_maintenance.application.domain.service.table.assess_maintenance import (
     MANIFEST_TARGET_SIZE_PROPERTY as MANIFEST_TARGET_SIZE_PROPERTY,
+)
+from context.table_maintenance.application.domain.service.table.assess_maintenance import (
     assess_maintenance,
 )
 

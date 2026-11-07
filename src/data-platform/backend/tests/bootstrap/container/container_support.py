@@ -7,14 +7,14 @@ from typing import Any
 
 from sqlalchemy import Engine
 
-from context.table_maintenance.adapter.outbound.shared.sql import create_schema
 from bootstrap.configs import AppSettings, DatabaseBackend, SqliteSettings
 from bootstrap.container import Gateways, build_engine
-from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway import (
-    FakeReadTableMetadataGateway,
-)
+from context.table_maintenance.adapter.outbound.shared.sql import create_schema
 from tests.context.table_maintenance.fakes.fake_read_maintenance_job_gateway import (
     FakeReadMaintenanceJobGateway,
+)
+from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway import (
+    FakeReadTableMetadataGateway,
 )
 from tests.context.table_maintenance.fakes.recording_delete_maintenance_job_gateway import (
     RecordingDeleteMaintenanceJobGateway,

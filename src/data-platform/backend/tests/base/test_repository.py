@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 import pytest
+
 from base import Entity, EntityId, Repository
 
 

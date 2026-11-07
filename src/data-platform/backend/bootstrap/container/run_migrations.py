@@ -5,13 +5,13 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from bootstrap.container.build_repositories import build_repositories
+from bootstrap.container.seed_default_preset import seed_default_preset
 from context.table_maintenance.adapter.outbound.shared.sql import create_schema
 from context.table_maintenance.application.service.table_maintenance_preset import (
     CreateTableMaintenancePresetService,
     ListTableMaintenancePresetsService,
 )
-from bootstrap.container.build_repositories import build_repositories
-from bootstrap.container.seed_default_preset import seed_default_preset
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine

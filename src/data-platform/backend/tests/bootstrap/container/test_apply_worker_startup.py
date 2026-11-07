@@ -7,9 +7,11 @@ from typing import Any, cast
 
 from temporalio.client import Client
 
+from bootstrap.configs import CatalogSettings
+from bootstrap.container import ADMISSION_LEASE_SECONDS, apply_worker_startup
 from context.table_maintenance.adapter.hybrid.temporal.inbound import (
-    ensure_table_maintenance_admission,
     ensure_table_discovery_schedule,
+    ensure_table_maintenance_admission,
 )
 from context.table_maintenance.adapter.outbound.table_discovery_settings.sql import (
     TableDiscoverySettingsSqlRepo,
@@ -20,8 +22,6 @@ from context.table_maintenance.application.domain.model.table_discovery_settings
 from context.table_maintenance.application.service.table_discovery_settings import (
     GetTableDiscoverySettingsService,
 )
-from bootstrap.configs import CatalogSettings
-from bootstrap.container import ADMISSION_LEASE_SECONDS, apply_worker_startup
 from tests.bootstrap.container.container_support import (
     NOW,
     sqlite_engine,

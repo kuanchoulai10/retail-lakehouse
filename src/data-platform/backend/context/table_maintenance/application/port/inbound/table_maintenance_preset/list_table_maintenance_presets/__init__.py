@@ -5,8 +5,6 @@ from context.table_maintenance.application.port.inbound.table_maintenance_preset
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_preset.list_table_maintenance_presets.output import (
     ListTableMaintenancePresetsUseCaseOutput,
-)
-from context.table_maintenance.application.port.inbound.table_maintenance_preset.list_table_maintenance_presets.output import (
     ListTableMaintenancePresetsUseCaseOutputItem,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_preset.list_table_maintenance_presets.use_case import (

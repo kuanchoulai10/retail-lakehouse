@@ -11,11 +11,11 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
 if TYPE_CHECKING:
     from datetime import datetime
 
+    from base import EntityId
+    from context.table_maintenance.application.domain.model.table import TableId
     from context.table_maintenance.application.domain.model.table_maintenance_run import (
         TableMaintenanceRun,
     )
-    from context.table_maintenance.application.domain.model.table import TableId
-    from base import EntityId
 
 
 class InMemoryTableMaintenanceRunsRepo(TableMaintenanceRunsRepo):

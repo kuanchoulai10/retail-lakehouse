@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+from bootstrap.configs import AppSettings, CatalogSettings, SparkSettings
+from bootstrap.container import build_spark_config
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import (
     SparkK8sConfig,
 )
-from bootstrap.configs import AppSettings, CatalogSettings, SparkSettings
-from bootstrap.container import build_spark_config
 
 
 def test_spark_config_combines_spark_and_catalog_settings():

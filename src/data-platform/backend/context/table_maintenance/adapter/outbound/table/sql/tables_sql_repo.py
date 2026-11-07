@@ -24,11 +24,11 @@ if TYPE_CHECKING:
 
     from sqlalchemy import Engine
 
+    from base import EntityId
     from context.table_maintenance.application.port.outbound.table import (
         Table,
         TableName,
     )
-    from base import EntityId
 
 _ORDER = (t.c.catalog, t.c.namespace, t.c.table_name)
 

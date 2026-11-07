@@ -7,6 +7,14 @@ from unittest.mock import MagicMock
 
 import pyarrow as pa
 import pytest
+from pyiceberg.catalog import Catalog
+from pyiceberg.catalog.sql import SqlCatalog
+from pyiceberg.exceptions import ServerError
+from pyiceberg.partitioning import PartitionField, PartitionSpec
+from pyiceberg.schema import Schema
+from pyiceberg.transforms import BucketTransform, DayTransform, IdentityTransform
+from pyiceberg.types import LongType, NestedField, StringType, TimestampType
+
 from context.table_maintenance.adapter.outbound.table.pyiceberg import (
     ReadTableMetadataPyIcebergGateway,
 )
@@ -17,13 +25,6 @@ from context.table_maintenance.application.port.outbound.table import (
 from context.table_maintenance.application.service.table import (
     table_observation_from_gateway,
 )
-from pyiceberg.catalog import Catalog
-from pyiceberg.catalog.sql import SqlCatalog
-from pyiceberg.exceptions import ServerError
-from pyiceberg.partitioning import PartitionField, PartitionSpec
-from pyiceberg.schema import Schema
-from pyiceberg.transforms import BucketTransform, DayTransform, IdentityTransform
-from pyiceberg.types import LongType, NestedField, StringType, TimestampType
 
 if TYPE_CHECKING:
     from pathlib import Path

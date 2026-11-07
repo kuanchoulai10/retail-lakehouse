@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from abc import abstractmethod
 
+from base import Repository
 from context.table_maintenance.application.domain.model.table_discovery_settings import (
     TableDiscoverySettings,
 )
-from base import Repository
 
 
 class TableDiscoverySettingsRepo(Repository[TableDiscoverySettings]):

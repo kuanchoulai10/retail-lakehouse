@@ -6,14 +6,14 @@ import time
 
 import pytest
 
-from context.table_maintenance.adapter.hybrid.temporal.outbound.table_maintenance_run import (
-    SendMaintenanceResultTemporalGateway,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
     TABLE_MAINTENANCE_WORKFLOW,
+)
+from context.table_maintenance.adapter.hybrid.temporal.outbound.table_maintenance_run import (
+    SendMaintenanceResultTemporalGateway,
 )
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (

@@ -4,23 +4,24 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.adapter.inbound.web.table_discovery_settings import (
-    router as discovery_router,
+from fastapi import FastAPI
+
+from context.table_maintenance.adapter.inbound.web.error_handlers import (
+    register_error_handlers,
 )
+from context.table_maintenance.adapter.inbound.web.table import router as table_router
 from context.table_maintenance.adapter.inbound.web.table_discovery_rule import (
     router as table_discovery_rule_router,
 )
-from context.table_maintenance.adapter.inbound.web.error_handlers import (
-    register_error_handlers,
+from context.table_maintenance.adapter.inbound.web.table_discovery_settings import (
+    router as discovery_router,
+)
+from context.table_maintenance.adapter.inbound.web.table_maintenance_preset import (
+    router as table_maintenance_preset_router,
 )
 from context.table_maintenance.adapter.inbound.web.table_maintenance_run import (
     router as table_maintenance_run_router,
 )
-from context.table_maintenance.adapter.inbound.web.table import router as table_router
-from context.table_maintenance.adapter.inbound.web.table_maintenance_preset import (
-    router as table_maintenance_preset_router,
-)
-from fastapi import FastAPI
 
 if TYPE_CHECKING:
     from context.table_maintenance.adapter.inbound.web.shared import WebUseCases

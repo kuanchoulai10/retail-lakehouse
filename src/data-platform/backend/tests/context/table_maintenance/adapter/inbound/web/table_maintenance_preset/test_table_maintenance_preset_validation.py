@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+
 from context.table_maintenance.application.service.table_maintenance_preset import (
     CreateTableMaintenancePresetService,
 )

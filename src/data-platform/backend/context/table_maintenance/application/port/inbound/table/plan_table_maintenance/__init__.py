@@ -5,11 +5,7 @@ from context.table_maintenance.application.port.inbound.table.plan_table_mainten
 )
 from context.table_maintenance.application.port.inbound.table.plan_table_maintenance.output import (
     PlanTableMaintenanceUseCaseOutput,
-)
-from context.table_maintenance.application.port.inbound.table.plan_table_maintenance.output import (
     PlanTableMaintenanceUseCaseOutputFilterItem,
-)
-from context.table_maintenance.application.port.inbound.table.plan_table_maintenance.output import (
     PlanTableMaintenanceUseCaseOutputItem,
 )
 from context.table_maintenance.application.port.inbound.table.plan_table_maintenance.use_case import (

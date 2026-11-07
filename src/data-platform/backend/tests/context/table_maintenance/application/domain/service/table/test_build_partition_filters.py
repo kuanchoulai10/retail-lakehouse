@@ -3,10 +3,10 @@ from __future__ import annotations
 import pytest
 
 from context.table_maintenance.application.domain.model.shared import (
-    SpecFilter,
     PartitionFieldInfo,
     PartitionSpecInfo,
     PartitionStats,
+    SpecFilter,
 )
 from context.table_maintenance.application.domain.service.table import (
     build_partition_filters,

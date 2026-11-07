@@ -28,8 +28,6 @@ from pathlib import Path
 
 import pytest
 
-from tests.architecture.contexts import context_dir, context_names
-
 from base import (
     AggregateRoot,
     DomainEvent,
@@ -43,6 +41,7 @@ from base import (
     UseCase,
     ValueObject,
 )
+from tests.architecture.contexts import context_dir, context_names
 
 BACKEND = Path(__file__).resolve().parents[2]
 SOURCE_PACKAGES = ("base", "context", "bootstrap")

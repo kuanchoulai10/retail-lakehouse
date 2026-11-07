@@ -5,11 +5,11 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.domain.model.table_maintenance_run import (
-    InvalidRunTransition,
-)
 from context.table_maintenance.application.domain.model.table import (
     InvalidTableTransition,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_run import (
+    InvalidRunTransition,
 )
 from context.table_maintenance.application.exceptions import (
     ConflictError,

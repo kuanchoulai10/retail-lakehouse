@@ -5,10 +5,10 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from context.table_maintenance.application.domain.model.table_discovery_rule import (
-    TableDiscoveryRule,
-    TableDiscoveryRuleId,
     InvalidTableDiscoveryRule,
     RuleEffect,
+    TableDiscoveryRule,
+    TableDiscoveryRuleId,
     TablePattern,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_preset import (

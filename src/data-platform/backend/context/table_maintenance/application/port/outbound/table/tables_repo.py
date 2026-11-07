@@ -5,8 +5,8 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.domain.model.table import Table
 from base import Repository
+from context.table_maintenance.application.domain.model.table import Table
 
 if TYPE_CHECKING:
     from collections.abc import Sequence

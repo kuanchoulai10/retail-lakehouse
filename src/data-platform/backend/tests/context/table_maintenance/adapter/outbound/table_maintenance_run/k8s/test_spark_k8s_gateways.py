@@ -4,6 +4,8 @@ import json
 from unittest.mock import MagicMock
 
 import pytest
+from kubernetes.client.exceptions import ApiException
+
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import (
     DeleteMaintenanceJobK8sGateway,
     ReadMaintenanceJobK8sGateway,
@@ -20,7 +22,6 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
     ReadMaintenanceJobGatewayInput,
     SubmitMaintenanceJobGatewayInput,
 )
-from kubernetes.client.exceptions import ApiException
 
 CONFIG = SparkK8sConfig(
     image="table-maintenance-spark:dev",

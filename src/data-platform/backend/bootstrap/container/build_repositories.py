@@ -4,20 +4,20 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from bootstrap.container.repositories import Repositories
+from context.table_maintenance.adapter.outbound.table.sql import TablesSqlRepo
+from context.table_maintenance.adapter.outbound.table_discovery_rule.sql import (
+    TableDiscoveryRulesSqlRepo,
+)
 from context.table_maintenance.adapter.outbound.table_discovery_settings.sql import (
     TableDiscoverySettingsSqlRepo,
 )
-from context.table_maintenance.adapter.outbound.table_discovery_rule.sql import (
-    TableDiscoveryRulesSqlRepo,
+from context.table_maintenance.adapter.outbound.table_maintenance_preset.sql import (
+    TableMaintenancePresetsSqlRepo,
 )
 from context.table_maintenance.adapter.outbound.table_maintenance_run.sql import (
     TableMaintenanceRunsSqlRepo,
 )
-from context.table_maintenance.adapter.outbound.table.sql import TablesSqlRepo
-from context.table_maintenance.adapter.outbound.table_maintenance_preset.sql import (
-    TableMaintenancePresetsSqlRepo,
-)
-from bootstrap.container.repositories import Repositories
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine

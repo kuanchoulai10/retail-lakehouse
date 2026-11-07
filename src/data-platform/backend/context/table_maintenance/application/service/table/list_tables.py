@@ -11,10 +11,10 @@ from context.table_maintenance.application.port.inbound.table import (
     ListTablesUseCaseOutput,
     ListTablesUseCaseOutputItem,
 )
+from context.table_maintenance.application.service.shared import translate_domain_errors
 from context.table_maintenance.application.service.table.table_output_fields import (
     table_output_fields,
 )
-from context.table_maintenance.application.service.shared import translate_domain_errors
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table import TablesRepo

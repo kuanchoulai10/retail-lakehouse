@@ -30,8 +30,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from context.table_maintenance.application.port.outbound.table import (
-        TablesRepo,
         SendTableChangeGateway,
+        TablesRepo,
     )
 
 

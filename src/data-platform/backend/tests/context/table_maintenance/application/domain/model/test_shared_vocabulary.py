@@ -7,7 +7,7 @@ import pytest
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
 )
-from context.table_maintenance.application.domain.model.table import TableName, TableId
+from context.table_maintenance.application.domain.model.table import TableId, TableName
 
 
 def test_maintenance_operation_ordered_follows_spec_order():

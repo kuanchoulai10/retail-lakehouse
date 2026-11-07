@@ -5,14 +5,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from context.table_maintenance.application.domain.model.table_discovery_rule.table_discovery_rule_id import (
-    TableDiscoveryRuleId,
-)
+from base import AggregateRoot
 from context.table_maintenance.application.domain.model.table_discovery_rule.invalid_table_discovery_rule import (
     InvalidTableDiscoveryRule,
 )
 from context.table_maintenance.application.domain.model.table_discovery_rule.rule_effect import (
     RuleEffect,
+)
+from context.table_maintenance.application.domain.model.table_discovery_rule.table_discovery_rule_id import (
+    TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.domain.model.table_discovery_rule.table_pattern import (
     TablePattern,
@@ -20,7 +21,6 @@ from context.table_maintenance.application.domain.model.table_discovery_rule.tab
 from context.table_maintenance.application.domain.model.table_maintenance_preset import (
     TableMaintenancePresetId,
 )
-from base import AggregateRoot
 
 
 def _validate(effect: RuleEffect, preset_id: TableMaintenancePresetId | None) -> None:

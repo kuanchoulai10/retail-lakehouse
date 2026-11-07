@@ -5,10 +5,10 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import TYPE_CHECKING
 
+from base import EntityId, Repository
 from context.table_maintenance.application.domain.model.table_discovery_rule import (
     TableDiscoveryRule,
 )
-from base import EntityId, Repository
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.table_maintenance_preset import (

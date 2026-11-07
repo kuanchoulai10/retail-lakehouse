@@ -7,19 +7,17 @@ from context.table_maintenance.application.domain.model.shared import (
 )
 from context.table_maintenance.application.domain.model.table import (
     OperationState,
+    Table,
+    TableId,
+    TableName,
     TableSelection,
+    TableStatus,
 )
 from context.table_maintenance.application.domain.model.table_discovery_rule import (
     TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_preset import (
     TableMaintenancePresetId,
-)
-from context.table_maintenance.application.domain.model.table import (
-    Table,
-    TableId,
-    TableName,
-    TableStatus,
 )
 from context.table_maintenance.application.port.outbound.table.read_table_metadata.gateway import (
     ReadTableMetadataGateway,
@@ -33,9 +31,6 @@ from context.table_maintenance.application.port.outbound.table.read_table_metada
 from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_description import (
     TableDescription,
 )
-from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_storage_measure import (
-    TableStorageMeasure,
-)
 from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_metadata import (
     TableMetadata,
 )
@@ -44,6 +39,9 @@ from context.table_maintenance.application.port.outbound.table.read_table_metada
 )
 from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_metadata_ref import (
     TableMetadataRef,
+)
+from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_storage_measure import (
+    TableStorageMeasure,
 )
 from context.table_maintenance.application.port.outbound.table.send_discovery_request.gateway import (
     SendDiscoveryRequestGateway,

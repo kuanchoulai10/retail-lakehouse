@@ -5,14 +5,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import timedelta
 
-from context.table_maintenance.application.domain.model.shared.maintenance_operation import (
-    MaintenanceOperation,
-)
+from base import ValueObject
 from context.table_maintenance.application.domain.model.shared.expire_snapshots_settings import (
     ExpireSnapshotsSettings,
 )
 from context.table_maintenance.application.domain.model.shared.invalid_maintenance_settings import (
     InvalidMaintenanceSettings,
+)
+from context.table_maintenance.application.domain.model.shared.maintenance_operation import (
+    MaintenanceOperation,
 )
 from context.table_maintenance.application.domain.model.shared.remove_orphan_files_settings import (
     RemoveOrphanFilesSettings,
@@ -23,7 +24,6 @@ from context.table_maintenance.application.domain.model.shared.rewrite_data_file
 from context.table_maintenance.application.domain.model.shared.rewrite_manifests_settings import (
     RewriteManifestsSettings,
 )
-from base import ValueObject
 
 type OperationSettings = (
     RewriteDataFilesSettings | RewriteManifestsSettings | ExpireSnapshotsSettings | RemoveOrphanFilesSettings

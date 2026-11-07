@@ -21,7 +21,6 @@ import pytest
 
 from tests.architecture.contexts import CONTEXT_ROOT, context_dir, context_names
 
-
 _ALLOWED_SUFFIXES = ("ApiRequest", "ApiResponse")
 
 

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from pyiceberg.exceptions import NoSuchNamespaceError, NoSuchTableError
+
 from context.table_maintenance.adapter.outbound.table.pyiceberg.commit_page_mapper import (
     commit_page_from_table,
 )
@@ -21,12 +23,11 @@ from context.table_maintenance.application.port.outbound.table import (
     ReadTableMetadataGatewayListInput,
     TableCommitPage,
     TableDescription,
-    TableMetadataObservation,
     TableMetadata,
+    TableMetadataObservation,
     TableMetadataRef,
     TableStorageMeasure,
 )
-from pyiceberg.exceptions import NoSuchNamespaceError, NoSuchTableError
 
 if TYPE_CHECKING:
     from collections.abc import Callable

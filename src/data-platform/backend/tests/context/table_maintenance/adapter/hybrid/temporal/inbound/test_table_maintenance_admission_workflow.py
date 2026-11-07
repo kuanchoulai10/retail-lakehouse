@@ -11,16 +11,16 @@ from temporalio.common import WorkflowIDConflictPolicy
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import UnsandboxedWorkflowRunner, Worker
 
-from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
-    TableMaintenanceAdmissionWorkflow,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission import (
-    AdmissionAcquireSignal,
-    AdmissionReleaseSignal,
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
+    AdmissionAcquireSignal,
+    AdmissionReleaseSignal,
     TableMaintenanceAdmissionSignal,
     TableMaintenanceAdmissionWorkflowInput,
+)
+from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
+    TableMaintenanceAdmissionWorkflow,
 )
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.eventually import (
     eventually,

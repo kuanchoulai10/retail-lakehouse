@@ -5,13 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.service.table_discovery_settings import (
-    GetTableDiscoverySettingsService,
-    UpdateTableDiscoverySettingsService,
-)
+from bootstrap.container.use_cases import UseCases
 from context.table_maintenance.application.service.table import (
-    ProcessTableHintService,
-    SyncDiscoveredTablesService,
     ExcludeTableService,
     GetTableHealthService,
     GetTableMetadataService,
@@ -21,11 +16,13 @@ from context.table_maintenance.application.service.table import (
     ListTableCommitsService,
     ListTablesService,
     PauseTableService,
+    PlanTableMaintenanceService,
+    ProcessTableHintService,
     ResetTableSelectionService,
     ResumeTableService,
+    SyncDiscoveredTablesService,
     TriggerTableMaintenanceService,
     UpdateTableSettingsService,
-    PlanTableMaintenanceService,
 )
 from context.table_maintenance.application.service.table_discovery_rule import (
     CreateTableDiscoveryRuleService,
@@ -33,15 +30,9 @@ from context.table_maintenance.application.service.table_discovery_rule import (
     ListTableDiscoveryRulesService,
     UpdateTableDiscoveryRuleService,
 )
-from context.table_maintenance.application.service.table_maintenance_run import (
-    CreateTableMaintenanceRunService,
-    GetTableMaintenanceRunService,
-    ListTableMaintenanceRunsService,
-    ProcessTableMaintenanceCallbackService,
-    RecordTableMaintenanceOperationResultService,
-    DeleteMaintenanceJobService,
-    GetMaintenanceJobStatusService,
-    SubmitMaintenanceOperationService,
+from context.table_maintenance.application.service.table_discovery_settings import (
+    GetTableDiscoverySettingsService,
+    UpdateTableDiscoverySettingsService,
 )
 from context.table_maintenance.application.service.table_maintenance_preset import (
     CreateTableMaintenancePresetService,
@@ -50,7 +41,16 @@ from context.table_maintenance.application.service.table_maintenance_preset impo
     ListTableMaintenancePresetsService,
     UpdateTableMaintenancePresetService,
 )
-from bootstrap.container.use_cases import UseCases
+from context.table_maintenance.application.service.table_maintenance_run import (
+    CreateTableMaintenanceRunService,
+    DeleteMaintenanceJobService,
+    GetMaintenanceJobStatusService,
+    GetTableMaintenanceRunService,
+    ListTableMaintenanceRunsService,
+    ProcessTableMaintenanceCallbackService,
+    RecordTableMaintenanceOperationResultService,
+    SubmitMaintenanceOperationService,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable

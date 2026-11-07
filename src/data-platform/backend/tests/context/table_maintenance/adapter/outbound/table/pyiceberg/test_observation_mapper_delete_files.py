@@ -3,9 +3,6 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, cast
 
-from context.table_maintenance.adapter.outbound.table.pyiceberg import (
-    observation_from_table,
-)
 from pyiceberg.manifest import (
     DataFile,
     DataFileContent,
@@ -13,6 +10,10 @@ from pyiceberg.manifest import (
     ManifestEntryStatus,
 )
 from pyiceberg.typedef import Record
+
+from context.table_maintenance.adapter.outbound.table.pyiceberg import (
+    observation_from_table,
+)
 
 if TYPE_CHECKING:
     from pyiceberg.table import Table

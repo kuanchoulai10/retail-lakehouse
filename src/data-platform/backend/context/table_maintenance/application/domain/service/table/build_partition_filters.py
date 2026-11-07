@@ -9,10 +9,10 @@ from collections.abc import Sequence
 from datetime import UTC, date, datetime, timedelta
 
 from context.table_maintenance.application.domain.model.shared import (
-    SpecFilter,
     PartitionFieldInfo,
     PartitionSpecInfo,
     PartitionStats,
+    SpecFilter,
 )
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=UTC)

@@ -11,15 +11,15 @@ from temporalio.common import RetryPolicy
 from temporalio.exceptions import ActivityError, FailureError, is_cancelled_exception
 
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
-    OperationResultSignal,
     TABLE_MAINTENANCE_WORKFLOW,
+    OperationResultSignal,
     TableMaintenanceActivity,
     TableMaintenanceSignal,
     TableMaintenanceWorkflowInput,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission import (
-    AdmissionReleaseSignal,
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
+    AdmissionReleaseSignal,
     TableMaintenanceAdmissionSignal,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (

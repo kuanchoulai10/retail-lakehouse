@@ -6,14 +6,13 @@ from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime
 
+from base import AggregateRoot
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
 )
+from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_run.invalid_run_transition import (
     InvalidRunTransition,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_run.table_maintenance_run_id import (
-    TableMaintenanceRunId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run.operation_run import (
     OperationRun,
@@ -24,11 +23,12 @@ from context.table_maintenance.application.domain.model.table_maintenance_run.op
 from context.table_maintenance.application.domain.model.table_maintenance_run.run_status import (
     RunStatus,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_run.table_maintenance_run_id import (
+    TableMaintenanceRunId,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_run.trigger_type import (
     TriggerType,
 )
-from context.table_maintenance.application.domain.model.table import TableId
-from base import AggregateRoot
 
 _TERMINAL = frozenset(
     {

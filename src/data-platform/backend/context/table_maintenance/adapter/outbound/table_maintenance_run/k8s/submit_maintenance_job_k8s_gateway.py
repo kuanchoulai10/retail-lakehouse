@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from kubernetes.client.exceptions import ApiException
+
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.spark_application_manifest import (
     GROUP,
     PLURAL,
@@ -17,16 +19,16 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
     SubmitMaintenanceJobGateway,
     SubmitMaintenanceJobGatewayOutput,
 )
-from kubernetes.client.exceptions import ApiException
 
 if TYPE_CHECKING:
+    from kubernetes.client import CustomObjectsApi
+
     from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.spark_k8s_config import (
         SparkK8sConfig,
     )
     from context.table_maintenance.application.port.outbound.table_maintenance_run import (
         SubmitMaintenanceJobGatewayInput,
     )
-    from kubernetes.client import CustomObjectsApi
 
 HTTP_CONFLICT = 409
 

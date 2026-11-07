@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.table import (
     TableChange,
+    TableId,
     TableName,
     TableStatus,
-    TableId,
 )
 from context.table_maintenance.application.port.inbound.table import (
     ProcessTableHintUseCase,
@@ -17,10 +17,11 @@ from context.table_maintenance.application.port.inbound.table import (
     ProcessTableHintUseCaseOutput,
 )
 from context.table_maintenance.application.port.outbound.table import (
-    TableMetadataRef,
     SendDiscoveryRequestGatewayInput,
     SendTableChangeGatewayInput,
+    TableMetadataRef,
 )
+from context.table_maintenance.application.service.shared import translate_domain_errors
 from context.table_maintenance.application.service.table.register_discovered_table import (
     register_discovered_table,
 )
@@ -30,23 +31,22 @@ from context.table_maintenance.application.service.table.registration_outcome im
 from context.table_maintenance.application.service.table.table_hint_action import (
     TableHintAction,
 )
-from context.table_maintenance.application.service.shared import translate_domain_errors
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from context.table_maintenance.application.port.outbound.table import (
         ReadTableMetadataGateway,
-        TableMetadata,
-        TablesRepo,
         SendDiscoveryRequestGateway,
         SendTableChangeGateway,
-    )
-    from context.table_maintenance.application.port.outbound.table_discovery_settings import (
-        TableDiscoverySettingsRepo,
+        TableMetadata,
+        TablesRepo,
     )
     from context.table_maintenance.application.port.outbound.table_discovery_rule import (
         TableDiscoveryRulesRepo,
+    )
+    from context.table_maintenance.application.port.outbound.table_discovery_settings import (
+        TableDiscoverySettingsRepo,
     )
     from context.table_maintenance.application.port.outbound.table_maintenance_preset import (
         TableMaintenancePresetsRepo,

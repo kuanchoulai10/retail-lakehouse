@@ -1,6 +1,7 @@
 """Tests for UseCase base type."""
 
 import pytest
+
 from base import UseCase
 
 

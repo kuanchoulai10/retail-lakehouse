@@ -10,10 +10,10 @@ from context.table_maintenance.application.port.outbound.table_maintenance_prese
 )
 
 if TYPE_CHECKING:
+    from base import EntityId
     from context.table_maintenance.application.domain.model.table_maintenance_preset import (
         TableMaintenancePreset,
     )
-    from base import EntityId
 
 
 class InMemoryTableMaintenancePresetsRepo(TableMaintenancePresetsRepo):

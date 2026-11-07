@@ -4,14 +4,16 @@ from __future__ import annotations
 
 from typing import Annotated
 
+from fastapi import APIRouter, Depends, Response, status
+
+from context.table_maintenance.adapter.inbound.web.shared import (
+    WebUseCases,
+    use_cases_dependency,
+)
 from context.table_maintenance.adapter.inbound.web.table_maintenance_preset.dto import (
     CreateTableMaintenancePresetApiRequest,
     TableMaintenancePresetApiResponse,
     UpdateTableMaintenancePresetApiRequest,
-)
-from context.table_maintenance.adapter.inbound.web.shared import (
-    WebUseCases,
-    use_cases_dependency,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_preset import (
     CreateTableMaintenancePresetUseCaseInput,
@@ -20,7 +22,6 @@ from context.table_maintenance.application.port.inbound.table_maintenance_preset
     ListTableMaintenancePresetsUseCaseInput,
     UpdateTableMaintenancePresetUseCaseInput,
 )
-from fastapi import APIRouter, Depends, Response, status
 
 router = APIRouter(prefix="/table-maintenance-presets", tags=["table-maintenance-presets"])
 

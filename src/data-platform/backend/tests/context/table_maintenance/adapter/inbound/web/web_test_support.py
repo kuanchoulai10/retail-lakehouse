@@ -6,9 +6,10 @@ from dataclasses import fields
 from datetime import UTC, datetime
 from typing import Any
 
+from fastapi.testclient import TestClient
+
 from context.table_maintenance.adapter.inbound.web import create_app
 from context.table_maintenance.adapter.inbound.web.shared import WebUseCases
-from fastapi.testclient import TestClient
 
 NOW = datetime(2026, 10, 24, 12, 0, tzinfo=UTC)
 

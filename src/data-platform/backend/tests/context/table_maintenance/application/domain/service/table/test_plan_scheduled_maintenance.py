@@ -3,29 +3,31 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
-from context.table_maintenance.application.domain.model.table_discovery_rule import (
-    TableDiscoveryRuleId,
-)
 from context.table_maintenance.application.domain.model.shared import (
-    MaintenanceOperation as Op,
     CompactionScope,
     ExpireSnapshotsSettings,
     MaintenanceSettings,
-    RemoveOrphanFilesSettings,
-    RewriteDataFilesSettings,
-    RewriteManifestsSettings,
     ManifestStats,
     PartitionFieldInfo,
     PartitionSpecInfo,
     PartitionStats,
+    RemoveOrphanFilesSettings,
+    RewriteDataFilesSettings,
+    RewriteManifestsSettings,
     SnapshotInfo,
     TableObservation,
 )
+from context.table_maintenance.application.domain.model.shared import (
+    MaintenanceOperation as Op,
+)
 from context.table_maintenance.application.domain.model.table import (
-    Table,
     OperationState,
-    TableName,
+    Table,
     TableId,
+    TableName,
+)
+from context.table_maintenance.application.domain.model.table_discovery_rule import (
+    TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_preset import (
     TableMaintenancePresetId,

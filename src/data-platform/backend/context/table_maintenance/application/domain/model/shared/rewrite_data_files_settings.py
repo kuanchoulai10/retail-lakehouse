@@ -5,13 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import timedelta
 
+from base import ValueObject
 from context.table_maintenance.application.domain.model.shared.compaction_scope import (
     CompactionScope,
 )
 from context.table_maintenance.application.domain.model.shared.invalid_maintenance_settings import (
     InvalidMaintenanceSettings,
 )
-from base import ValueObject
 
 
 @dataclass(frozen=True)

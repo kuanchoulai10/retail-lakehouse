@@ -7,5 +7,4 @@ what every workflow uses.
 
 from __future__ import annotations
 
-
 __all__ = []

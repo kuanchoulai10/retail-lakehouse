@@ -21,10 +21,10 @@ from context.table_maintenance.application.port.outbound.table_maintenance_prese
 if TYPE_CHECKING:
     from sqlalchemy import Engine
 
+    from base import EntityId
     from context.table_maintenance.application.port.outbound.table_maintenance_preset import (
         TableMaintenancePreset,
     )
-    from base import EntityId
 
 
 class TableMaintenancePresetsSqlRepo(TableMaintenancePresetsRepo):

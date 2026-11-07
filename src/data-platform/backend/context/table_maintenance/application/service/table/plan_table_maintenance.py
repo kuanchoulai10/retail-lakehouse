@@ -11,8 +11,8 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenanceSettings,
 )
 from context.table_maintenance.application.domain.model.table import (
-    TableStatus,
     TableId,
+    TableStatus,
 )
 from context.table_maintenance.application.domain.service.table import (
     build_partition_filters,
@@ -28,13 +28,13 @@ from context.table_maintenance.application.port.inbound.table import (
     PlanTableMaintenanceUseCaseOutputItem,
 )
 from context.table_maintenance.application.port.outbound.table import TableMetadataRef
+from context.table_maintenance.application.service.shared import translate_domain_errors
 from context.table_maintenance.application.service.table.table_observation_from_gateway import (
     table_observation_from_gateway,
 )
 from context.table_maintenance.application.service.table_maintenance_run import (
     maintenance_procedure_args,
 )
-from context.table_maintenance.application.service.shared import translate_domain_errors
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.shared import (

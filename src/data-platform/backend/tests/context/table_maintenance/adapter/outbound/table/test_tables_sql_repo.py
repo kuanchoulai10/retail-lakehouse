@@ -6,25 +6,25 @@ import pytest
 from sqlalchemy import Engine
 
 from context.table_maintenance.adapter.outbound.table.sql import TablesSqlRepo
-from context.table_maintenance.application.domain.model.table_discovery_rule import (
-    TableDiscoveryRuleId,
-)
-from context.table_maintenance.application.exceptions import ConflictError
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     MaintenanceSettings,
 )
 from context.table_maintenance.application.domain.model.table import (
-    Table,
     OperationState,
+    Table,
+    TableId,
     TableName,
     TableSelection,
     TableStatus,
-    TableId,
+)
+from context.table_maintenance.application.domain.model.table_discovery_rule import (
+    TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_preset import (
     TableMaintenancePresetId,
 )
+from context.table_maintenance.application.exceptions import ConflictError
 
 NOW = datetime(2026, 10, 24, 12, 0, tzinfo=UTC)
 

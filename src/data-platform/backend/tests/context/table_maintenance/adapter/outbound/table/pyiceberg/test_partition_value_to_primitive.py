@@ -5,6 +5,7 @@ from decimal import Decimal
 from uuid import UUID
 
 import pytest
+
 from context.table_maintenance.adapter.outbound.table.pyiceberg import (
     partition_value_to_primitive,
 )

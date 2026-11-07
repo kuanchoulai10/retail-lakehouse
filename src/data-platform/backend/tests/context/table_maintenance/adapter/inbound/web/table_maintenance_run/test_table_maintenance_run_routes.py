@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     GetTableMaintenanceRunUseCaseInput,
     GetTableMaintenanceRunUseCaseOutput,

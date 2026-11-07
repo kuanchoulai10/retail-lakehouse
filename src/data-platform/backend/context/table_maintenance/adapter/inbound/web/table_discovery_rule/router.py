@@ -4,14 +4,16 @@ from __future__ import annotations
 
 from typing import Annotated
 
+from fastapi import APIRouter, Depends, Response, status
+
+from context.table_maintenance.adapter.inbound.web.shared import (
+    WebUseCases,
+    use_cases_dependency,
+)
 from context.table_maintenance.adapter.inbound.web.table_discovery_rule.dto import (
     CreateTableDiscoveryRuleApiRequest,
     TableDiscoveryRuleApiResponse,
     UpdateTableDiscoveryRuleApiRequest,
-)
-from context.table_maintenance.adapter.inbound.web.shared import (
-    WebUseCases,
-    use_cases_dependency,
 )
 from context.table_maintenance.application.port.inbound.table_discovery_rule import (
     CreateTableDiscoveryRuleUseCaseInput,
@@ -19,7 +21,6 @@ from context.table_maintenance.application.port.inbound.table_discovery_rule imp
     ListTableDiscoveryRulesUseCaseInput,
     UpdateTableDiscoveryRuleUseCaseInput,
 )
-from fastapi import APIRouter, Depends, Response, status
 
 router = APIRouter(prefix="/table-discovery-rules", tags=["table-discovery-rules"])
 

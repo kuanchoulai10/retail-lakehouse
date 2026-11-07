@@ -25,8 +25,8 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table_maintenance_run import (
-        TableMaintenanceRunsRepo,
         SendMaintenanceResultGateway,
+        TableMaintenanceRunsRepo,
     )
 
 

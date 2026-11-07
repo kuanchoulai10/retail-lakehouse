@@ -4,24 +4,25 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from context.table_maintenance.adapter.inbound.web.table_discovery_settings.dto import (
-    TableDiscoverySettingsApiResponse,
-    ScanDiscoveryApiRequest,
-    ScanDiscoveryApiResponse,
-    UpdateTableDiscoverySettingsApiRequest,
-)
+from fastapi import APIRouter, Depends, status
+
 from context.table_maintenance.adapter.inbound.web.shared import (
     WebUseCases,
     use_cases_dependency,
+)
+from context.table_maintenance.adapter.inbound.web.table_discovery_settings.dto import (
+    ScanDiscoveryApiRequest,
+    ScanDiscoveryApiResponse,
+    TableDiscoverySettingsApiResponse,
+    UpdateTableDiscoverySettingsApiRequest,
+)
+from context.table_maintenance.application.port.inbound.table import (
+    SyncDiscoveredTablesUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_discovery_settings import (
     GetTableDiscoverySettingsUseCaseInput,
     UpdateTableDiscoverySettingsUseCaseInput,
 )
-from context.table_maintenance.application.port.inbound.table import (
-    SyncDiscoveredTablesUseCaseInput,
-)
-from fastapi import APIRouter, Depends, status
 
 router = APIRouter(prefix="/table-discovery-settings", tags=["table-discovery-settings"])
 

@@ -11,9 +11,6 @@ from temporalio.common import RetryPolicy
 from temporalio.exceptions import ActivityError, FailureError, is_cancelled_exception
 from temporalio.workflow import ParentClosePolicy
 
-from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_maintenance_attempt_policy import (
-    TableMaintenanceAttemptPolicy,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
 )
@@ -28,6 +25,9 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
     TableReconciliationActivity,
     TableReconciliationSignal,
     TableReconciliationWorkflowInput,
+)
+from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_maintenance_attempt_policy import (
+    TableMaintenanceAttemptPolicy,
 )
 
 _ACTIVITY_TIMEOUT = timedelta(minutes=2)

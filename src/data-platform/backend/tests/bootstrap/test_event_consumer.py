@@ -8,15 +8,15 @@ from typing import Any, cast
 
 import pytest
 
+from bootstrap.container import build_repositories, build_use_cases
+from bootstrap.event_consumer import run_event_consumer_process
+from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
+    AsyncLoopBridge,
+)
 from context.table_maintenance.adapter.inbound.event_consumer import (
     EventRecord,
     EventSource,
 )
-from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
-    AsyncLoopBridge,
-)
-from bootstrap.container import build_repositories, build_use_cases
-from bootstrap.event_consumer import run_event_consumer_process
 from tests.bootstrap.container.container_support import (
     NOW,
     fake_gateways,

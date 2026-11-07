@@ -11,9 +11,9 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
     TableMaintenanceSignal,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission import (
+    TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
     AdmissionAcquireSignal,
     AdmissionReleaseSignal,
-    TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
     TableMaintenanceAdmissionSignal,
     TableMaintenanceAdmissionWorkflowInput,
 )

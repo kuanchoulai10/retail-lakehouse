@@ -8,7 +8,6 @@ from pydantic import SecretStr
 from sqlalchemy import inspect
 from sqlalchemy.pool import QueuePool
 
-from context.table_maintenance.adapter.outbound.shared.sql import create_schema
 from bootstrap.configs import (
     AppSettings,
     DatabaseBackend,
@@ -16,6 +15,7 @@ from bootstrap.configs import (
     SqliteSettings,
 )
 from bootstrap.container import build_engine
+from context.table_maintenance.adapter.outbound.shared.sql import create_schema
 
 
 def test_postgres_engine_enables_pool_pre_ping_without_connecting():

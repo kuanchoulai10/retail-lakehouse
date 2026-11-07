@@ -4,9 +4,9 @@ from dataclasses import fields
 
 from fastapi.testclient import TestClient
 
+from bootstrap.container import build_repositories, build_use_cases, build_web_use_cases
 from context.table_maintenance.adapter.inbound.web import create_app
 from context.table_maintenance.adapter.inbound.web.shared import WebUseCases
-from bootstrap.container import build_repositories, build_use_cases, build_web_use_cases
 from tests.bootstrap.container.container_support import (
     NOW,
     fake_gateways,

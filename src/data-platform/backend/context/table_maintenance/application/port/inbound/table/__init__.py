@@ -30,15 +30,6 @@ from context.table_maintenance.application.port.inbound.table.get_table_health.o
 from context.table_maintenance.application.port.inbound.table.get_table_health.use_case import (
     GetTableHealthUseCase,
 )
-from context.table_maintenance.application.port.inbound.table.get_table_storage.input import (
-    GetTableStorageUseCaseInput,
-)
-from context.table_maintenance.application.port.inbound.table.get_table_storage.output import (
-    GetTableStorageUseCaseOutput,
-)
-from context.table_maintenance.application.port.inbound.table.get_table_storage.use_case import (
-    GetTableStorageUseCase,
-)
 from context.table_maintenance.application.port.inbound.table.get_table_metadata.input import (
     GetTableMetadataUseCaseInput,
 )
@@ -48,8 +39,23 @@ from context.table_maintenance.application.port.inbound.table.get_table_metadata
 from context.table_maintenance.application.port.inbound.table.get_table_metadata.use_case import (
     GetTableMetadataUseCase,
 )
+from context.table_maintenance.application.port.inbound.table.get_table_storage.input import (
+    GetTableStorageUseCaseInput,
+)
+from context.table_maintenance.application.port.inbound.table.get_table_storage.output import (
+    GetTableStorageUseCaseOutput,
+)
+from context.table_maintenance.application.port.inbound.table.get_table_storage.use_case import (
+    GetTableStorageUseCase,
+)
 from context.table_maintenance.application.port.inbound.table.include_table.input import (
     IncludeTableUseCaseInput,
+)
+from context.table_maintenance.application.port.inbound.table.include_table.output import (
+    IncludeTableUseCaseOutput,
+)
+from context.table_maintenance.application.port.inbound.table.include_table.use_case import (
+    IncludeTableUseCase,
 )
 from context.table_maintenance.application.port.inbound.table.list_table_commits.input import (
     ListTableCommitsUseCaseInput,
@@ -60,12 +66,6 @@ from context.table_maintenance.application.port.inbound.table.list_table_commits
 )
 from context.table_maintenance.application.port.inbound.table.list_table_commits.use_case import (
     ListTableCommitsUseCase,
-)
-from context.table_maintenance.application.port.inbound.table.include_table.output import (
-    IncludeTableUseCaseOutput,
-)
-from context.table_maintenance.application.port.inbound.table.include_table.use_case import (
-    IncludeTableUseCase,
 )
 from context.table_maintenance.application.port.inbound.table.list_tables.input import (
     ListTablesUseCaseInput,

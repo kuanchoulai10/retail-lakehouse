@@ -6,25 +6,25 @@ from datetime import timedelta
 
 import pytest
 
-from context.table_maintenance.application.domain.model.table_discovery_rule import (
-    TableDiscoveryRuleId,
-)
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     MaintenanceSettings,
+)
+from context.table_maintenance.application.domain.model.table import (
+    Table,
+    TableId,
+    TableName,
+)
+from context.table_maintenance.application.domain.model.table_discovery_rule import (
+    TableDiscoveryRuleId,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_preset import (
+    TableMaintenancePresetId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRun,
     TableMaintenanceRunId,
     TriggerType,
-)
-from context.table_maintenance.application.domain.model.table import (
-    Table,
-    TableName,
-    TableId,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-    TableMaintenancePresetId,
 )
 from context.table_maintenance.application.exceptions import (
     ConflictError,

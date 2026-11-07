@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from context.table_maintenance.application.domain.model.table import TableName
 from context.table_maintenance.application.domain.model.table_discovery_rule import (
     TablePattern,
 )
-from context.table_maintenance.application.domain.model.table import TableName
 
 
 def test_defaults_match_all():

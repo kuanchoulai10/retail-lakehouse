@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from context.table_maintenance.application.domain.model.table_discovery_settings import (
     GLOBAL_ID,
-)
-from context.table_maintenance.application.domain.model.table_discovery_settings import (
     TableDiscoverySettings,
     TableDiscoverySettingsId,
 )

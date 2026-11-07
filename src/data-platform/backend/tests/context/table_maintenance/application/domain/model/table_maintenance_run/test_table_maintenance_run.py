@@ -9,15 +9,15 @@ import pytest
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation as Op,
 )
+from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     InvalidRunTransition,
-    TableMaintenanceRun,
-    TableMaintenanceRunId,
     OperationRunStatus,
     RunStatus,
+    TableMaintenanceRun,
+    TableMaintenanceRunId,
     TriggerType,
 )
-from context.table_maintenance.application.domain.model.table import TableId
 
 T0 = datetime(2026, 10, 24, tzinfo=UTC)
 

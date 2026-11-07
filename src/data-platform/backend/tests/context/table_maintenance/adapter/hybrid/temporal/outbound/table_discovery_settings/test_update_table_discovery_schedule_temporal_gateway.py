@@ -13,15 +13,15 @@ from temporalio.client import (
     ScheduleState,
 )
 
-from context.table_maintenance.adapter.hybrid.temporal.outbound.table_discovery_settings import (
-    UpdateTableDiscoveryScheduleTemporalGateway,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery import (
     TABLE_DISCOVERY_WORKFLOW,
     table_discovery_schedule_id,
+)
+from context.table_maintenance.adapter.hybrid.temporal.outbound.table_discovery_settings import (
+    UpdateTableDiscoveryScheduleTemporalGateway,
 )
 from context.table_maintenance.application.port.outbound.table_discovery_settings import (
     UpdateTableDiscoveryScheduleGatewayInput,

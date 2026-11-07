@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.table import (
     Table,
-    TableName,
-    TableId,
     TableChange,
+    TableId,
+    TableName,
 )
 from context.table_maintenance.application.domain.model.table_discovery_rule import (
     RuleEffect,
@@ -31,9 +31,9 @@ if TYPE_CHECKING:
         TableDiscoveryRule,
     )
     from context.table_maintenance.application.port.outbound.table import (
+        SendTableChangeGateway,
         TableMetadata,
         TablesRepo,
-        SendTableChangeGateway,
     )
     from context.table_maintenance.application.port.outbound.table_maintenance_preset import (
         TableMaintenancePresetsRepo,

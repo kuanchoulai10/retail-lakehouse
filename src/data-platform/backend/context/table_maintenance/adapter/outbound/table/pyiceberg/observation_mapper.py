@@ -6,13 +6,14 @@ from collections import Counter
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
+from pyiceberg.manifest import DataFileContent
+
 from context.table_maintenance.adapter.outbound.table.pyiceberg.partition_value_to_primitive import (
     partition_value_to_primitive,
 )
 from context.table_maintenance.application.port.outbound.table import (
     TableMetadataObservation,
 )
-from pyiceberg.manifest import DataFileContent
 
 if TYPE_CHECKING:
     from pyiceberg.manifest import ManifestFile

@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from fastapi import status
+from fastapi.responses import JSONResponse
+
 from context.table_maintenance.application.exceptions import (
     ConflictError,
     NotFoundError,
     ValidationError,
 )
-from fastapi import status
-from fastapi.responses import JSONResponse
 
 if TYPE_CHECKING:
     from fastapi import FastAPI, Request

@@ -1,6 +1,15 @@
 from __future__ import annotations
 
+from bootstrap.container import (
+    build_engine,
+    build_repositories,
+    build_use_cases,
+    run_migrations,
+)
 from context.table_maintenance.adapter.outbound.shared.sql import create_schema
+from context.table_maintenance.application.domain.model.shared import (
+    MaintenanceSettings,
+)
 from context.table_maintenance.application.port.inbound.table_discovery_rule import (
     ListTableDiscoveryRulesUseCaseInput,
 )
@@ -10,15 +19,6 @@ from context.table_maintenance.application.port.inbound.table_maintenance_preset
 )
 from context.table_maintenance.application.service.shared import (
     maintenance_settings_to_dict,
-)
-from context.table_maintenance.application.domain.model.shared import (
-    MaintenanceSettings,
-)
-from bootstrap.container import (
-    build_repositories,
-    build_use_cases,
-    run_migrations,
-    build_engine,
 )
 from tests.bootstrap.container.container_support import (
     NOW,

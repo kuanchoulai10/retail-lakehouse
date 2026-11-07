@@ -26,6 +26,9 @@ from context.table_maintenance.application.service.table.list_table_commits impo
 from context.table_maintenance.application.service.table.list_tables import (
     ListTablesService,
 )
+from context.table_maintenance.application.service.table.load_catalog_table import (
+    load_catalog_table,
+)
 from context.table_maintenance.application.service.table.pause_table import (
     PauseTableService,
 )
@@ -34,6 +37,9 @@ from context.table_maintenance.application.service.table.plan_table_maintenance 
 )
 from context.table_maintenance.application.service.table.process_table_hint import (
     ProcessTableHintService,
+)
+from context.table_maintenance.application.service.table.raise_not_in_catalog import (
+    raise_not_in_catalog,
 )
 from context.table_maintenance.application.service.table.register_discovered_table import (
     register_discovered_table,
@@ -47,16 +53,10 @@ from context.table_maintenance.application.service.table.reset_table_selection i
 from context.table_maintenance.application.service.table.resume_table import (
     ResumeTableService,
 )
+from context.table_maintenance.application.service.table.summary_int import summary_int
 from context.table_maintenance.application.service.table.sync_discovered_tables import (
     SyncDiscoveredTablesService,
 )
-from context.table_maintenance.application.service.table.load_catalog_table import (
-    load_catalog_table,
-)
-from context.table_maintenance.application.service.table.raise_not_in_catalog import (
-    raise_not_in_catalog,
-)
-from context.table_maintenance.application.service.table.summary_int import summary_int
 from context.table_maintenance.application.service.table.table_hint_action import (
     TableHintAction,
 )

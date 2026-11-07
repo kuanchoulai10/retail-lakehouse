@@ -8,12 +8,6 @@ import signal
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
-    AsyncLoopBridge,
-)
-from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
-    TASK_QUEUE,
-)
 from bootstrap.configs import get_settings
 from bootstrap.container import (
     apply_worker_startup,
@@ -23,6 +17,12 @@ from bootstrap.container import (
     build_worker,
     configure_logging,
     connect_temporal,
+)
+from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
+    TASK_QUEUE,
+)
+from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
+    AsyncLoopBridge,
 )
 
 if TYPE_CHECKING:

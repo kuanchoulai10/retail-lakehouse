@@ -5,7 +5,6 @@ from __future__ import annotations
 from context.table_maintenance.application.domain.model.shared import (
     RewriteDataFilesSettings,
 )
-
 from context.table_maintenance.application.domain.service.shared.positive_int_property import (
     positive_int_property,
 )

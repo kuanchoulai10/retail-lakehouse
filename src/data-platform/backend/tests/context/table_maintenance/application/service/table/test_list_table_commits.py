@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
+
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceSettings,
 )

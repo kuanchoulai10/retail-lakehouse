@@ -7,17 +7,20 @@ from typing import TYPE_CHECKING, Any
 
 from temporalio import activity
 
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
+    TableMaintenanceActivity,
+)
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (
+    TableReconciliationActivity,
+)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.activity_payload import (
     activity_payload,
 )
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.translate_application_errors import (
     translate_application_errors,
 )
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
-    TableMaintenanceActivity,
-)
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (
-    TableReconciliationActivity,
+from context.table_maintenance.application.port.inbound.table import (
+    PlanTableMaintenanceUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     DeleteMaintenanceJobUseCaseInput,
@@ -25,18 +28,15 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
     SubmitMaintenanceOperationUseCaseInput,
     SubmitMaintenanceOperationUseCaseInputFilterItem,
 )
-from context.table_maintenance.application.port.inbound.table import (
-    PlanTableMaintenanceUseCaseInput,
-)
 
 if TYPE_CHECKING:
+    from context.table_maintenance.application.port.inbound.table import (
+        PlanTableMaintenanceUseCase,
+    )
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
         DeleteMaintenanceJobUseCase,
         GetMaintenanceJobStatusUseCase,
         SubmitMaintenanceOperationUseCase,
-    )
-    from context.table_maintenance.application.port.inbound.table import (
-        PlanTableMaintenanceUseCase,
     )
 
 

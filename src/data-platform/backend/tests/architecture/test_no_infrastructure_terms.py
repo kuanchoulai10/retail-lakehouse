@@ -10,7 +10,6 @@ import pytest
 
 from tests.architecture.contexts import BACKEND, context_dir, context_names
 
-
 BANNED = {
     "temporal",
     "workflow",

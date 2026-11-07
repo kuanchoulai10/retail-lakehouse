@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from base import ValueObject
 from context.table_maintenance.application.domain.model.shared.partition_field_info import (
     PartitionFieldInfo,
 )
-from base import ValueObject
 
 
 @dataclass(frozen=True)

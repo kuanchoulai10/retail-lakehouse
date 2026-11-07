@@ -9,9 +9,6 @@ from temporalio import workflow
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import UnsandboxedWorkflowRunner, Worker
 
-from context.table_maintenance.adapter.hybrid.temporal.inbound import (
-    ensure_table_maintenance_admission,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
 )
@@ -19,6 +16,9 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
     TableMaintenanceAdmissionWorkflowInput,
+)
+from context.table_maintenance.adapter.hybrid.temporal.inbound import (
+    ensure_table_maintenance_admission,
 )
 
 

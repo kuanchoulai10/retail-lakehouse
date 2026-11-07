@@ -4,21 +4,21 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from context.table_maintenance.application.domain.model.table_discovery_rule import (
-    TableDiscoveryRuleId,
-)
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     MaintenanceSettings,
 )
 from context.table_maintenance.application.domain.model.table import (
     InvalidTableTransition,
-    Table,
     OperationState,
+    Table,
+    TableId,
     TableName,
     TableSelection,
     TableStatus,
-    TableId,
+)
+from context.table_maintenance.application.domain.model.table_discovery_rule import (
+    TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_preset import (
     TableMaintenancePresetId,

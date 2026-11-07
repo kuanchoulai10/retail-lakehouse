@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from abc import abstractmethod
 
+from base import UseCase
 from context.table_maintenance.application.port.inbound.table.process_table_hint.input import (
     ProcessTableHintUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table.process_table_hint.output import (
     ProcessTableHintUseCaseOutput,
 )
-from base import UseCase
 
 
 class ProcessTableHintUseCase(UseCase[ProcessTableHintUseCaseInput, ProcessTableHintUseCaseOutput]):

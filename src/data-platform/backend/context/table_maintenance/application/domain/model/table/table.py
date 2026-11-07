@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+from base import AggregateRoot
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     MaintenanceSettings,
@@ -16,6 +17,7 @@ from context.table_maintenance.application.domain.model.table.invalid_table_tran
 from context.table_maintenance.application.domain.model.table.operation_state import (
     OperationState,
 )
+from context.table_maintenance.application.domain.model.table.table_id import TableId
 from context.table_maintenance.application.domain.model.table.table_name import (
     TableName,
 )
@@ -25,11 +27,9 @@ from context.table_maintenance.application.domain.model.table.table_selection im
 from context.table_maintenance.application.domain.model.table.table_status import (
     TableStatus,
 )
-from context.table_maintenance.application.domain.model.table.table_id import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_preset import (
     TableMaintenancePresetId,
 )
-from base import AggregateRoot
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.table_discovery_rule import (

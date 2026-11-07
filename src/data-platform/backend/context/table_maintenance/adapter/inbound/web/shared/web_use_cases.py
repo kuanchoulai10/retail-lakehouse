@@ -6,12 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from context.table_maintenance.application.port.inbound.table_discovery_settings import (
-        GetTableDiscoverySettingsUseCase,
-        UpdateTableDiscoverySettingsUseCase,
-    )
     from context.table_maintenance.application.port.inbound.table import (
-        SyncDiscoveredTablesUseCase,
         ExcludeTableUseCase,
         GetTableHealthUseCase,
         GetTableMetadataUseCase,
@@ -23,6 +18,7 @@ if TYPE_CHECKING:
         PauseTableUseCase,
         ResetTableSelectionUseCase,
         ResumeTableUseCase,
+        SyncDiscoveredTablesUseCase,
         TriggerTableMaintenanceUseCase,
         UpdateTableSettingsUseCase,
     )
@@ -32,10 +28,9 @@ if TYPE_CHECKING:
         ListTableDiscoveryRulesUseCase,
         UpdateTableDiscoveryRuleUseCase,
     )
-    from context.table_maintenance.application.port.inbound.table_maintenance_run import (
-        GetTableMaintenanceRunUseCase,
-        ListTableMaintenanceRunsUseCase,
-        ProcessTableMaintenanceCallbackUseCase,
+    from context.table_maintenance.application.port.inbound.table_discovery_settings import (
+        GetTableDiscoverySettingsUseCase,
+        UpdateTableDiscoverySettingsUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_maintenance_preset import (
         CreateTableMaintenancePresetUseCase,
@@ -43,6 +38,11 @@ if TYPE_CHECKING:
         GetTableMaintenancePresetUseCase,
         ListTableMaintenancePresetsUseCase,
         UpdateTableMaintenancePresetUseCase,
+    )
+    from context.table_maintenance.application.port.inbound.table_maintenance_run import (
+        GetTableMaintenanceRunUseCase,
+        ListTableMaintenanceRunsUseCase,
+        ProcessTableMaintenanceCallbackUseCase,
     )
 
 

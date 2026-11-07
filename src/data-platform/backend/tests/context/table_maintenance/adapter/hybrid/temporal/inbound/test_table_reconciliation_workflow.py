@@ -8,14 +8,11 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from temporalio.client import WorkflowExecutionStatus
-from temporalio.testing import WorkflowEnvironment
 from temporalio.exceptions import WorkflowAlreadyStartedError
+from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import UnsandboxedWorkflowRunner, Worker
 from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner
 
-from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
-    TableReconciliationWorkflow,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
 )
@@ -28,14 +25,17 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
     TableReconciliationWorkflowInput,
     table_reconciliation_workflow_id,
 )
+from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
+    TableReconciliationWorkflow,
+)
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.eventually import (
     eventually,
 )
-from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_maintenance_stub_workflow import (
-    TableMaintenanceStubWorkflow,
-)
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_plan_activity import (
     ScriptedPlanActivity,
+)
+from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_maintenance_stub_workflow import (
+    TableMaintenanceStubWorkflow,
 )
 
 if TYPE_CHECKING:

@@ -13,9 +13,6 @@ from temporalio.client import (
     ScheduleOverlapPolicy,
 )
 
-from context.table_maintenance.adapter.hybrid.temporal.inbound import (
-    ensure_table_discovery_schedule,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
 )
@@ -23,6 +20,9 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery
     TABLE_DISCOVERY_WORKFLOW,
     TableDiscoveryWorkflowInput,
     table_discovery_schedule_id,
+)
+from context.table_maintenance.adapter.hybrid.temporal.inbound import (
+    ensure_table_discovery_schedule,
 )
 from tests.context.table_maintenance.adapter.hybrid.temporal.outbound.shared.temporal_harness import (
     harness,  # noqa: F401

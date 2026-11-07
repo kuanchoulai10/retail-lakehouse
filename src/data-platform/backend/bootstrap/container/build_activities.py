@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from bootstrap.container.activities import Activities
+from bootstrap.container.admission_lease_seconds import ADMISSION_LEASE_SECONDS
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
     TableDiscoveryActivities,
     TableMaintenanceActivities,
     TableReconciliationActivities,
     WorkflowSignalActivities,
 )
-from bootstrap.container.activities import Activities
-from bootstrap.container.admission_lease_seconds import ADMISSION_LEASE_SECONDS
 
 if TYPE_CHECKING:
     from temporalio.client import Client

@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import pytest
+
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceSettings,
 )

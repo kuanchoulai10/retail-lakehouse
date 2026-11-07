@@ -5,10 +5,10 @@ from datetime import timedelta
 import pytest
 
 from context.table_maintenance.application.domain.model.shared import (
-    MaintenanceOperation,
     CompactionScope,
     ExpireSnapshotsSettings,
     InvalidMaintenanceSettings,
+    MaintenanceOperation,
     MaintenanceSettings,
     RemoveOrphanFilesSettings,
     RewriteDataFilesSettings,

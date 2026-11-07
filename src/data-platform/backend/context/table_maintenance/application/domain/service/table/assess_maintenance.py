@@ -17,12 +17,12 @@ from context.table_maintenance.application.domain.model.shared import (
     TableObservation,
 )
 from context.table_maintenance.application.domain.model.table import Table
-from context.table_maintenance.application.domain.service.table.compute_reducible_files import (
-    compute_reducible_files,
-)
 from context.table_maintenance.application.domain.service.shared import (
     positive_int_property,
     resolve_target_file_size,
+)
+from context.table_maintenance.application.domain.service.table.compute_reducible_files import (
+    compute_reducible_files,
 )
 
 DEFAULT_SMALL_MANIFEST_BYTES = 8 * 1024 * 1024
