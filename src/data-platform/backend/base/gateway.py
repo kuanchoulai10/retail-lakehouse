@@ -7,7 +7,7 @@ from abc import ABC
 from base._inheritance_guard import enforce_max_depth
 
 
-class Gateway(ABC):
+class Gateway(ABC):  # noqa: B024
     """Port for interacting with external systems.
 
     Use Gateway for operations that cross a system boundary: reading from

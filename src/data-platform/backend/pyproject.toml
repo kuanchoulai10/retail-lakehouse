@@ -29,7 +29,6 @@ dev = [
 extend = "../../../ruff.toml"
 
 [tool.ruff.lint.extend-per-file-ignores]
-"base/**" = ["B024", "UP046"]
 "context/**" = ["E501", "PLC0414", "PLR0911"]
 "tests/**" = [
     "A002", "B008", "B905", "D100", "D101", "D102", "D103", "D104", "D105", "D107", "D403",

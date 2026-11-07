@@ -7,7 +7,7 @@ from abc import ABC
 from base._inheritance_guard import enforce_max_depth
 
 
-class Store(ABC):
+class Store(ABC):  # noqa: B024
     """Infrastructure persistence that is not an aggregate repository.
 
     Use Store for persistence concerns that do not manage the lifecycle
