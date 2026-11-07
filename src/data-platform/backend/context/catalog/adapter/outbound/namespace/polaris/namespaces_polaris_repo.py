@@ -67,11 +67,16 @@ class NamespacesPolarisRepo(NamespacesRepo):
         return found
 
     def update_properties(self, entity_id: NamespaceId, updates: dict[str, str], removals: list[str]) -> Namespace:
-        """POST the change to ``/properties``, then read the namespace back as saved."""
+        """POST the removals, then the updates, to ``/properties``; then read the namespace back as saved.
+
+        Each kind of change goes in its own request: Polaris 1.8.0 answers one request that
+        holds both with 409 "Concurrent modification of namespace". An empty kind is not sent.
+        """
         path = iceberg_namespace_path(entity_id.catalog, entity_id.parts)
-        self._polaris.catalog_request(
-            "POST", f"{path}/properties", json={"removals": list(removals), "updates": dict(updates)}
-        )
+        if removals:
+            self._polaris.catalog_request("POST", f"{path}/properties", json={"removals": list(removals)})
+        if updates:
+            self._polaris.catalog_request("POST", f"{path}/properties", json={"updates": dict(updates)})
         saved = self.get(entity_id)
         if saved is None:
             raise NotFoundError(f"namespace {list(entity_id.parts)} not found in catalog {entity_id.catalog}")

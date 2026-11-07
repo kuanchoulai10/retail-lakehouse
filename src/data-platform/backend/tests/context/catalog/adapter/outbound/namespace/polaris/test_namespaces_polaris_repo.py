@@ -143,27 +143,53 @@ def test_delete_non_empty_namespace_reports_polaris_error(status: int, error: ty
         NamespacesPolarisRepo(stub.client()).delete(NamespaceId.of("sales", ("raw",)))
 
 
-def test_update_namespace_properties_sends_updates_and_removals():
-    """Update posts ``{removals, updates}`` to ``/properties``, then reads the namespace back."""
+def _properties_stub() -> PolarisStub:
     stub = PolarisStub()
     stub.on(
-        "POST",
-        f"{NAMESPACES}/raw/properties",
-        httpx.Response(200, json={"updated": ["tier"], "removed": ["stale"], "missing": []}),
+        "POST", f"{NAMESPACES}/raw/properties", httpx.Response(200, json={"updated": [], "removed": [], "missing": []})
     )
     stub.on(
         "GET", f"{NAMESPACES}/raw", httpx.Response(200, json={"namespace": ["raw"], "properties": {"tier": "gold"}})
     )
+    return stub
+
+
+def test_update_namespace_properties_sends_removals_then_updates_as_two_requests():
+    """Removals and updates go in two POSTs to ``/properties``, then the namespace is read back.
+
+    Polaris 1.8.0 answers one request that holds both with 409 "Concurrent modification of
+    namespace" (found live in the e2e), so each request carries one kind of change.
+    """
+    stub = _properties_stub()
 
     saved = NamespacesPolarisRepo(stub.client()).update_properties(
         NamespaceId.of("sales", ("raw",)), {"tier": "gold"}, ["stale"]
     )
 
-    post, read = stub.requests
-    assert (post.method, post.url.path) == ("POST", f"{NAMESPACES}/raw/properties")
-    assert _body(post) == {"removals": ["stale"], "updates": {"tier": "gold"}}
+    remove, update, read = stub.requests
+    assert (remove.method, remove.url.path) == ("POST", f"{NAMESPACES}/raw/properties")
+    assert _body(remove) == {"removals": ["stale"]}
+    assert (update.method, update.url.path) == ("POST", f"{NAMESPACES}/raw/properties")
+    assert _body(update) == {"updates": {"tier": "gold"}}
     assert read.method == "GET"
     assert saved.properties == {"tier": "gold"}
+
+
+@pytest.mark.parametrize(
+    ("updates", "removals", "body"),
+    [({"tier": "gold"}, [], {"updates": {"tier": "gold"}}), ({}, ["stale"], {"removals": ["stale"]})],
+)
+def test_update_namespace_properties_sends_one_request_for_one_kind_of_change(
+    updates: dict[str, str], removals: list[str], body: dict[str, Any]
+):
+    """Only updates, or only removals, is one POST holding just that change."""
+    stub = _properties_stub()
+
+    NamespacesPolarisRepo(stub.client()).update_properties(NamespaceId.of("sales", ("raw",)), updates, removals)
+
+    post, read = stub.requests
+    assert _body(post) == body
+    assert read.method == "GET"
 
 
 def test_list_all_walks_every_catalog_and_every_level():
