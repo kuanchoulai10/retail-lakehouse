@@ -280,3 +280,48 @@ def test_namespace_listing_of_the_wrong_shape_is_unavailable(body: dict[str, Any
 
     with pytest.raises(CatalogUnavailableError, match="the namespaces of catalog sales in a form this backend"):
         NamespacesPolarisRepo(stub.client()).list_in(CatalogId.of("sales"), ())
+
+
+@pytest.mark.parametrize(
+    ("status", "error"),
+    [(409, ConflictError), (400, ValidationError), (404, NotFoundError), (500, CatalogUnavailableError)],
+)
+def test_updates_failing_after_applied_removals_say_the_removals_were_applied(status: int, error: type[Exception]):
+    """The removals already landed, so the error keeps its type (and status) and says to reload."""
+    stub = PolarisStub()
+    stub.on(
+        "POST",
+        f"{NAMESPACES}/raw/properties",
+        httpx.Response(200, json={"updated": [], "removed": ["stale"], "missing": []}),
+        _error(status, "Concurrent modification of namespace: raw"),
+    )
+
+    with pytest.raises(error) as raised:
+        NamespacesPolarisRepo(stub.client()).update_properties(_RAW, {"tier": "gold"}, ["stale"])
+
+    assert type(raised.value) is error
+    assert str(raised.value).startswith("removals were applied; reload and retry: ")
+    assert "Concurrent modification of namespace: raw" in str(raised.value)
+
+
+def test_failing_removals_are_reported_unchanged():
+    """When the first request fails nothing was applied, so its error passes through as is."""
+    stub = PolarisStub()
+    stub.on("POST", f"{NAMESPACES}/raw/properties", _error(409, "Concurrent modification of namespace: raw"))
+
+    with pytest.raises(ConflictError) as raised:
+        NamespacesPolarisRepo(stub.client()).update_properties(_RAW, {"tier": "gold"}, ["stale"])
+
+    assert "removals were applied" not in str(raised.value)
+    assert len(stub.requests) == 1
+
+
+def test_failing_updates_without_removals_are_reported_unchanged():
+    """With no removals sent, a failed update applied nothing, so its error passes through as is."""
+    stub = PolarisStub()
+    stub.on("POST", f"{NAMESPACES}/raw/properties", _error(409, "Concurrent modification of namespace: raw"))
+
+    with pytest.raises(ConflictError) as raised:
+        NamespacesPolarisRepo(stub.client()).update_properties(_RAW, {"tier": "gold"}, [])
+
+    assert "removals were applied" not in str(raised.value)

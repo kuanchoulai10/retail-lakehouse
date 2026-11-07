@@ -12,7 +12,13 @@ from context.catalog.adapter.outbound.shared.polaris import (
     listed_catalog_names,
     listed_namespaces,
 )
-from context.catalog.application.exceptions import NotFoundError
+from context.catalog.application.exceptions import (
+    CatalogUnavailableError,
+    ConflictError,
+    NotFoundError,
+    PermissionDeniedError,
+    ValidationError,
+)
 from context.catalog.application.port.outbound.namespace import (
     CatalogId,
     Namespace,
@@ -25,6 +31,7 @@ if TYPE_CHECKING:
     from context.catalog.adapter.outbound.shared.polaris import PolarisHttpClient
 
 _SEPARATOR = "\x1f"
+_UPSTREAM_ERRORS = (CatalogUnavailableError, ConflictError, NotFoundError, PermissionDeniedError, ValidationError)
 
 
 class NamespacesPolarisRepo(NamespacesRepo):
@@ -73,12 +80,19 @@ class NamespacesPolarisRepo(NamespacesRepo):
 
         Each kind of change goes in its own request: Polaris 1.8.0 answers one request that
         holds both with 409 "Concurrent modification of namespace". An empty kind is not sent.
+        When the updates fail after the removals landed, the error keeps its type, and so its
+        status, and says the removals were applied, so the caller reloads before retrying.
         """
         path = iceberg_namespace_path(entity_id.catalog, entity_id.parts)
         if removals:
             self._polaris.catalog_request("POST", f"{path}/properties", json={"removals": list(removals)})
         if updates:
-            self._polaris.catalog_request("POST", f"{path}/properties", json={"updates": dict(updates)})
+            try:
+                self._polaris.catalog_request("POST", f"{path}/properties", json={"updates": dict(updates)})
+            except _UPSTREAM_ERRORS as exc:
+                if not removals:
+                    raise
+                raise type(exc)(f"removals were applied; reload and retry: {exc}") from exc
         saved = self.get(entity_id)
         if saved is None:
             raise NotFoundError(f"namespace {list(entity_id.parts)} not found in catalog {entity_id.catalog}")
