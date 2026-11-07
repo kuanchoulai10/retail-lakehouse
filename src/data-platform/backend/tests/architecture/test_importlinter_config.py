@@ -35,12 +35,14 @@ def _config() -> configparser.ConfigParser:
 
 
 def test_no_ignore_imports():
+    """No import-linter contract carries an ignore_imports exemption."""
     parser = _config()
     offenders = [s for s in parser.sections() if parser.has_option(s, "ignore_imports")]
     assert offenders == [], f"ignore_imports is an exemption; remove it from {offenders}"
 
 
 def test_required_contracts_present():
+    """Every required import-linter contract is configured."""
     contracts = {
         section.removeprefix(CONTRACT_PREFIX) for section in _config().sections() if section.startswith(CONTRACT_PREFIX)
     }
@@ -49,6 +51,7 @@ def test_required_contracts_present():
 
 
 def test_root_packages_are_base_bootstrap_context():
+    """The import-linter root packages are base, bootstrap and context."""
     roots = set(_config().get("importlinter", "root_packages").split())
     assert roots == {"base", "bootstrap", "context"}
 

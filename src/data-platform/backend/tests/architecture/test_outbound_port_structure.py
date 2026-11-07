@@ -25,13 +25,16 @@ from __future__ import annotations
 
 import ast
 import importlib
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from base import Gateway
 from tests.architecture.aggregates import aggregates
 from tests.architecture.contexts import context_dir, context_module, context_names
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 OUTBOUND_PORT = ("application", "port", "outbound")
 

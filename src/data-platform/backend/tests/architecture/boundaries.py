@@ -8,9 +8,12 @@ re-export its child boundaries.
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tests.architecture.contexts import BACKEND, context_dir, context_names
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 PROJECT_PACKAGES = ("context", "base", "bootstrap")
 

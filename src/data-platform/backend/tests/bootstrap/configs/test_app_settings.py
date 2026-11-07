@@ -1,3 +1,5 @@
+"""Test the application settings defaults, environment parsing and secret handling."""
+
 from __future__ import annotations
 
 import os
@@ -15,6 +17,7 @@ def _clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_defaults_follow_the_brief():
+    """With no environment the settings use the documented component, backend and Temporal defaults."""
     settings = AppSettings()
 
     assert settings.component is Component.API
@@ -35,6 +38,7 @@ def test_defaults_follow_the_brief():
 
 
 def test_nested_env_vars_are_parsed(monkeypatch: pytest.MonkeyPatch):
+    """Nested environment variables override the component, database backend and SQLite path."""
     env = {
         "GLAC_COMPONENT": "worker",
         "GLAC_DATABASE_BACKEND": "sqlite",
@@ -83,6 +87,7 @@ def test_nested_env_vars_are_parsed(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_secrets_are_not_rendered(monkeypatch: pytest.MonkeyPatch):
+    """Secret values do not appear in the rendered settings."""
     monkeypatch.setenv("GLAC_POSTGRES__DB_URL", "postgresql+psycopg://u:pw@db/tm")
     monkeypatch.setenv("GLAC_CATALOG__CREDENTIAL", "root:s3cr3t")
 
@@ -93,6 +98,7 @@ def test_secrets_are_not_rendered(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_task_queue_is_not_configurable(monkeypatch: pytest.MonkeyPatch):
+    """The Temporal task queue is fixed and offered by no setting."""
     monkeypatch.setenv("GLAC_TEMPORAL__TASK_QUEUE", "other")
 
     settings = AppSettings()

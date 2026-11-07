@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-
-import pytest
+from typing import TYPE_CHECKING
 
 from tests.architecture.aggregates import aggregates, derive_aggregates
 from tests.architecture.fixture_context import build_fixture_context
+
+if TYPE_CHECKING:
+    import pytest
 
 ARCHITECTURE_TESTS = Path(__file__).resolve().parent
 CONCRETE_CONTEXT_MARKERS = (
@@ -69,6 +71,7 @@ class SharedThing(AggregateRoot[SharedId]):
 
 
 def test_table_maintenance_aggregates_are_derived():
+    """The table maintenance context derives its five aggregates from the domain model."""
     assert aggregates("table_maintenance") == {
         "table",
         "table_maintenance_run",
@@ -79,6 +82,7 @@ def test_table_maintenance_aggregates_are_derived():
 
 
 def test_package_without_aggregate_root_is_not_an_aggregate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """A model package without an aggregate root class is not counted as an aggregate."""
     name = build_fixture_context(
         tmp_path,
         {

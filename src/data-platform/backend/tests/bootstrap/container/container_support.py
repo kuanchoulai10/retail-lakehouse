@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
-
-from sqlalchemy import Engine
+from typing import TYPE_CHECKING, Any
 
 from bootstrap.configs import AppSettings, DatabaseBackend, SqliteSettings
 from bootstrap.container import Gateways, build_engine
@@ -34,6 +32,9 @@ from tests.context.table_maintenance.fakes.recording_submit_maintenance_job_gate
 from tests.context.table_maintenance.fakes.recording_update_table_discovery_schedule_gateway import (
     RecordingUpdateTableDiscoveryScheduleGateway,
 )
+
+if TYPE_CHECKING:
+    from sqlalchemy import Engine
 
 NOW = datetime(2026, 10, 24, 12, 0, tzinfo=UTC)
 

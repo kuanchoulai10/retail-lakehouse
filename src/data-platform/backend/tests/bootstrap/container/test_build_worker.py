@@ -1,11 +1,12 @@
+"""Test that the Temporal worker is built with every workflow and activity."""
+
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock
 
 from temporalio import activity
-from temporalio.worker import Worker
 
 from bootstrap.container import (
     ADMISSION_LEASE_SECONDS,
@@ -45,6 +46,9 @@ from tests.bootstrap.container.container_support import (
     sqlite_settings,
 )
 
+if TYPE_CHECKING:
+    from temporalio.worker import Worker
+
 # Every member of every workflow's activity enum, not one name, is under test.
 ALL_ACTIVITY_NAMES = {
     str(member)
@@ -69,6 +73,7 @@ def _activities(**overrides: object):
 
 
 def test_activities_cover_every_activity_name_once():
+    """The built activities cover every activity name exactly once."""
     callables = _activities().callables()
 
     names = [_activity_name(fn) for fn in callables]
@@ -76,6 +81,7 @@ def test_activities_cover_every_activity_name_once():
 
 
 def test_activities_carry_the_callback_url_and_admission_settings():
+    """The activity groups are built with the callback URL and admission settings."""
     activities = _activities(callback_base_url="http://api:8000", admission_limit=5)
 
     assert isinstance(activities.reconciliation, TableReconciliationActivities)
@@ -92,17 +98,22 @@ def test_activities_carry_the_callback_url_and_admission_settings():
 
 
 class RecordingWorkerFactory:
+    """Worker factory stub that records how it is called."""
+
     def __init__(self) -> None:
+        """Start with no recorded arguments."""
         self.args: tuple[Any, ...] = ()
         self.kwargs: dict[str, Any] = {}
 
     def __call__(self, *args: Any, **kwargs: Any) -> Worker:  # noqa: ANN401
+        """Record the arguments and return a placeholder worker."""
         self.args = args
         self.kwargs = kwargs
         return cast("Worker", object())
 
 
 def test_worker_registers_all_workflows_and_activities():
+    """The worker is created for the client on the table maintenance queue with all workflows and activities."""
     factory = RecordingWorkerFactory()
     client = MagicMock()
     with ThreadPoolExecutor(max_workers=2) as executor:

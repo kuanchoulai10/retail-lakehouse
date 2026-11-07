@@ -1,3 +1,5 @@
+"""Test the startup migration that seeds the default maintenance preset."""
+
 from __future__ import annotations
 
 from bootstrap.container import (
@@ -32,6 +34,7 @@ def _use_cases(engine):
 
 
 def test_migrate_seeds_default_preset_once():
+    """Migrating creates the default preset with default settings and no discovery rules."""
     engine = build_engine(sqlite_settings())
 
     run_migrations(engine)
@@ -46,6 +49,7 @@ def test_migrate_seeds_default_preset_once():
 
 
 def test_migrate_does_not_seed_when_a_preset_exists():
+    """Migrating leaves the presets alone when one already exists."""
     engine = build_engine(sqlite_settings())
     create_schema(engine)
     _use_cases(engine).create_table_maintenance_preset.execute(CreateTableMaintenancePresetUseCaseInput(name="nightly"))

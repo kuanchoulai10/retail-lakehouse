@@ -10,10 +10,13 @@ from __future__ import annotations
 
 import importlib
 import pkgutil
-from types import ModuleType
+from typing import TYPE_CHECKING
 
 from base import AggregateRoot
 from tests.architecture.contexts import context_module
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 SHARED = "shared"
 

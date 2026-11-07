@@ -15,12 +15,15 @@ __init__.py must re-export all three symbols.
 from __future__ import annotations
 
 import importlib
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from tests.architecture.aggregates import aggregates
 from tests.architecture.contexts import context_dir, context_module, context_names
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 INBOUND_PORT = ("application", "port", "inbound")
 REQUIRED_FILES = {"__init__.py", "input.py", "output.py", "use_case.py"}

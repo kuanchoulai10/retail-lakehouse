@@ -15,11 +15,14 @@ sub-components.
 from __future__ import annotations
 
 import ast
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from tests.architecture.contexts import CONTEXT_ROOT, context_dir, context_names
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _ALLOWED_SUFFIXES = ("ApiRequest", "ApiResponse")
 

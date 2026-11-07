@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from tests.architecture.aggregates import aggregates
 from tests.architecture.contexts import context_dir, context_names
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 FIXED_LAYER_DIRS = (
     "application/domain/model",
@@ -27,6 +30,7 @@ ROOT_MODULES_ALLOWED = {
 
 
 def subdirs(directory: Path) -> set[str]:
+    """Return the names of the immediate subdirectories of a directory, ignoring caches."""
     return {
         child.name
         for child in directory.iterdir()
@@ -35,6 +39,7 @@ def subdirs(directory: Path) -> set[str]:
 
 
 def hybrid_outbound_dirs(context_root: Path) -> list[str]:
+    """Return the hybrid outbound directories of a context, relative to the context root."""
     return sorted(
         str(path.relative_to(context_root))
         for path in (context_root / "adapter" / "hybrid").glob("*/outbound")
@@ -43,6 +48,7 @@ def hybrid_outbound_dirs(context_root: Path) -> list[str]:
 
 
 def layer_dirs(context_root: Path) -> list[str]:
+    """Return every layer directory of a context that must be split by aggregate."""
     return [*FIXED_LAYER_DIRS, *hybrid_outbound_dirs(context_root)]
 
 
@@ -64,11 +70,13 @@ def _context_layers() -> list[tuple[str, str]]:
 
 @pytest.mark.parametrize("context", context_names())
 def test_layer_subdirs_are_aggregates(context: str):
+    """Every subdirectory of an aggregate-split layer is a known aggregate or the shared package."""
     unexpected = axis_violations(context_dir(context), aggregates(context))
     assert not unexpected, f"{context} has non-aggregate directories: {unexpected}"
 
 
 def test_directory_without_aggregate_root_fails_the_axis(tmp_path: Path):
+    """A layer directory that matches no aggregate root is reported as a violation."""
     ghost = tmp_path / "application" / "service" / "ghost"
     ghost.mkdir(parents=True)
     (ghost / "__init__.py").write_text('"""Ghost."""\n')
@@ -80,6 +88,7 @@ def test_directory_without_aggregate_root_fails_the_axis(tmp_path: Path):
 
 @pytest.mark.parametrize("context", context_names())
 def test_inbound_ports_match_services(context: str):
+    """The inbound port aggregates are exactly the service aggregates, apart from shared."""
     root = context_dir(context)
     ports = subdirs(root / "application" / "port" / "inbound")
     assert "shared" not in ports
@@ -88,11 +97,13 @@ def test_inbound_ports_match_services(context: str):
 
 @pytest.mark.parametrize("context", context_names())
 def test_hybrid_outbound_dirs_are_found(context: str):
+    """The Temporal hybrid outbound directory is picked up as an aggregate-split layer."""
     assert "adapter/hybrid/temporal/outbound" in hybrid_outbound_dirs(context_dir(context))
 
 
 @pytest.mark.parametrize(("context", "layer"), _context_layers(), ids=lambda value: value)
 def test_no_modules_at_layer_root(context: str, layer: str):
+    """A layer root holds no loose modules beyond the allowed package files."""
     modules = {p.name for p in (context_dir(context) / layer).glob("*.py")}
     allowed = {"__init__.py"} | ROOT_MODULES_ALLOWED.get(layer, set())
     assert modules == allowed, f"{context}/{layer} root holds modules: {sorted(modules)}"

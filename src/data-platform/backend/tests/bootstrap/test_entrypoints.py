@@ -1,3 +1,5 @@
+"""Test that the component entry points import cleanly and dispatch on the configured component."""
+
 from __future__ import annotations
 
 import importlib
@@ -18,6 +20,7 @@ from bootstrap.configs import Component
     ],
 )
 def test_component_modules_import_without_side_effects(module: str):
+    """Each component module imports without running anything and exposes a callable main."""
     loaded = importlib.import_module(module)
 
     assert callable(loaded.main)
@@ -33,6 +36,7 @@ def test_component_modules_import_without_side_effects(module: str):
     ],
 )
 def test_entrypoint_dispatches_to_the_component(monkeypatch: pytest.MonkeyPatch, component: Component, module: str):
+    """The entry point runs the module of the configured component."""
     called: list[str] = []
     monkeypatch.setenv("GLAC_COMPONENT", component.value)
     monkeypatch.setattr(importlib.import_module(module), "main", lambda: called.append(module))

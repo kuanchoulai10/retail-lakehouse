@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 from uuid import uuid4
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def build_fixture_context(root: Path, files: dict[str, str]) -> str:

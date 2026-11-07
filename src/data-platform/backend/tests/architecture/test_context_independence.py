@@ -1,8 +1,8 @@
 """Guard test: bounded contexts do not reach into each other.
 
 Context A may use context B only from A's outbound adapters (``adapter/outbound/``
-or ``adapter/hybrid/<tech>/outbound/``), and only through B's inbound ports. A's application never imports another context, and ``base``
-imports no context. ``bootstrap`` wires every context and is not checked.
+or ``adapter/hybrid/<tech>/outbound/``), and only through B's inbound ports. A's application never
+imports another context, and ``base`` imports no context. ``bootstrap`` wires every context and is not checked.
 
 import-linter wildcards cannot say "another context", so this rule is an AST
 check. Imports under ``TYPE_CHECKING`` count, and relative imports are resolved
@@ -12,9 +12,12 @@ against the importing file's package before the same rules apply.
 from __future__ import annotations
 
 import ast
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from tests.architecture.contexts import BACKEND
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 CONTEXT_PACKAGE = "context"
 ADAPTER = "adapter"
@@ -125,6 +128,7 @@ def cross_context_violations(backend: Path) -> list[str]:
 
 
 def test_contexts_do_not_reach_into_each_other():
+    """The real source tree has no forbidden cross-context import."""
     violations = cross_context_violations(BACKEND)
     assert violations == [], "\n".join(violations)
 
@@ -136,6 +140,7 @@ def _write(root: Path, relative: str, source: str) -> None:
 
 
 def test_cross_context_import_rules(tmp_path: Path):
+    """The checker flags application and inbound cross-context imports but allows outbound adapters."""
     files = {
         "context/alpha/application/service/s.py": ("from context.beta.application.domain.model.thing import Thing\n"),
         "context/alpha/adapter/outbound/ok.py": ("from context.beta.application.port.inbound import GetThingUseCase\n"),

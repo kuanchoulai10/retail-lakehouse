@@ -1,13 +1,13 @@
+"""Test that the use case container wires repositories, gateways and every service."""
+
 from __future__ import annotations
 
 import importlib
 import inspect
 import pkgutil
 from dataclasses import fields
-from typing import cast
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock
-
-from pyiceberg.catalog import Catalog
 
 import context.table_maintenance.application.service
 from base import UseCase
@@ -50,6 +50,9 @@ from tests.bootstrap.container.container_support import (
     sqlite_settings,
 )
 
+if TYPE_CHECKING:
+    from pyiceberg.catalog import Catalog
+
 
 def _all_service_classes() -> set[type]:
     found: set[type] = set()
@@ -65,6 +68,7 @@ def _all_service_classes() -> set[type]:
 
 
 def test_repositories_are_sql_repos_on_the_engine():
+    """Every repository is a SQL repository bound to the engine."""
     repos = build_repositories(sqlite_engine())
 
     assert isinstance(repos.table_maintenance_presets, TableMaintenancePresetsSqlRepo)
@@ -72,6 +76,7 @@ def test_repositories_are_sql_repos_on_the_engine():
 
 
 def test_gateways_are_built_without_connecting():
+    """The gateways are built without opening a connection."""
     bridge = AsyncLoopBridge()
     try:
         client = MagicMock(name="temporal-client")
@@ -109,6 +114,7 @@ def test_gateways_are_built_without_connecting():
 
 
 def test_use_cases_hold_one_instance_of_every_service():
+    """The use cases hold exactly one instance of every application service."""
     use_cases = build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
 
     values = [getattr(use_cases, f.name) for f in fields(use_cases)]
@@ -118,6 +124,7 @@ def test_use_cases_hold_one_instance_of_every_service():
 
 
 def test_use_cases_work_against_the_sql_repos():
+    """A built use case runs against the SQL repositories."""
     use_cases = build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
 
     listing = use_cases.list_table_maintenance_presets.execute(ListTableMaintenancePresetsUseCaseInput())

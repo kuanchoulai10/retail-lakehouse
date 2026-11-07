@@ -79,6 +79,7 @@ def _workflow_modules(context: str) -> list[Path]:
 
 @pytest.mark.parametrize("context", context_names())
 def test_workflow_modules_are_found(context: str):
+    """Each context with workflows yields at least one workflow module to check."""
     assert _workflow_modules(context)
 
 
@@ -88,6 +89,7 @@ def test_workflow_modules_are_found(context: str):
     ids=lambda p: f"{p.parents[5].name}/{p.name}",
 )
 def test_workflow_module_is_deterministic(path: Path):
+    """A workflow module contains no forbidden non-deterministic call."""
     assert violations(path.read_text()) == []
 
 
@@ -108,9 +110,11 @@ def test_workflow_module_is_deterministic(path: Path):
     ],
 )
 def test_checker_flags_forbidden_source(source: str):
+    """The checker reports each known non-deterministic source snippet."""
     assert violations(source) != []
 
 
 def test_checker_accepts_workflow_apis():
+    """The checker accepts the deterministic workflow replacements."""
     source = "from temporalio import workflow\nfrom datetime import timedelta\n"
     assert violations(source) == []

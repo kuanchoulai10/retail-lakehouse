@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import ast
 import re
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from tests.architecture.contexts import BACKEND, context_dir, context_names
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 BANNED = {
     "temporal",
@@ -130,6 +133,7 @@ def _violations(application: Path) -> list[str]:
 
 
 def test_banned_term_detector_catches_camel_and_snake():
+    """The tokenizer splits camelCase, snake_case and UPPER_CASE names into lowercase words."""
     assert tokenize("needsReconcileWorkflow") == ["needs", "reconcile", "workflow"]
     assert tokenize("spark_application") == ["spark", "application"]
     assert tokenize("SIGNAL_STOP") == ["signal", "stop"]
@@ -147,6 +151,7 @@ def test_banned_term_detector_catches_camel_and_snake():
 
 
 def test_identifier_strings_are_scanned_but_docstrings_and_prose_are_not():
+    """Identifier-like string literals are scanned while docstrings and prose strings are skipped."""
     tree = ast.parse(
         '''"""Talk about the workflow."""
 KIND = "spark_job"
@@ -163,5 +168,6 @@ def f():
 
 @pytest.mark.parametrize("context", context_names())
 def test_application_names_have_no_infrastructure_terms(context: str):
+    """The application layer of a context uses no banned infrastructure term in its names."""
     violations = _violations(context_dir(context) / "application")
     assert not violations, "Infrastructure terms in application/:\n" + "\n".join(violations)

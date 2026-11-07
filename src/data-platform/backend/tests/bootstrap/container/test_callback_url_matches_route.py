@@ -87,6 +87,7 @@ def _submitted_callback_url() -> str:
 
 
 def test_callback_url_is_served_by_the_result_route():
+    """Posting to the configured callback URL reaches the result route and is accepted."""
     url = urlsplit(_submitted_callback_url())
     callback = StubUseCase(ProcessTableMaintenanceCallbackUseCaseOutput(accepted=True))
     client = build_client(process_table_maintenance_callback=callback)

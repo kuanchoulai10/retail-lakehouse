@@ -10,7 +10,7 @@ import importlib
 import subprocess
 import sys
 import typing
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -23,6 +23,9 @@ from tests.architecture.boundaries import (
     innermost_boundary,
 )
 from tests.architecture.contexts import context_module, context_names
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 SCANNED_DIRS = (*PROJECT_PACKAGES, "tests")
 SCANNED_FILES = ("entrypoint.py",)
@@ -62,7 +65,7 @@ def _package_all(package: str) -> list[str]:
 
 
 def _is_project(module: str) -> bool:
-    return module.split(".")[0] in PROJECT_PACKAGES
+    return module.split(".", 1)[0] in PROJECT_PACKAGES
 
 
 def _import_targets(node: ast.Import | ast.ImportFrom) -> list[str]:
@@ -95,13 +98,14 @@ def _violations() -> list[str]:
                 continue
             for target in _import_targets(node):
                 boundary = innermost_boundary(target, known)
-                if boundary is None or boundary == own or boundary == target:
+                if boundary is None or boundary in (own, target):
                     continue
                 found.append(f"{relative}:{node.lineno} {target} → expected {boundary}")
     return found
 
 
 def test_no_import_past_a_boundary():
+    """No module imports past the public entry point of a boundary package."""
     violations = _violations()
     assert not violations, f"{len(violations)} imports reach past a boundary:\n" + "\n".join(violations)
 
@@ -170,6 +174,7 @@ def _declared_all(init: Path) -> list[str] | None:
 
 
 def test_boundary_all_is_complete():
+    """Every boundary lists its public names in a complete __all__."""
     known = boundaries()
     problems: list[str] = []
     for boundary in sorted(known):
@@ -258,6 +263,7 @@ def test_boundaries_follow_the_directory_rules(context: str):
 
 @pytest.mark.parametrize("boundary", sorted(boundaries()))
 def test_every_boundary_imports_in_isolation(boundary: str):
+    """Each boundary package imports in a fresh interpreter without circular import errors."""
     result = subprocess.run(
         [sys.executable, "-c", f"import {boundary}"],
         cwd=BACKEND,
@@ -312,6 +318,7 @@ def test_repository_port_exports_its_aggregate_and_id(boundary: str, repo: type)
 
 
 def test_every_aggregate_has_a_repository_port():
+    """Every aggregate has an outbound repository port."""
     assert len(_repository_ports()) >= 5
 
 

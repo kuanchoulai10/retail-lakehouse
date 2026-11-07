@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import importlib
-from types import ModuleType
+from typing import TYPE_CHECKING
 
 import pytest
 from temporalio import workflow
@@ -18,6 +18,9 @@ from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner
 
 from bootstrap.container import WORKFLOWS
 from tests.architecture.contexts import context_dir, context_module, context_names
+
+if TYPE_CHECKING:
+    from types import ModuleType
 
 WORKFLOWS_PACKAGE = ("adapter", "hybrid", "temporal", "inbound", "workflows")
 
@@ -41,11 +44,13 @@ def _workflow_definitions_in_package() -> set[type]:
 
 
 def test_worker_registers_every_workflow():
+    """The worker registers every workflow defined in the package."""
     assert set(WORKFLOWS) == _workflow_definitions_in_package()
 
 
 @pytest.mark.parametrize("workflow_class", WORKFLOWS, ids=lambda cls: cls.__name__)
 def test_workflow_passes_sandbox_validation(workflow_class: type):
+    """A workflow class passes the Temporal sandbox restrictions validation."""
     definition = workflow._Definition.must_from_class(workflow_class)  # noqa: SLF001
 
     async def prepare() -> None:

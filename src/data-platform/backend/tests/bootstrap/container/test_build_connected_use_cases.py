@@ -1,9 +1,11 @@
+"""Test building the use cases with a Temporal client connected on the bridge loop."""
+
 from __future__ import annotations
 
 import threading
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
-from bootstrap.configs import TemporalSettings
 from bootstrap.container import build_connected_use_cases, build_engine, run_migrations
 from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
     AsyncLoopBridge,
@@ -13,8 +15,12 @@ from context.table_maintenance.application.port.inbound.table_maintenance_preset
 )
 from tests.bootstrap.container.container_support import sqlite_settings
 
+if TYPE_CHECKING:
+    from bootstrap.configs import TemporalSettings
+
 
 def test_connects_the_gateway_client_on_the_bridge_loop(tmp_path):
+    """The Temporal client is connected on the async loop bridge and the use cases work."""
     settings = sqlite_settings()
     settings.sqlite.path = str(tmp_path / "tm.db")
     run_migrations(build_engine(settings))

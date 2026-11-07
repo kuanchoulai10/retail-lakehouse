@@ -103,7 +103,7 @@ def _qualified_name(cls: type) -> str:
     return f"{cls.__module__}.{cls.__qualname__}"
 
 
-# (base, max_depth, exclude_subtrees)
+# Each contract is a base, its maximum depth and the subtrees excluded from the count.
 DEPTH_CONTRACTS: list[tuple[type, int, tuple[type, ...]]] = [
     (ValueObject, 1, (EntityId,)),
     (EntityId, 1, ()),
@@ -124,6 +124,7 @@ DEPTH_CONTRACTS: list[tuple[type, int, tuple[type, ...]]] = [
     ids=[c[0].__name__ for c in DEPTH_CONTRACTS],
 )
 def test_inheritance_depth(base: type, max_depth: int, exclude_subtrees: tuple[type, ...]) -> None:
+    """Each base class has no subclass chain deeper than its contract allows."""
     excluded: set[type] = set()
     for sub_base in exclude_subtrees:
         excluded.add(sub_base)
@@ -144,6 +145,7 @@ def test_inheritance_depth(base: type, max_depth: int, exclude_subtrees: tuple[t
 
 
 def test_event_dispatcher_has_no_subclasses() -> None:
+    """The event dispatcher has no subclasses."""
     subclasses = _all_subclasses(EventDispatcher)
     if subclasses:
         formatted = "\n".join(f"  {_qualified_name(c)}" for c in sorted(subclasses, key=_qualified_name))

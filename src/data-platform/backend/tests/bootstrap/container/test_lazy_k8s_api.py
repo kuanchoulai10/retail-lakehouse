@@ -1,3 +1,5 @@
+"""Test the lazily created Kubernetes API client."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
@@ -8,6 +10,7 @@ from bootstrap.container import LazyK8sApi
 
 
 def test_factory_is_not_called_until_first_use_then_once():
+    """The factory is not called until first use and then only once."""
     api = MagicMock(name="api")
     calls: list[int] = []
 
@@ -27,6 +30,8 @@ def test_factory_is_not_called_until_first_use_then_once():
 
 
 def test_a_failing_factory_only_fails_at_first_use():
+    """A failing factory raises at first use instead of at construction."""
+
     def factory() -> MagicMock:
         raise RuntimeError("no kubeconfig")
 

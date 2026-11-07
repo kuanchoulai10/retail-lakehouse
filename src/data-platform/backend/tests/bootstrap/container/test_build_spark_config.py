@@ -1,3 +1,5 @@
+"""Test the Spark runtime configuration built from the application settings."""
+
 from __future__ import annotations
 
 from bootstrap.configs import AppSettings, CatalogSettings, SparkSettings
@@ -8,6 +10,7 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import
 
 
 def test_spark_config_combines_spark_and_catalog_settings():
+    """The Spark config combines the Spark and catalog settings."""
     settings = AppSettings(
         catalog=CatalogSettings(
             uri="http://polaris:8181/api/catalog",
@@ -64,6 +67,7 @@ def test_spark_config_combines_spark_and_catalog_settings():
 
 
 def test_default_spark_settings_match_the_runtime_defaults():
+    """The default Spark settings give the expected namespace, Spark and Iceberg versions."""
     config = build_spark_config(AppSettings())
 
     assert config.namespace == "lakehouse-maintenance-operations"
