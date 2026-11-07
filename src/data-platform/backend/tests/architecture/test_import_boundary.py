@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from base import AggregateRoot, Repository
+from tests.architecture.aggregates import aggregates
 from tests.architecture.boundaries import (
     BACKEND,
     PROJECT_PACKAGES,
@@ -232,41 +233,39 @@ def test_exports_do_not_shadow_a_sibling_module():
 
 
 GLOBAL_BOUNDARIES = ("base", "bootstrap.configs", "bootstrap.container")
-CONTEXT_BOUNDARIES = (
-    "application.exceptions",
-    "application.domain.model.table",
-    "application.port.outbound.table",
-    "application.service.shared",
-    "adapter.inbound.web",
-    "adapter.inbound.web.table",
-    "adapter.inbound.web.shared",
-    "adapter.inbound.event_consumer",
-    "adapter.outbound.table.sql",
-    "adapter.outbound.shared.sql",
-    "adapter.hybrid.temporal.contracts",
-    "adapter.hybrid.temporal.contracts.table_maintenance",
-    "adapter.hybrid.temporal.inbound",
-    "adapter.hybrid.temporal.inbound.workflows",
-    "adapter.hybrid.temporal.outbound.table",
+CONTEXT_KERNEL_BOUNDARIES = ("application.exceptions",)
+AGGREGATE_BOUNDARY_LAYERS = (
+    "application.domain.model",
+    "application.port.inbound",
+    "application.port.outbound",
 )
-CONTEXT_NON_BOUNDARIES = (
-    "adapter.outbound.table",
-    "application.port.inbound.table.include_table",
+STRUCTURAL_PACKAGES = (
+    "application",
+    "adapter",
+    *AGGREGATE_BOUNDARY_LAYERS,
 )
 
 
 @pytest.mark.parametrize("context", context_names())
 def test_boundaries_follow_the_directory_rules(context: str):
+    """Only shapes every context has; concrete samples live in each context's tests."""
     known = boundaries()
     prefix = context_module(context)
     for expected in (
         *GLOBAL_BOUNDARIES,
-        *(f"{prefix}.{suffix}" for suffix in CONTEXT_BOUNDARIES),
+        *(f"{prefix}.{suffix}" for suffix in CONTEXT_KERNEL_BOUNDARIES),
+        *(
+            f"{prefix}.{layer}.{aggregate}"
+            for layer in AGGREGATE_BOUNDARY_LAYERS
+            for aggregate in sorted(aggregates(context))
+        ),
     ):
         assert expected in known, expected
     for not_a_boundary in (
-        *(f"{prefix}.{suffix}" for suffix in CONTEXT_NON_BOUNDARIES),
         "bootstrap",
+        "context",
+        prefix,
+        *(f"{prefix}.{package}" for package in STRUCTURAL_PACKAGES),
     ):
         assert not_a_boundary not in known, not_a_boundary
 
