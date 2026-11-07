@@ -7,16 +7,15 @@ from context.catalog.application.domain.model.table import (
     NullOrder,
     PartitionField,
     PartitionSpec,
-    SchemaField,
     Snapshot,
     SortDirection,
     SortField,
     SortOrder,
     Table,
     TableId,
-    TableSchema,
     TableSummary,
 )
+from context.catalog.application.port.outbound.shared import Schema, SchemaField
 from context.catalog.application.port.outbound.table.tables_repo import TablesRepo
 
 __all__ = [
@@ -24,6 +23,7 @@ __all__ = [
     "NullOrder",
     "PartitionField",
     "PartitionSpec",
+    "Schema",
     "SchemaField",
     "Snapshot",
     "SortDirection",
@@ -31,7 +31,6 @@ __all__ = [
     "SortOrder",
     "Table",
     "TableId",
-    "TableSchema",
     "TableSummary",
     "TablesRepo",
 ]

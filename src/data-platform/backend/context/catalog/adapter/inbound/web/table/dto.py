@@ -24,6 +24,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
+from context.catalog.adapter.inbound.web.shared import SchemaApiResponse
+
 
 def _id_text(value: object) -> object:
     """Turn an int snapshot id into its exact decimal text; None and text pass through."""
@@ -82,27 +84,6 @@ class UpdateTablePropertiesApiRequest(BaseModel):
     expected_uuid: str
     updates: dict[str, str] = Field(default_factory=dict)
     removals: list[str] = Field(default_factory=list)
-
-
-class SchemaFieldApiResponse(BaseModel):
-    """One top-level column; ``type`` is text."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    name: str
-    type: str
-    required: bool
-    doc: str | None
-
-
-class TableSchemaApiResponse(BaseModel):
-    """The current schema."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    schema_id: int
-    fields: list[SchemaFieldApiResponse]
 
 
 class PartitionFieldApiResponse(BaseModel):
@@ -180,7 +161,7 @@ class TableApiResponse(BaseModel):
     location: str
     current_snapshot_id: SnapshotIdText | None
     last_updated_ms: int
-    table_schema: TableSchemaApiResponse = Field(alias="schema")
+    table_schema: SchemaApiResponse = Field(alias="schema")
     partition_spec: PartitionSpecApiResponse
     sort_order: SortOrderApiResponse
     snapshots: list[SnapshotApiResponse]

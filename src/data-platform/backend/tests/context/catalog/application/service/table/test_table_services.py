@@ -20,12 +20,12 @@ from context.catalog.application.port.inbound.table import (
 )
 from context.catalog.application.port.outbound.table import (
     PartitionSpec,
+    Schema,
     SchemaField,
     Snapshot,
     SortOrder,
     Table,
     TableId,
-    TableSchema,
 )
 from context.catalog.application.service.table import (
     CreateTableService,
@@ -75,7 +75,7 @@ def _with_snapshots(repo: InMemoryTablesRepo) -> None:
         location="s3://w/retail/orders",
         current_snapshot_id=2,
         last_updated_ms=20,
-        schema=TableSchema(schema_id=0, fields=(SchemaField(1, "order_id", "long", True, None),)),
+        schema=Schema(schema_id=0, fields=(SchemaField(1, "order_id", "long", True, None),)),
         partition_spec=PartitionSpec.unpartitioned(),
         sort_order=SortOrder.unsorted(),
         snapshots=[

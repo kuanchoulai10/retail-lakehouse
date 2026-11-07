@@ -11,9 +11,9 @@ from context.catalog.application.domain.model.table.table_id import TableId
 from context.catalog.application.domain.model.table.table_summary import TableSummary
 
 if TYPE_CHECKING:
+    from context.catalog.application.domain.model.shared import Schema
     from context.catalog.application.domain.model.table.partition_spec import PartitionSpec
     from context.catalog.application.domain.model.table.snapshot import Snapshot
-    from context.catalog.application.domain.model.table.table_schema import TableSchema
 
 
 @dataclass(eq=False)
@@ -31,7 +31,7 @@ class Table(AggregateRoot[TableId]):
     location: str | None
     current_snapshot_id: int | None
     last_updated_ms: int | None
-    schema: TableSchema
+    schema: Schema
     partition_spec: PartitionSpec
     sort_order: SortOrder
     snapshots: list[Snapshot] = field(default_factory=list)
@@ -41,7 +41,7 @@ class Table(AggregateRoot[TableId]):
     def define(
         cls,
         id: TableId,  # noqa: A002
-        schema: TableSchema,
+        schema: Schema,
         partition_spec: PartitionSpec,
         location: str | None,
         properties: dict[str, str],

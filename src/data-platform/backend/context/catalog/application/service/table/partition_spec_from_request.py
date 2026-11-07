@@ -10,7 +10,7 @@ from context.catalog.application.port.outbound.table import PartitionField, Part
 
 if TYPE_CHECKING:
     from context.catalog.application.port.inbound.table import CreateTableUseCaseInputPartitionField
-    from context.catalog.application.port.outbound.table import TableSchema
+    from context.catalog.application.port.outbound.table import Schema
 
 _FIRST_PARTITION_FIELD_ID = 1000
 _TRANSFORM = re.compile(r"^(identity|year|month|day|hour|void|bucket\[[1-9]\d*\]|truncate\[[1-9]\d*\])$")
@@ -26,7 +26,7 @@ def _field_name(source: str, transform: str) -> str:
 
 
 def partition_spec_from_request(
-    schema: TableSchema, partition_fields: list[CreateTableUseCaseInputPartitionField]
+    schema: Schema, partition_fields: list[CreateTableUseCaseInputPartitionField]
 ) -> PartitionSpec:
     """Build spec 0 from the form's partition fields, or raise ValidationError.
 

@@ -9,7 +9,7 @@ from context.catalog.adapter.outbound.shared.polaris import iceberg_schema_from_
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from context.catalog.application.port.outbound.table import TableSchema
+    from context.catalog.application.port.outbound.table import Schema
 
 
 def _current(metadata: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -22,7 +22,7 @@ def _current(metadata: Mapping[str, Any]) -> Mapping[str, Any]:
     raise ValueError(f"current-schema-id {current_id} matches no schema")
 
 
-def table_schema_from_polaris(metadata: Mapping[str, Any]) -> TableSchema:
+def table_schema_from_polaris(metadata: Mapping[str, Any]) -> Schema:
     """Map the current schema of Iceberg table metadata: ``schemas`` at ``current-schema-id``.
 
     Only metadata without ``schemas`` (format v1) falls back to its single ``schema``. A

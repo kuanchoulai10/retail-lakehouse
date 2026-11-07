@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from context.catalog.adapter.inbound.web.table import TableSchemaApiResponse
+from context.catalog.adapter.inbound.web.shared import SchemaApiResponse
 
 
 class CreateViewApiRequest(BaseModel):
@@ -49,7 +49,7 @@ class ViewApiResponse(BaseModel):
     dialect: str
     default_namespace: list[str]
     current_version_id: int
-    view_schema: TableSchemaApiResponse = Field(alias="schema")
+    view_schema: SchemaApiResponse = Field(alias="schema")
     versions: list[ViewVersionApiResponse]
     properties: dict[str, str]
 

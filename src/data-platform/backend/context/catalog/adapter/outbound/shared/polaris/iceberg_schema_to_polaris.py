@@ -10,10 +10,10 @@ from context.catalog.adapter.outbound.shared.polaris.iceberg_type_to_polaris imp
 )
 
 if TYPE_CHECKING:
-    from context.catalog.application.port.outbound.table import TableSchema
+    from context.catalog.application.port.outbound.shared import Schema
 
 
-def iceberg_schema_to_polaris(schema: TableSchema) -> dict[str, Any]:
+def iceberg_schema_to_polaris(schema: Schema) -> dict[str, Any]:
     """Map a schema to an Iceberg REST struct; nested ids continue after the highest top-level id."""
     next_id = count(max((field.id for field in schema.fields), default=0) + 1).__next__
     fields = []

@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
     import httpx
 
-    from context.catalog.application.port.outbound.view import TableSchema, ViewId, ViewVersion
+    from context.catalog.application.port.outbound.view import Schema, ViewId, ViewVersion
 
 _UNREADABLE = (AttributeError, KeyError, TypeError, ValueError)
 
@@ -28,7 +28,7 @@ def _current_version(versions: list[ViewVersion], current_id: int) -> ViewVersio
     raise ValueError(f"current-version-id {current_id} matches no version")
 
 
-def _schema_of(metadata: Mapping[str, Any], version: ViewVersion) -> TableSchema:
+def _schema_of(metadata: Mapping[str, Any], version: ViewVersion) -> Schema:
     for schema in metadata["schemas"]:
         if schema["schema-id"] == version.schema_id:
             return iceberg_schema_from_polaris(schema)

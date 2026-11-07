@@ -1,4 +1,4 @@
-"""Define the TableSchema value object."""
+"""Define the Schema value object."""
 
 from __future__ import annotations
 
@@ -8,11 +8,11 @@ from typing import TYPE_CHECKING
 from base import ValueObject
 
 if TYPE_CHECKING:
-    from context.catalog.application.domain.model.table.schema_field import SchemaField
+    from context.catalog.application.domain.model.shared.schema_field import SchemaField
 
 
 @dataclass(frozen=True)
-class TableSchema(ValueObject):
+class Schema(ValueObject):
     """The current schema of a table: its id and its top-level fields in order."""
 
     schema_id: int

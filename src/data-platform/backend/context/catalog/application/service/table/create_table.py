@@ -10,7 +10,7 @@ from context.catalog.application.port.inbound.table import (
     CreateTableUseCaseInput,
     CreateTableUseCaseOutput,
 )
-from context.catalog.application.port.outbound.table import SchemaField, Table, TableSchema
+from context.catalog.application.port.outbound.table import Schema, SchemaField, Table
 from context.catalog.application.service.table.partition_spec_from_request import (
     partition_spec_from_request,
 )
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from context.catalog.application.port.outbound.table import TablesRepo
 
 
-def _schema(requested: list[CreateTableUseCaseInputSchemaField]) -> TableSchema:
+def _schema(requested: list[CreateTableUseCaseInputSchemaField]) -> Schema:
     """Number the form's columns 1, 2, ... and refuse an empty, blank or duplicate one."""
     if not requested:
         raise ValidationError("a table needs at least one field")
@@ -35,7 +35,7 @@ def _schema(requested: list[CreateTableUseCaseInputSchemaField]) -> TableSchema:
     blank_types = [field.name for field in requested if not field.type.strip()]
     if blank_types:
         raise ValidationError(f"fields need a type: {', '.join(blank_types)}")
-    return TableSchema(
+    return Schema(
         schema_id=0,
         fields=tuple(
             SchemaField(id=index, name=field.name, type=field.type.strip(), required=field.required, doc=field.doc)

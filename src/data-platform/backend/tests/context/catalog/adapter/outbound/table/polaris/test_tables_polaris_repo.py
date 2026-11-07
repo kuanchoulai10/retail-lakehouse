@@ -21,12 +21,12 @@ from context.catalog.application.port.outbound.table import (
     NullOrder,
     PartitionField,
     PartitionSpec,
+    Schema,
     SchemaField,
     SortDirection,
     SortOrder,
     Table,
     TableId,
-    TableSchema,
 )
 from tests.context.catalog.adapter.outbound.shared.polaris.polaris_stub import PolarisStub
 
@@ -52,7 +52,7 @@ def _error(status: int, message: str) -> httpx.Response:
 def _new_orders(partition_spec: PartitionSpec | None = None, location: str | None = None) -> Table:
     return Table.define(
         id=ORDERS_ID,
-        schema=TableSchema(
+        schema=Schema(
             schema_id=0,
             fields=(
                 SchemaField(id=1, name="order_id", type="long", required=True, doc="key"),
@@ -278,7 +278,7 @@ def test_create_table_with_malformed_type_is_a_validation_error():
     stub = PolarisStub()
     table = Table.define(
         id=ORDERS_ID,
-        schema=TableSchema(schema_id=0, fields=(SchemaField(1, "bad", "list<string", True, None),)),
+        schema=Schema(schema_id=0, fields=(SchemaField(1, "bad", "list<string", True, None),)),
         partition_spec=PartitionSpec.unpartitioned(),
         location=None,
         properties={},
