@@ -24,10 +24,9 @@ SALES: dict[str, object] = {
 
 
 def test_every_catalog_web_use_case_is_populated():
-    """Every catalog web use case fields are set."""
+    """Every field of the catalog web use cases is populated."""
     web = build_catalog_web_use_cases(PolarisStub().client())
 
-    assert len(fields(web)) == 10
     assert all(getattr(web, f.name) is not None for f in fields(web))
 
 

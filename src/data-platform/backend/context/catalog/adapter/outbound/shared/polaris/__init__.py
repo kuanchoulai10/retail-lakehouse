@@ -11,9 +11,13 @@ from context.catalog.adapter.outbound.shared.polaris.polaris_error_mapper import
 from context.catalog.adapter.outbound.shared.polaris.polaris_http_client import (
     PolarisHttpClient,
 )
+from context.catalog.adapter.outbound.shared.polaris.raise_for_paged_listing import (
+    raise_for_paged_listing,
+)
 
 __all__ = [
     "PolarisHttpClient",
     "iceberg_namespace_path",
+    "raise_for_paged_listing",
     "raise_for_polaris",
 ]

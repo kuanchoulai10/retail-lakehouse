@@ -9,7 +9,12 @@ import httpx
 import pytest
 
 from context.catalog.adapter.outbound.namespace.polaris import NamespacesPolarisRepo
-from context.catalog.application.exceptions import ConflictError, NotFoundError, ValidationError
+from context.catalog.application.exceptions import (
+    CatalogUnavailableError,
+    ConflictError,
+    NotFoundError,
+    ValidationError,
+)
 from context.catalog.application.port.outbound.namespace import CatalogId, Namespace, NamespaceId
 from tests.context.catalog.adapter.outbound.shared.polaris.polaris_stub import PolarisStub
 
@@ -178,3 +183,22 @@ def test_list_all_walks_every_catalog_and_every_level():
     found = NamespacesPolarisRepo(stub.client()).list_all()
 
     assert [n.id.parts for n in found] == [("a",), ("a", "b")]
+
+
+def test_list_in_refuses_a_paged_listing_instead_of_truncating():
+    """A non-null next-page-token means Polaris holds more than it returned; that is a loud 502, not a short list."""
+    stub = PolarisStub()
+    stub.on("GET", NAMESPACES, httpx.Response(200, json={"namespaces": [["a"]], "next-page-token": "tok"}))
+
+    with pytest.raises(CatalogUnavailableError, match="paged listing"):
+        NamespacesPolarisRepo(stub.client()).list_in(CatalogId.of("sales"), ())
+
+
+def test_list_in_accepts_a_null_next_page_token():
+    """A null token is the last page, so the listing is complete."""
+    stub = PolarisStub()
+    stub.on("GET", NAMESPACES, httpx.Response(200, json={"namespaces": [["a"]], "next-page-token": None}))
+
+    found = NamespacesPolarisRepo(stub.client()).list_in(CatalogId.of("sales"), ())
+
+    assert [n.id.parts for n in found] == [("a",)]

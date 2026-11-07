@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from context.catalog.adapter.outbound.namespace.polaris.namespace_from_polaris import (
     namespace_from_polaris,
 )
-from context.catalog.adapter.outbound.shared.polaris import iceberg_namespace_path
+from context.catalog.adapter.outbound.shared.polaris import iceberg_namespace_path, raise_for_paged_listing
 from context.catalog.application.exceptions import NotFoundError
 from context.catalog.application.port.outbound.namespace import (
     CatalogId,
@@ -48,12 +48,14 @@ class NamespacesPolarisRepo(NamespacesRepo):
         return namespace_from_polaris(namespace_id.catalog, response.json())
 
     def list_in(self, catalog: CatalogId, parent: tuple[str, ...]) -> list[Namespace]:
-        """GET the direct children of ``parent``; ``parent`` is sent joined by U+001F, and omitted at the top."""
+        """GET the direct children of ``parent``, joined by U+001F and omitted at the top; a paged reply is refused."""
         params = {"parent": _SEPARATOR.join(parent)} if parent else None
         response = self._polaris.catalog_request("GET", iceberg_namespace_path(catalog.name), params=params)
+        body = response.json()
+        raise_for_paged_listing(body)
         return [
             namespace_from_polaris(catalog.name, {"namespace": parts, "properties": {}})
-            for parts in response.json().get("namespaces", [])
+            for parts in body.get("namespaces", [])
         ]
 
     def list_all(self) -> list[Namespace]:
