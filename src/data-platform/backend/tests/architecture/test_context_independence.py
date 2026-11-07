@@ -1,7 +1,7 @@
 """Guard test: bounded contexts do not reach into each other.
 
-Context A may use context B only from A's adapters, and only through B's
-inbound ports. A's application never imports another context, and ``base``
+Context A may use context B only from A's outbound adapters (``adapter/outbound/``
+or ``adapter/hybrid/<tech>/outbound/``), and only through B's inbound ports. A's application never imports another context, and ``base``
 imports no context. ``bootstrap`` wires every context and is not checked.
 
 import-linter wildcards cannot say "another context", so this rule is an AST
@@ -18,6 +18,8 @@ from tests.architecture.contexts import BACKEND
 
 CONTEXT_PACKAGE = "context"
 ADAPTER = "adapter"
+OUTBOUND = "outbound"
+HYBRID = "hybrid"
 INBOUND_PORT = ("application", "port", "inbound")
 SKIPPED_PARTS = {"__pycache__", ".venv"}
 
@@ -84,11 +86,19 @@ def _target_context(target: str) -> str | None:
     return parts[1]
 
 
-def _reaches_into(own: str, in_adapter: bool, target: str) -> bool:
+def _in_outbound_adapter(parts: tuple[str, ...]) -> bool:
+    """Return whether ``context/<own>/...`` parts sit under an outbound adapter side."""
+    side = parts[2:]
+    if side[:2] == (ADAPTER, OUTBOUND):
+        return len(side) > 2
+    return len(side) > 4 and side[:2] == (ADAPTER, HYBRID) and side[3] == OUTBOUND
+
+
+def _reaches_into(own: str, in_outbound: bool, target: str) -> bool:
     other = _target_context(target)
     if other is None or other == own:
         return False
-    if not in_adapter:
+    if not in_outbound:
         return True
     return not _within(target, ".".join((CONTEXT_PACKAGE, other, *INBOUND_PORT)))
 
@@ -102,11 +112,11 @@ def cross_context_violations(backend: Path) -> list[str]:
         if len(parts) < 3:
             continue
         own = parts[1]
-        in_adapter = parts[2] == ADAPTER
+        in_outbound = _in_outbound_adapter(parts)
         found += [
             f"{relative}:{line} {target}"
             for line, target, resolved in _imported_modules(path, backend)
-            if not resolved or _reaches_into(own, in_adapter, target)
+            if not resolved or _reaches_into(own, in_outbound, target)
         ]
     for path in _python_files(backend / "base"):
         relative = path.relative_to(backend)
@@ -163,6 +173,18 @@ def test_cross_context_import_rules(tmp_path: Path):
         "context/alpha/adapter/__init__.py": (
             "from ...beta.application.domain import model\n"
         ),
+        "context/alpha/adapter/inbound/web/uses_port.py": (
+            "from context.beta.application.port.inbound import GetThingUseCase\n"
+        ),
+        "context/alpha/adapter/hybrid/temporal/inbound/act.py": (
+            "from context.beta.application.port.inbound import GetThingUseCase\n"
+        ),
+        "context/alpha/adapter/hybrid/temporal/contracts/c.py": (
+            "from context.beta.application.port.inbound import GetThingUseCase\n"
+        ),
+        "context/alpha/adapter/hybrid/temporal/outbound/thing/g.py": (
+            "from context.beta.application.port.inbound import GetThingUseCase\n"
+        ),
         "context/beta/application/domain/model/thing.py": "class Thing: ...\n",
         "base/b.py": "import context.alpha\n",
     }
@@ -184,6 +206,12 @@ def test_cross_context_import_rules(tmp_path: Path):
             "context.beta.application.domain.model.thing",
             "context/alpha/application/up.py:1 .... climbs above context",
             "context/alpha/adapter/__init__.py:1 context.beta.application.domain.model",
+            "context/alpha/adapter/inbound/web/uses_port.py:1 "
+            "context.beta.application.port.inbound.GetThingUseCase",
+            "context/alpha/adapter/hybrid/temporal/inbound/act.py:1 "
+            "context.beta.application.port.inbound.GetThingUseCase",
+            "context/alpha/adapter/hybrid/temporal/contracts/c.py:1 "
+            "context.beta.application.port.inbound.GetThingUseCase",
             "base/b.py:1 context.alpha",
         ]
     )
