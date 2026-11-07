@@ -176,7 +176,7 @@ def main() -> int:
     for violation in violations:
         print(violation)
     if violations:
-        print(f"{len(violations)} label violation(s); see CLAUDE.md 'Kubernetes labels'", file=sys.stderr)
+        print(f"{len(violations)} label violation(s); see platform/CLAUDE.md 'Kubernetes labels'", file=sys.stderr)
         return 1
     return 0
 

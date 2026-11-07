@@ -210,7 +210,7 @@ kubectl port-forward service/temporal-web 8080:8080 --namespace temporal --conte
 | `keycloak-db` | 48Mi | 256Mi | 40Mi idle, peak 50Mi; cgroup `memory.peak` 120 MiB including page cache |
 | `oauth2-proxy` | 16Mi | 128Mi | 6Mi idle and peak |
 
-Requests follow the idle working set and limits leave headroom over the peak, as for the other bounded pods (CLAUDE.md, node memory pressure). Keycloak runs `start` without `--optimized`, so every start re-augments the server; the peak above includes that.
+Requests follow the idle working set and limits leave headroom over the peak, as for the other bounded pods (`docs/agents/known-follow-ups.md`, node memory pressure). Keycloak runs `start` without `--optimized`, so every start re-augments the server; the peak above includes that.
 
 ## Sync Wave
 
