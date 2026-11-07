@@ -29,9 +29,11 @@ export function CreateCatalogDialog({ onClose }: { onClose: () => void }) {
 
   const create = useMutation({
     mutationFn: (body: CreateCatalogApiRequest) => apiSend("POST", catalogsApiPath(), body),
-    onSuccess: async () => {
+    // A write can fail after part of it landed, so the page refetches either way; the dialog
+    // closes only on success and otherwise shows the API's message, which says what landed.
+    onSettled: async (_data, error) => {
       await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.catalogs() });
-      onClose();
+      if (error === null) onClose();
     },
   });
 

@@ -29,9 +29,11 @@ export function CreateNamespaceDialog({ catalog, parent, onClose }: Props) {
   const create = useMutation({
     mutationFn: (body: CreateNamespaceApiRequest) =>
       apiSend("POST", namespacesApiPath(catalog, []), body),
-    onSuccess: async () => {
+    // A write can fail after part of it landed, so the page refetches either way; the dialog
+    // closes only on success and otherwise shows the API's message, which says what landed.
+    onSettled: async (_data, error) => {
       await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.namespaceLists(catalog) });
-      onClose();
+      if (error === null) onClose();
     },
   });
 

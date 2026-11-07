@@ -335,4 +335,52 @@ describe("NamespacePage", { timeout: 15_000 }, () => {
     expect(within(children).getByRole("alert")).toHaveTextContent("Could not load namespaces: no access");
     expect(screen.getByRole("region", { name: "Properties" })).toHaveTextContent("owner");
   });
+
+  it("refetches the namespace and says the removals landed when the updates fail", async () => {
+    const user = userEvent.setup();
+    const calls = stubNamespace({
+      [`PUT ${NS}/properties`]: () =>
+        jsonResponse(
+          { detail: "removals were applied; reload and retry: Concurrent modification of namespace: retail" },
+          409,
+        ),
+    });
+    renderAt("/catalogs/iceberg/namespaces/retail");
+    await screen.findByRole("region", { name: "Tables and views" });
+    await openAction(user, "Edit properties");
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Remove location" }));
+    await user.type(within(dialog).getByLabelText("Value of owner"), "2");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("removals were applied; reload and retry");
+    await vi.waitFor(() => expect(callsTo(calls, "GET", NS).length).toBeGreaterThan(1));
+  });
+
+  it.each([
+    ["View", `${NS}/views`, async (dialog: HTMLElement, user: ReturnType<typeof userEvent.setup>) => {
+      await user.type(within(dialog).getByLabelText("Name"), "v");
+      await user.type(within(dialog).getByLabelText("SQL"), "SELECT 1");
+    }],
+    ["Table", `${NS}/tables`, async (dialog: HTMLElement, user: ReturnType<typeof userEvent.setup>) => {
+      await user.type(within(dialog).getByLabelText("Name"), "t");
+      await user.type(within(dialog).getByLabelText("Field 1 name"), "id");
+      await user.type(within(dialog).getByLabelText("Field 1 type"), "long");
+    }],
+    ["Generic table", `${NS}/generic-tables`, async (dialog: HTMLElement, user: ReturnType<typeof userEvent.setup>) => {
+      await user.type(within(dialog).getByLabelText("Name"), "g");
+      await user.type(within(dialog).getByLabelText("Format"), "delta");
+    }],
+  ])("refetches the list when a %s create fails", async (kind, listPath, fill) => {
+    const user = userEvent.setup();
+    const calls = stubNamespace({ [`POST ${listPath}`]: () => jsonResponse({ detail: "Polaris is unreachable" }, 502) });
+    renderAt("/catalogs/iceberg/namespaces/retail");
+    const objects = await screen.findByRole("region", { name: "Tables and views" });
+    await user.click(within(objects).getByRole("button", { name: "New table or view" }));
+    await user.click(screen.getByRole("button", { name: kind }));
+    const dialog = screen.getByRole("dialog");
+    await fill(dialog, user);
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Polaris is unreachable");
+    await vi.waitFor(() => expect(callsTo(calls, "GET", listPath).length).toBeGreaterThan(1));
+  });
 });

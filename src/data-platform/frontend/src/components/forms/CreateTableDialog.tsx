@@ -67,9 +67,11 @@ export function CreateTableDialog({ catalog, namespace, onClose }: Props) {
 
   const create = useMutation({
     mutationFn: (body: CreateTableApiRequest) => apiSend("POST", tablesApiPath(catalog, namespace), body),
-    onSuccess: async () => {
+    // A write can fail after part of it landed, so the page refetches either way; the dialog
+    // closes only on success and otherwise shows the API's message, which says what landed.
+    onSettled: async (_data, error) => {
       await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.tables(catalog, namespace) });
-      onClose();
+      if (error === null) onClose();
     },
   });
 

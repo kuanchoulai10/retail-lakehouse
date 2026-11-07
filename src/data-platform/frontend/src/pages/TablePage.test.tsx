@@ -374,4 +374,37 @@ describe("TablePage", { timeout: 15_000 }, () => {
     renderAt(PAGE);
     expect(await screen.findByText(/Could not load table: polaris unreachable/)).toBeInTheDocument();
   });
+
+  it("refetches the table when a properties save fails", async () => {
+    const user = userEvent.setup();
+    const calls = stubTable({
+      extra: { [`PUT ${TABLE}/properties`]: () => jsonResponse({ detail: "Polaris is unreachable" }, 502) },
+    });
+    renderAt(`${PAGE}/properties`);
+    await openAction(user, "Edit properties");
+    const dialog = await screen.findByRole("dialog", { name: "Edit properties" });
+    await user.click(within(dialog).getByRole("button", { name: "Remove owner" }));
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Polaris is unreachable");
+    await vi.waitFor(() => expect(callsTo(calls, "GET", TABLE).length).toBeGreaterThan(1));
+  });
+
+  it("refetches the namespace's tables when a rename fails", async () => {
+    const user = userEvent.setup();
+    stubTable({
+      extra: { [`POST ${TABLE}/rename`]: () => jsonResponse({ detail: "Polaris is unreachable" }, 502) },
+    });
+    const client = renderAt(PAGE);
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    await openAction(user, "Rename");
+    const dialog = await screen.findByRole("dialog", { name: "Rename table" });
+    const name = within(dialog).getByLabelText("Name");
+    await user.clear(name);
+    await user.type(name, "orders_v2");
+    await user.click(within(dialog).getByRole("button", { name: "Rename" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Polaris is unreachable");
+    await vi.waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({ queryKey: ["catalog-tables", "iceberg", ["retail"]] }),
+    );
+  });
 });

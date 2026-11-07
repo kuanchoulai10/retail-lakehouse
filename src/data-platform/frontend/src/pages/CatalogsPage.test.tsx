@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { CatalogApiResponse } from "../api/catalogTypes";
 import { bodyOf, callsTo, catalogFixture, stubCatalogApi } from "../test/catalogApiStub";
 import { jsonResponse } from "../test/fixtures";
@@ -125,5 +125,28 @@ describe("CatalogsPage", { timeout: 15_000 }, () => {
     stubCatalogApi({ "GET /v1/catalogs": () => jsonResponse({ detail: "polaris is down" }, 502) });
     renderPage();
     expect(await screen.findByText(/Could not load catalogs: polaris is down/)).toBeInTheDocument();
+  });
+
+  it("refetches the list and shows what was applied when the create fails after the catalog was made", async () => {
+    const user = userEvent.setup();
+    const calls = stubCatalogApi({
+      "GET /v1/catalogs": () => jsonResponse([catalogFixture()]),
+      "POST /v1/catalogs": () =>
+        jsonResponse({ detail: "catalog sales was created but the content grant failed: forbidden" }, 403),
+    });
+    renderPage();
+    await screen.findByRole("link", { name: "iceberg" });
+    await user.click(screen.getByRole("button", { name: "New catalog" }));
+    const dialog = screen.getByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), "sales");
+    await user.type(within(dialog).getByLabelText("Default base location"), "s3://warehouse/sales");
+    await user.type(within(dialog).getByLabelText(/Allowed locations/), "s3://warehouse/sales/");
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "catalog sales was created but the content grant failed: forbidden",
+    );
+    await vi.waitFor(() => expect(callsTo(calls, "GET", "/v1/catalogs")).toHaveLength(2));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });

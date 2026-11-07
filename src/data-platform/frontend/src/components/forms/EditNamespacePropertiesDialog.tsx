@@ -25,11 +25,13 @@ export function EditNamespacePropertiesDialog({ namespace, onClose }: Props) {
   const update = useMutation({
     mutationFn: (body: UpdateNamespacePropertiesApiRequest) =>
       apiSend("PUT", namespacePropertiesApiPath(namespace.catalog, namespace.namespace), body),
-    onSuccess: async () => {
+    // A write can fail after part of it landed, so the page refetches either way; the dialog
+    // closes only on success and otherwise shows the API's message, which says what landed.
+    onSettled: async (_data, error) => {
       await queryClient.invalidateQueries({
         queryKey: catalogQueryKeys.namespace(namespace.catalog, namespace.namespace),
       });
-      onClose();
+      if (error === null) onClose();
     },
   });
 

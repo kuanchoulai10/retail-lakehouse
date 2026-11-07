@@ -29,9 +29,11 @@ export function EditTablePropertiesDialog({ table, onClose }: Props) {
   const update = useMutation({
     mutationFn: (body: UpdateTablePropertiesApiRequest) =>
       apiSend("PUT", tablePropertiesApiPath(table.catalog, table.namespace, table.name), body),
-    onSuccess: async () => {
+    // A write can fail after part of it landed, so the page refetches either way; the dialog
+    // closes only on success and otherwise shows the API's message, which says what landed.
+    onSettled: async (_data, error) => {
       await queryClient.invalidateQueries({ queryKey });
-      onClose();
+      if (error === null) onClose();
     },
   });
 

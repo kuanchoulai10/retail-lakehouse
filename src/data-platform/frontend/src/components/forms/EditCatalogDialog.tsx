@@ -46,9 +46,11 @@ export function EditCatalogDialog({ catalog, onClose }: Props) {
 
   const update = useMutation({
     mutationFn: (body: UpdateCatalogApiRequest) => apiSend("PUT", catalogApiPath(catalog.name), body),
-    onSuccess: async () => {
+    // A write can fail after part of it landed, so the page refetches either way; the dialog
+    // closes only on success and otherwise shows the API's message, which says what landed.
+    onSettled: async (_data, error) => {
       await refetchCatalog();
-      onClose();
+      if (error === null) onClose();
     },
   });
 

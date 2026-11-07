@@ -246,4 +246,35 @@ describe("CatalogPage", { timeout: 15_000 }, () => {
       "A dot is part of the name. To nest a namespace, create it from its parent's page.",
     );
   });
+
+  it("refetches the namespaces when a create fails", async () => {
+    const user = userEvent.setup();
+    const calls = stubCatalog({
+      "POST /v1/catalogs/iceberg/namespaces": () => jsonResponse({ detail: "Polaris is unreachable" }, 502),
+    });
+    renderAt("/catalogs/iceberg");
+    await screen.findByRole("link", { name: "retail" });
+    await user.click(screen.getByRole("button", { name: "New namespace" }));
+    const dialog = screen.getByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), "x");
+    await user.click(within(dialog).getByRole("button", { name: "Create" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Polaris is unreachable");
+    await vi.waitFor(() =>
+      expect(callsTo(calls, "GET", "/v1/catalogs/iceberg/namespaces").length).toBeGreaterThan(1),
+    );
+  });
+
+  it("refetches the catalog when an edit fails", async () => {
+    const user = userEvent.setup();
+    const calls = stubCatalog({
+      "PUT /v1/catalogs/iceberg": () => jsonResponse({ detail: "Polaris is unreachable" }, 502),
+    });
+    renderAt("/catalogs/iceberg");
+    await screen.findByRole("link", { name: "retail" });
+    await openAction(user, "Edit");
+    const dialog = screen.getByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Polaris is unreachable");
+    await vi.waitFor(() => expect(callsTo(calls, "GET", "/v1/catalogs/iceberg").length).toBeGreaterThan(1));
+  });
 });

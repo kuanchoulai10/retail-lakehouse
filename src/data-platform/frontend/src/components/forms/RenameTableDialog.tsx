@@ -47,12 +47,16 @@ export function RenameTableDialog({ table, tab, onLeave, onClose }: Props) {
       apiSend<TableIdentifierApiResponse>("POST", tableRenameApiPath(table.catalog, table.namespace, table.name), body),
     // The page stops loading the old name and drops its query when it unmounts (it is keyed by
     // the table's path, so the new URL mounts a fresh page and this dialog goes with the old
-    // one). The namespace listings of both ends are refetched.
-    onSuccess: async (moved) => {
+    // one). The namespace listings of both ends are refetched, and the source's even when the
+    // rename fails, so a list never shows a state the catalog may no longer hold.
+    onSuccess: (moved) => {
       onLeave();
       navigate(tablePath(moved.catalog, moved.namespace, moved.name, tab));
+    },
+    onSettled: async (moved) => {
+      const namespaces = moved === undefined ? [table.namespace] : [table.namespace, moved.namespace];
       await Promise.all(
-        [table.namespace, moved.namespace].map((namespace) =>
+        namespaces.map((namespace) =>
           queryClient.invalidateQueries({ queryKey: catalogQueryKeys.tables(table.catalog, namespace) }),
         ),
       );

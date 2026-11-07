@@ -29,9 +29,11 @@ export function CreateViewDialog({ catalog, namespace, onClose }: Props) {
 
   const create = useMutation({
     mutationFn: (body: CreateViewApiRequest) => apiSend("POST", viewsApiPath(catalog, namespace), body),
-    onSuccess: async () => {
+    // A write can fail after part of it landed, so the page refetches either way; the dialog
+    // closes only on success and otherwise shows the API's message, which says what landed.
+    onSettled: async (_data, error) => {
       await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.views(catalog, namespace) });
-      onClose();
+      if (error === null) onClose();
     },
   });
 
