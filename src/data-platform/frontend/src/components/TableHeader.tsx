@@ -69,7 +69,7 @@ export function TableHeader({ table, metadata }: Props) {
     <>
       <PageHeader
         title={`${table.catalog}.${table.namespace}.${table.table}`}
-        breadcrumb={`${table.catalog} / ${table.namespace}`}
+        breadcrumbs={[{ label: table.catalog }, { label: table.namespace }]}
         actions={actions}
       >
         <StatusBadge status={table.status} />

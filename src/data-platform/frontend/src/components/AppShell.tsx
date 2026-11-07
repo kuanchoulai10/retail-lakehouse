@@ -1,4 +1,4 @@
-import { Menu, ScanSearch, SlidersHorizontal, Table2, type LucideIcon } from "lucide-react";
+import { BookOpen, Menu, ScanSearch, SlidersHorizontal, Table2, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Tables",
     icon: Table2,
     isActive: (pathname) => pathname === "/" || pathname.startsWith("/tables/"),
+  },
+  {
+    to: "/catalogs",
+    label: "Catalog",
+    icon: BookOpen,
+    isActive: (pathname) => pathname.startsWith("/catalogs"),
   },
   {
     to: "/presets",

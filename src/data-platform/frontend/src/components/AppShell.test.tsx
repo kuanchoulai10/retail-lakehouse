@@ -33,6 +33,15 @@ describe("AppShell", () => {
     );
   });
 
+  it("links the catalog and marks it current under /catalogs/*", () => {
+    renderShell("/catalogs/iceberg/namespaces/a.b%1Fc");
+    const nav = screen.getByRole("navigation", { name: "Main" });
+    const link = within(nav).getByRole("link", { name: "Catalog" });
+    expect(link).toHaveAttribute("href", "/catalogs");
+    expect(link).toHaveAttribute("aria-current", "page");
+    expect(within(nav).getByRole("link", { name: "Tables" })).not.toHaveAttribute("aria-current");
+  });
+
   it("marks only the current section as the current page", () => {
     renderShell("/presets");
     const nav = screen.getByRole("navigation", { name: "Main" });

@@ -41,7 +41,7 @@ export function apiGet<T>(path: string): Promise<T> {
 }
 
 export function apiSend<T>(
-  method: "POST" | "PUT",
+  method: "POST" | "PUT" | "DELETE",
   path: string,
   body?: unknown,
 ): Promise<T> {
