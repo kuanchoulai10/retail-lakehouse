@@ -2,23 +2,27 @@
 
 from __future__ import annotations
 
+import pytest
+
+from tests.architecture.contexts import context_dir, context_names
 from tests.architecture.test_aggregate_axis import subdirs
 
 
-def test_adapter_top_level():
-    assert subdirs("context/table_maintenance/adapter") == {
+@pytest.mark.parametrize("context", context_names())
+def test_adapter_top_level(context: str):
+    assert subdirs(context_dir(context) / "adapter") == {
         "inbound",
         "outbound",
         "hybrid",
     }
 
 
-def test_hybrid_tech_has_both_directions():
-    for tech in subdirs("context/table_maintenance/adapter/hybrid"):
-        assert subdirs(f"context/table_maintenance/adapter/hybrid/{tech}") == {
+@pytest.mark.parametrize("context", context_names())
+def test_hybrid_tech_has_both_directions(context: str):
+    hybrid = context_dir(context) / "adapter" / "hybrid"
+    for tech in subdirs(hybrid):
+        assert subdirs(hybrid / tech) == {
             "inbound",
             "outbound",
             "contracts",
-        }, (
-            f"context/table_maintenance/adapter/hybrid/{tech} must hold exactly inbound, outbound, contracts"
-        )
+        }, f"{hybrid / tech} must hold exactly inbound, outbound, contracts"

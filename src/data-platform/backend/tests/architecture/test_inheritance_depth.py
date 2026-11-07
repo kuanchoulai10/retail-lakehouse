@@ -28,6 +28,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.architecture.contexts import context_dir, context_names
+
 from base import (
     AggregateRoot,
     DomainEvent,
@@ -159,11 +161,10 @@ def test_event_dispatcher_has_no_subclasses() -> None:
         pytest.fail(f"EventDispatcher must not be subclassed:\n{formatted}")
 
 
-def test_aggregate_repos_extend_repository() -> None:
+@pytest.mark.parametrize("context", context_names())
+def test_aggregate_repos_extend_repository(context: str) -> None:
     """Every ``*Repo`` port class must extend ``base.repository.Repository``."""
-    port_dir = (
-        BACKEND / "context" / "table_maintenance" / "application" / "port" / "outbound"
-    )
+    port_dir = context_dir(context) / "application" / "port" / "outbound"
     found: list[type] = []
     for py_file in port_dir.rglob("*_repo.py"):
         rel = py_file.relative_to(BACKEND).with_suffix("")

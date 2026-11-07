@@ -1,4 +1,4 @@
-"""Guard test: every layer directory is split by the same aggregate axis."""
+"""Guard test: every layer directory of a context is split by the same aggregate axis."""
 
 from __future__ import annotations
 
@@ -6,68 +6,104 @@ from pathlib import Path
 
 import pytest
 
-from tests.architecture.aggregates import AGGREGATES
+from tests.architecture.aggregates import aggregates
+from tests.architecture.contexts import context_dir, context_names
 
-BACKEND = Path(__file__).resolve().parents[2]
-
-HYBRID_OUTBOUND_DIRS = sorted(
-    str(path.relative_to(BACKEND))
-    for path in (BACKEND / "context" / "table_maintenance" / "adapter" / "hybrid").glob(
-        "*/outbound"
-    )
-    if (path / "__init__.py").is_file()
+FIXED_LAYER_DIRS = (
+    "application/domain/model",
+    "application/domain/service",
+    "application/port/inbound",
+    "application/service",
+    "adapter/inbound/web",
+    "application/port/outbound",
+    "adapter/outbound",
 )
-LAYER_DIRS = [
-    "context/table_maintenance/application/domain/model",
-    "context/table_maintenance/application/domain/service",
-    "context/table_maintenance/application/port/inbound",
-    "context/table_maintenance/application/service",
-    "context/table_maintenance/adapter/inbound/web",
-    "context/table_maintenance/application/port/outbound",
-    "context/table_maintenance/adapter/outbound",
-    *HYBRID_OUTBOUND_DIRS,
-]
 ROOT_MODULES_ALLOWED = {
-    "context/table_maintenance/adapter/inbound/web": {
+    "adapter/inbound/web": {
         "create_app.py",
         "error_handlers.py",
     },
 }
 
 
-def subdirs(layer: str) -> set[str]:
+def subdirs(directory: Path) -> set[str]:
     return {
         child.name
-        for child in (BACKEND / layer).iterdir()
+        for child in directory.iterdir()
         if child.is_dir() and child.name != "__pycache__" and any(child.rglob("*.py"))
     }
 
 
-@pytest.mark.parametrize("layer", LAYER_DIRS)
-def test_layer_subdirs_are_aggregates(layer: str):
-    unexpected = subdirs(layer) - (AGGREGATES | {"shared"})
-    assert not unexpected, (
-        f"{layer} has non-aggregate directories: {sorted(unexpected)}"
+def hybrid_outbound_dirs(context_root: Path) -> list[str]:
+    return sorted(
+        str(path.relative_to(context_root))
+        for path in (context_root / "adapter" / "hybrid").glob("*/outbound")
+        if (path / "__init__.py").is_file()
     )
 
 
-def test_inbound_ports_match_services():
-    ports = subdirs("context/table_maintenance/application/port/inbound")
+def layer_dirs(context_root: Path) -> list[str]:
+    return [*FIXED_LAYER_DIRS, *hybrid_outbound_dirs(context_root)]
+
+
+def axis_violations(context_root: Path, aggregates: set[str]) -> list[str]:
+    """Return ``"<layer>: <dir>"`` for each layer directory that is not an aggregate."""
+    allowed = aggregates | {"shared"}
+    found: list[str] = []
+    for layer in layer_dirs(context_root):
+        directory = context_root / layer
+        if not directory.is_dir():
+            continue
+        found += [f"{layer}: {name}" for name in sorted(subdirs(directory) - allowed)]
+    return found
+
+
+def _context_layers() -> list[tuple[str, str]]:
+    return [
+        (context, layer)
+        for context in context_names()
+        for layer in layer_dirs(context_dir(context))
+    ]
+
+
+@pytest.mark.parametrize("context", context_names())
+def test_layer_subdirs_are_aggregates(context: str):
+    unexpected = axis_violations(context_dir(context), aggregates(context))
+    assert not unexpected, f"{context} has non-aggregate directories: {unexpected}"
+
+
+def test_directory_without_aggregate_root_fails_the_axis(tmp_path: Path):
+    ghost = tmp_path / "application" / "service" / "ghost"
+    ghost.mkdir(parents=True)
+    (ghost / "__init__.py").write_text('"""Ghost."""\n')
+
+    violations = axis_violations(tmp_path, {"widget"})
+
+    assert len(violations) == 1
+    assert "ghost" in violations[0]
+
+
+@pytest.mark.parametrize("context", context_names())
+def test_inbound_ports_match_services(context: str):
+    root = context_dir(context)
+    ports = subdirs(root / "application" / "port" / "inbound")
     assert "shared" not in ports
-    assert ports == subdirs("context/table_maintenance/application/service") - {
-        "shared"
-    }
+    assert ports == subdirs(root / "application" / "service") - {"shared"}
 
 
-def test_hybrid_outbound_dirs_are_found():
-    assert (
-        "context/table_maintenance/adapter/hybrid/temporal/outbound"
-        in HYBRID_OUTBOUND_DIRS
+@pytest.mark.parametrize("context", context_names())
+def test_hybrid_outbound_dirs_are_found(context: str):
+    assert "adapter/hybrid/temporal/outbound" in hybrid_outbound_dirs(
+        context_dir(context)
     )
 
 
-@pytest.mark.parametrize("layer", LAYER_DIRS)
-def test_no_modules_at_layer_root(layer: str):
-    modules = {p.name for p in (BACKEND / layer).glob("*.py")}
+@pytest.mark.parametrize(
+    ("context", "layer"), _context_layers(), ids=lambda value: value
+)
+def test_no_modules_at_layer_root(context: str, layer: str):
+    modules = {p.name for p in (context_dir(context) / layer).glob("*.py")}
     allowed = {"__init__.py"} | ROOT_MODULES_ALLOWED.get(layer, set())
-    assert modules == allowed, f"{layer} root holds modules: {sorted(modules)}"
+    assert modules == allowed, (
+        f"{context}/{layer} root holds modules: {sorted(modules)}"
+    )

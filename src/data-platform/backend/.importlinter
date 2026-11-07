@@ -1,20 +1,20 @@
 [importlinter]
 root_packages =
-    context
     base
     bootstrap
+    context
 include_external_packages = True
 
 [importlinter:contract:domain-pure]
 name = Domain depends only on base and the stdlib
 type = forbidden
 source_modules =
-    context.table_maintenance.application.domain
+    context.*.application.domain
 forbidden_modules =
-    context.table_maintenance.application.port
-    context.table_maintenance.application.service
-    context.table_maintenance.application.exceptions
-    context.table_maintenance.adapter
+    context.*.application.port
+    context.*.application.service
+    context.*.application.exceptions
+    context.*.adapter
     bootstrap
     temporalio
     pyiceberg
@@ -28,19 +28,21 @@ forbidden_modules =
 [importlinter:contract:application-ring-order]
 name = Application ring order: service, port, domain service, domain model
 type = layers
+containers =
+    context.*.application
 layers =
-    context.table_maintenance.application.service
-    context.table_maintenance.application.port
-    context.table_maintenance.application.domain.service
-    context.table_maintenance.application.domain.model
+    service
+    port
+    domain.service
+    domain.model
 
 [importlinter:contract:application-no-outer-rings]
 name = Application does not depend on adapters, bootstrap or frameworks
 type = forbidden
 source_modules =
-    context.table_maintenance.application
+    context.*.application
 forbidden_modules =
-    context.table_maintenance.adapter
+    context.*.adapter
     bootstrap
     temporalio
     pyiceberg
@@ -55,39 +57,39 @@ forbidden_modules =
 name = Adapters import application only through ports and exceptions
 type = forbidden
 source_modules =
-    context.table_maintenance.adapter
+    context.*.adapter
 forbidden_modules =
-    context.table_maintenance.application.domain
-    context.table_maintenance.application.service
+    context.*.application.domain
+    context.*.application.service
 allow_indirect_imports = true
 
 [importlinter:contract:adapter-directions-separate]
 name = Inbound, outbound and hybrid adapters are independent
 type = independence
 modules =
-    context.table_maintenance.adapter.inbound
-    context.table_maintenance.adapter.outbound
-    context.table_maintenance.adapter.hybrid
+    context.*.adapter.inbound
+    context.*.adapter.outbound
+    context.*.adapter.hybrid
 
 [importlinter:contract:hybrid-directions-separate]
 name = Hybrid inbound and outbound adapters are independent
 type = independence
 modules =
-    context.table_maintenance.adapter.hybrid.temporal.inbound
-    context.table_maintenance.adapter.hybrid.temporal.outbound
+    context.*.adapter.hybrid.temporal.inbound
+    context.*.adapter.hybrid.temporal.outbound
 
 [importlinter:contract:hybrid-contracts-neutral]
 name = Hybrid contracts depend only on the stdlib, base and ports
 type = forbidden
 source_modules =
-    context.table_maintenance.adapter.hybrid.temporal.contracts
+    context.*.adapter.hybrid.temporal.contracts
 forbidden_modules =
-    context.table_maintenance.application.domain
-    context.table_maintenance.application.service
-    context.table_maintenance.adapter.inbound
-    context.table_maintenance.adapter.outbound
-    context.table_maintenance.adapter.hybrid.temporal.inbound
-    context.table_maintenance.adapter.hybrid.temporal.outbound
+    context.*.application.domain
+    context.*.application.service
+    context.*.adapter.inbound
+    context.*.adapter.outbound
+    context.*.adapter.hybrid.temporal.inbound
+    context.*.adapter.hybrid.temporal.outbound
     bootstrap
     temporalio
     pyiceberg
@@ -102,23 +104,23 @@ forbidden_modules =
 name = Hybrid contracts are private to their technology
 type = forbidden
 source_modules =
-    context.table_maintenance.adapter.inbound
-    context.table_maintenance.adapter.outbound
-    context.table_maintenance.application
+    context.*.adapter.inbound
+    context.*.adapter.outbound
+    context.*.application
 forbidden_modules =
-    context.table_maintenance.adapter.hybrid.temporal.contracts
+    context.*.adapter.hybrid.temporal.contracts
 
 [importlinter:contract:temporal-workflows-sandbox-safe]
 name = Temporal workflows import only Temporal and their contracts (sandbox-safe)
 type = forbidden
 source_modules =
-    context.table_maintenance.adapter.hybrid.temporal.inbound.workflows
+    context.*.adapter.hybrid.temporal.inbound.workflows
 forbidden_modules =
-    context.table_maintenance.application
-    context.table_maintenance.adapter.hybrid.temporal.inbound.activities
-    context.table_maintenance.adapter.inbound
-    context.table_maintenance.adapter.outbound
-    context.table_maintenance.adapter.hybrid.temporal.outbound
+    context.*.application
+    context.*.adapter.hybrid.temporal.inbound.activities
+    context.*.adapter.inbound
+    context.*.adapter.outbound
+    context.*.adapter.hybrid.temporal.outbound
     bootstrap
     pyiceberg
     pyarrow
@@ -132,15 +134,15 @@ forbidden_modules =
 name = Inbound channels are independent of each other
 type = independence
 modules =
-    context.table_maintenance.adapter.inbound.web
-    context.table_maintenance.adapter.inbound.event_consumer
-    context.table_maintenance.adapter.hybrid.temporal.inbound
+    context.*.adapter.inbound.web
+    context.*.adapter.inbound.event_consumer
+    context.*.adapter.hybrid.temporal.inbound
 
 [importlinter:contract:adapters-no-bootstrap]
 name = Adapters do not depend on bootstrap (the composition root depends on them)
 type = forbidden
 source_modules =
-    context.table_maintenance.adapter
+    context.*.adapter
 forbidden_modules =
     bootstrap
 
@@ -150,8 +152,7 @@ type = forbidden
 source_modules =
     bootstrap.configs
 forbidden_modules =
-    context.table_maintenance.adapter
-    context.table_maintenance.application
+    context
 
 [importlinter:contract:base-isolation]
 name = Base (DDD kernel) depends on nothing project-internal
@@ -159,18 +160,17 @@ type = forbidden
 source_modules =
     base
 forbidden_modules =
-    context.table_maintenance.application
-    context.table_maintenance.adapter
+    context
     bootstrap
 
 [importlinter:contract:application-exceptions-leaf]
 name = Application exceptions depend on no other application ring or outer layer
 type = forbidden
 source_modules =
-    context.table_maintenance.application.exceptions
+    context.*.application.exceptions
 forbidden_modules =
-    context.table_maintenance.application.domain
-    context.table_maintenance.application.port
-    context.table_maintenance.application.service
-    context.table_maintenance.adapter
+    context.*.application.domain
+    context.*.application.port
+    context.*.application.service
+    context.*.adapter
     bootstrap

@@ -6,9 +6,20 @@ from pathlib import Path
 
 import pytest
 
+from tests.architecture.contexts import context_dir, context_names
+
 BACKEND = Path(__file__).resolve().parents[2]
 
 EXPECTED_TOP_LEVEL = {"context", "base", "bootstrap"}
+EXPECTED_CONTEXT_LAYERS = {"application", "adapter"}
+ADAPTER_SUBDIRECTORIES = (
+    "adapter/inbound/web",
+    "adapter/inbound/event_consumer",
+    "adapter/outbound",
+    "adapter/hybrid/temporal/inbound",
+    "adapter/hybrid/temporal/outbound",
+    "adapter/hybrid/temporal/contracts",
+)
 
 
 class TestDirectoryStructure:
@@ -26,19 +37,27 @@ class TestDirectoryStructure:
             "adapter/, application/, base/, and bootstrap/"
         )
 
-    @pytest.mark.parametrize(
-        "subdir",
-        [
-            "context/table_maintenance/adapter/inbound/web",
-            "context/table_maintenance/adapter/inbound/event_consumer",
-            "context/table_maintenance/adapter/outbound",
-            "context/table_maintenance/adapter/hybrid/temporal/inbound",
-            "context/table_maintenance/adapter/hybrid/temporal/outbound",
-            "context/table_maintenance/adapter/hybrid/temporal/contracts",
-        ],
-    )
-    def test_adapter_subdirectories_exist(self, subdir: str):
-        assert (BACKEND / subdir).is_dir(), f"Missing adapter subdirectory: {subdir}/"
+    def test_context_root_holds_a_context(self):
+        assert context_names(), "context/ holds no bounded context"
+
+    @pytest.mark.parametrize("context", context_names())
+    def test_context_holds_application_and_adapter(self, context: str):
+        layers = {
+            child.name
+            for child in context_dir(context).iterdir()
+            if child.is_dir() and child.name != "__pycache__"
+        }
+        assert layers == EXPECTED_CONTEXT_LAYERS, (
+            f"context/{context} must hold exactly {sorted(EXPECTED_CONTEXT_LAYERS)}, "
+            f"found {sorted(layers)}"
+        )
+
+    @pytest.mark.parametrize("context", context_names())
+    @pytest.mark.parametrize("subdir", ADAPTER_SUBDIRECTORIES)
+    def test_adapter_subdirectories_exist(self, context: str, subdir: str):
+        assert (context_dir(context) / subdir).is_dir(), (
+            f"Missing adapter subdirectory: context/{context}/{subdir}/"
+        )
 
     @pytest.mark.parametrize(
         "subdir",

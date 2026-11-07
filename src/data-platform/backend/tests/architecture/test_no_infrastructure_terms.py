@@ -6,8 +6,10 @@ import ast
 import re
 from pathlib import Path
 
-BACKEND = Path(__file__).resolve().parents[2]
-APPLICATION = BACKEND / "context" / "table_maintenance" / "application"
+import pytest
+
+from tests.architecture.contexts import BACKEND, context_dir, context_names
+
 
 BANNED = {
     "temporal",
@@ -121,9 +123,9 @@ def _names_in(tree: ast.Module) -> list[tuple[int, str]]:
     return names
 
 
-def _violations() -> list[str]:
+def _violations(application: Path) -> list[str]:
     found: list[str] = []
-    for path in sorted(APPLICATION.rglob("*.py")):
+    for path in sorted(application.rglob("*.py")):
         if "__pycache__" in path.parts:
             continue
         rel = path.relative_to(BACKEND)
@@ -173,8 +175,9 @@ def f():
     assert sorted(v for _, v in _identifier_strings(tree)) == ["spark_job", "temporal"]
 
 
-def test_application_names_have_no_infrastructure_terms():
-    violations = _violations()
+@pytest.mark.parametrize("context", context_names())
+def test_application_names_have_no_infrastructure_terms(context: str):
+    violations = _violations(context_dir(context) / "application")
     assert not violations, "Infrastructure terms in application/:\n" + "\n".join(
         violations
     )

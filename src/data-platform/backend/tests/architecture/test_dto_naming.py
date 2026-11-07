@@ -19,10 +19,8 @@ from pathlib import Path
 
 import pytest
 
-_BACKEND = Path(__file__).resolve().parents[2]
-_WEB_ADAPTER = (
-    _BACKEND / "context" / "table_maintenance" / "adapter" / "inbound" / "web"
-)
+from tests.architecture.contexts import CONTEXT_ROOT, context_dir, context_names
+
 
 _ALLOWED_SUFFIXES = ("ApiRequest", "ApiResponse")
 
@@ -35,12 +33,17 @@ def _defined_classes(file_path: Path) -> list[str]:
 
 
 def _dto_files() -> list[Path]:
-    """Find all dto.py files under web adapter directories."""
-    return sorted(_WEB_ADAPTER.rglob("dto.py"))
+    """Find all dto.py files under the web adapter directories of every context."""
+    return sorted(
+        path
+        for name in context_names()
+        for path in (context_dir(name) / "adapter" / "inbound" / "web").rglob("dto.py")
+    )
 
 
 def _dto_id(file_path: Path) -> str:
-    return f"web/{file_path.parent.name}/dto.py"
+    context = file_path.relative_to(CONTEXT_ROOT).parts[0]
+    return f"{context}/web/{file_path.parent.name}/dto.py"
 
 
 @pytest.mark.parametrize("file_path", _dto_files(), ids=_dto_id)

@@ -29,22 +29,12 @@ from pathlib import Path
 
 import pytest
 
-from tests.architecture.aggregates import AGGREGATES
+from tests.architecture.aggregates import aggregates
+from tests.architecture.contexts import context_dir, context_module, context_names
 
 from base import Gateway
 
-OUTBOUND_PORT_DIR = (
-    Path(__file__).resolve().parents[2]
-    / "context"
-    / "table_maintenance"
-    / "application"
-    / "port"
-    / "outbound"
-)
-
-AGGREGATE_GROUPS = sorted(
-    AGGREGATES | ({"shared"} if (OUTBOUND_PORT_DIR / "shared").is_dir() else set())
-)
+OUTBOUND_PORT = ("application", "port", "outbound")
 
 GATEWAY_REQUIRED_FILES = {"__init__.py", "gateway.py"}
 GATEWAY_STANDARD_FILES = {"__init__.py", "gateway.py", "input.py", "output.py"}
@@ -60,7 +50,7 @@ GATEWAY_EXTRA_FILES = {
 GATEWAY_ALLOWED_FILES = GATEWAY_STANDARD_FILES | GATEWAY_EXTRA_FILES
 
 # Imports allowed in input.py / output.py (primitive-only constraint).
-# These files must NOT import from context.table_maintenance.application.domain or base (except base.value_object).
+# These files must NOT import from context.*.application.domain or base (except base.value_object).
 ALLOWED_INPUT_OUTPUT_IMPORT_PREFIXES = (
     "from __future__",
     "from dataclasses",
@@ -71,23 +61,38 @@ ALLOWED_INPUT_OUTPUT_IMPORT_PREFIXES = (
 )
 
 
-def _gateway_dirs() -> list[tuple[str, Path]]:
-    """Return (aggregate, path) for all gateway subdirectories."""
-    result: list[tuple[str, Path]] = []
-    for group_name in AGGREGATE_GROUPS:
-        group_dir = OUTBOUND_PORT_DIR / group_name
-        if not group_dir.is_dir():
-            continue
-        for d in sorted(group_dir.iterdir()):
-            if d.is_dir() and d.name != "__pycache__":
-                result.append((group_name, d))
+def _outbound_port_dir(context: str) -> Path:
+    return context_dir(context).joinpath(*OUTBOUND_PORT)
+
+
+def _outbound_port_module(context: str) -> str:
+    return ".".join((context_module(context), *OUTBOUND_PORT))
+
+
+def _aggregate_groups(context: str) -> list[str]:
+    """Return the aggregate groups of a context, plus ``shared`` when it exists."""
+    shared = {"shared"} if (_outbound_port_dir(context) / "shared").is_dir() else set()
+    return sorted(aggregates(context) | shared)
+
+
+def _gateway_dirs() -> list[tuple[str, str, Path]]:
+    """Return (context, aggregate, path) for all gateway subdirectories."""
+    result: list[tuple[str, str, Path]] = []
+    for context in context_names():
+        for group_name in _aggregate_groups(context):
+            group_dir = _outbound_port_dir(context) / group_name
+            if not group_dir.is_dir():
+                continue
+            for d in sorted(group_dir.iterdir()):
+                if d.is_dir() and d.name != "__pycache__":
+                    result.append((context, group_name, d))
     return result
 
 
-def _gateway_id(param: tuple[str, Path]) -> str:
+def _gateway_id(param: tuple[str, str, Path]) -> str:
     """Format a gateway entry as a readable pytest ID."""
-    group, d = param
-    return f"{group}/{d.name}"
+    context, group, d = param
+    return f"{context}/{group}/{d.name}"
 
 
 def _pascal_case(name: str) -> str:
@@ -123,15 +128,17 @@ def _parse_imports(file_path: Path) -> list[str]:
 # --- Rule 1: Only aggregate group directories exist ---
 
 
-def test_only_aggregate_groups_in_outbound_port():
+@pytest.mark.parametrize("context", context_names())
+def test_only_aggregate_groups_in_outbound_port(context: str):
     """Verify that port/outbound/ contains only the expected aggregate group directories."""
+    groups = _aggregate_groups(context)
     dirs = [
         d.name
-        for d in OUTBOUND_PORT_DIR.iterdir()
+        for d in _outbound_port_dir(context).iterdir()
         if d.is_dir() and d.name != "__pycache__"
     ]
-    assert sorted(dirs) == sorted(AGGREGATE_GROUPS), (
-        f"port/outbound/ must only contain aggregate groups {AGGREGATE_GROUPS}, found: {dirs}"
+    assert sorted(dirs) == sorted(groups), (
+        f"port/outbound/ must only contain aggregate groups {groups}, found: {dirs}"
     )
 
 
@@ -139,9 +146,9 @@ def test_only_aggregate_groups_in_outbound_port():
 
 
 @pytest.mark.parametrize("gw_entry", _gateway_dirs(), ids=_gateway_id)
-def test_gateway_dir_has_required_files(gw_entry: tuple[str, Path]):
+def test_gateway_dir_has_required_files(gw_entry: tuple[str, str, Path]):
     """Verify that each gateway directory contains __init__.py and gateway.py."""
-    _group, gw_dir = gw_entry
+    _context, _group, gw_dir = gw_entry
     actual_files = {
         f.name for f in gw_dir.iterdir() if f.is_file() and f.suffix == ".py"
     }
@@ -150,9 +157,9 @@ def test_gateway_dir_has_required_files(gw_entry: tuple[str, Path]):
 
 
 @pytest.mark.parametrize("gw_entry", _gateway_dirs(), ids=_gateway_id)
-def test_gateway_dir_has_no_extra_files(gw_entry: tuple[str, Path]):
+def test_gateway_dir_has_no_extra_files(gw_entry: tuple[str, str, Path]):
     """Verify that each gateway directory contains no unexpected files."""
-    _group, gw_dir = gw_entry
+    _context, _group, gw_dir = gw_entry
     actual_files = {
         f.name for f in gw_dir.iterdir() if f.is_file() and f.suffix == ".py"
     }
@@ -164,12 +171,12 @@ def test_gateway_dir_has_no_extra_files(gw_entry: tuple[str, Path]):
 
 
 @pytest.mark.parametrize("gw_entry", _gateway_dirs(), ids=_gateway_id)
-def test_gateway_class_naming(gw_entry: tuple[str, Path]):
+def test_gateway_class_naming(gw_entry: tuple[str, str, Path]):
     """Verify that gateway.py exports {Verb}{Noun}Gateway extending Gateway."""
-    group, gw_dir = gw_entry
+    context, group, gw_dir = gw_entry
     prefix = _pascal_case(gw_dir.name)
     expected = f"{prefix}Gateway"
-    module = f"context.table_maintenance.application.port.outbound.{group}.{gw_dir.name}.gateway"
+    module = f"{_outbound_port_module(context)}.{group}.{gw_dir.name}.gateway"
     classes = _exported_classes(module)
     assert expected in classes, (
         f"{gw_dir.name}/gateway.py must export '{expected}', found: {classes}"
@@ -177,12 +184,12 @@ def test_gateway_class_naming(gw_entry: tuple[str, Path]):
 
 
 @pytest.mark.parametrize("gw_entry", _gateway_dirs(), ids=_gateway_id)
-def test_gateway_extends_base(gw_entry: tuple[str, Path]):
+def test_gateway_extends_base(gw_entry: tuple[str, str, Path]):
     """Verify that the Gateway class extends base.gateway.Gateway."""
-    group, gw_dir = gw_entry
+    context, group, gw_dir = gw_entry
     prefix = _pascal_case(gw_dir.name)
     expected = f"{prefix}Gateway"
-    module = f"context.table_maintenance.application.port.outbound.{group}.{gw_dir.name}.gateway"
+    module = f"{_outbound_port_module(context)}.{group}.{gw_dir.name}.gateway"
     mod = importlib.import_module(module)
     cls = getattr(mod, expected)
     assert issubclass(cls, Gateway), (
@@ -194,15 +201,15 @@ def test_gateway_extends_base(gw_entry: tuple[str, Path]):
 
 
 @pytest.mark.parametrize("gw_entry", _gateway_dirs(), ids=_gateway_id)
-def test_input_class_naming(gw_entry: tuple[str, Path]):
+def test_input_class_naming(gw_entry: tuple[str, str, Path]):
     """Verify that input.py exports {Verb}{Noun}GatewayInput (if present)."""
-    group, gw_dir = gw_entry
+    context, group, gw_dir = gw_entry
     input_file = gw_dir / "input.py"
     if not input_file.exists():
         pytest.skip("No input.py")
     prefix = _pascal_case(gw_dir.name)
     expected = f"{prefix}GatewayInput"
-    module = f"context.table_maintenance.application.port.outbound.{group}.{gw_dir.name}.input"
+    module = f"{_outbound_port_module(context)}.{group}.{gw_dir.name}.input"
     classes = _exported_classes(module)
     assert expected in classes, (
         f"{gw_dir.name}/input.py must export '{expected}', found: {classes}"
@@ -213,15 +220,15 @@ def test_input_class_naming(gw_entry: tuple[str, Path]):
 
 
 @pytest.mark.parametrize("gw_entry", _gateway_dirs(), ids=_gateway_id)
-def test_output_class_naming(gw_entry: tuple[str, Path]):
+def test_output_class_naming(gw_entry: tuple[str, str, Path]):
     """Verify that output.py exports {Verb}{Noun}GatewayOutput (if present)."""
-    group, gw_dir = gw_entry
+    context, group, gw_dir = gw_entry
     output_file = gw_dir / "output.py"
     if not output_file.exists():
         pytest.skip("No output.py")
     prefix = _pascal_case(gw_dir.name)
     expected = f"{prefix}GatewayOutput"
-    module = f"context.table_maintenance.application.port.outbound.{group}.{gw_dir.name}.output"
+    module = f"{_outbound_port_module(context)}.{group}.{gw_dir.name}.output"
     classes = _exported_classes(module)
     assert expected in classes, (
         f"{gw_dir.name}/output.py must export '{expected}', found: {classes}"
@@ -232,9 +239,9 @@ def test_output_class_naming(gw_entry: tuple[str, Path]):
 
 
 @pytest.mark.parametrize("gw_entry", _gateway_dirs(), ids=_gateway_id)
-def test_input_primitive_only(gw_entry: tuple[str, Path]):
+def test_input_primitive_only(gw_entry: tuple[str, str, Path]):
     """Verify that input.py does not import domain or base types (except ValueObject)."""
-    _group, gw_dir = gw_entry
+    _context, _group, gw_dir = gw_entry
     input_file = gw_dir / "input.py"
     if not input_file.exists():
         pytest.skip("No input.py")
@@ -252,9 +259,9 @@ def test_input_primitive_only(gw_entry: tuple[str, Path]):
 
 
 @pytest.mark.parametrize("gw_entry", _gateway_dirs(), ids=_gateway_id)
-def test_output_primitive_only(gw_entry: tuple[str, Path]):
+def test_output_primitive_only(gw_entry: tuple[str, str, Path]):
     """Verify that output.py does not import domain or base types (except ValueObject)."""
-    _group, gw_dir = gw_entry
+    _context, _group, gw_dir = gw_entry
     output_file = gw_dir / "output.py"
     if not output_file.exists():
         pytest.skip("No output.py")
@@ -275,13 +282,11 @@ def test_output_primitive_only(gw_entry: tuple[str, Path]):
 
 
 @pytest.mark.parametrize("gw_entry", _gateway_dirs(), ids=_gateway_id)
-def test_init_reexports_all_symbols(gw_entry: tuple[str, Path]):
+def test_init_reexports_all_symbols(gw_entry: tuple[str, str, Path]):
     """Verify that __init__.py re-exports Gateway, Input, Output via __all__."""
-    group, gw_dir = gw_entry
+    context, group, gw_dir = gw_entry
     prefix = _pascal_case(gw_dir.name)
-    module = (
-        f"context.table_maintenance.application.port.outbound.{group}.{gw_dir.name}"
-    )
+    module = f"{_outbound_port_module(context)}.{group}.{gw_dir.name}"
     mod = importlib.import_module(module)
     exported = set(getattr(mod, "__all__", []))
 
@@ -304,42 +309,40 @@ def test_init_reexports_all_symbols(gw_entry: tuple[str, Path]):
 # --- Rule 8: extra single-class files ---
 
 
-def _extra_files() -> list[tuple[str, Path]]:
-    """Return (group, file) for extra single-class files in gateway dirs."""
+def _extra_files() -> list[tuple[str, str, Path]]:
+    """Return (context, group, file) for extra single-class files in gateway dirs."""
     return [
-        (group, f)
-        for group, gw_dir in _gateway_dirs()
+        (context, group, f)
+        for context, group, gw_dir in _gateway_dirs()
         for f in sorted(gw_dir.iterdir())
         if f.name in GATEWAY_EXTRA_FILES
     ]
 
 
-def _extra_id(param: tuple[str, Path]) -> str:
-    group, f = param
-    return f"{group}/{f.parent.name}/{f.name}"
+def _extra_id(param: tuple[str, str, Path]) -> str:
+    context, group, f = param
+    return f"{context}/{group}/{f.parent.name}/{f.name}"
 
 
 @pytest.mark.parametrize("extra", _extra_files(), ids=_extra_id)
-def test_extra_file_class_naming_and_export(extra: tuple[str, Path]):
+def test_extra_file_class_naming_and_export(extra: tuple[str, str, Path]):
     """Verify an extra file defines {Prefix}Gateway{Stem} and __init__ exports it."""
-    group, f = extra
+    context, group, f = extra
     prefix = _pascal_case(f.parent.name)
     expected = (
         f"{prefix}Gateway{_pascal_case(f.stem)}"
         if f.stem == "list_input"
         else _pascal_case(f.stem)
     )
-    module = (
-        f"context.table_maintenance.application.port.outbound.{group}.{f.parent.name}"
-    )
+    module = f"{_outbound_port_module(context)}.{group}.{f.parent.name}"
     assert expected in _exported_classes(f"{module}.{f.stem}")
     assert expected in set(getattr(importlib.import_module(module), "__all__", []))
 
 
 @pytest.mark.parametrize("extra", _extra_files(), ids=_extra_id)
-def test_extra_file_primitive_only(extra: tuple[str, Path]):
+def test_extra_file_primitive_only(extra: tuple[str, str, Path]):
     """Verify an extra file imports only primitive-safe modules."""
-    _group, f = extra
+    _context, _group, f = extra
     violations = [
         imp
         for imp in _parse_imports(f)

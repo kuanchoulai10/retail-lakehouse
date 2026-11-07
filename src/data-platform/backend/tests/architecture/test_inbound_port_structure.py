@@ -19,40 +19,46 @@ from pathlib import Path
 
 import pytest
 
-from tests.architecture.aggregates import AGGREGATES
+from tests.architecture.aggregates import aggregates
+from tests.architecture.contexts import context_dir, context_module, context_names
 
-INBOUND_PORT_DIR = (
-    Path(__file__).resolve().parents[2]
-    / "context"
-    / "table_maintenance"
-    / "application"
-    / "port"
-    / "inbound"
-)
+INBOUND_PORT = ("application", "port", "inbound")
 REQUIRED_FILES = {"__init__.py", "input.py", "output.py", "use_case.py"}
 REQUIRED_FILES_NO_INPUT = {"__init__.py", "output.py", "use_case.py"}
 ALLOWED_FILES = REQUIRED_FILES  # input.py is optional for no-input use cases
 
-AGGREGATE_GROUPS = sorted(
-    AGGREGATES | ({"shared"} if (INBOUND_PORT_DIR / "shared").is_dir() else set())
-)
 AGGREGATE_GROUPS_NO_INPUT: set[str] = set()
 
 
-def _group_dirs() -> list[Path]:
+def _inbound_port_dir(context: str) -> Path:
+    return context_dir(context).joinpath(*INBOUND_PORT)
+
+
+def _inbound_port_module(context: str) -> str:
+    return ".".join((context_module(context), *INBOUND_PORT))
+
+
+def _aggregate_groups(context: str) -> list[str]:
+    """Return the aggregate groups of a context, plus ``shared`` when it exists."""
+    shared = {"shared"} if (_inbound_port_dir(context) / "shared").is_dir() else set()
+    return sorted(aggregates(context) | shared)
+
+
+def _group_dirs(context: str) -> list[Path]:
     """Return aggregate grouping directories under port/inbound/."""
-    return [INBOUND_PORT_DIR / name for name in AGGREGATE_GROUPS]
+    return [_inbound_port_dir(context) / name for name in _aggregate_groups(context)]
 
 
-def _use_case_dirs() -> list[tuple[str, Path]]:
-    """Return (group, path) for all use case directories under port/inbound/{group}/."""
-    result: list[tuple[str, Path]] = []
-    for group_dir in _group_dirs():
-        if not group_dir.is_dir():
-            continue
-        for d in sorted(group_dir.iterdir()):
-            if d.is_dir() and d.name != "__pycache__":
-                result.append((group_dir.name, d))
+def _use_case_dirs() -> list[tuple[str, str, Path]]:
+    """Return (context, group, path) for every use case directory of every context."""
+    result: list[tuple[str, str, Path]] = []
+    for context in context_names():
+        for group_dir in _group_dirs(context):
+            if not group_dir.is_dir():
+                continue
+            for d in sorted(group_dir.iterdir()):
+                if d.is_dir() and d.name != "__pycache__":
+                    result.append((context, group_dir.name, d))
     return result
 
 
@@ -61,20 +67,21 @@ def _pascal_to_words(name: str) -> str:
     return "".join(word.capitalize() for word in name.split("_"))
 
 
-def _use_case_id(param: tuple[str, Path]) -> str:
+def _use_case_id(param: tuple[str, str, Path]) -> str:
     """Format a use case entry as a readable pytest ID."""
-    group, d = param
-    return f"{group}/{d.name}"
+    context, group, d = param
+    return f"{context}/{group}/{d.name}"
 
 
 # --- Rule 1: No loose .py files (only __init__.py and group directories) ---
 
 
-def test_no_loose_py_files_in_inbound_port():
+@pytest.mark.parametrize("context", context_names())
+def test_no_loose_py_files_in_inbound_port(context: str):
     """Verify that port/inbound/ contains no loose .py files besides __init__.py."""
     loose_files = [
         f.name
-        for f in INBOUND_PORT_DIR.iterdir()
+        for f in _inbound_port_dir(context).iterdir()
         if f.is_file() and f.suffix == ".py" and f.name != "__init__.py"
     ]
     assert loose_files == [], (
@@ -82,15 +89,17 @@ def test_no_loose_py_files_in_inbound_port():
     )
 
 
-def test_only_aggregate_groups_in_inbound_port():
+@pytest.mark.parametrize("context", context_names())
+def test_only_aggregate_groups_in_inbound_port(context: str):
     """Verify that port/inbound/ contains only the expected aggregate group directories."""
+    groups = _aggregate_groups(context)
     dirs = [
         d.name
-        for d in INBOUND_PORT_DIR.iterdir()
+        for d in _inbound_port_dir(context).iterdir()
         if d.is_dir() and d.name != "__pycache__"
     ]
-    assert sorted(dirs) == sorted(AGGREGATE_GROUPS), (
-        f"port/inbound/ must only contain aggregate groups {AGGREGATE_GROUPS}, found: {dirs}"
+    assert sorted(dirs) == sorted(groups), (
+        f"port/inbound/ must only contain aggregate groups {groups}, found: {dirs}"
     )
 
 
@@ -98,9 +107,9 @@ def test_only_aggregate_groups_in_inbound_port():
 
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
-def test_use_case_dir_has_required_files(use_case_entry: tuple[str, Path]):
+def test_use_case_dir_has_required_files(use_case_entry: tuple[str, str, Path]):
     """Verify that each use case directory contains all required files."""
-    group, use_case_dir = use_case_entry
+    context, group, use_case_dir = use_case_entry
     actual_files = {
         f.name for f in use_case_dir.iterdir() if f.is_file() and f.suffix == ".py"
     }
@@ -115,9 +124,9 @@ def test_use_case_dir_has_required_files(use_case_entry: tuple[str, Path]):
 
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
-def test_use_case_dir_has_no_extra_files(use_case_entry: tuple[str, Path]):
+def test_use_case_dir_has_no_extra_files(use_case_entry: tuple[str, str, Path]):
     """Verify that each use case directory contains no unexpected files."""
-    _group, use_case_dir = use_case_entry
+    _context, _group, use_case_dir = use_case_entry
     actual_files = {
         f.name for f in use_case_dir.iterdir() if f.is_file() and f.suffix == ".py"
     }
@@ -139,14 +148,14 @@ def _exported_classes(module_path: str) -> list[str]:
 
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
-def test_input_class_naming(use_case_entry: tuple[str, Path]):
+def test_input_class_naming(use_case_entry: tuple[str, str, Path]):
     """Verify that input.py exports a class named {PascalCase}UseCaseInput."""
-    group, use_case_dir = use_case_entry
+    context, group, use_case_dir = use_case_entry
     if group in AGGREGATE_GROUPS_NO_INPUT:
         pytest.skip("No-input use case")
     prefix = _pascal_to_words(use_case_dir.name)
     expected = f"{prefix}UseCaseInput"
-    module = f"context.table_maintenance.application.port.inbound.{group}.{use_case_dir.name}.input"
+    module = f"{_inbound_port_module(context)}.{group}.{use_case_dir.name}.input"
     classes = _exported_classes(module)
     assert expected in classes, (
         f"{use_case_dir.name}/input.py must export '{expected}', found: {classes}"
@@ -154,12 +163,12 @@ def test_input_class_naming(use_case_entry: tuple[str, Path]):
 
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
-def test_output_class_naming(use_case_entry: tuple[str, Path]):
+def test_output_class_naming(use_case_entry: tuple[str, str, Path]):
     """Verify that output.py exports a class named {PascalCase}UseCaseOutput."""
-    group, use_case_dir = use_case_entry
+    context, group, use_case_dir = use_case_entry
     prefix = _pascal_to_words(use_case_dir.name)
     expected = f"{prefix}UseCaseOutput"
-    module = f"context.table_maintenance.application.port.inbound.{group}.{use_case_dir.name}.output"
+    module = f"{_inbound_port_module(context)}.{group}.{use_case_dir.name}.output"
     classes = _exported_classes(module)
     assert expected in classes, (
         f"{use_case_dir.name}/output.py must export '{expected}', found: {classes}"
@@ -167,12 +176,12 @@ def test_output_class_naming(use_case_entry: tuple[str, Path]):
 
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
-def test_use_case_class_naming(use_case_entry: tuple[str, Path]):
+def test_use_case_class_naming(use_case_entry: tuple[str, str, Path]):
     """Verify that use_case.py exports a class named {PascalCase}UseCase."""
-    group, use_case_dir = use_case_entry
+    context, group, use_case_dir = use_case_entry
     prefix = _pascal_to_words(use_case_dir.name)
     expected = f"{prefix}UseCase"
-    module = f"context.table_maintenance.application.port.inbound.{group}.{use_case_dir.name}.use_case"
+    module = f"{_inbound_port_module(context)}.{group}.{use_case_dir.name}.use_case"
     classes = _exported_classes(module)
     assert expected in classes, (
         f"{use_case_dir.name}/use_case.py must export '{expected}', found: {classes}"
@@ -183,11 +192,11 @@ def test_use_case_class_naming(use_case_entry: tuple[str, Path]):
 
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
-def test_output_classes_prefixed(use_case_entry: tuple[str, Path]):
+def test_output_classes_prefixed(use_case_entry: tuple[str, str, Path]):
     """Verify that all classes in output.py are prefixed with {PascalCase(dir_name)}."""
-    group, use_case_dir = use_case_entry
+    context, group, use_case_dir = use_case_entry
     prefix = _pascal_to_words(use_case_dir.name)
-    module = f"context.table_maintenance.application.port.inbound.{group}.{use_case_dir.name}.output"
+    module = f"{_inbound_port_module(context)}.{group}.{use_case_dir.name}.output"
     classes = _exported_classes(module)
     misnamed = [c for c in classes if not c.startswith(prefix)]
     assert misnamed == [], (
@@ -199,11 +208,11 @@ def test_output_classes_prefixed(use_case_entry: tuple[str, Path]):
 
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
-def test_init_reexports_all_symbols(use_case_entry: tuple[str, Path]):
+def test_init_reexports_all_symbols(use_case_entry: tuple[str, str, Path]):
     """Verify that __init__.py re-exports UseCaseInput, UseCaseOutput, and UseCase in __all__."""
-    group, use_case_dir = use_case_entry
+    context, group, use_case_dir = use_case_entry
     prefix = _pascal_to_words(use_case_dir.name)
-    module = f"context.table_maintenance.application.port.inbound.{group}.{use_case_dir.name}"
+    module = f"{_inbound_port_module(context)}.{group}.{use_case_dir.name}"
     mod = importlib.import_module(module)
     exported = set(getattr(mod, "__all__", []))
 

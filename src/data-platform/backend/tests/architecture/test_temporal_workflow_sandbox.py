@@ -9,17 +9,34 @@ workflow package fails here instead of at worker start.
 from __future__ import annotations
 
 import asyncio
+import importlib
+from types import ModuleType
 
 import pytest
 from temporalio import workflow
 from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner
 
-import context.table_maintenance.adapter.hybrid.temporal.inbound.workflows as workflows_package
 from bootstrap.container import WORKFLOWS
+from tests.architecture.contexts import context_dir, context_module, context_names
+
+WORKFLOWS_PACKAGE = ("adapter", "hybrid", "temporal", "inbound", "workflows")
+
+
+def _workflow_packages() -> list[ModuleType]:
+    """Import the Temporal workflows package of every context that has one."""
+    return [
+        importlib.import_module(".".join((context_module(name), *WORKFLOWS_PACKAGE)))
+        for name in context_names()
+        if (context_dir(name).joinpath(*WORKFLOWS_PACKAGE) / "__init__.py").is_file()
+    ]
 
 
 def _workflow_definitions_in_package() -> set[type]:
-    values = (getattr(workflows_package, name) for name in workflows_package.__all__)
+    values = (
+        getattr(package, name)
+        for package in _workflow_packages()
+        for name in package.__all__
+    )
     return {
         value
         for value in values

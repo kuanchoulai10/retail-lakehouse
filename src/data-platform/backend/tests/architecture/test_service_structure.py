@@ -22,14 +22,8 @@ from pathlib import Path
 import pytest
 
 from base import EventHandler, UseCase
+from tests.architecture.contexts import BACKEND, context_dir, context_names
 
-SERVICE_DIR = (
-    Path(__file__).resolve().parents[2]
-    / "context"
-    / "table_maintenance"
-    / "application"
-    / "service"
-)
 
 # Files that are utilities, not services — excluded from service rules
 UTILITY_FILES = {
@@ -98,12 +92,19 @@ KNOWN_VERBS = {
 def _all_modules() -> list[tuple[str, Path]]:
     """Return (dotted module path, file path) for all non-utility .py files."""
     result: list[tuple[str, Path]] = []
-    for py_file in sorted(SERVICE_DIR.rglob("*.py")):
+    service_files = (
+        py_file
+        for name in context_names()
+        for py_file in sorted(
+            (context_dir(name) / "application" / "service").rglob("*.py")
+        )
+    )
+    for py_file in service_files:
         if py_file.name == "__init__.py":
             continue
         if py_file.name in UTILITY_FILES:
             continue
-        relative = py_file.relative_to(SERVICE_DIR.parents[3])
+        relative = py_file.relative_to(BACKEND)
         module_path = str(relative.with_suffix("")).replace("/", ".")
         result.append((module_path, py_file))
     return result
@@ -122,7 +123,7 @@ def _handler_modules() -> list[tuple[str, Path]]:
 def _module_id(param: tuple[str, Path]) -> str:
     """Format a module entry as a readable pytest ID."""
     _module, path = param
-    return str(path.relative_to(SERVICE_DIR))
+    return str(path.relative_to(BACKEND / "context"))
 
 
 def _find_defined_classes(module_path: str) -> list[tuple[str, type]]:

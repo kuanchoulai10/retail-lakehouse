@@ -21,6 +21,7 @@ from tests.architecture.boundaries import (
     boundaries,
     innermost_boundary,
 )
+from tests.architecture.contexts import context_module, context_names
 
 SCANNED_DIRS = (*PROJECT_PACKAGES, "tests")
 SCANNED_FILES = ("entrypoint.py",)
@@ -230,32 +231,41 @@ def test_exports_do_not_shadow_a_sibling_module():
     assert not problems, "\n".join(problems)
 
 
-def test_boundaries_follow_the_directory_rules():
+GLOBAL_BOUNDARIES = ("base", "bootstrap.configs", "bootstrap.container")
+CONTEXT_BOUNDARIES = (
+    "application.exceptions",
+    "application.domain.model.table",
+    "application.port.outbound.table",
+    "application.service.shared",
+    "adapter.inbound.web",
+    "adapter.inbound.web.table",
+    "adapter.inbound.web.shared",
+    "adapter.inbound.event_consumer",
+    "adapter.outbound.table.sql",
+    "adapter.outbound.shared.sql",
+    "adapter.hybrid.temporal.contracts",
+    "adapter.hybrid.temporal.contracts.table_maintenance",
+    "adapter.hybrid.temporal.inbound",
+    "adapter.hybrid.temporal.inbound.workflows",
+    "adapter.hybrid.temporal.outbound.table",
+)
+CONTEXT_NON_BOUNDARIES = (
+    "adapter.outbound.table",
+    "application.port.inbound.table.include_table",
+)
+
+
+@pytest.mark.parametrize("context", context_names())
+def test_boundaries_follow_the_directory_rules(context: str):
     known = boundaries()
+    prefix = context_module(context)
     for expected in (
-        "base",
-        "context.table_maintenance.application.exceptions",
-        "bootstrap.configs",
-        "bootstrap.container",
-        "context.table_maintenance.application.domain.model.table",
-        "context.table_maintenance.application.port.outbound.table",
-        "context.table_maintenance.application.service.shared",
-        "context.table_maintenance.adapter.inbound.web",
-        "context.table_maintenance.adapter.inbound.web.table",
-        "context.table_maintenance.adapter.inbound.web.shared",
-        "context.table_maintenance.adapter.inbound.event_consumer",
-        "context.table_maintenance.adapter.outbound.table.sql",
-        "context.table_maintenance.adapter.outbound.shared.sql",
-        "context.table_maintenance.adapter.hybrid.temporal.contracts",
-        "context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance",
-        "context.table_maintenance.adapter.hybrid.temporal.inbound",
-        "context.table_maintenance.adapter.hybrid.temporal.inbound.workflows",
-        "context.table_maintenance.adapter.hybrid.temporal.outbound.table",
+        *GLOBAL_BOUNDARIES,
+        *(f"{prefix}.{suffix}" for suffix in CONTEXT_BOUNDARIES),
     ):
         assert expected in known, expected
     for not_a_boundary in (
-        "context.table_maintenance.adapter.outbound.table",
-        "context.table_maintenance.application.port.inbound.table.include_table",
+        *(f"{prefix}.{suffix}" for suffix in CONTEXT_NON_BOUNDARIES),
         "bootstrap",
     ):
         assert not_a_boundary not in known, not_a_boundary
@@ -287,8 +297,9 @@ def _generic_argument(cls: type, origin: type) -> type:
 def _repository_ports() -> list[tuple[str, type]]:
     ports: list[tuple[str, type]] = []
     for boundary in sorted(boundaries()):
-        if not boundary.startswith(
-            "context.table_maintenance.application.port.outbound."
+        if not any(
+            boundary.startswith(f"{context_module(name)}.application.port.outbound.")
+            for name in context_names()
         ):
             continue
         package = importlib.import_module(boundary)

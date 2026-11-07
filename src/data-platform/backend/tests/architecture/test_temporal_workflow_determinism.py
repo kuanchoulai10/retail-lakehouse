@@ -12,16 +12,9 @@ from pathlib import Path
 
 import pytest
 
-_WORKFLOWS = (
-    Path(__file__).resolve().parents[2]
-    / "context"
-    / "table_maintenance"
-    / "adapter"
-    / "hybrid"
-    / "temporal"
-    / "inbound"
-    / "workflows"
-)
+from tests.architecture.contexts import context_dir, context_names
+
+_WORKFLOWS = Path("adapter") / "hybrid" / "temporal" / "inbound" / "workflows"
 _FORBIDDEN_MODULES = (
     "time",
     "random",
@@ -82,11 +75,20 @@ def violations(source: str) -> list[str]:
     return found
 
 
-def test_workflow_modules_are_found():
-    assert sorted(_WORKFLOWS.glob("*.py"))
+def _workflow_modules(context: str) -> list[Path]:
+    return sorted((context_dir(context) / _WORKFLOWS).glob("*.py"))
 
 
-@pytest.mark.parametrize("path", sorted(_WORKFLOWS.glob("*.py")), ids=lambda p: p.name)
+@pytest.mark.parametrize("context", context_names())
+def test_workflow_modules_are_found(context: str):
+    assert _workflow_modules(context)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [path for context in context_names() for path in _workflow_modules(context)],
+    ids=lambda p: f"{p.parents[5].name}/{p.name}",
+)
 def test_workflow_module_is_deterministic(path: Path):
     assert violations(path.read_text()) == []
 
