@@ -311,3 +311,10 @@ def test_catalog_name_with_the_unit_separator_is_a_validation_error(catalogs_rep
     """Get, update and delete refuse a catalog name holding U+001F instead of failing inside the domain."""
     with pytest.raises(ValidationError, match="catalog name must not contain the unit separator"):
         execute(catalogs_repo)
+
+
+def test_create_input_repr_leaves_out_the_connection_secrets():
+    """The create form carries the connection secrets; printing it must not show them."""
+    request = _create_input(type="EXTERNAL", connection_config=OAUTH_CONNECTION)
+
+    assert "remote-s3cr3t" not in repr(request)

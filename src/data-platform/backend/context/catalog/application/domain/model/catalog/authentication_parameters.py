@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from base import ValueObject
@@ -23,15 +23,16 @@ class AuthenticationParameters(ValueObject):
     - IMPLICIT: none; the credentials come from the catalog service's environment.
 
     ``client_secret`` and ``bearer_token`` are secrets: they are sent when a catalog is
-    created, the catalog service never returns them, and no output carries them.
+    created, the catalog service never returns them, no output carries them, and ``repr``
+    leaves them out.
     """
 
     authentication_type: AuthenticationType
     token_uri: str | None = None
     client_id: str | None = None
-    client_secret: str | None = None
+    client_secret: str | None = field(default=None, repr=False)
     scopes: tuple[str, ...] = ()
-    bearer_token: str | None = None
+    bearer_token: str | None = field(default=None, repr=False)
     role_arn: str | None = None
     role_session_name: str | None = None
     external_id: str | None = None

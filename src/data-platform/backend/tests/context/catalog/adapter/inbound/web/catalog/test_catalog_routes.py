@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from context.catalog.adapter.inbound.web.catalog import AuthenticationParametersApiRequest
 from context.catalog.application.exceptions import (
     CatalogUnavailableError,
     ConflictError,
@@ -295,3 +296,13 @@ def test_update_without_properties_is_rejected():
 
     assert response.status_code == 422
     assert stub.requests == []
+
+
+def test_authentication_request_repr_leaves_out_the_secrets():
+    """The request DTO carries the secrets in; printing it must not show them."""
+    request = AuthenticationParametersApiRequest(
+        authentication_type="OAUTH", client_secret="oauth-s3cr3t", bearer_token="bearer-t0ken"
+    )
+
+    assert "oauth-s3cr3t" not in repr(request)
+    assert "bearer-t0ken" not in repr(request)

@@ -34,7 +34,7 @@ class AuthenticationParametersApiRequest(BaseModel):
 
     OAUTH uses ``token_uri``, ``client_id``, ``client_secret`` and ``scopes``; BEARER uses
     ``bearer_token``; SIGV4 uses the ``role_*``, ``external_id`` and ``signing_*`` fields;
-    IMPLICIT uses none. The secrets are sent to the catalog and never returned.
+    IMPLICIT uses none. The secrets are sent to the catalog, never returned, and left out of ``repr``.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -42,9 +42,9 @@ class AuthenticationParametersApiRequest(BaseModel):
     authentication_type: Literal["OAUTH", "BEARER", "SIGV4", "IMPLICIT"] | None = None
     token_uri: str | None = None
     client_id: str | None = None
-    client_secret: str | None = None
+    client_secret: str | None = Field(default=None, repr=False)
     scopes: list[str] | None = None
-    bearer_token: str | None = None
+    bearer_token: str | None = Field(default=None, repr=False)
     role_arn: str | None = None
     role_session_name: str | None = None
     external_id: str | None = None
