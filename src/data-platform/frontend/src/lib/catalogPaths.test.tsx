@@ -9,6 +9,7 @@ import {
   catalogsPath,
   genericTableApiPath,
   genericTablesApiPath,
+  maintenanceTableApiPath,
   namespaceApiPath,
   namespacePropertiesApiPath,
   namespacesApiPath,
@@ -112,5 +113,12 @@ describe("catalogsPath", () => {
   it("is the catalogs list that every catalog path starts from", () => {
     expect(catalogsPath()).toBe("/catalogs");
     expect(catalogPath("iceberg").startsWith(`${catalogsPath()}/`)).toBe(true);
+  });
+});
+
+describe("maintenanceTableApiPath", () => {
+  it("encodes the uuid the catalog returned as one path segment", () => {
+    expect(maintenanceTableApiPath("uuid-orders")).toBe("/v1/tables/uuid-orders");
+    expect(maintenanceTableApiPath("a/b?c")).toBe("/v1/tables/a%2Fb%3Fc");
   });
 });

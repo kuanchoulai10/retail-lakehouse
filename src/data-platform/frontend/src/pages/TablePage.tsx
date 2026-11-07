@@ -23,7 +23,13 @@ import { SnapshotsTab } from "@/components/tabs/SnapshotsTab";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { errorMessage } from "@/format";
-import { namespaceFromParam, namespacePath, tableApiPath, tablePath } from "@/lib/catalogPaths";
+import {
+  maintenanceTableApiPath,
+  namespaceFromParam,
+  namespacePath,
+  tableApiPath,
+  tablePath,
+} from "@/lib/catalogPaths";
 import { tableMaintenanceState, type TableMaintenanceState } from "@/lib/tableMaintenanceState";
 import { useLeavingPage } from "@/lib/useLeavingPage";
 
@@ -111,7 +117,7 @@ function TableView({ catalog, parts, name, segment }: TableViewProps) {
   const maintenanceTable = useQuery({
     // The key the maintenance tabs and invalidateTableState share.
     queryKey: ["table", uuid ?? ""],
-    queryFn: () => apiGet<TableApiResponse>(`/v1/tables/${uuid ?? ""}`),
+    queryFn: () => apiGet<TableApiResponse>(maintenanceTableApiPath(uuid ?? "")),
     enabled: uuid !== undefined && !leaving,
   });
 

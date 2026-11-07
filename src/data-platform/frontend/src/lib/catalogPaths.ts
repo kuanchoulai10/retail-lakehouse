@@ -92,3 +92,8 @@ export function genericTablesApiPath(catalog: string, namespace: string[]): stri
 export function genericTableApiPath(catalog: string, namespace: string[], name: string): string {
   return `${genericTablesApiPath(catalog, namespace)}/${segment(name)}`;
 }
+
+// The maintenance API's table, addressed by the uuid the catalog returned for it.
+export function maintenanceTableApiPath(uuid: string): string {
+  return `/v1/tables/${encodeURIComponent(uuid)}`;
+}
