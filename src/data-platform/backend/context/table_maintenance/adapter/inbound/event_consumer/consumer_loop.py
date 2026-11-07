@@ -3,16 +3,9 @@
 from __future__ import annotations
 
 import logging
-import threading
 import time
-from collections.abc import Callable
+from typing import TYPE_CHECKING
 
-from context.table_maintenance.adapter.inbound.event_consumer.event_record import (
-    EventRecord,
-)
-from context.table_maintenance.adapter.inbound.event_consumer.event_source import (
-    EventSource,
-)
 from context.table_maintenance.adapter.inbound.event_consumer.map_polaris_event import (
     map_polaris_event,
 )
@@ -20,10 +13,21 @@ from context.table_maintenance.application.exceptions import (
     NotFoundError,
     ValidationError,
 )
-from context.table_maintenance.application.port.inbound.table import (
-    ProcessTableHintUseCase,
-    ProcessTableHintUseCaseInput,
-)
+
+if TYPE_CHECKING:
+    import threading
+    from collections.abc import Callable
+
+    from context.table_maintenance.adapter.inbound.event_consumer.event_record import (
+        EventRecord,
+    )
+    from context.table_maintenance.adapter.inbound.event_consumer.event_source import (
+        EventSource,
+    )
+    from context.table_maintenance.application.port.inbound.table import (
+        ProcessTableHintUseCase,
+        ProcessTableHintUseCaseInput,
+    )
 
 logger = logging.getLogger(__name__)
 

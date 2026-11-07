@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import datetime
+from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.shared import (
     CompactionScope,
@@ -16,7 +16,6 @@ from context.table_maintenance.application.domain.model.shared import (
     SizeSource,
     TableObservation,
 )
-from context.table_maintenance.application.domain.model.table import Table
 from context.table_maintenance.application.domain.service.shared import (
     positive_int_property,
     resolve_target_file_size,
@@ -24,6 +23,11 @@ from context.table_maintenance.application.domain.service.shared import (
 from context.table_maintenance.application.domain.service.table.compute_reducible_files import (
     compute_reducible_files,
 )
+
+if TYPE_CHECKING:
+    from datetime import datetime
+
+    from context.table_maintenance.application.domain.model.table import Table
 
 DEFAULT_SMALL_MANIFEST_BYTES = 8 * 1024 * 1024
 MANIFEST_TARGET_SIZE_PROPERTY = "commit.manifest.target-size-bytes"

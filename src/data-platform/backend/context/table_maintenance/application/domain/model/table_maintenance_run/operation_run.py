@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from typing import TYPE_CHECKING
 
 from base import ValueObject
-from context.table_maintenance.application.domain.model.shared import (
-    MaintenanceOperation,
-)
 from context.table_maintenance.application.domain.model.table_maintenance_run.operation_run_status import (
     OperationRunStatus,
 )
+
+if TYPE_CHECKING:
+    from datetime import datetime
+
+    from context.table_maintenance.application.domain.model.shared import (
+        MaintenanceOperation,
+    )
 
 
 @dataclass(frozen=True)

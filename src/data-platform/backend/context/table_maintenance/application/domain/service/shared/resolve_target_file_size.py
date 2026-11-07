@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from context.table_maintenance.application.domain.model.shared import (
-    RewriteDataFilesSettings,
-)
+from typing import TYPE_CHECKING
+
 from context.table_maintenance.application.domain.service.shared.positive_int_property import (
     positive_int_property,
 )
+
+if TYPE_CHECKING:
+    from context.table_maintenance.application.domain.model.shared import (
+        RewriteDataFilesSettings,
+    )
 
 DEFAULT_TARGET_FILE_SIZE_BYTES = 536870912
 

@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass, replace
-from datetime import datetime
+from typing import TYPE_CHECKING
 
 from base import AggregateRoot
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
 )
-from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_run.invalid_run_transition import (
     InvalidRunTransition,
 )
@@ -26,9 +24,15 @@ from context.table_maintenance.application.domain.model.table_maintenance_run.ru
 from context.table_maintenance.application.domain.model.table_maintenance_run.table_maintenance_run_id import (
     TableMaintenanceRunId,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_run.trigger_type import (
-    TriggerType,
-)
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from datetime import datetime
+
+    from context.table_maintenance.application.domain.model.table import TableId
+    from context.table_maintenance.application.domain.model.table_maintenance_run.trigger_type import (
+        TriggerType,
+    )
 
 _TERMINAL = frozenset(
     {

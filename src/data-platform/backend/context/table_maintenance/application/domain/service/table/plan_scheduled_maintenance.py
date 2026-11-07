@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.shared import (
     MaintenancePlan,
@@ -18,6 +18,9 @@ from context.table_maintenance.application.domain.service.table.assess_maintenan
 from context.table_maintenance.application.domain.service.table.assess_maintenance import (
     assess_maintenance,
 )
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 
 def plan_scheduled_maintenance(table: Table, observation: TableObservation, now: datetime) -> MaintenancePlan:

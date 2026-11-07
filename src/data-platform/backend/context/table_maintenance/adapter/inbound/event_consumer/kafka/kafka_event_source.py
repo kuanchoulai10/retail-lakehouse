@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from confluent_kafka import Consumer, KafkaException, TopicPartition
 
@@ -11,6 +10,9 @@ from context.table_maintenance.adapter.inbound.event_consumer import (
     EventRecord,
     EventSource,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 CONSUMER_GROUP_ID = "table-maintenance-event-consumer"
 

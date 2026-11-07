@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from context.table_maintenance.application.domain.model.shared import PartitionStats
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from context.table_maintenance.application.domain.model.shared import PartitionStats
 
 
 def compute_reducible_files(stats: PartitionStats, target_file_size_bytes: int) -> int:

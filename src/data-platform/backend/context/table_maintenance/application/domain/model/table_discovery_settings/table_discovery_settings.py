@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from typing import TYPE_CHECKING
 
 from base import AggregateRoot
 from context.table_maintenance.application.domain.model.table_discovery_settings.table_discovery_settings_id import (
     TableDiscoverySettingsId,
 )
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 GLOBAL_ID = TableDiscoverySettingsId("global")
 

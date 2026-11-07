@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     MaintenancePlan,
     PlannedOperation,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 def plan_manual_maintenance(

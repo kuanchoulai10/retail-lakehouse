@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from context.table_maintenance.adapter.inbound.event_consumer.parse_polaris_event import (
     parse_polaris_event,
 )
-from context.table_maintenance.adapter.inbound.event_consumer.polaris_event import (
-    PolarisEvent,
-)
 from context.table_maintenance.application.port.inbound.table import (
     ProcessTableHintUseCaseInput,
 )
+
+if TYPE_CHECKING:
+    from context.table_maintenance.adapter.inbound.event_consumer.polaris_event import (
+        PolarisEvent,
+    )
 
 logger = logging.getLogger(__name__)
 

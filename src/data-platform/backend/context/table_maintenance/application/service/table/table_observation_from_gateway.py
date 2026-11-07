@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.shared import (
     ManifestStats,
@@ -12,9 +13,11 @@ from context.table_maintenance.application.domain.model.shared import (
     SnapshotInfo,
     TableObservation,
 )
-from context.table_maintenance.application.port.outbound.table import (
-    TableMetadataObservation,
-)
+
+if TYPE_CHECKING:
+    from context.table_maintenance.application.port.outbound.table import (
+        TableMetadataObservation,
+    )
 
 
 def _utc(text: str) -> datetime:

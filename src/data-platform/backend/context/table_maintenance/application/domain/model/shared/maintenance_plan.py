@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from base import ValueObject
-from context.table_maintenance.application.domain.model.shared.planned_operation import (
-    PlannedOperation,
-)
+
+if TYPE_CHECKING:
+    from context.table_maintenance.application.domain.model.shared.planned_operation import (
+        PlannedOperation,
+    )
 
 
 @dataclass(frozen=True)

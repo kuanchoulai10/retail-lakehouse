@@ -3,21 +3,25 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from typing import TYPE_CHECKING
 
 from base import ValueObject
-from context.table_maintenance.application.domain.model.shared.maintenance_operation import (
-    MaintenanceOperation,
-)
-from context.table_maintenance.application.domain.model.shared.operation_verdict import (
-    OperationVerdict,
-)
-from context.table_maintenance.application.domain.model.shared.planned_operation import (
-    PlannedOperation,
-)
-from context.table_maintenance.application.domain.model.shared.size_source import (
-    SizeSource,
-)
+
+if TYPE_CHECKING:
+    from datetime import datetime
+
+    from context.table_maintenance.application.domain.model.shared.maintenance_operation import (
+        MaintenanceOperation,
+    )
+    from context.table_maintenance.application.domain.model.shared.operation_verdict import (
+        OperationVerdict,
+    )
+    from context.table_maintenance.application.domain.model.shared.planned_operation import (
+        PlannedOperation,
+    )
+    from context.table_maintenance.application.domain.model.shared.size_source import (
+        SizeSource,
+    )
 
 
 @dataclass(frozen=True)

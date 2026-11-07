@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.domain.model.table import TableName
-from context.table_maintenance.application.domain.model.table_discovery_rule import (
-    TableDiscoveryRule,
-)
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from context.table_maintenance.application.domain.model.table import TableName
+    from context.table_maintenance.application.domain.model.table_discovery_rule import (
+        TableDiscoveryRule,
+    )
 
 
 def match_table_discovery_rule(rules: Sequence[TableDiscoveryRule], name: TableName) -> TableDiscoveryRule | None:

@@ -3,14 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import TYPE_CHECKING
 
 from base import AggregateRoot
-from context.table_maintenance.application.domain.model.shared import (
-    MaintenanceOperation,
-    MaintenanceSettings,
-)
 from context.table_maintenance.application.domain.model.table.invalid_table_transition import (
     InvalidTableTransition,
 )
@@ -18,22 +13,28 @@ from context.table_maintenance.application.domain.model.table.operation_state im
     OperationState,
 )
 from context.table_maintenance.application.domain.model.table.table_id import TableId
-from context.table_maintenance.application.domain.model.table.table_name import (
-    TableName,
-)
 from context.table_maintenance.application.domain.model.table.table_selection import (
     TableSelection,
 )
 from context.table_maintenance.application.domain.model.table.table_status import (
     TableStatus,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-    TableMaintenancePresetId,
-)
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
+    from context.table_maintenance.application.domain.model.shared import (
+        MaintenanceOperation,
+        MaintenanceSettings,
+    )
+    from context.table_maintenance.application.domain.model.table.table_name import (
+        TableName,
+    )
     from context.table_maintenance.application.domain.model.table_discovery_rule import (
         TableDiscoveryRuleId,
+    )
+    from context.table_maintenance.application.domain.model.table_maintenance_preset import (
+        TableMaintenancePresetId,
     )
 
 

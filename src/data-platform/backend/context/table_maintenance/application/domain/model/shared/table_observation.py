@@ -3,20 +3,23 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from base import ValueObject
-from context.table_maintenance.application.domain.model.shared.manifest_stats import (
-    ManifestStats,
-)
-from context.table_maintenance.application.domain.model.shared.partition_spec_info import (
-    PartitionSpecInfo,
-)
-from context.table_maintenance.application.domain.model.shared.partition_stats import (
-    PartitionStats,
-)
-from context.table_maintenance.application.domain.model.shared.snapshot_info import (
-    SnapshotInfo,
-)
+
+if TYPE_CHECKING:
+    from context.table_maintenance.application.domain.model.shared.manifest_stats import (
+        ManifestStats,
+    )
+    from context.table_maintenance.application.domain.model.shared.partition_spec_info import (
+        PartitionSpecInfo,
+    )
+    from context.table_maintenance.application.domain.model.shared.partition_stats import (
+        PartitionStats,
+    )
+    from context.table_maintenance.application.domain.model.shared.snapshot_info import (
+        SnapshotInfo,
+    )
 
 
 @dataclass(frozen=True)

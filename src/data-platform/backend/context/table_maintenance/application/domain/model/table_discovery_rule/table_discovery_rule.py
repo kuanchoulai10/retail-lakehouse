@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from typing import TYPE_CHECKING
 
 from base import AggregateRoot
 from context.table_maintenance.application.domain.model.table_discovery_rule.invalid_table_discovery_rule import (
@@ -15,12 +15,16 @@ from context.table_maintenance.application.domain.model.table_discovery_rule.rul
 from context.table_maintenance.application.domain.model.table_discovery_rule.table_discovery_rule_id import (
     TableDiscoveryRuleId,
 )
-from context.table_maintenance.application.domain.model.table_discovery_rule.table_pattern import (
-    TablePattern,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-    TableMaintenancePresetId,
-)
+
+if TYPE_CHECKING:
+    from datetime import datetime
+
+    from context.table_maintenance.application.domain.model.table_discovery_rule.table_pattern import (
+        TablePattern,
+    )
+    from context.table_maintenance.application.domain.model.table_maintenance_preset import (
+        TableMaintenancePresetId,
+    )
 
 
 def _validate(effect: RuleEffect, preset_id: TableMaintenancePresetId | None) -> None:

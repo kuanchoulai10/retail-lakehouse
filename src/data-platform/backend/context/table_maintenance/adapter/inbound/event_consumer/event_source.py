@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
-from context.table_maintenance.adapter.inbound.event_consumer.event_record import (
-    EventRecord,
-)
+if TYPE_CHECKING:
+    from context.table_maintenance.adapter.inbound.event_consumer.event_record import (
+        EventRecord,
+    )
 
 
 class EventSource(ABC):

@@ -5,8 +5,8 @@ from __future__ import annotations
 import math
 import re
 from collections import defaultdict
-from collections.abc import Sequence
 from datetime import UTC, date, datetime, timedelta
+from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.shared import (
     PartitionFieldInfo,
@@ -14,6 +14,9 @@ from context.table_maintenance.application.domain.model.shared import (
     PartitionStats,
     SpecFilter,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 _EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 _EPOCH_YEAR = 1970
