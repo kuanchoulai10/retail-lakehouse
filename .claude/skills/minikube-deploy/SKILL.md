@@ -23,8 +23,8 @@ Docker runs inside Colima VM. `kubectl port-forward` binds to the host network. 
 
 | Image Name | Dockerfile | Build Context | Deploy Manifest | Deploy Kind |
 |-----------|-----------|--------------|----------------|------------|
-| `table-maintenance-spark` | `src/table-maintenance/runtime/spark/Dockerfile` | `src/table-maintenance/runtime/spark/` | `platform/25-lakehouse-control-plane/chart` (`build.sh` + `bootstrap.sh`) | SparkApplication (created by the worker) |
-| `table-maintenance-backend` | `src/table-maintenance/backend/Dockerfile` | `src/table-maintenance/backend/` | `platform/25-lakehouse-control-plane/chart` (`build.sh` + `bootstrap.sh`) | Helm: api, worker, event-consumer, migrate |
+| `table-maintenance-spark` | `src/data-platform/runtime/spark/Dockerfile` | `src/data-platform/runtime/spark/` | `platform/25-lakehouse-control-plane/chart` (`build.sh` + `bootstrap.sh`) | SparkApplication (created by the worker) |
+| `table-maintenance-backend` | `src/data-platform/backend/Dockerfile` | `src/data-platform/backend/` | `platform/25-lakehouse-control-plane/chart` (`build.sh` + `bootstrap.sh`) | Helm: api, worker, event-consumer, migrate |
 
 When the user asks to deploy something not in this table, ask them for the Dockerfile path, build context, and deploy manifest path. Then add it to this table for future reference.
 

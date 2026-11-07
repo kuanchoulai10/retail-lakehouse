@@ -26,13 +26,13 @@ tasks:
     desc: "Run table-maintenance backend tests"
     internal: true
     cmds:
-      - uv run --project src/table-maintenance/backend --directory src/table-maintenance/backend pytest -v
+      - uv run --project src/data-platform/backend --directory src/data-platform/backend pytest -v
 
   unit-test-spark:
     desc: "Run table-maintenance spark runtime tests"
     internal: true
     cmds:
-      - cmd: echo "TODO:// uv run --project src/table-maintenance/runtime/spark --directory src/table-maintenance/runtime/spark pytest -v"
+      - cmd: echo "TODO:// uv run --project src/data-platform/runtime/spark --directory src/data-platform/runtime/spark pytest -v"
 
   unit-test-scripts:
     desc: "Run repository script tests"
@@ -44,4 +44,4 @@ tasks:
     desc: "Run architecture boundary tests (import-linter)"
     internal: true
     cmds:
-      - uv run --project src/table-maintenance/backend --directory src/table-maintenance/backend lint-imports
+      - uv run --project src/data-platform/backend --directory src/data-platform/backend lint-imports

@@ -44,7 +44,7 @@ callback never arrives, the workflow falls back to polling the SparkApplication 
 ## Tests
 
 ```
-uv run --project src/table-maintenance/runtime/spark --directory src/table-maintenance/runtime/spark pytest -q
+uv run --project src/data-platform/runtime/spark --directory src/data-platform/runtime/spark pytest -q
 ```
 
 Spark is mocked; no JVM is started.

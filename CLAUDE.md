@@ -7,12 +7,12 @@ Respond in the same language as the user's message. The user typically communica
 ## Shell Commands
 
 - Never use `cd` to change directory. Always use absolute paths or tool flags like `--directory`, `--project`.
-- Use `uv run` instead of bare `python`, `python3`, `pytest`, or `pip`. Example: `uv run --project src/table-maintenance/backend --directory src/table-maintenance/backend pytest -v`
+- Use `uv run` instead of bare `python`, `python3`, `pytest`, or `pip`. Example: `uv run --project src/data-platform/backend --directory src/data-platform/backend pytest -v`
 - The local minikube/dev cluster context is `retail-lakehouse`. Infra scripts (`*/bootstrap.sh`, `*/validate.sh`, `*/patch.sh`) require `KUBE_CONTEXT` to be set explicitly — there is no fallback (scripts fail fast with `KUBE_CONTEXT is required`). Always pass it when invoking Taskfile entries or running scripts directly, e.g. `task onboard KUBE_CONTEXT=retail-lakehouse`.
 
 ## Project Overview
 
-**What it is:** an Iceberg lakehouse platform on minikube plus a self-built Table Maintenance service (`src/table-maintenance`, DDD + Clean Architecture) that schedules Iceberg maintenance (compaction, snapshot expiry). Long-term vision: "GitHub for Data", a DataOps platform.
+**What it is:** an Iceberg lakehouse platform on minikube plus a self-built Table Maintenance service (`src/data-platform`, DDD + Clean Architecture) that schedules Iceberg maintenance (compaction, snapshot expiry). Long-term vision: "GitHub for Data", a DataOps platform.
 
 **Data flow:** MySQL →(Debezium CDC)→ Kafka →(Iceberg Sink)→ Iceberg on RustFS, catalog = Polaris → queried by Trino. Polaris catalog events →(Kafka event listener)→ Kafka topic `polaris-catalog-events` (key = event UUID, value = JSON; read it with `kafka-console-consumer.sh` in a broker pod or Kafka UI). Table maintenance Spark event logs → RustFS bucket `spark-event-logs` (zstd, rolling 128m, `logStageExecutorMetrics`, 3-day expiry) → on completion RustFS sends one `s3:ObjectCreated:Copy` event (the `appstatus_<appId>.inprogress` → `appstatus_<appId>` rename, prefix `eventlog_v2_`) → Kafka topic `spark-event-log-completions` (for a future metrics-analysis runtime).
 
@@ -23,7 +23,7 @@ Topic files load on demand: a nested `CLAUDE.md` is read when you work on files 
 | Topic | File |
 |---|---|
 | Waves, cluster runtime, deployed components, ambient mesh, Kubernetes label rules | `platform/CLAUDE.md` |
-| Backend layering, aggregate axis, DDD base types, port / adapter and DTO naming | `src/table-maintenance/backend/CLAUDE.md` |
+| Backend layering, aggregate axis, DDD base types, port / adapter and DTO naming | `src/data-platform/backend/CLAUDE.md` |
 | Console UI rules | `src/console/CLAUDE.md` |
 | History of what landed and finished initiatives | `docs/agents/project-history.md` |
 | Known follow-ups and deferred work | `docs/agents/known-follow-ups.md` |

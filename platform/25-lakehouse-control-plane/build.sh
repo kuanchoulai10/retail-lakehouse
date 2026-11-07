@@ -4,8 +4,8 @@ set -euo pipefail
 : "${KUBE_CONTEXT:?KUBE_CONTEXT is required}"
 
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
-BACKEND_DIR="${REPO_ROOT}/src/table-maintenance/backend"
-SPARK_DIR="${REPO_ROOT}/src/table-maintenance/runtime/spark"
+BACKEND_DIR="${REPO_ROOT}/src/data-platform/backend"
+SPARK_DIR="${REPO_ROOT}/src/data-platform/runtime/spark"
 CONSOLE_DIR="${REPO_ROOT}/src/console"
 
 source_tag() {

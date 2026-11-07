@@ -2298,7 +2298,7 @@ wheels = [
 [[package]]
 name = "table-maintenance-backend"
 version = "0.1.0"
-source = { virtual = "src/table-maintenance/backend" }
+source = { virtual = "src/data-platform/backend" }
 dependencies = [
     { name = "confluent-kafka" },
     { name = "fastapi", extra = ["standard"] },
@@ -2349,7 +2349,7 @@ dev = [
 [[package]]
 name = "table-maintenance-spark"
 version = "0.1.0"
-source = { virtual = "src/table-maintenance/runtime/spark" }
+source = { virtual = "src/data-platform/runtime/spark" }
 dependencies = [
     { name = "pyspark" },
 ]

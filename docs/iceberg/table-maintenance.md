@@ -228,7 +228,7 @@ SparkSession.sql(sql)
 Iceberg Spark Extensions 執行
 ```
 
-程式碼位置：`src/table-maintenance/runtime/spark/`
+程式碼位置：`src/data-platform/runtime/spark/`
 
 - `main.py` — 入口點，讀取設定、建立 SparkSession、執行 SQL
 - `configs/job_settings.py` — 頂層設定（`GLAC_JOB_TYPE`、`GLAC_CATALOG`）

@@ -53,21 +53,21 @@ repos:
         entry: uv run ty check
         language: system
         types: [python]
-        exclude: ^src/table-maintenance/(backend|scheduler)/
+        exclude: ^src/data-platform/(backend|scheduler)/
       - id: ty-backend
         name: ty (backend)
-        entry: uv run --project src/table-maintenance/backend --directory src/table-maintenance/backend ty check
+        entry: uv run --project src/data-platform/backend --directory src/data-platform/backend ty check
         language: system
         types: [python]
-        files: ^src/table-maintenance/backend/
+        files: ^src/data-platform/backend/
         pass_filenames: false
   - repo: local
     hooks:
       - id: uv-export-backend
         name: uv export (table-maintenance backend requirements)
-        entry: uv export --package table-maintenance-backend --locked --no-dev --no-emit-project --no-header --quiet -o src/table-maintenance/backend/requirements.txt
+        entry: uv export --package table-maintenance-backend --locked --no-dev --no-emit-project --no-header --quiet -o src/data-platform/backend/requirements.txt
         language: system
-        files: ^(uv\.lock|src/table-maintenance/backend/(pyproject\.toml|requirements\.txt))$
+        files: ^(uv\.lock|src/data-platform/backend/(pyproject\.toml|requirements\.txt))$
         pass_filenames: false
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: "aca6d4c8045a504e2812ea4bedff1d0a09e437bc" # v0.15.8
