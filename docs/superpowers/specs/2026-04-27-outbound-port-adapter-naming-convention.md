@@ -48,6 +48,7 @@ Gateway names must use one of these approved verbs. Adding a new verb requires r
 | `Sync` | Bidirectional data synchronization |
 | `Write` | Write data to an external system (not your own DB) |
 | `Delete` | Remove or revoke a resource in an external system |
+| `Update` | Change state held by an external system (for example a schedule or a credential); see ADR 0007 |
 | `Create` | Ask an external system to create something that returns data only once (for example a credential); see ADR 0007 |
 
 See also: [ADR 0006](../../adr/0006-choosing-an-outbound-port.md) for choosing between Repository, Store and Gateway, and [ADR 0007](../../adr/0007-one-time-secrets.md) for one-time secrets.

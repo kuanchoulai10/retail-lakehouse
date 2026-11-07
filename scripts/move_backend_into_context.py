@@ -1,7 +1,9 @@
 """Move the backend's table maintenance code into ``context/table_maintenance``.
 
 One-off tool for the bounded context restructure. It moves the code and rewrites
-references, and it does not change any logic. Run it from the repository root::
+references, and it does not change any logic. Historical: it ran once, for commit
+1b7fb0f, and ``check`` reproduces only against that tree (working tree at 1b7fb0f,
+``BASE`` its parent 85b348f). Run it from the repository root::
 
     uv run scripts/move_backend_into_context.py move
     uv run scripts/move_backend_into_context.py check <BASE>
