@@ -8,6 +8,7 @@ from bootstrap.container.apply_worker_startup import apply_worker_startup
 from bootstrap.container.build_activities import build_activities
 from bootstrap.container.build_api_app import build_api_app
 from bootstrap.container.build_catalog_factory import build_catalog_factory
+from bootstrap.container.build_catalog_web_use_cases import build_catalog_web_use_cases
 from bootstrap.container.build_connected_use_cases import build_connected_use_cases
 from bootstrap.container.build_engine import build_engine
 from bootstrap.container.build_gateways import build_gateways
@@ -41,6 +42,7 @@ __all__ = [
     "build_activities",
     "build_api_app",
     "build_catalog_factory",
+    "build_catalog_web_use_cases",
     "build_connected_use_cases",
     "build_engine",
     "build_gateways",

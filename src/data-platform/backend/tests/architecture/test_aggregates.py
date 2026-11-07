@@ -83,6 +83,11 @@ def test_table_maintenance_aggregates_are_derived():
     }
 
 
+def test_catalog_aggregates_are_derived():
+    """The catalog context derives its aggregates from the domain model."""
+    assert aggregates("catalog") == {"catalog"}
+
+
 def test_package_without_aggregate_root_is_not_an_aggregate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """A model package without an aggregate root class is not counted as an aggregate."""
     name = build_fixture_context(

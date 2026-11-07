@@ -12,13 +12,22 @@ from tests.architecture.boundaries import boundaries
 CONTEXT = "context.catalog"
 CONTEXT_BOUNDARIES = (
     "application.exceptions",
+    "application.domain.model.catalog",
+    "application.port.inbound.catalog",
+    "application.port.outbound.catalog",
+    "application.service.catalog",
     "application.domain.service.shared",
     "adapter.inbound.web",
     "adapter.inbound.web.shared",
+    "adapter.inbound.web.catalog",
     "adapter.outbound.shared.polaris",
+    "adapter.outbound.catalog.polaris",
 )
 CONTEXT_NON_BOUNDARIES = (
     "adapter.outbound.shared",
+    "adapter.outbound.catalog",
+    "application.port.inbound.catalog.create_catalog",
+    "application.port.outbound.catalog.create_catalog_content_grant",
     "application.domain.service",
 )
 

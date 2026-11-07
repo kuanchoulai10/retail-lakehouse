@@ -43,3 +43,20 @@ def test_api_builds_and_serves_without_a_kubeconfig(tmp_path):
         bridge.close()
 
     assert [t["name"] for t in presets] == ["default"]
+
+
+def test_api_mounts_both_contexts(tmp_path):
+    """The API serves the table maintenance routes and the catalog routes on one app."""
+    settings = sqlite_settings()
+    settings.sqlite.path = str(tmp_path / "tm.db")
+    run_migrations(build_engine(settings))
+    bridge = AsyncLoopBridge()
+    try:
+        app = build_api_app(settings, bridge, connect=_connect, k8s_api_factory=_no_kubeconfig)
+    finally:
+        bridge.close()
+
+    paths = {getattr(route, "path", None) for route in app.routes}
+    assert {"/v1/table-maintenance-presets", "/v1/catalogs", "/v1/catalogs/{catalog}"} <= paths
+    assert app.state.catalog_use_cases is not None
+    assert app.state.table_maintenance_use_cases is not None

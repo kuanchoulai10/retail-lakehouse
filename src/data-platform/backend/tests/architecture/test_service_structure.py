@@ -43,6 +43,9 @@ UTILITY_FILES = {
     "load_catalog_table.py",
     "raise_not_in_catalog.py",
     "summary_int.py",
+    "catalog_output_fields.py",
+    "storage_config_from_dict.py",
+    "storage_config_to_dict.py",
 }
 
 # Known verbs for service naming. This is a pre-defined allowlist, not an
