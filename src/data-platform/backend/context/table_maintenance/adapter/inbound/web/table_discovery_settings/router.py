@@ -11,6 +11,7 @@ from context.table_maintenance.adapter.inbound.web.shared import (
     use_cases_dependency,
 )
 from context.table_maintenance.adapter.inbound.web.table_discovery_settings.dto import (
+    CoveredCatalogsApiResponse,
     ScanDiscoveryApiRequest,
     ScanDiscoveryApiResponse,
     TableDiscoverySettingsApiResponse,
@@ -21,6 +22,7 @@ from context.table_maintenance.application.port.inbound.table import (
 )
 from context.table_maintenance.application.port.inbound.table_discovery_settings import (
     GetTableDiscoverySettingsUseCaseInput,
+    ListCoveredCatalogsUseCaseInput,
     UpdateTableDiscoverySettingsUseCaseInput,
 )
 
@@ -36,6 +38,13 @@ def get_table_discovery_settings(
     """Return whether discovery is enabled."""
     output = use_cases.get_table_discovery_settings.execute(GetTableDiscoverySettingsUseCaseInput())
     return TableDiscoverySettingsApiResponse.model_validate(output)
+
+
+@router.get("/catalogs")
+def list_covered_catalogs(use_cases: UseCases) -> CoveredCatalogsApiResponse:
+    """List the catalogs maintenance covers."""
+    output = use_cases.list_covered_catalogs.execute(ListCoveredCatalogsUseCaseInput())
+    return CoveredCatalogsApiResponse.model_validate(output)
 
 
 @router.put("")

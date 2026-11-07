@@ -43,3 +43,11 @@ class ScanDiscoveryApiResponse(BaseModel):
     dropped: int
     skipped: int
     ensured: int
+
+
+class CoveredCatalogsApiResponse(BaseModel):
+    """List the catalogs maintenance covers."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    catalogs: list[str]

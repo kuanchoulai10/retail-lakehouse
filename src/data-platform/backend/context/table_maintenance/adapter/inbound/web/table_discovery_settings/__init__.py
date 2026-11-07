@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from context.table_maintenance.adapter.inbound.web.table_discovery_settings.dto import (
+    CoveredCatalogsApiResponse,
     ScanDiscoveryApiRequest,
     ScanDiscoveryApiResponse,
     TableDiscoverySettingsApiResponse,
@@ -13,6 +14,7 @@ from context.table_maintenance.adapter.inbound.web.table_discovery_settings.rout
 )
 
 __all__ = [
+    "CoveredCatalogsApiResponse",
     "ScanDiscoveryApiRequest",
     "ScanDiscoveryApiResponse",
     "TableDiscoverySettingsApiResponse",

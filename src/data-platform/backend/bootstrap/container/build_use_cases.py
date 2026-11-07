@@ -32,6 +32,7 @@ from context.table_maintenance.application.service.table_discovery_rule import (
 )
 from context.table_maintenance.application.service.table_discovery_settings import (
     GetTableDiscoverySettingsService,
+    ListCoveredCatalogsService,
     UpdateTableDiscoverySettingsService,
 )
 from context.table_maintenance.application.service.table_maintenance_preset import (
@@ -53,7 +54,7 @@ from context.table_maintenance.application.service.table_maintenance_run import 
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
 
     from bootstrap.container.gateways import Gateways
     from bootstrap.container.repositories import Repositories
@@ -68,6 +69,7 @@ def build_use_cases(
     gateways: Gateways,
     *,
     clock: Callable[[], datetime] = _utc_now,
+    catalog_names: Sequence[str] = (),
 ) -> UseCases:
     """Build every application service on the given repositories and gateways."""
     tables = repos.tables
@@ -79,6 +81,7 @@ def build_use_cases(
     table_changes = gateways.send_table_change
     return UseCases(
         get_table_discovery_settings=GetTableDiscoverySettingsService(discovery),
+        list_covered_catalogs=ListCoveredCatalogsService(catalog_names),
         process_table_hint=ProcessTableHintService(
             tables,
             rules,

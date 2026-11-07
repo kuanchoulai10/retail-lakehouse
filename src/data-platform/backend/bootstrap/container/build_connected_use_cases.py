@@ -47,4 +47,4 @@ def build_connected_use_cases(
         k8s_api=cast("CustomObjectsApi", LazyK8sApi(k8s_api_factory)),
         catalog_factory=build_catalog_factory(settings.catalog),
     )
-    return build_use_cases(build_repositories(build_engine(settings)), gateways)
+    return build_use_cases(build_repositories(build_engine(settings)), gateways, catalog_names=settings.catalog.names)

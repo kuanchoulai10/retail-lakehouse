@@ -8,6 +8,8 @@ from context.table_maintenance.application.port.inbound.table import (
 )
 from context.table_maintenance.application.port.inbound.table_discovery_settings import (
     GetTableDiscoverySettingsUseCaseOutput,
+    ListCoveredCatalogsUseCaseInput,
+    ListCoveredCatalogsUseCaseOutput,
     UpdateTableDiscoverySettingsUseCaseInput,
     UpdateTableDiscoverySettingsUseCaseOutput,
 )
@@ -86,3 +88,15 @@ def test_old_discovery_prefix_is_gone() -> None:
 
     assert client.get("/v1/discovery").status_code == 404
     assert client.post("/v1/discovery/scan", json={}).status_code == 404
+
+
+def test_covered_catalogs_route() -> None:
+    """Listing the covered catalogs returns the names the use case reports."""
+    stub = StubUseCase(ListCoveredCatalogsUseCaseOutput(catalogs=["iceberg", "other"]))
+    client = build_client(list_covered_catalogs=stub)
+
+    response = client.get("/v1/table-discovery-settings/catalogs")
+
+    assert response.status_code == 200
+    assert response.json() == {"catalogs": ["iceberg", "other"]}
+    assert stub.requests == [ListCoveredCatalogsUseCaseInput()]

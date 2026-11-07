@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from context.table_maintenance.application.port.inbound.table_discovery_settings import (
     GetTableDiscoverySettingsUseCaseInput,
+    ListCoveredCatalogsUseCaseInput,
     UpdateTableDiscoverySettingsUseCaseInput,
 )
 from context.table_maintenance.application.port.outbound.table_discovery_settings import (
@@ -11,6 +12,7 @@ from context.table_maintenance.application.port.outbound.table_discovery_setting
 )
 from context.table_maintenance.application.service.table_discovery_settings import (
     GetTableDiscoverySettingsService,
+    ListCoveredCatalogsService,
     UpdateTableDiscoverySettingsService,
 )
 
@@ -53,3 +55,12 @@ def test_settings_are_saved_before_schedule_is_updated(table_discovery_settings_
         UpdateTableDiscoverySettingsUseCaseInput(enabled=False)
     )
     assert seen == [False]
+
+
+def test_list_covered_catalogs_returns_configured_names():
+    """The configured catalog names come back in order, as a copy."""
+    names = ["iceberg", "other"]
+    out = ListCoveredCatalogsService(names).execute(ListCoveredCatalogsUseCaseInput())
+    assert out.catalogs == ["iceberg", "other"]
+    out.catalogs.append("mutated")
+    assert names == ["iceberg", "other"]

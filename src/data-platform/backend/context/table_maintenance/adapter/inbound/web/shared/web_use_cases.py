@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     )
     from context.table_maintenance.application.port.inbound.table_discovery_settings import (
         GetTableDiscoverySettingsUseCase,
+        ListCoveredCatalogsUseCase,
         UpdateTableDiscoverySettingsUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_maintenance_preset import (
@@ -55,6 +56,7 @@ class WebUseCases:
     update_table_discovery_rule: UpdateTableDiscoveryRuleUseCase
     delete_table_discovery_rule: DeleteTableDiscoveryRuleUseCase
     get_table_discovery_settings: GetTableDiscoverySettingsUseCase
+    list_covered_catalogs: ListCoveredCatalogsUseCase
     update_table_discovery_settings: UpdateTableDiscoverySettingsUseCase
     sync_discovered_tables: SyncDiscoveredTablesUseCase
     create_table_maintenance_preset: CreateTableMaintenancePresetUseCase

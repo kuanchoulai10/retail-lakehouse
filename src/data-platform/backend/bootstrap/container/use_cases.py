@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     )
     from context.table_maintenance.application.port.inbound.table_discovery_settings import (
         GetTableDiscoverySettingsUseCase,
+        ListCoveredCatalogsUseCase,
         UpdateTableDiscoverySettingsUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_maintenance_preset import (
@@ -58,6 +59,7 @@ class UseCases:
     """Hold one instance of every application service, keyed by use case."""
 
     get_table_discovery_settings: GetTableDiscoverySettingsUseCase
+    list_covered_catalogs: ListCoveredCatalogsUseCase
     process_table_hint: ProcessTableHintUseCase
     sync_discovered_tables: SyncDiscoveredTablesUseCase
     update_table_discovery_settings: UpdateTableDiscoverySettingsUseCase
