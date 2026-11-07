@@ -79,8 +79,7 @@ def test_directory_without_aggregate_root_fails_the_axis(tmp_path: Path):
 
     violations = axis_violations(tmp_path, {"widget"})
 
-    assert len(violations) == 1
-    assert "ghost" in violations[0]
+    assert violations == ["application/service: ghost"]
 
 
 @pytest.mark.parametrize("context", context_names())

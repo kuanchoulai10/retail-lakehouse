@@ -5,7 +5,8 @@ inbound ports. A's application never imports another context, and ``base``
 imports no context. ``bootstrap`` wires every context and is not checked.
 
 import-linter wildcards cannot say "another context", so this rule is an AST
-check. Imports under ``TYPE_CHECKING`` count.
+check. Imports under ``TYPE_CHECKING`` count, and relative imports are resolved
+against the importing file's package before the same rules apply.
 """
 
 from __future__ import annotations
@@ -31,15 +32,43 @@ def _python_files(directory: Path) -> list[Path]:
     )
 
 
-def _imported_modules(path: Path) -> list[tuple[int, str]]:
-    """Return (line, dotted target) for every absolute import in ``path``."""
-    found: list[tuple[int, str]] = []
+def _package_parts(relative: Path) -> list[str]:
+    """Return the dotted parts of the package a module file resolves imports in."""
+    parts = list(relative.with_suffix("").parts)
+    parts.pop()
+    return parts
+
+
+def _resolve(node: ast.ImportFrom, package: list[str]) -> str | None:
+    """Return the absolute module of ``from <dots><module> import``, or None above the root."""
+    if not node.level:
+        return node.module
+    keep = len(package) - (node.level - 1)
+    if keep < 1:
+        return None
+    return ".".join([*package[:keep], *([node.module] if node.module else [])])
+
+
+def _imported_modules(path: Path, backend: Path) -> list[tuple[int, str, bool]]:
+    """Return (line, target, resolved) for every import in ``path``.
+
+    Relative imports are resolved against the file's package. One that climbs
+    above the top package it starts in (``context`` for a context file) is
+    not resolved: its target is its relative spelling and it always counts.
+    """
+    package = _package_parts(path.relative_to(backend))
+    found: list[tuple[int, str, bool]] = []
     for node in ast.walk(ast.parse(path.read_text(), filename=str(path))):
         if isinstance(node, ast.Import):
-            found += [(node.lineno, alias.name) for alias in node.names]
-        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+            found += [(node.lineno, alias.name, True) for alias in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            module = _resolve(node, package)
+            if module is None:
+                spelling = "." * node.level + (node.module or "")
+                found.append((node.lineno, f"{spelling} climbs above context", False))
+                continue
             found += [
-                (node.lineno, f"{node.module}.{alias.name}") for alias in node.names
+                (node.lineno, f"{module}.{alias.name}", True) for alias in node.names
             ]
     return found
 
@@ -76,15 +105,15 @@ def cross_context_violations(backend: Path) -> list[str]:
         in_adapter = parts[2] == ADAPTER
         found += [
             f"{relative}:{line} {target}"
-            for line, target in _imported_modules(path)
-            if _reaches_into(own, in_adapter, target)
+            for line, target, resolved in _imported_modules(path, backend)
+            if not resolved or _reaches_into(own, in_adapter, target)
         ]
     for path in _python_files(backend / "base"):
         relative = path.relative_to(backend)
         found += [
             f"{relative}:{line} {target}"
-            for line, target in _imported_modules(path)
-            if _within(target, CONTEXT_PACKAGE)
+            for line, target, resolved in _imported_modules(path, backend)
+            if not resolved or _within(target, CONTEXT_PACKAGE)
         ]
     return found
 
@@ -119,6 +148,21 @@ def test_cross_context_import_rules(tmp_path: Path):
         "context/alpha/adapter/outbound/own.py": (
             "from context.alpha.application.domain.model import Widget\n"
         ),
+        "context/alpha/adapter/outbound/port_ok.py": (
+            "from context.beta.application.port import inbound\n"
+        ),
+        "context/alpha/adapter/outbound/whole.py": "from context import beta\n",
+        "context/alpha/application/rel.py": (
+            "from ...beta.application.domain.model import thing\n"
+        ),
+        "context/alpha/adapter/outbound/rel_ok.py": (
+            "from ....beta.application.port.inbound import X\n"
+        ),
+        "context/alpha/application/up.py": "from .... import beta\n",
+        "context/alpha/application/own_rel.py": "from .service import s\n",
+        "context/alpha/adapter/__init__.py": (
+            "from ...beta.application.domain import model\n"
+        ),
         "context/beta/application/domain/model/thing.py": "class Thing: ...\n",
         "base/b.py": "import context.alpha\n",
     }
@@ -127,11 +171,19 @@ def test_cross_context_import_rules(tmp_path: Path):
 
     violations = cross_context_violations(tmp_path)
 
-    assert sorted(v.split(":")[0] for v in violations) == sorted(
+    assert sorted(violations) == sorted(
         [
-            "context/alpha/application/service/s.py",
-            "context/alpha/adapter/outbound/bad.py",
-            "context/alpha/adapter/inbound/web/w.py",
-            "base/b.py",
+            "context/alpha/application/service/s.py:1 "
+            "context.beta.application.domain.model.thing.Thing",
+            "context/alpha/adapter/outbound/bad.py:1 "
+            "context.beta.application.port.outbound.ThingRepo",
+            "context/alpha/adapter/inbound/web/w.py:3 "
+            "context.beta.adapter.outbound.ThingSqlRepo",
+            "context/alpha/adapter/outbound/whole.py:1 context.beta",
+            "context/alpha/application/rel.py:1 "
+            "context.beta.application.domain.model.thing",
+            "context/alpha/application/up.py:1 .... climbs above context",
+            "context/alpha/adapter/__init__.py:1 context.beta.application.domain.model",
+            "base/b.py:1 context.alpha",
         ]
     )
