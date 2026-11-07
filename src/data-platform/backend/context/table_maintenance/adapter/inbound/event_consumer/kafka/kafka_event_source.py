@@ -39,7 +39,17 @@ class KafkaEventSource(EventSource):
         self._consumer.subscribe([topic])
 
     def poll(self, timeout: float) -> EventRecord | None:
-        """Return the next Kafka message as a record, raising KafkaException on a broker error."""
+        """Return the next Kafka message as a record, or None when no message arrives within the timeout.
+
+        Args:
+            timeout: Seconds to wait for a message.
+
+        Returns:
+            The next record, or None on timeout.
+
+        Raises:
+            KafkaException: If the broker returns an error for the message.
+        """
         message = self._consumer.poll(timeout)
         if message is None:
             return None
