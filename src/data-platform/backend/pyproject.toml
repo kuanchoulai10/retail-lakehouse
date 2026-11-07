@@ -28,7 +28,6 @@ dev = [
 [tool.ruff]
 extend = "../../../ruff.toml"
 
-
 [tool.ruff.lint.isort]
 known-first-party = ["base", "bootstrap", "context", "tests"]
 

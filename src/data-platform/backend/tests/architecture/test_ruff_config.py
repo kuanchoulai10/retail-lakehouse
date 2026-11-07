@@ -13,6 +13,8 @@ FORBIDDEN_LINT_KEYS = {
     "extend-per-file-ignores",
     "select",
     "extend-select",
+    "exclude",
+    "extend-exclude",
 }
 
 
@@ -20,6 +22,7 @@ def test_backend_ruff_config_only_extends_the_root():
     """The backend ruff table extends the root and neither ignores nor selects any rule."""
     ruff = tomllib.loads(PYPROJECT.read_text())["tool"]["ruff"]
 
+    assert set(ruff) <= {"extend", "lint"}
     assert ruff["extend"] == "../../../ruff.toml"
     lint = ruff.get("lint", {})
     assert FORBIDDEN_LINT_KEYS.isdisjoint(lint)

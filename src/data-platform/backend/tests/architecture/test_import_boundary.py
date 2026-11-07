@@ -318,7 +318,7 @@ def test_repository_port_exports_its_aggregate_and_id(boundary: str, repo: type)
 
 
 def test_every_aggregate_has_a_repository_port():
-    """Every aggregate has an outbound repository port."""
+    """At least five outbound repository ports exist."""
     assert len(_repository_ports()) >= 5
 
 
