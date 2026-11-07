@@ -9,7 +9,6 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.inbound.table import (
         ExcludeTableUseCase,
         GetTableHealthUseCase,
-        GetTableMetadataUseCase,
         GetTableStorageUseCase,
         GetTableUseCase,
         IncludeTableUseCase,
@@ -67,7 +66,6 @@ class WebUseCases:
     list_tables: ListTablesUseCase
     get_table: GetTableUseCase
     get_table_health: GetTableHealthUseCase
-    get_table_metadata: GetTableMetadataUseCase
     get_table_storage: GetTableStorageUseCase
     list_table_commits: ListTableCommitsUseCase
     update_table_settings: UpdateTableSettingsUseCase

@@ -17,7 +17,6 @@ from context.table_maintenance.adapter.inbound.web.table.dto import (
     TableApiResponse,
     TableCommitsApiResponse,
     TableHealthApiResponse,
-    TableMetadataApiResponse,
     TableStorageApiResponse,
     TriggerTableMaintenanceApiRequest,
     TriggerTableMaintenanceApiResponse,
@@ -26,7 +25,6 @@ from context.table_maintenance.adapter.inbound.web.table.dto import (
 from context.table_maintenance.application.port.inbound.table import (
     ExcludeTableUseCaseInput,
     GetTableHealthUseCaseInput,
-    GetTableMetadataUseCaseInput,
     GetTableStorageUseCaseInput,
     GetTableUseCaseInput,
     IncludeTableUseCaseInput,
@@ -70,13 +68,6 @@ def get_table(table_uuid: str, use_cases: UseCases) -> TableApiResponse:
     """Return one table."""
     output = use_cases.get_table.execute(GetTableUseCaseInput(uuid=table_uuid))
     return TableApiResponse.model_validate(output)
-
-
-@router.get("/{table_uuid}/metadata")
-def get_table_metadata(table_uuid: str, use_cases: UseCases) -> TableMetadataApiResponse:
-    """Return the catalog metadata of one table."""
-    output = use_cases.get_table_metadata.execute(GetTableMetadataUseCaseInput(uuid=table_uuid))
-    return TableMetadataApiResponse.model_validate(output)
 
 
 @router.get("/{table_uuid}/health")

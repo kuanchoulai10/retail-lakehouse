@@ -30,15 +30,6 @@ from context.table_maintenance.application.port.inbound.table.get_table_health.o
 from context.table_maintenance.application.port.inbound.table.get_table_health.use_case import (
     GetTableHealthUseCase,
 )
-from context.table_maintenance.application.port.inbound.table.get_table_metadata.input import (
-    GetTableMetadataUseCaseInput,
-)
-from context.table_maintenance.application.port.inbound.table.get_table_metadata.output import (
-    GetTableMetadataUseCaseOutput,
-)
-from context.table_maintenance.application.port.inbound.table.get_table_metadata.use_case import (
-    GetTableMetadataUseCase,
-)
 from context.table_maintenance.application.port.inbound.table.get_table_storage.input import (
     GetTableStorageUseCaseInput,
 )
@@ -166,9 +157,6 @@ __all__ = [
     "GetTableStorageUseCase",
     "GetTableStorageUseCaseInput",
     "GetTableStorageUseCaseOutput",
-    "GetTableMetadataUseCase",
-    "GetTableMetadataUseCaseInput",
-    "GetTableMetadataUseCaseOutput",
     "ListTableCommitsUseCase",
     "ListTableCommitsUseCaseInput",
     "ListTableCommitsUseCaseOutput",

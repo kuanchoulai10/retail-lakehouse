@@ -9,7 +9,6 @@ from bootstrap.container.use_cases import UseCases
 from context.table_maintenance.application.service.table import (
     ExcludeTableService,
     GetTableHealthService,
-    GetTableMetadataService,
     GetTableService,
     GetTableStorageService,
     IncludeTableService,
@@ -110,7 +109,6 @@ def build_use_cases(
         exclude_table=ExcludeTableService(tables, catalog, table_changes, clock=clock),
         get_table=GetTableService(tables),
         get_table_health=GetTableHealthService(tables, catalog, clock=clock),
-        get_table_metadata=GetTableMetadataService(tables, catalog),
         get_table_storage=GetTableStorageService(tables, catalog, runs, clock=clock),
         list_table_commits=ListTableCommitsService(tables, catalog),
         include_table=IncludeTableService(tables, presets, catalog, table_changes, clock=clock),

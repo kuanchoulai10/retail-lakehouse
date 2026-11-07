@@ -14,7 +14,6 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table import (
         ReadTableMetadataGatewayListInput,
         TableCommitPage,
-        TableDescription,
         TableMetadataObservation,
         TableStorageMeasure,
     )
@@ -27,7 +26,6 @@ class FakeReadTableMetadataGateway(ReadTableMetadataGateway):
         """Start with an empty catalog."""
         self.tables: dict[tuple[str, str, str], str] = {}
         self.observations: dict[tuple[str, str, str], TableMetadataObservation] = {}
-        self.descriptions: dict[tuple[str, str, str], TableDescription] = {}
         self.commit_pages: dict[tuple[str, str, str], TableCommitPage] = {}
         self.storage_measures: dict[tuple[str, str, str], TableStorageMeasure] = {}
         self.calls: list[tuple[str, object]] = []
@@ -64,11 +62,6 @@ class FakeReadTableMetadataGateway(ReadTableMetadataGateway):
         """Return the registered observation or None."""
         self.calls.append(("observe_table", ref))
         return self.observations.get((ref.catalog, ref.namespace, ref.table))
-
-    def describe_table(self, ref: TableMetadataRef) -> TableDescription | None:
-        """Return the registered description or None."""
-        self.calls.append(("describe_table", ref))
-        return self.descriptions.get((ref.catalog, ref.namespace, ref.table))
 
     def list_commits(self, ref: TableMetadataRef, since: str | None, limit: int) -> TableCommitPage | None:
         """Return the registered commit page or None."""

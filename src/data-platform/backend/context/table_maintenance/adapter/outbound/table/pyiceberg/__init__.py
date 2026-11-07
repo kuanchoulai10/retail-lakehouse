@@ -8,9 +8,6 @@ from context.table_maintenance.adapter.outbound.table.pyiceberg.commit_page_mapp
 from context.table_maintenance.adapter.outbound.table.pyiceberg.commit_writer_of import (
     commit_writer_of,
 )
-from context.table_maintenance.adapter.outbound.table.pyiceberg.description_mapper import (
-    description_from_table,
-)
 from context.table_maintenance.adapter.outbound.table.pyiceberg.observation_mapper import (
     observation_from_table,
     spec_of,
@@ -29,7 +26,6 @@ __all__ = [
     "ReadTableMetadataPyIcebergGateway",
     "commit_page_from_table",
     "commit_writer_of",
-    "description_from_table",
     "observation_from_table",
     "spec_of",
     "storage_measure_from_table",

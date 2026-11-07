@@ -9,9 +9,6 @@ from pyiceberg.exceptions import NoSuchNamespaceError, NoSuchTableError
 from context.table_maintenance.adapter.outbound.table.pyiceberg.commit_page_mapper import (
     commit_page_from_table,
 )
-from context.table_maintenance.adapter.outbound.table.pyiceberg.description_mapper import (
-    description_from_table,
-)
 from context.table_maintenance.adapter.outbound.table.pyiceberg.observation_mapper import (
     observation_from_table,
 )
@@ -22,7 +19,6 @@ from context.table_maintenance.application.port.outbound.table import (
     ReadTableMetadataGateway,
     ReadTableMetadataGatewayListInput,
     TableCommitPage,
-    TableDescription,
     TableMetadata,
     TableMetadataObservation,
     TableMetadataRef,
@@ -85,13 +81,6 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
         if table is None:
             return None
         return observation_from_table(table)
-
-    def describe_table(self, ref: TableMetadataRef) -> TableDescription | None:
-        """Return the table's definition, or None when the table or namespace does not exist."""
-        table = self._load(ref)
-        if table is None:
-            return None
-        return description_from_table(table)
 
     def list_commits(self, ref: TableMetadataRef, since: str | None, limit: int) -> TableCommitPage | None:
         """Return up to ``limit`` commits at or after ``since``, newest first, or None when the table is gone."""

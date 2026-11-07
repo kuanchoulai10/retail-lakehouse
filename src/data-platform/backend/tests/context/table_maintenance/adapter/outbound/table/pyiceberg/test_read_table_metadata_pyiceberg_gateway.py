@@ -309,53 +309,6 @@ def test_scoped_listing_and_loading_propagate_transient_errors() -> None:
         gateway.observe_table(_ref())
 
 
-def test_describe_partitioned_table(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
-    """Describing a partitioned table returns its uuid, format version and snapshot data."""
-    table = _partitioned(catalog)
-    table.append(_rows([1, 2], day=1))
-    table.append(_rows([3], day=2))
-    current = catalog.load_table("db.events")
-
-    description = gateway.describe_table(_ref())
-
-    assert description is not None
-    assert description.table_uuid == str(current.metadata.table_uuid)
-    assert description.format_version == current.metadata.format_version
-    assert description.location == current.location()
-    assert [f["name"] for f in description.schema_fields] == ["id", "ts", "region"]
-    assert description.schema_fields[0] == {
-        "field_id": 1,
-        "name": "id",
-        "type": "long",
-        "required": False,
-    }
-    assert [f["name"] for f in description.specs[0]["fields"]] == [
-        "ts_day",
-        "id_bucket",
-    ]
-    assert description.snapshot_count == 2
-    snapshot = current.current_snapshot()
-    assert snapshot is not None
-    assert description.current_snapshot_id == snapshot.snapshot_id
-    assert description.current_summary["operation"] == "append"
-    assert description.last_committed_at is not None
-    assert datetime.fromisoformat(description.last_committed_at).tzinfo is not None
-
-
-def test_describe_empty_table(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
-    """Describing a table without a snapshot returns no snapshot id and a zero snapshot count."""
-    catalog.create_namespace("db")
-    catalog.create_table("db.events", SCHEMA)
-
-    description = gateway.describe_table(_ref())
-
-    assert description is not None
-    assert description.current_snapshot_id is None
-    assert description.snapshot_count == 0
-    assert description.current_summary == {}
-    assert description.last_committed_at is None
-
-
 def test_list_commits_newest_first_with_limit(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
     """Commits are listed newest first and cut at the limit, marked as truncated."""
     table = _partitioned(catalog)
@@ -433,10 +386,9 @@ def test_measure_storage_of_empty_table_is_zero(
 
 
 def test_reads_return_none_for_missing_table(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
-    """Describe, list commits and measure storage return None for a missing table."""
+    """List commits and measure storage return None for a missing table."""
     catalog.create_namespace("db")
     ref = _ref(table="nope")
 
-    assert gateway.describe_table(ref) is None
     assert gateway.list_commits(ref, since=None, limit=5) is None
     assert gateway.measure_storage(ref) is None

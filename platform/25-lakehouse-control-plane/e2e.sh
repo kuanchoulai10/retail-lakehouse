@@ -407,12 +407,17 @@ progress "after: ${ORDERS} files=${ORDERS_FILES_AFTER} snapshots=${ORDERS_SNAPSH
 progress "after: ${REGIONS} files=${REGIONS_FILES_AFTER} snapshots=${REGIONS_SNAPSHOTS_AFTER} objects=${REGIONS_OBJECTS_AFTER}"
 
 progress "reading ${ORDERS} metadata, commits, health and storage through the API"
-ORDERS_METADATA="$(api GET "/v1/tables/${ORDERS_UUID}/metadata")"
+ORDERS_METADATA="$(api GET "/v1/catalogs/${CATALOG}/namespaces/${SCHEMA}/tables/${ORDERS}")"
 ORDERS_COMMITS="$(api GET "/v1/tables/${ORDERS_UUID}/commits?limit=1000")"
 ORDERS_HEALTH="$(api GET "/v1/tables/${ORDERS_UUID}/health")"
 ORDERS_STORAGE="$(api GET "/v1/tables/${ORDERS_UUID}/storage")"
-METADATA_FILES="$(jq '(.total_data_files // 0) + (.total_delete_files // 0)' <<<"${ORDERS_METADATA}")"
-METADATA_SNAPSHOTS="$(jq '.snapshot_count' <<<"${ORDERS_METADATA}")"
+jq -e '.uuid == "'"${ORDERS_UUID}"'"' <<<"${ORDERS_METADATA}" >/dev/null \
+  || { echo "the catalog API returned another uuid than the maintenance table ${ORDERS_UUID}" >&2; exit 1; }
+METADATA_FILES="$(jq '(.current_snapshot_id) as $current
+  | ([.snapshots[] | select(.id == $current)][0].summary // {}) as $summary
+  | (($summary["total-data-files"] // "0") | tonumber) + (($summary["total-delete-files"] // "0") | tonumber)' \
+  <<<"${ORDERS_METADATA}")"
+METADATA_SNAPSHOTS="$(jq '.snapshots | length' <<<"${ORDERS_METADATA}")"
 progress "metadata: ${ORDERS} data+delete files=${METADATA_FILES} snapshots=${METADATA_SNAPSHOTS}"
 (( METADATA_FILES == ORDERS_FILES_AFTER )) || {
   echo "metadata counts ${METADATA_FILES} data+delete files, \$files counts ${ORDERS_FILES_AFTER}" >&2

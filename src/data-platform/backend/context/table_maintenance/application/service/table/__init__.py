@@ -11,9 +11,6 @@ from context.table_maintenance.application.service.table.get_table import (
 from context.table_maintenance.application.service.table.get_table_health import (
     GetTableHealthService,
 )
-from context.table_maintenance.application.service.table.get_table_metadata import (
-    GetTableMetadataService,
-)
 from context.table_maintenance.application.service.table.get_table_storage import (
     GetTableStorageService,
 )
@@ -77,7 +74,6 @@ __all__ = [
     "ExcludeTableService",
     "GetTableService",
     "GetTableHealthService",
-    "GetTableMetadataService",
     "GetTableStorageService",
     "IncludeTableService",
     "ListTableCommitsService",

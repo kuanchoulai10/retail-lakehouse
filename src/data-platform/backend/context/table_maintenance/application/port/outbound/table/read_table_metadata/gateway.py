@@ -14,9 +14,6 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_commit_page import (
         TableCommitPage,
     )
-    from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_description import (
-        TableDescription,
-    )
     from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_metadata import (
         TableMetadata,
     )
@@ -48,10 +45,6 @@ class ReadTableMetadataGateway(Gateway):
     @abstractmethod
     def observe_table(self, ref: TableMetadataRef) -> TableMetadataObservation | None:
         """Return the table's statistics, or None when it does not exist."""
-
-    @abstractmethod
-    def describe_table(self, ref: TableMetadataRef) -> TableDescription | None:
-        """Return the table's definition, or None when it does not exist."""
 
     @abstractmethod
     def list_commits(self, ref: TableMetadataRef, since: str | None, limit: int) -> TableCommitPage | None:
