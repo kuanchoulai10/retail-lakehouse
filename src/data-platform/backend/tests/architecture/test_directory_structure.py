@@ -12,14 +12,18 @@ BACKEND = Path(__file__).resolve().parents[2]
 
 EXPECTED_TOP_LEVEL = {"context", "base", "bootstrap"}
 EXPECTED_CONTEXT_LAYERS = {"application", "adapter"}
-ADAPTER_SUBDIRECTORIES = (
+REQUIRED_ADAPTER_SUBDIRECTORIES = (
     "adapter/inbound/web",
-    "adapter/inbound/event_consumer",
     "adapter/outbound",
-    "adapter/hybrid/temporal/inbound",
-    "adapter/hybrid/temporal/outbound",
-    "adapter/hybrid/temporal/contracts",
 )
+
+
+def missing_adapter_subdirectories(context_root: Path) -> list[str]:
+    """Return the required adapter subdirectories the context at ``context_root`` lacks.
+
+    The event consumer and the hybrid technologies are optional, so they are not listed.
+    """
+    return [subdir for subdir in REQUIRED_ADAPTER_SUBDIRECTORIES if not (context_root / subdir).is_dir()]
 
 
 class TestDirectoryStructure:
@@ -51,10 +55,20 @@ class TestDirectoryStructure:
         )
 
     @pytest.mark.parametrize("context", context_names())
-    @pytest.mark.parametrize("subdir", ADAPTER_SUBDIRECTORIES)
-    def test_adapter_subdirectories_exist(self, context: str, subdir: str):
-        """Each context has its required adapter subdirectories."""
-        assert (context_dir(context) / subdir).is_dir(), f"Missing adapter subdirectory: context/{context}/{subdir}/"
+    def test_adapter_subdirectories_exist(self, context: str):
+        """Each context has a web inbound adapter and an outbound adapter directory."""
+        assert missing_adapter_subdirectories(context_dir(context)) == []
+
+    def test_context_without_hybrid_or_event_consumer_passes_layout(self, tmp_path: Path):
+        """A context with only web inbound and outbound adapters meets the layout rules."""
+        for subdir in REQUIRED_ADAPTER_SUBDIRECTORIES:
+            (tmp_path / subdir).mkdir(parents=True)
+        assert missing_adapter_subdirectories(tmp_path) == []
+
+    def test_context_without_web_fails_layout(self, tmp_path: Path):
+        """A context that lacks the web inbound adapter is reported."""
+        (tmp_path / "adapter" / "outbound").mkdir(parents=True)
+        assert missing_adapter_subdirectories(tmp_path) == ["adapter/inbound/web"]
 
     @pytest.mark.parametrize(
         "subdir",

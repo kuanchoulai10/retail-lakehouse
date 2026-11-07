@@ -317,9 +317,31 @@ def test_repository_port_exports_its_aggregate_and_id(boundary: str, repo: type)
         assert exported.__name__ in package.__all__, exported.__name__
 
 
-def test_every_aggregate_has_a_repository_port():
-    """At least five outbound repository ports exist."""
-    assert len(_repository_ports()) >= 5
+def aggregates_without_one_repository_port(wanted: set[str], counts: dict[str, int]) -> list[str]:
+    """Return the aggregates in ``wanted`` that do not have exactly one repository port in ``counts``."""
+    return sorted(name for name in wanted if counts.get(name, 0) != 1)
+
+
+def _repository_port_counts(context: str) -> dict[str, int]:
+    prefix = f"{context_module(context)}.application.port.outbound."
+    counts: dict[str, int] = {}
+    for boundary, _repo in _repository_ports():
+        if boundary.startswith(prefix):
+            name = boundary.removeprefix(prefix).split(".")[0]
+            counts[name] = counts.get(name, 0) + 1
+    return counts
+
+
+@pytest.mark.parametrize("context", context_names())
+def test_each_aggregate_has_one_repository_port_per_context(context: str):
+    """Every aggregate of a context has exactly one repository port in its own outbound port package."""
+    wanted = aggregates(context)
+    assert aggregates_without_one_repository_port(wanted, _repository_port_counts(context)) == []
+
+
+def test_missing_or_duplicate_repository_port_is_reported():
+    """An aggregate with no repository port, or with two, is reported."""
+    assert aggregates_without_one_repository_port({"a", "b", "c"}, {"a": 1, "c": 2}) == ["b", "c"]
 
 
 BOUNDARY_FREE_MODULES = {

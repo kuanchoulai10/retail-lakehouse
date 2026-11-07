@@ -97,8 +97,23 @@ def test_inbound_ports_match_services(context: str):
 
 @pytest.mark.parametrize("context", context_names())
 def test_hybrid_outbound_dirs_are_found(context: str):
-    """The Temporal hybrid outbound directory is picked up as an aggregate-split layer."""
-    assert "adapter/hybrid/temporal/outbound" in hybrid_outbound_dirs(context_dir(context))
+    """Every hybrid technology's outbound package is picked up as an aggregate-split layer."""
+    root = context_dir(context)
+    hybrid = root / "adapter" / "hybrid"
+    expected = sorted(
+        f"adapter/hybrid/{tech.name}/outbound"
+        for tech in (hybrid.iterdir() if hybrid.is_dir() else [])
+        if (tech / "outbound" / "__init__.py").is_file()
+    )
+    assert hybrid_outbound_dirs(root) == expected
+
+
+def test_context_without_hybrid_has_no_hybrid_layers(tmp_path: Path):
+    """A context with no hybrid directory has no hybrid layer and still passes the axis."""
+    (tmp_path / "application" / "service" / "widget").mkdir(parents=True)
+    (tmp_path / "application" / "service" / "widget" / "__init__.py").write_text("")
+    assert hybrid_outbound_dirs(tmp_path) == []
+    assert axis_violations(tmp_path, {"widget"}) == []
 
 
 @pytest.mark.parametrize(("context", "layer"), _context_layers(), ids=lambda value: value)

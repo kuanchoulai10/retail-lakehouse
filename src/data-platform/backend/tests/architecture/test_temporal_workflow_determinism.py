@@ -73,19 +73,39 @@ def violations(source: str) -> list[str]:
     return found
 
 
-def _workflow_modules(context: str) -> list[Path]:
-    return sorted((context_dir(context) / _WORKFLOWS).glob("*.py"))
+def _workflow_modules(context_root: Path) -> list[Path]:
+    return sorted((context_root / _WORKFLOWS).glob("*.py"))
+
+
+def _has_temporal(context_root: Path) -> bool:
+    return (context_root / "adapter" / "hybrid" / "temporal").is_dir()
+
+
+def workflow_modules_missing(context_root: Path) -> bool:
+    """Return True when the context has a Temporal adapter but no workflow module to check."""
+    return _has_temporal(context_root) and not _workflow_modules(context_root)
 
 
 @pytest.mark.parametrize("context", context_names())
 def test_workflow_modules_are_found(context: str):
-    """Each context with workflows yields at least one workflow module to check."""
-    assert _workflow_modules(context)
+    """Each context with a Temporal adapter yields at least one workflow module to check."""
+    assert not workflow_modules_missing(context_dir(context))
+
+
+def test_workflow_modules_found_when_temporal_present(tmp_path: Path):
+    """The check is skipped without a Temporal adapter and fails when it holds no workflow."""
+    assert not workflow_modules_missing(tmp_path)
+    (tmp_path / "adapter" / "hybrid" / "temporal").mkdir(parents=True)
+    assert workflow_modules_missing(tmp_path)
+    workflows = tmp_path / _WORKFLOWS
+    workflows.mkdir(parents=True)
+    (workflows / "a_workflow.py").write_text("")
+    assert not workflow_modules_missing(tmp_path)
 
 
 @pytest.mark.parametrize(
     "path",
-    [path for context in context_names() for path in _workflow_modules(context)],
+    [path for context in context_names() for path in _workflow_modules(context_dir(context))],
     ids=lambda p: f"{p.parents[5].name}/{p.name}",
 )
 def test_workflow_module_is_deterministic(path: Path):

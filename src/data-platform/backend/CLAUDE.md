@@ -70,8 +70,7 @@ Today there is one context, `table_maintenance`. `catalog` and `access` are plan
 2. Create all four application rings: `service`, `port`, `domain/service` and `domain/model`. The `application-ring-order` layers contract uses `containers = context.*.application`, and import-linter requires every layer to exist in each container.
 3. The architecture tests (`context_names()` in `tests/architecture/contexts.py`) and the `context.*` import-linter contracts pick the new context up without edits. Two guards keep it that way: no architecture test except `test_aggregates.py` names `table_maintenance`, and no contract names a concrete context.
 4. Wire it in `bootstrap/`. A context that persists to SQL gets its own `adapter/outbound/shared/sql/` (its own metadata, `create_schema` and hand-written `AGGREGATE_SQL_PACKAGES`) with a mirrored drift test like `tests/context/table_maintenance/adapter/outbound/shared/sql/test_create_schema.py`. Never add one context's SQL packages to another context's list. `run_migrations` (`bootstrap/container/run_migrations.py`, called by `bootstrap/migrate.py`) calls each context's `create_schema`.
-
-Known limitation: three architecture checks still expect every context to have the same adapter shape as `table_maintenance`: `test_directory_structure.py` (`ADAPTER_SUBDIRECTORIES`: web, event_consumer and temporal adapter directories), `test_temporal_workflow_determinism.py::test_workflow_modules_are_found` (at least one Temporal workflow) and `test_aggregate_axis.py::test_hybrid_outbound_dirs_are_found` (an `adapter/hybrid/temporal/outbound` directory). The concrete boundary samples live in `tests/context/table_maintenance/test_boundary_samples.py`, not in the generic rule. The project that adds the second context decides whether those checks become "only if present". The global `>= 5` in `test_every_aggregate_has_a_repository_port` is a follow-up (`docs/agents/known-follow-ups.md`).
+5. A context must have `adapter/inbound/web` and `adapter/outbound`. `adapter/inbound/event_consumer` and `adapter/hybrid/<tech>` are optional; a hybrid technology directory that exists holds exactly `inbound`, `outbound` and `contracts`. Every aggregate has exactly one repository port in its own context (`test_each_aggregate_has_one_repository_port_per_context`).
 
 ### Rules
 
@@ -130,7 +129,7 @@ Three base classes define all outbound ports (in `base/`):
 └── output.py         # {Verb}{Noun}GatewayOutput (optional, primitive-only)
 ```
 
-A gateway directory may also hold extra single-class files (for example `list_input.py`). Except `list_input.py`, which defines `{Verb}{Noun}GatewayListInput`, each defines one class named after its file stem in CamelCase (`{CamelCaseStem}`), primitive-only like `input.py`. Enforced by `test_outbound_port_structure.py` (the extra files used to be an allowlist of fixed names).
+A gateway directory may also hold extra single-class files (for example `list_input.py`). Except `list_input.py`, which defines `{Verb}{Noun}GatewayListInput`, each defines one class named after its file stem in CamelCase (`{CamelCaseStem}`), primitive-only like `input.py`. The extra file names are the fixed allowlist `GATEWAY_EXTRA_FILES` in `test_outbound_port_structure.py`, which enforces this.
 
 Input/output files must only use primitive types (`str`, `int`, `float`, `bool`, `dict`, `list`, `None`). They may import `base.value_object.ValueObject` but nothing from `application.domain` or other `base.*` modules. This is enforced by `test_outbound_port_structure.py`.
 
