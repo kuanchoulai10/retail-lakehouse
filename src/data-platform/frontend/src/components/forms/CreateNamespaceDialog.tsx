@@ -67,7 +67,14 @@ export function CreateNamespaceDialog({ catalog, parent, onClose }: Props) {
       onSubmit={submit}
       onClose={onClose}
     >
-      <TextField label="Name" mono placeholder="e.g. accounting" value={name} onChange={setName} />
+      <TextField
+        label="Name"
+        mono
+        placeholder="e.g. accounting"
+        hint="A dot is part of the name. To nest a namespace, create it from its parent's page."
+        value={name}
+        onChange={setName}
+      />
       <TextField
         label="Location (optional)"
         mono

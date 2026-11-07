@@ -6,6 +6,7 @@ import {
   catalogApiPath,
   catalogPath,
   catalogsApiPath,
+  catalogsPath,
   genericTableApiPath,
   genericTablesApiPath,
   namespaceApiPath,
@@ -104,5 +105,12 @@ describe("catalog API paths", () => {
     expect(viewApiPath("iceberg", ["retail", "eu"], "v")).toBe(`${ns}/views/v`);
     expect(genericTablesApiPath("iceberg", ["retail", "eu"])).toBe(`${ns}/generic-tables`);
     expect(genericTableApiPath("iceberg", ["retail", "eu"], "g")).toBe(`${ns}/generic-tables/g`);
+  });
+});
+
+describe("catalogsPath", () => {
+  it("is the catalogs list that every catalog path starts from", () => {
+    expect(catalogsPath()).toBe("/catalogs");
+    expect(catalogPath("iceberg").startsWith(`${catalogsPath()}/`)).toBe(true);
   });
 });

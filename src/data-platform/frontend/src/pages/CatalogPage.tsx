@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { errorMessage } from "@/format";
 import {
   catalogApiPath,
+  catalogsPath,
   namespaceApiPath,
   namespacePath,
   namespacesApiPath,
@@ -47,10 +48,12 @@ export function CatalogPage() {
   });
   const removeCatalog = useMutation({
     mutationFn: () => apiSend("DELETE", catalogApiPath(name)),
+    // Leave the page first, so nothing refetches the catalog that is gone.
     onSuccess: async () => {
+      navigate(catalogsPath());
       queryClient.removeQueries({ queryKey: catalogQueryKeys.catalog(name) });
+      queryClient.removeQueries({ queryKey: catalogQueryKeys.namespaceLists(name) });
       await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.catalogs() });
-      navigate("/catalogs");
     },
   });
 
@@ -73,7 +76,7 @@ export function CatalogPage() {
     <>
       <ResourceListPage
         title={name}
-        breadcrumbs={[{ label: "Catalogs", to: "/catalogs" }, { label: name }]}
+        breadcrumbs={[{ label: "Catalogs", to: catalogsPath() }, { label: name }]}
         actions={
           <ActionsMenu
             items={[

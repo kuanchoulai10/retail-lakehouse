@@ -23,6 +23,8 @@ export interface ResourceSectionProps<Row> {
   rows: Row[];
   rowKey: (row: Row) => string;
   emptyText?: string;
+  // Messages for parts of the list that could not be loaded; the rows that did load still show.
+  errors?: string[];
   newLabel: string;
   renderForm: (controls: { onClose: () => void }) => ReactNode;
   // A string when every row is the same kind of object; a function for a mixed list.
@@ -41,6 +43,7 @@ export function ResourceSection<Row>({
   rows,
   rowKey,
   emptyText = "None yet.",
+  errors = [],
   newLabel,
   renderForm,
   objectKind,
@@ -83,6 +86,13 @@ export function ResourceSection<Row>({
           </Button>
         }
       >
+        {errors.length > 0 && (
+          <div role="alert" className="border-b border-border px-4 py-2.5 text-sm text-destructive">
+            {errors.map((message) => (
+              <p key={message}>{message}</p>
+            ))}
+          </div>
+        )}
         <Table>
           <TableHeader>
             <TableRow>

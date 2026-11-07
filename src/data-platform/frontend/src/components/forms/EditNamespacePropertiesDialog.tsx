@@ -17,7 +17,10 @@ interface Props {
 // Sends only what changed: set keys as updates, dropped keys as removals.
 export function EditNamespacePropertiesDialog({ namespace, onClose }: Props) {
   const queryClient = useQueryClient();
-  const [rows, setRows] = useState(() => rowsFromProperties(namespace.properties));
+  // The properties the form was filled from; a refetch while the dialog is open must not
+  // change what the edit is diffed against, or keys added meanwhile would be removed.
+  const [loaded] = useState(namespace.properties);
+  const [rows, setRows] = useState(() => rowsFromProperties(loaded));
 
   const update = useMutation({
     mutationFn: (body: UpdateNamespacePropertiesApiRequest) =>
@@ -45,7 +48,7 @@ export function EditNamespacePropertiesDialog({ namespace, onClose }: Props) {
       submitLabel="Save"
       isPending={update.isPending}
       error={update.isError ? updateErrorMessage(update.error, "namespace") : null}
-      onSubmit={() => update.mutate(propertyChanges(namespace.properties, rows))}
+      onSubmit={() => update.mutate(propertyChanges(loaded, rows))}
       onClose={onClose}
     >
       <PropertiesEditor rows={rows} onChange={setRows} />

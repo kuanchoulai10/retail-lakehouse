@@ -33,6 +33,9 @@ export function EditCatalogDialog({ catalog, onClose }: Props) {
     );
     return rowsFromProperties(rest);
   });
+  // The version the form was filled from. A refetch while the dialog is open must not move
+  // it forward, or the save would pass the check and overwrite a change made meanwhile.
+  const [loadedVersion] = useState(catalog.entity_version);
   const [invalid, setInvalid] = useState<string | null>(null);
 
   const refetchCatalog = () =>
@@ -55,7 +58,7 @@ export function EditCatalogDialog({ catalog, onClose }: Props) {
     setInvalid(problem);
     if (problem !== null) return;
     update.mutate({
-      entity_version: catalog.entity_version,
+      entity_version: loadedVersion,
       default_base_location: baseLocation.trim(),
       properties: propertiesFromRows(rows),
       storage_config: storageConfigRequest(storage),

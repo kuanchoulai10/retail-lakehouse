@@ -12,7 +12,7 @@ const NS = "/v1/catalogs/iceberg/namespaces/retail";
 
 function renderAt(path: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
@@ -22,6 +22,7 @@ function renderAt(path: string) {
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return client;
 }
 
 function id(name: string): TableIdentifierApiResponse {
@@ -50,7 +51,8 @@ async function openAction(user: ReturnType<typeof userEvent.setup>, label: strin
   await user.click(await screen.findByRole("menuitem", { name: label }));
 }
 
-describe("NamespacePage", () => {
+// These tests type whole forms, which takes seconds under a loaded parallel run.
+describe("NamespacePage", { timeout: 15_000 }, () => {
   it("namespace page lists tables views and generic tables with a type column", async () => {
     stubNamespace();
     renderAt("/catalogs/iceberg/namespaces/retail");
@@ -240,5 +242,60 @@ describe("NamespacePage", () => {
     await vi.waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(callsTo(calls, "DELETE", `${NS}/views/orders_v`)).toHaveLength(1);
     expect(callsTo(calls, "GET", `${NS}/views`).length).toBeGreaterThan(1);
+  });
+
+  it("diffs edited properties against the ones loaded when the dialog opened", async () => {
+    const user = userEvent.setup();
+    let properties: Record<string, string> = { owner: "kc" };
+    const calls = stubNamespace({
+      [`GET ${NS}`]: () => jsonResponse({ catalog: "iceberg", namespace: ["retail"], properties }),
+      [`PUT ${NS}/properties`]: () => jsonResponse({ catalog: "iceberg", namespace: ["retail"], properties }),
+    });
+    const client = renderAt("/catalogs/iceberg/namespaces/retail");
+    await screen.findByRole("region", { name: "Tables and views" });
+    await openAction(user, "Edit properties");
+    properties = { owner: "kc", added_elsewhere: "x" };
+    await client.invalidateQueries({ queryKey: ["namespace", "iceberg", ["retail"]] });
+    await vi.waitFor(() =>
+      expect(screen.getByRole("region", { name: "Properties", hidden: true })).toHaveTextContent(
+        "added_elsewhere",
+      ),
+    );
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Save" }));
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(bodyOf(calls, "PUT", `${NS}/properties`)).toEqual({ updates: {}, removals: [] });
+  });
+
+  it("does not refetch the deleted namespace or its lists", async () => {
+    const user = userEvent.setup();
+    const calls = stubNamespace({ [`DELETE ${NS}`]: () => new Response(null, { status: 204 }) });
+    renderAt("/catalogs/iceberg/namespaces/retail");
+    await screen.findByRole("region", { name: "Tables and views" });
+    await openAction(user, "Delete");
+    await user.type(screen.getByLabelText(/to confirm/i), "retail");
+    const before = calls.length;
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await screen.findByText("catalog page");
+    const gets = calls.slice(before).filter((call) => call.method === "GET").map((call) => call.path);
+    expect(gets).not.toContain(NS);
+    expect(gets).not.toContain("/v1/catalogs/iceberg/namespaces?parent=retail");
+    expect(gets.filter((path) => path.startsWith(`${NS}/`))).toEqual([]);
+  });
+
+  it("shows a failed list in its own section and still renders the others", async () => {
+    stubNamespace({
+      [`GET ${NS}/generic-tables`]: () => jsonResponse({ detail: "generic tables are disabled" }, 403),
+      "GET /v1/catalogs/iceberg/namespaces?parent=retail": () => jsonResponse({ detail: "no access" }, 403),
+    });
+    renderAt("/catalogs/iceberg/namespaces/retail");
+    const objects = await screen.findByRole("region", { name: "Tables and views" });
+    expect(within(objects).getByRole("alert")).toHaveTextContent(
+      "Could not load generic tables: generic tables are disabled",
+    );
+    expect(within(objects).getByRole("link", { name: "orders" })).toBeInTheDocument();
+    expect(within(objects).getByRole("link", { name: "orders_v" })).toBeInTheDocument();
+    const children = screen.getByRole("region", { name: "Namespaces" });
+    expect(within(children).getByRole("alert")).toHaveTextContent("Could not load namespaces: no access");
+    expect(screen.getByRole("region", { name: "Properties" })).toHaveTextContent("owner");
   });
 });

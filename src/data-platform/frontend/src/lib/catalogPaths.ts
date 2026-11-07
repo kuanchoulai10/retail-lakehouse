@@ -13,8 +13,12 @@ export function namespaceFromParam(param: string): string[] {
   return param.split(NAMESPACE_SEPARATOR);
 }
 
+export function catalogsPath(): string {
+  return "/catalogs";
+}
+
 export function catalogPath(catalog: string): string {
-  return `/catalogs/${segment(catalog)}`;
+  return `${catalogsPath()}/${segment(catalog)}`;
 }
 
 export function namespacePath(catalog: string, namespace: string[]): string {

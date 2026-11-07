@@ -11,7 +11,7 @@ import { NamespacePage } from "./NamespacePage";
 
 function renderAt(path: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
@@ -22,6 +22,7 @@ function renderAt(path: string) {
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return client;
 }
 
 const NAMESPACES: NamespaceSummaryApiResponse[] = [
@@ -42,7 +43,8 @@ async function openAction(user: ReturnType<typeof userEvent.setup>, label: strin
   await user.click(await screen.findByRole("menuitem", { name: label }));
 }
 
-describe("CatalogPage", () => {
+// These tests type whole forms, which takes seconds under a loaded parallel run.
+describe("CatalogPage", { timeout: 15_000 }, () => {
   it("catalog page lists namespaces with breadcrumbs", async () => {
     stubCatalog();
     renderAt("/catalogs/iceberg");
@@ -179,5 +181,53 @@ describe("CatalogPage", () => {
     await user.click(screen.getByRole("button", { name: "Delete" }));
     expect(await screen.findByText("catalogs list")).toBeInTheDocument();
     expect(callsTo(calls, "DELETE", "/v1/catalogs/iceberg")).toHaveLength(1);
+  });
+
+  it("saves with the version that was loaded when the dialog opened", async () => {
+    const user = userEvent.setup();
+    let version = 7;
+    const calls = stubCatalog({
+      "GET /v1/catalogs/iceberg": () => jsonResponse(catalogFixture({ entity_version: version })),
+      "PUT /v1/catalogs/iceberg": () => jsonResponse({ detail: "changed" }, 409),
+    });
+    const client = renderAt("/catalogs/iceberg");
+    await screen.findByRole("link", { name: "retail" });
+    await openAction(user, "Edit");
+    version = 8;
+    await client.invalidateQueries({ queryKey: ["catalog", "iceberg"] });
+    await vi.waitFor(() =>
+      expect(screen.getByRole("region", { name: "Storage", hidden: true })).toHaveTextContent("8"),
+    );
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Save" }));
+    await screen.findByText(/changed since you loaded it/);
+    expect(bodyOf(calls, "PUT", "/v1/catalogs/iceberg")).toMatchObject({ entity_version: 7 });
+  });
+
+  it("does not refetch the deleted catalog and drops its namespace lists", async () => {
+    const user = userEvent.setup();
+    const calls = stubCatalog({ "DELETE /v1/catalogs/iceberg": () => new Response(null, { status: 204 }) });
+    const client = renderAt("/catalogs/iceberg");
+    await screen.findByRole("link", { name: "retail" });
+    await openAction(user, "Delete");
+    await user.type(screen.getByLabelText(/to confirm/i), "iceberg");
+    const before = calls.length;
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await screen.findByText("catalogs list");
+    const after = calls.slice(before).filter((call) => call.method === "GET");
+    expect(after.map((call) => call.path)).not.toContain("/v1/catalogs/iceberg");
+    expect(after.map((call) => call.path)).not.toContain("/v1/catalogs/iceberg/namespaces");
+    expect(client.getQueryCache().findAll({ queryKey: ["catalog", "iceberg"] })).toHaveLength(0);
+    expect(client.getQueryCache().findAll({ queryKey: ["namespaces", "iceberg"] })).toHaveLength(0);
+  });
+
+  it("tells the user that a dot is part of a namespace name", async () => {
+    const user = userEvent.setup();
+    stubCatalog();
+    renderAt("/catalogs/iceberg");
+    await screen.findByRole("link", { name: "retail" });
+    await user.click(screen.getByRole("button", { name: "New namespace" }));
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "A dot is part of the name. To nest a namespace, create it from its parent's page.",
+    );
   });
 });

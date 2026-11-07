@@ -3,6 +3,7 @@ import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { catalogsPath } from "@/lib/catalogPaths";
 import { cn } from "@/lib/utils";
 import { ThemeSwitch } from "./ThemeSwitch";
 
@@ -23,10 +24,10 @@ const NAV_ITEMS: NavItem[] = [
     isActive: (pathname) => pathname === "/" || pathname.startsWith("/tables/"),
   },
   {
-    to: "/catalogs",
+    to: catalogsPath(),
     label: "Catalog",
     icon: BookOpen,
-    isActive: (pathname) => pathname.startsWith("/catalogs"),
+    isActive: (pathname) => pathname.startsWith(catalogsPath()),
   },
   {
     to: "/presets",

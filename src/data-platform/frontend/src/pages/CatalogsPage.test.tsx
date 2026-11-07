@@ -34,7 +34,8 @@ function stubList() {
   return calls;
 }
 
-describe("CatalogsPage", () => {
+// These tests type whole forms, which takes seconds under a loaded parallel run.
+describe("CatalogsPage", { timeout: 15_000 }, () => {
   it("catalogs page lists catalogs and creates one", async () => {
     const user = userEvent.setup();
     const calls = stubList();

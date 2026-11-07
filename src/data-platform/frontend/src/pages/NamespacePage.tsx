@@ -22,6 +22,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { errorMessage } from "@/format";
 import {
   catalogPath,
+  catalogsPath,
   genericTableApiPath,
   genericTablePath,
   genericTablesApiPath,
@@ -58,7 +59,7 @@ function lastPart(parts: string[]): string {
 
 function breadcrumbs(catalog: string, parts: string[]): Crumb[] {
   return [
-    { label: "Catalogs", to: "/catalogs" },
+    { label: "Catalogs", to: catalogsPath() },
     { label: catalog, to: catalogPath(catalog) },
     ...parts.map((part, index) => ({ label: part, to: namespacePath(catalog, parts.slice(0, index + 1)) })),
   ];
@@ -122,23 +123,44 @@ export function NamespacePage() {
   });
   const removeSelf = useMutation({
     mutationFn: () => apiSend("DELETE", namespaceApiPath(catalog, parts)),
+    // Leave the page first, then drop what this page loaded, so nothing refetches the
+    // namespace that is gone; only the parent's list is refetched.
     onSuccess: async () => {
-      queryClient.removeQueries({ queryKey: catalogQueryKeys.namespace(catalog, parts) });
-      await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.namespaceLists(catalog) });
       navigate(parent.length === 0 ? catalogPath(catalog) : namespacePath(catalog, parent));
+      for (const queryKey of [
+        catalogQueryKeys.namespace(catalog, parts),
+        catalogQueryKeys.namespaces(catalog, parts),
+        catalogQueryKeys.tables(catalog, parts),
+        catalogQueryKeys.views(catalog, parts),
+        catalogQueryKeys.genericTables(catalog, parts),
+      ]) {
+        queryClient.removeQueries({ queryKey });
+      }
+      await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.namespaces(catalog, parent), exact: true });
     },
   });
 
   const queries = [namespace, children, tables, views, genericTables];
   if (queries.some((query) => query.isPending)) return <PanelSkeleton label="Loading namespace" />;
-  const failed = queries.find((query) => query.isError);
-  if (failed !== undefined || !namespace.isSuccess) {
+  // Only the namespace itself failing replaces the page; a failed list shows in its section.
+  if (!namespace.isSuccess) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>Could not load namespace: {errorMessage(failed?.error)}</AlertDescription>
+        <AlertDescription>Could not load namespace: {errorMessage(namespace.error)}</AlertDescription>
       </Alert>
     );
   }
+
+  const childErrors = children.isError ? [`Could not load namespaces: ${errorMessage(children.error)}`] : [];
+  const objectErrors = (
+    [
+      ["tables", tables],
+      ["views", views],
+      ["generic tables", genericTables],
+    ] as const
+  ).flatMap(([label, query]) =>
+    query.isError ? [`Could not load ${label}: ${errorMessage(query.error)}`] : [],
+  );
 
   const objectRows: ObjectRow[] = [
     ...(tables.data ?? []).map((item) => ({ type: "table" as const, name: item.name })),
@@ -194,6 +216,7 @@ export function NamespacePage() {
         rows={children.data ?? []}
         rowKey={(row) => row.namespace.join("\u001f")}
         emptyText="No namespaces inside this one."
+        errors={childErrors}
         newLabel="New namespace"
         renderForm={({ onClose }) => <CreateNamespaceDialog catalog={catalog} parent={parts} onClose={onClose} />}
         objectKind="namespace"
@@ -219,6 +242,7 @@ export function NamespacePage() {
           rows={objectRows}
           rowKey={(row) => `${row.type}:${row.name}`}
           emptyText="No tables or views."
+          errors={objectErrors}
           newLabel="New table or view"
           renderForm={({ onClose }) => (
             <NewNamespaceObjectDialog catalog={catalog} namespace={parts} onClose={onClose} />
