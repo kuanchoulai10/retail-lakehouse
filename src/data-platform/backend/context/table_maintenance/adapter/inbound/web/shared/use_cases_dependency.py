@@ -13,5 +13,5 @@ if TYPE_CHECKING:
 
 
 def use_cases_dependency(request: Request) -> WebUseCases:
-    """Return the use cases that create_app stored on the application."""
-    return cast("WebUseCases", request.app.state.use_cases)
+    """Return the use cases that register_routes stored on the application."""
+    return cast("WebUseCases", request.app.state.table_maintenance_use_cases)

@@ -8,7 +8,8 @@ from bootstrap.container.build_connected_use_cases import build_connected_use_ca
 from bootstrap.container.build_k8s_api import build_k8s_api
 from bootstrap.container.build_web_use_cases import build_web_use_cases
 from bootstrap.container.connect_temporal import connect_temporal
-from context.table_maintenance.adapter.inbound.web import create_app
+from bootstrap.container.create_api_app import create_api_app
+from context.table_maintenance.adapter.inbound.web import register_routes
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -32,4 +33,4 @@ def build_api_app(
 ) -> FastAPI:
     """Build the control plane FastAPI app; the Kubernetes client stays lazy."""
     use_cases = build_connected_use_cases(settings, bridge, connect=connect, k8s_api_factory=k8s_api_factory)
-    return create_app(build_web_use_cases(use_cases))
+    return create_api_app(lambda app: register_routes(app, build_web_use_cases(use_cases)))

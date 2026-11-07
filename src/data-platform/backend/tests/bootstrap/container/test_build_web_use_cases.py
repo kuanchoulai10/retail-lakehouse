@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 
 from fastapi.testclient import TestClient
 
-from bootstrap.container import build_repositories, build_use_cases, build_web_use_cases
-from context.table_maintenance.adapter.inbound.web import create_app
+from bootstrap.container import build_repositories, build_use_cases, build_web_use_cases, create_api_app
+from context.table_maintenance.adapter.inbound.web import register_routes
 from tests.bootstrap.container.container_support import (
     NOW,
     fake_gateways,
@@ -44,7 +44,7 @@ def test_web_use_cases_reuse_the_application_services():
 
 def test_app_serves_requests_end_to_end_on_sqlite():
     """The app serves health, create and list requests end to end on SQLite."""
-    client = TestClient(create_app(_web_use_cases()))
+    client = TestClient(create_api_app(lambda app: register_routes(app, _web_use_cases())))
 
     assert client.get("/healthz").json() == {"status": "ok"}
     created = client.post("/v1/table-maintenance-presets", json={"name": "nightly"})

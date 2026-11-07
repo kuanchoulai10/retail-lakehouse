@@ -23,7 +23,7 @@ FIXED_LAYER_DIRS = (
 )
 ROOT_MODULES_ALLOWED = {
     "adapter/inbound/web": {
-        "create_app.py",
+        "register_routes.py",
         "error_handlers.py",
     },
 }

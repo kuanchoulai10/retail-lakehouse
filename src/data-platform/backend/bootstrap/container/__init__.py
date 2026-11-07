@@ -19,6 +19,7 @@ from bootstrap.container.build_web_use_cases import build_web_use_cases
 from bootstrap.container.build_worker import WORKFLOWS, build_worker
 from bootstrap.container.configure_logging import configure_logging
 from bootstrap.container.connect_temporal import connect_temporal
+from bootstrap.container.create_api_app import create_api_app
 from bootstrap.container.gateways import Gateways
 from bootstrap.container.lazy_k8s_api import LazyK8sApi
 from bootstrap.container.repositories import Repositories
@@ -50,6 +51,7 @@ __all__ = [
     "build_worker",
     "configure_logging",
     "connect_temporal",
+    "create_api_app",
     "run_event_consumer",
     "run_migrations",
     "seed_default_preset",

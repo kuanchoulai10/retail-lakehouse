@@ -6,9 +6,10 @@ from dataclasses import fields
 from datetime import UTC, datetime
 from typing import Any
 
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from context.table_maintenance.adapter.inbound.web import create_app
+from context.table_maintenance.adapter.inbound.web import register_routes
 from context.table_maintenance.adapter.inbound.web.shared import WebUseCases
 
 NOW = datetime(2026, 10, 24, 12, 0, tzinfo=UTC)
@@ -37,4 +38,6 @@ def build_client(**use_cases: Any) -> TestClient:  # noqa: ANN401
     if unknown:
         raise TypeError(f"unknown use cases: {sorted(unknown)}")
     values: dict[str, Any] = {f.name: use_cases.get(f.name, StubUseCase()) for f in fields(WebUseCases)}
-    return TestClient(create_app(WebUseCases(**values)))
+    app = FastAPI()
+    register_routes(app, WebUseCases(**values))
+    return TestClient(app)

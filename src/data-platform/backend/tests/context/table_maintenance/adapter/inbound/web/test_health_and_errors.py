@@ -1,4 +1,4 @@
-"""Test the health endpoint and the application error mapping."""
+"""Test the application error mapping and that health lives outside the v1 prefix."""
 
 from __future__ import annotations
 
@@ -13,14 +13,6 @@ from tests.context.table_maintenance.adapter.inbound.web.web_test_support import
     StubUseCase,
     build_client,
 )
-
-
-def test_healthz_returns_200() -> None:
-    """The health route returns 200 with an ok status."""
-    response = build_client().get("/healthz")
-
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
 
 
 @pytest.mark.parametrize(
