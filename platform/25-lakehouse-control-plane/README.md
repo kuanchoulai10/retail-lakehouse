@@ -30,7 +30,7 @@ KUBE_CONTEXT=retail-lakehouse bash platform/25-lakehouse-control-plane/validate.
 1. creates both namespaces;
 2. creates Secret `table-maintenance-db` (random password) only if it is missing;
 3. copies the Polaris root credential (`polaris-bootstrap-secret`, as `client_id:client_secret`) into Secret `table-maintenance-polaris-credential`, and the RustFS credentials into Secret `table-maintenance-s3`, in both namespaces;
-4. runs `build.sh`, which builds `table-maintenance-backend`, `table-maintenance-spark` and `console` (`src/console`), tags them with the short git SHA of the last commit touching their source (`-dirty` when uncommitted) and loads them into minikube;
+4. runs `build.sh`, which builds `table-maintenance-backend`, `table-maintenance-spark` and `console` (`src/data-platform/frontend`), tags them with the short git SHA of the last commit touching their source (`-dirty` when uncommitted) and loads them into minikube;
 5. runs `helm upgrade --install table-maintenance ./chart --wait`.
 
 The Spark operator (wave 11) must watch `lakehouse-maintenance-operations` (`spark.jobNamespaces`).

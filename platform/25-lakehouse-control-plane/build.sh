@@ -6,7 +6,7 @@ set -euo pipefail
 REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 BACKEND_DIR="${REPO_ROOT}/src/data-platform/backend"
 SPARK_DIR="${REPO_ROOT}/src/data-platform/runtime/spark"
-CONSOLE_DIR="${REPO_ROOT}/src/console"
+CONSOLE_DIR="${REPO_ROOT}/src/data-platform/frontend"
 
 source_tag() {
   local source_dir="$1"

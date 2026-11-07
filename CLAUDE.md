@@ -24,7 +24,7 @@ Topic files load on demand: a nested `CLAUDE.md` is read when you work on files 
 |---|---|
 | Waves, cluster runtime, deployed components, ambient mesh, Kubernetes label rules | `platform/CLAUDE.md` |
 | Backend bounded contexts, layering, aggregate axis, DDD base types, port / adapter and DTO naming | `src/data-platform/backend/CLAUDE.md` |
-| Console UI rules | `src/console/CLAUDE.md` |
+| Console UI rules | `src/data-platform/frontend/CLAUDE.md` |
 | History of what landed and finished initiatives | `docs/agents/project-history.md` |
 | Known follow-ups and deferred work | `docs/agents/known-follow-ups.md` |
 | Architecture decisions | `docs/adr/` (0005 bounded contexts, 0006 choosing an outbound port, 0007 one-time secrets) |

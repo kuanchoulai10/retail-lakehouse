@@ -178,7 +178,7 @@ downloads/
 eggs/
 .eggs/
 lib/
-!src/console/src/lib/
+!src/data-platform/frontend/src/lib/
 lib64/
 parts/
 sdist/

@@ -13,7 +13,7 @@ primitives in `src/components/ui/`; fonts are Geist and Geist Mono, bundled via 
 Visual design: `docs/superpowers/specs/2026-10-31-console-visual-redesign-design.md`.
 
 - Build pages from `src/components/ui/` primitives; add a missing one with the shadcn CLI
-  (`npx --prefix src/console shadcn add <component>`) rather than hand-rolling it.
+  (`npx --prefix src/data-platform/frontend shadcn add <component>`) rather than hand-rolling it.
 - Use token classes only (`bg-background`, `text-muted-foreground`, `border-border`, …): no raw
   hex values or `[#…]` arbitrary colours in `src/components/` (outside `ui/`) or `src/pages/`.
   `src/test/noRawColors.test.ts` fails on either.
@@ -26,8 +26,8 @@ Visual design: `docs/superpowers/specs/2026-10-31-console-visual-redesign-design
 ## Develop
 
 ```bash
-npm --prefix src/console install
-npm --prefix src/console run dev
+npm --prefix src/data-platform/frontend install
+npm --prefix src/data-platform/frontend run dev
 ```
 
 The dev server proxies `/console/api/*` to `http://localhost:8000/*`, so start the API locally
@@ -42,16 +42,16 @@ Then open `http://localhost:5173/console/`.
 ## Checks
 
 ```bash
-npm --prefix src/console run typecheck
-npm --prefix src/console run lint
-npm --prefix src/console test -- --run
-npm --prefix src/console run build
+npm --prefix src/data-platform/frontend run typecheck
+npm --prefix src/data-platform/frontend run lint
+npm --prefix src/data-platform/frontend test -- --run
+npm --prefix src/data-platform/frontend run build
 ```
 
 ## Image
 
 ```bash
-docker build -t console:dev src/console
+docker build -t console:dev src/data-platform/frontend
 ```
 
 The image serves the built files from nginx (`nginx:1.29-alpine`) as a non-root user on port

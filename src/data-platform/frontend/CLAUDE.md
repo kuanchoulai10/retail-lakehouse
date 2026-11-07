@@ -1,6 +1,6 @@
 # Console UI
 
-Rules for `src/console` pages (spec `docs/superpowers/specs/2026-10-31-console-visual-redesign-design.md`):
+Rules for `src/data-platform/frontend` pages (spec `docs/superpowers/specs/2026-10-31-console-visual-redesign-design.md`):
 
 - **Build from `components/ui/` primitives.** Add a missing primitive with the shadcn CLI rather than hand-rolling one.
 - **Token classes only.** Use tokens via Tailwind classes (`bg-background`, `text-muted-foreground`, `border-border`); no raw hex values or arbitrary colour classes (`[#…]`) in feature code (`src/components/` except `ui/`, `src/pages/`). Enforced by `src/test/noRawColors.test.ts`.
