@@ -53,9 +53,7 @@ def _to_item(assessment: OperationAssessment) -> GetTableHealthUseCaseOutputItem
         next_eligible_at=assessment.next_eligible_at,
         qualifying_partitions=assessment.qualifying_partitions,
         size_bytes=assessment.size_bytes,
-        size_source=(
-            None if assessment.size_source is None else assessment.size_source.value
-        ),
+        size_source=(None if assessment.size_source is None else assessment.size_source.value),
     )
 
 
@@ -74,18 +72,12 @@ class GetTableHealthService(GetTableHealthUseCase):
         self._catalog_gateway = catalog_gateway
         self._clock = clock
 
-    def execute(
-        self, request: GetTableHealthUseCaseInput
-    ) -> GetTableHealthUseCaseOutput:
+    def execute(self, request: GetTableHealthUseCaseInput) -> GetTableHealthUseCaseOutput:
         """Assess every operation, or raise NotFoundError."""
         table, ref = load_catalog_table(self._tables_repo, request.uuid)
         gateway_observation = self._catalog_gateway.observe_table(ref)
         with translate_domain_errors():
-            observation = (
-                None
-                if gateway_observation is None
-                else table_observation_from_gateway(gateway_observation)
-            )
+            observation = None if gateway_observation is None else table_observation_from_gateway(gateway_observation)
         if observation is None or observation.table_uuid != table.id.value:
             raise_not_in_catalog(table)
         reason = _NOT_SCHEDULED_REASONS.get(table.status)
@@ -95,21 +87,12 @@ class GetTableHealthService(GetTableHealthUseCase):
         items = (
             []
             if settings is None
-            else [
-                _to_item(a)
-                for a in assess_maintenance(
-                    table, settings, observation, self._clock()
-                ).operations
-            ]
+            else [_to_item(a) for a in assess_maintenance(table, settings, observation, self._clock()).operations]
         )
         return GetTableHealthUseCaseOutput(
             scheduled=reason is None,
             not_scheduled_reason=reason,
             operations=items,
-            position_delete_files=sum(
-                p.position_delete_file_count for p in observation.partitions
-            ),
-            equality_delete_files=sum(
-                p.equality_delete_file_count for p in observation.partitions
-            ),
+            position_delete_files=sum(p.position_delete_file_count for p in observation.partitions),
+            equality_delete_files=sum(p.equality_delete_file_count for p in observation.partitions),
         )

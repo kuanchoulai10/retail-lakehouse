@@ -32,14 +32,10 @@ def test_component_modules_import_without_side_effects(module: str):
         (Component.MIGRATE, "bootstrap.migrate"),
     ],
 )
-def test_entrypoint_dispatches_to_the_component(
-    monkeypatch: pytest.MonkeyPatch, component: Component, module: str
-):
+def test_entrypoint_dispatches_to_the_component(monkeypatch: pytest.MonkeyPatch, component: Component, module: str):
     called: list[str] = []
     monkeypatch.setenv("GLAC_COMPONENT", component.value)
-    monkeypatch.setattr(
-        importlib.import_module(module), "main", lambda: called.append(module)
-    )
+    monkeypatch.setattr(importlib.import_module(module), "main", lambda: called.append(module))
     entrypoint.get_settings.cache_clear()
     try:
         entrypoint.main()

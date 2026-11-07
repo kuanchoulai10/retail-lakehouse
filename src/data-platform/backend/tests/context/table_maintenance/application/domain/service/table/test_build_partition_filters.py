@@ -82,8 +82,7 @@ def test_day_transform_uses_date_literal_and_range():
 def test_day_transform_on_date_column_uses_date_range():
     spec = _spec(0, _field("d_day", "d", "date", "day"))
     assert _where(spec, _part(0, 20385)) == (
-        "(`iceberg`.system.days(`d`) = DATE '2025-10-24'"
-        " AND `d` >= DATE '2025-10-24' AND `d` < DATE '2025-10-25')"
+        "(`iceberg`.system.days(`d`) = DATE '2025-10-24' AND `d` >= DATE '2025-10-24' AND `d` < DATE '2025-10-25')"
     )
 
 
@@ -111,16 +110,14 @@ def test_hour_month_year_use_ints():
 def test_month_december_rolls_over_year_on_date_column():
     spec = _spec(0, _field("m", "d", "date", "month"))
     assert _where(spec, _part(0, 671)) == (
-        "(`iceberg`.system.months(`d`) = 671"
-        " AND `d` >= DATE '2025-12-01' AND `d` < DATE '2026-01-01')"
+        "(`iceberg`.system.months(`d`) = 671 AND `d` >= DATE '2025-12-01' AND `d` < DATE '2026-01-01')"
     )
 
 
 def test_year_on_date_column():
     spec = _spec(0, _field("y", "d", "date", "year"))
     assert _where(spec, _part(0, 55)) == (
-        "(`iceberg`.system.years(`d`) = 55"
-        " AND `d` >= DATE '2025-01-01' AND `d` < DATE '2026-01-01')"
+        "(`iceberg`.system.years(`d`) = 55 AND `d` >= DATE '2025-01-01' AND `d` < DATE '2026-01-01')"
     )
 
 
@@ -134,10 +131,7 @@ def test_bucket_and_truncate():
     bucket = _spec(0, _field("id_bucket", "id", "long", "bucket[16]"))
     trunc = _spec(0, _field("name_trunc", "name", "string", "truncate[4]"))
     assert _where(bucket, _part(0, 3)) == "(`iceberg`.system.bucket(16, `id`) = 3)"
-    assert (
-        _where(trunc, _part(0, "abcd"))
-        == "(`iceberg`.system.truncate(4, `name`) = 'abcd')"
-    )
+    assert _where(trunc, _part(0, "abcd")) == "(`iceberg`.system.truncate(4, `name`) = 'abcd')"
 
 
 def test_truncate_int_source():
@@ -152,9 +146,7 @@ def test_null_partition_value_uses_is_null():
         _field("b", "id", "long", "bucket[16]"),
         _field("d", "ts", "timestamptz", "day"),
     )
-    assert _where(spec, _part(0, None, None, None)) == (
-        "(`region` IS NULL AND `id` IS NULL AND `ts` IS NULL)"
-    )
+    assert _where(spec, _part(0, None, None, None)) == ("(`region` IS NULL AND `id` IS NULL AND `ts` IS NULL)")
 
 
 def test_multi_field_partition_and_multiple_partitions():
@@ -187,23 +179,17 @@ def test_void_fields_are_skipped():
 
 def test_all_void_spec_yields_empty_where():
     spec = _spec(1, _field("old", "old", "string", "void"))
-    assert build_partition_filters("iceberg", [spec], [_part(1, None)]) == (
-        SpecFilter(1, ""),
-    )
+    assert build_partition_filters("iceberg", [spec], [_part(1, None)]) == (SpecFilter(1, ""),)
 
 
 def test_unpartitioned_spec_yields_empty_where():
-    assert build_partition_filters("iceberg", [_spec(0)], [_part(0)]) == (
-        SpecFilter(0, ""),
-    )
+    assert build_partition_filters("iceberg", [_spec(0)], [_part(0)]) == (SpecFilter(0, ""),)
 
 
 def test_one_filter_per_spec_id():
     spec0 = _spec(0, _field("r", "region", "string", "identity"))
     spec1 = _spec(1, _field("b", "id", "long", "bucket[8]"))
-    result = build_partition_filters(
-        "iceberg", [spec1, spec0], [_part(1, 2), _part(0, "eu"), _part(0, "us")]
-    )
+    result = build_partition_filters("iceberg", [spec1, spec0], [_part(1, 2), _part(0, "eu"), _part(0, "us")])
     assert result == (
         SpecFilter(0, "(`region` = 'eu') OR (`region` = 'us')"),
         SpecFilter(1, "(`iceberg`.system.bucket(8, `id`) = 2)"),
@@ -267,10 +253,7 @@ def test_string_escaping_for_spark_parser(value, expected):
 
 def test_truncate_string_escapes_backslash():
     spec = _spec(0, _field("n", "name", "string", "truncate[2]"))
-    assert (
-        _where(spec, _part(0, "a\\"))
-        == "(`iceberg`.system.truncate(2, `name`) = 'a\\\\')"
-    )
+    assert _where(spec, _part(0, "a\\")) == "(`iceberg`.system.truncate(2, `name`) = 'a\\\\')"
 
 
 def test_clauses_sorted_and_deduplicated():
@@ -301,12 +284,10 @@ def test_pre_1970_values():
     hour = _spec(0, _field("h", "ts", "timestamp", "hour"))
     year = _spec(0, _field("y", "d", "date", "year"))
     assert _where(month, _part(0, -1)) == (
-        "(`iceberg`.system.months(`d`) = -1"
-        " AND `d` >= DATE '1969-12-01' AND `d` < DATE '1970-01-01')"
+        "(`iceberg`.system.months(`d`) = -1 AND `d` >= DATE '1969-12-01' AND `d` < DATE '1970-01-01')"
     )
     assert _where(day, _part(0, -1)) == (
-        "(`iceberg`.system.days(`d`) = DATE '1969-12-31'"
-        " AND `d` >= DATE '1969-12-31' AND `d` < DATE '1970-01-01')"
+        "(`iceberg`.system.days(`d`) = DATE '1969-12-31' AND `d` >= DATE '1969-12-31' AND `d` < DATE '1970-01-01')"
     )
     assert _where(hour, _part(0, -1)) == (
         "(`iceberg`.system.hours(`ts`) = -1"
@@ -314,6 +295,5 @@ def test_pre_1970_values():
         " AND `ts` < TIMESTAMP_NTZ '1970-01-01 00:00:00.000000')"
     )
     assert _where(year, _part(0, -1)) == (
-        "(`iceberg`.system.years(`d`) = -1"
-        " AND `d` >= DATE '1969-01-01' AND `d` < DATE '1970-01-01')"
+        "(`iceberg`.system.years(`d`) = -1 AND `d` >= DATE '1969-01-01' AND `d` < DATE '1970-01-01')"
     )

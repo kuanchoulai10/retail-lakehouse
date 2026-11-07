@@ -39,9 +39,7 @@ class TableDiscoveryRulesSqlRepo(TableDiscoveryRulesRepo):
         """Insert a new rule."""
         try:
             with self._engine.begin() as conn:
-                conn.execute(
-                    insert(t).values(**TableDiscoveryRuleRowMapper.to_values(entity))
-                )
+                conn.execute(insert(t).values(**TableDiscoveryRuleRowMapper.to_values(entity)))
         except IntegrityError as exc:
             raise ConflictError(str(exc.orig)) from exc
         return entity
@@ -50,11 +48,7 @@ class TableDiscoveryRulesSqlRepo(TableDiscoveryRulesRepo):
         """Return the rule with the given id, or None."""
         with self._engine.connect() as conn:
             row = conn.execute(select(t).where(t.c.id == entity_id.value)).first()
-        return (
-            None
-            if row is None
-            else TableDiscoveryRuleRowMapper.to_aggregate(row._mapping)
-        )
+        return None if row is None else TableDiscoveryRuleRowMapper.to_aggregate(row._mapping)
 
     def list_all(self) -> list[TableDiscoveryRule]:
         """Return all rules ordered by (priority, id)."""
@@ -66,9 +60,7 @@ class TableDiscoveryRulesSqlRepo(TableDiscoveryRulesRepo):
         """Persist the changed rule."""
         values = TableDiscoveryRuleRowMapper.to_values(rule)
         with self._engine.begin() as conn:
-            result = conn.execute(
-                update(t).where(t.c.id == rule.id.value).values(**values)
-            )
+            result = conn.execute(update(t).where(t.c.id == rule.id.value).values(**values))
             if result.rowcount == 0:
                 raise LookupError(f"discovery rule {rule.id.value} does not exist")
         return rule
@@ -80,8 +72,6 @@ class TableDiscoveryRulesSqlRepo(TableDiscoveryRulesRepo):
 
     def count_by_preset(self, preset_id: TableMaintenancePresetId) -> int:
         """Return how many rules reference the preset."""
-        stmt = (
-            select(func.count()).select_from(t).where(t.c.preset_id == preset_id.value)
-        )
+        stmt = select(func.count()).select_from(t).where(t.c.preset_id == preset_id.value)
         with self._engine.connect() as conn:
             return int(conn.execute(stmt).scalar_one())

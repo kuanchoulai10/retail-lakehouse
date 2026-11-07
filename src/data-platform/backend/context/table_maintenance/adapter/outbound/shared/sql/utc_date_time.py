@@ -26,9 +26,7 @@ class UtcDateTime(TypeDecorator[datetime]):
             raise ValueError("naive datetime is not allowed; use timezone-aware UTC")
         return value.astimezone(UTC)
 
-    def process_result_value(
-        self, value: datetime | None, dialect: Dialect
-    ) -> datetime | None:
+    def process_result_value(self, value: datetime | None, dialect: Dialect) -> datetime | None:
         """Re-attach UTC to datetimes that the driver returned naive."""
         if value is None:
             return None

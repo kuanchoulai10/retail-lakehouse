@@ -13,6 +13,4 @@ if TYPE_CHECKING:
 def raise_not_in_catalog(table: Table) -> NoReturn:
     """Raise NotFoundError for a registered table the catalog no longer has."""
     name = table.name
-    raise NotFoundError(
-        f"table {name.catalog}.{name.namespace}.{name.table} is not in the catalog"
-    )
+    raise NotFoundError(f"table {name.catalog}.{name.namespace}.{name.table} is not in the catalog")

@@ -52,9 +52,6 @@ class SendMaintenanceResultTemporalGateway(SendMaintenanceResultGateway):
             await handle.signal(TableMaintenanceSignal.OPERATION_RESULT, result)
         except RPCError as error:
             if error.status == RPCStatusCode.NOT_FOUND:
-                msg = (
-                    f"Table maintenance workflow {input.execution_ref} of run "
-                    f"{input.run_id} not found"
-                )
+                msg = f"Table maintenance workflow {input.execution_ref} of run {input.run_id} not found"
                 raise NotFoundError(msg) from error
             raise

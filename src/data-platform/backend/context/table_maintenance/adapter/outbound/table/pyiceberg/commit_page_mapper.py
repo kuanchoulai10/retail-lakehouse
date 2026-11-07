@@ -15,17 +15,11 @@ if TYPE_CHECKING:
     from pyiceberg.table.snapshots import Snapshot
 
 
-def commit_page_from_table(
-    table: Table, since: str | None, limit: int
-) -> TableCommitPage:
+def commit_page_from_table(table: Table, since: str | None, limit: int) -> TableCommitPage:
     """Build the newest-first page of commits at or after ``since``."""
     threshold_ms = _to_ms(since) if since is not None else None
     snapshots = sorted(
-        (
-            s
-            for s in table.metadata.snapshots
-            if threshold_ms is None or s.timestamp_ms >= threshold_ms
-        ),
+        (s for s in table.metadata.snapshots if threshold_ms is None or s.timestamp_ms >= threshold_ms),
         key=lambda s: (s.timestamp_ms, s.sequence_number or 0),
         reverse=True,
     )
@@ -52,9 +46,7 @@ def _commit(snapshot: Snapshot) -> dict[str, object]:
     return {
         "snapshot_id": snapshot.snapshot_id,
         "parent_id": snapshot.parent_snapshot_id,
-        "committed_at": datetime.fromtimestamp(
-            snapshot.timestamp_ms / 1000, tz=UTC
-        ).isoformat(),
+        "committed_at": datetime.fromtimestamp(snapshot.timestamp_ms / 1000, tz=UTC).isoformat(),
         "operation": operation,
         "summary": summary,
         "writer": commit_writer_of(summary),

@@ -41,9 +41,7 @@ class InMemoryTableMaintenancePresetsRepo(TableMaintenancePresetsRepo):
     def update(self, preset: TableMaintenancePreset) -> TableMaintenancePreset:
         """Replace a stored preset."""
         if preset.id.value not in self.items:
-            raise LookupError(
-                f"table maintenance preset {preset.id.value} does not exist"
-            )
+            raise LookupError(f"table maintenance preset {preset.id.value} does not exist")
         self.items[preset.id.value] = preset
         return preset
 

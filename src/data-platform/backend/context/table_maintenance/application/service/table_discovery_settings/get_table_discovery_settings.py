@@ -29,6 +29,4 @@ class GetTableDiscoverySettingsService(GetTableDiscoverySettingsUseCase):
     ) -> GetTableDiscoverySettingsUseCaseOutput:
         """Return whether discovery is enabled."""
         settings = self._settings_repo.get_settings()
-        return GetTableDiscoverySettingsUseCaseOutput(
-            enabled=settings.enabled, updated_at=settings.updated_at
-        )
+        return GetTableDiscoverySettingsUseCaseOutput(enabled=settings.enabled, updated_at=settings.updated_at)

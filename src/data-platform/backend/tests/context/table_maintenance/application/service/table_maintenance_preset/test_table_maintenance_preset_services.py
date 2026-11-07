@@ -56,13 +56,9 @@ def _seed(repo, name="gold", tid="t-1", now=None, settings=None):
 
 
 def test_create_preset_stores_and_returns_dict(presets_repo, clock, new_id, now):
-    service = CreateTableMaintenancePresetService(
-        presets_repo, clock=clock, new_id=new_id
-    )
+    service = CreateTableMaintenancePresetService(presets_repo, clock=clock, new_id=new_id)
     out = service.execute(
-        CreateTableMaintenancePresetUseCaseInput(
-            name="gold", settings={"reconcile_interval_seconds": 600}
-        )
+        CreateTableMaintenancePresetUseCaseInput(name="gold", settings={"reconcile_interval_seconds": 600})
     )
     assert out.id == "id-1"
     assert out.name == "gold"
@@ -75,38 +71,28 @@ def test_create_preset_stores_and_returns_dict(presets_repo, clock, new_id, now)
 
 def test_create_preset_duplicate_name_conflicts(presets_repo, clock, new_id):
     _seed(presets_repo)
-    service = CreateTableMaintenancePresetService(
-        presets_repo, clock=clock, new_id=new_id
-    )
+    service = CreateTableMaintenancePresetService(presets_repo, clock=clock, new_id=new_id)
     with pytest.raises(ConflictError):
         service.execute(CreateTableMaintenancePresetUseCaseInput(name="gold"))
 
 
 @pytest.mark.parametrize("name", ["", "   "])
 def test_create_preset_blank_name_is_invalid(presets_repo, clock, new_id, name):
-    service = CreateTableMaintenancePresetService(
-        presets_repo, clock=clock, new_id=new_id
-    )
+    service = CreateTableMaintenancePresetService(presets_repo, clock=clock, new_id=new_id)
     with pytest.raises(ValidationError):
         service.execute(CreateTableMaintenancePresetUseCaseInput(name=name))
 
 
 def test_create_preset_unknown_setting_is_invalid(presets_repo, clock, new_id):
-    service = CreateTableMaintenancePresetService(
-        presets_repo, clock=clock, new_id=new_id
-    )
+    service = CreateTableMaintenancePresetService(presets_repo, clock=clock, new_id=new_id)
     with pytest.raises(ValidationError):
-        service.execute(
-            CreateTableMaintenancePresetUseCaseInput(name="x", settings={"bogus": 1})
-        )
+        service.execute(CreateTableMaintenancePresetUseCaseInput(name="x", settings={"bogus": 1}))
 
 
 def test_update_preset_renames_and_replaces_settings(presets_repo, clock):
     _seed(
         presets_repo,
-        settings=MaintenanceSettings(
-            rewrite_data_files=RewriteDataFilesSettings(min_reducible_files=9)
-        ),
+        settings=MaintenanceSettings(rewrite_data_files=RewriteDataFilesSettings(min_reducible_files=9)),
     )
     service = UpdateTableMaintenancePresetService(presets_repo, clock=clock)
     out = service.execute(
@@ -143,9 +129,7 @@ def test_update_preset_name_taken_by_other_conflicts(presets_repo, clock):
 def test_update_preset_same_name_is_allowed(presets_repo, clock):
     _seed(presets_repo)
     service = UpdateTableMaintenancePresetService(presets_repo, clock=clock)
-    out = service.execute(
-        UpdateTableMaintenancePresetUseCaseInput(id="t-1", name="gold")
-    )
+    out = service.execute(UpdateTableMaintenancePresetUseCaseInput(id="t-1", name="gold"))
     assert out.name == "gold"
 
 
@@ -200,22 +184,16 @@ def test_delete_unknown_preset_not_found(presets_repo, rules_repo):
 def test_list_presets(presets_repo):
     _seed(presets_repo, name="b", tid="t-2")
     _seed(presets_repo, name="a", tid="t-1")
-    out = ListTableMaintenancePresetsService(presets_repo).execute(
-        ListTableMaintenancePresetsUseCaseInput()
-    )
+    out = ListTableMaintenancePresetsService(presets_repo).execute(ListTableMaintenancePresetsUseCaseInput())
     assert [i.name for i in out.items] == ["a", "b"]
 
 
 def test_get_preset(presets_repo):
     _seed(presets_repo)
-    out = GetTableMaintenancePresetService(presets_repo).execute(
-        GetTableMaintenancePresetUseCaseInput(id="t-1")
-    )
+    out = GetTableMaintenancePresetService(presets_repo).execute(GetTableMaintenancePresetUseCaseInput(id="t-1"))
     assert out.name == "gold"
 
 
 def test_get_unknown_preset_not_found(presets_repo):
     with pytest.raises(NotFoundError):
-        GetTableMaintenancePresetService(presets_repo).execute(
-            GetTableMaintenancePresetUseCaseInput(id="nope")
-        )
+        GetTableMaintenancePresetService(presets_repo).execute(GetTableMaintenancePresetUseCaseInput(id="nope"))

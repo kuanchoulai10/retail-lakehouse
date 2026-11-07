@@ -59,16 +59,12 @@ _SKIP_REASONS = {
 class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
     """Decide which maintenance operations a table needs right now."""
 
-    def __init__(
-        self, tables_repo: TablesRepo, catalog_gateway: ReadTableMetadataGateway
-    ) -> None:
+    def __init__(self, tables_repo: TablesRepo, catalog_gateway: ReadTableMetadataGateway) -> None:
         """Bind the repo and the catalog gateway."""
         self._tables_repo = tables_repo
         self._catalog_gateway = catalog_gateway
 
-    def execute(
-        self, request: PlanTableMaintenanceUseCaseInput
-    ) -> PlanTableMaintenanceUseCaseOutput:
+    def execute(self, request: PlanTableMaintenanceUseCaseInput) -> PlanTableMaintenanceUseCaseOutput:
         """Plan the due operations, or the requested ones for a manual trigger.
 
         ``now`` comes from the caller so that a workflow can supply a deterministic
@@ -83,16 +79,10 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         reason = _SKIP_REASONS.get(table.status)
         if reason is not None:
             return _skip(reason, settings, table)
-        ref = TableMetadataRef(
-            table.name.catalog, table.name.namespace, table.name.table
-        )
+        ref = TableMetadataRef(table.name.catalog, table.name.namespace, table.name.table)
         gateway_observation = self._catalog_gateway.observe_table(ref)
         with translate_domain_errors():
-            observation = (
-                None
-                if gateway_observation is None
-                else table_observation_from_gateway(gateway_observation)
-            )
+            observation = None if gateway_observation is None else table_observation_from_gateway(gateway_observation)
             if observation is None or observation.table_uuid != table.id.value:
                 return _skip("not_found", settings, table)
             if manual is not None:
@@ -119,9 +109,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
                 PlanTableMaintenanceUseCaseOutputItem(
                     operation=planned.operation.value,
                     filters=filters,
-                    procedure_args=maintenance_procedure_args(
-                        planned.operation, settings, properties, request.now
-                    ),
+                    procedure_args=maintenance_procedure_args(planned.operation, settings, properties, request.now),
                 )
             )
         return PlanTableMaintenanceUseCaseOutput(
@@ -153,9 +141,7 @@ def _partition_filters(
     plan: that operation targets the whole table instead (R40).
     """
     try:
-        built = build_partition_filters(
-            table.name.catalog, observation.specs, planned.partitions
-        )
+        built = build_partition_filters(table.name.catalog, observation.specs, planned.partitions)
     except ValueError as error:
         logger.warning(
             "cannot scope %s of %s to partitions (%s); compacting the whole table",
@@ -164,18 +150,14 @@ def _partition_filters(
             error,
         )
         return []
-    return [
-        PlanTableMaintenanceUseCaseOutputFilterItem(f.spec_id, f.where) for f in built
-    ]
+    return [PlanTableMaintenanceUseCaseOutputFilterItem(f.spec_id, f.where) for f in built]
 
 
 def _interval(settings: MaintenanceSettings) -> int:
     return int(settings.reconcile_interval.total_seconds())
 
 
-def _skip(
-    reason: str, settings: MaintenanceSettings, table: Table | None
-) -> PlanTableMaintenanceUseCaseOutput:
+def _skip(reason: str, settings: MaintenanceSettings, table: Table | None) -> PlanTableMaintenanceUseCaseOutput:
     return PlanTableMaintenanceUseCaseOutput(
         status="skip",
         reason=reason,

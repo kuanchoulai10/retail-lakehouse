@@ -52,9 +52,7 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
     ) -> list[TableMetadataRef]:
         catalog = self._catalog_factory(input.catalog)
         if input.namespace is not None:
-            return self._tables_of(
-                catalog, input.catalog, tuple(input.namespace.split("."))
-            )
+            return self._tables_of(catalog, input.catalog, tuple(input.namespace.split(".")))
         refs: list[TableMetadataRef] = []
         pending: list[tuple[str, ...]] = [tuple(n) for n in catalog.list_namespaces()]
         while pending:
@@ -89,9 +87,7 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
             return None
         return description_from_table(table)
 
-    def list_commits(
-        self, ref: TableMetadataRef, since: str | None, limit: int
-    ) -> TableCommitPage | None:
+    def list_commits(self, ref: TableMetadataRef, since: str | None, limit: int) -> TableCommitPage | None:
         table = self._load(ref)
         if table is None:
             return None
@@ -112,9 +108,7 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
             return None
 
     @staticmethod
-    def _tables_of(
-        catalog: Catalog, catalog_name: str, namespace: tuple[str, ...]
-    ) -> list[TableMetadataRef]:
+    def _tables_of(catalog: Catalog, catalog_name: str, namespace: tuple[str, ...]) -> list[TableMetadataRef]:
         try:
             identifiers = catalog.list_tables(namespace)
         except NoSuchNamespaceError:

@@ -34,9 +34,7 @@ async def ensure_table_maintenance_admission(
     """
     await client.start_workflow(
         TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
-        TableMaintenanceAdmissionWorkflowInput(
-            limit=limit, lease_seconds=lease_seconds
-        ),
+        TableMaintenanceAdmissionWorkflowInput(limit=limit, lease_seconds=lease_seconds),
         id=TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
         static_summary=table_maintenance_admission_summary(limit),
         task_queue=TASK_QUEUE,

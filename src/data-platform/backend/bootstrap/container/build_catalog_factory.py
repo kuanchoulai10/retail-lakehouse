@@ -29,9 +29,7 @@ def _properties(settings: CatalogSettings, name: str) -> dict[str, Any]:
     if settings.s3_access_key_id is not None:
         properties["s3.access-key-id"] = settings.s3_access_key_id.get_secret_value()
     if settings.s3_secret_access_key is not None:
-        properties["s3.secret-access-key"] = (
-            settings.s3_secret_access_key.get_secret_value()
-        )
+        properties["s3.secret-access-key"] = settings.s3_secret_access_key.get_secret_value()
     return properties
 
 

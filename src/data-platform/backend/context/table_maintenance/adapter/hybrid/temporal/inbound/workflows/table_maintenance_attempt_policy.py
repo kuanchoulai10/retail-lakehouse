@@ -21,12 +21,8 @@ class TableMaintenanceAttemptPolicy:
     """
 
     max_attempts: int = 3
-    backoffs: tuple[timedelta, ...] = field(
-        default=(timedelta(seconds=60), timedelta(seconds=120))
-    )
-    attempt_deadline: timedelta = field(
-        default=timedelta(seconds=DEFAULT_ATTEMPT_DEADLINE_SECONDS)
-    )
+    backoffs: tuple[timedelta, ...] = field(default=(timedelta(seconds=60), timedelta(seconds=120)))
+    attempt_deadline: timedelta = field(default=timedelta(seconds=DEFAULT_ATTEMPT_DEADLINE_SECONDS))
 
     def backoff_after(self, attempt: int) -> timedelta:
         """Return the sleep after failed attempt ``attempt`` (1-based)."""
@@ -34,6 +30,4 @@ class TableMaintenanceAttemptPolicy:
 
     def operation_worst_case(self) -> timedelta:
         """Return the longest an operation can run: every attempt times out."""
-        return self.attempt_deadline * self.max_attempts + sum(
-            self.backoffs, timedelta()
-        )
+        return self.attempt_deadline * self.max_attempts + sum(self.backoffs, timedelta())

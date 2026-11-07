@@ -52,11 +52,7 @@ class InMemoryTablesRepo(TablesRepo):
 
     def find_by_name(self, name: TableName) -> Table | None:
         """Return the latest-updated non-dropped table with this name."""
-        matches = [
-            t
-            for t in self.items.values()
-            if t.name == name and t.status != TableStatus.DROPPED
-        ]
+        matches = [t for t in self.items.values() if t.name == name and t.status != TableStatus.DROPPED]
         return max(matches, key=lambda t: t.updated_at, default=None)
 
     def list_by_statuses(self, statuses: Sequence[TableStatus]) -> list[Table]:

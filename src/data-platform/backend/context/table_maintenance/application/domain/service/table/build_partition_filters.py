@@ -56,15 +56,12 @@ def build_partition_filters(
     )
 
 
-def _spec_where(
-    catalog: str, spec: PartitionSpecInfo, partitions: Sequence[PartitionStats]
-) -> str:
+def _spec_where(catalog: str, spec: PartitionSpecInfo, partitions: Sequence[PartitionStats]) -> str:
     clauses: list[str] = []
     for partition in partitions:
         if len(partition.values) != len(spec.fields):
             raise ValueError(
-                f"Partition has {len(partition.values)} values but spec "
-                f"{spec.spec_id} has {len(spec.fields)} fields"
+                f"Partition has {len(partition.values)} values but spec {spec.spec_id} has {len(spec.fields)} fields"
             )
         terms: list[str] = []
         for field, value in zip(spec.fields, partition.values, strict=True):
@@ -98,9 +95,7 @@ def _field_terms(catalog: str, field: PartitionFieldInfo, value: _Value) -> list
     return [f"{catalog}.system.truncate({width}, {column}) = {literal}"]
 
 
-def _time_terms(
-    catalog: str, field: PartitionFieldInfo, column: str, number: int
-) -> list[str]:
+def _time_terms(catalog: str, field: PartitionFieldInfo, column: str, number: int) -> list[str]:
     transform = field.transform
     source_type = field.source_type
     if source_type == "date":
@@ -115,9 +110,7 @@ def _time_terms(
             return _timestamp_literal(source_type, moment)
 
     else:
-        raise ValueError(
-            f"Time transform {transform!r} on unsupported type {source_type!r}"
-        )
+        raise ValueError(f"Time transform {transform!r} on unsupported type {source_type!r}")
 
     function = f"{catalog}.system.{_TIME_TRANSFORM_FUNCTIONS[transform]}({column})"
     if transform == "day":
@@ -182,9 +175,7 @@ def _literal(source_type: str, value: _Value) -> str:
     if source_type == "date":
         return _date_literal_from_datetime(_EPOCH + timedelta(days=_as_int(value)))
     if source_type in ("timestamp", "timestamptz"):
-        return _timestamp_literal(
-            source_type, _EPOCH + timedelta(microseconds=_as_int(value))
-        )
+        return _timestamp_literal(source_type, _EPOCH + timedelta(microseconds=_as_int(value)))
     raise ValueError(f"Unsupported partition source type {source_type!r}")
 
 
@@ -207,9 +198,7 @@ def _as_int(value: _Value) -> int:
 
 def _reject_nanosecond(field: PartitionFieldInfo) -> None:
     if field.source_type.endswith("_ns"):
-        raise ValueError(
-            f"Nanosecond source type {field.source_type!r} is not supported for partition filters"
-        )
+        raise ValueError(f"Nanosecond source type {field.source_type!r} is not supported for partition filters")
 
 
 def _quote_column(column: str) -> str:

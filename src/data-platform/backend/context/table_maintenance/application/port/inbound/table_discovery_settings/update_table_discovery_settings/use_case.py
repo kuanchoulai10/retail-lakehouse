@@ -22,7 +22,5 @@ class UpdateTableDiscoverySettingsUseCase(
     """Turn discovery on or off."""
 
     @abstractmethod
-    def execute(
-        self, request: UpdateTableDiscoverySettingsUseCaseInput
-    ) -> UpdateTableDiscoverySettingsUseCaseOutput:
+    def execute(self, request: UpdateTableDiscoverySettingsUseCaseInput) -> UpdateTableDiscoverySettingsUseCaseOutput:
         """Turn discovery on or off."""

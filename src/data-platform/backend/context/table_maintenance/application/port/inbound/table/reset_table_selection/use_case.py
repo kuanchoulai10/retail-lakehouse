@@ -13,13 +13,9 @@ from context.table_maintenance.application.port.inbound.table.reset_table_select
 from base import UseCase
 
 
-class ResetTableSelectionUseCase(
-    UseCase[ResetTableSelectionUseCaseInput, ResetTableSelectionUseCaseOutput]
-):
+class ResetTableSelectionUseCase(UseCase[ResetTableSelectionUseCaseInput, ResetTableSelectionUseCaseOutput]):
     """Hand a table back to discovery rules."""
 
     @abstractmethod
-    def execute(
-        self, request: ResetTableSelectionUseCaseInput
-    ) -> ResetTableSelectionUseCaseOutput:
+    def execute(self, request: ResetTableSelectionUseCaseInput) -> ResetTableSelectionUseCaseOutput:
         """Hand a table back to discovery rules."""

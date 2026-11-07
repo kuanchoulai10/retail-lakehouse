@@ -12,9 +12,7 @@ class EventDispatcher:
     def __init_subclass__(cls, **kwargs: object) -> None:
         """EventDispatcher is a concrete utility and must not be subclassed."""
         super().__init_subclass__(**kwargs)
-        raise TypeError(
-            f"EventDispatcher must not be subclassed; got {cls.__qualname__}"
-        )
+        raise TypeError(f"EventDispatcher must not be subclassed; got {cls.__qualname__}")
 
     def __init__(self) -> None:
         """Initialize with an empty handler registry."""

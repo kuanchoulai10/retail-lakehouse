@@ -15,9 +15,7 @@ class AsyncLoopBridge:
 
     def __init__(self) -> None:
         self._loop = asyncio.new_event_loop()
-        self._thread = threading.Thread(
-            target=self._loop.run_forever, name="async-loop-bridge", daemon=True
-        )
+        self._thread = threading.Thread(target=self._loop.run_forever, name="async-loop-bridge", daemon=True)
         self._lock = threading.Lock()
         self._closed = False
         self._thread.start()

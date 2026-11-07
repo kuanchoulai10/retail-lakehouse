@@ -78,43 +78,27 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         self._discovery_request_gateway = discovery_request_gateway
         self._clock = clock
 
-    def execute(
-        self, request: ProcessTableHintUseCaseInput
-    ) -> ProcessTableHintUseCaseOutput:
+    def execute(self, request: ProcessTableHintUseCaseInput) -> ProcessTableHintUseCaseOutput:
         """Handle the hint; ``event_type`` does not change the behaviour."""
         if request.table is None:
             return self._request_discovery(request)
-        found = self._catalog_gateway.load_table(
-            TableMetadataRef(request.catalog, request.namespace, request.table)
-        )
+        found = self._catalog_gateway.load_table(TableMetadataRef(request.catalog, request.namespace, request.table))
         if found is None:
             return self._handle_missing(request)
         with translate_domain_errors():
             action = self._handle_found(found)
         return ProcessTableHintUseCaseOutput(action=action.value)
 
-    def _request_discovery(
-        self, request: ProcessTableHintUseCaseInput
-    ) -> ProcessTableHintUseCaseOutput:
-        self._discovery_request_gateway.send(
-            SendDiscoveryRequestGatewayInput(request.catalog, request.namespace)
-        )
-        return ProcessTableHintUseCaseOutput(
-            action=TableHintAction.DISCOVERY_REQUESTED.value
-        )
+    def _request_discovery(self, request: ProcessTableHintUseCaseInput) -> ProcessTableHintUseCaseOutput:
+        self._discovery_request_gateway.send(SendDiscoveryRequestGatewayInput(request.catalog, request.namespace))
+        return ProcessTableHintUseCaseOutput(action=TableHintAction.DISCOVERY_REQUESTED.value)
 
-    def _handle_missing(
-        self, request: ProcessTableHintUseCaseInput
-    ) -> ProcessTableHintUseCaseOutput:
+    def _handle_missing(self, request: ProcessTableHintUseCaseInput) -> ProcessTableHintUseCaseOutput:
         name = TableName(request.catalog, request.namespace, request.table or "")
         if self._tables_repo.find_by_name(name) is None:
             return ProcessTableHintUseCaseOutput(action=TableHintAction.IGNORED.value)
-        self._discovery_request_gateway.send(
-            SendDiscoveryRequestGatewayInput(request.catalog, None)
-        )
-        return ProcessTableHintUseCaseOutput(
-            action=TableHintAction.DISCOVERY_REQUESTED.value
-        )
+        self._discovery_request_gateway.send(SendDiscoveryRequestGatewayInput(request.catalog, None))
+        return ProcessTableHintUseCaseOutput(action=TableHintAction.DISCOVERY_REQUESTED.value)
 
     def _handle_found(self, found: TableMetadata) -> TableHintAction:
         now = self._clock()
@@ -157,8 +141,6 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         )
         if outcome == RegistrationOutcome.REGISTERED:
             if stale is not None:
-                self._discovery_request_gateway.send(
-                    SendDiscoveryRequestGatewayInput(found.catalog, None)
-                )
+                self._discovery_request_gateway.send(SendDiscoveryRequestGatewayInput(found.catalog, None))
             return TableHintAction.REGISTERED
         return TableHintAction.IGNORED

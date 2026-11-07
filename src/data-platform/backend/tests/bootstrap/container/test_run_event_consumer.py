@@ -43,9 +43,7 @@ def test_consumer_runs_until_stopped_and_closes_the_source():
         ],
         stop,
     )
-    use_cases = build_use_cases(
-        build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW
-    )
+    use_cases = build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
 
     run_event_consumer(use_cases, source, stop)
 

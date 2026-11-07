@@ -63,9 +63,7 @@ class SendTableChangeTemporalGateway(SendTableChangeGateway):
             msg = f"unknown table change {input.change!r}"
             raise ValueError(msg) from None
         payload: dict[str, Any] = (
-            {"operations": list(input.operations)}
-            if input.change == _MAINTENANCE_REQUESTED
-            else {}
+            {"operations": list(input.operations)} if input.change == _MAINTENANCE_REQUESTED else {}
         )
         self._bridge.run(lambda: self._send(input, signal, payload))
 

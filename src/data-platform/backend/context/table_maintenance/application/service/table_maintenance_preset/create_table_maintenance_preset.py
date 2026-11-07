@@ -49,9 +49,7 @@ class CreateTableMaintenancePresetService(CreateTableMaintenancePresetUseCase):
         self._clock = clock
         self._new_id = new_id
 
-    def execute(
-        self, request: CreateTableMaintenancePresetUseCaseInput
-    ) -> CreateTableMaintenancePresetUseCaseOutput:
+    def execute(self, request: CreateTableMaintenancePresetUseCaseInput) -> CreateTableMaintenancePresetUseCaseOutput:
         """Create the preset, rejecting a blank or taken name."""
         name = request.name.strip()
         if not name:
@@ -59,10 +57,6 @@ class CreateTableMaintenancePresetService(CreateTableMaintenancePresetUseCase):
         settings = maintenance_settings_from_dict(request.settings)
         if self._presets_repo.find_by_name(name) is not None:
             raise ConflictError(f"preset name {name!r} already exists")
-        preset = TableMaintenancePreset.create(
-            TableMaintenancePresetId(self._new_id()), name, settings, self._clock()
-        )
+        preset = TableMaintenancePreset.create(TableMaintenancePresetId(self._new_id()), name, settings, self._clock())
         self._presets_repo.create(preset)
-        return CreateTableMaintenancePresetUseCaseOutput(
-            **table_maintenance_preset_output_fields(preset)
-        )
+        return CreateTableMaintenancePresetUseCaseOutput(**table_maintenance_preset_output_fields(preset))

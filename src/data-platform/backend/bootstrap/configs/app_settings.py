@@ -36,8 +36,6 @@ class AppSettings(BaseSettings):
     catalog: CatalogSettings = Field(default_factory=CatalogSettings)
     kafka: KafkaSettings = Field(default_factory=KafkaSettings)
     spark: SparkSettings = Field(default_factory=SparkSettings)
-    callback_base_url: str = (
-        "http://table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000"
-    )
+    callback_base_url: str = "http://table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000"
     admission_limit: int = 2
     discovery_interval_seconds: int = 600

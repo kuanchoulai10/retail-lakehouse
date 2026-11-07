@@ -95,9 +95,7 @@ def _all_modules() -> list[tuple[str, Path]]:
     service_files = (
         py_file
         for name in context_names()
-        for py_file in sorted(
-            (context_dir(name) / "application" / "service").rglob("*.py")
-        )
+        for py_file in sorted((context_dir(name) / "application" / "service").rglob("*.py"))
     )
     for py_file in service_files:
         if py_file.name == "__init__.py":
@@ -155,8 +153,7 @@ def test_service_class_ends_with_service(service_entry: tuple[str, Path]):
     classes = _find_defined_classes(module_path)
     service_classes = [name for name, _cls in classes if name.endswith("Service")]
     assert service_classes, (
-        f"{py_file.name} must define a class ending in 'Service', "
-        f"found: {[name for name, _ in classes]}"
+        f"{py_file.name} must define a class ending in 'Service', found: {[name for name, _ in classes]}"
     )
 
 
@@ -210,8 +207,7 @@ def test_handler_class_ends_with_handler(handler_entry: tuple[str, Path]):
     classes = _find_defined_classes(module_path)
     handler_classes = [name for name, _cls in classes if name.endswith("Handler")]
     assert handler_classes, (
-        f"{py_file.name} must define a class ending in 'Handler', "
-        f"found: {[name for name, _ in classes]}"
+        f"{py_file.name} must define a class ending in 'Handler', found: {[name for name, _ in classes]}"
     )
 
 

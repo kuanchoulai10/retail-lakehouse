@@ -102,11 +102,7 @@ def planner(tables_repo, catalog):
 
 
 def _plan(planner, now, manual=None, uuid="u-1"):
-    return planner.execute(
-        PlanTableMaintenanceUseCaseInput(
-            table_uuid=uuid, now=now, manual_operations=manual
-        )
-    )
+    return planner.execute(PlanTableMaintenanceUseCaseInput(table_uuid=uuid, now=now, manual_operations=manual))
 
 
 # --- plan ---
@@ -121,10 +117,7 @@ def test_plan_skip_reasons(planner, tables_repo, catalog, now):
     paused = _table(tables_repo, now, uuid="u-p", name=TableName("c", "n", "p"))
     paused.pause(now)
     gone = _table(tables_repo, now)
-    results = {
-        uuid: _plan(planner, now, uuid=uuid)
-        for uuid in ("u-d", "u-e", "u-p", gone.id.value)
-    }
+    results = {uuid: _plan(planner, now, uuid=uuid) for uuid in ("u-d", "u-e", "u-p", gone.id.value)}
     assert {k: (v.status, v.reason) for k, v in results.items()} == {
         "u-d": ("skip", "dropped"),
         "u-e": ("skip", "excluded"),
@@ -135,17 +128,13 @@ def test_plan_skip_reasons(planner, tables_repo, catalog, now):
     assert results["u-1"].reconcile_interval_seconds == 3600
 
 
-def test_plan_carries_the_fully_qualified_table_name(
-    planner, tables_repo, catalog, now
-):
+def test_plan_carries_the_fully_qualified_table_name(planner, tables_repo, catalog, now):
     _table(tables_repo, now)
     _observe(catalog, now)
     assert _plan(planner, now).table_name == "iceberg.sales.orders"
 
 
-def test_plan_skip_carries_the_table_name_when_the_table_is_known(
-    planner, tables_repo, catalog, now
-):
+def test_plan_skip_carries_the_table_name_when_the_table_is_known(planner, tables_repo, catalog, now):
     paused = _table(tables_repo, now, uuid="u-p", name=TableName("c", "n", "p"))
     paused.pause(now)
     assert _plan(planner, now, uuid="u-p").table_name == "c.n.p"
@@ -169,9 +158,7 @@ def test_plan_compaction_has_one_filter_per_spec(planner, tables_repo, catalog, 
     }
 
 
-def test_plan_orders_operations_and_renders_procedure_args(
-    planner, tables_repo, catalog, now
-):
+def test_plan_orders_operations_and_renders_procedure_args(planner, tables_repo, catalog, now):
     _table(tables_repo, now)
     _observe(catalog, now)
     plan = _plan(planner, now)
@@ -188,9 +175,7 @@ def test_plan_orders_operations_and_renders_procedure_args(
         "older_than": "2026-10-23T12:00:00+00:00",
         "retain_last": 10,
     }
-    assert by_op["remove_orphan_files"].procedure_args == {
-        "older_than": "2026-10-21T12:00:00+00:00"
-    }
+    assert by_op["remove_orphan_files"].procedure_args == {"older_than": "2026-10-21T12:00:00+00:00"}
     assert plan.reconcile_interval_seconds == 3600
 
 
@@ -200,9 +185,7 @@ def test_plan_target_file_size_comes_from_settings(planner, tables_repo, catalog
         now,
         MaintenanceSettings(
             reconcile_interval=timedelta(minutes=5),
-            rewrite_data_files=RewriteDataFilesSettings(
-                target_file_size_bytes=1024, min_reducible_files=1
-            ),
+            rewrite_data_files=RewriteDataFilesSettings(target_file_size_bytes=1024, min_reducible_files=1),
         ),
     )
     _observe(
@@ -265,9 +248,7 @@ def test_scheduled_plan_respects_cooldown(planner, tables_repo, catalog, now):
 
 
 def test_manual_plan_ignores_disabled_and_cooldown(planner, tables_repo, catalog, now):
-    settings = MaintenanceSettings(
-        rewrite_data_files=RewriteDataFilesSettings(enabled=False)
-    )
+    settings = MaintenanceSettings(rewrite_data_files=RewriteDataFilesSettings(enabled=False))
     table = _table(tables_repo, now, settings)
     table.record_operation_result(OPS.REMOVE_ORPHAN_FILES, True, now)
     _observe(catalog, now)
@@ -278,23 +259,17 @@ def test_manual_plan_ignores_disabled_and_cooldown(planner, tables_repo, catalog
         "remove_orphan_files",
     ]
     assert plan.operations[0].filters == []
-    assert plan.operations[1].procedure_args == {
-        "older_than": "2026-10-21T12:00:00+00:00"
-    }
+    assert plan.operations[1].procedure_args == {"older_than": "2026-10-21T12:00:00+00:00"}
 
 
-def test_manual_plan_without_a_catalog_observation_is_skipped_not_found(
-    planner, tables_repo, now
-):
+def test_manual_plan_without_a_catalog_observation_is_skipped_not_found(planner, tables_repo, now):
     _table(tables_repo, now)
     plan = _plan(planner, now, ["rewrite_manifests"])
     assert (plan.status, plan.reason, plan.operations) == ("skip", "not_found", [])
 
 
 @pytest.mark.parametrize("manual", [None, ["rewrite_manifests"]])
-def test_plan_skips_when_catalog_table_has_a_different_uuid(
-    planner, tables_repo, catalog, now, manual
-):
+def test_plan_skips_when_catalog_table_has_a_different_uuid(planner, tables_repo, catalog, now, manual):
     _table(tables_repo, now)
     _observe(catalog, now, table_uuid="u-recreated")
     plan = _plan(planner, now, manual)
@@ -309,9 +284,7 @@ def test_manual_plan_rejects_unknown_or_empty_operations(planner, tables_repo, n
         _plan(planner, now, [])
 
 
-def test_plan_reports_malformed_observation_as_validation_error(
-    planner, tables_repo, catalog, now
-):
+def test_plan_reports_malformed_observation_as_validation_error(planner, tables_repo, catalog, now):
     _table(tables_repo, now)
     _observe(catalog, now, manifests=[{}])
     with pytest.raises(ValidationError):

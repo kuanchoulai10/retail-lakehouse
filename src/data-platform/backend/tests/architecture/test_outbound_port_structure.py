@@ -103,11 +103,7 @@ def _pascal_case(name: str) -> str:
 def _exported_classes(module_path: str) -> list[str]:
     """Return class names defined in a module."""
     mod = importlib.import_module(module_path)
-    return [
-        name
-        for name in dir(mod)
-        if isinstance(getattr(mod, name), type) and not name.startswith("_")
-    ]
+    return [name for name in dir(mod) if isinstance(getattr(mod, name), type) and not name.startswith("_")]
 
 
 def _parse_imports(file_path: Path) -> list[str]:
@@ -132,14 +128,8 @@ def _parse_imports(file_path: Path) -> list[str]:
 def test_only_aggregate_groups_in_outbound_port(context: str):
     """Verify that port/outbound/ contains only the expected aggregate group directories."""
     groups = _aggregate_groups(context)
-    dirs = [
-        d.name
-        for d in _outbound_port_dir(context).iterdir()
-        if d.is_dir() and d.name != "__pycache__"
-    ]
-    assert sorted(dirs) == sorted(groups), (
-        f"port/outbound/ must only contain aggregate groups {groups}, found: {dirs}"
-    )
+    dirs = [d.name for d in _outbound_port_dir(context).iterdir() if d.is_dir() and d.name != "__pycache__"]
+    assert sorted(dirs) == sorted(groups), f"port/outbound/ must only contain aggregate groups {groups}, found: {dirs}"
 
 
 # --- Rule 2: Gateway directory has required files ---
@@ -149,9 +139,7 @@ def test_only_aggregate_groups_in_outbound_port(context: str):
 def test_gateway_dir_has_required_files(gw_entry: tuple[str, str, Path]):
     """Verify that each gateway directory contains __init__.py and gateway.py."""
     _context, _group, gw_dir = gw_entry
-    actual_files = {
-        f.name for f in gw_dir.iterdir() if f.is_file() and f.suffix == ".py"
-    }
+    actual_files = {f.name for f in gw_dir.iterdir() if f.is_file() and f.suffix == ".py"}
     missing = GATEWAY_REQUIRED_FILES - actual_files
     assert missing == set(), f"{gw_dir.name}/ is missing: {missing}"
 
@@ -160,9 +148,7 @@ def test_gateway_dir_has_required_files(gw_entry: tuple[str, str, Path]):
 def test_gateway_dir_has_no_extra_files(gw_entry: tuple[str, str, Path]):
     """Verify that each gateway directory contains no unexpected files."""
     _context, _group, gw_dir = gw_entry
-    actual_files = {
-        f.name for f in gw_dir.iterdir() if f.is_file() and f.suffix == ".py"
-    }
+    actual_files = {f.name for f in gw_dir.iterdir() if f.is_file() and f.suffix == ".py"}
     extra = actual_files - GATEWAY_ALLOWED_FILES
     assert extra == set(), f"{gw_dir.name}/ has unexpected files: {extra}"
 
@@ -178,9 +164,7 @@ def test_gateway_class_naming(gw_entry: tuple[str, str, Path]):
     expected = f"{prefix}Gateway"
     module = f"{_outbound_port_module(context)}.{group}.{gw_dir.name}.gateway"
     classes = _exported_classes(module)
-    assert expected in classes, (
-        f"{gw_dir.name}/gateway.py must export '{expected}', found: {classes}"
-    )
+    assert expected in classes, f"{gw_dir.name}/gateway.py must export '{expected}', found: {classes}"
 
 
 @pytest.mark.parametrize("gw_entry", _gateway_dirs(), ids=_gateway_id)
@@ -192,9 +176,7 @@ def test_gateway_extends_base(gw_entry: tuple[str, str, Path]):
     module = f"{_outbound_port_module(context)}.{group}.{gw_dir.name}.gateway"
     mod = importlib.import_module(module)
     cls = getattr(mod, expected)
-    assert issubclass(cls, Gateway), (
-        f"{expected} must extend Gateway, bases: {[b.__name__ for b in cls.__mro__]}"
-    )
+    assert issubclass(cls, Gateway), f"{expected} must extend Gateway, bases: {[b.__name__ for b in cls.__mro__]}"
 
 
 # --- Rule 4: input.py class naming (if exists) ---
@@ -211,9 +193,7 @@ def test_input_class_naming(gw_entry: tuple[str, str, Path]):
     expected = f"{prefix}GatewayInput"
     module = f"{_outbound_port_module(context)}.{group}.{gw_dir.name}.input"
     classes = _exported_classes(module)
-    assert expected in classes, (
-        f"{gw_dir.name}/input.py must export '{expected}', found: {classes}"
-    )
+    assert expected in classes, f"{gw_dir.name}/input.py must export '{expected}', found: {classes}"
 
 
 # --- Rule 5: output.py class naming (if exists) ---
@@ -230,9 +210,7 @@ def test_output_class_naming(gw_entry: tuple[str, str, Path]):
     expected = f"{prefix}GatewayOutput"
     module = f"{_outbound_port_module(context)}.{group}.{gw_dir.name}.output"
     classes = _exported_classes(module)
-    assert expected in classes, (
-        f"{gw_dir.name}/output.py must export '{expected}', found: {classes}"
-    )
+    assert expected in classes, f"{gw_dir.name}/output.py must export '{expected}', found: {classes}"
 
 
 # --- Rule 6: input.py / output.py primitive-only imports ---
@@ -247,15 +225,9 @@ def test_input_primitive_only(gw_entry: tuple[str, str, Path]):
         pytest.skip("No input.py")
     imports = _parse_imports(input_file)
     violations = [
-        imp
-        for imp in imports
-        if not any(
-            imp.startswith(prefix) for prefix in ALLOWED_INPUT_OUTPUT_IMPORT_PREFIXES
-        )
+        imp for imp in imports if not any(imp.startswith(prefix) for prefix in ALLOWED_INPUT_OUTPUT_IMPORT_PREFIXES)
     ]
-    assert violations == [], (
-        f"{gw_dir.name}/input.py has non-primitive imports: {violations}"
-    )
+    assert violations == [], f"{gw_dir.name}/input.py has non-primitive imports: {violations}"
 
 
 @pytest.mark.parametrize("gw_entry", _gateway_dirs(), ids=_gateway_id)
@@ -267,15 +239,9 @@ def test_output_primitive_only(gw_entry: tuple[str, str, Path]):
         pytest.skip("No output.py")
     imports = _parse_imports(output_file)
     violations = [
-        imp
-        for imp in imports
-        if not any(
-            imp.startswith(prefix) for prefix in ALLOWED_INPUT_OUTPUT_IMPORT_PREFIXES
-        )
+        imp for imp in imports if not any(imp.startswith(prefix) for prefix in ALLOWED_INPUT_OUTPUT_IMPORT_PREFIXES)
     ]
-    assert violations == [], (
-        f"{gw_dir.name}/output.py has non-primitive imports: {violations}"
-    )
+    assert violations == [], f"{gw_dir.name}/output.py has non-primitive imports: {violations}"
 
 
 # --- Rule 7: __init__.py re-exports all symbols ---
@@ -291,9 +257,7 @@ def test_init_reexports_all_symbols(gw_entry: tuple[str, str, Path]):
     exported = set(getattr(mod, "__all__", []))
 
     # Gateway is always required
-    assert f"{prefix}Gateway" in exported, (
-        f"{gw_dir.name}/__init__.py must re-export '{prefix}Gateway' in __all__"
-    )
+    assert f"{prefix}Gateway" in exported, f"{gw_dir.name}/__init__.py must re-export '{prefix}Gateway' in __all__"
     # GatewayInput is required if input.py exists
     if (gw_dir / "input.py").exists():
         assert f"{prefix}GatewayInput" in exported, (
@@ -329,11 +293,7 @@ def test_extra_file_class_naming_and_export(extra: tuple[str, str, Path]):
     """Verify an extra file defines {Prefix}Gateway{Stem} and __init__ exports it."""
     context, group, f = extra
     prefix = _pascal_case(f.parent.name)
-    expected = (
-        f"{prefix}Gateway{_pascal_case(f.stem)}"
-        if f.stem == "list_input"
-        else _pascal_case(f.stem)
-    )
+    expected = f"{prefix}Gateway{_pascal_case(f.stem)}" if f.stem == "list_input" else _pascal_case(f.stem)
     module = f"{_outbound_port_module(context)}.{group}.{f.parent.name}"
     assert expected in _exported_classes(f"{module}.{f.stem}")
     assert expected in set(getattr(importlib.import_module(module), "__all__", []))
@@ -346,8 +306,6 @@ def test_extra_file_primitive_only(extra: tuple[str, str, Path]):
     violations = [
         imp
         for imp in _parse_imports(f)
-        if not any(
-            imp.startswith(prefix) for prefix in ALLOWED_INPUT_OUTPUT_IMPORT_PREFIXES
-        )
+        if not any(imp.startswith(prefix) for prefix in ALLOWED_INPUT_OUTPUT_IMPORT_PREFIXES)
     ]
     assert violations == [], f"{f.name} has non-primitive imports: {violations}"

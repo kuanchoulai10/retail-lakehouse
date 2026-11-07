@@ -13,6 +13,4 @@ if TYPE_CHECKING:
 
 def build_web_use_cases(use_cases: UseCases) -> WebUseCases:
     """Select the use cases the web API calls; each field shares its service."""
-    return WebUseCases(
-        **{f.name: getattr(use_cases, f.name) for f in fields(WebUseCases)}
-    )
+    return WebUseCases(**{f.name: getattr(use_cases, f.name) for f in fields(WebUseCases)})

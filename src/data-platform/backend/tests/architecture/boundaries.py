@@ -34,11 +34,7 @@ def _packages(directory: Path) -> list[Path]:
     """Return the child packages (directories holding an ``__init__.py``)."""
     if not directory.is_dir():
         return []
-    return sorted(
-        child
-        for child in directory.iterdir()
-        if child.is_dir() and (child / "__init__.py").is_file()
-    )
+    return sorted(child for child in directory.iterdir() if child.is_dir() and (child / "__init__.py").is_file())
 
 
 def _dotted(path: Path) -> str:

@@ -74,12 +74,8 @@ class ScriptedMaintenanceActivities:
             await self.submit_gate.wait()
         key = (request["operation"], request["attempt"])
         if key in self.submit_errors:
-            raise ApplicationError(
-                self.submit_errors[key], type="ConflictError", non_retryable=True
-            )
-        handle = self._client.get_workflow_handle(
-            self._workflow_id_of(request["run_id"])
-        )
+            raise ApplicationError(self.submit_errors[key], type="ConflictError", non_retryable=True)
+        handle = self._client.get_workflow_handle(self._workflow_id_of(request["run_id"]))
         for attempt, succeeded, error in self.callbacks.get(key, []):
             await handle.signal(
                 TableMaintenanceSignal.OPERATION_RESULT,
@@ -98,9 +94,7 @@ class ScriptedMaintenanceActivities:
 
     @activity.defn(name=TableMaintenanceActivity.GET_MAINTENANCE_JOB_STATUS)
     async def get_maintenance_job_status(self, request: dict) -> dict:
-        app_name = self.app_name(
-            request["run_id"], request["operation"], request["attempt"]
-        )
+        app_name = self.app_name(request["run_id"], request["operation"], request["attempt"])
         self.status_calls.append(app_name)
         self.status_times.append(activity.info().scheduled_time)
         if self.status_gate is not None:
@@ -122,9 +116,7 @@ class ScriptedMaintenanceActivities:
 
     @activity.defn(name=TableMaintenanceActivity.DELETE_MAINTENANCE_JOB)
     async def delete_maintenance_job(self, request: dict) -> dict:
-        app_name = self.app_name(
-            request["run_id"], request["operation"], request["attempt"]
-        )
+        app_name = self.app_name(request["run_id"], request["operation"], request["attempt"])
         self.deletes.append(app_name)
         return {
             "run_id": request["run_id"],

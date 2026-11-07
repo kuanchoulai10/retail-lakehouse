@@ -46,9 +46,7 @@ def _execute_with_retry(
             return
         except Exception:
             if attempt == max_attempts:
-                logger.exception(
-                    "Giving up on table hint %s after %d attempts", hint, attempt
-                )
+                logger.exception("Giving up on table hint %s after %d attempts", hint, attempt)
                 return
             logger.warning(
                 "Table hint %s failed on attempt %d, retrying",
@@ -123,9 +121,7 @@ def run_consumer_loop(
                     sleep=sleep,
                 )
             except Exception:
-                logger.exception(
-                    "Unexpected failure handling record at offset %d", record.offset
-                )
+                logger.exception("Unexpected failure handling record at offset %d", record.offset)
             try:
                 source.commit(record)
             except Exception:

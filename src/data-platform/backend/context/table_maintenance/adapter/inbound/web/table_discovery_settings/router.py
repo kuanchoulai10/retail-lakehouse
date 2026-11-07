@@ -23,9 +23,7 @@ from context.table_maintenance.application.port.inbound.table import (
 )
 from fastapi import APIRouter, Depends, status
 
-router = APIRouter(
-    prefix="/table-discovery-settings", tags=["table-discovery-settings"]
-)
+router = APIRouter(prefix="/table-discovery-settings", tags=["table-discovery-settings"])
 
 UseCases = Annotated[WebUseCases, Depends(use_cases_dependency)]
 
@@ -35,9 +33,7 @@ def get_table_discovery_settings(
     use_cases: UseCases,
 ) -> TableDiscoverySettingsApiResponse:
     """Return whether discovery is enabled."""
-    output = use_cases.get_table_discovery_settings.execute(
-        GetTableDiscoverySettingsUseCaseInput()
-    )
+    output = use_cases.get_table_discovery_settings.execute(GetTableDiscoverySettingsUseCaseInput())
     return TableDiscoverySettingsApiResponse.model_validate(output)
 
 
@@ -53,9 +49,7 @@ def update_table_discovery_settings(
 
 
 @router.post("/scan", status_code=status.HTTP_202_ACCEPTED)
-def scan_discovery(
-    body: ScanDiscoveryApiRequest, use_cases: UseCases
-) -> ScanDiscoveryApiResponse:
+def scan_discovery(body: ScanDiscoveryApiRequest, use_cases: UseCases) -> ScanDiscoveryApiResponse:
     """Scan a catalog, or one namespace, for tables to manage."""
     output = use_cases.sync_discovered_tables.execute(
         SyncDiscoveredTablesUseCaseInput(catalog=body.catalog, namespace=body.namespace)

@@ -87,9 +87,7 @@ class Harness:
     queue: str
     fakes: ScriptedMaintenanceActivities
 
-    async def run_maintenance(
-        self, *operations: str, parent_id: str = PARENT_ID
-    ) -> None:
+    async def run_maintenance(self, *operations: str, parent_id: str = PARENT_ID) -> None:
         handle = await self.start_maintenance(*operations, parent_id=parent_id)
         await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
 
@@ -114,10 +112,7 @@ class Harness:
         )
 
     def recorded(self) -> list[tuple[str, int, bool, str | None]]:
-        return [
-            (r["operation"], r["attempt"], r["succeeded"], r["error"])
-            for r in self.fakes.records
-        ]
+        return [(r["operation"], r["attempt"], r["succeeded"], r["error"]) for r in self.fakes.records]
 
     def submit_times(self) -> list[datetime]:
         return [datetime.fromisoformat(s["now"]) for s in self.fakes.submits]
@@ -126,9 +121,7 @@ class Harness:
         return await self.client.get_workflow_handle(PARENT_ID).query("collected")
 
     async def admission_holders(self) -> dict:
-        handle = self.client.get_workflow_handle(
-            TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID
-        )
+        handle = self.client.get_workflow_handle(TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID)
         return (await handle.query("state"))["holders"]
 
 
@@ -167,9 +160,7 @@ def _run(
                     workflow_runner=UnsandboxedWorkflowRunner(),
                 ),
             ):
-                await env.client.start_workflow(
-                    "ParentStub", id=PARENT_ID, task_queue=f"{queue}-stub"
-                )
+                await env.client.start_workflow("ParentStub", id=PARENT_ID, task_queue=f"{queue}-stub")
                 await scenario(Harness(env, env.client, queue, fakes))
 
     asyncio.run(go())
@@ -363,14 +354,8 @@ def test_poll_interval_backs_off_after_ten_minutes():
 
         app = f"{RUN_ID}-{COMPACTION}-1"
         submitted = h.submit_times()[0]
-        polls = [
-            t
-            for t, name in zip(h.fakes.status_times, h.fakes.status_calls)
-            if name == app
-        ]
-        first_hour = [
-            t for t in polls if t - submitted < timedelta(hours=1, seconds=30)
-        ]
+        polls = [t for t, name in zip(h.fakes.status_times, h.fakes.status_calls) if name == app]
+        first_hour = [t for t in polls if t - submitted < timedelta(hours=1, seconds=30)]
         assert len(first_hour) == 20 + 10
         gaps = [b - a for a, b in zip(polls, polls[1:])]
         assert all(g < timedelta(seconds=60) for g in gaps[:19])
@@ -405,9 +390,7 @@ def test_late_grant_for_another_request_is_released_at_once():
         await eventually(lambda: _value(len(h.fakes.created)), lambda n: n == 1)
         await h.client.start_workflow(
             TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
-            TableMaintenanceAdmissionWorkflowInput(
-                limit=1, lease_seconds=30 * 24 * 3600
-            ),
+            TableMaintenanceAdmissionWorkflowInput(limit=1, lease_seconds=30 * 24 * 3600),
             id=TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
             task_queue=h.queue,
             id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
@@ -463,9 +446,7 @@ async def _cancel_while_blocked(
         gate.set()
     assert isinstance(caught.value.cause, CancelledError)
     assert h.recorded() == [(COMPACTION, 1, False, "cancelled")]
-    assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [
-        (COMPACTION, 1)
-    ]
+    assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1)]
     assert h.fakes.deletes == [f"{RUN_ID}-{COMPACTION}-1"]
     assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
     assert await h.admission_holders() == {}
@@ -503,11 +484,7 @@ def test_result_arriving_during_last_poll_before_deadline_wins():
             # The poll at 90 s, the last before the 100 s deadline, receives the
             # callback and returns only after the deadline has passed.
             submitted = h.submit_times()[0]
-            if (
-                app_name != app
-                or signalled
-                or scheduled - submitted < timedelta(seconds=85)
-            ):
+            if app_name != app or signalled or scheduled - submitted < timedelta(seconds=85):
                 return
             signalled.append(scheduled)
             await h.client.get_workflow_handle(WORKFLOW_ID).signal(
@@ -517,9 +494,7 @@ def test_result_arriving_during_last_poll_before_deadline_wins():
             await h.env.sleep(timedelta(seconds=30))
 
         h.fakes.status_hook = hook
-        handle = await h.start_maintenance(
-            COMPACTION, attempt_deadline_seconds=int(deadline.total_seconds())
-        )
+        handle = await h.start_maintenance(COMPACTION, attempt_deadline_seconds=int(deadline.total_seconds()))
         await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
 
         assert h.recorded() == [(COMPACTION, 1, True, None)]

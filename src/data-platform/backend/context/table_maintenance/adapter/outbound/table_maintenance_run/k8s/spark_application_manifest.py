@@ -21,9 +21,7 @@ ICEBERG_EXTENSIONS = "org.apache.iceberg.spark.extensions.IcebergSparkSessionExt
 MAVEN = "https://repo1.maven.org/maven2/org/apache/iceberg"
 HADOOP_MAVEN = "https://repo1.maven.org/maven2/org/apache/hadoop"
 AWS_SDK_MAVEN = "https://repo1.maven.org/maven2/software/amazon/awssdk"
-ENV_CREDENTIALS_PROVIDER = (
-    "software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider"
-)
+ENV_CREDENTIALS_PROVIDER = "software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider"
 REDACTION_REGEX = "(?i)secret|password|token|credential"
 IVY_OPTIONS = "-Divy.cache.dir=/tmp/.ivy2 -Divy.home=/tmp/.ivy"
 
@@ -31,11 +29,9 @@ IVY_OPTIONS = "-Divy.cache.dir=/tmp/.ivy2 -Divy.home=/tmp/.ivy"
 def _jars(config: SparkK8sConfig) -> list[str]:
     version = config.iceberg_version
     return [
-        f"{MAVEN}/iceberg-spark-runtime-4.0_2.13/{version}/"
-        f"iceberg-spark-runtime-4.0_2.13-{version}.jar",
+        f"{MAVEN}/iceberg-spark-runtime-4.0_2.13/{version}/iceberg-spark-runtime-4.0_2.13-{version}.jar",
         f"{MAVEN}/iceberg-aws-bundle/{version}/iceberg-aws-bundle-{version}.jar",
-        f"{HADOOP_MAVEN}/hadoop-aws/{config.hadoop_version}/"
-        f"hadoop-aws-{config.hadoop_version}.jar",
+        f"{HADOOP_MAVEN}/hadoop-aws/{config.hadoop_version}/hadoop-aws-{config.hadoop_version}.jar",
         f"{AWS_SDK_MAVEN}/s3-transfer-manager/{config.aws_sdk_version}/"
         f"s3-transfer-manager-{config.aws_sdk_version}.jar",
     ]
@@ -58,9 +54,7 @@ def _s3a_conf(config: SparkK8sConfig) -> dict[str, str]:
     return {
         "spark.hadoop.fs.s3a.endpoint": config.s3_endpoint,
         "spark.hadoop.fs.s3a.endpoint.region": config.s3_region,
-        "spark.hadoop.fs.s3a.path.style.access": str(
-            config.s3_path_style_access
-        ).lower(),
+        "spark.hadoop.fs.s3a.path.style.access": str(config.s3_path_style_access).lower(),
         "spark.hadoop.fs.s3a.connection.ssl.enabled": str(ssl).lower(),
         "spark.hadoop.fs.s3a.aws.credentials.provider": ENV_CREDENTIALS_PROVIDER,
     }

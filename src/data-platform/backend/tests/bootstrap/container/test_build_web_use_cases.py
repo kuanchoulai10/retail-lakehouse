@@ -15,9 +15,7 @@ from tests.bootstrap.container.container_support import (
 
 
 def _web_use_cases() -> WebUseCases:
-    use_cases = build_use_cases(
-        build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW
-    )
+    use_cases = build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
     return build_web_use_cases(use_cases)
 
 
@@ -29,9 +27,7 @@ def test_every_web_use_case_is_populated():
 
 
 def test_web_use_cases_reuse_the_application_services():
-    use_cases = build_use_cases(
-        build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW
-    )
+    use_cases = build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
 
     web = build_web_use_cases(use_cases)
 

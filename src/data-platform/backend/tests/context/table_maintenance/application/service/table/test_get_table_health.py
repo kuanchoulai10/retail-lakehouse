@@ -79,9 +79,7 @@ def _health(service):
     return service.execute(GetTableHealthUseCaseInput(uuid="u-1"))
 
 
-def test_active_table_reports_each_operation_in_order(
-    service, tables_repo, catalog, now
-):
+def test_active_table_reports_each_operation_in_order(service, tables_repo, catalog, now):
     _register(tables_repo, now, MaintenanceSettings())
     _observe(catalog)
 

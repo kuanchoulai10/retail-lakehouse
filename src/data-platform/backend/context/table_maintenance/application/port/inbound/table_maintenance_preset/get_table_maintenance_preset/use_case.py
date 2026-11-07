@@ -14,14 +14,10 @@ from base import UseCase
 
 
 class GetTableMaintenancePresetUseCase(
-    UseCase[
-        GetTableMaintenancePresetUseCaseInput, GetTableMaintenancePresetUseCaseOutput
-    ]
+    UseCase[GetTableMaintenancePresetUseCaseInput, GetTableMaintenancePresetUseCaseOutput]
 ):
     """Get one table maintenance preset."""
 
     @abstractmethod
-    def execute(
-        self, request: GetTableMaintenancePresetUseCaseInput
-    ) -> GetTableMaintenancePresetUseCaseOutput:
+    def execute(self, request: GetTableMaintenancePresetUseCaseInput) -> GetTableMaintenancePresetUseCaseOutput:
         """Get one table maintenance preset."""

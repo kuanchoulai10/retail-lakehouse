@@ -38,11 +38,7 @@ class TableMaintenancePresetsSqlRepo(TableMaintenancePresetsRepo):
         """Insert a new preset; a duplicate name raises IntegrityError."""
         try:
             with self._engine.begin() as conn:
-                conn.execute(
-                    insert(t).values(
-                        **TableMaintenancePresetRowMapper.to_values(entity)
-                    )
-                )
+                conn.execute(insert(t).values(**TableMaintenancePresetRowMapper.to_values(entity)))
         except IntegrityError as exc:
             raise ConflictError(str(exc.orig)) from exc
         return entity
@@ -51,11 +47,7 @@ class TableMaintenancePresetsSqlRepo(TableMaintenancePresetsRepo):
         """Return the preset with the given id, or None."""
         with self._engine.connect() as conn:
             row = conn.execute(select(t).where(t.c.id == entity_id.value)).first()
-        return (
-            None
-            if row is None
-            else TableMaintenancePresetRowMapper.to_aggregate(row._mapping)
-        )
+        return None if row is None else TableMaintenancePresetRowMapper.to_aggregate(row._mapping)
 
     def list_all(self) -> list[TableMaintenancePreset]:
         """Return all presets ordered by name."""
@@ -67,13 +59,9 @@ class TableMaintenancePresetsSqlRepo(TableMaintenancePresetsRepo):
         """Persist the changed preset."""
         values = TableMaintenancePresetRowMapper.to_values(preset)
         with self._engine.begin() as conn:
-            result = conn.execute(
-                update(t).where(t.c.id == preset.id.value).values(**values)
-            )
+            result = conn.execute(update(t).where(t.c.id == preset.id.value).values(**values))
             if result.rowcount == 0:
-                raise LookupError(
-                    f"table maintenance preset {preset.id.value} does not exist"
-                )
+                raise LookupError(f"table maintenance preset {preset.id.value} does not exist")
         return preset
 
     def delete(self, entity_id: EntityId) -> None:
@@ -85,8 +73,4 @@ class TableMaintenancePresetsSqlRepo(TableMaintenancePresetsRepo):
         """Return the preset with exactly this name, or None."""
         with self._engine.connect() as conn:
             row = conn.execute(select(t).where(t.c.name == name)).first()
-        return (
-            None
-            if row is None
-            else TableMaintenancePresetRowMapper.to_aggregate(row._mapping)
-        )
+        return None if row is None else TableMaintenancePresetRowMapper.to_aggregate(row._mapping)

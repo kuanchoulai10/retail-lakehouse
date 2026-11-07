@@ -92,9 +92,7 @@ def _storage(service):
     return service.execute(GetTableStorageUseCaseInput(uuid="u-1"))
 
 
-def test_storage_splits_current_and_old_snapshot_bytes(
-    service, tables_repo, catalog, now
-):
+def test_storage_splits_current_and_old_snapshot_bytes(service, tables_repo, catalog, now):
     _register(tables_repo, now)
     _measure(catalog)
 
@@ -245,9 +243,7 @@ def test_table_missing_in_catalog_raises_not_found(service, tables_repo, now):
         _storage(service)
 
 
-def test_storage_404_when_catalog_table_has_another_uuid(
-    service, tables_repo, catalog, now
-):
+def test_storage_404_when_catalog_table_has_another_uuid(service, tables_repo, catalog, now):
     _register(tables_repo, now)
     _measure(catalog, table_uuid="u-recreated")
 

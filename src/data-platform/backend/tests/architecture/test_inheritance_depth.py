@@ -94,11 +94,7 @@ def _shortest_depth(cls: type, base: type) -> int:
         for parent in current.__bases__:
             if parent is base:
                 return depth + 1
-            if (
-                parent not in visited
-                and isinstance(parent, type)
-                and issubclass(parent, base)
-            ):
+            if parent not in visited and isinstance(parent, type) and issubclass(parent, base):
                 visited.add(parent)
                 queue.append((parent, depth + 1))
     raise AssertionError(f"{cls!r} is not a subclass of {base!r}")
@@ -128,9 +124,7 @@ DEPTH_CONTRACTS: list[tuple[type, int, tuple[type, ...]]] = [
     DEPTH_CONTRACTS,
     ids=[c[0].__name__ for c in DEPTH_CONTRACTS],
 )
-def test_inheritance_depth(
-    base: type, max_depth: int, exclude_subtrees: tuple[type, ...]
-) -> None:
+def test_inheritance_depth(base: type, max_depth: int, exclude_subtrees: tuple[type, ...]) -> None:
     excluded: set[type] = set()
     for sub_base in exclude_subtrees:
         excluded.add(sub_base)
@@ -147,17 +141,13 @@ def test_inheritance_depth(
     if violations:
         violations.sort()
         formatted = "\n".join(f"  {name} (depth={d})" for name, d in violations)
-        pytest.fail(
-            f"{base.__name__} subclasses exceed max depth {max_depth}:\n{formatted}"
-        )
+        pytest.fail(f"{base.__name__} subclasses exceed max depth {max_depth}:\n{formatted}")
 
 
 def test_event_dispatcher_has_no_subclasses() -> None:
     subclasses = _all_subclasses(EventDispatcher)
     if subclasses:
-        formatted = "\n".join(
-            f"  {_qualified_name(c)}" for c in sorted(subclasses, key=_qualified_name)
-        )
+        formatted = "\n".join(f"  {_qualified_name(c)}" for c in sorted(subclasses, key=_qualified_name))
         pytest.fail(f"EventDispatcher must not be subclassed:\n{formatted}")
 
 
@@ -172,16 +162,10 @@ def test_aggregate_repos_extend_repository(context: str) -> None:
         module = importlib.import_module(module_path)
         for attr_name in dir(module):
             obj = getattr(module, attr_name)
-            if (
-                isinstance(obj, type)
-                and obj.__module__ == module_path
-                and attr_name.endswith("Repo")
-            ):
+            if isinstance(obj, type) and obj.__module__ == module_path and attr_name.endswith("Repo"):
                 found.append(obj)
 
     violations = [_qualified_name(c) for c in found if not issubclass(c, Repository)]
     if violations:
         formatted = "\n".join(f"  {v}" for v in sorted(violations))
-        pytest.fail(
-            f"These *Repo port classes must extend base.repository.Repository:\n{formatted}"
-        )
+        pytest.fail(f"These *Repo port classes must extend base.repository.Repository:\n{formatted}")

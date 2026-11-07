@@ -50,9 +50,7 @@ class UpdateTableSettingsService(UpdateTableSettingsUseCase):
         self._table_change_gateway = table_change_gateway
         self._clock = clock
 
-    def execute(
-        self, request: UpdateTableSettingsUseCaseInput
-    ) -> UpdateTableSettingsUseCaseOutput:
+    def execute(self, request: UpdateTableSettingsUseCaseInput) -> UpdateTableSettingsUseCaseOutput:
         """Save the new settings, then signal ``settings_changed``."""
         table = self._tables_repo.get(TableId(request.uuid))
         if table is None:

@@ -38,16 +38,12 @@ class DeleteTableMaintenancePresetService(DeleteTableMaintenancePresetUseCase):
         self._presets_repo = presets_repo
         self._rules_repo = rules_repo
 
-    def execute(
-        self, request: DeleteTableMaintenancePresetUseCaseInput
-    ) -> DeleteTableMaintenancePresetUseCaseOutput:
+    def execute(self, request: DeleteTableMaintenancePresetUseCaseInput) -> DeleteTableMaintenancePresetUseCaseOutput:
         """Delete the preset unless a rule still uses it."""
         preset_id = TableMaintenancePresetId(request.id)
         if self._presets_repo.get(preset_id) is None:
             raise NotFoundError(f"table maintenance preset {request.id} not found")
         if self._rules_repo.count_by_preset(preset_id) > 0:
-            raise ConflictError(
-                f"table maintenance preset {request.id} is referenced by discovery rules"
-            )
+            raise ConflictError(f"table maintenance preset {request.id} is referenced by discovery rules")
         self._presets_repo.delete(preset_id)
         return DeleteTableMaintenancePresetUseCaseOutput()

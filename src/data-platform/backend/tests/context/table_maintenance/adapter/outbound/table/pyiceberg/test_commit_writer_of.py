@@ -10,9 +10,7 @@ def test_writer_kafka_connect() -> None:
 
 
 def test_writer_spark() -> None:
-    assert commit_writer_of({"spark.app.id": "app-1", "operation": "replace"}) == (
-        "spark"
-    )
+    assert commit_writer_of({"spark.app.id": "app-1", "operation": "replace"}) == ("spark")
 
 
 def test_writer_unknown() -> None:

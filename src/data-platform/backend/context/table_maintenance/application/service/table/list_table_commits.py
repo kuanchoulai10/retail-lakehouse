@@ -49,16 +49,12 @@ def _to_item(commit: dict[str, Any]) -> ListTableCommitsUseCaseOutputItem:
 class ListTableCommitsService(ListTableCommitsUseCase):
     """List the commits of a table from the catalog, newest first."""
 
-    def __init__(
-        self, tables_repo: TablesRepo, catalog_gateway: ReadTableMetadataGateway
-    ) -> None:
+    def __init__(self, tables_repo: TablesRepo, catalog_gateway: ReadTableMetadataGateway) -> None:
         """Bind the repo and the catalog gateway."""
         self._tables_repo = tables_repo
         self._catalog_gateway = catalog_gateway
 
-    def execute(
-        self, request: ListTableCommitsUseCaseInput
-    ) -> ListTableCommitsUseCaseOutput:
+    def execute(self, request: ListTableCommitsUseCaseInput) -> ListTableCommitsUseCaseOutput:
         """Return the commits or raise NotFoundError."""
         table, ref = load_catalog_table(self._tables_repo, request.uuid)
         since = None if request.since is None else request.since.isoformat()

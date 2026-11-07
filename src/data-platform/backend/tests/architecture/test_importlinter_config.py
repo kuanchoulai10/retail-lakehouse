@@ -37,16 +37,12 @@ def _config() -> configparser.ConfigParser:
 def test_no_ignore_imports():
     parser = _config()
     offenders = [s for s in parser.sections() if parser.has_option(s, "ignore_imports")]
-    assert offenders == [], (
-        f"ignore_imports is an exemption; remove it from {offenders}"
-    )
+    assert offenders == [], f"ignore_imports is an exemption; remove it from {offenders}"
 
 
 def test_required_contracts_present():
     contracts = {
-        section.removeprefix(CONTRACT_PREFIX)
-        for section in _config().sections()
-        if section.startswith(CONTRACT_PREFIX)
+        section.removeprefix(CONTRACT_PREFIX) for section in _config().sections() if section.startswith(CONTRACT_PREFIX)
     }
     missing = REQUIRED_CONTRACTS - contracts
     assert not missing, f"missing import-linter contracts: {sorted(missing)}"

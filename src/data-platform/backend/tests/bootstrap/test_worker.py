@@ -67,9 +67,7 @@ class Harness:
     def use_cases_builder(self, settings: Any, bridge: Any, **kwargs: Any) -> Any:  # noqa: ANN401
         assert bridge is self.bridge
         kwargs["k8s_api_factory"]()
-        return build_use_cases(
-            build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW
-        )
+        return build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
 
     async def connect(self, _: Any) -> MagicMock:  # noqa: ANN401
         return MagicMock(name="worker-client")

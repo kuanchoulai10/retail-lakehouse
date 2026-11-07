@@ -13,13 +13,9 @@ from context.table_maintenance.application.port.inbound.table.sync_discovered_ta
 from base import UseCase
 
 
-class SyncDiscoveredTablesUseCase(
-    UseCase[SyncDiscoveredTablesUseCaseInput, SyncDiscoveredTablesUseCaseOutput]
-):
+class SyncDiscoveredTablesUseCase(UseCase[SyncDiscoveredTablesUseCaseInput, SyncDiscoveredTablesUseCaseOutput]):
     """Synchronise the registry with the tables found in the catalog."""
 
     @abstractmethod
-    def execute(
-        self, request: SyncDiscoveredTablesUseCaseInput
-    ) -> SyncDiscoveredTablesUseCaseOutput:
+    def execute(self, request: SyncDiscoveredTablesUseCaseInput) -> SyncDiscoveredTablesUseCaseOutput:
         """Synchronise the registry with the tables found in the catalog."""

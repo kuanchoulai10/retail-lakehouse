@@ -15,9 +15,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery
 )
 
 _SYNC_TIMEOUT = timedelta(minutes=10)
-_ACTIVITY_RETRY = RetryPolicy(
-    maximum_attempts=5, initial_interval=timedelta(seconds=2), backoff_coefficient=2.0
-)
+_ACTIVITY_RETRY = RetryPolicy(maximum_attempts=5, initial_interval=timedelta(seconds=2), backoff_coefficient=2.0)
 
 
 @workflow.defn(name=TABLE_DISCOVERY_WORKFLOW)

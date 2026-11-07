@@ -34,9 +34,7 @@ class ListTableMaintenancePresetsService(ListTableMaintenancePresetsUseCase):
         """Return every preset."""
         return ListTableMaintenancePresetsUseCaseOutput(
             items=[
-                ListTableMaintenancePresetsUseCaseOutputItem(
-                    **table_maintenance_preset_output_fields(t)
-                )
+                ListTableMaintenancePresetsUseCaseOutputItem(**table_maintenance_preset_output_fields(t))
                 for t in self._presets_repo.list_all()
             ]
         )

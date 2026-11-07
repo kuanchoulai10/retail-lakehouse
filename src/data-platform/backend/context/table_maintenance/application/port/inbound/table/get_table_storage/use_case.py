@@ -13,13 +13,9 @@ from context.table_maintenance.application.port.inbound.table.get_table_storage.
 from base import UseCase
 
 
-class GetTableStorageUseCase(
-    UseCase[GetTableStorageUseCaseInput, GetTableStorageUseCaseOutput]
-):
+class GetTableStorageUseCase(UseCase[GetTableStorageUseCaseInput, GetTableStorageUseCaseOutput]):
     """Get the storage split and reclaimed space of one table."""
 
     @abstractmethod
-    def execute(
-        self, request: GetTableStorageUseCaseInput
-    ) -> GetTableStorageUseCaseOutput:
+    def execute(self, request: GetTableStorageUseCaseInput) -> GetTableStorageUseCaseOutput:
         """Get the storage split and reclaimed space of one table."""

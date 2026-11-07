@@ -9,9 +9,7 @@ from context.table_maintenance.application.domain.service.table import (
 
 
 def test_manual_plan_runs_named_operations_whole_table():
-    plan = plan_manual_maintenance(
-        [Op.EXPIRE_SNAPSHOTS, Op.REWRITE_DATA_FILES, Op.EXPIRE_SNAPSHOTS]
-    )
+    plan = plan_manual_maintenance([Op.EXPIRE_SNAPSHOTS, Op.REWRITE_DATA_FILES, Op.EXPIRE_SNAPSHOTS])
     assert [p.operation for p in plan.operations] == [
         Op.REWRITE_DATA_FILES,
         Op.EXPIRE_SNAPSHOTS,

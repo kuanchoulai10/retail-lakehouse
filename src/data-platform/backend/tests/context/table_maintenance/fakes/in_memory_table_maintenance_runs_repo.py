@@ -45,22 +45,14 @@ class InMemoryTableMaintenanceRunsRepo(TableMaintenanceRunsRepo):
         self.items[run.id.value] = run
         return run
 
-    def list_by_table(
-        self, table_uuid: TableId, limit: int = 50
-    ) -> list[TableMaintenanceRun]:
+    def list_by_table(self, table_uuid: TableId, limit: int = 50) -> list[TableMaintenanceRun]:
         """Return up to ``limit`` runs of the table, newest first."""
         runs = [r for r in self.items.values() if r.table_uuid == table_uuid]
         runs.sort(key=lambda r: r.created_at, reverse=True)
         return runs[:limit]
 
-    def list_by_table_since(
-        self, table_uuid: TableId, since: datetime
-    ) -> list[TableMaintenanceRun]:
+    def list_by_table_since(self, table_uuid: TableId, since: datetime) -> list[TableMaintenanceRun]:
         """Return the table's runs created at or after since, newest first."""
-        runs = [
-            r
-            for r in self.items.values()
-            if r.table_uuid == table_uuid and r.created_at >= since
-        ]
+        runs = [r for r in self.items.values() if r.table_uuid == table_uuid and r.created_at >= since]
         runs.sort(key=lambda r: r.created_at, reverse=True)
         return runs

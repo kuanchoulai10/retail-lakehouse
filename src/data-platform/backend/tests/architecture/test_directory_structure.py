@@ -27,14 +27,11 @@ class TestDirectoryStructure:
 
     @pytest.mark.parametrize("directory", sorted(EXPECTED_TOP_LEVEL))
     def test_required_directories_exist(self, directory: str):
-        assert (BACKEND / directory).is_dir(), (
-            f"Missing required directory: {directory}/"
-        )
+        assert (BACKEND / directory).is_dir(), f"Missing required directory: {directory}/"
 
     def test_core_directory_does_not_exist(self):
         assert not (BACKEND / "core").is_dir(), (
-            "core/ should not exist — its contents should be in "
-            "adapter/, application/, base/, and bootstrap/"
+            "core/ should not exist — its contents should be in adapter/, application/, base/, and bootstrap/"
         )
 
     def test_context_root_holds_a_context(self):
@@ -43,21 +40,16 @@ class TestDirectoryStructure:
     @pytest.mark.parametrize("context", context_names())
     def test_context_holds_application_and_adapter(self, context: str):
         layers = {
-            child.name
-            for child in context_dir(context).iterdir()
-            if child.is_dir() and child.name != "__pycache__"
+            child.name for child in context_dir(context).iterdir() if child.is_dir() and child.name != "__pycache__"
         }
         assert layers == EXPECTED_CONTEXT_LAYERS, (
-            f"context/{context} must hold exactly {sorted(EXPECTED_CONTEXT_LAYERS)}, "
-            f"found {sorted(layers)}"
+            f"context/{context} must hold exactly {sorted(EXPECTED_CONTEXT_LAYERS)}, found {sorted(layers)}"
         )
 
     @pytest.mark.parametrize("context", context_names())
     @pytest.mark.parametrize("subdir", ADAPTER_SUBDIRECTORIES)
     def test_adapter_subdirectories_exist(self, context: str, subdir: str):
-        assert (context_dir(context) / subdir).is_dir(), (
-            f"Missing adapter subdirectory: context/{context}/{subdir}/"
-        )
+        assert (context_dir(context) / subdir).is_dir(), f"Missing adapter subdirectory: context/{context}/{subdir}/"
 
     @pytest.mark.parametrize(
         "subdir",
@@ -70,8 +62,7 @@ class TestDirectoryStructure:
         """Top-level should not have old scattered entry point dirs."""
         for stale in ("api", "scheduler", "outbox_publisher", "dependencies"):
             assert not (BACKEND / stale).is_dir(), (
-                f"{stale}/ should not exist at top level — "
-                f"moved to adapter/inbound/ or bootstrap/"
+                f"{stale}/ should not exist at top level — moved to adapter/inbound/ or bootstrap/"
             )
 
     def test_no_bootstrap_dependencies_directory(self):

@@ -22,7 +22,5 @@ class CreateTableMaintenancePresetUseCase(
     """Create a table maintenance preset."""
 
     @abstractmethod
-    def execute(
-        self, request: CreateTableMaintenancePresetUseCaseInput
-    ) -> CreateTableMaintenancePresetUseCaseOutput:
+    def execute(self, request: CreateTableMaintenancePresetUseCaseInput) -> CreateTableMaintenancePresetUseCaseOutput:
         """Create a table maintenance preset."""

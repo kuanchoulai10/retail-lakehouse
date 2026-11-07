@@ -37,9 +37,7 @@ def description_from_table(table: Table) -> TableDescription:
         current_summary=_summary_of(snapshot),
         snapshot_count=len(metadata.snapshots),
         last_committed_at=(
-            datetime.fromtimestamp(snapshot.timestamp_ms / 1000, tz=UTC).isoformat()
-            if snapshot
-            else None
+            datetime.fromtimestamp(snapshot.timestamp_ms / 1000, tz=UTC).isoformat() if snapshot else None
         ),
     )
 

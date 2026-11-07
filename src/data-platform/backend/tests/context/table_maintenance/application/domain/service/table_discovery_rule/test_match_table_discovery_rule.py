@@ -25,9 +25,7 @@ def rule(rid, priority, effect, pattern, enabled=True) -> TableDiscoveryRule:
         priority=priority,
         effect=effect,
         pattern=pattern,
-        preset_id=TableMaintenancePresetId("t")
-        if effect == RuleEffect.INCLUDE
-        else None,
+        preset_id=TableMaintenancePresetId("t") if effect == RuleEffect.INCLUDE else None,
         enabled=enabled,
         now=NOW,
     )

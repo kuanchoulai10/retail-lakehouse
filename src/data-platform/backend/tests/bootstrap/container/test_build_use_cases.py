@@ -59,11 +59,7 @@ def _all_service_classes() -> set[type]:
     ):
         module = importlib.import_module(module_info.name)
         for _, obj in inspect.getmembers(module, inspect.isclass):
-            if (
-                obj.__module__ == module.__name__
-                and obj.__name__.endswith("Service")
-                and issubclass(obj, UseCase)
-            ):
+            if obj.__module__ == module.__name__ and obj.__name__.endswith("Service") and issubclass(obj, UseCase):
                 found.add(obj)
     return found
 
@@ -98,12 +94,8 @@ def test_gateways_are_built_without_connecting():
 
     assert isinstance(gateways.read_table_metadata, ReadTableMetadataPyIcebergGateway)
     assert isinstance(gateways.send_table_change, SendTableChangeTemporalGateway)
-    assert isinstance(
-        gateways.send_discovery_request, SendDiscoveryRequestTemporalGateway
-    )
-    assert isinstance(
-        gateways.send_maintenance_result, SendMaintenanceResultTemporalGateway
-    )
+    assert isinstance(gateways.send_discovery_request, SendDiscoveryRequestTemporalGateway)
+    assert isinstance(gateways.send_maintenance_result, SendMaintenanceResultTemporalGateway)
     assert isinstance(
         gateways.update_table_discovery_schedule,
         UpdateTableDiscoveryScheduleTemporalGateway,
@@ -117,9 +109,7 @@ def test_gateways_are_built_without_connecting():
 
 
 def test_use_cases_hold_one_instance_of_every_service():
-    use_cases = build_use_cases(
-        build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW
-    )
+    use_cases = build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
 
     values = [getattr(use_cases, f.name) for f in fields(use_cases)]
     assert all(isinstance(value, UseCase) for value in values)
@@ -128,12 +118,8 @@ def test_use_cases_hold_one_instance_of_every_service():
 
 
 def test_use_cases_work_against_the_sql_repos():
-    use_cases = build_use_cases(
-        build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW
-    )
+    use_cases = build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
 
-    listing = use_cases.list_table_maintenance_presets.execute(
-        ListTableMaintenancePresetsUseCaseInput()
-    )
+    listing = use_cases.list_table_maintenance_presets.execute(ListTableMaintenancePresetsUseCaseInput())
 
     assert listing.items == []

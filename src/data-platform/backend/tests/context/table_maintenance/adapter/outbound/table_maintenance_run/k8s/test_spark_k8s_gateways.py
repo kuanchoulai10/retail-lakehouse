@@ -73,8 +73,7 @@ def test_manifest_snapshot():
     assert spec["deps"]["jars"] == [
         "https://repo1.maven.org/maven2/org/apache/iceberg/"
         "iceberg-spark-runtime-4.0_2.13/1.10.1/iceberg-spark-runtime-4.0_2.13-1.10.1.jar",
-        "https://repo1.maven.org/maven2/org/apache/iceberg/"
-        "iceberg-aws-bundle/1.10.1/iceberg-aws-bundle-1.10.1.jar",
+        "https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-aws-bundle/1.10.1/iceberg-aws-bundle-1.10.1.jar",
         "https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.4.1/hadoop-aws-3.4.1.jar",
         "https://repo1.maven.org/maven2/software/amazon/awssdk/"
         "s3-transfer-manager/2.33.0/s3-transfer-manager-2.33.0.jar",
@@ -84,19 +83,14 @@ def test_manifest_snapshot():
     assert conf["spark.sql.extensions"].endswith("IcebergSparkSessionExtensions")
     assert conf["spark.sql.catalog.iceberg"] == "org.apache.iceberg.spark.SparkCatalog"
     assert conf["spark.sql.catalog.iceberg.type"] == "rest"
-    assert (
-        conf["spark.sql.catalog.iceberg.io-impl"]
-        == "org.apache.iceberg.aws.s3.S3FileIO"
-    )
+    assert conf["spark.sql.catalog.iceberg.io-impl"] == "org.apache.iceberg.aws.s3.S3FileIO"
     assert "credential" in conf["spark.redaction.regex"]
     assert conf["spark.sql.catalog.iceberg.uri"] == CONFIG.catalog_uri
     assert conf["spark.sql.catalog.iceberg.warehouse"] == "iceberg"
     assert conf["spark.sql.catalog.iceberg.scope"] == "PRINCIPAL_ROLE:ALL"
     assert conf["spark.sql.catalog.iceberg.s3.path-style-access"] == "true"
     assert conf["spark.sql.catalog.iceberg.s3.endpoint"] == CONFIG.s3_endpoint
-    assert {key for key in conf if "credential" in key} == {
-        "spark.hadoop.fs.s3a.aws.credentials.provider"
-    }
+    assert {key for key in conf if "credential" in key} == {"spark.hadoop.fs.s3a.aws.credentials.provider"}
 
 
 def test_manifest_driver_and_executor_env():
@@ -173,27 +167,21 @@ def test_submit_other_errors_propagate():
 def test_read_maps_states(status, expected, error):
     api = MagicMock()
     api.get_namespaced_custom_object.return_value = {"status": status}
-    out = ReadMaintenanceJobK8sGateway(api, CONFIG).read(
-        ReadMaintenanceJobGatewayInput(*ATTEMPT)
-    )
+    out = ReadMaintenanceJobK8sGateway(api, CONFIG).read(ReadMaintenanceJobGatewayInput(*ATTEMPT))
     assert (out.state, out.error) == (expected, error)
 
 
 def test_read_missing_status_key_is_pending():
     api = MagicMock()
     api.get_namespaced_custom_object.return_value = {}
-    out = ReadMaintenanceJobK8sGateway(api, CONFIG).read(
-        ReadMaintenanceJobGatewayInput(*ATTEMPT)
-    )
+    out = ReadMaintenanceJobK8sGateway(api, CONFIG).read(ReadMaintenanceJobGatewayInput(*ATTEMPT))
     assert out.state == "PENDING"
 
 
 def test_read_looks_up_the_application_named_after_the_attempt():
     api = MagicMock()
     api.get_namespaced_custom_object.return_value = {}
-    ReadMaintenanceJobK8sGateway(api, CONFIG).read(
-        ReadMaintenanceJobGatewayInput(*ATTEMPT)
-    )
+    ReadMaintenanceJobK8sGateway(api, CONFIG).read(ReadMaintenanceJobGatewayInput(*ATTEMPT))
     assert api.get_namespaced_custom_object.call_args.kwargs["name"] == NAME
 
 
@@ -220,6 +208,4 @@ def test_delete_other_errors_propagate():
     api = MagicMock()
     api.delete_namespaced_custom_object.side_effect = ApiException(status=500)
     with pytest.raises(ApiException):
-        DeleteMaintenanceJobK8sGateway(api, CONFIG).delete(
-            DeleteMaintenanceJobGatewayInput(*ATTEMPT)
-        )
+        DeleteMaintenanceJobK8sGateway(api, CONFIG).delete(DeleteMaintenanceJobGatewayInput(*ATTEMPT))

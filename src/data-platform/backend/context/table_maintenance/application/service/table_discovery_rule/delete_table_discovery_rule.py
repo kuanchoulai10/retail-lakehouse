@@ -27,9 +27,7 @@ class DeleteTableDiscoveryRuleService(DeleteTableDiscoveryRuleUseCase):
         """Bind the repo."""
         self._rules_repo = rules_repo
 
-    def execute(
-        self, request: DeleteTableDiscoveryRuleUseCaseInput
-    ) -> DeleteTableDiscoveryRuleUseCaseOutput:
+    def execute(self, request: DeleteTableDiscoveryRuleUseCaseInput) -> DeleteTableDiscoveryRuleUseCaseOutput:
         """Delete the rule or raise NotFoundError."""
         rule_id = TableDiscoveryRuleId(request.id)
         if self._rules_repo.get(rule_id) is None:

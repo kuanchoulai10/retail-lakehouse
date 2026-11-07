@@ -20,7 +20,5 @@ class ReadMaintenanceJobGateway(Gateway):
     """Read the state of a maintenance job."""
 
     @abstractmethod
-    def read(
-        self, input: ReadMaintenanceJobGatewayInput
-    ) -> ReadMaintenanceJobGatewayOutput:  # noqa: A002
+    def read(self, input: ReadMaintenanceJobGatewayInput) -> ReadMaintenanceJobGatewayOutput:  # noqa: A002
         """Return the job state: PENDING, RUNNING, COMPLETED, FAILED or NOT_FOUND."""

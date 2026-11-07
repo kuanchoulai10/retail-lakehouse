@@ -25,9 +25,7 @@ def _registered_tables(package: str) -> list[Table]:
 def _sql_packages() -> set[str]:
     return {
         ".".join(init.parent.relative_to(BACKEND).parts)
-        for init in (
-            BACKEND / "context" / "table_maintenance" / "adapter" / "outbound"
-        ).glob("*/sql/__init__.py")
+        for init in (BACKEND / "context" / "table_maintenance" / "adapter" / "outbound").glob("*/sql/__init__.py")
     }
 
 

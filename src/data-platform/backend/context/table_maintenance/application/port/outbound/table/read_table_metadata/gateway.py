@@ -54,9 +54,7 @@ class ReadTableMetadataGateway(Gateway):
         """Return the table's definition, or None when it does not exist."""
 
     @abstractmethod
-    def list_commits(
-        self, ref: TableMetadataRef, since: str | None, limit: int
-    ) -> TableCommitPage | None:
+    def list_commits(self, ref: TableMetadataRef, since: str | None, limit: int) -> TableCommitPage | None:
         """Return up to ``limit`` commits at or after ``since``, newest first.
 
         None when the table does not exist.

@@ -32,18 +32,14 @@ async def apply_worker_startup(
     get_table_discovery_settings: GetTableDiscoverySettingsUseCase,
     *,
     ensure_schedule: Callable[..., Awaitable[None]] = ensure_table_discovery_schedule,
-    ensure_admission: Callable[
-        ..., Awaitable[None]
-    ] = ensure_table_maintenance_admission,
+    ensure_admission: Callable[..., Awaitable[None]] = ensure_table_maintenance_admission,
 ) -> None:
     """Bring the discovery schedules and the admission workflow in line with the DB.
 
     The discovery switch comes from the DB (an absent row means enabled), so every
     worker start re-applies it to the per-catalog schedules.
     """
-    discovery = await asyncio.to_thread(
-        get_table_discovery_settings.execute, GetTableDiscoverySettingsUseCaseInput()
-    )
+    discovery = await asyncio.to_thread(get_table_discovery_settings.execute, GetTableDiscoverySettingsUseCaseInput())
     await ensure_schedule(
         client,
         list(settings.catalog.names),

@@ -141,10 +141,7 @@ def test_enrolled_changes_start_one_workflow_and_deliver_both(harness):
 
     async def count() -> int:
         found = [
-            w.id
-            async for w in harness.client.list_workflows(
-                "WorkflowId = 'table-reconciliation:table-uuid=swl'"
-            )
+            w.id async for w in harness.client.list_workflows("WorkflowId = 'table-reconciliation:table-uuid=swl'")
         ]
         return len(found)
 
@@ -163,16 +160,10 @@ def test_enrolled_changes_start_one_workflow_and_deliver_both(harness):
 def test_start_sets_the_table_summary_only_on_the_first_start(harness):
     gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
     for table_name in ("iceberg.sales.orders", "iceberg.sales.renamed"):
-        gateway.send(
-            _change(
-                "summary", "settings_changed", is_enrolled=True, table_name=table_name
-            )
-        )
+        gateway.send(_change("summary", "settings_changed", is_enrolled=True, table_name=table_name))
 
     async def summary() -> str | None:
-        handle = harness.client.get_workflow_handle(
-            table_reconciliation_workflow_id("summary")
-        )
+        handle = harness.client.get_workflow_handle(table_reconciliation_workflow_id("summary"))
         return await (await handle.describe()).static_summary()
 
     assert harness.bridge.run(summary) == "iceberg.sales.orders"

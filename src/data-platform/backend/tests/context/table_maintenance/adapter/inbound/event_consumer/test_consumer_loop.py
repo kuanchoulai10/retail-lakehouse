@@ -29,9 +29,7 @@ class RecordingUseCase(ProcessTableHintUseCase):
         self.calls: list[ProcessTableHintUseCaseInput] = []
         self._outcomes = list(outcomes or [])
 
-    def execute(
-        self, request: ProcessTableHintUseCaseInput
-    ) -> ProcessTableHintUseCaseOutput:
+    def execute(self, request: ProcessTableHintUseCaseInput) -> ProcessTableHintUseCaseOutput:
         self.calls.append(request)
         outcome = self._outcomes.pop(0) if self._outcomes else None
         if outcome is not None:
@@ -47,9 +45,7 @@ def _record(offset: int, **fields: object) -> EventRecord:
         "table_name": f"t{offset}",
         **fields,
     }
-    return EventRecord(
-        json.dumps(payload).encode(), "polaris-catalog-events", 0, offset
-    )
+    return EventRecord(json.dumps(payload).encode(), "polaris-catalog-events", 0, offset)
 
 
 def _raw_record(offset: int, value: bytes | None) -> EventRecord:

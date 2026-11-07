@@ -64,14 +64,9 @@ def table_observation_from_gateway(
                 )
                 for p in observation.partitions
             ),
-            manifests=tuple(
-                ManifestStats(length_bytes=m["length_bytes"])
-                for m in observation.manifests
-            ),
+            manifests=tuple(ManifestStats(length_bytes=m["length_bytes"]) for m in observation.manifests),
             snapshots=tuple(
-                SnapshotInfo(
-                    snapshot_id=s["snapshot_id"], committed_at=_utc(s["committed_at"])
-                )
+                SnapshotInfo(snapshot_id=s["snapshot_id"], committed_at=_utc(s["committed_at"]))
                 for s in observation.snapshots
             ),
         )

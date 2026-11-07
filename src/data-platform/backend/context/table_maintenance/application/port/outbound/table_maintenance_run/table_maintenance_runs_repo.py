@@ -24,13 +24,9 @@ class TableMaintenanceRunsRepo(Repository[TableMaintenanceRun]):
         """Persist the changed run and return it."""
 
     @abstractmethod
-    def list_by_table(
-        self, table_uuid: TableId, limit: int = 50
-    ) -> list[TableMaintenanceRun]:
+    def list_by_table(self, table_uuid: TableId, limit: int = 50) -> list[TableMaintenanceRun]:
         """Return up to ``limit`` runs of the table, newest first."""
 
     @abstractmethod
-    def list_by_table_since(
-        self, table_uuid: TableId, since: datetime
-    ) -> list[TableMaintenanceRun]:
+    def list_by_table_since(self, table_uuid: TableId, since: datetime) -> list[TableMaintenanceRun]:
         """Return the table's runs created at or after since, newest first."""

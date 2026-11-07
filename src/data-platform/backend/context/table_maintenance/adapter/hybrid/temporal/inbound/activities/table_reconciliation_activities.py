@@ -86,9 +86,7 @@ class TableReconciliationActivities:
                     operation=request["operation"],
                     attempt=request["attempt"],
                     filters=[
-                        SubmitMaintenanceOperationUseCaseInputFilterItem(
-                            spec_id=item["spec_id"], where=item["where"]
-                        )
+                        SubmitMaintenanceOperationUseCaseInputFilterItem(spec_id=item["spec_id"], where=item["where"])
                         for item in request["filters"]
                     ],
                     procedure_args=dict(request["procedure_args"]),

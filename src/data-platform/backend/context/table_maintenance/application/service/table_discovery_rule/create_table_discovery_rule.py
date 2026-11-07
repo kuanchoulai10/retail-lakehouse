@@ -54,17 +54,11 @@ class CreateTableDiscoveryRuleService(CreateTableDiscoveryRuleUseCase):
         self._clock = clock
         self._new_id = new_id
 
-    def execute(
-        self, request: CreateTableDiscoveryRuleUseCaseInput
-    ) -> CreateTableDiscoveryRuleUseCaseOutput:
+    def execute(self, request: CreateTableDiscoveryRuleUseCaseInput) -> CreateTableDiscoveryRuleUseCaseOutput:
         """Create the rule after checking its preset exists."""
         with translate_domain_errors():
             effect = RuleEffect(request.effect)
-            preset_id = (
-                None
-                if request.preset_id is None
-                else TableMaintenancePresetId(request.preset_id)
-            )
+            preset_id = None if request.preset_id is None else TableMaintenancePresetId(request.preset_id)
             if preset_id is not None and self._presets_repo.get(preset_id) is None:
                 raise NotFoundError(f"table maintenance preset {preset_id} not found")
             rule = TableDiscoveryRule.create(
@@ -81,6 +75,4 @@ class CreateTableDiscoveryRuleService(CreateTableDiscoveryRuleUseCase):
                 self._clock(),
             )
             self._rules_repo.create(rule)
-        return CreateTableDiscoveryRuleUseCaseOutput(
-            **table_discovery_rule_output_fields(rule)
-        )
+        return CreateTableDiscoveryRuleUseCaseOutput(**table_discovery_rule_output_fields(rule))

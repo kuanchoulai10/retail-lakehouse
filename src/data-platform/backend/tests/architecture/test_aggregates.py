@@ -78,9 +78,7 @@ def test_table_maintenance_aggregates_are_derived():
     }
 
 
-def test_package_without_aggregate_root_is_not_an_aggregate(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_package_without_aggregate_root_is_not_an_aggregate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     name = build_fixture_context(
         tmp_path,
         {

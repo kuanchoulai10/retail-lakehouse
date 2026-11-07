@@ -51,9 +51,7 @@ class ReadMaintenanceJobK8sGateway(ReadMaintenanceJobGateway):
                 version=VERSION,
                 namespace=self._config.namespace,
                 plural=PLURAL,
-                name=spark_application_name(
-                    input.run_id, input.operation, input.attempt
-                ),
+                name=spark_application_name(input.run_id, input.operation, input.attempt),
             )
         except ApiException as exc:
             if exc.status == HTTP_NOT_FOUND:
@@ -64,9 +62,7 @@ class ReadMaintenanceJobK8sGateway(ReadMaintenanceJobGateway):
         if state == "COMPLETED":
             return ReadMaintenanceJobGatewayOutput("COMPLETED")
         if state in FAILED_STATES:
-            return ReadMaintenanceJobGatewayOutput(
-                "FAILED", application_state.get("errorMessage")
-            )
+            return ReadMaintenanceJobGatewayOutput("FAILED", application_state.get("errorMessage"))
         if state in RUNNING_STATES:
             return ReadMaintenanceJobGatewayOutput("RUNNING")
         return ReadMaintenanceJobGatewayOutput("PENDING")

@@ -95,61 +95,37 @@ def build_use_cases(
         update_table_discovery_settings=UpdateTableDiscoverySettingsService(
             discovery, gateways.update_table_discovery_schedule, clock=clock
         ),
-        create_table_discovery_rule=CreateTableDiscoveryRuleService(
-            rules, presets, clock=clock
-        ),
+        create_table_discovery_rule=CreateTableDiscoveryRuleService(rules, presets, clock=clock),
         delete_table_discovery_rule=DeleteTableDiscoveryRuleService(rules),
         list_table_discovery_rules=ListTableDiscoveryRulesService(rules),
-        update_table_discovery_rule=UpdateTableDiscoveryRuleService(
-            rules, presets, clock=clock
-        ),
-        create_table_maintenance_preset=CreateTableMaintenancePresetService(
-            presets, clock=clock
-        ),
-        delete_table_maintenance_preset=DeleteTableMaintenancePresetService(
-            presets, rules
-        ),
+        update_table_discovery_rule=UpdateTableDiscoveryRuleService(rules, presets, clock=clock),
+        create_table_maintenance_preset=CreateTableMaintenancePresetService(presets, clock=clock),
+        delete_table_maintenance_preset=DeleteTableMaintenancePresetService(presets, rules),
         get_table_maintenance_preset=GetTableMaintenancePresetService(presets),
         list_table_maintenance_presets=ListTableMaintenancePresetsService(presets),
-        update_table_maintenance_preset=UpdateTableMaintenancePresetService(
-            presets, clock=clock
-        ),
+        update_table_maintenance_preset=UpdateTableMaintenancePresetService(presets, clock=clock),
         exclude_table=ExcludeTableService(tables, catalog, table_changes, clock=clock),
         get_table=GetTableService(tables),
         get_table_health=GetTableHealthService(tables, catalog, clock=clock),
         get_table_metadata=GetTableMetadataService(tables, catalog),
         get_table_storage=GetTableStorageService(tables, catalog, runs, clock=clock),
         list_table_commits=ListTableCommitsService(tables, catalog),
-        include_table=IncludeTableService(
-            tables, presets, catalog, table_changes, clock=clock
-        ),
+        include_table=IncludeTableService(tables, presets, catalog, table_changes, clock=clock),
         list_tables=ListTablesService(tables),
         pause_table=PauseTableService(tables, table_changes, clock=clock),
-        reset_table_selection=ResetTableSelectionService(
-            tables, rules, presets, table_changes, clock=clock
-        ),
+        reset_table_selection=ResetTableSelectionService(tables, rules, presets, table_changes, clock=clock),
         resume_table=ResumeTableService(tables, table_changes, clock=clock),
         trigger_table_maintenance=TriggerTableMaintenanceService(tables, table_changes),
-        update_table_settings=UpdateTableSettingsService(
-            tables, table_changes, clock=clock
-        ),
+        update_table_settings=UpdateTableSettingsService(tables, table_changes, clock=clock),
         create_table_maintenance_run=CreateTableMaintenanceRunService(runs, tables),
         get_table_maintenance_run=GetTableMaintenanceRunService(runs),
         list_table_maintenance_runs=ListTableMaintenanceRunsService(runs),
         process_table_maintenance_callback=ProcessTableMaintenanceCallbackService(
             runs, gateways.send_maintenance_result
         ),
-        record_table_maintenance_operation_result=RecordTableMaintenanceOperationResultService(
-            runs, tables
-        ),
-        delete_maintenance_job=DeleteMaintenanceJobService(
-            gateways.delete_maintenance_job
-        ),
-        get_maintenance_job_status=GetMaintenanceJobStatusService(
-            gateways.read_maintenance_job
-        ),
+        record_table_maintenance_operation_result=RecordTableMaintenanceOperationResultService(runs, tables),
+        delete_maintenance_job=DeleteMaintenanceJobService(gateways.delete_maintenance_job),
+        get_maintenance_job_status=GetMaintenanceJobStatusService(gateways.read_maintenance_job),
         plan_table_maintenance=PlanTableMaintenanceService(tables, catalog),
-        submit_maintenance_operation=SubmitMaintenanceOperationService(
-            runs, tables, gateways.submit_maintenance_job
-        ),
+        submit_maintenance_operation=SubmitMaintenanceOperationService(runs, tables, gateways.submit_maintenance_job),
     )

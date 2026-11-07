@@ -41,9 +41,7 @@ from context.table_maintenance.application.domain.service.table import (
 
 NOW = datetime(2026, 10, 24, 12, tzinfo=UTC)
 MIB = 1024 * 1024
-DAY_SPEC = PartitionSpecInfo(
-    0, (PartitionFieldInfo(1000, "d", "ts", "timestamp", "day"),)
-)
+DAY_SPEC = PartitionSpecInfo(0, (PartitionFieldInfo(1000, "d", "ts", "timestamp", "day"),))
 
 
 def table(settings=None) -> Table:
@@ -99,9 +97,7 @@ def assess(t: Table, o: TableObservation, op: Op) -> OperationAssessment:
 
 
 def compaction(**kw) -> MaintenanceSettings:
-    return replace(
-        MaintenanceSettings(), rewrite_data_files=RewriteDataFilesSettings(**kw)
-    )
+    return replace(MaintenanceSettings(), rewrite_data_files=RewriteDataFilesSettings(**kw))
 
 
 TWO_PARTITIONS = (part(6, value=1), part(2, value=2))
@@ -173,9 +169,7 @@ def test_expire_snapshots_counts_expirable():
 
 def test_cooldown_reports_next_eligible_time():
     t = table(compaction())
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
-        NOW - timedelta(minutes=30)
-    )
+    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(NOW - timedelta(minutes=30))
     a = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES)
     assert a.verdict == OperationVerdict.COOLDOWN
     assert a.next_eligible_at == NOW + timedelta(minutes=30)
@@ -214,9 +208,7 @@ def test_assessment_ignores_status():
 
 def test_plan_equals_due_operations():
     t = table()
-    t.operation_states[Op.REWRITE_MANIFESTS] = OperationState(
-        NOW - timedelta(minutes=10)
-    )
+    t.operation_states[Op.REWRITE_MANIFESTS] = OperationState(NOW - timedelta(minutes=10))
     o = obs(
         partitions=(part(10, value=1), part(1, value=2)),
         manifests=(ManifestStats(MIB),) * 5,

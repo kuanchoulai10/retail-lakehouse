@@ -11,9 +11,7 @@ CONTEXT_ROOT = BACKEND / "context"
 def context_names() -> list[str]:
     """Return the sorted names of the packages under ``context/``."""
     return sorted(
-        child.name
-        for child in CONTEXT_ROOT.iterdir()
-        if child.is_dir() and (child / "__init__.py").is_file()
+        child.name for child in CONTEXT_ROOT.iterdir() if child.is_dir() and (child / "__init__.py").is_file()
     )
 
 

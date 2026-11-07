@@ -34,12 +34,8 @@ def test_custom_settings_roundtrip_with_second_integer_durations():
             target_file_size_bytes=536870912,
             min_reducible_files=9,
         ),
-        rewrite_manifests=RewriteManifestsSettings(
-            min_small_manifests=3, small_manifest_bytes=1024
-        ),
-        expire_snapshots=ExpireSnapshotsSettings(
-            older_than=timedelta(days=2), retain_last=4
-        ),
+        rewrite_manifests=RewriteManifestsSettings(min_small_manifests=3, small_manifest_bytes=1024),
+        expire_snapshots=ExpireSnapshotsSettings(older_than=timedelta(days=2), retain_last=4),
         remove_orphan_files=RemoveOrphanFilesSettings(older_than=timedelta(days=5)),
     )
     encoded = MaintenanceSettingsCodec.encode(settings)
@@ -50,16 +46,8 @@ def test_custom_settings_roundtrip_with_second_integer_durations():
 
 def test_encode_rejects_sub_second_duration():
     with pytest.raises(ValueError, match="whole number of seconds"):
-        MaintenanceSettingsCodec.encode(
-            MaintenanceSettings(
-                reconcile_interval=timedelta(seconds=1, milliseconds=500)
-            )
-        )
+        MaintenanceSettingsCodec.encode(MaintenanceSettings(reconcile_interval=timedelta(seconds=1, milliseconds=500)))
     with pytest.raises(ValueError, match="whole number of seconds"):
         MaintenanceSettingsCodec.encode(
-            MaintenanceSettings(
-                expire_snapshots=ExpireSnapshotsSettings(
-                    older_than=timedelta(days=1, microseconds=1)
-                )
-            )
+            MaintenanceSettings(expire_snapshots=ExpireSnapshotsSettings(older_than=timedelta(days=1, microseconds=1)))
         )

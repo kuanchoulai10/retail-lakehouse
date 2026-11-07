@@ -14,14 +14,10 @@ from base import UseCase
 
 
 class SubmitMaintenanceOperationUseCase(
-    UseCase[
-        SubmitMaintenanceOperationUseCaseInput, SubmitMaintenanceOperationUseCaseOutput
-    ]
+    UseCase[SubmitMaintenanceOperationUseCaseInput, SubmitMaintenanceOperationUseCaseOutput]
 ):
     """Submit one attempt of a maintenance operation to Spark."""
 
     @abstractmethod
-    def execute(
-        self, request: SubmitMaintenanceOperationUseCaseInput
-    ) -> SubmitMaintenanceOperationUseCaseOutput:
+    def execute(self, request: SubmitMaintenanceOperationUseCaseInput) -> SubmitMaintenanceOperationUseCaseOutput:
         """Submit one attempt of a maintenance operation to Spark."""

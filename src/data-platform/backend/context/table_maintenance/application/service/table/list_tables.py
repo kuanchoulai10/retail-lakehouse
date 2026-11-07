@@ -35,8 +35,4 @@ class ListTablesService(ListTablesUseCase):
             with translate_domain_errors():
                 status = TableStatus(request.status)
             tables = self._tables_repo.list_by_statuses([status])
-        return ListTablesUseCaseOutput(
-            items=[
-                ListTablesUseCaseOutputItem(**table_output_fields(t)) for t in tables
-            ]
-        )
+        return ListTablesUseCaseOutput(items=[ListTablesUseCaseOutputItem(**table_output_fields(t)) for t in tables])

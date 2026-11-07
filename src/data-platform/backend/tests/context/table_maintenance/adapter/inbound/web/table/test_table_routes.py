@@ -42,9 +42,7 @@ FIELDS: dict[str, Any] = {
     "settings": {"reconcile_interval_seconds": 3600},
     "matched_rule_id": "r-1",
     "source_preset_id": "t-1",
-    "operation_states": {
-        "rewrite_data_files": {"last_attempt_at": NOW, "consecutive_failures": 0}
-    },
+    "operation_states": {"rewrite_data_files": {"last_attempt_at": NOW, "consecutive_failures": 0}},
     "registered_at": NOW,
     "updated_at": NOW,
 }
@@ -93,9 +91,7 @@ def test_put_settings_sends_the_body_as_settings() -> None:
     response = client.put("/v1/tables/u-1/settings", json=settings)
 
     assert response.status_code == 200
-    assert stub.requests == [
-        UpdateTableSettingsUseCaseInput(uuid="u-1", settings=settings)
-    ]
+    assert stub.requests == [UpdateTableSettingsUseCaseInput(uuid="u-1", settings=settings)]
 
 
 @pytest.mark.parametrize(
@@ -163,14 +159,8 @@ def test_trigger_table_maintenance_returns_202() -> None:
     stub = StubUseCase(TriggerTableMaintenanceUseCaseOutput(accepted=True))
     client = build_client(trigger_table_maintenance=stub)
 
-    response = client.post(
-        "/v1/tables/u-1/maintenance", json={"operations": ["rewrite_data_files"]}
-    )
+    response = client.post("/v1/tables/u-1/maintenance", json={"operations": ["rewrite_data_files"]})
 
     assert response.status_code == 202
     assert response.json() == {"accepted": True}
-    assert stub.requests == [
-        TriggerTableMaintenanceUseCaseInput(
-            uuid="u-1", operations=["rewrite_data_files"]
-        )
-    ]
+    assert stub.requests == [TriggerTableMaintenanceUseCaseInput(uuid="u-1", operations=["rewrite_data_files"])]

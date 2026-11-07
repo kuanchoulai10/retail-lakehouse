@@ -43,9 +43,7 @@ def test_result_reaches_maintenance_workflow(harness):
         )
 
     harness.bridge.run(start)
-    SendMaintenanceResultTemporalGateway(harness.client, harness.bridge).send(
-        _input("r1", "any-workflow-id-of-r1")
-    )
+    SendMaintenanceResultTemporalGateway(harness.client, harness.bridge).send(_input("r1", "any-workflow-id-of-r1"))
     handle = harness.client.get_workflow_handle("any-workflow-id-of-r1")
 
     async def query() -> list:

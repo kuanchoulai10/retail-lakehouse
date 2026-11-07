@@ -78,11 +78,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             id=id,
             table_uuid=table_uuid,
             trigger=trigger,
-            operations=tuple(
-                OperationRun(operation=op)
-                for op in MaintenanceOperation.ordered()
-                if op in requested
-            ),
+            operations=tuple(OperationRun(operation=op) for op in MaintenanceOperation.ordered() if op in requested),
             created_at=now,
             execution_ref=execution_ref,
         )
@@ -134,15 +130,10 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             now,
         )
 
-    def attach_job_name(
-        self, operation: MaintenanceOperation, attempt: int, job_name: str
-    ) -> None:
+    def attach_job_name(self, operation: MaintenanceOperation, attempt: int, job_name: str) -> None:
         """Record the job of the running attempt; repeating the same name is a no-op."""
         current = self._get(operation)
-        if (
-            attempt != current.attempts
-            or current.status is not OperationRunStatus.RUNNING
-        ):
+        if attempt != current.attempts or current.status is not OperationRunStatus.RUNNING:
             msg = (
                 f"cannot attach a job to attempt {attempt} of {operation} "
                 f"(status {current.status}, attempts {current.attempts})"
@@ -154,8 +145,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             msg = f"attempt {attempt} of {operation} already has job {current.job_name}"
             raise InvalidRunTransition(msg)
         self.operations = tuple(
-            replace(run, job_name=job_name) if run.operation == operation else run
-            for run in self.operations
+            replace(run, job_name=job_name) if run.operation == operation else run for run in self.operations
         )
 
     def succeed(
@@ -183,9 +173,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         now: datetime,
     ) -> None:
         """Record that an attempt failed."""
-        self._finish(
-            operation, attempt, OperationRunStatus.FAILED, now, metrics={}, error=error
-        )
+        self._finish(operation, attempt, OperationRunStatus.FAILED, now, metrics={}, error=error)
 
     def skip(self, operation: MaintenanceOperation, reason: str, now: datetime) -> None:
         """Skip a pending operation."""
@@ -236,17 +224,14 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         )
 
     @staticmethod
-    def _require_startable(
-        current: OperationRun, operation: MaintenanceOperation, attempt: int
-    ) -> None:
+    def _require_startable(current: OperationRun, operation: MaintenanceOperation, attempt: int) -> None:
         startable = current.status in (
             OperationRunStatus.PENDING,
             OperationRunStatus.FAILED,
         )
         if attempt != current.attempts + 1 or not startable:
             msg = (
-                f"cannot start attempt {attempt} of {operation} "
-                f"(status {current.status}, attempts {current.attempts})"
+                f"cannot start attempt {attempt} of {operation} (status {current.status}, attempts {current.attempts})"
             )
             raise InvalidRunTransition(msg)
 
@@ -258,10 +243,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         raise InvalidRunTransition(msg)
 
     def _replace(self, updated: OperationRun, now: datetime) -> None:
-        self.operations = tuple(
-            updated if run.operation == updated.operation else run
-            for run in self.operations
-        )
+        self.operations = tuple(updated if run.operation == updated.operation else run for run in self.operations)
         if all(run.status in _TERMINAL for run in self.operations):
             self.finished_at = now
         else:

@@ -19,7 +19,5 @@ class DeleteTableDiscoveryRuleUseCase(
     """Delete a discovery rule."""
 
     @abstractmethod
-    def execute(
-        self, request: DeleteTableDiscoveryRuleUseCaseInput
-    ) -> DeleteTableDiscoveryRuleUseCaseOutput:
+    def execute(self, request: DeleteTableDiscoveryRuleUseCaseInput) -> DeleteTableDiscoveryRuleUseCaseOutput:
         """Delete a discovery rule."""

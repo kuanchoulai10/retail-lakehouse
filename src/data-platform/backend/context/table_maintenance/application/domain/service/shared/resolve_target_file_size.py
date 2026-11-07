@@ -13,9 +13,7 @@ from context.table_maintenance.application.domain.service.shared.positive_int_pr
 DEFAULT_TARGET_FILE_SIZE_BYTES = 536870912
 
 
-def resolve_target_file_size(
-    settings: RewriteDataFilesSettings, properties: dict[str, str]
-) -> int:
+def resolve_target_file_size(settings: RewriteDataFilesSettings, properties: dict[str, str]) -> int:
     """Return the target size: settings, then table property, then 512 MiB."""
     if settings.target_file_size_bytes is not None:
         return settings.target_file_size_bytes

@@ -35,9 +35,7 @@ def _defined_classes(file_path: Path) -> list[str]:
 def _dto_files() -> list[Path]:
     """Find all dto.py files under the web adapter directories of every context."""
     return sorted(
-        path
-        for name in context_names()
-        for path in (context_dir(name) / "adapter" / "inbound" / "web").rglob("dto.py")
+        path for name in context_names() for path in (context_dir(name) / "adapter" / "inbound" / "web").rglob("dto.py")
     )
 
 
@@ -49,12 +47,5 @@ def _dto_id(file_path: Path) -> str:
 @pytest.mark.parametrize("file_path", _dto_files(), ids=_dto_id)
 def test_web_dto_suffix(file_path: Path) -> None:
     """Verify every class in dto.py ends with ApiRequest or ApiResponse."""
-    misnamed = [
-        cls
-        for cls in _defined_classes(file_path)
-        if not any(cls.endswith(s) for s in _ALLOWED_SUFFIXES)
-    ]
-    assert misnamed == [], (
-        f"{file_path.parent.name}/dto.py has classes not ending with "
-        f"{_ALLOWED_SUFFIXES}: {misnamed}"
-    )
+    misnamed = [cls for cls in _defined_classes(file_path) if not any(cls.endswith(s) for s in _ALLOWED_SUFFIXES)]
+    assert misnamed == [], f"{file_path.parent.name}/dto.py has classes not ending with {_ALLOWED_SUFFIXES}: {misnamed}"

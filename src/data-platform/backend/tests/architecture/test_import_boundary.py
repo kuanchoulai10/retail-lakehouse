@@ -103,9 +103,7 @@ def _violations() -> list[str]:
 
 def test_no_import_past_a_boundary():
     violations = _violations()
-    assert not violations, (
-        f"{len(violations)} imports reach past a boundary:\n" + "\n".join(violations)
-    )
+    assert not violations, f"{len(violations)} imports reach past a boundary:\n" + "\n".join(violations)
 
 
 def _boundary_dir(boundary: str) -> Path:
@@ -122,11 +120,7 @@ def _modules_below(boundary: str, known: set[str]) -> list[Path]:
             if child.is_dir() and (child / "__init__.py").is_file():
                 if _dotted_dir(child) not in known:
                     pending.append(child)
-            elif (
-                child.suffix == ".py"
-                and child.name != "__init__.py"
-                and not child.name.startswith("_")
-            ):
+            elif child.suffix == ".py" and child.name != "__init__.py" and not child.name.startswith("_"):
                 modules.append(child)
     return modules
 
@@ -159,9 +153,7 @@ def _primary_exports(module: Path) -> list[str]:
     """Return the name matching the module, else its public definitions and constants."""
     definitions, assigned = _defined_names(ast.parse(module.read_text()))
     flat = module.stem.replace("_", "")
-    primary = [
-        name for name in definitions + assigned if name.lower().replace("_", "") == flat
-    ]
+    primary = [name for name in definitions + assigned if name.lower().replace("_", "") == flat]
     if primary:
         return primary
     return definitions + [name for name in assigned if name.isupper()]
@@ -169,14 +161,10 @@ def _primary_exports(module: Path) -> list[str]:
 
 def _declared_all(init: Path) -> list[str] | None:
     for node in ast.parse(init.read_text()).body:
-        if isinstance(node, ast.Assign) and any(
-            isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets
-        ):
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets):
             assert isinstance(node.value, ast.List | ast.Tuple)
             return [
-                elt.value
-                for elt in node.value.elts
-                if isinstance(elt, ast.Constant) and isinstance(elt.value, str)
+                elt.value for elt in node.value.elts if isinstance(elt, ast.Constant) and isinstance(elt.value, str)
             ]
     return None
 
@@ -207,9 +195,7 @@ def test_boundary_exports_are_unambiguous():
             for name in _primary_exports(module):
                 owners.setdefault(name, []).append(module.name)
         clashes.extend(
-            f"{boundary}: {name} exported by {modules}"
-            for name, modules in owners.items()
-            if len(modules) > 1
+            f"{boundary}: {name} exported by {modules}" for name, modules in owners.items() if len(modules) > 1
         )
     assert not clashes, "\n".join(clashes)
 
@@ -297,18 +283,13 @@ def _repository_ports() -> list[tuple[str, type]]:
     ports: list[tuple[str, type]] = []
     for boundary in sorted(boundaries()):
         if not any(
-            boundary.startswith(f"{context_module(name)}.application.port.outbound.")
-            for name in context_names()
+            boundary.startswith(f"{context_module(name)}.application.port.outbound.") for name in context_names()
         ):
             continue
         package = importlib.import_module(boundary)
         for name in package.__all__:
             value = getattr(package, name)
-            if (
-                isinstance(value, type)
-                and issubclass(value, Repository)
-                and value is not Repository
-            ):
+            if isinstance(value, type) and issubclass(value, Repository) and value is not Repository:
                 ports.append((boundary, value))
     return ports
 
@@ -352,6 +333,6 @@ def test_every_project_module_belongs_to_a_boundary():
         and path.name != "__init__.py"
         and innermost_boundary(_module_name(path), known) is None
     ]
-    assert sorted(outside) == sorted(BOUNDARY_FREE_MODULES), (
-        "Modules outside every boundary:\n" + "\n".join(sorted(outside))
+    assert sorted(outside) == sorted(BOUNDARY_FREE_MODULES), "Modules outside every boundary:\n" + "\n".join(
+        sorted(outside)
     )

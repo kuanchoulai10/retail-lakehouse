@@ -33,9 +33,7 @@ def test_connects_the_gateway_client_on_the_bridge_loop(tmp_path):
             connect=connect,
             k8s_api_factory=MagicMock,
         )
-        listing = use_cases.list_table_maintenance_presets.execute(
-            ListTableMaintenancePresetsUseCaseInput()
-        )
+        listing = use_cases.list_table_maintenance_presets.execute(ListTableMaintenancePresetsUseCaseInput())
     finally:
         bridge.close()
 

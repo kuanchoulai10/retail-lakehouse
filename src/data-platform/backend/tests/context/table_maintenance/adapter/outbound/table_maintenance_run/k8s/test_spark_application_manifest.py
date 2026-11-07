@@ -52,9 +52,7 @@ def test_spark_application_enables_compressed_rolling_event_log():
     assert conf["spark.eventLog.rolling.maxFileSize"] == "128m"
     assert conf["spark.hadoop.fs.s3a.endpoint"] == CONFIG.s3_endpoint
     assert conf["spark.hadoop.fs.s3a.path.style.access"] == "true"
-    assert (
-        f"{HADOOP_MAVEN}/hadoop-aws/3.4.1/hadoop-aws-3.4.1.jar" in spec["deps"]["jars"]
-    )
+    assert f"{HADOOP_MAVEN}/hadoop-aws/3.4.1/hadoop-aws-3.4.1.jar" in spec["deps"]["jars"]
 
 
 def test_spark_application_event_log_dir_is_configurable():
@@ -74,9 +72,7 @@ def test_spark_application_s3a_reads_credentials_from_the_secret_env():
 
 def test_spark_application_s3a_ssl_follows_the_endpoint_scheme():
     http_conf = _spec()["sparkConf"]
-    https_conf = _spec(replace(CONFIG, s3_endpoint="https://s3.example.com"))[
-        "sparkConf"
-    ]
+    https_conf = _spec(replace(CONFIG, s3_endpoint="https://s3.example.com"))["sparkConf"]
 
     assert http_conf["spark.hadoop.fs.s3a.connection.ssl.enabled"] == "false"
     assert https_conf["spark.hadoop.fs.s3a.connection.ssl.enabled"] == "true"
@@ -91,19 +87,11 @@ def test_spark_application_s3a_path_style_follows_the_config():
 def test_spark_application_adds_the_s3_transfer_manager_matching_the_iceberg_sdk():
     jars = _spec()["deps"]["jars"]
 
-    assert (
-        f"{AWS_SDK_MAVEN}/s3-transfer-manager/2.33.0/s3-transfer-manager-2.33.0.jar"
-        in jars
-    )
+    assert f"{AWS_SDK_MAVEN}/s3-transfer-manager/2.33.0/s3-transfer-manager-2.33.0.jar" in jars
 
 
 def test_spark_application_pins_hadoop_and_sdk_versions_from_the_config():
-    jars = _spec(replace(CONFIG, hadoop_version="3.4.2", aws_sdk_version="2.34.0"))[
-        "deps"
-    ]["jars"]
+    jars = _spec(replace(CONFIG, hadoop_version="3.4.2", aws_sdk_version="2.34.0"))["deps"]["jars"]
 
     assert f"{HADOOP_MAVEN}/hadoop-aws/3.4.2/hadoop-aws-3.4.2.jar" in jars
-    assert (
-        f"{AWS_SDK_MAVEN}/s3-transfer-manager/2.34.0/s3-transfer-manager-2.34.0.jar"
-        in jars
-    )
+    assert f"{AWS_SDK_MAVEN}/s3-transfer-manager/2.34.0/s3-transfer-manager-2.34.0.jar" in jars

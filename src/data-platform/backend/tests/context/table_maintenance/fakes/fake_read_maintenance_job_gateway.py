@@ -32,9 +32,7 @@ class FakeReadMaintenanceJobGateway(ReadMaintenanceJobGateway):
         error: str | None = None,
     ) -> None:
         """Configure the state returned for one operation attempt."""
-        self.states[(run_id, operation, attempt)] = ReadMaintenanceJobGatewayOutput(
-            state, error
-        )
+        self.states[(run_id, operation, attempt)] = ReadMaintenanceJobGatewayOutput(state, error)
 
     def read(
         self,

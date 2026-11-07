@@ -19,7 +19,5 @@ class ListTableDiscoveryRulesUseCase(
     """List all discovery rules."""
 
     @abstractmethod
-    def execute(
-        self, request: ListTableDiscoveryRulesUseCaseInput
-    ) -> ListTableDiscoveryRulesUseCaseOutput:
+    def execute(self, request: ListTableDiscoveryRulesUseCaseInput) -> ListTableDiscoveryRulesUseCaseOutput:
         """List all discovery rules."""

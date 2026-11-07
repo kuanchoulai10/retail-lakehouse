@@ -27,9 +27,7 @@ def test_api_builds_and_serves_without_a_kubeconfig(tmp_path):
     run_migrations(build_engine(settings))
     bridge = AsyncLoopBridge()
     try:
-        app = build_api_app(
-            settings, bridge, connect=_connect, k8s_api_factory=_no_kubeconfig
-        )
+        app = build_api_app(settings, bridge, connect=_connect, k8s_api_factory=_no_kubeconfig)
         client = TestClient(app)
 
         assert client.get("/healthz").status_code == 200

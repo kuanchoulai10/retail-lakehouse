@@ -67,9 +67,7 @@ def test_converts_every_part_of_the_observation():
     assert result.properties == {"write.target-file-size-bytes": "1024"}
     assert result.current_snapshot_id == 7
     assert result.specs == (
-        PartitionSpecInfo(
-            0, (PartitionFieldInfo(1000, "region", "region", "string", "identity"),)
-        ),
+        PartitionSpecInfo(0, (PartitionFieldInfo(1000, "region", "region", "string", "identity"),)),
     )
     assert result.partitions == (PartitionStats(0, ("eu",), 4, 1, 2, 4096),)
     assert result.manifests == (ManifestStats(100), ManifestStats(200))
@@ -78,9 +76,7 @@ def test_converts_every_part_of_the_observation():
 
 def test_committed_at_becomes_aware_utc():
     result = table_observation_from_gateway(_gateway_observation())
-    assert result.snapshots[0] == SnapshotInfo(
-        6, datetime(2026, 10, 1, 8, 0, tzinfo=UTC)
-    )
+    assert result.snapshots[0] == SnapshotInfo(6, datetime(2026, 10, 1, 8, 0, tzinfo=UTC))
     assert result.snapshots[1].committed_at == datetime(2026, 10, 2, 10, tzinfo=UTC)
     assert result.snapshots[2].committed_at == datetime(2026, 10, 3, 10, tzinfo=UTC)
     assert all(s.committed_at.utcoffset() == timedelta(0) for s in result.snapshots)

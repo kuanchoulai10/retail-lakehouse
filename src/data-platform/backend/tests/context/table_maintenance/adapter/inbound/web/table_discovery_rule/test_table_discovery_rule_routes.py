@@ -35,9 +35,7 @@ FIELDS: dict[str, Any] = {
 
 
 def test_list_table_discovery_rules() -> None:
-    output = ListTableDiscoveryRulesUseCaseOutput(
-        items=[ListTableDiscoveryRulesUseCaseOutputItem(**FIELDS)]
-    )
+    output = ListTableDiscoveryRulesUseCaseOutput(items=[ListTableDiscoveryRulesUseCaseOutputItem(**FIELDS)])
     client = build_client(list_table_discovery_rules=StubUseCase(output))
 
     response = client.get("/v1/table-discovery-rules")
@@ -76,9 +74,7 @@ def test_create_table_discovery_rule_returns_201() -> None:
 def test_create_table_discovery_rule_rejects_unknown_key() -> None:
     client = build_client()
 
-    response = client.post(
-        "/v1/table-discovery-rules", json={"priority": 1, "effect": "include", "x": 1}
-    )
+    response = client.post("/v1/table-discovery-rules", json={"priority": 1, "effect": "include", "x": 1})
 
     assert response.status_code == 422
 
@@ -87,14 +83,10 @@ def test_update_table_discovery_rule() -> None:
     stub = StubUseCase(UpdateTableDiscoveryRuleUseCaseOutput(**FIELDS))
     client = build_client(update_table_discovery_rule=stub)
 
-    response = client.patch(
-        "/v1/table-discovery-rules/r-1", json={"priority": 20, "effect": "exclude"}
-    )
+    response = client.patch("/v1/table-discovery-rules/r-1", json={"priority": 20, "effect": "exclude"})
 
     assert response.status_code == 200
-    assert stub.requests == [
-        UpdateTableDiscoveryRuleUseCaseInput(id="r-1", priority=20, effect="exclude")
-    ]
+    assert stub.requests == [UpdateTableDiscoveryRuleUseCaseInput(id="r-1", priority=20, effect="exclude")]
 
 
 def test_delete_table_discovery_rule_returns_204() -> None:

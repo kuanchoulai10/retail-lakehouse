@@ -31,9 +31,7 @@ def list_table_discovery_rules(
     use_cases: UseCases,
 ) -> list[TableDiscoveryRuleApiResponse]:
     """List the discovery rules."""
-    output = use_cases.list_table_discovery_rules.execute(
-        ListTableDiscoveryRulesUseCaseInput()
-    )
+    output = use_cases.list_table_discovery_rules.execute(ListTableDiscoveryRulesUseCaseInput())
     return [TableDiscoveryRuleApiResponse.model_validate(item) for item in output.items]
 
 
@@ -42,9 +40,7 @@ def create_table_discovery_rule(
     body: CreateTableDiscoveryRuleApiRequest, use_cases: UseCases
 ) -> TableDiscoveryRuleApiResponse:
     """Create a discovery rule."""
-    output = use_cases.create_table_discovery_rule.execute(
-        CreateTableDiscoveryRuleUseCaseInput(**body.model_dump())
-    )
+    output = use_cases.create_table_discovery_rule.execute(CreateTableDiscoveryRuleUseCaseInput(**body.model_dump()))
     return TableDiscoveryRuleApiResponse.model_validate(output)
 
 
@@ -62,7 +58,5 @@ def update_table_discovery_rule(
 @router.delete("/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_table_discovery_rule(rule_id: str, use_cases: UseCases) -> Response:
     """Delete a discovery rule."""
-    use_cases.delete_table_discovery_rule.execute(
-        DeleteTableDiscoveryRuleUseCaseInput(id=rule_id)
-    )
+    use_cases.delete_table_discovery_rule.execute(DeleteTableDiscoveryRuleUseCaseInput(id=rule_id))
     return Response(status_code=status.HTTP_204_NO_CONTENT)

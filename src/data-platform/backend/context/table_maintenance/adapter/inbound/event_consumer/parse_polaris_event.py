@@ -43,7 +43,5 @@ def parse_polaris_event(raw: bytes) -> PolarisEvent:
         namespace=_string_list(data.get("namespace", []), "namespace"),
         table_name=table_name,
         event_id=event_id if isinstance(event_id, str) else None,
-        destination=(
-            None if destination is None else _string_list(destination, "destination")
-        ),
+        destination=(None if destination is None else _string_list(destination, "destination")),
     )

@@ -28,16 +28,11 @@ class ListTableMaintenanceRunsService(ListTableMaintenanceRunsUseCase):
         """Bind the repo."""
         self._runs_repo = runs_repo
 
-    def execute(
-        self, request: ListTableMaintenanceRunsUseCaseInput
-    ) -> ListTableMaintenanceRunsUseCaseOutput:
+    def execute(self, request: ListTableMaintenanceRunsUseCaseInput) -> ListTableMaintenanceRunsUseCaseOutput:
         """Return up to ``limit`` runs of the table."""
         runs = self._runs_repo.list_by_table(TableId(request.table_uuid), request.limit)
         return ListTableMaintenanceRunsUseCaseOutput(
             items=[
-                ListTableMaintenanceRunsUseCaseOutputItem(
-                    **table_maintenance_run_output_fields(run)
-                )
-                for run in runs
+                ListTableMaintenanceRunsUseCaseOutputItem(**table_maintenance_run_output_fields(run)) for run in runs
             ]
         )

@@ -32,9 +32,7 @@ FIELDS: dict[str, Any] = {
 
 
 def test_list_table_maintenance_presets() -> None:
-    output = ListTableMaintenancePresetsUseCaseOutput(
-        items=[ListTableMaintenancePresetsUseCaseOutputItem(**FIELDS)]
-    )
+    output = ListTableMaintenancePresetsUseCaseOutput(items=[ListTableMaintenancePresetsUseCaseOutputItem(**FIELDS)])
     client = build_client(list_table_maintenance_presets=StubUseCase(output))
 
     response = client.get("/v1/table-maintenance-presets")
@@ -55,9 +53,7 @@ def test_create_table_maintenance_preset_returns_201() -> None:
     assert response.status_code == 201
     assert response.json()["settings"] == {"reconcile_interval_seconds": 3600}
     assert stub.requests == [
-        CreateTableMaintenancePresetUseCaseInput(
-            name="gold", settings={"reconcile_interval_seconds": 3600}
-        )
+        CreateTableMaintenancePresetUseCaseInput(name="gold", settings={"reconcile_interval_seconds": 3600})
     ]
 
 
@@ -75,16 +71,10 @@ def test_update_table_maintenance_preset_keeps_omitted_fields_unset() -> None:
     stub = StubUseCase(UpdateTableMaintenancePresetUseCaseOutput(**FIELDS))
     client = build_client(update_table_maintenance_preset=stub)
 
-    response = client.patch(
-        "/v1/table-maintenance-presets/t-1", json={"name": "platinum"}
-    )
+    response = client.patch("/v1/table-maintenance-presets/t-1", json={"name": "platinum"})
 
     assert response.status_code == 200
-    assert stub.requests == [
-        UpdateTableMaintenancePresetUseCaseInput(
-            id="t-1", name="platinum", settings=None
-        )
-    ]
+    assert stub.requests == [UpdateTableMaintenancePresetUseCaseInput(id="t-1", name="platinum", settings=None)]
 
 
 def test_delete_table_maintenance_preset_returns_204() -> None:

@@ -59,11 +59,7 @@ def axis_violations(context_root: Path, aggregates: set[str]) -> list[str]:
 
 
 def _context_layers() -> list[tuple[str, str]]:
-    return [
-        (context, layer)
-        for context in context_names()
-        for layer in layer_dirs(context_dir(context))
-    ]
+    return [(context, layer) for context in context_names() for layer in layer_dirs(context_dir(context))]
 
 
 @pytest.mark.parametrize("context", context_names())
@@ -92,17 +88,11 @@ def test_inbound_ports_match_services(context: str):
 
 @pytest.mark.parametrize("context", context_names())
 def test_hybrid_outbound_dirs_are_found(context: str):
-    assert "adapter/hybrid/temporal/outbound" in hybrid_outbound_dirs(
-        context_dir(context)
-    )
+    assert "adapter/hybrid/temporal/outbound" in hybrid_outbound_dirs(context_dir(context))
 
 
-@pytest.mark.parametrize(
-    ("context", "layer"), _context_layers(), ids=lambda value: value
-)
+@pytest.mark.parametrize(("context", "layer"), _context_layers(), ids=lambda value: value)
 def test_no_modules_at_layer_root(context: str, layer: str):
     modules = {p.name for p in (context_dir(context) / layer).glob("*.py")}
     allowed = {"__init__.py"} | ROOT_MODULES_ALLOWED.get(layer, set())
-    assert modules == allowed, (
-        f"{context}/{layer} root holds modules: {sorted(modules)}"
-    )
+    assert modules == allowed, f"{context}/{layer} root holds modules: {sorted(modules)}"

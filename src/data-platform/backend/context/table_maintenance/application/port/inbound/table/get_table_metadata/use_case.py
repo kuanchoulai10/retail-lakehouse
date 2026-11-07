@@ -13,13 +13,9 @@ from context.table_maintenance.application.port.inbound.table.get_table_metadata
 from base import UseCase
 
 
-class GetTableMetadataUseCase(
-    UseCase[GetTableMetadataUseCaseInput, GetTableMetadataUseCaseOutput]
-):
+class GetTableMetadataUseCase(UseCase[GetTableMetadataUseCaseInput, GetTableMetadataUseCaseOutput]):
     """Get the catalog metadata of one table."""
 
     @abstractmethod
-    def execute(
-        self, request: GetTableMetadataUseCaseInput
-    ) -> GetTableMetadataUseCaseOutput:
+    def execute(self, request: GetTableMetadataUseCaseInput) -> GetTableMetadataUseCaseOutput:
         """Get the catalog metadata of one table."""

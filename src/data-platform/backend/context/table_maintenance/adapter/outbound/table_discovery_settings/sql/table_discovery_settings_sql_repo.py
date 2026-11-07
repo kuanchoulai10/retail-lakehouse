@@ -84,8 +84,6 @@ class TableDiscoverySettingsSqlRepo(TableDiscoverySettingsRepo):
         """Insert or replace the singleton settings."""
         values = _to_values(settings)
         with self._engine.begin() as conn:
-            result = conn.execute(
-                update(t).where(t.c.id == settings.id.value).values(**values)
-            )
+            result = conn.execute(update(t).where(t.c.id == settings.id.value).values(**values))
             if result.rowcount == 0:
                 conn.execute(insert(t).values(**values))

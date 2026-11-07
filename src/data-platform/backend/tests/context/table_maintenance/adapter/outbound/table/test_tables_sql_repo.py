@@ -46,9 +46,7 @@ def _table(
         registered_at=NOW,
         updated_at=updated_at,
         operation_states={
-            MaintenanceOperation.REWRITE_DATA_FILES: OperationState(
-                last_attempt_at=NOW, consecutive_failures=2
-            ),
+            MaintenanceOperation.REWRITE_DATA_FILES: OperationState(last_attempt_at=NOW, consecutive_failures=2),
             MaintenanceOperation.EXPIRE_SNAPSHOTS: OperationState(),
         },
     )

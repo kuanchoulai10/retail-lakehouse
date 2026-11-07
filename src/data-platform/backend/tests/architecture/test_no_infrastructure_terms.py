@@ -45,10 +45,7 @@ def banned_terms(name: str) -> set[str]:
             if tokens[start : start + len(words)] == words:
                 found.add(term)
                 break
-            if any(
-                "".join(tokens[start:end]) == joined
-                for end in range(start + 1, len(tokens) + 1)
-            ):
+            if any("".join(tokens[start:end]) == joined for end in range(start + 1, len(tokens) + 1)):
                 found.add(term)
                 break
     return found
@@ -80,9 +77,7 @@ def _docstrings(tree: ast.Module) -> set[int]:
     """Return the ids of the docstring constants of the module, classes and functions."""
     found: set[int] = set()
     for node in ast.walk(tree):
-        if isinstance(
-            node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
-        ):
+        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
             body = node.body
             if (
                 body
@@ -129,17 +124,9 @@ def _violations(application: Path) -> list[str]:
         if "__pycache__" in path.parts:
             continue
         rel = path.relative_to(BACKEND)
-        found += [
-            f"{rel}:0 {segment}"
-            for segment in rel.with_suffix("").parts
-            if banned_terms(segment)
-        ]
+        found += [f"{rel}:0 {segment}" for segment in rel.with_suffix("").parts if banned_terms(segment)]
         tree = ast.parse(path.read_text(), filename=str(path))
-        found += [
-            f"{rel}:{lineno} {name}"
-            for lineno, name in _names_in(tree)
-            if banned_terms(name)
-        ]
+        found += [f"{rel}:{lineno} {name}" for lineno, name in _names_in(tree) if banned_terms(name)]
     return sorted(set(found))
 
 
@@ -178,6 +165,4 @@ def f():
 @pytest.mark.parametrize("context", context_names())
 def test_application_names_have_no_infrastructure_terms(context: str):
     violations = _violations(context_dir(context) / "application")
-    assert not violations, "Infrastructure terms in application/:\n" + "\n".join(
-        violations
-    )
+    assert not violations, "Infrastructure terms in application/:\n" + "\n".join(violations)

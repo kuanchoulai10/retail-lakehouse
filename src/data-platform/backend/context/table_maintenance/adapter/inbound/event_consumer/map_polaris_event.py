@@ -28,9 +28,7 @@ _RENAME_EVENT = "AFTER_RENAME_TABLE"
 _NAMESPACE_HINT_EVENT = "BEFORE_CREATE_TABLE"
 
 
-def _hint(
-    event: PolarisEvent, namespace: list[str], table: str | None
-) -> ProcessTableHintUseCaseInput | None:
+def _hint(event: PolarisEvent, namespace: list[str], table: str | None) -> ProcessTableHintUseCaseInput | None:
     if not namespace:
         raise ValueError("namespace is missing")
     return ProcessTableHintUseCaseInput(

@@ -48,9 +48,7 @@ class TableDiscoveryRuleRowMapper:
                 namespace=row["pattern_namespace"],
                 table=row["pattern_table"],
             ),
-            preset_id=None
-            if preset_id is None
-            else TableMaintenancePresetId(preset_id),
+            preset_id=None if preset_id is None else TableMaintenancePresetId(preset_id),
             enabled=row["enabled"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],

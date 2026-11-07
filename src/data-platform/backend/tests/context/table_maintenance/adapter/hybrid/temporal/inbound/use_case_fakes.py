@@ -39,9 +39,7 @@ class FakePlan(PlanTableMaintenanceUseCase):
     def __init__(self) -> None:
         self.requests: list[PlanTableMaintenanceUseCaseInput] = []
 
-    def execute(
-        self, request: PlanTableMaintenanceUseCaseInput
-    ) -> PlanTableMaintenanceUseCaseOutput:
+    def execute(self, request: PlanTableMaintenanceUseCaseInput) -> PlanTableMaintenanceUseCaseOutput:
         self.requests.append(request)
         return PlanTableMaintenanceUseCaseOutput(
             status="planned",
@@ -63,9 +61,7 @@ class FakeSubmit(SubmitMaintenanceOperationUseCase):
         self.requests: list[SubmitMaintenanceOperationUseCaseInput] = []
         self._error = error
 
-    def execute(
-        self, request: SubmitMaintenanceOperationUseCaseInput
-    ) -> SubmitMaintenanceOperationUseCaseOutput:
+    def execute(self, request: SubmitMaintenanceOperationUseCaseInput) -> SubmitMaintenanceOperationUseCaseOutput:
         self.requests.append(request)
         if self._error is not None:
             raise self._error
@@ -76,9 +72,7 @@ class FakeStatus(GetMaintenanceJobStatusUseCase):
     def __init__(self) -> None:
         self.requests: list[GetMaintenanceJobStatusUseCaseInput] = []
 
-    def execute(
-        self, request: GetMaintenanceJobStatusUseCaseInput
-    ) -> GetMaintenanceJobStatusUseCaseOutput:
+    def execute(self, request: GetMaintenanceJobStatusUseCaseInput) -> GetMaintenanceJobStatusUseCaseOutput:
         self.requests.append(request)
         return GetMaintenanceJobStatusUseCaseOutput(state="FAILED", error="oom")
 
@@ -87,9 +81,7 @@ class FakeDelete(DeleteMaintenanceJobUseCase):
     def __init__(self) -> None:
         self.requests: list[DeleteMaintenanceJobUseCaseInput] = []
 
-    def execute(
-        self, request: DeleteMaintenanceJobUseCaseInput
-    ) -> DeleteMaintenanceJobUseCaseOutput:
+    def execute(self, request: DeleteMaintenanceJobUseCaseInput) -> DeleteMaintenanceJobUseCaseOutput:
         self.requests.append(request)
         return DeleteMaintenanceJobUseCaseOutput(
             run_id=request.run_id,
@@ -102,9 +94,7 @@ class FakeCreateRun(CreateTableMaintenanceRunUseCase):
     def __init__(self) -> None:
         self.requests: list[CreateTableMaintenanceRunUseCaseInput] = []
 
-    def execute(
-        self, request: CreateTableMaintenanceRunUseCaseInput
-    ) -> CreateTableMaintenanceRunUseCaseOutput:
+    def execute(self, request: CreateTableMaintenanceRunUseCaseInput) -> CreateTableMaintenanceRunUseCaseOutput:
         self.requests.append(request)
         return CreateTableMaintenanceRunUseCaseOutput(
             run_id=request.run_id,
@@ -126,19 +116,13 @@ class FakeRecordResult(RecordTableMaintenanceOperationResultUseCase):
         self, request: RecordTableMaintenanceOperationResultUseCaseInput
     ) -> RecordTableMaintenanceOperationResultUseCaseOutput:
         self.requests.append(request)
-        return RecordTableMaintenanceOperationResultUseCaseOutput(
-            run_id=request.run_id, status="running"
-        )
+        return RecordTableMaintenanceOperationResultUseCaseOutput(run_id=request.run_id, status="running")
 
 
 class FakeSync(SyncDiscoveredTablesUseCase):
     def __init__(self) -> None:
         self.requests: list[SyncDiscoveredTablesUseCaseInput] = []
 
-    def execute(
-        self, request: SyncDiscoveredTablesUseCaseInput
-    ) -> SyncDiscoveredTablesUseCaseOutput:
+    def execute(self, request: SyncDiscoveredTablesUseCaseInput) -> SyncDiscoveredTablesUseCaseOutput:
         self.requests.append(request)
-        return SyncDiscoveredTablesUseCaseOutput(
-            registered=1, renamed=2, dropped=3, skipped=4
-        )
+        return SyncDiscoveredTablesUseCaseOutput(registered=1, renamed=2, dropped=3, skipped=4)

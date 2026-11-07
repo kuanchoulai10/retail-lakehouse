@@ -60,9 +60,7 @@ class ResetTableSelectionService(ResetTableSelectionUseCase):
         self._table_change_gateway = table_change_gateway
         self._clock = clock
 
-    def execute(
-        self, request: ResetTableSelectionUseCaseInput
-    ) -> ResetTableSelectionUseCaseOutput:
+    def execute(self, request: ResetTableSelectionUseCaseInput) -> ResetTableSelectionUseCaseOutput:
         """Re-run rule matching for the table, whether or not discovery is enabled."""
         table = self._tables_repo.get(TableId(request.uuid))
         if table is None:
@@ -78,19 +76,14 @@ class ResetTableSelectionService(ResetTableSelectionUseCase):
             else:
                 preset = self._presets_repo.get(rule.preset_id)
                 if preset is None:
-                    raise NotFoundError(
-                        f"table maintenance preset {rule.preset_id} of rule {rule.id} "
-                        "not found"
-                    )
+                    raise NotFoundError(f"table maintenance preset {rule.preset_id} of rule {rule.id} not found")
                 table.apply_auto_decision(rule.id, preset.id, preset.settings, now)
             self._tables_repo.update(table)
         self._table_change_gateway.send(
             SendTableChangeGatewayInput(
                 table_uuid=table.id.value,
                 table_name=table.name.fully_qualified(),
-                change=(
-                    TableChange.RESUMED if table.is_enrolled else TableChange.STOPPED
-                ).value,
+                change=(TableChange.RESUMED if table.is_enrolled else TableChange.STOPPED).value,
                 is_enrolled=table.is_enrolled,
             )
         )

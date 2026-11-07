@@ -28,9 +28,7 @@ def build_engine(settings: AppSettings) -> Engine:
         path = settings.sqlite.path
         connect_args = {"check_same_thread": False}
         if path == _IN_MEMORY:
-            return create_engine(
-                "sqlite://", connect_args=connect_args, poolclass=StaticPool
-            )
+            return create_engine("sqlite://", connect_args=connect_args, poolclass=StaticPool)
         return create_engine(f"sqlite:///{path}", connect_args=connect_args)
     url = settings.postgres.db_url.get_secret_value()
     if not url:

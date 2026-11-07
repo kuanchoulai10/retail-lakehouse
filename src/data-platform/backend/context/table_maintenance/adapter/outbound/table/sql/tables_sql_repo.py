@@ -65,9 +65,7 @@ class TablesSqlRepo(TablesRepo):
         """Persist the changed table."""
         values = TableRowMapper.to_values(table)
         with self._engine.begin() as conn:
-            result = conn.execute(
-                update(t).where(t.c.uuid == table.id.value).values(**values)
-            )
+            result = conn.execute(update(t).where(t.c.uuid == table.id.value).values(**values))
             if result.rowcount == 0:
                 raise LookupError(f"table {table.id.value} does not exist")
         return table
@@ -93,11 +91,7 @@ class TablesSqlRepo(TablesRepo):
         """Return the tables with one of the statuses."""
         if not statuses:
             return []
-        stmt = (
-            select(t)
-            .where(t.c.status.in_([s.value for s in statuses]))
-            .order_by(*_ORDER, t.c.uuid)
-        )
+        stmt = select(t).where(t.c.status.in_([s.value for s in statuses])).order_by(*_ORDER, t.c.uuid)
         with self._engine.connect() as conn:
             rows = conn.execute(stmt).all()
         return [TableRowMapper.to_aggregate(r._mapping) for r in rows]

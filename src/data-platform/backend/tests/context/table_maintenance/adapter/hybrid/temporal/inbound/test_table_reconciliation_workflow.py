@@ -59,9 +59,7 @@ def _planned(*operations: str, interval: int = 3600) -> dict[str, Any]:
         "reason": None,
         "reconcile_interval_seconds": interval,
         "table_name": TABLE,
-        "operations": [
-            {"operation": op, "filters": [], "procedure_args": {}} for op in operations
-        ],
+        "operations": [{"operation": op, "filters": [], "procedure_args": {}} for op in operations],
     }
 
 
@@ -92,9 +90,7 @@ class Harness:
     handle: WorkflowHandle | None = None
     sent: int = 0
 
-    async def start(
-        self, start_signal: str | None = TableReconciliationSignal.RESUME, **fields: Any
-    ) -> WorkflowHandle:
+    async def start(self, start_signal: str | None = TableReconciliationSignal.RESUME, **fields: Any) -> WorkflowHandle:
         options: dict[str, Any] = {}
         if start_signal is not None:
             options = {"start_signal": start_signal, "start_signal_args": [{}]}
@@ -133,10 +129,7 @@ class Harness:
         """Wait until the carried in-flight run of ``before`` is no longer tracked."""
         return await eventually(
             self.state,
-            lambda s: (
-                s["in_flight_run_id"] != before["in_flight_run_id"]
-                and not s["planning"]
-            ),
+            lambda s: s["in_flight_run_id"] != before["in_flight_run_id"] and not s["planning"],
         )
 
     async def child(self, run_id: str) -> dict[str, Any]:
@@ -173,11 +166,7 @@ class Harness:
         """
         return await eventually(
             self.state,
-            lambda s: (
-                s["signals_handled"] >= self.sent
-                and not s["woken"]
-                and not s["planning"]
-            ),
+            lambda s: s["signals_handled"] >= self.sent and not s["woken"] and not s["planning"],
         )
 
 
@@ -220,9 +209,7 @@ def test_timer_triggers_plan_every_interval():
         assert len(h.plans.requests) == 1
         await h.env.sleep(timedelta(seconds=400))
         second = (await h.plan_count(2))[1]
-        gap = datetime.fromisoformat(second["now"]) - datetime.fromisoformat(
-            first["now"]
-        )
+        gap = datetime.fromisoformat(second["now"]) - datetime.fromisoformat(first["now"])
         assert timedelta(seconds=1800) <= gap < timedelta(seconds=1900)
 
     _run(scenario, script=lambda _: _planned(interval=1800))
@@ -238,9 +225,7 @@ def test_signal_with_start_plans_and_starts_child_with_abandon_semantics():
         assert child["trigger"] == "scheduled"
         assert child["plan"] == _planned(COMPACTION)
         assert len(h.plans.requests) == 1
-        assert (await h.state())["in_flight_workflow_id"] == (
-            f"table-maintenance:table={TABLE}:run={run_id}"
-        )
+        assert (await h.state())["in_flight_workflow_id"] == (f"table-maintenance:table={TABLE}:run={run_id}")
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
 
@@ -258,9 +243,7 @@ def test_trigger_now_while_in_flight_runs_after_finish():
     async def scenario(h: Harness) -> None:
         await h.start()
         first = await h.in_flight()
-        await h.signal(
-            TableReconciliationSignal.TRIGGER_NOW, {"operations": [COMPACTION]}
-        )
+        await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [COMPACTION]})
         await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE]})
         await h.settle()
         assert len(h.plans.requests) == 1
@@ -268,9 +251,7 @@ def test_trigger_now_while_in_flight_runs_after_finish():
         await h.complete_child(first)
         second_plan = (await h.plan_count(2))[1]
         assert second_plan["manual_operations"] == [EXPIRE]
-        second = await eventually(
-            h.state, lambda s: s["in_flight_run_id"] not in (None, first)
-        )
+        second = await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first))
         assert second["pending_manual"] is None
         child = await h.child(second["in_flight_run_id"])
         assert child["trigger"] == "manual"
@@ -471,11 +452,7 @@ def test_give_up_cancels_the_stale_child_before_starting_a_new_run():
         first = await h.in_flight()
         await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=1))
         await h.plan_count(2)
-        second = (
-            await eventually(
-                h.state, lambda s: s["in_flight_run_id"] not in (None, first)
-            )
-        )["in_flight_run_id"]
+        second = (await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first)))["in_flight_run_id"]
         assert await h.child_status(first) == WorkflowExecutionStatus.CANCELED
         assert await h.child_status(second) == WorkflowExecutionStatus.RUNNING
 
@@ -554,9 +531,7 @@ def test_continue_as_new_carries_interval_used_after_plan_failure():
         failed = (await h.plan_count(2))[1]
         await h.env.sleep(timedelta(seconds=610))
         third = (await h.plan_count(3))[2]
-        gap = datetime.fromisoformat(third["now"]) - datetime.fromisoformat(
-            failed["now"]
-        )
+        gap = datetime.fromisoformat(third["now"]) - datetime.fromisoformat(failed["now"])
         assert timedelta(seconds=600) <= gap < timedelta(seconds=700)
 
     _run(scenario, script=lambda _: _planned(interval=600))
@@ -585,9 +560,7 @@ def test_carried_in_flight_run_without_start_time_gets_a_fixed_deadline():
 
 def test_carried_in_flight_run_without_workflow_id_is_given_up_without_grace():
     async def scenario(h: Harness) -> None:
-        await h.start(
-            start_signal=None, in_flight_run_id="ghost", in_flight_operation_count=1
-        )
+        await h.start(start_signal=None, in_flight_run_id="ghost", in_flight_operation_count=1)
         state = await eventually(h.state, lambda s: s["in_flight_started_at"])
         assert state["in_flight_workflow_id"] is None
         await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=1))

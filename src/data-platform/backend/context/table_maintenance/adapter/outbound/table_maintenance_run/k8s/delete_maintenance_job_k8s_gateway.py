@@ -45,9 +45,7 @@ class DeleteMaintenanceJobK8sGateway(DeleteMaintenanceJobGateway):
                 version=VERSION,
                 namespace=self._config.namespace,
                 plural=PLURAL,
-                name=spark_application_name(
-                    input.run_id, input.operation, input.attempt
-                ),
+                name=spark_application_name(input.run_id, input.operation, input.attempt),
             )
         except ApiException as exc:
             if exc.status != HTTP_NOT_FOUND:

@@ -32,9 +32,7 @@ OTHER_SCHEDULE_ID = "unrelated-schedule"
 
 
 def test_update_without_schedule_does_not_raise(harness):
-    gateway = UpdateTableDiscoveryScheduleTemporalGateway(
-        harness.client, harness.bridge
-    )
+    gateway = UpdateTableDiscoveryScheduleTemporalGateway(harness.client, harness.bridge)
     gateway.update(UpdateTableDiscoveryScheduleGatewayInput(paused=True))
 
 
@@ -76,9 +74,7 @@ def test_update_pauses_and_unpauses_every_catalog_schedule(harness):
         while not set(ids) <= harness.bridge.run(listed):
             assert time.monotonic() < deadline, "schedules never became visible"
             time.sleep(0.2)
-        gateway = UpdateTableDiscoveryScheduleTemporalGateway(
-            harness.client, harness.bridge
-        )
+        gateway = UpdateTableDiscoveryScheduleTemporalGateway(harness.client, harness.bridge)
         gateway.update(UpdateTableDiscoveryScheduleGatewayInput(paused=True))
         assert [harness.bridge.run(lambda i=i: paused(i)) for i in ids] == [True, True]
         assert harness.bridge.run(lambda: paused(OTHER_SCHEDULE_ID)) is False

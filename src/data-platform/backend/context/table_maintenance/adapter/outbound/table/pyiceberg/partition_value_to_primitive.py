@@ -27,9 +27,7 @@ def partition_value_to_primitive(value: Any) -> str | int | float | bool | None:
     if isinstance(value, date):
         return (value - _EPOCH_DATE).days
     if isinstance(value, time):
-        return (
-            value.hour * 3600 + value.minute * 60 + value.second
-        ) * _MICROS + value.microsecond
+        return (value.hour * 3600 + value.minute * 60 + value.second) * _MICROS + value.microsecond
     if isinstance(value, Decimal):
         return format(value, "f")
     if isinstance(value, UUID):

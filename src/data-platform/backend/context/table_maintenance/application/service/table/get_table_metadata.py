@@ -28,16 +28,12 @@ if TYPE_CHECKING:
 class GetTableMetadataService(GetTableMetadataUseCase):
     """Describe a table's definition and current totals from the catalog."""
 
-    def __init__(
-        self, tables_repo: TablesRepo, catalog_gateway: ReadTableMetadataGateway
-    ) -> None:
+    def __init__(self, tables_repo: TablesRepo, catalog_gateway: ReadTableMetadataGateway) -> None:
         """Bind the repo and the catalog gateway."""
         self._tables_repo = tables_repo
         self._catalog_gateway = catalog_gateway
 
-    def execute(
-        self, request: GetTableMetadataUseCaseInput
-    ) -> GetTableMetadataUseCaseOutput:
+    def execute(self, request: GetTableMetadataUseCaseInput) -> GetTableMetadataUseCaseOutput:
         """Return the catalog metadata or raise NotFoundError."""
         table, ref = load_catalog_table(self._tables_repo, request.uuid)
         description = self._catalog_gateway.describe_table(ref)
@@ -54,9 +50,7 @@ class GetTableMetadataService(GetTableMetadataUseCase):
             specs=description.specs,
             current_snapshot_id=description.current_snapshot_id,
             snapshot_count=description.snapshot_count,
-            last_committed_at=(
-                None if committed is None else datetime.fromisoformat(committed)
-            ),
+            last_committed_at=(None if committed is None else datetime.fromisoformat(committed)),
             total_records=summary_int(summary, "total-records"),
             total_data_files=summary_int(summary, "total-data-files"),
             total_delete_files=summary_int(summary, "total-delete-files"),

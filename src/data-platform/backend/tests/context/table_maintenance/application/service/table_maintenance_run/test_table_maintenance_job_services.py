@@ -114,9 +114,7 @@ def _submit(submitter, now, **overrides):
     return submitter.execute(SubmitMaintenanceOperationUseCaseInput(**fields))
 
 
-def test_submit_submits_job_then_records_attempt_with_its_job_name(
-    submitter, run, submit_job, now
-):
+def test_submit_submits_job_then_records_attempt_with_its_job_name(submitter, run, submit_job, now):
     out = _submit(submitter, now)
     assert out.job_name == "job-run-1-rewrite_data_files-1"
     job = submit_job.jobs[out.job_name]
@@ -129,8 +127,7 @@ def test_submit_submits_job_then_records_attempt_with_its_job_name(
     assert job.where == ["a = 1", "b = 2"]
     assert job.procedure_args == {"min-input-files": 2}
     assert job.callback_url == (
-        "http://tm.example:8000/v1/table-maintenance-runs/run-1"
-        "/operations/rewrite_data_files/result"
+        "http://tm.example:8000/v1/table-maintenance-runs/run-1/operations/rewrite_data_files/result"
     )
     op = run.operations[0]
     assert (op.attempts, op.job_name) == (1, out.job_name)
@@ -149,9 +146,7 @@ def test_submit_records_the_attempt_before_submitting_then_attaches_the_job(
     ]
 
 
-def test_submit_never_calls_the_gateway_for_a_rejected_attempt(
-    submitter, run, runs_repo, submit_job, now
-):
+def test_submit_never_calls_the_gateway_for_a_rejected_attempt(submitter, run, runs_repo, submit_job, now):
     with pytest.raises(ConflictError):
         _submit(submitter, now, attempt=3)
     with pytest.raises(ConflictError):
@@ -165,12 +160,8 @@ class _FailingSubmitGateway(SubmitMaintenanceJobGateway):
         raise RuntimeError("k8s down")
 
 
-def test_failed_submit_can_be_recorded_and_the_next_attempt_goes_through(
-    runs_repo, tables_repo, run, submit_job, now
-):
-    failing = SubmitMaintenanceOperationService(
-        runs_repo, tables_repo, _FailingSubmitGateway()
-    )
+def test_failed_submit_can_be_recorded_and_the_next_attempt_goes_through(runs_repo, tables_repo, run, submit_job, now):
+    failing = SubmitMaintenanceOperationService(runs_repo, tables_repo, _FailingSubmitGateway())
     with pytest.raises(RuntimeError, match="k8s down"):
         _submit(failing, now)
     recorder = RecordTableMaintenanceOperationResultService(runs_repo, tables_repo)
@@ -191,16 +182,12 @@ def test_submit_whole_table_filter_means_no_where(submitter, run, submit_job, no
     assert next(iter(submit_job.jobs.values())).where == []
 
 
-def test_submit_any_empty_where_makes_the_whole_table_the_target(
-    submitter, run, submit_job, now
-):
+def test_submit_any_empty_where_makes_the_whole_table_the_target(submitter, run, submit_job, now):
     _submit(submitter, now, filters=[_filter(0, "a = 1"), _filter(1, "")])
     assert next(iter(submit_job.jobs.values())).where == []
 
 
-def test_retried_submit_leaves_one_job_and_records_the_attempt_once(
-    submitter, run, submit_job, now
-):
+def test_retried_submit_leaves_one_job_and_records_the_attempt_once(submitter, run, submit_job, now):
     first = _submit(submitter, now)
     second = _submit(submitter, now)
     assert first == second
@@ -210,9 +197,7 @@ def test_retried_submit_leaves_one_job_and_records_the_attempt_once(
     assert (op.attempts, op.job_name) == (1, first.job_name)
 
 
-def test_retried_submit_after_a_lost_record_still_records_the_attempt(
-    submitter, run, runs_repo, submit_job, now
-):
+def test_retried_submit_after_a_lost_record_still_records_the_attempt(submitter, run, runs_repo, submit_job, now):
     submit_job.submit(
         SubmitMaintenanceJobGatewayInput(
             run_id="run-1",
@@ -277,46 +262,30 @@ def test_get_job_status_rejects_unknown_state(read_job):
         GetMaintenanceJobStatusService(read_job).execute(_status_input())
 
 
-@pytest.mark.parametrize(
-    ("operation", "attempt"), [("nope", 1), ("expire_snapshots", 0)]
-)
-def test_get_job_status_rejects_invalid_operation_or_attempt(
-    read_job, operation, attempt
-):
+@pytest.mark.parametrize(("operation", "attempt"), [("nope", 1), ("expire_snapshots", 0)])
+def test_get_job_status_rejects_invalid_operation_or_attempt(read_job, operation, attempt):
     with pytest.raises(ValidationError):
-        GetMaintenanceJobStatusService(read_job).execute(
-            _status_input(operation=operation, attempt=attempt)
-        )
+        GetMaintenanceJobStatusService(read_job).execute(_status_input(operation=operation, attempt=attempt))
     assert read_job.calls == []
 
 
 def test_delete_job_forwards_the_attempt_to_the_gateway(delete_job):
     out = DeleteMaintenanceJobService(delete_job).execute(
-        DeleteMaintenanceJobUseCaseInput(
-            run_id="run1", operation="rewrite_data_files", attempt=2
-        )
+        DeleteMaintenanceJobUseCaseInput(run_id="run1", operation="rewrite_data_files", attempt=2)
     )
     assert (out.run_id, out.operation, out.attempt) == (
         "run1",
         "rewrite_data_files",
         2,
     )
-    assert [(c.run_id, c.operation, c.attempt) for c in delete_job.calls] == [
-        ("run1", "rewrite_data_files", 2)
-    ]
+    assert [(c.run_id, c.operation, c.attempt) for c in delete_job.calls] == [("run1", "rewrite_data_files", 2)]
 
 
-@pytest.mark.parametrize(
-    ("operation", "attempt"), [("nope", 1), ("expire_snapshots", 0)]
-)
-def test_delete_job_rejects_invalid_operation_or_attempt(
-    delete_job, operation, attempt
-):
+@pytest.mark.parametrize(("operation", "attempt"), [("nope", 1), ("expire_snapshots", 0)])
+def test_delete_job_rejects_invalid_operation_or_attempt(delete_job, operation, attempt):
     with pytest.raises(ValidationError):
         DeleteMaintenanceJobService(delete_job).execute(
-            DeleteMaintenanceJobUseCaseInput(
-                run_id="run1", operation=operation, attempt=attempt
-            )
+            DeleteMaintenanceJobUseCaseInput(run_id="run1", operation=operation, attempt=attempt)
         )
     assert delete_job.calls == []
 
@@ -344,9 +313,7 @@ class _CopyingRunsRepo(TableMaintenanceRunsRepo):
         return [copy.deepcopy(r) for r in self.inner.list_by_table(table_uuid, limit)]
 
     def list_by_table_since(self, table_uuid, since):
-        return [
-            copy.deepcopy(r) for r in self.inner.list_by_table_since(table_uuid, since)
-        ]
+        return [copy.deepcopy(r) for r in self.inner.list_by_table_since(table_uuid, since)]
 
 
 class _CancelDuringSubmitGateway(SubmitMaintenanceJobGateway):
@@ -385,9 +352,7 @@ def test_submit_does_not_overwrite_a_run_cancelled_during_the_submit(tables_repo
         )
     )
     recorder = RecordTableMaintenanceOperationResultService(runs_repo, tables_repo)
-    submitter = SubmitMaintenanceOperationService(
-        runs_repo, tables_repo, _CancelDuringSubmitGateway(recorder, now)
-    )
+    submitter = SubmitMaintenanceOperationService(runs_repo, tables_repo, _CancelDuringSubmitGateway(recorder, now))
     out = _submit(submitter, now)
     assert out.job_name == "job-cancelled"
     op = runs_repo.get(TableMaintenanceRunId("run-1")).operations[0]

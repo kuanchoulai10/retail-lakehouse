@@ -20,9 +20,7 @@ from bootstrap.container import build_engine
 
 def test_postgres_engine_enables_pool_pre_ping_without_connecting():
     settings = AppSettings(
-        postgres=PostgresSettings(
-            db_url=SecretStr("postgresql+psycopg://u:p@localhost:1/db"), pool_size=3
-        )
+        postgres=PostgresSettings(db_url=SecretStr("postgresql+psycopg://u:p@localhost:1/db"), pool_size=3)
     )
 
     engine = build_engine(settings)
@@ -39,9 +37,7 @@ def test_postgres_without_url_fails_fast():
 
 
 def test_sqlite_in_memory_engine_shares_one_database():
-    settings = AppSettings(
-        database_backend=DatabaseBackend.SQLITE, sqlite=SqliteSettings(path=":memory:")
-    )
+    settings = AppSettings(database_backend=DatabaseBackend.SQLITE, sqlite=SqliteSettings(path=":memory:"))
 
     engine = build_engine(settings)
     create_schema(engine)
@@ -51,9 +47,7 @@ def test_sqlite_in_memory_engine_shares_one_database():
 
 def test_sqlite_file_engine(tmp_path: Path):
     path = tmp_path / "tm.db"
-    settings = AppSettings(
-        database_backend=DatabaseBackend.SQLITE, sqlite=SqliteSettings(path=str(path))
-    )
+    settings = AppSettings(database_backend=DatabaseBackend.SQLITE, sqlite=SqliteSettings(path=str(path)))
 
     create_schema(build_engine(settings))
 

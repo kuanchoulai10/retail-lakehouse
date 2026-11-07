@@ -83,9 +83,7 @@ def creator(runs_repo, tables_repo):
     return CreateTableMaintenanceRunService(runs_repo, tables_repo)
 
 
-def test_create_run_persists_pending_run_in_canonical_order(
-    creator, runs_repo, table, now
-):
+def test_create_run_persists_pending_run_in_canonical_order(creator, runs_repo, table, now):
     out = creator.execute(_create_input(now))
     assert (out.run_id, out.table_uuid, out.trigger) == ("run-1", "u-1", "scheduled")
     assert out.execution_ref == "wf-run-1"
@@ -171,18 +169,14 @@ def test_record_result_updates_run_and_table_backoff(recorder, started_run, tabl
     assert (state.consecutive_failures, state.last_attempt_at) == (1, later)
 
 
-def test_record_success_stores_metrics_and_resets_backoff(
-    recorder, started_run, table, now
-):
+def test_record_success_stores_metrics_and_resets_backoff(recorder, started_run, table, now):
     table.record_operation_result(RDF, False, now)
     _record(recorder, now)
     assert started_run.operations[0].metrics == {"rewritten_files": 4}
     assert table.operation_state(RDF).consecutive_failures == 0
 
 
-def test_record_result_saves_run_then_table(
-    recorder, started_run, table, runs_repo, tables_repo, log, now
-):
+def test_record_result_saves_run_then_table(recorder, started_run, table, runs_repo, tables_repo, log, now):
     track_calls(runs_repo, "update", "runs.update", log, lambda r: r.id.value)
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
     _record(recorder, now)
@@ -204,16 +198,12 @@ def test_record_result_replay_does_not_count_twice(recorder, started_run, table,
     assert table.operation_state(RDF).consecutive_failures == 1
 
 
-def test_record_result_failure_without_error_gets_a_default(
-    recorder, started_run, table, now
-):
+def test_record_result_failure_without_error_gets_a_default(recorder, started_run, table, now):
     _record(recorder, now, succeeded=False, error=None)
     assert started_run.operations[0].error == "unknown error"
 
 
-def test_record_result_for_dropped_table_still_updates_run(
-    recorder, started_run, table, now
-):
+def test_record_result_for_dropped_table_still_updates_run(recorder, started_run, table, now):
     table.mark_dropped(now)
     out = _record(recorder, now)
     assert started_run.operations[0].status.value == "succeeded"
@@ -245,9 +235,7 @@ def test_record_result_rejects_bad_requests(recorder, started_run, now):
 def test_callback_forwards_result_to_the_workflow(runs_repo, started_run, results):
     service = ProcessTableMaintenanceCallbackService(runs_repo, results)
     out = service.execute(
-        ProcessTableMaintenanceCallbackUseCaseInput(
-            "run-1", "rewrite_data_files", 3, False, {"a": 1}, "OOM"
-        )
+        ProcessTableMaintenanceCallbackUseCaseInput("run-1", "rewrite_data_files", 3, False, {"a": 1}, "OOM")
     )
     assert out.accepted is True
     (call,) = results.calls
@@ -263,20 +251,14 @@ def test_callback_forwards_result_to_the_workflow(runs_repo, started_run, result
 def test_callback_unknown_run_not_found(runs_repo, results):
     service = ProcessTableMaintenanceCallbackService(runs_repo, results)
     with pytest.raises(NotFoundError):
-        service.execute(
-            ProcessTableMaintenanceCallbackUseCaseInput(
-                "nope", "rewrite_data_files", 1, True, {}, None
-            )
-        )
+        service.execute(ProcessTableMaintenanceCallbackUseCaseInput("nope", "rewrite_data_files", 1, True, {}, None))
     assert results.calls == []
 
 
 def test_callback_rejects_unknown_operation(runs_repo, started_run, results):
     service = ProcessTableMaintenanceCallbackService(runs_repo, results)
     with pytest.raises(ValidationError):
-        service.execute(
-            ProcessTableMaintenanceCallbackUseCaseInput("run-1", "x", 1, True, {}, None)
-        )
+        service.execute(ProcessTableMaintenanceCallbackUseCaseInput("run-1", "x", 1, True, {}, None))
 
 
 # --- get / list ---

@@ -30,13 +30,9 @@ class GetTableMaintenanceRunService(GetTableMaintenanceRunUseCase):
         """Bind the repo."""
         self._runs_repo = runs_repo
 
-    def execute(
-        self, request: GetTableMaintenanceRunUseCaseInput
-    ) -> GetTableMaintenanceRunUseCaseOutput:
+    def execute(self, request: GetTableMaintenanceRunUseCaseInput) -> GetTableMaintenanceRunUseCaseOutput:
         """Return the run or raise NotFoundError."""
         run = self._runs_repo.get(TableMaintenanceRunId(request.run_id))
         if run is None:
             raise NotFoundError(f"maintenance run {request.run_id} not found")
-        return GetTableMaintenanceRunUseCaseOutput(
-            **table_maintenance_run_output_fields(run)
-        )
+        return GetTableMaintenanceRunUseCaseOutput(**table_maintenance_run_output_fields(run))

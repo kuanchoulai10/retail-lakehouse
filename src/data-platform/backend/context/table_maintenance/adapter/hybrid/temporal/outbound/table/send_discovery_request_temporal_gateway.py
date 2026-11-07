@@ -44,13 +44,9 @@ class SendDiscoveryRequestTemporalGateway(SendDiscoveryRequestGateway):
     async def _send(self, input: SendDiscoveryRequestGatewayInput) -> None:  # noqa: A002
         await self._client.start_workflow(
             TABLE_DISCOVERY_WORKFLOW,
-            TableDiscoveryWorkflowInput(
-                catalog=input.catalog, namespace=input.namespace
-            ),
+            TableDiscoveryWorkflowInput(catalog=input.catalog, namespace=input.namespace),
             id=table_discovery_adhoc_workflow_id(input.catalog, input.namespace),
             task_queue=TASK_QUEUE,
             id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
-            static_summary=table_discovery_summary(
-                input.catalog, input.namespace, adhoc=True
-            ),
+            static_summary=table_discovery_summary(input.catalog, input.namespace, adhoc=True),
         )

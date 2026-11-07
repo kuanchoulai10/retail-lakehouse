@@ -20,9 +20,7 @@ if TYPE_CHECKING:
     from bootstrap.container.use_cases import UseCases
 
 
-def build_activities(
-    use_cases: UseCases, client: Client, settings: AppSettings
-) -> Activities:
+def build_activities(use_cases: UseCases, client: Client, settings: AppSettings) -> Activities:
     """Build the activities; ``client`` is the worker's own, on the worker's loop."""
     return Activities(
         reconciliation=TableReconciliationActivities(

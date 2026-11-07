@@ -30,6 +30,4 @@ def translate_application_errors() -> Iterator[None]:
     try:
         yield
     except _NON_RETRYABLE as error:
-        raise ApplicationError(
-            str(error), type=type(error).__name__, non_retryable=True
-        ) from error
+        raise ApplicationError(str(error), type=type(error).__name__, non_retryable=True) from error

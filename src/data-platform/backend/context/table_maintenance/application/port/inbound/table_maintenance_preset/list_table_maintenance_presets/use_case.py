@@ -22,7 +22,5 @@ class ListTableMaintenancePresetsUseCase(
     """List all table maintenance presets."""
 
     @abstractmethod
-    def execute(
-        self, request: ListTableMaintenancePresetsUseCaseInput
-    ) -> ListTableMaintenancePresetsUseCaseOutput:
+    def execute(self, request: ListTableMaintenancePresetsUseCaseInput) -> ListTableMaintenancePresetsUseCaseOutput:
         """List all table maintenance presets."""

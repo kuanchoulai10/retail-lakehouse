@@ -13,8 +13,6 @@ if TYPE_CHECKING:
     from bootstrap.container.use_cases import UseCases
 
 
-def run_event_consumer(
-    use_cases: UseCases, source: EventSource, stop_event: threading.Event
-) -> None:
+def run_event_consumer(use_cases: UseCases, source: EventSource, stop_event: threading.Event) -> None:
     """Feed the Polaris events to the table hint use case until stopped."""
     run_consumer_loop(source, use_cases.process_table_hint, stop_event)

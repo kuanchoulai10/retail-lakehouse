@@ -23,16 +23,11 @@ def test_spark_application_name_is_dns_safe_and_deterministic():
         assert first == spark_application_name(run_id, op.value, 12)
         assert len(first) <= 63
         assert DNS_LABEL.match(first)
-    assert (
-        spark_application_name("abc-def", "rewrite_data_files", 1) == "tm-rdf-abcdef-a1"
-    )
+    assert spark_application_name("abc-def", "rewrite_data_files", 1) == "tm-rdf-abcdef-a1"
 
 
 def test_codes_per_operation():
-    codes = {
-        op: spark_application_name("r", op.value, 1).split("-")[1]
-        for op in MaintenanceOperation
-    }
+    codes = {op: spark_application_name("r", op.value, 1).split("-")[1] for op in MaintenanceOperation}
     assert set(codes.values()) == {"rdf", "rm", "es", "rof"}
 
 
@@ -47,8 +42,5 @@ def test_unknown_operation_is_rejected():
 
 
 def test_every_operation_has_a_distinct_code():
-    codes = [
-        spark_application_name("r", op.value, 1).split("-")[1]
-        for op in MaintenanceOperation
-    ]
+    codes = [spark_application_name("r", op.value, 1).split("-")[1] for op in MaintenanceOperation]
     assert len(set(codes)) == len(MaintenanceOperation)

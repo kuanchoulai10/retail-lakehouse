@@ -64,18 +64,14 @@ def client(repo, signals):
 
 
 def test_unknown_operation_name_returns_422(client, signals) -> None:
-    response = client.post(
-        "/v1/tables/u-1/maintenance", json={"operations": ["defragment"]}
-    )
+    response = client.post("/v1/tables/u-1/maintenance", json={"operations": ["defragment"]})
 
     assert response.status_code == 422
     assert signals.calls == []
 
 
 def test_trigger_unknown_table_returns_404(client) -> None:
-    response = client.post(
-        "/v1/tables/nope/maintenance", json={"operations": ["rewrite_data_files"]}
-    )
+    response = client.post("/v1/tables/nope/maintenance", json={"operations": ["rewrite_data_files"]})
 
     assert response.status_code == 404
 
@@ -83,17 +79,13 @@ def test_trigger_unknown_table_returns_404(client) -> None:
 def test_trigger_dropped_table_returns_409(client, repo) -> None:
     repo.items["u-1"].mark_dropped(NOW)
 
-    response = client.post(
-        "/v1/tables/u-1/maintenance", json={"operations": ["rewrite_data_files"]}
-    )
+    response = client.post("/v1/tables/u-1/maintenance", json={"operations": ["rewrite_data_files"]})
 
     assert response.status_code == 409
 
 
 def test_trigger_signals_the_workflow(client, signals) -> None:
-    response = client.post(
-        "/v1/tables/u-1/maintenance", json={"operations": ["expire_snapshots"]}
-    )
+    response = client.post("/v1/tables/u-1/maintenance", json={"operations": ["expire_snapshots"]})
 
     assert response.status_code == 202
     assert [c.change for c in signals.calls] == ["maintenance_requested"]
@@ -109,9 +101,7 @@ def test_orphan_older_than_below_one_day_returns_422(client) -> None:
 
 
 def test_unknown_nested_settings_key_returns_422(client) -> None:
-    response = client.put(
-        "/v1/tables/u-1/settings", json={"expire_snapshots": {"keep": 1}}
-    )
+    response = client.put("/v1/tables/u-1/settings", json={"expire_snapshots": {"keep": 1}})
 
     assert response.status_code == 422
 

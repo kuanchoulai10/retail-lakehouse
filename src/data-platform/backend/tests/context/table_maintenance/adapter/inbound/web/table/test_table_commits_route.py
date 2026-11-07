@@ -53,9 +53,7 @@ def test_commits_returns_200() -> None:
 
 def test_commits_return_large_snapshot_ids_as_exact_strings() -> None:
     output = _output()
-    item = dataclasses.replace(
-        output.items[0], snapshot_id=3051729675574597004, parent_id=3051729675574597003
-    )
+    item = dataclasses.replace(output.items[0], snapshot_id=3051729675574597004, parent_id=3051729675574597003)
     stub = StubUseCase(dataclasses.replace(output, items=[item]))
     client = build_client(list_table_commits=stub)
 
@@ -76,9 +74,7 @@ def test_commits_since_is_forwarded() -> None:
     stub = StubUseCase(_output())
     client = build_client(list_table_commits=stub)
 
-    response = client.get(
-        "/v1/tables/u-1/commits", params={"limit": 5, "since": "2026-10-24T12:00:00Z"}
-    )
+    response = client.get("/v1/tables/u-1/commits", params={"limit": 5, "since": "2026-10-24T12:00:00Z"})
 
     assert response.status_code == 200
     assert stub.requests[0].limit == 5

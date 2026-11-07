@@ -32,9 +32,7 @@ class FakeReadTableMetadataGateway(ReadTableMetadataGateway):
         self.storage_measures: dict[tuple[str, str, str], TableStorageMeasure] = {}
         self.calls: list[tuple[str, object]] = []
 
-    def add_table(
-        self, catalog: str, namespace: str, table: str, table_uuid: str
-    ) -> None:
+    def add_table(self, catalog: str, namespace: str, table: str, table_uuid: str) -> None:
         """Register a table."""
         self.tables[(catalog, namespace, table)] = table_uuid
 
@@ -72,9 +70,7 @@ class FakeReadTableMetadataGateway(ReadTableMetadataGateway):
         self.calls.append(("describe_table", ref))
         return self.descriptions.get((ref.catalog, ref.namespace, ref.table))
 
-    def list_commits(
-        self, ref: TableMetadataRef, since: str | None, limit: int
-    ) -> TableCommitPage | None:
+    def list_commits(self, ref: TableMetadataRef, since: str | None, limit: int) -> TableCommitPage | None:
         """Return the registered commit page or None."""
         self.calls.append(("list_commits", (ref, since, limit)))
         return self.commit_pages.get((ref.catalog, ref.namespace, ref.table))

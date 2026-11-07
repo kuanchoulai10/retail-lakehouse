@@ -31,12 +31,8 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
 )
 
 _ACTIVITY_TIMEOUT = timedelta(minutes=2)
-_ACTIVITY_RETRY = RetryPolicy(
-    maximum_attempts=5, initial_interval=timedelta(seconds=2), backoff_coefficient=2.0
-)
-_IN_FLIGHT_PER_OPERATION = (
-    TableMaintenanceAttemptPolicy().operation_worst_case() + timedelta(hours=1)
-)
+_ACTIVITY_RETRY = RetryPolicy(maximum_attempts=5, initial_interval=timedelta(seconds=2), backoff_coefficient=2.0)
+_IN_FLIGHT_PER_OPERATION = TableMaintenanceAttemptPolicy().operation_worst_case() + timedelta(hours=1)
 _CANCEL_GRACE = timedelta(minutes=15)
 _ENDING_REASONS = frozenset({"dropped", "excluded"})
 _TRIGGER_SCHEDULED = "scheduled"
@@ -77,18 +73,12 @@ class TableReconciliationWorkflow:
         self._in_flight_workflow_id = input.in_flight_workflow_id
         self._in_flight_started_at: datetime | None = None
         if input.in_flight_started_at:
-            self._in_flight_started_at = datetime.fromisoformat(
-                input.in_flight_started_at
-            )
+            self._in_flight_started_at = datetime.fromisoformat(input.in_flight_started_at)
         elif input.in_flight_run_id is not None:
             self._in_flight_started_at = workflow.now()
         self._in_flight_operations = input.in_flight_operation_count
-        self._pending_manual = (
-            None if input.pending_manual is None else list(input.pending_manual)
-        )
-        self._next_plan_at = (
-            datetime.fromisoformat(input.next_plan_at) if input.next_plan_at else None
-        )
+        self._pending_manual = None if input.pending_manual is None else list(input.pending_manual)
+        self._next_plan_at = datetime.fromisoformat(input.next_plan_at) if input.next_plan_at else None
         self._continue_as_new_after = input.continue_as_new_after
         self._interval = timedelta(seconds=input.reconcile_interval_seconds)
         self._woken = False
@@ -191,10 +181,7 @@ class TableReconciliationWorkflow:
     def _should_continue_as_new(self, iterations: int) -> bool:
         if self._stopping:
             return False
-        return (
-            workflow.info().is_continue_as_new_suggested()
-            or iterations >= self._continue_as_new_after
-        )
+        return workflow.info().is_continue_as_new_suggested() or iterations >= self._continue_as_new_after
 
     def _carry(self) -> TableReconciliationWorkflowInput:
         return TableReconciliationWorkflowInput(
@@ -223,9 +210,7 @@ class TableReconciliationWorkflow:
         if self._in_flight_run_id is None or self._in_flight_started_at is None:
             return None
         started_at = self._in_flight_started_at
-        return started_at + _IN_FLIGHT_PER_OPERATION * max(
-            self._in_flight_operations, 1
-        )
+        return started_at + _IN_FLIGHT_PER_OPERATION * max(self._in_flight_operations, 1)
 
     async def _give_up_stuck_run(self) -> None:
         """Cancel a run past its budget, await its report briefly, then forget it.
@@ -238,22 +223,16 @@ class TableReconciliationWorkflow:
         run_id = self._in_flight_run_id
         if run_id is None or deadline is None or workflow.now() < deadline:
             return
-        workflow.logger.warning(
-            "maintenance run %s never reported back; cancelling it", run_id
-        )
+        workflow.logger.warning("maintenance run %s never reported back; cancelling it", run_id)
         self._cancel_failed = False
-        self._cancel_task = asyncio.create_task(
-            self._cancel_child(run_id, self._in_flight_workflow_id)
-        )
+        self._cancel_task = asyncio.create_task(self._cancel_child(run_id, self._in_flight_workflow_id))
         try:
             await workflow.wait_condition(
                 lambda: self._in_flight_run_id != run_id or self._cancel_failed,
                 timeout=_CANCEL_GRACE,
             )
         except TimeoutError:
-            workflow.logger.warning(
-                "cancelled run %s did not report back; no longer waiting", run_id
-            )
+            workflow.logger.warning("cancelled run %s did not report back; no longer waiting", run_id)
         if self._in_flight_run_id == run_id:
             self._clear_in_flight()
 
@@ -300,9 +279,7 @@ class TableReconciliationWorkflow:
         except ActivityError as error:
             if is_cancelled_exception(error):
                 raise asyncio.CancelledError from error
-            workflow.logger.error(
-                "planning table %s failed: %s", self._table_uuid, error
-            )
+            workflow.logger.error("planning table %s failed: %s", self._table_uuid, error)
             self._consume_manual(manual, "the plan failed")
             self._next_plan_at = workflow.now() + self._interval
             return False
@@ -321,16 +298,12 @@ class TableReconciliationWorkflow:
         await self._start_run(plan, manual is not None)
         return False
 
-    def _consume_manual(
-        self, manual: list[str] | None, dropped_because: str | None
-    ) -> None:
+    def _consume_manual(self, manual: list[str] | None, dropped_because: str | None) -> None:
         if manual is None or self._pending_manual is not manual:
             return
         self._pending_manual = None
         if dropped_because is not None:
-            workflow.logger.info(
-                "dropping manual trigger %s: %s", manual, dropped_because
-            )
+            workflow.logger.info("dropping manual trigger %s: %s", manual, dropped_because)
 
     async def _start_run(self, plan: dict[str, Any], manual: bool) -> None:
         run_id = str(workflow.uuid4())

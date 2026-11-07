@@ -13,13 +13,9 @@ from context.table_maintenance.application.port.inbound.table.get_table_health.o
 from base import UseCase
 
 
-class GetTableHealthUseCase(
-    UseCase[GetTableHealthUseCaseInput, GetTableHealthUseCaseOutput]
-):
+class GetTableHealthUseCase(UseCase[GetTableHealthUseCaseInput, GetTableHealthUseCaseOutput]):
     """Get the maintenance health of one table."""
 
     @abstractmethod
-    def execute(
-        self, request: GetTableHealthUseCaseInput
-    ) -> GetTableHealthUseCaseOutput:
+    def execute(self, request: GetTableHealthUseCaseInput) -> GetTableHealthUseCaseOutput:
         """Get the maintenance health of one table."""

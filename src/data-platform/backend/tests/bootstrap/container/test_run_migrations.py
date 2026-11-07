@@ -28,9 +28,7 @@ from tests.bootstrap.container.container_support import (
 
 
 def _use_cases(engine):
-    return build_use_cases(
-        build_repositories(engine), fake_gateways(), clock=lambda: NOW
-    )
+    return build_use_cases(build_repositories(engine), fake_gateways(), clock=lambda: NOW)
 
 
 def test_migrate_seeds_default_preset_once():
@@ -40,12 +38,8 @@ def test_migrate_seeds_default_preset_once():
     run_migrations(engine)
 
     use_cases = _use_cases(engine)
-    presets = use_cases.list_table_maintenance_presets.execute(
-        ListTableMaintenancePresetsUseCaseInput()
-    ).items
-    rules = use_cases.list_table_discovery_rules.execute(
-        ListTableDiscoveryRulesUseCaseInput()
-    )
+    presets = use_cases.list_table_maintenance_presets.execute(ListTableMaintenancePresetsUseCaseInput()).items
+    rules = use_cases.list_table_discovery_rules.execute(ListTableDiscoveryRulesUseCaseInput())
     assert [t.name for t in presets] == ["default"]
     assert presets[0].settings == maintenance_settings_to_dict(MaintenanceSettings())
     assert rules.items == []
@@ -54,17 +48,9 @@ def test_migrate_seeds_default_preset_once():
 def test_migrate_does_not_seed_when_a_preset_exists():
     engine = build_engine(sqlite_settings())
     create_schema(engine)
-    _use_cases(engine).create_table_maintenance_preset.execute(
-        CreateTableMaintenancePresetUseCaseInput(name="nightly")
-    )
+    _use_cases(engine).create_table_maintenance_preset.execute(CreateTableMaintenancePresetUseCaseInput(name="nightly"))
 
     run_migrations(engine)
 
-    presets = (
-        _use_cases(engine)
-        .list_table_maintenance_presets.execute(
-            ListTableMaintenancePresetsUseCaseInput()
-        )
-        .items
-    )
+    presets = _use_cases(engine).list_table_maintenance_presets.execute(ListTableMaintenancePresetsUseCaseInput()).items
     assert [t.name for t in presets] == ["nightly"]

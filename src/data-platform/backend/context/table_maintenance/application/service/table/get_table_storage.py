@@ -98,9 +98,7 @@ class GetTableStorageService(GetTableStorageUseCase):
         self._runs_repo = runs_repo
         self._clock = clock
 
-    def execute(
-        self, request: GetTableStorageUseCaseInput
-    ) -> GetTableStorageUseCaseOutput:
+    def execute(self, request: GetTableStorageUseCaseInput) -> GetTableStorageUseCaseOutput:
         """Measure the table and sum its recent reclaimed space, or raise NotFoundError."""
         table, ref = load_catalog_table(self._tables_repo, request.uuid)
         measure = self._catalog_gateway.measure_storage(ref)

@@ -26,9 +26,7 @@ def _message(*, error: object = None) -> MagicMock:
 def _source() -> tuple[KafkaEventSource, MagicMock, MagicMock]:
     consumer = MagicMock()
     factory = MagicMock(return_value=consumer)
-    source = KafkaEventSource(
-        "broker:9092", "polaris-catalog-events", consumer_factory=factory
-    )
+    source = KafkaEventSource("broker:9092", "polaris-catalog-events", consumer_factory=factory)
     return source, consumer, factory
 
 

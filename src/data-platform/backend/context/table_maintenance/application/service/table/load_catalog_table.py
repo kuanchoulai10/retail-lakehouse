@@ -13,9 +13,7 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table import TablesRepo
 
 
-def load_catalog_table(
-    tables_repo: TablesRepo, uuid: str
-) -> tuple[Table, TableMetadataRef]:
+def load_catalog_table(tables_repo: TablesRepo, uuid: str) -> tuple[Table, TableMetadataRef]:
     """Return the registered table and its catalog reference, or raise NotFoundError."""
     table = tables_repo.get(TableId(uuid))
     if table is None:

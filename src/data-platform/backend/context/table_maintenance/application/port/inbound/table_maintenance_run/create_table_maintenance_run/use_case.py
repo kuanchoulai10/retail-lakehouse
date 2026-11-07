@@ -14,14 +14,10 @@ from base import UseCase
 
 
 class CreateTableMaintenanceRunUseCase(
-    UseCase[
-        CreateTableMaintenanceRunUseCaseInput, CreateTableMaintenanceRunUseCaseOutput
-    ]
+    UseCase[CreateTableMaintenanceRunUseCaseInput, CreateTableMaintenanceRunUseCaseOutput]
 ):
     """Create a maintenance run."""
 
     @abstractmethod
-    def execute(
-        self, request: CreateTableMaintenanceRunUseCaseInput
-    ) -> CreateTableMaintenanceRunUseCaseOutput:
+    def execute(self, request: CreateTableMaintenanceRunUseCaseInput) -> CreateTableMaintenanceRunUseCaseOutput:
         """Create a maintenance run."""

@@ -19,9 +19,7 @@ T0 = datetime(2026, 1, 1, tzinfo=UTC)
 T1 = T0 + timedelta(hours=1)
 
 
-def make(
-    effect=RuleEffect.INCLUDE, preset_id=TableMaintenancePresetId("t1")
-) -> TableDiscoveryRule:
+def make(effect=RuleEffect.INCLUDE, preset_id=TableMaintenancePresetId("t1")) -> TableDiscoveryRule:
     return TableDiscoveryRule.create(
         id=TableDiscoveryRuleId("r1"),
         priority=10,

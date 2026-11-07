@@ -26,7 +26,4 @@ def enforce_max_depth(cls: type, base: type, max_depth: int) -> None:
         depth += 1
         current = relevant[0]
     if depth > max_depth:
-        raise TypeError(
-            f"{cls.__qualname__} exceeds {base.__name__} max inheritance "
-            f"depth ({depth} > {max_depth})"
-        )
+        raise TypeError(f"{cls.__qualname__} exceeds {base.__name__} max inheritance depth ({depth} > {max_depth})")

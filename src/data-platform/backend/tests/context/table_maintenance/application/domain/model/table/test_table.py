@@ -186,9 +186,7 @@ def test_backoff_doubles_and_caps():
     for failures, expected in [(0, 1), (1, 2), (3, 8), (10, 24)]:
         s = OperationState(consecutive_failures=failures)
         assert s.effective_cooldown(base) == timedelta(hours=expected)
-    assert OperationState(consecutive_failures=2).effective_cooldown(
-        timedelta(hours=30)
-    ) == timedelta(hours=30)
+    assert OperationState(consecutive_failures=2).effective_cooldown(timedelta(hours=30)) == timedelta(hours=30)
     failed = OperationState().after_failure(T0).after_failure(T1)
     assert failed.consecutive_failures == 2 and failed.last_attempt_at == T1
     ok = failed.after_success(T1)

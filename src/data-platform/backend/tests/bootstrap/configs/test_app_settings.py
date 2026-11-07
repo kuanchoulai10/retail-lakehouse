@@ -19,23 +19,15 @@ def test_defaults_follow_the_brief():
 
     assert settings.component is Component.API
     assert settings.database_backend is DatabaseBackend.POSTGRES
-    assert (
-        settings.temporal.address == "temporal-frontend.temporal.svc.cluster.local:7233"
-    )
+    assert settings.temporal.address == "temporal-frontend.temporal.svc.cluster.local:7233"
     assert settings.temporal.namespace == "default"
-    assert settings.catalog.uri == (
-        "http://polaris.lakehouse-catalog.svc.cluster.local:8181/api/catalog"
-    )
+    assert settings.catalog.uri == ("http://polaris.lakehouse-catalog.svc.cluster.local:8181/api/catalog")
     assert settings.catalog.scope == "PRINCIPAL_ROLE:ALL"
     assert settings.catalog.names == ["iceberg"]
-    assert settings.catalog.s3_endpoint == (
-        "http://rustfs.object-storage.svc.cluster.local:9000"
-    )
+    assert settings.catalog.s3_endpoint == ("http://rustfs.object-storage.svc.cluster.local:9000")
     assert settings.catalog.s3_access_key_id is None
     assert settings.catalog.s3_secret_access_key is None
-    assert settings.kafka.bootstrap_servers == (
-        "kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
-    )
+    assert settings.kafka.bootstrap_servers == ("kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092")
     assert settings.kafka.topic == "polaris-catalog-events"
     assert settings.spark.namespace == "lakehouse-maintenance-operations"
     assert settings.admission_limit == 2
@@ -71,9 +63,7 @@ def test_nested_env_vars_are_parsed(monkeypatch: pytest.MonkeyPatch):
     assert settings.component is Component.WORKER
     assert settings.database_backend is DatabaseBackend.SQLITE
     assert settings.sqlite.path == "/data/tm.db"
-    assert settings.postgres.db_url.get_secret_value() == (
-        "postgresql+psycopg://u:pw@db:5432/tm"
-    )
+    assert settings.postgres.db_url.get_secret_value() == ("postgresql+psycopg://u:pw@db:5432/tm")
     assert settings.postgres.pool_size == 9
     assert settings.temporal.address == "temporal:7233"
     assert settings.temporal.namespace == "tm"

@@ -57,16 +57,12 @@ from context.table_maintenance.application.service.table import (
 )
 
 NAME = TableName("iceberg", "sales", "orders")
-PRESET_SETTINGS = MaintenanceSettings(
-    rewrite_data_files=RewriteDataFilesSettings(min_reducible_files=9)
-)
+PRESET_SETTINGS = MaintenanceSettings(rewrite_data_files=RewriteDataFilesSettings(min_reducible_files=9))
 
 
 @pytest.fixture
 def preset(presets_repo, now):
-    t = TableMaintenancePreset.create(
-        TableMaintenancePresetId("t-1"), "gold", PRESET_SETTINGS, now
-    )
+    t = TableMaintenancePreset.create(TableMaintenancePresetId("t-1"), "gold", PRESET_SETTINGS, now)
     presets_repo.create(t)
     return t
 
@@ -115,9 +111,7 @@ def test_list_tables_all_and_by_status(tables_repo, now):
 
 def test_list_tables_unknown_status_is_invalid(tables_repo):
     with pytest.raises(ValidationError):
-        ListTablesService(tables_repo).execute(
-            ListTablesUseCaseInput(status="sleeping")
-        )
+        ListTablesService(tables_repo).execute(ListTablesUseCaseInput(status="sleeping"))
 
 
 def test_get_table_includes_settings_and_operation_states(tables_repo, now):
@@ -147,9 +141,7 @@ def test_get_unknown_table_not_found(tables_repo):
 def test_settings_update_signals_workflow(tables_repo, signals, clock, now):
     _active(tables_repo, now, settings=PRESET_SETTINGS)
     out = UpdateTableSettingsService(tables_repo, signals, clock=clock).execute(
-        UpdateTableSettingsUseCaseInput(
-            uuid="u-1", settings={"expire_snapshots": {"retain_last": 2}}
-        )
+        UpdateTableSettingsUseCaseInput(uuid="u-1", settings={"expire_snapshots": {"retain_last": 2}})
     )
     assert out.settings is not None
     assert out.settings["expire_snapshots"]["retain_last"] == 2
@@ -159,9 +151,7 @@ def test_settings_update_signals_workflow(tables_repo, signals, clock, now):
     assert stored.settings.expire_snapshots.retain_last == 2
     assert stored.settings.rewrite_data_files.min_reducible_files == 5
     assert out.settings["rewrite_data_files"]["min_reducible_files"] == 5
-    assert [_change(c) for c in signals.calls] == [
-        ("u-1", "settings_changed", [], True)
-    ]
+    assert [_change(c) for c in signals.calls] == [("u-1", "settings_changed", [], True)]
 
 
 def test_settings_update_invalid_settings(tables_repo, signals, clock, now):
@@ -180,9 +170,7 @@ def test_settings_update_unknown_table(tables_repo, signals, clock):
         )
 
 
-def test_settings_update_on_excluded_table_without_settings_conflicts(
-    tables_repo, signals, clock, now
-):
+def test_settings_update_on_excluded_table_without_settings_conflicts(tables_repo, signals, clock, now):
     _excluded(tables_repo, now)
     with pytest.raises(ConflictError):
         UpdateTableSettingsService(tables_repo, signals, clock=clock).execute(
@@ -193,13 +181,9 @@ def test_settings_update_on_excluded_table_without_settings_conflicts(
 
 def test_pause_and_resume_signal_workflow(tables_repo, signals, clock, now):
     _active(tables_repo, now)
-    paused = PauseTableService(tables_repo, signals, clock=clock).execute(
-        PauseTableUseCaseInput(uuid="u-1")
-    )
+    paused = PauseTableService(tables_repo, signals, clock=clock).execute(PauseTableUseCaseInput(uuid="u-1"))
     assert paused.status == "paused"
-    resumed = ResumeTableService(tables_repo, signals, clock=clock).execute(
-        ResumeTableUseCaseInput(uuid="u-1")
-    )
+    resumed = ResumeTableService(tables_repo, signals, clock=clock).execute(ResumeTableUseCaseInput(uuid="u-1"))
     assert resumed.status == "active"
     assert [_change(c) for c in signals.calls] == [
         ("u-1", "paused", [], True),
@@ -210,17 +194,13 @@ def test_pause_and_resume_signal_workflow(tables_repo, signals, clock, now):
 def test_pause_excluded_table_conflicts(tables_repo, signals, clock, now):
     _excluded(tables_repo, now)
     with pytest.raises(ConflictError):
-        PauseTableService(tables_repo, signals, clock=clock).execute(
-            PauseTableUseCaseInput(uuid="u-1")
-        )
+        PauseTableService(tables_repo, signals, clock=clock).execute(PauseTableUseCaseInput(uuid="u-1"))
     assert signals.calls == []
 
 
 def test_pause_unknown_table(tables_repo, signals, clock):
     with pytest.raises(NotFoundError):
-        PauseTableService(tables_repo, signals, clock=clock).execute(
-            PauseTableUseCaseInput(uuid="nope")
-        )
+        PauseTableService(tables_repo, signals, clock=clock).execute(PauseTableUseCaseInput(uuid="nope"))
 
 
 # --- include ---
@@ -231,18 +211,14 @@ def _include_service(tables_repo, presets_repo, catalog, signals, clock):
 
 
 def _include_input():
-    return IncludeTableUseCaseInput(
-        catalog="iceberg", namespace="sales", table="orders", preset_id="t-1"
-    )
+    return IncludeTableUseCaseInput(catalog="iceberg", namespace="sales", table="orders", preset_id="t-1")
 
 
 def test_include_new_table_registers_manual_and_starts_workflow(
     tables_repo, presets_repo, preset, catalog, signals, clock
 ):
     catalog.add_table("iceberg", "sales", "orders", "u-9")
-    out = _include_service(tables_repo, presets_repo, catalog, signals, clock).execute(
-        _include_input()
-    )
+    out = _include_service(tables_repo, presets_repo, catalog, signals, clock).execute(_include_input())
     assert out.uuid == "u-9"
     assert (out.status, out.selection) == ("active", "manual")
     assert out.source_preset_id == "t-1"
@@ -251,35 +227,23 @@ def test_include_new_table_registers_manual_and_starts_workflow(
     assert [c.table_name for c in signals.calls] == ["iceberg.sales.orders"]
 
 
-def test_include_unknown_table_not_found(
-    tables_repo, presets_repo, preset, catalog, signals, clock
-):
+def test_include_unknown_table_not_found(tables_repo, presets_repo, preset, catalog, signals, clock):
     with pytest.raises(NotFoundError):
-        _include_service(tables_repo, presets_repo, catalog, signals, clock).execute(
-            _include_input()
-        )
+        _include_service(tables_repo, presets_repo, catalog, signals, clock).execute(_include_input())
     assert signals.calls == []
 
 
-def test_include_unknown_preset_not_found(
-    tables_repo, presets_repo, catalog, signals, clock
-):
+def test_include_unknown_preset_not_found(tables_repo, presets_repo, catalog, signals, clock):
     catalog.add_table("iceberg", "sales", "orders", "u-9")
     with pytest.raises(NotFoundError):
-        _include_service(tables_repo, presets_repo, catalog, signals, clock).execute(
-            _include_input()
-        )
+        _include_service(tables_repo, presets_repo, catalog, signals, clock).execute(_include_input())
     assert tables_repo.list_all() == []
 
 
-def test_include_reactivates_excluded_table_as_manual(
-    tables_repo, presets_repo, preset, catalog, signals, clock, now
-):
+def test_include_reactivates_excluded_table_as_manual(tables_repo, presets_repo, preset, catalog, signals, clock, now):
     _excluded(tables_repo, now, "u-9")
     catalog.add_table("iceberg", "sales", "orders", "u-9")
-    out = _include_service(tables_repo, presets_repo, catalog, signals, clock).execute(
-        _include_input()
-    )
+    out = _include_service(tables_repo, presets_repo, catalog, signals, clock).execute(_include_input())
     assert (out.status, out.selection) == ("active", "manual")
     assert out.settings == maintenance_settings_to_dict(preset.settings)
     assert out.source_preset_id == "t-1"
@@ -287,27 +251,19 @@ def test_include_reactivates_excluded_table_as_manual(
     assert [_change(c) for c in signals.calls] == [("u-9", "resumed", [], True)]
 
 
-def test_include_renames_row_when_catalog_name_changed(
-    tables_repo, presets_repo, preset, catalog, signals, clock, now
-):
+def test_include_renames_row_when_catalog_name_changed(tables_repo, presets_repo, preset, catalog, signals, clock, now):
     _excluded(tables_repo, now, "u-9", TableName("iceberg", "sales", "old_orders"))
     catalog.add_table("iceberg", "sales", "orders", "u-9")
-    out = _include_service(tables_repo, presets_repo, catalog, signals, clock).execute(
-        _include_input()
-    )
+    out = _include_service(tables_repo, presets_repo, catalog, signals, clock).execute(_include_input())
     assert out.table == "orders"
 
 
-def test_include_dropped_table_conflicts(
-    tables_repo, presets_repo, preset, catalog, signals, clock, now
-):
+def test_include_dropped_table_conflicts(tables_repo, presets_repo, preset, catalog, signals, clock, now):
     dropped = _dropped(tables_repo, now, "u-9")
     assert dropped.status == TableStatus.DROPPED
     catalog.add_table("iceberg", "sales", "orders", "u-9")
     with pytest.raises(ConflictError):
-        _include_service(tables_repo, presets_repo, catalog, signals, clock).execute(
-            _include_input()
-        )
+        _include_service(tables_repo, presets_repo, catalog, signals, clock).execute(_include_input())
     assert signals.calls == []
 
 
@@ -319,31 +275,21 @@ def _exclude_service(tables_repo, catalog, signals, clock):
 
 
 def _exclude_input():
-    return ExcludeTableUseCaseInput(
-        catalog="iceberg", namespace="sales", table="orders"
-    )
+    return ExcludeTableUseCaseInput(catalog="iceberg", namespace="sales", table="orders")
 
 
-def test_exclude_registered_table_stops_workflow(
-    tables_repo, catalog, signals, clock, now
-):
+def test_exclude_registered_table_stops_workflow(tables_repo, catalog, signals, clock, now):
     _active(tables_repo, now, "u-9")
     catalog.add_table("iceberg", "sales", "orders", "u-9")
-    out = _exclude_service(tables_repo, catalog, signals, clock).execute(
-        _exclude_input()
-    )
+    out = _exclude_service(tables_repo, catalog, signals, clock).execute(_exclude_input())
     assert (out.status, out.selection) == ("excluded", "manual")
     assert out.settings is not None
     assert [_change(c) for c in signals.calls] == [("u-9", "stopped", [], False)]
 
 
-def test_exclude_unregistered_table_creates_row_without_settings(
-    tables_repo, catalog, signals, clock
-):
+def test_exclude_unregistered_table_creates_row_without_settings(tables_repo, catalog, signals, clock):
     catalog.add_table("iceberg", "sales", "orders", "u-9")
-    out = _exclude_service(tables_repo, catalog, signals, clock).execute(
-        _exclude_input()
-    )
+    out = _exclude_service(tables_repo, catalog, signals, clock).execute(_exclude_input())
     assert (out.uuid, out.status, out.selection) == ("u-9", "excluded", "manual")
     assert out.settings is None
     stored = tables_repo.get(TableId("u-9"))
@@ -352,13 +298,9 @@ def test_exclude_unregistered_table_creates_row_without_settings(
     assert [_change(c) for c in signals.calls] == [("u-9", "stopped", [], False)]
 
 
-def test_exclude_table_gone_from_catalog_uses_row_by_name(
-    tables_repo, catalog, signals, clock, now
-):
+def test_exclude_table_gone_from_catalog_uses_row_by_name(tables_repo, catalog, signals, clock, now):
     _active(tables_repo, now, "u-9")
-    out = _exclude_service(tables_repo, catalog, signals, clock).execute(
-        _exclude_input()
-    )
+    out = _exclude_service(tables_repo, catalog, signals, clock).execute(_exclude_input())
     assert out.status == "excluded"
     assert [_change(c) for c in signals.calls] == [("u-9", "stopped", [], False)]
 
@@ -377,14 +319,10 @@ def test_exclude_dropped_table_conflicts(tables_repo, catalog, signals, clock, n
     assert signals.calls == []
 
 
-def test_exclude_renames_existing_row_to_catalog_name(
-    tables_repo, catalog, signals, clock, now
-):
+def test_exclude_renames_existing_row_to_catalog_name(tables_repo, catalog, signals, clock, now):
     _active(tables_repo, now, "u-9", TableName("iceberg", "sales", "old_orders"))
     catalog.add_table("iceberg", "sales", "orders", "u-9")
-    out = _exclude_service(tables_repo, catalog, signals, clock).execute(
-        _exclude_input()
-    )
+    out = _exclude_service(tables_repo, catalog, signals, clock).execute(_exclude_input())
     assert (out.table, out.status) == ("orders", "excluded")
     stored = tables_repo.get(TableId("u-9"))
     assert stored is not None
@@ -395,17 +333,11 @@ def test_exclude_renames_existing_row_to_catalog_name(
 
 
 def _reset_service(tables_repo, rules_repo, presets_repo, signals, clock):
-    return ResetTableSelectionService(
-        tables_repo, rules_repo, presets_repo, signals, clock=clock
-    )
+    return ResetTableSelectionService(tables_repo, rules_repo, presets_repo, signals, clock=clock)
 
 
 def _rule(rules_repo, now, effect, preset_id, pattern=TablePattern(), rid="r-1"):
-    rules_repo.create(
-        TableDiscoveryRule.create(
-            TableDiscoveryRuleId(rid), 10, effect, pattern, preset_id, True, now
-        )
-    )
+    rules_repo.create(TableDiscoveryRule.create(TableDiscoveryRuleId(rid), 10, effect, pattern, preset_id, True, now))
 
 
 def test_reset_selection_applies_matching_include_rule(
@@ -423,9 +355,7 @@ def test_reset_selection_applies_matching_include_rule(
     assert [_change(c) for c in signals.calls] == [("u-1", "resumed", [], True)]
 
 
-def test_reset_selection_with_missing_rule_preset_not_found(
-    tables_repo, rules_repo, presets_repo, signals, clock, now
-):
+def test_reset_selection_with_missing_rule_preset_not_found(tables_repo, rules_repo, presets_repo, signals, clock, now):
     _excluded(tables_repo, now)
     _rule(rules_repo, now, RuleEffect.INCLUDE, TableMaintenancePresetId("gone"))
     with pytest.raises(NotFoundError):
@@ -435,9 +365,7 @@ def test_reset_selection_with_missing_rule_preset_not_found(
     assert signals.calls == []
 
 
-def test_reset_selection_with_exclude_rule_stops_workflow(
-    tables_repo, rules_repo, presets_repo, signals, clock, now
-):
+def test_reset_selection_with_exclude_rule_stops_workflow(tables_repo, rules_repo, presets_repo, signals, clock, now):
     _active(tables_repo, now)
     _rule(rules_repo, now, RuleEffect.EXCLUDE, None)
     out = _reset_service(tables_repo, rules_repo, presets_repo, signals, clock).execute(
@@ -451,9 +379,7 @@ def test_reset_selection_with_exclude_rule_stops_workflow(
     assert [_change(c) for c in signals.calls] == [("u-1", "stopped", [], False)]
 
 
-def test_reset_selection_without_matching_rule_excludes(
-    tables_repo, rules_repo, presets_repo, signals, clock, now
-):
+def test_reset_selection_without_matching_rule_excludes(tables_repo, rules_repo, presets_repo, signals, clock, now):
     _active(tables_repo, now)
     out = _reset_service(tables_repo, rules_repo, presets_repo, signals, clock).execute(
         ResetTableSelectionUseCaseInput(uuid="u-1")
@@ -462,18 +388,14 @@ def test_reset_selection_without_matching_rule_excludes(
     assert [_change(c) for c in signals.calls] == [("u-1", "stopped", [], False)]
 
 
-def test_reset_selection_unknown_table(
-    tables_repo, rules_repo, presets_repo, signals, clock
-):
+def test_reset_selection_unknown_table(tables_repo, rules_repo, presets_repo, signals, clock):
     with pytest.raises(NotFoundError):
         _reset_service(tables_repo, rules_repo, presets_repo, signals, clock).execute(
             ResetTableSelectionUseCaseInput(uuid="nope")
         )
 
 
-def test_reset_selection_dropped_table_conflicts(
-    tables_repo, rules_repo, presets_repo, signals, clock, now
-):
+def test_reset_selection_dropped_table_conflicts(tables_repo, rules_repo, presets_repo, signals, clock, now):
     _dropped(tables_repo, now)
     with pytest.raises(ConflictError):
         _reset_service(tables_repo, rules_repo, presets_repo, signals, clock).execute(
@@ -508,9 +430,7 @@ def test_trigger_on_dropped_table_conflicts(tables_repo, signals, now):
     _dropped(tables_repo, now)
     with pytest.raises(ConflictError):
         TriggerTableMaintenanceService(tables_repo, signals).execute(
-            TriggerTableMaintenanceUseCaseInput(
-                uuid="u-1", operations=["rewrite_data_files"]
-            )
+            TriggerTableMaintenanceUseCaseInput(uuid="u-1", operations=["rewrite_data_files"])
         )
     assert signals.calls == []
 
@@ -519,9 +439,7 @@ def test_trigger_on_excluded_table_conflicts(tables_repo, signals, now):
     _excluded(tables_repo, now)
     with pytest.raises(ConflictError):
         TriggerTableMaintenanceService(tables_repo, signals).execute(
-            TriggerTableMaintenanceUseCaseInput(
-                uuid="u-1", operations=["rewrite_data_files"]
-            )
+            TriggerTableMaintenanceUseCaseInput(uuid="u-1", operations=["rewrite_data_files"])
         )
 
 
@@ -538,19 +456,13 @@ def test_trigger_invalid_operations(tables_repo, signals, now, operations):
 def test_trigger_unknown_table(tables_repo, signals):
     with pytest.raises(NotFoundError):
         TriggerTableMaintenanceService(tables_repo, signals).execute(
-            TriggerTableMaintenanceUseCaseInput(
-                uuid="nope", operations=["rewrite_data_files"]
-            )
+            TriggerTableMaintenanceUseCaseInput(uuid="nope", operations=["rewrite_data_files"])
         )
 
 
-def test_settings_update_on_paused_table_starts_workflow_if_missing(
-    tables_repo, signals, clock, now
-):
+def test_settings_update_on_paused_table_starts_workflow_if_missing(tables_repo, signals, clock, now):
     _active(tables_repo, now).pause(now)
     UpdateTableSettingsService(tables_repo, signals, clock=clock).execute(
         UpdateTableSettingsUseCaseInput(uuid="u-1", settings={})
     )
-    assert [_change(c) for c in signals.calls] == [
-        ("u-1", "settings_changed", [], True)
-    ]
+    assert [_change(c) for c in signals.calls] == [("u-1", "settings_changed", [], True)]

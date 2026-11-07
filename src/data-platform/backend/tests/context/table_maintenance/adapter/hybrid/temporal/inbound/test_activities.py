@@ -96,9 +96,7 @@ def test_submit_injects_callback_base_url_and_converts_filters():
     assert request.run_id == "r1"
     assert request.operation == "rewrite_data_files"
     assert request.attempt == 2
-    assert request.filters == [
-        SubmitMaintenanceOperationUseCaseInputFilterItem(1, "y = 2")
-    ]
+    assert request.filters == [SubmitMaintenanceOperationUseCaseInputFilterItem(1, "y = 2")]
     assert request.procedure_args == {"a": 1}
     assert request.callback_base_url == "http://cp:8000"
     assert request.now == NOW_DT
@@ -158,9 +156,7 @@ def test_status_passes_the_attempt_triple():
 
 def test_delete_passes_the_attempt_triple():
     activities, fakes = _reconcile()
-    result = activities.delete_maintenance_job(
-        {"run_id": "r1", "operation": "expire_snapshots", "attempt": 2}
-    )
+    result = activities.delete_maintenance_job({"run_id": "r1", "operation": "expire_snapshots", "attempt": 2})
     request = fakes["delete"].requests[0]
     assert (request.run_id, request.operation, request.attempt) == (
         "r1",

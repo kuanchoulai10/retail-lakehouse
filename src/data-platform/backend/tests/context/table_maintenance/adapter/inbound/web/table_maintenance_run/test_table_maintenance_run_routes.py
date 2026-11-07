@@ -52,9 +52,7 @@ def test_list_runs_of_a_table() -> None:
 
     assert response.status_code == 200
     assert response.json()[0]["run_id"] == "run-1"
-    assert stub.requests == [
-        ListTableMaintenanceRunsUseCaseInput(table_uuid="u-1", limit=5)
-    ]
+    assert stub.requests == [ListTableMaintenanceRunsUseCaseInput(table_uuid="u-1", limit=5)]
 
 
 def test_list_runs_default_limit() -> None:
@@ -112,9 +110,7 @@ def test_callback_accepts_the_runtime_body_with_matching_ids() -> None:
     assert client.post(URL, json=body).status_code == 202
 
 
-@pytest.mark.parametrize(
-    "mismatch", [{"run_id": "other"}, {"operation": "expire_snapshots"}]
-)
+@pytest.mark.parametrize("mismatch", [{"run_id": "other"}, {"operation": "expire_snapshots"}])
 def test_callback_body_mismatching_the_path_returns_422(mismatch) -> None:
     stub = StubUseCase(ProcessTableMaintenanceCallbackUseCaseOutput(accepted=True))
     client = build_client(process_table_maintenance_callback=stub)
@@ -142,9 +138,7 @@ def test_callback_with_unknown_operation_returns_422() -> None:
     )
     client = build_client(process_table_maintenance_callback=service)
 
-    response = client.post(
-        "/v1/table-maintenance-runs/run-1/operations/defragment/result", json=CALLBACK
-    )
+    response = client.post("/v1/table-maintenance-runs/run-1/operations/defragment/result", json=CALLBACK)
 
     assert response.status_code == 422
 

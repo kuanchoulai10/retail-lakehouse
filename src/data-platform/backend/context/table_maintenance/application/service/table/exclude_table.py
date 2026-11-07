@@ -68,10 +68,7 @@ class ExcludeTableService(ExcludeTableUseCase):
             if found is None:
                 table = self._tables_repo.find_by_name(name)
                 if table is None:
-                    raise NotFoundError(
-                        f"table {request.catalog}.{request.namespace}.{request.table} "
-                        "not found"
-                    )
+                    raise NotFoundError(f"table {request.catalog}.{request.namespace}.{request.table} not found")
                 table.exclude(now)
                 self._tables_repo.update(table)
             else:

@@ -37,17 +37,9 @@ class TableRowMapper:
             "table_name": table.name.table,
             "status": table.status.value,
             "selection": table.selection.value,
-            "settings_json": (
-                None
-                if table.settings is None
-                else MaintenanceSettingsCodec.encode(table.settings)
-            ),
-            "matched_rule_id": (
-                None if table.matched_rule_id is None else table.matched_rule_id.value
-            ),
-            "source_preset_id": (
-                None if table.source_preset_id is None else table.source_preset_id.value
-            ),
+            "settings_json": (None if table.settings is None else MaintenanceSettingsCodec.encode(table.settings)),
+            "matched_rule_id": (None if table.matched_rule_id is None else table.matched_rule_id.value),
+            "source_preset_id": (None if table.source_preset_id is None else table.source_preset_id.value),
             "registered_at": table.registered_at,
             "updated_at": table.updated_at,
             "operation_states_json": {
@@ -74,13 +66,9 @@ class TableRowMapper:
             ),
             status=TableStatus(row["status"]),
             selection=TableSelection(row["selection"]),
-            settings=None
-            if settings is None
-            else MaintenanceSettingsCodec.decode(settings),
+            settings=None if settings is None else MaintenanceSettingsCodec.decode(settings),
             matched_rule_id=None if matched is None else TableDiscoveryRuleId(matched),
-            source_preset_id=None
-            if preset is None
-            else TableMaintenancePresetId(preset),
+            source_preset_id=None if preset is None else TableMaintenancePresetId(preset),
             registered_at=row["registered_at"],
             updated_at=row["updated_at"],
             operation_states={

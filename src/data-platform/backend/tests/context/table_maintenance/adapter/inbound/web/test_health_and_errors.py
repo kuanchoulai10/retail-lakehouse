@@ -29,9 +29,7 @@ def test_healthz_returns_200() -> None:
         (ValidationError("bad"), 422),
     ],
 )
-def test_application_errors_map_to_status_and_detail(
-    error: Exception, status: int
-) -> None:
+def test_application_errors_map_to_status_and_detail(error: Exception, status: int) -> None:
     client = build_client(get_table_discovery_settings=StubUseCase(error=error))
 
     response = client.get("/v1/table-discovery-settings")

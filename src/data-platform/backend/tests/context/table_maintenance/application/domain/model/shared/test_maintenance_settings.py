@@ -34,11 +34,7 @@ def test_defaults():
 
 
 def test_for_operation_min_interval_and_enabled():
-    s = MaintenanceSettings(
-        expire_snapshots=ExpireSnapshotsSettings(
-            enabled=False, min_interval=timedelta(hours=2)
-        )
-    )
+    s = MaintenanceSettings(expire_snapshots=ExpireSnapshotsSettings(enabled=False, min_interval=timedelta(hours=2)))
     for op in MaintenanceOperation:
         assert s.for_operation(op) is getattr(s, op.value)
     assert s.min_interval(MaintenanceOperation.EXPIRE_SNAPSHOTS) == timedelta(hours=2)

@@ -39,9 +39,7 @@ def maintenance_procedure_args(
     match operation:
         case MaintenanceOperation.REWRITE_DATA_FILES:
             return {
-                "target-file-size-bytes": resolve_target_file_size(
-                    settings.rewrite_data_files, properties
-                ),
+                "target-file-size-bytes": resolve_target_file_size(settings.rewrite_data_files, properties),
                 "min-input-files": MIN_INPUT_FILES,
                 "partial-progress.enabled": True,
             }
@@ -54,10 +52,4 @@ def maintenance_procedure_args(
                 "retain_last": cfg.retain_last,
             }
         case MaintenanceOperation.REMOVE_ORPHAN_FILES:
-            return {
-                "older_than": (
-                    (now - settings.remove_orphan_files.older_than)
-                    .astimezone(UTC)
-                    .isoformat()
-                )
-            }
+            return {"older_than": ((now - settings.remove_orphan_files.older_than).astimezone(UTC).isoformat())}

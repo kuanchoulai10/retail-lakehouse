@@ -32,11 +32,7 @@ def _workflow_packages() -> list[ModuleType]:
 
 
 def _workflow_definitions_in_package() -> set[type]:
-    values = (
-        getattr(package, name)
-        for package in _workflow_packages()
-        for name in package.__all__
-    )
+    values = (getattr(package, name) for package in _workflow_packages() for name in package.__all__)
     return {
         value
         for value in values

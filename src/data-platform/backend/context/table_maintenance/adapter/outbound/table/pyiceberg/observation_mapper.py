@@ -42,9 +42,7 @@ def observation_from_table(table: Table) -> TableMetadataObservation:
         snapshots=[
             {
                 "snapshot_id": s.snapshot_id,
-                "committed_at": datetime.fromtimestamp(
-                    s.timestamp_ms / 1000, tz=UTC
-                ).isoformat(),
+                "committed_at": datetime.fromtimestamp(s.timestamp_ms / 1000, tz=UTC).isoformat(),
             }
             for s in metadata.snapshots
         ],
@@ -88,9 +86,7 @@ def _source_field_type(table: Table, source_id: int) -> IcebergType:
     raise ValueError(f"Partition source field {source_id} not found in any schema")
 
 
-def _partition_stats(
-    table: Table, manifest_files: list[ManifestFile]
-) -> list[dict[str, Any]]:
+def _partition_stats(table: Table, manifest_files: list[ManifestFile]) -> list[dict[str, Any]]:
     files: Counter[tuple[int, tuple[Any, ...], str]] = Counter()
     sizes: Counter[tuple[int, tuple[Any, ...]]] = Counter()
     seen: set[tuple[int, tuple[Any, ...]]] = set()
@@ -111,12 +107,8 @@ def _partition_stats(
             "spec_id": spec_id,
             "values": list(values),
             "data_file_count": files[(spec_id, values, DataFileContent.DATA.name)],
-            "position_delete_file_count": files[
-                (spec_id, values, DataFileContent.POSITION_DELETES.name)
-            ],
-            "equality_delete_file_count": files[
-                (spec_id, values, DataFileContent.EQUALITY_DELETES.name)
-            ],
+            "position_delete_file_count": files[(spec_id, values, DataFileContent.POSITION_DELETES.name)],
+            "equality_delete_file_count": files[(spec_id, values, DataFileContent.EQUALITY_DELETES.name)],
             "total_data_file_size_bytes": sizes[(spec_id, values)],
         }
         for spec_id, values in sorted(seen, key=lambda k: (k[0], repr(k[1])))

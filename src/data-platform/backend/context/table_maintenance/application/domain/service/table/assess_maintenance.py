@@ -38,10 +38,7 @@ def assess_maintenance(
 ) -> MaintenanceAssessment:
     """Evaluate every operation of a table, regardless of the table's status."""
     return MaintenanceAssessment(
-        tuple(
-            _assess(op, table, settings, observation, now)
-            for op in MaintenanceOperation.ordered()
-        )
+        tuple(_assess(op, table, settings, observation, now) for op in MaintenanceOperation.ordered())
     )
 
 
@@ -58,9 +55,7 @@ def _assess(
     state = table.operation_state(op)
     if state.last_attempt_at is None:
         return assessment
-    next_eligible_at = state.last_attempt_at + state.effective_cooldown(
-        settings.min_interval(op)
-    )
+    next_eligible_at = state.last_attempt_at + state.effective_cooldown(settings.min_interval(op))
     if now >= next_eligible_at:
         return assessment
     return replace(
@@ -85,14 +80,10 @@ def _measure(
         case MaintenanceOperation.EXPIRE_SNAPSHOTS:
             return _assess_snapshots(settings, observation, now)
         case MaintenanceOperation.REMOVE_ORPHAN_FILES:
-            return OperationAssessment(
-                op, OperationVerdict.DUE, planned=PlannedOperation(op)
-            )
+            return OperationAssessment(op, OperationVerdict.DUE, planned=PlannedOperation(op))
 
 
-def _due(
-    assessment: OperationAssessment, planned: PlannedOperation | None = None
-) -> OperationAssessment:
+def _due(assessment: OperationAssessment, planned: PlannedOperation | None = None) -> OperationAssessment:
     return replace(
         assessment,
         verdict=OperationVerdict.DUE,
@@ -100,9 +91,7 @@ def _due(
     )
 
 
-def _assess_compaction(
-    settings: MaintenanceSettings, observation: TableObservation
-) -> OperationAssessment:
+def _assess_compaction(settings: MaintenanceSettings, observation: TableObservation) -> OperationAssessment:
     cfg = settings.rewrite_data_files
     op = MaintenanceOperation.REWRITE_DATA_FILES
     target = resolve_target_file_size(cfg, observation.properties)
@@ -112,9 +101,7 @@ def _assess_compaction(
         source = SizeSource.TABLE_PROPERTY
     else:
         source = SizeSource.DEFAULT
-    reducible = [
-        (p, compute_reducible_files(p, target)) for p in observation.partitions
-    ]
+    reducible = [(p, compute_reducible_files(p, target)) for p in observation.partitions]
     base = OperationAssessment(
         op,
         OperationVerdict.NOT_DUE,
@@ -141,9 +128,7 @@ def _assess_compaction(
     return _due(assessment, PlannedOperation(op, selected))
 
 
-def _assess_manifests(
-    settings: MaintenanceSettings, observation: TableObservation
-) -> OperationAssessment:
+def _assess_manifests(settings: MaintenanceSettings, observation: TableObservation) -> OperationAssessment:
     cfg = settings.rewrite_manifests
     prop = positive_int_property(observation.properties, MANIFEST_TARGET_SIZE_PROPERTY)
     if cfg.small_manifest_bytes is not None:
@@ -168,9 +153,7 @@ def _assess_snapshots(
     settings: MaintenanceSettings, observation: TableObservation, now: datetime
 ) -> OperationAssessment:
     cfg = settings.expire_snapshots
-    newest_first = sorted(
-        observation.snapshots, key=lambda s: s.committed_at, reverse=True
-    )
+    newest_first = sorted(observation.snapshots, key=lambda s: s.committed_at, reverse=True)
     cutoff = now - cfg.older_than
     expirable = sum(
         1

@@ -85,9 +85,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         self._table_change_gateway = table_change_gateway
         self._clock = clock
 
-    def execute(
-        self, request: SyncDiscoveredTablesUseCaseInput
-    ) -> SyncDiscoveredTablesUseCaseOutput:
+    def execute(self, request: SyncDiscoveredTablesUseCaseInput) -> SyncDiscoveredTablesUseCaseOutput:
         """Register, rename and drop tables within the catalog or namespace scope.
 
         New tables are registered only while discovery is enabled; renames always run.
@@ -101,9 +99,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         now = self._clock()
         enabled = self._table_discovery_settings_repo.get_settings().enabled
         rules = self._rules_repo.list_all() if enabled else []
-        refs = self._catalog_gateway.list_tables(
-            ReadTableMetadataGatewayListInput(request.catalog, request.namespace)
-        )
+        refs = self._catalog_gateway.list_tables(ReadTableMetadataGatewayListInput(request.catalog, request.namespace))
         seen: set[str] = set()
         registered = renamed = skipped = ensured = 0
         for ref in refs:

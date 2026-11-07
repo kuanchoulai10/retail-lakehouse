@@ -28,9 +28,7 @@ def _python_files(directory: Path) -> list[Path]:
     if not directory.is_dir():
         return []
     return sorted(
-        path
-        for path in directory.rglob("*.py")
-        if not SKIPPED_PARTS & set(path.relative_to(directory).parts)
+        path for path in directory.rglob("*.py") if not SKIPPED_PARTS & set(path.relative_to(directory).parts)
     )
 
 
@@ -69,9 +67,7 @@ def _imported_modules(path: Path, backend: Path) -> list[tuple[int, str, bool]]:
                 spelling = "." * node.level + (node.module or "")
                 found.append((node.lineno, f"{spelling} climbs above context", False))
                 continue
-            found += [
-                (node.lineno, f"{module}.{alias.name}", True) for alias in node.names
-            ]
+            found += [(node.lineno, f"{module}.{alias.name}", True) for alias in node.names]
     return found
 
 
@@ -141,38 +137,22 @@ def _write(root: Path, relative: str, source: str) -> None:
 
 def test_cross_context_import_rules(tmp_path: Path):
     files = {
-        "context/alpha/application/service/s.py": (
-            "from context.beta.application.domain.model.thing import Thing\n"
-        ),
-        "context/alpha/adapter/outbound/ok.py": (
-            "from context.beta.application.port.inbound import GetThingUseCase\n"
-        ),
-        "context/alpha/adapter/outbound/bad.py": (
-            "from context.beta.application.port.outbound import ThingRepo\n"
-        ),
+        "context/alpha/application/service/s.py": ("from context.beta.application.domain.model.thing import Thing\n"),
+        "context/alpha/adapter/outbound/ok.py": ("from context.beta.application.port.inbound import GetThingUseCase\n"),
+        "context/alpha/adapter/outbound/bad.py": ("from context.beta.application.port.outbound import ThingRepo\n"),
         "context/alpha/adapter/inbound/web/w.py": (
             "from typing import TYPE_CHECKING\n"
             "if TYPE_CHECKING:\n"
             "    from context.beta.adapter.outbound import ThingSqlRepo\n"
         ),
-        "context/alpha/adapter/outbound/own.py": (
-            "from context.alpha.application.domain.model import Widget\n"
-        ),
-        "context/alpha/adapter/outbound/port_ok.py": (
-            "from context.beta.application.port import inbound\n"
-        ),
+        "context/alpha/adapter/outbound/own.py": ("from context.alpha.application.domain.model import Widget\n"),
+        "context/alpha/adapter/outbound/port_ok.py": ("from context.beta.application.port import inbound\n"),
         "context/alpha/adapter/outbound/whole.py": "from context import beta\n",
-        "context/alpha/application/rel.py": (
-            "from ...beta.application.domain.model import thing\n"
-        ),
-        "context/alpha/adapter/outbound/rel_ok.py": (
-            "from ....beta.application.port.inbound import X\n"
-        ),
+        "context/alpha/application/rel.py": ("from ...beta.application.domain.model import thing\n"),
+        "context/alpha/adapter/outbound/rel_ok.py": ("from ....beta.application.port.inbound import X\n"),
         "context/alpha/application/up.py": "from .... import beta\n",
         "context/alpha/application/own_rel.py": "from .service import s\n",
-        "context/alpha/adapter/__init__.py": (
-            "from ...beta.application.domain import model\n"
-        ),
+        "context/alpha/adapter/__init__.py": ("from ...beta.application.domain import model\n"),
         "context/alpha/adapter/inbound/web/uses_port.py": (
             "from context.beta.application.port.inbound import GetThingUseCase\n"
         ),
@@ -195,19 +175,14 @@ def test_cross_context_import_rules(tmp_path: Path):
 
     assert sorted(violations) == sorted(
         [
-            "context/alpha/application/service/s.py:1 "
-            "context.beta.application.domain.model.thing.Thing",
-            "context/alpha/adapter/outbound/bad.py:1 "
-            "context.beta.application.port.outbound.ThingRepo",
-            "context/alpha/adapter/inbound/web/w.py:3 "
-            "context.beta.adapter.outbound.ThingSqlRepo",
+            "context/alpha/application/service/s.py:1 context.beta.application.domain.model.thing.Thing",
+            "context/alpha/adapter/outbound/bad.py:1 context.beta.application.port.outbound.ThingRepo",
+            "context/alpha/adapter/inbound/web/w.py:3 context.beta.adapter.outbound.ThingSqlRepo",
             "context/alpha/adapter/outbound/whole.py:1 context.beta",
-            "context/alpha/application/rel.py:1 "
-            "context.beta.application.domain.model.thing",
+            "context/alpha/application/rel.py:1 context.beta.application.domain.model.thing",
             "context/alpha/application/up.py:1 .... climbs above context",
             "context/alpha/adapter/__init__.py:1 context.beta.application.domain.model",
-            "context/alpha/adapter/inbound/web/uses_port.py:1 "
-            "context.beta.application.port.inbound.GetThingUseCase",
+            "context/alpha/adapter/inbound/web/uses_port.py:1 context.beta.application.port.inbound.GetThingUseCase",
             "context/alpha/adapter/hybrid/temporal/inbound/act.py:1 "
             "context.beta.application.port.inbound.GetThingUseCase",
             "context/alpha/adapter/hybrid/temporal/contracts/c.py:1 "

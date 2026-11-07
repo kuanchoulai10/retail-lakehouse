@@ -35,7 +35,5 @@ def build_client(**use_cases: Any) -> TestClient:  # noqa: ANN401
     unknown = set(use_cases) - {f.name for f in fields(WebUseCases)}
     if unknown:
         raise TypeError(f"unknown use cases: {sorted(unknown)}")
-    values: dict[str, Any] = {
-        f.name: use_cases.get(f.name, StubUseCase()) for f in fields(WebUseCases)
-    }
+    values: dict[str, Any] = {f.name: use_cases.get(f.name, StubUseCase()) for f in fields(WebUseCases)}
     return TestClient(create_app(WebUseCases(**values)))

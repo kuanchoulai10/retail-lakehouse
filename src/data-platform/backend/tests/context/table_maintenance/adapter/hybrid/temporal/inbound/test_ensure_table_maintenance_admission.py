@@ -47,15 +47,9 @@ async def _scenario() -> tuple[dict, str, str | None]:
             workflows=[StubAdmission],
             workflow_runner=UnsandboxedWorkflowRunner(),
         ):
-            await ensure_table_maintenance_admission(
-                env.client, limit=2, lease_seconds=60
-            )
-            await ensure_table_maintenance_admission(
-                env.client, limit=9, lease_seconds=99
-            )
-            handle = env.client.get_workflow_handle(
-                TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID
-            )
+            await ensure_table_maintenance_admission(env.client, limit=2, lease_seconds=60)
+            await ensure_table_maintenance_admission(env.client, limit=9, lease_seconds=99)
+            handle = env.client.get_workflow_handle(TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID)
             state = await handle.query(StubAdmission.state)
             description = await handle.describe()
             summary = await description.static_summary()
@@ -73,7 +67,4 @@ def test_starts_the_admission_workflow_once_and_keeps_a_running_one():
 
 
 def test_task_queue_is_the_domain_constant_not_a_parameter():
-    assert (
-        "task_queue"
-        not in inspect.signature(ensure_table_maintenance_admission).parameters
-    )
+    assert "task_queue" not in inspect.signature(ensure_table_maintenance_admission).parameters

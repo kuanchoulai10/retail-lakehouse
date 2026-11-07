@@ -93,14 +93,8 @@ def test_no_loose_py_files_in_inbound_port(context: str):
 def test_only_aggregate_groups_in_inbound_port(context: str):
     """Verify that port/inbound/ contains only the expected aggregate group directories."""
     groups = _aggregate_groups(context)
-    dirs = [
-        d.name
-        for d in _inbound_port_dir(context).iterdir()
-        if d.is_dir() and d.name != "__pycache__"
-    ]
-    assert sorted(dirs) == sorted(groups), (
-        f"port/inbound/ must only contain aggregate groups {groups}, found: {dirs}"
-    )
+    dirs = [d.name for d in _inbound_port_dir(context).iterdir() if d.is_dir() and d.name != "__pycache__"]
+    assert sorted(dirs) == sorted(groups), f"port/inbound/ must only contain aggregate groups {groups}, found: {dirs}"
 
 
 # --- Rule 2: Each use case directory has exactly the required files ---
@@ -110,26 +104,16 @@ def test_only_aggregate_groups_in_inbound_port(context: str):
 def test_use_case_dir_has_required_files(use_case_entry: tuple[str, str, Path]):
     """Verify that each use case directory contains all required files."""
     context, group, use_case_dir = use_case_entry
-    actual_files = {
-        f.name for f in use_case_dir.iterdir() if f.is_file() and f.suffix == ".py"
-    }
-    required = (
-        REQUIRED_FILES_NO_INPUT
-        if group in AGGREGATE_GROUPS_NO_INPUT
-        else REQUIRED_FILES
-    )
-    assert required.issubset(actual_files), (
-        f"{use_case_dir.name}/ is missing: {required - actual_files}"
-    )
+    actual_files = {f.name for f in use_case_dir.iterdir() if f.is_file() and f.suffix == ".py"}
+    required = REQUIRED_FILES_NO_INPUT if group in AGGREGATE_GROUPS_NO_INPUT else REQUIRED_FILES
+    assert required.issubset(actual_files), f"{use_case_dir.name}/ is missing: {required - actual_files}"
 
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
 def test_use_case_dir_has_no_extra_files(use_case_entry: tuple[str, str, Path]):
     """Verify that each use case directory contains no unexpected files."""
     _context, _group, use_case_dir = use_case_entry
-    actual_files = {
-        f.name for f in use_case_dir.iterdir() if f.is_file() and f.suffix == ".py"
-    }
+    actual_files = {f.name for f in use_case_dir.iterdir() if f.is_file() and f.suffix == ".py"}
     extra = actual_files - ALLOWED_FILES
     assert extra == set(), f"{use_case_dir.name}/ has unexpected files: {extra}"
 
@@ -140,11 +124,7 @@ def test_use_case_dir_has_no_extra_files(use_case_entry: tuple[str, str, Path]):
 def _exported_classes(module_path: str) -> list[str]:
     """Return class names defined in a module."""
     mod = importlib.import_module(module_path)
-    return [
-        name
-        for name in dir(mod)
-        if isinstance(getattr(mod, name), type) and not name.startswith("_")
-    ]
+    return [name for name in dir(mod) if isinstance(getattr(mod, name), type) and not name.startswith("_")]
 
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
@@ -157,9 +137,7 @@ def test_input_class_naming(use_case_entry: tuple[str, str, Path]):
     expected = f"{prefix}UseCaseInput"
     module = f"{_inbound_port_module(context)}.{group}.{use_case_dir.name}.input"
     classes = _exported_classes(module)
-    assert expected in classes, (
-        f"{use_case_dir.name}/input.py must export '{expected}', found: {classes}"
-    )
+    assert expected in classes, f"{use_case_dir.name}/input.py must export '{expected}', found: {classes}"
 
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
@@ -170,9 +148,7 @@ def test_output_class_naming(use_case_entry: tuple[str, str, Path]):
     expected = f"{prefix}UseCaseOutput"
     module = f"{_inbound_port_module(context)}.{group}.{use_case_dir.name}.output"
     classes = _exported_classes(module)
-    assert expected in classes, (
-        f"{use_case_dir.name}/output.py must export '{expected}', found: {classes}"
-    )
+    assert expected in classes, f"{use_case_dir.name}/output.py must export '{expected}', found: {classes}"
 
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
@@ -183,9 +159,7 @@ def test_use_case_class_naming(use_case_entry: tuple[str, str, Path]):
     expected = f"{prefix}UseCase"
     module = f"{_inbound_port_module(context)}.{group}.{use_case_dir.name}.use_case"
     classes = _exported_classes(module)
-    assert expected in classes, (
-        f"{use_case_dir.name}/use_case.py must export '{expected}', found: {classes}"
-    )
+    assert expected in classes, f"{use_case_dir.name}/use_case.py must export '{expected}', found: {classes}"
 
 
 # --- Rule 4: One class per file (no extra classes) ---
@@ -199,9 +173,7 @@ def test_output_classes_prefixed(use_case_entry: tuple[str, str, Path]):
     module = f"{_inbound_port_module(context)}.{group}.{use_case_dir.name}.output"
     classes = _exported_classes(module)
     misnamed = [c for c in classes if not c.startswith(prefix)]
-    assert misnamed == [], (
-        f"{use_case_dir.name}/output.py has classes not prefixed with '{prefix}': {misnamed}"
-    )
+    assert misnamed == [], f"{use_case_dir.name}/output.py has classes not prefixed with '{prefix}': {misnamed}"
 
 
 # --- Rule 5: __init__.py re-exports all three symbols ---

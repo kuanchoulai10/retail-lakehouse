@@ -46,19 +46,13 @@ class UpdateTableMaintenancePresetService(UpdateTableMaintenancePresetUseCase):
         self._presets_repo = presets_repo
         self._clock = clock
 
-    def execute(
-        self, request: UpdateTableMaintenancePresetUseCaseInput
-    ) -> UpdateTableMaintenancePresetUseCaseOutput:
+    def execute(self, request: UpdateTableMaintenancePresetUseCaseInput) -> UpdateTableMaintenancePresetUseCaseOutput:
         """Apply the given changes; omitted fields stay as they are."""
         preset = self._presets_repo.get(TableMaintenancePresetId(request.id))
         if preset is None:
             raise NotFoundError(f"table maintenance preset {request.id} not found")
         now = self._clock()
-        settings = (
-            None
-            if request.settings is None
-            else maintenance_settings_from_dict(request.settings)
-        )
+        settings = None if request.settings is None else maintenance_settings_from_dict(request.settings)
         if request.name is not None:
             name = request.name.strip()
             if not name:
@@ -70,6 +64,4 @@ class UpdateTableMaintenancePresetService(UpdateTableMaintenancePresetUseCase):
         if settings is not None:
             preset.update_settings(settings, now)
         self._presets_repo.update(preset)
-        return UpdateTableMaintenancePresetUseCaseOutput(
-            **table_maintenance_preset_output_fields(preset)
-        )
+        return UpdateTableMaintenancePresetUseCaseOutput(**table_maintenance_preset_output_fields(preset))

@@ -67,28 +67,19 @@ class IncludeTableService(IncludeTableUseCase):
 
     def execute(self, request: IncludeTableUseCaseInput) -> IncludeTableUseCaseOutput:
         """Register or reactivate the table as MANUAL ACTIVE and start its workflow."""
-        found = self._catalog_gateway.load_table(
-            TableMetadataRef(request.catalog, request.namespace, request.table)
-        )
+        found = self._catalog_gateway.load_table(TableMetadataRef(request.catalog, request.namespace, request.table))
         if found is None:
-            raise NotFoundError(
-                f"table {request.catalog}.{request.namespace}.{request.table} "
-                "not found in the catalog"
-            )
+            raise NotFoundError(f"table {request.catalog}.{request.namespace}.{request.table} not found in the catalog")
         preset = self._presets_repo.get(TableMaintenancePresetId(request.preset_id))
         if preset is None:
-            raise NotFoundError(
-                f"table maintenance preset {request.preset_id} not found"
-            )
+            raise NotFoundError(f"table maintenance preset {request.preset_id} not found")
         now = self._clock()
         with translate_domain_errors():
             name = TableName(found.catalog, found.namespace, found.table)
             uuid = TableId(found.table_uuid)
             table = self._tables_repo.get(uuid)
             if table is None:
-                table = Table.include_manual(
-                    uuid, name, preset.id, preset.settings, now
-                )
+                table = Table.include_manual(uuid, name, preset.id, preset.settings, now)
                 self._tables_repo.create(table)
             else:
                 if table.status == TableStatus.DROPPED:

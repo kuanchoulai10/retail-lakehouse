@@ -31,7 +31,5 @@ def build_api_app(
     k8s_api_factory: Callable[[], CustomObjectsApi] = build_k8s_api,
 ) -> FastAPI:
     """Build the control plane FastAPI app; the Kubernetes client stays lazy."""
-    use_cases = build_connected_use_cases(
-        settings, bridge, connect=connect, k8s_api_factory=k8s_api_factory
-    )
+    use_cases = build_connected_use_cases(settings, bridge, connect=connect, k8s_api_factory=k8s_api_factory)
     return create_app(build_web_use_cases(use_cases))

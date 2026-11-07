@@ -26,10 +26,7 @@ from context.table_maintenance.application.domain.model.shared.rewrite_manifests
 from base import ValueObject
 
 type OperationSettings = (
-    RewriteDataFilesSettings
-    | RewriteManifestsSettings
-    | ExpireSnapshotsSettings
-    | RemoveOrphanFilesSettings
+    RewriteDataFilesSettings | RewriteManifestsSettings | ExpireSnapshotsSettings | RemoveOrphanFilesSettings
 )
 
 
@@ -38,18 +35,10 @@ class MaintenanceSettings(ValueObject):
     """Bundle the reconcile interval and per-operation settings of a table."""
 
     reconcile_interval: timedelta = field(default_factory=lambda: timedelta(hours=1))
-    rewrite_data_files: RewriteDataFilesSettings = field(
-        default_factory=RewriteDataFilesSettings
-    )
-    rewrite_manifests: RewriteManifestsSettings = field(
-        default_factory=RewriteManifestsSettings
-    )
-    expire_snapshots: ExpireSnapshotsSettings = field(
-        default_factory=ExpireSnapshotsSettings
-    )
-    remove_orphan_files: RemoveOrphanFilesSettings = field(
-        default_factory=RemoveOrphanFilesSettings
-    )
+    rewrite_data_files: RewriteDataFilesSettings = field(default_factory=RewriteDataFilesSettings)
+    rewrite_manifests: RewriteManifestsSettings = field(default_factory=RewriteManifestsSettings)
+    expire_snapshots: ExpireSnapshotsSettings = field(default_factory=ExpireSnapshotsSettings)
+    remove_orphan_files: RemoveOrphanFilesSettings = field(default_factory=RemoveOrphanFilesSettings)
 
     def __post_init__(self) -> None:
         """Reject a non-positive reconcile interval."""

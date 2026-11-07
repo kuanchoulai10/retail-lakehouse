@@ -73,9 +73,7 @@ async def _scenario() -> None:
     # The time-skipping server drops the summary of a signal-with-start.
     async with await WorkflowEnvironment.start_local() as env:
         queue = TASK_QUEUE
-        activities = WorkflowSignalActivities(
-            env.client, admission_limit=2, admission_lease_seconds=60
-        )
+        activities = WorkflowSignalActivities(env.client, admission_limit=2, admission_lease_seconds=60)
         async with Worker(
             env.client,
             task_queue=queue,
@@ -88,19 +86,13 @@ async def _scenario() -> None:
                     activities.signal_admission_acquire,
                     {"request_id": request_id, "requester_workflow_id": "w"},
                 )
-            admission = env.client.get_workflow_handle(
-                TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID
-            )
+            admission = env.client.get_workflow_handle(TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID)
             state = await admission.query("state")
             assert state == {"limit": 2, "lease": 60, "acquires": ["a", "b"]}
             description = await admission.describe()
-            assert await description.static_summary() == (
-                "global Spark maintenance admission (limit=2)"
-            )
+            assert await description.static_summary() == ("global Spark maintenance admission (limit=2)")
 
-            parent = await env.client.start_workflow(
-                "StubParent", id="parent-1", task_queue=queue
-            )
+            parent = await env.client.start_workflow("StubParent", id="parent-1", task_queue=queue)
             delivered = await act_env.run(
                 activities.signal_parent,
                 {

@@ -19,7 +19,5 @@ class GetMaintenanceJobStatusUseCase(
     """Get the state of a Spark maintenance job."""
 
     @abstractmethod
-    def execute(
-        self, request: GetMaintenanceJobStatusUseCaseInput
-    ) -> GetMaintenanceJobStatusUseCaseOutput:
+    def execute(self, request: GetMaintenanceJobStatusUseCaseInput) -> GetMaintenanceJobStatusUseCaseOutput:
         """Get the state of a Spark maintenance job."""

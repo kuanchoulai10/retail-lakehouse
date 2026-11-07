@@ -28,7 +28,5 @@ def seed_default_preset(
     """
     if list_presets.execute(ListTableMaintenancePresetsUseCaseInput()).items:
         return False
-    create_preset.execute(
-        CreateTableMaintenancePresetUseCaseInput(name=DEFAULT_PRESET_NAME)
-    )
+    create_preset.execute(CreateTableMaintenancePresetUseCaseInput(name=DEFAULT_PRESET_NAME))
     return True

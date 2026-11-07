@@ -44,33 +44,23 @@ UseCases = Annotated[WebUseCases, Depends(use_cases_dependency)]
 
 
 @router.get("")
-def list_tables(
-    use_cases: UseCases, status: str | None = None
-) -> list[TableApiResponse]:
+def list_tables(use_cases: UseCases, status: str | None = None) -> list[TableApiResponse]:
     """List the tables, optionally only those in one status."""
     output = use_cases.list_tables.execute(ListTablesUseCaseInput(status=status))
     return [TableApiResponse.model_validate(item) for item in output.items]
 
 
 @router.post("/include")
-def include_table(
-    body: IncludeTableApiRequest, use_cases: UseCases
-) -> TableApiResponse:
+def include_table(body: IncludeTableApiRequest, use_cases: UseCases) -> TableApiResponse:
     """Include a catalog table in maintenance by hand."""
-    output = use_cases.include_table.execute(
-        IncludeTableUseCaseInput(**body.model_dump())
-    )
+    output = use_cases.include_table.execute(IncludeTableUseCaseInput(**body.model_dump()))
     return TableApiResponse.model_validate(output)
 
 
 @router.post("/exclude")
-def exclude_table(
-    body: ExcludeTableApiRequest, use_cases: UseCases
-) -> TableApiResponse:
+def exclude_table(body: ExcludeTableApiRequest, use_cases: UseCases) -> TableApiResponse:
     """Exclude a catalog table from maintenance by hand."""
-    output = use_cases.exclude_table.execute(
-        ExcludeTableUseCaseInput(**body.model_dump())
-    )
+    output = use_cases.exclude_table.execute(ExcludeTableUseCaseInput(**body.model_dump()))
     return TableApiResponse.model_validate(output)
 
 
@@ -82,31 +72,23 @@ def get_table(table_uuid: str, use_cases: UseCases) -> TableApiResponse:
 
 
 @router.get("/{table_uuid}/metadata")
-def get_table_metadata(
-    table_uuid: str, use_cases: UseCases
-) -> TableMetadataApiResponse:
+def get_table_metadata(table_uuid: str, use_cases: UseCases) -> TableMetadataApiResponse:
     """Return the catalog metadata of one table."""
-    output = use_cases.get_table_metadata.execute(
-        GetTableMetadataUseCaseInput(uuid=table_uuid)
-    )
+    output = use_cases.get_table_metadata.execute(GetTableMetadataUseCaseInput(uuid=table_uuid))
     return TableMetadataApiResponse.model_validate(output)
 
 
 @router.get("/{table_uuid}/health")
 def get_table_health(table_uuid: str, use_cases: UseCases) -> TableHealthApiResponse:
     """Return the scheduler's maintenance evaluation of one table."""
-    output = use_cases.get_table_health.execute(
-        GetTableHealthUseCaseInput(uuid=table_uuid)
-    )
+    output = use_cases.get_table_health.execute(GetTableHealthUseCaseInput(uuid=table_uuid))
     return TableHealthApiResponse.model_validate(output)
 
 
 @router.get("/{table_uuid}/storage")
 def get_table_storage(table_uuid: str, use_cases: UseCases) -> TableStorageApiResponse:
     """Return the current and old-snapshot storage of one table."""
-    output = use_cases.get_table_storage.execute(
-        GetTableStorageUseCaseInput(uuid=table_uuid)
-    )
+    output = use_cases.get_table_storage.execute(GetTableStorageUseCaseInput(uuid=table_uuid))
     return TableStorageApiResponse.model_validate(output)
 
 
@@ -152,9 +134,7 @@ def resume_table(table_uuid: str, use_cases: UseCases) -> TableApiResponse:
 @router.post("/{table_uuid}/reset-selection")
 def reset_table_selection(table_uuid: str, use_cases: UseCases) -> TableApiResponse:
     """Hand a manually selected table back to the discovery rules."""
-    output = use_cases.reset_table_selection.execute(
-        ResetTableSelectionUseCaseInput(uuid=table_uuid)
-    )
+    output = use_cases.reset_table_selection.execute(ResetTableSelectionUseCaseInput(uuid=table_uuid))
     return TableApiResponse.model_validate(output)
 
 

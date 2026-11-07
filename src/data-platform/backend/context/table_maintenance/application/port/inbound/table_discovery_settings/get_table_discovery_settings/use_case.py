@@ -14,14 +14,10 @@ from base import UseCase
 
 
 class GetTableDiscoverySettingsUseCase(
-    UseCase[
-        GetTableDiscoverySettingsUseCaseInput, GetTableDiscoverySettingsUseCaseOutput
-    ]
+    UseCase[GetTableDiscoverySettingsUseCaseInput, GetTableDiscoverySettingsUseCaseOutput]
 ):
     """Get the discovery switch."""
 
     @abstractmethod
-    def execute(
-        self, request: GetTableDiscoverySettingsUseCaseInput
-    ) -> GetTableDiscoverySettingsUseCaseOutput:
+    def execute(self, request: GetTableDiscoverySettingsUseCaseInput) -> GetTableDiscoverySettingsUseCaseOutput:
         """Get the discovery switch."""

@@ -64,9 +64,7 @@ def violations(source: str) -> list[str]:
                 found.append(f"from {node.module} import ...")
             elif node.module == "temporalio":
                 found += [
-                    f"from temporalio import {a.name}"
-                    for a in node.names
-                    if _is_forbidden(f"temporalio.{a.name}")
+                    f"from temporalio import {a.name}" for a in node.names if _is_forbidden(f"temporalio.{a.name}")
                 ]
         elif isinstance(node, ast.Attribute):
             owner = _rightmost_name(node.value)

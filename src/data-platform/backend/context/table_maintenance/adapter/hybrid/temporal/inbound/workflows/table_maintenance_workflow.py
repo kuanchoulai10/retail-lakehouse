@@ -30,9 +30,7 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_m
 )
 
 _ACTIVITY_TIMEOUT = timedelta(minutes=2)
-_ACTIVITY_RETRY = RetryPolicy(
-    maximum_attempts=5, initial_interval=timedelta(seconds=2), backoff_coefficient=2.0
-)
+_ACTIVITY_RETRY = RetryPolicy(maximum_attempts=5, initial_interval=timedelta(seconds=2), backoff_coefficient=2.0)
 FAST_POLL_INTERVAL = timedelta(seconds=30)
 FAST_POLL_WINDOW = timedelta(minutes=10)
 SLOW_POLL_INTERVAL = timedelta(minutes=5)
@@ -60,9 +58,7 @@ class TableMaintenanceWorkflow:
     def __init__(self, input: TableMaintenanceWorkflowInput) -> None:  # noqa: A002
         """Prepare the result and grant mailboxes and the attempt log."""
         self._run_id = input.run_id
-        self._policy = TableMaintenanceAttemptPolicy(
-            attempt_deadline=timedelta(seconds=input.attempt_deadline_seconds)
-        )
+        self._policy = TableMaintenanceAttemptPolicy(attempt_deadline=timedelta(seconds=input.attempt_deadline_seconds))
         self._results: dict[tuple[str, int], OperationResultSignal] = {}
         self._granted: set[str] = set()
         self._current_request: str | None = None
@@ -116,9 +112,7 @@ class TableMaintenanceWorkflow:
             if attempt < self._policy.max_attempts:
                 await workflow.sleep(self._policy.backoff_after(attempt))
 
-    async def _run_attempt(
-        self, operation: dict[str, Any], attempt: int
-    ) -> OperationResultSignal:
+    async def _run_attempt(self, operation: dict[str, Any], attempt: int) -> OperationResultSignal:
         name = operation["operation"]
         request_id = f"{self._run_id}-{name}-{attempt}"
         self._current_request = request_id
@@ -131,17 +125,13 @@ class TableMaintenanceWorkflow:
             self._current_request = None
             await self._release(request_id)
 
-    async def _attempt_outcome(
-        self, operation: dict[str, Any], attempt: int, request_id: str
-    ) -> OperationResultSignal:
+    async def _attempt_outcome(self, operation: dict[str, Any], attempt: int, request_id: str) -> OperationResultSignal:
         name = operation["operation"]
         try:
             await self._acquire(request_id)
         except ActivityError as error:
             _raise_if_cancelled(error)
-            return self._failure(
-                name, attempt, f"admission acquire failed: {_message(error)}"
-            )
+            return self._failure(name, attempt, f"admission acquire failed: {_message(error)}")
         self._started_attempts.append((name, attempt))
         try:
             submitted = await self._activity(
@@ -174,14 +164,10 @@ class TableMaintenanceWorkflow:
                 )
                 return
             except TimeoutError:
-                await self._activity(
-                    TableMaintenanceActivity.SIGNAL_ADMISSION_ACQUIRE, request
-                )
+                await self._activity(TableMaintenanceActivity.SIGNAL_ADMISSION_ACQUIRE, request)
 
     async def _release(self, request_id: str) -> None:
-        handle = workflow.get_external_workflow_handle(
-            TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID
-        )
+        handle = workflow.get_external_workflow_handle(TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID)
         try:
             await handle.signal(
                 TableMaintenanceAdmissionSignal.RELEASE,
@@ -190,9 +176,7 @@ class TableMaintenanceWorkflow:
         except FailureError as error:
             workflow.logger.warning("release of %s failed: %s", request_id, error)
 
-    async def _await_outcome(
-        self, name: str, attempt: int, job_name: str
-    ) -> OperationResultSignal:
+    async def _await_outcome(self, name: str, attempt: int, job_name: str) -> OperationResultSignal:
         key = (name, attempt)
         submitted_at = workflow.now()
         deadline = submitted_at + self._policy.attempt_deadline
@@ -206,9 +190,7 @@ class TableMaintenanceWorkflow:
             in_fast_window = now - submitted_at < FAST_POLL_WINDOW
             interval = FAST_POLL_INTERVAL if in_fast_window else SLOW_POLL_INTERVAL
             try:
-                await workflow.wait_condition(
-                    lambda: key in self._results, timeout=min(interval, deadline - now)
-                )
+                await workflow.wait_condition(lambda: key in self._results, timeout=min(interval, deadline - now))
                 return self._results[key]
             except TimeoutError:
                 pass
@@ -219,9 +201,7 @@ class TableMaintenanceWorkflow:
                 continue
             state = status["state"]
             if state == "FAILED":
-                return self._failure(
-                    name, attempt, status["error"] or "spark job failed"
-                )
+                return self._failure(name, attempt, status["error"] or "spark job failed")
             if state == "NOT_FOUND":
                 return self._failure(name, attempt, "spark job missing")
             if state != "COMPLETED":
@@ -229,9 +209,7 @@ class TableMaintenanceWorkflow:
                 continue
             completed_since = completed_since or workflow.now()
             if workflow.now() - completed_since >= _CALLBACK_GRACE:
-                workflow.logger.warning(
-                    "%s completed without callback; recording success", job_name
-                )
+                workflow.logger.warning("%s completed without callback; recording success", job_name)
                 return OperationResultSignal(
                     run_id=self._run_id,
                     operation=name,
@@ -249,9 +227,7 @@ class TableMaintenanceWorkflow:
             )
         except ActivityError as error:
             _raise_if_cancelled(error)
-            workflow.logger.warning(
-                "status of %s attempt %s unknown: %s", name, attempt, error
-            )
+            workflow.logger.warning("status of %s attempt %s unknown: %s", name, attempt, error)
             return None
 
     async def _record(self, outcome: OperationResultSignal) -> None:
@@ -286,9 +262,7 @@ class TableMaintenanceWorkflow:
                     {"run_id": self._run_id, "operation": name, "attempt": attempt},
                 )
             except ActivityError as error:
-                workflow.logger.warning(
-                    "deleting the job of %s attempt %s failed: %s", name, attempt, error
-                )
+                workflow.logger.warning("deleting the job of %s attempt %s failed: %s", name, attempt, error)
         try:
             await self._activity(
                 TableMaintenanceActivity.SIGNAL_PARENT,

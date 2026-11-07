@@ -46,9 +46,7 @@ def h(harness: TemporalHarness) -> Iterator[TemporalHarness]:  # noqa: F811
 
     async def delete() -> None:
         for catalog in (CATALOG, f"{CATALOG}-2"):
-            handle = harness.client.get_schedule_handle(
-                table_discovery_schedule_id(catalog)
-            )
+            handle = harness.client.get_schedule_handle(table_discovery_schedule_id(catalog))
             try:
                 await handle.delete()
             except RPCError:
@@ -64,11 +62,7 @@ def _ensure(
     paused: bool,
     interval: timedelta = timedelta(minutes=10),
 ) -> None:
-    h.bridge.run(
-        lambda: ensure_table_discovery_schedule(
-            h.client, catalogs, paused=paused, interval=interval
-        )
-    )
+    h.bridge.run(lambda: ensure_table_discovery_schedule(h.client, catalogs, paused=paused, interval=interval))
 
 
 def _describe(h: TemporalHarness, catalog: str) -> ScheduleDescription:

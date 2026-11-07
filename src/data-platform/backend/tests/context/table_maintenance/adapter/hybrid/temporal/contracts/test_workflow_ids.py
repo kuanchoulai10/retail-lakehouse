@@ -23,12 +23,9 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
 
 
 def test_workflow_ids():
+    assert table_reconciliation_workflow_id("u1") == "table-reconciliation:table-uuid=u1"
     assert (
-        table_reconciliation_workflow_id("u1") == "table-reconciliation:table-uuid=u1"
-    )
-    assert (
-        table_maintenance_workflow_id("iceberg.e2e.orders", "r1")
-        == "table-maintenance:table=iceberg.e2e.orders:run=r1"
+        table_maintenance_workflow_id("iceberg.e2e.orders", "r1") == "table-maintenance:table=iceberg.e2e.orders:run=r1"
     )
     assert TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID == "table-maintenance-admission"
     assert TASK_QUEUE == "table-maintenance"
@@ -36,24 +33,14 @@ def test_workflow_ids():
 
 
 def test_discovery_adhoc_workflow_id():
-    assert (
-        table_discovery_adhoc_workflow_id("c", "ns")
-        == "table-discovery:catalog=c:namespace=ns:trigger=adhoc"
-    )
-    assert (
-        table_discovery_adhoc_workflow_id("c", None)
-        == "table-discovery:catalog=c:trigger=adhoc"
-    )
+    assert table_discovery_adhoc_workflow_id("c", "ns") == "table-discovery:catalog=c:namespace=ns:trigger=adhoc"
+    assert table_discovery_adhoc_workflow_id("c", None) == "table-discovery:catalog=c:trigger=adhoc"
 
 
 def test_discovery_adhoc_workflow_id_differs_from_the_schedule_id():
-    assert table_discovery_adhoc_workflow_id("c", None) != table_discovery_schedule_id(
-        "c"
-    )
+    assert table_discovery_adhoc_workflow_id("c", None) != table_discovery_schedule_id("c")
 
 
 def test_discovery_schedule_id_is_per_catalog():
     assert table_discovery_schedule_id("iceberg") == "table-discovery:catalog=iceberg"
-    assert table_discovery_schedule_id("iceberg").startswith(
-        TABLE_DISCOVERY_SCHEDULE_ID_PREFIX
-    )
+    assert table_discovery_schedule_id("iceberg").startswith(TABLE_DISCOVERY_SCHEDULE_ID_PREFIX)

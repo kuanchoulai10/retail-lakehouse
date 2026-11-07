@@ -57,9 +57,7 @@ def build_gateways(
         send_table_change=SendTableChangeTemporalGateway(client, bridge),
         send_discovery_request=SendDiscoveryRequestTemporalGateway(client, bridge),
         send_maintenance_result=SendMaintenanceResultTemporalGateway(client, bridge),
-        update_table_discovery_schedule=UpdateTableDiscoveryScheduleTemporalGateway(
-            client, bridge
-        ),
+        update_table_discovery_schedule=UpdateTableDiscoveryScheduleTemporalGateway(client, bridge),
         submit_maintenance_job=SubmitMaintenanceJobK8sGateway(k8s_api, spark_config),
         read_maintenance_job=ReadMaintenanceJobK8sGateway(k8s_api, spark_config),
         delete_maintenance_job=DeleteMaintenanceJobK8sGateway(k8s_api, spark_config),

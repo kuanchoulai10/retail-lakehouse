@@ -19,6 +19,4 @@ def test_pattern_matches_globs():
 
 
 def test_matching_is_case_sensitive():
-    assert not TablePattern("iceberg", "Sales*").matches(
-        TableName("iceberg", "sales_eu", "t")
-    )
+    assert not TablePattern("iceberg", "Sales*").matches(TableName("iceberg", "sales_eu", "t"))

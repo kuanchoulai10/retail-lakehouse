@@ -38,9 +38,7 @@ class UpdateTableDiscoverySettingsService(UpdateTableDiscoverySettingsUseCase):
         self._schedule_gateway = schedule_gateway
         self._clock = clock
 
-    def execute(
-        self, request: UpdateTableDiscoverySettingsUseCaseInput
-    ) -> UpdateTableDiscoverySettingsUseCaseOutput:
+    def execute(self, request: UpdateTableDiscoverySettingsUseCaseInput) -> UpdateTableDiscoverySettingsUseCaseOutput:
         """Save the switch, then update the schedule to match."""
         settings = self._settings_repo.get_settings()
         if request.enabled:
@@ -48,9 +46,5 @@ class UpdateTableDiscoverySettingsService(UpdateTableDiscoverySettingsUseCase):
         else:
             settings.disable(self._clock())
         self._settings_repo.save(settings)
-        self._schedule_gateway.update(
-            UpdateTableDiscoveryScheduleGatewayInput(paused=not settings.enabled)
-        )
-        return UpdateTableDiscoverySettingsUseCaseOutput(
-            enabled=settings.enabled, updated_at=settings.updated_at
-        )
+        self._schedule_gateway.update(UpdateTableDiscoveryScheduleGatewayInput(paused=not settings.enabled))
+        return UpdateTableDiscoverySettingsUseCaseOutput(enabled=settings.enabled, updated_at=settings.updated_at)

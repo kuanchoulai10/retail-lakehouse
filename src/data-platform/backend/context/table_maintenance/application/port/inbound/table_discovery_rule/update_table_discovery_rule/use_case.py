@@ -19,7 +19,5 @@ class UpdateTableDiscoveryRuleUseCase(
     """Replace a discovery rule's definition."""
 
     @abstractmethod
-    def execute(
-        self, request: UpdateTableDiscoveryRuleUseCaseInput
-    ) -> UpdateTableDiscoveryRuleUseCaseOutput:
+    def execute(self, request: UpdateTableDiscoveryRuleUseCaseInput) -> UpdateTableDiscoveryRuleUseCaseOutput:
         """Replace a discovery rule's definition."""

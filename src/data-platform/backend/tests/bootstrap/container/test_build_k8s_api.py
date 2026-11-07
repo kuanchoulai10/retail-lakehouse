@@ -8,9 +8,7 @@ from bootstrap.container import build_k8s_api
 
 def test_uses_in_cluster_config_when_available(monkeypatch: pytest.MonkeyPatch):
     calls: list[str] = []
-    monkeypatch.setattr(
-        config, "load_incluster_config", lambda: calls.append("incluster")
-    )
+    monkeypatch.setattr(config, "load_incluster_config", lambda: calls.append("incluster"))
     monkeypatch.setattr(config, "load_kube_config", lambda: calls.append("kube"))
 
     api = build_k8s_api()

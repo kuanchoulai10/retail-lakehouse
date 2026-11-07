@@ -58,9 +58,7 @@ def test_contracts_round_trip():
         ),
         TableDiscoveryWorkflowInput("iceberg"),
         TableDiscoveryWorkflowInput("iceberg", "sales"),
-        TableMaintenanceWorkflowInput(
-            "r1", "u1", "table-reconciliation:table-uuid=u1", "scheduled", plan
-        ),
+        TableMaintenanceWorkflowInput("r1", "u1", "table-reconciliation:table-uuid=u1", "scheduled", plan),
         TableMaintenanceAdmissionWorkflowInput(2),
         TableMaintenanceAdmissionWorkflowInput(
             2,
@@ -88,10 +86,7 @@ def test_maintenance_workflow_input_default_attempt_deadline():
 
 def test_admission_lease_outlives_the_attempt_deadline_by_15_minutes():
     assert DEFAULT_ADMISSION_LEASE_SECONDS == DEFAULT_ATTEMPT_DEADLINE_SECONDS + 15 * 60
-    assert (
-        TableMaintenanceAdmissionWorkflowInput(1).lease_seconds
-        == DEFAULT_ADMISSION_LEASE_SECONDS
-    )
+    assert TableMaintenanceAdmissionWorkflowInput(1).lease_seconds == DEFAULT_ADMISSION_LEASE_SECONDS
 
 
 def test_admission_input_defaults():
@@ -138,6 +133,4 @@ def test_workflow_type_names():
 
 
 def test_admission_activity_name():
-    assert (
-        TableMaintenanceActivity.SIGNAL_ADMISSION_ACQUIRE == "signal_admission_acquire"
-    )
+    assert TableMaintenanceActivity.SIGNAL_ADMISSION_ACQUIRE == "signal_admission_acquire"

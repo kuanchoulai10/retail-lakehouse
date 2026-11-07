@@ -10,9 +10,7 @@ from context.table_maintenance.application.domain.model.table_discovery_rule imp
 from context.table_maintenance.application.domain.model.table import TableName
 
 
-def match_table_discovery_rule(
-    rules: Sequence[TableDiscoveryRule], name: TableName
-) -> TableDiscoveryRule | None:
+def match_table_discovery_rule(rules: Sequence[TableDiscoveryRule], name: TableName) -> TableDiscoveryRule | None:
     """Return the first enabled rule matching the table.
 
     Rules are ordered by priority ascending, ties broken by rule id.

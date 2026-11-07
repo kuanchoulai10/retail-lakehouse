@@ -37,16 +37,12 @@ if TYPE_CHECKING:
 class CreateTableMaintenanceRunService(CreateTableMaintenanceRunUseCase):
     """Create the run that tracks one execution of maintenance operations."""
 
-    def __init__(
-        self, runs_repo: TableMaintenanceRunsRepo, tables_repo: TablesRepo
-    ) -> None:
+    def __init__(self, runs_repo: TableMaintenanceRunsRepo, tables_repo: TablesRepo) -> None:
         """Bind the repos."""
         self._runs_repo = runs_repo
         self._tables_repo = tables_repo
 
-    def execute(
-        self, request: CreateTableMaintenanceRunUseCaseInput
-    ) -> CreateTableMaintenanceRunUseCaseOutput:
+    def execute(self, request: CreateTableMaintenanceRunUseCaseInput) -> CreateTableMaintenanceRunUseCaseOutput:
         """Create the run, or return the existing one when the id is already used.
 
         ``run_id`` and ``now`` come from the caller so a workflow can supply
@@ -72,6 +68,4 @@ class CreateTableMaintenanceRunService(CreateTableMaintenanceRunUseCase):
                         execution_ref=request.execution_ref,
                     )
                 )
-        return CreateTableMaintenanceRunUseCaseOutput(
-            **table_maintenance_run_output_fields(run)
-        )
+        return CreateTableMaintenanceRunUseCaseOutput(**table_maintenance_run_output_fields(run))

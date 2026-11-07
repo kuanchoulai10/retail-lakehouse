@@ -35,9 +35,7 @@ class TableMaintenanceAdmissionWorkflow:
         """Restore the limit, lease, holders and queue carried by the input."""
         self._limit = input.limit
         self._lease_seconds = input.lease_seconds
-        self._holders: dict[str, dict] = {
-            request_id: dict(holder) for request_id, holder in input.holders.items()
-        }
+        self._holders: dict[str, dict] = {request_id: dict(holder) for request_id, holder in input.holders.items()}
         self._queue: list[dict] = [dict(entry) for entry in input.queue]
         self._regrants: list[str] = []
         self._changed = False
@@ -63,9 +61,7 @@ class TableMaintenanceAdmissionWorkflow:
                     )
                 )
             try:
-                await workflow.wait_condition(
-                    lambda: self._changed, timeout=self._time_to_next_expiry()
-                )
+                await workflow.wait_condition(lambda: self._changed, timeout=self._time_to_next_expiry())
             except TimeoutError:
                 pass
 

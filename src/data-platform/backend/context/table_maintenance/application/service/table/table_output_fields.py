@@ -21,17 +21,9 @@ def table_output_fields(table: Table) -> dict[str, Any]:
         "table": table.name.table,
         "status": table.status.value,
         "selection": table.selection.value,
-        "settings": (
-            None
-            if table.settings is None
-            else maintenance_settings_to_dict(table.settings)
-        ),
-        "matched_rule_id": (
-            None if table.matched_rule_id is None else table.matched_rule_id.value
-        ),
-        "source_preset_id": (
-            None if table.source_preset_id is None else table.source_preset_id.value
-        ),
+        "settings": (None if table.settings is None else maintenance_settings_to_dict(table.settings)),
+        "matched_rule_id": (None if table.matched_rule_id is None else table.matched_rule_id.value),
+        "source_preset_id": (None if table.source_preset_id is None else table.source_preset_id.value),
         "operation_states": {
             op.value: {
                 "last_attempt_at": state.last_attempt_at,

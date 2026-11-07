@@ -13,13 +13,9 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run.ge
 from base import UseCase
 
 
-class GetTableMaintenanceRunUseCase(
-    UseCase[GetTableMaintenanceRunUseCaseInput, GetTableMaintenanceRunUseCaseOutput]
-):
+class GetTableMaintenanceRunUseCase(UseCase[GetTableMaintenanceRunUseCaseInput, GetTableMaintenanceRunUseCaseOutput]):
     """Get one maintenance run."""
 
     @abstractmethod
-    def execute(
-        self, request: GetTableMaintenanceRunUseCaseInput
-    ) -> GetTableMaintenanceRunUseCaseOutput:
+    def execute(self, request: GetTableMaintenanceRunUseCaseInput) -> GetTableMaintenanceRunUseCaseOutput:
         """Get one maintenance run."""

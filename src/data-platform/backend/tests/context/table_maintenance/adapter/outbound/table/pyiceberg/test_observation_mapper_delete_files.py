@@ -26,9 +26,7 @@ def _entry(content: DataFileContent, partition: tuple[Any, ...], size: int):  # 
         record_count=1,
     )
     data_file.spec_id = 0
-    return ManifestEntry.from_args(
-        status=ManifestEntryStatus.ADDED, data_file=data_file
-    )
+    return ManifestEntry.from_args(status=ManifestEntryStatus.ADDED, data_file=data_file)
 
 
 def _table(entries: list[ManifestEntry]) -> SimpleNamespace:
@@ -37,9 +35,7 @@ def _table(entries: list[ManifestEntry]) -> SimpleNamespace:
         partition_spec_id=0,
         fetch_manifest_entry=lambda io, discard_deleted=True: entries,
     )
-    snapshot = SimpleNamespace(
-        snapshot_id=5, manifests=lambda io: [manifest], timestamp_ms=0
-    )
+    snapshot = SimpleNamespace(snapshot_id=5, manifests=lambda io: [manifest], timestamp_ms=0)
     return SimpleNamespace(
         io=None,
         metadata=SimpleNamespace(

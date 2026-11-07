@@ -8,7 +8,5 @@ from pydantic import BaseModel
 class KafkaSettings(BaseModel):
     """Kafka brokers and the Polaris catalog events topic."""
 
-    bootstrap_servers: str = (
-        "kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
-    )
+    bootstrap_servers: str = "kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
     topic: str = "polaris-catalog-events"

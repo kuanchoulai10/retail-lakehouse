@@ -19,7 +19,5 @@ class ListTableMaintenanceRunsUseCase(
     """List the maintenance runs of a table."""
 
     @abstractmethod
-    def execute(
-        self, request: ListTableMaintenanceRunsUseCaseInput
-    ) -> ListTableMaintenanceRunsUseCaseOutput:
+    def execute(self, request: ListTableMaintenanceRunsUseCaseInput) -> ListTableMaintenanceRunsUseCaseOutput:
         """List the maintenance runs of a table."""

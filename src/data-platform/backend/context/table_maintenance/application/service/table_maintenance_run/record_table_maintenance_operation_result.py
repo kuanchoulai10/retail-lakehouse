@@ -36,14 +36,10 @@ if TYPE_CHECKING:
 _UNKNOWN_ERROR = "unknown error"
 
 
-class RecordTableMaintenanceOperationResultService(
-    RecordTableMaintenanceOperationResultUseCase
-):
+class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperationResultUseCase):
     """Record the outcome of an operation attempt on the run and the table."""
 
-    def __init__(
-        self, runs_repo: TableMaintenanceRunsRepo, tables_repo: TablesRepo
-    ) -> None:
+    def __init__(self, runs_repo: TableMaintenanceRunsRepo, tables_repo: TablesRepo) -> None:
         """Bind the repos."""
         self._runs_repo = runs_repo
         self._tables_repo = tables_repo
@@ -66,20 +62,12 @@ class RecordTableMaintenanceOperationResultService(
         if run is None:
             raise NotFoundError(f"maintenance run {request.run_id} not found")
         with translate_domain_errors():
-            current = next(
-                (op for op in run.operations if op.operation == operation), None
-            )
+            current = next((op for op in run.operations if op.operation == operation), None)
             if current is None:
-                raise ConflictError(
-                    f"operation {operation} is not part of run {request.run_id}"
-                )
-            if request.attempt >= current.attempts and not _already_recorded(
-                current, request
-            ):
+                raise ConflictError(f"operation {operation} is not part of run {request.run_id}")
+            if request.attempt >= current.attempts and not _already_recorded(current, request):
                 if request.succeeded:
-                    run.succeed(
-                        operation, request.attempt, request.metrics, request.now
-                    )
+                    run.succeed(operation, request.attempt, request.metrics, request.now)
                 else:
                     run.fail(
                         operation,
@@ -89,9 +77,7 @@ class RecordTableMaintenanceOperationResultService(
                     )
                 self._runs_repo.update(run)
                 self._record_on_table(run.table_uuid, operation, request)
-        return RecordTableMaintenanceOperationResultUseCaseOutput(
-            run_id=run.id.value, status=run.status.value
-        )
+        return RecordTableMaintenanceOperationResultUseCaseOutput(run_id=run.id.value, status=run.status.value)
 
     def _record_on_table(
         self,
@@ -106,8 +92,6 @@ class RecordTableMaintenanceOperationResultService(
         self._tables_repo.update(table)
 
 
-def _already_recorded(
-    current: OperationRun, request: RecordTableMaintenanceOperationResultUseCaseInput
-) -> bool:
+def _already_recorded(current: OperationRun, request: RecordTableMaintenanceOperationResultUseCaseInput) -> bool:
     outcome = "succeeded" if request.succeeded else "failed"
     return current.attempts == request.attempt and current.status.value == outcome

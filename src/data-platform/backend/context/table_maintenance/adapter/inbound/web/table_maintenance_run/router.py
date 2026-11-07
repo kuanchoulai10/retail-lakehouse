@@ -35,19 +35,13 @@ def list_table_maintenance_runs(
     output = use_cases.list_table_maintenance_runs.execute(
         ListTableMaintenanceRunsUseCaseInput(table_uuid=table_uuid, limit=limit)
     )
-    return [
-        TableMaintenanceRunApiResponse.model_validate(item) for item in output.items
-    ]
+    return [TableMaintenanceRunApiResponse.model_validate(item) for item in output.items]
 
 
 @router.get("/table-maintenance-runs/{run_id}")
-def get_table_maintenance_run(
-    run_id: str, use_cases: UseCases
-) -> TableMaintenanceRunApiResponse:
+def get_table_maintenance_run(run_id: str, use_cases: UseCases) -> TableMaintenanceRunApiResponse:
     """Return one maintenance run."""
-    output = use_cases.get_table_maintenance_run.execute(
-        GetTableMaintenanceRunUseCaseInput(run_id=run_id)
-    )
+    output = use_cases.get_table_maintenance_run.execute(GetTableMaintenanceRunUseCaseInput(run_id=run_id))
     return TableMaintenanceRunApiResponse.model_validate(output)
 
 
@@ -63,9 +57,7 @@ def process_table_maintenance_callback(
 ) -> ProcessTableMaintenanceCallbackApiResponse:
     """Accept the result a Spark job reports for one operation attempt."""
     if body.run_id is not None and body.run_id != run_id:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_CONTENT, "body run_id differs from the path"
-        )
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "body run_id differs from the path")
     if body.operation is not None and body.operation != operation:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT,

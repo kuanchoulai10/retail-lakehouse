@@ -13,13 +13,9 @@ from context.table_maintenance.application.port.inbound.table.update_table_setti
 from base import UseCase
 
 
-class UpdateTableSettingsUseCase(
-    UseCase[UpdateTableSettingsUseCaseInput, UpdateTableSettingsUseCaseOutput]
-):
+class UpdateTableSettingsUseCase(UseCase[UpdateTableSettingsUseCaseInput, UpdateTableSettingsUseCaseOutput]):
     """Replace a table's settings."""
 
     @abstractmethod
-    def execute(
-        self, request: UpdateTableSettingsUseCaseInput
-    ) -> UpdateTableSettingsUseCaseOutput:
+    def execute(self, request: UpdateTableSettingsUseCaseInput) -> UpdateTableSettingsUseCaseOutput:
         """Replace a table's settings."""

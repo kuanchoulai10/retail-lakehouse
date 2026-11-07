@@ -26,9 +26,7 @@ def register_error_handlers(app: FastAPI) -> None:
     """Map the application exceptions to HTTP errors with a detail body."""
     for error_type, status_code in _STATUS_BY_ERROR.items():
 
-        def handler(
-            _request: Request, exc: Exception, status_code: int = status_code
-        ) -> JSONResponse:
+        def handler(_request: Request, exc: Exception, status_code: int = status_code) -> JSONResponse:
             return JSONResponse(status_code=status_code, content={"detail": str(exc)})
 
         app.add_exception_handler(error_type, handler)

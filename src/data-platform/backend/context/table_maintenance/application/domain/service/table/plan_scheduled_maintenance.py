@@ -16,9 +16,7 @@ from context.table_maintenance.application.domain.service.table.assess_maintenan
 )
 
 
-def plan_scheduled_maintenance(
-    table: Table, observation: TableObservation, now: datetime
-) -> MaintenancePlan:
+def plan_scheduled_maintenance(table: Table, observation: TableObservation, now: datetime) -> MaintenancePlan:
     """Decide which operations are due for a table given its observation."""
     settings = table.settings
     if table.status != TableStatus.ACTIVE or settings is None:

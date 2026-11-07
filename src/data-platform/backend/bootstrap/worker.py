@@ -70,15 +70,11 @@ async def run_worker(  # noqa: PLR0913
     bridge = bridge_factory()
     try:
         k8s_api = await asyncio.to_thread(k8s_api_factory)
-        use_cases = await asyncio.to_thread(
-            use_cases_builder, settings, bridge, k8s_api_factory=lambda: k8s_api
-        )
+        use_cases = await asyncio.to_thread(use_cases_builder, settings, bridge, k8s_api_factory=lambda: k8s_api)
         client = await connect(settings.temporal)
         await startup(client, settings, use_cases.get_table_discovery_settings)
         activities = build_activities(use_cases, client, settings)
-        with ThreadPoolExecutor(
-            max_workers=ACTIVITY_THREADS, thread_name_prefix="activity"
-        ) as executor:
+        with ThreadPoolExecutor(max_workers=ACTIVITY_THREADS, thread_name_prefix="activity") as executor:
             worker = worker_builder(
                 client,
                 activities,

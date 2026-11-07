@@ -15,9 +15,7 @@ class OperationState(ValueObject):
     last_attempt_at: datetime | None = None
     consecutive_failures: int = 0
 
-    def effective_cooldown(
-        self, base: timedelta, cap: timedelta = timedelta(hours=24)
-    ) -> timedelta:
+    def effective_cooldown(self, base: timedelta, cap: timedelta = timedelta(hours=24)) -> timedelta:
         """Return ``base`` doubled per consecutive failure, capped, never below base."""
         return max(base, min(base * 2**self.consecutive_failures, cap))
 

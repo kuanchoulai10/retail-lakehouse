@@ -44,9 +44,7 @@ def test_round_trip():
             "rewrite_manifests": {"small_manifest_bytes": 2048},
         }
     )
-    assert maintenance_settings_from_dict(maintenance_settings_to_dict(settings)) == (
-        settings
-    )
+    assert maintenance_settings_from_dict(maintenance_settings_to_dict(settings)) == (settings)
 
 
 def test_to_dict_shape():

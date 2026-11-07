@@ -13,13 +13,9 @@ from context.table_maintenance.application.port.inbound.table.plan_table_mainten
 from base import UseCase
 
 
-class PlanTableMaintenanceUseCase(
-    UseCase[PlanTableMaintenanceUseCaseInput, PlanTableMaintenanceUseCaseOutput]
-):
+class PlanTableMaintenanceUseCase(UseCase[PlanTableMaintenanceUseCaseInput, PlanTableMaintenanceUseCaseOutput]):
     """Plan the maintenance operations of a table."""
 
     @abstractmethod
-    def execute(
-        self, request: PlanTableMaintenanceUseCaseInput
-    ) -> PlanTableMaintenanceUseCaseOutput:
+    def execute(self, request: PlanTableMaintenanceUseCaseInput) -> PlanTableMaintenanceUseCaseOutput:
         """Plan the maintenance operations of a table."""

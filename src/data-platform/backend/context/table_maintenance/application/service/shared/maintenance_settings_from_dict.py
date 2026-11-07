@@ -142,15 +142,9 @@ def _expire_snapshots(data: Mapping[str, Any]) -> ExpireSnapshotsSettings:
             else d.min_interval
         ),
         older_than=(
-            _seconds(s["older_than_seconds"], "older_than_seconds")
-            if "older_than_seconds" in s
-            else d.older_than
+            _seconds(s["older_than_seconds"], "older_than_seconds") if "older_than_seconds" in s else d.older_than
         ),
-        retain_last=(
-            _int(s["retain_last"], "retain_last")
-            if "retain_last" in s
-            else d.retain_last
-        ),
+        retain_last=(_int(s["retain_last"], "retain_last") if "retain_last" in s else d.retain_last),
     )
 
 
@@ -169,9 +163,7 @@ def _remove_orphan_files(data: Mapping[str, Any]) -> RemoveOrphanFilesSettings:
             else d.min_interval
         ),
         older_than=(
-            _seconds(s["older_than_seconds"], "older_than_seconds")
-            if "older_than_seconds" in s
-            else d.older_than
+            _seconds(s["older_than_seconds"], "older_than_seconds") if "older_than_seconds" in s else d.older_than
         ),
     )
 
@@ -186,9 +178,7 @@ def maintenance_settings_from_dict(data: Mapping[str, Any]) -> MaintenanceSettin
     try:
         return MaintenanceSettings(
             reconcile_interval=(
-                _seconds(
-                    data["reconcile_interval_seconds"], "reconcile_interval_seconds"
-                )
+                _seconds(data["reconcile_interval_seconds"], "reconcile_interval_seconds")
                 if "reconcile_interval_seconds" in data
                 else default.reconcile_interval
             ),

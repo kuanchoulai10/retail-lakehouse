@@ -172,12 +172,8 @@ def test_other_event_types_are_ignored(event_type: str) -> None:
         b"[]",
         b'"text"',
         b"\xff\xfe",
-        json.dumps(
-            {"event_type": "AFTER_UPDATE_TABLE", "namespace": ["a"], "table_name": "t"}
-        ).encode(),
-        json.dumps(
-            {"event_type": "AFTER_UPDATE_TABLE", "catalog_name": "c", "table_name": "t"}
-        ).encode(),
+        json.dumps({"event_type": "AFTER_UPDATE_TABLE", "namespace": ["a"], "table_name": "t"}).encode(),
+        json.dumps({"event_type": "AFTER_UPDATE_TABLE", "catalog_name": "c", "table_name": "t"}).encode(),
         json.dumps(
             {
                 "event_type": "AFTER_UPDATE_TABLE",

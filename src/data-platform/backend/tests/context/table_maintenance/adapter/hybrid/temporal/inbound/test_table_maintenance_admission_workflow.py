@@ -45,42 +45,30 @@ class AdmissionHarness:
         self.requesters: dict[str, WorkflowHandle] = {}
 
     async def requester(self, name: str) -> str:
-        handle = await self.client.start_workflow(
-            "RequesterStub", id=f"req-{name}", task_queue=f"{self.queue}-stub"
-        )
+        handle = await self.client.start_workflow("RequesterStub", id=f"req-{name}", task_queue=f"{self.queue}-stub")
         self.requesters[name] = handle
         return handle.id
 
     async def acquire(self, request_id: str, requester_workflow_id: str) -> None:
         await self.client.start_workflow(
             TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
-            TableMaintenanceAdmissionWorkflowInput(
-                limit=self.limit, lease_seconds=self.lease
-            ),
+            TableMaintenanceAdmissionWorkflowInput(limit=self.limit, lease_seconds=self.lease),
             id=TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
             task_queue=self.queue,
             id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
             start_signal=TableMaintenanceAdmissionSignal.ACQUIRE,
-            start_signal_args=[
-                AdmissionAcquireSignal(request_id, requester_workflow_id)
-            ],
+            start_signal_args=[AdmissionAcquireSignal(request_id, requester_workflow_id)],
         )
 
     async def release(self, request_id: str) -> None:
-        handle = self.client.get_workflow_handle(
-            TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID
-        )
-        await handle.signal(
-            TableMaintenanceAdmissionSignal.RELEASE, AdmissionReleaseSignal(request_id)
-        )
+        handle = self.client.get_workflow_handle(TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID)
+        await handle.signal(TableMaintenanceAdmissionSignal.RELEASE, AdmissionReleaseSignal(request_id))
 
     async def granted(self, name: str) -> list[str]:
         return await self.requesters[name].query("granted")
 
     async def state(self) -> dict:
-        return await self.client.get_workflow_handle(
-            TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID
-        ).query("state")
+        return await self.client.get_workflow_handle(TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID).query("state")
 
 
 def _run(

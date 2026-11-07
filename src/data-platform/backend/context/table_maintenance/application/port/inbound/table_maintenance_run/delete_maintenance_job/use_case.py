@@ -13,13 +13,9 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run.de
 from base import UseCase
 
 
-class DeleteMaintenanceJobUseCase(
-    UseCase[DeleteMaintenanceJobUseCaseInput, DeleteMaintenanceJobUseCaseOutput]
-):
+class DeleteMaintenanceJobUseCase(UseCase[DeleteMaintenanceJobUseCaseInput, DeleteMaintenanceJobUseCaseOutput]):
     """Delete a Spark maintenance job."""
 
     @abstractmethod
-    def execute(
-        self, request: DeleteMaintenanceJobUseCaseInput
-    ) -> DeleteMaintenanceJobUseCaseOutput:
+    def execute(self, request: DeleteMaintenanceJobUseCaseInput) -> DeleteMaintenanceJobUseCaseOutput:
         """Delete a Spark maintenance job."""

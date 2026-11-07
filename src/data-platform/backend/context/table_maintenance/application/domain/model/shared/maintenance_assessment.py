@@ -21,6 +21,4 @@ class MaintenanceAssessment(ValueObject):
 
     def plan(self) -> MaintenancePlan:
         """Return the plan made of the due operations."""
-        return MaintenancePlan(
-            tuple(a.planned for a in self.operations if a.planned is not None)
-        )
+        return MaintenancePlan(tuple(a.planned for a in self.operations if a.planned is not None))

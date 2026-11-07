@@ -50,9 +50,7 @@ class Table(AggregateRoot[TableId]):
     source_preset_id: TableMaintenancePresetId | None
     registered_at: datetime
     updated_at: datetime
-    operation_states: dict[MaintenanceOperation, OperationState] = field(
-        default_factory=dict
-    )
+    operation_states: dict[MaintenanceOperation, OperationState] = field(default_factory=dict)
 
     @classmethod
     def register_auto(
@@ -209,9 +207,7 @@ class Table(AggregateRoot[TableId]):
         if self.selection != TableSelection.AUTO:
             return
         if preset_id is not None and self.settings is None and settings is None:
-            raise InvalidTableTransition(
-                "an include decision needs settings for a table without settings"
-            )
+            raise InvalidTableTransition("an include decision needs settings for a table without settings")
         self.matched_rule_id = rule_id
         if preset_id is None:
             self.status = TableStatus.EXCLUDED
@@ -231,13 +227,9 @@ class Table(AggregateRoot[TableId]):
         self.settings = settings
         self.updated_at = now
 
-    def record_operation_result(
-        self, op: MaintenanceOperation, succeeded: bool, at: datetime
-    ) -> None:
+    def record_operation_result(self, op: MaintenanceOperation, succeeded: bool, at: datetime) -> None:
         """Record an operation outcome; allowed in any non-dropped status."""
         self._ensure_not_dropped()
         state = self.operation_state(op)
-        self.operation_states[op] = (
-            state.after_success(at) if succeeded else state.after_failure(at)
-        )
+        self.operation_states[op] = state.after_success(at) if succeeded else state.after_failure(at)
         self.updated_at = at

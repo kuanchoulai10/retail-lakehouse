@@ -22,9 +22,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_preset
 )
 from fastapi import APIRouter, Depends, Response, status
 
-router = APIRouter(
-    prefix="/table-maintenance-presets", tags=["table-maintenance-presets"]
-)
+router = APIRouter(prefix="/table-maintenance-presets", tags=["table-maintenance-presets"])
 
 UseCases = Annotated[WebUseCases, Depends(use_cases_dependency)]
 
@@ -34,12 +32,8 @@ def list_table_maintenance_presets(
     use_cases: UseCases,
 ) -> list[TableMaintenancePresetApiResponse]:
     """List the table maintenance presets."""
-    output = use_cases.list_table_maintenance_presets.execute(
-        ListTableMaintenancePresetsUseCaseInput()
-    )
-    return [
-        TableMaintenancePresetApiResponse.model_validate(item) for item in output.items
-    ]
+    output = use_cases.list_table_maintenance_presets.execute(ListTableMaintenancePresetsUseCaseInput())
+    return [TableMaintenancePresetApiResponse.model_validate(item) for item in output.items]
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -54,13 +48,9 @@ def create_table_maintenance_preset(
 
 
 @router.get("/{preset_id}")
-def get_table_maintenance_preset(
-    preset_id: str, use_cases: UseCases
-) -> TableMaintenancePresetApiResponse:
+def get_table_maintenance_preset(preset_id: str, use_cases: UseCases) -> TableMaintenancePresetApiResponse:
     """Return one table maintenance preset."""
-    output = use_cases.get_table_maintenance_preset.execute(
-        GetTableMaintenancePresetUseCaseInput(id=preset_id)
-    )
+    output = use_cases.get_table_maintenance_preset.execute(GetTableMaintenancePresetUseCaseInput(id=preset_id))
     return TableMaintenancePresetApiResponse.model_validate(output)
 
 
@@ -70,9 +60,7 @@ def update_table_maintenance_preset(
 ) -> TableMaintenancePresetApiResponse:
     """Change the name or the settings of a table maintenance preset."""
     output = use_cases.update_table_maintenance_preset.execute(
-        UpdateTableMaintenancePresetUseCaseInput(
-            id=preset_id, name=body.name, settings=body.settings
-        )
+        UpdateTableMaintenancePresetUseCaseInput(id=preset_id, name=body.name, settings=body.settings)
     )
     return TableMaintenancePresetApiResponse.model_validate(output)
 
@@ -80,7 +68,5 @@ def update_table_maintenance_preset(
 @router.delete("/{preset_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_table_maintenance_preset(preset_id: str, use_cases: UseCases) -> Response:
     """Delete a table maintenance preset."""
-    use_cases.delete_table_maintenance_preset.execute(
-        DeleteTableMaintenancePresetUseCaseInput(id=preset_id)
-    )
+    use_cases.delete_table_maintenance_preset.execute(DeleteTableMaintenancePresetUseCaseInput(id=preset_id))
     return Response(status_code=status.HTTP_204_NO_CONTENT)

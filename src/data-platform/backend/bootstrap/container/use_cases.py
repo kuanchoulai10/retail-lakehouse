@@ -87,9 +87,7 @@ class UseCases:
     get_table_maintenance_run: GetTableMaintenanceRunUseCase
     list_table_maintenance_runs: ListTableMaintenanceRunsUseCase
     process_table_maintenance_callback: ProcessTableMaintenanceCallbackUseCase
-    record_table_maintenance_operation_result: (
-        RecordTableMaintenanceOperationResultUseCase
-    )
+    record_table_maintenance_operation_result: RecordTableMaintenanceOperationResultUseCase
     delete_maintenance_job: DeleteMaintenanceJobUseCase
     get_maintenance_job_status: GetMaintenanceJobStatusUseCase
     plan_table_maintenance: PlanTableMaintenanceUseCase

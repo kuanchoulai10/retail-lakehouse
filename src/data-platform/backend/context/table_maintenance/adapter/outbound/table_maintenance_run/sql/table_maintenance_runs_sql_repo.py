@@ -44,9 +44,7 @@ class TableMaintenanceRunsSqlRepo(TableMaintenanceRunsRepo):
         """Insert a new run."""
         try:
             with self._engine.begin() as conn:
-                conn.execute(
-                    insert(t).values(**TableMaintenanceRunRowMapper.to_values(entity))
-                )
+                conn.execute(insert(t).values(**TableMaintenanceRunRowMapper.to_values(entity)))
         except IntegrityError as exc:
             raise ConflictError(str(exc.orig)) from exc
         return entity
@@ -55,34 +53,24 @@ class TableMaintenanceRunsSqlRepo(TableMaintenanceRunsRepo):
         """Return the run with the given id, or None."""
         with self._engine.connect() as conn:
             row = conn.execute(select(t).where(t.c.id == entity_id.value)).first()
-        return (
-            None
-            if row is None
-            else TableMaintenanceRunRowMapper.to_aggregate(row._mapping)
-        )
+        return None if row is None else TableMaintenanceRunRowMapper.to_aggregate(row._mapping)
 
     def list_all(self) -> list[TableMaintenanceRun]:
         """Return all runs, newest first."""
         with self._engine.connect() as conn:
-            rows = conn.execute(
-                select(t).order_by(t.c.created_at.desc(), t.c.id.desc())
-            ).all()
+            rows = conn.execute(select(t).order_by(t.c.created_at.desc(), t.c.id.desc())).all()
         return [TableMaintenanceRunRowMapper.to_aggregate(r._mapping) for r in rows]
 
     def update(self, run: TableMaintenanceRun) -> TableMaintenanceRun:
         """Persist the changed run."""
         values = TableMaintenanceRunRowMapper.to_values(run)
         with self._engine.begin() as conn:
-            result = conn.execute(
-                update(t).where(t.c.id == run.id.value).values(**values)
-            )
+            result = conn.execute(update(t).where(t.c.id == run.id.value).values(**values))
             if result.rowcount == 0:
                 raise LookupError(f"maintenance run {run.id.value} does not exist")
         return run
 
-    def list_by_table(
-        self, table_uuid: TableId, limit: int = 50
-    ) -> list[TableMaintenanceRun]:
+    def list_by_table(self, table_uuid: TableId, limit: int = 50) -> list[TableMaintenanceRun]:
         """Return up to ``limit`` runs of the table, newest first."""
         stmt = (
             select(t)
@@ -94,9 +82,7 @@ class TableMaintenanceRunsSqlRepo(TableMaintenanceRunsRepo):
             rows = conn.execute(stmt).all()
         return [TableMaintenanceRunRowMapper.to_aggregate(r._mapping) for r in rows]
 
-    def list_by_table_since(
-        self, table_uuid: TableId, since: datetime
-    ) -> list[TableMaintenanceRun]:
+    def list_by_table_since(self, table_uuid: TableId, since: datetime) -> list[TableMaintenanceRun]:
         """Return the table's runs created at or after since, newest first."""
         stmt = (
             select(t)

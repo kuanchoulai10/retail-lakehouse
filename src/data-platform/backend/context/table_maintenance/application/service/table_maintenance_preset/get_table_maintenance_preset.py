@@ -30,13 +30,9 @@ class GetTableMaintenancePresetService(GetTableMaintenancePresetUseCase):
         """Bind the repo."""
         self._presets_repo = presets_repo
 
-    def execute(
-        self, request: GetTableMaintenancePresetUseCaseInput
-    ) -> GetTableMaintenancePresetUseCaseOutput:
+    def execute(self, request: GetTableMaintenancePresetUseCaseInput) -> GetTableMaintenancePresetUseCaseOutput:
         """Return the preset or raise NotFoundError."""
         preset = self._presets_repo.get(TableMaintenancePresetId(request.id))
         if preset is None:
             raise NotFoundError(f"table maintenance preset {request.id} not found")
-        return GetTableMaintenancePresetUseCaseOutput(
-            **table_maintenance_preset_output_fields(preset)
-        )
+        return GetTableMaintenancePresetUseCaseOutput(**table_maintenance_preset_output_fields(preset))

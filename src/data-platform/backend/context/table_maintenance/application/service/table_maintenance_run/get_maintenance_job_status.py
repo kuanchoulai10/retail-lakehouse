@@ -32,9 +32,7 @@ class GetMaintenanceJobStatusService(GetMaintenanceJobStatusUseCase):
         """Bind the read gateway."""
         self._read_gateway = read_gateway
 
-    def execute(
-        self, request: GetMaintenanceJobStatusUseCaseInput
-    ) -> GetMaintenanceJobStatusUseCaseOutput:
+    def execute(self, request: GetMaintenanceJobStatusUseCaseInput) -> GetMaintenanceJobStatusUseCaseOutput:
         """Return the gateway's state and error, rejecting an unknown state."""
         try:
             operation = MaintenanceOperation(request.operation)
@@ -51,6 +49,4 @@ class GetMaintenanceJobStatusService(GetMaintenanceJobStatusUseCase):
         )
         if result.state not in _KNOWN_STATES:
             raise ValidationError(f"unknown maintenance job state {result.state!r}")
-        return GetMaintenanceJobStatusUseCaseOutput(
-            state=result.state, error=result.error
-        )
+        return GetMaintenanceJobStatusUseCaseOutput(state=result.state, error=result.error)

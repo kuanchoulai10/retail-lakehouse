@@ -22,7 +22,5 @@ class UpdateTableMaintenancePresetUseCase(
     """Rename a table maintenance preset or replace its settings."""
 
     @abstractmethod
-    def execute(
-        self, request: UpdateTableMaintenancePresetUseCaseInput
-    ) -> UpdateTableMaintenancePresetUseCaseOutput:
+    def execute(self, request: UpdateTableMaintenancePresetUseCaseInput) -> UpdateTableMaintenancePresetUseCaseOutput:
         """Rename a table maintenance preset or replace its settings."""

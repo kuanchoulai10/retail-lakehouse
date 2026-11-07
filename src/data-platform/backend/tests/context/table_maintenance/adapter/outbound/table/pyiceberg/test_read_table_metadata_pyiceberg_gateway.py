@@ -47,8 +47,7 @@ def _rows(ids: list[int], day: int) -> pa.Table:
     return pa.table(
         {
             "id": ids,
-            "ts": [datetime(2024, 1, day, 10, tzinfo=UTC).replace(tzinfo=None)]
-            * len(ids),
+            "ts": [datetime(2024, 1, day, 10, tzinfo=UTC).replace(tzinfo=None)] * len(ids),
             "region": ["eu"] * len(ids),
         },
         schema=ARROW,
@@ -95,19 +94,14 @@ def test_observe_partitioned_table_groups_by_day_and_bucket(
     observation = gateway.observe_table(_ref())
 
     assert observation is not None
-    assert (
-        observation.current_snapshot_id
-        == table.refresh().current_snapshot().snapshot_id
-    )
+    assert observation.current_snapshot_id == table.refresh().current_snapshot().snapshot_id
     day1 = (datetime(2024, 1, 1) - datetime(1970, 1, 1)).days
     bucket = BucketTransform(4).transform(LongType())
     expected: Counter[tuple[int, int]] = Counter()
     for day, ids in ((day1, [1, 2, 3, 4, 5, 6]), (day1, [1, 2]), (day1 + 1, [1])):
         for key in {(day, cast("int", bucket(i))) for i in ids}:
             expected[key] += 1
-    assert {
-        tuple(p["values"]): p["data_file_count"] for p in observation.partitions
-    } == expected
+    assert {tuple(p["values"]): p["data_file_count"] for p in observation.partitions} == expected
     assert len(observation.partitions) == len(expected)
     assert all(p["total_data_file_size_bytes"] > 0 for p in observation.partitions)
     assert all(p["position_delete_file_count"] == 0 for p in observation.partitions)
@@ -210,9 +204,7 @@ def test_observation_round_trips_through_the_domain_converter(
     }
 
 
-def test_load_table_returns_metadata_uuid(
-    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
-) -> None:
+def test_load_table_returns_metadata_uuid(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
     catalog.create_namespace("db")
     table = catalog.create_table("db.events", SCHEMA)
 
@@ -227,9 +219,7 @@ def test_load_table_returns_metadata_uuid(
     )
 
 
-def test_missing_table_returns_none(
-    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
-) -> None:
+def test_missing_table_returns_none(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
     catalog.create_namespace("db")
 
     assert gateway.load_table(_ref(table="nope")) is None
@@ -261,9 +251,7 @@ def test_list_tables_with_and_without_namespace(
 def test_list_tables_of_missing_namespace_is_empty(
     gateway: ReadTableMetadataPyIcebergGateway,
 ) -> None:
-    assert (
-        gateway.list_tables(ReadTableMetadataGatewayListInput(CATALOG, "ghost")) == []
-    )
+    assert gateway.list_tables(ReadTableMetadataGatewayListInput(CATALOG, "ghost")) == []
 
 
 def _failing_catalog(fail_on: str) -> MagicMock:
@@ -286,9 +274,7 @@ def _failing_catalog(fail_on: str) -> MagicMock:
     return stub
 
 
-@pytest.mark.parametrize(
-    "fail_on", ["list_namespaces", "nested_list_namespaces", "list_tables"]
-)
+@pytest.mark.parametrize("fail_on", ["list_namespaces", "nested_list_namespaces", "list_tables"])
 def test_catalog_wide_listing_propagates_transient_errors(fail_on: str) -> None:
     gateway = ReadTableMetadataPyIcebergGateway(lambda name: _failing_catalog(fail_on))
 
@@ -297,9 +283,7 @@ def test_catalog_wide_listing_propagates_transient_errors(fail_on: str) -> None:
 
 
 def test_scoped_listing_and_loading_propagate_transient_errors() -> None:
-    gateway = ReadTableMetadataPyIcebergGateway(
-        lambda name: _failing_catalog("list_tables")
-    )
+    gateway = ReadTableMetadataPyIcebergGateway(lambda name: _failing_catalog("list_tables"))
 
     with pytest.raises(ServerError):
         gateway.list_tables(ReadTableMetadataGatewayListInput(CATALOG, "db"))
@@ -309,9 +293,7 @@ def test_scoped_listing_and_loading_propagate_transient_errors() -> None:
         gateway.observe_table(_ref())
 
 
-def test_describe_partitioned_table(
-    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
-) -> None:
+def test_describe_partitioned_table(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
     table = _partitioned(catalog)
     table.append(_rows([1, 2], day=1))
     table.append(_rows([3], day=2))
@@ -343,9 +325,7 @@ def test_describe_partitioned_table(
     assert datetime.fromisoformat(description.last_committed_at).tzinfo is not None
 
 
-def test_describe_empty_table(
-    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
-) -> None:
+def test_describe_empty_table(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
     catalog.create_namespace("db")
     catalog.create_table("db.events", SCHEMA)
 
@@ -358,9 +338,7 @@ def test_describe_empty_table(
     assert description.last_committed_at is None
 
 
-def test_list_commits_newest_first_with_limit(
-    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
-) -> None:
+def test_list_commits_newest_first_with_limit(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
     table = _partitioned(catalog)
     for day in (1, 2, 3):
         table.append(_rows([day], day=day))
@@ -382,9 +360,7 @@ def test_list_commits_newest_first_with_limit(
     assert datetime.fromisoformat(page.commits[0]["committed_at"]).tzinfo is not None
 
 
-def test_list_commits_since(
-    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
-) -> None:
+def test_list_commits_since(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
     table = _partitioned(catalog)
     for day in (1, 2, 3):
         table.append(_rows([day], day=day))
@@ -434,9 +410,7 @@ def test_measure_storage_of_empty_table_is_zero(
     ) == (0, 0, 0, 0)
 
 
-def test_reads_return_none_for_missing_table(
-    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
-) -> None:
+def test_reads_return_none_for_missing_table(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
     catalog.create_namespace("db")
     ref = _ref(table="nope")
 

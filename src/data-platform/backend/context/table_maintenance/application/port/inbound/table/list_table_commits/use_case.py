@@ -13,13 +13,9 @@ from context.table_maintenance.application.port.inbound.table.list_table_commits
 from base import UseCase
 
 
-class ListTableCommitsUseCase(
-    UseCase[ListTableCommitsUseCaseInput, ListTableCommitsUseCaseOutput]
-):
+class ListTableCommitsUseCase(UseCase[ListTableCommitsUseCaseInput, ListTableCommitsUseCaseOutput]):
     """List the commits of one table, newest first."""
 
     @abstractmethod
-    def execute(
-        self, request: ListTableCommitsUseCaseInput
-    ) -> ListTableCommitsUseCaseOutput:
+    def execute(self, request: ListTableCommitsUseCaseInput) -> ListTableCommitsUseCaseOutput:
         """List the commits of one table."""

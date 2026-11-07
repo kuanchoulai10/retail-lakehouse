@@ -19,7 +19,5 @@ class CreateTableDiscoveryRuleUseCase(
     """Create a discovery rule."""
 
     @abstractmethod
-    def execute(
-        self, request: CreateTableDiscoveryRuleUseCaseInput
-    ) -> CreateTableDiscoveryRuleUseCaseOutput:
+    def execute(self, request: CreateTableDiscoveryRuleUseCaseInput) -> CreateTableDiscoveryRuleUseCaseOutput:
         """Create a discovery rule."""

@@ -49,9 +49,7 @@ def test_factory_loads_a_rest_catalog_per_name_lazily_and_caches_it():
 
 def test_factory_passes_s3_keys_when_set():
     loader = RecordingLoader()
-    settings = CatalogSettings(
-        s3_access_key_id=SecretStr("AKID"), s3_secret_access_key=SecretStr("SK")
-    )
+    settings = CatalogSettings(s3_access_key_id=SecretStr("AKID"), s3_secret_access_key=SecretStr("SK"))
 
     build_catalog_factory(settings, loader=loader)("iceberg")
 

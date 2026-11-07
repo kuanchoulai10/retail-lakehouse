@@ -30,9 +30,7 @@ class DeleteMaintenanceJobService(DeleteMaintenanceJobUseCase):
         """Bind the delete gateway."""
         self._delete_gateway = delete_gateway
 
-    def execute(
-        self, request: DeleteMaintenanceJobUseCaseInput
-    ) -> DeleteMaintenanceJobUseCaseOutput:
+    def execute(self, request: DeleteMaintenanceJobUseCaseInput) -> DeleteMaintenanceJobUseCaseOutput:
         """Validate the attempt and delete its job; a missing job is a no-op."""
         try:
             operation = MaintenanceOperation(request.operation)

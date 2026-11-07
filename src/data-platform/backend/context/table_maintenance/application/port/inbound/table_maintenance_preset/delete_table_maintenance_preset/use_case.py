@@ -22,7 +22,5 @@ class DeleteTableMaintenancePresetUseCase(
     """Delete a table maintenance preset that no rule references."""
 
     @abstractmethod
-    def execute(
-        self, request: DeleteTableMaintenancePresetUseCaseInput
-    ) -> DeleteTableMaintenancePresetUseCaseOutput:
+    def execute(self, request: DeleteTableMaintenancePresetUseCaseInput) -> DeleteTableMaintenancePresetUseCaseOutput:
         """Delete a table maintenance preset that no rule references."""

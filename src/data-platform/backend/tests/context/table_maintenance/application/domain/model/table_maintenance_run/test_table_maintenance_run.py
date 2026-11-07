@@ -47,10 +47,7 @@ def test_create_orders_dedupes_and_starts_pending():
         Op.REWRITE_DATA_FILES,
         Op.EXPIRE_SNAPSHOTS,
     ]
-    assert all(
-        o.status is OperationRunStatus.PENDING and o.attempts == 0
-        for o in run.operations
-    )
+    assert all(o.status is OperationRunStatus.PENDING and o.attempts == 0 for o in run.operations)
     assert run.status is RunStatus.PENDING
     assert run.finished_at is None
     assert run.created_at == _now()

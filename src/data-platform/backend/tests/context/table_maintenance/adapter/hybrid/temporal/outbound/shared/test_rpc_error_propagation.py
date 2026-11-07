@@ -82,11 +82,7 @@ def test_table_change_propagates_other_rpc_errors(bridge):
     client = _FailingClient(RPCStatusCode.INVALID_ARGUMENT)
     gateway = SendTableChangeTemporalGateway(client, bridge)  # ty: ignore[invalid-argument-type]
     with pytest.raises(RPCError):
-        gateway.send(
-            SendTableChangeGatewayInput(
-                "u", "iceberg.sales.u", "settings_changed", is_enrolled=False
-            )
-        )
+        gateway.send(SendTableChangeGatewayInput("u", "iceberg.sales.u", "settings_changed", is_enrolled=False))
 
 
 def test_maintenance_result_propagates_other_rpc_errors(bridge):

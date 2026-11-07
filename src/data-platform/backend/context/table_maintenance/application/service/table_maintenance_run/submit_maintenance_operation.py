@@ -50,9 +50,7 @@ class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
         self._tables_repo = tables_repo
         self._submit_gateway = submit_gateway
 
-    def execute(
-        self, request: SubmitMaintenanceOperationUseCaseInput
-    ) -> SubmitMaintenanceOperationUseCaseOutput:
+    def execute(self, request: SubmitMaintenanceOperationUseCaseInput) -> SubmitMaintenanceOperationUseCaseOutput:
         """Record the attempt as running, submit the job, then attach its name.
 
         No job is submitted for an attempt the run rejects. The attempt is saved

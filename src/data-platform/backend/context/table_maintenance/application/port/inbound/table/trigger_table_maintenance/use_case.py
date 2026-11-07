@@ -19,7 +19,5 @@ class TriggerTableMaintenanceUseCase(
     """Trigger maintenance operations on a table now."""
 
     @abstractmethod
-    def execute(
-        self, request: TriggerTableMaintenanceUseCaseInput
-    ) -> TriggerTableMaintenanceUseCaseOutput:
+    def execute(self, request: TriggerTableMaintenanceUseCaseInput) -> TriggerTableMaintenanceUseCaseOutput:
         """Trigger maintenance operations on a table now."""

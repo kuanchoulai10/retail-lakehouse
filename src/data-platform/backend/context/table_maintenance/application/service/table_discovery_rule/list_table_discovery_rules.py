@@ -34,9 +34,7 @@ class ListTableDiscoveryRulesService(ListTableDiscoveryRulesUseCase):
         """Return every rule in priority order."""
         return ListTableDiscoveryRulesUseCaseOutput(
             items=[
-                ListTableDiscoveryRulesUseCaseOutputItem(
-                    **table_discovery_rule_output_fields(r)
-                )
+                ListTableDiscoveryRulesUseCaseOutputItem(**table_discovery_rule_output_fields(r))
                 for r in self._rules_repo.list_all()
             ]
         )
