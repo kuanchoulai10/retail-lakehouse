@@ -16,7 +16,7 @@ Everything below, except `base/`, `bootstrap/` and `entrypoint.py`, lives inside
 
 ### Backend Structure
 
-Backend code is grouped by **bounded context** first. Inside a context, one **aggregate axis** runs through every layer: each layer directory is split into the same aggregate directories plus `shared` for what spans aggregates. For `table_maintenance` the aggregates are `table`, `table_discovery_rule`, `table_discovery_settings`, `table_maintenance_preset`, `table_maintenance_run`.
+Backend code is grouped by **bounded context** first. Inside a context, one **aggregate axis** runs through every layer: each layer directory is split into the same aggregate directories plus `shared` for what spans aggregates. For `table_maintenance` the aggregates are `table`, `table_discovery_rule`, `table_discovery_settings`, `table_maintenance_preset`, `table_maintenance_run`; for `catalog` they are `catalog`, `namespace`, `table`, `generic_table`, `view`.
 
 ```
 backend/
@@ -29,7 +29,7 @@ backend/
 │   ├── event_consumer.py         # GLAC_COMPONENT=event_consumer
 │   └── migrate.py                # GLAC_COMPONENT=migrate
 ├── context/
-│   └── <name>/                   # One bounded context (today: table_maintenance)
+│   └── <name>/                   # One bounded context (today: table_maintenance, catalog)
 │       ├── adapter/              # Outermost ring: inbound | outbound | hybrid
 │       │   ├── inbound/
 │       │   │   ├── web/{aggregate}/      # FastAPI routers, API DTOs
@@ -59,7 +59,7 @@ Import paths carry the context prefix: `context.table_maintenance.application.po
 
 ### Bounded Contexts
 
-Today there is one context, `table_maintenance`. `catalog` and `access` are planned next (see `docs/adr/0005-bounded-contexts-and-context-map.md`).
+Today there are two contexts. `table_maintenance` schedules Iceberg maintenance and persists to SQL. `catalog` serves catalogs, namespaces, tables, generic tables and views with Polaris as the source of truth: each aggregate's `{Aggregate}Repo` has a Polaris HTTP adapter (`adapter/outbound/<aggregate>/polaris/`), nothing is cached, and Polaris errors map to the application exceptions (`NotFoundError` 404, `ConflictError` 409, `ValidationError` 422, `PermissionDeniedError` 403, `CatalogUnavailableError` 502) with Polaris's message as the detail. `access` is planned next (see `docs/adr/0005-bounded-contexts-and-context-map.md`).
 
 - **Independence rule.** Contexts are independent. A context's `application` imports no other context. A context may import another context only from its own outbound adapters (`adapter/outbound/` or `adapter/hybrid/<tech>/outbound/`), and only through that context's `application.port.inbound` (the outbound adapter calls the other context's use case and maps the result into its own types, anti-corruption style). Inbound adapters, hybrid `inbound` sides and hybrid `contracts` never import another context. Never through another context's domain, services, outbound ports or adapters. `bootstrap` may import every context; `base` imports no context. Enforced by `tests/architecture/test_context_independence.py` (an AST scan, because import-linter wildcards cannot say "another context").
 - **No `context/shared`.** Contexts share code only through `base/`. Each keeps its own types (its own table-UUID value object) and links to other contexts by identifier values, not by shared classes.
@@ -69,7 +69,7 @@ Today there is one context, `table_maintenance`. `catalog` and `access` are plan
 1. Create `context/<name>/__init__.py` and `context/<name>/{application,adapter}/`, and mirror them under `tests/context/<name>/`.
 2. Create all four application rings: `service`, `port`, `domain/service` and `domain/model`. The `application-ring-order` layers contract uses `containers = context.*.application`, and import-linter requires every layer to exist in each container.
 3. The architecture tests (`context_names()` in `tests/architecture/contexts.py`) and the `context.*` import-linter contracts pick the new context up without edits. Two guards keep it that way: no architecture test except `test_aggregates.py` names `table_maintenance`, and no contract names a concrete context.
-4. Wire it in `bootstrap/`. A context that persists to SQL gets its own `adapter/outbound/shared/sql/` (its own metadata, `create_schema` and hand-written `AGGREGATE_SQL_PACKAGES`) with a mirrored drift test like `tests/context/table_maintenance/adapter/outbound/shared/sql/test_create_schema.py`. Never add one context's SQL packages to another context's list. `run_migrations` (`bootstrap/container/run_migrations.py`, called by `bootstrap/migrate.py`) calls each context's `create_schema`.
+4. Wire it in `bootstrap/`. Its web adapter exposes `register_routes(app, use_cases)` in `adapter/inbound/web/register_routes.py`, which keeps its use cases on `app.state` under its own key, adds its error handlers and mounts its routers under `/v1`; `bootstrap/container/build_api_app.py` passes one registration per context to `create_api_app`, so all contexts share one FastAPI app. A context that persists to SQL gets its own `adapter/outbound/shared/sql/` (its own metadata, `create_schema` and hand-written `AGGREGATE_SQL_PACKAGES`) with a mirrored drift test like `tests/context/table_maintenance/adapter/outbound/shared/sql/test_create_schema.py`. Never add one context's SQL packages to another context's list. `run_migrations` (`bootstrap/container/run_migrations.py`, called by `bootstrap/migrate.py`) calls each context's `create_schema`.
 5. A context must have `adapter/inbound/web` and `adapter/outbound`. `adapter/inbound/event_consumer` and `adapter/hybrid/<tech>` are optional; a hybrid technology directory that exists holds exactly `inbound`, `outbound` and `contracts`. Every aggregate has exactly one repository port in its own context (`test_each_aggregate_has_one_repository_port_per_context`).
 
 ### Rules

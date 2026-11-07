@@ -60,7 +60,7 @@ Do not touch unless the user re-opens them: `platform/30-thanos`, `platform/24-e
 
 ## Project Vision
 
-This is being built as one data platform; multi-tenancy is not a goal (dropped 2026-11-06). The current bounded context is table maintenance (aggregates `Table`, `TableMaintenancePreset`, `TableDiscoveryRule`, `TableDiscoverySettings`, `TableMaintenanceRun`); a catalog context (catalogs, namespaces, tables, views, with Polaris as the source of truth) and an access context (principals, principal roles, catalog roles and their grants) are planned next. Design decisions should consider future extensibility across bounded contexts.
+This is being built as one data platform; multi-tenancy is not a goal (dropped 2026-11-06). The bounded contexts are table maintenance (aggregates `Table`, `TableMaintenancePreset`, `TableDiscoveryRule`, `TableDiscoverySettings`, `TableMaintenanceRun`) and catalog (aggregates `Catalog`, `Namespace`, `Table`, `GenericTable`, `View`, with Polaris as the source of truth); an access context (principals, principal roles, catalog roles and their grants) is planned next. Design decisions should consider future extensibility across bounded contexts.
 
 ## Agent skills
 
