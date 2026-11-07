@@ -45,12 +45,14 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
     """
 
     def __init__(self, catalog_factory: Callable[[str], Catalog]) -> None:
+        """Keep the factory that opens the PyIceberg catalog for a Polaris catalog name."""
         self._catalog_factory = catalog_factory
 
     def list_tables(
         self,
         input: ReadTableMetadataGatewayListInput,  # noqa: A002
     ) -> list[TableMetadataRef]:
+        """List the tables of one namespace, or walk every namespace when none is given, sorted by name."""
         catalog = self._catalog_factory(input.catalog)
         if input.namespace is not None:
             return self._tables_of(catalog, input.catalog, tuple(input.namespace.split(".")))
@@ -66,6 +68,7 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
         return sorted(refs, key=lambda r: (r.namespace, r.table))
 
     def load_table(self, ref: TableMetadataRef) -> TableMetadata | None:
+        """Return the table with its uuid, or None when the table or namespace does not exist."""
         table = self._load(ref)
         if table is None:
             return None
@@ -77,24 +80,28 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
         )
 
     def observe_table(self, ref: TableMetadataRef) -> TableMetadataObservation | None:
+        """Return the table's statistics, or None when the table or namespace does not exist."""
         table = self._load(ref)
         if table is None:
             return None
         return observation_from_table(table)
 
     def describe_table(self, ref: TableMetadataRef) -> TableDescription | None:
+        """Return the table's definition, or None when the table or namespace does not exist."""
         table = self._load(ref)
         if table is None:
             return None
         return description_from_table(table)
 
     def list_commits(self, ref: TableMetadataRef, since: str | None, limit: int) -> TableCommitPage | None:
+        """Return up to ``limit`` commits at or after ``since``, newest first, or None when the table is gone."""
         table = self._load(ref)
         if table is None:
             return None
         return commit_page_from_table(table, since, limit)
 
     def measure_storage(self, ref: TableMetadataRef) -> TableStorageMeasure | None:
+        """Return the table's current and referenced storage, or None when the table does not exist."""
         table = self._load(ref)
         if table is None:
             return None

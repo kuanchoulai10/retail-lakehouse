@@ -52,6 +52,7 @@ class SendTableChangeTemporalGateway(SendTableChangeGateway):
     """
 
     def __init__(self, client: Client, bridge: AsyncLoopBridge) -> None:
+        """Keep the Temporal client that signals the workflow and the bridge that runs its async calls."""
         self._client = client
         self._bridge = bridge
 

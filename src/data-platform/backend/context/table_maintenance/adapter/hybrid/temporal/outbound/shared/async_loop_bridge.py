@@ -16,6 +16,7 @@ class AsyncLoopBridge:
     """Run coroutines on a private event loop owned by a daemon thread."""
 
     def __init__(self) -> None:
+        """Create the private event loop and start the daemon thread that runs it forever."""
         self._loop = asyncio.new_event_loop()
         self._thread = threading.Thread(target=self._loop.run_forever, name="async-loop-bridge", daemon=True)
         self._lock = threading.Lock()

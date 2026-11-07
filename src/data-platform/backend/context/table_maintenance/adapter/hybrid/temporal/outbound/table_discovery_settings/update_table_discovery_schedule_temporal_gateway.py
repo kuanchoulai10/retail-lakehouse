@@ -34,6 +34,7 @@ class UpdateTableDiscoveryScheduleTemporalGateway(UpdateTableDiscoveryScheduleGa
     """Pause or unpause every per-catalog discovery schedule through Temporal."""
 
     def __init__(self, client: Client, bridge: AsyncLoopBridge) -> None:
+        """Keep the Temporal client that edits the schedules and the bridge that runs its async calls."""
         self._client = client
         self._bridge = bridge
 

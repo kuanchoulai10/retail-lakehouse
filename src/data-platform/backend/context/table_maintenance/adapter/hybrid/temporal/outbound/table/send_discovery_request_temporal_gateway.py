@@ -34,6 +34,7 @@ class SendDiscoveryRequestTemporalGateway(SendDiscoveryRequestGateway):
     """Start an ad-hoc table discovery workflow through Temporal."""
 
     def __init__(self, client: Client, bridge: AsyncLoopBridge) -> None:
+        """Keep the Temporal client that starts the workflow and the bridge that runs its async calls."""
         self._client = client
         self._bridge = bridge
 

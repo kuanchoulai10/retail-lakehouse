@@ -51,6 +51,7 @@ def observation_from_table(table: Table) -> TableMetadataObservation:
 
 
 def spec_of(table: Table, spec: PartitionSpec) -> dict[str, Any]:
+    """Describe a partition spec as primitives, naming each field's source column and type."""
     return {
         "spec_id": spec.spec_id,
         "fields": [

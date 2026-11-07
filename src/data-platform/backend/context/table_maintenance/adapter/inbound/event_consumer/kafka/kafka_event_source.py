@@ -27,6 +27,7 @@ class KafkaEventSource(EventSource):
         *,
         consumer_factory: Callable[[dict[str, Any]], Any] = Consumer,
     ) -> None:
+        """Create a consumer in the shared group with auto-commit off and subscribe it to the topic."""
         self._consumer = consumer_factory(
             {
                 "bootstrap.servers": bootstrap_servers,
@@ -38,6 +39,7 @@ class KafkaEventSource(EventSource):
         self._consumer.subscribe([topic])
 
     def poll(self, timeout: float) -> EventRecord | None:
+        """Return the next Kafka message as a record, raising KafkaException on a broker error."""
         message = self._consumer.poll(timeout)
         if message is None:
             return None
@@ -52,10 +54,12 @@ class KafkaEventSource(EventSource):
         )
 
     def commit(self, record: EventRecord) -> None:
+        """Commit the offset after the record synchronously, so a restart resumes past it."""
         self._consumer.commit(
             offsets=[TopicPartition(record.topic, record.partition, record.offset + 1)],
             asynchronous=False,
         )
 
     def close(self) -> None:
+        """Close the consumer, leaving the group."""
         self._consumer.close()
