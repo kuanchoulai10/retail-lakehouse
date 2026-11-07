@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from context.catalog.application.domain.model.namespace import Namespace, NamespaceId
 
 
@@ -37,3 +39,16 @@ def test_namespace_equality_is_by_identity_not_properties():
 
     assert first == second
     assert first != Namespace(id=NamespaceId.of("sales", ("other",)), properties={})
+
+
+@pytest.mark.parametrize(
+    ("catalog", "parts", "message"),
+    [
+        ("a\x1fb", ("c",), "catalog name must not contain"),
+        ("sales", ("a\x1fb",), "namespace parts must not contain"),
+    ],
+)
+def test_namespace_id_refuses_the_unit_separator_inside_a_catalog_or_part(catalog, parts, message):
+    """A U+001F inside the catalog or a part would split into a different namespace, so it is refused."""
+    with pytest.raises(ValueError, match=message):
+        NamespaceId.of(catalog, parts)

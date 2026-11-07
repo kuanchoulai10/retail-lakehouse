@@ -20,6 +20,7 @@ from context.catalog.application.service.generic_table import (
     DeleteGenericTableService,
     GetGenericTableService,
     ListGenericTablesService,
+    generic_table_id_from_parts,
 )
 
 if TYPE_CHECKING:
@@ -108,3 +109,13 @@ def test_delete_removes_the_generic_table_and_unknown_is_not_found(generic_table
     assert generic_tables_repo.items == {}
     with pytest.raises(NotFoundError):
         service.execute(DeleteGenericTableUseCaseInput("sales", ["retail"], "events"))
+
+
+@pytest.mark.parametrize(
+    ("catalog", "namespace", "name"),
+    [("a\x1fb", ["c"], "t"), ("sales", ["a\x1fb"], "t"), ("sales", ["a"], "t\x1fu")],
+)
+def test_generic_table_id_from_parts_refuses_the_unit_separator_anywhere(catalog: str, namespace: list[str], name: str):
+    """U+001F in the catalog, a part or the name is a validation error, never another object's id."""
+    with pytest.raises(ValidationError, match="must not contain the unit separator U\\+001F"):
+        generic_table_id_from_parts(catalog, namespace, name)

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.catalog.application.domain.model.catalog import CatalogId
 from context.catalog.application.exceptions import (
     ConflictError,
     NotFoundError,
@@ -14,6 +13,9 @@ from context.catalog.application.port.inbound.catalog import (
     UpdateCatalogUseCase,
     UpdateCatalogUseCaseInput,
     UpdateCatalogUseCaseOutput,
+)
+from context.catalog.application.service.catalog.catalog_id_from_name import (
+    catalog_id_from_name,
 )
 from context.catalog.application.service.catalog.catalog_output_fields import (
     catalog_output_fields,
@@ -35,11 +37,12 @@ class UpdateCatalogService(UpdateCatalogUseCase):
 
     def execute(self, request: UpdateCatalogUseCaseInput) -> UpdateCatalogUseCaseOutput:
         """Save the change; a catalog changed since the caller loaded it is a conflict to reload."""
+        catalog_id = catalog_id_from_name(request.name)
         default_base_location = request.default_base_location.strip()
         if not default_base_location:
             raise ValidationError("default base location must not be blank")
         storage_config = storage_config_from_dict(request.storage_config)
-        catalog = self._catalogs_repo.get(CatalogId.of(request.name))
+        catalog = self._catalogs_repo.get(catalog_id)
         if catalog is None:
             raise NotFoundError(f"catalog {request.name} not found")
         catalog.reconfigure(

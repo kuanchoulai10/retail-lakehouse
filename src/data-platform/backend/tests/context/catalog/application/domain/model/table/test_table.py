@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from context.catalog.application.domain.model.shared import Schema, SchemaField
 from context.catalog.application.domain.model.table import (
     PartitionSpec,
@@ -44,3 +46,17 @@ def test_summary_reads_the_current_snapshot_only():
     assert TableSummary.of(current) == TableSummary(total_records=9, total_data_files=None, total_files_size=None)
     assert TableSummary.of(older).total_data_files == 1
     assert TableSummary.of(None) == TableSummary(None, None, None)
+
+
+@pytest.mark.parametrize(
+    ("catalog", "namespace", "name", "message"),
+    [
+        ("a\x1fb", ("c",), "t", "catalog name must not contain"),
+        ("sales", ("a\x1fb",), "t", "namespace parts must not contain"),
+        ("sales", ("a",), "t\x1fu", "table name must not contain"),
+    ],
+)
+def test_table_id_refuses_the_unit_separator_inside_any_component(catalog, namespace, name, message):
+    """A U+001F inside the catalog, a namespace part or the name would split differently, so it is refused."""
+    with pytest.raises(ValueError, match=message):
+        TableId.of(catalog, namespace, name)

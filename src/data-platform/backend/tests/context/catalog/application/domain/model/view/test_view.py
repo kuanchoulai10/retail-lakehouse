@@ -67,3 +67,17 @@ def test_view_pointing_at_no_version_is_refused():
 
     with pytest.raises(ValueError, match="current version 9"):
         _ = view.current_version
+
+
+@pytest.mark.parametrize(
+    ("catalog", "namespace", "name", "message"),
+    [
+        ("a\x1fb", ("c",), "t", "catalog name must not contain"),
+        ("sales", ("a\x1fb",), "t", "namespace parts must not contain"),
+        ("sales", ("a",), "t\x1fu", "view name must not contain"),
+    ],
+)
+def test_view_id_refuses_the_unit_separator_inside_any_component(catalog, namespace, name, message):
+    """A U+001F inside the catalog, a namespace part or the name would split differently, so it is refused."""
+    with pytest.raises(ValueError, match=message):
+        ViewId.of(catalog, namespace, name)

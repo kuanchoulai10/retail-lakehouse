@@ -171,6 +171,7 @@ def test_create_internal_catalog_has_no_connection(catalogs_repo, content_grant_
     ("overrides", "message"),
     [
         ({"name": "  "}, "catalog name must not be blank"),
+        ({"name": "a\x1fb"}, "catalog name must not contain the unit separator U\\+001F"),
         ({"default_base_location": ""}, "default base location must not be blank"),
         ({"type": "FEDERATED"}, "catalog type must be one of INTERNAL, EXTERNAL"),
         ({"storage_config": {"allowed_locations": []}}, "storage_type is required"),
@@ -296,3 +297,17 @@ def test_list_catalogs_returns_every_catalog(catalogs_repo):
     output = ListCatalogsService(catalogs_repo).execute(ListCatalogsUseCaseInput())
 
     assert [item.name for item in output.items] == ["iceberg", "sales"]
+
+
+@pytest.mark.parametrize(
+    "execute",
+    [
+        lambda repo: GetCatalogService(repo).execute(GetCatalogUseCaseInput(name="a\x1fb")),
+        lambda repo: DeleteCatalogService(repo).execute(DeleteCatalogUseCaseInput(name="a\x1fb")),
+        lambda repo: UpdateCatalogService(repo).execute(_update_input(entity_version=1, name="a\x1fb")),
+    ],
+)
+def test_catalog_name_with_the_unit_separator_is_a_validation_error(catalogs_repo, execute):
+    """Get, update and delete refuse a catalog name holding U+001F instead of failing inside the domain."""
+    with pytest.raises(ValidationError, match="catalog name must not contain the unit separator"):
+        execute(catalogs_repo)

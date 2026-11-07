@@ -48,6 +48,7 @@ UTILITY_FILES = {
     "connection_config_to_dict.py",
     "storage_config_from_dict.py",
     "storage_config_to_dict.py",
+    "catalog_id_from_name.py",
     "namespace_id_from_parts.py",
     "table_id_from_parts.py",
     "partition_spec_from_request.py",

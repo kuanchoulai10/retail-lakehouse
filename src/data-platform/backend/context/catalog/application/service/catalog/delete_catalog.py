@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.catalog.application.domain.model.catalog import CatalogId
 from context.catalog.application.exceptions import NotFoundError
 from context.catalog.application.port.inbound.catalog import (
     DeleteCatalogUseCase,
     DeleteCatalogUseCaseInput,
     DeleteCatalogUseCaseOutput,
+)
+from context.catalog.application.service.catalog.catalog_id_from_name import (
+    catalog_id_from_name,
 )
 
 if TYPE_CHECKING:
@@ -25,7 +27,7 @@ class DeleteCatalogService(DeleteCatalogUseCase):
 
     def execute(self, request: DeleteCatalogUseCaseInput) -> DeleteCatalogUseCaseOutput:
         """Delete the catalog or raise NotFoundError."""
-        catalog_id = CatalogId.of(request.name)
+        catalog_id = catalog_id_from_name(request.name)
         if self._catalogs_repo.get(catalog_id) is None:
             raise NotFoundError(f"catalog {request.name} not found")
         self._catalogs_repo.delete(catalog_id)

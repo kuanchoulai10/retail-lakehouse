@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from context.catalog.application.service.catalog.catalog_id_from_name import (
+    catalog_id_from_name,
+)
 from context.catalog.application.service.catalog.catalog_output_fields import (
     catalog_output_fields,
 )
@@ -29,6 +32,7 @@ __all__ = [
     "GetCatalogService",
     "ListCatalogsService",
     "UpdateCatalogService",
+    "catalog_id_from_name",
     "catalog_output_fields",
     "connection_config_from_dict",
     "connection_config_to_dict",

@@ -173,3 +173,26 @@ def test_update_unknown_namespace_is_not_found(namespaces_repo: InMemoryNamespac
         UpdateNamespacePropertiesService(namespaces_repo).execute(
             UpdateNamespacePropertiesUseCaseInput(catalog="sales", namespace=["x"], updates={"k": "v"})
         )
+
+
+def test_namespace_id_from_parts_rejects_a_catalog_with_the_unit_separator():
+    """A catalog holding U+001F would reroute to another catalog, so it is a validation error."""
+    with pytest.raises(ValidationError, match="catalog name must not contain the unit separator"):
+        namespace_id_from_parts("a\x1fb", ["c"])
+
+
+@pytest.mark.parametrize(
+    ("catalog", "parent", "message"),
+    [
+        ("a\x1fb", [], "catalog name must not contain the unit separator"),
+        ("sales", [""], "namespace parts must not be blank"),
+        ("sales", ["a", " "], "namespace parts must not be blank"),
+        ("sales", ["a\x1fb"], "namespace parts must not contain the unit separator"),
+    ],
+)
+def test_list_namespaces_validates_the_parent_like_any_namespace(
+    namespaces_repo: InMemoryNamespacesRepo, catalog: str, parent: list[str], message: str
+):
+    """The parent follows the namespace part rules; an empty parent is the catalog's top level."""
+    with pytest.raises(ValidationError, match=message):
+        ListNamespacesService(namespaces_repo).execute(ListNamespacesUseCaseInput(catalog=catalog, parent=parent))

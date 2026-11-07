@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from context.catalog.application.domain.model.generic_table import GenericTable, GenericTableId
 
 
@@ -29,3 +31,17 @@ def test_generic_table_keeps_what_it_was_defined_with():
         "clicks",
         {"owner": "data-eng"},
     )
+
+
+@pytest.mark.parametrize(
+    ("catalog", "namespace", "name", "message"),
+    [
+        ("a\x1fb", ("c",), "t", "catalog name must not contain"),
+        ("sales", ("a\x1fb",), "t", "namespace parts must not contain"),
+        ("sales", ("a",), "t\x1fu", "generic table name must not contain"),
+    ],
+)
+def test_generic_table_id_refuses_the_unit_separator_inside_any_component(catalog, namespace, name, message):
+    """A U+001F inside the catalog, a namespace part or the name would split differently, so it is refused."""
+    with pytest.raises(ValueError, match=message):
+        GenericTableId.of(catalog, namespace, name)

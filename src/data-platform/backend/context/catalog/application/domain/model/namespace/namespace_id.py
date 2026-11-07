@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from base import EntityId
+from context.catalog.application.domain.model.shared import reject_unit_separator
 
 _SEPARATOR = "\x1f"
 
@@ -18,7 +19,9 @@ class NamespaceId(EntityId):
 
     @classmethod
     def of(cls, catalog: str, parts: tuple[str, ...]) -> NamespaceId:
-        """Return the id of the namespace made of ``parts`` in ``catalog``."""
+        """Return the id of the namespace made of ``parts`` in ``catalog``; ValueError on a U+001F inside one."""
+        reject_unit_separator("catalog name", catalog)
+        reject_unit_separator("namespace parts", *parts)
         return cls(_SEPARATOR.join((catalog, *parts)))
 
     @property

@@ -215,3 +215,16 @@ def test_unreadable_view_is_a_502_end_to_end():
 
     assert response.status_code == 502
     assert "view v in a form this backend cannot read" in response.json()["detail"]
+
+
+def test_catalog_name_with_the_unit_separator_is_a_422_and_never_reaches_polaris():
+    """``a%1Fb`` would split into catalog ``a`` and namespace ``b.c``; it is refused before any Polaris call."""
+    stub = PolarisStub()
+    stub.on("DELETE", "/api/catalog/v1/a/namespaces/b%1Fc/tables/t", httpx.Response(204))
+    client = TestClient(create_api_app(lambda app: register_routes(app, build_catalog_web_use_cases(stub.client()))))
+
+    response = client.delete("/v1/catalogs/a%1Fb/namespaces/c/tables/t")
+
+    assert response.status_code == 422
+    assert "catalog name must not contain the unit separator" in response.json()["detail"]
+    assert stub.requests == []

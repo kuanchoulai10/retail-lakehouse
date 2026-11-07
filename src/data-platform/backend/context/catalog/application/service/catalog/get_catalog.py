@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.catalog.application.domain.model.catalog import CatalogId
 from context.catalog.application.exceptions import NotFoundError
 from context.catalog.application.port.inbound.catalog import (
     GetCatalogUseCase,
     GetCatalogUseCaseInput,
     GetCatalogUseCaseOutput,
+)
+from context.catalog.application.service.catalog.catalog_id_from_name import (
+    catalog_id_from_name,
 )
 from context.catalog.application.service.catalog.catalog_output_fields import (
     catalog_output_fields,
@@ -28,7 +30,7 @@ class GetCatalogService(GetCatalogUseCase):
 
     def execute(self, request: GetCatalogUseCaseInput) -> GetCatalogUseCaseOutput:
         """Return the catalog or raise NotFoundError."""
-        catalog = self._catalogs_repo.get(CatalogId.of(request.name))
+        catalog = self._catalogs_repo.get(catalog_id_from_name(request.name))
         if catalog is None:
             raise NotFoundError(f"catalog {request.name} not found")
         return GetCatalogUseCaseOutput(**catalog_output_fields(catalog))

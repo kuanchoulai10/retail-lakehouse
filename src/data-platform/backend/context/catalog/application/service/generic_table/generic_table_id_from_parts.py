@@ -6,8 +6,6 @@ from context.catalog.application.exceptions import ValidationError
 from context.catalog.application.port.outbound.generic_table import GenericTableId
 from context.catalog.application.service.namespace import namespace_id_from_parts
 
-_SEPARATOR = "\x1f"
-
 
 def generic_table_id_from_parts(catalog: str, namespace: list[str], name: str) -> GenericTableId:
     """Return the id of the generic table ``name`` in ``namespace`` of ``catalog``, or raise ValidationError.
@@ -18,6 +16,7 @@ def generic_table_id_from_parts(catalog: str, namespace: list[str], name: str) -
     namespace_id = namespace_id_from_parts(catalog, namespace)
     if not name.strip():
         raise ValidationError("generic table name must not be blank")
-    if _SEPARATOR in name:
-        raise ValidationError("generic table name must not contain the unit separator U+001F")
-    return GenericTableId.of(namespace_id.catalog, namespace_id.parts, name)
+    try:
+        return GenericTableId.of(namespace_id.catalog, namespace_id.parts, name)
+    except ValueError as exc:
+        raise ValidationError(str(exc)) from None

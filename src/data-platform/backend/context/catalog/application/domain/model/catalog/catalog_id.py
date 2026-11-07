@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from base import EntityId
+from context.catalog.application.domain.model.shared import reject_unit_separator
 
 
 @dataclass(frozen=True)
@@ -13,7 +14,8 @@ class CatalogId(EntityId):
 
     @classmethod
     def of(cls, name: str) -> CatalogId:
-        """Return the id of the catalog called ``name``."""
+        """Return the id of the catalog called ``name``; ValueError when it holds U+001F."""
+        reject_unit_separator("catalog name", name)
         return cls(name)
 
     @property

@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 from context.catalog.application.domain.model.catalog import (
     Catalog,
-    CatalogId,
     CatalogType,
 )
 from context.catalog.application.exceptions import (
@@ -23,6 +22,9 @@ from context.catalog.application.port.inbound.catalog import (
 )
 from context.catalog.application.port.outbound.catalog import (
     CreateCatalogContentGrantGatewayInput,
+)
+from context.catalog.application.service.catalog.catalog_id_from_name import (
+    catalog_id_from_name,
 )
 from context.catalog.application.service.catalog.catalog_output_fields import (
     catalog_output_fields,
@@ -64,9 +66,7 @@ class CreateCatalogService(CreateCatalogUseCase):
 
     def execute(self, request: CreateCatalogUseCaseInput) -> CreateCatalogUseCaseOutput:
         """Validate the form, save the catalog and grant its content privilege."""
-        name = request.name.strip()
-        if not name:
-            raise ValidationError("catalog name must not be blank")
+        catalog_id = catalog_id_from_name(request.name.strip())
         default_base_location = request.default_base_location.strip()
         if not default_base_location:
             raise ValidationError("default base location must not be blank")
@@ -83,7 +83,7 @@ class CreateCatalogService(CreateCatalogUseCase):
         elif catalog_type is CatalogType.EXTERNAL:
             raise ValidationError("an EXTERNAL catalog needs a connection_config")
         created = self._catalogs_repo.create(
-            Catalog.create(CatalogId.of(name), catalog_type, default_base_location, storage_config, connection_config)
+            Catalog.create(catalog_id, catalog_type, default_base_location, storage_config, connection_config)
         )
         try:
             self._content_grant_gateway.create(CreateCatalogContentGrantGatewayInput(catalog_name=created.name))
