@@ -152,7 +152,7 @@ def _period_bounds(transform: str, number: int) -> tuple[datetime, datetime]:
         raise ValueError(f"{transform} value {number} is out of range") from error
 
 
-def _literal(source_type: str, value: _Value) -> str:
+def _literal(source_type: str, value: _Value) -> str:  # noqa: PLR0911
     if source_type in ("int", "long"):
         return str(_as_int(value))
     if source_type in ("float", "double"):

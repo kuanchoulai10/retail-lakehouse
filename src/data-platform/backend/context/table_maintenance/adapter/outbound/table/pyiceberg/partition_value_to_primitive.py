@@ -12,7 +12,7 @@ _EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 _MICROS = 1_000_000
 
 
-def partition_value_to_primitive(value: Any) -> str | int | float | bool | None:  # noqa: ANN401
+def partition_value_to_primitive(value: Any) -> str | int | float | bool | None:  # noqa: ANN401, PLR0911
     """Return the Iceberg internal representation of a partition value.
 
     Dates become int days, timestamps int micros, decimals and UUIDs strings,
