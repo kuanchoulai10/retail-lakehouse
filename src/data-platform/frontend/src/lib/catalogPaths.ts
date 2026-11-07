@@ -33,3 +33,50 @@ export function viewPath(catalog: string, namespace: string[], view: string): st
 export function genericTablePath(catalog: string, namespace: string[], name: string): string {
   return `${namespacePath(catalog, namespace)}/generic-tables/${segment(name)}`;
 }
+
+// Paths of our catalog API, relative to the API prefix that apiGet and apiSend add.
+
+export function catalogsApiPath(): string {
+  return "/v1/catalogs";
+}
+
+export function catalogApiPath(catalog: string): string {
+  return `${catalogsApiPath()}/${segment(catalog)}`;
+}
+
+export function namespacesApiPath(catalog: string, parent: string[]): string {
+  const base = `${catalogApiPath(catalog)}/namespaces`;
+  return parent.length === 0 ? base : `${base}?parent=${apiNamespace(parent)}`;
+}
+
+export function namespaceApiPath(catalog: string, namespace: string[]): string {
+  return `${catalogApiPath(catalog)}/namespaces/${apiNamespace(namespace)}`;
+}
+
+export function namespacePropertiesApiPath(catalog: string, namespace: string[]): string {
+  return `${namespaceApiPath(catalog, namespace)}/properties`;
+}
+
+export function tablesApiPath(catalog: string, namespace: string[]): string {
+  return `${namespaceApiPath(catalog, namespace)}/tables`;
+}
+
+export function tableApiPath(catalog: string, namespace: string[], table: string): string {
+  return `${tablesApiPath(catalog, namespace)}/${segment(table)}`;
+}
+
+export function viewsApiPath(catalog: string, namespace: string[]): string {
+  return `${namespaceApiPath(catalog, namespace)}/views`;
+}
+
+export function viewApiPath(catalog: string, namespace: string[], view: string): string {
+  return `${viewsApiPath(catalog, namespace)}/${segment(view)}`;
+}
+
+export function genericTablesApiPath(catalog: string, namespace: string[]): string {
+  return `${namespaceApiPath(catalog, namespace)}/generic-tables`;
+}
+
+export function genericTableApiPath(catalog: string, namespace: string[], name: string): string {
+  return `${genericTablesApiPath(catalog, namespace)}/${segment(name)}`;
+}

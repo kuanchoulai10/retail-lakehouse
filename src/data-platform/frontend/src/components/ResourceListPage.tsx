@@ -1,129 +1,38 @@
-import { Trash2 } from "lucide-react";
-import { useState, type ReactNode } from "react";
-import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import type { ReactNode } from "react";
 import type { Crumb } from "@/components/Breadcrumbs";
 import { PageHeader } from "@/components/PageHeader";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { ResourceSection, type ResourceSectionProps } from "@/components/ResourceSection";
 
-export interface ResourceColumn<Row> {
-  header: string;
-  cell: (row: Row) => ReactNode;
-}
+export type { ResourceColumn } from "@/components/ResourceSection";
 
-interface Props<Row> {
+interface Props<Row> extends Omit<ResourceSectionProps<Row>, "title"> {
   title: string;
-  breadcrumbs: Crumb[];
-  columns: ResourceColumn<Row>[];
-  rows: Row[];
-  rowKey: (row: Row) => string;
-  newLabel: string;
-  renderForm: (controls: { onClose: () => void }) => ReactNode;
-  objectKind: string;
-  objectName: (row: Row) => string;
-  fullPath: (row: Row) => string;
-  onDelete: (row: Row) => Promise<void>;
+  breadcrumbs?: Crumb[];
+  // Title of the list panel; the page title when left out.
+  listTitle?: string;
+  // Page actions beside the title, such as the Actions menu of the object the page shows.
+  actions?: ReactNode;
+  // Content below the list, such as further lists or the object's properties.
+  children?: ReactNode;
 }
 
+// The shape every catalog list page shares: header with breadcrumbs, then the list of
+// children with its New button and per-row delete.
 export function ResourceListPage<Row>({
   title,
   breadcrumbs,
-  columns,
-  rows,
-  rowKey,
-  newLabel,
-  renderForm,
-  objectKind,
-  objectName,
-  fullPath,
-  onDelete,
+  listTitle,
+  actions,
+  children,
+  ...section
 }: Props<Row>) {
-  const [creating, setCreating] = useState(false);
-  const [deleting, setDeleting] = useState<Row | null>(null);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-
-  function openDelete(row: Row) {
-    setError(null);
-    setDeleting(row);
-  }
-
-  async function confirmDelete(row: Row) {
-    setPending(true);
-    setError(null);
-    try {
-      await onDelete(row);
-      setDeleting(null);
-    } catch (failure) {
-      setError(failure);
-    } finally {
-      setPending(false);
-    }
-  }
-
   return (
-    <>
-      <PageHeader
-        title={title}
-        breadcrumbs={breadcrumbs}
-        actions={
-          <Button type="button" onClick={() => setCreating(true)}>
-            {newLabel}
-          </Button>
-        }
-      />
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {columns.map((column) => (
-              <TableHead key={column.header}>{column.header}</TableHead>
-            ))}
-            <TableHead className="w-10">
-              <span className="sr-only">Actions</span>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => (
-            <TableRow key={rowKey(row)}>
-              {columns.map((column) => (
-                <TableCell key={column.header}>{column.cell(row)}</TableCell>
-              ))}
-              <TableCell>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Delete ${objectName(row)}`}
-                  onClick={() => openDelete(row)}
-                >
-                  <Trash2 aria-hidden="true" />
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      {creating && renderForm({ onClose: () => setCreating(false) })}
-      {deleting !== null && (
-        <ConfirmDeleteDialog
-          open
-          onOpenChange={(next) => !next && setDeleting(null)}
-          objectKind={objectKind}
-          objectName={objectName(deleting)}
-          fullPath={fullPath(deleting)}
-          isPending={pending}
-          error={error}
-          onConfirm={() => void confirmDelete(deleting)}
-        />
-      )}
-    </>
+    <section>
+      <PageHeader title={title} breadcrumbs={breadcrumbs} actions={actions} />
+      <div className="flex flex-col gap-6">
+        <ResourceSection title={listTitle ?? title} {...section} />
+        {children}
+      </div>
+    </section>
   );
 }

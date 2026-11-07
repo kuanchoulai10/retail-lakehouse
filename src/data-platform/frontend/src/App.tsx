@@ -3,7 +3,10 @@ import { BrowserRouter, Link, Route, Routes } from "react-router";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { retryQuery } from "./api/retryQuery";
 import { AppShell } from "./components/AppShell";
+import { CatalogPage } from "./pages/CatalogPage";
+import { CatalogsPage } from "./pages/CatalogsPage";
 import { DiscoveryRulesPage } from "./pages/DiscoveryRulesPage";
+import { NamespacePage } from "./pages/NamespacePage";
 import { PresetsPage } from "./pages/PresetsPage";
 import { TableListPage } from "./pages/TableListPage";
 import { TablePage } from "./pages/TablePage";
@@ -40,6 +43,9 @@ export function App() {
                 <Route path="/tables/:uuid/:tab?" element={<TablePage />} />
                 <Route path="/presets" element={<PresetsPage />} />
                 <Route path="/discovery-rules" element={<DiscoveryRulesPage />} />
+                <Route path="/catalogs" element={<CatalogsPage />} />
+                <Route path="/catalogs/:catalog" element={<CatalogPage />} />
+                <Route path="/catalogs/:catalog/namespaces/:namespace" element={<NamespacePage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </AppShell>

@@ -3,7 +3,18 @@ import { MemoryRouter, Route, Routes, useParams } from "react-router";
 import { describe, expect, it } from "vitest";
 import {
   apiNamespace,
+  catalogApiPath,
   catalogPath,
+  catalogsApiPath,
+  genericTableApiPath,
+  genericTablesApiPath,
+  namespaceApiPath,
+  namespacePropertiesApiPath,
+  namespacesApiPath,
+  tableApiPath,
+  tablesApiPath,
+  viewApiPath,
+  viewsApiPath,
   genericTablePath,
   namespaceFromParam,
   namespacePath,
@@ -68,5 +79,30 @@ describe("catalogPaths", () => {
     expect(tablePath("c", ["n"], "t", "schema")).toBe("/catalogs/c/namespaces/n/tables/t/schema");
     expect(viewPath("c", ["n"], "v")).toBe("/catalogs/c/namespaces/n/views/v");
     expect(genericTablePath("c", ["n"], "g")).toBe("/catalogs/c/namespaces/n/generic-tables/g");
+  });
+});
+
+describe("catalog API paths", () => {
+  it("builds the catalog and namespace API paths", () => {
+    expect(catalogsApiPath()).toBe("/v1/catalogs");
+    expect(catalogApiPath("a b")).toBe("/v1/catalogs/a%20b");
+    expect(namespacesApiPath("iceberg", [])).toBe("/v1/catalogs/iceberg/namespaces");
+    expect(namespacesApiPath("iceberg", ["a.b", "c"])).toBe(
+      "/v1/catalogs/iceberg/namespaces?parent=a.b%1Fc",
+    );
+    expect(namespaceApiPath("iceberg", ["a.b", "c"])).toBe("/v1/catalogs/iceberg/namespaces/a.b%1Fc");
+    expect(namespacePropertiesApiPath("iceberg", ["retail"])).toBe(
+      "/v1/catalogs/iceberg/namespaces/retail/properties",
+    );
+  });
+
+  it("builds the table, view and generic table API paths", () => {
+    const ns = "/v1/catalogs/iceberg/namespaces/retail%1Feu";
+    expect(tablesApiPath("iceberg", ["retail", "eu"])).toBe(`${ns}/tables`);
+    expect(tableApiPath("iceberg", ["retail", "eu"], "a/b")).toBe(`${ns}/tables/a%2Fb`);
+    expect(viewsApiPath("iceberg", ["retail", "eu"])).toBe(`${ns}/views`);
+    expect(viewApiPath("iceberg", ["retail", "eu"], "v")).toBe(`${ns}/views/v`);
+    expect(genericTablesApiPath("iceberg", ["retail", "eu"])).toBe(`${ns}/generic-tables`);
+    expect(genericTableApiPath("iceberg", ["retail", "eu"], "g")).toBe(`${ns}/generic-tables/g`);
   });
 });
