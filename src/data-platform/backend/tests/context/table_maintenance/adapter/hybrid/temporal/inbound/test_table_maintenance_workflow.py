@@ -82,12 +82,15 @@ def _plan(*operations: str) -> dict:
 
 @dataclass
 class Harness:
+    """Run the maintenance workflow against scripted activities and a parent stub."""
+
     env: WorkflowEnvironment
     client: Client
     queue: str
     fakes: ScriptedMaintenanceActivities
 
     async def run_maintenance(self, *operations: str, parent_id: str = PARENT_ID) -> None:
+        """Start the workflow for the operations and wait for it to finish."""
         handle = await self.start_maintenance(*operations, parent_id=parent_id)
         await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
 
@@ -97,6 +100,7 @@ class Harness:
         parent_id: str = PARENT_ID,
         attempt_deadline_seconds: int = ATTEMPT_DEADLINE_SECONDS,
     ) -> WorkflowHandle:
+        """Start the maintenance workflow for the operations and return its handle."""
         return await self.client.start_workflow(
             TABLE_MAINTENANCE_WORKFLOW,
             TableMaintenanceWorkflowInput(
@@ -112,15 +116,19 @@ class Harness:
         )
 
     def recorded(self) -> list[tuple[str, int, bool, str | None]]:
+        """Return the recorded results as operation, attempt, success and error tuples."""
         return [(r["operation"], r["attempt"], r["succeeded"], r["error"]) for r in self.fakes.records]
 
     def submit_times(self) -> list[datetime]:
+        """Return the times the operations were submitted."""
         return [datetime.fromisoformat(s["now"]) for s in self.fakes.submits]
 
     async def parent_payloads(self) -> list[dict]:
+        """Return the finished payloads the parent stub received."""
         return await self.client.get_workflow_handle(PARENT_ID).query("collected")
 
     async def admission_holders(self) -> dict:
+        """Return the request ids that hold an admission slot."""
         handle = self.client.get_workflow_handle(TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID)
         return (await handle.query("state"))["holders"]
 
@@ -167,6 +175,8 @@ def _run(
 
 
 def test_operations_run_in_order_and_parent_signalled():
+    """The operations run in order, each result is recorded and the parent is told when the run finishes."""
+
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {
             (COMPACTION, 1): [(1, True, None)],
@@ -199,6 +209,8 @@ def test_operations_run_in_order_and_parent_signalled():
 
 
 def test_failed_operation_retried_three_attempts_total_then_next_operation_runs():
+    """A failing operation is attempted three times with a backoff before the next operation runs."""
+
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {
             (COMPACTION, 1): [(1, False, "boom-1")],
@@ -226,6 +238,8 @@ def test_failed_operation_retried_three_attempts_total_then_next_operation_runs(
 
 
 def test_stale_attempt_callback_is_ignored():
+    """A result callback for an earlier attempt is ignored."""
+
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {
             (COMPACTION, 1): [(1, False, "boom-1")],
@@ -246,6 +260,8 @@ def test_stale_attempt_callback_is_ignored():
 
 
 def test_polling_detects_crashed_driver():
+    """Polling a job whose driver crashed records the attempt as failed."""
+
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {(COMPACTION, 3): [(3, True, None)]}
         h.fakes.states[f"{RUN_ID}-{COMPACTION}-1"] = {"state": "FAILED", "error": None}
@@ -262,6 +278,8 @@ def test_polling_detects_crashed_driver():
 
 
 def test_polling_detects_missing_job_and_completed_without_callback():
+    """Polling records a failure for a missing job and a completed job that never called back."""
+
     async def scenario(h: Harness) -> None:
         h.fakes.states[f"{RUN_ID}-{COMPACTION}-1"] = {
             "state": "NOT_FOUND",
@@ -285,6 +303,8 @@ def test_polling_detects_missing_job_and_completed_without_callback():
 
 
 def test_admission_released_when_submit_activity_fails():
+    """The admission slot is released and the job deleted when the submit activity fails."""
+
     async def scenario(h: Harness) -> None:
         h.fakes.submit_errors = {(COMPACTION, 1): "attempt already started"}
         h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
@@ -306,6 +326,8 @@ def test_admission_released_when_submit_activity_fails():
 
 
 def test_missing_parent_does_not_fail_the_workflow():
+    """A missing parent workflow does not fail the maintenance run."""
+
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)]}
         await h.run_maintenance(COMPACTION, parent_id="no-such-parent")
@@ -315,6 +337,8 @@ def test_missing_parent_does_not_fail_the_workflow():
 
 
 def test_completed_window_restarts_when_state_leaves_completed():
+    """The wait for a callback after completion restarts when the job state leaves completed."""
+
     async def scenario(h: Harness) -> None:
         completed = {"state": "COMPLETED", "error": None}
         running = {"state": "RUNNING", "error": None}
@@ -328,6 +352,8 @@ def test_completed_window_restarts_when_state_leaves_completed():
 
 
 def test_attempt_times_out_after_deadline():
+    """An attempt that exceeds its deadline is recorded as failed and its job is deleted."""
+
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
         await h.run_maintenance(COMPACTION)
@@ -348,16 +374,18 @@ def test_attempt_times_out_after_deadline():
 
 
 def test_poll_interval_backs_off_after_ten_minutes():
+    """Status polls are under a minute apart for the first ten minutes and at least five minutes apart later."""
+
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
         await h.run_maintenance(COMPACTION)
 
         app = f"{RUN_ID}-{COMPACTION}-1"
         submitted = h.submit_times()[0]
-        polls = [t for t, name in zip(h.fakes.status_times, h.fakes.status_calls) if name == app]
+        polls = [t for t, name in zip(h.fakes.status_times, h.fakes.status_calls, strict=True) if name == app]
         first_hour = [t for t in polls if t - submitted < timedelta(hours=1, seconds=30)]
         assert len(first_hour) == 20 + 10
-        gaps = [b - a for a, b in zip(polls, polls[1:])]
+        gaps = [b - a for a, b in zip(polls, polls[1:], strict=False)]
         assert all(g < timedelta(seconds=60) for g in gaps[:19])
         assert all(g >= timedelta(minutes=5) for g in gaps[20:])
         assert len(polls) < 100
@@ -366,6 +394,8 @@ def test_poll_interval_backs_off_after_ten_minutes():
 
 
 def test_cancelled_workflow_records_releases_deletes_and_notifies():
+    """A cancelled workflow records the cancellation, releases its slot, deletes the job and notifies the parent."""
+
     async def scenario(h: Harness) -> None:
         handle = await h.start_maintenance(COMPACTION, EXPIRE)
         await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n == 1)
@@ -383,6 +413,8 @@ def test_cancelled_workflow_records_releases_deletes_and_notifies():
 
 
 def test_late_grant_for_another_request_is_released_at_once():
+    """A grant that arrives for another request is released immediately."""
+
     async def scenario(h: Harness) -> None:
         h.fakes.create_gate = asyncio.Event()
         h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)]}
@@ -406,6 +438,8 @@ def test_late_grant_for_another_request_is_released_at_once():
 
 
 def test_record_failures_are_counted_in_the_parent_payload():
+    """Failures to record a result are counted in the payload sent to the parent."""
+
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {
             (COMPACTION, 1): [(1, True, None)],
@@ -453,6 +487,8 @@ async def _cancel_while_blocked(
 
 
 def test_cancel_during_status_poll_activity_cancels_the_workflow():
+    """A cancel while a status poll is running cancels the workflow."""
+
     async def scenario(h: Harness) -> None:
         gate = h.fakes.status_gate = asyncio.Event()
         await _cancel_while_blocked(
@@ -467,6 +503,8 @@ def test_cancel_during_status_poll_activity_cancels_the_workflow():
 
 
 def test_cancel_during_submit_activity_cancels_the_workflow():
+    """A cancel while the submit activity is running cancels the workflow."""
+
     async def scenario(h: Harness) -> None:
         gate = h.fakes.submit_gate = asyncio.Event()
         await _cancel_while_blocked(h, gate, lambda: len(h.fakes.submits) == 1)
@@ -475,6 +513,8 @@ def test_cancel_during_submit_activity_cancels_the_workflow():
 
 
 def test_result_arriving_during_last_poll_before_deadline_wins():
+    """A result that arrives during the last poll before the deadline counts as the outcome of the attempt."""
+
     async def scenario(h: Harness) -> None:
         deadline = timedelta(seconds=100)
         app = f"{RUN_ID}-{COMPACTION}-1"

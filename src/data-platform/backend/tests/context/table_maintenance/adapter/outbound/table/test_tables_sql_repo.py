@@ -1,9 +1,11 @@
+"""Test the SQL repository of the Table aggregate."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 import pytest
-from sqlalchemy import Engine
 
 from context.table_maintenance.adapter.outbound.table.sql import TablesSqlRepo
 from context.table_maintenance.application.domain.model.shared import (
@@ -25,6 +27,9 @@ from context.table_maintenance.application.domain.model.table_maintenance_preset
     TableMaintenancePresetId,
 )
 from context.table_maintenance.application.exceptions import ConflictError
+
+if TYPE_CHECKING:
+    from sqlalchemy import Engine
 
 NOW = datetime(2026, 10, 24, 12, 0, tzinfo=UTC)
 
@@ -54,10 +59,12 @@ def _table(
 
 @pytest.fixture
 def repo(engine: Engine) -> TablesSqlRepo:
+    """Provide the tables repository on the test engine."""
     return TablesSqlRepo(engine)
 
 
 def test_roundtrip_field_by_field(repo: TablesSqlRepo):
+    """A stored table loads back with every field equal."""
     original = _table()
     repo.create(original)
     loaded = repo.get(TableId("u1"))
@@ -81,6 +88,7 @@ def test_roundtrip_field_by_field(repo: TablesSqlRepo):
 
 
 def test_roundtrip_with_none_settings_and_links(repo: TablesSqlRepo):
+    """A table without settings or rule and preset links round trips with them as None."""
     table = _table()
     table.settings = None
     table.matched_rule_id = None
@@ -96,6 +104,7 @@ def test_roundtrip_with_none_settings_and_links(repo: TablesSqlRepo):
 
 
 def test_loaded_state_does_not_alias_between_loads(repo: TablesSqlRepo):
+    """Two loads of a table do not share mutable state."""
     repo.create(_table())
     first = repo.get(TableId("u1"))
     second = repo.get(TableId("u1"))
@@ -106,10 +115,12 @@ def test_loaded_state_does_not_alias_between_loads(repo: TablesSqlRepo):
 
 
 def test_get_missing_returns_none(repo: TablesSqlRepo):
+    """Getting a table that does not exist returns None."""
     assert repo.get(TableId("nope")) is None
 
 
 def test_update_persists_changes(repo: TablesSqlRepo):
+    """An update persists the new status and update time."""
     table = _table()
     repo.create(table)
     later = NOW + timedelta(hours=1)
@@ -127,11 +138,13 @@ def test_update_persists_changes(repo: TablesSqlRepo):
 
 
 def test_update_missing_raises(repo: TablesSqlRepo):
+    """Updating a table that does not exist raises LookupError."""
     with pytest.raises(LookupError):
         repo.update(_table("ghost"))
 
 
 def test_find_by_name_exact_match(repo: TablesSqlRepo):
+    """Finding by name matches the exact catalog, namespace and table name."""
     repo.create(_table("u1", TableName("iceberg", "inventory", "orders")))
     repo.create(_table("u2", TableName("iceberg", "inventory", "orders2")))
     found = repo.find_by_name(TableName("iceberg", "inventory", "orders"))
@@ -142,6 +155,7 @@ def test_find_by_name_exact_match(repo: TablesSqlRepo):
 
 
 def test_find_by_name_ignores_dropped_and_allows_reuse(repo: TablesSqlRepo):
+    """Finding by name ignores dropped tables, so a name can be reused by a new table."""
     name = TableName("iceberg", "inventory", "orders")
     repo.create(_table("old", name, TableStatus.DROPPED))
     assert repo.find_by_name(name) is None
@@ -152,6 +166,7 @@ def test_find_by_name_ignores_dropped_and_allows_reuse(repo: TablesSqlRepo):
 
 
 def test_find_by_name_prefers_most_recently_updated(repo: TablesSqlRepo):
+    """When several tables share a name the most recently updated one is found."""
     name = TableName("iceberg", "inventory", "orders")
     repo.create(_table("a", name, updated_at=NOW))
     repo.create(_table("b", name, updated_at=NOW + timedelta(minutes=1)))
@@ -161,6 +176,7 @@ def test_find_by_name_prefers_most_recently_updated(repo: TablesSqlRepo):
 
 
 def test_list_by_statuses(repo: TablesSqlRepo):
+    """Listing by statuses returns the tables in those statuses and none for an empty list."""
     repo.create(_table("a", TableName("c", "n", "a"), TableStatus.ACTIVE))
     repo.create(_table("b", TableName("c", "n", "b"), TableStatus.PAUSED))
     repo.create(_table("c", TableName("c", "n", "c"), TableStatus.DROPPED))
@@ -170,6 +186,7 @@ def test_list_by_statuses(repo: TablesSqlRepo):
 
 
 def test_list_all_ordered_by_name(repo: TablesSqlRepo):
+    """Listing all tables orders them by name."""
     repo.create(_table("1", TableName("b", "n", "t")))
     repo.create(_table("2", TableName("a", "z", "t")))
     repo.create(_table("3", TableName("a", "n", "z")))
@@ -178,12 +195,14 @@ def test_list_all_ordered_by_name(repo: TablesSqlRepo):
 
 
 def test_create_duplicate_primary_key_raises_conflict(repo: TablesSqlRepo):
+    """Creating a table with an existing id raises ConflictError."""
     repo.create(_table("dup"))
     with pytest.raises(ConflictError):
         repo.create(_table("dup", TableName("c", "n", "other")))
 
 
 def test_tables_sql_table_name_is_tables():
+    """The tables SQL table is named tables."""
     from context.table_maintenance.adapter.outbound.table.sql import tables_table
 
     assert tables_table.name == "tables"

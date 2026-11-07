@@ -19,6 +19,7 @@ from tests.context.table_maintenance.adapter.inbound.web.web_test_support import
 
 
 def test_get_table_discovery_settings() -> None:
+    """Getting the settings returns whether discovery is enabled."""
     stub = StubUseCase(GetTableDiscoverySettingsUseCaseOutput(enabled=True, updated_at=NOW))
     client = build_client(get_table_discovery_settings=stub)
 
@@ -29,6 +30,7 @@ def test_get_table_discovery_settings() -> None:
 
 
 def test_put_table_discovery_settings() -> None:
+    """Putting the settings returns the new value and passes it to the use case."""
     stub = StubUseCase(UpdateTableDiscoverySettingsUseCaseOutput(enabled=False, updated_at=NOW))
     client = build_client(update_table_discovery_settings=stub)
 
@@ -40,12 +42,14 @@ def test_put_table_discovery_settings() -> None:
 
 
 def test_put_table_discovery_settings_rejects_unknown_key() -> None:
+    """Putting settings with an unknown key is rejected with 422."""
     response = build_client().put("/v1/table-discovery-settings", json={"enabled": True, "x": 1})
 
     assert response.status_code == 422
 
 
 def test_scan_returns_202_with_counts() -> None:
+    """A scan returns 202 with the sync counts and passes the catalog and namespace on."""
     stub = StubUseCase(SyncDiscoveredTablesUseCaseOutput(registered=2, renamed=0, dropped=1, skipped=3))
     client = build_client(sync_discovered_tables=stub)
 
@@ -66,6 +70,7 @@ def test_scan_returns_202_with_counts() -> None:
 
 
 def test_scan_namespace_is_optional() -> None:
+    """A scan without a namespace passes only the catalog."""
     stub = StubUseCase(SyncDiscoveredTablesUseCaseOutput(registered=0, renamed=0, dropped=0, skipped=0))
     client = build_client(sync_discovered_tables=stub)
 
@@ -76,6 +81,7 @@ def test_scan_namespace_is_optional() -> None:
 
 
 def test_old_discovery_prefix_is_gone() -> None:
+    """The old discovery prefix returns 404 for its routes."""
     client = build_client()
 
     assert client.get("/v1/discovery").status_code == 404

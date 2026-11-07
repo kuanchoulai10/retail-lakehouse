@@ -1,3 +1,5 @@
+"""Test the gateways that submit, read and delete SparkApplications on Kubernetes."""
+
 from __future__ import annotations
 
 import json
@@ -54,6 +56,7 @@ def _input(**overrides) -> SubmitMaintenanceJobGatewayInput:
 
 
 def test_manifest_snapshot():
+    """The manifest has the Spark operator API version, kind and application name."""
     app = build_spark_application(CONFIG, _input(), NAME)
     assert app["apiVersion"] == "sparkoperator.k8s.io/v1beta2"
     assert app["kind"] == "SparkApplication"
@@ -95,6 +98,7 @@ def test_manifest_snapshot():
 
 
 def test_manifest_driver_and_executor_env():
+    """The driver request carries the application name, filter and callback URL."""
     spec = build_spark_application(CONFIG, _input(), NAME)["spec"]
     env = {e["name"]: e for e in spec["driver"]["env"]}
     request = json.loads(env["GLAC_REQUEST"]["value"])
@@ -113,12 +117,14 @@ def test_manifest_driver_and_executor_env():
 
 
 def test_application_name_fits_k8s_limit():
+    """The application name fits the 63 character Kubernetes limit."""
     for operation in MaintenanceOperation:
         name = spark_application_name("A" * 64, operation.value, 12)
         assert len(name) <= 63
 
 
 def test_submit_creates_custom_object():
+    """Submitting creates a SparkApplication custom object in the maintenance namespace."""
     api = MagicMock()
     output = SubmitMaintenanceJobK8sGateway(api, CONFIG).submit(_input())
     kwargs = api.create_namespaced_custom_object.call_args.kwargs
@@ -130,6 +136,7 @@ def test_submit_creates_custom_object():
 
 
 def test_submit_conflict_is_success():
+    """Submitting an application that already exists counts as success."""
     api = MagicMock()
     api.create_namespaced_custom_object.side_effect = ApiException(status=409)
     output = SubmitMaintenanceJobK8sGateway(api, CONFIG).submit(_input())
@@ -138,6 +145,7 @@ def test_submit_conflict_is_success():
 
 
 def test_submit_other_errors_propagate():
+    """Other API errors from a submit are raised."""
     api = MagicMock()
     api.create_namespaced_custom_object.side_effect = ApiException(status=500)
     with pytest.raises(ApiException):
@@ -166,6 +174,7 @@ def test_submit_other_errors_propagate():
     ],
 )
 def test_read_maps_states(status, expected, error):
+    """Each SparkApplication state maps to a job state and error."""
     api = MagicMock()
     api.get_namespaced_custom_object.return_value = {"status": status}
     out = ReadMaintenanceJobK8sGateway(api, CONFIG).read(ReadMaintenanceJobGatewayInput(*ATTEMPT))
@@ -173,6 +182,7 @@ def test_read_maps_states(status, expected, error):
 
 
 def test_read_missing_status_key_is_pending():
+    """An application with no status yet reads as pending."""
     api = MagicMock()
     api.get_namespaced_custom_object.return_value = {}
     out = ReadMaintenanceJobK8sGateway(api, CONFIG).read(ReadMaintenanceJobGatewayInput(*ATTEMPT))
@@ -180,6 +190,7 @@ def test_read_missing_status_key_is_pending():
 
 
 def test_read_looks_up_the_application_named_after_the_attempt():
+    """Reading looks up the application named after the run, operation and attempt."""
     api = MagicMock()
     api.get_namespaced_custom_object.return_value = {}
     ReadMaintenanceJobK8sGateway(api, CONFIG).read(ReadMaintenanceJobGatewayInput(*ATTEMPT))
@@ -187,6 +198,7 @@ def test_read_looks_up_the_application_named_after_the_attempt():
 
 
 def test_read_not_found_and_other_errors():
+    """A missing application reads as NOT_FOUND and other API errors are raised."""
     api = MagicMock()
     gateway = ReadMaintenanceJobK8sGateway(api, CONFIG)
     api.get_namespaced_custom_object.side_effect = ApiException(status=404)
@@ -197,6 +209,7 @@ def test_read_not_found_and_other_errors():
 
 
 def test_delete_calls_api_and_ignores_not_found():
+    """Deleting calls the API for the named application and ignores a missing one."""
     api = MagicMock()
     gateway = DeleteMaintenanceJobK8sGateway(api, CONFIG)
     gateway.delete(DeleteMaintenanceJobGatewayInput(*ATTEMPT))
@@ -206,6 +219,7 @@ def test_delete_calls_api_and_ignores_not_found():
 
 
 def test_delete_other_errors_propagate():
+    """Other API errors from a delete are raised."""
     api = MagicMock()
     api.delete_namespaced_custom_object.side_effect = ApiException(status=500)
     with pytest.raises(ApiException):

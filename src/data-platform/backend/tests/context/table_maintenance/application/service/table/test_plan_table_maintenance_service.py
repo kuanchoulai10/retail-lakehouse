@@ -98,6 +98,7 @@ def _observe(catalog, now, **overrides):
 
 @pytest.fixture
 def planner(tables_repo, catalog):
+    """Provide the plan table maintenance service on the fakes."""
     return PlanTableMaintenanceService(tables_repo, catalog)
 
 
@@ -109,6 +110,7 @@ def _plan(planner, now, manual=None, uuid="u-1"):
 
 
 def test_plan_skip_reasons(planner, tables_repo, catalog, now):
+    """Each table that cannot be planned is skipped with the reason for it."""
     assert _plan(planner, now, uuid="missing").reason == "dropped"
     dropped = _table(tables_repo, now, uuid="u-d", name=TableName("c", "n", "d"))
     dropped.mark_dropped(now)
@@ -129,12 +131,14 @@ def test_plan_skip_reasons(planner, tables_repo, catalog, now):
 
 
 def test_plan_carries_the_fully_qualified_table_name(planner, tables_repo, catalog, now):
+    """The plan carries the fully qualified table name."""
     _table(tables_repo, now)
     _observe(catalog, now)
     assert _plan(planner, now).table_name == "iceberg.sales.orders"
 
 
 def test_plan_skip_carries_the_table_name_when_the_table_is_known(planner, tables_repo, catalog, now):
+    """A skipped plan carries the table name when the table is known and None otherwise."""
     paused = _table(tables_repo, now, uuid="u-p", name=TableName("c", "n", "p"))
     paused.pause(now)
     assert _plan(planner, now, uuid="u-p").table_name == "c.n.p"
@@ -142,6 +146,7 @@ def test_plan_skip_carries_the_table_name_when_the_table_is_known(planner, table
 
 
 def test_plan_compaction_has_one_filter_per_spec(planner, tables_repo, catalog, now):
+    """A compaction plan has one filter per partition spec."""
     _table(tables_repo, now)
     _observe(catalog, now)
     plan = _plan(planner, now)
@@ -159,6 +164,7 @@ def test_plan_compaction_has_one_filter_per_spec(planner, tables_repo, catalog, 
 
 
 def test_plan_orders_operations_and_renders_procedure_args(planner, tables_repo, catalog, now):
+    """The plan orders its operations and renders the arguments of each procedure."""
     _table(tables_repo, now)
     _observe(catalog, now)
     plan = _plan(planner, now)
@@ -180,6 +186,7 @@ def test_plan_orders_operations_and_renders_procedure_args(planner, tables_repo,
 
 
 def test_plan_target_file_size_comes_from_settings(planner, tables_repo, catalog, now):
+    """The target file size and reconcile interval in the plan come from the settings."""
     _table(
         tables_repo,
         now,
@@ -200,6 +207,7 @@ def test_plan_target_file_size_comes_from_settings(planner, tables_repo, catalog
 
 
 def test_plan_whole_table_compaction_has_no_filters(planner, tables_repo, catalog, now):
+    """A whole table compaction has no filters."""
     _table(tables_repo, now)
     _observe(
         catalog,
@@ -215,6 +223,7 @@ def test_plan_whole_table_compaction_has_no_filters(planner, tables_repo, catalo
 def test_plan_unsupported_partition_field_falls_back_to_whole_table_compaction(
     planner, tables_repo, catalog, now, caplog
 ):
+    """A partition field that cannot be filtered falls back to whole table compaction and logs it."""
     _table(tables_repo, now)
     binary = {**_field("payload"), "source_type": "binary"}
     _observe(
@@ -236,6 +245,7 @@ def test_plan_unsupported_partition_field_falls_back_to_whole_table_compaction(
 
 
 def test_scheduled_plan_respects_cooldown(planner, tables_repo, catalog, now):
+    """A scheduled plan respects the cooldown."""
     table = _table(tables_repo, now)
     for op in OPS.ordered():
         table.record_operation_result(op, True, now - timedelta(minutes=1))
@@ -248,6 +258,7 @@ def test_scheduled_plan_respects_cooldown(planner, tables_repo, catalog, now):
 
 
 def test_manual_plan_ignores_disabled_and_cooldown(planner, tables_repo, catalog, now):
+    """A manual plan ignores both disabled settings and the cooldown."""
     settings = MaintenanceSettings(rewrite_data_files=RewriteDataFilesSettings(enabled=False))
     table = _table(tables_repo, now, settings)
     table.record_operation_result(OPS.REMOVE_ORPHAN_FILES, True, now)
@@ -263,6 +274,7 @@ def test_manual_plan_ignores_disabled_and_cooldown(planner, tables_repo, catalog
 
 
 def test_manual_plan_without_a_catalog_observation_is_skipped_not_found(planner, tables_repo, now):
+    """A manual plan for a table missing from the catalog is skipped as not found."""
     _table(tables_repo, now)
     plan = _plan(planner, now, ["rewrite_manifests"])
     assert (plan.status, plan.reason, plan.operations) == ("skip", "not_found", [])
@@ -270,6 +282,7 @@ def test_manual_plan_without_a_catalog_observation_is_skipped_not_found(planner,
 
 @pytest.mark.parametrize("manual", [None, ["rewrite_manifests"]])
 def test_plan_skips_when_catalog_table_has_a_different_uuid(planner, tables_repo, catalog, now, manual):
+    """A plan is skipped as not found when the catalog table has a different uuid."""
     _table(tables_repo, now)
     _observe(catalog, now, table_uuid="u-recreated")
     plan = _plan(planner, now, manual)
@@ -277,6 +290,7 @@ def test_plan_skips_when_catalog_table_has_a_different_uuid(planner, tables_repo
 
 
 def test_manual_plan_rejects_unknown_or_empty_operations(planner, tables_repo, now):
+    """A manual plan with unknown or no operations is rejected."""
     _table(tables_repo, now)
     with pytest.raises(ValidationError):
         _plan(planner, now, ["defragment"])
@@ -285,6 +299,7 @@ def test_manual_plan_rejects_unknown_or_empty_operations(planner, tables_repo, n
 
 
 def test_plan_reports_malformed_observation_as_validation_error(planner, tables_repo, catalog, now):
+    """A malformed observation from the catalog is reported as a ValidationError."""
     _table(tables_repo, now)
     _observe(catalog, now, manifests=[{}])
     with pytest.raises(ValidationError):

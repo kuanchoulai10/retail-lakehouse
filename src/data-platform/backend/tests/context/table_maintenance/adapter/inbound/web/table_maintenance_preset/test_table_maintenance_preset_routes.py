@@ -32,6 +32,7 @@ FIELDS: dict[str, Any] = {
 
 
 def test_list_table_maintenance_presets() -> None:
+    """Listing returns the presets with their names."""
     output = ListTableMaintenancePresetsUseCaseOutput(items=[ListTableMaintenancePresetsUseCaseOutputItem(**FIELDS)])
     client = build_client(list_table_maintenance_presets=StubUseCase(output))
 
@@ -42,6 +43,7 @@ def test_list_table_maintenance_presets() -> None:
 
 
 def test_create_table_maintenance_preset_returns_201() -> None:
+    """Creating a preset returns 201 with its settings and passes the body to the use case."""
     stub = StubUseCase(CreateTableMaintenancePresetUseCaseOutput(**FIELDS))
     client = build_client(create_table_maintenance_preset=stub)
 
@@ -58,6 +60,7 @@ def test_create_table_maintenance_preset_returns_201() -> None:
 
 
 def test_get_table_maintenance_preset() -> None:
+    """Getting a preset passes its id to the use case and returns it."""
     stub = StubUseCase(GetTableMaintenancePresetUseCaseOutput(**FIELDS))
     client = build_client(get_table_maintenance_preset=stub)
 
@@ -68,6 +71,7 @@ def test_get_table_maintenance_preset() -> None:
 
 
 def test_update_table_maintenance_preset_keeps_omitted_fields_unset() -> None:
+    """Updating a preset leaves the fields missing from the body unset."""
     stub = StubUseCase(UpdateTableMaintenancePresetUseCaseOutput(**FIELDS))
     client = build_client(update_table_maintenance_preset=stub)
 
@@ -78,6 +82,7 @@ def test_update_table_maintenance_preset_keeps_omitted_fields_unset() -> None:
 
 
 def test_delete_table_maintenance_preset_returns_204() -> None:
+    """Deleting a preset returns 204 and passes its id to the use case."""
     stub = StubUseCase(DeleteTableMaintenancePresetUseCaseOutput())
     client = build_client(delete_table_maintenance_preset=stub)
 
@@ -88,6 +93,7 @@ def test_delete_table_maintenance_preset_returns_204() -> None:
 
 
 def test_old_prefix_is_gone() -> None:
+    """The old policy templates prefix returns 404."""
     client = build_client()
 
     assert client.get("/v1/" + "-".join(["policy", "templates"])).status_code == 404

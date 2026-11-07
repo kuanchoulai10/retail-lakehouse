@@ -23,6 +23,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
 
 
 def test_workflow_ids():
+    """Reconciliation ids embed the table uuid and the admission workflow has one fixed id."""
     assert table_reconciliation_workflow_id("u1") == "table-reconciliation:table-uuid=u1"
     assert (
         table_maintenance_workflow_id("iceberg.e2e.orders", "r1") == "table-maintenance:table=iceberg.e2e.orders:run=r1"
@@ -33,14 +34,17 @@ def test_workflow_ids():
 
 
 def test_discovery_adhoc_workflow_id():
+    """The ad hoc discovery id names the catalog, the optional namespace and the ad hoc trigger."""
     assert table_discovery_adhoc_workflow_id("c", "ns") == "table-discovery:catalog=c:namespace=ns:trigger=adhoc"
     assert table_discovery_adhoc_workflow_id("c", None) == "table-discovery:catalog=c:trigger=adhoc"
 
 
 def test_discovery_adhoc_workflow_id_differs_from_the_schedule_id():
+    """An ad hoc discovery run never shares the id of the catalog schedule."""
     assert table_discovery_adhoc_workflow_id("c", None) != table_discovery_schedule_id("c")
 
 
 def test_discovery_schedule_id_is_per_catalog():
+    """The discovery schedule id is the shared prefix followed by the catalog name."""
     assert table_discovery_schedule_id("iceberg") == "table-discovery:catalog=iceberg"
     assert table_discovery_schedule_id("iceberg").startswith(TABLE_DISCOVERY_SCHEDULE_ID_PREFIX)

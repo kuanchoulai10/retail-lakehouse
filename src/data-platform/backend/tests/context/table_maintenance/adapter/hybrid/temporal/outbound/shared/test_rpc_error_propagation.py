@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Iterator
 from types import SimpleNamespace
+from typing import TYPE_CHECKING
 
 import pytest
 from temporalio.client import RPCError
@@ -34,6 +34,9 @@ from context.table_maintenance.application.port.outbound.table_discovery_setting
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
     SendMaintenanceResultGatewayInput,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Iterator
 
 
 class _FailingHandle:
@@ -69,6 +72,7 @@ class _FailingClient:
 
 @pytest.fixture
 def bridge() -> Iterator[AsyncLoopBridge]:
+    """Provide an async loop bridge that is closed after the test."""
     bridge = AsyncLoopBridge()
     yield bridge
     bridge.close()
@@ -79,6 +83,7 @@ def _result_input() -> SendMaintenanceResultGatewayInput:
 
 
 def test_table_change_propagates_other_rpc_errors(bridge):
+    """The table change gateway raises RPC errors other than not found."""
     client = _FailingClient(RPCStatusCode.INVALID_ARGUMENT)
     gateway = SendTableChangeTemporalGateway(client, bridge)  # ty: ignore[invalid-argument-type]
     with pytest.raises(RPCError):
@@ -86,6 +91,7 @@ def test_table_change_propagates_other_rpc_errors(bridge):
 
 
 def test_maintenance_result_propagates_other_rpc_errors(bridge):
+    """The maintenance result gateway raises RPC errors other than not found."""
     client = _FailingClient(RPCStatusCode.INVALID_ARGUMENT)
     gateway = SendMaintenanceResultTemporalGateway(client, bridge)  # ty: ignore[invalid-argument-type]
     with pytest.raises(RPCError):
@@ -93,6 +99,7 @@ def test_maintenance_result_propagates_other_rpc_errors(bridge):
 
 
 def test_maintenance_result_not_found_maps_to_not_found_error(bridge):
+    """A not found RPC error from the maintenance result gateway becomes a NotFoundError."""
     client = _FailingClient(RPCStatusCode.NOT_FOUND)
     gateway = SendMaintenanceResultTemporalGateway(client, bridge)  # ty: ignore[invalid-argument-type]
     with pytest.raises(NotFoundError):
@@ -101,6 +108,7 @@ def test_maintenance_result_not_found_maps_to_not_found_error(bridge):
 
 @pytest.mark.parametrize("paused", [True, False])
 def test_schedule_update_propagates_other_rpc_errors(bridge, paused):
+    """The schedule gateway raises RPC errors other than not found, whether paused or not."""
     client = _FailingClient(RPCStatusCode.INVALID_ARGUMENT)
     gateway = UpdateTableDiscoveryScheduleTemporalGateway(client, bridge)  # ty: ignore[invalid-argument-type]
     with pytest.raises(RPCError):

@@ -1,3 +1,5 @@
+"""Test the Table aggregate: factories, lifecycle transitions, selection and operation state."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -34,18 +36,22 @@ OP = MaintenanceOperation.REWRITE_DATA_FILES
 
 
 def auto() -> Table:
+    """Provide an active table that was registered automatically through a rule."""
     return Table.register_auto(TableId("u1"), NAME, RULE, PRESET, SETTINGS, T0)
 
 
 def manual() -> Table:
+    """Provide an active table that was included manually."""
     return Table.include_manual(TableId("u1"), NAME, PRESET, SETTINGS, T0)
 
 
 def excluded() -> Table:
+    """Provide a table that was excluded manually."""
     return Table.exclude_manual(TableId("u1"), NAME, T0)
 
 
 def test_factories():
+    """The auto factory yields an active auto table linked to its rule and preset."""
     a = auto()
     assert (a.status, a.selection) == (TableStatus.ACTIVE, TableSelection.AUTO)
     assert a.matched_rule_id == RULE and a.source_preset_id == PRESET
@@ -56,6 +62,7 @@ def test_factories():
 
 
 def test_dropped_is_terminal():
+    """A dropped table cannot change status again."""
     t = auto()
     t.mark_dropped(T1)
     t.mark_dropped(T1)
@@ -77,6 +84,7 @@ def test_dropped_is_terminal():
 
 
 def test_pause_resume_only_from_active_paused():
+    """Pausing needs an active table and resuming needs a paused one."""
     t = excluded()
     with pytest.raises(InvalidTableTransition):
         t.pause(T1)
@@ -92,6 +100,7 @@ def test_pause_resume_only_from_active_paused():
 
 
 def test_exclude_manual_has_no_settings_and_no_workflow():
+    """A manually excluded table has no settings and is not enrolled."""
     t = excluded()
     assert t.is_enrolled is False
     assert t.settings is None
@@ -100,12 +109,14 @@ def test_exclude_manual_has_no_settings_and_no_workflow():
 
 
 def test_exclude_sets_manual():
+    """Excluding a table makes it excluded with a manual selection."""
     t = auto()
     t.exclude(T1)
     assert (t.status, t.selection) == (TableStatus.EXCLUDED, TableSelection.MANUAL)
 
 
 def test_is_enrolled_when_active_or_paused():
+    """An active or paused table is enrolled."""
     t = auto()
     assert t.is_enrolled
     t.pause(T1)
@@ -113,6 +124,7 @@ def test_is_enrolled_when_active_or_paused():
 
 
 def test_reset_to_auto_then_apply_include_decision():
+    """After a reset to auto, an include decision makes the table active with the settings."""
     t = excluded()
     t.reset_to_auto(T1)
     assert t.selection == TableSelection.AUTO
@@ -124,6 +136,7 @@ def test_reset_to_auto_then_apply_include_decision():
 
 
 def test_apply_include_keeps_existing_settings():
+    """An include decision keeps the settings the table already has."""
     t = auto()
     own = MaintenanceSettings(reconcile_interval=timedelta(hours=2))
     t.update_settings(own, T1)
@@ -132,6 +145,7 @@ def test_apply_include_keeps_existing_settings():
 
 
 def test_apply_auto_decision_without_rule_excludes_auto_table():
+    """An auto decision with no matching rule excludes an auto table and keeps its settings."""
     t = auto()
     t.apply_auto_decision(None, None, None, T1)
     assert t.status == TableStatus.EXCLUDED
@@ -140,6 +154,7 @@ def test_apply_auto_decision_without_rule_excludes_auto_table():
 
 
 def test_apply_exclude_rule_excludes_auto_table():
+    """An exclude rule excludes an auto table and records the rule."""
     t = auto()
     t.apply_auto_decision(TableDiscoveryRuleId("r2"), None, None, T1)
     assert t.status == TableStatus.EXCLUDED
@@ -147,6 +162,7 @@ def test_apply_exclude_rule_excludes_auto_table():
 
 
 def test_apply_auto_decision_ignored_for_manual():
+    """An auto decision does not change a manually selected table."""
     t = manual()
     t.apply_auto_decision(None, None, None, T1)
     assert t.status == TableStatus.ACTIVE
@@ -154,6 +170,7 @@ def test_apply_auto_decision_ignored_for_manual():
 
 
 def test_update_settings_requires_settings_capable_status():
+    """Settings can only be updated on a table whose status allows settings."""
     t = excluded()
     with pytest.raises(InvalidTableTransition):
         t.update_settings(SETTINGS, T1)
@@ -164,6 +181,7 @@ def test_update_settings_requires_settings_capable_status():
 
 
 def test_include_manually_reactivates_excluded_table():
+    """Including an excluded table manually makes it active with the given settings and preset."""
     t = excluded()
     t.include_manually(PRESET, SETTINGS, T1)
     assert (t.status, t.selection) == (TableStatus.ACTIVE, TableSelection.MANUAL)
@@ -173,6 +191,7 @@ def test_include_manually_reactivates_excluded_table():
 
 
 def test_include_manually_from_paused_auto_table():
+    """Including a paused auto table manually makes it active, manual and without a rule."""
     t = auto()
     t.pause(T1)
     t.include_manually(PRESET, SETTINGS, T1)
@@ -182,6 +201,7 @@ def test_include_manually_from_paused_auto_table():
 
 
 def test_backoff_doubles_and_caps():
+    """The cooldown doubles with each consecutive failure up to a cap."""
     base = timedelta(hours=1)
     for failures, expected in [(0, 1), (1, 2), (3, 8), (10, 24)]:
         s = OperationState(consecutive_failures=failures)
@@ -194,6 +214,7 @@ def test_backoff_doubles_and_caps():
 
 
 def test_record_operation_result():
+    """A failure raises the failure count and a success resets it."""
     t = auto()
     assert t.operation_state(OP) == OperationState()
     t.record_operation_result(OP, False, T1)
@@ -205,6 +226,7 @@ def test_record_operation_result():
 
 
 def test_rename_keeps_identity():
+    """Renaming a table keeps its id and equals the original."""
     t = auto()
     new = TableName(catalog="iceberg", namespace="inventory", table="orders_v2")
     t.rename(new, T1)
@@ -213,6 +235,7 @@ def test_rename_keeps_identity():
 
 
 def test_apply_auto_include_keeps_paused_table_paused():
+    """An auto include decision keeps a paused table paused."""
     t = auto()
     t.pause(T1)
     t.apply_auto_decision(RULE, PRESET, SETTINGS, T1)
@@ -220,6 +243,7 @@ def test_apply_auto_include_keeps_paused_table_paused():
 
 
 def test_apply_auto_include_without_settings_raises_when_table_has_none():
+    """An auto include decision for a table without settings raises an invalid transition."""
     t = excluded()
     t.reset_to_auto(T1)
     with pytest.raises(InvalidTableTransition):
@@ -229,6 +253,7 @@ def test_apply_auto_include_without_settings_raises_when_table_has_none():
 
 
 def test_apply_auto_include_keeps_source_preset_when_settings_kept():
+    """An auto include decision that keeps settings keeps the source preset and the rule."""
     t = auto()
     t.apply_auto_decision(RULE, TableMaintenancePresetId("t2"), SETTINGS, T1)
     assert t.source_preset_id == PRESET

@@ -84,6 +84,8 @@ def _within_a_second(gap: timedelta, seconds: int) -> bool:
 
 @dataclass
 class Harness:
+    """Run the reconciliation workflow against a scripted plan activity and stub children."""
+
     env: WorkflowEnvironment
     client: Client
     plans: ScriptedPlanActivity
@@ -91,6 +93,7 @@ class Harness:
     sent: int = 0
 
     async def start(self, start_signal: str | None = TableReconciliationSignal.RESUME, **fields: Any) -> WorkflowHandle:
+        """Start the workflow with a start signal and the given input fields."""
         options: dict[str, Any] = {}
         if start_signal is not None:
             options = {"start_signal": start_signal, "start_signal_args": [{}]}
@@ -105,6 +108,7 @@ class Harness:
         return self.handle
 
     async def signal(self, name: str, payload: dict | None = None) -> None:
+        """Send a signal with an optional payload to the workflow."""
         handle = self.client.get_workflow_handle(WORKFLOW_ID)
         self.sent += 1
         if payload is None:
@@ -113,15 +117,19 @@ class Harness:
             await handle.signal(name, payload)
 
     async def state(self) -> dict[str, Any]:
+        """Query the state of the workflow."""
         return await self.client.get_workflow_handle(WORKFLOW_ID).query("state")
 
     async def plan_count(self, count: int) -> list[dict[str, Any]]:
+        """Wait until at least the given number of plans were requested and return the requests."""
+
         async def probe() -> list[dict[str, Any]]:
             return list(self.plans.requests)
 
         return await eventually(probe, lambda r: len(r) >= count)
 
     async def in_flight(self) -> str:
+        """Return the run id of the in-flight maintenance run."""
         state = await eventually(self.state, lambda s: s["in_flight_run_id"])
         return state["in_flight_run_id"]
 
@@ -133,27 +141,33 @@ class Harness:
         )
 
     async def child(self, run_id: str) -> dict[str, Any]:
+        """Query the stub child of a run for the input it started with."""
         handle = self.client.get_workflow_handle(_child_id(run_id))
         return await handle.query("started_with")
 
     async def child_summary(self, run_id: str) -> str | None:
+        """Return the static summary of the child workflow of a run."""
         handle = self.client.get_workflow_handle(_child_id(run_id))
         return await (await handle.describe()).static_summary()
 
     async def child_status(self, run_id: str) -> WorkflowExecutionStatus | None:
+        """Return the execution status of the child workflow of a run."""
         handle = self.client.get_workflow_handle(_child_id(run_id))
         return (await handle.describe()).status
 
     async def complete_child(self, run_id: str) -> None:
+        """Signal the stub child of a run to finish."""
         handle = self.client.get_workflow_handle(_child_id(run_id))
         await handle.signal("complete")
         self.sent += 1
 
     async def ended(self) -> None:
+        """Wait until the workflow has ended."""
         handle = self.client.get_workflow_handle(WORKFLOW_ID)
         await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
 
     async def status(self) -> WorkflowExecutionStatus | None:
+        """Return the execution status of the workflow."""
         handle = self.client.get_workflow_handle(WORKFLOW_ID)
         return (await handle.describe()).status
 
@@ -191,6 +205,8 @@ def _run(
 
 
 def test_timer_triggers_plan_every_interval():
+    """Without a start signal the workflow plans only when its timer fires, then waits one planned interval."""
+
     async def scenario(h: Harness) -> None:
         await h.start(start_signal=None)
         started = await eventually(h.state, lambda s: s["next_plan_at"] is not None)
@@ -216,6 +232,8 @@ def test_timer_triggers_plan_every_interval():
 
 
 def test_signal_with_start_plans_and_starts_child_with_abandon_semantics():
+    """A start signal plans and starts a scheduled child run that outlives the parent."""
+
     async def scenario(h: Harness) -> None:
         await h.start()
         run_id = await h.in_flight()
@@ -231,6 +249,8 @@ def test_signal_with_start_plans_and_starts_child_with_abandon_semantics():
 
 
 def test_child_summary_names_the_table_and_the_planned_operations():
+    """The child workflow summary names the table and the planned operations."""
+
     async def scenario(h: Harness) -> None:
         await h.start()
         run_id = await h.in_flight()
@@ -240,6 +260,8 @@ def test_child_summary_names_the_table_and_the_planned_operations():
 
 
 def test_trigger_now_while_in_flight_runs_after_finish():
+    """A manual trigger during a run is kept and planned after the run finishes."""
+
     async def scenario(h: Harness) -> None:
         await h.start()
         first = await h.in_flight()
@@ -260,6 +282,8 @@ def test_trigger_now_while_in_flight_runs_after_finish():
 
 
 def test_trigger_now_without_operations_plans_all_due_as_manual():
+    """A manual trigger without operations plans every due operation as a manual run."""
+
     async def scenario(h: Harness) -> None:
         await h.start(start_signal=TableReconciliationSignal.TRIGGER_NOW)
         run_id = await h.in_flight()
@@ -270,6 +294,8 @@ def test_trigger_now_without_operations_plans_all_due_as_manual():
 
 
 def test_child_result_received_after_continue_as_new():
+    """A child result that arrives after continue as new still finishes the in-flight run."""
+
     async def scenario(h: Harness) -> None:
         handle = await h.start(continue_as_new_after=2)
         first_run = handle.result_run_id
@@ -295,6 +321,8 @@ def test_child_result_received_after_continue_as_new():
 
 
 def test_stale_maintenance_finished_is_ignored():
+    """A finished signal for a run that is not in flight is ignored."""
+
     async def scenario(h: Harness) -> None:
         await h.start()
         run_id = await h.in_flight()
@@ -310,6 +338,8 @@ def test_stale_maintenance_finished_is_ignored():
 
 
 def test_dropped_signal_ends_workflow_after_in_flight_run():
+    """A dropped signal stops the workflow only after the in-flight run finishes."""
+
     async def scenario(h: Harness) -> None:
         await h.start()
         run_id = await h.in_flight()
@@ -326,6 +356,8 @@ def test_dropped_signal_ends_workflow_after_in_flight_run():
 
 
 def test_stop_with_nothing_in_flight_ends_immediately():
+    """A stop with no run in flight ends the workflow at once."""
+
     async def scenario(h: Harness) -> None:
         await h.start(start_signal=None)
         await h.signal(TableReconciliationSignal.STOP)
@@ -336,6 +368,8 @@ def test_stop_with_nothing_in_flight_ends_immediately():
 
 
 def test_skip_excluded_ends_workflow():
+    """A plan that skips an excluded table ends the workflow."""
+
     async def scenario(h: Harness) -> None:
         await h.start()
         await h.ended()
@@ -345,6 +379,8 @@ def test_skip_excluded_ends_workflow():
 
 
 def test_skip_dropped_ends_workflow():
+    """A plan that skips a dropped table ends the workflow."""
+
     async def scenario(h: Harness) -> None:
         await h.start()
         await h.ended()
@@ -353,6 +389,7 @@ def test_skip_dropped_ends_workflow():
 
 
 def test_pause_skips_plans_resume_restores():
+    """Pausing makes plans skip and resuming restores planning."""
     paused = {"value": True}
 
     def script(_: dict[str, Any]) -> dict[str, Any]:
@@ -376,6 +413,7 @@ def test_pause_skips_plans_resume_restores():
 
 
 def test_manual_trigger_on_paused_table_is_dropped():
+    """A manual trigger on a paused table is planned once and then dropped."""
     paused = {"value": True}
 
     def script(_: dict[str, Any]) -> dict[str, Any]:
@@ -397,6 +435,8 @@ def test_manual_trigger_on_paused_table_is_dropped():
 
 
 def test_plan_failure_does_not_fail_workflow():
+    """A failing plan activity leaves the workflow running and retries after an hour."""
+
     async def scenario(h: Harness) -> None:
         h.plans.failures = 1
         await h.start()
@@ -414,6 +454,8 @@ def test_plan_failure_does_not_fail_workflow():
 
 
 def test_planned_empty_starts_no_child():
+    """A plan with no operations starts no child run."""
+
     async def scenario(h: Harness) -> None:
         await h.start()
         await h.plan_count(1)
@@ -429,6 +471,8 @@ OPERATION_BUDGET = timedelta(hours=19, minutes=3)
 
 
 def test_in_flight_run_is_given_up_only_after_the_child_worst_case():
+    """An in-flight run is given up only after the child worst case time has passed."""
+
     async def scenario(h: Harness) -> None:
         await h.start()
         first = await h.in_flight()
@@ -447,6 +491,8 @@ def test_in_flight_run_is_given_up_only_after_the_child_worst_case():
 
 
 def test_give_up_cancels_the_stale_child_before_starting_a_new_run():
+    """Giving up a stale run cancels its child before the next run starts."""
+
     async def scenario(h: Harness) -> None:
         await h.start()
         first = await h.in_flight()
@@ -460,6 +506,7 @@ def test_give_up_cancels_the_stale_child_before_starting_a_new_run():
 
 
 def test_give_up_waits_a_grace_for_a_child_that_ignores_its_cancel():
+    """Giving up waits a grace period for a child that ignores its cancel."""
     plan = {**_planned(COMPACTION, interval=10**6), "stub_ignores_cancel": True}
 
     async def scenario(h: Harness) -> None:
@@ -477,6 +524,8 @@ def test_give_up_waits_a_grace_for_a_child_that_ignores_its_cancel():
 
 
 def test_include_after_exclude_while_in_flight_keeps_workflow():
+    """Including a table again while a run is in flight keeps the workflow from stopping."""
+
     async def scenario(h: Harness) -> None:
         await h.start()
         first = await h.in_flight()
@@ -492,6 +541,7 @@ def test_include_after_exclude_while_in_flight_keeps_workflow():
 
 
 def test_excluded_plan_with_wake_during_activity_replans():
+    """An excluded plan followed by a wake signal during the activity plans again."""
     answers = [_skip("excluded"), _planned(COMPACTION)]
 
     async def scenario(h: Harness) -> None:
@@ -509,6 +559,8 @@ def test_excluded_plan_with_wake_during_activity_replans():
 
 
 def test_stop_during_plan_starts_no_child():
+    """A stop that arrives while planning starts no child run."""
+
     async def scenario(h: Harness) -> None:
         h.plans.gate = asyncio.Event()
         await h.start()
@@ -523,6 +575,8 @@ def test_stop_during_plan_starts_no_child():
 
 
 def test_continue_as_new_carries_interval_used_after_plan_failure():
+    """Continue as new keeps the retry interval used after a plan failure."""
+
     async def scenario(h: Harness) -> None:
         await h.start(continue_as_new_after=1)
         await h.plan_count(1)
@@ -538,6 +592,8 @@ def test_continue_as_new_carries_interval_used_after_plan_failure():
 
 
 def test_carried_in_flight_run_without_start_time_gets_a_fixed_deadline():
+    """A carried in-flight run without a start time gets a fixed deadline and blocks planning meanwhile."""
+
     async def scenario(h: Harness) -> None:
         await h.start(
             start_signal=None,
@@ -559,6 +615,8 @@ def test_carried_in_flight_run_without_start_time_gets_a_fixed_deadline():
 
 
 def test_carried_in_flight_run_without_workflow_id_is_given_up_without_grace():
+    """A carried in-flight run without a workflow id is given up without a grace period."""
+
     async def scenario(h: Harness) -> None:
         await h.start(start_signal=None, in_flight_run_id="ghost", in_flight_operation_count=1)
         state = await eventually(h.state, lambda s: s["in_flight_started_at"])
@@ -571,6 +629,7 @@ def test_carried_in_flight_run_without_workflow_id_is_given_up_without_grace():
 
 
 def test_child_start_failure_keeps_workflow_alive(monkeypatch: pytest.MonkeyPatch):
+    """A failure to start the child run clears the in-flight run and keeps the workflow alive."""
     import temporalio.workflow
 
     real_start = temporalio.workflow.start_child_workflow

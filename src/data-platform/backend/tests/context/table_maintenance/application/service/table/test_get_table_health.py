@@ -73,6 +73,7 @@ def _observe(catalog, **overrides):
 
 @pytest.fixture
 def service(tables_repo, catalog, clock):
+    """Provide the table health service on the fakes."""
     return GetTableHealthService(tables_repo, catalog, clock=clock)
 
 
@@ -81,6 +82,7 @@ def _health(service):
 
 
 def test_active_table_reports_each_operation_in_order(service, tables_repo, catalog, now):
+    """An active table is scheduled and reports every operation in canonical order."""
     _register(tables_repo, now, MaintenanceSettings())
     _observe(catalog)
 
@@ -101,6 +103,7 @@ def test_active_table_reports_each_operation_in_order(service, tables_repo, cata
 
 
 def test_paused_table_is_not_scheduled_but_assessed(service, tables_repo, catalog, now):
+    """A paused table is reported as not scheduled but its operations are still assessed."""
     _register(tables_repo, now, MaintenanceSettings()).pause(now)
     _observe(catalog)
 
@@ -112,6 +115,7 @@ def test_paused_table_is_not_scheduled_but_assessed(service, tables_repo, catalo
 
 
 def test_table_without_settings_has_no_lines(service, tables_repo, catalog, now):
+    """A table without settings reports no operations."""
     _register(tables_repo, now, MaintenanceSettings()).settings = None
     _observe(catalog)
 
@@ -123,6 +127,7 @@ def test_table_without_settings_has_no_lines(service, tables_repo, catalog, now)
 
 
 def test_delete_file_counts_are_summed(service, tables_repo, catalog, now):
+    """Position and equality delete files are summed across partitions."""
     _register(tables_repo, now, MaintenanceSettings())
     _observe(
         catalog,
@@ -136,6 +141,7 @@ def test_delete_file_counts_are_summed(service, tables_repo, catalog, now):
 
 
 def test_health_404_when_not_in_catalog(service, tables_repo, now):
+    """A table missing from the catalog raises NotFoundError."""
     _register(tables_repo, now, MaintenanceSettings())
 
     with pytest.raises(NotFoundError, match="is not in the catalog$"):

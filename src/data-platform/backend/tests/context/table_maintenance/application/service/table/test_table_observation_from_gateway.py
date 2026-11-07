@@ -62,6 +62,7 @@ def _gateway_observation(**overrides):
 
 
 def test_converts_every_part_of_the_observation():
+    """Every part of the gateway observation is converted to the domain observation."""
     result = table_observation_from_gateway(_gateway_observation())
     assert result.table_uuid == "u-1"
     assert result.properties == {"write.target-file-size-bytes": "1024"}
@@ -75,6 +76,7 @@ def test_converts_every_part_of_the_observation():
 
 
 def test_committed_at_becomes_aware_utc():
+    """Snapshot commit times become timezone aware in UTC."""
     result = table_observation_from_gateway(_gateway_observation())
     assert result.snapshots[0] == SnapshotInfo(6, datetime(2026, 10, 1, 8, 0, tzinfo=UTC))
     assert result.snapshots[1].committed_at == datetime(2026, 10, 2, 10, tzinfo=UTC)
@@ -83,6 +85,7 @@ def test_committed_at_becomes_aware_utc():
 
 
 def test_empty_observation_converts_to_empty_tuples():
+    """An empty observation converts to empty tuples."""
     result = table_observation_from_gateway(TableMetadataObservation(table_uuid="u-2"))
     assert result.specs == result.partitions == result.manifests == ()
     assert result.snapshots == ()
@@ -97,5 +100,6 @@ def test_empty_observation_converts_to_empty_tuples():
     ],
 )
 def test_malformed_items_raise_value_error(overrides):
+    """A malformed item in the observation raises ValueError."""
     with pytest.raises(ValueError):
         table_observation_from_gateway(_gateway_observation(**overrides))

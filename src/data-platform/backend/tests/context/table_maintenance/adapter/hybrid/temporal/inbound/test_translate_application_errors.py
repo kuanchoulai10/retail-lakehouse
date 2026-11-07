@@ -17,6 +17,7 @@ from context.table_maintenance.application.exceptions import (
 
 @pytest.mark.parametrize("error_type", [ValidationError, NotFoundError, ConflictError])
 def test_application_errors_become_non_retryable(error_type: type[Exception]):
+    """Each application error type becomes a non-retryable ApplicationError."""
     with pytest.raises(ApplicationError) as caught:
         with translate_application_errors():
             raise error_type("boom")
@@ -27,12 +28,14 @@ def test_application_errors_become_non_retryable(error_type: type[Exception]):
 
 
 def test_other_errors_stay_retryable_and_untouched():
+    """Other errors pass through unchanged and stay retryable."""
     with pytest.raises(RuntimeError, match="transient"):
         with translate_application_errors():
             raise RuntimeError("transient")
 
 
 def test_no_error_passes_through():
+    """Without an error the call returns its value."""
     with translate_application_errors():
         value = 1
     assert value == 1

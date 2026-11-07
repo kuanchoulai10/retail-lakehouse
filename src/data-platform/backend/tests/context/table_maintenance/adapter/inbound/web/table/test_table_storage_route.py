@@ -13,6 +13,7 @@ from tests.context.table_maintenance.adapter.inbound.web.web_test_support import
 
 
 def test_get_storage_returns_200() -> None:
+    """The storage route returns the current bytes and old snapshot files."""
     output = GetTableStorageUseCaseOutput(
         current_bytes=1000,
         current_files=10,

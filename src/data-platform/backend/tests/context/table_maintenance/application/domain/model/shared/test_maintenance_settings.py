@@ -1,3 +1,5 @@
+"""Test the maintenance settings value object, its defaults and its validation."""
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -17,6 +19,7 @@ from context.table_maintenance.application.domain.model.shared import (
 
 
 def test_defaults():
+    """The default settings reconcile hourly and compact by partition."""
     s = MaintenanceSettings()
     assert s.reconcile_interval == timedelta(hours=1)
     assert s.rewrite_data_files == RewriteDataFilesSettings()
@@ -34,6 +37,7 @@ def test_defaults():
 
 
 def test_for_operation_min_interval_and_enabled():
+    """Settings answer the per-operation settings, minimum interval and enabled flag."""
     s = MaintenanceSettings(expire_snapshots=ExpireSnapshotsSettings(enabled=False, min_interval=timedelta(hours=2)))
     for op in MaintenanceOperation:
         assert s.for_operation(op) is getattr(s, op.value)
@@ -43,12 +47,14 @@ def test_for_operation_min_interval_and_enabled():
 
 
 def test_remove_orphan_files_older_than_below_one_day_rejected():
+    """An orphan file retention below one day is rejected."""
     with pytest.raises(InvalidMaintenanceSettings):
         RemoveOrphanFilesSettings(older_than=timedelta(hours=23))
     RemoveOrphanFilesSettings(older_than=timedelta(days=1))
 
 
 def test_non_positive_intervals_rejected():
+    """An interval that is zero or negative is rejected."""
     zero = timedelta(0)
     bad = [
         lambda: MaintenanceSettings(reconcile_interval=zero),
@@ -69,4 +75,5 @@ def test_non_positive_intervals_rejected():
 
 
 def test_invalid_is_value_error():
+    """The invalid settings error is a ValueError."""
     assert issubclass(InvalidMaintenanceSettings, ValueError)

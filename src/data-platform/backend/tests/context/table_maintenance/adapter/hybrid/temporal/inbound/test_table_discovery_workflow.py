@@ -58,16 +58,19 @@ def _run_discovery(
 
 
 def test_discovery_syncs_catalog_and_returns_output():
+    """The workflow syncs the catalog without a namespace and returns the sync counts."""
     result, requests = _run_discovery(TableDiscoveryWorkflowInput("iceberg"))
     assert requests == [{"catalog": "iceberg", "namespace": None}]
     assert result == {"registered": 2, "dropped": 1}
 
 
 def test_discovery_passes_namespace():
+    """The workflow passes the namespace to the sync activity."""
     _, requests = _run_discovery(TableDiscoveryWorkflowInput("iceberg", "sales.eu"))
     assert requests == [{"catalog": "iceberg", "namespace": "sales.eu"}]
 
 
 def test_discovery_failure_fails_the_run():
+    """A failing sync activity fails the workflow run."""
     with pytest.raises(WorkflowFailureError):
         _run_discovery(TableDiscoveryWorkflowInput("iceberg"), fail=True)

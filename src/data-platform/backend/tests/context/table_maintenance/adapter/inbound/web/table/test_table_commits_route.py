@@ -36,6 +36,7 @@ def _output() -> ListTableCommitsUseCaseOutput:
 
 
 def test_commits_returns_200() -> None:
+    """The commits route returns the commits and whether the list was truncated."""
     stub = StubUseCase(_output())
     client = build_client(list_table_commits=stub)
 
@@ -52,6 +53,7 @@ def test_commits_returns_200() -> None:
 
 
 def test_commits_return_large_snapshot_ids_as_exact_strings() -> None:
+    """Snapshot ids too large for a JSON number are returned as exact strings."""
     output = _output()
     item = dataclasses.replace(output.items[0], snapshot_id=3051729675574597004, parent_id=3051729675574597003)
     stub = StubUseCase(dataclasses.replace(output, items=[item]))
@@ -64,6 +66,7 @@ def test_commits_return_large_snapshot_ids_as_exact_strings() -> None:
 
 
 def test_commits_limit_over_1000_is_422() -> None:
+    """A commits limit of zero or above 1000 is rejected with 422."""
     client = build_client(list_table_commits=StubUseCase(_output()))
 
     assert client.get("/v1/tables/u-1/commits?limit=1001").status_code == 422
@@ -71,6 +74,7 @@ def test_commits_limit_over_1000_is_422() -> None:
 
 
 def test_commits_since_is_forwarded() -> None:
+    """The since and limit query parameters are forwarded to the use case."""
     stub = StubUseCase(_output())
     client = build_client(list_table_commits=stub)
 
@@ -82,12 +86,14 @@ def test_commits_since_is_forwarded() -> None:
 
 
 def test_commits_bad_since_is_422() -> None:
+    """A since value that is not a timestamp is rejected with 422."""
     client = build_client(list_table_commits=StubUseCase(_output()))
 
     assert client.get("/v1/tables/u-1/commits?since=yesterday").status_code == 422
 
 
 def test_commits_404_detail() -> None:
+    """A not found error from the use case becomes a 404 carrying its message."""
     message = "table iceberg.sales.orders is not in the catalog"
     client = build_client(list_table_commits=StubUseCase(error=NotFoundError(message)))
 

@@ -1,3 +1,5 @@
+"""Test the TableDiscoveryRule aggregate: creation, effect and preset rules, and updates."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -17,9 +19,11 @@ from context.table_maintenance.application.domain.model.table_maintenance_preset
 
 T0 = datetime(2026, 1, 1, tzinfo=UTC)
 T1 = T0 + timedelta(hours=1)
+DEFAULT_PRESET_ID = TableMaintenancePresetId("t1")
 
 
-def make(effect=RuleEffect.INCLUDE, preset_id=TableMaintenancePresetId("t1")) -> TableDiscoveryRule:
+def make(effect=RuleEffect.INCLUDE, preset_id=DEFAULT_PRESET_ID) -> TableDiscoveryRule:
+    """Build a discovery rule with the given effect and preset."""
     return TableDiscoveryRule.create(
         id=TableDiscoveryRuleId("r1"),
         priority=10,
@@ -32,6 +36,7 @@ def make(effect=RuleEffect.INCLUDE, preset_id=TableMaintenancePresetId("t1")) ->
 
 
 def test_create():
+    """A new rule is enabled and stamped with its creation time."""
     r = make()
     assert r.priority == 10
     assert r.enabled
@@ -39,17 +44,20 @@ def test_create():
 
 
 def test_include_rule_requires_preset():
+    """An include rule without a preset is rejected."""
     with pytest.raises(InvalidTableDiscoveryRule):
         make(RuleEffect.INCLUDE, None)
 
 
 def test_exclude_rule_rejects_preset():
+    """An exclude rule that names a preset is rejected."""
     with pytest.raises(InvalidTableDiscoveryRule):
         make(RuleEffect.EXCLUDE, TableMaintenancePresetId("t1"))
     assert make(RuleEffect.EXCLUDE, None).preset_id is None
 
 
 def test_update():
+    """An update changes the priority, effect and preset."""
     r = make()
     r.update(
         priority=5,
@@ -68,6 +76,7 @@ def test_update():
 
 
 def test_invalid_update_leaves_state_unchanged():
+    """An invalid update is rejected and leaves the rule as it was."""
     r = make()
     with pytest.raises(InvalidTableDiscoveryRule):
         r.update(

@@ -1,9 +1,11 @@
+"""Test the SQL repository of the TableDiscoveryRule aggregate."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 import pytest
-from sqlalchemy import Engine
 
 from context.table_maintenance.adapter.outbound.table_discovery_rule.sql import (
     TableDiscoveryRulesSqlRepo,
@@ -18,6 +20,9 @@ from context.table_maintenance.application.domain.model.table_maintenance_preset
     TableMaintenancePresetId,
 )
 from context.table_maintenance.application.exceptions import ConflictError
+
+if TYPE_CHECKING:
+    from sqlalchemy import Engine
 
 NOW = datetime(2026, 10, 24, tzinfo=UTC)
 
@@ -36,10 +41,12 @@ def _include(rule_id: str, priority: int, preset: str = "t1") -> TableDiscoveryR
 
 @pytest.fixture
 def repo(engine: Engine) -> TableDiscoveryRulesSqlRepo:
+    """Provide the discovery rules repository on the test engine."""
     return TableDiscoveryRulesSqlRepo(engine)
 
 
 def test_roundtrip(repo: TableDiscoveryRulesSqlRepo):
+    """A stored include rule loads back with its priority and effect."""
     repo.create(_include("r1", 5))
     loaded = repo.get(TableDiscoveryRuleId("r1"))
     assert loaded is not None
@@ -55,6 +62,7 @@ def test_roundtrip(repo: TableDiscoveryRulesSqlRepo):
 
 
 def test_exclude_rule_roundtrip_without_preset(repo: TableDiscoveryRulesSqlRepo):
+    """A disabled exclude rule without a preset round trips with no preset."""
     rule = TableDiscoveryRule.create(
         TableDiscoveryRuleId("x"),
         1,
@@ -72,10 +80,12 @@ def test_exclude_rule_roundtrip_without_preset(repo: TableDiscoveryRulesSqlRepo)
 
 
 def test_get_missing_returns_none(repo: TableDiscoveryRulesSqlRepo):
+    """Getting a rule that does not exist returns None."""
     assert repo.get(TableDiscoveryRuleId("nope")) is None
 
 
 def test_update_persists(repo: TableDiscoveryRulesSqlRepo):
+    """An update persists the new priority and effect."""
     rule = _include("r1", 5)
     repo.create(rule)
     later = datetime(2026, 11, 1, tzinfo=UTC)
@@ -92,11 +102,13 @@ def test_update_persists(repo: TableDiscoveryRulesSqlRepo):
 
 
 def test_update_missing_raises(repo: TableDiscoveryRulesSqlRepo):
+    """Updating a rule that does not exist raises LookupError."""
     with pytest.raises(LookupError):
         repo.update(_include("ghost", 1))
 
 
 def test_delete(repo: TableDiscoveryRulesSqlRepo):
+    """A deleted rule can no longer be loaded."""
     repo.create(_include("r1", 1))
     repo.delete(TableDiscoveryRuleId("r1"))
     assert repo.get(TableDiscoveryRuleId("r1")) is None
@@ -104,6 +116,7 @@ def test_delete(repo: TableDiscoveryRulesSqlRepo):
 
 
 def test_list_all_ordered_by_priority_then_id(repo: TableDiscoveryRulesSqlRepo):
+    """Listing orders rules by priority and then by id."""
     repo.create(_include("b", 2))
     repo.create(_include("c", 1))
     repo.create(_include("a", 2))
@@ -111,6 +124,7 @@ def test_list_all_ordered_by_priority_then_id(repo: TableDiscoveryRulesSqlRepo):
 
 
 def test_count_by_preset(repo: TableDiscoveryRulesSqlRepo):
+    """Counting by preset returns how many rules point to each preset."""
     repo.create(_include("r1", 1, "t1"))
     repo.create(_include("r2", 2, "t1"))
     repo.create(_include("r3", 3, "t2"))
@@ -120,6 +134,7 @@ def test_count_by_preset(repo: TableDiscoveryRulesSqlRepo):
 
 
 def test_create_duplicate_primary_key_raises_conflict(repo: TableDiscoveryRulesSqlRepo):
+    """Creating a rule with an existing id raises ConflictError."""
     repo.create(_include("r1", 1))
     with pytest.raises(ConflictError):
         repo.create(_include("r1", 2))

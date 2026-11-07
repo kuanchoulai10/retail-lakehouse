@@ -50,6 +50,7 @@ FIELDS: dict[str, Any] = {
 
 
 def test_list_tables_passes_the_status_filter() -> None:
+    """Listing tables passes the status filter to the use case."""
     item = ListTablesUseCaseOutputItem(**FIELDS)
     stub = StubUseCase(ListTablesUseCaseOutput(items=[item]))
     client = build_client(list_tables=stub)
@@ -62,6 +63,7 @@ def test_list_tables_passes_the_status_filter() -> None:
 
 
 def test_list_tables_without_filter() -> None:
+    """Listing tables without a filter passes no status."""
     stub = StubUseCase(ListTablesUseCaseOutput(items=[]))
     client = build_client(list_tables=stub)
 
@@ -72,6 +74,7 @@ def test_list_tables_without_filter() -> None:
 
 
 def test_get_table() -> None:
+    """Getting a table returns its name and per-operation states."""
     stub = StubUseCase(GetTableUseCaseOutput(**FIELDS))
     client = build_client(get_table=stub)
 
@@ -85,6 +88,7 @@ def test_get_table() -> None:
 
 
 def test_put_settings_sends_the_body_as_settings() -> None:
+    """Putting settings passes the request body to the use case as the table settings."""
     stub = StubUseCase(UpdateTableSettingsUseCaseOutput(**FIELDS))
     client = build_client(update_table_settings=stub)
     settings = {"expire_snapshots": {"retain_last": 5}}
@@ -119,6 +123,7 @@ def test_put_settings_sends_the_body_as_settings() -> None:
     ],
 )
 def test_lifecycle_actions(action, field, port_input, port_output) -> None:
+    """Each lifecycle action calls its use case with the table uuid and returns the table."""
     stub = StubUseCase(port_output(**FIELDS))
     client = build_client(**{field: stub})
 
@@ -130,6 +135,7 @@ def test_lifecycle_actions(action, field, port_input, port_output) -> None:
 
 
 def test_include_table() -> None:
+    """Including a table passes the request body to the include use case."""
     stub = StubUseCase(IncludeTableUseCaseOutput(**FIELDS))
     client = build_client(include_table=stub)
     body = {
@@ -146,6 +152,7 @@ def test_include_table() -> None:
 
 
 def test_exclude_table() -> None:
+    """Excluding a table passes the request body to the exclude use case."""
     stub = StubUseCase(ExcludeTableUseCaseOutput(**FIELDS))
     client = build_client(exclude_table=stub)
     body = {"catalog": "iceberg", "namespace": "sales", "table": "orders"}
@@ -157,6 +164,7 @@ def test_exclude_table() -> None:
 
 
 def test_trigger_table_maintenance_returns_202() -> None:
+    """Triggering maintenance returns 202 and passes the table and operations to the use case."""
     stub = StubUseCase(TriggerTableMaintenanceUseCaseOutput(accepted=True))
     client = build_client(trigger_table_maintenance=stub)
 

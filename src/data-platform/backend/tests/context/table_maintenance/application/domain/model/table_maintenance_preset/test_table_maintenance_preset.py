@@ -1,3 +1,5 @@
+"""Test the TableMaintenancePreset aggregate."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -15,6 +17,7 @@ T1 = T0 + timedelta(hours=1)
 
 
 def make() -> TableMaintenancePreset:
+    """Build a preset named default."""
     return TableMaintenancePreset.create(
         id=TableMaintenancePresetId("t1"),
         name="default",
@@ -24,6 +27,7 @@ def make() -> TableMaintenancePreset:
 
 
 def test_create():
+    """A new preset has its id, name and creation time."""
     t = make()
     assert t.id == TableMaintenancePresetId("t1")
     assert t.name == "default"
@@ -32,6 +36,7 @@ def test_create():
 
 
 def test_rename_and_update_settings():
+    """Renaming and updating settings change them and stamp the update time."""
     t = make()
     t.rename("other", T1)
     assert t.name == "other"

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from typing import TYPE_CHECKING, Any
 
 from temporalio import activity
@@ -15,6 +14,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
 )
 
 if TYPE_CHECKING:
+    import asyncio
     from collections.abc import Awaitable, Callable
     from datetime import datetime
 
@@ -36,6 +36,7 @@ class ScriptedMaintenanceActivities:
     """
 
     def __init__(self, client: Client) -> None:
+        """Hold the client plus the scripts, gates and call records tests configure and inspect."""
         self._client = client
         self.callbacks: dict[tuple[str, int], list[tuple[int, bool, str | None]]] = {}
         self.submit_errors: dict[tuple[str, int], str] = {}
@@ -54,6 +55,7 @@ class ScriptedMaintenanceActivities:
 
     @staticmethod
     def app_name(run_id: str, operation: str, attempt: int) -> str:
+        """Build the application name of a run, operation and attempt."""
         return f"{run_id}-{operation}-{attempt}"
 
     def _workflow_id_of(self, run_id: str) -> str:
@@ -62,6 +64,7 @@ class ScriptedMaintenanceActivities:
 
     @activity.defn(name=TableMaintenanceActivity.CREATE_MAINTENANCE_RUN)
     async def create_table_maintenance_run(self, request: dict) -> dict:
+        """Return a running run for the request."""
         self.created.append(request)
         if self.create_gate is not None:
             await self.create_gate.wait()
@@ -69,6 +72,7 @@ class ScriptedMaintenanceActivities:
 
     @activity.defn(name=TableMaintenanceActivity.SUBMIT_MAINTENANCE_OPERATION)
     async def submit_maintenance_operation(self, request: dict) -> dict:
+        """Submit the operation, or fail with the scripted submit error for it."""
         self.submits.append(request)
         if self.submit_gate is not None:
             await self.submit_gate.wait()
@@ -94,6 +98,7 @@ class ScriptedMaintenanceActivities:
 
     @activity.defn(name=TableMaintenanceActivity.GET_MAINTENANCE_JOB_STATUS)
     async def get_maintenance_job_status(self, request: dict) -> dict:
+        """Return the scripted job status for the attempt and record the poll."""
         app_name = self.app_name(request["run_id"], request["operation"], request["attempt"])
         self.status_calls.append(app_name)
         self.status_times.append(activity.info().scheduled_time)
@@ -109,6 +114,7 @@ class ScriptedMaintenanceActivities:
 
     @activity.defn(name=TableMaintenanceActivity.RECORD_MAINTENANCE_OPERATION_RESULT)
     async def record_table_maintenance_operation_result(self, request: dict) -> dict:
+        """Record the operation result, or fail when the script says the database is down."""
         self.records.append(request)
         if (request["operation"], request["attempt"]) in self.record_errors:
             raise ApplicationError("db down", type="ConflictError", non_retryable=True)
@@ -116,6 +122,7 @@ class ScriptedMaintenanceActivities:
 
     @activity.defn(name=TableMaintenanceActivity.DELETE_MAINTENANCE_JOB)
     async def delete_maintenance_job(self, request: dict) -> dict:
+        """Record the job deletion and echo its attempt."""
         app_name = self.app_name(request["run_id"], request["operation"], request["attempt"])
         self.deletes.append(app_name)
         return {
@@ -125,6 +132,7 @@ class ScriptedMaintenanceActivities:
         }
 
     def all(self) -> list:
+        """Return every scripted activity for worker registration."""
         return [
             self.create_table_maintenance_run,
             self.submit_maintenance_operation,

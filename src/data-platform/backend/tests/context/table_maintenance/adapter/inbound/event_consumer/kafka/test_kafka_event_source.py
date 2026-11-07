@@ -31,6 +31,7 @@ def _source() -> tuple[KafkaEventSource, MagicMock, MagicMock]:
 
 
 def test_configures_group_offsets_and_subscribes() -> None:
+    """The consumer is configured with its group and offset settings and subscribes to the topic."""
     _, consumer, factory = _source()
 
     factory.assert_called_once_with(
@@ -45,6 +46,7 @@ def test_configures_group_offsets_and_subscribes() -> None:
 
 
 def test_poll_returns_record() -> None:
+    """Polling turns a Kafka message into an event record with topic, partition and offset."""
     source, consumer, _ = _source()
     consumer.poll.return_value = _message()
 
@@ -53,6 +55,7 @@ def test_poll_returns_record() -> None:
 
 
 def test_poll_returns_none_without_message() -> None:
+    """Polling returns None when no message arrives before the timeout."""
     source, consumer, _ = _source()
     consumer.poll.return_value = None
 
@@ -60,6 +63,7 @@ def test_poll_returns_none_without_message() -> None:
 
 
 def test_poll_raises_on_broker_error() -> None:
+    """Polling raises KafkaException when the message carries a broker error."""
     source, consumer, _ = _source()
     consumer.poll.return_value = _message(error=MagicMock())
 
@@ -68,6 +72,7 @@ def test_poll_raises_on_broker_error() -> None:
 
 
 def test_commit_stores_next_offset_synchronously() -> None:
+    """Committing synchronously stores the offset after the record, so the next poll continues from it."""
     source, consumer, _ = _source()
 
     source.commit(EventRecord(b"{}", "polaris-catalog-events", 2, 41))
@@ -81,6 +86,7 @@ def test_commit_stores_next_offset_synchronously() -> None:
 
 
 def test_close_closes_consumer() -> None:
+    """Closing the source closes the Kafka consumer."""
     source, consumer, _ = _source()
 
     source.close()

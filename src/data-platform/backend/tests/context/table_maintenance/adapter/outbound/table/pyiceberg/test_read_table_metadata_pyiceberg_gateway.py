@@ -1,3 +1,5 @@
+"""Test the PyIceberg gateway against a real SQL catalog with generated tables."""
+
 from __future__ import annotations
 
 from collections import Counter
@@ -57,6 +59,7 @@ def _rows(ids: list[int], day: int) -> pa.Table:
 
 @pytest.fixture
 def catalog(tmp_path: Path) -> SqlCatalog:
+    """Provide a SQLite-backed Iceberg catalog in a temporary directory."""
     warehouse = tmp_path / "warehouse"
     warehouse.mkdir()
     return SqlCatalog(
@@ -68,6 +71,7 @@ def catalog(tmp_path: Path) -> SqlCatalog:
 
 @pytest.fixture
 def gateway(catalog: SqlCatalog) -> ReadTableMetadataPyIcebergGateway:
+    """Provide a gateway that reads from the test catalog."""
     return ReadTableMetadataPyIcebergGateway(lambda name: catalog)
 
 
@@ -87,6 +91,7 @@ def _partitioned(catalog: SqlCatalog):
 def test_observe_partitioned_table_groups_by_day_and_bucket(
     catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
 ) -> None:
+    """Observing a partitioned table groups its data files by day and bucket partition."""
     table = _partitioned(catalog)
     table.append(_rows([1, 2, 3, 4, 5, 6], day=1))
     table.append(_rows([1, 2], day=1))
@@ -134,6 +139,7 @@ def test_observe_partitioned_table_groups_by_day_and_bucket(
 def test_observe_unpartitioned_table_has_one_row_with_empty_values(
     catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
 ) -> None:
+    """An unpartitioned table is observed as one partition with empty values."""
     catalog.create_namespace("db")
     table = catalog.create_table("db.events", SCHEMA)
     table.append(_rows([1, 2], day=1))
@@ -149,6 +155,7 @@ def test_observe_unpartitioned_table_has_one_row_with_empty_values(
 def test_observe_table_without_snapshot_has_no_partitions(
     catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
 ) -> None:
+    """A table without a snapshot is observed with no snapshot id and no partitions."""
     catalog.create_namespace("db")
     catalog.create_table("db.events", SCHEMA)
 
@@ -164,6 +171,7 @@ def test_observe_table_without_snapshot_has_no_partitions(
 def test_observe_after_spec_evolution_carries_both_spec_ids(
     catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
 ) -> None:
+    """After partition spec evolution the observation carries partitions of both spec ids."""
     catalog.create_namespace("db")
     table = catalog.create_table("db.events", SCHEMA)
     table.append(_rows([1], day=1))
@@ -188,6 +196,7 @@ def test_observe_after_spec_evolution_carries_both_spec_ids(
 def test_observation_round_trips_through_the_domain_converter(
     catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
 ) -> None:
+    """An observation converts to the domain model with the table uuid and spec fields."""
     table = _partitioned(catalog)
     table.append(_rows([1, 2, 3], day=1))
 
@@ -206,6 +215,7 @@ def test_observation_round_trips_through_the_domain_converter(
 
 
 def test_load_table_returns_metadata_uuid(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
+    """Loading a table returns its catalog, namespace, name and uuid."""
     catalog.create_namespace("db")
     table = catalog.create_table("db.events", SCHEMA)
 
@@ -221,6 +231,7 @@ def test_load_table_returns_metadata_uuid(catalog: SqlCatalog, gateway: ReadTabl
 
 
 def test_missing_table_returns_none(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
+    """Loading or observing a table that does not exist returns None."""
     catalog.create_namespace("db")
 
     assert gateway.load_table(_ref(table="nope")) is None
@@ -230,6 +241,7 @@ def test_missing_table_returns_none(catalog: SqlCatalog, gateway: ReadTableMetad
 def test_list_tables_with_and_without_namespace(
     catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
 ) -> None:
+    """Listing tables covers the whole catalog, or only the given namespace."""
     catalog.create_namespace("db")
     catalog.create_namespace(("db", "inner"))
     catalog.create_namespace("other")
@@ -252,6 +264,7 @@ def test_list_tables_with_and_without_namespace(
 def test_list_tables_of_missing_namespace_is_empty(
     gateway: ReadTableMetadataPyIcebergGateway,
 ) -> None:
+    """Listing a namespace that does not exist returns no tables."""
     assert gateway.list_tables(ReadTableMetadataGatewayListInput(CATALOG, "ghost")) == []
 
 
@@ -277,6 +290,7 @@ def _failing_catalog(fail_on: str) -> MagicMock:
 
 @pytest.mark.parametrize("fail_on", ["list_namespaces", "nested_list_namespaces", "list_tables"])
 def test_catalog_wide_listing_propagates_transient_errors(fail_on: str) -> None:
+    """A transient catalog error during a catalog-wide listing is raised, not swallowed."""
     gateway = ReadTableMetadataPyIcebergGateway(lambda name: _failing_catalog(fail_on))
 
     with pytest.raises(ServerError):
@@ -284,6 +298,7 @@ def test_catalog_wide_listing_propagates_transient_errors(fail_on: str) -> None:
 
 
 def test_scoped_listing_and_loading_propagate_transient_errors() -> None:
+    """A transient error while listing a namespace or loading a table is raised."""
     gateway = ReadTableMetadataPyIcebergGateway(lambda name: _failing_catalog("list_tables"))
 
     with pytest.raises(ServerError):
@@ -295,6 +310,7 @@ def test_scoped_listing_and_loading_propagate_transient_errors() -> None:
 
 
 def test_describe_partitioned_table(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
+    """Describing a partitioned table returns its uuid, format version and snapshot data."""
     table = _partitioned(catalog)
     table.append(_rows([1, 2], day=1))
     table.append(_rows([3], day=2))
@@ -327,6 +343,7 @@ def test_describe_partitioned_table(catalog: SqlCatalog, gateway: ReadTableMetad
 
 
 def test_describe_empty_table(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
+    """Describing a table without a snapshot returns no snapshot id and a zero snapshot count."""
     catalog.create_namespace("db")
     catalog.create_table("db.events", SCHEMA)
 
@@ -340,6 +357,7 @@ def test_describe_empty_table(catalog: SqlCatalog, gateway: ReadTableMetadataPyI
 
 
 def test_list_commits_newest_first_with_limit(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
+    """Commits are listed newest first and cut at the limit, marked as truncated."""
     table = _partitioned(catalog)
     for day in (1, 2, 3):
         table.append(_rows([day], day=day))
@@ -362,6 +380,7 @@ def test_list_commits_newest_first_with_limit(catalog: SqlCatalog, gateway: Read
 
 
 def test_list_commits_since(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
+    """Listing commits since a time returns only the later commits and is not truncated when all fit."""
     table = _partitioned(catalog)
     for day in (1, 2, 3):
         table.append(_rows([day], day=day))
@@ -380,6 +399,7 @@ def test_list_commits_since(catalog: SqlCatalog, gateway: ReadTableMetadataPyIce
 def test_measure_storage_counts_files_kept_by_old_snapshots(
     catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
 ) -> None:
+    """Storage measures count the files that only old snapshots still reference."""
     table = _partitioned(catalog)
     table.append(_rows([1, 2], day=1))
     table.overwrite(_rows([5, 6], day=2))
@@ -396,6 +416,7 @@ def test_measure_storage_counts_files_kept_by_old_snapshots(
 def test_measure_storage_of_empty_table_is_zero(
     catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
 ) -> None:
+    """The storage of a table without data measures zero."""
     catalog.create_namespace("db")
     table = catalog.create_table("db.events", SCHEMA)
 
@@ -412,6 +433,7 @@ def test_measure_storage_of_empty_table_is_zero(
 
 
 def test_reads_return_none_for_missing_table(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
+    """Describe, list commits and measure storage return None for a missing table."""
     catalog.create_namespace("db")
     ref = _ref(table="nope")
 

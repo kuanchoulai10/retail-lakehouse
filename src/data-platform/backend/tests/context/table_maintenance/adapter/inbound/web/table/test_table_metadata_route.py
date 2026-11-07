@@ -35,6 +35,7 @@ def _output() -> GetTableMetadataUseCaseOutput:
 
 
 def test_get_metadata_returns_200() -> None:
+    """The metadata route returns the table totals, with null for unknown ones."""
     stub = StubUseCase(_output())
     client = build_client(get_table_metadata=stub)
 
@@ -50,6 +51,7 @@ def test_get_metadata_returns_200() -> None:
 
 
 def test_get_metadata_returns_large_snapshot_id_as_exact_string() -> None:
+    """A snapshot id too large for a JSON number is returned as an exact string."""
     output = dataclasses.replace(_output(), current_snapshot_id=3051729675574597004)
     client = build_client(get_table_metadata=StubUseCase(output))
 
@@ -59,6 +61,7 @@ def test_get_metadata_returns_large_snapshot_id_as_exact_string() -> None:
 
 
 def test_get_metadata_without_snapshot_returns_null_id() -> None:
+    """A table without a snapshot returns a null current snapshot id."""
     output = dataclasses.replace(_output(), current_snapshot_id=None)
     client = build_client(get_table_metadata=StubUseCase(output))
 
@@ -68,6 +71,7 @@ def test_get_metadata_without_snapshot_returns_null_id() -> None:
 
 
 def test_get_metadata_404_detail() -> None:
+    """A not found error from the use case becomes a 404 carrying its message."""
     message = "table iceberg.sales.orders is not in the catalog"
     client = build_client(get_table_metadata=StubUseCase(error=NotFoundError(message)))
 

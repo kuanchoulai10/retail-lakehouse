@@ -24,6 +24,7 @@ def _raw(**fields: object) -> bytes:
 
 
 def test_update_table_maps_to_table_hint() -> None:
+    """An update table event maps to a hint for that table."""
     hint = map_polaris_event(_fixture("after_update_table"))
 
     assert hint == ProcessTableHintUseCaseInput(
@@ -35,6 +36,7 @@ def test_update_table_maps_to_table_hint() -> None:
 
 
 def test_before_create_without_name_maps_to_namespace_hint() -> None:
+    """A before-create event without a table name maps to a namespace hint."""
     hint = map_polaris_event(_fixture("before_create_table"))
 
     assert hint == ProcessTableHintUseCaseInput(
@@ -46,6 +48,7 @@ def test_before_create_without_name_maps_to_namespace_hint() -> None:
 
 
 def test_before_create_with_name_is_ignored() -> None:
+    """A before-create event that names a table is ignored."""
     raw = _raw(
         event_type="BEFORE_CREATE_TABLE",
         catalog_name="iceberg",
@@ -57,6 +60,7 @@ def test_before_create_with_name_is_ignored() -> None:
 
 
 def test_drop_table_maps_to_table_hint() -> None:
+    """A drop table event maps to a hint with its namespace, table and event type."""
     hint = map_polaris_event(_fixture("after_drop_table"))
 
     assert hint is not None
@@ -68,6 +72,7 @@ def test_drop_table_maps_to_table_hint() -> None:
 
 
 def test_register_table_maps_to_table_hint() -> None:
+    """A register table event maps to a hint for that table."""
     hint = map_polaris_event(_fixture("after_register_table"))
 
     assert hint == ProcessTableHintUseCaseInput(
@@ -79,6 +84,7 @@ def test_register_table_maps_to_table_hint() -> None:
 
 
 def test_create_table_maps_to_table_hint() -> None:
+    """A create table event maps to a hint with its namespace and table."""
     raw = _raw(
         event_type="AFTER_CREATE_TABLE",
         catalog_name="iceberg",
@@ -93,6 +99,7 @@ def test_create_table_maps_to_table_hint() -> None:
 
 
 def test_rename_table_hints_the_destination() -> None:
+    """A rename table event hints the destination table."""
     hint = map_polaris_event(_fixture("after_rename_table"))
 
     assert hint == ProcessTableHintUseCaseInput(
@@ -104,6 +111,7 @@ def test_rename_table_hints_the_destination() -> None:
 
 
 def test_rename_destination_with_multi_level_namespace() -> None:
+    """A rename destination in a multi-level namespace is joined with dots."""
     raw = _raw(
         event_type="AFTER_RENAME_TABLE",
         catalog_name="iceberg",
@@ -118,12 +126,14 @@ def test_rename_destination_with_multi_level_namespace() -> None:
 
 
 def test_rename_without_destination_is_skipped() -> None:
+    """A rename event without a destination is skipped."""
     raw = _raw(event_type="AFTER_RENAME_TABLE", catalog_name="iceberg")
 
     assert map_polaris_event(raw) is None
 
 
 def test_multi_level_namespace_joined_with_dot() -> None:
+    """A multi-level namespace is joined with dots."""
     raw = _raw(
         event_type="AFTER_UPDATE_TABLE",
         catalog_name="iceberg",
@@ -139,6 +149,7 @@ def test_multi_level_namespace_joined_with_dot() -> None:
 
 @pytest.mark.parametrize("fixture", ["after_refresh_table"])
 def test_read_events_ignored(fixture: str) -> None:
+    """Read events produce no hint."""
     assert map_polaris_event(_fixture(fixture)) is None
 
 
@@ -154,6 +165,7 @@ def test_read_events_ignored(fixture: str) -> None:
     ],
 )
 def test_other_event_types_are_ignored(event_type: str) -> None:
+    """Event types the service does not care about produce no hint."""
     raw = _raw(
         event_type=event_type,
         catalog_name="iceberg",
@@ -186,4 +198,5 @@ def test_other_event_types_are_ignored(event_type: str) -> None:
     ],
 )
 def test_malformed_event_is_skipped(raw: bytes) -> None:
+    """A malformed event produces no hint."""
     assert map_polaris_event(raw) is None

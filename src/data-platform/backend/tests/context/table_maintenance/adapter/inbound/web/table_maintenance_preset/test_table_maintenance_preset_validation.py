@@ -17,11 +17,13 @@ from tests.context.table_maintenance.fakes.in_memory_table_maintenance_presets_r
 
 @pytest.fixture
 def client():
+    """Provide a test client wired to a create preset service."""
     service = CreateTableMaintenancePresetService(InMemoryTableMaintenancePresetsRepo())
     return build_client(create_table_maintenance_preset=service)
 
 
 def test_orphan_older_than_below_one_day_returns_422(client) -> None:
+    """An orphan file retention below one day is rejected with 422 and a detail."""
     response = client.post(
         "/v1/table-maintenance-presets",
         json={
@@ -35,6 +37,7 @@ def test_orphan_older_than_below_one_day_returns_422(client) -> None:
 
 
 def test_unknown_settings_key_returns_422(client) -> None:
+    """An unknown settings key is rejected with 422."""
     response = client.post(
         "/v1/table-maintenance-presets",
         json={"name": "typo", "settings": {"expire_snapshot": {"enabled": True}}},
@@ -44,6 +47,7 @@ def test_unknown_settings_key_returns_422(client) -> None:
 
 
 def test_valid_settings_are_created(client) -> None:
+    """Valid settings are accepted with 201 and kept in seconds."""
     response = client.post(
         "/v1/table-maintenance-presets",
         json={

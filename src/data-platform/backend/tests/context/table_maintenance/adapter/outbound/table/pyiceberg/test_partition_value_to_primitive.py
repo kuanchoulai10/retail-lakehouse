@@ -1,3 +1,5 @@
+"""Test the conversion of partition values to primitives."""
+
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
@@ -27,9 +29,11 @@ from context.table_maintenance.adapter.outbound.table.pyiceberg import (
     ],
 )
 def test_converts_to_internal_primitive(value: object, expected: object) -> None:
+    """Each supported partition value type converts to its primitive form."""
     assert partition_value_to_primitive(value) == expected
 
 
 def test_rejects_unknown_types() -> None:
+    """A partition value of an unsupported type raises a ValueError."""
     with pytest.raises(ValueError):
         partition_value_to_primitive(object())

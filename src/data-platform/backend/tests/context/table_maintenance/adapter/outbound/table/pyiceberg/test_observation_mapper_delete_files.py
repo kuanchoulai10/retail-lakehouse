@@ -1,3 +1,5 @@
+"""Test how the observation mapper counts data and delete files per partition."""
+
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -50,6 +52,7 @@ def _table(entries: list[ManifestEntry]) -> SimpleNamespace:
 
 
 def test_counts_each_content_type_and_sums_only_data_file_sizes() -> None:
+    """Each file content type is counted and only data file sizes are summed."""
     table = _table(
         [
             _entry(DataFileContent.DATA, (1,), 100),

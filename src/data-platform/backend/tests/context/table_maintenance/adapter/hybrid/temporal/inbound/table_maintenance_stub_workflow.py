@@ -25,11 +25,13 @@ class TableMaintenanceStubWorkflow:
 
     @workflow.init
     def __init__(self, input: TableMaintenanceWorkflowInput) -> None:  # noqa: A002
+        """Keep the workflow input for the started_with query."""
         self._input = input
         self._complete = False
 
     @workflow.run
     async def run(self, input: TableMaintenanceWorkflowInput) -> None:  # noqa: A002
+        """Wait for complete, then report to the parent; a cancel is reported too unless the plan ignores it."""
         try:
             await workflow.wait_condition(lambda: self._complete)
         except asyncio.CancelledError:
@@ -49,10 +51,12 @@ class TableMaintenanceStubWorkflow:
 
     @workflow.signal(name="complete")
     def complete(self) -> None:
+        """Signal that lets the stub finish."""
         self._complete = True
 
     @workflow.query
     def started_with(self) -> dict:
+        """Query returning the run, table, parent and trigger the workflow started with."""
         return {
             "run_id": self._input.run_id,
             "table_uuid": self._input.table_uuid,

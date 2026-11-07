@@ -28,6 +28,7 @@ def _item(operation, verdict, next_eligible_at=None):
 
 
 def test_get_health_returns_verdict_strings() -> None:
+    """The health route returns each operation verdict as a string with its next eligible time."""
     output = GetTableHealthUseCaseOutput(
         scheduled=True,
         not_scheduled_reason=None,

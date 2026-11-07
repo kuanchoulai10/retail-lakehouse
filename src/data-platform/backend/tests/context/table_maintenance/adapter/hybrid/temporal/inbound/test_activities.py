@@ -51,6 +51,7 @@ def _reconcile(
 
 
 def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
+    """The plan activity passes the table, time and manual operations to the use case and returns a dict."""
     activities, fakes = _reconcile()
     result = activities.plan_table_maintenance(
         {"table_uuid": "u1", "now": NOW, "manual_operations": ["expire_snapshots"]}
@@ -75,12 +76,14 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
 
 
 def test_plan_without_manual_operations_defaults_to_none():
+    """The plan activity passes no manual operations when the request names none."""
     activities, fakes = _reconcile()
     activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW})
     assert fakes["plan"].requests[0].manual_operations is None
 
 
 def test_submit_injects_callback_base_url_and_converts_filters():
+    """The submit activity adds the callback base URL and converts its filter payload for the use case."""
     activities, fakes = _reconcile()
     result = activities.submit_maintenance_operation(
         {
@@ -104,6 +107,7 @@ def test_submit_injects_callback_base_url_and_converts_filters():
 
 
 def test_submit_translates_not_found_to_non_retryable():
+    """A not found error from submit becomes a non-retryable application error."""
     activities, _ = _reconcile(FakeSubmit(NotFoundError("no run")))
     with pytest.raises(ApplicationError) as caught:
         activities.submit_maintenance_operation(
@@ -121,6 +125,7 @@ def test_submit_translates_not_found_to_non_retryable():
 
 
 def test_submit_keeps_other_errors_retryable():
+    """Other errors from submit propagate unchanged so Temporal retries them."""
     activities, _ = _reconcile(FakeSubmit(RuntimeError("k8s down")))
     with pytest.raises(RuntimeError, match="k8s down"):
         activities.submit_maintenance_operation(
@@ -136,6 +141,7 @@ def test_submit_keeps_other_errors_retryable():
 
 
 def test_status_passes_the_attempt_triple():
+    """The status activity passes the run, operation and attempt to the use case and returns its state."""
     activities, fakes = _reconcile()
     request = {"run_id": "r9", "operation": "expire_snapshots", "attempt": 3}
     assert activities.get_maintenance_job_status(request) == {
@@ -155,6 +161,7 @@ def test_status_passes_the_attempt_triple():
 
 
 def test_delete_passes_the_attempt_triple():
+    """The delete activity passes the run, operation and attempt to the use case and returns them."""
     activities, fakes = _reconcile()
     result = activities.delete_maintenance_job({"run_id": "r1", "operation": "expire_snapshots", "attempt": 2})
     request = fakes["delete"].requests[0]
@@ -171,6 +178,7 @@ def test_delete_passes_the_attempt_triple():
 
 
 def test_create_run_passes_fields_and_returns_iso_dict():
+    """The create run activity passes its fields to the use case and returns ISO formatted timestamps."""
     create, record = FakeCreateRun(), FakeRecordResult()
     activities = TableMaintenanceActivities(create_run=create, record_result=record)
     result = activities.create_table_maintenance_run(
@@ -196,6 +204,7 @@ def test_create_run_passes_fields_and_returns_iso_dict():
 
 
 def test_record_result_passes_fields():
+    """The record result activity passes the run, attempt, outcome and metrics to the use case."""
     create, record = FakeCreateRun(), FakeRecordResult()
     activities = TableMaintenanceActivities(create_run=create, record_result=record)
     result = activities.record_table_maintenance_operation_result(
@@ -223,6 +232,7 @@ def test_record_result_passes_fields():
 
 
 def test_sync_passes_catalog_and_namespace():
+    """The sync activity passes the catalog and namespace and returns the sync counts."""
     sync = FakeSync()
     activities = TableDiscoveryActivities(sync=sync)
     result = activities.sync_discovered_tables({"catalog": "iceberg", "namespace": "s"})

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from typing import TYPE_CHECKING
 
 import pytest
 from temporalio.client import RPCError
@@ -19,9 +20,9 @@ from context.table_maintenance.application.domain.model.table import TableChange
 from context.table_maintenance.application.port.outbound.table import (
     SendTableChangeGatewayInput,
 )
-from tests.context.table_maintenance.adapter.hybrid.temporal.outbound.shared.temporal_harness import (
-    TemporalHarness,
-)
+
+if TYPE_CHECKING:
+    from tests.context.table_maintenance.adapter.hybrid.temporal.outbound.shared.temporal_harness import TemporalHarness
 
 
 def _signals(h: TemporalHarness, table_uuid: str, want: int = 1) -> list:
@@ -83,6 +84,7 @@ def _change(
     ],
 )
 def test_each_change_maps_to_its_signal(harness, change, signal):
+    """Each table change is delivered to the reconciliation workflow as its own signal."""
     gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
     gateway.send(_change(f"map-{change}", change, is_enrolled=True))
     assert _signals(harness, f"map-{change}") == [[signal, {}]]
@@ -103,6 +105,7 @@ _SIGNAL_BY_TABLE_CHANGE = {
 
 @pytest.mark.parametrize("change", list(TableChange), ids=lambda c: c.value)
 def test_every_table_change_member_is_sent_as_its_signal(harness, change):
+    """Every member of the table change enum is delivered as the signal it maps to."""
     gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
     uuid = f"member-{change.value}"
     gateway.send(_change(uuid, change.value, is_enrolled=True))
@@ -110,6 +113,7 @@ def test_every_table_change_member_is_sent_as_its_signal(harness, change):
 
 
 def test_maintenance_requested_carries_the_operations(harness):
+    """A maintenance request signal carries the requested operations."""
     gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
     gateway.send(
         _change(
@@ -128,6 +132,7 @@ def test_maintenance_requested_carries_the_operations(harness):
 
 
 def test_pause_of_an_enrolled_table_starts_the_missing_workflow_paused(harness):
+    """Pausing an enrolled table whose workflow is missing starts it and then delivers the pause."""
     gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
     assert not _workflow_exists(harness, "pause-start")
     gateway.send(_change("pause-start", "paused", is_enrolled=True))
@@ -135,6 +140,7 @@ def test_pause_of_an_enrolled_table_starts_the_missing_workflow_paused(harness):
 
 
 def test_enrolled_changes_start_one_workflow_and_deliver_both(harness):
+    """Two changes to an enrolled table start one workflow and deliver both signals to it."""
     gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
     for change in ("settings_changed", "updated"):
         gateway.send(_change("swl", change, is_enrolled=True))
@@ -158,6 +164,7 @@ def test_enrolled_changes_start_one_workflow_and_deliver_both(harness):
 
 
 def test_start_sets_the_table_summary_only_on_the_first_start(harness):
+    """The workflow summary names the table and is set by the first start only."""
     gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
     for table_name in ("iceberg.sales.orders", "iceberg.sales.renamed"):
         gateway.send(_change("summary", "settings_changed", is_enrolled=True, table_name=table_name))
@@ -170,6 +177,7 @@ def test_start_sets_the_table_summary_only_on_the_first_start(harness):
 
 
 def test_not_enrolled_change_reaches_a_running_workflow(harness):
+    """A change to a table that is not enrolled is still delivered to a running workflow."""
     gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
     gateway.send(_change("plain", "settings_changed", is_enrolled=True))
     gateway.send(_change("plain", "stopped", is_enrolled=False))
@@ -180,12 +188,14 @@ def test_not_enrolled_change_reaches_a_running_workflow(harness):
 
 
 def test_not_enrolled_change_never_starts_a_workflow(harness):
+    """A change to a table that is not enrolled does not start a workflow."""
     gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
     gateway.send(_change("missing", "stopped", is_enrolled=False))
     assert not _workflow_exists(harness, "missing")
 
 
 def test_unknown_change_is_rejected(harness):
+    """An unknown table change is rejected with a ValueError."""
     gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
     with pytest.raises(ValueError, match="unknown table change"):
         gateway.send(_change("unknown", "renamed", is_enrolled=True))

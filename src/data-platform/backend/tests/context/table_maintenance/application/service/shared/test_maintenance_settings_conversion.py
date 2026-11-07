@@ -18,10 +18,12 @@ from context.table_maintenance.application.service.shared import (
 
 
 def test_empty_dict_yields_defaults():
+    """An empty dict converts to the default settings."""
     assert maintenance_settings_from_dict({}) == MaintenanceSettings()
 
 
 def test_partial_dict_overrides_only_given_fields():
+    """A partial dict overrides only the fields it names."""
     settings = maintenance_settings_from_dict(
         {
             "reconcile_interval_seconds": 7200,
@@ -38,6 +40,7 @@ def test_partial_dict_overrides_only_given_fields():
 
 
 def test_round_trip():
+    """Settings converted to a dict and back are unchanged."""
     settings = maintenance_settings_from_dict(
         {
             "rewrite_data_files": {"target_file_size_bytes": 1024},
@@ -48,6 +51,7 @@ def test_round_trip():
 
 
 def test_to_dict_shape():
+    """The dict form uses whole seconds for durations and nests the operation settings."""
     data = maintenance_settings_to_dict(MaintenanceSettings())
     assert data["reconcile_interval_seconds"] == 3600
     assert data["rewrite_data_files"] == {
@@ -74,5 +78,6 @@ def test_to_dict_shape():
     ],
 )
 def test_invalid_input_raises_validation_error(data: dict):
+    """Invalid input raises a ValidationError."""
     with pytest.raises(ValidationError):
         maintenance_settings_from_dict(data)

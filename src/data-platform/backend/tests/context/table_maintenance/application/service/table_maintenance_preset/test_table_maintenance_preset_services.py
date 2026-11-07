@@ -56,6 +56,7 @@ def _seed(repo, name="gold", tid="t-1", now=None, settings=None):
 
 
 def test_create_preset_stores_and_returns_dict(presets_repo, clock, new_id, now):
+    """Creating a preset stores it and returns it with its settings as a dict."""
     service = CreateTableMaintenancePresetService(presets_repo, clock=clock, new_id=new_id)
     out = service.execute(
         CreateTableMaintenancePresetUseCaseInput(name="gold", settings={"reconcile_interval_seconds": 600})
@@ -70,6 +71,7 @@ def test_create_preset_stores_and_returns_dict(presets_repo, clock, new_id, now)
 
 
 def test_create_preset_duplicate_name_conflicts(presets_repo, clock, new_id):
+    """Creating a preset with a name in use raises ConflictError."""
     _seed(presets_repo)
     service = CreateTableMaintenancePresetService(presets_repo, clock=clock, new_id=new_id)
     with pytest.raises(ConflictError):
@@ -78,18 +80,21 @@ def test_create_preset_duplicate_name_conflicts(presets_repo, clock, new_id):
 
 @pytest.mark.parametrize("name", ["", "   "])
 def test_create_preset_blank_name_is_invalid(presets_repo, clock, new_id, name):
+    """Creating a preset with a blank name raises a ValidationError."""
     service = CreateTableMaintenancePresetService(presets_repo, clock=clock, new_id=new_id)
     with pytest.raises(ValidationError):
         service.execute(CreateTableMaintenancePresetUseCaseInput(name=name))
 
 
 def test_create_preset_unknown_setting_is_invalid(presets_repo, clock, new_id):
+    """Creating a preset with an unknown setting raises a ValidationError."""
     service = CreateTableMaintenancePresetService(presets_repo, clock=clock, new_id=new_id)
     with pytest.raises(ValidationError):
         service.execute(CreateTableMaintenancePresetUseCaseInput(name="x", settings={"bogus": 1}))
 
 
 def test_update_preset_renames_and_replaces_settings(presets_repo, clock):
+    """Updating a preset renames it and replaces its settings."""
     _seed(
         presets_repo,
         settings=MaintenanceSettings(rewrite_data_files=RewriteDataFilesSettings(min_reducible_files=9)),
@@ -111,6 +116,7 @@ def test_update_preset_renames_and_replaces_settings(presets_repo, clock):
 
 
 def test_update_preset_keeps_omitted_fields(presets_repo, clock):
+    """Updating a preset keeps the fields the update leaves out."""
     seeded = _seed(presets_repo)
     service = UpdateTableMaintenancePresetService(presets_repo, clock=clock)
     out = service.execute(UpdateTableMaintenancePresetUseCaseInput(id="t-1"))
@@ -119,6 +125,7 @@ def test_update_preset_keeps_omitted_fields(presets_repo, clock):
 
 
 def test_update_preset_name_taken_by_other_conflicts(presets_repo, clock):
+    """Renaming a preset to the name of another raises ConflictError."""
     _seed(presets_repo)
     _seed(presets_repo, name="silver", tid="t-2")
     service = UpdateTableMaintenancePresetService(presets_repo, clock=clock)
@@ -127,6 +134,7 @@ def test_update_preset_name_taken_by_other_conflicts(presets_repo, clock):
 
 
 def test_update_preset_same_name_is_allowed(presets_repo, clock):
+    """Updating a preset with its own name is allowed."""
     _seed(presets_repo)
     service = UpdateTableMaintenancePresetService(presets_repo, clock=clock)
     out = service.execute(UpdateTableMaintenancePresetUseCaseInput(id="t-1", name="gold"))
@@ -134,12 +142,14 @@ def test_update_preset_same_name_is_allowed(presets_repo, clock):
 
 
 def test_update_unknown_preset_not_found(presets_repo, clock):
+    """Updating an unknown preset raises NotFoundError."""
     service = UpdateTableMaintenancePresetService(presets_repo, clock=clock)
     with pytest.raises(NotFoundError):
         service.execute(UpdateTableMaintenancePresetUseCaseInput(id="nope", name="x"))
 
 
 def test_update_preset_blank_name_is_invalid(presets_repo, clock):
+    """Renaming a preset to a blank name raises a ValidationError."""
     _seed(presets_repo)
     service = UpdateTableMaintenancePresetService(presets_repo, clock=clock)
     with pytest.raises(ValidationError):
@@ -147,6 +157,7 @@ def test_update_preset_blank_name_is_invalid(presets_repo, clock):
 
 
 def test_delete_preset_removes_it(presets_repo, rules_repo):
+    """Deleting an unused preset removes it."""
     _seed(presets_repo)
     DeleteTableMaintenancePresetService(presets_repo, rules_repo).execute(
         DeleteTableMaintenancePresetUseCaseInput(id="t-1")
@@ -155,6 +166,7 @@ def test_delete_preset_removes_it(presets_repo, rules_repo):
 
 
 def test_delete_preset_in_use_conflicts(presets_repo, rules_repo, now):
+    """Deleting a preset that discovery rules use raises ConflictError and keeps it."""
     _seed(presets_repo)
     rules_repo.create(
         TableDiscoveryRule.create(
@@ -175,6 +187,7 @@ def test_delete_preset_in_use_conflicts(presets_repo, rules_repo, now):
 
 
 def test_delete_unknown_preset_not_found(presets_repo, rules_repo):
+    """Deleting an unknown preset raises NotFoundError."""
     with pytest.raises(NotFoundError):
         DeleteTableMaintenancePresetService(presets_repo, rules_repo).execute(
             DeleteTableMaintenancePresetUseCaseInput(id="nope")
@@ -182,6 +195,7 @@ def test_delete_unknown_preset_not_found(presets_repo, rules_repo):
 
 
 def test_list_presets(presets_repo):
+    """Listing returns the presets."""
     _seed(presets_repo, name="b", tid="t-2")
     _seed(presets_repo, name="a", tid="t-1")
     out = ListTableMaintenancePresetsService(presets_repo).execute(ListTableMaintenancePresetsUseCaseInput())
@@ -189,11 +203,13 @@ def test_list_presets(presets_repo):
 
 
 def test_get_preset(presets_repo):
+    """Getting a preset returns it by id."""
     _seed(presets_repo)
     out = GetTableMaintenancePresetService(presets_repo).execute(GetTableMaintenancePresetUseCaseInput(id="t-1"))
     assert out.name == "gold"
 
 
 def test_get_unknown_preset_not_found(presets_repo):
+    """Getting an unknown preset raises NotFoundError."""
     with pytest.raises(NotFoundError):
         GetTableMaintenancePresetService(presets_repo).execute(GetTableMaintenancePresetUseCaseInput(id="nope"))

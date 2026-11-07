@@ -32,6 +32,7 @@ OTHER_SCHEDULE_ID = "unrelated-schedule"
 
 
 def test_update_without_schedule_does_not_raise(harness):
+    """Updating when no schedule exists does nothing and does not raise."""
     gateway = UpdateTableDiscoveryScheduleTemporalGateway(harness.client, harness.bridge)
     gateway.update(UpdateTableDiscoveryScheduleGatewayInput(paused=True))
 
@@ -50,6 +51,7 @@ def _schedule(catalog: str) -> Schedule:
 
 
 def test_update_pauses_and_unpauses_every_catalog_schedule(harness):
+    """An update pauses or unpauses the schedule of every catalog."""
     ids = [table_discovery_schedule_id(c) for c in CATALOGS]
 
     async def create() -> None:

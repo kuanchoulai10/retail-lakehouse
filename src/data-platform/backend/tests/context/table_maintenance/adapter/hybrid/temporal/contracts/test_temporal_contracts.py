@@ -43,6 +43,7 @@ def _round_trip(value: object) -> object:
 
 
 def test_contracts_round_trip():
+    """Each contract survives a round trip through the Temporal payload converter unchanged."""
     plan = {"status": "planned", "operations": [{"operation": "rewrite_data_files"}]}
     values = [
         TableReconciliationWorkflowInput("u1"),
@@ -80,16 +81,19 @@ def test_contracts_round_trip():
 
 
 def test_maintenance_workflow_input_default_attempt_deadline():
+    """The maintenance workflow input defaults its attempt deadline to six hours."""
     value = TableMaintenanceWorkflowInput("r1", "u1", "p", "scheduled", {})
     assert value.attempt_deadline_seconds == 21600 == DEFAULT_ATTEMPT_DEADLINE_SECONDS
 
 
 def test_admission_lease_outlives_the_attempt_deadline_by_15_minutes():
+    """The default admission lease is the attempt deadline plus 15 minutes."""
     assert DEFAULT_ADMISSION_LEASE_SECONDS == DEFAULT_ATTEMPT_DEADLINE_SECONDS + 15 * 60
     assert TableMaintenanceAdmissionWorkflowInput(1).lease_seconds == DEFAULT_ADMISSION_LEASE_SECONDS
 
 
 def test_admission_input_defaults():
+    """The admission workflow input starts with the default lease, no holders and an empty queue."""
     admission = TableMaintenanceAdmissionWorkflowInput(1)
     assert admission.lease_seconds == 22500
     assert admission.holders == {}
@@ -99,6 +103,7 @@ def test_admission_input_defaults():
 
 
 def test_table_reconcile_workflow_input_defaults():
+    """The table reconciliation input starts with no in-flight run."""
     value = TableReconciliationWorkflowInput("u1")
     assert value.in_flight_run_id is None
     assert value.in_flight_started_at is None
@@ -120,12 +125,14 @@ def test_table_reconcile_workflow_input_defaults():
     ],
 )
 def test_contracts_are_frozen(value: Any):  # noqa: ANN401
+    """Contract values reject attribute assignment."""
     field_name = dataclasses.fields(value)[0].name
     with pytest.raises(dataclasses.FrozenInstanceError):
         setattr(value, field_name, "changed")
 
 
 def test_workflow_type_names():
+    """The workflow type names are the stable wire names."""
     assert TABLE_DISCOVERY_WORKFLOW == "TableDiscoveryWorkflow"
     assert TABLE_RECONCILIATION_WORKFLOW == "TableReconciliationWorkflow"
     assert TABLE_MAINTENANCE_WORKFLOW == "TableMaintenanceWorkflow"
@@ -133,4 +140,5 @@ def test_workflow_type_names():
 
 
 def test_admission_activity_name():
+    """The admission acquire signal activity has its stable wire name."""
     assert TableMaintenanceActivity.SIGNAL_ADMISSION_ACQUIRE == "signal_admission_acquire"

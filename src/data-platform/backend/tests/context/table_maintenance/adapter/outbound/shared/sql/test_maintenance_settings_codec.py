@@ -1,3 +1,5 @@
+"""Test the codec that stores maintenance settings as JSON with whole-second durations."""
+
 from __future__ import annotations
 
 import json
@@ -19,12 +21,14 @@ from context.table_maintenance.application.domain.model.shared import (
 
 
 def test_default_settings_roundtrip():
+    """The default settings survive encoding to JSON and back."""
     settings = MaintenanceSettings()
     encoded = MaintenanceSettingsCodec.encode(settings)
     assert MaintenanceSettingsCodec.decode(json.loads(json.dumps(encoded))) == settings
 
 
 def test_custom_settings_roundtrip_with_second_integer_durations():
+    """Custom settings are stored with durations as whole seconds and decode to the same value."""
     settings = MaintenanceSettings(
         reconcile_interval=timedelta(minutes=30),
         rewrite_data_files=RewriteDataFilesSettings(
@@ -45,6 +49,7 @@ def test_custom_settings_roundtrip_with_second_integer_durations():
 
 
 def test_encode_rejects_sub_second_duration():
+    """A duration that is not a whole number of seconds is rejected when encoding."""
     with pytest.raises(ValueError, match="whole number of seconds"):
         MaintenanceSettingsCodec.encode(MaintenanceSettings(reconcile_interval=timedelta(seconds=1, milliseconds=500)))
     with pytest.raises(ValueError, match="whole number of seconds"):

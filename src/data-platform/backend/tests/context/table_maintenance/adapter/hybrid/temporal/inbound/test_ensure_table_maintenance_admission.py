@@ -24,16 +24,21 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound import (
 
 @workflow.defn(name=TABLE_MAINTENANCE_ADMISSION_WORKFLOW)
 class StubAdmission:
+    """Admission workflow stub that records the input it started with."""
+
     def __init__(self) -> None:
+        """Start with no recorded input."""
         self.input: TableMaintenanceAdmissionWorkflowInput | None = None
 
     @workflow.run
     async def run(self, input: TableMaintenanceAdmissionWorkflowInput) -> None:  # noqa: A002
+        """Record the input and wait forever."""
         self.input = input
         await workflow.wait_condition(lambda: False)
 
     @workflow.query
     def state(self) -> dict:
+        """Query returning the limit and lease the workflow started with."""
         assert self.input is not None
         return {"limit": self.input.limit, "lease": self.input.lease_seconds}
 
@@ -59,6 +64,7 @@ async def _scenario() -> tuple[dict, str, str | None]:
 
 
 def test_starts_the_admission_workflow_once_and_keeps_a_running_one():
+    """The first call starts the workflow with its limit and summary and a second call keeps the running one."""
     state, status, summary = asyncio.run(_scenario())
 
     assert state == {"limit": 2, "lease": 60}
@@ -67,4 +73,5 @@ def test_starts_the_admission_workflow_once_and_keeps_a_running_one():
 
 
 def test_task_queue_is_the_domain_constant_not_a_parameter():
+    """The task queue is a fixed constant and not a parameter of the ensure function."""
     assert "task_queue" not in inspect.signature(ensure_table_maintenance_admission).parameters

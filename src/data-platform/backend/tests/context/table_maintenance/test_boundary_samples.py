@@ -35,6 +35,7 @@ CONTEXT_NON_BOUNDARIES = (
 
 
 def test_table_maintenance_boundary_samples():
+    """The expected boundary packages of the context are known and a plain package is not."""
     known = boundaries()
     for expected in (
         *GLOBAL_BOUNDARIES,

@@ -35,6 +35,7 @@ FIELDS: dict[str, Any] = {
 
 
 def test_list_table_discovery_rules() -> None:
+    """Listing returns the discovery rules with their namespace patterns."""
     output = ListTableDiscoveryRulesUseCaseOutput(items=[ListTableDiscoveryRulesUseCaseOutputItem(**FIELDS)])
     client = build_client(list_table_discovery_rules=StubUseCase(output))
 
@@ -46,6 +47,7 @@ def test_list_table_discovery_rules() -> None:
 
 
 def test_create_table_discovery_rule_returns_201() -> None:
+    """Creating a rule returns 201 with the new rule and passes the body to the use case."""
     stub = StubUseCase(CreateTableDiscoveryRuleUseCaseOutput(**FIELDS))
     client = build_client(create_table_discovery_rule=stub)
 
@@ -72,6 +74,7 @@ def test_create_table_discovery_rule_returns_201() -> None:
 
 
 def test_create_table_discovery_rule_rejects_unknown_key() -> None:
+    """Creating a rule with an unknown key is rejected with 422."""
     client = build_client()
 
     response = client.post("/v1/table-discovery-rules", json={"priority": 1, "effect": "include", "x": 1})
@@ -80,6 +83,7 @@ def test_create_table_discovery_rule_rejects_unknown_key() -> None:
 
 
 def test_update_table_discovery_rule() -> None:
+    """Updating a rule passes its id and changed fields to the use case."""
     stub = StubUseCase(UpdateTableDiscoveryRuleUseCaseOutput(**FIELDS))
     client = build_client(update_table_discovery_rule=stub)
 
@@ -90,6 +94,7 @@ def test_update_table_discovery_rule() -> None:
 
 
 def test_delete_table_discovery_rule_returns_204() -> None:
+    """Deleting a rule returns 204 and passes its id to the use case."""
     stub = StubUseCase(DeleteTableDiscoveryRuleUseCaseOutput())
     client = build_client(delete_table_discovery_rule=stub)
 
@@ -100,6 +105,7 @@ def test_delete_table_discovery_rule_returns_204() -> None:
 
 
 def test_old_discovery_rules_prefix_is_gone() -> None:
+    """The old discovery rules prefix returns 404."""
     client = build_client()
 
     assert client.get("/v1/discovery-rules").status_code == 404

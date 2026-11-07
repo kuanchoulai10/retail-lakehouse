@@ -7,7 +7,7 @@ renaming the Python symbols must never change these strings.
 
 from __future__ import annotations
 
-from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
@@ -33,12 +33,16 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
     TableReconciliationSignal,
 )
 
+if TYPE_CHECKING:
+    from enum import StrEnum
+
 
 def _values(enum: type[StrEnum]) -> dict[str, str]:
     return {member.name: member.value for member in enum}
 
 
 def test_workflow_type_names():
+    """The workflow type names are the stable wire names."""
     assert TABLE_DISCOVERY_WORKFLOW == "TableDiscoveryWorkflow"
     assert TABLE_RECONCILIATION_WORKFLOW == "TableReconciliationWorkflow"
     assert TABLE_MAINTENANCE_WORKFLOW == "TableMaintenanceWorkflow"
@@ -46,12 +50,14 @@ def test_workflow_type_names():
 
 
 def test_task_queue_and_fixed_ids():
+    """The task queue name and the fixed workflow and schedule ids are the stable wire values."""
     assert TASK_QUEUE == "table-maintenance"
     assert TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID == "table-maintenance-admission"
     assert TABLE_DISCOVERY_SCHEDULE_ID_PREFIX == "table-discovery:catalog="
 
 
 def test_table_reconciliation_signals():
+    """The table reconciliation signal names are the stable wire names."""
     assert _values(TableReconciliationSignal) == {
         "SETTINGS_CHANGED": "settings_changed",
         "TABLE_UPDATED": "table_updated",
@@ -64,6 +70,7 @@ def test_table_reconciliation_signals():
 
 
 def test_table_maintenance_signals():
+    """The table maintenance signal names are the stable wire names."""
     assert _values(TableMaintenanceSignal) == {
         "OPERATION_RESULT": "operation_result",
         "ADMISSION_GRANTED": "admission_granted",
@@ -71,6 +78,7 @@ def test_table_maintenance_signals():
 
 
 def test_table_maintenance_admission_signals():
+    """The admission signal names are the stable wire names."""
     assert _values(TableMaintenanceAdmissionSignal) == {
         "ACQUIRE": "acquire",
         "RELEASE": "release",
@@ -78,12 +86,14 @@ def test_table_maintenance_admission_signals():
 
 
 def test_table_reconciliation_activities():
+    """The table reconciliation activity names are the stable wire names."""
     assert _values(TableReconciliationActivity) == {
         "PLAN_TABLE_MAINTENANCE": "plan_table_maintenance",
     }
 
 
 def test_table_maintenance_activities():
+    """The table maintenance activity names are the stable wire names."""
     assert _values(TableMaintenanceActivity) == {
         "CREATE_MAINTENANCE_RUN": "create_maintenance_run",
         "SUBMIT_MAINTENANCE_OPERATION": "submit_maintenance_operation",
@@ -96,6 +106,7 @@ def test_table_maintenance_activities():
 
 
 def test_table_discovery_activities():
+    """The table discovery activity names are the stable wire names."""
     assert _values(TableDiscoveryActivity) == {
         "SYNC_DISCOVERED_TABLES": "sync_discovered_tables",
     }

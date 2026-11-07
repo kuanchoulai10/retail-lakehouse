@@ -1,3 +1,5 @@
+"""Test the assessment of whether each maintenance operation is due for a table."""
+
 from __future__ import annotations
 
 from dataclasses import replace
@@ -47,6 +49,7 @@ DAY_SPEC = PartitionSpecInfo(0, (PartitionFieldInfo(1000, "d", "ts", "timestamp"
 
 
 def table(settings=None) -> Table:
+    """Build an active auto table with the given settings."""
     return Table.register_auto(
         TableId("u"),
         TableName("c", "n", "t"),
@@ -58,6 +61,7 @@ def table(settings=None) -> Table:
 
 
 def part(reducible, spec_id=0, value=0) -> PartitionStats:
+    """Build partition stats with the given reducible file count."""
     return PartitionStats(spec_id, (value,), reducible, 0, 0, 0)
 
 
@@ -70,6 +74,7 @@ def obs(
     manifests: tuple[ManifestStats, ...] = (),
     snapshots: tuple[SnapshotInfo, ...] = (),
 ) -> TableObservation:
+    """Build a table observation from the given properties, snapshots, specs and partitions."""
     return TableObservation(
         "u",
         properties or {},
@@ -82,6 +87,7 @@ def obs(
 
 
 def snaps(n, old):
+    """Build snapshots of which the given number are old."""
     return tuple(
         SnapshotInfo(
             i,
@@ -92,6 +98,7 @@ def snaps(n, old):
 
 
 def assess(t: Table, o: TableObservation, op: Op) -> OperationAssessment:
+    """Assess the table and return the assessment of one operation."""
     assert t.settings is not None
     assessment = assess_maintenance(t, t.settings, o, NOW)
     assert [a.operation for a in assessment.operations] == list(Op.ordered())
@@ -99,6 +106,7 @@ def assess(t: Table, o: TableObservation, op: Op) -> OperationAssessment:
 
 
 def compaction(**kw) -> MaintenanceSettings:
+    """Build settings with the given data file compaction overrides."""
     return replace(MaintenanceSettings(), rewrite_data_files=RewriteDataFilesSettings(**kw))
 
 
@@ -106,6 +114,7 @@ TWO_PARTITIONS = (part(6, value=1), part(2, value=2))
 
 
 def test_partition_scope_counts_qualifying_partitions():
+    """With partition scope, the measure counts the partitions that qualify for compaction."""
     s = compaction(min_reducible_files=5)
     a = assess(table(s), obs(partitions=TWO_PARTITIONS), Op.REWRITE_DATA_FILES)
     assert a.verdict == OperationVerdict.DUE
@@ -117,6 +126,7 @@ def test_partition_scope_counts_qualifying_partitions():
 
 
 def test_table_scope_sums_every_partition():
+    """With table scope, the measure sums the reducible files of every partition."""
     s = compaction(scope=CompactionScope.TABLE, min_reducible_files=5)
     a = assess(table(s), obs(partitions=TWO_PARTITIONS), Op.REWRITE_DATA_FILES)
     assert a.verdict == OperationVerdict.DUE
@@ -137,12 +147,14 @@ def test_table_scope_sums_every_partition():
     ],
 )
 def test_target_size_source(settings_size, properties, expected):
+    """The target file size comes from the settings, the table property or the default, and its source is reported."""
     s = compaction(target_file_size_bytes=settings_size)
     a = assess(table(s), obs(properties=properties), Op.REWRITE_DATA_FILES)
     assert (a.size_bytes, a.size_source) == expected
 
 
 def test_manifest_size_source():
+    """The manifest size is taken from the table property or the default, and its source is reported."""
     o = obs(
         properties={"commit.manifest.target-size-bytes": str(MIB)},
         manifests=(ManifestStats(MIB // 2),) * 2,
@@ -155,6 +167,8 @@ def test_manifest_size_source():
 
 
 def test_expire_snapshots_counts_expirable():
+    """The snapshot expiry measure counts the snapshots that can be expired."""
+
     def with_retain(n: int) -> MaintenanceSettings:
         return replace(
             MaintenanceSettings(),
@@ -170,6 +184,7 @@ def test_expire_snapshots_counts_expirable():
 
 
 def test_cooldown_reports_next_eligible_time():
+    """An operation in cooldown reports when it is next eligible and has no plan."""
     t = table(compaction())
     t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(NOW - timedelta(minutes=30))
     a = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES)
@@ -180,6 +195,7 @@ def test_cooldown_reports_next_eligible_time():
 
 
 def test_disabled_operation_has_no_measures():
+    """A disabled operation reports no measure and no eligibility time."""
     s = replace(
         compaction(enabled=False),
         remove_orphan_files=RemoveOrphanFilesSettings(enabled=False),
@@ -201,6 +217,7 @@ def test_disabled_operation_has_no_measures():
 
 
 def test_assessment_ignores_status():
+    """The assessment does not depend on the table status, unlike the plan."""
     t = table(compaction())
     t.pause(NOW)
     o = obs(partitions=(part(10),))
@@ -209,6 +226,7 @@ def test_assessment_ignores_status():
 
 
 def test_plan_equals_due_operations():
+    """The plan of an assessment equals the plan of scheduled maintenance."""
     t = table()
     t.operation_states[Op.REWRITE_MANIFESTS] = OperationState(NOW - timedelta(minutes=10))
     o = obs(

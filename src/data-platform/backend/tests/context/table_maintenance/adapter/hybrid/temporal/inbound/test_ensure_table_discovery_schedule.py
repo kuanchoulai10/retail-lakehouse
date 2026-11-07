@@ -42,6 +42,7 @@ CATALOG = "ensure-test"
 
 @pytest.fixture
 def h(harness: TemporalHarness) -> Iterator[TemporalHarness]:  # noqa: F811
+    """Provide the Temporal test harness."""
     yield harness
 
     async def delete() -> None:
@@ -71,6 +72,7 @@ def _describe(h: TemporalHarness, catalog: str) -> ScheduleDescription:
 
 
 def test_discovery_schedule_created_once_and_paused_flag_applied(h):
+    """The schedule runs every ten minutes, skips overlaps and takes the paused flag from the call."""
     _ensure(h, [CATALOG], paused=True)
 
     desc = _describe(h, CATALOG)
@@ -108,6 +110,7 @@ def test_discovery_schedule_created_once_and_paused_flag_applied(h):
 
 
 def test_one_schedule_per_catalog(h):
+    """Each catalog gets its own schedule that is not paused."""
     _ensure(h, [CATALOG, f"{CATALOG}-2"], paused=False)
     assert _describe(h, CATALOG).schedule.state.paused is False
     assert _describe(h, f"{CATALOG}-2").schedule.state.paused is False

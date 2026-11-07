@@ -45,6 +45,7 @@ URL = "/v1/table-maintenance-runs/run-1/operations/rewrite_data_files/result"
 
 
 def test_list_runs_of_a_table() -> None:
+    """Listing runs of a table passes the table and limit to the use case."""
     item = ListTableMaintenanceRunsUseCaseOutputItem(**FIELDS)
     stub = StubUseCase(ListTableMaintenanceRunsUseCaseOutput(items=[item]))
     client = build_client(list_table_maintenance_runs=stub)
@@ -57,6 +58,7 @@ def test_list_runs_of_a_table() -> None:
 
 
 def test_list_runs_default_limit() -> None:
+    """Listing runs without a limit leaves the limit to the use case default."""
     stub = StubUseCase(ListTableMaintenanceRunsUseCaseOutput(items=[]))
     client = build_client(list_table_maintenance_runs=stub)
 
@@ -66,6 +68,7 @@ def test_list_runs_default_limit() -> None:
 
 
 def test_get_run() -> None:
+    """Getting a run returns its operations and execution reference."""
     stub = StubUseCase(GetTableMaintenanceRunUseCaseOutput(**FIELDS))
     client = build_client(get_table_maintenance_run=stub)
 
@@ -78,6 +81,7 @@ def test_get_run() -> None:
 
 
 def test_callback_returns_202_and_maps_the_body() -> None:
+    """The callback returns 202 and maps its body to the record result input."""
     stub = StubUseCase(ProcessTableMaintenanceCallbackUseCaseOutput(accepted=True))
     client = build_client(process_table_maintenance_callback=stub)
 
@@ -98,6 +102,7 @@ def test_callback_returns_202_and_maps_the_body() -> None:
 
 
 def test_callback_accepts_the_runtime_body_with_matching_ids() -> None:
+    """The callback accepts the body the Spark runtime sends when its ids match the path."""
     stub = StubUseCase(ProcessTableMaintenanceCallbackUseCaseOutput(accepted=True))
     client = build_client(process_table_maintenance_callback=stub)
     body = {
@@ -113,6 +118,7 @@ def test_callback_accepts_the_runtime_body_with_matching_ids() -> None:
 
 @pytest.mark.parametrize("mismatch", [{"run_id": "other"}, {"operation": "expire_snapshots"}])
 def test_callback_body_mismatching_the_path_returns_422(mismatch) -> None:
+    """A callback body whose ids differ from the path is rejected with 422 and not recorded."""
     stub = StubUseCase(ProcessTableMaintenanceCallbackUseCaseOutput(accepted=True))
     client = build_client(process_table_maintenance_callback=stub)
 
@@ -123,6 +129,7 @@ def test_callback_body_mismatching_the_path_returns_422(mismatch) -> None:
 
 
 def test_callback_for_unknown_run_returns_404() -> None:
+    """A callback for an unknown run returns 404."""
     service = ProcessTableMaintenanceCallbackService(
         InMemoryTableMaintenanceRunsRepo(), RecordingSendMaintenanceResultGateway()
     )
@@ -134,6 +141,7 @@ def test_callback_for_unknown_run_returns_404() -> None:
 
 
 def test_callback_with_unknown_operation_returns_422() -> None:
+    """A callback with an unknown operation is rejected with 422."""
     service = ProcessTableMaintenanceCallbackService(
         InMemoryTableMaintenanceRunsRepo(), RecordingSendMaintenanceResultGateway()
     )
@@ -145,6 +153,7 @@ def test_callback_with_unknown_operation_returns_422() -> None:
 
 
 def test_old_run_routes_are_gone() -> None:
+    """The old run routes return 404."""
     client = build_client()
 
     assert client.get("/v1/runs/run-1").status_code == 404

@@ -11,6 +11,7 @@ from context.table_maintenance.adapter.outbound.shared.sql import create_schema
 
 @pytest.fixture
 def engine() -> Engine:
+    """Provide an in-memory SQLite engine with the schema created."""
     eng = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},

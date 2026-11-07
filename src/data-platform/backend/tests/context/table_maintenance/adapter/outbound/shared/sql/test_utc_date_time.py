@@ -1,3 +1,5 @@
+"""Test the column type and codec that keep datetimes timezone aware in UTC."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta, timezone
@@ -16,6 +18,7 @@ def _table() -> Table:
 
 
 def test_roundtrip_returns_aware_utc(engine: Engine):
+    """A stored datetime comes back timezone aware in UTC."""
     table = _table()
     table.metadata.create_all(engine)
     tz = timezone(timedelta(hours=8))
@@ -28,6 +31,7 @@ def test_roundtrip_returns_aware_utc(engine: Engine):
 
 
 def test_naive_datetime_rejected(engine: Engine):
+    """A naive datetime is rejected when stored."""
     table = _table()
     table.metadata.create_all(engine)
     with pytest.raises(Exception, match="naive"), engine.begin() as conn:
@@ -35,6 +39,7 @@ def test_naive_datetime_rejected(engine: Engine):
 
 
 def test_iso_codec_roundtrip():
+    """The ISO codec round trips a datetime and passes None through."""
     value = datetime(2026, 3, 4, 5, 6, 7, tzinfo=UTC)
     encoded = IsoDatetimeCodec.encode(value)
     assert IsoDatetimeCodec.decode(encoded) == value

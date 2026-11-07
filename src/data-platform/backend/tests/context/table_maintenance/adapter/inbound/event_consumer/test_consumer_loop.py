@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from context.table_maintenance.adapter.inbound.event_consumer import (
     EventRecord,
@@ -23,13 +23,20 @@ from tests.context.table_maintenance.adapter.inbound.event_consumer.fake_event_s
     FakeEventSource,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
 
 class RecordingUseCase(ProcessTableHintUseCase):
+    """Process table hint use case that records its calls and can fail as scripted."""
+
     def __init__(self, outcomes: Sequence[Exception | None] | None = None) -> None:
+        """Hold the scripted outcomes and start with no recorded calls."""
         self.calls: list[ProcessTableHintUseCaseInput] = []
         self._outcomes = list(outcomes or [])
 
     def execute(self, request: ProcessTableHintUseCaseInput) -> ProcessTableHintUseCaseOutput:
+        """Record the call and raise the next scripted error, or return a no-op output."""
         self.calls.append(request)
         outcome = self._outcomes.pop(0) if self._outcomes else None
         if outcome is not None:
@@ -77,6 +84,7 @@ def _run(
 
 
 def test_each_event_calls_use_case_then_commits() -> None:
+    """Each event calls the use case and is then committed, and the source is closed at the end."""
     records = [_record(1), _record(2)]
     source = FakeEventSource(list(records))
     use_case = RecordingUseCase()
@@ -89,6 +97,7 @@ def test_each_event_calls_use_case_then_commits() -> None:
 
 
 def test_read_events_are_committed_without_calling_use_case() -> None:
+    """Read events are committed without calling the use case."""
     record = _record(1, event_type="AFTER_LOAD_TABLE")
     source = FakeEventSource([record])
     use_case = RecordingUseCase()
@@ -100,6 +109,7 @@ def test_read_events_are_committed_without_calling_use_case() -> None:
 
 
 def test_malformed_event_is_skipped() -> None:
+    """A malformed event is committed and skipped without calling the use case."""
     bad = [
         _raw_record(1, b"not json"),
         _raw_record(2, None),
@@ -116,6 +126,7 @@ def test_malformed_event_is_skipped() -> None:
 
 
 def test_use_case_error_does_not_stop_loop() -> None:
+    """A use case that keeps failing is given up on after its retries and the loop moves on to the next event."""
     first, second = _record(1), _record(2)
     source = FakeEventSource([first, second])
     use_case = RecordingUseCase([RuntimeError("boom")] * 3)
@@ -127,6 +138,7 @@ def test_use_case_error_does_not_stop_loop() -> None:
 
 
 def test_transient_use_case_error_is_retried_then_committed_once() -> None:
+    """A transient use case error is retried after a pause and the event is committed once."""
     record = _record(1)
     source = FakeEventSource([record])
     use_case = RecordingUseCase([RuntimeError("blip"), None])
@@ -139,6 +151,7 @@ def test_transient_use_case_error_is_retried_then_committed_once() -> None:
 
 
 def test_retry_backoff_grows_between_attempts() -> None:
+    """The pause between retries grows with each attempt."""
     source = FakeEventSource([_record(1)])
     use_case = RecordingUseCase([RuntimeError("x")] * 3)
 
@@ -148,6 +161,7 @@ def test_retry_backoff_grows_between_attempts() -> None:
 
 
 def test_validation_and_not_found_errors_are_not_retried() -> None:
+    """Validation and not found errors are not retried and their events are committed."""
     first, second = _record(1), _record(2)
     source = FakeEventSource([first, second])
     use_case = RecordingUseCase([ValidationError("bad"), NotFoundError("gone")])
@@ -160,6 +174,7 @@ def test_validation_and_not_found_errors_are_not_retried() -> None:
 
 
 def test_poll_exception_does_not_crash_loop() -> None:
+    """An exception from poll is survived after a pause and the loop continues."""
     record = _record(1)
     source = FakeEventSource([RuntimeError("broker down"), record])
     use_case = RecordingUseCase()
@@ -172,6 +187,7 @@ def test_poll_exception_does_not_crash_loop() -> None:
 
 
 def test_stop_event_ends_loop_and_closes_source() -> None:
+    """A set stop event ends the loop before any event and closes the source."""
     source = FakeEventSource([_record(1)])
     use_case = RecordingUseCase()
     stop = threading.Event()

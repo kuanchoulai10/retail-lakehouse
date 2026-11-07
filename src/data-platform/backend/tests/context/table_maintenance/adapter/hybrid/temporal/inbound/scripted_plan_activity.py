@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from typing import TYPE_CHECKING, Any
 
 from temporalio import activity
@@ -13,6 +12,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
 )
 
 if TYPE_CHECKING:
+    import asyncio
     from collections.abc import Callable
 
 
@@ -24,6 +24,7 @@ class ScriptedPlanActivity:
     """
 
     def __init__(self, script: Callable[[dict[str, Any]], dict[str, Any]]) -> None:
+        """Hold the script that answers plan requests."""
         self.script = script
         self.failures = 0
         self.gate: asyncio.Event | None = None
@@ -31,6 +32,7 @@ class ScriptedPlanActivity:
 
     @activity.defn(name=TableReconciliationActivity.PLAN_TABLE_MAINTENANCE)
     async def plan_table_maintenance(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Answer a plan request with the script after the optional gate, or fail while failures remain."""
         self.requests.append(request)
         if self.gate is not None:
             await self.gate.wait()

@@ -66,7 +66,7 @@ def _measure(catalog, **overrides):
 
 
 def _run(runs_repo, run_id, at, results):
-    """results maps operation to (succeeded, metrics)."""
+    """Create a run whose per-operation results map an operation to (succeeded, metrics)."""
     run = TableMaintenanceRun.create(
         TableMaintenanceRunId(run_id),
         TableId("u-1"),
@@ -86,6 +86,7 @@ def _run(runs_repo, run_id, at, results):
 
 @pytest.fixture
 def service(tables_repo, catalog, runs_repo, clock):
+    """Provide the table storage service on the fakes."""
     return GetTableStorageService(tables_repo, catalog, runs_repo, clock=clock)
 
 
@@ -94,6 +95,7 @@ def _storage(service):
 
 
 def test_storage_splits_current_and_old_snapshot_bytes(service, tables_repo, catalog, now):
+    """Storage splits the bytes and files into the current table and old snapshots."""
     _register(tables_repo, now)
     _measure(catalog)
 
@@ -120,6 +122,7 @@ def test_storage_splits_current_and_old_snapshot_bytes(service, tables_repo, cat
 
 
 def test_old_snapshot_figures_floor_at_zero(service, tables_repo, catalog, now):
+    """The old snapshot figures never go below zero."""
     _register(tables_repo, now)
     _measure(catalog, referenced_bytes=500, referenced_files=4)
 
@@ -130,6 +133,7 @@ def test_old_snapshot_figures_floor_at_zero(service, tables_repo, catalog, now):
 
 
 def test_reclaimed_sums_metric_keys(service, tables_repo, catalog, runs_repo, now):
+    """The reclaimed figures sum the metrics of the succeeded operations."""
     _register(tables_repo, now)
     _measure(catalog)
     _run(
@@ -192,6 +196,7 @@ def test_reclaimed_sums_metric_keys(service, tables_repo, catalog, runs_repo, no
 
 
 def test_failed_operations_add_nothing(service, tables_repo, catalog, runs_repo, now):
+    """Failed operations add nothing to the reclaimed figures."""
     _register(tables_repo, now)
     _measure(catalog)
     _run(
@@ -212,6 +217,7 @@ def test_failed_operations_add_nothing(service, tables_repo, catalog, runs_repo,
 
 
 def test_counts_attempts_without_metrics(service, tables_repo, catalog, runs_repo, now):
+    """Succeeded attempts that have no metrics are counted."""
     _register(tables_repo, now)
     _measure(catalog)
     _run(
@@ -233,11 +239,13 @@ def test_counts_attempts_without_metrics(service, tables_repo, catalog, runs_rep
 
 
 def test_unknown_table_raises_not_found(service):
+    """An unknown table raises NotFoundError."""
     with pytest.raises(NotFoundError):
         _storage(service)
 
 
 def test_table_missing_in_catalog_raises_not_found(service, tables_repo, now):
+    """A table missing from the catalog raises NotFoundError."""
     _register(tables_repo, now)
 
     with pytest.raises(NotFoundError, match="is not in the catalog"):
@@ -245,6 +253,7 @@ def test_table_missing_in_catalog_raises_not_found(service, tables_repo, now):
 
 
 def test_storage_404_when_catalog_table_has_another_uuid(service, tables_repo, catalog, now):
+    """A catalog table with a different uuid raises NotFoundError."""
     _register(tables_repo, now)
     _measure(catalog, table_uuid="u-recreated")
 

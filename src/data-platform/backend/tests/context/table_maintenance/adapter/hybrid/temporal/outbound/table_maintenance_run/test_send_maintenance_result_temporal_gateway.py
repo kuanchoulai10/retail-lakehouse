@@ -34,6 +34,8 @@ def _input(run_id: str, workflow_id: str) -> SendMaintenanceResultGatewayInput:
 
 
 def test_result_reaches_maintenance_workflow(harness):
+    """A maintenance result is delivered to the maintenance workflow as a signal."""
+
     async def start() -> None:
         await harness.client.start_workflow(
             TABLE_MAINTENANCE_WORKFLOW,
@@ -67,6 +69,7 @@ def test_result_reaches_maintenance_workflow(harness):
 
 
 def test_result_for_missing_workflow_raises_not_found(harness):
+    """A result for a workflow that does not exist raises NotFoundError."""
     gateway = SendMaintenanceResultTemporalGateway(harness.client, harness.bridge)
     with pytest.raises(NotFoundError):
         gateway.send(_input("nope", "missing-workflow"))

@@ -36,7 +36,10 @@ if TYPE_CHECKING:
 
 
 class AdmissionHarness:
+    """Run the admission workflow with requester stubs and send it acquire and release signals."""
+
     def __init__(self, env: WorkflowEnvironment, queue: str, limit: int, lease: int):
+        """Hold the environment and the queue, limit and lease the workflow runs with."""
         self.env = env
         self.client: Client = env.client
         self.queue = queue
@@ -45,11 +48,13 @@ class AdmissionHarness:
         self.requesters: dict[str, WorkflowHandle] = {}
 
     async def requester(self, name: str) -> str:
+        """Start a requester stub workflow and return its workflow id."""
         handle = await self.client.start_workflow("RequesterStub", id=f"req-{name}", task_queue=f"{self.queue}-stub")
         self.requesters[name] = handle
         return handle.id
 
     async def acquire(self, request_id: str, requester_workflow_id: str) -> None:
+        """Signal the admission workflow to acquire a slot for a request."""
         await self.client.start_workflow(
             TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
             TableMaintenanceAdmissionWorkflowInput(limit=self.limit, lease_seconds=self.lease),
@@ -61,13 +66,16 @@ class AdmissionHarness:
         )
 
     async def release(self, request_id: str) -> None:
+        """Signal the admission workflow to release the slot of a request."""
         handle = self.client.get_workflow_handle(TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID)
         await handle.signal(TableMaintenanceAdmissionSignal.RELEASE, AdmissionReleaseSignal(request_id))
 
     async def granted(self, name: str) -> list[str]:
+        """Return the request ids granted to a requester."""
         return await self.requesters[name].query("granted")
 
     async def state(self) -> dict:
+        """Query the admission workflow for its holders and queue."""
         return await self.client.get_workflow_handle(TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID).query("state")
 
 
@@ -98,6 +106,8 @@ def _run(
 
 
 def test_admission_never_exceeds_limit():
+    """At most the limit of requests hold a slot and the rest wait in the queue."""
+
     async def scenario(h: AdmissionHarness) -> None:
         ids = {name: await h.requester(name) for name in ("a", "b", "c")}
         for name in ("a", "b", "c"):
@@ -118,6 +128,8 @@ def test_admission_never_exceeds_limit():
 
 
 def test_admission_grants_in_fifo_order():
+    """Queued requests are granted in the order they arrived."""
+
     async def scenario(h: AdmissionHarness) -> None:
         ids = {name: await h.requester(name) for name in ("a", "b", "c")}
         for name in ("a", "b", "c"):
@@ -131,6 +143,8 @@ def test_admission_grants_in_fifo_order():
 
 
 def test_admission_lease_expires_when_holder_never_releases():
+    """A holder that never releases loses its slot when the lease expires and the next request gets it."""
+
     async def scenario(h: AdmissionHarness) -> None:
         a, b = await h.requester("a"), await h.requester("b")
         await h.acquire("r-a", a)
@@ -147,6 +161,8 @@ def test_admission_lease_expires_when_holder_never_releases():
 
 
 def test_duplicate_acquire_is_a_no_op_and_resends_grant_when_held():
+    """A repeated acquire changes nothing and resends the grant when the request already holds a slot."""
+
     async def scenario(h: AdmissionHarness) -> None:
         a, b = await h.requester("a"), await h.requester("b")
         await h.acquire("r-a", a)
@@ -162,6 +178,8 @@ def test_duplicate_acquire_is_a_no_op_and_resends_grant_when_held():
 
 
 def test_vanished_requester_does_not_wedge_the_admission_workflow():
+    """A requester that no longer exists does not block the slots of the others."""
+
     async def scenario(h: AdmissionHarness) -> None:
         b = await h.requester("b")
         await h.acquire("r-ghost", "no-such-workflow")
@@ -173,6 +191,8 @@ def test_vanished_requester_does_not_wedge_the_admission_workflow():
 
 
 def test_release_of_unknown_or_queued_request():
+    """Releasing an unknown or queued request removes it without granting anything wrongly."""
+
     async def scenario(h: AdmissionHarness) -> None:
         ids = {name: await h.requester(name) for name in ("a", "b", "c")}
         for name in ("a", "b", "c"):
@@ -180,7 +200,7 @@ def test_release_of_unknown_or_queued_request():
         await h.release("unknown")
         await h.release("r-b")
         await eventually(
-            lambda: h.state(),
+            h.state,
             lambda s: not any(e["request_id"] == "r-b" for e in s["queue"]),
         )
         await h.release("r-a")

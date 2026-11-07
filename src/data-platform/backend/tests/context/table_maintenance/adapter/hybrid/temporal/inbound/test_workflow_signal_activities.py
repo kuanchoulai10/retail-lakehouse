@@ -28,21 +28,27 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import
 
 @workflow.defn(name=TABLE_MAINTENANCE_ADMISSION_WORKFLOW)
 class StubAdmission:
+    """Admission workflow stub that records the input and the acquire signals."""
+
     def __init__(self) -> None:
+        """Start with no acquire signals and no input."""
         self.acquires: list[AdmissionAcquireSignal] = []
         self.input: TableMaintenanceAdmissionWorkflowInput | None = None
 
     @workflow.run
-    async def run(self, input: TableMaintenanceAdmissionWorkflowInput) -> None:
-        self.input = input
+    async def run(self, payload: TableMaintenanceAdmissionWorkflowInput) -> None:
+        """Record the input and wait forever."""
+        self.input = payload
         await workflow.wait_condition(lambda: False)
 
     @workflow.signal(name="acquire")
     def acquire(self, signal: AdmissionAcquireSignal) -> None:
+        """Record an acquire signal."""
         self.acquires.append(signal)
 
     @workflow.query
     def state(self) -> dict:
+        """Query returning the limit, lease and recorded acquire signals."""
         assert self.input is not None
         return {
             "limit": self.input.limit,
@@ -53,19 +59,25 @@ class StubAdmission:
 
 @workflow.defn(name="StubParent")
 class StubParent:
+    """Parent workflow stub that records the run ids it is told have finished."""
+
     def __init__(self) -> None:
+        """Start with no finished runs."""
         self.finished: list[str] = []
 
     @workflow.run
     async def run(self) -> None:
+        """Wait forever."""
         await workflow.wait_condition(lambda: False)
 
     @workflow.signal(name=TableReconciliationSignal.MAINTENANCE_FINISHED)
     def maintenance_finished(self, run_id: str) -> None:
+        """Record the run id of a finished maintenance run."""
         self.finished.append(run_id)
 
     @workflow.query
     def collected(self) -> list[str]:
+        """Query returning the recorded run ids."""
         return self.finished
 
 
@@ -116,9 +128,11 @@ async def _scenario() -> None:
 
 
 def test_signal_with_start_admission_once_and_signal_parent():
+    """The admission acquire is signalled with start and the parent is signalled when maintenance finishes."""
     asyncio.run(_scenario())
 
 
 def test_task_queue_is_the_domain_constant_not_a_parameter():
+    """The task queue is a fixed constant and not a parameter of the signal activities."""
     parameters = inspect.signature(WorkflowSignalActivities.__init__).parameters
     assert "task_queue" not in parameters

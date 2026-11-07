@@ -36,10 +36,14 @@ CREATED_AT = datetime(2026, 10, 24, tzinfo=UTC)
 
 
 class FakePlan(PlanTableMaintenanceUseCase):
+    """Plan use case fake that records its requests."""
+
     def __init__(self) -> None:
+        """Start with no recorded requests."""
         self.requests: list[PlanTableMaintenanceUseCaseInput] = []
 
     def execute(self, request: PlanTableMaintenanceUseCaseInput) -> PlanTableMaintenanceUseCaseOutput:
+        """Record the request and return a fixed plan."""
         self.requests.append(request)
         return PlanTableMaintenanceUseCaseOutput(
             status="planned",
@@ -57,11 +61,15 @@ class FakePlan(PlanTableMaintenanceUseCase):
 
 
 class FakeSubmit(SubmitMaintenanceOperationUseCase):
+    """Submit use case fake that records its requests and can fail."""
+
     def __init__(self, error: Exception | None = None) -> None:
+        """Hold the error to raise and start with no recorded requests."""
         self.requests: list[SubmitMaintenanceOperationUseCaseInput] = []
         self._error = error
 
     def execute(self, request: SubmitMaintenanceOperationUseCaseInput) -> SubmitMaintenanceOperationUseCaseOutput:
+        """Record the request and raise the configured error, or return a fixed job name."""
         self.requests.append(request)
         if self._error is not None:
             raise self._error
@@ -69,19 +77,27 @@ class FakeSubmit(SubmitMaintenanceOperationUseCase):
 
 
 class FakeStatus(GetMaintenanceJobStatusUseCase):
+    """Status use case fake that records its requests."""
+
     def __init__(self) -> None:
+        """Start with no recorded requests."""
         self.requests: list[GetMaintenanceJobStatusUseCaseInput] = []
 
     def execute(self, request: GetMaintenanceJobStatusUseCaseInput) -> GetMaintenanceJobStatusUseCaseOutput:
+        """Record the request and return a failed state with an out of memory error."""
         self.requests.append(request)
         return GetMaintenanceJobStatusUseCaseOutput(state="FAILED", error="oom")
 
 
 class FakeDelete(DeleteMaintenanceJobUseCase):
+    """Delete use case fake that records its requests."""
+
     def __init__(self) -> None:
+        """Start with no recorded requests."""
         self.requests: list[DeleteMaintenanceJobUseCaseInput] = []
 
     def execute(self, request: DeleteMaintenanceJobUseCaseInput) -> DeleteMaintenanceJobUseCaseOutput:
+        """Record the request and return the attempt it deleted."""
         self.requests.append(request)
         return DeleteMaintenanceJobUseCaseOutput(
             run_id=request.run_id,
@@ -91,10 +107,14 @@ class FakeDelete(DeleteMaintenanceJobUseCase):
 
 
 class FakeCreateRun(CreateTableMaintenanceRunUseCase):
+    """Create run use case fake that records its requests."""
+
     def __init__(self) -> None:
+        """Start with no recorded requests."""
         self.requests: list[CreateTableMaintenanceRunUseCaseInput] = []
 
     def execute(self, request: CreateTableMaintenanceRunUseCaseInput) -> CreateTableMaintenanceRunUseCaseOutput:
+        """Record the request and return a running run."""
         self.requests.append(request)
         return CreateTableMaintenanceRunUseCaseOutput(
             run_id=request.run_id,
@@ -109,20 +129,28 @@ class FakeCreateRun(CreateTableMaintenanceRunUseCase):
 
 
 class FakeRecordResult(RecordTableMaintenanceOperationResultUseCase):
+    """Record result use case fake that records its requests."""
+
     def __init__(self) -> None:
+        """Start with no recorded requests."""
         self.requests: list[RecordTableMaintenanceOperationResultUseCaseInput] = []
 
     def execute(
         self, request: RecordTableMaintenanceOperationResultUseCaseInput
     ) -> RecordTableMaintenanceOperationResultUseCaseOutput:
+        """Record the request and return its run as running."""
         self.requests.append(request)
         return RecordTableMaintenanceOperationResultUseCaseOutput(run_id=request.run_id, status="running")
 
 
 class FakeSync(SyncDiscoveredTablesUseCase):
+    """Sync use case fake that records its requests."""
+
     def __init__(self) -> None:
+        """Start with no recorded requests."""
         self.requests: list[SyncDiscoveredTablesUseCaseInput] = []
 
     def execute(self, request: SyncDiscoveredTablesUseCaseInput) -> SyncDiscoveredTablesUseCaseOutput:
+        """Record the request and return fixed registered, renamed, dropped and skipped counts."""
         self.requests.append(request)
         return SyncDiscoveredTablesUseCaseOutput(registered=1, renamed=2, dropped=3, skipped=4)

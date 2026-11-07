@@ -13,6 +13,7 @@ from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
 
 
 def test_run_returns_result_from_a_separate_thread():
+    """Run returns the coroutine result, computed on a thread other than the caller."""
     bridge = AsyncLoopBridge()
     try:
 
@@ -28,6 +29,7 @@ def test_run_returns_result_from_a_separate_thread():
 
 
 def test_run_propagates_exceptions():
+    """An exception raised in the coroutine is raised to the caller of run."""
     bridge = AsyncLoopBridge()
     try:
 
@@ -42,12 +44,14 @@ def test_run_propagates_exceptions():
 
 
 def test_close_is_idempotent():
+    """Closing the bridge twice is harmless."""
     bridge = AsyncLoopBridge()
     bridge.close()
     bridge.close()
 
 
 def test_timeout_cancels_the_coroutine():
+    """A run that times out cancels its coroutine."""
     bridge = AsyncLoopBridge()
     outcome: dict[str, bool] = {"cancelled": False, "completed": False}
     started = threading.Event()
@@ -74,6 +78,7 @@ def test_timeout_cancels_the_coroutine():
 
 
 def test_reentrant_run_from_loop_thread_raises():
+    """Calling run from the loop thread raises instead of deadlocking."""
     bridge = AsyncLoopBridge()
     try:
 
@@ -90,6 +95,7 @@ def test_reentrant_run_from_loop_thread_raises():
 
 
 def test_close_from_loop_thread_raises():
+    """Closing the bridge from the loop thread raises."""
     bridge = AsyncLoopBridge()
     try:
 
@@ -103,6 +109,7 @@ def test_close_from_loop_thread_raises():
 
 
 def test_run_after_close_raises_without_calling_factory():
+    """Running after close raises without calling the coroutine factory."""
     bridge = AsyncLoopBridge()
     bridge.close()
     called = []
@@ -117,6 +124,7 @@ def test_run_after_close_raises_without_calling_factory():
 
 
 def test_close_cancels_pending_tasks_and_is_thread_safe():
+    """Closing from another thread cancels the tasks that are still pending."""
     bridge = AsyncLoopBridge()
     cancelled = threading.Event()
     started = threading.Event()

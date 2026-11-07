@@ -1,3 +1,5 @@
+"""Test the Spark where clauses built from the partitions selected for compaction."""
+
 from __future__ import annotations
 
 import pytest
@@ -31,15 +33,18 @@ def _where(spec, *partitions):
 
 
 def test_empty_partitions_returns_empty_tuple():
+    """No partitions give no filters."""
     assert build_partition_filters("iceberg", [_spec(0)], []) == ()
 
 
 def test_identity_string_escapes_quotes():
+    """An identity string value has its quotes escaped."""
     spec = _spec(0, _field("region", "region", "string", "identity"))
     assert _where(spec, _part(0, "o'neil")) == "(`region` = 'o\\'neil')"
 
 
 def test_identity_numeric_boolean_decimal_literals():
+    """Identity numeric, boolean and decimal values become plain literals."""
     spec = _spec(
         0,
         _field("a", "a", "int", "identity"),
@@ -56,6 +61,7 @@ def test_identity_numeric_boolean_decimal_literals():
 
 
 def test_identity_date_and_timestamp_literals():
+    """Identity date and timestamp values become date and timestamp literals."""
     spec = _spec(
         0,
         _field("d", "d", "date", "identity"),
@@ -71,6 +77,7 @@ def test_identity_date_and_timestamp_literals():
 
 
 def test_day_transform_uses_date_literal_and_range():
+    """A day partition on a timestamp becomes a half open timestamp range."""
     spec = _spec(0, _field("ts_day", "ts", "timestamptz", "day"))
     assert _where(spec, _part(0, 20385)) == (
         "(`iceberg`.system.days(`ts`) = DATE '2025-10-24'"
@@ -80,6 +87,7 @@ def test_day_transform_uses_date_literal_and_range():
 
 
 def test_day_transform_on_date_column_uses_date_range():
+    """A day partition on a date column becomes a date range."""
     spec = _spec(0, _field("d_day", "d", "date", "day"))
     assert _where(spec, _part(0, 20385)) == (
         "(`iceberg`.system.days(`d`) = DATE '2025-10-24' AND `d` >= DATE '2025-10-24' AND `d` < DATE '2025-10-25')"
@@ -87,6 +95,7 @@ def test_day_transform_on_date_column_uses_date_range():
 
 
 def test_hour_month_year_use_ints():
+    """Hour, month and year partitions are filtered by their integer ranges."""
     hour = _spec(0, _field("h", "ts", "timestamp", "hour"))
     month = _spec(0, _field("m", "ts", "timestamp", "month"))
     year = _spec(0, _field("y", "ts", "timestamp", "year"))
@@ -108,6 +117,7 @@ def test_hour_month_year_use_ints():
 
 
 def test_month_december_rolls_over_year_on_date_column():
+    """A December month partition on a date column ends in January of the next year."""
     spec = _spec(0, _field("m", "d", "date", "month"))
     assert _where(spec, _part(0, 671)) == (
         "(`iceberg`.system.months(`d`) = 671 AND `d` >= DATE '2025-12-01' AND `d` < DATE '2026-01-01')"
@@ -115,6 +125,7 @@ def test_month_december_rolls_over_year_on_date_column():
 
 
 def test_year_on_date_column():
+    """A year partition on a date column becomes a date range."""
     spec = _spec(0, _field("y", "d", "date", "year"))
     assert _where(spec, _part(0, 55)) == (
         "(`iceberg`.system.years(`d`) = 55 AND `d` >= DATE '2025-01-01' AND `d` < DATE '2026-01-01')"
@@ -122,12 +133,14 @@ def test_year_on_date_column():
 
 
 def test_hour_on_date_column_raises():
+    """An hour partition on a date column is rejected."""
     spec = _spec(0, _field("h", "d", "date", "hour"))
     with pytest.raises(ValueError):
         _where(spec, _part(0, 1))
 
 
 def test_bucket_and_truncate():
+    """Bucket and truncate partitions use the system bucket and truncate functions."""
     bucket = _spec(0, _field("id_bucket", "id", "long", "bucket[16]"))
     trunc = _spec(0, _field("name_trunc", "name", "string", "truncate[4]"))
     assert _where(bucket, _part(0, 3)) == "(`iceberg`.system.bucket(16, `id`) = 3)"
@@ -135,11 +148,13 @@ def test_bucket_and_truncate():
 
 
 def test_truncate_int_source():
+    """A truncate partition on an integer column compares the truncated number."""
     spec = _spec(0, _field("n", "n", "int", "truncate[10]"))
     assert _where(spec, _part(0, 20)) == "(`iceberg`.system.truncate(10, `n`) = 20)"
 
 
 def test_null_partition_value_uses_is_null():
+    """A null partition value becomes an IS NULL test."""
     spec = _spec(
         0,
         _field("r", "region", "string", "identity"),
@@ -150,6 +165,7 @@ def test_null_partition_value_uses_is_null():
 
 
 def test_multi_field_partition_and_multiple_partitions():
+    """Several fields are joined with AND and several partitions with OR."""
     spec = _spec(
         0,
         _field("d", "ts", "timestamptz", "day"),
@@ -168,6 +184,7 @@ def test_multi_field_partition_and_multiple_partitions():
 
 
 def test_void_fields_are_skipped():
+    """Fields with a void transform are left out of the clause."""
     spec = _spec(
         0,
         _field("old", "old", "string", "void"),
@@ -178,15 +195,18 @@ def test_void_fields_are_skipped():
 
 
 def test_all_void_spec_yields_empty_where():
+    """A spec whose fields are all void gives an empty where clause."""
     spec = _spec(1, _field("old", "old", "string", "void"))
     assert build_partition_filters("iceberg", [spec], [_part(1, None)]) == (SpecFilter(1, ""),)
 
 
 def test_unpartitioned_spec_yields_empty_where():
+    """An unpartitioned spec gives an empty where clause."""
     assert build_partition_filters("iceberg", [_spec(0)], [_part(0)]) == (SpecFilter(0, ""),)
 
 
 def test_one_filter_per_spec_id():
+    """There is one filter per partition spec id."""
     spec0 = _spec(0, _field("r", "region", "string", "identity"))
     spec1 = _spec(1, _field("b", "id", "long", "bucket[8]"))
     result = build_partition_filters("iceberg", [spec1, spec0], [_part(1, 2), _part(0, "eu"), _part(0, "us")])
@@ -197,17 +217,20 @@ def test_one_filter_per_spec_id():
 
 
 def test_unknown_spec_id_raises():
+    """A partition with an unknown spec id is rejected."""
     with pytest.raises(ValueError):
         build_partition_filters("iceberg", [_spec(0)], [_part(5)])
 
 
 def test_value_count_mismatch_raises():
+    """A partition whose value count differs from its spec fields is rejected."""
     spec = _spec(0, _field("r", "region", "string", "identity"))
     with pytest.raises(ValueError):
         _where(spec, _part(0, "a", "b"))
 
 
 def test_column_quoting_nested_and_backticks():
+    """Nested column names are quoted per part and backticks in names are doubled."""
     spec = _spec(
         0,
         _field("n", "a.b", "string", "identity"),
@@ -218,6 +241,7 @@ def test_column_quoting_nested_and_backticks():
 
 @pytest.mark.parametrize("source_type", ["uuid", "binary", "fixed[4]", "time"])
 def test_unsupported_identity_types_raise(source_type):
+    """Identity partitions on unsupported column types are rejected."""
     spec = _spec(0, _field("u", "u", source_type, "identity"))
     with pytest.raises(ValueError):
         _where(spec, _part(0, "v"))
@@ -225,12 +249,14 @@ def test_unsupported_identity_types_raise(source_type):
 
 @pytest.mark.parametrize("source_type", ["timestamp_ns", "timestamptz_ns"])
 def test_nanosecond_timestamp_types_raise(source_type):
+    """Partitions on nanosecond timestamp columns are rejected."""
     spec = _spec(0, _field("t", "t", source_type, "day"))
     with pytest.raises(ValueError):
         _where(spec, _part(0, 1))
 
 
 def test_unknown_transform_raises():
+    """A partition transform that is not known is rejected."""
     spec = _spec(0, _field("x", "x", "int", "weird"))
     with pytest.raises(ValueError):
         _where(spec, _part(0, 1))
@@ -247,16 +273,19 @@ def test_unknown_transform_raises():
     ],
 )
 def test_string_escaping_for_spark_parser(value, expected):
+    """String values are escaped so the Spark parser reads them back unchanged."""
     spec = _spec(0, _field("r", "region", "string", "identity"))
     assert _where(spec, _part(0, value)) == f"(`region` = {expected})"
 
 
 def test_truncate_string_escapes_backslash():
+    """A truncated string value has its backslash escaped."""
     spec = _spec(0, _field("n", "name", "string", "truncate[2]"))
     assert _where(spec, _part(0, "a\\")) == "(`iceberg`.system.truncate(2, `name`) = 'a\\\\')"
 
 
 def test_clauses_sorted_and_deduplicated():
+    """The clauses are sorted and deduplicated, so the order of the partitions does not matter."""
     spec = _spec(0, _field("r", "region", "string", "identity"))
     forward = _where(spec, _part(0, "us"), _part(0, "eu"), _part(0, "us"))
     backward = _where(spec, _part(0, "eu"), _part(0, "us"))
@@ -264,6 +293,7 @@ def test_clauses_sorted_and_deduplicated():
 
 
 def test_day_on_timestamp_without_zone_uses_ntz_range():
+    """A day partition on a timestamp without zone uses a timestamp_ntz range."""
     spec = _spec(0, _field("d", "ts", "timestamp", "day"))
     assert _where(spec, _part(0, 20385)) == (
         "(`iceberg`.system.days(`ts`) = DATE '2025-10-24'"
@@ -273,12 +303,14 @@ def test_day_on_timestamp_without_zone_uses_ntz_range():
 
 
 def test_catalog_name_is_backtick_quoted():
+    """The catalog name in the system function is backtick quoted."""
     spec = _spec(0, _field("b", "id", "long", "bucket[4]"))
     (result,) = build_partition_filters("my`cat", [spec], [_part(0, 1)])
     assert result.where == "(`my``cat`.system.bucket(4, `id`) = 1)"
 
 
 def test_pre_1970_values():
+    """Month, day and hour values before 1970 are converted to the right ranges."""
     month = _spec(0, _field("m", "d", "date", "month"))
     day = _spec(0, _field("d", "d", "date", "day"))
     hour = _spec(0, _field("h", "ts", "timestamp", "hour"))

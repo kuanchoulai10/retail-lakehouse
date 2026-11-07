@@ -32,6 +32,7 @@ KEY = ("iceberg", "sales", "orders")
 
 @pytest.fixture
 def service(tables_repo, catalog, now):
+    """Provide the list table commits service on the fakes."""
     tables_repo.create(
         Table.register_auto(
             TableId("u-1"),
@@ -59,6 +60,7 @@ def _commit(summary: dict[str, str], **overrides):
 
 
 def test_commits_map_counters_and_writer(service, catalog):
+    """A commit maps its ids, time, counters and writer from the snapshot."""
     summary = {
         "added-records": "10",
         "deleted-records": "2",
@@ -90,6 +92,7 @@ def test_commits_map_counters_and_writer(service, catalog):
 
 
 def test_commit_with_partial_summary(service, catalog):
+    """A commit with a partial summary reports None for the missing counters."""
     catalog.commit_pages[KEY] = TableCommitPage(
         table_uuid="u-1", commits=[_commit({"added-records": "abc"})], truncated=False
     )
@@ -102,6 +105,7 @@ def test_commit_with_partial_summary(service, catalog):
 
 
 def test_truncated_passes_through(service, catalog):
+    """The truncated flag of the catalog page is passed through."""
     catalog.commit_pages[KEY] = TableCommitPage(table_uuid="u-1", commits=[_commit({})], truncated=True)
 
     output = service.execute(ListTableCommitsUseCaseInput(uuid="u-1"))
@@ -110,6 +114,7 @@ def test_truncated_passes_through(service, catalog):
 
 
 def test_limit_and_since_are_forwarded(service, catalog):
+    """The limit and since arguments are forwarded to the catalog."""
     catalog.commit_pages[KEY] = TableCommitPage(table_uuid="u-1", commits=[], truncated=False)
     since = datetime(2026, 10, 1, tzinfo=UTC)
 
@@ -122,16 +127,19 @@ def test_limit_and_since_are_forwarded(service, catalog):
 
 
 def test_commits_unknown_table_raises_not_found(service):
+    """An unknown table raises NotFoundError."""
     with pytest.raises(NotFoundError, match="table u-9 not found"):
         service.execute(ListTableCommitsUseCaseInput(uuid="u-9"))
 
 
 def test_commits_404_when_not_in_catalog(service):
+    """A table missing from the catalog raises NotFoundError."""
     with pytest.raises(NotFoundError, match="is not in the catalog$"):
         service.execute(ListTableCommitsUseCaseInput(uuid="u-1"))
 
 
 def test_commits_404_when_catalog_table_has_another_uuid(service, catalog):
+    """A catalog table with a different uuid raises NotFoundError."""
     catalog.commit_pages[KEY] = TableCommitPage(table_uuid="u-recreated", commits=[_commit({})], truncated=False)
 
     with pytest.raises(NotFoundError, match="is not in the catalog$"):

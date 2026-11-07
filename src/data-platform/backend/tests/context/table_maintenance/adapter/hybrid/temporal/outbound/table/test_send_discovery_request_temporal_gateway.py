@@ -20,6 +20,7 @@ def _ids(harness, query: str) -> list[str]:
 
 
 def test_discovery_request_starts_one_adhoc_workflow(harness):
+    """A discovery request starts one ad hoc discovery workflow with the catalog and namespace in its id and summary."""
     gateway = SendDiscoveryRequestTemporalGateway(harness.client, harness.bridge)
     for _ in range(2):
         gateway.send(SendDiscoveryRequestGatewayInput("iceberg", "sales"))

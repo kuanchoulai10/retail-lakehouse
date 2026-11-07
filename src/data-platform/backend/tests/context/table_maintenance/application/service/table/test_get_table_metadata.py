@@ -33,6 +33,7 @@ KEY = ("iceberg", "sales", "orders")
 
 @pytest.fixture
 def service(tables_repo, catalog, now):
+    """Provide the table metadata service on the fakes."""
     tables_repo.create(
         Table.register_auto(
             TableId("u-1"),
@@ -57,6 +58,7 @@ def _describe(catalog, **overrides: Any):
 
 
 def test_metadata_maps_summary_totals(service, catalog):
+    """The metadata maps the totals of the snapshot summary."""
     _describe(
         catalog,
         current_snapshot_id=7,
@@ -85,6 +87,7 @@ def test_metadata_maps_summary_totals(service, catalog):
 
 
 def test_metadata_ignores_non_numeric_totals(service, catalog):
+    """A non-numeric total in the summary is reported as None."""
     _describe(catalog, current_summary={"total-records": "n/a"})
 
     output = service.execute(GetTableMetadataUseCaseInput(uuid="u-1"))
@@ -93,6 +96,7 @@ def test_metadata_ignores_non_numeric_totals(service, catalog):
 
 
 def test_metadata_of_empty_table(service, catalog):
+    """A table without snapshots reports a zero count and no totals."""
     _describe(catalog)
 
     output = service.execute(GetTableMetadataUseCaseInput(uuid="u-1"))
@@ -106,16 +110,19 @@ def test_metadata_of_empty_table(service, catalog):
 
 
 def test_metadata_unknown_table_raises_not_found(service):
+    """An unknown table raises NotFoundError."""
     with pytest.raises(NotFoundError, match="table u-9 not found"):
         service.execute(GetTableMetadataUseCaseInput(uuid="u-9"))
 
 
 def test_metadata_404_when_not_in_catalog(service):
+    """A table missing from the catalog raises NotFoundError."""
     with pytest.raises(NotFoundError, match="is not in the catalog$"):
         service.execute(GetTableMetadataUseCaseInput(uuid="u-1"))
 
 
 def test_metadata_404_when_catalog_table_has_another_uuid(service, catalog):
+    """A catalog table with a different uuid raises NotFoundError."""
     _describe(catalog, table_uuid="u-recreated")
 
     with pytest.raises(NotFoundError, match="is not in the catalog$"):

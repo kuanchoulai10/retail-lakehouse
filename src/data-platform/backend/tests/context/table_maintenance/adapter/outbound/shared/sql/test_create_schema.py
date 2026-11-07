@@ -30,6 +30,7 @@ def _sql_packages() -> set[str]:
 
 
 def test_create_schema_lists_every_sql_package_that_defines_tables():
+    """The schema creation lists each SQL package that defines tables exactly once."""
     defining = {p for p in _sql_packages() - {SHARED_SQL} if _registered_tables(p)}
     assert set(AGGREGATE_SQL_PACKAGES) == defining
     assert len(AGGREGATE_SQL_PACKAGES) == len(set(AGGREGATE_SQL_PACKAGES))

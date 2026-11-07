@@ -37,6 +37,7 @@ NOW = datetime(2026, 10, 24, tzinfo=UTC)
 
 @pytest.fixture
 def repo() -> InMemoryTablesRepo:
+    """Provide an in-memory table repository."""
     repo = InMemoryTablesRepo()
     repo.create(
         Table.include_manual(
@@ -52,11 +53,13 @@ def repo() -> InMemoryTablesRepo:
 
 @pytest.fixture
 def signals() -> RecordingSendTableChangeGateway:
+    """Provide a table change gateway that records its calls."""
     return RecordingSendTableChangeGateway()
 
 
 @pytest.fixture
 def client(repo, signals):
+    """Provide a test client wired to the repository and the signal gateway."""
     return build_client(
         trigger_table_maintenance=TriggerTableMaintenanceService(repo, signals),
         update_table_settings=UpdateTableSettingsService(repo, signals),
@@ -65,6 +68,7 @@ def client(repo, signals):
 
 
 def test_unknown_operation_name_returns_422(client, signals) -> None:
+    """An unknown operation name is rejected with 422 and sends no signal."""
     response = client.post("/v1/tables/u-1/maintenance", json={"operations": ["defragment"]})
 
     assert response.status_code == 422
@@ -72,12 +76,14 @@ def test_unknown_operation_name_returns_422(client, signals) -> None:
 
 
 def test_trigger_unknown_table_returns_404(client) -> None:
+    """Triggering maintenance on an unknown table returns 404."""
     response = client.post("/v1/tables/nope/maintenance", json={"operations": ["rewrite_data_files"]})
 
     assert response.status_code == 404
 
 
 def test_trigger_dropped_table_returns_409(client, repo) -> None:
+    """Triggering maintenance on a dropped table returns 409."""
     repo.items["u-1"].mark_dropped(NOW)
 
     response = client.post("/v1/tables/u-1/maintenance", json={"operations": ["rewrite_data_files"]})
@@ -86,6 +92,7 @@ def test_trigger_dropped_table_returns_409(client, repo) -> None:
 
 
 def test_trigger_signals_the_workflow(client, signals) -> None:
+    """Triggering maintenance returns 202 and sends a maintenance requested change."""
     response = client.post("/v1/tables/u-1/maintenance", json={"operations": ["expire_snapshots"]})
 
     assert response.status_code == 202
@@ -93,6 +100,7 @@ def test_trigger_signals_the_workflow(client, signals) -> None:
 
 
 def test_orphan_older_than_below_one_day_returns_422(client) -> None:
+    """An orphan retention below one day is rejected with 422."""
     response = client.put(
         "/v1/tables/u-1/settings",
         json={"remove_orphan_files": {"older_than_seconds": 60}},
@@ -102,12 +110,14 @@ def test_orphan_older_than_below_one_day_returns_422(client) -> None:
 
 
 def test_unknown_nested_settings_key_returns_422(client) -> None:
+    """An unknown key in nested settings is rejected with 422."""
     response = client.put("/v1/tables/u-1/settings", json={"expire_snapshots": {"keep": 1}})
 
     assert response.status_code == 422
 
 
 def test_invalid_status_filter_returns_422(client) -> None:
+    """An invalid table status filter is rejected with 422."""
     response = client.get("/v1/tables", params={"status": "sleepy"})
 
     assert response.status_code == 422

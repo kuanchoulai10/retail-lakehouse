@@ -53,6 +53,7 @@ RDF = OPS.REWRITE_DATA_FILES
 
 @pytest.fixture
 def table(tables_repo, now):
+    """Provide a stored active table."""
     t = Table.register_auto(
         TableId("u-1"),
         TableName("iceberg", "sales", "orders"),
@@ -80,10 +81,12 @@ def _create_input(now, run_id="run-1", **overrides):
 
 @pytest.fixture
 def creator(runs_repo, tables_repo):
+    """Provide the create run service on the fakes."""
     return CreateTableMaintenanceRunService(runs_repo, tables_repo)
 
 
 def test_create_run_persists_pending_run_in_canonical_order(creator, runs_repo, table, now):
+    """Creating a run stores it with its operations in canonical order and its execution reference."""
     out = creator.execute(_create_input(now))
     assert (out.run_id, out.table_uuid, out.trigger) == ("run-1", "u-1", "scheduled")
     assert out.execution_ref == "wf-run-1"
@@ -99,6 +102,7 @@ def test_create_run_persists_pending_run_in_canonical_order(creator, runs_repo, 
 
 
 def test_create_run_is_idempotent_by_id(creator, runs_repo, table, now):
+    """Creating a run twice with the same id returns the existing run."""
     creator.execute(_create_input(now))
     run = runs_repo.get(TableMaintenanceRunId("run-1"))
     run.start_attempt(RDF, 1, "app-1", now)
@@ -110,6 +114,7 @@ def test_create_run_is_idempotent_by_id(creator, runs_repo, table, now):
 
 
 def test_create_run_validates_input(creator, table, now):
+    """Invalid run input raises a ValidationError."""
     with pytest.raises(ValidationError):
         creator.execute(_create_input(now, trigger="whenever"))
     with pytest.raises(ValidationError):
@@ -127,6 +132,7 @@ def test_create_run_validates_input(creator, table, now):
 
 @pytest.fixture
 def started_run(runs_repo, table, now):
+    """Provide a stored run whose first attempt has started."""
     run = TableMaintenanceRun.create(
         TableMaintenanceRunId("run-1"),
         table.id,
@@ -142,6 +148,7 @@ def started_run(runs_repo, table, now):
 
 @pytest.fixture
 def recorder(runs_repo, tables_repo):
+    """Provide the record operation result service on the fakes."""
     return RecordTableMaintenanceOperationResultService(runs_repo, tables_repo)
 
 
@@ -160,6 +167,7 @@ def _record(recorder, now, **overrides):
 
 
 def test_record_result_updates_run_and_table_backoff(recorder, started_run, table, now):
+    """Recording a failure updates the run and the failure state of the table."""
     later = now + timedelta(minutes=5)
     out = _record(recorder, later, succeeded=False, error="OOM")
     assert (out.run_id, out.status) == ("run-1", "running")
@@ -170,6 +178,7 @@ def test_record_result_updates_run_and_table_backoff(recorder, started_run, tabl
 
 
 def test_record_success_stores_metrics_and_resets_backoff(recorder, started_run, table, now):
+    """Recording a success stores the metrics and resets the failure count."""
     table.record_operation_result(RDF, False, now)
     _record(recorder, now)
     assert started_run.operations[0].metrics == {"rewritten_files": 4}
@@ -177,6 +186,7 @@ def test_record_success_stores_metrics_and_resets_backoff(recorder, started_run,
 
 
 def test_record_result_saves_run_then_table(recorder, started_run, table, runs_repo, tables_repo, log, now):
+    """The run is saved before the table."""
     track_calls(runs_repo, "update", "runs.update", log, lambda r: r.id.value)
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
     _record(recorder, now)
@@ -184,6 +194,7 @@ def test_record_result_saves_run_then_table(recorder, started_run, table, runs_r
 
 
 def test_record_result_stale_attempt_is_ignored(recorder, started_run, table, now):
+    """A result for a stale attempt changes neither the run nor the table."""
     started_run.fail(RDF, 1, "boom", now)
     started_run.start_attempt(RDF, 2, "tm-rdf-run1-a2", now)
     out = _record(recorder, now, attempt=1, succeeded=False, error="late")
@@ -193,17 +204,20 @@ def test_record_result_stale_attempt_is_ignored(recorder, started_run, table, no
 
 
 def test_record_result_replay_does_not_count_twice(recorder, started_run, table, now):
+    """Replaying a recorded result does not count the failure twice."""
     _record(recorder, now, succeeded=False, error="OOM")
     _record(recorder, now, succeeded=False, error="OOM")
     assert table.operation_state(RDF).consecutive_failures == 1
 
 
 def test_record_result_failure_without_error_gets_a_default(recorder, started_run, table, now):
+    """A failure without an error message gets a default message."""
     _record(recorder, now, succeeded=False, error=None)
     assert started_run.operations[0].error == "unknown error"
 
 
 def test_record_result_for_dropped_table_still_updates_run(recorder, started_run, table, now):
+    """A result for a dropped table still updates the run and leaves the table alone."""
     table.mark_dropped(now)
     out = _record(recorder, now)
     assert started_run.operations[0].status.value == "succeeded"
@@ -212,6 +226,7 @@ def test_record_result_for_dropped_table_still_updates_run(recorder, started_run
 
 
 def test_record_result_final_operation_finishes_run(recorder, started_run, table, now):
+    """Recording the result of the last operation finishes the run."""
     _record(recorder, now)
     started_run.start_attempt(OPS.EXPIRE_SNAPSHOTS, 1, "tm-es-run1-a1", now)
     out = _record(recorder, now, operation="expire_snapshots")
@@ -219,6 +234,7 @@ def test_record_result_final_operation_finishes_run(recorder, started_run, table
 
 
 def test_record_result_rejects_bad_requests(recorder, started_run, now):
+    """Requests for an unknown run, an invalid input or an operation outside the run are rejected."""
     with pytest.raises(NotFoundError):
         _record(recorder, now, run_id="nope")
     with pytest.raises(ValidationError):
@@ -233,6 +249,7 @@ def test_record_result_rejects_bad_requests(recorder, started_run, now):
 
 
 def test_callback_forwards_result_to_the_workflow(runs_repo, started_run, results):
+    """The callback forwards the result to the workflow and accepts it."""
     service = ProcessTableMaintenanceCallbackService(runs_repo, results)
     out = service.execute(
         ProcessTableMaintenanceCallbackUseCaseInput("run-1", "rewrite_data_files", 3, False, {"a": 1}, "OOM")
@@ -249,6 +266,7 @@ def test_callback_forwards_result_to_the_workflow(runs_repo, started_run, result
 
 
 def test_callback_unknown_run_not_found(runs_repo, results):
+    """A callback for an unknown run raises NotFoundError and forwards nothing."""
     service = ProcessTableMaintenanceCallbackService(runs_repo, results)
     with pytest.raises(NotFoundError):
         service.execute(ProcessTableMaintenanceCallbackUseCaseInput("nope", "rewrite_data_files", 1, True, {}, None))
@@ -256,6 +274,7 @@ def test_callback_unknown_run_not_found(runs_repo, results):
 
 
 def test_callback_rejects_unknown_operation(runs_repo, started_run, results):
+    """A callback with an unknown operation raises a ValidationError."""
     service = ProcessTableMaintenanceCallbackService(runs_repo, results)
     with pytest.raises(ValidationError):
         service.execute(ProcessTableMaintenanceCallbackUseCaseInput("run-1", "x", 1, True, {}, None))
@@ -265,6 +284,7 @@ def test_callback_rejects_unknown_operation(runs_repo, started_run, results):
 
 
 def test_get_run_returns_the_run_or_not_found(runs_repo, started_run):
+    """Getting a run returns it with its operations, or raises NotFoundError."""
     service = GetTableMaintenanceRunService(runs_repo)
     out = service.execute(GetTableMaintenanceRunUseCaseInput("run-1"))
     assert out.status == "running"
@@ -274,6 +294,7 @@ def test_get_run_returns_the_run_or_not_found(runs_repo, started_run):
 
 
 def test_list_runs_newest_first_with_limit(runs_repo, table, now):
+    """Listing runs of a table returns the newest first, cut at the limit."""
     for i in range(3):
         runs_repo.create(
             TableMaintenanceRun.create(
