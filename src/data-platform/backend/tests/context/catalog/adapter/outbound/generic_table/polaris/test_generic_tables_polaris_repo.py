@@ -235,3 +235,21 @@ def test_delete_sends_a_delete_and_unknown_is_not_found():
     repo.delete(EVENTS_ID)
     with pytest.raises(NotFoundError):
         repo.delete(EVENTS_ID)
+
+
+@pytest.mark.parametrize(("name", "encoded"), [("my table", "my%20table"), ("a/b?c", "a%2Fb%3Fc")])
+def test_generic_table_name_is_percent_encoded_as_one_path_segment_in_the_raw_path(name: str, encoded: str):
+    """A space becomes %20 and ``/`` or ``?`` stay inside the one segment, never split or left raw."""
+    stub = PolarisStub()
+    stub.on("GET", f"{TABLES}/{encoded}", httpx.Response(200, json=REPLY))
+    stub.on("DELETE", f"{TABLES}/{encoded}", httpx.Response(204))
+    repo = GenericTablesPolarisRepo(stub.client())
+    item_id = GenericTableId.of("sales", ("retail",), name)
+
+    assert repo.get(item_id) is not None
+    repo.delete(item_id)
+
+    assert [(r.method, r.url.raw_path.decode()) for r in stub.requests] == [
+        ("GET", f"{TABLES}/{encoded}"),
+        ("DELETE", f"{TABLES}/{encoded}"),
+    ]

@@ -259,3 +259,21 @@ def test_delete_view_and_unknown_is_not_found():
     repo.delete(TOP_ID)
     with pytest.raises(NotFoundError):
         repo.delete(TOP_ID)
+
+
+@pytest.mark.parametrize(("name", "encoded"), [("my view", "my%20view"), ("a/b?c", "a%2Fb%3Fc")])
+def test_view_name_is_percent_encoded_as_one_path_segment_in_the_raw_path(name: str, encoded: str):
+    """A space becomes %20 and ``/`` or ``?`` stay inside the one segment, never split or left raw."""
+    stub = PolarisStub()
+    stub.on("GET", f"{VIEWS}/{encoded}", httpx.Response(200, json=_load_result()))
+    stub.on("DELETE", f"{VIEWS}/{encoded}", httpx.Response(204))
+    repo = ViewsPolarisRepo(stub.client())
+    item_id = ViewId.of("sales", ("retail",), name)
+
+    assert repo.get(item_id) is not None
+    repo.delete(item_id)
+
+    assert [(r.method, r.url.raw_path.decode()) for r in stub.requests] == [
+        ("GET", f"{VIEWS}/{encoded}"),
+        ("DELETE", f"{VIEWS}/{encoded}"),
+    ]
