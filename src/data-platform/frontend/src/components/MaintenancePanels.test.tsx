@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, metadataFixture } from "../../test/fixtures";
-import { OverviewTab } from "./OverviewTab";
+import { jsonResponse } from "../test/fixtures";
+import { MaintenancePanels } from "./MaintenancePanels";
 
 const HEALTH = {
   scheduled: true,
@@ -58,16 +58,16 @@ function stubFetch(storage: () => Promise<Response>, commits: unknown[] = []) {
   );
 }
 
-function renderTab(metadata = metadataFixture()) {
+function renderTab(lastCommittedAt: string | null = new Date(Date.now() - 3 * 3_600_000).toISOString()) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <OverviewTab tableUuid="uuid-orders" metadata={metadata} />
+      <MaintenancePanels tableUuid="uuid-orders" lastCommittedAt={lastCommittedAt} />
     </QueryClientProvider>,
   );
 }
 
-describe("OverviewTab", () => {
+describe("MaintenancePanels", () => {
   beforeEach(() => {
     stubFetch(() => Promise.resolve(jsonResponse(STORAGE)));
   });
@@ -92,13 +92,7 @@ describe("OverviewTab", () => {
   });
 
   it("renders an empty table", async () => {
-    renderTab(
-      metadataFixture({
-        snapshot_count: 0,
-        current_snapshot_id: null,
-        last_committed_at: null,
-      }),
-    );
+    renderTab(null);
     expect(await screen.findByText("No commits yet.")).toBeInTheDocument();
     expect(await screen.findByText("No maintenance runs yet.")).toBeInTheDocument();
   });

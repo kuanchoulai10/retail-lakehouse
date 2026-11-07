@@ -127,13 +127,22 @@ describe("TableListPage", () => {
     expect(screen.queryByText("iceberg.e2e.tm_e2e_regions")).not.toBeInTheDocument();
   });
 
-  it("links each row to its table page", async () => {
+  it("maintenance list links to the catalog path and dropped rows have no link", async () => {
+    stubTables([
+      ...TABLES,
+      table({ uuid: "uuid-nested", namespace: "retail.eu", table: "sales" }),
+      table({ uuid: "uuid-gone", table: "gone", status: "dropped" }),
+    ]);
     renderPage();
 
     const orders = await screen.findByRole("link", { name: "iceberg.inventory.orders" });
     const regions = screen.getByRole("link", { name: "iceberg.e2e.tm_e2e_regions" });
-    expect(orders).toHaveAttribute("href", "/tables/uuid-orders");
-    expect(regions).toHaveAttribute("href", "/tables/uuid-regions");
+    const nested = screen.getByRole("link", { name: "iceberg.retail.eu.sales" });
+    expect(orders).toHaveAttribute("href", "/catalogs/iceberg/namespaces/inventory/tables/orders");
+    expect(regions).toHaveAttribute("href", "/catalogs/iceberg/namespaces/e2e/tables/tm_e2e_regions");
+    expect(nested).toHaveAttribute("href", "/catalogs/iceberg/namespaces/retail%1Feu/tables/sales");
+    expect(screen.getByText("iceberg.inventory.gone")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "iceberg.inventory.gone" })).not.toBeInTheDocument();
   });
 
   it("shows the API error detail when loading fails", async () => {

@@ -112,13 +112,19 @@ export function NamespacePage() {
           return apiSend("DELETE", genericTableApiPath(catalog, parts, row.name));
       }
     },
+    // Drop the deleted object's own query, so a later visit does not show it from cache.
     onSuccess: (_result, row) => {
       const keys = {
-        table: catalogQueryKeys.tables(catalog, parts),
-        view: catalogQueryKeys.views(catalog, parts),
-        "generic table": catalogQueryKeys.genericTables(catalog, parts),
+        table: [catalogQueryKeys.table(catalog, parts, row.name), catalogQueryKeys.tables(catalog, parts)],
+        view: [catalogQueryKeys.view(catalog, parts, row.name), catalogQueryKeys.views(catalog, parts)],
+        "generic table": [
+          catalogQueryKeys.genericTable(catalog, parts, row.name),
+          catalogQueryKeys.genericTables(catalog, parts),
+        ],
       };
-      return queryClient.invalidateQueries({ queryKey: keys[row.type] });
+      const [detail, list] = keys[row.type];
+      queryClient.removeQueries({ queryKey: detail });
+      return queryClient.invalidateQueries({ queryKey: list });
     },
   });
   const removeSelf = useMutation({

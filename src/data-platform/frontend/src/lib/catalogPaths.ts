@@ -69,6 +69,14 @@ export function tableApiPath(catalog: string, namespace: string[], table: string
   return `${tablesApiPath(catalog, namespace)}/${segment(table)}`;
 }
 
+export function tableRenameApiPath(catalog: string, namespace: string[], table: string): string {
+  return `${tableApiPath(catalog, namespace, table)}/rename`;
+}
+
+export function tablePropertiesApiPath(catalog: string, namespace: string[], table: string): string {
+  return `${tableApiPath(catalog, namespace, table)}/properties`;
+}
+
 export function viewsApiPath(catalog: string, namespace: string[]): string {
   return `${namespaceApiPath(catalog, namespace)}/views`;
 }

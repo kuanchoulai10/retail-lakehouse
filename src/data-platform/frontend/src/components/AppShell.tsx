@@ -21,7 +21,7 @@ const NAV_ITEMS: NavItem[] = [
     to: "/",
     label: "Tables",
     icon: Table2,
-    isActive: (pathname) => pathname === "/" || pathname.startsWith("/tables/"),
+    isActive: (pathname) => pathname === "/",
   },
   {
     to: catalogsPath(),

@@ -36,6 +36,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { errorMessage, formatTimestamp } from "@/format";
+import { tablePath } from "@/lib/catalogPaths";
 import { cn } from "@/lib/utils";
 
 const ALL_STATUSES = "all";
@@ -64,14 +65,21 @@ const columns = columnHelper.columns([
     id: "name",
     header: "Name",
     sortFn: "text",
-    cell: (info) => (
-      <Link
-        to={`/tables/${info.row.original.uuid}`}
-        className="font-mono text-[13px] font-medium hover:underline"
-      >
-        {info.getValue()}
-      </Link>
-    ),
+    // Maintenance stores the namespace levels joined with "."; a dropped table has no page.
+    cell: (info) => {
+      const row = info.row.original;
+      if (row.status.toLowerCase() === "dropped") {
+        return <span className="font-mono text-[13px] font-medium">{info.getValue()}</span>;
+      }
+      return (
+        <Link
+          to={tablePath(row.catalog, row.namespace.split("."), row.table)}
+          className="font-mono text-[13px] font-medium hover:underline"
+        >
+          {info.getValue()}
+        </Link>
+      );
+    },
   }),
   columnHelper.accessor((t) => t.status, {
     id: "status",

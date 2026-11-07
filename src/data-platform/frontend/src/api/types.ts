@@ -18,22 +18,6 @@ export interface TableApiResponse {
   updated_at: string;
 }
 
-export interface TableMetadataApiResponse {
-  uuid: string;
-  format_version: number;
-  location: string;
-  properties: Record<string, string>;
-  schema_fields: JsonObject[];
-  specs: JsonObject[];
-  current_snapshot_id: string | null;
-  snapshot_count: number;
-  last_committed_at: string | null;
-  total_records: number | null;
-  total_data_files: number | null;
-  total_delete_files: number | null;
-  total_files_size_bytes: number | null;
-}
-
 export interface TableHealthOperationApiResponse {
   operation: string;
   verdict: string;

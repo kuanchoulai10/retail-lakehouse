@@ -3,7 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, metadataFixture, tableFixture } from "../test/fixtures";
+import { catalogTableFixture } from "../test/catalogApiStub";
+import { jsonResponse, tableFixture } from "../test/fixtures";
 import { TableHeader } from "./TableHeader";
 
 function newClient() {
@@ -14,7 +15,7 @@ function renderHeader(status = "active", client = newClient(), extra: React.Reac
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <TableHeader table={tableFixture({ status })} metadata={metadataFixture()} />
+        <TableHeader table={catalogTableFixture()} managed={tableFixture({ status })} menu={null} />
         {extra}
       </MemoryRouter>
     </QueryClientProvider>,
@@ -33,19 +34,19 @@ describe("TableHeader", () => {
 
   it("shows the name, status, preset and rule", () => {
     renderHeader();
-    expect(screen.getByText("iceberg.inventory.orders")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "orders" })).toBeInTheDocument();
     expect(screen.getByText("Active")).toBeInTheDocument();
     expect(screen.getByText(/Preset: default/)).toBeInTheDocument();
     expect(screen.getByText(/Rule: rule-1/)).toBeInTheDocument();
   });
 
-  it("shows the summary numbers from the metadata", () => {
+  it("shows the summary numbers from the catalog", () => {
     renderHeader();
     expect(screen.getByText("1,204,331 rows")).toBeInTheDocument();
     expect(screen.getByText("100 data files")).toBeInTheDocument();
     expect(screen.getByText("320.0 MB")).toBeInTheDocument();
     expect(screen.getByText("avg 3.2 MB / file")).toBeInTheDocument();
-    expect(screen.getByText("17 snapshots")).toBeInTheDocument();
+    expect(screen.getByText("2 snapshots")).toBeInTheDocument();
     expect(screen.getByText("last commit 3 h ago")).toBeInTheDocument();
   });
 
@@ -164,5 +165,22 @@ describe("TableHeader", () => {
     );
     expect(screen.getByLabelText("expire_snapshots")).toBeChecked();
     expect(screen.getByLabelText("rewrite_data_files")).not.toBeChecked();
+  });
+});
+
+describe("TableHeader of an unmanaged table", () => {
+  it("shows the catalog numbers and the menu but no maintenance actions", () => {
+    render(
+      <QueryClientProvider client={newClient()}>
+        <MemoryRouter>
+          <TableHeader table={catalogTableFixture()} managed={null} menu={<button type="button">Actions</button>} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(screen.getByText("1,204,331 rows")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Actions" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Run maintenance" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pause" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Preset:/)).not.toBeInTheDocument();
   });
 });

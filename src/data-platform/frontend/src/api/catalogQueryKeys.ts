@@ -11,4 +11,9 @@ export const catalogQueryKeys = {
   views: (catalog: string, namespace: string[]) => ["views", catalog, namespace] as const,
   genericTables: (catalog: string, namespace: string[]) =>
     ["generic-tables", catalog, namespace] as const,
+  table: (catalog: string, namespace: string[], name: string) =>
+    ["catalog-table", catalog, namespace, name] as const,
+  view: (catalog: string, namespace: string[], name: string) => ["view", catalog, namespace, name] as const,
+  genericTable: (catalog: string, namespace: string[], name: string) =>
+    ["generic-table", catalog, namespace, name] as const,
 };
