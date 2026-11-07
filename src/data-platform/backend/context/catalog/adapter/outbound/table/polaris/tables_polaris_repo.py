@@ -17,7 +17,7 @@ from context.catalog.adapter.outbound.table.polaris.table_from_polaris import ta
 from context.catalog.adapter.outbound.table.polaris.table_schema_to_polaris import (
     table_schema_to_polaris,
 )
-from context.catalog.application.exceptions import NotFoundError
+from context.catalog.application.exceptions import CatalogUnavailableError, NotFoundError
 from context.catalog.application.port.outbound.table import NamespaceId, Table, TableId, TablesRepo
 
 if TYPE_CHECKING:
@@ -31,6 +31,13 @@ def _tables_path(catalog: str, namespace: tuple[str, ...]) -> str:
 
 def _table_path(table_id: TableId) -> str:
     return f"{_tables_path(table_id.catalog, table_id.namespace)}/{quote(table_id.name, safe='')}"
+
+
+def _table_id(catalog: str, item: dict[str, Any]) -> TableId:
+    namespace, name = item["namespace"], item["name"]
+    if not isinstance(namespace, list) or not isinstance(name, str):
+        raise TypeError(f"identifier {item!r} needs a namespace list and a name")
+    return TableId.of(catalog, tuple(str(part) for part in namespace), name)
 
 
 def _identifier(table_id: TableId) -> dict[str, Any]:
@@ -62,7 +69,7 @@ class TablesPolarisRepo(TablesRepo):
         response = self._polaris.catalog_request(
             "POST", _tables_path(entity.id.catalog, entity.id.namespace), json=body
         )
-        return table_from_polaris(entity.id, response.json()["metadata"])
+        return table_from_polaris(entity.id, response)
 
     def get(self, entity_id: EntityId) -> Table | None:
         """GET the table; Polaris's 404 means there is none."""
@@ -71,17 +78,22 @@ class TablesPolarisRepo(TablesRepo):
             response = self._polaris.catalog_request("GET", _table_path(table_id))
         except NotFoundError:
             return None
-        return table_from_polaris(table_id, response.json()["metadata"])
+        return table_from_polaris(table_id, response)
 
     def list_in(self, namespace: NamespaceId) -> list[TableId]:
         """GET the identifiers of the namespace's tables; a paged reply is refused."""
         response = self._polaris.catalog_request("GET", _tables_path(namespace.catalog, namespace.parts))
-        body = response.json()
+        try:
+            body = response.json()
+            identifiers = body.get("identifiers", [])
+            found = [_table_id(namespace.catalog, item) for item in identifiers]
+        except (AttributeError, KeyError, TypeError, ValueError) as exc:
+            raise CatalogUnavailableError(
+                f"Polaris returned the tables of namespace {list(namespace.parts)} in a form this backend "
+                f"cannot read: {exc!r}"
+            ) from exc
         raise_for_paged_listing(body)
-        return [
-            TableId.of(namespace.catalog, tuple(str(part) for part in item["namespace"]), str(item["name"]))
-            for item in body.get("identifiers", [])
-        ]
+        return found
 
     def list_all(self) -> list[Table]:
         """Walk every namespace of every catalog and load each of its tables."""
@@ -118,7 +130,7 @@ class TablesPolarisRepo(TablesRepo):
             _table_path(entity_id),
             json={"requirements": [{"type": "assert-table-uuid", "uuid": expected_uuid}], "updates": changes},
         )
-        return table_from_polaris(entity_id, response.json()["metadata"])
+        return table_from_polaris(entity_id, response)
 
     def delete(self, entity_id: EntityId) -> None:
         """DELETE the table with ``purgeRequested=false``, so its files stay."""

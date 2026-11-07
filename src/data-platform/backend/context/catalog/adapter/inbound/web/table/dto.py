@@ -1,8 +1,36 @@
-"""Define the table API DTOs."""
+"""Define the table API DTOs.
+
+Column types are text. A primitive is its Iceberg name: ``long``, ``string``, ``timestamptz``,
+``decimal(10,2)``, ``fixed[16]``. A nested type uses this syntax, both in responses and in the
+create request:
+
+- ``struct<name: type, ...>``, for example ``struct<city: required string, zip: string>``;
+- ``list<type>``, for example ``list<string>``;
+- ``map<key, value>``, for example ``map<string, list<required int>>``.
+
+A nested struct field, list element or map value prefixed with ``required`` is required;
+without the prefix it is optional. Map keys are always required, so a key takes no prefix.
+Nested field ids and docs are not part of the text. ``required`` is this API's syntax, not
+Spark or Trino DDL: a client that builds DDL must translate it (``list`` to ``array``,
+``struct`` to ``row`` in Trino, and drop or map ``required`` to ``NOT NULL`` where supported).
+
+Snapshot ids are 64-bit, so the responses carry them as decimal strings, which a browser
+cannot round (Ruling R9).
+"""
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Annotated
+
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
+
+
+def _id_text(value: object) -> object:
+    """Turn an int snapshot id into its exact decimal text; None and text pass through."""
+    return str(value) if isinstance(value, int) else value
+
+
+SnapshotIdText = Annotated[str, BeforeValidator(_id_text)]
 
 
 class SchemaFieldApiRequest(BaseModel):
@@ -118,12 +146,12 @@ class SortOrderApiResponse(BaseModel):
 
 
 class SnapshotApiResponse(BaseModel):
-    """One snapshot; ``summary`` holds the snapshot summary's keys other than ``operation``."""
+    """One snapshot; ids are decimal strings and ``summary`` holds the summary's keys other than ``operation``."""
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
-    parent_id: int | None
+    id: SnapshotIdText
+    parent_id: SnapshotIdText | None
     timestamp_ms: int
     operation: str | None
     summary: dict[str, str]
@@ -150,7 +178,7 @@ class TableApiResponse(BaseModel):
     uuid: str
     format_version: int
     location: str
-    current_snapshot_id: int | None
+    current_snapshot_id: SnapshotIdText | None
     last_updated_ms: int
     table_schema: TableSchemaApiResponse = Field(alias="schema")
     partition_spec: PartitionSpecApiResponse

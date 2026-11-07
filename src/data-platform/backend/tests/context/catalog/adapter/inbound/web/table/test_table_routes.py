@@ -62,8 +62,46 @@ def test_get_table_returns_every_panel_field():
     response = build_client(get_table=stub).get(f"{BASE}/orders")
 
     assert response.status_code == 200
-    assert response.json() == _fields()
+    expected = _fields()
+    expected["current_snapshot_id"] = "2"
+    expected["snapshots"][0]["id"] = "2"
+    assert response.json() == expected
     assert stub.requests == [GetTableUseCaseInput("sales", ["retail"], "orders")]
+
+
+def test_snapshot_ids_above_two_to_the_53_are_exact_strings():
+    """Snapshot ids are 64-bit; JSON carries them as text so a browser cannot round them (Ruling R9)."""
+    fields = _fields()
+    fields["current_snapshot_id"] = 3051729675574597004
+    fields["snapshots"] = [
+        {
+            "id": 3051729675574597004,
+            "parent_id": 8333017788700497002,
+            "timestamp_ms": 20,
+            "operation": "overwrite",
+            "summary": {},
+        },
+        {"id": 8333017788700497002, "parent_id": None, "timestamp_ms": 10, "operation": "append", "summary": {}},
+    ]
+
+    response = build_client(get_table=StubUseCase(GetTableUseCaseOutput(**fields))).get(f"{BASE}/orders")
+
+    body = response.json()
+    assert body["current_snapshot_id"] == "3051729675574597004"
+    assert [(s["id"], s["parent_id"]) for s in body["snapshots"]] == [
+        ("3051729675574597004", "8333017788700497002"),
+        ("8333017788700497002", None),
+    ]
+
+
+def test_table_without_a_current_snapshot_has_a_null_id():
+    """No current snapshot is null, not the string "None"."""
+    fields = _fields()
+    fields["current_snapshot_id"] = None
+
+    response = build_client(get_table=StubUseCase(GetTableUseCaseOutput(**fields))).get(f"{BASE}/orders")
+
+    assert response.json()["current_snapshot_id"] is None
 
 
 def test_get_unknown_table_returns_404():

@@ -47,16 +47,23 @@
         ]
       }
     ],
-    "default-spec-id": 0,
+    "default-spec-id": 1,
     "partition-specs": [
       {
         "spec-id": 0,
         "fields": [
           {"name": "order_ts_day", "transform": "day", "source-id": 3, "field-id": 1000}
         ]
+      },
+      {
+        "spec-id": 1,
+        "fields": [
+          {"name": "order_ts_day", "transform": "day", "source-id": 3, "field-id": 1000},
+          {"name": "customer_id_bucket", "transform": "bucket[16]", "source-id": 2, "field-id": 1001}
+        ]
       }
     ],
-    "last-partition-id": 1000,
+    "last-partition-id": 1001,
     "default-sort-order-id": 1,
     "sort-orders": [
       {"order-id": 0, "fields": []},

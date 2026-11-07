@@ -131,3 +131,19 @@ def test_replaced_table_properties_save_is_a_409_reload_end_to_end():
     )
     (request,) = stub.requests
     assert request.content and b'"assert-table-uuid"' in request.content
+
+
+def test_unreadable_table_metadata_is_a_502_end_to_end():
+    """Table metadata the backend cannot read answers 502 with a message, never a 500."""
+    stub = PolarisStub()
+    stub.on(
+        "GET",
+        "/api/catalog/v1/sales/namespaces/retail/tables/orders",
+        httpx.Response(200, json={"metadata": {"format-version": 2}}),
+    )
+    client = TestClient(create_api_app(lambda app: register_routes(app, build_catalog_web_use_cases(stub.client()))))
+
+    response = client.get("/v1/catalogs/sales/namespaces/retail/tables/orders")
+
+    assert response.status_code == 502
+    assert "table orders in a form this backend cannot read" in response.json()["detail"]

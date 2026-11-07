@@ -12,18 +12,21 @@ from context.catalog.adapter.outbound.table.polaris.sort_order_from_polaris impo
 from context.catalog.adapter.outbound.table.polaris.table_schema_from_polaris import (
     table_schema_from_polaris,
 )
+from context.catalog.application.exceptions import CatalogUnavailableError
 from context.catalog.application.port.outbound.table import Table
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    import httpx
+
     from context.catalog.application.port.outbound.table import TableId
 
 _NO_SNAPSHOT = -1
+_UNREADABLE = (AttributeError, KeyError, TypeError, ValueError)
 
 
-def table_from_polaris(table_id: TableId, metadata: Mapping[str, Any]) -> Table:
-    """Map the ``metadata`` of a LoadTableResult or CommitTableResponse to a Table; v1's -1 snapshot id is none."""
+def _table(table_id: TableId, metadata: Mapping[str, Any]) -> Table:
     current = metadata.get("current-snapshot-id")
     return Table(
         id=table_id,
@@ -38,3 +41,18 @@ def table_from_polaris(table_id: TableId, metadata: Mapping[str, Any]) -> Table:
         snapshots=[snapshot_from_polaris(snapshot) for snapshot in metadata.get("snapshots") or []],
         properties={str(key): str(value) for key, value in (metadata.get("properties") or {}).items()},
     )
+
+
+def table_from_polaris(table_id: TableId, response: httpx.Response) -> Table:
+    """Map the ``metadata`` of a LoadTableResult or CommitTableResponse reply to a Table.
+
+    v1's -1 snapshot id means none. A reply that is not JSON, has no ``metadata``, or holds
+    metadata this backend cannot read raises CatalogUnavailableError naming the table, so the
+    API answers 502 rather than 500.
+    """
+    try:
+        return _table(table_id, response.json()["metadata"])
+    except _UNREADABLE as exc:
+        raise CatalogUnavailableError(
+            f"Polaris returned table {table_id.name} in a form this backend cannot read: {exc!r}"
+        ) from exc

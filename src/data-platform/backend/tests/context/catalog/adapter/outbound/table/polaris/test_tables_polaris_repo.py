@@ -86,7 +86,11 @@ def test_load_maps_schema_partition_sort_snapshots_and_summary():
         (7, "shipping", "struct<city: required string>", False, None),
     ]
     assert table.partition_spec == PartitionSpec(
-        spec_id=0, fields=(PartitionField(source_id=3, field_id=1000, name="order_ts_day", transform="day"),)
+        spec_id=1,
+        fields=(
+            PartitionField(source_id=3, field_id=1000, name="order_ts_day", transform="day"),
+            PartitionField(source_id=2, field_id=1001, name="customer_id_bucket", transform="bucket[16]"),
+        ),
     )
     assert table.sort_order.order_id == 1
     (sort_field,) = table.sort_order.fields
@@ -386,3 +390,95 @@ def test_list_all_walks_every_catalog_namespace_and_table():
     found = TablesPolarisRepo(stub.client()).list_all()
 
     assert [t.id for t in found] == [ORDERS_ID]
+
+
+def _metadata_without(*keys: str) -> dict[str, Any]:
+    body = _load_result()
+    for key in keys:
+        body["metadata"].pop(key)
+    return body
+
+
+def _malformed_variants() -> dict[str, httpx.Response]:
+    unknown_direction = _load_result()
+    unknown_direction["metadata"]["sort-orders"][1]["fields"][0]["direction"] = "sideways"
+    current_schema_missing = _load_result()
+    current_schema_missing["metadata"]["current-schema-id"] = 7
+    default_spec_missing = _load_result()
+    default_spec_missing["metadata"]["default-spec-id"] = 7
+    default_order_missing = _load_result()
+    default_order_missing["metadata"]["default-sort-order-id"] = 7
+    return {
+        "missing table-uuid": httpx.Response(200, json=_metadata_without("table-uuid")),
+        "missing location": httpx.Response(200, json=_metadata_without("location")),
+        "unknown sort direction": httpx.Response(200, json=unknown_direction),
+        "no metadata": httpx.Response(200, json={"metadata-location": "s3://x"}),
+        "not json": httpx.Response(200, text="<html>oops</html>"),
+        "metadata is a list": httpx.Response(200, json={"metadata": []}),
+        "current schema id matches no schema": httpx.Response(200, json=current_schema_missing),
+        "default spec id matches no spec": httpx.Response(200, json=default_spec_missing),
+        "default sort order id matches no order": httpx.Response(200, json=default_order_missing),
+    }
+
+
+@pytest.mark.parametrize("variant", sorted(_malformed_variants()))
+def test_malformed_load_table_result_is_unavailable_not_a_crash(variant: str):
+    """Metadata this backend cannot read is a CatalogUnavailableError naming the table, never a bare error."""
+    stub = PolarisStub()
+    stub.on("GET", ORDERS, _malformed_variants()[variant])
+
+    with pytest.raises(CatalogUnavailableError, match="table orders in a form this backend cannot read"):
+        TablesPolarisRepo(stub.client()).get(ORDERS_ID)
+
+
+@pytest.mark.parametrize("method", ["create", "update_properties"])
+def test_malformed_write_reply_is_unavailable(method: str):
+    """A create or commit reply without readable metadata is a CatalogUnavailableError too."""
+    stub = PolarisStub()
+    stub.on("POST", TABLES, httpx.Response(200, json={"metadata": {}}))
+    stub.on("POST", ORDERS, httpx.Response(200, json={"metadata": {}}))
+    repo = TablesPolarisRepo(stub.client())
+
+    with pytest.raises(CatalogUnavailableError, match="cannot read"):
+        if method == "create":
+            repo.create(_new_orders())
+        else:
+            repo.update_properties(ORDERS_ID, UUID, {"k": "v"}, [])
+
+
+@pytest.mark.parametrize(
+    "body",
+    [{"identifiers": [{"name": "orders"}]}, {"identifiers": [{"namespace": "retail"}]}, ["orders"]],
+)
+def test_malformed_table_listing_is_unavailable(body: object):
+    """An identifier without a namespace or name, or a reply that is not an object, is unavailable."""
+    stub = PolarisStub()
+    stub.on("GET", TABLES, httpx.Response(200, json=body))
+
+    with pytest.raises(CatalogUnavailableError, match="cannot read"):
+        TablesPolarisRepo(stub.client()).list_in(NamespaceId.of("sales", ("retail",)))
+
+
+def test_v1_metadata_without_schemas_or_specs_uses_the_single_schema_and_spec():
+    """Without ``schemas`` the v1 ``schema`` is current; without ``default-spec-id`` the v1 ``partition-spec`` is."""
+    body = _load_result()
+    metadata = body["metadata"]
+    metadata["format-version"] = 1
+    metadata["schema"] = metadata.pop("schemas")[0]
+    metadata.pop("current-schema-id")
+    metadata.pop("partition-specs")
+    metadata.pop("default-spec-id")
+    metadata["partition-spec"] = [{"name": "order_ts_day", "transform": "day", "source-id": 3, "field-id": 1000}]
+    metadata.pop("sort-orders")
+    metadata.pop("default-sort-order-id")
+    stub = PolarisStub()
+    stub.on("GET", ORDERS, httpx.Response(200, json=body))
+
+    table = TablesPolarisRepo(stub.client()).get(ORDERS_ID)
+
+    assert table is not None
+    assert [f.name for f in table.schema.fields] == ["order_id", "customer_id", "order_ts"]
+    assert table.partition_spec == PartitionSpec(
+        spec_id=0, fields=(PartitionField(source_id=3, field_id=1000, name="order_ts_day", transform="day"),)
+    )
+    assert table.sort_order == SortOrder.unsorted()
