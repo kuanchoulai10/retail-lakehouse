@@ -147,3 +147,71 @@ def test_unreadable_table_metadata_is_a_502_end_to_end():
 
     assert response.status_code == 502
     assert "table orders in a form this backend cannot read" in response.json()["detail"]
+
+
+def test_view_and_generic_table_are_served_end_to_end_against_polaris():
+    """A view is created and read through Iceberg REST; a generic table through the Polaris API prefix."""
+    stub = PolarisStub()
+    view_body = {
+        "metadata": {
+            "view-uuid": "vu-1",
+            "format-version": 1,
+            "location": "s3://w/v",
+            "current-version-id": 1,
+            "versions": [
+                {
+                    "version-id": 1,
+                    "timestamp-ms": 5,
+                    "schema-id": 0,
+                    "summary": {},
+                    "representations": [{"type": "sql", "sql": "SELECT 1", "dialect": "spark"}],
+                    "default-namespace": ["retail"],
+                }
+            ],
+            "schemas": [{"type": "struct", "schema-id": 0, "fields": []}],
+        }
+    }
+    stub.on("POST", "/api/catalog/v1/sales/namespaces/retail/views", httpx.Response(200, json=view_body))
+    stub.on(
+        "POST",
+        "/api/catalog/polaris/v1/sales/namespaces/retail/generic-tables",
+        httpx.Response(200, json={"table": {"name": "events", "format": "delta"}}),
+    )
+    client = TestClient(create_api_app(lambda app: register_routes(app, build_catalog_web_use_cases(stub.client()))))
+
+    view = client.post(
+        "/v1/catalogs/sales/namespaces/retail/views", json={"name": "v", "sql": "SELECT 1", "dialect": "spark"}
+    )
+    table = client.post(
+        "/v1/catalogs/sales/namespaces/retail/generic-tables", json={"name": "events", "format": "delta"}
+    )
+
+    assert (view.status_code, view.json()["sql"], view.json()["uuid"]) == (201, "SELECT 1", "vu-1")
+    assert (table.status_code, table.json()["format"]) == (201, "delta")
+
+
+def test_unreadable_view_is_a_502_end_to_end():
+    """A view whose current version matches no version answers 502 with a message, never a 500."""
+    stub = PolarisStub()
+    stub.on(
+        "GET",
+        "/api/catalog/v1/sales/namespaces/retail/views/v",
+        httpx.Response(
+            200,
+            json={
+                "metadata": {
+                    "view-uuid": "vu-1",
+                    "location": "s3://w/v",
+                    "current-version-id": 9,
+                    "versions": [],
+                    "schemas": [],
+                }
+            },
+        ),
+    )
+    client = TestClient(create_api_app(lambda app: register_routes(app, build_catalog_web_use_cases(stub.client()))))
+
+    response = client.get("/v1/catalogs/sales/namespaces/retail/views/v")
+
+    assert response.status_code == 502
+    assert "view v in a form this backend cannot read" in response.json()["detail"]

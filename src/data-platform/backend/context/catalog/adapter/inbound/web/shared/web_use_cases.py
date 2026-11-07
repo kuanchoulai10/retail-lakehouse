@@ -13,6 +13,12 @@ if TYPE_CHECKING:
         ListCatalogsUseCase,
         UpdateCatalogUseCase,
     )
+    from context.catalog.application.port.inbound.generic_table import (
+        CreateGenericTableUseCase,
+        DeleteGenericTableUseCase,
+        GetGenericTableUseCase,
+        ListGenericTablesUseCase,
+    )
     from context.catalog.application.port.inbound.namespace import (
         CreateNamespaceUseCase,
         DeleteNamespaceUseCase,
@@ -27,6 +33,12 @@ if TYPE_CHECKING:
         ListTablesUseCase,
         RenameTableUseCase,
         UpdateTablePropertiesUseCase,
+    )
+    from context.catalog.application.port.inbound.view import (
+        CreateViewUseCase,
+        DeleteViewUseCase,
+        GetViewUseCase,
+        ListViewsUseCase,
     )
 
 
@@ -50,3 +62,11 @@ class WebUseCases:
     delete_table: DeleteTableUseCase
     rename_table: RenameTableUseCase
     update_table_properties: UpdateTablePropertiesUseCase
+    list_generic_tables: ListGenericTablesUseCase
+    get_generic_table: GetGenericTableUseCase
+    create_generic_table: CreateGenericTableUseCase
+    delete_generic_table: DeleteGenericTableUseCase
+    list_views: ListViewsUseCase
+    get_view: GetViewUseCase
+    create_view: CreateViewUseCase
+    delete_view: DeleteViewUseCase

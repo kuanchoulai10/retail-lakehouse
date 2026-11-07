@@ -51,6 +51,10 @@ UTILITY_FILES = {
     "namespace_id_from_parts.py",
     "table_id_from_parts.py",
     "partition_spec_from_request.py",
+    "generic_table_id_from_parts.py",
+    "generic_table_output_fields.py",
+    "view_id_from_parts.py",
+    "view_output_fields.py",
 }
 
 # Known verbs for service naming. This is a pre-defined allowlist, not an

@@ -9,14 +9,22 @@ from context.catalog.adapter.outbound.catalog.polaris import (
     CatalogsPolarisRepo,
     CreateCatalogContentGrantPolarisGateway,
 )
+from context.catalog.adapter.outbound.generic_table.polaris import GenericTablesPolarisRepo
 from context.catalog.adapter.outbound.namespace.polaris import NamespacesPolarisRepo
 from context.catalog.adapter.outbound.table.polaris import TablesPolarisRepo
+from context.catalog.adapter.outbound.view.polaris import ViewsPolarisRepo
 from context.catalog.application.service.catalog import (
     CreateCatalogService,
     DeleteCatalogService,
     GetCatalogService,
     ListCatalogsService,
     UpdateCatalogService,
+)
+from context.catalog.application.service.generic_table import (
+    CreateGenericTableService,
+    DeleteGenericTableService,
+    GetGenericTableService,
+    ListGenericTablesService,
 )
 from context.catalog.application.service.namespace import (
     CreateNamespaceService,
@@ -33,6 +41,12 @@ from context.catalog.application.service.table import (
     RenameTableService,
     UpdateTablePropertiesService,
 )
+from context.catalog.application.service.view import (
+    CreateViewService,
+    DeleteViewService,
+    GetViewService,
+    ListViewsService,
+)
 
 if TYPE_CHECKING:
     from context.catalog.adapter.outbound.shared.polaris import PolarisHttpClient
@@ -43,6 +57,8 @@ def build_catalog_web_use_cases(polaris: PolarisHttpClient) -> WebUseCases:
     catalogs_repo = CatalogsPolarisRepo(polaris)
     namespaces_repo = NamespacesPolarisRepo(polaris)
     tables_repo = TablesPolarisRepo(polaris)
+    generic_tables_repo = GenericTablesPolarisRepo(polaris)
+    views_repo = ViewsPolarisRepo(polaris)
     return WebUseCases(
         list_catalogs=ListCatalogsService(catalogs_repo),
         get_catalog=GetCatalogService(catalogs_repo),
@@ -60,4 +76,12 @@ def build_catalog_web_use_cases(polaris: PolarisHttpClient) -> WebUseCases:
         delete_table=DeleteTableService(tables_repo),
         rename_table=RenameTableService(tables_repo),
         update_table_properties=UpdateTablePropertiesService(tables_repo),
+        list_generic_tables=ListGenericTablesService(generic_tables_repo),
+        get_generic_table=GetGenericTableService(generic_tables_repo),
+        create_generic_table=CreateGenericTableService(generic_tables_repo),
+        delete_generic_table=DeleteGenericTableService(generic_tables_repo),
+        list_views=ListViewsService(views_repo),
+        get_view=GetViewService(views_repo),
+        create_view=CreateViewService(views_repo),
+        delete_view=DeleteViewService(views_repo),
     )

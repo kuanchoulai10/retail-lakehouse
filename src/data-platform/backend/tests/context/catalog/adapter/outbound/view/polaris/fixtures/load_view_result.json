@@ -1,0 +1,47 @@
+{
+  "metadata-location": "s3://lakehouse/iceberg/retail/top_orders/metadata/00001-3b1c2a3e-8f1d-4c55-9a7e-2f0d9c1b7e42.metadata.json",
+  "metadata": {
+    "view-uuid": "fa6506c3-7681-40c8-86dc-e36561f83385",
+    "format-version": 1,
+    "location": "s3://lakehouse/iceberg/retail/top_orders",
+    "current-version-id": 2,
+    "versions": [
+      {
+        "version-id": 1,
+        "timestamp-ms": 1762516800000,
+        "schema-id": 0,
+        "summary": {"engine-name": "spark"},
+        "representations": [{"type": "sql", "sql": "SELECT 1", "dialect": "spark"}],
+        "default-namespace": ["retail"]
+      },
+      {
+        "version-id": 2,
+        "timestamp-ms": 1762520400000,
+        "schema-id": 1,
+        "summary": {"engine-name": "trino"},
+        "representations": [
+          {"type": "sql", "sql": "SELECT order_id, amount FROM orders", "dialect": "trino"}
+        ],
+        "default-namespace": ["retail", "a.b"]
+      }
+    ],
+    "version-log": [
+      {"version-id": 1, "timestamp-ms": 1762516800000},
+      {"version-id": 2, "timestamp-ms": 1762520400000}
+    ],
+    "schemas": [
+      {"type": "struct", "schema-id": 0, "fields": [{"id": 1, "name": "order_id", "required": false, "type": "long"}]},
+      {
+        "type": "struct",
+        "schema-id": 1,
+        "fields": [
+          {"id": 1, "name": "order_id", "required": true, "type": "long", "doc": "key"},
+          {"id": 2, "name": "amount", "required": false, "type": "decimal(10,2)"},
+          {"id": 3, "name": "tags", "required": false, "type": {"type": "list", "element-id": 4, "element": "string", "element-required": false}}
+        ]
+      }
+    ],
+    "properties": {"comment": "top orders"}
+  },
+  "config": {"s3.secret-access-key": "must-not-leak"}
+}

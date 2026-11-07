@@ -6,8 +6,10 @@ from typing import TYPE_CHECKING
 
 from context.catalog.adapter.inbound.web.catalog import router as catalog_router
 from context.catalog.adapter.inbound.web.error_handlers import register_error_handlers
+from context.catalog.adapter.inbound.web.generic_table import router as generic_table_router
 from context.catalog.adapter.inbound.web.namespace import router as namespace_router
 from context.catalog.adapter.inbound.web.table import router as table_router
+from context.catalog.adapter.inbound.web.view import router as view_router
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
@@ -21,5 +23,5 @@ def register_routes(app: FastAPI, use_cases: WebUseCases) -> None:
     """Mount the catalog routes and error handlers on the app."""
     app.state.catalog_use_cases = use_cases
     register_error_handlers(app)
-    for router in (catalog_router, namespace_router, table_router):
+    for router in (catalog_router, namespace_router, table_router, generic_table_router, view_router):
         app.include_router(router, prefix=_API_PREFIX)

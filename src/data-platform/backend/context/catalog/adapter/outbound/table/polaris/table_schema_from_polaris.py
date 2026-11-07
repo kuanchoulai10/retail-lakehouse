@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from context.catalog.adapter.outbound.table.polaris.iceberg_type_from_polaris import (
-    iceberg_type_from_polaris,
-)
-from context.catalog.application.port.outbound.table import SchemaField, TableSchema
+from context.catalog.adapter.outbound.shared.polaris import iceberg_schema_from_polaris
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
+
+    from context.catalog.application.port.outbound.table import TableSchema
 
 
 def _current(metadata: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -29,17 +28,4 @@ def table_schema_from_polaris(metadata: Mapping[str, Any]) -> TableSchema:
     Only metadata without ``schemas`` (format v1) falls back to its single ``schema``. A
     current id that matches no schema raises ValueError instead of yielding an empty schema.
     """
-    schema = _current(metadata)
-    return TableSchema(
-        schema_id=int(schema.get("schema-id", 0)),
-        fields=tuple(
-            SchemaField(
-                id=int(field["id"]),
-                name=str(field["name"]),
-                type=iceberg_type_from_polaris(field["type"]),
-                required=bool(field.get("required")),
-                doc=field.get("doc"),
-            )
-            for field in schema["fields"]
-        ),
-    )
+    return iceberg_schema_from_polaris(_current(metadata))
