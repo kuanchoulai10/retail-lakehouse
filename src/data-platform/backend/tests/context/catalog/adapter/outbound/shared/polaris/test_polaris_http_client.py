@@ -49,11 +49,11 @@ def test_expired_token_is_refreshed_once():
 
 
 def test_refreshed_token_rejected_again_is_not_retried_twice():
-    """A second 401 after the refresh is reported as permission denied, without another retry."""
+    """A second 401 after the refresh means the backend credential is rejected: unavailable, no further retry."""
     stub = PolarisStub()
     stub.on("GET", CATALOGS, httpx.Response(401, json={"error": {"message": "token rejected"}}))
 
-    with pytest.raises(PermissionDeniedError, match="token rejected"):
+    with pytest.raises(CatalogUnavailableError, match="^the catalog rejected the backend credential: token rejected$"):
         stub.client().management_request("GET", "/catalogs")
 
     assert len(stub.token_requests) == 2
@@ -99,6 +99,24 @@ def test_token_response_without_access_token_is_unavailable():
     stub.fail_token(httpx.Response(200, json={"token_type": "bearer"}))
 
     with pytest.raises(CatalogUnavailableError, match="access token"):
+        stub.client().management_request("GET", "/catalogs")
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        httpx.Response(200, text="<html>login</html>"),
+        httpx.Response(200, json=["tok"]),
+        httpx.Response(200, json="tok"),
+    ],
+    ids=["not-json", "json-list", "json-string"],
+)
+def test_token_reply_that_is_not_a_json_object_is_unavailable(reply: httpx.Response):
+    """A token reply that is not a JSON object is an upstream fault, never an unhandled error."""
+    stub = PolarisStub()
+    stub.fail_token(reply)
+
+    with pytest.raises(CatalogUnavailableError, match="could not get a Polaris token"):
         stub.client().management_request("GET", "/catalogs")
 
 

@@ -44,6 +44,8 @@ UTILITY_FILES = {
     "raise_not_in_catalog.py",
     "summary_int.py",
     "catalog_output_fields.py",
+    "connection_config_from_dict.py",
+    "connection_config_to_dict.py",
     "storage_config_from_dict.py",
     "storage_config_to_dict.py",
 }

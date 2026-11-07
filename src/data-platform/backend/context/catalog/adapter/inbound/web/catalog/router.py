@@ -44,6 +44,9 @@ def create_catalog(body: CreateCatalogApiRequest, use_cases: UseCases) -> Catalo
             type=body.type,
             default_base_location=body.default_base_location,
             storage_config=body.storage_config.model_dump(exclude_none=True),
+            connection_config=(
+                None if body.connection_config is None else body.connection_config.model_dump(exclude_none=True)
+            ),
         )
     )
     return CatalogApiResponse.model_validate(output)

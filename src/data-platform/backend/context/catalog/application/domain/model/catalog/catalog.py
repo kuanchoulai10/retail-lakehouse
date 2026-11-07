@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from context.catalog.application.domain.model.catalog.catalog_type import CatalogType
+    from context.catalog.application.domain.model.catalog.connection_config import ConnectionConfig
     from context.catalog.application.domain.model.catalog.storage_config import StorageConfig
 
 _DEFAULT_BASE_LOCATION = "default-base-location"
@@ -24,12 +25,15 @@ class Catalog(AggregateRoot[CatalogId]):
     ``entity_version`` is the version this copy was loaded at; a save is rejected when the
     stored catalog has moved past it. A catalog not yet saved has version 0 and no timestamps.
     The ``default-base-location`` property is where new tables go when they name no location.
+    ``connection_config`` is the remote catalog service an EXTERNAL catalog mirrors, if any;
+    an INTERNAL catalog has none.
     """
 
     id: CatalogId
     type: CatalogType
     properties: dict[str, str]
     storage_config: StorageConfig
+    connection_config: ConnectionConfig | None = None
     entity_version: int = 0
     created_at: datetime | None = None
     updated_at: datetime | None = None
@@ -41,6 +45,7 @@ class Catalog(AggregateRoot[CatalogId]):
         type: CatalogType,  # noqa: A002
         default_base_location: str,
         storage_config: StorageConfig,
+        connection_config: ConnectionConfig | None = None,
     ) -> Catalog:
         """Return a new, unsaved catalog whose only property is its default base location."""
         return cls(
@@ -48,6 +53,7 @@ class Catalog(AggregateRoot[CatalogId]):
             type=type,
             properties={_DEFAULT_BASE_LOCATION: default_base_location},
             storage_config=storage_config,
+            connection_config=connection_config,
         )
 
     @property

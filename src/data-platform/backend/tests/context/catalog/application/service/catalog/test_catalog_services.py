@@ -46,6 +46,19 @@ S3: dict[str, Any] = {
 }
 
 
+OAUTH_CONNECTION: dict[str, Any] = {
+    "connection_type": "REST",
+    "uri": "https://remote.example/api/catalog",
+    "authentication": {
+        "authentication_type": "OAUTH",
+        "token_uri": "https://remote.example/oauth/tokens",
+        "client_id": "remote-client",
+        "client_secret": "remote-s3cr3t",
+        "scopes": ["PRINCIPAL_ROLE:ALL"],
+    },
+}
+
+
 def _create_input(name: str = "sales", **overrides: Any) -> CreateCatalogUseCaseInput:  # noqa: ANN401
     fields: dict[str, Any] = {
         "name": name,
@@ -119,6 +132,41 @@ def test_create_catalog_with_taken_name_does_not_grant(catalogs_repo, content_gr
     assert content_grant_gateway.calls == []
 
 
+def test_create_external_catalog_keeps_its_connection_but_never_returns_secrets(catalogs_repo, content_grant_gateway):
+    """The connection, secret included, is saved; the output describes it without the secret."""
+    output = CreateCatalogService(catalogs_repo, content_grant_gateway).execute(
+        _create_input(type="EXTERNAL", connection_config=OAUTH_CONNECTION)
+    )
+
+    saved = catalogs_repo.items["sales"].connection_config
+    assert saved is not None
+    assert saved.authentication is not None
+    assert saved.authentication.client_secret == "remote-s3cr3t"
+    assert output.connection_config == {
+        "connection_type": "REST",
+        "uri": "https://remote.example/api/catalog",
+        "authentication": {
+            "authentication_type": "OAUTH",
+            "token_uri": "https://remote.example/oauth/tokens",
+            "client_id": "remote-client",
+            "scopes": ["PRINCIPAL_ROLE:ALL"],
+            "role_arn": None,
+            "role_session_name": None,
+            "external_id": None,
+            "signing_region": None,
+            "signing_name": None,
+        },
+    }
+    assert "remote-s3cr3t" not in repr(output)
+
+
+def test_create_internal_catalog_has_no_connection(catalogs_repo, content_grant_gateway):
+    """An internal catalog has no connection."""
+    output = CreateCatalogService(catalogs_repo, content_grant_gateway).execute(_create_input())
+
+    assert output.connection_config is None
+
+
 @pytest.mark.parametrize(
     ("overrides", "message"),
     [
@@ -127,6 +175,41 @@ def test_create_catalog_with_taken_name_does_not_grant(catalogs_repo, content_gr
         ({"type": "FEDERATED"}, "catalog type must be one of INTERNAL, EXTERNAL"),
         ({"storage_config": {"allowed_locations": []}}, "storage_type is required"),
         ({"storage_config": {"storage_type": "S3", "bucket": "b"}}, "unknown storage config field"),
+        ({"storage_config": {"storage_type": "S3", "user_arn": "arn:x"}}, "unknown storage config field.*user_arn"),
+        ({"storage_config": {"storage_type": "NFS"}}, "storage type must be one of S3, AZURE, GCS, FILE"),
+        ({"storage_config": {"storage_type": "AZURE"}}, "tenant_id is required for AZURE storage"),
+        ({"type": "EXTERNAL"}, "an EXTERNAL catalog needs a connection_config"),
+        ({"connection_config": OAUTH_CONNECTION}, "connection_config applies only to EXTERNAL catalogs"),
+        ({"type": "EXTERNAL", "connection_config": {"uri": "https://r"}}, "connection_type is required"),
+        (
+            {"type": "EXTERNAL", "connection_config": {**OAUTH_CONNECTION, "connection_type": "JDBC"}},
+            "connection type must be one of REST, HADOOP, HIVE",
+        ),
+        (
+            {"type": "EXTERNAL", "connection_config": {"connection_type": "HIVE", "uri": "thrift://h"}},
+            "connection_config.authentication is required",
+        ),
+        (
+            {"type": "EXTERNAL", "connection_config": {**OAUTH_CONNECTION, "port": 1}},
+            "unknown connection config field.*port",
+        ),
+        (
+            {
+                "type": "EXTERNAL",
+                "connection_config": {**OAUTH_CONNECTION, "authentication": {"authentication_type": "KERBEROS"}},
+            },
+            "authentication type must be one of OAUTH, BEARER, SIGV4, IMPLICIT",
+        ),
+        (
+            {
+                "type": "EXTERNAL",
+                "connection_config": {
+                    **OAUTH_CONNECTION,
+                    "authentication": {"authentication_type": "OAUTH", "bearer_token": "t"},
+                },
+            },
+            "bearer_token does not apply to OAUTH authentication",
+        ),
     ],
 )
 def test_create_catalog_rejects_invalid_input(catalogs_repo, content_grant_gateway, overrides, message):

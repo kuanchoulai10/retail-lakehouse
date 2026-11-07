@@ -27,6 +27,9 @@ from context.catalog.application.port.outbound.catalog import (
 from context.catalog.application.service.catalog.catalog_output_fields import (
     catalog_output_fields,
 )
+from context.catalog.application.service.catalog.connection_config_from_dict import (
+    connection_config_from_dict,
+)
 from context.catalog.application.service.catalog.storage_config_from_dict import (
     storage_config_from_dict,
 )
@@ -72,8 +75,15 @@ class CreateCatalogService(CreateCatalogUseCase):
         except ValueError:
             raise ValidationError(f"catalog type must be one of {_CATALOG_TYPES}, not {request.type!r}") from None
         storage_config = storage_config_from_dict(request.storage_config)
+        connection_config = None
+        if request.connection_config is not None:
+            if catalog_type is not CatalogType.EXTERNAL:
+                raise ValidationError("connection_config applies only to EXTERNAL catalogs")
+            connection_config = connection_config_from_dict(request.connection_config)
+        elif catalog_type is CatalogType.EXTERNAL:
+            raise ValidationError("an EXTERNAL catalog needs a connection_config")
         created = self._catalogs_repo.create(
-            Catalog.create(CatalogId.of(name), catalog_type, default_base_location, storage_config)
+            Catalog.create(CatalogId.of(name), catalog_type, default_base_location, storage_config, connection_config)
         )
         try:
             self._content_grant_gateway.create(CreateCatalogContentGrantGatewayInput(catalog_name=created.name))

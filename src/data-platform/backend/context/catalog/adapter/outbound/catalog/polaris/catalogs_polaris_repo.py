@@ -7,6 +7,9 @@ from typing import TYPE_CHECKING
 from context.catalog.adapter.outbound.catalog.polaris.catalog_from_polaris import (
     catalog_from_polaris,
 )
+from context.catalog.adapter.outbound.catalog.polaris.connection_config_to_polaris import (
+    connection_config_to_polaris,
+)
 from context.catalog.adapter.outbound.catalog.polaris.management_catalog_path import (
     management_catalog_path,
 )
@@ -31,14 +34,15 @@ class CatalogsPolarisRepo(CatalogsRepo):
 
     def create(self, entity: Catalog) -> Catalog:
         """POST the catalog and return it as Polaris saved it."""
-        body = {
-            "catalog": {
-                "name": entity.name,
-                "type": entity.type.value,
-                "properties": dict(entity.properties),
-                "storageConfigInfo": storage_config_to_polaris(entity.storage_config),
-            }
+        catalog: dict[str, object] = {
+            "name": entity.name,
+            "type": entity.type.value,
+            "properties": dict(entity.properties),
+            "storageConfigInfo": storage_config_to_polaris(entity.storage_config),
         }
+        if entity.connection_config is not None:
+            catalog["connectionConfigInfo"] = connection_config_to_polaris(entity.connection_config)
+        body = {"catalog": catalog}
         return catalog_from_polaris(self._polaris.management_request("POST", "/catalogs", json=body).json())
 
     def get(self, entity_id: EntityId) -> Catalog | None:

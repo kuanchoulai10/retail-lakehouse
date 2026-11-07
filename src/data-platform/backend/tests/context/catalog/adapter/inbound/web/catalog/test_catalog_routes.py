@@ -21,10 +21,15 @@ from context.catalog.application.port.inbound.catalog import (
     UpdateCatalogUseCaseInput,
     UpdateCatalogUseCaseOutput,
 )
+from context.catalog.application.service.catalog import CreateCatalogService
 from tests.context.catalog.adapter.inbound.web.web_test_support import (
     NOW,
     StubUseCase,
     build_client,
+)
+from tests.context.catalog.fakes.in_memory_catalogs_repo import InMemoryCatalogsRepo
+from tests.context.catalog.fakes.recording_create_catalog_content_grant_gateway import (
+    RecordingCreateCatalogContentGrantGateway,
 )
 
 STORAGE: dict[str, Any] = {
@@ -50,6 +55,7 @@ FIELDS: dict[str, Any] = {
     "default_base_location": "s3://bucket/sales",
     "properties": {"default-base-location": "s3://bucket/sales"},
     "storage_config": STORAGE,
+    "connection_config": None,
     "entity_version": 1,
     "created_at": NOW,
     "updated_at": NOW,
@@ -185,7 +191,12 @@ def test_update_conflict_maps_to_409():
 
     response = client.put(
         "/v1/catalogs/sales",
-        json={"entity_version": 1, "default_base_location": "s3://b/", "storage_config": {"storage_type": "S3"}},
+        json={
+            "entity_version": 1,
+            "default_base_location": "s3://b/",
+            "properties": {},
+            "storage_config": {"storage_type": "S3"},
+        },
     )
 
     assert response.status_code == 409
@@ -201,3 +212,86 @@ def test_delete_catalog_returns_204():
 
     assert response.status_code == 204
     assert stub.requests == [DeleteCatalogUseCaseInput(name="sales")]
+
+
+OAUTH_CONNECTION: dict[str, Any] = {
+    "connection_type": "REST",
+    "uri": "https://remote.example/api/catalog",
+    "authentication": {
+        "authentication_type": "OAUTH",
+        "token_uri": "https://remote.example/oauth/tokens",
+        "client_id": "remote-client",
+        "client_secret": "remote-s3cr3t",
+        "scopes": ["PRINCIPAL_ROLE:ALL"],
+    },
+}
+EXTERNAL_BODY: dict[str, Any] = {**CREATE_BODY, "type": "EXTERNAL", "connection_config": OAUTH_CONNECTION}
+
+
+def _real_create_client():
+    service = CreateCatalogService(InMemoryCatalogsRepo(), RecordingCreateCatalogContentGrantGateway())
+    return build_client(create_catalog=service)
+
+
+def test_create_external_catalog_passes_the_connection():
+    """An external catalog's connection reaches the use case with only the fields that were given."""
+    stub = StubUseCase(CreateCatalogUseCaseOutput(**FIELDS))
+    client = build_client(create_catalog=stub)
+
+    response = client.post("/v1/catalogs", json=EXTERNAL_BODY)
+
+    assert response.status_code == 201
+    (request,) = stub.requests
+    assert request.connection_config == OAUTH_CONNECTION
+
+
+def test_external_catalog_without_connection_returns_422():
+    """An external catalog needs a connection; without one nothing is created."""
+    response = _real_create_client().post("/v1/catalogs", json={**CREATE_BODY, "type": "EXTERNAL"})
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "an EXTERNAL catalog needs a connection_config"}
+
+
+def test_external_catalog_without_authentication_type_returns_422():
+    """The connection's authentication type is required, as in the upstream form."""
+    body = {**EXTERNAL_BODY, "connection_config": {"connection_type": "HIVE", "authentication": {}}}
+
+    response = _real_create_client().post("/v1/catalogs", json=body)
+
+    assert response.status_code == 422
+
+
+def test_response_never_contains_a_connection_secret():
+    """The created catalog is described with its connection, and the client secret is not echoed back."""
+    response = _real_create_client().post("/v1/catalogs", json=EXTERNAL_BODY)
+
+    assert response.status_code == 201
+    authentication = response.json()["connection_config"]["authentication"]
+    assert authentication["client_id"] == "remote-client"
+    assert "client_secret" not in authentication
+    assert "bearer_token" not in authentication
+    assert "remote-s3cr3t" not in response.text
+
+
+def test_storage_user_arn_is_not_accepted():
+    """The user ARN is assigned by Polaris, so a body that sets it is rejected."""
+    body = {**CREATE_BODY, "storage_config": {"storage_type": "S3", "user_arn": "arn:aws:iam::1:user/x"}}
+
+    response = _real_create_client().post("/v1/catalogs", json=body)
+
+    assert response.status_code == 422
+
+
+def test_update_without_properties_is_rejected():
+    """Leaving the properties out must not wipe them, so the field is required."""
+    stub = StubUseCase(UpdateCatalogUseCaseOutput(**UPDATED))
+    client = build_client(update_catalog=stub)
+
+    response = client.put(
+        "/v1/catalogs/sales",
+        json={"entity_version": 1, "default_base_location": "s3://b/", "storage_config": {"storage_type": "S3"}},
+    )
+
+    assert response.status_code == 422
+    assert stub.requests == []

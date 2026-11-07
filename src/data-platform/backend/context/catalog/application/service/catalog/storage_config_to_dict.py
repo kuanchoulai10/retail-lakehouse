@@ -11,4 +11,8 @@ if TYPE_CHECKING:
 
 def storage_config_to_dict(config: StorageConfig) -> dict[str, Any]:
     """Return every StorageConfig field by its snake_case name; unset ones are None."""
-    return {**asdict(config), "allowed_locations": list(config.allowed_locations)}
+    return {
+        **asdict(config),
+        "storage_type": config.storage_type.value,
+        "allowed_locations": list(config.allowed_locations),
+    }

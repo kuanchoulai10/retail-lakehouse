@@ -42,7 +42,8 @@ class PolarisHttpClient:
     its parts joined by the unit separator U+001F, sent as ``%1F``.
 
     The client-credentials token is fetched on the first request and reused. When Polaris
-    answers 401, the token is dropped, a new one is fetched and the request is retried once.
+    answers 401, the token is dropped, a new one is fetched and the request is retried once;
+    a 401 after that means Polaris rejects the backend credential (CatalogUnavailableError).
     Failing to get a token raises ``CatalogUnavailableError``: it is the backend's own
     credential that failed, not the caller's privileges, and no token is kept, so the next
     request tries again. A transport failure raises ``CatalogUnavailableError`` too, and every
@@ -134,7 +135,11 @@ class PolarisHttpClient:
             raise CatalogUnavailableError(f"could not get a Polaris token, Polaris is unreachable: {exc}") from exc
         except _ANY_ERROR as exc:
             raise CatalogUnavailableError(f"could not get a Polaris token: {exc}") from exc
-        token = response.json().get("access_token")
+        try:
+            body = response.json()
+        except ValueError:
+            body = None
+        token = body.get("access_token") if isinstance(body, dict) else None
         if not isinstance(token, str) or not token:
             raise CatalogUnavailableError("could not get a Polaris token: the response has no access token")
         return token

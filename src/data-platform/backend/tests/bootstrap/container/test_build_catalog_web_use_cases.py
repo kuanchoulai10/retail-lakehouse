@@ -65,3 +65,26 @@ def test_unreachable_polaris_is_a_502():
 
     assert response.status_code == 502
     assert "connection refused" in response.json()["detail"]
+
+
+def test_read_never_echoes_a_connection_secret_even_if_polaris_returns_one():
+    """Polaris treats connection secrets as input-only; should a read carry one, our API still drops it."""
+    external = {
+        **SALES,
+        "type": "EXTERNAL",
+        "connectionConfigInfo": {
+            "connectionType": "ICEBERG_REST",
+            "uri": "https://remote.example/api/catalog",
+            "authenticationParameters": {"authenticationType": "BEARER", "bearerToken": "leaked-token"},
+        },
+    }
+    stub = PolarisStub()
+    stub.on("GET", f"{CATALOGS}/sales", httpx.Response(200, json=external))
+    client = TestClient(create_api_app(lambda app: register_routes(app, build_catalog_web_use_cases(stub.client()))))
+
+    response = client.get("/v1/catalogs/sales")
+
+    assert response.status_code == 200
+    assert response.json()["connection_config"]["connection_type"] == "REST"
+    assert response.json()["connection_config"]["authentication"]["authentication_type"] == "BEARER"
+    assert "leaked-token" not in response.text

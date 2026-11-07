@@ -46,7 +46,6 @@ def test_not_found_maps_to_not_found():
     [
         (400, ValidationError),
         (422, ValidationError),
-        (401, PermissionDeniedError),
         (403, PermissionDeniedError),
         (404, NotFoundError),
         (409, ConflictError),
@@ -59,6 +58,12 @@ def test_status_mapping(status: int, error: type[Exception]):
     """Each error status maps to its application exception; any other error status is unavailable."""
     with pytest.raises(error, match="^boom$"):
         raise_for_polaris(_polaris_error(status, "boom"))
+
+
+def test_unauthorized_is_the_backend_credential_being_rejected():
+    """Every request carries the backend's own credential, so a 401 is an upstream fault, not a user privilege."""
+    with pytest.raises(CatalogUnavailableError, match="^the catalog rejected the backend credential: expired$"):
+        raise_for_polaris(_polaris_error(401, "expired"))
 
 
 @pytest.mark.parametrize("status", [200, 201, 204, 304])

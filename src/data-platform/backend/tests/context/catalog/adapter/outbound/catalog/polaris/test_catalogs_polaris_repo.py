@@ -10,12 +10,21 @@ import httpx
 import pytest
 
 from context.catalog.adapter.outbound.catalog.polaris import CatalogsPolarisRepo
-from context.catalog.application.exceptions import ConflictError, ValidationError
+from context.catalog.application.exceptions import (
+    CatalogUnavailableError,
+    ConflictError,
+    ValidationError,
+)
 from context.catalog.application.port.outbound.catalog import (
+    AuthenticationParameters,
+    AuthenticationType,
     Catalog,
     CatalogId,
     CatalogType,
+    ConnectionConfig,
+    ConnectionType,
     StorageConfig,
+    StorageType,
 )
 from tests.context.catalog.adapter.outbound.shared.polaris.polaris_stub import (
     PolarisStub,
@@ -51,13 +60,37 @@ def _catalog(name: str = "sales", version: int = 0) -> Catalog:
         type=CatalogType.INTERNAL,
         properties={"default-base-location": f"s3://bucket/{name}"},
         storage_config=StorageConfig(
-            storage_type="S3",
+            storage_type=StorageType.S3,
             allowed_locations=("s3://bucket/",),
             endpoint="http://rustfs:9000",
             path_style_access=True,
         ),
         entity_version=version,
     )
+
+
+OAUTH_CONNECTION = ConnectionConfig(
+    connection_type=ConnectionType.REST,
+    uri="https://remote.example/api/catalog",
+    authentication=AuthenticationParameters(
+        authentication_type=AuthenticationType.OAUTH,
+        token_uri="https://remote.example/oauth/tokens",
+        client_id="remote-client",
+        client_secret="remote-s3cr3t",
+        scopes=("PRINCIPAL_ROLE:ALL",),
+    ),
+)
+POLARIS_OAUTH_CONNECTION: dict[str, Any] = {
+    "connectionType": "ICEBERG_REST",
+    "uri": "https://remote.example/api/catalog",
+    "authenticationParameters": {
+        "authenticationType": "OAUTH",
+        "tokenUri": "https://remote.example/oauth/tokens",
+        "clientId": "remote-client",
+        "clientSecret": "remote-s3cr3t",
+        "scopes": ["PRINCIPAL_ROLE:ALL"],
+    },
+}
 
 
 def _body(request: httpx.Request) -> Any:  # noqa: ANN401
@@ -146,7 +179,7 @@ def test_get_maps_every_polaris_field():
     assert catalog.type is CatalogType.INTERNAL
     assert catalog.properties == {"default-base-location": "s3://bucket/sales"}
     assert catalog.storage_config == StorageConfig(
-        storage_type="S3",
+        storage_type=StorageType.S3,
         allowed_locations=("s3://bucket/",),
         endpoint="http://rustfs:9000",
         path_style_access=True,
@@ -185,3 +218,117 @@ def test_catalog_name_is_percent_encoded_in_the_path():
 
     assert catalog is not None
     assert catalog.id == CatalogId.of("my cat/x")
+
+
+def test_create_external_catalog_sends_the_exact_connection_config_info():
+    """An external catalog's connection, secret included, is sent as ``connectionConfigInfo``."""
+    stub = PolarisStub()
+    reply = _polaris_catalog() | {"type": "EXTERNAL", "connectionConfigInfo": {"connectionType": "ICEBERG_REST"}}
+    stub.on("POST", CATALOGS, httpx.Response(201, json=reply))
+    catalog = _catalog()
+    catalog.type = CatalogType.EXTERNAL
+    catalog.connection_config = OAUTH_CONNECTION
+
+    CatalogsPolarisRepo(stub.client()).create(catalog)
+
+    (request,) = stub.requests
+    assert _body(request)["catalog"]["type"] == "EXTERNAL"
+    assert _body(request)["catalog"]["connectionConfigInfo"] == POLARIS_OAUTH_CONNECTION
+
+
+@pytest.mark.parametrize(
+    ("authentication", "expected"),
+    [
+        (
+            {"authenticationType": "BEARER", "bearerToken": "remote-token"},
+            AuthenticationParameters(authentication_type=AuthenticationType.BEARER),
+        ),
+        (
+            {
+                "authenticationType": "SIGV4",
+                "roleArn": "arn:aws:iam::1:role/r",
+                "roleSessionName": "polaris",
+                "externalId": "ext",
+                "signingRegion": "us-west-2",
+                "signingName": "glue",
+            },
+            AuthenticationParameters(
+                authentication_type=AuthenticationType.SIGV4,
+                role_arn="arn:aws:iam::1:role/r",
+                role_session_name="polaris",
+                external_id="ext",
+                signing_region="us-west-2",
+                signing_name="glue",
+            ),
+        ),
+        ({"authenticationType": "IMPLICIT"}, AuthenticationParameters(authentication_type=AuthenticationType.IMPLICIT)),
+        (
+            POLARIS_OAUTH_CONNECTION["authenticationParameters"],
+            AuthenticationParameters(
+                authentication_type=AuthenticationType.OAUTH,
+                token_uri="https://remote.example/oauth/tokens",
+                client_id="remote-client",
+                scopes=("PRINCIPAL_ROLE:ALL",),
+            ),
+        ),
+    ],
+    ids=["bearer", "sigv4", "implicit", "oauth"],
+)
+def test_get_maps_the_connection_config_info_and_drops_any_secret(authentication: dict[str, Any], expected):
+    """The read maps the connection; a secret Polaris might return is never kept."""
+    stub = PolarisStub()
+    connection = {
+        "connectionType": "HIVE",
+        "uri": "thrift://hive:9083",
+        "authenticationParameters": authentication,
+        "serviceIdentity": {"identityType": "AWS_IAM", "iamArn": "arn:aws:iam::1:user/polaris"},
+    }
+    stub.on(
+        "GET", f"{CATALOGS}/sales", httpx.Response(200, json=_polaris_catalog() | {"connectionConfigInfo": connection})
+    )
+
+    catalog = CatalogsPolarisRepo(stub.client()).get(CatalogId.of("sales"))
+
+    assert catalog is not None
+    assert catalog.connection_config == ConnectionConfig(
+        connection_type=ConnectionType.HIVE, uri="thrift://hive:9083", authentication=expected
+    )
+
+
+def test_get_of_a_catalog_without_connection_has_none():
+    """An internal catalog reads back without a connection."""
+    stub = PolarisStub()
+    stub.on("GET", f"{CATALOGS}/sales", httpx.Response(200, json=_polaris_catalog()))
+
+    catalog = CatalogsPolarisRepo(stub.client()).get(CatalogId.of("sales"))
+
+    assert catalog is not None
+    assert catalog.connection_config is None
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        ({"type": "FEDERATED"}, "unknown catalog type 'FEDERATED'"),
+        ({"storageConfigInfo": {"storageType": "NFS"}}, "unknown storage type 'NFS'"),
+        ({"connectionConfigInfo": {"connectionType": "JDBC"}}, "unknown connection type 'JDBC'"),
+        (
+            {
+                "connectionConfigInfo": {
+                    "connectionType": "HIVE",
+                    "authenticationParameters": {"authenticationType": "X"},
+                }
+            },
+            "unknown authentication type 'X'",
+        ),
+    ],
+)
+def test_unknown_enum_value_from_polaris_is_unavailable(change: dict[str, Any], message: str):
+    """A value this backend does not know is a clear upstream fault, not an unhandled error."""
+    stub = PolarisStub()
+    stub.on("GET", f"{CATALOGS}/sales", httpx.Response(200, json=_polaris_catalog() | change))
+
+    with pytest.raises(
+        CatalogUnavailableError, match=f"Polaris returned catalog sales in a form this backend cannot read: {message}"
+    ):
+        CatalogsPolarisRepo(stub.client()).get(CatalogId.of("sales"))

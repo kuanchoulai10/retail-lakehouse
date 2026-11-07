@@ -3,22 +3,26 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from base import ValueObject
+
+if TYPE_CHECKING:
+    from context.catalog.application.domain.model.catalog.storage_type import StorageType
 
 
 @dataclass(frozen=True)
 class StorageConfig(ValueObject):
     """Where a catalog may keep its data and how to reach that storage.
 
-    ``storage_type`` is ``S3``, ``AZURE``, ``GCS`` or ``FILE``; ``allowed_locations`` are the
+    ``allowed_locations`` are the
     location prefixes tables may use. The other fields apply to one storage type each and
     are ``None`` when unset: the S3 ones (``region`` to ``path_style_access``), the Azure
     ones (``tenant_id``, ``multi_tenant_app_name``, ``consent_url``) and the GCS one
     (``gcs_service_account``). ``user_arn`` is assigned by the catalog service, never sent.
     """
 
-    storage_type: str
+    storage_type: StorageType
     allowed_locations: tuple[str, ...] = ()
     region: str | None = None
     role_arn: str | None = None
