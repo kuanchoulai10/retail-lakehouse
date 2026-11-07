@@ -1,6 +1,6 @@
 # Catalog context and catalog pages: design
 
-Date: 2026-11-07. Status: draft, waiting for owner approval. The builder-check questions are answered: owner answers are marked "(owner)", and my own decisions are marked "(my call)".
+Date: 2026-11-07. Status: approved by the owner on 2026-11-07. Owner answers are marked "(owner)", and my own decisions are marked "(my call)".
 
 ## Intent
 
