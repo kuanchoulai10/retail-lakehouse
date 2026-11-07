@@ -61,8 +61,8 @@ class TestDirectoryStructure:
 
     def test_context_without_hybrid_or_event_consumer_passes_layout(self, tmp_path: Path):
         """A context with only web inbound and outbound adapters meets the layout rules."""
-        for subdir in REQUIRED_ADAPTER_SUBDIRECTORIES:
-            (tmp_path / subdir).mkdir(parents=True)
+        (tmp_path / "adapter" / "inbound" / "web").mkdir(parents=True)
+        (tmp_path / "adapter" / "outbound").mkdir(parents=True)
         assert missing_adapter_subdirectories(tmp_path) == []
 
     def test_context_without_web_fails_layout(self, tmp_path: Path):

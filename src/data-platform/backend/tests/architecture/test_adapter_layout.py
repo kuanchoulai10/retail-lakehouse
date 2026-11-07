@@ -8,6 +8,7 @@ import pytest
 
 from tests.architecture.contexts import context_dir, context_names
 from tests.architecture.test_aggregate_axis import subdirs
+from tests.architecture.test_directory_structure import missing_adapter_subdirectories
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -73,6 +74,7 @@ def test_hybrid_without_temporal_is_allowed(tmp_path: Path):
     )
     assert adapter_top_level_violations(tmp_path) == []
     assert hybrid_tech_violations(tmp_path) == []
+    assert missing_adapter_subdirectories(tmp_path) == []
 
 
 def test_partial_temporal_dir_still_fails(tmp_path: Path):

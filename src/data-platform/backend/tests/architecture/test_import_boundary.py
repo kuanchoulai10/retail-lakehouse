@@ -15,14 +15,15 @@ from typing import TYPE_CHECKING
 import pytest
 
 from base import AggregateRoot, Repository
-from tests.architecture.aggregates import aggregates
+from tests.architecture.aggregates import aggregates, derive_aggregates
 from tests.architecture.boundaries import (
     BACKEND,
     PROJECT_PACKAGES,
     boundaries,
     innermost_boundary,
 )
-from tests.architecture.contexts import context_module, context_names
+from tests.architecture.contexts import context_dir, context_module, context_names
+from tests.architecture.fixture_context import build_fixture_context
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -322,26 +323,92 @@ def aggregates_without_one_repository_port(wanted: set[str], counts: dict[str, i
     return sorted(name for name in wanted if counts.get(name, 0) != 1)
 
 
-def _repository_port_counts(context: str) -> dict[str, int]:
-    prefix = f"{context_module(context)}.application.port.outbound."
+def repository_port_counts(module: str, context_root: Path) -> dict[str, int]:
+    """Count the repository ports each ``application/port/outbound/<aggregate>`` package of a context exports."""
+    outbound = context_root / "application" / "port" / "outbound"
     counts: dict[str, int] = {}
-    for boundary, _repo in _repository_ports():
-        if boundary.startswith(prefix):
-            name = boundary.removeprefix(prefix).split(".")[0]
-            counts[name] = counts.get(name, 0) + 1
+    for package_dir in sorted(outbound.iterdir()):
+        if not (package_dir / "__init__.py").is_file():
+            continue
+        package = importlib.import_module(f"{module}.application.port.outbound.{package_dir.name}")
+        counts[package_dir.name] = sum(
+            1
+            for name in package.__all__
+            if isinstance(value := getattr(package, name), type)
+            and issubclass(value, Repository)
+            and value is not Repository
+        )
     return counts
 
 
 @pytest.mark.parametrize("context", context_names())
 def test_each_aggregate_has_one_repository_port_per_context(context: str):
     """Every aggregate of a context has exactly one repository port in its own outbound port package."""
-    wanted = aggregates(context)
-    assert aggregates_without_one_repository_port(wanted, _repository_port_counts(context)) == []
+    counts = repository_port_counts(context_module(context), context_dir(context))
+    assert aggregates_without_one_repository_port(aggregates(context), counts) == []
 
 
 def test_missing_or_duplicate_repository_port_is_reported():
     """An aggregate with no repository port, or with two, is reported."""
     assert aggregates_without_one_repository_port({"a", "b", "c"}, {"a": 1, "c": 2}) == ["b", "c"]
+
+
+_AGGREGATE_MODEL = '''"""An aggregate."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from base import AggregateRoot, EntityId
+
+
+@dataclass(frozen=True)
+class {name}Id(EntityId):
+    """Identify a {name}."""
+
+
+class {name}(AggregateRoot[{name}Id]):
+    """A {name}."""
+'''
+_REPO_PORTS = '''"""Repository ports."""
+
+from __future__ import annotations
+
+from base import Entity, Repository
+
+{classes}
+
+__all__ = [{exports}]
+'''
+
+
+def _repo_ports_source(name: str, repos: int) -> str:
+    classes = "\n\n".join(f"class {name}Repo{i}(Repository[Entity]):\n    '''A repo.'''\n" for i in range(repos))
+    exports = ", ".join(f'"{name}Repo{i}"' for i in range(repos))
+    return _REPO_PORTS.format(classes=classes, exports=exports)
+
+
+def test_context_with_missing_and_duplicate_repository_ports_is_reported(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """In a fixture context, an aggregate without a repo port and one with two are both reported."""
+    layout = {"sprocket": 1, "gadget": 0, "widget": 2}
+    files: dict[str, str] = {}
+    for aggregate, repos in layout.items():
+        files[f"application/domain/model/{aggregate}/__init__.py"] = _AGGREGATE_MODEL.format(
+            name=aggregate.capitalize()
+        )
+        files[f"application/port/outbound/{aggregate}/__init__.py"] = (
+            _repo_ports_source(aggregate.capitalize(), repos)
+            if repos
+            else '"""No repo."""\n\n__all__: list[str] = []\n'
+        )
+    package = build_fixture_context(tmp_path, files)
+    monkeypatch.syspath_prepend(str(tmp_path))
+    counts = repository_port_counts(package, tmp_path / package)
+    assert counts == layout
+    wanted = derive_aggregates(f"{package}.application.domain.model")
+    assert aggregates_without_one_repository_port(wanted, counts) == ["gadget", "widget"]
 
 
 BOUNDARY_FREE_MODULES = {
