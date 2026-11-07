@@ -59,6 +59,7 @@ api_get() {
 api_get /healthz
 api_get /v1/table-discovery-settings
 api_get /v1/tables
+api_get /v1/catalogs
 
 PRESETS="$(kubectl exec deployment/table-maintenance-api \
   --namespace "${NAMESPACE}" \
@@ -108,7 +109,7 @@ awk '$2 == "polaris-catalog-events" && $7 != "-" && $7 != "" {found = 1} END {ex
 
 gateway::assert_routes_allowed "${NAMESPACE}"
 gateway::assert_route_accepted "${NAMESPACE}" console
-for path in /console /console/ /console/tables/x/commits; do
+for path in /console /console/ /console/catalogs; do
   PAGE="$(gateway::curl "${path}" -fsSL)"
   grep -qF '<div id="root">' <<<"${PAGE}" \
     || { echo "${path} through the gateway is not the console" >&2; exit 1; }

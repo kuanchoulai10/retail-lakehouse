@@ -32,6 +32,7 @@ temporal:
 
 catalog:
   uri: http://polaris.lakehouse-catalog.svc.cluster.local:8181/api/catalog
+  managementUri: http://polaris.lakehouse-catalog.svc.cluster.local:8181/api/management/v1
   scope: PRINCIPAL_ROLE:ALL
   names:
     - iceberg

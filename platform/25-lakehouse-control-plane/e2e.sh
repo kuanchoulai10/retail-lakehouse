@@ -21,6 +21,8 @@ DISCOVERY_TIMEOUT_SECONDS="${DISCOVERY_TIMEOUT_SECONDS:-900}"
 RUN_TIMEOUT_SECONDS="${RUN_TIMEOUT_SECONDS:-3600}"
 EXPIRE_AGE_SECONDS=60
 TRINO_PID=""
+RT_BUCKET="tm-e2e-catalogs"
+RT_CATALOG=""
 
 log::on_success "Table maintenance e2e passed"
 log::on_failure "Table maintenance e2e failed"
@@ -28,6 +30,11 @@ log::on_failure "Table maintenance e2e failed"
 cleanup() {
   if [[ -n "${TRINO_PID}" ]]; then
     kill "${TRINO_PID}" 2>/dev/null || true
+  fi
+  if [[ -n "${RT_CATALOG}" ]]; then
+    drop_round_trip_catalog || echo "could not drop the round-trip catalog ${RT_CATALOG}" >&2
+    remove_prefix "${RT_BUCKET}/${RT_CATALOG}/" \
+      || echo "could not remove s3://${RT_BUCKET}/${RT_CATALOG}/" >&2
   fi
 }
 trap '__log::on_exit $?; cleanup' EXIT
@@ -54,6 +61,273 @@ except urllib.error.HTTPError as error:
     print(method, path, error.code, error.read().decode(), file=sys.stderr)
     sys.exit(1)
 ' "$@"
+}
+
+api_call() {
+  kubectl exec deployment/table-maintenance-api \
+    --container api \
+    --namespace "${NAMESPACE}" \
+    --context "${KUBE_CONTEXT}" \
+    -- python -c '
+import json, sys, urllib.error, urllib.request
+method, path = sys.argv[1], sys.argv[2]
+body = sys.argv[3].encode() if len(sys.argv) > 3 else None
+request = urllib.request.Request("http://localhost:8000" + path, data=body, method=method)
+request.add_header("Content-Type", "application/json")
+try:
+    with urllib.request.urlopen(request, timeout=30) as response:
+        status, text = response.status, response.read().decode()
+except urllib.error.HTTPError as error:
+    status, text = error.code, error.read().decode()
+print(json.dumps({"status": status, "body": json.loads(text) if text else None}))
+' "$@"
+}
+
+POLARIS_PY_PRELUDE='
+import json, os, sys, urllib.error, urllib.parse, urllib.request
+CATALOG_API = os.environ["GLAC_CATALOG__URI"].rstrip("/")
+MANAGEMENT_API = os.environ["GLAC_CATALOG__MANAGEMENT_URI"].rstrip("/")
+_id, _, _secret = os.environ["GLAC_CATALOG__CREDENTIAL"].partition(":")
+_form = urllib.parse.urlencode({"grant_type": "client_credentials", "client_id": _id,
+    "client_secret": _secret, "scope": os.environ["GLAC_CATALOG__SCOPE"]}).encode()
+with urllib.request.urlopen(CATALOG_API + "/v1/oauth/tokens", data=_form, timeout=30) as _reply:
+    _token = json.load(_reply)["access_token"]
+del _id, _secret, _form
+
+def polaris(base, method, path, body=None):
+    request = urllib.request.Request(base + path, data=body, method=method)
+    request.add_header("Authorization", "Bearer " + _token)
+    request.add_header("Content-Type", "application/json")
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            status, text = response.status, response.read().decode()
+    except urllib.error.HTTPError as error:
+        status, text = error.code, error.read().decode()
+    payload = json.loads(text) if text else None
+    if isinstance(payload, dict):
+        payload.pop("config", None)
+    return status, payload
+
+def q(value):
+    return urllib.parse.quote(value, safe="")
+'
+
+polaris() {
+  kubectl exec deployment/table-maintenance-api \
+    --container api \
+    --namespace "${NAMESPACE}" \
+    --context "${KUBE_CONTEXT}" \
+    -- python -c "${POLARIS_PY_PRELUDE}"'
+api, method, path = sys.argv[1], sys.argv[2], sys.argv[3]
+body = sys.argv[4].encode() if len(sys.argv) > 4 else None
+status, payload = polaris(CATALOG_API if api == "catalog" else MANAGEMENT_API, method, path, body)
+print(json.dumps({"status": status, "body": payload}))
+' "$@"
+}
+
+drop_round_trip_catalog() {
+  kubectl exec deployment/table-maintenance-api \
+    --container api \
+    --namespace "${NAMESPACE}" \
+    --context "${KUBE_CONTEXT}" \
+    -- python -c "${POLARIS_PY_PRELUDE}"'
+catalog = sys.argv[1]
+if polaris(MANAGEMENT_API, "GET", "/catalogs/" + q(catalog))[0] == 404:
+    sys.exit(0)
+
+def namespaces(parent):
+    query = "?parent=" + q("\x1f".join(parent)) if parent else ""
+    _, body = polaris(CATALOG_API, "GET", "/v1/" + q(catalog) + "/namespaces" + query)
+    found = []
+    for child in (body or {}).get("namespaces", []):
+        found.extend(namespaces(child))
+        found.append(child)
+    return found
+
+for parts in namespaces([]):
+    ns = q("\x1f".join(parts))
+    for prefix, kind, suffix in (("/v1/", "views", ""), ("/polaris/v1/", "generic-tables", ""),
+                                 ("/v1/", "tables", "?purgeRequested=false")):
+        listing = prefix + q(catalog) + "/namespaces/" + ns + "/" + kind
+        _, body = polaris(CATALOG_API, "GET", listing)
+        for identifier in (body or {}).get("identifiers", []):
+            polaris(CATALOG_API, "DELETE", listing + "/" + q(identifier["name"]) + suffix)
+    polaris(CATALOG_API, "DELETE", "/v1/" + q(catalog) + "/namespaces/" + ns)
+_, body = polaris(MANAGEMENT_API, "GET", "/catalogs/" + q(catalog) + "/catalog-roles")
+for role in (body or {}).get("roles", []):
+    if role["name"] != "catalog_admin":
+        polaris(MANAGEMENT_API, "DELETE", "/catalogs/" + q(catalog) + "/catalog-roles/" + q(role["name"]))
+status, body = polaris(MANAGEMENT_API, "DELETE", "/catalogs/" + q(catalog))
+print("dropped catalog", catalog, status, json.dumps(body) if body else "", file=sys.stderr)
+sys.exit(0 if status in (204, 404) else 1)
+' "${RT_CATALOG}"
+}
+
+check() {
+  local filter="$1" json="$2" message="$3"
+  shift 3
+  jq -e "$@" "${filter}" <<<"${json}" >/dev/null || {
+    echo "${message}: $(jq -c . <<<"${json}")" >&2
+    return 1
+  }
+}
+
+expect_gone() {
+  local api="$1" path="$2" label="$3" reply
+  reply="$(polaris "${api}" GET "${path}")"
+  check '.status == 404' "${reply}" "${label} still exists in Polaris after the delete"
+  progress "catalog round trip: ${label} deleted, Polaris answers 404"
+}
+
+# shellcheck disable=SC2016
+catalog_round_trip() {
+  local catalog ns child base iceberg storage reply created version uuid location stale
+  catalog="tm_e2e_catalog_$(date +%s)"
+  ns="tm_e2e"
+  child="tm_e2e%1Fa.b"
+  iceberg="$(api GET "/v1/catalogs/${CATALOG}")"
+  base="s3://${RT_BUCKET}/${catalog}"
+  storage="$(jq -c --arg base "${base}" '.storage_config | {storage_type, allowed_locations: [$base],
+    endpoint, sts_endpoint, path_style_access}' <<<"${iceberg}")"
+
+  progress "catalog round trip: creating ${catalog} at ${base}"
+  ensure_bucket "${RT_BUCKET}"
+  RT_CATALOG="${catalog}"
+  created="$(api POST /v1/catalogs "$(jq -cn --arg name "${catalog}" --arg base "${base}" \
+    --argjson storage "${storage}" '{name: $name, type: "INTERNAL", default_base_location: $base,
+      storage_config: $storage}')")"
+  reply="$(polaris management GET "/catalogs/${catalog}")"
+  check '.status == 200 and .body.type == "INTERNAL"
+    and .body.properties["default-base-location"] == $base
+    and any(.body.storageConfigInfo.allowedLocations[]; rtrimstr("/") == $base)' \
+    "${reply}" "Polaris does not hold the catalog as written" --arg base "${base}"
+  reply="$(polaris management GET "/catalogs/${catalog}/catalog-roles/catalog_admin/grants")"
+  check 'any(.body.grants[]; .type == "catalog" and .privilege == "CATALOG_MANAGE_CONTENT")' \
+    "${reply}" "catalog_admin of ${catalog} lacks CATALOG_MANAGE_CONTENT"
+  progress "catalog round trip: catalog_admin holds CATALOG_MANAGE_CONTENT"
+  check 'any(.[]; .name == $c)' "$(api GET /v1/catalogs)" "the catalog list lacks ${catalog}" \
+    --arg c "${catalog}"
+
+  version="$(jq '.entity_version' <<<"${created}")"
+  api PUT "/v1/catalogs/${catalog}" "$(jq -cn --argjson v "${version}" --arg base "${base}" \
+    --argjson storage "${storage}" '{entity_version: $v, default_base_location: $base,
+      properties: {"tm-e2e": "updated"}, storage_config: $storage}')" >/dev/null
+  reply="$(polaris management GET "/catalogs/${catalog}")"
+  check '.body.properties["tm-e2e"] == "updated"' "${reply}" "the catalog update did not reach Polaris"
+  stale="$(api_call PUT "/v1/catalogs/${catalog}" "$(jq -cn --argjson v "${version}" \
+    --arg base "${base}" --argjson storage "${storage}" '{entity_version: $v,
+      default_base_location: $base, properties: {"tm-e2e": "stale"}, storage_config: $storage}')")"
+  reply="$(polaris management PUT "/catalogs/${catalog}" "$(jq -cn --argjson v "${version}" \
+    '{currentEntityVersion: $v, properties: {"tm-e2e": "stale"}}')")"
+  progress "catalog round trip: Polaris stale catalog update: $(jq -c . <<<"${reply}")"
+  progress "catalog round trip: our stale catalog update: $(jq -c . <<<"${stale}")"
+  check '$polaris.status == 409 and ($polaris.body.error.message | length > 0)' "${stale}" \
+    "Polaris did not refuse the stale catalog update with a 409 message" --argjson polaris "${reply}"
+  check '.status == 409 and (.body.detail | endswith("changed since you loaded it, reload"))' \
+    "${stale}" "a stale catalog update is not our 409 reload message"
+
+  progress "catalog round trip: namespaces [${ns}] and [${ns}, a.b]"
+  api POST "/v1/catalogs/${catalog}/namespaces" \
+    '{"namespace": ["tm_e2e"], "properties": {"owner": "tm-e2e"}}' >/dev/null
+  api POST "/v1/catalogs/${catalog}/namespaces" '{"namespace": ["tm_e2e", "a.b"]}' >/dev/null
+  reply="$(polaris catalog GET "/v1/${catalog}/namespaces/${child}")"
+  check '.status == 200 and .body.namespace == ["tm_e2e", "a.b"]' "${reply}" \
+    "Polaris does not hold the namespace [tm_e2e, a.b]"
+  check 'any(.[]; .namespace == ["tm_e2e"])' "$(api GET "/v1/catalogs/${catalog}/namespaces")" \
+    "the namespace list lacks [tm_e2e]"
+  check 'any(.[]; .namespace == ["tm_e2e", "a.b"])' \
+    "$(api GET "/v1/catalogs/${catalog}/namespaces?parent=${ns}")" "the child list lacks [tm_e2e, a.b]"
+  api PUT "/v1/catalogs/${catalog}/namespaces/${ns}/properties" \
+    '{"updates": {"stage": "round-trip"}, "removals": ["owner"]}' >/dev/null
+  reply="$(polaris catalog GET "/v1/${catalog}/namespaces/${ns}")"
+  check '.body.properties.stage == "round-trip" and (.body.properties | has("owner") | not)' \
+    "${reply}" "the namespace properties update did not reach Polaris"
+
+  location="${base}/tm_e2e/a.b/rt_orders_custom"
+  progress "catalog round trip: table rt_orders at ${location}, partitioned by day(order_ts)"
+  created="$(api POST "/v1/catalogs/${catalog}/namespaces/${child}/tables" "$(jq -cn \
+    --arg location "${location}" '{name: "rt_orders",
+      schema_fields: [{name: "id", type: "long"}, {name: "order_ts", type: "timestamptz", required: false}],
+      partition_fields: [{source_column: "order_ts", transform: "day"}],
+      location: $location, properties: {"tm-e2e": "created"}}')")"
+  uuid="$(jq -r '.uuid' <<<"${created}")"
+  reply="$(polaris catalog GET "/v1/${catalog}/namespaces/${child}/tables/rt_orders")"
+  check '.body.metadata as $m | .status == 200 and $m["table-uuid"] == $uuid
+    and $m.location == $location and $m.properties["tm-e2e"] == "created"
+    and ([$m.schemas[] | select(.["schema-id"] == $m["current-schema-id"]) | .fields[]
+      | [.name, .type, .required]] == [["id", "long", true], ["order_ts", "timestamptz", false]])
+    and ([$m["partition-specs"][] | select(.["spec-id"] == $m["default-spec-id"]) | .fields[]
+      | .transform] == ["day"])' \
+    "${reply}" "Polaris does not hold the table as written" --arg uuid "${uuid}" --arg location "${location}"
+  check 'any(.[]; .name == "rt_orders")' \
+    "$(api GET "/v1/catalogs/${catalog}/namespaces/${child}/tables")" "the table list lacks rt_orders"
+  api PUT "/v1/catalogs/${catalog}/namespaces/${child}/tables/rt_orders/properties" "$(jq -cn \
+    --arg uuid "${uuid}" '{expected_uuid: $uuid, updates: {"tm-e2e": "updated"}}')" >/dev/null
+  reply="$(polaris catalog GET "/v1/${catalog}/namespaces/${child}/tables/rt_orders")"
+  check '.body.metadata.properties["tm-e2e"] == "updated"' "${reply}" \
+    "the table properties update did not reach Polaris"
+  stale="$(api_call PUT "/v1/catalogs/${catalog}/namespaces/${child}/tables/rt_orders/properties" \
+    '{"expected_uuid": "00000000-0000-0000-0000-000000000000", "updates": {"tm-e2e": "stale"}}')"
+  progress "catalog round trip: our table update with another uuid: $(jq -c . <<<"${stale}")"
+  check '.status == 409 and (.body.detail | endswith("changed since you loaded it, reload"))' \
+    "${stale}" "a table update with another uuid is not our 409 reload message"
+  api POST "/v1/catalogs/${catalog}/namespaces/${child}/tables/rt_orders/rename" \
+    '{"target_namespace": ["tm_e2e", "a.b"], "target_name": "rt_orders_renamed"}' >/dev/null
+  expect_gone catalog "/v1/${catalog}/namespaces/${child}/tables/rt_orders" "the old name rt_orders"
+  reply="$(polaris catalog GET "/v1/${catalog}/namespaces/${child}/tables/rt_orders_renamed")"
+  check '.status == 200 and .body.metadata["table-uuid"] == $uuid' "${reply}" \
+    "the renamed table is not the same table in Polaris" --arg uuid "${uuid}"
+
+  progress "catalog round trip: generic table rt_generic"
+  api POST "/v1/catalogs/${catalog}/namespaces/${child}/generic-tables" "$(jq -cn \
+    --arg location "${base}/tm_e2e/a.b/rt_generic" '{name: "rt_generic", format: "delta",
+      base_location: $location, doc: "round trip", properties: {"tm-e2e": "created"}}')" >/dev/null
+  reply="$(polaris catalog GET "/polaris/v1/${catalog}/namespaces/${child}/generic-tables/rt_generic")"
+  check '.status == 200 and .body.table.format == "delta" and .body.table["base-location"] == $location
+    and .body.table.doc == "round trip" and .body.table.properties["tm-e2e"] == "created"' \
+    "${reply}" "Polaris does not hold the generic table as written" \
+    --arg location "${base}/tm_e2e/a.b/rt_generic"
+  check 'any(.[]; .name == "rt_generic")' \
+    "$(api GET "/v1/catalogs/${catalog}/namespaces/${child}/generic-tables")" \
+    "the generic table list lacks rt_generic"
+
+  progress "catalog round trip: view rt_view"
+  api POST "/v1/catalogs/${catalog}/namespaces/${child}/views" \
+    '{"name": "rt_view", "sql": "SELECT 1 AS one", "dialect": "spark"}' >/dev/null
+  reply="$(polaris catalog GET "/v1/${catalog}/namespaces/${child}/views/rt_view")"
+  check '.body.metadata as $m
+    | ([$m.versions[] | select(.["version-id"] == $m["current-version-id"])][0]) as $v
+    | .status == 200
+      and $v.representations == [{type: "sql", sql: "SELECT 1 AS one", dialect: "spark"}]
+      and ([$m.schemas[] | select(.["schema-id"] == $v["schema-id"]) | .fields | length] == [0])' \
+    "${reply}" "Polaris does not hold the view as written"
+  check 'any(.[]; .name == "rt_view")' \
+    "$(api GET "/v1/catalogs/${catalog}/namespaces/${child}/views")" "the view list lacks rt_view"
+
+  stale="$(api_call DELETE "/v1/catalogs/${catalog}/namespaces/${child}")"
+  reply="$(polaris catalog DELETE "/v1/${catalog}/namespaces/${child}")"
+  progress "catalog round trip: Polaris non-empty namespace delete: $(jq -c . <<<"${reply}")"
+  progress "catalog round trip: our non-empty namespace delete: $(jq -c . <<<"${stale}")"
+  check '.status == $polaris.status and .body.detail == $polaris.body.error.message' "${stale}" \
+    "our non-empty namespace delete does not pass the Polaris status and message" \
+    --argjson polaris "${reply}"
+
+  api DELETE "/v1/catalogs/${catalog}/namespaces/${child}/views/rt_view" >/dev/null
+  expect_gone catalog "/v1/${catalog}/namespaces/${child}/views/rt_view" "view rt_view"
+  api DELETE "/v1/catalogs/${catalog}/namespaces/${child}/generic-tables/rt_generic" >/dev/null
+  expect_gone catalog "/polaris/v1/${catalog}/namespaces/${child}/generic-tables/rt_generic" \
+    "generic table rt_generic"
+  api DELETE "/v1/catalogs/${catalog}/namespaces/${child}/tables/rt_orders_renamed" >/dev/null
+  expect_gone catalog "/v1/${catalog}/namespaces/${child}/tables/rt_orders_renamed" \
+    "table rt_orders_renamed"
+  api DELETE "/v1/catalogs/${catalog}/namespaces/${child}" >/dev/null
+  expect_gone catalog "/v1/${catalog}/namespaces/${child}" "namespace [tm_e2e, a.b]"
+  api DELETE "/v1/catalogs/${catalog}/namespaces/${ns}" >/dev/null
+  expect_gone catalog "/v1/${catalog}/namespaces/${ns}" "namespace [tm_e2e]"
+  api DELETE "/v1/catalogs/${catalog}" >/dev/null
+  expect_gone management "/catalogs/${catalog}" "catalog ${catalog}"
+  RT_CATALOG=""
+  remove_prefix "${RT_BUCKET}/${catalog}/"
 }
 
 trino_sql() {
@@ -97,48 +371,50 @@ temporal_cli() {
     -- temporal "$@" --address "${TEMPORAL_ADDRESS}"
 }
 
-object_count() {
-  local prefix="$1" script overrides
-  # shellcheck disable=SC2016
-  script='mc alias set s3 "$S3_ENDPOINT" "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY" >/dev/null
-mc ls --recursive "s3/$PREFIX" | wc -l'
+mc_run() {
+  local script="$1" prefix="$2" overrides pod phase="" rc=1
   overrides="$(jq -cn --arg image "${MC_IMAGE}" --arg script "${script}" \
     --arg endpoint "${S3_ENDPOINT}" --arg prefix "${prefix}" '{spec: {containers: [{
       name: "mc", image: $image,
       envFrom: [{secretRef: {name: "table-maintenance-s3"}}],
       env: [{name: "S3_ENDPOINT", value: $endpoint}, {name: "PREFIX", value: $prefix}],
       command: ["sh", "-ec", $script]}]}}')"
-  local count="" pod phase
-  for _ in 1 2 3; do
-    pod="tm-e2e-mc-$(date +%s)"
-    count=""
-    phase=""
-    if kubectl run "${pod}" \
-        --restart Never \
-        --image "${MC_IMAGE}" \
-        --overrides "${overrides}" \
-        --namespace "${NAMESPACE}" \
-        --context "${KUBE_CONTEXT}" >/dev/null; then
-      for _ in $(seq 1 120); do
-        phase="$(kubectl get "pod/${pod}" \
-          --output jsonpath='{.status.phase}' \
-          --namespace "${NAMESPACE}" \
-          --context "${KUBE_CONTEXT}")" || phase=""
-        [[ "${phase}" == "Succeeded" || "${phase}" == "Failed" ]] && break
-        sleep 1
-      done
-    fi
-    if [[ "${phase}" == "Succeeded" ]]; then
-      count="$(kubectl logs "pod/${pod}" \
-        --namespace "${NAMESPACE}" \
-        --context "${KUBE_CONTEXT}" \
-        | tr -d '[:space:]')" || count=""
-    fi
-    kubectl delete "pod/${pod}" \
-      --ignore-not-found \
-      --wait=false \
+  pod="tm-e2e-mc-$(date +%s)"
+  if kubectl run "${pod}" \
+      --restart Never \
+      --image "${MC_IMAGE}" \
+      --overrides "${overrides}" \
       --namespace "${NAMESPACE}" \
-      --context "${KUBE_CONTEXT}" >/dev/null || true
+      --context "${KUBE_CONTEXT}" >/dev/null; then
+    for _ in $(seq 1 120); do
+      phase="$(kubectl get "pod/${pod}" \
+        --output jsonpath='{.status.phase}' \
+        --namespace "${NAMESPACE}" \
+        --context "${KUBE_CONTEXT}")" || phase=""
+      [[ "${phase}" == "Succeeded" || "${phase}" == "Failed" ]] && break
+      sleep 1
+    done
+  fi
+  if [[ "${phase}" == "Succeeded" ]]; then
+    kubectl logs "pod/${pod}" \
+      --namespace "${NAMESPACE}" \
+      --context "${KUBE_CONTEXT}" && rc=0
+  fi
+  kubectl delete "pod/${pod}" \
+    --ignore-not-found \
+    --wait=false \
+    --namespace "${NAMESPACE}" \
+    --context "${KUBE_CONTEXT}" >/dev/null || true
+  return "${rc}"
+}
+
+object_count() {
+  local prefix="$1" script count
+  # shellcheck disable=SC2016
+  script='mc alias set s3 "$S3_ENDPOINT" "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY" >/dev/null
+mc ls --recursive "s3/$PREFIX" | wc -l'
+  for _ in 1 2 3; do
+    count="$(mc_run "${script}" "${prefix}" | tr -d '[:space:]')" || count=""
     if [[ "${count}" =~ ^[0-9]+$ ]]; then
       echo "${count}"
       return 0
@@ -147,6 +423,27 @@ mc ls --recursive "s3/$PREFIX" | wc -l'
   done
   echo "object count of ${prefix} failed after 3 attempts" >&2
   return 1
+}
+
+ensure_bucket() {
+  local bucket="$1" script
+  # shellcheck disable=SC2016
+  script='mc alias set s3 "$S3_ENDPOINT" "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY" >/dev/null
+mc mb --ignore-existing "s3/$PREFIX" >/dev/null'
+  for _ in 1 2 3; do
+    mc_run "${script}" "${bucket}" >/dev/null && return 0
+    sleep 5
+  done
+  echo "could not create the bucket ${bucket} after 3 attempts" >&2
+  return 1
+}
+
+remove_prefix() {
+  local prefix="$1" script
+  # shellcheck disable=SC2016
+  script='mc alias set s3 "$S3_ENDPOINT" "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY" >/dev/null
+mc rm --recursive --force "s3/$PREFIX" >/dev/null'
+  mc_run "${script}" "${prefix}" >/dev/null
 }
 
 data_prefix() {
@@ -275,6 +572,10 @@ assert_partition_filter() {
   }
   progress "regions where filter: ${filter}"
 }
+
+progress "listing the namespaces of ${CATALOG} through the catalog API"
+api GET "/v1/catalogs/${CATALOG}/namespaces" >/dev/null
+catalog_round_trip
 
 progress "issuing the Trino client certificate for ${TRINO_USER}"
 task --dir "${ROOT}" trino:issue-cert \
@@ -407,6 +708,9 @@ progress "after: ${ORDERS} files=${ORDERS_FILES_AFTER} snapshots=${ORDERS_SNAPSH
 progress "after: ${REGIONS} files=${REGIONS_FILES_AFTER} snapshots=${REGIONS_SNAPSHOTS_AFTER} objects=${REGIONS_OBJECTS_AFTER}"
 
 progress "reading ${ORDERS} metadata, commits, health and storage through the API"
+# shellcheck disable=SC2016
+check 'any(.[]; .name == $t)' "$(api GET "/v1/catalogs/${CATALOG}/namespaces/${SCHEMA}/tables")" \
+  "the table list of ${CATALOG}.${SCHEMA} lacks ${ORDERS}" --arg t "${ORDERS}"
 ORDERS_METADATA="$(api GET "/v1/catalogs/${CATALOG}/namespaces/${SCHEMA}/tables/${ORDERS}")"
 ORDERS_COMMITS="$(api GET "/v1/tables/${ORDERS_UUID}/commits?limit=1000")"
 ORDERS_HEALTH="$(api GET "/v1/tables/${ORDERS_UUID}/health")"

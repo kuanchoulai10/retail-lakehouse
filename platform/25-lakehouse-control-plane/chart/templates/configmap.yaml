@@ -11,6 +11,7 @@ data:
   GLAC_TEMPORAL__ADDRESS: {{ .Values.temporal.address | quote }}
   GLAC_TEMPORAL__NAMESPACE: {{ .Values.temporal.namespace | quote }}
   GLAC_CATALOG__URI: {{ .Values.catalog.uri | quote }}
+  GLAC_CATALOG__MANAGEMENT_URI: {{ .Values.catalog.managementUri | quote }}
   GLAC_CATALOG__SCOPE: {{ .Values.catalog.scope | quote }}
   GLAC_CATALOG__NAMES: {{ .Values.catalog.names | toJson | quote }}
   GLAC_CATALOG__S3_ENDPOINT: {{ .Values.catalog.s3Endpoint | quote }}
