@@ -49,6 +49,8 @@ UTILITY_FILES = {
     "storage_config_from_dict.py",
     "storage_config_to_dict.py",
     "namespace_id_from_parts.py",
+    "table_id_from_parts.py",
+    "partition_spec_from_request.py",
 }
 
 # Known verbs for service naming. This is a pre-defined allowlist, not an
@@ -89,6 +91,7 @@ KNOWN_VERBS = {
     "Include",
     "Exclude",
     "Reset",
+    "Rename",
     "Plan",
     "Record",
 }

@@ -1,0 +1,143 @@
+{
+  "metadata-location": "s3://lakehouse/iceberg/retail/orders/metadata/00002-6b1c2a3e-8f1d-4c55-9a7e-2f0d9c1b7e42.metadata.json",
+  "metadata": {
+    "format-version": 2,
+    "table-uuid": "9c12d441-03fe-4693-9a96-a0705ddf69c1",
+    "location": "s3://lakehouse/iceberg/retail/orders",
+    "last-sequence-number": 2,
+    "last-updated-ms": 1762516800123,
+    "last-column-id": 8,
+    "current-schema-id": 1,
+    "schemas": [
+      {
+        "type": "struct",
+        "schema-id": 0,
+        "fields": [
+          {"id": 1, "name": "order_id", "required": true, "type": "long"},
+          {"id": 2, "name": "customer_id", "required": false, "type": "long"},
+          {"id": 3, "name": "order_ts", "required": false, "type": "timestamptz"}
+        ]
+      },
+      {
+        "type": "struct",
+        "schema-id": 1,
+        "identifier-field-ids": [1],
+        "fields": [
+          {"id": 1, "name": "order_id", "required": true, "type": "long", "doc": "Primary key from MySQL"},
+          {"id": 2, "name": "customer_id", "required": false, "type": "long"},
+          {"id": 3, "name": "order_ts", "required": false, "type": "timestamptz"},
+          {"id": 4, "name": "amount", "required": false, "type": "decimal(10,2)"},
+          {
+            "id": 5,
+            "name": "tags",
+            "required": false,
+            "type": {"type": "list", "element-id": 6, "element": "string", "element-required": false}
+          },
+          {
+            "id": 7,
+            "name": "shipping",
+            "required": false,
+            "type": {
+              "type": "struct",
+              "fields": [
+                {"id": 8, "name": "city", "required": true, "type": "string"}
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "default-spec-id": 0,
+    "partition-specs": [
+      {
+        "spec-id": 0,
+        "fields": [
+          {"name": "order_ts_day", "transform": "day", "source-id": 3, "field-id": 1000}
+        ]
+      }
+    ],
+    "last-partition-id": 1000,
+    "default-sort-order-id": 1,
+    "sort-orders": [
+      {"order-id": 0, "fields": []},
+      {
+        "order-id": 1,
+        "fields": [
+          {"transform": "identity", "source-id": 1, "direction": "asc", "null-order": "nulls-first"}
+        ]
+      }
+    ],
+    "properties": {
+      "write.format.default": "parquet",
+      "write.parquet.compression-codec": "zstd",
+      "owner": "data-eng"
+    },
+    "current-snapshot-id": 3051729675574597004,
+    "refs": {
+      "main": {"snapshot-id": 3051729675574597004, "type": "branch"}
+    },
+    "snapshots": [
+      {
+        "sequence-number": 1,
+        "snapshot-id": 8333017788700497002,
+        "timestamp-ms": 1762513200000,
+        "summary": {
+          "operation": "append",
+          "added-data-files": "2",
+          "added-records": "100",
+          "added-files-size": "4096",
+          "changed-partition-count": "1",
+          "total-records": "100",
+          "total-files-size": "4096",
+          "total-data-files": "2",
+          "total-delete-files": "0",
+          "total-position-deletes": "0",
+          "total-equality-deletes": "0"
+        },
+        "manifest-list": "s3://lakehouse/iceberg/retail/orders/metadata/snap-8333017788700497002-1-a1b2c3d4.avro",
+        "schema-id": 0
+      },
+      {
+        "sequence-number": 2,
+        "snapshot-id": 3051729675574597004,
+        "parent-snapshot-id": 8333017788700497002,
+        "timestamp-ms": 1762516800123,
+        "summary": {
+          "operation": "overwrite",
+          "added-data-files": "1",
+          "deleted-data-files": "1",
+          "added-records": "60",
+          "deleted-records": "10",
+          "added-files-size": "3072",
+          "removed-files-size": "2048",
+          "changed-partition-count": "1",
+          "total-records": "150",
+          "total-files-size": "5120",
+          "total-data-files": "2",
+          "total-delete-files": "0",
+          "total-position-deletes": "0",
+          "total-equality-deletes": "0"
+        },
+        "manifest-list": "s3://lakehouse/iceberg/retail/orders/metadata/snap-3051729675574597004-1-e5f6a7b8.avro",
+        "schema-id": 1
+      }
+    ],
+    "statistics": [],
+    "partition-statistics": [],
+    "snapshot-log": [
+      {"timestamp-ms": 1762513200000, "snapshot-id": 8333017788700497002},
+      {"timestamp-ms": 1762516800123, "snapshot-id": 3051729675574597004}
+    ],
+    "metadata-log": [
+      {
+        "timestamp-ms": 1762513100000,
+        "metadata-file": "s3://lakehouse/iceberg/retail/orders/metadata/00000-0d8e5b7a-1c2f-4a3b-8e9d-5f6a7b8c9d0e.metadata.json"
+      },
+      {
+        "timestamp-ms": 1762513200000,
+        "metadata-file": "s3://lakehouse/iceberg/retail/orders/metadata/00001-3a4b5c6d-7e8f-4a1b-9c2d-3e4f5a6b7c8d.metadata.json"
+      }
+    ]
+  },
+  "config": {}
+}

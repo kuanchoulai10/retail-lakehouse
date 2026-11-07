@@ -14,10 +14,14 @@ from context.catalog.adapter.outbound.shared.polaris.polaris_http_client import 
 from context.catalog.adapter.outbound.shared.polaris.raise_for_paged_listing import (
     raise_for_paged_listing,
 )
+from context.catalog.adapter.outbound.shared.polaris.walk_iceberg_namespaces import (
+    walk_iceberg_namespaces,
+)
 
 __all__ = [
     "PolarisHttpClient",
     "iceberg_namespace_path",
     "raise_for_paged_listing",
     "raise_for_polaris",
+    "walk_iceberg_namespaces",
 ]

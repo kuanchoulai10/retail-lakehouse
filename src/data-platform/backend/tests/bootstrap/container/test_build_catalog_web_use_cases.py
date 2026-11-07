@@ -108,3 +108,26 @@ def test_namespace_with_dot_part_is_served_end_to_end_against_polaris():
     assert created.status_code == 201
     assert created.json()["namespace"] == ["a.b"]
     assert fetched.json() == {"catalog": "sales", "namespace": ["a.b"], "properties": {"k": "v"}}
+
+
+def test_replaced_table_properties_save_is_a_409_reload_end_to_end():
+    """Polaris's 409 on the uuid requirement reaches the user as 409 with the reload message."""
+    stub = PolarisStub()
+    stub.on(
+        "POST",
+        "/api/catalog/v1/sales/namespaces/retail/tables/orders",
+        httpx.Response(409, json={"error": {"message": "Requirement failed: UUID does not match", "code": 409}}),
+    )
+    client = TestClient(create_api_app(lambda app: register_routes(app, build_catalog_web_use_cases(stub.client()))))
+
+    response = client.put(
+        "/v1/catalogs/sales/namespaces/retail/tables/orders/properties",
+        json={"expected_uuid": "old-uuid", "updates": {"tier": "gold"}},
+    )
+
+    assert (response.status_code, response.json()) == (
+        409,
+        {"detail": "table orders changed since you loaded it, reload"},
+    )
+    (request,) = stub.requests
+    assert request.content and b'"assert-table-uuid"' in request.content

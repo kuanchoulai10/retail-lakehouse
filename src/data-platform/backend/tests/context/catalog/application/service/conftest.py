@@ -6,6 +6,7 @@ import pytest
 
 from tests.context.catalog.fakes.in_memory_catalogs_repo import InMemoryCatalogsRepo
 from tests.context.catalog.fakes.in_memory_namespaces_repo import InMemoryNamespacesRepo
+from tests.context.catalog.fakes.in_memory_tables_repo import InMemoryTablesRepo
 from tests.context.catalog.fakes.recording_create_catalog_content_grant_gateway import (
     RecordingCreateCatalogContentGrantGateway,
 )
@@ -27,3 +28,9 @@ def content_grant_gateway() -> RecordingCreateCatalogContentGrantGateway:
 def namespaces_repo() -> InMemoryNamespacesRepo:
     """Provide an empty in-memory namespaces repo."""
     return InMemoryNamespacesRepo()
+
+
+@pytest.fixture
+def tables_repo() -> InMemoryTablesRepo:
+    """Provide an empty in-memory tables repo."""
+    return InMemoryTablesRepo()

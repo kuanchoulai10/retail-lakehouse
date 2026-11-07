@@ -20,6 +20,14 @@ if TYPE_CHECKING:
         ListNamespacesUseCase,
         UpdateNamespacePropertiesUseCase,
     )
+    from context.catalog.application.port.inbound.table import (
+        CreateTableUseCase,
+        DeleteTableUseCase,
+        GetTableUseCase,
+        ListTablesUseCase,
+        RenameTableUseCase,
+        UpdateTablePropertiesUseCase,
+    )
 
 
 @dataclass(frozen=True)
@@ -36,3 +44,9 @@ class WebUseCases:
     create_namespace: CreateNamespaceUseCase
     delete_namespace: DeleteNamespaceUseCase
     update_namespace_properties: UpdateNamespacePropertiesUseCase
+    list_tables: ListTablesUseCase
+    get_table: GetTableUseCase
+    create_table: CreateTableUseCase
+    delete_table: DeleteTableUseCase
+    rename_table: RenameTableUseCase
+    update_table_properties: UpdateTablePropertiesUseCase

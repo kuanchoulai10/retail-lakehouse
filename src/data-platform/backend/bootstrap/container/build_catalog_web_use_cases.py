@@ -10,6 +10,7 @@ from context.catalog.adapter.outbound.catalog.polaris import (
     CreateCatalogContentGrantPolarisGateway,
 )
 from context.catalog.adapter.outbound.namespace.polaris import NamespacesPolarisRepo
+from context.catalog.adapter.outbound.table.polaris import TablesPolarisRepo
 from context.catalog.application.service.catalog import (
     CreateCatalogService,
     DeleteCatalogService,
@@ -24,6 +25,14 @@ from context.catalog.application.service.namespace import (
     ListNamespacesService,
     UpdateNamespacePropertiesService,
 )
+from context.catalog.application.service.table import (
+    CreateTableService,
+    DeleteTableService,
+    GetTableService,
+    ListTablesService,
+    RenameTableService,
+    UpdateTablePropertiesService,
+)
 
 if TYPE_CHECKING:
     from context.catalog.adapter.outbound.shared.polaris import PolarisHttpClient
@@ -33,6 +42,7 @@ def build_catalog_web_use_cases(polaris: PolarisHttpClient) -> WebUseCases:
     """Wire the catalog use cases to their Polaris adapters, all sharing one client."""
     catalogs_repo = CatalogsPolarisRepo(polaris)
     namespaces_repo = NamespacesPolarisRepo(polaris)
+    tables_repo = TablesPolarisRepo(polaris)
     return WebUseCases(
         list_catalogs=ListCatalogsService(catalogs_repo),
         get_catalog=GetCatalogService(catalogs_repo),
@@ -44,4 +54,10 @@ def build_catalog_web_use_cases(polaris: PolarisHttpClient) -> WebUseCases:
         create_namespace=CreateNamespaceService(namespaces_repo),
         delete_namespace=DeleteNamespaceService(namespaces_repo),
         update_namespace_properties=UpdateNamespacePropertiesService(namespaces_repo),
+        list_tables=ListTablesService(tables_repo),
+        get_table=GetTableService(tables_repo),
+        create_table=CreateTableService(tables_repo),
+        delete_table=DeleteTableService(tables_repo),
+        rename_table=RenameTableService(tables_repo),
+        update_table_properties=UpdateTablePropertiesService(tables_repo),
     )
