@@ -8,7 +8,7 @@ from base import UseCase
 from context.table_maintenance.application.port.inbound.table_maintenance_run.list_table_maintenance_runs.input import (
     ListTableMaintenanceRunsUseCaseInput,
 )
-from context.table_maintenance.application.port.inbound.table_maintenance_run.list_table_maintenance_runs.output import (
+from context.table_maintenance.application.port.inbound.table_maintenance_run.list_table_maintenance_runs.output import (  # noqa: E501
     ListTableMaintenanceRunsUseCaseOutput,
 )
 

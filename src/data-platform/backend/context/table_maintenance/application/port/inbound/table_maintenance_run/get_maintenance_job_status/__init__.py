@@ -6,7 +6,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run.ge
 from context.table_maintenance.application.port.inbound.table_maintenance_run.get_maintenance_job_status.output import (
     GetMaintenanceJobStatusUseCaseOutput,
 )
-from context.table_maintenance.application.port.inbound.table_maintenance_run.get_maintenance_job_status.use_case import (
+from context.table_maintenance.application.port.inbound.table_maintenance_run.get_maintenance_job_status.use_case import (  # noqa: E501
     GetMaintenanceJobStatusUseCase,
 )
 

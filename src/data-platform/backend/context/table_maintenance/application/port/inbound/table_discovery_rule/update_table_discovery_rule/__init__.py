@@ -6,7 +6,7 @@ from context.table_maintenance.application.port.inbound.table_discovery_rule.upd
 from context.table_maintenance.application.port.inbound.table_discovery_rule.update_table_discovery_rule.output import (
     UpdateTableDiscoveryRuleUseCaseOutput,
 )
-from context.table_maintenance.application.port.inbound.table_discovery_rule.update_table_discovery_rule.use_case import (
+from context.table_maintenance.application.port.inbound.table_discovery_rule.update_table_discovery_rule.use_case import (  # noqa: E501
     UpdateTableDiscoveryRuleUseCase,
 )
 

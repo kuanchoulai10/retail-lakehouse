@@ -5,7 +5,7 @@ from __future__ import annotations
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission.acquire_signal import (
     AdmissionAcquireSignal,
 )
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission.default_lease_seconds import (
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission.default_lease_seconds import (  # noqa: E501
     DEFAULT_ADMISSION_LEASE_SECONDS,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission.release_signal import (

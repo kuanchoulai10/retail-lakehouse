@@ -23,7 +23,7 @@ from context.table_maintenance.application.service.table_maintenance_run.mainten
 from context.table_maintenance.application.service.table_maintenance_run.process_table_maintenance_callback import (
     ProcessTableMaintenanceCallbackService,
 )
-from context.table_maintenance.application.service.table_maintenance_run.record_table_maintenance_operation_result import (
+from context.table_maintenance.application.service.table_maintenance_run.record_table_maintenance_operation_result import (  # noqa: E501
     RecordTableMaintenanceOperationResultService,
 )
 from context.table_maintenance.application.service.table_maintenance_run.submit_maintenance_operation import (

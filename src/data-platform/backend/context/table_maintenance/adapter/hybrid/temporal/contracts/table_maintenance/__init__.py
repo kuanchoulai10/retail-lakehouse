@@ -5,7 +5,7 @@ from __future__ import annotations
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.activity import (
     TableMaintenanceActivity,
 )
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.default_attempt_deadline_seconds import (
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.default_attempt_deadline_seconds import (  # noqa: E501
     DEFAULT_ATTEMPT_DEADLINE_SECONDS,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.operation_result_signal import (

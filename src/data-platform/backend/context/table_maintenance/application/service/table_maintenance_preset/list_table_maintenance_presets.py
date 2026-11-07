@@ -10,7 +10,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_preset
     ListTableMaintenancePresetsUseCaseOutput,
     ListTableMaintenancePresetsUseCaseOutputItem,
 )
-from context.table_maintenance.application.service.table_maintenance_preset.table_maintenance_preset_output_fields import (
+from context.table_maintenance.application.service.table_maintenance_preset.table_maintenance_preset_output_fields import (  # noqa: E501
     table_maintenance_preset_output_fields,
 )
 

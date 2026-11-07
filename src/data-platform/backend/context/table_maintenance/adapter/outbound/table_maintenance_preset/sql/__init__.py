@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from context.table_maintenance.adapter.outbound.table_maintenance_preset.sql.table_maintenance_preset_row_mapper import (
+from context.table_maintenance.adapter.outbound.table_maintenance_preset.sql.table_maintenance_preset_row_mapper import (  # noqa: E501
     TableMaintenancePresetRowMapper,
 )
 from context.table_maintenance.adapter.outbound.table_maintenance_preset.sql.table_maintenance_presets_sql_repo import (

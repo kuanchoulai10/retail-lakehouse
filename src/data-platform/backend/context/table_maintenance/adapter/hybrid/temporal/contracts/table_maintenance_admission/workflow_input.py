@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission.default_lease_seconds import (
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission.default_lease_seconds import (  # noqa: E501
     DEFAULT_ADMISSION_LEASE_SECONDS,
 )
 

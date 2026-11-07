@@ -6,7 +6,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run.ge
 from context.table_maintenance.application.port.inbound.table_maintenance_run.get_table_maintenance_run.output import (
     GetTableMaintenanceRunUseCaseOutput,
 )
-from context.table_maintenance.application.port.inbound.table_maintenance_run.get_table_maintenance_run.use_case import (
+from context.table_maintenance.application.port.inbound.table_maintenance_run.get_table_maintenance_run.use_case import (  # noqa: E501
     GetTableMaintenanceRunUseCase,
 )
 

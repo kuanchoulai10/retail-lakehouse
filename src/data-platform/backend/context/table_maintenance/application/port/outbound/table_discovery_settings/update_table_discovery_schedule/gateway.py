@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from base import Gateway
 
 if TYPE_CHECKING:
-    from context.table_maintenance.application.port.outbound.table_discovery_settings.update_table_discovery_schedule.input import (
+    from context.table_maintenance.application.port.outbound.table_discovery_settings.update_table_discovery_schedule.input import (  # noqa: E501
         UpdateTableDiscoveryScheduleGatewayInput,
     )
 

@@ -6,7 +6,7 @@ from context.table_maintenance.application.port.inbound.table_discovery_rule.del
 from context.table_maintenance.application.port.inbound.table_discovery_rule.delete_table_discovery_rule.output import (
     DeleteTableDiscoveryRuleUseCaseOutput,
 )
-from context.table_maintenance.application.port.inbound.table_discovery_rule.delete_table_discovery_rule.use_case import (
+from context.table_maintenance.application.port.inbound.table_discovery_rule.delete_table_discovery_rule.use_case import (  # noqa: E501
     DeleteTableDiscoveryRuleUseCase,
 )
 

@@ -5,10 +5,10 @@ from __future__ import annotations
 from abc import abstractmethod
 
 from base import UseCase
-from context.table_maintenance.application.port.inbound.table_maintenance_run.submit_maintenance_operation.input import (
+from context.table_maintenance.application.port.inbound.table_maintenance_run.submit_maintenance_operation.input import (  # noqa: E501
     SubmitMaintenanceOperationUseCaseInput,
 )
-from context.table_maintenance.application.port.inbound.table_maintenance_run.submit_maintenance_operation.output import (
+from context.table_maintenance.application.port.inbound.table_maintenance_run.submit_maintenance_operation.output import (  # noqa: E501
     SubmitMaintenanceOperationUseCaseOutput,
 )
 

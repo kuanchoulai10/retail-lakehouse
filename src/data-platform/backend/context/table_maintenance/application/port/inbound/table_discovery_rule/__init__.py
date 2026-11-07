@@ -8,7 +8,7 @@ from context.table_maintenance.application.port.inbound.table_discovery_rule.cre
 from context.table_maintenance.application.port.inbound.table_discovery_rule.create_table_discovery_rule.output import (
     CreateTableDiscoveryRuleUseCaseOutput,
 )
-from context.table_maintenance.application.port.inbound.table_discovery_rule.create_table_discovery_rule.use_case import (
+from context.table_maintenance.application.port.inbound.table_discovery_rule.create_table_discovery_rule.use_case import (  # noqa: E501
     CreateTableDiscoveryRuleUseCase,
 )
 from context.table_maintenance.application.port.inbound.table_discovery_rule.delete_table_discovery_rule.input import (
@@ -17,7 +17,7 @@ from context.table_maintenance.application.port.inbound.table_discovery_rule.del
 from context.table_maintenance.application.port.inbound.table_discovery_rule.delete_table_discovery_rule.output import (
     DeleteTableDiscoveryRuleUseCaseOutput,
 )
-from context.table_maintenance.application.port.inbound.table_discovery_rule.delete_table_discovery_rule.use_case import (
+from context.table_maintenance.application.port.inbound.table_discovery_rule.delete_table_discovery_rule.use_case import (  # noqa: E501
     DeleteTableDiscoveryRuleUseCase,
 )
 from context.table_maintenance.application.port.inbound.table_discovery_rule.list_table_discovery_rules.input import (
@@ -27,7 +27,7 @@ from context.table_maintenance.application.port.inbound.table_discovery_rule.lis
     ListTableDiscoveryRulesUseCaseOutput,
     ListTableDiscoveryRulesUseCaseOutputItem,
 )
-from context.table_maintenance.application.port.inbound.table_discovery_rule.list_table_discovery_rules.use_case import (
+from context.table_maintenance.application.port.inbound.table_discovery_rule.list_table_discovery_rules.use_case import (  # noqa: E501
     ListTableDiscoveryRulesUseCase,
 )
 from context.table_maintenance.application.port.inbound.table_discovery_rule.update_table_discovery_rule.input import (
@@ -36,7 +36,7 @@ from context.table_maintenance.application.port.inbound.table_discovery_rule.upd
 from context.table_maintenance.application.port.inbound.table_discovery_rule.update_table_discovery_rule.output import (
     UpdateTableDiscoveryRuleUseCaseOutput,
 )
-from context.table_maintenance.application.port.inbound.table_discovery_rule.update_table_discovery_rule.use_case import (
+from context.table_maintenance.application.port.inbound.table_discovery_rule.update_table_discovery_rule.use_case import (  # noqa: E501
     UpdateTableDiscoveryRuleUseCase,
 )
 

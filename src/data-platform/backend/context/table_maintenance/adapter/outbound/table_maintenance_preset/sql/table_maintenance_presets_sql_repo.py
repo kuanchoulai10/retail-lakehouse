@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import delete, insert, select, update
 from sqlalchemy.exc import IntegrityError
 
-from context.table_maintenance.adapter.outbound.table_maintenance_preset.sql.table_maintenance_preset_row_mapper import (
+from context.table_maintenance.adapter.outbound.table_maintenance_preset.sql.table_maintenance_preset_row_mapper import (  # noqa: E501
     TableMaintenancePresetRowMapper,
 )
 from context.table_maintenance.adapter.outbound.table_maintenance_preset.sql.table_maintenance_presets_table import (

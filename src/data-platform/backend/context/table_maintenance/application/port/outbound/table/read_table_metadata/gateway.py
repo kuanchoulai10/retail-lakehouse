@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_metadata import (
         TableMetadata,
     )
-    from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_metadata_observation import (
+    from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_metadata_observation import (  # noqa: E501
         TableMetadataObservation,
     )
     from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_metadata_ref import (

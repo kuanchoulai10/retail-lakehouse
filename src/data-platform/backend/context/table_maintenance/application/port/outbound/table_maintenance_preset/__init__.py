@@ -14,7 +14,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_preset
     TableMaintenancePreset,
     TableMaintenancePresetId,
 )
-from context.table_maintenance.application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (
+from context.table_maintenance.application.port.outbound.table_maintenance_preset.table_maintenance_presets_repo import (  # noqa: E501
     TableMaintenancePresetsRepo,
 )
 
