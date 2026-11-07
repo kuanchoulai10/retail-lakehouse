@@ -21,22 +21,31 @@ import {
   namespacePath,
   namespacesApiPath,
 } from "@/lib/catalogPaths";
+import { useLeavingPage } from "@/lib/useLeavingPage";
 
 type Dialog = "edit" | "delete" | null;
 
+// Keyed by the catalog, so leaving after a delete always unmounts it (see useLeavingPage).
 export function CatalogPage() {
   const { catalog: name = "" } = useParams();
+  return <CatalogDetailsPage key={name} name={name} />;
+}
+
+function CatalogDetailsPage({ name }: { name: string }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [dialog, setDialog] = useState<Dialog>(null);
+  const { leaving, leave } = useLeavingPage([catalogQueryKeys.catalog(name), catalogQueryKeys.namespaceLists(name)]);
 
   const catalog = useQuery({
     queryKey: catalogQueryKeys.catalog(name),
     queryFn: () => apiGet<CatalogApiResponse>(catalogApiPath(name)),
+    enabled: !leaving,
   });
   const namespaces = useQuery({
     queryKey: catalogQueryKeys.namespaces(name, []),
     queryFn: () => apiGet<NamespaceSummaryApiResponse[]>(namespacesApiPath(name, [])),
+    enabled: !leaving,
   });
 
   const removeNamespace = useMutation({
@@ -48,11 +57,11 @@ export function CatalogPage() {
   });
   const removeCatalog = useMutation({
     mutationFn: () => apiSend("DELETE", catalogApiPath(name)),
-    // Leave the page first, so nothing refetches the catalog that is gone.
+    // Stop the catalog's queries before leaving, so nothing refetches the catalog that is
+    // gone; they are dropped when the page unmounts (see useLeavingPage).
     onSuccess: async () => {
+      leave();
       navigate(catalogsPath());
-      queryClient.removeQueries({ queryKey: catalogQueryKeys.catalog(name) });
-      queryClient.removeQueries({ queryKey: catalogQueryKeys.namespaceLists(name) });
       await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.catalogs() });
     },
   });

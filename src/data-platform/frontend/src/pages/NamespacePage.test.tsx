@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -6,17 +7,18 @@ import { describe, expect, it, vi } from "vitest";
 import type { TableIdentifierApiResponse } from "../api/catalogTypes";
 import { bodyOf, callsTo, stubCatalogApi, type StubHandler } from "../test/catalogApiStub";
 import { jsonResponse } from "../test/fixtures";
+import { settle, SuspendForever } from "../test/SuspendForever";
 import { NamespacePage } from "./NamespacePage";
 
 const NS = "/v1/catalogs/iceberg/namespaces/retail";
 
-function renderAt(path: string) {
+function renderAt(path: string, catalogPage: ReactNode = <p>catalog page</p>) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="/catalogs/:catalog" element={<p>catalog page</p>} />
+          <Route path="/catalogs/:catalog" element={catalogPage} />
           <Route path="/catalogs/:catalog/namespaces/:namespace" element={<NamespacePage />} />
         </Routes>
       </MemoryRouter>
@@ -128,6 +130,41 @@ describe("NamespacePage", { timeout: 15_000 }, () => {
     await user.type(screen.getByLabelText(/to confirm/i), "retail");
     await user.click(screen.getByRole("button", { name: "Delete" }));
     expect(await screen.findByText("catalog page")).toBeInTheDocument();
+  });
+
+  it("never refetches the deleted namespace while the navigation is still pending", async () => {
+    const user = userEvent.setup();
+    const calls = stubNamespace({ [`DELETE ${NS}`]: () => new Response(null, { status: 204 }) });
+    renderAt("/catalogs/iceberg/namespaces/retail", <SuspendForever />);
+    await screen.findByRole("region", { name: "Tables and views" });
+    await openAction(user, "Delete");
+    await user.type(screen.getByLabelText(/to confirm/i), "retail");
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await vi.waitFor(() => expect(callsTo(calls, "DELETE", NS)).toHaveLength(1));
+    await settle();
+    for (const path of [NS, `${NS}/tables`, `${NS}/views`, `${NS}/generic-tables`, "/v1/catalogs/iceberg/namespaces?parent=retail"]) {
+      expect(callsTo(calls, "GET", path)).toHaveLength(1);
+    }
+  });
+
+  it("a namespace page reached from a deleted child loads normally", async () => {
+    const user = userEvent.setup();
+    const child = "/v1/catalogs/iceberg/namespaces/retail%1Feu";
+    const calls = stubNamespace({
+      [`GET ${child}`]: () => jsonResponse({ catalog: "iceberg", namespace: ["retail", "eu"], properties: {} }),
+      "GET /v1/catalogs/iceberg/namespaces?parent=retail%1Feu": () => jsonResponse([]),
+      [`GET ${child}/tables`]: () => jsonResponse([]),
+      [`GET ${child}/views`]: () => jsonResponse([]),
+      [`GET ${child}/generic-tables`]: () => jsonResponse([]),
+      [`DELETE ${child}`]: () => new Response(null, { status: 204 }),
+    });
+    renderAt("/catalogs/iceberg/namespaces/retail%1Feu");
+    await screen.findByRole("region", { name: "Tables and views" });
+    await openAction(user, "Delete");
+    await user.type(screen.getByLabelText(/to confirm/i), "eu");
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    expect(await screen.findByRole("link", { name: "orders" })).toBeInTheDocument();
+    expect(callsTo(calls, "GET", child)).toHaveLength(1);
   });
 
   it("edits properties by sending updates and removals", async () => {

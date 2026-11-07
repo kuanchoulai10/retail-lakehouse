@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -6,16 +7,17 @@ import { describe, expect, it, vi } from "vitest";
 import type { NamespaceSummaryApiResponse } from "../api/catalogTypes";
 import { bodyOf, callsTo, catalogFixture, stubCatalogApi, type StubHandler } from "../test/catalogApiStub";
 import { jsonResponse } from "../test/fixtures";
+import { settle, SuspendForever } from "../test/SuspendForever";
 import { CatalogPage } from "./CatalogPage";
 import { NamespacePage } from "./NamespacePage";
 
-function renderAt(path: string) {
+function renderAt(path: string, catalogsPage: ReactNode = <p>catalogs list</p>) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="/catalogs" element={<p>catalogs list</p>} />
+          <Route path="/catalogs" element={catalogsPage} />
           <Route path="/catalogs/:catalog" element={<CatalogPage />} />
           <Route path="/catalogs/:catalog/namespaces/:namespace" element={<NamespacePage />} />
         </Routes>
@@ -181,6 +183,20 @@ describe("CatalogPage", { timeout: 15_000 }, () => {
     await user.click(screen.getByRole("button", { name: "Delete" }));
     expect(await screen.findByText("catalogs list")).toBeInTheDocument();
     expect(callsTo(calls, "DELETE", "/v1/catalogs/iceberg")).toHaveLength(1);
+  });
+
+  it("never refetches the deleted catalog while the navigation is still pending", async () => {
+    const user = userEvent.setup();
+    const calls = stubCatalog({ "DELETE /v1/catalogs/iceberg": () => new Response(null, { status: 204 }) });
+    renderAt("/catalogs/iceberg", <SuspendForever />);
+    await screen.findByRole("link", { name: "retail" });
+    await openAction(user, "Delete");
+    await user.type(screen.getByLabelText(/to confirm/i), "iceberg");
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await vi.waitFor(() => expect(callsTo(calls, "DELETE", "/v1/catalogs/iceberg")).toHaveLength(1));
+    await settle();
+    expect(callsTo(calls, "GET", "/v1/catalogs/iceberg")).toHaveLength(1);
+    expect(callsTo(calls, "GET", "/v1/catalogs/iceberg/namespaces")).toHaveLength(1);
   });
 
   it("saves with the version that was loaded when the dialog opened", async () => {

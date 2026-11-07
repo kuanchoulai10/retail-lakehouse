@@ -18,6 +18,8 @@ interface Props {
   table: CatalogTableApiResponse;
   // The tab the page shows, kept across the move to the new URL.
   tab: string;
+  // Called before navigating to the new URL, so the page stops loading the old name.
+  onLeave: () => void;
   onClose: () => void;
 }
 
@@ -33,7 +35,7 @@ function validationError(parts: string[], name: string, table: CatalogTableApiRe
 
 // Renames the table or moves it to another namespace of the same catalog, then shows it at
 // the URL the catalog answers with.
-export function RenameTableDialog({ table, tab, onClose }: Props) {
+export function RenameTableDialog({ table, tab, onLeave, onClose }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [parts, setParts] = useState(table.namespace);
@@ -43,13 +45,12 @@ export function RenameTableDialog({ table, tab, onClose }: Props) {
   const rename = useMutation({
     mutationFn: (body: RenameTableApiRequest) =>
       apiSend<TableIdentifierApiResponse>("POST", tableRenameApiPath(table.catalog, table.namespace, table.name), body),
-    // Leave the old URL first, then drop the old table's query, so nothing refetches the name
-    // that is gone; the namespace listings of both ends are refetched.
+    // The page stops loading the old name and drops its query when it unmounts (it is keyed by
+    // the table's path, so the new URL mounts a fresh page and this dialog goes with the old
+    // one). The namespace listings of both ends are refetched.
     onSuccess: async (moved) => {
-      // The page is keyed by the table's path, so the new URL mounts it afresh and this
-      // dialog goes with the old one; closing it here would re-render the old page first.
+      onLeave();
       navigate(tablePath(moved.catalog, moved.namespace, moved.name, tab));
-      queryClient.removeQueries({ queryKey: catalogQueryKeys.table(table.catalog, table.namespace, table.name) });
       await Promise.all(
         [table.namespace, moved.namespace].map((namespace) =>
           queryClient.invalidateQueries({ queryKey: catalogQueryKeys.tables(table.catalog, namespace) }),

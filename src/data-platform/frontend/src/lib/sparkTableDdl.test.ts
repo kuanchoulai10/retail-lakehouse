@@ -99,4 +99,39 @@ describe("sparkTableDdl", () => {
     expect(ddl).toContain("'format-version' = '3'");
     expect(ddl).toContain("'note' = 'it''s'");
   });
+
+  it("states the comment property as a COMMENT clause after USING iceberg", () => {
+    const table = catalogTableFixture({
+      partition_spec: { spec_id: 0, fields: [] },
+      sort_order: { order_id: 0, fields: [] },
+      properties: { comment: "the orders, it's all here" },
+    });
+    expect(sparkTableDdl(table)).toContain(
+      ["USING iceberg", "COMMENT 'the orders, it''s all here'", "LOCATION"].join("\n"),
+    );
+    expect(sparkTableDdl(table)).not.toContain("'comment' =");
+  });
+
+  it("skips a void sort field instead of sorting by the bare column", () => {
+    const table = catalogTableFixture({
+      sort_order: {
+        order_id: 2,
+        fields: [
+          { source_id: 1, transform: "void", direction: "asc", null_order: "nulls-first" },
+          { source_id: 2, transform: "day", direction: "desc", null_order: "nulls-last" },
+        ],
+      },
+    });
+    expect(sparkTableDdl(table)).toContain("WRITE ORDERED BY days(`placed_at`) DESC NULLS LAST;");
+  });
+
+  it("writes no sort statement when every sort field is void", () => {
+    const table = catalogTableFixture({
+      sort_order: {
+        order_id: 2,
+        fields: [{ source_id: 1, transform: "void", direction: "asc", null_order: "nulls-first" }],
+      },
+    });
+    expect(sparkTableDdl(table)).not.toContain("ALTER TABLE");
+  });
 });

@@ -1,5 +1,6 @@
+import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { describe, expect, it, vi } from "vitest";
@@ -13,6 +14,7 @@ import {
   type StubHandler,
 } from "../test/catalogApiStub";
 import { jsonResponse, tableFixture } from "../test/fixtures";
+import { settle, SuspendForever } from "../test/SuspendForever";
 import { TablePage } from "./TablePage";
 
 const TABLE = "/v1/catalogs/iceberg/namespaces/retail/tables/orders";
@@ -24,13 +26,13 @@ function Location() {
   return <p data-testid="location">{location.pathname}</p>;
 }
 
-function renderAt(path: string) {
+function renderAt(path: string, namespacePage: ReactNode = <p>namespace page</p>) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="/catalogs/:catalog/namespaces/:namespace" element={<p>namespace page</p>} />
+          <Route path="/catalogs/:catalog/namespaces/:namespace" element={namespacePage} />
           <Route path="/catalogs/:catalog/namespaces/:namespace/tables/:table/:tab?" element={<TablePage />} />
         </Routes>
         <Location />
@@ -294,6 +296,65 @@ describe("TablePage", { timeout: 15_000 }, () => {
     expect(await screen.findByText("namespace page")).toBeInTheDocument();
     expect(callsTo(calls, "DELETE", TABLE)).toHaveLength(1);
     expect(callsTo(calls, "GET", TABLE)).toHaveLength(1);
+  });
+
+  it("never refetches the deleted table while the navigation is still pending", async () => {
+    const user = userEvent.setup();
+    const calls = stubTable({ extra: { [`DELETE ${TABLE}`]: () => new Response(null, { status: 204 }) } });
+    renderAt(PAGE, <SuspendForever />);
+    await openAction(user, "Delete");
+    const dialog = await screen.findByRole("dialog", { name: "Delete table" });
+    await user.type(within(dialog).getByLabelText(/Type orders to confirm/), "orders");
+    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+    await vi.waitFor(() => expect(callsTo(calls, "DELETE", TABLE)).toHaveLength(1));
+    await settle();
+    expect(callsTo(calls, "GET", TABLE)).toHaveLength(1);
+  });
+
+  it("falls back to Overview for an unknown tab segment", async () => {
+    stubTable();
+    renderAt(`${PAGE}/nonsense`);
+    await screen.findByRole("region", { name: "Table" });
+    expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("selects the tab named in the URL", async () => {
+    stubTable();
+    renderAt(`${PAGE}/properties`);
+    expect(await screen.findByText("write.format.default")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Properties" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("navigates to the commits route when the Commits tab is activated", async () => {
+    const user = userEvent.setup();
+    stubTable();
+    renderAt(`${PAGE}/properties`);
+    await screen.findByText("write.format.default");
+    await user.click(screen.getByRole("tab", { name: "Commits" }));
+    expect(await screen.findByText("No commits.")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Commits" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("location")).toHaveTextContent(`${PAGE}/commits`);
+  });
+
+  it("does not switch the page on a modified mousedown", async () => {
+    stubTable();
+    renderAt(`${PAGE}/properties`);
+    await screen.findByText("write.format.default");
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "Commits" }), { button: 0, metaKey: true });
+    expect(screen.getByRole("tab", { name: "Properties" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("location")).toHaveTextContent(`${PAGE}/properties`);
+  });
+
+  it("navigates when a tab is activated with the keyboard", async () => {
+    const user = userEvent.setup();
+    stubTable();
+    renderAt(`${PAGE}/properties`);
+    await screen.findByText("write.format.default");
+    screen.getByRole("tab", { name: "Properties" }).focus();
+    await user.keyboard("{ArrowLeft}");
+    expect(await screen.findByText("No maintenance runs yet.")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Maintenance" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("location")).toHaveTextContent(`${PAGE}/maintenance`);
   });
 
   it("missing table shows renamed-or-dropped state", async () => {

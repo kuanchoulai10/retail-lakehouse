@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { errorMessage } from "@/format";
 import { namespaceFromParam, namespacePath, tableApiPath, tablePath } from "@/lib/catalogPaths";
 import { tableMaintenanceState, type TableMaintenanceState } from "@/lib/tableMaintenanceState";
+import { useLeavingPage } from "@/lib/useLeavingPage";
 
 // The same seven tabs on every Iceberg table, managed or not (spec anti-goal).
 const TABS = [
@@ -76,10 +77,10 @@ function tabBody(tab: TabKey, table: CatalogTableApiResponse, maintenance: Table
 
 // One page for every Iceberg table, joining two contexts by the table uuid only: the catalog
 // table (Polaris facts) and maintenance's table (commits, runs, settings). Keyed by the
-// table's path, so a rename lands on a fresh page with no dialog open.
+// table's path, so a rename or delete always unmounts it and the next table gets a fresh page.
 export function TablePage() {
   const { catalog = "", namespace: param = "", table: name = "", tab } = useParams();
-  return <TableView key={`${catalog}/${param}/${name}`} catalog={catalog} parts={namespaceFromParam(param)} name={name} segment={tab} />;
+  return <TableView key={JSON.stringify([catalog, param, name])} catalog={catalog} parts={namespaceFromParam(param)} name={name} segment={tab} />;
 }
 
 interface TableViewProps {
@@ -94,10 +95,12 @@ function TableView({ catalog, parts, name, segment }: TableViewProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [dialog, setDialog] = useState<Dialog>(null);
+  const { leaving, leave } = useLeavingPage([catalogQueryKeys.table(catalog, parts, name)]);
 
   const table = useQuery({
     queryKey: catalogQueryKeys.table(catalog, parts, name),
     queryFn: () => apiGet<CatalogTableApiResponse>(tableApiPath(catalog, parts, name)),
+    enabled: !leaving,
   });
   const covered = useQuery({
     queryKey: COVERED_CATALOGS_KEY,
@@ -109,16 +112,16 @@ function TableView({ catalog, parts, name, segment }: TableViewProps) {
     // The key the maintenance tabs and invalidateTableState share.
     queryKey: ["table", uuid ?? ""],
     queryFn: () => apiGet<TableApiResponse>(`/v1/tables/${uuid ?? ""}`),
-    enabled: uuid !== undefined,
+    enabled: uuid !== undefined && !leaving,
   });
 
   const remove = useMutation({
     mutationFn: () => apiSend("DELETE", tableApiPath(catalog, parts, name)),
-    // Leave the page first, then drop the table's query so nothing refetches what is gone;
-    // only the namespace's table listing is refetched.
+    // Stop the table's queries before leaving, so nothing refetches what is gone (see
+    // useLeavingPage); only the namespace's table listing is refetched.
     onSuccess: async () => {
+      leave();
       navigate(namespacePath(catalog, parts));
-      queryClient.removeQueries({ queryKey: catalogQueryKeys.table(catalog, parts, name) });
       await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.tables(catalog, parts), exact: true });
     },
   });
@@ -177,7 +180,7 @@ function TableView({ catalog, parts, name, segment }: TableViewProps) {
           </TabsContent>
         ))}
       </Tabs>
-      {dialog === "rename" && <RenameTableDialog table={table.data} tab={tab} onClose={() => setDialog(null)} />}
+      {dialog === "rename" && <RenameTableDialog table={table.data} tab={tab} onLeave={leave} onClose={() => setDialog(null)} />}
       {dialog === "edit" && <EditTablePropertiesDialog table={table.data} onClose={() => setDialog(null)} />}
       {dialog === "delete" && (
         <ConfirmDeleteDialog

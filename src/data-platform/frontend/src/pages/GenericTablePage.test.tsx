@@ -1,21 +1,23 @@
+import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { callsTo, stubCatalogApi } from "../test/catalogApiStub";
 import { jsonResponse } from "../test/fixtures";
+import { settle, SuspendForever } from "../test/SuspendForever";
 import { GenericTablePage } from "./GenericTablePage";
 
 const GENERIC = "/v1/catalogs/iceberg/namespaces/retail/generic-tables/events";
 
-function renderAt(path: string) {
+function renderAt(path: string, namespacePage: ReactNode = <p>namespace page</p>) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="/catalogs/:catalog/namespaces/:namespace" element={<p>namespace page</p>} />
+          <Route path="/catalogs/:catalog/namespaces/:namespace" element={namespacePage} />
           <Route
             path="/catalogs/:catalog/namespaces/:namespace/generic-tables/:name"
             element={<GenericTablePage />}
@@ -75,6 +77,32 @@ describe("GenericTablePage", { timeout: 15_000 }, () => {
     await user.type(within(dialog).getByLabelText(/Type events to confirm/), "events");
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
     expect(await screen.findByText("namespace page")).toBeInTheDocument();
+    expect(callsTo(calls, "GET", GENERIC)).toHaveLength(1);
+  });
+
+  it("never refetches the deleted generic table while the navigation is still pending", async () => {
+    const user = userEvent.setup();
+    const calls = stubCatalogApi({
+      [`GET ${GENERIC}`]: () =>
+        jsonResponse({
+          catalog: "iceberg",
+          namespace: ["retail"],
+          name: "events",
+          format: "delta",
+          base_location: null,
+          doc: null,
+          properties: {},
+        }),
+      [`DELETE ${GENERIC}`]: () => new Response(null, { status: 204 }),
+    });
+    renderAt("/catalogs/iceberg/namespaces/retail/generic-tables/events", <SuspendForever />);
+    await user.click(await screen.findByRole("button", { name: "Actions" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    const dialog = await screen.findByRole("dialog", { name: "Delete generic table" });
+    await user.type(within(dialog).getByLabelText(/Type events to confirm/), "events");
+    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+    await vi.waitFor(() => expect(callsTo(calls, "DELETE", GENERIC)).toHaveLength(1));
+    await settle();
     expect(callsTo(calls, "GET", GENERIC)).toHaveLength(1);
   });
 });

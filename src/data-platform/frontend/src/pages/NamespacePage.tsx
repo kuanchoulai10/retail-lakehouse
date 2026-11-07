@@ -37,6 +37,7 @@ import {
   viewPath,
   viewsApiPath,
 } from "@/lib/catalogPaths";
+import { useLeavingPage } from "@/lib/useLeavingPage";
 
 type ObjectType = "table" | "view" | "generic table";
 
@@ -65,33 +66,50 @@ function breadcrumbs(catalog: string, parts: string[]): Crumb[] {
   ];
 }
 
+// Keyed by the namespace, so leaving after a delete always unmounts it, even when the parent it
+// goes to is another namespace page (see useLeavingPage).
 export function NamespacePage() {
   const { catalog = "", namespace: param = "" } = useParams();
-  const parts = namespaceFromParam(param);
+  return <NamespaceDetailsPage key={JSON.stringify([catalog, param])} catalog={catalog} parts={namespaceFromParam(param)} />;
+}
+
+function NamespaceDetailsPage({ catalog, parts }: { catalog: string; parts: string[] }) {
   const parent = parts.slice(0, -1);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [dialog, setDialog] = useState<Dialog>(null);
+  const { leaving, leave } = useLeavingPage([
+    catalogQueryKeys.namespace(catalog, parts),
+    catalogQueryKeys.namespaces(catalog, parts),
+    catalogQueryKeys.tables(catalog, parts),
+    catalogQueryKeys.views(catalog, parts),
+    catalogQueryKeys.genericTables(catalog, parts),
+  ]);
 
   const namespace = useQuery({
     queryKey: catalogQueryKeys.namespace(catalog, parts),
     queryFn: () => apiGet<NamespaceApiResponse>(namespaceApiPath(catalog, parts)),
+    enabled: !leaving,
   });
   const children = useQuery({
     queryKey: catalogQueryKeys.namespaces(catalog, parts),
     queryFn: () => apiGet<NamespaceSummaryApiResponse[]>(namespacesApiPath(catalog, parts)),
+    enabled: !leaving,
   });
   const tables = useQuery({
     queryKey: catalogQueryKeys.tables(catalog, parts),
     queryFn: () => apiGet<TableIdentifierApiResponse[]>(tablesApiPath(catalog, parts)),
+    enabled: !leaving,
   });
   const views = useQuery({
     queryKey: catalogQueryKeys.views(catalog, parts),
     queryFn: () => apiGet<TableIdentifierApiResponse[]>(viewsApiPath(catalog, parts)),
+    enabled: !leaving,
   });
   const genericTables = useQuery({
     queryKey: catalogQueryKeys.genericTables(catalog, parts),
     queryFn: () => apiGet<TableIdentifierApiResponse[]>(genericTablesApiPath(catalog, parts)),
+    enabled: !leaving,
   });
 
   const removeChild = useMutation({
@@ -129,19 +147,12 @@ export function NamespacePage() {
   });
   const removeSelf = useMutation({
     mutationFn: () => apiSend("DELETE", namespaceApiPath(catalog, parts)),
-    // Leave the page first, then drop what this page loaded, so nothing refetches the
-    // namespace that is gone; only the parent's list is refetched.
+    // Stop what this page loads before leaving, so nothing refetches the namespace that is
+    // gone; it is dropped when the page unmounts (see useLeavingPage). Only the parent's list
+    // is refetched.
     onSuccess: async () => {
+      leave();
       navigate(parent.length === 0 ? catalogPath(catalog) : namespacePath(catalog, parent));
-      for (const queryKey of [
-        catalogQueryKeys.namespace(catalog, parts),
-        catalogQueryKeys.namespaces(catalog, parts),
-        catalogQueryKeys.tables(catalog, parts),
-        catalogQueryKeys.views(catalog, parts),
-        catalogQueryKeys.genericTables(catalog, parts),
-      ]) {
-        queryClient.removeQueries({ queryKey });
-      }
       await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.namespaces(catalog, parent), exact: true });
     },
   });

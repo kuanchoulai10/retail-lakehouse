@@ -18,25 +18,38 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { errorMessage, formatTimestamp } from "@/format";
 import { catalogObjectCrumbs } from "@/lib/catalogObjectCrumbs";
 import { namespaceFromParam, namespacePath, viewApiPath } from "@/lib/catalogPaths";
+import { useLeavingPage } from "@/lib/useLeavingPage";
 
 // The fixed view page: SQL, schema, versions and properties. Polaris cannot rename or edit a
 // view, so Actions holds Delete only.
+// Keyed by the view, so leaving after a delete always unmounts it (see useLeavingPage).
 export function ViewPage() {
   const { catalog = "", namespace: param = "", view: name = "" } = useParams();
-  const parts = namespaceFromParam(param);
+  return <ViewDetails key={JSON.stringify([catalog, param, name])} catalog={catalog} parts={namespaceFromParam(param)} name={name} />;
+}
+
+interface ViewDetailsProps {
+  catalog: string;
+  parts: string[];
+  name: string;
+}
+
+function ViewDetails({ catalog, parts, name }: ViewDetailsProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [deleting, setDeleting] = useState(false);
+  const { leaving, leave } = useLeavingPage([catalogQueryKeys.view(catalog, parts, name)]);
 
   const view = useQuery({
     queryKey: catalogQueryKeys.view(catalog, parts, name),
     queryFn: () => apiGet<ViewApiResponse>(viewApiPath(catalog, parts, name)),
+    enabled: !leaving,
   });
   const remove = useMutation({
     mutationFn: () => apiSend("DELETE", viewApiPath(catalog, parts, name)),
     onSuccess: async () => {
+      leave();
       navigate(namespacePath(catalog, parts));
-      queryClient.removeQueries({ queryKey: catalogQueryKeys.view(catalog, parts, name) });
       await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.views(catalog, parts), exact: true });
     },
   });

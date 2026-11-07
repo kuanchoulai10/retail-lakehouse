@@ -15,25 +15,38 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { errorMessage } from "@/format";
 import { catalogObjectCrumbs } from "@/lib/catalogObjectCrumbs";
 import { genericTableApiPath, namespaceFromParam, namespacePath } from "@/lib/catalogPaths";
+import { useLeavingPage } from "@/lib/useLeavingPage";
 
 // The fixed generic table page. A generic table has no schema, snapshots or uuid, and Polaris
 // cannot rename or edit it, so Actions holds Delete only.
+// Keyed by the generic table, so leaving after a delete always unmounts it (see useLeavingPage).
 export function GenericTablePage() {
   const { catalog = "", namespace: param = "", name = "" } = useParams();
-  const parts = namespaceFromParam(param);
+  return <GenericTableView key={JSON.stringify([catalog, param, name])} catalog={catalog} parts={namespaceFromParam(param)} name={name} />;
+}
+
+interface GenericTableViewProps {
+  catalog: string;
+  parts: string[];
+  name: string;
+}
+
+function GenericTableView({ catalog, parts, name }: GenericTableViewProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [deleting, setDeleting] = useState(false);
+  const { leaving, leave } = useLeavingPage([catalogQueryKeys.genericTable(catalog, parts, name)]);
 
   const genericTable = useQuery({
     queryKey: catalogQueryKeys.genericTable(catalog, parts, name),
     queryFn: () => apiGet<GenericTableApiResponse>(genericTableApiPath(catalog, parts, name)),
+    enabled: !leaving,
   });
   const remove = useMutation({
     mutationFn: () => apiSend("DELETE", genericTableApiPath(catalog, parts, name)),
     onSuccess: async () => {
+      leave();
       navigate(namespacePath(catalog, parts));
-      queryClient.removeQueries({ queryKey: catalogQueryKeys.genericTable(catalog, parts, name) });
       await queryClient.invalidateQueries({
         queryKey: catalogQueryKeys.genericTables(catalog, parts),
         exact: true,

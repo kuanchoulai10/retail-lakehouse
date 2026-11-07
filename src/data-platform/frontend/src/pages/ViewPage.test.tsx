@@ -1,11 +1,13 @@
+import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ViewApiResponse } from "../api/catalogTypes";
 import { callsTo, stubCatalogApi } from "../test/catalogApiStub";
 import { jsonResponse } from "../test/fixtures";
+import { settle, SuspendForever } from "../test/SuspendForever";
 import { ViewPage } from "./ViewPage";
 
 const VIEW = "/v1/catalogs/iceberg/namespaces/retail/views/orders_v";
@@ -30,13 +32,13 @@ function view(): ViewApiResponse {
   };
 }
 
-function renderAt(path: string) {
+function renderAt(path: string, namespacePage: ReactNode = <p>namespace page</p>) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="/catalogs/:catalog/namespaces/:namespace" element={<p>namespace page</p>} />
+          <Route path="/catalogs/:catalog/namespaces/:namespace" element={namespacePage} />
           <Route path="/catalogs/:catalog/namespaces/:namespace/views/:view" element={<ViewPage />} />
         </Routes>
       </MemoryRouter>
@@ -76,6 +78,23 @@ describe("ViewPage", { timeout: 15_000 }, () => {
     await user.type(within(dialog).getByLabelText(/Type orders_v to confirm/), "orders_v");
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
     expect(await screen.findByText("namespace page")).toBeInTheDocument();
+    expect(callsTo(calls, "GET", VIEW)).toHaveLength(1);
+  });
+
+  it("never refetches the deleted view while the navigation is still pending", async () => {
+    const user = userEvent.setup();
+    const calls = stubCatalogApi({
+      [`GET ${VIEW}`]: () => jsonResponse(view()),
+      [`DELETE ${VIEW}`]: () => new Response(null, { status: 204 }),
+    });
+    renderAt("/catalogs/iceberg/namespaces/retail/views/orders_v", <SuspendForever />);
+    await user.click(await screen.findByRole("button", { name: "Actions" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    const dialog = await screen.findByRole("dialog", { name: "Delete view" });
+    await user.type(within(dialog).getByLabelText(/Type orders_v to confirm/), "orders_v");
+    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+    await vi.waitFor(() => expect(callsTo(calls, "DELETE", VIEW)).toHaveLength(1));
+    await settle();
     expect(callsTo(calls, "GET", VIEW)).toHaveLength(1);
   });
 
