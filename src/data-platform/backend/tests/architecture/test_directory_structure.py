@@ -8,7 +8,7 @@ import pytest
 
 BACKEND = Path(__file__).resolve().parents[2]
 
-EXPECTED_TOP_LEVEL = {"adapter", "application", "base", "bootstrap"}
+EXPECTED_TOP_LEVEL = {"context", "base", "bootstrap"}
 
 
 class TestDirectoryStructure:
@@ -29,12 +29,12 @@ class TestDirectoryStructure:
     @pytest.mark.parametrize(
         "subdir",
         [
-            "adapter/inbound/web",
-            "adapter/inbound/event_consumer",
-            "adapter/outbound",
-            "adapter/hybrid/temporal/inbound",
-            "adapter/hybrid/temporal/outbound",
-            "adapter/hybrid/temporal/contracts",
+            "context/table_maintenance/adapter/inbound/web",
+            "context/table_maintenance/adapter/inbound/event_consumer",
+            "context/table_maintenance/adapter/outbound",
+            "context/table_maintenance/adapter/hybrid/temporal/inbound",
+            "context/table_maintenance/adapter/hybrid/temporal/outbound",
+            "context/table_maintenance/adapter/hybrid/temporal/contracts",
         ],
     )
     def test_adapter_subdirectories_exist(self, subdir: str):

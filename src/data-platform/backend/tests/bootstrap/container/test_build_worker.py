@@ -7,22 +7,28 @@ from unittest.mock import MagicMock
 from temporalio import activity
 from temporalio.worker import Worker
 
-from adapter.hybrid.temporal.inbound.activities import (
+from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
     TableDiscoveryActivities,
     TableMaintenanceActivities,
     TableReconciliationActivities,
     WorkflowSignalActivities,
 )
-from adapter.hybrid.temporal.inbound.workflows import (
+from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
     TableMaintenanceAdmissionWorkflow,
     TableDiscoveryWorkflow,
     TableMaintenanceWorkflow,
     TableReconciliationWorkflow,
 )
-from adapter.hybrid.temporal.contracts.shared import TASK_QUEUE
-from adapter.hybrid.temporal.contracts.table_discovery import TableDiscoveryActivity
-from adapter.hybrid.temporal.contracts.table_maintenance import TableMaintenanceActivity
-from adapter.hybrid.temporal.contracts.table_reconciliation import (
+from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
+    TASK_QUEUE,
+)
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery import (
+    TableDiscoveryActivity,
+)
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
+    TableMaintenanceActivity,
+)
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (
     TableReconciliationActivity,
 )
 from bootstrap.container import (

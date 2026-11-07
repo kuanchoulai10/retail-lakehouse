@@ -7,13 +7,17 @@ from typing import Any, cast
 
 from temporalio.client import Client
 
-from adapter.hybrid.temporal.inbound import (
+from context.table_maintenance.adapter.hybrid.temporal.inbound import (
     ensure_table_maintenance_admission,
     ensure_table_discovery_schedule,
 )
-from adapter.outbound.table_discovery_settings.sql import TableDiscoverySettingsSqlRepo
-from application.domain.model.table_discovery_settings import TableDiscoverySettings
-from application.service.table_discovery_settings import (
+from context.table_maintenance.adapter.outbound.table_discovery_settings.sql import (
+    TableDiscoverySettingsSqlRepo,
+)
+from context.table_maintenance.application.domain.model.table_discovery_settings import (
+    TableDiscoverySettings,
+)
+from context.table_maintenance.application.service.table_discovery_settings import (
     GetTableDiscoverySettingsService,
 )
 from bootstrap.configs import CatalogSettings

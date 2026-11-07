@@ -23,7 +23,13 @@ import pytest
 
 from base import EventHandler, UseCase
 
-SERVICE_DIR = Path(__file__).resolve().parents[2] / "application" / "service"
+SERVICE_DIR = (
+    Path(__file__).resolve().parents[2]
+    / "context"
+    / "table_maintenance"
+    / "application"
+    / "service"
+)
 
 # Files that are utilities, not services — excluded from service rules
 UTILITY_FILES = {
@@ -97,7 +103,7 @@ def _all_modules() -> list[tuple[str, Path]]:
             continue
         if py_file.name in UTILITY_FILES:
             continue
-        relative = py_file.relative_to(SERVICE_DIR.parents[1])
+        relative = py_file.relative_to(SERVICE_DIR.parents[3])
         module_path = str(relative.with_suffix("")).replace("/", ".")
         result.append((module_path, py_file))
     return result

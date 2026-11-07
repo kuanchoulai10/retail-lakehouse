@@ -4,20 +4,22 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from adapter.outbound.table.pyiceberg import ReadTableMetadataPyIcebergGateway
-from adapter.hybrid.temporal.outbound.table_discovery_settings import (
+from context.table_maintenance.adapter.outbound.table.pyiceberg import (
+    ReadTableMetadataPyIcebergGateway,
+)
+from context.table_maintenance.adapter.hybrid.temporal.outbound.table_discovery_settings import (
     UpdateTableDiscoveryScheduleTemporalGateway,
 )
-from adapter.outbound.table_maintenance_run.k8s import (
+from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import (
     DeleteMaintenanceJobK8sGateway,
     ReadMaintenanceJobK8sGateway,
     SubmitMaintenanceJobK8sGateway,
 )
-from adapter.hybrid.temporal.outbound.table import (
+from context.table_maintenance.adapter.hybrid.temporal.outbound.table import (
     SendDiscoveryRequestTemporalGateway,
     SendTableChangeTemporalGateway,
 )
-from adapter.hybrid.temporal.outbound.table_maintenance_run import (
+from context.table_maintenance.adapter.hybrid.temporal.outbound.table_maintenance_run import (
     SendMaintenanceResultTemporalGateway,
 )
 from bootstrap.container.build_spark_config import build_spark_config
@@ -30,7 +32,9 @@ if TYPE_CHECKING:
     from pyiceberg.catalog import Catalog
     from temporalio.client import Client
 
-    from adapter.hybrid.temporal.outbound.shared import AsyncLoopBridge
+    from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
+        AsyncLoopBridge,
+    )
     from bootstrap.configs import AppSettings
 
 

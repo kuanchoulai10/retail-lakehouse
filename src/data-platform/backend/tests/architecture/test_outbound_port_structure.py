@@ -34,7 +34,12 @@ from tests.architecture.aggregates import AGGREGATES
 from base import Gateway
 
 OUTBOUND_PORT_DIR = (
-    Path(__file__).resolve().parents[2] / "application" / "port" / "outbound"
+    Path(__file__).resolve().parents[2]
+    / "context"
+    / "table_maintenance"
+    / "application"
+    / "port"
+    / "outbound"
 )
 
 AGGREGATE_GROUPS = sorted(
@@ -55,7 +60,7 @@ GATEWAY_EXTRA_FILES = {
 GATEWAY_ALLOWED_FILES = GATEWAY_STANDARD_FILES | GATEWAY_EXTRA_FILES
 
 # Imports allowed in input.py / output.py (primitive-only constraint).
-# These files must NOT import from application.domain or base (except base.value_object).
+# These files must NOT import from context.table_maintenance.application.domain or base (except base.value_object).
 ALLOWED_INPUT_OUTPUT_IMPORT_PREFIXES = (
     "from __future__",
     "from dataclasses",
@@ -164,7 +169,7 @@ def test_gateway_class_naming(gw_entry: tuple[str, Path]):
     group, gw_dir = gw_entry
     prefix = _pascal_case(gw_dir.name)
     expected = f"{prefix}Gateway"
-    module = f"application.port.outbound.{group}.{gw_dir.name}.gateway"
+    module = f"context.table_maintenance.application.port.outbound.{group}.{gw_dir.name}.gateway"
     classes = _exported_classes(module)
     assert expected in classes, (
         f"{gw_dir.name}/gateway.py must export '{expected}', found: {classes}"
@@ -177,7 +182,7 @@ def test_gateway_extends_base(gw_entry: tuple[str, Path]):
     group, gw_dir = gw_entry
     prefix = _pascal_case(gw_dir.name)
     expected = f"{prefix}Gateway"
-    module = f"application.port.outbound.{group}.{gw_dir.name}.gateway"
+    module = f"context.table_maintenance.application.port.outbound.{group}.{gw_dir.name}.gateway"
     mod = importlib.import_module(module)
     cls = getattr(mod, expected)
     assert issubclass(cls, Gateway), (
@@ -197,7 +202,7 @@ def test_input_class_naming(gw_entry: tuple[str, Path]):
         pytest.skip("No input.py")
     prefix = _pascal_case(gw_dir.name)
     expected = f"{prefix}GatewayInput"
-    module = f"application.port.outbound.{group}.{gw_dir.name}.input"
+    module = f"context.table_maintenance.application.port.outbound.{group}.{gw_dir.name}.input"
     classes = _exported_classes(module)
     assert expected in classes, (
         f"{gw_dir.name}/input.py must export '{expected}', found: {classes}"
@@ -216,7 +221,7 @@ def test_output_class_naming(gw_entry: tuple[str, Path]):
         pytest.skip("No output.py")
     prefix = _pascal_case(gw_dir.name)
     expected = f"{prefix}GatewayOutput"
-    module = f"application.port.outbound.{group}.{gw_dir.name}.output"
+    module = f"context.table_maintenance.application.port.outbound.{group}.{gw_dir.name}.output"
     classes = _exported_classes(module)
     assert expected in classes, (
         f"{gw_dir.name}/output.py must export '{expected}', found: {classes}"
@@ -274,7 +279,9 @@ def test_init_reexports_all_symbols(gw_entry: tuple[str, Path]):
     """Verify that __init__.py re-exports Gateway, Input, Output via __all__."""
     group, gw_dir = gw_entry
     prefix = _pascal_case(gw_dir.name)
-    module = f"application.port.outbound.{group}.{gw_dir.name}"
+    module = (
+        f"context.table_maintenance.application.port.outbound.{group}.{gw_dir.name}"
+    )
     mod = importlib.import_module(module)
     exported = set(getattr(mod, "__all__", []))
 
@@ -322,7 +329,9 @@ def test_extra_file_class_naming_and_export(extra: tuple[str, Path]):
         if f.stem == "list_input"
         else _pascal_case(f.stem)
     )
-    module = f"application.port.outbound.{group}.{f.parent.name}"
+    module = (
+        f"context.table_maintenance.application.port.outbound.{group}.{f.parent.name}"
+    )
     assert expected in _exported_classes(f"{module}.{f.stem}")
     assert expected in set(getattr(importlib.import_module(module), "__all__", []))
 

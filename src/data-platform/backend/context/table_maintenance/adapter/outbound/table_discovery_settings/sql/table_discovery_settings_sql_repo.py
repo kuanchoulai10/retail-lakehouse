@@ -1,0 +1,91 @@
+"""Define the TableDiscoverySettingsSqlRepo."""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
+
+from sqlalchemy import insert, select, update
+from sqlalchemy.exc import IntegrityError
+
+from context.table_maintenance.adapter.outbound.table_discovery_settings.sql.table_discovery_settings_table import (
+    table_discovery_settings_table as t,
+)
+from context.table_maintenance.application.port.outbound.table_discovery_settings import (
+    GLOBAL_ID,
+    TableDiscoverySettings,
+    TableDiscoverySettingsId,
+)
+from context.table_maintenance.application.exceptions import ConflictError
+from context.table_maintenance.application.port.outbound.table_discovery_settings import (
+    TableDiscoverySettingsRepo,
+)
+
+if TYPE_CHECKING:
+    from sqlalchemy import RowMapping
+
+    from sqlalchemy import Engine
+
+    from base import EntityId
+
+
+def _to_values(settings: TableDiscoverySettings) -> dict[str, Any]:
+    return {
+        "id": settings.id.value,
+        "enabled": settings.enabled,
+        "updated_at": settings.updated_at,
+    }
+
+
+def _to_aggregate(row: RowMapping) -> TableDiscoverySettings:
+    return TableDiscoverySettings(
+        id=TableDiscoverySettingsId(row["id"]),
+        enabled=row["enabled"],
+        updated_at=row["updated_at"],
+    )
+
+
+class TableDiscoverySettingsSqlRepo(TableDiscoverySettingsRepo):
+    """Store the singleton TableDiscoverySettings in a SQL database."""
+
+    def __init__(self, engine: Engine) -> None:
+        """Bind the repository to an engine."""
+        self._engine = engine
+
+    def create(self, entity: TableDiscoverySettings) -> TableDiscoverySettings:
+        """Insert new settings."""
+        try:
+            with self._engine.begin() as conn:
+                conn.execute(insert(t).values(**_to_values(entity)))
+        except IntegrityError as exc:
+            raise ConflictError(str(exc.orig)) from exc
+        return entity
+
+    def get(self, entity_id: EntityId) -> TableDiscoverySettings | None:
+        """Return the settings with the given id, or None."""
+        with self._engine.connect() as conn:
+            row = conn.execute(select(t).where(t.c.id == entity_id.value)).first()
+        return None if row is None else _to_aggregate(row._mapping)
+
+    def list_all(self) -> list[TableDiscoverySettings]:
+        """Return all stored settings."""
+        with self._engine.connect() as conn:
+            rows = conn.execute(select(t).order_by(t.c.id)).all()
+        return [_to_aggregate(r._mapping) for r in rows]
+
+    def get_settings(self) -> TableDiscoverySettings:
+        """Return the singleton settings, enabled by default when absent."""
+        found = self.get(GLOBAL_ID)
+        if found is not None:
+            return found
+        return TableDiscoverySettings.create(datetime.now(UTC), enabled=True)
+
+    def save(self, settings: TableDiscoverySettings) -> None:
+        """Insert or replace the singleton settings."""
+        values = _to_values(settings)
+        with self._engine.begin() as conn:
+            result = conn.execute(
+                update(t).where(t.c.id == settings.id.value).values(**values)
+            )
+            if result.rowcount == 0:
+                conn.execute(insert(t).values(**values))

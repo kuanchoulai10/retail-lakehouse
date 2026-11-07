@@ -7,27 +7,31 @@ from typing import Any
 
 from sqlalchemy import Engine
 
-from adapter.outbound.shared.sql import create_schema
+from context.table_maintenance.adapter.outbound.shared.sql import create_schema
 from bootstrap.configs import AppSettings, DatabaseBackend, SqliteSettings
 from bootstrap.container import Gateways, build_engine
-from tests.fakes.fake_read_table_metadata_gateway import FakeReadTableMetadataGateway
-from tests.fakes.fake_read_maintenance_job_gateway import FakeReadMaintenanceJobGateway
-from tests.fakes.recording_delete_maintenance_job_gateway import (
+from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway import (
+    FakeReadTableMetadataGateway,
+)
+from tests.context.table_maintenance.fakes.fake_read_maintenance_job_gateway import (
+    FakeReadMaintenanceJobGateway,
+)
+from tests.context.table_maintenance.fakes.recording_delete_maintenance_job_gateway import (
     RecordingDeleteMaintenanceJobGateway,
 )
-from tests.fakes.recording_send_discovery_request_gateway import (
+from tests.context.table_maintenance.fakes.recording_send_discovery_request_gateway import (
     RecordingSendDiscoveryRequestGateway,
 )
-from tests.fakes.recording_send_maintenance_result_gateway import (
+from tests.context.table_maintenance.fakes.recording_send_maintenance_result_gateway import (
     RecordingSendMaintenanceResultGateway,
 )
-from tests.fakes.recording_send_table_change_gateway import (
+from tests.context.table_maintenance.fakes.recording_send_table_change_gateway import (
     RecordingSendTableChangeGateway,
 )
-from tests.fakes.recording_submit_maintenance_job_gateway import (
+from tests.context.table_maintenance.fakes.recording_submit_maintenance_job_gateway import (
     RecordingSubmitMaintenanceJobGateway,
 )
-from tests.fakes.recording_update_table_discovery_schedule_gateway import (
+from tests.context.table_maintenance.fakes.recording_update_table_discovery_schedule_gateway import (
     RecordingUpdateTableDiscoveryScheduleGateway,
 )
 

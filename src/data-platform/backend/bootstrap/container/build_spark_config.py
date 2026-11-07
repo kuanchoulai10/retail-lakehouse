@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from adapter.outbound.table_maintenance_run.k8s import SparkK8sConfig
+from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import (
+    SparkK8sConfig,
+)
 
 if TYPE_CHECKING:
     from bootstrap.configs import AppSettings

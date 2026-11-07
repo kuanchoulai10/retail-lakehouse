@@ -43,7 +43,7 @@ from base import (
 )
 
 BACKEND = Path(__file__).resolve().parents[2]
-SOURCE_PACKAGES = ("base", "application", "adapter", "bootstrap")
+SOURCE_PACKAGES = ("base", "context", "bootstrap")
 
 
 def _import_all_modules() -> None:
@@ -161,7 +161,9 @@ def test_event_dispatcher_has_no_subclasses() -> None:
 
 def test_aggregate_repos_extend_repository() -> None:
     """Every ``*Repo`` port class must extend ``base.repository.Repository``."""
-    port_dir = BACKEND / "application" / "port" / "outbound"
+    port_dir = (
+        BACKEND / "context" / "table_maintenance" / "application" / "port" / "outbound"
+    )
     found: list[type] = []
     for py_file in port_dir.rglob("*_repo.py"):
         rel = py_file.relative_to(BACKEND).with_suffix("")

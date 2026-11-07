@@ -234,28 +234,28 @@ def test_boundaries_follow_the_directory_rules():
     known = boundaries()
     for expected in (
         "base",
-        "application.exceptions",
+        "context.table_maintenance.application.exceptions",
         "bootstrap.configs",
         "bootstrap.container",
-        "application.domain.model.table",
-        "application.port.outbound.table",
-        "application.service.shared",
-        "adapter.inbound.web",
-        "adapter.inbound.web.table",
-        "adapter.inbound.web.shared",
-        "adapter.inbound.event_consumer",
-        "adapter.outbound.table.sql",
-        "adapter.outbound.shared.sql",
-        "adapter.hybrid.temporal.contracts",
-        "adapter.hybrid.temporal.contracts.table_maintenance",
-        "adapter.hybrid.temporal.inbound",
-        "adapter.hybrid.temporal.inbound.workflows",
-        "adapter.hybrid.temporal.outbound.table",
+        "context.table_maintenance.application.domain.model.table",
+        "context.table_maintenance.application.port.outbound.table",
+        "context.table_maintenance.application.service.shared",
+        "context.table_maintenance.adapter.inbound.web",
+        "context.table_maintenance.adapter.inbound.web.table",
+        "context.table_maintenance.adapter.inbound.web.shared",
+        "context.table_maintenance.adapter.inbound.event_consumer",
+        "context.table_maintenance.adapter.outbound.table.sql",
+        "context.table_maintenance.adapter.outbound.shared.sql",
+        "context.table_maintenance.adapter.hybrid.temporal.contracts",
+        "context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance",
+        "context.table_maintenance.adapter.hybrid.temporal.inbound",
+        "context.table_maintenance.adapter.hybrid.temporal.inbound.workflows",
+        "context.table_maintenance.adapter.hybrid.temporal.outbound.table",
     ):
         assert expected in known, expected
     for not_a_boundary in (
-        "adapter.outbound.table",
-        "application.port.inbound.table.include_table",
+        "context.table_maintenance.adapter.outbound.table",
+        "context.table_maintenance.application.port.inbound.table.include_table",
         "bootstrap",
     ):
         assert not_a_boundary not in known, not_a_boundary
@@ -287,7 +287,9 @@ def _generic_argument(cls: type, origin: type) -> type:
 def _repository_ports() -> list[tuple[str, type]]:
     ports: list[tuple[str, type]] = []
     for boundary in sorted(boundaries()):
-        if not boundary.startswith("application.port.outbound."):
+        if not boundary.startswith(
+            "context.table_maintenance.application.port.outbound."
+        ):
             continue
         package = importlib.import_module(boundary)
         for name in package.__all__:

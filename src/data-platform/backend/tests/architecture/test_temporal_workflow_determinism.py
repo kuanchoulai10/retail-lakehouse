@@ -14,6 +14,8 @@ import pytest
 
 _WORKFLOWS = (
     Path(__file__).resolve().parents[2]
+    / "context"
+    / "table_maintenance"
     / "adapter"
     / "hybrid"
     / "temporal"

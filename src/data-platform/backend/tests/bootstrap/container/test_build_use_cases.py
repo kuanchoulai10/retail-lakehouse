@@ -9,26 +9,32 @@ from unittest.mock import MagicMock
 
 from pyiceberg.catalog import Catalog
 
-import application.service
-from adapter.outbound.table.pyiceberg import ReadTableMetadataPyIcebergGateway
-from adapter.hybrid.temporal.outbound.table_discovery_settings import (
+import context.table_maintenance.application.service
+from context.table_maintenance.adapter.outbound.table.pyiceberg import (
+    ReadTableMetadataPyIcebergGateway,
+)
+from context.table_maintenance.adapter.hybrid.temporal.outbound.table_discovery_settings import (
     UpdateTableDiscoveryScheduleTemporalGateway,
 )
-from adapter.outbound.table_maintenance_preset.sql import TableMaintenancePresetsSqlRepo
-from adapter.outbound.table_maintenance_run.k8s import (
+from context.table_maintenance.adapter.outbound.table_maintenance_preset.sql import (
+    TableMaintenancePresetsSqlRepo,
+)
+from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import (
     DeleteMaintenanceJobK8sGateway,
     ReadMaintenanceJobK8sGateway,
     SubmitMaintenanceJobK8sGateway,
 )
-from adapter.hybrid.temporal.outbound.shared import AsyncLoopBridge
-from adapter.hybrid.temporal.outbound.table import (
+from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
+    AsyncLoopBridge,
+)
+from context.table_maintenance.adapter.hybrid.temporal.outbound.table import (
     SendDiscoveryRequestTemporalGateway,
     SendTableChangeTemporalGateway,
 )
-from adapter.hybrid.temporal.outbound.table_maintenance_run import (
+from context.table_maintenance.adapter.hybrid.temporal.outbound.table_maintenance_run import (
     SendMaintenanceResultTemporalGateway,
 )
-from application.port.inbound.table_maintenance_preset import (
+from context.table_maintenance.application.port.inbound.table_maintenance_preset import (
     ListTableMaintenancePresetsUseCaseInput,
 )
 from base import UseCase
@@ -48,7 +54,8 @@ from tests.bootstrap.container.container_support import (
 def _all_service_classes() -> set[type]:
     found: set[type] = set()
     for module_info in pkgutil.walk_packages(
-        application.service.__path__, prefix="application.service."
+        context.table_maintenance.application.service.__path__,
+        prefix="context.table_maintenance.application.service.",
     ):
         module = importlib.import_module(module_info.name)
         for _, obj in inspect.getmembers(module, inspect.isclass):

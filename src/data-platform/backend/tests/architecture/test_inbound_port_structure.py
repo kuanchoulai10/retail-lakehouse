@@ -22,7 +22,12 @@ import pytest
 from tests.architecture.aggregates import AGGREGATES
 
 INBOUND_PORT_DIR = (
-    Path(__file__).resolve().parents[2] / "application" / "port" / "inbound"
+    Path(__file__).resolve().parents[2]
+    / "context"
+    / "table_maintenance"
+    / "application"
+    / "port"
+    / "inbound"
 )
 REQUIRED_FILES = {"__init__.py", "input.py", "output.py", "use_case.py"}
 REQUIRED_FILES_NO_INPUT = {"__init__.py", "output.py", "use_case.py"}
@@ -141,7 +146,7 @@ def test_input_class_naming(use_case_entry: tuple[str, Path]):
         pytest.skip("No-input use case")
     prefix = _pascal_to_words(use_case_dir.name)
     expected = f"{prefix}UseCaseInput"
-    module = f"application.port.inbound.{group}.{use_case_dir.name}.input"
+    module = f"context.table_maintenance.application.port.inbound.{group}.{use_case_dir.name}.input"
     classes = _exported_classes(module)
     assert expected in classes, (
         f"{use_case_dir.name}/input.py must export '{expected}', found: {classes}"
@@ -154,7 +159,7 @@ def test_output_class_naming(use_case_entry: tuple[str, Path]):
     group, use_case_dir = use_case_entry
     prefix = _pascal_to_words(use_case_dir.name)
     expected = f"{prefix}UseCaseOutput"
-    module = f"application.port.inbound.{group}.{use_case_dir.name}.output"
+    module = f"context.table_maintenance.application.port.inbound.{group}.{use_case_dir.name}.output"
     classes = _exported_classes(module)
     assert expected in classes, (
         f"{use_case_dir.name}/output.py must export '{expected}', found: {classes}"
@@ -167,7 +172,7 @@ def test_use_case_class_naming(use_case_entry: tuple[str, Path]):
     group, use_case_dir = use_case_entry
     prefix = _pascal_to_words(use_case_dir.name)
     expected = f"{prefix}UseCase"
-    module = f"application.port.inbound.{group}.{use_case_dir.name}.use_case"
+    module = f"context.table_maintenance.application.port.inbound.{group}.{use_case_dir.name}.use_case"
     classes = _exported_classes(module)
     assert expected in classes, (
         f"{use_case_dir.name}/use_case.py must export '{expected}', found: {classes}"
@@ -182,7 +187,7 @@ def test_output_classes_prefixed(use_case_entry: tuple[str, Path]):
     """Verify that all classes in output.py are prefixed with {PascalCase(dir_name)}."""
     group, use_case_dir = use_case_entry
     prefix = _pascal_to_words(use_case_dir.name)
-    module = f"application.port.inbound.{group}.{use_case_dir.name}.output"
+    module = f"context.table_maintenance.application.port.inbound.{group}.{use_case_dir.name}.output"
     classes = _exported_classes(module)
     misnamed = [c for c in classes if not c.startswith(prefix)]
     assert misnamed == [], (
@@ -198,7 +203,7 @@ def test_init_reexports_all_symbols(use_case_entry: tuple[str, Path]):
     """Verify that __init__.py re-exports UseCaseInput, UseCaseOutput, and UseCase in __all__."""
     group, use_case_dir = use_case_entry
     prefix = _pascal_to_words(use_case_dir.name)
-    module = f"application.port.inbound.{group}.{use_case_dir.name}"
+    module = f"context.table_maintenance.application.port.inbound.{group}.{use_case_dir.name}"
     mod = importlib.import_module(module)
     exported = set(getattr(mod, "__all__", []))
 

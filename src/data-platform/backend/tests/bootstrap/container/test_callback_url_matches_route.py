@@ -4,26 +4,45 @@ from __future__ import annotations
 
 from urllib.parse import urlsplit
 
-from application.domain.model.shared import MaintenanceOperation, MaintenanceSettings
-from application.domain.model.table import Table, TableId, TableName
-from application.domain.model.table_discovery_rule import TableDiscoveryRuleId
-from application.domain.model.table_maintenance_preset import TableMaintenancePresetId
-from application.domain.model.table_maintenance_run import (
+from context.table_maintenance.application.domain.model.shared import (
+    MaintenanceOperation,
+    MaintenanceSettings,
+)
+from context.table_maintenance.application.domain.model.table import (
+    Table,
+    TableId,
+    TableName,
+)
+from context.table_maintenance.application.domain.model.table_discovery_rule import (
+    TableDiscoveryRuleId,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_preset import (
+    TableMaintenancePresetId,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRun,
     TableMaintenanceRunId,
     TriggerType,
 )
-from application.port.inbound.table_maintenance_run import (
+from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     ProcessTableMaintenanceCallbackUseCaseOutput,
     SubmitMaintenanceOperationUseCaseInput,
 )
-from application.service.table_maintenance_run import SubmitMaintenanceOperationService
-from tests.adapter.inbound.web.web_test_support import NOW, StubUseCase, build_client
-from tests.fakes.in_memory_table_maintenance_runs_repo import (
+from context.table_maintenance.application.service.table_maintenance_run import (
+    SubmitMaintenanceOperationService,
+)
+from tests.context.table_maintenance.adapter.inbound.web.web_test_support import (
+    NOW,
+    StubUseCase,
+    build_client,
+)
+from tests.context.table_maintenance.fakes.in_memory_table_maintenance_runs_repo import (
     InMemoryTableMaintenanceRunsRepo,
 )
-from tests.fakes.in_memory_tables_repo import InMemoryTablesRepo
-from tests.fakes.recording_submit_maintenance_job_gateway import (
+from tests.context.table_maintenance.fakes.in_memory_tables_repo import (
+    InMemoryTablesRepo,
+)
+from tests.context.table_maintenance.fakes.recording_submit_maintenance_job_gateway import (
     RecordingSubmitMaintenanceJobGateway,
 )
 

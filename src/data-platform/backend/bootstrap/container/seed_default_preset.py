@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from application.port.inbound.table_maintenance_preset import (
+from context.table_maintenance.application.port.inbound.table_maintenance_preset import (
     CreateTableMaintenancePresetUseCaseInput,
     ListTableMaintenancePresetsUseCaseInput,
 )
 
 if TYPE_CHECKING:
-    from application.port.inbound.table_maintenance_preset import (
+    from context.table_maintenance.application.port.inbound.table_maintenance_preset import (
         CreateTableMaintenancePresetUseCase,
         ListTableMaintenancePresetsUseCase,
     )

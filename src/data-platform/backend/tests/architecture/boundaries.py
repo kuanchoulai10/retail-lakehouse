@@ -12,18 +12,18 @@ from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parents[2]
 
-PROJECT_PACKAGES = ("application", "adapter", "base", "bootstrap")
+PROJECT_PACKAGES = ("context", "base", "bootstrap")
 
 AGGREGATE_LAYERS = (
-    "application/domain/model",
-    "application/domain/service",
-    "application/port/inbound",
-    "application/port/outbound",
-    "application/service",
+    "context/table_maintenance/application/domain/model",
+    "context/table_maintenance/application/domain/service",
+    "context/table_maintenance/application/port/inbound",
+    "context/table_maintenance/application/port/outbound",
+    "context/table_maintenance/application/service",
 )
 KERNEL_BOUNDARIES = (
     "base",
-    "application/exceptions",
+    "context/table_maintenance/application/exceptions",
     "bootstrap/configs",
     "bootstrap/container",
 )
@@ -54,11 +54,17 @@ def boundaries() -> set[str]:
     found: list[Path] = [BACKEND / kernel for kernel in KERNEL_BOUNDARIES]
     for layer in AGGREGATE_LAYERS:
         found.extend(_packages(BACKEND / layer))
-    for channel in _packages(BACKEND / "adapter" / "inbound"):
+    for channel in _packages(
+        BACKEND / "context" / "table_maintenance" / "adapter" / "inbound"
+    ):
         found.extend(_with_child_packages(channel))
-    for aggregate in _packages(BACKEND / "adapter" / "outbound"):
+    for aggregate in _packages(
+        BACKEND / "context" / "table_maintenance" / "adapter" / "outbound"
+    ):
         found.extend(_packages(aggregate))
-    for tech in _packages(BACKEND / "adapter" / "hybrid"):
+    for tech in _packages(
+        BACKEND / "context" / "table_maintenance" / "adapter" / "hybrid"
+    ):
         for side in HYBRID_SIDES:
             if (tech / side / "__init__.py").is_file():
                 found.extend(_with_child_packages(tech / side))

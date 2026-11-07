@@ -14,7 +14,7 @@ import pytest
 from temporalio import workflow
 from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner
 
-import adapter.hybrid.temporal.inbound.workflows as workflows_package
+import context.table_maintenance.adapter.hybrid.temporal.inbound.workflows as workflows_package
 from bootstrap.container import WORKFLOWS
 
 

@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import threading
 
-from adapter.inbound.event_consumer import EventRecord, EventSource
+from context.table_maintenance.adapter.inbound.event_consumer import (
+    EventRecord,
+    EventSource,
+)
 from bootstrap.container import build_repositories, build_use_cases, run_event_consumer
 from tests.bootstrap.container.container_support import (
     NOW,

@@ -20,7 +20,9 @@ from pathlib import Path
 import pytest
 
 _BACKEND = Path(__file__).resolve().parents[2]
-_WEB_ADAPTER = _BACKEND / "adapter" / "inbound" / "web"
+_WEB_ADAPTER = (
+    _BACKEND / "context" / "table_maintenance" / "adapter" / "inbound" / "web"
+)
 
 _ALLOWED_SUFFIXES = ("ApiRequest", "ApiResponse")
 

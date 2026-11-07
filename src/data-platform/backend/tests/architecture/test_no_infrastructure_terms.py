@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parents[2]
-APPLICATION = BACKEND / "application"
+APPLICATION = BACKEND / "context" / "table_maintenance" / "application"
 
 BANNED = {
     "temporal",

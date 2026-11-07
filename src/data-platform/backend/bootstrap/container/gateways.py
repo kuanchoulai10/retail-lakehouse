@@ -6,15 +6,15 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from application.port.outbound.table import (
+    from context.table_maintenance.application.port.outbound.table import (
         ReadTableMetadataGateway,
         SendDiscoveryRequestGateway,
         SendTableChangeGateway,
     )
-    from application.port.outbound.table_discovery_settings import (
+    from context.table_maintenance.application.port.outbound.table_discovery_settings import (
         UpdateTableDiscoveryScheduleGateway,
     )
-    from application.port.outbound.table_maintenance_run import (
+    from context.table_maintenance.application.port.outbound.table_maintenance_run import (
         DeleteMaintenanceJobGateway,
         ReadMaintenanceJobGateway,
         SubmitMaintenanceJobGateway,

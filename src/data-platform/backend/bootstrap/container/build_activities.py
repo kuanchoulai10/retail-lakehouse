@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from adapter.hybrid.temporal.inbound.activities import (
+from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
     TableDiscoveryActivities,
     TableMaintenanceActivities,
     TableReconciliationActivities,

@@ -5,11 +5,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from application.service.table_discovery_settings import (
+from context.table_maintenance.application.service.table_discovery_settings import (
     GetTableDiscoverySettingsService,
     UpdateTableDiscoverySettingsService,
 )
-from application.service.table import (
+from context.table_maintenance.application.service.table import (
     ProcessTableHintService,
     SyncDiscoveredTablesService,
     ExcludeTableService,
@@ -27,13 +27,13 @@ from application.service.table import (
     UpdateTableSettingsService,
     PlanTableMaintenanceService,
 )
-from application.service.table_discovery_rule import (
+from context.table_maintenance.application.service.table_discovery_rule import (
     CreateTableDiscoveryRuleService,
     DeleteTableDiscoveryRuleService,
     ListTableDiscoveryRulesService,
     UpdateTableDiscoveryRuleService,
 )
-from application.service.table_maintenance_run import (
+from context.table_maintenance.application.service.table_maintenance_run import (
     CreateTableMaintenanceRunService,
     GetTableMaintenanceRunService,
     ListTableMaintenanceRunsService,
@@ -43,7 +43,7 @@ from application.service.table_maintenance_run import (
     GetMaintenanceJobStatusService,
     SubmitMaintenanceOperationService,
 )
-from application.service.table_maintenance_preset import (
+from context.table_maintenance.application.service.table_maintenance_preset import (
     CreateTableMaintenancePresetService,
     DeleteTableMaintenancePresetService,
     GetTableMaintenancePresetService,

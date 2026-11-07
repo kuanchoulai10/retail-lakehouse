@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from adapter.outbound.shared.sql import create_schema
-from application.service.table_maintenance_preset import (
+from context.table_maintenance.adapter.outbound.shared.sql import create_schema
+from context.table_maintenance.application.service.table_maintenance_preset import (
     CreateTableMaintenancePresetService,
     ListTableMaintenancePresetsService,
 )

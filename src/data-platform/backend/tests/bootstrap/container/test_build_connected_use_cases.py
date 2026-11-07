@@ -3,8 +3,10 @@ from __future__ import annotations
 import threading
 from unittest.mock import MagicMock
 
-from adapter.hybrid.temporal.outbound.shared import AsyncLoopBridge
-from application.port.inbound.table_maintenance_preset import (
+from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
+    AsyncLoopBridge,
+)
+from context.table_maintenance.application.port.inbound.table_maintenance_preset import (
     ListTableMaintenancePresetsUseCaseInput,
 )
 from bootstrap.configs import TemporalSettings

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from adapter.hybrid.temporal.inbound.activities import (
+    from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
         TableDiscoveryActivities,
         TableMaintenanceActivities,
         TableReconciliationActivities,

@@ -6,11 +6,11 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from application.port.inbound.table_discovery_settings import (
+    from context.table_maintenance.application.port.inbound.table_discovery_settings import (
         GetTableDiscoverySettingsUseCase,
         UpdateTableDiscoverySettingsUseCase,
     )
-    from application.port.inbound.table import (
+    from context.table_maintenance.application.port.inbound.table import (
         ProcessTableHintUseCase,
         SyncDiscoveredTablesUseCase,
         ExcludeTableUseCase,
@@ -28,20 +28,20 @@ if TYPE_CHECKING:
         UpdateTableSettingsUseCase,
         PlanTableMaintenanceUseCase,
     )
-    from application.port.inbound.table_discovery_rule import (
+    from context.table_maintenance.application.port.inbound.table_discovery_rule import (
         CreateTableDiscoveryRuleUseCase,
         DeleteTableDiscoveryRuleUseCase,
         ListTableDiscoveryRulesUseCase,
         UpdateTableDiscoveryRuleUseCase,
     )
-    from application.port.inbound.table_maintenance_preset import (
+    from context.table_maintenance.application.port.inbound.table_maintenance_preset import (
         CreateTableMaintenancePresetUseCase,
         DeleteTableMaintenancePresetUseCase,
         GetTableMaintenancePresetUseCase,
         ListTableMaintenancePresetsUseCase,
         UpdateTableMaintenancePresetUseCase,
     )
-    from application.port.inbound.table_maintenance_run import (
+    from context.table_maintenance.application.port.inbound.table_maintenance_run import (
         CreateTableMaintenanceRunUseCase,
         GetTableMaintenanceRunUseCase,
         ListTableMaintenanceRunsUseCase,

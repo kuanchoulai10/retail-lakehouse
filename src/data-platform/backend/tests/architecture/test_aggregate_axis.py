@@ -12,21 +12,26 @@ BACKEND = Path(__file__).resolve().parents[2]
 
 HYBRID_OUTBOUND_DIRS = sorted(
     str(path.relative_to(BACKEND))
-    for path in (BACKEND / "adapter" / "hybrid").glob("*/outbound")
+    for path in (BACKEND / "context" / "table_maintenance" / "adapter" / "hybrid").glob(
+        "*/outbound"
+    )
     if (path / "__init__.py").is_file()
 )
 LAYER_DIRS = [
-    "application/domain/model",
-    "application/domain/service",
-    "application/port/inbound",
-    "application/service",
-    "adapter/inbound/web",
-    "application/port/outbound",
-    "adapter/outbound",
+    "context/table_maintenance/application/domain/model",
+    "context/table_maintenance/application/domain/service",
+    "context/table_maintenance/application/port/inbound",
+    "context/table_maintenance/application/service",
+    "context/table_maintenance/adapter/inbound/web",
+    "context/table_maintenance/application/port/outbound",
+    "context/table_maintenance/adapter/outbound",
     *HYBRID_OUTBOUND_DIRS,
 ]
 ROOT_MODULES_ALLOWED = {
-    "adapter/inbound/web": {"create_app.py", "error_handlers.py"},
+    "context/table_maintenance/adapter/inbound/web": {
+        "create_app.py",
+        "error_handlers.py",
+    },
 }
 
 
@@ -47,13 +52,18 @@ def test_layer_subdirs_are_aggregates(layer: str):
 
 
 def test_inbound_ports_match_services():
-    ports = subdirs("application/port/inbound")
+    ports = subdirs("context/table_maintenance/application/port/inbound")
     assert "shared" not in ports
-    assert ports == subdirs("application/service") - {"shared"}
+    assert ports == subdirs("context/table_maintenance/application/service") - {
+        "shared"
+    }
 
 
 def test_hybrid_outbound_dirs_are_found():
-    assert "adapter/hybrid/temporal/outbound" in HYBRID_OUTBOUND_DIRS
+    assert (
+        "context/table_maintenance/adapter/hybrid/temporal/outbound"
+        in HYBRID_OUTBOUND_DIRS
+    )
 
 
 @pytest.mark.parametrize("layer", LAYER_DIRS)
