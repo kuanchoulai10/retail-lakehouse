@@ -6,13 +6,16 @@ from pydantic import BaseModel, Field, SecretStr
 
 
 class CatalogSettings(BaseModel):
-    """Polaris REST catalog access shared by PyIceberg and the Spark jobs.
+    """Polaris access shared by PyIceberg, the Spark jobs and the catalog context.
 
-    Each name in ``names`` is a Polaris catalog, used as the warehouse. The S3 keys
+    ``uri`` is the catalog API base (Iceberg REST and the OAuth token endpoint) and
+    ``management_uri`` the management API base. Each name in ``names`` is a Polaris
+    catalog that maintenance covers, used as the warehouse. The S3 keys
     are optional; when unset, PyArrow falls back to the AWS credential chain.
     """
 
     uri: str = "http://polaris.lakehouse-catalog.svc.cluster.local:8181/api/catalog"
+    management_uri: str = "http://polaris.lakehouse-catalog.svc.cluster.local:8181/api/management/v1"
     credential: SecretStr = SecretStr("")
     scope: str = "PRINCIPAL_ROLE:ALL"
     names: list[str] = Field(default_factory=lambda: ["iceberg"])

@@ -17,6 +17,8 @@ CONCRETE_CONTEXT_MARKERS = (
     "'table_maintenance'",
     "context.table_maintenance",
     "context/table_maintenance",
+    "context.catalog",
+    "context/catalog",
 )
 
 WIDGET = '''"""Widget aggregate."""

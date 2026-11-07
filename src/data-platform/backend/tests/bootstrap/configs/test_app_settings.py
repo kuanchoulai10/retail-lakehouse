@@ -25,6 +25,9 @@ def test_defaults_follow_the_brief():
     assert settings.temporal.address == "temporal-frontend.temporal.svc.cluster.local:7233"
     assert settings.temporal.namespace == "default"
     assert settings.catalog.uri == ("http://polaris.lakehouse-catalog.svc.cluster.local:8181/api/catalog")
+    assert settings.catalog.management_uri == (
+        "http://polaris.lakehouse-catalog.svc.cluster.local:8181/api/management/v1"
+    )
     assert settings.catalog.scope == "PRINCIPAL_ROLE:ALL"
     assert settings.catalog.names == ["iceberg"]
     assert settings.catalog.s3_endpoint == ("http://rustfs.object-storage.svc.cluster.local:9000")
@@ -48,6 +51,7 @@ def test_nested_env_vars_are_parsed(monkeypatch: pytest.MonkeyPatch):
         "GLAC_TEMPORAL__ADDRESS": "temporal:7233",
         "GLAC_TEMPORAL__NAMESPACE": "tm",
         "GLAC_CATALOG__URI": "http://polaris:8181/api/catalog",
+        "GLAC_CATALOG__MANAGEMENT_URI": "http://polaris:8181/api/management/v1",
         "GLAC_CATALOG__CREDENTIAL": "root:s3cr3t",
         "GLAC_CATALOG__NAMES": '["a","b"]',
         "GLAC_CATALOG__S3_ACCESS_KEY_ID": "AKID",
@@ -72,6 +76,7 @@ def test_nested_env_vars_are_parsed(monkeypatch: pytest.MonkeyPatch):
     assert settings.temporal.address == "temporal:7233"
     assert settings.temporal.namespace == "tm"
     assert settings.catalog.uri == "http://polaris:8181/api/catalog"
+    assert settings.catalog.management_uri == "http://polaris:8181/api/management/v1"
     assert settings.catalog.credential.get_secret_value() == "root:s3cr3t"
     assert settings.catalog.names == ["a", "b"]
     assert settings.catalog.s3_access_key_id is not None

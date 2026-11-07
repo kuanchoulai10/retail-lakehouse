@@ -12,6 +12,7 @@ from bootstrap.container.build_connected_use_cases import build_connected_use_ca
 from bootstrap.container.build_engine import build_engine
 from bootstrap.container.build_gateways import build_gateways
 from bootstrap.container.build_k8s_api import build_k8s_api
+from bootstrap.container.build_polaris_http_client import build_polaris_http_client
 from bootstrap.container.build_repositories import build_repositories
 from bootstrap.container.build_spark_config import build_spark_config
 from bootstrap.container.build_use_cases import build_use_cases
@@ -44,6 +45,7 @@ __all__ = [
     "build_engine",
     "build_gateways",
     "build_k8s_api",
+    "build_polaris_http_client",
     "build_repositories",
     "build_spark_config",
     "build_use_cases",

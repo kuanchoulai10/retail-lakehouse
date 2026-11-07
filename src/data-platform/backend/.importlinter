@@ -24,6 +24,7 @@ forbidden_modules =
     kubernetes
     confluent_kafka
     pydantic
+    httpx
 
 [importlinter:contract:application-ring-order]
 name = Application ring order: service, port, domain service, domain model
@@ -52,6 +53,7 @@ forbidden_modules =
     kubernetes
     confluent_kafka
     pydantic
+    httpx
 
 [importlinter:contract:adapters-see-only-ports]
 name = Adapters import application only through ports and exceptions
