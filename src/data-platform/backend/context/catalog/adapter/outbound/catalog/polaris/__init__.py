@@ -5,6 +5,12 @@ from __future__ import annotations
 from context.catalog.adapter.outbound.catalog.polaris.catalog_from_polaris import (
     catalog_from_polaris,
 )
+from context.catalog.adapter.outbound.catalog.polaris.catalog_from_polaris_object import (
+    catalog_from_polaris_object,
+)
+from context.catalog.adapter.outbound.catalog.polaris.catalogs_from_polaris import (
+    catalogs_from_polaris,
+)
 from context.catalog.adapter.outbound.catalog.polaris.catalogs_polaris_repo import (
     CatalogsPolarisRepo,
 )
@@ -44,6 +50,8 @@ __all__ = [
     "CatalogsPolarisRepo",
     "CreateCatalogContentGrantPolarisGateway",
     "catalog_from_polaris",
+    "catalog_from_polaris_object",
+    "catalogs_from_polaris",
     "connection_config_from_polaris",
     "connection_config_to_polaris",
     "management_catalog_path",

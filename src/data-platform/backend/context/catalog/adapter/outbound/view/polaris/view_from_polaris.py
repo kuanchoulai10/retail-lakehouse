@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from context.catalog.adapter.outbound.shared.polaris import iceberg_schema_from_polaris
+from context.catalog.adapter.outbound.shared.polaris import iceberg_schema_from_polaris, read_polaris_reply
 from context.catalog.adapter.outbound.view.polaris.view_version_from_polaris import (
     view_version_from_polaris,
 )
-from context.catalog.application.exceptions import CatalogUnavailableError
 from context.catalog.application.port.outbound.view import View
 
 if TYPE_CHECKING:
@@ -17,8 +16,6 @@ if TYPE_CHECKING:
     import httpx
 
     from context.catalog.application.port.outbound.view import Schema, ViewId, ViewVersion
-
-_UNREADABLE = (AttributeError, KeyError, TypeError, ValueError)
 
 
 def _current_version(versions: list[ViewVersion], current_id: int) -> ViewVersion:
@@ -65,9 +62,4 @@ def view_from_polaris(view_id: ViewId, response: httpx.Response) -> View:
     API answers 502 rather than 500 or an empty view. The ``config`` block, which may carry
     storage credentials, is never read.
     """
-    try:
-        return _view(view_id, response.json()["metadata"])
-    except _UNREADABLE as exc:
-        raise CatalogUnavailableError(
-            f"Polaris returned view {view_id.name} in a form this backend cannot read: {exc!r}"
-        ) from exc
+    return read_polaris_reply(response, f"view {view_id.name}", lambda body: _view(view_id, body["metadata"]))

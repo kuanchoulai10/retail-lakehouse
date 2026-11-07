@@ -17,8 +17,17 @@ from context.catalog.adapter.outbound.shared.polaris.iceberg_type_from_polaris i
 from context.catalog.adapter.outbound.shared.polaris.iceberg_type_to_polaris import (
     iceberg_type_to_polaris,
 )
+from context.catalog.adapter.outbound.shared.polaris.listed_catalog_names import (
+    listed_catalog_names,
+)
 from context.catalog.adapter.outbound.shared.polaris.listed_identifiers import (
     listed_identifiers,
+)
+from context.catalog.adapter.outbound.shared.polaris.listed_namespaces import (
+    listed_namespaces,
+)
+from context.catalog.adapter.outbound.shared.polaris.namespace_parts_from_polaris import (
+    namespace_parts_from_polaris,
 )
 from context.catalog.adapter.outbound.shared.polaris.polaris_error_mapper import (
     raise_for_polaris,
@@ -29,11 +38,18 @@ from context.catalog.adapter.outbound.shared.polaris.polaris_http_client import 
 from context.catalog.adapter.outbound.shared.polaris.raise_for_paged_listing import (
     raise_for_paged_listing,
 )
+from context.catalog.adapter.outbound.shared.polaris.read_polaris_reply import (
+    read_polaris_reply,
+)
 from context.catalog.adapter.outbound.shared.polaris.walk_iceberg_namespaces import (
     walk_iceberg_namespaces,
 )
 
 __all__ = [
+    "read_polaris_reply",
+    "namespace_parts_from_polaris",
+    "listed_namespaces",
+    "listed_catalog_names",
     "PolarisHttpClient",
     "iceberg_namespace_path",
     "iceberg_schema_from_polaris",

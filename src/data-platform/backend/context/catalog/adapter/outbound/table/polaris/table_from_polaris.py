@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from context.catalog.adapter.outbound.shared.polaris import read_polaris_reply
 from context.catalog.adapter.outbound.table.polaris.partition_spec_from_polaris import (
     partition_spec_from_polaris,
 )
@@ -12,7 +13,6 @@ from context.catalog.adapter.outbound.table.polaris.sort_order_from_polaris impo
 from context.catalog.adapter.outbound.table.polaris.table_schema_from_polaris import (
     table_schema_from_polaris,
 )
-from context.catalog.application.exceptions import CatalogUnavailableError
 from context.catalog.application.port.outbound.table import Table
 
 if TYPE_CHECKING:
@@ -23,7 +23,6 @@ if TYPE_CHECKING:
     from context.catalog.application.port.outbound.table import TableId
 
 _NO_SNAPSHOT = -1
-_UNREADABLE = (AttributeError, KeyError, TypeError, ValueError)
 
 
 def _table(table_id: TableId, metadata: Mapping[str, Any]) -> Table:
@@ -50,9 +49,4 @@ def table_from_polaris(table_id: TableId, response: httpx.Response) -> Table:
     metadata this backend cannot read raises CatalogUnavailableError naming the table, so the
     API answers 502 rather than 500.
     """
-    try:
-        return _table(table_id, response.json()["metadata"])
-    except _UNREADABLE as exc:
-        raise CatalogUnavailableError(
-            f"Polaris returned table {table_id.name} in a form this backend cannot read: {exc!r}"
-        ) from exc
+    return read_polaris_reply(response, f"table {table_id.name}", lambda body: _table(table_id, body["metadata"]))

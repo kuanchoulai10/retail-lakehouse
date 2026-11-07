@@ -329,6 +329,57 @@ def test_unknown_enum_value_from_polaris_is_unavailable(change: dict[str, Any], 
     stub.on("GET", f"{CATALOGS}/sales", httpx.Response(200, json=_polaris_catalog() | change))
 
     with pytest.raises(
-        CatalogUnavailableError, match=f"Polaris returned catalog sales in a form this backend cannot read: {message}"
+        CatalogUnavailableError, match=f"Polaris returned catalog sales in a form this backend cannot read: .*{message}"
     ):
+        CatalogsPolarisRepo(stub.client()).get(CatalogId.of("sales"))
+
+
+_HTML = httpx.Response(200, text="<html>proxy error</html>", headers={"content-type": "text/html"})
+_JSON_LIST = httpx.Response(200, json=["sales"])
+_OPERATIONS = {
+    "create": ("POST", CATALOGS, lambda repo: repo.create(_catalog())),
+    "get": ("GET", f"{CATALOGS}/sales", lambda repo: repo.get(CatalogId.of("sales"))),
+    "list_all": ("GET", CATALOGS, lambda repo: repo.list_all()),
+    "update": ("PUT", f"{CATALOGS}/sales", lambda repo: repo.update(_catalog(version=1))),
+}
+
+
+@pytest.mark.parametrize("operation", sorted(_OPERATIONS))
+@pytest.mark.parametrize("reply", [_HTML, _JSON_LIST], ids=["html", "json-list"])
+def test_unreadable_reply_is_unavailable_on_every_operation(operation: str, reply: httpx.Response):
+    """A 200 that is HTML or not a JSON object is a CatalogUnavailableError (502), never a 500."""
+    method, path, call = _OPERATIONS[operation]
+    stub = PolarisStub()
+    stub.on(method, path, reply)
+
+    with pytest.raises(CatalogUnavailableError, match="in a form this backend cannot read"):
+        call(CatalogsPolarisRepo(stub.client()))
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {},
+        {"catalogs": ["sales"]},
+        {"catalogs": [{k: v for k, v in _polaris_catalog().items() if k != "name"}]},
+    ],
+    ids=["no-catalogs", "string-item", "item-without-name"],
+)
+def test_unreadable_catalog_listing_is_unavailable(body: dict[str, Any]):
+    """A listing without ``catalogs``, or with an item that is not a named catalog object, is a 502."""
+    stub = PolarisStub()
+    stub.on("GET", CATALOGS, httpx.Response(200, json=body))
+
+    with pytest.raises(CatalogUnavailableError, match="the catalog list in a form this backend cannot read"):
+        CatalogsPolarisRepo(stub.client()).list_all()
+
+
+@pytest.mark.parametrize("missing", ["name", "type", "storageConfigInfo", "entityVersion"])
+def test_catalog_without_a_required_field_is_unavailable(missing: str):
+    """A required field is never defaulted; a catalog without one is a 502 naming the catalog."""
+    stub = PolarisStub()
+    body = {k: v for k, v in _polaris_catalog().items() if k != missing}
+    stub.on("GET", f"{CATALOGS}/sales", httpx.Response(200, json=body))
+
+    with pytest.raises(CatalogUnavailableError, match="catalog sales in a form this backend cannot read"):
         CatalogsPolarisRepo(stub.client()).get(CatalogId.of("sales"))

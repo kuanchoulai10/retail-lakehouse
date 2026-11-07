@@ -228,3 +228,55 @@ def test_list_in_accepts_a_null_next_page_token():
     found = NamespacesPolarisRepo(stub.client()).list_in(CatalogId.of("sales"), ())
 
     assert [n.id.parts for n in found] == [("a",)]
+
+
+_HTML = httpx.Response(200, text="<html>proxy error</html>", headers={"content-type": "text/html"})
+_JSON_LIST = httpx.Response(200, json=[["raw"]])
+_RAW = NamespaceId.of("sales", ("raw",))
+_OPERATIONS = {
+    "create": ("POST", NAMESPACES, lambda repo: repo.create(Namespace(_RAW, {}))),
+    "get": ("GET", f"{NAMESPACES}/raw", lambda repo: repo.get(_RAW)),
+    "list_in": ("GET", NAMESPACES, lambda repo: repo.list_in(CatalogId.of("sales"), ())),
+    "list_all": ("GET", CATALOGS, lambda repo: repo.list_all()),
+    "update_properties": ("GET", f"{NAMESPACES}/raw", lambda repo: repo.update_properties(_RAW, {}, [])),
+}
+
+
+@pytest.mark.parametrize("operation", sorted(_OPERATIONS))
+@pytest.mark.parametrize("reply", [_HTML, _JSON_LIST], ids=["html", "json-list"])
+def test_unreadable_reply_is_unavailable_on_every_operation(operation: str, reply: httpx.Response):
+    """A 200 that is HTML or not a JSON object is a CatalogUnavailableError (502), never a 500."""
+    method, path, call = _OPERATIONS[operation]
+    stub = PolarisStub()
+    stub.on(method, path, reply)
+
+    with pytest.raises(CatalogUnavailableError, match="in a form this backend cannot read"):
+        call(NamespacesPolarisRepo(stub.client()))
+
+
+@pytest.mark.parametrize(
+    "body",
+    [{"properties": {}}, {"namespace": "raw", "properties": {}}, {"namespace": ["raw"], "properties": ["k"]}],
+    ids=["no-namespace", "string-namespace", "list-properties"],
+)
+def test_namespace_reply_of_the_wrong_shape_is_unavailable(body: dict[str, Any]):
+    """A missing namespace is never ``()`` and a string is never split into characters; both are a 502."""
+    stub = PolarisStub()
+    stub.on("GET", f"{NAMESPACES}/raw", httpx.Response(200, json=body))
+
+    with pytest.raises(CatalogUnavailableError, match="namespace \\['raw'\\] in a form this backend cannot read"):
+        NamespacesPolarisRepo(stub.client()).get(_RAW)
+
+
+@pytest.mark.parametrize(
+    "body",
+    [{}, {"namespaces": ["raw"]}, {"namespaces": [["raw", 1]]}, {"namespaces": "raw"}],
+    ids=["no-namespaces", "string-item", "non-string-part", "string-list"],
+)
+def test_namespace_listing_of_the_wrong_shape_is_unavailable(body: dict[str, Any]):
+    """A listed namespace must be a list of strings; anything else is a 502, not a tuple of characters."""
+    stub = PolarisStub()
+    stub.on("GET", NAMESPACES, httpx.Response(200, json=body))
+
+    with pytest.raises(CatalogUnavailableError, match="the namespaces of catalog sales in a form this backend"):
+        NamespacesPolarisRepo(stub.client()).list_in(CatalogId.of("sales"), ())

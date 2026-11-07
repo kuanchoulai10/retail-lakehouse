@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from context.catalog.application.exceptions import CatalogUnavailableError
+from context.catalog.adapter.outbound.shared.polaris import read_polaris_reply
 from context.catalog.application.port.outbound.generic_table import GenericTable
 
 if TYPE_CHECKING:
@@ -13,8 +13,6 @@ if TYPE_CHECKING:
     import httpx
 
     from context.catalog.application.port.outbound.generic_table import GenericTableId
-
-_UNREADABLE = (AttributeError, KeyError, TypeError, ValueError)
 
 
 def _optional_text(table: Mapping[str, Any], key: str) -> str | None:
@@ -44,18 +42,19 @@ def _generic_table(table_id: GenericTableId, table: Mapping[str, Any]) -> Generi
     )
 
 
+def _table_object(body: dict[str, Any]) -> dict[str, Any]:
+    table = body["table"]
+    if not isinstance(table, dict):
+        raise TypeError(f"table must be an object, not {table!r}")
+    return table
+
+
 def generic_table_from_polaris(table_id: GenericTableId, response: httpx.Response) -> GenericTable:
     """Map the ``table`` of a LoadGenericTableResponse reply to a GenericTable.
 
     A reply that is not JSON, has no ``table``, or holds a table this backend cannot read
     raises CatalogUnavailableError naming the table, so the API answers 502 rather than 500.
     """
-    try:
-        table = response.json()["table"]
-        if not isinstance(table, dict):
-            raise TypeError(f"table must be an object, not {table!r}")
-        return _generic_table(table_id, table)
-    except _UNREADABLE as exc:
-        raise CatalogUnavailableError(
-            f"Polaris returned generic table {table_id.name} in a form this backend cannot read: {exc!r}"
-        ) from exc
+    return read_polaris_reply(
+        response, f"generic table {table_id.name}", lambda body: _generic_table(table_id, _table_object(body))
+    )
