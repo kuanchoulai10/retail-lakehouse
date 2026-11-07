@@ -18,7 +18,7 @@ export function MaintenanceEmptyState({ reason }: { reason: MaintenanceEmptyReas
         {reason === "not-found" && (
           <>
             {" "}
-            (see <Link to="/discovery-rules">Discovery rules</Link>)
+            (see <Link to="/discovery-rules" className="underline hover:text-foreground">Discovery rules</Link>)
           </>
         )}
       </p>

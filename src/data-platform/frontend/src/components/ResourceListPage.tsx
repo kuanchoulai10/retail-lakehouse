@@ -29,9 +29,7 @@ interface Props<Row> {
   objectKind: string;
   objectName: (row: Row) => string;
   fullPath: (row: Row) => string;
-  onDelete: (row: Row) => void;
-  deletePending: boolean;
-  deleteError: unknown;
+  onDelete: (row: Row) => Promise<void>;
 }
 
 export function ResourceListPage<Row>({
@@ -46,11 +44,29 @@ export function ResourceListPage<Row>({
   objectName,
   fullPath,
   onDelete,
-  deletePending,
-  deleteError,
 }: Props<Row>) {
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<Row | null>(null);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+
+  function openDelete(row: Row) {
+    setError(null);
+    setDeleting(row);
+  }
+
+  async function confirmDelete(row: Row) {
+    setPending(true);
+    setError(null);
+    try {
+      await onDelete(row);
+      setDeleting(null);
+    } catch (failure) {
+      setError(failure);
+    } finally {
+      setPending(false);
+    }
+  }
 
   return (
     <>
@@ -86,7 +102,7 @@ export function ResourceListPage<Row>({
                   variant="ghost"
                   size="icon-sm"
                   aria-label={`Delete ${objectName(row)}`}
-                  onClick={() => setDeleting(row)}
+                  onClick={() => openDelete(row)}
                 >
                   <Trash2 aria-hidden="true" />
                 </Button>
@@ -103,9 +119,9 @@ export function ResourceListPage<Row>({
           objectKind={objectKind}
           objectName={objectName(deleting)}
           fullPath={fullPath(deleting)}
-          isPending={deletePending}
-          error={deleteError}
-          onConfirm={() => onDelete(deleting)}
+          isPending={pending}
+          error={error}
+          onConfirm={() => void confirmDelete(deleting)}
         />
       )}
     </>

@@ -209,6 +209,7 @@ export interface TableSummaryApiResponse {
   total_files_size: number | null;
 }
 
+// Mirrors the backend catalog TableApiResponse.
 export interface CatalogTableApiResponse {
   catalog: string;
   namespace: string[];
