@@ -48,6 +48,7 @@ UTILITY_FILES = {
     "connection_config_to_dict.py",
     "storage_config_from_dict.py",
     "storage_config_to_dict.py",
+    "namespace_id_from_parts.py",
 }
 
 # Known verbs for service naming. This is a pre-defined allowlist, not an

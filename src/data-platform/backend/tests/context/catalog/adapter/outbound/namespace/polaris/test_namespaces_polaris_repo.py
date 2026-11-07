@@ -1,0 +1,180 @@
+"""Test that the namespaces repo sends the exact Iceberg REST requests and maps the replies."""
+
+from __future__ import annotations
+
+import json
+from typing import Any
+
+import httpx
+import pytest
+
+from context.catalog.adapter.outbound.namespace.polaris import NamespacesPolarisRepo
+from context.catalog.application.exceptions import ConflictError, NotFoundError, ValidationError
+from context.catalog.application.port.outbound.namespace import CatalogId, Namespace, NamespaceId
+from tests.context.catalog.adapter.outbound.shared.polaris.polaris_stub import PolarisStub
+
+NAMESPACES = "/api/catalog/v1/sales/namespaces"
+CATALOGS = "/api/management/v1/catalogs"
+
+
+def _body(request: httpx.Request) -> Any:  # noqa: ANN401
+    return json.loads(request.content)
+
+
+def _error(status: int, message: str) -> httpx.Response:
+    return httpx.Response(status, json={"error": {"message": message, "type": "X", "code": status}})
+
+
+def test_create_posts_the_namespace_with_properties():
+    """Create sends POST /namespaces with the parts and properties and returns what Polaris saved."""
+    stub = PolarisStub()
+    stub.on("POST", NAMESPACES, httpx.Response(200, json={"namespace": ["raw"], "properties": {"owner": "de"}}))
+
+    saved = NamespacesPolarisRepo(stub.client()).create(Namespace(NamespaceId.of("sales", ("raw",)), {"owner": "de"}))
+
+    (request,) = stub.requests
+    assert (request.method, request.url.path) == ("POST", NAMESPACES)
+    assert _body(request) == {"namespace": ["raw"], "properties": {"owner": "de"}}
+    assert (saved.id, saved.properties) == (NamespaceId.of("sales", ("raw",)), {"owner": "de"})
+
+
+def test_namespace_part_with_dot_round_trips():
+    """``a.b`` goes to Polaris as one part and comes back as one part, in a body and in a path."""
+    stub = PolarisStub()
+    stub.on("POST", NAMESPACES, httpx.Response(200, json={"namespace": ["a.b"], "properties": {}}))
+    stub.on("GET", f"{NAMESPACES}/a.b", httpx.Response(200, json={"namespace": ["a.b"], "properties": {"k": "v"}}))
+    repo = NamespacesPolarisRepo(stub.client())
+
+    created = repo.create(Namespace(NamespaceId.of("sales", ("a.b",)), {}))
+    fetched = repo.get(NamespaceId.of("sales", ("a.b",)))
+
+    assert _body(stub.requests[0])["namespace"] == ["a.b"]
+    assert created.id.parts == ("a.b",)
+    assert fetched is not None
+    assert fetched.id.parts == ("a.b",)
+    assert fetched.properties == {"k": "v"}
+
+
+def test_multi_part_namespace_path_joins_parts_with_an_encoded_unit_separator():
+    """A nested namespace is ``a%1Fb`` in the path, never ``a.b``, and spaces are encoded."""
+    stub = PolarisStub()
+    stub.on("GET", f"{NAMESPACES}/a%1Fb%20c", httpx.Response(200, json={"namespace": ["a", "b c"], "properties": {}}))
+
+    fetched = NamespacesPolarisRepo(stub.client()).get(NamespaceId.of("sales", ("a", "b c")))
+
+    assert fetched is not None
+    assert fetched.id.parts == ("a", "b c")
+
+
+def test_get_unknown_namespace_is_none():
+    """Polaris's 404 means there is no such namespace."""
+    stub = PolarisStub()
+    stub.on("GET", f"{NAMESPACES}/nope", _error(404, "Namespace does not exist: nope"))
+
+    assert NamespacesPolarisRepo(stub.client()).get(NamespaceId.of("sales", ("nope",))) is None
+
+
+def test_list_in_top_level_sends_no_parent_and_returns_each_namespace():
+    """Listing the top level sends no ``parent`` and maps each returned namespace."""
+    stub = PolarisStub()
+    stub.on("GET", NAMESPACES, httpx.Response(200, json={"namespaces": [["raw"], ["a.b"]]}))
+
+    found = NamespacesPolarisRepo(stub.client()).list_in(CatalogId.of("sales"), ())
+
+    (request,) = stub.requests
+    assert "parent" not in request.url.params
+    assert [n.id for n in found] == [NamespaceId.of("sales", ("raw",)), NamespaceId.of("sales", ("a.b",))]
+
+
+def test_list_namespaces_returns_direct_children():
+    """Listing with a parent sends ``parent`` joined by U+001F and returns the children Polaris names."""
+    stub = PolarisStub()
+    stub.on("GET", NAMESPACES, httpx.Response(200, json={"namespaces": [["a", "b"], ["a", "c.d"]]}))
+
+    found = NamespacesPolarisRepo(stub.client()).list_in(CatalogId.of("sales"), ("a", "x.y"))
+
+    (request,) = stub.requests
+    assert request.url.params["parent"] == "a\x1fx.y"
+    assert "parent=a%1Fx.y" in request.url.query.decode()
+    assert [n.id.parts for n in found] == [("a", "b"), ("a", "c.d")]
+
+
+def test_list_in_unknown_catalog_is_not_found():
+    """Polaris's 404 for an unknown catalog or parent passes through."""
+    stub = PolarisStub()
+    stub.on("GET", NAMESPACES, _error(404, "Catalog sales not found"))
+
+    with pytest.raises(NotFoundError, match="Catalog sales not found"):
+        NamespacesPolarisRepo(stub.client()).list_in(CatalogId.of("sales"), ())
+
+
+def test_create_existing_namespace_is_a_conflict():
+    """Polaris's 409 is a ConflictError carrying its message."""
+    stub = PolarisStub()
+    stub.on("POST", NAMESPACES, _error(409, "Namespace already exists: raw"))
+
+    with pytest.raises(ConflictError, match="already exists"):
+        NamespacesPolarisRepo(stub.client()).create(Namespace(NamespaceId.of("sales", ("raw",)), {}))
+
+
+def test_delete_sends_delete_on_the_namespace_path():
+    """Delete sends DELETE on the encoded namespace path."""
+    stub = PolarisStub()
+    stub.on("DELETE", f"{NAMESPACES}/a%1Fb", httpx.Response(204))
+
+    NamespacesPolarisRepo(stub.client()).delete(NamespaceId.of("sales", ("a", "b")))
+
+    (request,) = stub.requests
+    assert (request.method, request.url.raw_path.decode()) == ("DELETE", f"{NAMESPACES}/a%1Fb")
+
+
+@pytest.mark.parametrize(("status", "error"), [(409, ConflictError), (400, ValidationError)])
+def test_delete_non_empty_namespace_reports_polaris_error(status: int, error: type[Exception]):
+    """A 409 or 400 for a namespace that is not empty reaches the caller with Polaris's message."""
+    stub = PolarisStub()
+    stub.on("DELETE", f"{NAMESPACES}/raw", _error(status, "Namespace raw is not empty"))
+
+    with pytest.raises(error, match="Namespace raw is not empty"):
+        NamespacesPolarisRepo(stub.client()).delete(NamespaceId.of("sales", ("raw",)))
+
+
+def test_update_namespace_properties_sends_updates_and_removals():
+    """Update posts ``{removals, updates}`` to ``/properties``, then reads the namespace back."""
+    stub = PolarisStub()
+    stub.on(
+        "POST",
+        f"{NAMESPACES}/raw/properties",
+        httpx.Response(200, json={"updated": ["tier"], "removed": ["stale"], "missing": []}),
+    )
+    stub.on(
+        "GET", f"{NAMESPACES}/raw", httpx.Response(200, json={"namespace": ["raw"], "properties": {"tier": "gold"}})
+    )
+
+    saved = NamespacesPolarisRepo(stub.client()).update_properties(
+        NamespaceId.of("sales", ("raw",)), {"tier": "gold"}, ["stale"]
+    )
+
+    post, read = stub.requests
+    assert (post.method, post.url.path) == ("POST", f"{NAMESPACES}/raw/properties")
+    assert _body(post) == {"removals": ["stale"], "updates": {"tier": "gold"}}
+    assert read.method == "GET"
+    assert saved.properties == {"tier": "gold"}
+
+
+def test_list_all_walks_every_catalog_and_every_level():
+    """list_all lists the catalogs, then each catalog's namespaces level by level, reading properties."""
+    stub = PolarisStub()
+    stub.on("GET", CATALOGS, httpx.Response(200, json={"catalogs": [{"name": "sales"}]}))
+    stub.on(
+        "GET",
+        NAMESPACES,
+        httpx.Response(200, json={"namespaces": [["a"]]}),
+        httpx.Response(200, json={"namespaces": [["a", "b"]]}),
+        httpx.Response(200, json={"namespaces": []}),
+    )
+    stub.on("GET", f"{NAMESPACES}/a", httpx.Response(200, json={"namespace": ["a"], "properties": {}}))
+    stub.on("GET", f"{NAMESPACES}/a%1Fb", httpx.Response(200, json={"namespace": ["a", "b"], "properties": {}}))
+
+    found = NamespacesPolarisRepo(stub.client()).list_all()
+
+    assert [n.id.parts for n in found] == [("a",), ("a", "b")]

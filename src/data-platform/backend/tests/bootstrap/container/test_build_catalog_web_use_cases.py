@@ -24,10 +24,10 @@ SALES: dict[str, object] = {
 
 
 def test_every_catalog_web_use_case_is_populated():
-    """All five catalog web use case fields are set."""
+    """Every catalog web use case fields are set."""
     web = build_catalog_web_use_cases(PolarisStub().client())
 
-    assert len(fields(web)) == 5
+    assert len(fields(web)) == 10
     assert all(getattr(web, f.name) is not None for f in fields(web))
 
 
@@ -88,3 +88,24 @@ def test_read_never_echoes_a_connection_secret_even_if_polaris_returns_one():
     assert response.json()["connection_config"]["connection_type"] == "REST"
     assert response.json()["connection_config"]["authentication"]["authentication_type"] == "BEARER"
     assert "leaked-token" not in response.text
+
+
+def test_namespace_with_dot_part_is_served_end_to_end_against_polaris():
+    """A dotted part is one part in the Polaris create body and in the read path."""
+    stub = PolarisStub()
+    stub.on(
+        "POST", "/api/catalog/v1/sales/namespaces", httpx.Response(200, json={"namespace": ["a.b"], "properties": {}})
+    )
+    stub.on(
+        "GET",
+        "/api/catalog/v1/sales/namespaces/a.b",
+        httpx.Response(200, json={"namespace": ["a.b"], "properties": {"k": "v"}}),
+    )
+    client = TestClient(create_api_app(lambda app: register_routes(app, build_catalog_web_use_cases(stub.client()))))
+
+    created = client.post("/v1/catalogs/sales/namespaces", json={"namespace": ["a.b"]})
+    fetched = client.get("/v1/catalogs/sales/namespaces/a.b")
+
+    assert created.status_code == 201
+    assert created.json()["namespace"] == ["a.b"]
+    assert fetched.json() == {"catalog": "sales", "namespace": ["a.b"], "properties": {"k": "v"}}

@@ -13,6 +13,13 @@ if TYPE_CHECKING:
         ListCatalogsUseCase,
         UpdateCatalogUseCase,
     )
+    from context.catalog.application.port.inbound.namespace import (
+        CreateNamespaceUseCase,
+        DeleteNamespaceUseCase,
+        GetNamespaceUseCase,
+        ListNamespacesUseCase,
+        UpdateNamespacePropertiesUseCase,
+    )
 
 
 @dataclass(frozen=True)
@@ -24,3 +31,8 @@ class WebUseCases:
     create_catalog: CreateCatalogUseCase
     update_catalog: UpdateCatalogUseCase
     delete_catalog: DeleteCatalogUseCase
+    list_namespaces: ListNamespacesUseCase
+    get_namespace: GetNamespaceUseCase
+    create_namespace: CreateNamespaceUseCase
+    delete_namespace: DeleteNamespaceUseCase
+    update_namespace_properties: UpdateNamespacePropertiesUseCase

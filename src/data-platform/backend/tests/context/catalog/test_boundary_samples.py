@@ -13,15 +13,21 @@ CONTEXT = "context.catalog"
 CONTEXT_BOUNDARIES = (
     "application.exceptions",
     "application.domain.model.catalog",
+    "application.domain.model.namespace",
     "application.port.inbound.catalog",
+    "application.port.inbound.namespace",
     "application.port.outbound.catalog",
+    "application.port.outbound.namespace",
     "application.service.catalog",
+    "application.service.namespace",
     "application.domain.service.shared",
     "adapter.inbound.web",
     "adapter.inbound.web.shared",
     "adapter.inbound.web.catalog",
+    "adapter.inbound.web.namespace",
     "adapter.outbound.shared.polaris",
     "adapter.outbound.catalog.polaris",
+    "adapter.outbound.namespace.polaris",
 )
 CONTEXT_NON_BOUNDARIES = (
     "adapter.outbound.shared",
