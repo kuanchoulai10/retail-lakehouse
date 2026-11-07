@@ -12,7 +12,7 @@ Respond in the same language as the user's message. The user typically communica
 
 ## Project Overview
 
-**What it is:** an Iceberg lakehouse platform on minikube plus a self-built Table Maintenance service (`src/data-platform`, DDD + Clean Architecture) that schedules Iceberg maintenance (compaction, snapshot expiry). Long-term vision: "GitHub for Data", a DataOps platform.
+**What it is:** an Iceberg lakehouse platform on minikube plus a self-built data platform backend (`src/data-platform`, DDD + Clean Architecture, one package per bounded context under `backend/context/`). Its first bounded context is table maintenance, which schedules Iceberg maintenance (compaction, snapshot expiry). Long-term vision: "GitHub for Data", a DataOps platform.
 
 **Data flow:** MySQL →(Debezium CDC)→ Kafka →(Iceberg Sink)→ Iceberg on RustFS, catalog = Polaris → queried by Trino. Polaris catalog events →(Kafka event listener)→ Kafka topic `polaris-catalog-events` (key = event UUID, value = JSON; read it with `kafka-console-consumer.sh` in a broker pod or Kafka UI). Table maintenance Spark event logs → RustFS bucket `spark-event-logs` (zstd, rolling 128m, `logStageExecutorMetrics`, 3-day expiry) → on completion RustFS sends one `s3:ObjectCreated:Copy` event (the `appstatus_<appId>.inprogress` → `appstatus_<appId>` rename, prefix `eventlog_v2_`) → Kafka topic `spark-event-log-completions` (for a future metrics-analysis runtime).
 
@@ -23,11 +23,11 @@ Topic files load on demand: a nested `CLAUDE.md` is read when you work on files 
 | Topic | File |
 |---|---|
 | Waves, cluster runtime, deployed components, ambient mesh, Kubernetes label rules | `platform/CLAUDE.md` |
-| Backend layering, aggregate axis, DDD base types, port / adapter and DTO naming | `src/data-platform/backend/CLAUDE.md` |
+| Backend bounded contexts, layering, aggregate axis, DDD base types, port / adapter and DTO naming | `src/data-platform/backend/CLAUDE.md` |
 | Console UI rules | `src/console/CLAUDE.md` |
 | History of what landed and finished initiatives | `docs/agents/project-history.md` |
 | Known follow-ups and deferred work | `docs/agents/known-follow-ups.md` |
-| Architecture decisions | `docs/adr/` |
+| Architecture decisions | `docs/adr/` (0005 bounded contexts, 0006 choosing an outbound port, 0007 one-time secrets) |
 
 Keep this file to rules that apply everywhere; put topic rules in the topic file. When work lands, add a line to `docs/agents/project-history.md` and update the topic file it changes.
 
