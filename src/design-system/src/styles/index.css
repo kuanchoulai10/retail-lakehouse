@@ -1,0 +1,49 @@
+@import "tailwindcss";
+@import "@fontsource-variable/noto-sans";
+@import "@fontsource-variable/noto-sans-mono";
+@import "@serendie/design-token/tokens.css";
+@import "./semantic.css";
+@import "./typography.css";
+@import "./density.css";
+
+@source "../";
+
+@theme inline {
+  --color-surface: var(--ds-surface);
+  --color-surface-container: var(--ds-surface-container);
+  --color-surface-container-dim: var(--ds-surface-container-dim);
+  --color-on-surface: var(--ds-on-surface);
+  --color-on-surface-variant: var(--ds-on-surface-variant);
+  --color-outline: var(--ds-outline);
+  --color-outline-dim: var(--ds-outline-dim);
+  --color-primary: var(--ds-primary);
+  --color-on-primary: var(--ds-on-primary);
+  --color-primary-container: var(--ds-primary-container);
+  --color-on-primary-container: var(--ds-on-primary-container);
+  --color-hovered: var(--ds-hovered);
+  --color-disabled: var(--ds-disabled);
+  --color-on-disabled: var(--ds-on-disabled);
+  --color-scrim: var(--ds-scrim);
+  --color-focus-ring: var(--ds-focus-ring);
+  --color-positive-container: var(--ds-positive-container);
+  --color-on-positive-container: var(--ds-on-positive-container);
+  --color-positive-text: var(--ds-positive-text);
+  --color-notice-container: var(--ds-notice-container);
+  --color-on-notice-container: var(--ds-on-notice-container);
+  --color-notice-text: var(--ds-notice-text);
+  --color-negative: var(--ds-negative);
+  --color-negative-container: var(--ds-negative-container);
+  --color-on-negative-container: var(--ds-on-negative-container);
+  --color-negative-text: var(--ds-negative-text);
+  --color-chart-1: var(--ds-chart-1);
+  --color-chart-2: var(--ds-chart-2);
+  --color-chart-3: var(--ds-chart-3);
+  --color-chart-4: var(--ds-chart-4);
+  --color-chart-5: var(--ds-chart-5);
+  --font-sans: "Noto Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Noto Sans Mono Variable", ui-monospace, monospace;
+  --radius-sm: var(--sd-system-dimension-radius-small);
+  --radius-md: var(--sd-system-dimension-radius-medium);
+  --radius-lg: var(--sd-system-dimension-radius-large);
+  --radius-xl: var(--sd-system-dimension-radius-extraLarge);
+}

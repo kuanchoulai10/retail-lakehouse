@@ -1,0 +1,33 @@
+:root {
+  --ds-surface: var(--sd-system-color-component-surface);
+  --ds-surface-container: var(--sd-system-color-component-surfaceContainer);
+  --ds-surface-container-dim: var(--sd-system-color-component-surfaceContainerDim);
+  --ds-on-surface: var(--sd-system-color-component-onSurface);
+  --ds-on-surface-variant: var(--sd-system-color-component-onSurfaceVariant);
+  --ds-outline: var(--sd-system-color-component-outline);
+  --ds-outline-dim: var(--sd-system-color-component-outlineDim);
+  --ds-primary: var(--sd-system-color-impression-primary);
+  --ds-on-primary: var(--sd-system-color-impression-onPrimary);
+  --ds-primary-container: var(--sd-system-color-impression-primaryContainer);
+  --ds-on-primary-container: var(--sd-system-color-impression-onPrimaryContainer);
+  --ds-hovered: var(--sd-system-color-interaction-hovered);
+  --ds-disabled: var(--sd-system-color-interaction-disabled);
+  --ds-on-disabled: var(--sd-system-color-interaction-disabledOnSurface);
+  --ds-scrim: var(--sd-system-color-component-scrim);
+  --ds-focus-ring: var(--sd-system-color-impression-primary);
+  --ds-positive-container: var(--sd-system-color-impression-positiveContainer);
+  --ds-on-positive-container: var(--sd-system-color-impression-onPositiveContainer);
+  --ds-positive-text: var(--sd-system-color-chart-mark-positive-05);
+  --ds-notice-container: var(--sd-system-color-impression-noticeContainer);
+  --ds-on-notice-container: var(--sd-system-color-impression-onNoticeContainer);
+  --ds-notice-text: var(--sd-system-color-chart-mark-notice-05);
+  --ds-negative: var(--sd-system-color-impression-negative);
+  --ds-negative-container: var(--sd-system-color-impression-negativeContainer);
+  --ds-on-negative-container: var(--sd-system-color-impression-onNegativeContainer);
+  --ds-negative-text: var(--sd-system-color-impression-negative);
+  --ds-chart-1: var(--sd-system-color-chart-mark-primary-05);
+  --ds-chart-2: var(--sd-system-color-chart-mark-positive-05);
+  --ds-chart-3: var(--sd-system-color-chart-mark-notice-04);
+  --ds-chart-4: var(--sd-system-color-chart-mark-negative-05);
+  --ds-chart-5: var(--sd-system-color-component-outlineDim);
+}

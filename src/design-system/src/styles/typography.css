@@ -1,0 +1,83 @@
+@utility type-display-small {
+  font: var(--sd-system-typography-display-small_compact) var(--font-sans);
+  @media (width >= 768px) {
+    font: var(--sd-system-typography-display-small_expanded) var(--font-sans);
+  }
+}
+
+@utility type-headline-small {
+  font: var(--sd-system-typography-headline-small_compact) var(--font-sans);
+  @media (width >= 768px) {
+    font: var(--sd-system-typography-headline-small_expanded) var(--font-sans);
+  }
+}
+
+@utility type-title-large {
+  font: var(--sd-system-typography-title-large_compact) var(--font-sans);
+  @media (width >= 768px) {
+    font: var(--sd-system-typography-title-large_expanded) var(--font-sans);
+  }
+}
+
+@utility type-title-medium {
+  font: var(--sd-system-typography-title-medium_compact) var(--font-sans);
+  @media (width >= 768px) {
+    font: var(--sd-system-typography-title-medium_expanded) var(--font-sans);
+  }
+}
+
+@utility type-title-small {
+  font: var(--sd-system-typography-title-small_compact) var(--font-sans);
+  @media (width >= 768px) {
+    font: var(--sd-system-typography-title-small_expanded) var(--font-sans);
+  }
+}
+
+@utility type-body-large {
+  font: var(--sd-system-typography-body-large_compact) var(--font-sans);
+  @media (width >= 768px) {
+    font: var(--sd-system-typography-body-large_expanded) var(--font-sans);
+  }
+}
+
+@utility type-body-medium {
+  font: var(--sd-system-typography-body-medium_compact) var(--font-sans);
+  @media (width >= 768px) {
+    font: var(--sd-system-typography-body-medium_expanded) var(--font-sans);
+  }
+}
+
+@utility type-body-small {
+  font: var(--sd-system-typography-body-small_compact) var(--font-sans);
+  @media (width >= 768px) {
+    font: var(--sd-system-typography-body-small_expanded) var(--font-sans);
+  }
+}
+
+@utility type-label-large {
+  font: var(--sd-system-typography-label-large_compact) var(--font-sans);
+  @media (width >= 768px) {
+    font: var(--sd-system-typography-label-large_expanded) var(--font-sans);
+  }
+}
+
+@utility type-label-medium {
+  font: var(--sd-system-typography-label-medium_compact) var(--font-sans);
+  @media (width >= 768px) {
+    font: var(--sd-system-typography-label-medium_expanded) var(--font-sans);
+  }
+}
+
+@utility type-label-small {
+  font: var(--sd-system-typography-label-small_compact) var(--font-sans);
+  @media (width >= 768px) {
+    font: var(--sd-system-typography-label-small_expanded) var(--font-sans);
+  }
+}
+
+@utility type-code {
+  font: var(--sd-system-typography-body-small_compact) var(--font-mono);
+  @media (width >= 768px) {
+    font: var(--sd-system-typography-body-small_expanded) var(--font-mono);
+  }
+}
