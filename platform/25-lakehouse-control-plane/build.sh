@@ -45,7 +45,13 @@ build_and_load() {
 
 BACKEND_TAG="$(source_tag "${BACKEND_DIR}")"
 SPARK_TAG="$(source_tag "${SPARK_DIR}")"
-CONSOLE_TAG="$(source_tag "${CONSOLE_DIR}" "${DESIGN_SYSTEM_DIR}" "${REPO_ROOT}/package.json" "${REPO_ROOT}/package-lock.json")"
+CONSOLE_SOURCES=(
+  "${CONSOLE_DIR}"
+  "${DESIGN_SYSTEM_DIR}"
+  "${REPO_ROOT}/package.json"
+  "${REPO_ROOT}/package-lock.json"
+)
+CONSOLE_TAG="$(source_tag "${CONSOLE_SOURCES[@]}")"
 
 build_and_load table-maintenance-backend "${BACKEND_DIR}" "${BACKEND_TAG}"
 build_and_load table-maintenance-spark "${SPARK_DIR}" "${SPARK_TAG}"
