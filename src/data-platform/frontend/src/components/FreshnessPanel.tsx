@@ -76,7 +76,7 @@ export function FreshnessPanel({ commits, truncated, now, lastCommittedAt }: Pro
             />
             <YAxis hide allowDecimals={false} />
             <Tooltip
-              cursor={{ fill: "var(--color-surface-container-dim)" }}
+              cursor={false}
               contentStyle={TOOLTIP_STYLE}
               labelFormatter={(label) => hourLabel(String(label))}
             />

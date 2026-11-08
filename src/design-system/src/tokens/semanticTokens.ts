@@ -92,4 +92,10 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { foreground: "outline-dim", background: "surface", minimum: 3 },
   { foreground: "outline-dim", background: "surface-container", minimum: 3 },
   { foreground: "outline-dim", background: "surface-container-dim", minimum: 3 },
+  { foreground: "chart-1", background: "surface-container", minimum: 3 },
+  { foreground: "chart-2", background: "surface-container", minimum: 3 },
+  { foreground: "chart-3", background: "surface-container", minimum: 3 },
+  { foreground: "chart-4", background: "surface-container", minimum: 3 },
+  { foreground: "chart-5", background: "surface-container", minimum: 3 },
+  { foreground: "chart-5", background: "surface-container-dim", minimum: 3 },
 ];
