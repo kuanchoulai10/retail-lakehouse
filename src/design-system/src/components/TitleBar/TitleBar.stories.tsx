@@ -37,8 +37,9 @@ const meta = {
         component:
           "Not in Serendie. Below 768px the actions collapse into an overflow menu when " +
           "overflowActions is given; an overflow action can be disabled and carry a description " +
-          "(shown under its label, and its accessible description) saying why. A long title truncates " +
-          "and carries the full text in a title.",
+          "(shown under its label, and its accessible description) saying why. Below 768px a long title wraps " +
+          "so the full name is readable; at 768px and up it truncates and carries the full text in " +
+          "a title.",
       },
     },
   },
@@ -75,9 +76,10 @@ export const PhoneOverflow: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const heading = canvas.getByRole("heading", { level: 1, name: LONG_TITLE });
-    await expect(heading).toHaveClass("truncate");
-    await expect(heading).toHaveAttribute("title", LONG_TITLE);
-    await expect(heading.scrollWidth).toBeGreaterThan(heading.clientWidth);
+    await expect(heading).toHaveClass("[overflow-wrap:anywhere]");
+    await expect(heading).toHaveTextContent(LONG_TITLE);
+    await expect(getComputedStyle(heading).whiteSpace).not.toBe("nowrap");
+    await expect(heading.scrollWidth).toBeLessThanOrEqual(heading.clientWidth);
     await expect(canvas.queryByRole("button", { name: "Run now" })).toBeNull();
     const more = canvas.getByRole("button", { name: "More actions" });
     await userEvent.tab();
@@ -104,6 +106,20 @@ export const PhoneWithoutOverflow: Story = {
   args: { overflowActions: undefined },
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByRole("button", { name: "Run now" })).toBeVisible();
+    await expectNoHorizontalPageScroll(canvasElement);
+  },
+};
+
+export const DesktopLongTitle: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  args: { breadcrumbs: crumbs, title: `${LONG_TITLE}_${LONG_TITLE}_${LONG_TITLE}` },
+  play: async ({ canvasElement }) => {
+    const title = `${LONG_TITLE}_${LONG_TITLE}_${LONG_TITLE}`;
+    const heading = within(canvasElement).getByRole("heading", { level: 1, name: title });
+    await expect(heading).toHaveClass("md:truncate");
+    await expect(heading).toHaveAttribute("title", title);
+    await expect(getComputedStyle(heading).whiteSpace).toBe("nowrap");
+    await expect(heading.scrollWidth).toBeGreaterThan(heading.clientWidth);
     await expectNoHorizontalPageScroll(canvasElement);
   },
 };

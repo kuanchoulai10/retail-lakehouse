@@ -21,7 +21,7 @@ describe("TablePage on a phone", () => {
     window.dispatchEvent(new Event("resize"));
   });
 
-  it("truncates a long table name and keeps the full name in its title", async () => {
+  it("wraps a long table name so the full name is readable", async () => {
     expect(LONG_NAME).toHaveLength(60);
     stubCatalogApi({
       [`GET /v1/catalogs/iceberg/namespaces/retail/tables/${LONG_NAME}`]: () =>
@@ -40,7 +40,7 @@ describe("TablePage on a phone", () => {
     );
 
     const title = await screen.findByRole("heading", { level: 1, name: LONG_NAME });
-    expect(title).toHaveClass("truncate");
-    expect(title).toHaveAttribute("title", LONG_NAME);
+    expect(title).toHaveClass("[overflow-wrap:anywhere]");
+    expect(title).toHaveTextContent(LONG_NAME);
   });
 });

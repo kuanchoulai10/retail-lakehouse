@@ -117,9 +117,9 @@ describe("TableHeader", () => {
     expect(button).toHaveAccessibleDescription("Only an active table can run maintenance");
   });
 
-  it("gives the title a truncate class so a long name cannot overflow", () => {
+  it("wraps a long title on a phone and truncates it from md so it cannot overflow", () => {
     renderHeader();
-    expect(screen.getByRole("heading", { level: 1 })).toHaveClass("truncate");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveClass("[overflow-wrap:anywhere]", "md:truncate");
   });
 
   it("opens the dialog as role dialog and closes it on Escape without posting", async () => {

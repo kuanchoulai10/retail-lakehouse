@@ -59,7 +59,7 @@ export function TitleBar({ breadcrumbs, title, actions, overflowActions }: Title
       <div className="flex items-start justify-between gap-3">
         <h1
           title={typeof title === "string" ? title : undefined}
-          className="type-headline-small min-w-0 flex-1 truncate text-on-surface"
+          className="type-headline-small min-w-0 flex-1 text-on-surface [overflow-wrap:anywhere] md:truncate"
         >
           {title}
         </h1>
