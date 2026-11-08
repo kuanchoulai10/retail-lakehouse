@@ -1,7 +1,8 @@
+import { ThemeProvider } from "@retail-lakehouse/design-system";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
-import { ThemeProvider } from "../theme/ThemeProvider";
+import { afterEach, describe, expect, it } from "vitest";
 import { AppShell } from "./AppShell";
 
 function renderShell(path = "/") {
@@ -16,11 +17,27 @@ function renderShell(path = "/") {
   );
 }
 
+afterEach(() => {
+  document.documentElement.removeAttribute("data-panda-theme");
+  localStorage.clear();
+});
+
 describe("AppShell", () => {
   it("renders a navigation landmark with a Tables link to the list", () => {
     renderShell();
     const nav = screen.getByRole("navigation", { name: "Main" });
     expect(within(nav).getByRole("link", { name: "Tables" })).toHaveAttribute("href", "/");
+  });
+
+  it("lists the four console sections in the main navigation", () => {
+    renderShell();
+    const nav = screen.getByRole("navigation", { name: "Main" });
+    expect(within(nav).getAllByRole("link").map((link) => link.textContent)).toEqual([
+      "Tables",
+      "Catalog",
+      "Presets",
+      "Discovery rules",
+    ]);
   });
 
   it("links the presets and discovery rules pages", () => {
@@ -49,13 +66,19 @@ describe("AppShell", () => {
     expect(within(nav).getByRole("link", { name: "Tables" })).not.toHaveAttribute("aria-current");
   });
 
-  it("links the product name to the list", () => {
+  it("shows the product name in the top app bar", () => {
     renderShell();
-    const brands = screen.getAllByRole("link", { name: "Lakehouse" });
-    expect(brands.length).toBeGreaterThan(0);
-    for (const brand of brands) {
-      expect(brand).toHaveAttribute("href", "/");
-    }
+    expect(within(screen.getByRole("banner")).getByText("Lakehouse")).toBeInTheDocument();
+  });
+
+  it("puts the colour theme picker in the top app bar and applies the picked theme", async () => {
+    const user = userEvent.setup();
+    renderShell();
+    const banner = screen.getByRole("banner");
+    await user.click(within(banner).getByRole("button", { name: /^Colour theme/ }));
+    await user.click(await screen.findByRole("menuitemradio", { name: "Asagi" }));
+    expect(document.documentElement).toHaveAttribute("data-panda-theme", "asagi");
+    expect(within(banner).getByRole("button", { name: "Colour theme: Asagi" })).toBeInTheDocument();
   });
 
   it("renders its children in the main landmark", () => {

@@ -6,22 +6,14 @@
     <title>Data Platform Console</title>
     <script>
       (function () {
-        var choice = "system";
+        var theme = null;
         try {
-          var stored = window.localStorage.getItem("console-theme");
-          if (stored === "light" || stored === "dark" || stored === "system") {
-            choice = stored;
-          }
+          theme = window.localStorage.getItem("ds-theme");
         } catch (error) {
-          choice = "system";
+          theme = null;
         }
-        var dark =
-          choice === "dark" ||
-          (choice === "system" &&
-            typeof window.matchMedia === "function" &&
-            window.matchMedia("(prefers-color-scheme: dark)").matches);
-        if (dark) {
-          document.documentElement.classList.add("dark");
+        if (theme === "asagi" || theme === "kurikawa") {
+          document.documentElement.setAttribute("data-panda-theme", theme);
         }
       })();
     </script>
