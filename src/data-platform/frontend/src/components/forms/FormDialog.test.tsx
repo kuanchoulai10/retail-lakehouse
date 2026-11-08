@@ -37,6 +37,14 @@ describe("FormDialog", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  it("submits when Enter is pressed in a field", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    renderDialog({ onSubmit });
+    await user.type(screen.getByLabelText("Name"), "orders{Enter}");
+    expect(onSubmit).toHaveBeenCalledOnce();
+  });
+
   it("shows the error and its action while the dialog stays open", () => {
     renderDialog({ error: "Conflict", errorAction: <button type="button">Reload</button> });
     expect(screen.getByRole("alert")).toHaveTextContent("Conflict");

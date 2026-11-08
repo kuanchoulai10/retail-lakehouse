@@ -44,7 +44,7 @@ export function SettingsFieldGroup({ operation, fields, values, onChange }: Prop
             <Select
               key={key}
               id={id}
-              label={key}
+              label={<span className="font-mono">{key}</span>}
               items={SCOPE_ITEMS}
               value={String(values[key] ?? "table")}
               onValueChange={(v) => set(key, v)}
@@ -53,7 +53,7 @@ export function SettingsFieldGroup({ operation, fields, values, onChange }: Prop
             <TextField
               key={key}
               id={id}
-              label={key}
+              label={<span className="font-mono">{key}</span>}
               type="number"
               className="tabular-nums"
               value={values[key] == null ? "" : String(values[key])}

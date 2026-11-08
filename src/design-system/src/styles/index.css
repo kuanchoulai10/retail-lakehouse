@@ -32,6 +32,7 @@
   --color-on-notice-container: var(--ds-on-notice-container);
   --color-notice-text: var(--ds-notice-text);
   --color-negative: var(--ds-negative);
+  --color-on-negative: var(--ds-on-negative);
   --color-negative-container: var(--ds-negative-container);
   --color-on-negative-container: var(--ds-on-negative-container);
   --color-negative-text: var(--ds-negative-text);

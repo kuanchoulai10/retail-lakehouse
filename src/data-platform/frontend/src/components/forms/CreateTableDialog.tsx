@@ -164,7 +164,7 @@ export function CreateTableDialog({ catalog, namespace, onClose }: Props) {
               </div>
               <CheckBox
                 label="Required"
-                aria-label={`${label} required`}
+                aria-label={`Required, ${label.toLowerCase()}`}
                 checked={field.required}
                 onCheckedChange={(next) => setFields(replaceAt(fields, index, { required: next === true }))}
               />

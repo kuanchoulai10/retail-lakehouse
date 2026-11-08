@@ -48,6 +48,27 @@ export const Outlined: Story = {
   },
 };
 
+export const Negative: Story = {
+  args: { styleType: "negative", children: "Delete table" },
+  play: async ({ canvasElement }) => {
+    const button = within(canvasElement).getByRole("button", { name: "Delete table" });
+    const probe = (name: string) => {
+      const el = document.createElement("div");
+      el.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue(name);
+      document.body.appendChild(el);
+      const resolved = getComputedStyle(el).backgroundColor;
+      el.remove();
+      return resolved;
+    };
+    await expect(getComputedStyle(button).backgroundColor).toBe(probe("--ds-negative"));
+    await expect(getComputedStyle(button).color).toBe(probe("--ds-on-negative"));
+    await userEvent.tab();
+    await expectFocusRing(button);
+
+    await expect(button.className).toContain("enabled:hover:after:bg-hovered");
+  },
+};
+
 export const Ghost: Story = { args: { styleType: "ghost" } };
 
 export const Small: Story = { args: { size: "small" } };

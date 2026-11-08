@@ -69,6 +69,16 @@ export const HiddenLabel: Story = {
   },
 };
 
+export const RichLabel: Story = {
+  args: { label: <span className="font-mono">min_interval_seconds</span> },
+  play: async ({ canvasElement }) => {
+    const input = within(canvasElement).getByLabelText("min_interval_seconds");
+    await expect(input).toHaveAccessibleName("min_interval_seconds");
+    await userEvent.click(canvasElement.querySelector("label span") as HTMLElement);
+    await expect(input).toHaveFocus();
+  },
+};
+
 export const Required: Story = {
   args: { required: true },
   play: async ({ canvasElement }) => {

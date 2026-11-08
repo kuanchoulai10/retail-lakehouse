@@ -97,7 +97,7 @@ export function SettingsForm({ table }: Props) {
         <div className="p-4">
           <TextField
             id="reconcile_interval_seconds"
-            label="reconcile_interval_seconds"
+            label={<span className="font-mono">reconcile_interval_seconds</span>}
             type="number"
             className="tabular-nums"
             value={
@@ -141,6 +141,7 @@ export function SettingsForm({ table }: Props) {
           <>
             <AlertDialogCancel>Keep editing</AlertDialogCancel>
             <AlertDialogAction
+              styleType="negative"
               disabled={busy}
               onClick={() => {
                 save.reset();

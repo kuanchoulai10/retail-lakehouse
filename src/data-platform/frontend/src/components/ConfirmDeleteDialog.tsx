@@ -50,7 +50,7 @@ export function ConfirmDeleteDialog({
       footer={
         <>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <Button type="button" disabled={typed !== objectName || isPending} onClick={onConfirm}>
+          <Button type="button" styleType="negative" disabled={typed !== objectName || isPending} onClick={onConfirm}>
             Delete
           </Button>
         </>

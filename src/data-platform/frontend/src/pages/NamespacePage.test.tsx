@@ -225,7 +225,7 @@ describe("NamespacePage", { timeout: 15_000 }, () => {
     await user.click(within(dialog).getByRole("button", { name: "Add field" }));
     await user.type(within(dialog).getByLabelText("Field 2 name"), "paid_at");
     await user.type(within(dialog).getByLabelText("Field 2 type"), "timestamptz");
-    await user.click(within(dialog).getByLabelText("Field 2 required"));
+    await user.click(within(dialog).getByLabelText("Required, field 2"));
     await user.click(within(dialog).getByRole("button", { name: "Add partition" }));
     await user.type(within(dialog).getByLabelText("Partition 1 column"), "paid_at");
     await user.click(within(dialog).getByRole("combobox", { name: "Partition 1 transform" }));

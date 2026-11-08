@@ -22,6 +22,7 @@
   --ds-on-notice-container: var(--sd-system-color-impression-onNoticeContainer);
   --ds-notice-text: var(--sd-system-color-chart-mark-notice-05);
   --ds-negative: var(--sd-system-color-impression-negative);
+  --ds-on-negative: var(--sd-system-color-impression-onNegative);
   --ds-negative-container: var(--sd-system-color-impression-negativeContainer);
   --ds-on-negative-container: var(--sd-system-color-impression-onNegativeContainer);
   --ds-negative-text: var(--sd-system-color-impression-negative);

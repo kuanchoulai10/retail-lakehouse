@@ -22,6 +22,7 @@ export type SemanticToken =
   | "on-notice-container"
   | "notice-text"
   | "negative"
+  | "on-negative"
   | "negative-container"
   | "on-negative-container"
   | "negative-text"
@@ -55,6 +56,7 @@ export const SEMANTIC_TOKENS: readonly SemanticToken[] = [
   "on-notice-container",
   "notice-text",
   "negative",
+  "on-negative",
   "negative-container",
   "on-negative-container",
   "negative-text",
@@ -81,6 +83,7 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { foreground: "primary", background: "surface", minimum: 4.5 },
   { foreground: "on-positive-container", background: "positive-container", minimum: 4.5 },
   { foreground: "on-notice-container", background: "notice-container", minimum: 4.5 },
+  { foreground: "on-negative", background: "negative", minimum: 4.5 },
   { foreground: "on-negative-container", background: "negative-container", minimum: 4.5 },
   { foreground: "positive-text", background: "surface", minimum: 4.5 },
   { foreground: "notice-text", background: "surface", minimum: 4.5 },

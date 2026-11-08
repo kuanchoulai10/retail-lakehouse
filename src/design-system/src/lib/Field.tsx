@@ -2,7 +2,7 @@ import { useId, type ReactNode } from "react";
 import { cn } from "./cn";
 
 export type FieldProps = {
-  label: string;
+  label: ReactNode;
   description?: string;
   invalid?: boolean;
   invalidMessage?: string;

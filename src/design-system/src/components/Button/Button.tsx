@@ -17,6 +17,11 @@ const buttonStyle = cva(
           "enabled:hover:after:absolute enabled:hover:after:inset-0 enabled:hover:after:bg-hovered",
           "disabled:bg-disabled disabled:text-on-disabled",
         ],
+        negative: [
+          "bg-negative text-on-negative",
+          "enabled:hover:after:absolute enabled:hover:after:inset-0 enabled:hover:after:bg-hovered",
+          "disabled:bg-disabled disabled:text-on-disabled",
+        ],
         outlined: [
           "border-2 border-outline text-on-surface enabled:hover:bg-on-surface/5",
           "disabled:border-transparent disabled:bg-disabled disabled:text-on-disabled",

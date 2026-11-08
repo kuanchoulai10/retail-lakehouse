@@ -52,6 +52,17 @@ export const Invalid: Story = {
   },
 };
 
+export const HiddenLabel: Story = {
+  args: { hideLabel: true },
+  play: async ({ canvasElement }) => {
+    const input = within(canvasElement).getByLabelText("Notes");
+    await expect(input).toBeVisible();
+    const label = canvasElement.querySelector("label");
+    await expect(label?.getBoundingClientRect().width).toBeLessThanOrEqual(1);
+    await expect(input).toHaveAccessibleName("Notes");
+  },
+};
+
 export const Disabled: Story = { args: { disabled: true } };
 
 export const Phone: Story = {
