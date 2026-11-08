@@ -129,3 +129,56 @@ export const PhoneDrawer: Story = {
     await expectNoHorizontalPageScroll(canvasElement);
   },
 };
+
+const EXPANDED_QUERY = "(min-width: 48rem)";
+const expandedWindow = { matches: false, listeners: new Set<(event: MediaQueryListEvent) => void>() };
+
+// Stands in for the viewport crossing 768px: only the expanded-window query is faked.
+function fakeExpandedQuery() {
+  const realMatchMedia = window.matchMedia.bind(window);
+  expandedWindow.matches = false;
+  expandedWindow.listeners.clear();
+  window.matchMedia = (query: string) => {
+    if (query !== EXPANDED_QUERY) return realMatchMedia(query);
+    return {
+      get matches() {
+        return expandedWindow.matches;
+      },
+      media: query,
+      onchange: null,
+      addEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) =>
+        expandedWindow.listeners.add(listener),
+      removeEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) =>
+        expandedWindow.listeners.delete(listener),
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      dispatchEvent: () => true,
+    } as unknown as MediaQueryList;
+  };
+  return () => {
+    window.matchMedia = realMatchMedia;
+  };
+}
+
+function crossToExpanded() {
+  expandedWindow.matches = true;
+  for (const listener of expandedWindow.listeners) {
+    listener({ matches: true, media: EXPANDED_QUERY } as MediaQueryListEvent);
+  }
+}
+
+export const DrawerClosesAtExpandedWidth: Story = {
+  globals: { viewport: { value: "phone", isRotated: false } },
+  args: {} as never,
+  beforeEach: fakeExpandedQuery,
+  render: () => <Harness />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const portal = portalQueries(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Open navigation menu" }));
+    await portal.findByRole("dialog");
+    crossToExpanded();
+    await waitFor(() => expect(portal.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(canvas.getByRole("main")).toHaveFocus());
+  },
+};

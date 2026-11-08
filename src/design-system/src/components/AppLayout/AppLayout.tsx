@@ -1,10 +1,13 @@
 import { Slot } from "radix-ui";
-import { useRef, useState, type ReactElement, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { SerendieSymbolMenu } from "../../icons";
 import { Drawer } from "../Drawer/Drawer";
 import { IconButton } from "../IconButton/IconButton";
 import { SideNavigation, type SideNavigationProps } from "../SideNavigation/SideNavigation";
 import { TopAppBar } from "../TopAppBar/TopAppBar";
+
+// The expanded window class starts at 768px (--sd-system-dimension-breakpoint-expanded).
+const EXPANDED_WINDOW = "(min-width: 48rem)";
 
 export type AppLayoutProps = {
   productName: string;
@@ -23,17 +26,33 @@ export function AppLayout({
 }: AppLayoutProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const main = useRef<HTMLElement>(null);
-  const navigated = useRef(false);
+  const focusMainOnClose = useRef(false);
+
+  // The drawer only exists below 768px; crossing to the expanded window closes it and, as its
+  // menu button is hidden there, moves focus to the main region instead.
+  useEffect(() => {
+    if (!isDrawerOpen) return;
+    const expanded = window.matchMedia(EXPANDED_WINDOW);
+    const closeWhenExpanded = () => {
+      if (expanded.matches) {
+        focusMainOnClose.current = true;
+        setIsDrawerOpen(false);
+      }
+    };
+    closeWhenExpanded();
+    expanded.addEventListener("change", closeWhenExpanded);
+    return () => expanded.removeEventListener("change", closeWhenExpanded);
+  }, [isDrawerOpen]);
 
   const handleNavigate = () => {
-    navigated.current = true;
+    focusMainOnClose.current = true;
     setIsDrawerOpen(false);
     navigation.onNavigate?.();
   };
 
   const handleCloseAutoFocus = (event: Event) => {
-    if (navigated.current) {
-      navigated.current = false;
+    if (focusMainOnClose.current) {
+      focusMainOnClose.current = false;
       event.preventDefault();
       main.current?.focus();
     }
