@@ -4,16 +4,62 @@ version: '3'
 
 tasks:
   pre-commit:
-    desc: "Run pre commit checks"
+    desc: "Gate: basic code quality (lint, format, type) before a commit"
     cmds:
       - uv run pre-commit run --all-files --show-diff-on-failure
 
   pre-pr:
-    desc: "Run all checks before creating a PR"
+    desc: "Gate: is my change ready for review? (unit, architecture, contract)"
     cmds:
       - task: pre-commit
+      - task: lint-frontend
       - task: unit-test
       - task: arch-test
+      - task: contract-test
+
+  pre-merge:
+    desc: "Gate: can this change merge into main safely? (PR CI)"
+    cmds:
+      - task: pre-pr
+      - task: integration-test
+      - task: security-test
+      - task: coverage-test
+      - task: build-test
+
+  post-merge:
+    desc: "Gate: is the merged main healthy as a whole? (deployed cluster)"
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+    cmds:
+      - task: smoke-test
+        vars:
+          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+      - task: e2e-test
+        vars:
+          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+
+  pre-release:
+    desc: "Gate: is this exact build ready to ship? (same artifacts that get deployed)"
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+    cmds:
+      - task: build-test
+      - task: deployment-test
+        vars:
+          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+      - task: e2e-test
+        vars:
+          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+      - task: performance-test
+
+  nightly:
+    desc: "Scheduled deep checks: performance, resilience, dependencies"
+    deps:
+      - performance-test
+      - resilience-test
+      - dependency-test
 
   unit-test:
     desc: "Run all unit tests in parallel"
@@ -21,27 +67,102 @@ tasks:
       - unit-test-backend
       - unit-test-spark
       - unit-test-scripts
+      - unit-test-frontend
 
   unit-test-backend:
-    desc: "Run table-maintenance backend tests"
-    internal: true
+    desc: "Run data-platform backend tests (includes the pytest architecture tests)"
     cmds:
       - uv run --project src/data-platform/backend --directory src/data-platform/backend pytest -v
 
   unit-test-spark:
-    desc: "Run table-maintenance spark runtime tests"
-    internal: true
+    desc: "Run spark runtime tests"
     cmds:
       - cmd: echo "TODO:// uv run --project src/data-platform/runtime/spark --directory src/data-platform/runtime/spark pytest -v"
 
   unit-test-scripts:
     desc: "Run repository script tests"
-    internal: true
     cmds:
       - uv run --no-project --with pyyaml --with pytest pytest scripts/tests -v
 
+  unit-test-frontend:
+    desc: "Run console unit tests"
+    cmds:
+      - npm --prefix src/data-platform/frontend test -- --run
+
+  lint-frontend:
+    desc: "Lint and type-check the console"
+    cmds:
+      - npm --prefix src/data-platform/frontend run lint
+      - npm --prefix src/data-platform/frontend run typecheck
+
   arch-test:
     desc: "Run architecture boundary tests (import-linter)"
-    internal: true
     cmds:
       - uv run --project src/data-platform/backend --directory src/data-platform/backend lint-imports
+
+  contract-test:
+    desc: "Check the contracts between components"
+    cmds:
+      - cmd: echo "TODO:// console api/catalogTypes.ts vs backend DTO JSON schema; backend Polaris adapters vs the Polaris 1.8 OpenAPI; backend SparkApplication manifest vs the Spark Operator CRD"
+
+  integration-test:
+    desc: "Run backend adapters against real dependencies (no cluster)"
+    cmds:
+      - cmd: echo "TODO:// backend SQL repos vs PostgreSQL, Temporal workflows vs a Temporal test server, catalog adapters vs a Polaris container"
+
+  security-test:
+    desc: "Scan for vulnerable dependencies and insecure code"
+    cmds:
+      - cmd: echo "TODO:// uv-based pip-audit for backend and spark, npm audit for the console, image scan for the three images"
+
+  coverage-test:
+    desc: "Enforce test coverage thresholds"
+    cmds:
+      - cmd: echo "TODO:// pytest --cov with a floor for the backend, vitest --coverage for the console"
+
+  build-test:
+    desc: "Build every deliverable without deploying it"
+    cmds:
+      - npm --prefix src/data-platform/frontend run build
+      - cmd: echo "TODO:// docker build table-maintenance-backend, table-maintenance-spark and console with the build.sh source tags, without loading them into minikube"
+
+  smoke-test:
+    desc: "Check the deployed platform answers (validate every wave)"
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+    cmds:
+      - task: :apps:validate
+        vars:
+          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+
+  e2e-test:
+    desc: "Run the lakehouse control plane end-to-end test on the cluster"
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+    cmds:
+      - KUBE_CONTEXT={{.KUBE_CONTEXT}} bash platform/25-lakehouse-control-plane/e2e.sh
+
+  deployment-test:
+    desc: "Deploy the built artifacts and verify the rollout"
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+    cmds:
+      - cmd: echo "TODO:// deploy the pre-release image tags, assert the images are on the node, assert zero restarts, rehearse a rollback"
+
+  performance-test:
+    desc: "Measure performance against thresholds"
+    cmds:
+      - cmd: echo "TODO:// maintenance run duration on a large table, catalog API latency, console bundle size"
+
+  resilience-test:
+    desc: "Check recovery from dependency outages"
+    cmds:
+      - cmd: echo "TODO:// kill Kafka, RustFS, Polaris, Temporal or the backend DB mid-run and assert the run recovers"
+
+  dependency-test:
+    desc: "Check compatibility with newer dependencies"
+    cmds:
+      - cmd: echo "TODO:// uv lock --upgrade and npm update in a scratch copy, then run unit-test"

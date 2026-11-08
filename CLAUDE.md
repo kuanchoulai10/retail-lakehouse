@@ -56,7 +56,7 @@ Do not touch unless the user re-opens them: `platform/30-thanos`, `platform/24-e
 - **Verify before commit.** Every commit must pass: `pytest -v`, `ty check`, `ruff check .`, `lint-imports`.
 - **Semantic commits.** Use conventional commits: `feat(scope):`, `fix(scope):`, `refactor(scope):`, `docs(scope):`.
 - **Incremental, atomic commits.** Each commit is independently valid — tests pass, linter clean.
-- **Taskfile for automation.** `task pre-pr` runs all checks (pre-commit + unit-test + arch-test).
+- **Taskfile for automation.** Gates in `tasks/checks.yml` (`pre-commit`, `pre-pr`, `pre-merge`, `post-merge`, `pre-release`, `nightly`) call test tasks you can also run alone (`task checks:<name>-test`); the Taskfile says how to test, CI says when. `task pre-pr` = pre-commit + frontend lint + unit-test (backend, spark, scripts, frontend) + arch-test + contract-test. Unimplemented test tasks echo `TODO://`.
 
 ## Project Vision
 
