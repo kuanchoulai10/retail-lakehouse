@@ -51,7 +51,7 @@ describe("ConfirmDeleteDialog", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     rerender(dialog({ onOpenChange, error: new Error("Namespace is not empty") }));
     expect(screen.getByRole("alert")).toHaveTextContent("Namespace is not empty");
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
     expect(onOpenChange).not.toHaveBeenCalled();
   });
 });

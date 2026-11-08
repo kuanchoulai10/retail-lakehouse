@@ -7,6 +7,7 @@ export type FieldProps = {
   invalid?: boolean;
   invalidMessage?: string;
   required?: boolean;
+  hideLabel?: boolean;
 };
 
 export type FieldControlProps = {
@@ -37,6 +38,7 @@ export function FieldFrame({
   invalid = false,
   invalidMessage,
   required = false,
+  hideLabel = false,
   className,
   children,
 }: FieldFrameProps) {
@@ -48,7 +50,7 @@ export function FieldFrame({
 
   return (
     <div className={cn("flex flex-col gap-1", className)}>
-      <label htmlFor={controlId} className="type-label-large text-on-surface">
+      <label htmlFor={controlId} className={cn("type-label-large text-on-surface", hideLabel && "sr-only")}>
         {label}
         {required && (
           <span aria-hidden="true" className="text-negative-text">

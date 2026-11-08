@@ -1,12 +1,5 @@
+import { Button, ModalDialog } from "@retail-lakehouse/design-system";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { CreateGenericTableDialog } from "./CreateGenericTableDialog";
 import { CreateTableDialog } from "./CreateTableDialog";
 import { CreateViewDialog } from "./CreateViewDialog";
@@ -34,23 +27,22 @@ export function NewNamespaceObjectDialog({ catalog, namespace, onClose }: Props)
     return <CreateGenericTableDialog catalog={catalog} namespace={namespace} onClose={onClose} />;
   }
   return (
-    <Dialog open onOpenChange={(next) => !next && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>New table or view</DialogTitle>
-          <DialogDescription>Choose what to create.</DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-2">
-          {CHOICES.map((choice) => (
-            <div key={choice.kind} className="flex items-center justify-between gap-3">
-              <span className="text-sm text-muted-foreground">{choice.hint}</span>
-              <Button type="button" variant="outline" className="w-32" onClick={() => setKind(choice.kind)}>
-                {choice.label}
-              </Button>
-            </div>
-          ))}
-        </div>
-      </DialogContent>
-    </Dialog>
+    <ModalDialog
+      isOpen
+      onOpenChange={(next) => !next && onClose()}
+      title="New table or view"
+      description="Choose what to create."
+    >
+      <div className="flex flex-col gap-2">
+        {CHOICES.map((choice) => (
+          <div key={choice.kind} className="flex items-center justify-between gap-3">
+            <span className="type-body-medium text-on-surface-variant">{choice.hint}</span>
+            <Button type="button" styleType="outlined" className="w-32 shrink-0" onClick={() => setKind(choice.kind)}>
+              {choice.label}
+            </Button>
+          </div>
+        ))}
+      </div>
+    </ModalDialog>
   );
 }

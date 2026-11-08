@@ -55,7 +55,7 @@ describe("ResourceListPage", () => {
     renderPage(onDelete);
     await confirmDelete(user, "iceberg");
     expect(onDelete).toHaveBeenCalledWith({ name: "iceberg" });
-    await vi.waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await vi.waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
   });
 
   it("keeps the dialog open and shows the error when a delete rejects", async () => {
@@ -63,7 +63,7 @@ describe("ResourceListPage", () => {
     renderPage(vi.fn().mockRejectedValue(new Error("Catalog is not empty")));
     await confirmDelete(user, "iceberg");
     expect(await screen.findByRole("alert")).toHaveTextContent("Catalog is not empty");
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
   });
 
   it("does not show one row's failed delete on another row", async () => {

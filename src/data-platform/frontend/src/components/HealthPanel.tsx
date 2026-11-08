@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { TableHealthApiResponse, TableHealthOperationApiResponse } from "@/api/types";
 import { Panel } from "@/components/Panel";
 import { RunMaintenanceDialog } from "@/components/RunMaintenanceDialog";
@@ -51,7 +51,6 @@ export function HealthPanel({ tableUuid, health }: Props) {
   const [runOperation, setRunOperation] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [openCount, setOpenCount] = useState(0);
-  const triggerRef = useRef<HTMLElement | null>(null);
   return (
     <Panel title="Health">
       {!health.scheduled && (
@@ -76,8 +75,7 @@ export function HealthPanel({ tableUuid, health }: Props) {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={(event) => {
-                  triggerRef.current = event.currentTarget;
+                onClick={() => {
                   setRunOperation(line.operation);
                   setOpenCount((count) => count + 1);
                   setDialogOpen(true);
@@ -99,7 +97,6 @@ export function HealthPanel({ tableUuid, health }: Props) {
           tableUuid={tableUuid}
           initialOperations={[runOperation]}
           open={dialogOpen}
-          returnFocusTo={triggerRef}
           onClose={() => setDialogOpen(false)}
         />
       )}

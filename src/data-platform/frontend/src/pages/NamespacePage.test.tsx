@@ -113,12 +113,12 @@ describe("NamespacePage", { timeout: 15_000 }, () => {
     renderAt("/catalogs/iceberg/namespaces/retail");
     await screen.findByRole("region", { name: "Tables and views" });
     await openAction(user, "Delete");
-    const dialog = screen.getByRole("dialog");
+    const dialog = screen.getByRole("alertdialog");
     await user.type(within(dialog).getByLabelText(/to confirm/i), "retail");
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent("Namespace retail is not empty");
     expect(within(dialog).getByRole("alert")).not.toHaveTextContent(/reload/i);
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
   });
 
   it("deleting an empty namespace goes to its parent", async () => {
@@ -272,11 +272,11 @@ describe("NamespacePage", { timeout: 15_000 }, () => {
     const objects = await screen.findByRole("region", { name: "Tables and views" });
     await within(objects).findByRole("link", { name: "orders_v" });
     await user.click(within(objects).getByRole("button", { name: "Delete orders_v" }));
-    const dialog = screen.getByRole("dialog");
+    const dialog = screen.getByRole("alertdialog");
     expect(within(dialog).getByRole("heading", { name: "Delete view" })).toBeInTheDocument();
     await user.type(within(dialog).getByLabelText(/to confirm/i), "orders_v");
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
-    await vi.waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await vi.waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
     expect(callsTo(calls, "DELETE", `${NS}/views/orders_v`)).toHaveLength(1);
     expect(callsTo(calls, "GET", `${NS}/views`).length).toBeGreaterThan(1);
   });

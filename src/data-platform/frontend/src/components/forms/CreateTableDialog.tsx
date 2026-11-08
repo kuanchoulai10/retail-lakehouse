@@ -1,19 +1,16 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { X } from "lucide-react";
+import {
+  Button,
+  CheckBox,
+  IconButton,
+  Select,
+  SerendieSymbolClose,
+  TextField as DesignSystemTextField,
+} from "@retail-lakehouse/design-system";
 import { useState } from "react";
 import { catalogQueryKeys } from "@/api/catalogQueryKeys";
 import type { CreateTableApiRequest, SchemaFieldApiRequest } from "@/api/catalogTypes";
 import { apiSend } from "@/api/client";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { errorMessage } from "@/format";
 import { tablesApiPath } from "@/lib/catalogPaths";
 import { FormDialog } from "./FormDialog";
@@ -107,7 +104,7 @@ export function CreateTableDialog({ catalog, namespace, onClose }: Props) {
       description={
         <>
           Creates an Iceberg table in{" "}
-          <span className="font-mono text-[13px]">{[catalog, ...namespace].join(" / ")}</span>.
+          <span className="font-mono">{[catalog, ...namespace].join(" / ")}</span>.
         </>
       }
       submitLabel="Create"
@@ -115,7 +112,6 @@ export function CreateTableDialog({ catalog, namespace, onClose }: Props) {
       error={invalid ?? (create.isError ? errorMessage(create.error) : null)}
       onSubmit={submit}
       onClose={onClose}
-      wide
     >
       <TextField label="Name" mono placeholder="my_table" value={name} onChange={setName} />
       <TextField
@@ -128,106 +124,105 @@ export function CreateTableDialog({ catalog, namespace, onClose }: Props) {
       />
       <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
         <div className="flex items-center justify-between">
-          <legend className="text-sm font-medium">Schema</legend>
-          <Button type="button" variant="outline" size="sm" onClick={() => setFields([...fields, EMPTY_FIELD])}>
+          <legend className="type-label-large">Schema</legend>
+          <Button type="button" styleType="outlined" size="small" onClick={() => setFields([...fields, EMPTY_FIELD])}>
             Add field
           </Button>
         </div>
         {fields.map((field, index) => {
           const label = `Field ${index + 1}`;
           return (
-            <div key={index} className="flex items-center gap-2">
-              <Input
-                aria-label={`${label} name`}
-                placeholder="Name"
-                className="font-mono text-[13px]"
-                value={field.name}
-                onChange={(e) => setFields(replaceAt(fields, index, { name: e.target.value }))}
-              />
-              <Input
-                aria-label={`${label} type`}
-                placeholder="long, string, list<string>"
-                className="font-mono text-[13px]"
-                value={field.type}
-                onChange={(e) => setFields(replaceAt(fields, index, { type: e.target.value }))}
-              />
-              <Input
-                aria-label={`${label} doc`}
-                placeholder="Doc (optional)"
-                value={field.doc}
-                onChange={(e) => setFields(replaceAt(fields, index, { doc: e.target.value }))}
-              />
-              <label className="flex shrink-0 items-center gap-1.5 text-sm">
-                <Checkbox
-                  aria-label={`${label} required`}
-                  checked={field.required}
-                  onCheckedChange={(next) => setFields(replaceAt(fields, index, { required: next === true }))}
+            <div key={index} className="flex flex-wrap items-center gap-2">
+              <div className="min-w-32 flex-1">
+                <DesignSystemTextField
+                  hideLabel
+                  label={`${label} name`}
+                  placeholder="Name"
+                  className="font-mono"
+                  value={field.name}
+                  onChange={(e) => setFields(replaceAt(fields, index, { name: e.target.value }))}
                 />
-                Required
-              </label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
+              </div>
+              <div className="min-w-32 flex-1">
+                <DesignSystemTextField
+                  hideLabel
+                  label={`${label} type`}
+                  placeholder="long, string, list<string>"
+                  className="font-mono"
+                  value={field.type}
+                  onChange={(e) => setFields(replaceAt(fields, index, { type: e.target.value }))}
+                />
+              </div>
+              <div className="min-w-32 flex-1">
+                <DesignSystemTextField
+                  hideLabel
+                  label={`${label} doc`}
+                  placeholder="Doc (optional)"
+                  value={field.doc}
+                  onChange={(e) => setFields(replaceAt(fields, index, { doc: e.target.value }))}
+                />
+              </div>
+              <CheckBox
+                label="Required"
+                aria-label={`${label} required`}
+                checked={field.required}
+                onCheckedChange={(next) => setFields(replaceAt(fields, index, { required: next === true }))}
+              />
+              <IconButton
+                styleType="ghost"
                 aria-label={`Remove ${label.toLowerCase()}`}
+                icon={<SerendieSymbolClose />}
                 onClick={() => setFields(fields.filter((_, i) => i !== index))}
-              >
-                <X aria-hidden="true" />
-              </Button>
+              />
             </div>
           );
         })}
       </fieldset>
       <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
         <div className="flex items-center justify-between">
-          <legend className="text-sm font-medium">Partition spec</legend>
+          <legend className="type-label-large">Partition spec</legend>
           <Button
             type="button"
-            variant="outline"
-            size="sm"
+            styleType="outlined"
+            size="small"
             onClick={() => setPartitions([...partitions, { sourceColumn: "", transform: "identity" }])}
           >
             Add partition
           </Button>
         </div>
         {partitions.length === 0 && (
-          <p className="text-xs text-muted-foreground">No partitions. The table is unpartitioned.</p>
+          <p className="type-body-small text-on-surface-variant">No partitions. The table is unpartitioned.</p>
         )}
         {partitions.map((partition, index) => {
           const label = `Partition ${index + 1}`;
           return (
-            <div key={index} className="flex items-center gap-2">
-              <Input
-                aria-label={`${label} column`}
-                placeholder="Column"
-                className="font-mono text-[13px]"
-                value={partition.sourceColumn}
-                onChange={(e) => setPartitions(replaceAt(partitions, index, { sourceColumn: e.target.value }))}
-              />
-              <Select
-                value={partition.transform}
-                onValueChange={(transform) => setPartitions(replaceAt(partitions, index, { transform }))}
-              >
-                <SelectTrigger aria-label={`${label} transform`} className="w-40 font-mono text-[13px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TRANSFORMS.map((transform) => (
-                    <SelectItem key={transform} value={transform} className="font-mono text-[13px]">
-                      {transform}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
+            <div key={index} className="flex flex-wrap items-center gap-2">
+              <div className="min-w-32 flex-1">
+                <DesignSystemTextField
+                  hideLabel
+                  label={`${label} column`}
+                  placeholder="Column"
+                  className="font-mono"
+                  value={partition.sourceColumn}
+                  onChange={(e) => setPartitions(replaceAt(partitions, index, { sourceColumn: e.target.value }))}
+                />
+              </div>
+              <div className="w-40">
+                <Select
+                  hideLabel
+                  label={`${label} transform`}
+                  className="font-mono"
+                  value={partition.transform}
+                  items={TRANSFORMS.map((transform) => ({ value: transform, label: transform }))}
+                  onValueChange={(transform) => setPartitions(replaceAt(partitions, index, { transform }))}
+                />
+              </div>
+              <IconButton
+                styleType="ghost"
                 aria-label={`Remove ${label.toLowerCase()}`}
+                icon={<SerendieSymbolClose />}
                 onClick={() => setPartitions(partitions.filter((_, i) => i !== index))}
-              >
-                <X aria-hidden="true" />
-              </Button>
+              />
             </div>
           );
         })}

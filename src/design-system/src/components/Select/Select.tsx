@@ -25,6 +25,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
       invalid,
       invalidMessage,
       required,
+      hideLabel,
       id,
       items,
       placeholder,
@@ -33,7 +34,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
     },
     ref,
   ) => (
-    <FieldFrame {...{ label, description, invalid, invalidMessage, required, id }}>
+    <FieldFrame {...{ label, description, invalid, invalidMessage, required, hideLabel, id }}>
       {({ required: isRequired, ...controlProps }) => (
         <SelectPrimitive.Root required={isRequired} {...rootProps}>
           <SelectPrimitive.Trigger

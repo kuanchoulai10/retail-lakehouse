@@ -3,7 +3,7 @@ import { useState } from "react";
 import { catalogQueryKeys } from "@/api/catalogQueryKeys";
 import type { CatalogApiResponse, UpdateCatalogApiRequest } from "@/api/catalogTypes";
 import { apiSend } from "@/api/client";
-import { Button } from "@/components/ui/button";
+import { Button } from "@retail-lakehouse/design-system";
 import { catalogApiPath } from "@/lib/catalogPaths";
 import { isConflict, updateErrorMessage } from "@/lib/updateErrorMessage";
 import { FormDialog } from "./FormDialog";
@@ -77,7 +77,7 @@ export function EditCatalogDialog({ catalog, onClose }: Props) {
       title="Edit catalog"
       description={
         <>
-          Changes <span className="font-mono text-[13px] text-foreground">{catalog.name}</span> as of
+          Changes <span className="font-mono">{catalog.name}</span> as of
           the version you loaded.
         </>
       }
@@ -86,7 +86,7 @@ export function EditCatalogDialog({ catalog, onClose }: Props) {
       error={invalid ?? (update.isError ? updateErrorMessage(update.error, "catalog") : null)}
       errorAction={
         isConflict(update.error) ? (
-          <Button type="button" variant="outline" size="sm" onClick={reload}>
+          <Button type="button" styleType="outlined" size="small" onClick={reload}>
             Reload
           </Button>
         ) : undefined

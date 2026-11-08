@@ -5,8 +5,8 @@ import { FieldFrame, fieldControlStyle, type FieldProps } from "../../lib/Field"
 export type TextAreaProps = Omit<ComponentProps<"textarea">, "required"> & FieldProps;
 
 export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(
-  ({ label, description, invalid, invalidMessage, required, id, className, ...rest }, ref) => (
-    <FieldFrame {...{ label, description, invalid, invalidMessage, required, id }}>
+  ({ label, description, invalid, invalidMessage, required, hideLabel, id, className, ...rest }, ref) => (
+    <FieldFrame {...{ label, description, invalid, invalidMessage, required, hideLabel, id }}>
       {(controlProps) => (
         <textarea
           ref={ref}

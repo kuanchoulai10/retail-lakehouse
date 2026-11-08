@@ -1,6 +1,4 @@
-import { useId } from "react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { TextField as DesignSystemTextField } from "@retail-lakehouse/design-system";
 
 interface Props {
   label: string;
@@ -13,20 +11,16 @@ interface Props {
 }
 
 export function TextField({ label, value, onChange, placeholder, hint, type = "text", mono }: Props) {
-  const id = useId();
   return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
-      <Input
-        id={id}
-        type={type}
-        autoComplete="off"
-        className={mono === true ? "font-mono text-[13px]" : undefined}
-        placeholder={placeholder}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
-      {hint !== undefined && <p className="text-xs text-muted-foreground">{hint}</p>}
-    </div>
+    <DesignSystemTextField
+      label={label}
+      description={hint}
+      type={type}
+      autoComplete="off"
+      className={mono === true ? "font-mono" : undefined}
+      placeholder={placeholder}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    />
   );
 }

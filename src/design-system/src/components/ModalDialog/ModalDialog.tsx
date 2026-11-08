@@ -8,7 +8,7 @@ export type ModalDialogProps = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   title: string;
-  description?: string;
+  description?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
 };

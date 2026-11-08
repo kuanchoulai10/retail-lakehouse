@@ -1,6 +1,4 @@
-import { useId } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { CheckBox } from "@retail-lakehouse/design-system";
 
 interface Props {
   label: string;
@@ -9,11 +7,5 @@ interface Props {
 }
 
 export function CheckboxField({ label, checked, onChange }: Props) {
-  const id = useId();
-  return (
-    <div className="flex items-center gap-2">
-      <Checkbox id={id} checked={checked} onCheckedChange={(next) => onChange(next === true)} />
-      <Label htmlFor={id}>{label}</Label>
-    </div>
-  );
+  return <CheckBox label={label} checked={checked} onCheckedChange={(next) => onChange(next === true)} />;
 }

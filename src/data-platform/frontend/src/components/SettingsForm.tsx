@@ -1,20 +1,14 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
-import { Panel } from "@/components/Panel";
-import { Alert } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+  Banner,
+  Button,
+  TextField,
+} from "@retail-lakehouse/design-system";
+import { useState } from "react";
+import { Panel } from "@/components/Panel";
 import { apiGet, apiSend } from "../api/client";
 import { invalidateTableState } from "../api/invalidateTableState";
 import type { JsonObject, TableApiResponse, TableMaintenancePresetApiResponse } from "../api/types";
@@ -68,7 +62,6 @@ export function SettingsForm({ table }: Props) {
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState<JsonObject>(table.settings ?? {});
   const [confirming, setConfirming] = useState(false);
-  const resetRef = useRef<HTMLButtonElement>(null);
 
   const save = useMutation({
     mutationFn: (settings: JsonObject) =>
@@ -98,15 +91,13 @@ export function SettingsForm({ table }: Props) {
       }}
     >
       {table.settings === null && (
-        <Alert role="status">This table has no maintenance settings yet.</Alert>
+        <Banner type="information" title="This table has no maintenance settings yet." />
       )}
       <Panel title="Reconciliation">
-        <div className="flex flex-col gap-1.5 p-4">
-          <Label htmlFor="reconcile_interval_seconds" className="font-mono text-[13px]">
-            reconcile_interval_seconds
-          </Label>
-          <Input
+        <div className="p-4">
+          <TextField
             id="reconcile_interval_seconds"
+            label="reconcile_interval_seconds"
             type="number"
             className="tabular-nums"
             value={
@@ -130,10 +121,10 @@ export function SettingsForm({ table }: Props) {
           onChange={(values) => setDraft({ ...draft, [operation]: values })}
         />
       ))}
-      {error && <Alert variant="destructive">Could not save settings: {errorMessage(error)}</Alert>}
-      <div className="sticky bottom-0 flex justify-end gap-2 border-t border-border bg-background py-3">
+      {error && <Banner type="negative" title={`Could not save settings: ${errorMessage(error)}`} />}
+      <div className="sticky bottom-0 flex justify-end gap-2 border-t border-outline-dim bg-surface py-3">
         {table.source_preset_id !== null && (
-          <Button ref={resetRef} type="button" variant="outline" onClick={() => setConfirming(true)}>
+          <Button type="button" styleType="outlined" onClick={() => setConfirming(true)}>
             Reset to preset
           </Button>
         )}
@@ -141,20 +132,13 @@ export function SettingsForm({ table }: Props) {
           Save
         </Button>
       </div>
-      <AlertDialog open={confirming} onOpenChange={setConfirming}>
-        <AlertDialogContent
-          onCloseAutoFocus={(event) => {
-            event.preventDefault();
-            resetRef.current?.focus();
-          }}
-        >
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reset to preset</AlertDialogTitle>
-            <AlertDialogDescription>
-              Replace these settings with the preset's? Unsaved edits are discarded.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
+      <AlertDialog
+        isOpen={confirming}
+        onOpenChange={setConfirming}
+        title="Reset to preset"
+        description="Replace these settings with the preset's? Unsaved edits are discarded."
+        footer={
+          <>
             <AlertDialogCancel>Keep editing</AlertDialogCancel>
             <AlertDialogAction
               disabled={busy}
@@ -165,9 +149,9 @@ export function SettingsForm({ table }: Props) {
             >
               Confirm reset
             </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+          </>
+        }
+      />
     </form>
   );
 }

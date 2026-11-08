@@ -93,6 +93,16 @@ export const Disabled: Story = {
   },
 };
 
+export const HiddenLabel: Story = {
+  args: { hideLabel: true },
+  play: async ({ canvasElement }) => {
+    const trigger = within(canvasElement).getByRole("combobox", { name: "Maintenance action" });
+    await expect(trigger).toBeVisible();
+    const label = canvasElement.querySelector("label");
+    await expect(label?.getBoundingClientRect().width).toBeLessThanOrEqual(1);
+  },
+};
+
 export const Touch: Story = {
   globals: { viewport: { value: "phone", isRotated: false } },
   play: async ({ canvasElement }) => {

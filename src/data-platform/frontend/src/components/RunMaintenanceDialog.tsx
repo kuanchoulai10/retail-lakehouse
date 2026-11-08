@@ -1,17 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, type RefObject } from "react";
+import { Banner, Button, CheckBox, ModalDialog } from "@retail-lakehouse/design-system";
+import { useState } from "react";
 import { apiSend } from "@/api/client";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { errorMessage } from "@/format";
 
 export const ALL_OPERATIONS = [
@@ -25,7 +15,6 @@ interface Props {
   tableUuid: string;
   initialOperations?: string[];
   open?: boolean;
-  returnFocusTo?: RefObject<HTMLElement | null>;
   onClose: () => void;
 }
 
@@ -33,7 +22,6 @@ export function RunMaintenanceDialog({
   tableUuid,
   initialOperations = ALL_OPERATIONS,
   open = true,
-  returnFocusTo,
   onClose,
 }: Props) {
   const queryClient = useQueryClient();
@@ -58,39 +46,14 @@ export function RunMaintenanceDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
-      <DialogContent
-        onCloseAutoFocus={(event) => {
-          if (returnFocusTo === undefined) return;
-          event.preventDefault();
-          returnFocusTo.current?.focus();
-        }}
-      >
-        <DialogHeader>
-          <DialogTitle>Run maintenance</DialogTitle>
-          <DialogDescription>Runs on the whole table, ignoring thresholds</DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-3">
-          {ALL_OPERATIONS.map((operation) => (
-            <div key={operation} className="flex items-center gap-2">
-              <Checkbox
-                id={`operation-${operation}`}
-                checked={selected.includes(operation)}
-                onCheckedChange={() => toggle(operation)}
-              />
-              <Label htmlFor={`operation-${operation}`} className="font-mono text-[13px]">
-                {operation}
-              </Label>
-            </div>
-          ))}
-        </div>
-        {run.isError && (
-          <p role="alert" className="text-sm text-destructive">
-            Could not start maintenance: {errorMessage(run.error)}
-          </p>
-        )}
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>
+    <ModalDialog
+      isOpen={open}
+      onOpenChange={(next) => !next && onClose()}
+      title="Run maintenance"
+      description="Runs on the whole table, ignoring thresholds"
+      footer={
+        <>
+          <Button type="button" styleType="outlined" onClick={onClose}>
             Cancel
           </Button>
           <Button
@@ -100,8 +63,23 @@ export function RunMaintenanceDialog({
           >
             Run
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-2">
+        {ALL_OPERATIONS.map((operation) => (
+          <CheckBox
+            key={operation}
+            id={`operation-${operation}`}
+            label={operation}
+            checked={selected.includes(operation)}
+            onCheckedChange={() => toggle(operation)}
+          />
+        ))}
+        {run.isError && (
+          <Banner type="negative" title={`Could not start maintenance: ${errorMessage(run.error)}`} />
+        )}
+      </div>
+    </ModalDialog>
   );
 }

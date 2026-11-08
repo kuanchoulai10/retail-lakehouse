@@ -74,7 +74,7 @@ describe("ViewPage", { timeout: 15_000 }, () => {
     renderAt("/catalogs/iceberg/namespaces/retail/views/orders_v");
     await user.click(await screen.findByRole("button", { name: "Actions" }));
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
-    const dialog = await screen.findByRole("dialog", { name: "Delete view" });
+    const dialog = await screen.findByRole("alertdialog", { name: "Delete view" });
     await user.type(within(dialog).getByLabelText(/Type orders_v to confirm/), "orders_v");
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
     expect(await screen.findByText("namespace page")).toBeInTheDocument();
@@ -90,7 +90,7 @@ describe("ViewPage", { timeout: 15_000 }, () => {
     renderAt("/catalogs/iceberg/namespaces/retail/views/orders_v", <SuspendForever />);
     await user.click(await screen.findByRole("button", { name: "Actions" }));
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
-    const dialog = await screen.findByRole("dialog", { name: "Delete view" });
+    const dialog = await screen.findByRole("alertdialog", { name: "Delete view" });
     await user.type(within(dialog).getByLabelText(/Type orders_v to confirm/), "orders_v");
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
     await vi.waitFor(() => expect(callsTo(calls, "DELETE", VIEW)).toHaveLength(1));

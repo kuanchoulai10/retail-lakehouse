@@ -1,11 +1,11 @@
-import { MoreHorizontal } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  SerendieSymbolMoreHorizontal,
+} from "@retail-lakehouse/design-system";
 
 export interface ActionItem {
   label: string;
@@ -16,9 +16,9 @@ export function ActionsMenu({ items }: { items: ActionItem[] }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button type="button" variant="outline">
+        <Button type="button" styleType="outlined">
           Actions
-          <MoreHorizontal aria-hidden="true" />
+          <SerendieSymbolMoreHorizontal aria-hidden="true" className="size-5" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

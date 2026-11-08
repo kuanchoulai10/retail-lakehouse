@@ -73,7 +73,7 @@ describe("GenericTablePage", { timeout: 15_000 }, () => {
     renderAt("/catalogs/iceberg/namespaces/retail/generic-tables/events");
     await user.click(await screen.findByRole("button", { name: "Actions" }));
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
-    const dialog = await screen.findByRole("dialog", { name: "Delete generic table" });
+    const dialog = await screen.findByRole("alertdialog", { name: "Delete generic table" });
     await user.type(within(dialog).getByLabelText(/Type events to confirm/), "events");
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
     expect(await screen.findByText("namespace page")).toBeInTheDocument();
@@ -98,7 +98,7 @@ describe("GenericTablePage", { timeout: 15_000 }, () => {
     renderAt("/catalogs/iceberg/namespaces/retail/generic-tables/events", <SuspendForever />);
     await user.click(await screen.findByRole("button", { name: "Actions" }));
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
-    const dialog = await screen.findByRole("dialog", { name: "Delete generic table" });
+    const dialog = await screen.findByRole("alertdialog", { name: "Delete generic table" });
     await user.type(within(dialog).getByLabelText(/Type events to confirm/), "events");
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
     await vi.waitFor(() => expect(callsTo(calls, "DELETE", GENERIC)).toHaveLength(1));

@@ -75,7 +75,7 @@ export function RenameTableDialog({ table, tab, onLeave, onClose }: Props) {
       title="Rename table"
       description={
         <>
-          Renames <span className="font-mono text-[13px] text-foreground">{[table.catalog, ...table.namespace, table.name].join(" / ")}</span>{" "}
+          Renames <span className="font-mono">{[table.catalog, ...table.namespace, table.name].join(" / ")}</span>{" "}
           or moves it to another namespace of the catalog.
         </>
       }

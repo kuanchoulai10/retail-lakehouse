@@ -3,7 +3,7 @@ import { useState } from "react";
 import { catalogQueryKeys } from "@/api/catalogQueryKeys";
 import type { CatalogTableApiResponse, UpdateTablePropertiesApiRequest } from "@/api/catalogTypes";
 import { apiSend } from "@/api/client";
-import { Button } from "@/components/ui/button";
+import { Button } from "@retail-lakehouse/design-system";
 import { tablePropertiesApiPath } from "@/lib/catalogPaths";
 import { isConflict, updateErrorMessage } from "@/lib/updateErrorMessage";
 import { FormDialog } from "./FormDialog";
@@ -48,7 +48,7 @@ export function EditTablePropertiesDialog({ table, onClose }: Props) {
       description={
         <>
           Sets and removes properties of{" "}
-          <span className="font-mono text-[13px] text-foreground">
+          <span className="font-mono">
             {[table.catalog, ...table.namespace, table.name].join(" / ")}
           </span>
           .
@@ -59,7 +59,7 @@ export function EditTablePropertiesDialog({ table, onClose }: Props) {
       error={update.isError ? updateErrorMessage(update.error, "table") : null}
       errorAction={
         isConflict(update.error) ? (
-          <Button type="button" variant="outline" size="sm" onClick={reload}>
+          <Button type="button" styleType="outlined" size="small" onClick={reload}>
             Reload
           </Button>
         ) : undefined

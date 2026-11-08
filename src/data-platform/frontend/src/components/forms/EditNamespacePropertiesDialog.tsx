@@ -41,7 +41,7 @@ export function EditNamespacePropertiesDialog({ namespace, onClose }: Props) {
       description={
         <>
           Sets and removes properties of{" "}
-          <span className="font-mono text-[13px] text-foreground">
+          <span className="font-mono">
             {[namespace.catalog, ...namespace.namespace].join(" / ")}
           </span>
           .

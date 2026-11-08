@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { CatalogTableApiResponse } from "@/api/catalogTypes";
 import { apiSend } from "@/api/client";
 import { invalidateTableState } from "@/api/invalidateTableState";
@@ -32,7 +32,6 @@ function MaintenanceActions({ managed }: { managed: TableApiResponse }) {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [openCount, setOpenCount] = useState(0);
-  const triggerRef = useRef<HTMLButtonElement>(null);
   const paused = managed.status.toLowerCase() === "paused";
   const active = managed.status.toLowerCase() === "active";
   const toggle = useMutation({
@@ -48,7 +47,6 @@ function MaintenanceActions({ managed }: { managed: TableApiResponse }) {
         </p>
       )}
       <Button
-        ref={triggerRef}
         type="button"
         disabled={!active}
         title={active ? undefined : DISABLED_REASON}
@@ -73,7 +71,6 @@ function MaintenanceActions({ managed }: { managed: TableApiResponse }) {
           key={openCount}
           tableUuid={managed.uuid}
           open={dialogOpen}
-          returnFocusTo={triggerRef}
           onClose={() => setDialogOpen(false)}
         />
       )}

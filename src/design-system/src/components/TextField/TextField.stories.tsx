@@ -58,6 +58,17 @@ export const Invalid: Story = {
   },
 };
 
+export const HiddenLabel: Story = {
+  args: { hideLabel: true },
+  play: async ({ canvasElement }) => {
+    const input = within(canvasElement).getByLabelText("Table name");
+    await expect(input).toBeVisible();
+    const label = canvasElement.querySelector("label");
+    await expect(label?.getBoundingClientRect().width).toBeLessThanOrEqual(1);
+    await expect(input).toHaveAccessibleName("Table name");
+  },
+};
+
 export const Required: Story = {
   args: { required: true },
   play: async ({ canvasElement }) => {

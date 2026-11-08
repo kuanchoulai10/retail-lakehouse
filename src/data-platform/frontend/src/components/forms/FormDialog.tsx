@@ -1,13 +1,5 @@
-import type { FormEvent, ReactNode } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { useId, type FormEvent, type ReactNode } from "react";
+import { Banner, Button, ModalDialog } from "@retail-lakehouse/design-system";
 
 interface Props {
   title: string;
@@ -21,10 +13,10 @@ interface Props {
   onSubmit: () => void;
   onClose: () => void;
   children: ReactNode;
-  wide?: boolean;
 }
 
 // The shell every create and edit dialog shares: title, fields, error, Cancel and submit.
+// The fields stack in one column at every width; the dialog itself is a full-screen sheet on phones.
 export function FormDialog({
   title,
   description,
@@ -35,39 +27,38 @@ export function FormDialog({
   onSubmit,
   onClose,
   children,
-  wide,
 }: Props) {
+  const formId = useId();
   function submit(event: FormEvent) {
     event.preventDefault();
     onSubmit();
   }
   return (
-    <Dialog open onOpenChange={(next) => !next && onClose()}>
-      <DialogContent className={wide === true ? "max-h-[85vh] overflow-y-auto sm:max-w-2xl" : "max-h-[85vh] overflow-y-auto"}>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={submit} className="flex flex-col gap-4">
-          {children}
-          {error !== null && (
-            <div className="flex items-center justify-between gap-3">
-              <p role="alert" className="text-sm text-destructive">
-                {error}
-              </p>
-              {errorAction}
-            </div>
-          )}
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isPending}>
-              {submitLabel}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <ModalDialog
+      isOpen
+      onOpenChange={(next) => !next && onClose()}
+      title={title}
+      description={description}
+      footer={
+        <>
+          <Button type="button" styleType="outlined" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" form={formId} disabled={isPending}>
+            {submitLabel}
+          </Button>
+        </>
+      }
+    >
+      <form id={formId} aria-label={title} onSubmit={submit} className="grid grid-cols-1 gap-4">
+        {children}
+        {error !== null && (
+          <div className="flex items-center justify-between gap-3">
+            <Banner type="negative" title={error} className="flex-1" />
+            {errorAction}
+          </div>
+        )}
+      </form>
+    </ModalDialog>
   );
 }

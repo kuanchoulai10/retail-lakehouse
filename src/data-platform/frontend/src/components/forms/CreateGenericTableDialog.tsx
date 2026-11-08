@@ -57,7 +57,7 @@ export function CreateGenericTableDialog({ catalog, namespace, onClose }: Props)
       description={
         <>
           Registers a non-Iceberg table in{" "}
-          <span className="font-mono text-[13px]">{[catalog, ...namespace].join(" / ")}</span>.
+          <span className="font-mono">{[catalog, ...namespace].join(" / ")}</span>.
         </>
       }
       submitLabel="Create"

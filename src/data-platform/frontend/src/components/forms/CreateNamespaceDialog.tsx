@@ -54,12 +54,12 @@ export function CreateNamespaceDialog({ catalog, parent, onClose }: Props) {
       description={
         parent.length === 0 ? (
           <>
-            Creates a top-level namespace in <span className="font-mono text-[13px]">{catalog}</span>.
+            Creates a top-level namespace in <span className="font-mono">{catalog}</span>.
           </>
         ) : (
           <>
             Creates a namespace inside{" "}
-            <span className="font-mono text-[13px]">{[catalog, ...parent].join(" / ")}</span>.
+            <span className="font-mono">{[catalog, ...parent].join(" / ")}</span>.
           </>
         )
       }

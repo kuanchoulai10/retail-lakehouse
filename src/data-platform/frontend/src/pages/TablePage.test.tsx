@@ -289,7 +289,7 @@ describe("TablePage", { timeout: 15_000 }, () => {
     const calls = stubTable({ extra: { [`DELETE ${TABLE}`]: () => new Response(null, { status: 204 }) } });
     renderAt(PAGE);
     await openAction(user, "Delete");
-    const dialog = await screen.findByRole("dialog", { name: "Delete table" });
+    const dialog = await screen.findByRole("alertdialog", { name: "Delete table" });
     expect(dialog).toHaveTextContent("iceberg / retail / orders");
     await user.type(within(dialog).getByLabelText(/Type orders to confirm/), "orders");
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
@@ -303,7 +303,7 @@ describe("TablePage", { timeout: 15_000 }, () => {
     const calls = stubTable({ extra: { [`DELETE ${TABLE}`]: () => new Response(null, { status: 204 }) } });
     renderAt(PAGE, <SuspendForever />);
     await openAction(user, "Delete");
-    const dialog = await screen.findByRole("dialog", { name: "Delete table" });
+    const dialog = await screen.findByRole("alertdialog", { name: "Delete table" });
     await user.type(within(dialog).getByLabelText(/Type orders to confirm/), "orders");
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
     await vi.waitFor(() => expect(callsTo(calls, "DELETE", TABLE)).toHaveLength(1));

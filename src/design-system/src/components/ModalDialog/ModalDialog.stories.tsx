@@ -76,6 +76,21 @@ export const WithoutDescription: Story = {
   },
 };
 
+export const RichDescription: Story = {
+  render: () => (
+    <Harness
+      description={
+        <>
+          Changes <code>sales.orders</code> as of the version you loaded.
+        </>
+      }
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    await exerciseOverlay(canvasElement, "Open dialog", "dialog");
+  },
+};
+
 export const Touch: Story = {
   globals: { viewport: { value: "phone", isRotated: false } },
   args: { isOpen: true },

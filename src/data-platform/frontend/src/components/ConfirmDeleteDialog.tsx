@@ -1,15 +1,11 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+  AlertDialog,
+  AlertDialogCancel,
+  Banner,
+  Button,
+  TextField,
+} from "@retail-lakehouse/design-system";
+import { useState } from "react";
 import { errorMessage } from "@/format";
 
 interface Props {
@@ -23,65 +19,52 @@ interface Props {
   error: unknown;
 }
 
-function DeleteForm({
+export function ConfirmDeleteDialog({
+  open,
+  onOpenChange,
   objectKind,
   objectName,
   fullPath,
   onConfirm,
   isPending,
   error,
-  onCancel,
-}: Omit<Props, "open" | "onOpenChange"> & { onCancel: () => void }) {
+}: Props) {
   const [typed, setTyped] = useState("");
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (!open) setTyped("");
+  }
   const hasError = error !== null && error !== undefined;
   return (
-    <>
-      <DialogHeader>
-        <DialogTitle>Delete {objectKind}</DialogTitle>
-        <DialogDescription>
-          This deletes <span className="font-mono text-[13px] text-foreground">{fullPath}</span>{" "}
-          from the catalog. It cannot be undone.
-        </DialogDescription>
-      </DialogHeader>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="confirm-delete-name">
-          Type <span className="font-mono text-[13px]">{objectName}</span> to confirm
-        </Label>
-        <Input
-          id="confirm-delete-name"
+    <AlertDialog
+      isOpen={open}
+      onOpenChange={onOpenChange}
+      title={`Delete ${objectKind}`}
+      description={
+        <>
+          This deletes <span className="font-mono">{fullPath}</span> from the catalog. It cannot be
+          undone.
+        </>
+      }
+      footer={
+        <>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <Button type="button" disabled={typed !== objectName || isPending} onClick={onConfirm}>
+            Delete
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        <TextField
+          label={`Type ${objectName} to confirm`}
           autoComplete="off"
           value={typed}
           onChange={(event) => setTyped(event.target.value)}
         />
+        {hasError && <Banner type="negative" title={errorMessage(error)} />}
       </div>
-      {hasError && (
-        <p role="alert" className="text-sm text-destructive">
-          {errorMessage(error)}
-        </p>
-      )}
-      <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button
-          type="button"
-          variant="destructive"
-          disabled={typed !== objectName || isPending}
-          onClick={onConfirm}
-        >
-          Delete
-        </Button>
-      </DialogFooter>
-    </>
-  );
-}
-
-export function ConfirmDeleteDialog({ open, onOpenChange, ...rest }: Props) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DeleteForm {...rest} onCancel={() => onOpenChange(false)} />
-      </DialogContent>
-    </Dialog>
+    </AlertDialog>
   );
 }
