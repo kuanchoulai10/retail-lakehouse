@@ -32,3 +32,13 @@
   width: 44px;
   height: 44px;
 }
+
+@utility h-control-sm {
+  height: 44px;
+  @media (width >= 768px) {
+    height: 32px;
+  }
+  @media (pointer: coarse) {
+    height: 44px;
+  }
+}

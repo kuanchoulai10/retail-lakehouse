@@ -26,7 +26,13 @@ export default defineConfig({
         extends: true,
         plugins: [storybookTest({ configDir: path.join(dirname, ".storybook") })],
         optimizeDeps: {
-          include: ["class-variance-authority", "clsx", "radix-ui", "tailwind-merge"],
+          include: [
+            "@serendie/symbols",
+            "class-variance-authority",
+            "clsx",
+            "radix-ui",
+            "tailwind-merge",
+          ],
         },
         test: {
           name: "storybook",
