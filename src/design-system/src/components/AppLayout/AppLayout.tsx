@@ -1,4 +1,5 @@
-import { useRef, useState, type ReactNode } from "react";
+import { Slot } from "radix-ui";
+import { useRef, useState, type ReactElement, type ReactNode } from "react";
 import { SerendieSymbolMenu } from "../../icons";
 import { Drawer } from "../Drawer/Drawer";
 import { IconButton } from "../IconButton/IconButton";
@@ -9,10 +10,17 @@ export type AppLayoutProps = {
   productName: string;
   navigation: SideNavigationProps;
   trailingItems?: ReactNode;
+  renderProductLink?: (children: ReactNode) => ReactElement;
   children: ReactNode;
 };
 
-export function AppLayout({ productName, navigation, trailingItems, children }: AppLayoutProps) {
+export function AppLayout({
+  productName,
+  navigation,
+  trailingItems,
+  renderProductLink,
+  children,
+}: AppLayoutProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const main = useRef<HTMLElement>(null);
   const navigated = useRef(false);
@@ -34,7 +42,15 @@ export function AppLayout({ productName, navigation, trailingItems, children }: 
   return (
     <div className="flex h-dvh flex-col bg-surface text-on-surface">
       <TopAppBar
-        title={productName}
+        title={
+          renderProductLink ? (
+            <Slot.Root className="rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">
+              {renderProductLink(productName)}
+            </Slot.Root>
+          ) : (
+            productName
+          )
+        }
         headingIconButton={
           <IconButton
             aria-label="Open navigation menu"

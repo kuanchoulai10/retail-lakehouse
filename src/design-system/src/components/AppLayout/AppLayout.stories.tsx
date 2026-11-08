@@ -19,7 +19,8 @@ const meta = {
       description: {
         component:
           "Not in Serendie. From 768px a persistent 224px sidebar sits under the top bar; " +
-          "below it a menu button opens the navigation in a left drawer.",
+          "below it a menu button opens the navigation in a left drawer. " +
+          "`renderProductLink` turns the product name into a link (Slot carries the focus ring onto it).",
       },
     },
   },
@@ -49,7 +50,21 @@ function Harness() {
     ),
   };
   return (
-    <AppLayout productName="Lakehouse Console" navigation={navigation}>
+    <AppLayout
+      productName="Lakehouse Console"
+      navigation={navigation}
+      renderProductLink={(children) => (
+        <a
+          href="#/tables"
+          onClick={(event) => {
+            event.preventDefault();
+            setPath("/tables");
+          }}
+        >
+          {children}
+        </a>
+      )}
+    >
       <h1 className="type-headline-small">Page {path}</h1>
     </AppLayout>
   );
@@ -66,6 +81,24 @@ export const Desktop: Story = {
     await expect(nav.closest("aside")?.getBoundingClientRect().width).toBe(224);
     await expect(canvasElement.querySelector("[aria-label='Open navigation menu']")).not.toBeVisible();
     await expect(canvas.getByRole("main")).toBeVisible();
+  },
+};
+
+export const ProductLink: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  args: {} as never,
+  render: () => <Harness />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("link", { name: "Runs" }));
+    await expect(canvas.getByRole("heading", { name: "Page /runs" })).toBeVisible();
+    const product = within(canvas.getByRole("banner")).getByRole("link", { name: "Lakehouse Console" });
+    await expect(product).toHaveAttribute("href", "#/tables");
+    (document.activeElement as HTMLElement | null)?.blur();
+    await userEvent.tab();
+    await expectFocusRing(product);
+    await userEvent.keyboard("{Enter}");
+    await expect(canvas.getByRole("heading", { name: "Page /tables" })).toBeVisible();
   },
 };
 

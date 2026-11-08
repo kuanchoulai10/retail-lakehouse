@@ -71,6 +71,15 @@ describe("AppShell", () => {
     expect(within(screen.getByRole("banner")).getByText("Lakehouse")).toBeInTheDocument();
   });
 
+  it("links the product name to the list", () => {
+    renderShell();
+    const brands = screen.getAllByRole("link", { name: "Lakehouse" });
+    expect(brands.length).toBeGreaterThan(0);
+    for (const brand of brands) {
+      expect(brand).toHaveAttribute("href", "/");
+    }
+  });
+
   it("puts the colour theme picker in the top app bar and applies the picked theme", async () => {
     const user = userEvent.setup();
     renderShell();

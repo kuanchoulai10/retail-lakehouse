@@ -52,6 +52,8 @@ const renderLink: SideNavigationProps["renderLink"] = (item, children) => (
   <Link to={item.href}>{children}</Link>
 );
 
+const renderProductLink = (children: ReactNode) => <Link to="/">{children}</Link>;
+
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const navigation: SideNavigationProps = {
@@ -65,7 +67,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AppLayout productName={PRODUCT_NAME} navigation={navigation} trailingItems={<ThemePicker />}>
+    <AppLayout
+      productName={PRODUCT_NAME}
+      navigation={navigation}
+      renderProductLink={renderProductLink}
+      trailingItems={<ThemePicker />}
+    >
       <div className="max-w-[1200px]">{children}</div>
     </AppLayout>
   );
