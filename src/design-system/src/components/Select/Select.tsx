@@ -58,7 +58,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
               sideOffset={4}
               className={cn(
                 "z-50 max-h-(--radix-select-content-available-height) min-w-(--radix-select-trigger-width)",
-                "overflow-hidden rounded-md border border-outline-dim bg-surface-container text-on-surface shadow-lg",
+                "overflow-hidden rounded-md border border-outline-dim bg-surface-container-bright text-on-surface shadow-lg",
               )}
             >
               <SelectPrimitive.Viewport className="p-1">
@@ -68,7 +68,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
                     value={item.value}
                     className={cn(
                       "type-body-large relative flex min-h-row cursor-pointer items-center rounded-sm py-1 pr-9 pl-3 outline-none select-none",
-                      "data-[highlighted]:bg-on-surface/5 data-[highlighted]:outline-2 data-[highlighted]:-outline-offset-2 data-[highlighted]:outline-focus-ring",
+                      "data-[highlighted]:bg-hovered-variant data-[highlighted]:outline-2 data-[highlighted]:-outline-offset-2 data-[highlighted]:outline-focus-ring",
                     )}
                   >
                     <SelectPrimitive.ItemText>{item.label}</SelectPrimitive.ItemText>

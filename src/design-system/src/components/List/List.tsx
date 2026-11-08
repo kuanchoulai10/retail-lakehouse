@@ -24,7 +24,7 @@ export const ListItem = forwardRef<HTMLLIElement, ListItemProps>(
   ) => {
     const rowStyle = cn(
       "flex min-h-row w-full items-center gap-3 px-3 py-1 text-left text-on-surface",
-      isSelected && "bg-primary-container text-on-primary-container",
+      isSelected && "bg-selected-surface",
     );
     const content = (
       <>
@@ -36,7 +36,9 @@ export const ListItem = forwardRef<HTMLLIElement, ListItemProps>(
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="type-label-large">{title}</span>
           {description && (
-            <span className="type-body-small text-on-surface-variant">{description}</span>
+            <span className={cn("type-body-small", isSelected ? "text-on-surface" : "text-on-surface-variant")}>
+              {description}
+            </span>
           )}
         </span>
         {trailingItem && <span className="shrink-0">{trailingItem}</span>}
@@ -51,7 +53,7 @@ export const ListItem = forwardRef<HTMLLIElement, ListItemProps>(
             aria-current={isSelected ? "true" : undefined}
             className={cn(
               rowStyle,
-              "cursor-pointer hover:bg-on-surface/5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring",
+              "cursor-pointer hover:bg-hovered-variant focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring",
             )}
           >
             {content}

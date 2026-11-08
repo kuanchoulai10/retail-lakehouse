@@ -37,6 +37,7 @@ export { TextArea, type TextAreaProps } from "./components/TextArea/TextArea";
 export { TextField, type TextFieldProps } from "./components/TextField/TextField";
 export { AppLayout, type AppLayoutProps } from "./components/AppLayout/AppLayout";
 export { Breadcrumbs, type BreadcrumbItem, type BreadcrumbsProps } from "./components/Breadcrumbs/Breadcrumbs";
+export { TextLink, type TextLinkProps } from "./components/TextLink/TextLink";
 export { List, ListItem, type ListItemProps } from "./components/List/List";
 export {
   SideNavigation,

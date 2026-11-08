@@ -9,7 +9,7 @@ export const DropdownMenuRadioGroup = MenuPrimitive.RadioGroup;
 
 const itemStyle = [
   "type-body-large relative flex min-h-row cursor-pointer items-center rounded-sm py-1 pr-3 pl-3 outline-none select-none",
-  "data-[highlighted]:bg-on-surface/5 data-[highlighted]:outline-2 data-[highlighted]:-outline-offset-2",
+  "data-[highlighted]:bg-hovered-variant data-[highlighted]:outline-2 data-[highlighted]:-outline-offset-2",
   "data-[highlighted]:outline-focus-ring data-[disabled]:cursor-not-allowed data-[disabled]:text-on-disabled",
 ];
 
@@ -23,7 +23,7 @@ export const DropdownMenuContent = forwardRef<
       sideOffset={sideOffset}
       align={align}
       className={cn(
-        "z-50 min-w-48 rounded-md border border-outline-dim bg-surface-container p-1 text-on-surface shadow-lg",
+        "z-50 min-w-48 rounded-md border border-outline-dim bg-surface-container-bright p-1 text-on-surface shadow-lg",
         className,
       )}
       {...rest}

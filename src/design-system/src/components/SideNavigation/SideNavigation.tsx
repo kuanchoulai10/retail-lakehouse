@@ -31,8 +31,8 @@ export function SideNavigation({ items, renderLink, onNavigate }: SideNavigation
                   "type-label-large flex min-h-control items-center gap-3 rounded-md px-3",
                   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring",
                   item.isActive
-                    ? "bg-primary-container text-on-primary-container"
-                    : "text-on-surface hover:bg-on-surface/5",
+                    ? "bg-selected-surface text-on-surface [&_svg]:text-primary"
+                    : "text-on-surface hover:bg-hovered-variant",
                 )}
               >
                 {renderLink(

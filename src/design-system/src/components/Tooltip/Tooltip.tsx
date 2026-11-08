@@ -20,12 +20,12 @@ export function Tooltip({ content, children, side = "top", className }: TooltipP
           side={side}
           sideOffset={6}
           className={cn(
-            "type-body-small z-50 max-w-50 rounded-sm bg-on-surface px-2 py-1 text-surface",
+            "type-body-small z-50 max-w-50 rounded-sm bg-inverse-surface px-2 py-1 text-inverse-on-surface",
             className,
           )}
         >
           {content}
-          <TooltipPrimitive.Arrow className="fill-on-surface" />
+          <TooltipPrimitive.Arrow className="fill-inverse-surface" />
         </TooltipPrimitive.Content>
       </TooltipPrimitive.Portal>
     </TooltipPrimitive.Root>

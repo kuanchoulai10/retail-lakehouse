@@ -30,7 +30,7 @@ export function Breadcrumbs({ items, renderLink }: BreadcrumbsProps) {
                   {label}
                 </span>
               ) : (
-                <Slot.Root className="min-w-0 rounded-sm underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">
+                <Slot.Root className="min-w-0 rounded-sm px-1 text-primary hover:bg-hovered-variant focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">
                   {renderLink(item, label)}
                 </Slot.Root>
               )}

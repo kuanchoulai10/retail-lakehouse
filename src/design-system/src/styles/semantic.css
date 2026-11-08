@@ -2,6 +2,10 @@
   --ds-surface: var(--sd-system-color-component-surface);
   --ds-surface-container: var(--sd-system-color-component-surfaceContainer);
   --ds-surface-container-dim: var(--sd-system-color-component-surfaceContainerDim);
+  --ds-surface-container-bright: var(--sd-system-color-component-surfaceContainerBright);
+  --ds-inverse-surface: var(--sd-system-color-component-inverseSurface);
+  --ds-inverse-on-surface: var(--sd-system-color-component-inverseOnSurface);
+  --ds-inverse-primary: var(--sd-system-color-component-inversePrimary);
   --ds-on-surface: var(--sd-system-color-component-onSurface);
   --ds-on-surface-variant: var(--sd-system-color-component-onSurfaceVariant);
   --ds-outline: var(--sd-system-color-component-outline);
@@ -11,6 +15,9 @@
   --ds-primary-container: var(--sd-system-color-impression-primaryContainer);
   --ds-on-primary-container: var(--sd-system-color-impression-onPrimaryContainer);
   --ds-hovered: var(--sd-system-color-interaction-hovered);
+  --ds-hovered-variant: var(--sd-system-color-interaction-hoveredVariant);
+  --ds-hovered-on-primary: var(--sd-system-color-interaction-hoveredOnPrimary);
+  --ds-selected-surface: var(--sd-system-color-interaction-selectedSurface);
   --ds-disabled: var(--sd-system-color-interaction-disabled);
   --ds-on-disabled: var(--sd-system-color-interaction-disabledOnSurface);
   --ds-scrim: var(--sd-system-color-component-scrim);

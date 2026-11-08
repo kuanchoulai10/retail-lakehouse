@@ -2,6 +2,10 @@ export type SemanticToken =
   | "surface"
   | "surface-container"
   | "surface-container-dim"
+  | "surface-container-bright"
+  | "inverse-surface"
+  | "inverse-on-surface"
+  | "inverse-primary"
   | "on-surface"
   | "on-surface-variant"
   | "outline"
@@ -11,6 +15,9 @@ export type SemanticToken =
   | "primary-container"
   | "on-primary-container"
   | "hovered"
+  | "hovered-variant"
+  | "hovered-on-primary"
+  | "selected-surface"
   | "disabled"
   | "on-disabled"
   | "scrim"
@@ -36,6 +43,10 @@ export const SEMANTIC_TOKENS: readonly SemanticToken[] = [
   "surface",
   "surface-container",
   "surface-container-dim",
+  "surface-container-bright",
+  "inverse-surface",
+  "inverse-on-surface",
+  "inverse-primary",
   "on-surface",
   "on-surface-variant",
   "outline",
@@ -45,6 +56,9 @@ export const SEMANTIC_TOKENS: readonly SemanticToken[] = [
   "primary-container",
   "on-primary-container",
   "hovered",
+  "hovered-variant",
+  "hovered-on-primary",
+  "selected-surface",
   "disabled",
   "on-disabled",
   "scrim",
@@ -81,6 +95,13 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { foreground: "on-primary", background: "primary", minimum: 4.5 },
   { foreground: "on-primary-container", background: "primary-container", minimum: 4.5 },
   { foreground: "primary", background: "surface", minimum: 4.5 },
+  { foreground: "primary", background: "surface-container", minimum: 4.5 },
+  { foreground: "primary", background: "surface-container-bright", minimum: 4.5 },
+  { foreground: "on-surface", background: "surface-container-bright", minimum: 4.5 },
+  { foreground: "on-surface", background: "selected-surface", minimum: 4.5 },
+  { foreground: "primary", background: "selected-surface", minimum: 3 },
+  { foreground: "on-surface", background: "inverse-primary", minimum: 4.5 },
+  { foreground: "inverse-on-surface", background: "inverse-surface", minimum: 4.5 },
   { foreground: "on-positive-container", background: "positive-container", minimum: 4.5 },
   { foreground: "on-notice-container", background: "notice-container", minimum: 4.5 },
   { foreground: "on-negative", background: "negative", minimum: 4.5 },

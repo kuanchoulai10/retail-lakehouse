@@ -12,6 +12,10 @@
   --color-surface: var(--ds-surface);
   --color-surface-container: var(--ds-surface-container);
   --color-surface-container-dim: var(--ds-surface-container-dim);
+  --color-surface-container-bright: var(--ds-surface-container-bright);
+  --color-inverse-surface: var(--ds-inverse-surface);
+  --color-inverse-on-surface: var(--ds-inverse-on-surface);
+  --color-inverse-primary: var(--ds-inverse-primary);
   --color-on-surface: var(--ds-on-surface);
   --color-on-surface-variant: var(--ds-on-surface-variant);
   --color-outline: var(--ds-outline);
@@ -21,6 +25,9 @@
   --color-primary-container: var(--ds-primary-container);
   --color-on-primary-container: var(--ds-on-primary-container);
   --color-hovered: var(--ds-hovered);
+  --color-hovered-variant: var(--ds-hovered-variant);
+  --color-hovered-on-primary: var(--ds-hovered-on-primary);
+  --color-selected-surface: var(--ds-selected-surface);
   --color-disabled: var(--ds-disabled);
   --color-on-disabled: var(--ds-on-disabled);
   --color-scrim: var(--ds-scrim);

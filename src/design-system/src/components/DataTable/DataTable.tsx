@@ -27,7 +27,9 @@ export type DataTableProps<T extends RowData> = {
   getRowLabel?: (row: T) => string;
 };
 
-const stickyFirst = "first:sticky first:left-0 first:z-10 first:bg-surface";
+const stickyFirst = "first:sticky first:left-0 first:z-10";
+const hoverOverlay =
+  "group-hover:bg-[linear-gradient(var(--color-hovered-variant),var(--color-hovered-variant))]";
 
 const ariaSort = { asc: "ascending", desc: "descending" } as const;
 
@@ -90,7 +92,7 @@ export function DataTable<T extends RowData>({
                 return (
                   <TableHead
                     key={header.id}
-                    className={stickyFirst}
+                    className={cn(stickyFirst, "first:bg-inverse-primary")}
                     {...(canSort ? { "aria-sort": direction ? ariaSort[direction] : "none" } : {})}
                   >
                     {canSort ? (
@@ -133,7 +135,7 @@ export function DataTable<T extends RowData>({
             return (
               <Fragment key={row.id}>
                 <TableRow
-                  className={expandable ? "cursor-pointer" : undefined}
+                  className={cn("group", expandable && "cursor-pointer", expanded && "bg-inverse-primary")}
                   onClick={
                     expandable
                       ? (event: MouseEvent<HTMLTableRowElement>) => {
@@ -143,7 +145,14 @@ export function DataTable<T extends RowData>({
                   }
                 >
                   {row.getAllCells().map((cell, index) => (
-                    <TableCell key={cell.id} className={stickyFirst}>
+                    <TableCell
+                      key={cell.id}
+                      className={cn(
+                        stickyFirst,
+                        expanded ? "first:bg-inverse-primary" : "first:bg-surface",
+                        hoverOverlay,
+                      )}
+                    >
                       {expandable && index === 0 ? (
                         <span className="inline-flex items-center gap-1">
                           <button

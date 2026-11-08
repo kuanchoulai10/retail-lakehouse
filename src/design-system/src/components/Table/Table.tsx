@@ -39,7 +39,7 @@ export const TableHead = forwardRef<HTMLTableCellElement, TableHeadProps>(
     <th
       ref={ref}
       className={cn(
-        "type-label-large h-control px-3 py-1 font-semibold whitespace-nowrap",
+        "type-label-large h-control bg-inverse-primary px-3 py-1 font-semibold whitespace-nowrap",
         numeric ? "text-right tabular-nums" : "text-left",
         className,
       )}

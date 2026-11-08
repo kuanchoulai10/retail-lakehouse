@@ -23,11 +23,11 @@ const buttonStyle = cva(
           "disabled:bg-disabled disabled:text-on-disabled",
         ],
         outlined: [
-          "border-2 border-outline-dim text-on-surface enabled:hover:bg-on-surface/5",
+          "border-2 border-outline-dim text-on-surface enabled:hover:bg-hovered-variant",
           "disabled:border-transparent disabled:bg-disabled disabled:text-on-disabled",
         ],
         ghost: [
-          "text-primary enabled:hover:bg-on-surface/5 disabled:text-on-disabled",
+          "text-primary enabled:hover:bg-hovered-variant disabled:text-on-disabled",
         ],
       },
       size: {

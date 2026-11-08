@@ -12,7 +12,7 @@ Rules for `src/design-system` (`@retail-lakehouse/design-system`, spec `docs/sup
 ## Components
 
 - **Stack:** Radix (`radix-ui`) for behaviour, Tailwind 4 for style, `cva` for variants, `cn` for class merging. Tables use TanStack Table. Icons only from `@serendie/symbols`, re-exported by `src/icons`. No `@serendie/ui`, Ark UI, Panda CSS or `lucide-react`.
-- **Names:** Serendie's name where Serendie has the component (`Button`, `IconButton`, `Badge`, `Divider`, `TextField`, `TextArea`, `CheckBox`, `Switch`, `Select`, `ModalDialog`, `DropdownMenu`, `Tooltip`, `Drawer`, `TopAppBar`, `Breadcrumbs`, `Tabs`, `List`, `DataTable`, `Banner`). A plain name where it has none (`AlertDialog`, `SideNavigation`, `TitleBar`, `AppLayout`, `Panel`, `EmptyState`, `Skeleton`, `StatusBadge`, `ThemePicker`, `ChartContainer`, `Table`).
+- **Names:** Serendie's name where Serendie has the component (`Button`, `IconButton`, `Badge`, `Divider`, `TextField`, `TextArea`, `CheckBox`, `Switch`, `Select`, `ModalDialog`, `DropdownMenu`, `Tooltip`, `Drawer`, `TopAppBar`, `Breadcrumbs`, `Tabs`, `List`, `DataTable`, `Banner`). A plain name where it has none (`AlertDialog`, `SideNavigation`, `TitleBar`, `AppLayout`, `Panel`, `EmptyState`, `Skeleton`, `StatusBadge`, `ThemePicker`, `ChartContainer`, `Table`, `TextLink`).
 - **Layout:** one folder per component under `src/components/<Name>/` holding `<Name>.tsx` and `<Name>.stories.tsx`. Export it, and its props type, from `src/index.ts`. The console imports only from `@retail-lakehouse/design-system`, never a deep path.
 - **Inventory is what the console needs**, not all of Serendie. Domain components (maintenance panels, delete-confirm wording) stay in the console.
 - **Ported Serendie values or source** keep the MIT notice in a header comment naming `serendie/serendie` and the file. Never bundle `SerendieOfficeVF`. No Serendie or Mitsubishi Electric names or logos in product UI; the README carries the credit line.
@@ -24,11 +24,15 @@ Rules for `src/design-system` (`@retail-lakehouse/design-system`, spec `docs/sup
 - Use the `type-*` utilities from `src/styles/typography.css` and the density utilities from `src/styles/density.css`; do not set font sizes by hand.
 - Each story records a component's expanded sizes as a documented departure from Serendie.
 
-## Status colour
+## Colour use
 
-- Badges use `{positive|notice|negative}Container` with its `on…Container` text (`StatusBadge`, `Badge`).
-- Bare status text or an icon on a surface uses `negative-text`, `positive-text` (`chart-mark-positive-05`) or `notice-text` (`chart-mark-notice-05`). `positive` and `notice` are never text or icon colours on a surface.
-- Colour only means status. Everything else stays neutral.
+Follow Serendie's components: read the component's source in `serendie/serendie` (`src/components/<Name>/`) and use the same token for the same part. The theme colour carries interaction and selection; the status colours carry status only.
+
+- **Links and selected or active states use the theme colour:** `text-primary` for links (`TextLink`, `Breadcrumbs`) and the active tab; `bg-selected-surface` with `text-on-surface` for a selected list item or nav item (its icon `text-primary`); `bg-inverse-primary` for table headers and expanded or selected rows; `bg-primary-container` for filled buttons, checked check boxes and switches.
+- **Hover is `bg-hovered-variant`** on a surface and `bg-hovered` over a filled control. Never a derived colour such as `bg-on-surface/5`.
+- **Overlays:** menus and select lists on `bg-surface-container-bright`, tooltips `bg-inverse-surface` with `text-inverse-on-surface`.
+- **Where we depart from Serendie for contrast:** secondary text on `selected-surface` is `text-on-surface`, not `on-surface-variant` (about 3.3:1); control borders use `outline-dim`, not `outline`.
+- **Status:** badges use `{positive|notice|negative}Container` with its `on…Container` text (`StatusBadge`, `Badge`). Bare status text or an icon on a surface uses `negative-text`, `positive-text` (`chart-mark-positive-05`) or `notice-text` (`chart-mark-notice-05`). `positive` and `notice` are never text or icon colours on a surface, and status colours never mean anything but status.
 
 ## Accessibility and tests
 

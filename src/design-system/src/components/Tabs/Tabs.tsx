@@ -20,8 +20,8 @@ export const TabItem = forwardRef<HTMLButtonElement, ComponentProps<typeof TabsP
     <TabsPrimitive.Trigger
       ref={ref}
       className={cn(
-        "type-label-large min-h-control shrink-0 cursor-pointer border-b-2 border-transparent px-4 whitespace-nowrap text-on-surface-variant",
-        "hover:bg-on-surface/5 data-[state=active]:border-primary data-[state=active]:text-on-surface",
+        "type-label-large min-h-control shrink-0 cursor-pointer border-b-2 border-transparent px-4 whitespace-nowrap text-on-surface",
+        "hover:text-primary data-[state=active]:border-primary data-[state=active]:font-bold data-[state=active]:text-primary",
         "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring",
         className,
       )}
