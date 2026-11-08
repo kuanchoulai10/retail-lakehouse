@@ -1,10 +1,10 @@
+import { Banner } from "@retail-lakehouse/design-system";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { catalogQueryKeys } from "@/api/catalogQueryKeys";
 import type { CatalogApiResponse, NamespaceSummaryApiResponse } from "@/api/catalogTypes";
 import { apiGet, apiSend } from "@/api/client";
-import { ActionsMenu } from "@/components/ActionsMenu";
 import { CatalogDetails } from "@/components/CatalogDetails";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { CreateNamespaceDialog } from "@/components/forms/CreateNamespaceDialog";
@@ -12,7 +12,6 @@ import { EditCatalogDialog } from "@/components/forms/EditCatalogDialog";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { PropertiesPanel } from "@/components/PropertiesPanel";
 import { ResourceListPage } from "@/components/ResourceListPage";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { errorMessage } from "@/format";
 import {
   catalogApiPath,
@@ -70,11 +69,7 @@ function CatalogDetailsPage({ name }: { name: string }) {
   if (catalog.isError || namespaces.isError) {
     const what = catalog.isError ? "catalog" : "namespaces";
     return (
-      <Alert variant="destructive">
-        <AlertDescription>
-          Could not load {what}: {errorMessage(catalog.error ?? namespaces.error)}
-        </AlertDescription>
-      </Alert>
+      <Banner type="negative" title={`Could not load ${what}: ${errorMessage(catalog.error ?? namespaces.error)}`} />
     );
   }
 
@@ -86,20 +81,17 @@ function CatalogDetailsPage({ name }: { name: string }) {
       <ResourceListPage
         title={name}
         breadcrumbs={[{ label: "Catalogs", to: catalogsPath() }, { label: name }]}
-        actions={
-          <ActionsMenu
-            items={[
-              { label: "Edit", onSelect: () => setDialog("edit") },
-              {
-                label: "Delete",
-                onSelect: () => {
-                  removeCatalog.reset();
-                  setDialog("delete");
-                },
-              },
-            ]}
-          />
-        }
+        menuItems={[
+          { label: "Edit", onSelect: () => setDialog("edit") },
+          {
+            label: "Delete",
+            destructive: true,
+            onSelect: () => {
+              removeCatalog.reset();
+              setDialog("delete");
+            },
+          },
+        ]}
         listTitle="Namespaces"
         columns={[
           {
@@ -107,7 +99,7 @@ function CatalogDetailsPage({ name }: { name: string }) {
             cell: (row) => (
               <Link
                 to={namespacePath(name, row.namespace)}
-                className="font-mono text-[13px] font-medium underline-offset-4 hover:underline"
+                className="font-mono font-medium underline-offset-4 hover:underline"
               >
                 {last(row)}
               </Link>

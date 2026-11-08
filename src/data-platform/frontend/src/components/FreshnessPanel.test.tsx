@@ -51,6 +51,6 @@ describe("FreshnessPanel", () => {
         lastCommittedAt="2026-11-01T11:30:00Z"
       />,
     );
-    expect(screen.getByText("≥ 1 commits in the last 24 h")).toHaveClass("text-warning");
+    expect(screen.getByText("≥ 1 commits in the last 24 h")).toHaveClass("text-notice-text");
   });
 });

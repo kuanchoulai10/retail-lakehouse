@@ -1,10 +1,10 @@
-import { PanelSkeleton } from "@/components/PanelSkeleton";
+import { Banner } from "@retail-lakehouse/design-system";
 import { useQuery } from "@tanstack/react-query";
-import { apiGet } from "../../api/client";
-import type { TableApiResponse } from "../../api/types";
-import { Alert } from "@/components/ui/alert";
-import { errorMessage } from "../../format";
-import { SettingsForm } from "../SettingsForm";
+import { apiGet } from "@/api/client";
+import type { TableApiResponse } from "@/api/types";
+import { PanelSkeleton } from "@/components/PanelSkeleton";
+import { SettingsForm } from "@/components/SettingsForm";
+import { errorMessage } from "@/format";
 
 interface Props {
   tableUuid: string;
@@ -17,9 +17,7 @@ export function SettingsTab({ tableUuid }: Props) {
   });
   if (table.isPending) return <PanelSkeleton label="Loading settings…" />;
   if (table.isError) {
-    return (
-      <Alert variant="destructive">Could not load settings: {errorMessage(table.error)}</Alert>
-    );
+    return <Banner type="negative" title={`Could not load settings: ${errorMessage(table.error)}`} />;
   }
   return <SettingsForm key={table.data.updated_at} table={table.data} />;
 }

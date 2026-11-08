@@ -15,7 +15,7 @@ function renderHeader(status = "active", client = newClient(), extra: React.Reac
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <TableHeader table={catalogTableFixture()} managed={tableFixture({ status })} menu={null} />
+        <TableHeader table={catalogTableFixture()} managed={tableFixture({ status })} menuItems={[]} />
         {extra}
       </MemoryRouter>
     </QueryClientProvider>,
@@ -117,9 +117,9 @@ describe("TableHeader", () => {
     expect(button).toHaveAccessibleDescription("Only an active table can run maintenance");
   });
 
-  it("gives the title a break-words class so a long name cannot overflow", () => {
+  it("gives the title a truncate class so a long name cannot overflow", () => {
     renderHeader();
-    expect(screen.getByRole("heading", { level: 1 })).toHaveClass("break-words");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveClass("truncate");
   });
 
   it("opens the dialog as role dialog and closes it on Escape without posting", async () => {
@@ -173,7 +173,11 @@ describe("TableHeader of an unmanaged table", () => {
     render(
       <QueryClientProvider client={newClient()}>
         <MemoryRouter>
-          <TableHeader table={catalogTableFixture()} managed={null} menu={<button type="button">Actions</button>} />
+          <TableHeader
+            table={catalogTableFixture()}
+            managed={null}
+            menuItems={[{ label: "Rename", onSelect: () => {} }]}
+          />
         </MemoryRouter>
       </QueryClientProvider>,
     );

@@ -47,7 +47,7 @@ export function DataTable<T extends RowData>({
       aria-label={caption}
       tabIndex={0}
       className={cn(
-        "overflow-x-auto rounded-lg border border-outline bg-surface",
+        "relative overflow-x-auto rounded-lg border border-outline bg-surface",
         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring",
         className,
       )}

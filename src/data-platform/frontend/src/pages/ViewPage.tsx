@@ -1,24 +1,55 @@
+import {
+  Badge,
+  Banner,
+  createDataTableColumnHelper,
+  DataTable,
+  Panel,
+} from "@retail-lakehouse/design-system";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { catalogQueryKeys } from "@/api/catalogQueryKeys";
-import type { ViewApiResponse } from "@/api/catalogTypes";
+import type { ViewApiResponse, ViewVersionApiResponse } from "@/api/catalogTypes";
 import { ApiError, apiGet, apiSend } from "@/api/client";
-import { ActionsMenu } from "@/components/ActionsMenu";
 import { CatalogObjectNotFound } from "@/components/CatalogObjectNotFound";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { PageHeader } from "@/components/PageHeader";
-import { Panel } from "@/components/Panel";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { PropertiesPanel } from "@/components/PropertiesPanel";
 import { SchemaFieldsPanel } from "@/components/SchemaFieldsPanel";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { errorMessage, formatTimestamp } from "@/format";
 import { catalogObjectCrumbs } from "@/lib/catalogObjectCrumbs";
 import { namespaceFromParam, namespacePath, viewApiPath } from "@/lib/catalogPaths";
 import { useLeavingPage } from "@/lib/useLeavingPage";
+
+const versionColumn = createDataTableColumnHelper<ViewVersionApiResponse>();
+
+function versionColumnsFor(currentVersionId: number) {
+  return versionColumn.columns([
+    versionColumn.accessor("version_id", {
+      header: "Version",
+      enableSorting: false,
+      cell: (info) => <span className="tabular-nums">{info.getValue()}</span>,
+    }),
+    versionColumn.display({
+      id: "current",
+      header: () => <span className="sr-only">Current</span>,
+      cell: (info) => (info.row.original.version_id === currentVersionId ? <Badge>Current</Badge> : null),
+    }),
+    versionColumn.accessor("timestamp_ms", {
+      header: "Created",
+      enableSorting: false,
+      cell: (info) => (
+        <span className="tabular-nums whitespace-nowrap">{formatTimestamp(new Date(info.getValue()).toISOString())}</span>
+      ),
+    }),
+    versionColumn.accessor("sql", {
+      header: "SQL",
+      enableSorting: false,
+      cell: (info) => <span className="type-code block min-w-48 break-all">{info.getValue()}</span>,
+    }),
+  ]);
+}
 
 // The fixed view page: SQL, schema, versions and properties. Polaris cannot rename or edit a
 // view, so Actions holds Delete only.
@@ -59,79 +90,55 @@ function ViewDetails({ catalog, parts, name }: ViewDetailsProps) {
     if (view.error instanceof ApiError && view.error.status === 404) {
       return <CatalogObjectNotFound objectKind="view" catalog={catalog} namespace={parts} name={name} />;
     }
-    return (
-      <Alert variant="destructive">
-        <AlertDescription>Could not load view: {errorMessage(view.error)}</AlertDescription>
-      </Alert>
-    );
+    return <Banner type="negative" title={`Could not load view: ${errorMessage(view.error)}`} />;
   }
 
   const versions = [...view.data.versions].sort((a, b) => b.version_id - a.version_id);
-  const mono = "font-mono text-[13px]";
+  const mono = "type-code";
+  const versionColumns = versionColumnsFor(view.data.current_version_id);
 
   return (
     <section>
       <PageHeader
         title={name}
         breadcrumbs={catalogObjectCrumbs(catalog, parts, name)}
-        actions={
-          <ActionsMenu
-            items={[
-              {
-                label: "Delete",
-                onSelect: () => {
-                  remove.reset();
-                  setDeleting(true);
-                },
-              },
-            ]}
-          />
-        }
+        menuItems={[
+          {
+            label: "Delete",
+            destructive: true,
+            onSelect: () => {
+              remove.reset();
+              setDeleting(true);
+            },
+          },
+        ]}
       >
         <span>View</span>
       </PageHeader>
       <div className="flex flex-col gap-6">
-        <Panel title="SQL" actions={<span className={`${mono} text-muted-foreground`}>{view.data.dialect}</span>}>
-          <pre className={`overflow-x-auto p-4 ${mono}`}>
+        <Panel title="SQL" actions={<span className={`${mono} text-on-surface-variant`}>{view.data.dialect}</span>}>
+          <pre className={`overflow-x-auto rounded-md bg-surface p-3 ${mono}`}>
             <code>{view.data.sql}</code>
           </pre>
         </Panel>
         <Panel title="Overview">
-          <dl className="grid grid-cols-[10rem_1fr] gap-x-4 gap-y-2 px-4 py-3 text-sm">
-            <dt className="text-muted-foreground">Location</dt>
+          <dl className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-[10rem_1fr] sm:gap-y-2">
+            <dt className="text-on-surface-variant">Location</dt>
             <dd className={`break-all ${mono}`}>{view.data.location}</dd>
-            <dt className="text-muted-foreground">UUID</dt>
+            <dt className="text-on-surface-variant">UUID</dt>
             <dd className={`break-all ${mono}`}>{view.data.uuid}</dd>
-            <dt className="text-muted-foreground">Default namespace</dt>
+            <dt className="text-on-surface-variant">Default namespace</dt>
             <dd className={mono}>{view.data.default_namespace.join(" / ") || "—"}</dd>
           </dl>
         </Panel>
         <SchemaFieldsPanel schema={view.data.schema} />
         <Panel title="Versions">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="px-4">Version</TableHead>
-                <TableHead>
-                  <span className="sr-only">Current</span>
-                </TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>SQL</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {versions.map((version) => (
-                <TableRow key={version.version_id}>
-                  <TableCell className="px-4 tabular-nums">{version.version_id}</TableCell>
-                  <TableCell>
-                    {version.version_id === view.data.current_version_id && <Badge variant="outline">Current</Badge>}
-                  </TableCell>
-                  <TableCell className="tabular-nums">{formatTimestamp(new Date(version.timestamp_ms).toISOString())}</TableCell>
-                  <TableCell className={`whitespace-normal break-all ${mono}`}>{version.sql}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <DataTable
+            caption="View versions, newest first"
+            columns={versionColumns}
+            data={versions}
+            getRowId={(version) => String(version.version_id)}
+          />
         </Panel>
         <PropertiesPanel properties={view.data.properties} />
       </div>

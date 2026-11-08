@@ -1,3 +1,4 @@
+import { Banner } from "@retail-lakehouse/design-system";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { catalogQueryKeys } from "@/api/catalogQueryKeys";
@@ -6,7 +7,6 @@ import { apiGet, apiSend } from "@/api/client";
 import { CreateCatalogDialog } from "@/components/forms/CreateCatalogDialog";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { ResourceListPage } from "@/components/ResourceListPage";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { errorMessage } from "@/format";
 import { catalogApiPath, catalogPath, catalogsApiPath } from "@/lib/catalogPaths";
 
@@ -27,9 +27,7 @@ export function CatalogsPage() {
   if (catalogs.isPending) return <PanelSkeleton label="Loading catalogs" />;
   if (catalogs.isError) {
     return (
-      <Alert variant="destructive">
-        <AlertDescription>Could not load catalogs: {errorMessage(catalogs.error)}</AlertDescription>
-      </Alert>
+      <Banner type="negative" title={`Could not load catalogs: ${errorMessage(catalogs.error)}`} />
     );
   }
 
@@ -50,7 +48,7 @@ export function CatalogsPage() {
         { header: "Storage", cell: (row) => row.storage_config.storage_type },
         {
           header: "Default base location",
-          cell: (row) => <span className="break-all font-mono text-[13px]">{row.default_base_location}</span>,
+          cell: (row) => <span className="type-code break-all">{row.default_base_location}</span>,
         },
       ]}
       rows={rows}

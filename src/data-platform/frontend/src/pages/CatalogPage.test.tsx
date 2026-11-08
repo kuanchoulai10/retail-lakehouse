@@ -56,7 +56,7 @@ describe("CatalogPage", { timeout: 15_000 }, () => {
     );
     const crumbs = screen.getByRole("navigation", { name: "Breadcrumb" });
     expect(within(crumbs).getByRole("link", { name: "Catalogs" })).toHaveAttribute("href", "/catalogs");
-    expect(within(crumbs).getByText("iceberg")).toHaveAttribute("aria-current", "page");
+    expect(within(crumbs).getByText("iceberg").parentElement).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("heading", { level: 1, name: "iceberg" })).toBeInTheDocument();
     const storage = screen.getByRole("region", { name: "Storage" });
     expect(within(storage).getByText("S3")).toBeInTheDocument();

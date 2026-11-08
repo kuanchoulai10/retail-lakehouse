@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@retail-lakehouse/design-system";
 
 interface Props {
   label: string;
@@ -6,11 +6,7 @@ interface Props {
 
 export function PanelSkeleton({ label }: Props) {
   return (
-    <div
-      role="status"
-      aria-busy="true"
-      className="grid gap-2 rounded-lg border border-border bg-background p-4"
-    >
+    <div role="status" aria-busy="true" className="grid gap-2 rounded-lg border border-outline bg-surface-container p-4">
       <span className="sr-only">{label}</span>
       <Skeleton className="h-4 w-1/3" />
       <Skeleton className="h-4 w-full" />

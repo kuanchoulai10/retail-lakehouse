@@ -1,5 +1,5 @@
+import { Divider, Panel } from "@retail-lakehouse/design-system";
 import type { TableStorageApiResponse, TableStorageReclaimedApiResponse } from "@/api/types";
-import { Panel } from "@/components/Panel";
 import { formatBytes, formatCount } from "@/format";
 
 interface Props {
@@ -46,56 +46,57 @@ export function StoragePanel({ storage }: Props) {
   const rows = reclaimedRows(storage.reclaimed);
   return (
     <Panel title="Storage">
-      <div className="space-y-3 p-4">
-        <div className="flex h-2 overflow-hidden rounded-full bg-muted">
+      <div className="space-y-3">
+        <div className="flex h-2 overflow-hidden rounded-full bg-surface-container-dim">
           <div
             role="img"
             aria-label="Current snapshot"
-            className="bg-foreground"
+            className="bg-chart-1"
             style={{ width: `${currentShare}%` }}
           />
           <div
             role="img"
             aria-label="Only in old snapshots"
-            className="bg-muted-foreground/40"
+            className="bg-chart-5"
             style={{ width: `${100 - currentShare}%` }}
           />
         </div>
-        <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
-          <dt className="flex items-center gap-2 text-muted-foreground">
-            <span aria-hidden className="size-2 rounded-full bg-foreground" />
+        <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1">
+          <dt className="flex items-center gap-2 text-on-surface-variant">
+            <span aria-hidden className="size-2 rounded-full bg-chart-1" />
             Current snapshot
           </dt>
           <dd className="tabular-nums">
             <span>{formatBytes(storage.current_bytes)}</span>{" "}
-            <span className="text-muted-foreground">{`${formatCount(storage.current_files)} files`}</span>
+            <span className="text-on-surface-variant">{`${formatCount(storage.current_files)} files`}</span>
           </dd>
-          <dt className="flex items-center gap-2 text-muted-foreground">
-            <span aria-hidden className="size-2 rounded-full bg-muted-foreground/40" />
+          <dt className="flex items-center gap-2 text-on-surface-variant">
+            <span aria-hidden className="size-2 rounded-full bg-chart-5" />
             Only in old snapshots
           </dt>
           <dd className="tabular-nums">
             <span>{formatBytes(storage.old_snapshot_bytes)}</span>{" "}
-            <span className="text-muted-foreground">{`${formatCount(storage.old_snapshot_files)} files`}</span>
+            <span className="text-on-surface-variant">{`${formatCount(storage.old_snapshot_files)} files`}</span>
           </dd>
         </dl>
       </div>
-      <div className="space-y-2 border-t border-border p-4">
-        <h3 className="text-sm font-medium">{`Reclaimed in the last ${storage.window_days} days`}</h3>
+      <Divider className="my-4" />
+      <div className="space-y-2">
+        <h3 className="type-title-small">{`Reclaimed in the last ${storage.window_days} days`}</h3>
         {rows.length === 0 ? (
-          <p className="text-[13px] text-muted-foreground">Nothing reclaimed.</p>
+          <p className="type-body-small text-on-surface-variant">Nothing reclaimed.</p>
         ) : (
-          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
+          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1">
             {rows.map((row) => (
               <div key={row.label} className="contents">
-                <dt className="text-muted-foreground">{row.label}</dt>
+                <dt className="text-on-surface-variant">{row.label}</dt>
                 <dd className="tabular-nums">{row.value}</dd>
               </div>
             ))}
           </dl>
         )}
         {storage.attempts_without_metrics > 0 && (
-          <p className="text-[13px] text-muted-foreground">
+          <p className="type-body-small text-on-surface-variant">
             {`${storage.attempts_without_metrics} attempts in this window reported no metrics and add nothing above.`}
           </p>
         )}

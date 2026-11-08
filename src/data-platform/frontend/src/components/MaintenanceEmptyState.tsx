@@ -1,3 +1,4 @@
+import { EmptyState } from "@retail-lakehouse/design-system";
 import { Link } from "react-router";
 
 export type MaintenanceEmptyReason = "catalog-not-covered" | "not-found" | "excluded" | "dropped";
@@ -11,17 +12,24 @@ const MESSAGES: Record<MaintenanceEmptyReason, string> = {
 
 export function MaintenanceEmptyState({ reason }: { reason: MaintenanceEmptyReason }) {
   return (
-    <div className="rounded-lg border border-border p-6 text-sm">
-      <p className="font-medium">Maintenance does not manage this table</p>
-      <p className="mt-1 text-muted-foreground">
-        Reason: <span>{MESSAGES[reason]}</span>
-        {reason === "not-found" && (
-          <>
-            {" "}
-            (see <Link to="/discovery-rules" className="underline hover:text-foreground">Discovery rules</Link>)
-          </>
-        )}
-      </p>
-    </div>
+    <EmptyState
+      className="rounded-lg border border-outline"
+      title="Maintenance does not manage this table"
+      description={
+        <>
+          Reason: <span>{MESSAGES[reason]}</span>
+          {reason === "not-found" && (
+            <>
+              {" "}
+              (see{" "}
+              <Link to="/discovery-rules" className="underline underline-offset-2 hover:text-on-surface">
+                Discovery rules
+              </Link>
+              )
+            </>
+          )}
+        </>
+      }
+    />
   );
 }

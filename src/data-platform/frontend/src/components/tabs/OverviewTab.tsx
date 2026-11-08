@@ -1,8 +1,8 @@
+import { Panel } from "@retail-lakehouse/design-system";
 import type { ReactNode } from "react";
 import type { CatalogTableApiResponse } from "@/api/catalogTypes";
 import { MaintenanceGate } from "@/components/MaintenanceGate";
 import { MaintenancePanels } from "@/components/MaintenancePanels";
-import { Panel } from "@/components/Panel";
 import { formatBytes, formatCount, formatRelativeTime } from "@/format";
 import { currentSnapshot } from "@/lib/currentSnapshot";
 import type { TableMaintenanceState } from "@/lib/tableMaintenanceState";
@@ -22,8 +22,8 @@ const MARKER: Record<TableMaintenanceState["kind"], string> = {
 function Fact({ label, children, mono }: { label: string; children: ReactNode; mono?: boolean }) {
   return (
     <>
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className={mono === true ? "break-all font-mono text-[13px]" : "tabular-nums"}>{children}</dd>
+      <dt className="text-on-surface-variant">{label}</dt>
+      <dd className={mono === true ? "type-code break-all" : "tabular-nums"}>{children}</dd>
     </>
   );
 }
@@ -35,9 +35,9 @@ export function OverviewTab({ table, maintenance }: Props) {
   const lastCommittedAt = snapshot === undefined ? null : new Date(snapshot.timestamp_ms).toISOString();
   const { total_records: records, total_data_files: files, total_files_size: size } = table.summary;
   return (
-    <div className="grid gap-4">
-      <Panel title="Table" actions={<span className="text-[13px] text-muted-foreground">{MARKER[maintenance.kind]}</span>}>
-        <dl className="grid grid-cols-[10rem_1fr] gap-x-4 gap-y-2 px-4 py-3 text-sm">
+    <div className="grid grid-cols-1 gap-4">
+      <Panel title="Table" actions={<span className="type-body-small text-on-surface-variant">{MARKER[maintenance.kind]}</span>}>
+        <dl className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-[10rem_1fr] sm:gap-y-2">
           <Fact label="Format version">{table.format_version}</Fact>
           <Fact label="Location" mono>
             {table.location}

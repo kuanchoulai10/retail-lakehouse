@@ -1,3 +1,9 @@
+import {
+  Banner,
+  createDataTableColumnHelper,
+  DataTable,
+  Skeleton,
+} from "@retail-lakehouse/design-system";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { Link } from "react-router";
@@ -8,13 +14,11 @@ import type {
   TableMaintenancePresetApiResponse,
 } from "@/api/types";
 import { PageHeader } from "@/components/PageHeader";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { errorMessage, formatTimestamp } from "@/format";
 
-const COLUMN_COUNT = 6;
 const SKELETON_ROWS = 3;
+
+const column = createDataTableColumnHelper<TableDiscoveryRuleApiResponse>();
 
 function capitalise(word: string): string {
   return word.charAt(0).toUpperCase() + word.slice(1);
@@ -26,6 +30,61 @@ function pattern(rule: TableDiscoveryRuleApiResponse): string {
 
 function byEvaluationOrder(a: TableDiscoveryRuleApiResponse, b: TableDiscoveryRuleApiResponse): number {
   return a.priority - b.priority || a.id.localeCompare(b.id);
+}
+
+function rulesColumns(presetNames: Map<string, string>) {
+  return column.columns([
+    column.accessor("priority", {
+      header: "Priority",
+      enableSorting: false,
+      cell: (info) => <span className="tabular-nums">{info.getValue()}</span>,
+    }),
+    column.accessor("effect", { header: "Effect", enableSorting: false, cell: (info) => capitalise(info.getValue()) }),
+    column.accessor((rule) => pattern(rule), {
+      id: "pattern",
+      header: "Pattern",
+      enableSorting: false,
+      cell: (info) => <span className="type-code whitespace-nowrap">{info.getValue()}</span>,
+    }),
+    column.accessor("preset_id", {
+      header: "Preset",
+      enableSorting: false,
+      cell: (info) => {
+        const presetId = info.getValue();
+        if (presetId === null) return <span className="text-on-surface-variant">—</span>;
+        return (
+          <Link to={`/presets#preset-${presetId}`} className="font-mono underline-offset-2 hover:underline">
+            {presetNames.get(presetId) ?? presetId}
+          </Link>
+        );
+      },
+    }),
+    column.accessor((rule) => (rule.enabled ? "Enabled" : "Disabled"), {
+      id: "state",
+      header: "State",
+      enableSorting: false,
+      cell: (info) => <span className="text-on-surface-variant">{info.getValue()}</span>,
+    }),
+    column.accessor("updated_at", {
+      header: "Updated",
+      enableSorting: false,
+      cell: (info) => (
+        <time dateTime={info.getValue()} className="tabular-nums whitespace-nowrap">
+          {formatTimestamp(info.getValue())}
+        </time>
+      ),
+    }),
+  ]);
+}
+
+function LoadingRows() {
+  return (
+    <div className="grid gap-3 py-1">
+      {Array.from({ length: SKELETON_ROWS }, (_, i) => (
+        <Skeleton key={i} className="h-4 w-full" />
+      ))}
+    </div>
+  );
 }
 
 function DiscoveryState() {
@@ -52,6 +111,7 @@ export function DiscoveryRulesPage() {
     [presets.data],
   );
   const ordered = useMemo(() => [...(rules.data ?? [])].sort(byEvaluationOrder), [rules.data]);
+  const columns = useMemo(() => rulesColumns(presetNames), [presetNames]);
 
   return (
     <section>
@@ -60,66 +120,17 @@ export function DiscoveryRulesPage() {
         <span>Lowest priority first; the first enabled rule that matches a table decides.</span>
       </PageHeader>
       {rules.isError && (
-        <Alert variant="destructive">
-          <AlertDescription>Could not load discovery rules: {errorMessage(rules.error)}</AlertDescription>
-        </Alert>
+        <Banner type="negative" title={`Could not load discovery rules: ${errorMessage(rules.error)}`} />
       )}
       {!rules.isError && (
-        <div aria-busy={rules.isPending} className="rounded-lg border border-border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-20">Priority</TableHead>
-                <TableHead>Effect</TableHead>
-                <TableHead>Pattern</TableHead>
-                <TableHead>Preset</TableHead>
-                <TableHead>State</TableHead>
-                <TableHead>Updated</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rules.isPending &&
-                Array.from({ length: SKELETON_ROWS }, (_, i) => (
-                  <TableRow key={i}>
-                    {Array.from({ length: COLUMN_COUNT }, (_, j) => (
-                      <TableCell key={j}>
-                        <Skeleton className="h-4 w-full max-w-40" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              {rules.isSuccess &&
-                ordered.map((rule) => (
-                  <TableRow key={rule.id}>
-                    <TableCell className="tabular-nums">{rule.priority}</TableCell>
-                    <TableCell>{capitalise(rule.effect)}</TableCell>
-                    <TableCell className="font-mono text-[13px]">{pattern(rule)}</TableCell>
-                    <TableCell>
-                      {rule.preset_id === null ? (
-                        <span className="text-muted-foreground">—</span>
-                      ) : (
-                        <Link to={`/presets#preset-${rule.preset_id}`} className="font-mono text-[13px] hover:underline">
-                          {presetNames.get(rule.preset_id) ?? rule.preset_id}
-                        </Link>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{rule.enabled ? "Enabled" : "Disabled"}</TableCell>
-                    <TableCell>
-                      <time dateTime={rule.updated_at} className="tabular-nums">
-                        {formatTimestamp(rule.updated_at)}
-                      </time>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              {rules.isSuccess && ordered.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={COLUMN_COUNT} className="text-center text-muted-foreground">
-                    No discovery rules.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+        <div aria-busy={rules.isPending}>
+          <DataTable
+            caption="Discovery rules in evaluation order"
+            columns={columns}
+            data={rules.isSuccess ? ordered : []}
+            getRowId={(rule) => rule.id}
+            emptyState={rules.isPending ? <LoadingRows /> : "No discovery rules."}
+          />
         </div>
       )}
     </section>

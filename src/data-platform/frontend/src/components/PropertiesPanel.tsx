@@ -1,33 +1,38 @@
-import { Panel } from "@/components/Panel";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { createDataTableColumnHelper, DataTable, Panel } from "@retail-lakehouse/design-system";
+
+interface PropertyRow {
+  key: string;
+  value: string;
+}
+
+const column = createDataTableColumnHelper<PropertyRow>();
+
+const columns = column.columns([
+  column.accessor("key", {
+    header: "Property",
+    enableSorting: false,
+    cell: (info) => <span className="type-code">{info.getValue()}</span>,
+  }),
+  column.accessor("value", {
+    header: "Value",
+    enableSorting: false,
+    cell: (info) => <span className="type-code block min-w-48 break-all">{info.getValue()}</span>,
+  }),
+]);
 
 export function PropertiesPanel({ properties }: { properties: Record<string, string> }) {
-  const entries = Object.entries(properties).sort(([a], [b]) => a.localeCompare(b));
+  const rows = Object.entries(properties)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => ({ key, value }));
   return (
     <Panel title="Properties">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Property</TableHead>
-            <TableHead>Value</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {entries.map(([key, value]) => (
-            <TableRow key={key}>
-              <TableCell className="font-mono text-[13px]">{key}</TableCell>
-              <TableCell className="break-all font-mono text-[13px]">{value}</TableCell>
-            </TableRow>
-          ))}
-          {entries.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={2} className="text-center text-muted-foreground">
-                No properties.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+      <DataTable
+        caption="Property values"
+        columns={columns}
+        data={rows}
+        getRowId={(row) => row.key}
+        emptyState="No properties."
+      />
     </Panel>
   );
 }

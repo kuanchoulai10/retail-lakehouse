@@ -1,3 +1,4 @@
+import { Banner, TabItem, TabList, TabPanel, Tabs } from "@retail-lakehouse/design-system";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type MouseEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router";
@@ -5,7 +6,6 @@ import { catalogQueryKeys } from "@/api/catalogQueryKeys";
 import type { CatalogTableApiResponse, CoveredCatalogsApiResponse } from "@/api/catalogTypes";
 import { ApiError, apiGet, apiSend } from "@/api/client";
 import type { TableApiResponse } from "@/api/types";
-import { ActionsMenu } from "@/components/ActionsMenu";
 import { CatalogObjectNotFound } from "@/components/CatalogObjectNotFound";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { EditTablePropertiesDialog } from "@/components/forms/EditTablePropertiesDialog";
@@ -20,8 +20,6 @@ import { PropertiesTab } from "@/components/tabs/PropertiesTab";
 import { SchemaTab } from "@/components/tabs/SchemaTab";
 import { SettingsTab } from "@/components/tabs/SettingsTab";
 import { SnapshotsTab } from "@/components/tabs/SnapshotsTab";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { errorMessage } from "@/format";
 import {
   maintenanceTableApiPath,
@@ -137,53 +135,42 @@ function TableView({ catalog, parts, name, segment }: TableViewProps) {
     if (isNotFound(table.error)) {
       return <CatalogObjectNotFound objectKind="table" catalog={catalog} namespace={parts} name={name} />;
     }
-    return (
-      <Alert variant="destructive">
-        <AlertDescription>Could not load table: {errorMessage(table.error)}</AlertDescription>
-      </Alert>
-    );
+    return <Banner type="negative" title={`Could not load table: ${errorMessage(table.error)}`} />;
   }
 
   const maintenance = tableMaintenanceState(catalog, covered, maintenanceTable);
-  const menu = (
-    <ActionsMenu
-      items={[
-        { label: "Rename", onSelect: () => setDialog("rename") },
-        { label: "Edit properties", onSelect: () => setDialog("edit") },
-        {
-          label: "Delete",
-          onSelect: () => {
-            remove.reset();
-            setDialog("delete");
-          },
-        },
-      ]}
-    />
-  );
+  const menuItems = [
+    { label: "Rename", onSelect: () => setDialog("rename") },
+    { label: "Edit properties", onSelect: () => setDialog("edit") },
+    {
+      label: "Delete",
+      destructive: true,
+      onSelect: () => {
+        remove.reset();
+        setDialog("delete");
+      },
+    },
+  ];
 
   return (
     <section>
       <TableHeader
         table={table.data}
         managed={maintenance.kind === "managed" ? maintenance.table : null}
-        menu={menu}
+        menuItems={menuItems}
       />
       <Tabs value={tab} onValueChange={(next) => navigate(tablePath(catalog, parts, name, next))}>
-        <TabsList
-          variant="line"
-          aria-label="Table sections"
-          className="mb-4 max-w-full justify-start overflow-x-auto border-b border-border"
-        >
+        <TabList aria-label="Table sections">
           {TABS.map((t) => (
-            <TabsTrigger key={t.key} value={t.key} asChild onMouseDown={keepPageOnModifiedClick}>
+            <TabItem key={t.key} value={t.key} asChild onMouseDown={keepPageOnModifiedClick}>
               <Link to={tablePath(catalog, parts, name, t.key)}>{t.label}</Link>
-            </TabsTrigger>
+            </TabItem>
           ))}
-        </TabsList>
+        </TabList>
         {TABS.map((t) => (
-          <TabsContent key={t.key} value={t.key} forceMount>
-            {t.key === tab ? tabBody(tab, table.data, maintenance) : null}
-          </TabsContent>
+          <TabPanel key={t.key} value={t.key} forceMount className="data-[state=inactive]:hidden">
+            {t.key === tab ? <div className="type-body-medium">{tabBody(tab, table.data, maintenance)}</div> : null}
+          </TabPanel>
         ))}
       </Tabs>
       {dialog === "rename" && <RenameTableDialog table={table.data} tab={tab} onLeave={leave} onClose={() => setDialog(null)} />}

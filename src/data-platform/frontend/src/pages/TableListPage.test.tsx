@@ -198,7 +198,7 @@ describe("TableListPage", () => {
     const { container } = renderPage();
 
     expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
-    expect(container.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThan(0);
+    expect(container.querySelectorAll('[aria-busy="true"] .animate-pulse').length).toBeGreaterThan(0);
   });
 
   it("shows an empty state when no table matches", async () => {

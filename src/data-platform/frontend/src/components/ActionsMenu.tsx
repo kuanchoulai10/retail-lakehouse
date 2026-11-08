@@ -5,12 +5,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   SerendieSymbolMoreHorizontal,
+  type TitleBarOverflowAction,
 } from "@retail-lakehouse/design-system";
 
-export interface ActionItem {
-  label: string;
-  onSelect: () => void;
-}
+// The same shape the title bar's phone overflow menu takes, so one list feeds both.
+export type ActionItem = TitleBarOverflowAction;
 
 export function ActionsMenu({ items }: { items: ActionItem[] }) {
   return (
@@ -23,7 +22,12 @@ export function ActionsMenu({ items }: { items: ActionItem[] }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {items.map((item) => (
-          <DropdownMenuItem key={item.label} onSelect={item.onSelect}>
+          <DropdownMenuItem
+            key={item.label}
+            onSelect={item.onSelect}
+            disabled={item.disabled}
+            className={item.destructive === true ? "text-negative-text" : undefined}
+          >
             {item.label}
           </DropdownMenuItem>
         ))}

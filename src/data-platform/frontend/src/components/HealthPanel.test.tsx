@@ -63,7 +63,7 @@ describe("HealthPanel", () => {
   it("keeps the not-scheduled notice neutral", () => {
     renderPanel(health({ scheduled: false, not_scheduled_reason: "paused" }));
     expect(screen.getByText("The scheduler skips this table: paused")).not.toHaveClass(
-      "text-warning",
+      "text-notice-text",
     );
   });
 
@@ -94,8 +94,8 @@ describe("HealthPanel", () => {
 
   it("colours a due line with the warning token and a cooldown line neutral", () => {
     renderPanel(health());
-    expect(screen.getByText(/12 reducible files in 3 partitions/)).toHaveClass("text-warning");
-    expect(screen.getByText(/in cooldown until/)).not.toHaveClass("text-warning");
+    expect(screen.getByText(/12 reducible files in 3 partitions/)).toHaveClass("text-notice-text");
+    expect(screen.getByText(/in cooldown until/)).not.toHaveClass("text-notice-text");
   });
 
   it("returns focus to the Run now button when the dialog closes", async () => {

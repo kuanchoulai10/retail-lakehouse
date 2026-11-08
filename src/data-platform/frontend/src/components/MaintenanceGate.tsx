@@ -1,8 +1,8 @@
+import { Banner } from "@retail-lakehouse/design-system";
 import type { ReactNode } from "react";
 import type { TableApiResponse } from "@/api/types";
 import { MaintenanceEmptyState } from "@/components/MaintenanceEmptyState";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { errorMessage } from "@/format";
 import type { TableMaintenanceState } from "@/lib/tableMaintenanceState";
 
@@ -19,9 +19,7 @@ export function MaintenanceGate({ state, children }: Props) {
       return <PanelSkeleton label="Loading maintenance…" />;
     case "failed":
       return (
-        <Alert variant="destructive">
-          <AlertDescription>Could not load maintenance: {errorMessage(state.error)}</AlertDescription>
-        </Alert>
+        <Banner type="negative" title={`Could not load maintenance: ${errorMessage(state.error)}`} />
       );
     case "unmanaged":
       return <MaintenanceEmptyState reason={state.reason} />;

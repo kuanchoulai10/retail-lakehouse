@@ -13,6 +13,7 @@ export type TitleBarOverflowAction = {
   label: string;
   onSelect: () => void;
   destructive?: boolean;
+  disabled?: boolean;
 };
 
 export type TitleBarProps = {
@@ -28,7 +29,12 @@ export function TitleBar({ breadcrumbs, title, actions, overflowActions }: Title
     <div className="flex flex-col gap-2 pb-4">
       {breadcrumbs}
       <div className="flex items-start justify-between gap-3">
-        <h1 className="type-headline-small min-w-0 flex-1 break-words text-on-surface">{title}</h1>
+        <h1
+          title={typeof title === "string" ? title : undefined}
+          className="type-headline-small min-w-0 flex-1 truncate text-on-surface"
+        >
+          {title}
+        </h1>
         {actions && (
           <div
             className={cn(
@@ -54,6 +60,7 @@ export function TitleBar({ breadcrumbs, title, actions, overflowActions }: Title
                   <DropdownMenuItem
                     key={action.label}
                     onSelect={action.onSelect}
+                    disabled={action.disabled}
                     className={action.destructive ? "text-negative-text" : undefined}
                   >
                     {action.label}

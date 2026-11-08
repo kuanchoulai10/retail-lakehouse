@@ -102,7 +102,7 @@ describe("NamespacePage", { timeout: 15_000 }, () => {
       "href",
       "/catalogs/iceberg/namespaces/retail",
     );
-    expect(within(crumbs).getByText("eu")).toHaveAttribute("aria-current", "page");
+    expect(within(crumbs).getByText("eu").parentElement).toHaveAttribute("aria-current", "page");
   });
 
   it("deleting a non-empty namespace shows the polaris message", async () => {

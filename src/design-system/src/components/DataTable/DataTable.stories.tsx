@@ -133,3 +133,28 @@ export const WidePhone: Story = {
     await expect(getComputedStyle(firstHead).position).toBe("sticky");
   },
 };
+
+const wideColumnsWithHiddenHeader = [
+  ...wideColumns,
+  wideHelper.display({
+    id: "actions",
+    header: () => <span className="sr-only">Actions</span>,
+    cell: () => <button type="button">Delete</button>,
+  }),
+];
+
+export const WidePhoneWithHiddenHeader: Story = {
+  globals: { viewport: { value: "phone", isRotated: false } },
+  render: () => (
+    <DataTable<WideRow>
+      caption="Wide table with actions"
+      columns={wideColumnsWithHiddenHeader}
+      data={wideRows}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const scroller = within(canvasElement).getByRole("region", { name: "Wide table with actions" });
+    await expect(scroller.scrollWidth).toBeGreaterThan(scroller.clientWidth);
+    await expectNoHorizontalPageScroll(canvasElement);
+  },
+};

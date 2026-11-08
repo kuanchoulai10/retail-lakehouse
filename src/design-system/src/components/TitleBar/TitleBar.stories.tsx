@@ -11,6 +11,8 @@ import { TitleBar } from "./TitleBar";
 
 const onRetry = fn();
 const onDelete = fn();
+const onPause = fn();
+const LONG_TITLE = "sales_orders_with_a_very_long_name_that_runs_to_sixty_characters";
 
 const meta = {
   title: "Components/TitleBar",
@@ -20,6 +22,7 @@ const meta = {
     actions: <Button>Run now</Button>,
     overflowActions: [
       { label: "Run now", onSelect: onRetry },
+      { label: "Pause", onSelect: onPause, disabled: true },
       { label: "Delete", onSelect: onDelete, destructive: true },
     ],
   },
@@ -28,7 +31,8 @@ const meta = {
       description: {
         component:
           "Not in Serendie. Below 768px the actions collapse into an overflow menu when " +
-          "overflowActions is given.",
+          "overflowActions is given; an overflow action can be disabled. A long title truncates " +
+          "and carries the full text in a title.",
       },
     },
   },
@@ -60,10 +64,14 @@ export const PhoneOverflow: Story = {
   globals: { viewport: { value: "phone", isRotated: false } },
   args: {
     breadcrumbs: crumbs,
-    title: "sales_orders_with_a_very_long_name_that_runs_to_sixty_characters",
+    title: LONG_TITLE,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const heading = canvas.getByRole("heading", { level: 1, name: LONG_TITLE });
+    await expect(heading).toHaveClass("truncate");
+    await expect(heading).toHaveAttribute("title", LONG_TITLE);
+    await expect(heading.scrollWidth).toBeGreaterThan(heading.clientWidth);
     await expect(canvas.queryByRole("button", { name: "Run now" })).toBeNull();
     const more = canvas.getByRole("button", { name: "More actions" });
     await userEvent.tab();
@@ -72,6 +80,10 @@ export const PhoneOverflow: Story = {
     await userEvent.keyboard("{Enter}");
     const portal = portalQueries(canvasElement);
     await userEvent.keyboard("{ArrowDown}");
+    const pause = await portal.findByRole("menuitem", { name: "Pause" });
+    await expect(pause).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(pause, { pointerEventsCheck: 0 });
+    await expect(onPause).not.toHaveBeenCalled();
     await userEvent.click(await portal.findByRole("menuitem", { name: "Delete" }));
     await expect(onDelete).toHaveBeenCalledTimes(1);
     await expectNoHorizontalPageScroll(canvasElement);

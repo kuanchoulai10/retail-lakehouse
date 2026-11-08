@@ -1,14 +1,34 @@
+import { createDataTableColumnHelper, DataTable, Panel } from "@retail-lakehouse/design-system";
 import type { TableCommitApiResponse } from "@/api/types";
-import { Panel } from "@/components/Panel";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { formatCount, formatTimestamp } from "@/format";
+
+const column = createDataTableColumnHelper<TableCommitApiResponse>();
+
+const number = (value: number | null) => <span className="block text-right tabular-nums">{formatCount(value)}</span>;
+const numberHeader = (label: string) => () => <span className="block text-right">{label}</span>;
+
+const columns = column.columns([
+  column.accessor("committed_at", {
+    header: "Committed",
+    enableSorting: false,
+    cell: (info) => <span className="tabular-nums">{formatTimestamp(info.getValue())}</span>,
+  }),
+  column.accessor("operation", {
+    header: "Operation",
+    enableSorting: false,
+    cell: (info) => <span className="type-code">{info.getValue() ?? "—"}</span>,
+  }),
+  column.accessor("added_records", {
+    header: numberHeader("Added records"),
+    enableSorting: false,
+    cell: (info) => number(info.getValue()),
+  }),
+  column.accessor("added_data_files", {
+    header: numberHeader("Added files"),
+    enableSorting: false,
+    cell: (info) => number(info.getValue()),
+  }),
+]);
 
 export function RecentCommitsPanel({ commits }: { commits: TableCommitApiResponse[] }) {
   const latest = [...commits]
@@ -16,35 +36,13 @@ export function RecentCommitsPanel({ commits }: { commits: TableCommitApiRespons
     .slice(0, 5);
   return (
     <Panel title="Recent commits">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="px-4">Committed</TableHead>
-            <TableHead>Operation</TableHead>
-            <TableHead className="text-right">Added records</TableHead>
-            <TableHead className="px-4 text-right">Added files</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {latest.map((commit) => (
-            <TableRow key={commit.snapshot_id}>
-              <TableCell className="px-4 tabular-nums">{formatTimestamp(commit.committed_at)}</TableCell>
-              <TableCell className="font-mono text-[13px]">{commit.operation ?? "—"}</TableCell>
-              <TableCell className="text-right tabular-nums">{formatCount(commit.added_records)}</TableCell>
-              <TableCell className="px-4 text-right tabular-nums">
-                {formatCount(commit.added_data_files)}
-              </TableCell>
-            </TableRow>
-          ))}
-          {latest.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={4} className="p-4 text-center text-muted-foreground">
-                No commits yet.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+      <DataTable
+        caption="Five newest commits"
+        columns={columns}
+        data={latest}
+        getRowId={(commit) => commit.snapshot_id}
+        emptyState="No commits yet."
+      />
     </Panel>
   );
 }

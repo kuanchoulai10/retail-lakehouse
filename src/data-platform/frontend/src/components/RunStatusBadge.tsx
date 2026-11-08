@@ -1,21 +1,10 @@
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { StatusBadge } from "@/components/StatusBadge";
 
 interface Props {
   status: string;
 }
 
-function colourOf(status: string): string {
-  if (status === "failed") return "text-destructive";
-  if (status === "succeeded") return "text-success";
-  return "text-muted-foreground";
-}
-
+// A maintenance run or operation state; the tone mapping is shared with every status badge.
 export function RunStatusBadge({ status }: Props) {
-  const lower = status.toLowerCase();
-  return (
-    <Badge variant="outline" className={cn(colourOf(lower))}>
-      {lower.charAt(0).toUpperCase() + lower.slice(1)}
-    </Badge>
-  );
+  return <StatusBadge status={status} />;
 }

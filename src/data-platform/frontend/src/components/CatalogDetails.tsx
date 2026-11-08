@@ -1,6 +1,6 @@
+import { Panel } from "@retail-lakehouse/design-system";
 import type { ReactNode } from "react";
 import type { CatalogApiResponse } from "@/api/catalogTypes";
-import { Panel } from "@/components/Panel";
 
 interface Entry {
   label: string;
@@ -10,11 +10,11 @@ interface Entry {
 
 function Facts({ entries }: { entries: Entry[] }) {
   return (
-    <dl className="grid grid-cols-[12rem_1fr] gap-x-4 gap-y-2 px-4 py-3 text-sm">
+    <dl className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-[12rem_1fr] sm:gap-y-2">
       {entries.map((entry) => (
         <div key={entry.label} className="contents">
-          <dt className="text-muted-foreground">{entry.label}</dt>
-          <dd className={entry.mono === true ? "break-all font-mono text-[13px]" : undefined}>{entry.value}</dd>
+          <dt className="text-on-surface-variant">{entry.label}</dt>
+          <dd className={entry.mono === true ? "type-code break-all" : undefined}>{entry.value}</dd>
         </div>
       ))}
     </dl>

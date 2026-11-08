@@ -1,3 +1,4 @@
+import { EmptyState } from "@retail-lakehouse/design-system";
 import { Link } from "react-router";
 import { namespacePath } from "@/lib/catalogPaths";
 
@@ -13,16 +14,22 @@ interface Props {
 export function CatalogObjectNotFound({ objectKind, catalog, namespace, name }: Props) {
   const where = [catalog, ...namespace].join(" / ");
   return (
-    <section role="status" className="flex flex-col gap-2 rounded-lg border border-border p-6 text-sm">
-      <p className="font-medium">
-        The {objectKind} <span className="font-mono text-[13px]">{name}</span> is not in the catalog
-      </p>
-      <p className="text-muted-foreground">
-        It may have been renamed or dropped.{" "}
-        <Link to={namespacePath(catalog, namespace)} className="underline hover:text-foreground">
-          Go to {where}
-        </Link>
-      </p>
-    </section>
+    <EmptyState
+      role="status"
+      className="rounded-lg border border-outline"
+      title={
+        <>
+          The {objectKind} <span className="font-mono">{name}</span> is not in the catalog
+        </>
+      }
+      description={
+        <>
+          It may have been renamed or dropped.{" "}
+          <Link to={namespacePath(catalog, namespace)} className="underline underline-offset-2 hover:text-on-surface">
+            Go to {where}
+          </Link>
+        </>
+      }
+    />
   );
 }

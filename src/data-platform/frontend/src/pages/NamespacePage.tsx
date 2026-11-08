@@ -1,3 +1,4 @@
+import { Banner } from "@retail-lakehouse/design-system";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
@@ -8,7 +9,6 @@ import type {
   TableIdentifierApiResponse,
 } from "@/api/catalogTypes";
 import { apiGet, apiSend } from "@/api/client";
-import { ActionsMenu } from "@/components/ActionsMenu";
 import type { Crumb } from "@/components/Breadcrumbs";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { CreateNamespaceDialog } from "@/components/forms/CreateNamespaceDialog";
@@ -18,7 +18,6 @@ import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { PropertiesPanel } from "@/components/PropertiesPanel";
 import { ResourceListPage } from "@/components/ResourceListPage";
 import { ResourceSection } from "@/components/ResourceSection";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { errorMessage } from "@/format";
 import {
   catalogPath,
@@ -162,9 +161,7 @@ function NamespaceDetailsPage({ catalog, parts }: { catalog: string; parts: stri
   // Only the namespace itself failing replaces the page; a failed list shows in its section.
   if (!namespace.isSuccess) {
     return (
-      <Alert variant="destructive">
-        <AlertDescription>Could not load namespace: {errorMessage(namespace.error)}</AlertDescription>
-      </Alert>
+      <Banner type="negative" title={`Could not load namespace: ${errorMessage(namespace.error)}`} />
     );
   }
 
@@ -198,27 +195,24 @@ function NamespaceDetailsPage({ catalog, parts }: { catalog: string; parts: stri
 
   const name = lastPart(parts);
   const pathText = (tail: string[]) => [catalog, ...tail].join(" / ");
-  const linkClass = "font-mono text-[13px] font-medium underline-offset-4 hover:underline";
+  const linkClass = "font-mono font-medium underline-offset-4 hover:underline";
 
   return (
     <>
       <ResourceListPage
         title={name}
         breadcrumbs={breadcrumbs(catalog, parts)}
-        actions={
-          <ActionsMenu
-            items={[
-              { label: "Edit properties", onSelect: () => setDialog("edit") },
-              {
-                label: "Delete",
-                onSelect: () => {
-                  removeSelf.reset();
-                  setDialog("delete");
-                },
-              },
-            ]}
-          />
-        }
+        menuItems={[
+          { label: "Edit properties", onSelect: () => setDialog("edit") },
+          {
+            label: "Delete",
+            destructive: true,
+            onSelect: () => {
+              removeSelf.reset();
+              setDialog("delete");
+            },
+          },
+        ]}
         listTitle="Namespaces"
         columns={[
           {

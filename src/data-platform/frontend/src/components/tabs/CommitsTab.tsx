@@ -1,13 +1,20 @@
-import { PanelSkeleton } from "@/components/PanelSkeleton";
+import {
+  Banner,
+  Panel,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@retail-lakehouse/design-system";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { apiGet } from "@/api/client";
 import type { TableCommitApiResponse, TableCommitsApiResponse } from "@/api/types";
-import { Panel } from "@/components/Panel";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ExpandableRowsTable, STICKY_FIRST_CELL } from "@/components/ExpandableRowsTable";
+import { ExpandToggle } from "@/components/ExpandToggle";
+import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { errorMessage, formatCount, formatTimestamp } from "@/format";
-import { cn } from "@/lib/utils";
 import { writerLabel } from "@/writerLabel";
 
 function sortedNewestFirst(items: TableCommitApiResponse[]): TableCommitApiResponse[] {
@@ -19,30 +26,24 @@ function CommitRow({ commit }: { commit: TableCommitApiResponse }) {
   return (
     <>
       <TableRow data-testid="commit-row" className="cursor-pointer" onClick={() => setOpen(!open)}>
-        <TableCell>
-          <button
-            type="button"
-            aria-expanded={open}
-            aria-label={`${open ? "Collapse" : "Expand"} commit ${commit.snapshot_id}`}
-            className="flex items-center gap-1"
-          >
-            <ChevronRight className={cn("size-4 text-muted-foreground", open && "rotate-90")} />
-            <span className="tabular-nums">{formatTimestamp(commit.committed_at)}</span>
-          </button>
+        <TableCell className={STICKY_FIRST_CELL}>
+          <ExpandToggle open={open} label={`${open ? "Collapse" : "Expand"} commit ${commit.snapshot_id}`}>
+            <span className="tabular-nums whitespace-nowrap">{formatTimestamp(commit.committed_at)}</span>
+          </ExpandToggle>
         </TableCell>
         <TableCell className="font-mono">{commit.operation ?? "—"}</TableCell>
         <TableCell>{writerLabel(commit.writer)}</TableCell>
-        <TableCell className="text-right tabular-nums">{formatCount(commit.added_records)}</TableCell>
-        <TableCell className="text-right tabular-nums">{formatCount(commit.deleted_records)}</TableCell>
-        <TableCell className="text-right tabular-nums">{formatCount(commit.added_data_files)}</TableCell>
-        <TableCell className="text-right tabular-nums">{formatCount(commit.deleted_data_files)}</TableCell>
+        <TableCell numeric>{formatCount(commit.added_records)}</TableCell>
+        <TableCell numeric>{formatCount(commit.deleted_records)}</TableCell>
+        <TableCell numeric>{formatCount(commit.added_data_files)}</TableCell>
+        <TableCell numeric>{formatCount(commit.deleted_data_files)}</TableCell>
       </TableRow>
       {open && (
         <TableRow>
-          <TableCell colSpan={7} className="bg-card whitespace-normal">
-            <p className="font-mono text-[13px]">Snapshot id: {commit.snapshot_id}</p>
-            <p className="font-mono text-[13px]">Parent id: {commit.parent_id ?? "—"}</p>
-            <pre className="mt-2 overflow-x-auto rounded-md bg-muted p-2 font-mono text-[13px]">
+          <TableCell colSpan={7} className="bg-surface-container">
+            <p className="type-code">Snapshot id: {commit.snapshot_id}</p>
+            <p className="type-code">Parent id: {commit.parent_id ?? "—"}</p>
+            <pre className="type-code mt-2 overflow-x-auto rounded-md bg-surface-container-dim p-2">
               {JSON.stringify(commit.summary, null, 2)}
             </pre>
           </TableCell>
@@ -60,25 +61,21 @@ export function CommitsTab({ tableUuid }: { tableUuid: string }) {
 
   if (commits.isPending) return <PanelSkeleton label="Loading commits…" />;
   if (commits.isError) {
-    return (
-      <p role="alert" className="text-sm text-destructive">
-        Could not load commits: {errorMessage(commits.error)}
-      </p>
-    );
+    return <Banner type="negative" title={`Could not load commits: ${errorMessage(commits.error)}`} />;
   }
   return (
     <>
       <Panel title="Commits">
-        <Table>
+        <ExpandableRowsTable caption="Commits, newest first">
           <TableHeader>
             <TableRow>
-              <TableHead>Committed</TableHead>
+              <TableHead className={STICKY_FIRST_CELL}>Committed</TableHead>
               <TableHead>Operation</TableHead>
               <TableHead>Writer</TableHead>
-              <TableHead className="text-right">Rows added</TableHead>
-              <TableHead className="text-right">Rows removed</TableHead>
-              <TableHead className="text-right">Files added</TableHead>
-              <TableHead className="text-right">Files removed</TableHead>
+              <TableHead numeric>Rows added</TableHead>
+              <TableHead numeric>Rows removed</TableHead>
+              <TableHead numeric>Files added</TableHead>
+              <TableHead numeric>Files removed</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -87,16 +84,16 @@ export function CommitsTab({ tableUuid }: { tableUuid: string }) {
             ))}
             {commits.data.items.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                <TableCell colSpan={7} className="text-center text-on-surface-variant">
                   No commits.
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
-        </Table>
+        </ExpandableRowsTable>
       </Panel>
       {commits.data.truncated && (
-        <p className="mt-3 text-[13px] text-warning">Showing the newest commits only.</p>
+        <p className="type-body-small mt-3 text-notice-text">Showing the newest commits only.</p>
       )}
     </>
   );

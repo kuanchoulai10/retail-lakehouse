@@ -8,7 +8,7 @@ import {
   TextField,
 } from "@retail-lakehouse/design-system";
 import { useState } from "react";
-import { Panel } from "@/components/Panel";
+import { Panel } from "@retail-lakehouse/design-system";
 import { apiGet, apiSend } from "../api/client";
 import { invalidateTableState } from "../api/invalidateTableState";
 import type { JsonObject, TableApiResponse, TableMaintenancePresetApiResponse } from "../api/types";
@@ -94,7 +94,7 @@ export function SettingsForm({ table }: Props) {
         <Banner type="information" title="This table has no maintenance settings yet." />
       )}
       <Panel title="Reconciliation">
-        <div className="p-4">
+        <div>
           <TextField
             id="reconcile_interval_seconds"
             label={<span className="font-mono">reconcile_interval_seconds</span>}

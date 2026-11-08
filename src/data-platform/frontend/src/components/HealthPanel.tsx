@@ -1,10 +1,8 @@
+import { Banner, Button, cn, Divider, Panel } from "@retail-lakehouse/design-system";
 import { useState } from "react";
 import type { TableHealthApiResponse, TableHealthOperationApiResponse } from "@/api/types";
-import { Panel } from "@/components/Panel";
 import { RunMaintenanceDialog } from "@/components/RunMaintenanceDialog";
-import { Button } from "@/components/ui/button";
 import { formatTimestamp } from "@/format";
-import { cn } from "@/lib/utils";
 
 function measurement(line: TableHealthOperationApiResponse): string {
   const { measured, threshold } = line;
@@ -54,18 +52,20 @@ export function HealthPanel({ tableUuid, health }: Props) {
   return (
     <Panel title="Health">
       {!health.scheduled && (
-        <p role="status" className="border-b border-border bg-card px-4 py-2.5 text-[13px] text-muted-foreground">
-          {`The scheduler skips this table: ${health.not_scheduled_reason ?? "unknown"}`}
-        </p>
+        <Banner
+          type="information"
+          title={`The scheduler skips this table: ${health.not_scheduled_reason ?? "unknown"}`}
+          className="mb-3"
+        />
       )}
-      <ul className="divide-y divide-border">
+      <ul className="divide-y divide-outline-dim">
         {health.operations.map((line) => (
-          <li key={line.operation} className="flex items-center gap-3 px-4 py-2.5 text-sm">
-            <span className="min-w-44 font-mono text-[13px]">{line.operation}</span>
+          <li key={line.operation} className="flex min-h-row flex-wrap items-center gap-x-3 gap-y-1 py-1">
+            <span className="type-code min-w-44">{line.operation}</span>
             <span
               className={cn(
                 "flex-1 tabular-nums",
-                line.verdict === "due" ? "text-warning" : "text-muted-foreground",
+                line.verdict === "due" ? "text-notice-text" : "text-on-surface-variant",
               )}
             >
               {lineText(line, health.scheduled)}
@@ -73,8 +73,8 @@ export function HealthPanel({ tableUuid, health }: Props) {
             {health.scheduled && line.verdict === "due" && (
               <Button
                 type="button"
-                variant="outline"
-                size="sm"
+                styleType="outlined"
+                size="small"
                 onClick={() => {
                   setRunOperation(line.operation);
                   setOpenCount((count) => count + 1);
@@ -87,8 +87,9 @@ export function HealthPanel({ tableUuid, health }: Props) {
           </li>
         ))}
       </ul>
-      <dl className="flex items-baseline gap-4 border-t border-border px-4 py-2.5 text-[13px]">
-        <dt className="text-muted-foreground">Delete files</dt>
+      <Divider className="my-2" />
+      <dl className="type-body-small flex items-baseline gap-4">
+        <dt className="text-on-surface-variant">Delete files</dt>
         <dd className="tabular-nums">{`${health.position_delete_files} position, ${health.equality_delete_files} equality`}</dd>
       </dl>
       {runOperation !== null && (

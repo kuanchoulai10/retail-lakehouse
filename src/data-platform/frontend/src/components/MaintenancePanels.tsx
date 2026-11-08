@@ -1,4 +1,4 @@
-import { PanelSkeleton } from "@/components/PanelSkeleton";
+import { Banner } from "@retail-lakehouse/design-system";
 import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "@/api/client";
 import type {
@@ -8,6 +8,7 @@ import type {
   TableStorageApiResponse,
 } from "@/api/types";
 import { errorMessage } from "@/format";
+import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { FreshnessPanel } from "@/components/FreshnessPanel";
 import { HealthPanel } from "@/components/HealthPanel";
 import { LastRunPanel } from "@/components/LastRunPanel";
@@ -24,9 +25,7 @@ interface Props {
 
 function Failure({ what, error }: { what: string; error: unknown }) {
   return (
-    <p role="alert" className="text-sm text-destructive">
-      {`Could not load ${what}: ${errorMessage(error)}`}
-    </p>
+    <Banner type="negative" title={`Could not load ${what}: ${errorMessage(error)}`} />
   );
 }
 
@@ -62,14 +61,14 @@ export function MaintenancePanels({ tableUuid, lastCommittedAt }: Props) {
   });
 
   return (
-    <div className="grid gap-4">
-      <div className="grid items-start gap-4 lg:grid-cols-2">
-        <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4">
           {health.isPending && <PanelSkeleton label="Loading health…" />}
           {health.isError && <Failure what="health" error={health.error} />}
           {health.data && <HealthPanel tableUuid={tableUuid} health={health.data} />}
         </div>
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 gap-4">
           {storage.isPending && <PanelSkeleton label="Loading storage…" />}
           {storage.isError && <Failure what="storage" error={storage.error} />}
           {storage.data && <StoragePanel storage={storage.data} />}

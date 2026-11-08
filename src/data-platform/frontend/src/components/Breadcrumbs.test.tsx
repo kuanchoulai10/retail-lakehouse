@@ -22,6 +22,6 @@ describe("Breadcrumbs", () => {
       "/catalogs/iceberg",
     );
     expect(screen.queryByRole("link", { name: "inventory" })).not.toBeInTheDocument();
-    expect(screen.getByText("inventory")).toHaveAttribute("aria-current", "page");
+    expect(screen.getByText("inventory").parentElement).toHaveAttribute("aria-current", "page");
   });
 });

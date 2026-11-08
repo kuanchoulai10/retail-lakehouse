@@ -1,4 +1,5 @@
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge as StatusPill } from "@retail-lakehouse/design-system";
+import { statusTone } from "@/lib/statusTone";
 
 interface Props {
   status: string;
@@ -6,9 +7,5 @@ interface Props {
 
 export function StatusBadge({ status }: Props) {
   const lower = status.toLowerCase();
-  return (
-    <Badge variant="outline" className="text-muted-foreground">
-      {lower.charAt(0).toUpperCase() + lower.slice(1)}
-    </Badge>
-  );
+  return <StatusPill status={statusTone(lower)}>{lower.charAt(0).toUpperCase() + lower.slice(1)}</StatusPill>;
 }

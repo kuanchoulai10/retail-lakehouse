@@ -1,23 +1,23 @@
-import { Trash2 } from "lucide-react";
-import { useState, type ReactNode } from "react";
-import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { Panel } from "@/components/Panel";
-import { Button } from "@/components/ui/button";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Banner,
+  Button,
+  createDataTableColumnHelper,
+  DataTable,
+  IconButton,
+  Panel,
+  SerendieSymbolTrash,
+  type DataTableColumn,
+} from "@retail-lakehouse/design-system";
+import { useState, type ReactNode } from "react";
+import type { RowData } from "@tanstack/react-table";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
 export interface ResourceColumn<Row> {
   header: string;
   cell: (row: Row) => ReactNode;
 }
 
-export interface ResourceSectionProps<Row> {
+export interface ResourceSectionProps<Row extends RowData> {
   title: string;
   columns: ResourceColumn<Row>[];
   rows: Row[];
@@ -37,7 +37,7 @@ export interface ResourceSectionProps<Row> {
 // One list of child objects: a table of rows, a New button, and a typed-name delete per row.
 // It owns the delete dialog's pending and error state: a resolved onDelete closes the
 // dialog, a rejected one keeps it open with the error.
-export function ResourceSection<Row>({
+export function ResourceSection<Row extends RowData>({
   title,
   columns,
   rows,
@@ -76,62 +76,54 @@ export function ResourceSection<Row>({
 
   const kindOf = (row: Row) => (typeof objectKind === "string" ? objectKind : objectKind(row));
 
+  const column = createDataTableColumnHelper<Row>();
+  const tableColumns = [
+    ...columns.map((spec) =>
+      column.display({ id: spec.header, header: spec.header, cell: (info) => spec.cell(info.row.original) }),
+    ),
+    column.display({
+      id: "actions",
+      header: () => <span className="sr-only">Actions</span>,
+      cell: (info) => (
+        <div className="flex justify-end">
+          <IconButton
+            styleType="ghost"
+            shape="rectangle"
+            aria-label={`Delete ${objectName(info.row.original)}`}
+            icon={<SerendieSymbolTrash />}
+            onClick={() => openDelete(info.row.original)}
+          />
+        </div>
+      ),
+    }),
+  ] as DataTableColumn<Row>[];
+
   return (
     <>
       <Panel
         title={title}
         actions={
-          <Button type="button" size="sm" onClick={() => setCreating(true)}>
+          <Button type="button" size="small" onClick={() => setCreating(true)}>
             {newLabel}
           </Button>
         }
       >
         {errors.length > 0 && (
-          <div role="alert" className="border-b border-border px-4 py-2.5 text-sm text-destructive">
-            {errors.map((message) => (
-              <p key={message}>{message}</p>
-            ))}
-          </div>
+          <Banner
+            type="negative"
+            title={errors.length === 1 ? errors[0] : "Parts of this list could not be loaded"}
+            className="mb-3"
+          >
+            {errors.length > 1 && errors.map((message) => <p key={message}>{message}</p>)}
+          </Banner>
         )}
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {columns.map((column) => (
-                <TableHead key={column.header}>{column.header}</TableHead>
-              ))}
-              <TableHead className="w-10">
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow key={rowKey(row)}>
-                {columns.map((column) => (
-                  <TableCell key={column.header}>{column.cell(row)}</TableCell>
-                ))}
-                <TableCell>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`Delete ${objectName(row)}`}
-                    onClick={() => openDelete(row)}
-                  >
-                    <Trash2 aria-hidden="true" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-            {rows.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={columns.length + 1} className="text-center text-muted-foreground">
-                  {emptyText}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <DataTable
+          caption={`${title} list`}
+          columns={tableColumns}
+          data={rows}
+          getRowId={(row) => rowKey(row)}
+          emptyState={emptyText}
+        />
       </Panel>
       {creating && renderForm({ onClose: () => setCreating(false) })}
       {deleting !== null && (

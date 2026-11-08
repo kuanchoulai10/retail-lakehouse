@@ -1,5 +1,5 @@
 import { Select, Switch, TextField } from "@retail-lakehouse/design-system";
-import { Panel } from "@/components/Panel";
+import { Panel } from "@retail-lakehouse/design-system";
 import type { JsonObject } from "../api/types";
 
 export interface SettingsField {
@@ -31,7 +31,7 @@ export function SettingsFieldGroup({ operation, fields, values, onChange }: Prop
 
   return (
     <Panel title={operation}>
-      <fieldset aria-label={operation} className="m-0 flex min-w-0 flex-col gap-4 border-0 p-4">
+      <fieldset aria-label={operation} className="m-0 flex min-w-0 flex-col gap-4 border-0 p-0">
         <Switch
           id={`${operation}-enabled`}
           label="enabled"
