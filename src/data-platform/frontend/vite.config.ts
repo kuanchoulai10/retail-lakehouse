@@ -34,6 +34,7 @@ export default defineConfig({
     },
   },
   test: {
+    fsModuleCachePath: "node_modules/.vitest-cache",
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],

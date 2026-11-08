@@ -11,6 +11,7 @@ const dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   test: {
+    fsModuleCachePath: "node_modules/.vitest-cache",
     projects: [
       {
         extends: true,
@@ -24,6 +25,9 @@ export default defineConfig({
       {
         extends: true,
         plugins: [storybookTest({ configDir: path.join(dirname, ".storybook") })],
+        optimizeDeps: {
+          include: ["class-variance-authority", "clsx", "radix-ui", "tailwind-merge"],
+        },
         test: {
           name: "storybook",
           browser: {

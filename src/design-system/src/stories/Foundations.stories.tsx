@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
+import { cn } from "../lib/cn";
 import { SEMANTIC_TOKENS } from "../tokens/semanticTokens";
 import { expectNoHorizontalPageScroll } from "./assertions";
 
@@ -29,7 +30,12 @@ function ColourSwatches() {
               className="h-12 rounded-md border border-outline-dim"
               style={{ backgroundColor: `var(--ds-${token})` }}
             />
-            <figcaption id={`swatch-${token}`} className="type-code mt-1 break-all text-on-surface">{token}</figcaption>
+            <figcaption
+              id={`swatch-${token}`}
+              className="type-code mt-1 break-all text-on-surface"
+            >
+              {token}
+            </figcaption>
           </figure>
         </li>
       ))}
@@ -52,10 +58,17 @@ function TypeRoles() {
 function DensitySamples() {
   return (
     <div className="flex flex-col gap-4 text-on-surface">
-      <div className="type-label-large flex h-control items-center rounded-md border border-outline-dim px-3">
+      <div
+        className={cn(
+          "type-label-large flex h-control items-center px-3",
+          "rounded-md border border-outline-dim",
+        )}
+      >
         h-control
       </div>
-      <div className="type-body-medium flex min-h-row items-center border-b border-outline-dim px-3">
+      <div
+        className="type-body-medium flex min-h-row items-center border-b border-outline-dim px-3"
+      >
         min-h-row
       </div>
     </div>
