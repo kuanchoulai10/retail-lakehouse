@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { SerendieSymbolMoreHorizontal } from "../../icons";
 import { cn } from "../../lib/cn";
 import {
@@ -14,6 +14,8 @@ export type TitleBarOverflowAction = {
   onSelect: () => void;
   destructive?: boolean;
   disabled?: boolean;
+  /** Shown under the label and announced as the item's description, e.g. why it is disabled. */
+  description?: string;
 };
 
 export type TitleBarProps = {
@@ -22,6 +24,32 @@ export type TitleBarProps = {
   actions?: ReactNode;
   overflowActions?: TitleBarOverflowAction[];
 };
+
+function OverflowItem({ action }: { action: TitleBarOverflowAction }) {
+  const id = useId();
+  const labelId = `${id}-label`;
+  const descriptionId = `${id}-description`;
+  return (
+    <DropdownMenuItem
+      onSelect={action.onSelect}
+      disabled={action.disabled}
+      aria-labelledby={action.description ? labelId : undefined}
+      aria-describedby={action.description ? descriptionId : undefined}
+      className={action.destructive ? "text-negative-text" : undefined}
+    >
+      {action.description ? (
+        <span className="flex flex-col">
+          <span id={labelId}>{action.label}</span>
+          <span id={descriptionId} className="type-body-small">
+            {action.description}
+          </span>
+        </span>
+      ) : (
+        action.label
+      )}
+    </DropdownMenuItem>
+  );
+}
 
 export function TitleBar({ breadcrumbs, title, actions, overflowActions }: TitleBarProps) {
   const collapses = Boolean(overflowActions?.length);
@@ -57,14 +85,7 @@ export function TitleBar({ breadcrumbs, title, actions, overflowActions }: Title
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {overflowActions?.map((action) => (
-                  <DropdownMenuItem
-                    key={action.label}
-                    onSelect={action.onSelect}
-                    disabled={action.disabled}
-                    className={action.destructive ? "text-negative-text" : undefined}
-                  >
-                    {action.label}
-                  </DropdownMenuItem>
+                  <OverflowItem key={action.label} action={action} />
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>

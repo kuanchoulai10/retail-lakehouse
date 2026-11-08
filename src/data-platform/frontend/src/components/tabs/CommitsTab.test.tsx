@@ -51,6 +51,11 @@ function renderTab() {
   );
 }
 
+// The data rows, without the header row.
+function commitRows(): HTMLElement[] {
+  return screen.getAllByRole("row").slice(1);
+}
+
 describe("CommitsTab", () => {
   beforeEach(() => {
     vi.stubGlobal(
@@ -62,7 +67,7 @@ describe("CommitsTab", () => {
   it("lists commits newest first with writer labels", async () => {
     renderTab();
     await screen.findByText("Kafka Connect");
-    const rows = screen.getAllByTestId("commit-row");
+    const rows = commitRows();
     expect(rows).toHaveLength(2);
     expect(within(rows[0] as HTMLElement).getByText("replace")).toBeInTheDocument();
     expect(within(rows[0] as HTMLElement).getByText("Spark")).toBeInTheDocument();
@@ -73,7 +78,7 @@ describe("CommitsTab", () => {
   it("renders null counters as a dash", async () => {
     renderTab();
     await screen.findByText("Spark");
-    const row = screen.getAllByTestId("commit-row")[0] as HTMLElement;
+    const row = commitRows()[0] as HTMLElement;
     expect(within(row).getAllByText("—").length).toBeGreaterThanOrEqual(2);
   });
 
@@ -81,7 +86,7 @@ describe("CommitsTab", () => {
     const user = userEvent.setup();
     renderTab();
     await screen.findByText("Spark");
-    await user.click(screen.getAllByTestId("commit-row")[1] as HTMLElement);
+    await user.click(commitRows()[1] as HTMLElement);
     expect(screen.getByText("Snapshot id: 3051729675574597004")).toBeInTheDocument();
     expect(screen.getByText("Parent id: 3051729675574597003")).toBeInTheDocument();
     expect(screen.getByText(/"kafka.connect.task-id": "0"/)).toBeInTheDocument();

@@ -1,16 +1,5 @@
-import {
-  Badge,
-  Panel,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@retail-lakehouse/design-system";
-import { useState } from "react";
+import { Badge, createDataTableColumnHelper, DataTable, Panel } from "@retail-lakehouse/design-system";
 import type { CatalogTableApiResponse, SnapshotApiResponse } from "@/api/catalogTypes";
-import { ExpandableRowsTable, STICKY_FIRST_CELL } from "@/components/ExpandableRowsTable";
-import { ExpandToggle } from "@/components/ExpandToggle";
 import { formatTimestamp } from "@/format";
 
 // Newest first; ids are 64-bit decimal strings, so a tie is broken with BigInt, never Number.
@@ -22,75 +11,67 @@ function newestFirst(snapshots: SnapshotApiResponse[]): SnapshotApiResponse[] {
   });
 }
 
-function SnapshotRow({ snapshot, current }: { snapshot: SnapshotApiResponse; current: boolean }) {
-  const [open, setOpen] = useState(false);
+function SnapshotSummary({ snapshot }: { snapshot: SnapshotApiResponse }) {
   const summary = Object.entries(snapshot.summary).sort(([a], [b]) => a.localeCompare(b));
+  if (summary.length === 0) return <p className="type-body-small text-on-surface-variant">No summary.</p>;
   return (
-    <>
-      <TableRow className="cursor-pointer" onClick={() => setOpen(!open)}>
-        <TableCell className={STICKY_FIRST_CELL}>
-          <ExpandToggle open={open} label={`${open ? "Collapse" : "Expand"} snapshot ${snapshot.id}`}>
-            <span className="type-code">{snapshot.id}</span>
-          </ExpandToggle>
-        </TableCell>
-        <TableCell>{current && <Badge>Current</Badge>}</TableCell>
-        <TableCell className="type-code">{snapshot.parent_id ?? "—"}</TableCell>
-        <TableCell className="tabular-nums whitespace-nowrap">
-          {formatTimestamp(new Date(snapshot.timestamp_ms).toISOString())}
-        </TableCell>
-        <TableCell className="type-code">{snapshot.operation ?? "—"}</TableCell>
-      </TableRow>
-      {open && (
-        <TableRow>
-          <TableCell colSpan={5} className="bg-surface-container">
-            {summary.length === 0 ? (
-              <p className="type-body-small text-on-surface-variant">No summary.</p>
-            ) : (
-              <dl className="type-code grid grid-cols-[minmax(0,16rem)_1fr] gap-x-4 gap-y-1">
-                {summary.map(([key, value]) => (
-                  <div key={key} className="contents">
-                    <dt className="text-on-surface-variant">{key}</dt>
-                    <dd className="break-all">{value}</dd>
-                  </div>
-                ))}
-              </dl>
-            )}
-          </TableCell>
-        </TableRow>
-      )}
-    </>
+    <dl className="type-code grid grid-cols-[minmax(0,16rem)_1fr] gap-x-4 gap-y-1">
+      {summary.map(([key, value]) => (
+        <div key={key} className="contents">
+          <dt className="text-on-surface-variant">{key}</dt>
+          <dd className="break-all">{value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
+const column = createDataTableColumnHelper<SnapshotApiResponse>();
+
+function snapshotColumns(currentSnapshotId: string | null) {
+  return column.columns([
+    column.accessor("id", {
+      header: "Snapshot id",
+      enableSorting: false,
+      cell: (info) => <span className="type-code">{info.getValue()}</span>,
+    }),
+    column.display({
+      id: "current",
+      header: () => <span className="sr-only">Current</span>,
+      cell: (info) => (info.row.original.id === currentSnapshotId ? <Badge>Current</Badge> : null),
+    }),
+    column.accessor("parent_id", {
+      header: "Parent id",
+      enableSorting: false,
+      cell: (info) => <span className="type-code">{info.getValue() ?? "—"}</span>,
+    }),
+    column.accessor("timestamp_ms", {
+      header: "Committed",
+      enableSorting: false,
+      cell: (info) => (
+        <span className="tabular-nums whitespace-nowrap">{formatTimestamp(new Date(info.getValue()).toISOString())}</span>
+      ),
+    }),
+    column.accessor("operation", {
+      header: "Operation",
+      enableSorting: false,
+      cell: (info) => <span className="type-code">{info.getValue() ?? "—"}</span>,
+    }),
+  ]);
+}
+
 export function SnapshotsTab({ table }: { table: CatalogTableApiResponse }) {
-  const snapshots = newestFirst(table.snapshots);
   return (
     <Panel title="Snapshots">
-      <ExpandableRowsTable caption="Snapshots, newest first">
-        <TableHeader>
-          <TableRow>
-            <TableHead className={STICKY_FIRST_CELL}>Snapshot id</TableHead>
-            <TableHead>
-              <span className="sr-only">Current</span>
-            </TableHead>
-            <TableHead>Parent id</TableHead>
-            <TableHead>Committed</TableHead>
-            <TableHead>Operation</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {snapshots.map((snapshot) => (
-            <SnapshotRow key={snapshot.id} snapshot={snapshot} current={snapshot.id === table.current_snapshot_id} />
-          ))}
-          {snapshots.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={5} className="text-center text-on-surface-variant">
-                No snapshots.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </ExpandableRowsTable>
+      <DataTable
+        caption="Snapshots, newest first"
+        columns={snapshotColumns(table.current_snapshot_id)}
+        data={newestFirst(table.snapshots)}
+        getRowId={(snapshot) => snapshot.id}
+        getRowLabel={(snapshot) => `snapshot ${snapshot.id}`}
+        renderDetail={(snapshot) => <SnapshotSummary snapshot={snapshot} />}
+        emptyState="No snapshots."
+      />
     </Panel>
   );
 }

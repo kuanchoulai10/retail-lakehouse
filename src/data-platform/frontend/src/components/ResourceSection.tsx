@@ -6,7 +6,6 @@ import {
   IconButton,
   Panel,
   SerendieSymbolTrash,
-  type DataTableColumn,
 } from "@retail-lakehouse/design-system";
 import { useState, type ReactNode } from "react";
 import type { RowData } from "@tanstack/react-table";
@@ -77,7 +76,7 @@ export function ResourceSection<Row extends RowData>({
   const kindOf = (row: Row) => (typeof objectKind === "string" ? objectKind : objectKind(row));
 
   const column = createDataTableColumnHelper<Row>();
-  const tableColumns = [
+  const tableColumns = column.columns([
     ...columns.map((spec) =>
       column.display({ id: spec.header, header: spec.header, cell: (info) => spec.cell(info.row.original) }),
     ),
@@ -96,7 +95,7 @@ export function ResourceSection<Row extends RowData>({
         </div>
       ),
     }),
-  ] as DataTableColumn<Row>[];
+  ]);
 
   return (
     <>

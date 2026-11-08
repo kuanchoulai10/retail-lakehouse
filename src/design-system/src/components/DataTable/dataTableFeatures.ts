@@ -1,5 +1,6 @@
 import {
   createSortedRowModel,
+  rowExpandingFeature,
   rowSortingFeature,
   sortFn_alphanumeric,
   sortFn_basic,
@@ -11,6 +12,7 @@ import {
 } from "@tanstack/react-table";
 
 export const dataTableFeatures = tableFeatures({
+  rowExpandingFeature,
   rowSortingFeature,
   sortedRowModel: createSortedRowModel(),
   sortFns: {

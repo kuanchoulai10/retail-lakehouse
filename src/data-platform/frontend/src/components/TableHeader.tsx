@@ -56,7 +56,12 @@ export function TableHeader({ table, managed, menuItems }: Props) {
     managed === null
       ? []
       : [
-          { label: "Run maintenance", onSelect: openRunDialog, disabled: !active },
+          {
+            label: "Run maintenance",
+            onSelect: openRunDialog,
+            disabled: !active,
+            ...(active ? {} : { description: DISABLED_REASON }),
+          },
           { label: toggleLabel, onSelect: () => toggle.mutate(managed.uuid), disabled: toggle.isPending },
         ];
 

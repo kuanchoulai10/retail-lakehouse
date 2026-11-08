@@ -76,4 +76,25 @@ describe("MaintenanceTab", () => {
     expect(screen.getByText("3 attempts")).toBeInTheDocument();
     expect(screen.getByText("snapshot store unreachable")).toBeInTheDocument();
   });
+
+  it("expands and collapses a run from the keyboard", async () => {
+    const user = userEvent.setup();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MaintenanceTab tableUuid="uuid-orders" />
+      </QueryClientProvider>,
+    );
+    await screen.findByText("manual");
+    await user.tab();
+    await user.tab();
+    const toggle = screen.getByRole("button", { name: "Expand run run-1" });
+    expect(toggle).toHaveFocus();
+    await user.keyboard("{Enter}");
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("snapshot store unreachable")).toBeInTheDocument();
+    await user.keyboard("{Enter}");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("snapshot store unreachable")).not.toBeInTheDocument();
+  });
 });

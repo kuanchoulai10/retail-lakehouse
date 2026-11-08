@@ -40,7 +40,8 @@ const meta = {
         component:
           "Expanded departs from Serendie: rows are 36px high (44px below 768px). Sorting is by " +
           "header buttons that set aria-sort. The table scrolls inside its own container with a " +
-          "sticky first column, so the page never scrolls sideways.",
+          "sticky first column, so the page never scrolls sideways. With renderDetail, each row " +
+          "opens a full-width detail row from a toggle in its first cell or a click on the row.",
       },
     },
   },
@@ -155,6 +156,80 @@ export const WidePhoneWithHiddenHeader: Story = {
   play: async ({ canvasElement }) => {
     const scroller = within(canvasElement).getByRole("region", { name: "Wide table with actions" });
     await expect(scroller.scrollWidth).toBeGreaterThan(scroller.clientWidth);
+    await expectNoHorizontalPageScroll(canvasElement);
+  },
+};
+
+const plainColumns = helper.columns([
+  helper.accessor("name", { header: "Name", enableSorting: false }),
+  helper.accessor("status", { header: "Status", enableSorting: false }),
+  helper.accessor("files", { header: "Files", enableSorting: false }),
+]);
+
+const renderDetail = (row: Row) => <p>{`Detail of ${row.name}`}</p>;
+
+export const ExpandableRows: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  render: () => (
+    <DataTable<Row>
+      caption="Expandable tables"
+      columns={plainColumns}
+      data={rows}
+      getRowId={(row) => row.id}
+      getRowLabel={(row) => row.name}
+      renderDetail={renderDetail}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.tab();
+    await userEvent.tab();
+    const toggle = canvas.getByRole("button", { name: "Expand sales.orders" });
+    await expectFocusRing(toggle);
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(canvas.queryByText("Detail of sales.orders")).toBeNull();
+    await userEvent.keyboard("{Enter}");
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(toggle).toHaveAccessibleName("Collapse sales.orders");
+    const detail = canvas.getByText("Detail of sales.orders");
+    await expect(detail).toBeVisible();
+    await expect(detail.closest("td")).toHaveAttribute("colspan", "3");
+    await userEvent.keyboard("{Enter}");
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(canvas.queryByText("Detail of sales.orders")).toBeNull();
+  },
+};
+
+export const ExpandableRowsByRowClick: Story = {
+  render: ExpandableRows.render,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByText("sales.customers"));
+    await expect(canvas.getByText("Detail of sales.customers")).toBeVisible();
+    await userEvent.click(canvas.getByRole("button", { name: "Collapse sales.customers" }));
+    await expect(canvas.queryByText("Detail of sales.customers")).toBeNull();
+  },
+};
+
+const wideDetail = (row: WideRow) => <p>{`Detail of ${row.c0}`}</p>;
+
+export const ExpandableWidePhone: Story = {
+  globals: { viewport: { value: "phone", isRotated: false } },
+  render: () => (
+    <DataTable<WideRow>
+      caption="Wide expandable table"
+      columns={wideColumns}
+      data={wideRows}
+      getRowLabel={(row) => row.c0 ?? ""}
+      renderDetail={wideDetail}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Expand r0-value-0" }));
+    await expect(canvas.getByText("Detail of r0-value-0")).toBeVisible();
+    const firstCell = canvas.getAllByRole("row")[1]!.querySelector("td") as HTMLElement;
+    await expect(getComputedStyle(firstCell).position).toBe("sticky");
     await expectNoHorizontalPageScroll(canvasElement);
   },
 };

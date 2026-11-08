@@ -22,7 +22,12 @@ const meta = {
     actions: <Button>Run now</Button>,
     overflowActions: [
       { label: "Run now", onSelect: onRetry },
-      { label: "Pause", onSelect: onPause, disabled: true },
+      {
+        label: "Pause",
+        onSelect: onPause,
+        disabled: true,
+        description: "Only an active table can be paused",
+      },
       { label: "Delete", onSelect: onDelete, destructive: true },
     ],
   },
@@ -31,7 +36,8 @@ const meta = {
       description: {
         component:
           "Not in Serendie. Below 768px the actions collapse into an overflow menu when " +
-          "overflowActions is given; an overflow action can be disabled. A long title truncates " +
+          "overflowActions is given; an overflow action can be disabled and carry a description " +
+          "(shown under its label, and its accessible description) saying why. A long title truncates " +
           "and carries the full text in a title.",
       },
     },
@@ -82,6 +88,9 @@ export const PhoneOverflow: Story = {
     await userEvent.keyboard("{ArrowDown}");
     const pause = await portal.findByRole("menuitem", { name: "Pause" });
     await expect(pause).toHaveAttribute("aria-disabled", "true");
+    await expect(pause).toHaveAccessibleName("Pause");
+    await expect(pause).toHaveAccessibleDescription("Only an active table can be paused");
+    await expect(portal.getByText("Only an active table can be paused")).toBeVisible();
     await userEvent.click(pause, { pointerEventsCheck: 0 });
     await expect(onPause).not.toHaveBeenCalled();
     await userEvent.click(await portal.findByRole("menuitem", { name: "Delete" }));

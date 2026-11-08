@@ -132,6 +132,15 @@ describe("TableHeader", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it("gives the disabled phone overflow item the same reason as the button", async () => {
+    const user = userEvent.setup();
+    renderHeader("paused");
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    const item = await screen.findByRole("menuitem", { name: "Run maintenance" });
+    expect(item).toHaveAttribute("aria-disabled", "true");
+    expect(item).toHaveAccessibleDescription("Only an active table can run maintenance");
+  });
+
   it("enables Run maintenance on an active table", () => {
     renderHeader("active");
     expect(screen.getByRole("button", { name: "Run maintenance" })).toBeEnabled();
