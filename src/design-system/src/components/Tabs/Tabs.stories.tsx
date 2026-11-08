@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
-import { expectFocusRing, expectNoHorizontalPageScroll } from "../../stories/assertions";
+import { expectFocusRing, expectNoHorizontalPageScroll, resolvedColor } from "../../stories/assertions";
 import { TabItem, TabList, TabPanel, Tabs } from "./Tabs";
 
 const meta = {
@@ -38,6 +38,12 @@ export const Default: Story = {
     const canvas = within(canvasElement);
     const [overview, runs, settings] = canvas.getAllByRole("tab") as [HTMLElement, HTMLElement, HTMLElement];
     await expect(runs).toHaveAttribute("aria-selected", "true");
+    const list = canvas.getByRole("tablist");
+    await expect(list.scrollHeight).toBe(list.clientHeight);
+    await expect(getComputedStyle(list).boxShadow).toContain(resolvedColor("outline-dim", canvasElement));
+    await expect(getComputedStyle(runs).borderBottomWidth).toBe("2px");
+    const visibleBottom = list.getBoundingClientRect().top + list.clientTop + list.clientHeight;
+    await expect(runs.getBoundingClientRect().bottom).toBeLessThanOrEqual(visibleBottom);
     await userEvent.tab();
     await expectFocusRing(runs);
     await userEvent.keyboard("{ArrowRight}");

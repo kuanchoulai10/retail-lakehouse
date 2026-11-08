@@ -8,7 +8,7 @@ export const TabList = forwardRef<HTMLDivElement, ComponentProps<typeof TabsPrim
   ({ className, ...rest }, ref) => (
     <TabsPrimitive.List
       ref={ref}
-      className={cn("flex overflow-x-auto border-b border-outline-dim", className)}
+      className={cn("flex overflow-x-auto shadow-[inset_0_-1px_0_var(--color-outline-dim)]", className)}
       {...rest}
     />
   ),
@@ -20,7 +20,7 @@ export const TabItem = forwardRef<HTMLButtonElement, ComponentProps<typeof TabsP
     <TabsPrimitive.Trigger
       ref={ref}
       className={cn(
-        "type-label-large -mb-px min-h-control shrink-0 cursor-pointer border-b-2 border-transparent px-4 whitespace-nowrap text-on-surface-variant",
+        "type-label-large min-h-control shrink-0 cursor-pointer border-b-2 border-transparent px-4 whitespace-nowrap text-on-surface-variant",
         "hover:bg-on-surface/5 data-[state=active]:border-primary data-[state=active]:text-on-surface",
         "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring",
         className,
