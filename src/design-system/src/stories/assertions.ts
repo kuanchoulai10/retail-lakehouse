@@ -33,3 +33,12 @@ export async function exerciseOverlay(
   await waitFor(() => expect(portalQueries(canvasElement).queryByRole(role)).toBeNull());
   await waitFor(() => expect(trigger).toHaveFocus());
 }
+
+export function resolvedColor(token: string, context: HTMLElement): string {
+  const probe = context.ownerDocument.createElement("span");
+  probe.style.color = `var(--ds-${token})`;
+  context.appendChild(probe);
+  const value = getComputedStyle(probe).color;
+  probe.remove();
+  return value;
+}

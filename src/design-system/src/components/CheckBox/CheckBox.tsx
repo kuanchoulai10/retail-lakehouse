@@ -17,7 +17,7 @@ export const CheckBox = forwardRef<HTMLButtonElement, CheckBoxProps>(
           ref={ref}
           id={controlId}
           className={cn(
-            "flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-sm border-2 border-outline bg-surface",
+            "flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-sm border-2 border-outline-dim bg-surface",
             "data-[state=checked]:border-primary-container data-[state=checked]:bg-primary-container",
             "data-[state=checked]:text-on-primary-container",
             "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring",

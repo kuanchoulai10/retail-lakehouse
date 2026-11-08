@@ -33,6 +33,7 @@ Rules for `src/design-system` (`@retail-lakehouse/design-system`, spec `docs/sup
 ## Accessibility and tests
 
 - Contrast floor in every theme: 4.5:1 text, 3:1 large text and UI parts (input borders, focus ring, icons). `contrastRatio.test.ts` and `themeTokens.test.ts` enforce it over the semantic token pairs.
+- Control boundaries (field, check box and outlined button borders, the unchecked switch track) use `outline-dim`, which meets 3:1. `outline` is only for decorative dividers and panel edges.
 - **Every component state has a story** with a theme switcher toolbar and axe; an axe violation fails `task checks:component-test`.
 - **Every interactive component has a keyboard play function:** Tab order, a visible focus ring, open and close with Enter, Space and Escape, focus returning to the trigger, and arrow keys in menus, selects, tabs and the sidebar.
 - Stories also check there is no horizontal page scroll at phone width (`expectNoHorizontalPageScroll`).

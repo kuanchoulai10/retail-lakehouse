@@ -24,7 +24,7 @@ type FieldFrameProps = FieldProps & {
 };
 
 export const fieldControlStyle = [
-  "w-full rounded-md border border-outline bg-surface px-3 text-on-surface type-body-large",
+  "w-full rounded-md border border-outline-dim bg-surface px-3 text-on-surface type-body-large",
   "placeholder:text-on-surface-variant",
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring",
   "aria-invalid:border-2 aria-invalid:border-negative",

@@ -90,4 +90,6 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { foreground: "negative-text", background: "surface", minimum: 4.5 },
   { foreground: "focus-ring", background: "surface", minimum: 3 },
   { foreground: "outline-dim", background: "surface", minimum: 3 },
+  { foreground: "outline-dim", background: "surface-container", minimum: 3 },
+  { foreground: "outline-dim", background: "surface-container-dim", minimum: 3 },
 ];

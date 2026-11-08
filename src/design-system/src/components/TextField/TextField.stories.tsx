@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
-import { expectFocusRing, expectNoHorizontalPageScroll } from "../../stories/assertions";
+import { expectFocusRing, expectNoHorizontalPageScroll, resolvedColor } from "../../stories/assertions";
 import { TextField } from "./TextField";
 
 const meta = {
@@ -111,5 +111,12 @@ export const Desktop: Story = {
     const input = within(canvasElement).getByLabelText("Table name");
     await expect(input.getBoundingClientRect().height).toBe(36);
     await expectNoHorizontalPageScroll(canvasElement);
+  },
+};
+
+export const BoundaryContrast: Story = {
+  play: async ({ canvasElement }) => {
+    const input = within(canvasElement).getByLabelText("Table name");
+    await expect(getComputedStyle(input).borderTopColor).toBe(resolvedColor("outline-dim", canvasElement));
   },
 };
