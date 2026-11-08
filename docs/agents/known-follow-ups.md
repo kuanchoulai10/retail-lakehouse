@@ -54,7 +54,13 @@ Open issues and deferred work. Not loaded automatically; read the entries for th
 - Keyboard shortcuts, a shortcut registry and a command palette are the next design-system phase; the foundations (full keyboard operation, keyboard tests) are in place.
 - Visual regression testing of the Storybook stories, once the components are stable.
 - A `konjo-dark` theme if dark mode returns; themes already switch by `data-panda-theme`.
-- StoragePanel's "Only in old snapshots" bar uses `bg-chart-5` (`outlineDim`) on `surface-container-dim`, which may fall below 3:1 non-text contrast.
+- StoragePanel's "Only in old snapshots" bar (`bg-chart-5`, `outlineDim`, on `surface-container-dim`) passes at 3.13:1 in every theme and is now locked by a `CONTRAST_PAIRS` test; it has no margin, so a token change may break it.
 - Add a design-system `ChartTooltip` to replace FreshnessPanel's hand-styled tooltip.
-- `useReturnFocus` keeps the last pointer target forever, so a later programmatic open could return focus to a stale element.
-- The Tabs underline may clip.
+- The design system does not re-export `RowData`, so the console keeps a direct `@tanstack/react-table` dependency for types; re-export it and drop the dependency.
+- Select and DropdownMenu have no axe story in their open state (the listbox and menu are only checked closed).
+- CheckBox and Switch have no invalid-state stories.
+- Breadcrumb links and the DataTable expand toggle are below the 44px touch target on phones.
+- The ThemePicker icon is the same as the Presets nav icon; give one of them another symbol.
+- Document that composite components (`AppLayout`, `TitleBar`, `Panel`, dialogs) take no `ref` or `className`.
+- `SemanticToken` is spelled twice in `semanticTokens.ts` (the union and `SEMANTIC_TOKENS`); derive the union from the array.
+- `resolveThemeTokens` reads the token CSS with flat parsing and would misread nested blocks (for example a `@media` rule inside a theme selector).
