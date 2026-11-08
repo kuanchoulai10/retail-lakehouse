@@ -67,11 +67,13 @@ export function FieldFrame({
         "aria-describedby": describedBy,
         required: required || undefined,
       })}
-      {messageId && (
-        <p id={messageId} className="type-body-small text-negative-text">
-          {invalidMessage}
-        </p>
-      )}
+      <div aria-live="polite" className="empty:-mt-1">
+        {messageId && (
+          <p id={messageId} className="type-body-small text-negative-text">
+            {invalidMessage}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

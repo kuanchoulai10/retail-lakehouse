@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
-import { expect, fn } from "storybook/test";
+import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import {
   exerciseOverlay,
   expectNoHorizontalPageScroll,
@@ -89,5 +89,37 @@ export const Phone: Story = {
     const dialog = await portalQueries(canvasElement).findByRole("dialog");
     await expect(dialog.getBoundingClientRect().width).toBeLessThanOrEqual(window.innerWidth);
     await expectNoHorizontalPageScroll(canvasElement);
+  },
+};
+
+function PointerHarness() {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+      <div className="p-4">
+        <Button
+          onClick={(event) => {
+            event.currentTarget.blur();
+            setIsOpen(true);
+          }}
+        >
+          Open drawer
+        </Button>
+        <Drawer title="Run details" isOpen={isOpen} onOpenChange={setIsOpen}>
+          Run 42
+        </Drawer>
+      </div>
+  );
+}
+
+export const PointerOpened: Story = {
+  render: () => <PointerHarness />,
+  play: async ({ canvasElement }) => {
+    const trigger = within(canvasElement).getByRole("button", { name: "Open drawer" });
+    await userEvent.click(trigger);
+    await portalQueries(canvasElement).findByRole("dialog");
+    await expect(document.activeElement).not.toBe(document.body);
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(portalQueries(canvasElement).queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(trigger).toHaveFocus());
   },
 };

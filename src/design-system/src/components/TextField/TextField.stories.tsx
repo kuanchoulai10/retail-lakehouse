@@ -50,6 +50,8 @@ export const Invalid: Story = {
   play: async ({ canvasElement }) => {
     const input = within(canvasElement).getByLabelText("Table name");
     await expect(input).toHaveAttribute("aria-invalid", "true");
+    const message = within(canvasElement).getByText("Table name must include a namespace");
+    await expect(message.closest("[aria-live]")).toHaveAttribute("aria-live", "polite");
     await expect(input).toHaveAccessibleDescription(
       "Fully qualified, for example sales.orders Table name must include a namespace",
     );

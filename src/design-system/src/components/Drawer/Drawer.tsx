@@ -11,6 +11,7 @@ export type DrawerProps = {
   side?: "left" | "right";
   title: string;
   hideTitle?: boolean;
+  onCloseAutoFocus?: (event: Event) => void;
   children: ReactNode;
 };
 
@@ -20,10 +21,17 @@ export function Drawer({
   side = "right",
   title,
   hideTitle = false,
+  onCloseAutoFocus: onCloseAutoFocusOverride,
   children,
 }: DrawerProps) {
   const heading = <Dialog.Title className="type-title-large">{title}</Dialog.Title>;
-  const { onCloseAutoFocus } = useReturnFocus(isOpen);
+  const { onCloseAutoFocus: returnFocus } = useReturnFocus(isOpen);
+  const onCloseAutoFocus = (event: Event) => {
+    onCloseAutoFocusOverride?.(event);
+    if (!event.defaultPrevented) {
+      returnFocus(event);
+    }
+  };
   return (
     <Dialog.Root open={isOpen} onOpenChange={onOpenChange}>
       <Dialog.Portal>
