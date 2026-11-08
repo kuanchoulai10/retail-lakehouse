@@ -1,4 +1,4 @@
-import { Banner } from "@retail-lakehouse/design-system";
+import { Banner, TextLink } from "@retail-lakehouse/design-system";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
@@ -195,8 +195,6 @@ function NamespaceDetailsPage({ catalog, parts }: { catalog: string; parts: stri
 
   const name = lastPart(parts);
   const pathText = (tail: string[]) => [catalog, ...tail].join(" / ");
-  const linkClass = "font-mono font-medium underline-offset-4 hover:underline";
-
   return (
     <>
       <ResourceListPage
@@ -218,9 +216,11 @@ function NamespaceDetailsPage({ catalog, parts }: { catalog: string; parts: stri
           {
             header: "Name",
             cell: (row) => (
-              <Link to={namespacePath(catalog, row.namespace)} className={linkClass}>
-                {lastPart(row.namespace)}
-              </Link>
+              <TextLink asChild className="font-mono font-medium">
+                <Link to={namespacePath(catalog, row.namespace)}>
+                  {lastPart(row.namespace)}
+                </Link>
+              </TextLink>
             ),
           },
         ]}
@@ -243,9 +243,11 @@ function NamespaceDetailsPage({ catalog, parts }: { catalog: string; parts: stri
             {
               header: "Name",
               cell: (row) => (
-                <Link to={objectPath(row)} className={linkClass}>
-                  {row.name}
-                </Link>
+                <TextLink asChild className="font-mono font-medium">
+                  <Link to={objectPath(row)}>
+                    {row.name}
+                  </Link>
+                </TextLink>
               ),
             },
             { header: "Type", cell: (row) => TYPE_LABEL[row.type] },

@@ -5,6 +5,7 @@ import {
   Select,
   Skeleton,
   TextField,
+  TextLink,
 } from "@retail-lakehouse/design-system";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -48,12 +49,11 @@ const columns = column.columns([
         return <span className="font-mono font-medium">{info.getValue()}</span>;
       }
       return (
-        <Link
-          to={tablePath(row.catalog, row.namespace.split("."), row.table)}
-          className="font-mono font-medium underline-offset-2 hover:underline"
-        >
-          {info.getValue()}
-        </Link>
+        <TextLink asChild className="font-mono font-medium">
+          <Link to={tablePath(row.catalog, row.namespace.split("."), row.table)}>
+            {info.getValue()}
+          </Link>
+        </TextLink>
       );
     },
   }),

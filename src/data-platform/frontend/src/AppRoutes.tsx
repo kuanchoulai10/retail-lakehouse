@@ -1,3 +1,4 @@
+import { TextLink } from "@retail-lakehouse/design-system";
 import { Link, Route, Routes } from "react-router";
 import { CatalogPage } from "./pages/CatalogPage";
 import { CatalogsPage } from "./pages/CatalogsPage";
@@ -14,9 +15,11 @@ function NotFound() {
     <section className="flex flex-col gap-2">
       <h1 className="text-2xl font-semibold tracking-tight">Page not found</h1>
       <p>
-        <Link to="/" className="text-on-surface-variant underline-offset-4 hover:text-on-surface hover:underline">
-          Back to tables
-        </Link>
+        <TextLink asChild>
+          <Link to="/">
+            Back to tables
+          </Link>
+        </TextLink>
       </p>
     </section>
   );

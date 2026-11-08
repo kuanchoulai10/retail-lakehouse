@@ -3,6 +3,7 @@ import {
   createDataTableColumnHelper,
   DataTable,
   Skeleton,
+  TextLink,
 } from "@retail-lakehouse/design-system";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
@@ -53,9 +54,11 @@ function rulesColumns(presetNames: Map<string, string>) {
         const presetId = info.getValue();
         if (presetId === null) return <span className="text-on-surface-variant">—</span>;
         return (
-          <Link to={`/presets#preset-${presetId}`} className="font-mono underline-offset-2 hover:underline">
-            {presetNames.get(presetId) ?? presetId}
-          </Link>
+          <TextLink asChild className="font-mono">
+            <Link to={`/presets#preset-${presetId}`}>
+              {presetNames.get(presetId) ?? presetId}
+            </Link>
+          </TextLink>
         );
       },
     }),

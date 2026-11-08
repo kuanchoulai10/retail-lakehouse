@@ -1,4 +1,4 @@
-import { EmptyState } from "@retail-lakehouse/design-system";
+import { EmptyState, TextLink } from "@retail-lakehouse/design-system";
 import { Link } from "react-router";
 
 export type MaintenanceEmptyReason = "catalog-not-covered" | "not-found" | "excluded" | "dropped";
@@ -22,9 +22,11 @@ export function MaintenanceEmptyState({ reason }: { reason: MaintenanceEmptyReas
             <>
               {" "}
               (see{" "}
-              <Link to="/discovery-rules" className="underline underline-offset-2 hover:text-on-surface">
-                Discovery rules
-              </Link>
+              <TextLink asChild inline>
+                <Link to="/discovery-rules">
+                  Discovery rules
+                </Link>
+              </TextLink>
               )
             </>
           )}

@@ -1,4 +1,4 @@
-import { EmptyState } from "@retail-lakehouse/design-system";
+import { EmptyState, TextLink } from "@retail-lakehouse/design-system";
 import { Link } from "react-router";
 import { namespacePath } from "@/lib/catalogPaths";
 
@@ -25,9 +25,11 @@ export function CatalogObjectNotFound({ objectKind, catalog, namespace, name }: 
       description={
         <>
           It may have been renamed or dropped.{" "}
-          <Link to={namespacePath(catalog, namespace)} className="underline underline-offset-2 hover:text-on-surface">
-            Go to {where}
-          </Link>
+          <TextLink asChild inline>
+            <Link to={namespacePath(catalog, namespace)}>
+              Go to {where}
+            </Link>
+          </TextLink>
         </>
       }
     />

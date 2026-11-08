@@ -1,4 +1,4 @@
-import { Banner } from "@retail-lakehouse/design-system";
+import { Banner, TextLink } from "@retail-lakehouse/design-system";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
@@ -97,12 +97,11 @@ function CatalogDetailsPage({ name }: { name: string }) {
           {
             header: "Name",
             cell: (row) => (
-              <Link
-                to={namespacePath(name, row.namespace)}
-                className="font-mono font-medium underline-offset-4 hover:underline"
-              >
-                {last(row)}
-              </Link>
+              <TextLink asChild className="font-mono font-medium">
+                <Link to={namespacePath(name, row.namespace)}>
+                  {last(row)}
+                </Link>
+              </TextLink>
             ),
           },
         ]}
