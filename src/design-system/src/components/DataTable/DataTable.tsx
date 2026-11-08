@@ -31,6 +31,19 @@ const stickyFirst = "first:sticky first:left-0 first:z-10 first:bg-surface";
 
 const ariaSort = { asc: "ascending", desc: "descending" } as const;
 
+const INTERACTIVE = "a, button, input, select, textarea, [role='button'], [role='link']";
+
+// A row click opens the detail row unless it landed on a control inside the row or ended a text
+// selection, so links, buttons and inputs in cells keep their own behaviour and text stays copyable.
+function isPlainRowClick(event: MouseEvent<HTMLTableRowElement>): boolean {
+  const target = event.target instanceof Element ? event.target.closest(INTERACTIVE) : null;
+  if (target !== null && target !== event.currentTarget && event.currentTarget.contains(target)) {
+    return false;
+  }
+  const selection = event.currentTarget.ownerDocument.getSelection();
+  return selection === null || selection.isCollapsed;
+}
+
 export function DataTable<T extends RowData>({
   columns,
   data,
@@ -121,7 +134,13 @@ export function DataTable<T extends RowData>({
               <Fragment key={row.id}>
                 <TableRow
                   className={expandable ? "cursor-pointer" : undefined}
-                  onClick={expandable ? () => row.toggleExpanded() : undefined}
+                  onClick={
+                    expandable
+                      ? (event: MouseEvent<HTMLTableRowElement>) => {
+                          if (isPlainRowClick(event)) row.toggleExpanded();
+                        }
+                      : undefined
+                  }
                 >
                   {row.getAllCells().map((cell, index) => (
                     <TableCell key={cell.id} className={stickyFirst}>

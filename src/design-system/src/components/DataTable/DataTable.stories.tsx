@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, fn, userEvent, within } from "storybook/test";
 import { expectFocusRing, expectNoHorizontalPageScroll } from "../../stories/assertions";
 import { createDataTableColumnHelper } from "./createDataTableColumnHelper";
 import { DataTable } from "./DataTable";
@@ -231,5 +231,76 @@ export const ExpandableWidePhone: Story = {
     const firstCell = canvas.getAllByRole("row")[1]!.querySelector("td") as HTMLElement;
     await expect(getComputedStyle(firstCell).position).toBe("sticky");
     await expectNoHorizontalPageScroll(canvasElement);
+  },
+};
+
+const onOpen = fn();
+const interactiveColumns = helper.columns([
+  helper.accessor("name", { header: "Name", enableSorting: false }),
+  helper.accessor("status", {
+    header: "Status",
+    enableSorting: false,
+    cell: (info) => (
+      <a href={`#${info.getValue()}`} onClick={(event) => event.preventDefault()}>
+        {info.getValue()}
+      </a>
+    ),
+  }),
+  helper.accessor("files", {
+    header: "Files",
+    enableSorting: false,
+    cell: (info) => (
+      <span className="inline-flex gap-2">
+        <button type="button" onClick={onOpen}>
+          Open
+        </button>
+        <span role="button" tabIndex={0}>
+          {`${info.getValue()} files`}
+        </span>
+        <input aria-label={`Note for ${info.row.original.name}`} />
+      </span>
+    ),
+  }),
+]);
+
+export const RowClickIgnoresControlsAndSelection: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  render: () => (
+    <DataTable<Row>
+      caption="Tables with controls"
+      columns={interactiveColumns}
+      data={rows}
+      getRowId={(row) => row.id}
+      getRowLabel={(row) => row.name}
+      renderDetail={renderDetail}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const detail = () => canvas.queryByText("Detail of sales.orders");
+    const [activeLink] = canvas.getAllByRole("link", { name: "active" });
+    await userEvent.click(activeLink!);
+    await expect(detail()).toBeNull();
+    const [open] = canvas.getAllByRole("button", { name: "Open" });
+    await userEvent.click(open!);
+    await expect(onOpen).toHaveBeenCalled();
+    await expect(detail()).toBeNull();
+    await userEvent.click(canvas.getByRole("button", { name: "1204 files" }));
+    await expect(detail()).toBeNull();
+    await userEvent.click(canvas.getByRole("textbox", { name: "Note for sales.orders" }));
+    await expect(detail()).toBeNull();
+
+    const nameCell = canvas.getByText("sales.orders");
+    const selection = window.getSelection()!;
+    const range = document.createRange();
+    range.selectNodeContents(nameCell);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    nameCell.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await expect(detail()).toBeNull();
+
+    selection.removeAllRanges();
+    await userEvent.click(nameCell);
+    await expect(detail()).toBeVisible();
   },
 };
