@@ -1,8 +1,11 @@
-import { THEME_STORAGE_KEY } from "@retail-lakehouse/design-system";
+import {
+  DEFAULT_THEME,
+  THEME_ATTRIBUTE,
+  THEME_STORAGE_KEY,
+  THEMES,
+} from "@retail-lakehouse/design-system";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import indexHtml from "../index.html?raw";
-
-const THEME_ATTRIBUTE = "data-panda-theme";
 
 function bootScript(): string {
   const doc = new DOMParser().parseFromString(indexHtml, "text/html");
@@ -36,13 +39,22 @@ describe("index.html theme boot script", () => {
     expect(bootScript()).not.toMatch(/dark/i);
   });
 
-  it.each(["asagi", "kurikawa"])("applies the stored %s theme to <html>", (theme) => {
+  // Driven from the design system's list, so a theme added there but missing from the boot script fails.
+  const NON_DEFAULT_THEMES = THEMES.map((theme) => theme.name).filter((name) => name !== DEFAULT_THEME);
+
+  it("covers at least one non-default theme", () => {
+    expect(NON_DEFAULT_THEMES.length).toBeGreaterThan(0);
+  });
+
+  it.each(NON_DEFAULT_THEMES)("applies the stored %s theme to <html>", (theme) => {
     localStorage.setItem(THEME_STORAGE_KEY, theme);
     runBootScript();
     expect(document.documentElement).toHaveAttribute(THEME_ATTRIBUTE, theme);
   });
 
-  it.each(["konjo", "dark", "light", "system", "ASAGI", ""])(
+  const UNKNOWN_VALUES = ["dark", "light", "system", ...NON_DEFAULT_THEMES.map((name) => name.toUpperCase()), ""];
+
+  it.each([DEFAULT_THEME, ...UNKNOWN_VALUES])(
     "leaves the default theme with no attribute for a stored %j",
     (value) => {
       localStorage.setItem(THEME_STORAGE_KEY, value);
