@@ -1,34 +1,15 @@
 {
-  "name": "",
+  "name": "retail-lakehouse",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
   "type": "module",
   "license": "AGPL-version-3.0",
-  "private": false,
-  "engines": {
-    "node": ">= 14.0.0",
-    "npm": ">= 6.0.0"
-  },
-  "homepage": "",
-  "repository": {
-    "type": "git",
-    "url": ""
-  },
-  "bugs": "",
-  "keywords": [],
-  "author": {
-    "name": "",
-    "email": "",
-    "url": ""
-  },
-  "contributors": [],
-  "scripts": {
-    "dev": "",
-    "test": ""
-  },
+  "workspaces": [
+    "src/design-system",
+    "src/data-platform/frontend"
+  ],
   "devDependencies": {
-    "@commitlint/cli": "^20.5.0",
-    "@commitlint/config-conventional": "^20.5.0"
+    "@commitlint/cli": "20.5.0",
+    "@commitlint/config-conventional": "20.5.0"
   }
 }

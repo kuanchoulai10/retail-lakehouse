@@ -13,6 +13,7 @@ tasks:
     cmds:
       - task: pre-commit
       - task: lint-frontend
+      - task: lint-design-system
       - task: unit-test
       - task: arch-test
       - task: contract-test
@@ -80,6 +81,7 @@ tasks:
       - unit-test-spark
       - unit-test-scripts
       - unit-test-frontend
+      - unit-test-design-system
 
   unit-test-backend:
     desc: "Run data-platform backend tests (includes the pytest architecture tests)"
@@ -101,11 +103,22 @@ tasks:
     cmds:
       - npm --prefix src/data-platform/frontend test -- --run
 
+  unit-test-design-system:
+    desc: "Run design-system unit tests"
+    cmds:
+      - npm --prefix src/design-system test -- --run
+
   lint-frontend:
     desc: "Lint and type-check the console"
     cmds:
       - npm --prefix src/data-platform/frontend run lint
       - npm --prefix src/data-platform/frontend run typecheck
+
+  lint-design-system:
+    desc: "Lint and type-check the design system"
+    cmds:
+      - npm --prefix src/design-system run lint
+      - npm --prefix src/design-system run typecheck
 
   arch-test:
     desc: "Run architecture boundary tests (import-linter)"
