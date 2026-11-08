@@ -4,12 +4,12 @@ version: '3'
 
 tasks:
   pre-commit:
-    desc: "Gate: basic code quality (lint, format, type) before a commit"
+    desc: "Gate: is the code clean? (before a commit: lint, format, type)"
     cmds:
       - uv run pre-commit run --all-files --show-diff-on-failure
 
   pre-pr:
-    desc: "Gate: is my change ready for review? (unit, architecture, contract)"
+    desc: "Gate: is my change logically correct? (local, no services: unit, architecture, contract)"
     cmds:
       - task: pre-commit
       - task: lint-frontend
@@ -18,48 +18,60 @@ tasks:
       - task: contract-test
 
   pre-merge:
-    desc: "Gate: can this change merge into main safely? (PR CI)"
+    desc: "Gate: will main still work after this merge? (merge queue candidate on an ephemeral platform)"
     cmds:
       - task: pre-pr
-      - task: integration-test
       - task: security-test
       - task: coverage-test
+      - task: integration-test
       - task: build-test
+      - task: api-test
+      - task: e2e-critical-test
 
   post-merge:
-    desc: "Gate: is the merged main healthy as a whole? (deployed cluster)"
+    desc: "Gate: is main healthy once deployed to the shared environment? (staging, same artifacts as pre-merge)"
     requires:
       vars:
         - name: KUBE_CONTEXT
     cmds:
-      - task: smoke-test
+      - task: deployment-test
         vars:
           KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
-      - task: e2e-test
+      - task: smoke-test
         vars:
           KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
 
   pre-release:
-    desc: "Gate: is this exact build ready to ship? (same artifacts that get deployed)"
+    desc: "Gate: can this exact build go to production? (production-like environment, production-scale data)"
     requires:
       vars:
         - name: KUBE_CONTEXT
     cmds:
-      - task: build-test
       - task: deployment-test
         vars:
           KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
-      - task: e2e-test
-        vars:
-          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+      - task: migration-test
+      - task: rollback-test
       - task: performance-test
 
+  release:
+    desc: "Gate: does the release hold under real traffic? (production canary, automatic rollback)"
+    cmds:
+      - task: canary-test
+
   nightly:
-    desc: "Scheduled deep checks: performance, resilience, dependencies"
-    deps:
-      - performance-test
-      - resilience-test
-      - dependency-test
+    desc: "Gate: are there problems that only show over time? (staging, scheduled)"
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+    cmds:
+      - task: e2e-full-test
+        vars:
+          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+      - task: soak-test
+      - task: resilience-test
+      - task: performance-test
+      - task: dependency-test
 
   unit-test:
     desc: "Run all unit tests in parallel"
@@ -103,41 +115,41 @@ tasks:
   contract-test:
     desc: "Check the contracts between components"
     cmds:
-      - cmd: echo "TODO:// console api/catalogTypes.ts vs backend DTO JSON schema; backend Polaris adapters vs the Polaris 1.8 OpenAPI; backend SparkApplication manifest vs the Spark Operator CRD"
-
-  integration-test:
-    desc: "Run backend adapters against real dependencies (no cluster)"
-    cmds:
-      - cmd: echo "TODO:// backend SQL repos vs PostgreSQL, Temporal workflows vs a Temporal test server, catalog adapters vs a Polaris container"
+      - cmd: echo "TODO:// console api/catalogTypes.ts vs the backend openapi.json; backend Polaris adapters vs the Polaris 1.8 OpenAPI; backend SparkApplication manifest vs the Spark Operator CRD"
 
   security-test:
     desc: "Scan for vulnerable dependencies and insecure code"
     cmds:
-      - cmd: echo "TODO:// uv-based pip-audit for backend and spark, npm audit for the console, image scan for the three images"
+      - cmd: echo "TODO:// pip-audit for backend and spark, npm audit for the console, image scan for the three images"
 
   coverage-test:
     desc: "Enforce test coverage thresholds"
     cmds:
       - cmd: echo "TODO:// pytest --cov with a floor for the backend, vitest --coverage for the console"
 
+  integration-test:
+    desc: "Run backend adapters against real dependencies"
+    cmds:
+      - cmd: echo "TODO:// catalog adapters vs a Polaris container, SQL repos vs PostgreSQL, Temporal workflows vs the Temporal test server"
+
   build-test:
-    desc: "Build every deliverable without deploying it"
+    desc: "Build every deliverable once, tagged by commit, for every later gate to reuse"
     cmds:
       - npm --prefix src/data-platform/frontend run build
-      - cmd: echo "TODO:// docker build table-maintenance-backend, table-maintenance-spark and console with the build.sh source tags, without loading them into minikube"
+      - cmd: echo "TODO:// docker build table-maintenance-backend, table-maintenance-spark and console with the build.sh source tags and push them to the registry"
 
-  smoke-test:
-    desc: "Check the deployed platform answers (validate every wave)"
-    requires:
-      vars:
-        - name: KUBE_CONTEXT
+  api-test:
+    desc: "Run the Bruno API collection against a running backend"
     cmds:
-      - task: :apps:validate
-        vars:
-          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+      - cmd: echo "TODO:// bru run the API collection against the ephemeral platform, secrets passed with --env-var"
 
-  e2e-test:
-    desc: "Run the lakehouse control plane end-to-end test on the cluster"
+  e2e-critical-test:
+    desc: "Run the critical-path end-to-end test in minutes on an ephemeral platform"
+    cmds:
+      - cmd: echo "TODO:// provision an ephemeral platform from the build-test images; catalog round trip, create a table, write rows, trigger one maintenance run, read it back through Trino; tear it down"
+
+  e2e-full-test:
+    desc: "Run the full lakehouse control plane end-to-end test on the cluster"
     requires:
       vars:
         - name: KUBE_CONTEXT
@@ -145,17 +157,48 @@ tasks:
       - KUBE_CONTEXT={{.KUBE_CONTEXT}} bash platform/25-lakehouse-control-plane/e2e.sh
 
   deployment-test:
-    desc: "Deploy the built artifacts and verify the rollout"
+    desc: "Deploy the build-test images and verify the rollout"
     requires:
       vars:
         - name: KUBE_CONTEXT
     cmds:
-      - cmd: echo "TODO:// deploy the pre-release image tags, assert the images are on the node, assert zero restarts, rehearse a rollback"
+      - cmd: echo "TODO:// deploy the build-test image tags to {{.KUBE_CONTEXT}}, assert the images are on the node, the rollout finished and no pod restarted"
+
+  smoke-test:
+    desc: "Check the deployed platform answers"
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+    cmds:
+      - task: :apps:validate
+        vars:
+          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+      - cmd: echo "TODO:// bru run the read-only smoke collection through the platform gateway"
+
+  migration-test:
+    desc: "Run database migrations against a copy of production-sized data"
+    cmds:
+      - cmd: echo "TODO:// restore a production-sized table-maintenance-db snapshot, run the migrate Job, assert the schema and row counts"
+
+  rollback-test:
+    desc: "Roll back to the previous release and verify it still serves"
+    cmds:
+      - cmd: echo "TODO:// helm rollback to the previous release tags, rerun smoke-test, roll forward again"
 
   performance-test:
     desc: "Measure performance against thresholds"
     cmds:
       - cmd: echo "TODO:// maintenance run duration on a large table, catalog API latency, console bundle size"
+
+  canary-test:
+    desc: "Shift a slice of production traffic to the release and watch its metrics"
+    cmds:
+      - cmd: echo "TODO:// route a small share of traffic to the new version, compare error rate and latency with the current one, roll back automatically on regression"
+
+  soak-test:
+    desc: "Run the platform under steady load for hours and watch for leaks"
+    cmds:
+      - cmd: echo "TODO:// keep CDC and maintenance running for hours, assert memory stays flat and no pod restarts"
 
   resilience-test:
     desc: "Check recovery from dependency outages"

@@ -47,15 +47,55 @@ tasks:
       - task --list
     silent: true
 
+  pre-commit:
+    desc: "Gate: is the code clean?"
+    cmds:
+      - task: checks:pre-commit
+
   pre-pr:
-    desc: "Run all checks before creating a PR"
+    desc: "Gate: is my change logically correct?"
     cmds:
       - task: checks:pre-pr
 
-  pre-commit:
-    desc: "Run pre commit checks"
+  pre-merge:
+    desc: "Gate: will main still work after this merge?"
     cmds:
-      - task: checks:pre-commit
+      - task: checks:pre-merge
+
+  post-merge:
+    desc: "Gate: is main healthy once deployed to the shared environment?"
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+    cmds:
+      - task: checks:post-merge
+        vars:
+          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+
+  pre-release:
+    desc: "Gate: can this exact build go to production?"
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+    cmds:
+      - task: checks:pre-release
+        vars:
+          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+
+  release:
+    desc: "Gate: does the release hold under real traffic?"
+    cmds:
+      - task: checks:release
+
+  nightly:
+    desc: "Gate: are there problems that only show over time?"
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+    cmds:
+      - task: checks:nightly
+        vars:
+          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
 
   unit-test:
     desc: "Run all unit tests in parallel"

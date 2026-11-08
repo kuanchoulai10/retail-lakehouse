@@ -56,7 +56,7 @@ Do not touch unless the user re-opens them: `platform/30-thanos`, `platform/24-e
 - **Verify before commit.** Every commit must pass: `pytest -v`, `ty check`, `ruff check .`, `lint-imports`.
 - **Semantic commits.** Use conventional commits: `feat(scope):`, `fix(scope):`, `refactor(scope):`, `docs(scope):`.
 - **Incremental, atomic commits.** Each commit is independently valid — tests pass, linter clean.
-- **Taskfile for automation.** Gates in `tasks/checks.yml` (`pre-commit`, `pre-pr`, `pre-merge`, `post-merge`, `pre-release`, `nightly`) call test tasks you can also run alone (`task checks:<name>-test`); the Taskfile says how to test, CI says when. `task pre-pr` = pre-commit + frontend lint + unit-test (backend, spark, scripts, frontend) + arch-test + contract-test. Unimplemented test tasks echo `TODO://`.
+- **Taskfile for automation.** Gates in `tasks/checks.yml` each answer one question and call test tasks you can also run alone (`task checks:<name>-test`); the Taskfile says how to test, CI says when. `pre-commit` (clean?) → `pre-pr` (logically correct? local, no services) → `pre-merge` (will main still work? merge-queue candidate on an ephemeral platform: integration, build once, API, critical-path e2e) → `post-merge` (healthy once deployed to staging, same artifacts) → `pre-release` (production-ready? migration, rollback, performance) → `release` (canary); `nightly` runs the full e2e, soak, resilience, performance and dependency checks. `task pre-pr` = pre-commit + frontend lint + unit-test (backend, spark, scripts, frontend) + arch-test + contract-test. Unimplemented test tasks echo `TODO://`.
 
 ## Project Vision
 
