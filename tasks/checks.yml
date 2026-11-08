@@ -15,6 +15,7 @@ tasks:
       - task: lint-frontend
       - task: lint-design-system
       - task: unit-test
+      - task: component-test
       - task: arch-test
       - task: contract-test
 
@@ -107,6 +108,11 @@ tasks:
     desc: "Run design-system unit tests"
     cmds:
       - npm --prefix src/design-system test -- --run
+
+  component-test:
+    desc: "Run the design-system stories as browser tests with axe"
+    cmds:
+      - npm --prefix src/design-system run test:stories
 
   lint-frontend:
     desc: "Lint and type-check the console"

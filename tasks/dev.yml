@@ -7,6 +7,7 @@ tasks:
     desc: "Sync local dev environment with repo state"
     cmds:
       - task: install-node-deps
+      - task: install-playwright
       - task: install-python-deps
       - task: install-pre-commit-hook
 
@@ -15,6 +16,12 @@ tasks:
     internal: true
     cmds:
       - npm clean-install
+
+  install-playwright:
+    desc: "Install the Playwright Chromium browser for story tests"
+    internal: true
+    cmds:
+      - npx --prefix src/design-system playwright install chromium
 
   install-python-deps:
     desc: "Install Python dependencies"
