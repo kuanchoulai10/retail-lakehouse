@@ -1,12 +1,14 @@
 # Console UI
 
-Rules for `src/data-platform/frontend` pages (spec `docs/superpowers/specs/2026-10-31-console-visual-redesign-design.md`):
+Rules for `src/data-platform/frontend` pages. **Build pages from `@retail-lakehouse/design-system` (rules in `src/design-system/CLAUDE.md`); domain components stay here.**
 
-- **Build from `components/ui/` primitives.** Add a missing primitive with the shadcn CLI rather than hand-rolling one.
-- **Token classes only.** Use tokens via Tailwind classes (`bg-background`, `text-muted-foreground`, `border-border`); no raw hex values or arbitrary colour classes (`[#…]`) in feature code (`src/components/` except `ui/`, `src/pages/`). Enforced by `src/test/noRawColors.test.ts`.
-- **Colour only for status.** Neutral for everything else (including not due, cooldown, disabled); `warning` = due operation or truncated count; `destructive` = error or failed run; `success` = succeeded run only.
-- **Identifiers in Geist Mono** (procedure names, snapshot ids, file paths, `execution_ref`, property keys / values, schema types); `tabular-nums` on number columns; sentence case, no all-caps labels.
-- **No shadows on panels** (one subtle shadow on overlays only), no gradients, no entrance animations.
+- **Import the design system only from `@retail-lakehouse/design-system`.** No deep paths, `radix-ui`, `@radix-ui/*`, `lucide-react` or `@serendie/*`. Icons come from the design system.
+- **A missing component goes to the design system**, with its story and keyboard test, not into the console. Domain components (`MaintenancePanels`, `MaintenanceGate`, `ConfirmDeleteDialog`'s wording, `ActionsMenu`) stay here, built from design-system parts.
+- **Semantic utilities only** (`bg-surface`, `text-on-surface-variant`, `border-outline`, `text-negative-text`). No raw hex, arbitrary or Tailwind palette colours, no `--sd-*`, no old shadcn names (`bg-background`, `text-muted-foreground`, `border-border`), no `dark:`. Enforced by `src/test/designSystemBoundary.test.ts`.
+- **Colour only for status.** Neutral for everything else (including not due, cooldown, disabled); notice = due operation or truncated count; negative = error or failed run; positive = succeeded run only. Use `StatusBadge`; bare status text uses `negative-text`, `positive-text`, `notice-text`.
+- **Identifiers in `font-mono`** (procedure names, snapshot ids, file paths, `execution_ref`, property keys / values, schema types); `tabular-nums` on number columns; sentence case, no all-caps labels.
+- **Columns come from `createDataTableColumnHelper`** and render through `DataTable`; `@tanstack/react-table` is imported here for types only.
+- **Phones count.** Every page works at phone width: no horizontal page scroll, tables scroll inside their container.
 
 ## Catalog pages
 

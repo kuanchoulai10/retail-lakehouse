@@ -51,3 +51,10 @@ Open issues and deferred work. Not loaded automatically; read the entries for th
 - Table delete never purges (`purgeRequested=false`): the files stay in object storage. Add an explicit "delete the data too" option (purge) behind a stronger confirmation than the typed name.
 - Catalog context ids (`CatalogId`, `NamespaceId`, `TableId`, `ViewId`, `GenericTableId`) keep one `\x1f`-joined `value` and split it back, which is why a `\x1f` in a catalog name once routed child operations to another catalog. Reconsider keeping the catalog, namespace parts and name as separate fields; the `\x1f` check on namespace parts stays, since Iceberg REST joins them with it.
 - The catalog API names the external connection type `REST` (Ruling R6) because the infrastructure-terms architecture test bans `ICEBERG_REST` in the application layer; use `ICEBERG_REST` in the API to match Polaris.
+- Keyboard shortcuts, a shortcut registry and a command palette are the next design-system phase; the foundations (full keyboard operation, keyboard tests) are in place.
+- Visual regression testing of the Storybook stories, once the components are stable.
+- A `konjo-dark` theme if dark mode returns; themes already switch by `data-panda-theme`.
+- StoragePanel's "Only in old snapshots" bar uses `bg-chart-5` (`outlineDim`) on `surface-container-dim`, which may fall below 3:1 non-text contrast.
+- Add a design-system `ChartTooltip` to replace FreshnessPanel's hand-styled tooltip.
+- `useReturnFocus` keeps the last pointer target forever, so a later programmatic open could return focus to a stale element.
+- The Tabs underline may clip.
