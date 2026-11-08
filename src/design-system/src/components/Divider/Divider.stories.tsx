@@ -32,7 +32,7 @@ export const Horizontal: Story = {
     const root = canvasElement.querySelector("[data-orientation='horizontal']");
     await expect(root).not.toBeNull();
     await expect((root as HTMLElement).getBoundingClientRect().height).toBe(1);
-    expectNoHorizontalPageScroll(canvasElement);
+    await expectNoHorizontalPageScroll(canvasElement);
   },
 };
 
@@ -58,5 +58,7 @@ export const Phone: Story = {
       <Divider {...args} />
     </div>
   ),
-  play: async ({ canvasElement }) => expectNoHorizontalPageScroll(canvasElement),
+  play: async ({ canvasElement }) => {
+    await expectNoHorizontalPageScroll(canvasElement);
+  },
 };

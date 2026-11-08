@@ -52,5 +52,7 @@ export const OnFocus: Story = {
 
 export const Phone: Story = {
   globals: { viewport: { value: "phone", isRotated: false } },
-  play: async ({ canvasElement }) => expectNoHorizontalPageScroll(canvasElement),
+  play: async ({ canvasElement }) => {
+    await expectNoHorizontalPageScroll(canvasElement);
+  },
 };

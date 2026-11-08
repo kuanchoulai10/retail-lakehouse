@@ -74,6 +74,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <Comp
         ref={ref}
+        type={asChild ? undefined : "button"}
         className={cn(buttonStyle({ styleType, size }), className)}
         aria-busy={isLoading || undefined}
         onClick={handleClick}

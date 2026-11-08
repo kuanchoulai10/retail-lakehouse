@@ -34,5 +34,7 @@ export const Block: Story = { args: { className: "h-24 w-full" } };
 export const Phone: Story = {
   globals: { viewport: { value: "phone", isRotated: false } },
   args: { className: "h-24 w-full" },
-  play: async ({ canvasElement }) => expectNoHorizontalPageScroll(canvasElement),
+  play: async ({ canvasElement }) => {
+    await expectNoHorizontalPageScroll(canvasElement);
+  },
 };

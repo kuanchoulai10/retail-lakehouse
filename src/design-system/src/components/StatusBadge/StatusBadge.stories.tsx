@@ -44,5 +44,7 @@ export const Phone: Story = {
       <StatusBadge status="neutral">Pending</StatusBadge>
     </div>
   ),
-  play: async ({ canvasElement }) => expectNoHorizontalPageScroll(canvasElement),
+  play: async ({ canvasElement }) => {
+    await expectNoHorizontalPageScroll(canvasElement);
+  },
 };

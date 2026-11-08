@@ -84,6 +84,23 @@ export const AsChild: Story = {
   },
 };
 
+export const InsideForm: Story = {
+  render: (args) => (
+    <form onSubmit={(event) => event.preventDefault()}>
+      <Button {...args}>Run compaction</Button>
+    </form>
+  ),
+  play: async ({ canvasElement }) => {
+    const form = canvasElement.querySelector("form") as HTMLFormElement;
+    const onSubmit = fn();
+    form.addEventListener("submit", onSubmit);
+    const button = within(canvasElement).getByRole("button", { name: "Run compaction" });
+    await expect(button).toHaveAttribute("type", "button");
+    await userEvent.click(button);
+    await expect(onSubmit).not.toHaveBeenCalled();
+  },
+};
+
 export const Touch: Story = {
   globals: { viewport: { value: "phone", isRotated: false } },
   render: (args) => (
@@ -99,7 +116,7 @@ export const Touch: Story = {
     for (const name of ["Medium", "Small"]) {
       await expect(canvas.getByRole("button", { name }).getBoundingClientRect().height).toBe(44);
     }
-    expectNoHorizontalPageScroll(canvasElement);
+    await expectNoHorizontalPageScroll(canvasElement);
   },
 };
 
@@ -117,6 +134,6 @@ export const Desktop: Story = {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole("button", { name: "Medium" }).getBoundingClientRect().height).toBe(36);
     await expect(canvas.getByRole("button", { name: "Small" }).getBoundingClientRect().height).toBe(32);
-    expectNoHorizontalPageScroll(canvasElement);
+    await expectNoHorizontalPageScroll(canvasElement);
   },
 };

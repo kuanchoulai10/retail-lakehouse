@@ -32,5 +32,7 @@ export const Label: Story = { args: { children: "Iceberg v2" } };
 
 export const Phone: Story = {
   globals: { viewport: { value: "phone", isRotated: false } },
-  play: async ({ canvasElement }) => expectNoHorizontalPageScroll(canvasElement),
+  play: async ({ canvasElement }) => {
+    await expectNoHorizontalPageScroll(canvasElement);
+  },
 };

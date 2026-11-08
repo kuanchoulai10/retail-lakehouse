@@ -97,7 +97,7 @@ export const Colours: Story = {
       );
     }
     await expect(canvas.getAllByRole("figure")).toHaveLength(SEMANTIC_TOKENS.length);
-    expectNoHorizontalPageScroll(canvasElement);
+    await expectNoHorizontalPageScroll(canvasElement);
   },
 };
 
