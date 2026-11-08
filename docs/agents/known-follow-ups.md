@@ -64,3 +64,4 @@ Open issues and deferred work. Not loaded automatically; read the entries for th
 - Document that composite components (`AppLayout`, `TitleBar`, `Panel`, dialogs) take no `ref` or `className`.
 - `SemanticToken` is spelled twice in `semanticTokens.ts` (the union and `SEMANTIC_TOKENS`); derive the union from the array.
 - `resolveThemeTokens` reads the token CSS with flat parsing and would misread nested blocks (for example a `@media` rule inside a theme selector).
+- `AlertDialog` allows no footer, and with no button nothing takes focus on open; make `footer` required or focus the content.
