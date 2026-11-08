@@ -1,59 +1,18 @@
 @layer theme, base, components, utilities;
 
 @import "@retail-lakehouse/design-system/styles.css";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
 
 @source "../";
 
-/*
- * Temporary aliases (removed in Task 12): pages not yet migrated still use the old shadcn colour
- * names. Each maps to the nearest design-system token, so they render in the active theme.
- * Nothing sets a `.dark` class any more, so leftover `dark:` utilities in `components/ui/` stay inert
- * instead of following the operating system's dark preference.
- */
-@custom-variant dark (&:is(.dark *));
-
-@theme inline {
-  --font-heading: var(--font-sans);
-  --color-background: var(--ds-surface);
-  --color-foreground: var(--ds-on-surface);
-  --color-card: var(--ds-surface-container);
-  --color-card-foreground: var(--ds-on-surface);
-  --color-popover: var(--ds-surface);
-  --color-popover-foreground: var(--ds-on-surface);
-  --color-primary-foreground: var(--ds-on-primary);
-  --color-secondary: var(--ds-surface-container-dim);
-  --color-secondary-foreground: var(--ds-on-surface);
-  --color-muted: var(--ds-surface-container-dim);
-  --color-muted-foreground: var(--ds-on-surface-variant);
-  --color-accent: var(--ds-surface-container-dim);
-  --color-accent-foreground: var(--ds-on-surface);
-  --color-destructive: var(--ds-negative-text);
-  --color-warning: var(--ds-notice-text);
-  --color-success: var(--ds-positive-text);
-  --color-border: var(--ds-outline);
-  --color-input: var(--ds-outline-dim);
-  --color-ring: var(--ds-focus-ring);
-  --color-sidebar: var(--ds-surface);
-  --color-sidebar-foreground: var(--ds-on-surface);
-  --color-sidebar-primary: var(--ds-primary);
-  --color-sidebar-primary-foreground: var(--ds-on-primary);
-  --color-sidebar-accent: var(--ds-primary-container);
-  --color-sidebar-accent-foreground: var(--ds-on-primary-container);
-  --color-sidebar-border: var(--ds-outline);
-  --color-sidebar-ring: var(--ds-focus-ring);
-}
-
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-outline outline-focus-ring;
   }
   html {
     @apply font-sans;
     color-scheme: light;
   }
   body {
-    @apply type-body-medium bg-background text-foreground antialiased;
+    @apply type-body-medium bg-surface text-on-surface antialiased;
   }
 }

@@ -8,20 +8,17 @@ The app is served under `/console/` and calls the API at `/console/api/v1/…`.
 
 ## UI
 
-Styling is Tailwind CSS v4 (CSS-first config in `src/styles/globals.css`) with shadcn/ui
-primitives in `src/components/ui/`; fonts are Geist and Geist Mono, bundled via fontsource.
-Visual design: `docs/superpowers/specs/2026-10-31-console-visual-redesign-design.md`.
+Pages are built from `@retail-lakehouse/design-system` (`src/design-system`): Serendie design
+tokens, Radix primitives and Tailwind CSS v4, with three selectable colour themes (KONJO,
+ASAGI, KURIKAWA). `src/styles/globals.css` imports the design system's stylesheet; fonts are
+Noto Sans and Noto Sans Mono. Decision: `docs/adr/0008-design-system-on-serendie-tokens.md`.
 
-- Build pages from `src/components/ui/` primitives; add a missing one with the shadcn CLI
-  (`npx --prefix src/data-platform/frontend shadcn add <component>`) rather than hand-rolling it.
-- Use token classes only (`bg-background`, `text-muted-foreground`, `border-border`, …): no raw
-  hex values or `[#…]` arbitrary colours in `src/components/` (outside `ui/`) or `src/pages/`.
-  `src/test/noRawColors.test.ts` fails on either.
-- Colour only for status: `warning` = due operation or truncated count, `destructive` = error or
-  failed run, `success` = succeeded run; everything else stays neutral.
-- Identifiers in Geist Mono (`font-mono`), `tabular-nums` on number columns, sentence case.
-- The theme (Light / Dark / System, default System) is stored in `localStorage` key
-  `console-theme`; an inline script in `index.html` sets the `dark` class before first paint.
+- Build pages from design-system components; a missing one is added to the design system, not
+  here. Rules: `CLAUDE.md` and `src/design-system/CLAUDE.md`.
+- Use semantic utilities only (`bg-surface`, `text-on-surface-variant`, `border-outline`, …):
+  no raw colours, `--sd-*`, `radix-ui` or `lucide-react` in `src/`.
+  `src/test/designSystemBoundary.test.ts` fails on any of them.
+- The theme is stored in `localStorage` and applied before first paint by the design system.
 
 ## Develop
 
@@ -51,7 +48,7 @@ npm --prefix src/data-platform/frontend run build
 ## Image
 
 ```bash
-docker build -t console:dev src/data-platform/frontend
+docker build -t console:dev -f src/data-platform/frontend/Dockerfile .
 ```
 
 The image serves the built files from nginx (`nginx:1.29-alpine`) as a non-root user on port

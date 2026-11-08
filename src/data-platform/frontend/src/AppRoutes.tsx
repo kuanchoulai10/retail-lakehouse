@@ -14,7 +14,7 @@ function NotFound() {
     <section className="flex flex-col gap-2">
       <h1 className="text-2xl font-semibold tracking-tight">Page not found</h1>
       <p>
-        <Link to="/" className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+        <Link to="/" className="text-on-surface-variant underline-offset-4 hover:text-on-surface hover:underline">
           Back to tables
         </Link>
       </p>
