@@ -25,6 +25,23 @@ if [ "$actual_sha" != "$KUBE_PROMETHEUS_SHA" ]; then
   exit 1
 fi
 
+# Single-node dev cluster: scrape the /metrics/slis endpoints every 30s
+# instead of 5s, and drop the high-cardinality apiserver and etcd histograms
+# that no upstream rule or dashboard reads. The SLI histogram stays because
+# the apiserver burn-rate rules use it.
+for service_monitor in Apiserver Kubelet; do
+  yq -i \
+    '(.spec.endpoints[] | select(.path == "/metrics/slis")).interval = "30s"' \
+    "kube-prometheus/manifests/kubernetesControlPlane-serviceMonitor${service_monitor}.yaml"
+done
+yq -i \
+  '(.spec.endpoints[] | select(.path == null)).metricRelabelings += [{
+    "action": "drop",
+    "regex": "(apiserver_request_duration_seconds|etcd_request_duration_seconds|apiserver_request_body_size_bytes|apiserver_response_sizes)_bucket",
+    "sourceLabels": ["__name__"]
+  }]' \
+  kube-prometheus/manifests/kubernetesControlPlane-serviceMonitorApiserver.yaml
+
 kubectl apply \
   --server-side \
   --force-conflicts \
