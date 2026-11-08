@@ -28,9 +28,11 @@ export default defineConfig({
         optimizeDeps: {
           include: [
             "@serendie/symbols",
+            "@tanstack/react-table",
             "class-variance-authority",
             "clsx",
             "radix-ui",
+            "recharts",
             "tailwind-merge",
           ],
         },

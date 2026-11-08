@@ -16,8 +16,10 @@
     "build-storybook": "storybook build"
   },
   "peerDependencies": {
+    "@tanstack/react-table": "9.3.1",
     "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "react-dom": "19.3.1",
+    "recharts": "3.8.0"
   },
   "dependencies": {
     "@fontsource-variable/noto-sans": "5.3.0",
@@ -36,6 +38,7 @@
     "@storybook/addon-vitest": "10.6.6",
     "@storybook/react-vite": "10.6.6",
     "@tailwindcss/vite": "4.3.3",
+    "@tanstack/react-table": "9.3.1",
     "@testing-library/dom": "10.4.2",
     "@testing-library/react": "16.3.3",
     "@types/node": "25.5.0",
@@ -51,6 +54,7 @@
     "playwright": "1.65.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
+    "recharts": "3.8.0",
     "storybook": "10.6.6",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.1",
