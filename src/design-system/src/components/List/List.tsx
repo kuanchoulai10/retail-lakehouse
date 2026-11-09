@@ -8,22 +8,39 @@ export const List = forwardRef<HTMLUListElement, ComponentProps<"ul">>(
 );
 List.displayName = "List";
 
-export type ListItemProps = Omit<ComponentProps<"li">, "title" | "onSelect"> & {
+export type ListItemProps = Omit<ComponentProps<"li">, "title" | "onSelect" | "aria-expanded" | "aria-controls"> & {
   title: ReactNode;
   description?: ReactNode;
   leadingIcon?: ReactNode;
   trailingItem?: ReactNode;
+  // Beside the row, outside its button, so it can be a link or another control of its own.
+  trailingAction?: ReactNode;
   isSelected?: boolean;
   onSelect?: () => void;
+  // Passed to the row's button, for a row that discloses more content.
+  "aria-expanded"?: boolean;
+  "aria-controls"?: string;
 };
 
 export const ListItem = forwardRef<HTMLLIElement, ListItemProps>(
   (
-    { title, description, leadingIcon, trailingItem, isSelected = false, onSelect, className, ...rest },
+    {
+      title,
+      description,
+      leadingIcon,
+      trailingItem,
+      trailingAction,
+      isSelected = false,
+      onSelect,
+      "aria-expanded": ariaExpanded,
+      "aria-controls": ariaControls,
+      className,
+      ...rest
+    },
     ref,
   ) => {
     const rowStyle = cn(
-      "flex min-h-row w-full items-center gap-3 px-3 py-1 text-left text-on-surface",
+      "flex min-h-row w-full min-w-0 items-center gap-3 px-3 py-1 text-left text-on-surface",
       isSelected && "bg-selected-surface",
     );
     const content = (
@@ -34,7 +51,7 @@ export const ListItem = forwardRef<HTMLLIElement, ListItemProps>(
           </span>
         )}
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className="type-label-large">{title}</span>
+          <span className="type-label-large break-words">{title}</span>
           {description && (
             <span className={cn("type-body-small", isSelected ? "text-on-surface" : "text-on-surface-variant")}>
               {description}
@@ -44,23 +61,27 @@ export const ListItem = forwardRef<HTMLLIElement, ListItemProps>(
         {trailingItem && <span className="shrink-0">{trailingItem}</span>}
       </>
     );
-    return (
-      <li ref={ref} className={className} {...rest}>
-        {onSelect ? (
-          <button
-            type="button"
-            onClick={onSelect}
-            aria-current={isSelected ? "true" : undefined}
-            className={cn(
-              rowStyle,
-              "cursor-pointer hover:bg-hovered-variant focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring",
-            )}
-          >
-            {content}
-          </button>
-        ) : (
-          <div className={rowStyle}>{content}</div>
+    const row = onSelect ? (
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-current={isSelected ? "true" : undefined}
+        aria-expanded={ariaExpanded}
+        aria-controls={ariaControls}
+        className={cn(
+          rowStyle,
+          "cursor-pointer hover:bg-hovered-variant focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring",
         )}
+      >
+        {content}
+      </button>
+    ) : (
+      <div className={rowStyle}>{content}</div>
+    );
+    return (
+      <li ref={ref} className={cn(trailingAction !== undefined && "flex items-center", className)} {...rest}>
+        {row}
+        {trailingAction !== undefined && <span className="type-body-small shrink-0 px-3">{trailingAction}</span>}
       </li>
     );
   },
