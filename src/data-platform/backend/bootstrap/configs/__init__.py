@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from bootstrap.configs.api_settings import ApiSettings
 from bootstrap.configs.app_settings import AppSettings
 from bootstrap.configs.catalog_settings import CatalogSettings
 from bootstrap.configs.component import Component
@@ -14,6 +15,7 @@ from bootstrap.configs.sqlite_settings import SqliteSettings
 from bootstrap.configs.temporal_settings import TemporalSettings
 
 __all__ = [
+    "ApiSettings",
     "AppSettings",
     "CatalogSettings",
     "Component",

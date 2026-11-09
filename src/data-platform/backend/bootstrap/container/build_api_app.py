@@ -40,4 +40,5 @@ def build_api_app(
     return create_api_app(
         lambda app: register_routes(app, build_web_use_cases(use_cases)),
         lambda app: register_catalog_routes(app, build_catalog_web_use_cases(polaris)),
+        root_path=settings.api.root_path,
     )

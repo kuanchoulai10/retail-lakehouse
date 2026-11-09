@@ -5,6 +5,7 @@ from __future__ import annotations
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from bootstrap.configs.api_settings import ApiSettings
 from bootstrap.configs.catalog_settings import CatalogSettings
 from bootstrap.configs.component import Component
 from bootstrap.configs.database_backend import DatabaseBackend
@@ -36,6 +37,7 @@ class AppSettings(BaseSettings):
     catalog: CatalogSettings = Field(default_factory=CatalogSettings)
     kafka: KafkaSettings = Field(default_factory=KafkaSettings)
     spark: SparkSettings = Field(default_factory=SparkSettings)
+    api: ApiSettings = Field(default_factory=ApiSettings)
     callback_base_url: str = "http://table-maintenance-api.lakehouse-control-plane.svc.cluster.local:8000"
     admission_limit: int = 2
     discovery_interval_seconds: int = 600

@@ -32,3 +32,34 @@ def test_create_api_app_serves_healthz_and_applies_registrations():
     assert health.json() == {"status": "ok"}
     assert client.get("/one").json() == {"route": "one"}
     assert client.get("/two").json() == {"route": "two"}
+
+
+def test_requests_without_the_root_path_prefix_still_route():
+    """With a root path set, health and registered routes that arrive without the prefix still succeed."""
+    client = TestClient(create_api_app(_registration("/v1/one", "one"), root_path="/api"))
+
+    assert client.get("/healthz").status_code == 200
+    assert client.get("/v1/one").json() == {"route": "one"}
+
+
+def test_openapi_servers_point_at_the_root_path():
+    """The OpenAPI document names the root path as its server."""
+    client = TestClient(create_api_app(root_path="/api"))
+
+    assert client.get("/openapi.json").json()["servers"] == [{"url": "/api"}]
+
+
+def test_docs_load_the_openapi_document_under_the_root_path():
+    """The Swagger UI page fetches the OpenAPI document under the root path."""
+    response = TestClient(create_api_app(root_path="/api")).get("/docs")
+
+    assert response.status_code == 200
+    assert "'/api/openapi.json'" in response.text
+
+
+def test_no_root_path_keeps_the_default_docs():
+    """Without a root path the OpenAPI document lists no servers and the docs load it from the root."""
+    client = TestClient(create_api_app())
+
+    assert "servers" not in client.get("/openapi.json").json()
+    assert "'/openapi.json'" in client.get("/docs").text
