@@ -6,7 +6,13 @@ const config: StorybookConfig = {
   framework: "@storybook/react-vite",
   // mockServiceWorker.js, from `msw init`: page stories answer the API through MSW.
   staticDirs: ["./public"],
-  viteFinal: (config) => ({ ...config, base: "/" }),
+  // Reachable from the owner's other devices through `tailscale serve` (MagicDNS names).
+  core: { allowedHosts: [".ts.net"] },
+  viteFinal: (config) => ({
+    ...config,
+    base: "/",
+    server: { ...config.server, allowedHosts: [".ts.net"] },
+  }),
 };
 
 export default config;
