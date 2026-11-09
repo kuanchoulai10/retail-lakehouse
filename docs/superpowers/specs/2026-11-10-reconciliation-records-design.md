@@ -44,13 +44,13 @@ Deferred to no spec yet: maintenance windows, budget caps, approval, adaptive ev
 
 ## Vocabulary
 
-- **Reconciliation**: one pass in which the reconciliation workflow looks at a table and decides. The UI says "Reconciliations", "Reconcile now" and "Reconciled by schedule at 10:42". The domain aggregate is `Reconciliation`.
+- **Reconciliation**: one pass in which the reconciliation workflow looks at a table and decides. The UI says "Reconciliations", "Reconcile now" and "Reconciled by schedule at 10:42". The domain aggregate is `TableReconciliation`, named like `TableMaintenanceRun`.
 - **Wake reason**: what woke the workflow. One reconciliation can have several, because signals that arrive while a run is in flight, or before the loop gets to plan, are coalesced.
 - **Operation outcome**: what the reconciliation concluded for one operation.
 
 ## The record
 
-A `Reconciliation` aggregate in the table-maintenance context, stored in its own SQL table. One record per call of the plan activity that finds the table's maintenance row. A missing row (reported today as `dropped`) stores nothing, since the table has left maintenance and its records go with it. A plan activity that fails before deciding stores nothing; the workflow already logs that.
+A `TableReconciliation` aggregate in the table-maintenance context, stored in its own SQL table. One record per call of the plan activity that finds the table's maintenance row. A missing row (reported today as `dropped`) stores nothing, since the table has left maintenance and its records go with it. A plan activity that fails before deciding stores nothing; the workflow already logs that.
 
 Fields:
 
@@ -72,6 +72,7 @@ Each operation entry holds:
   - `started`;
   - `would_start` (dry run);
   - `not_needed`;
+  - `start_failed` (due, but the run could not be started);
   - `cooling_down`, with `next_eligible_at`;
   - `off` (disabled in settings);
   - `not_checked` (a manual run that did not name it);
@@ -117,12 +118,11 @@ A `stop` does not create a record, because it ends the loop without planning. A 
 ### Linking the record and the run
 
 - The workflow generates the reconciliation id and a prospective run id (both `workflow.uuid4()`) before calling the plan activity and passes both in. The activity stores the run id on the record only when the outcome starts a run; otherwise the id is never used. The plan result returns the reconciliation id.
-- The run carries `reconciliation_id`, so the Maintenance tab can link back.
-- **A record must never point at a run that does not exist.** If starting the child workflow fails after the record was stored, the record must not keep claiming a started run. Correcting it afterwards, or storing it only after the start, are both acceptable; the builder picks.
+- **A record must never point at a run that does not exist.** If starting the child workflow fails after the record was stored, the record must not keep claiming a started run. The record is therefore stored after the start was attempted, by its own activity; a failed start records the due operations as `start_failed`.
 
 ### Retention
 
-Records older than 30 days are deleted. How and where the deletion runs is the builder's call. Records go when their table is dropped from maintenance, the same way runs do today. Runs are kept at least as long as records (runs have no retention today); if the Maintenance tab is opened at a run it cannot find, it says so ("This run is no longer available") above the run list.
+Records older than 30 days are deleted. How and where the deletion runs is the builder's call. Like runs, records are not deleted when a table leaves maintenance; the 30-day retention removes them. Runs are kept at least as long as records (runs have no retention today); if the Maintenance tab is opened at a run it cannot find, it says so ("This run is no longer available") above the run list.
 
 ## Dry run
 
@@ -144,7 +144,6 @@ A new button beside "Run now". It sends a new `reconcile_now` signal through the
 
 - `GET /v1/tables/{table_uuid}/reconciliations`: newest first, cursor pagination (`before`, `limit`, default 50). Each item is the full record; detail is small.
 - `POST /v1/tables/{table_uuid}/reconcile`: Reconcile now.
-- Runs gain `reconciliation_id`.
 - `MaintenanceSettings` DTOs gain `dry_run`.
 - The OpenAPI document and the Orval client are regenerated.
 
