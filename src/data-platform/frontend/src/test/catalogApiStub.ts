@@ -1,6 +1,7 @@
-import { vi } from "vitest";
+import { http } from "msw";
 import type { CatalogApiResponse, CatalogTableApiResponse } from "../api/catalogTypes";
 import { jsonResponse } from "./fixtures";
+import { server } from "./mswServer";
 
 export type StubHandler = (body: unknown) => Response;
 
@@ -16,22 +17,24 @@ function prefixHandler(routes: Record<string, StubHandler>, request: string): St
   return key === undefined ? undefined : routes[key];
 }
 
-// Stubs fetch with handlers keyed "METHOD /v1/path?query" (the /console/api prefix is dropped).
-// An unstubbed request answers 500, so a test sees it instead of hanging.
+// Answers API requests with handlers keyed "METHOD /v1/path?query" (the /console/api prefix is dropped),
+// through the MSW server, so the app's real fetch runs. An unstubbed request answers 500, so a test sees it
+// instead of hanging.
 export function stubCatalogApi(routes: Record<string, StubHandler>): StubbedCall[] {
   const calls: StubbedCall[] = [];
-  vi.stubGlobal(
-    "fetch",
-    vi.fn((url: string, init?: RequestInit) => {
-      const method = init?.method ?? "GET";
-      const path = url.replace(/^\/console\/api/, "");
-      const body = typeof init?.body === "string" ? (JSON.parse(init.body) as unknown) : undefined;
-      calls.push({ method, path, body });
-      const handler = routes[`${method} ${path}`] ?? prefixHandler(routes, `${method} ${path}`);
+  server.use(
+    http.all("/console/api/*", async ({ request }) => {
+      const url = new URL(request.url);
+      const path = `${url.pathname.replace(/^\/console\/api/, "")}${url.search}`;
+      const text = await request.text();
+      const body = text === "" ? undefined : (JSON.parse(text) as unknown);
+      calls.push({ method: request.method, path, body });
+      const key = `${request.method} ${path}`;
+      const handler = routes[key] ?? prefixHandler(routes, key);
       if (handler === undefined) {
-        return Promise.resolve(jsonResponse({ detail: `no stub for ${method} ${path}` }, 500));
+        return jsonResponse({ detail: `no stub for ${key}` }, 500);
       }
-      return Promise.resolve(handler(body));
+      return handler(body);
     }),
   );
   return calls;

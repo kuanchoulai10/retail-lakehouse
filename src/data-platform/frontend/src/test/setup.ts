@@ -1,8 +1,12 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, configure } from "@testing-library/react";
-import { afterEach, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, vi } from "vitest";
+import { server } from "./mswServer";
 
 configure({ asyncUtilTimeout: 5000 });
+
+beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
+afterAll(() => server.close());
 
 class ResizeObserverShim {
   observe(): void {}
@@ -47,6 +51,7 @@ if (!Element.prototype.scrollIntoView) {
 
 afterEach(() => {
   cleanup();
+  server.resetHandlers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
