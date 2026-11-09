@@ -146,7 +146,7 @@ def trigger_table_maintenance(
 
 
 @router.post("/{table_uuid}/reconcile", status_code=status.HTTP_202_ACCEPTED)
-def reconcile_table(table_uuid: str, use_cases: UseCases) -> TriggerTableReconciliationApiResponse:
+def trigger_table_reconciliation(table_uuid: str, use_cases: UseCases) -> TriggerTableReconciliationApiResponse:
     """Reconcile a table now by the normal rules, after any run in flight."""
     output = use_cases.trigger_table_reconciliation.execute(TriggerTableReconciliationUseCaseInput(uuid=table_uuid))
     return TriggerTableReconciliationApiResponse.model_validate(output)

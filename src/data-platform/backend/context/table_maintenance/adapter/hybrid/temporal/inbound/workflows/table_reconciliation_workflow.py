@@ -72,8 +72,8 @@ class TableReconciliationWorkflow:
     stale decision (R31): any other signal after ``stop`` cancels the stop, and a
     wake that arrives while a plan says dropped or excluded makes it plan again.
 
-    Every wake also counts its reason (the timer counts ``schedule``; ``stop``
-    counts nothing). The reasons accumulate, through runs in flight and
+    Every wake also counts its reason (a due plan timer counts ``schedule``;
+    ``stop`` counts nothing). The reasons accumulate, through runs in flight and
     continue-as-new, until the next plan takes them; reasons that arrive while
     a plan is running belong to the plan they wake next. After each plan that
     found the table, ``record_table_reconciliation`` stores the reconciliation
@@ -81,6 +81,8 @@ class TableReconciliationWorkflow:
     start failed). The run id is generated with the reconciliation id before
     planning, so the record and the run agree. A failed plan records nothing
     and drops its reasons; a failed record is logged and the loop goes on. A
+    plan with no reason (after a stuck run is given up before the plan timer
+    is due, and nothing else woke the loop) is not recorded. A
     plan with operations that is not started because the workflow is stopping
     is not recorded either, since its due operations neither started nor
     failed to start.
@@ -235,12 +237,11 @@ class TableReconciliationWorkflow:
         wake_at = self._in_flight_deadline() or self._next_plan_at
         timeout = None if wake_at is None else wake_at - workflow.now()
         if timeout is not None and timeout <= timedelta(0):
-            self._count(_REASON_SCHEDULE)
             return
         try:
             await workflow.wait_condition(lambda: self._woken, timeout=timeout)
         except TimeoutError:
-            self._count(_REASON_SCHEDULE)
+            pass
 
     def _in_flight_deadline(self) -> datetime | None:
         if self._in_flight_run_id is None or self._in_flight_started_at is None:
@@ -304,6 +305,12 @@ class TableReconciliationWorkflow:
         reconciliation_id = str(workflow.uuid4())
         run_id = str(workflow.uuid4())
         now = workflow.now()
+        # ``schedule`` is counted here, once per plan, when the plan timer is due. While a run is
+        # in flight the loop's timer is that run's deadline, so a give-up is not a schedule wake;
+        # a tick that came due during the run is counted when the run ends, which is why the
+        # plan after a run can carry {previous_run_finished: 1, schedule: 1} without counting twice.
+        if self._next_plan_at is not None and now >= self._next_plan_at:
+            self._count(_REASON_SCHEDULE)
         reasons, self._wake_reasons = self._wake_reasons, {}
         try:
             plan = await workflow.execute_activity(
@@ -351,6 +358,9 @@ class TableReconciliationWorkflow:
     ) -> None:
         """Store one reconciliation of a table the plan found; a failure is logged and the loop goes on."""
         if not plan["table_found"]:
+            return
+        if not record["wake_reasons"]:
+            workflow.logger.info("not recording reconciliation %s: nothing woke it", record["reconciliation_id"])
             return
         try:
             await workflow.execute_activity(

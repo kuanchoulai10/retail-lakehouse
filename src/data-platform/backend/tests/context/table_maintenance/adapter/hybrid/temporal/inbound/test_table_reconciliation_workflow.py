@@ -528,7 +528,9 @@ def test_in_flight_run_is_given_up_only_after_the_child_worst_case():
         assert await h.child_status(first) == WorkflowExecutionStatus.RUNNING
         await h.env.sleep(timedelta(minutes=2))
         await h.plan_count(2)
-        await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first))
+        await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first) and not s["planning"])
+        # The cancelled child reports back, so the next plan wakes on its finish, not on schedule.
+        assert [r["wake_reasons"] for r in h.recorder.records] == [{"resumed": 1}, {"previous_run_finished": 1}]
 
     _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE, interval=10**6))
 
@@ -668,6 +670,8 @@ def test_carried_in_flight_run_without_workflow_id_is_given_up_without_grace():
         await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=1))
         await h.plan_count(1)
         await h.idle_after(state)
+        # The plan timer (one hour) came due while the run was stuck, so the plan after the give-up is a schedule wake.
+        assert [r["wake_reasons"] for r in (await h.records(1))] == [{"schedule": 1}]
 
     _run(scenario, script=lambda _: _planned())
 
@@ -859,3 +863,75 @@ def test_failed_record_does_not_stop_the_loop():
         assert record["wake_reasons"] == {"previous_run_finished": 1}
 
     _run(scenario, script=lambda _: answers.pop(0))
+
+
+def test_reason_arriving_during_a_plan_goes_on_the_next_record():
+    """A wake that arrives while a plan runs is recorded by the plan it causes, not the running one."""
+
+    async def scenario(h: Harness) -> None:
+        h.plans.gate = asyncio.Event()
+        await h.start()
+        await h.plan_count(1)
+        await h.signal(TableReconciliationSignal.TABLE_UPDATED)
+        await eventually(h.state, lambda s: s["signals_handled"] >= h.sent)
+        h.plans.gate.set()
+        first, second = (await h.records(2))[:2]
+        assert first["wake_reasons"] == {"resumed": 1}
+        assert second["wake_reasons"] == {"catalog_commit": 1}
+
+    _run(scenario, script=lambda _: _planned())
+
+
+def test_given_up_run_before_the_plan_timer_is_not_recorded_as_schedule():
+    """Giving up a stuck run before the plan timer is due records only the wakes that arrived, not schedule."""
+    answers = [_planned(COMPACTION, interval=10**6), _planned(interval=10**6)]
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = await h.in_flight()
+        await h.signal(TableReconciliationSignal.TABLE_UPDATED)
+        await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=1))
+        await h.plan_count(2)
+        await eventually(h.state, lambda s: s["in_flight_run_id"] != first and not s["planning"])
+        records = await h.records(2)
+        assert [r["wake_reasons"] for r in records] == [
+            {"resumed": 1},
+            {"catalog_commit": 1, "previous_run_finished": 1},
+        ]
+
+    _run(scenario, script=lambda _: answers.pop(0) if answers else _planned(interval=10**6))
+
+
+def test_plan_timer_due_during_a_run_is_counted_once_it_finishes():
+    """A plan tick that came due while a run was in flight is counted once, with the run's finish."""
+    answers = [_planned(COMPACTION, interval=600), _planned(interval=600)]
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        run_id = await h.in_flight()
+        await h.env.sleep(timedelta(seconds=1900))
+        await h.settle()
+        await h.complete_child(run_id)
+        second = (await h.records(2))[1]
+        assert second["wake_reasons"] == {"previous_run_finished": 1, "schedule": 1}
+
+    _run(scenario, script=lambda _: answers.pop(0) if answers else _planned(interval=600))
+
+
+def test_plan_after_a_silent_give_up_before_the_plan_timer_is_not_recorded():
+    """A stuck run given up before the plan timer, with nothing else waking the loop, records nothing."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start(
+            start_signal=None,
+            in_flight_run_id="ghost",
+            in_flight_operation_count=1,
+            reconcile_interval_seconds=10**6,
+        )
+        state = await eventually(h.state, lambda s: s["in_flight_started_at"])
+        await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=1))
+        await h.plan_count(1)
+        await h.idle_after(state)
+        assert h.recorder.records == []
+
+    _run(scenario, script=lambda _: _planned(interval=10**6))

@@ -5362,7 +5362,7 @@
     "/v1/tables/{table_uuid}/reconcile": {
       "post": {
         "description": "Reconcile a table now by the normal rules, after any run in flight.",
-        "operationId": "reconcile_table",
+        "operationId": "trigger_table_reconciliation",
         "parameters": [
           {
             "in": "path",
@@ -5396,7 +5396,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Reconcile Table",
+        "summary": "Trigger Table Reconciliation",
         "tags": [
           "tables"
         ]

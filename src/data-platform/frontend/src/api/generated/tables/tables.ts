@@ -1412,7 +1412,7 @@ export const usePauseTable = <TError = HTTPValidationError,
       > => {
       return useMutation(getPauseTableMutationOptions(options), queryClient);
     }
-    export const getReconcileTableUrl = (tableUuid: string,) => {
+    export const getTriggerTableReconciliationUrl = (tableUuid: string,) => {
 
 
 
@@ -1422,11 +1422,11 @@ export const usePauseTable = <TError = HTTPValidationError,
 
 /**
  * Reconcile a table now by the normal rules, after any run in flight.
- * @summary Reconcile Table
+ * @summary Trigger Table Reconciliation
  */
-export const reconcileTable = async (tableUuid: string, options?: Parameters<typeof apiFetch>[1]): Promise<TriggerTableReconciliationApiResponse> => {
+export const triggerTableReconciliation = async (tableUuid: string, options?: Parameters<typeof apiFetch>[1]): Promise<TriggerTableReconciliationApiResponse> => {
 
-  return apiFetch<TriggerTableReconciliationApiResponse>(getReconcileTableUrl(tableUuid),
+  return apiFetch<TriggerTableReconciliationApiResponse>(getTriggerTableReconciliationUrl(tableUuid),
   {
     ...options,
     method: 'POST'
@@ -1439,13 +1439,13 @@ export const reconcileTable = async (tableUuid: string, options?: Parameters<typ
 
 
 
-export const getReconcileTableMutationKey = () => ['reconcileTable'] as const;
+export const getTriggerTableReconciliationMutationKey = () => ['triggerTableReconciliation'] as const;
 
-export const getReconcileTableMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileTable>>, TError,ReconcileTableMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof reconcileTable>>, TError,ReconcileTableMutationVariables, TContext> => {
+export const getTriggerTableReconciliationMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerTableReconciliation>>, TError,TriggerTableReconciliationMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof triggerTableReconciliation>>, TError,TriggerTableReconciliationMutationVariables, TContext> => {
 
-const mutationKey = getReconcileTableMutationKey();
+const mutationKey = getTriggerTableReconciliationMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -1455,10 +1455,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reconcileTable>>, ReconcileTableMutationVariables> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof triggerTableReconciliation>>, TriggerTableReconciliationMutationVariables> = (props) => {
           const {tableUuid} = props ?? {};
 
-          return  reconcileTable(tableUuid,requestOptions)
+          return  triggerTableReconciliation(tableUuid,requestOptions)
         }
 
 
@@ -1468,23 +1468,23 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type ReconcileTableMutationResult = NonNullable<Awaited<ReturnType<typeof reconcileTable>>>
+    export type TriggerTableReconciliationMutationResult = NonNullable<Awaited<ReturnType<typeof triggerTableReconciliation>>>
 
-    export type ReconcileTableMutationError = HTTPValidationError
-    export type ReconcileTableMutationVariables = {tableUuid: string}
+    export type TriggerTableReconciliationMutationError = HTTPValidationError
+    export type TriggerTableReconciliationMutationVariables = {tableUuid: string}
 
     /**
- * @summary Reconcile Table
+ * @summary Trigger Table Reconciliation
  */
-export const useReconcileTable = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reconcileTable>>, TError,ReconcileTableMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+export const useTriggerTableReconciliation = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof triggerTableReconciliation>>, TError,TriggerTableReconciliationMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof reconcileTable>>,
+        Awaited<ReturnType<typeof triggerTableReconciliation>>,
         TError,
-        ReconcileTableMutationVariables,
+        TriggerTableReconciliationMutationVariables,
         TContext
       > => {
-      return useMutation(getReconcileTableMutationOptions(options), queryClient);
+      return useMutation(getTriggerTableReconciliationMutationOptions(options), queryClient);
     }
     export const getResetTableSelectionUrl = (tableUuid: string,) => {
 
