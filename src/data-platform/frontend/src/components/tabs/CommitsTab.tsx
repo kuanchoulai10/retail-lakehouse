@@ -1,17 +1,21 @@
 import {
   Banner,
+  DatePicker,
   IconButton,
   IconCheck,
   IconCopy,
   IconDots,
   IconGitCommit,
   List,
+  Select,
   Tooltip,
 } from "@retail-lakehouse/design-system";
+import { keepPreviousData } from "@tanstack/react-query";
 import { useEffect, useId, useState } from "react";
-import type { TableCommitApiResponse } from "@/api/generated/model";
+import { ListTableCommitsWriter, type TableCommitApiResponse } from "@/api/generated/model";
 import { useListTableCommits } from "@/api/generated/tables/tables";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
+import { useCommitFilters, type CommitFilters } from "@/components/tabs/useCommitFilters";
 import { errorMessage, formatCount, formatRelativeTime, formatTimestamp } from "@/format";
 import { writerLabel } from "@/writerLabel";
 
@@ -152,9 +156,9 @@ function CommitDaySection({ day }: { day: CommitDay }) {
     <section aria-labelledby={headingId} className="relative pb-6 pl-9 last:pb-0">
       <span aria-hidden="true" className="absolute top-6 bottom-0 left-3 border-l border-outline" />
       <IconGitCommit aria-hidden="true" className="absolute top-0 left-0 size-6 text-on-surface-variant" />
-      <h3 id={headingId} className="type-label-large leading-6 text-on-surface-variant">
+      <h2 id={headingId} className="type-label-large leading-6 text-on-surface-variant">
         {day.label}
-      </h3>
+      </h2>
       <List className="mt-2 divide-y divide-outline rounded-md border border-outline bg-surface">
         {day.commits.map((commit) => (
           <CommitRow key={commit.snapshot_id} commit={commit} />
@@ -164,8 +168,43 @@ function CommitDaySection({ day }: { day: CommitDay }) {
   );
 }
 
-export function CommitsTab({ tableUuid }: { tableUuid: string }) {
-  const commits = useListTableCommits(tableUuid);
+const ALL_WRITERS = "all";
+
+const WRITER_ITEMS = [
+  { value: ALL_WRITERS, label: "All writers" },
+  ...Object.values(ListTableCommitsWriter).map((writer) => ({ value: writer, label: writerLabel(writer) })),
+];
+
+// GitHub's commits page filters by author and by a date range; a table's history filters by the
+// writer that made the commit and by the days it was made on.
+function CommitFilterBar({ filters }: { filters: CommitFilters }) {
+  return (
+    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+      <DatePicker
+        label="Committed between"
+        hideLabel
+        selectionMode="range"
+        value={filters.range}
+        onValueChange={filters.setRange}
+        maxDate={new Date()}
+        className="sm:w-80"
+      />
+      <Select
+        label="Writer"
+        hideLabel
+        items={WRITER_ITEMS}
+        value={filters.writer ?? ALL_WRITERS}
+        onValueChange={(value) =>
+          filters.setWriter(Object.values(ListTableCommitsWriter).find((writer) => writer === value) ?? undefined)
+        }
+        className="sm:w-48"
+      />
+    </div>
+  );
+}
+
+function CommitHistory({ tableUuid, filters }: { tableUuid: string; filters: CommitFilters }) {
+  const commits = useListTableCommits(tableUuid, filters.params, { query: { placeholderData: keepPreviousData } });
 
   if (commits.isPending) return <PanelSkeleton label="Loading commits…" />;
   if (commits.isError) {
@@ -175,13 +214,25 @@ export function CommitsTab({ tableUuid }: { tableUuid: string }) {
   return (
     <>
       {days.length === 0 ? (
-        <p className="type-body-medium text-on-surface-variant">No commits.</p>
+        <p className="type-body-medium text-on-surface-variant">
+          {filters.isFiltered ? "No commits match these filters." : "No commits."}
+        </p>
       ) : (
         days.map((day) => <CommitDaySection key={day.label} day={day} />)
       )}
       {commits.data.truncated && (
         <p className="type-body-small mt-3 text-notice-text">Showing the newest commits only.</p>
       )}
+    </>
+  );
+}
+
+export function CommitsTab({ tableUuid }: { tableUuid: string }) {
+  const filters = useCommitFilters();
+  return (
+    <>
+      <CommitFilterBar filters={filters} />
+      <CommitHistory tableUuid={tableUuid} filters={filters} />
     </>
   );
 }

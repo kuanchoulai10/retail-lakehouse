@@ -53,7 +53,21 @@ export function lakehouseHandlers() {
     getGetTableMockHandler(MAINTAINED_ORDERS),
     getGetTableHealthMockHandler(HEALTH),
     getGetTableStorageMockHandler(STORAGE),
-    getListTableCommitsMockHandler(COMMITS),
+    getListTableCommitsMockHandler(({ request }) => {
+      const query = new URL(request.url).searchParams;
+      const since = query.get("since");
+      const before = query.get("before");
+      const writer = query.get("writer");
+      return {
+        ...COMMITS,
+        items: COMMITS.items.filter(
+          (commit) =>
+            (since === null || Date.parse(commit.committed_at) >= Date.parse(since)) &&
+            (before === null || Date.parse(commit.committed_at) < Date.parse(before)) &&
+            (writer === null || commit.writer === writer),
+        ),
+      };
+    }),
     getListTableMaintenanceRunsMockHandler(RUNS),
     getListTableMaintenancePresetsMockHandler(PRESETS),
     getListTableDiscoveryRulesMockHandler(RULES),

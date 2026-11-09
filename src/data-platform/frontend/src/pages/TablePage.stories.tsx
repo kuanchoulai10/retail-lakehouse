@@ -38,6 +38,25 @@ export const Schema: Story = {
 
 export const Commits: Story = { args: { route: `${ORDERS}/commits` } };
 
+export const CommitsBySpark: Story = {
+  args: { route: `${ORDERS}/commits?writer=spark` },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText("Delete: 42 rows removed")).toBeVisible();
+    await expect(canvas.queryByText("Append: 1,200 rows added in 4 files")).toBeNull();
+    await expect(canvas.getByRole("combobox", { name: "Writer" })).toHaveTextContent("Spark");
+  },
+};
+
+export const CommitsPhone: Story = {
+  args: { route: `${ORDERS}/commits` },
+  globals: PHONE,
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByText("Delete: 42 rows removed");
+    await expectNoHorizontalPageScroll(canvasElement);
+  },
+};
+
 export const Maintenance: Story = { args: { route: `${ORDERS}/maintenance` } };
 
 export const Settings: Story = { args: { route: `${ORDERS}/settings` } };

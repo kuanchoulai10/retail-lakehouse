@@ -1,7 +1,8 @@
 import { TooltipProvider } from "@retail-lakehouse/design-system";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter, useLocation } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { TableCommitApiResponse } from "../../api/generated/model";
 import { stubCatalogApi, type StubbedCall } from "../../test/catalogApiStub";
@@ -57,15 +58,29 @@ const ITEMS = [
   }),
 ];
 
-function renderTab() {
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location">{location.search}</output>;
+}
+
+function renderTab(search = "") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <TooltipProvider>
-        <CommitsTab tableUuid="uuid-orders" />
-      </TooltipProvider>
+      <MemoryRouter initialEntries={[`/tables/orders/commits${search}`]}>
+        <TooltipProvider>
+          <CommitsTab tableUuid="uuid-orders" />
+        </TooltipProvider>
+        <LocationProbe />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
+}
+
+function commitRequests(calls: StubbedCall[]): URLSearchParams[] {
+  return calls
+    .filter((call) => call.path.startsWith("/v1/tables/uuid-orders/commits"))
+    .map((call) => new URL(call.path, "http://x").searchParams);
 }
 
 function day(name: string): HTMLElement {
@@ -81,14 +96,14 @@ describe("CommitsTab", () => {
 
   beforeEach(() => {
     calls = stubCatalogApi({
-      "GET /v1/tables/uuid-orders/commits": () => jsonResponse({ items: ITEMS, truncated: false }),
+      "GET /v1/tables/uuid-orders/commits*": () => jsonResponse({ items: ITEMS, truncated: false }),
     });
   });
 
   it("groups commits by day, newest day and newest commit first", async () => {
     renderTab();
     await screen.findByRole("region", { name: "Commits on Oct 31, 2026" });
-    expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
+    expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual([
       "Commits on Oct 31, 2026",
       "Commits on Oct 30, 2026",
     ]);
@@ -149,7 +164,7 @@ describe("CommitsTab", () => {
 
   it("says so when the table has no commits", async () => {
     stubCatalogApi({
-      "GET /v1/tables/uuid-orders/commits": () => jsonResponse({ items: [], truncated: false }),
+      "GET /v1/tables/uuid-orders/commits*": () => jsonResponse({ items: [], truncated: false }),
     });
     renderTab();
     expect(await screen.findByText("No commits.")).toBeInTheDocument();
@@ -157,9 +172,55 @@ describe("CommitsTab", () => {
 
   it("notes when only the newest commits are shown", async () => {
     stubCatalogApi({
-      "GET /v1/tables/uuid-orders/commits": () => jsonResponse({ items: ITEMS, truncated: true }),
+      "GET /v1/tables/uuid-orders/commits*": () => jsonResponse({ items: ITEMS, truncated: true }),
     });
     renderTab();
     expect(await screen.findByText("Showing the newest commits only.")).toBeInTheDocument();
+  });
+
+  describe("filters", () => {
+    it("asks only for the chosen writer's commits and keeps the writer in the url", async () => {
+      const user = userEvent.setup();
+      renderTab();
+      await screen.findByRole("region", { name: "Commits on Oct 31, 2026" });
+
+      await user.click(screen.getByRole("combobox", { name: "Writer" }));
+      await user.click(await screen.findByRole("option", { name: "Spark" }));
+
+      await waitFor(() => expect(commitRequests(calls).at(-1)?.get("writer")).toBe("spark"));
+      expect(screen.getByTestId("location")).toHaveTextContent("?writer=spark");
+    });
+
+    it("reads the date range from the url and asks for the commits from the first day through the last", async () => {
+      renderTab("?since=2026-10-30&until=2026-10-31");
+      await screen.findByRole("region", { name: "Commits on Oct 31, 2026" });
+
+      const request = commitRequests(calls).at(-1);
+      expect(request?.get("since")).toBe(new Date(2026, 9, 30).toISOString());
+      expect(request?.get("before")).toBe(new Date(2026, 10, 1).toISOString());
+      expect(screen.getByRole("button", { name: "Committed between" })).toHaveAccessibleDescription(
+        "Oct 30, 2026 – Oct 31, 2026",
+      );
+    });
+
+    it("clears the date range from the request and the url", async () => {
+      const user = userEvent.setup();
+      renderTab("?since=2026-10-30&until=2026-10-31&writer=spark");
+      await screen.findByRole("region", { name: "Commits on Oct 31, 2026" });
+
+      await user.click(screen.getByRole("button", { name: "Clear dates" }));
+
+      await waitFor(() => expect(commitRequests(calls).at(-1)?.has("since")).toBe(false));
+      expect(commitRequests(calls).at(-1)?.has("before")).toBe(false);
+      expect(screen.getByTestId("location")).toHaveTextContent("?writer=spark");
+    });
+
+    it("says no commits match when a filter leaves none", async () => {
+      stubCatalogApi({
+        "GET /v1/tables/uuid-orders/commits*": () => jsonResponse({ items: [], truncated: false }),
+      });
+      renderTab("?writer=spark");
+      expect(await screen.findByText("No commits match these filters.")).toBeInTheDocument();
+    });
   });
 });
