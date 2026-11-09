@@ -11,7 +11,9 @@ import {
   IconChevronRight as TablerIconChevronRight,
   IconChevronUp as TablerIconChevronUp,
   IconCircleCheck as TablerIconCircleCheck,
+  IconCopy as TablerIconCopy,
   IconDots as TablerIconDots,
+  IconGitCommit as TablerIconGitCommit,
   IconInfoCircle as TablerIconInfoCircle,
   IconMenu2 as TablerIconMenu2,
   IconPalette as TablerIconPalette,
@@ -35,7 +37,9 @@ export const IconChevronDown = withDefaultStroke(TablerIconChevronDown);
 export const IconChevronRight = withDefaultStroke(TablerIconChevronRight);
 export const IconChevronUp = withDefaultStroke(TablerIconChevronUp);
 export const IconCircleCheck = withDefaultStroke(TablerIconCircleCheck);
+export const IconCopy = withDefaultStroke(TablerIconCopy);
 export const IconDots = withDefaultStroke(TablerIconDots);
+export const IconGitCommit = withDefaultStroke(TablerIconGitCommit);
 export const IconInfoCircle = withDefaultStroke(TablerIconInfoCircle);
 export const IconMenu2 = withDefaultStroke(TablerIconMenu2);
 export const IconPalette = withDefaultStroke(TablerIconPalette);
