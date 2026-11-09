@@ -20,6 +20,10 @@ Open issues and deferred work. Not loaded automatically; read the entries for th
 - Table maintenance uses the Polaris root principal; switch to a scoped principal.
 - The SparkApplications the backend submits (`spark_application_manifest.py`) carry no `app.kubernetes.io/*` labels; the label standard covers only `platform/` manifests and the wave-25 chart.
 - The running `table-maintenance-admission` workflow keeps the limit and lease it was started with; a changed `GLAC_ADMISSION_LIMIT` or lease applies only after it is restarted while idle.
+- Deploy note: a deploy that changes `TableReconciliationWorkflow` state (the reconciliation records change did) needs the running reconciliation workflows terminated first; discovery sync restarts them. Deploy only when no run is in flight.
+- The Maintenance tab loads only the latest 50 runs, so a run linked from a reconciliation older than that shows "This run is no longer available". Fetch one run by id, or page the runs.
+- Header banners can stack (several failed actions), and the success banner stays until the next click.
+- The reconciliations cursor is strict on `reconciled_at` alone, so two records with the same timestamp across a page boundary can lose one.
 - Catalog-wide sync re-ensures every live table's reconciliation workflow each run: one Temporal error aborts the rest of the sync (catch per table), and each wake costs a metadata scan (add start-without-signal).
 - `TableReconciliationWorkflow` give-up changes have no `workflow.patched` guard; a history holding an old-code give-up would hit nondeterminism on replay. The give-up budget ignores admission-queue wait time.
 - On-hold waves still reference pre-rename names (`minio-api.minio.svc`, `kafka-cdc`, `polaris`, `platform/20-minio`): `30-thanos`, `24-e2e-validation`, `charts/app-of-apps`. Fix when those are re-opened.

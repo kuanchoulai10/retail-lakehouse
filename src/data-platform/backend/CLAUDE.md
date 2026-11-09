@@ -16,7 +16,7 @@ Everything below, except `base/`, `bootstrap/` and `entrypoint.py`, lives inside
 
 ### Backend Structure
 
-Backend code is grouped by **bounded context** first. Inside a context, one **aggregate axis** runs through every layer: each layer directory is split into the same aggregate directories plus `shared` for what spans aggregates. For `table_maintenance` the aggregates are `table`, `table_discovery_rule`, `table_discovery_settings`, `table_maintenance_preset`, `table_maintenance_run`; for `catalog` they are `catalog`, `namespace`, `table`, `generic_table`, `view`.
+Backend code is grouped by **bounded context** first. Inside a context, one **aggregate axis** runs through every layer: each layer directory is split into the same aggregate directories plus `shared` for what spans aggregates. For `table_maintenance` the aggregates are `table`, `table_discovery_rule`, `table_discovery_settings`, `table_maintenance_preset`, `table_maintenance_run`, `table_reconciliation`; for `catalog` they are `catalog`, `namespace`, `table`, `generic_table`, `view`.
 
 ```
 backend/
