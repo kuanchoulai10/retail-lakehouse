@@ -19,6 +19,7 @@ S3_ENDPOINT="http://rustfs.object-storage.svc.cluster.local:9000"
 TEMPORAL_ADDRESS="temporal-frontend.temporal.svc.cluster.local:7233"
 DISCOVERY_TIMEOUT_SECONDS="${DISCOVERY_TIMEOUT_SECONDS:-900}"
 RUN_TIMEOUT_SECONDS="${RUN_TIMEOUT_SECONDS:-3600}"
+RECONCILE_TIMEOUT_SECONDS="${RECONCILE_TIMEOUT_SECONDS:-300}"
 EXPIRE_AGE_SECONDS=60
 TRINO_PID=""
 RT_BUCKET="tm-e2e-catalogs"
@@ -557,6 +558,33 @@ assert_reconcile_running() {
   progress "table-reconciliation:table-uuid=${uuid} is RUNNING"
 }
 
+assert_manual_run_recorded() {
+  local uuid="$1" run_id="$2" records
+  records="$(api GET "/v1/tables/${uuid}/reconciliations")"
+  jq -e --arg run "${run_id}" '[.[] | select((.wake_reasons.manual_run // 0) >= 1
+      and .run_id == $run
+      and any(.operations[]; .result == "started"))] | length >= 1' <<<"${records}" >/dev/null || {
+    echo "no reconciliation of ${uuid} records the manual run ${run_id}: $(jq -c '[.[]
+      | {wake_reasons, outcome, run_id}]' <<<"${records}")" >&2
+    return 1
+  }
+  progress "reconciliation of ${uuid} records the manual run ${run_id}"
+}
+
+wait_for_reconcile_now_record() {
+  local uuid="$1" deadline
+  deadline=$(( $(date +%s) + RECONCILE_TIMEOUT_SECONDS ))
+  while (( $(date +%s) < deadline )); do
+    if api GET "/v1/tables/${uuid}/reconciliations" \
+      | jq -e '[.[] | select((.wake_reasons.reconcile_now // 0) >= 1)] | length >= 1' >/dev/null; then
+      return 0
+    fi
+    sleep 5
+  done
+  echo "no reconcile_now reconciliation of ${uuid} within ${RECONCILE_TIMEOUT_SECONDS}s" >&2
+  return 1
+}
+
 assert_partition_filter() {
   local run_id="$1" execution_ref filter
   execution_ref="$(api GET "/v1/table-maintenance-runs/${run_id}" | jq -r '.execution_ref')"
@@ -688,6 +716,14 @@ report_runs "${ORDERS}" "${ORDERS_RUNS}"
 assert_runs_succeeded "${ORDERS}" "${ORDERS_RUNS}"
 jq -e '[.[] | select(.trigger == "manual") | .operations[].operation] | unique | length == 4' \
   <<<"${ORDERS_RUNS}" >/dev/null || { echo "manual run lacks an operation" >&2; exit 1; }
+
+ORDERS_MANUAL_RUN_ID="$(jq -r '[.[] | select(.trigger == "manual")] | .[0].run_id' <<<"${ORDERS_RUNS}")"
+assert_manual_run_recorded "${ORDERS_UUID}" "${ORDERS_MANUAL_RUN_ID}"
+
+progress "asking ${ORDERS} to reconcile now"
+api POST "/v1/tables/${ORDERS_UUID}/reconcile" >/dev/null
+wait_for_reconcile_now_record "${ORDERS_UUID}"
+progress "reconciliation of ${ORDERS_UUID} records the reconcile now request"
 
 progress "waiting for the ${REGIONS} scheduled compaction run"
 REGIONS_RUNS="$(wait_for_new_run "${REGIONS_UUID}" "${REGIONS_BEFORE_RUNS}" \
