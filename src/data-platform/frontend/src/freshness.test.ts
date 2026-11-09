@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { TableCommitApiResponse } from "./api/types";
+import type { TableCommitApiResponse } from "./api/generated/model";
 import { hourlyCommitBuckets, writerMix } from "./freshness";
 
 const NOW = new Date("2026-10-31T10:20:00Z");

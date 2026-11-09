@@ -3,7 +3,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getGetTableHealthQueryKey } from "../../api/generated/tables/tables";
-import type { TableApiResponse } from "../../api/types";
+import type { TableApiResponse } from "../../api/generated/model";
+import { stubCatalogApi, type StubbedCall } from "../../test/catalogApiStub";
 import { jsonResponse, tableFixture } from "../../test/fixtures";
 import { SettingsTab } from "./SettingsTab";
 
@@ -24,18 +25,12 @@ const SETTINGS = {
 const PRESET_SETTINGS = { rewrite_data_files: { enabled: true, min_reducible_files: 2 } };
 
 function mockApi(table: TableApiResponse, putResponse: () => Response) {
-  const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
-    const url = String(input);
-    if (init?.method === "PUT") return Promise.resolve(putResponse());
-    if (url.endsWith("/v1/table-maintenance-presets/default")) {
-      return Promise.resolve(
-        jsonResponse({ id: "default", name: "Default", settings: PRESET_SETTINGS }),
-      );
-    }
-    return Promise.resolve(jsonResponse(table));
+  return stubCatalogApi({
+    "GET /v1/tables/uuid-orders": () => jsonResponse(table),
+    "GET /v1/table-maintenance-presets/default": () =>
+      jsonResponse({ id: "default", name: "Default", settings: PRESET_SETTINGS }),
+    "PUT /v1/tables/uuid-orders/settings": () => putResponse(),
   });
-  vi.stubGlobal("fetch", fetchMock);
-  return fetchMock;
 }
 
 function renderTab() {
@@ -53,8 +48,8 @@ function healthIsStale(client: QueryClient) {
   return client.getQueryState(getGetTableHealthQueryKey("uuid-orders"))?.isInvalidated;
 }
 
-function puts(fetchMock: ReturnType<typeof mockApi>) {
-  return fetchMock.mock.calls.filter(([, init]) => init?.method === "PUT");
+function puts(calls: StubbedCall[]) {
+  return calls.filter((call) => call.method === "PUT");
 }
 
 describe("SettingsTab", () => {
@@ -64,16 +59,17 @@ describe("SettingsTab", () => {
   });
 
   it("saves the whole settings object with the changed field", async () => {
-    const fetchMock = mockApi(table, () => jsonResponse(table));
+    const calls = mockApi(table, () => jsonResponse(table));
     renderTab();
     const group = await screen.findByRole("group", { name: "rewrite_data_files" });
     const field = within(group).getByLabelText("min_reducible_files");
     await userEvent.clear(field);
     await userEvent.type(field, "25");
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
-    const [url, init] = puts(fetchMock)[0] ?? [];
-    expect(url).toBe("/console/api/v1/tables/uuid-orders/settings");
-    expect(JSON.parse(String(init?.body))).toEqual({
+    await vi.waitFor(() => expect(puts(calls)[0]).toBeDefined());
+    const [put] = puts(calls);
+    expect(put?.path).toBe("/v1/tables/uuid-orders/settings");
+    expect(put?.body).toEqual({
       ...SETTINGS,
       rewrite_data_files: { ...SETTINGS.rewrite_data_files, min_reducible_files: 25 },
     });
@@ -90,14 +86,14 @@ describe("SettingsTab", () => {
   });
 
   it("resets to the preset settings after confirming in the dialog", async () => {
-    const fetchMock = mockApi(table, () => jsonResponse(table));
+    const calls = mockApi(table, () => jsonResponse(table));
     renderTab();
     await userEvent.click(await screen.findByRole("button", { name: "Reset to preset" }));
     expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
-    expect(puts(fetchMock)).toHaveLength(0);
+    expect(puts(calls)).toHaveLength(0);
     await userEvent.click(screen.getByRole("button", { name: "Confirm reset" }));
-    await vi.waitFor(() => expect(puts(fetchMock)).toHaveLength(1));
-    expect(JSON.parse(String(puts(fetchMock)[0]?.[1]?.body))).toEqual(PRESET_SETTINGS);
+    await vi.waitFor(() => expect(puts(calls)).toHaveLength(1));
+    expect(puts(calls)[0]?.body).toEqual(PRESET_SETTINGS);
   });
 
   it("marks health stale after a save", async () => {
@@ -128,14 +124,14 @@ describe("SettingsTab", () => {
   });
 
   it("closes the reset dialog on Escape without saving and returns focus", async () => {
-    const fetchMock = mockApi(table, () => jsonResponse(table));
+    const calls = mockApi(table, () => jsonResponse(table));
     renderTab();
     const trigger = await screen.findByRole("button", { name: "Reset to preset" });
     await userEvent.click(trigger);
     expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
     await userEvent.keyboard("{Escape}");
     await vi.waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
-    expect(puts(fetchMock)).toHaveLength(0);
+    expect(puts(calls)).toHaveLength(0);
     expect(trigger).toHaveFocus();
   });
 
@@ -154,7 +150,7 @@ describe("SettingsTab", () => {
   });
 
   it("toggles an operation with a switch", async () => {
-    const fetchMock = mockApi(table, () => jsonResponse(table));
+    const calls = mockApi(table, () => jsonResponse(table));
     renderTab();
     const group = await screen.findByRole("group", { name: "remove_orphan_files" });
     const toggle = within(group).getByRole("switch", { name: "enabled" });
@@ -162,7 +158,8 @@ describe("SettingsTab", () => {
     await userEvent.click(toggle);
     expect(toggle).toBeChecked();
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
-    const body = JSON.parse(String(puts(fetchMock)[0]?.[1]?.body));
+    await vi.waitFor(() => expect(puts(calls)[0]).toBeDefined());
+    const body = puts(calls)[0]?.body as { remove_orphan_files: { enabled: boolean } };
     expect(body.remove_orphan_files.enabled).toBe(true);
   });
 });

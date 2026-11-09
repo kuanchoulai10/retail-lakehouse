@@ -4,9 +4,8 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { describe, expect, it, vi } from "vitest";
-import type { CatalogTableApiResponse } from "../api/generated/model";
+import type { CatalogTableApiResponse, TableApiResponse } from "../api/generated/model";
 import { getListCatalogTablesQueryKey } from "../api/generated/tables/tables";
-import type { TableApiResponse } from "../api/types";
 import {
   bodyOf,
   callsTo,

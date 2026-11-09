@@ -1,4 +1,4 @@
-import type { TableApiResponse } from "../api/types";
+import type { TableApiResponse } from "../api/generated/model";
 
 export function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {

@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { TableCommitApiResponse } from "../api/types";
+import type { TableCommitApiResponse } from "../api/generated/model";
 import { FreshnessPanel } from "./FreshnessPanel";
 
 const NOW = new Date("2026-11-01T12:00:00Z");

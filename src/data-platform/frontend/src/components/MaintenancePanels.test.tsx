@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { stubCatalogApi, type StubHandler } from "../test/catalogApiStub";
 import { jsonResponse } from "../test/fixtures";
 import { MaintenancePanels } from "./MaintenancePanels";
 
@@ -44,18 +45,17 @@ const STORAGE = {
   attempts_without_metrics: 0,
 };
 
-function stubFetch(storage: () => Promise<Response>, commits: unknown[] = []) {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn((url: string) => {
-      if (url.endsWith("/health")) return Promise.resolve(jsonResponse(HEALTH));
-      if (url.endsWith("/storage")) return storage();
-      if (url.includes("/commits")) {
-        return Promise.resolve(jsonResponse({ items: commits, truncated: false }));
-      }
-      return Promise.resolve(jsonResponse([]));
-    }),
-  );
+const TABLE = "/v1/tables/uuid-orders";
+
+// Routes in `extra` come first, so they win over the defaults.
+function stubApi(storage: StubHandler, extra: Record<string, StubHandler> = {}) {
+  return stubCatalogApi({
+    ...extra,
+    [`GET ${TABLE}/health`]: () => jsonResponse(HEALTH),
+    [`GET ${TABLE}/storage`]: storage,
+    [`GET ${TABLE}/commits*`]: () => jsonResponse({ items: [], truncated: false }),
+    [`GET ${TABLE}/table-maintenance-runs`]: () => jsonResponse([]),
+  });
 }
 
 function renderTab(lastCommittedAt: string | null = new Date(Date.now() - 3 * 3_600_000).toISOString()) {
@@ -69,11 +69,11 @@ function renderTab(lastCommittedAt: string | null = new Date(Date.now() - 3 * 3_
 
 describe("MaintenancePanels", () => {
   beforeEach(() => {
-    stubFetch(() => Promise.resolve(jsonResponse(STORAGE)));
+    stubApi(() => jsonResponse(STORAGE));
   });
 
   it("renders while storage is still loading", async () => {
-    stubFetch(() => new Promise<Response>(() => {}));
+    stubApi(() => new Promise<Response>(() => {}));
     renderTab();
     expect(await screen.findByText(/12 reducible files in 3 partitions/)).toBeInTheDocument();
     expect(screen.getByText("Loading storage…")).toBeInTheDocument();
@@ -85,7 +85,7 @@ describe("MaintenancePanels", () => {
   });
 
   it("shows a storage error without hiding health", async () => {
-    stubFetch(() => Promise.resolve(jsonResponse({ detail: "scan failed" }, 500)));
+    stubApi(() => jsonResponse({ detail: "scan failed" }, 500));
     renderTab();
     expect(await screen.findByText(/Could not load storage: scan failed/)).toBeInTheDocument();
     expect(await screen.findByText(/12 reducible files/)).toBeInTheDocument();
@@ -98,44 +98,36 @@ describe("MaintenancePanels", () => {
   });
 
   it("asks for the last 24 hours of commits", async () => {
+    const calls = stubApi(() => jsonResponse(STORAGE));
     renderTab();
     await screen.findByText(/12 reducible files/);
-    const urls = vi.mocked(fetch).mock.calls.map((call) => String(call[0]));
+    const urls = calls.map((call) => call.path);
     expect(urls.some((u) => u.includes("/commits?since=") && u.endsWith("&limit=1000"))).toBe(true);
   });
 
   it("prefixes freshness counts with ≥ when the window was truncated", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn((url: string) => {
-        if (url.endsWith("/health")) return Promise.resolve(jsonResponse(HEALTH));
-        if (url.endsWith("/storage")) return Promise.resolve(jsonResponse(STORAGE));
-        if (url.includes("since=")) {
-          return Promise.resolve(
-            jsonResponse({
-              items: [
-                {
-                  snapshot_id: "1",
-                  parent_id: null,
-                  committed_at: new Date().toISOString(),
-                  operation: "append",
-                  writer: "kafka_connect",
-                  added_records: null,
-                  deleted_records: null,
-                  added_data_files: null,
-                  deleted_data_files: null,
-                  added_delete_files: null,
-                  removed_delete_files: null,
-                  summary: {},
-                },
-              ],
-              truncated: true,
-            }),
-          );
-        }
-        return Promise.resolve(jsonResponse(url.includes("/commits") ? { items: [], truncated: false } : []));
-      }),
-    );
+    stubApi(() => jsonResponse(STORAGE), {
+      [`GET ${TABLE}/commits?since=*`]: () =>
+        jsonResponse({
+          items: [
+            {
+              snapshot_id: "1",
+              parent_id: null,
+              committed_at: new Date().toISOString(),
+              operation: "append",
+              writer: "kafka_connect",
+              added_records: null,
+              deleted_records: null,
+              added_data_files: null,
+              deleted_data_files: null,
+              added_delete_files: null,
+              removed_delete_files: null,
+              summary: {},
+            },
+          ],
+          truncated: true,
+        }),
+    });
     renderTab();
     expect(await screen.findByText("≥ 1 commits in the last 24 h")).toBeInTheDocument();
   });

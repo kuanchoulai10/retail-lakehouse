@@ -5,7 +5,7 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getListTableMaintenanceRunsQueryKey } from "../api/generated/table-maintenance-runs/table-maintenance-runs";
 import { getGetTableHealthQueryKey } from "../api/generated/tables/tables";
-import { catalogTableFixture } from "../test/catalogApiStub";
+import { bodyOf, catalogTableFixture, stubCatalogApi, type StubbedCall } from "../test/catalogApiStub";
 import { jsonResponse, tableFixture } from "../test/fixtures";
 import { TableHeader } from "./TableHeader";
 
@@ -30,8 +30,14 @@ function HealthProbe({ queryFn }: { queryFn: () => Promise<unknown> }) {
 }
 
 describe("TableHeader", () => {
+  let calls: StubbedCall[];
+
   beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(tableFixture())));
+    calls = stubCatalogApi({
+      "POST /v1/tables/uuid-orders/pause": () => jsonResponse(tableFixture({ status: "paused" })),
+      "POST /v1/tables/uuid-orders/resume": () => jsonResponse(tableFixture()),
+      "POST /v1/tables/uuid-orders/maintenance": () => jsonResponse({ accepted: true }, 202),
+    });
   });
 
   it("shows the name, status, preset and rule", () => {
@@ -56,18 +62,14 @@ describe("TableHeader", () => {
     const user = userEvent.setup();
     renderHeader();
     await user.click(screen.getByRole("button", { name: "Pause" }));
-    const call = vi.mocked(fetch).mock.calls[0];
-    expect(call?.[0]).toBe("/console/api/v1/tables/uuid-orders/pause");
-    expect((call?.[1] as RequestInit).method).toBe("POST");
+    await vi.waitFor(() => expect(calls[0]).toMatchObject({ method: "POST", path: "/v1/tables/uuid-orders/pause" }));
   });
 
   it("posts /resume when the table is paused", async () => {
     const user = userEvent.setup();
     renderHeader("paused");
     await user.click(screen.getByRole("button", { name: "Resume" }));
-    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe(
-      "/console/api/v1/tables/uuid-orders/resume",
-    );
+    await vi.waitFor(() => expect(calls[0]?.path).toBe("/v1/tables/uuid-orders/resume"));
   });
 
   it("refetches health after Pause", async () => {
@@ -99,7 +101,6 @@ describe("TableHeader", () => {
 
   it("marks runs and health stale after a maintenance trigger", async () => {
     const user = userEvent.setup();
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ accepted: true }, 202)));
     const client = newClient();
     client.setQueryData(getListTableMaintenanceRunsQueryKey("uuid-orders"), []);
     client.setQueryData(getGetTableHealthQueryKey("uuid-orders"), {});
@@ -131,7 +132,7 @@ describe("TableHeader", () => {
     expect(screen.getByRole("dialog", { name: "Run maintenance" })).toBeInTheDocument();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(fetch).not.toHaveBeenCalled();
+    expect(calls).toEqual([]);
   });
 
   it("gives the disabled phone overflow item the same reason as the button", async () => {
@@ -155,9 +156,8 @@ describe("TableHeader", () => {
     expect(screen.getByText("Runs on the whole table, ignoring thresholds")).toBeInTheDocument();
     await user.click(screen.getByLabelText("expire_snapshots"));
     await user.click(screen.getByRole("button", { name: "Run" }));
-    const call = vi.mocked(fetch).mock.calls[0];
-    expect(call?.[0]).toBe("/console/api/v1/tables/uuid-orders/maintenance");
-    expect(JSON.parse((call?.[1] as RequestInit).body as string)).toEqual({
+    await vi.waitFor(() => expect(calls[0]?.path).toBe("/v1/tables/uuid-orders/maintenance"));
+    expect(bodyOf(calls, "POST", "/v1/tables/uuid-orders/maintenance")).toEqual({
       operations: ["rewrite_data_files", "rewrite_manifests", "remove_orphan_files"],
     });
   });

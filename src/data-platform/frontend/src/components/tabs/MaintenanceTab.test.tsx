@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { TableMaintenanceRunApiResponse } from "../../api/types";
+import { beforeEach, describe, expect, it } from "vitest";
+import type { TableMaintenanceRunApiResponse } from "../../api/generated/model";
+import { stubCatalogApi, type StubbedCall } from "../../test/catalogApiStub";
 import { jsonResponse } from "../../test/fixtures";
 import { MaintenanceTab } from "./MaintenanceTab";
 
@@ -41,8 +42,12 @@ const RUN: TableMaintenanceRunApiResponse = {
 };
 
 describe("MaintenanceTab", () => {
+  let calls: StubbedCall[];
+
   beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse([RUN])));
+    calls = stubCatalogApi({
+      "GET /v1/tables/uuid-orders/table-maintenance-runs": () => jsonResponse([RUN]),
+    });
   });
 
   it("lists runs with trigger, status and duration", async () => {
@@ -55,9 +60,7 @@ describe("MaintenanceTab", () => {
     expect(await screen.findByText("manual")).toBeInTheDocument();
     expect(screen.getByText("Failed")).toHaveClass("bg-negative-container");
     expect(screen.getByText("2m 30s")).toBeInTheDocument();
-    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe(
-      "/console/api/v1/tables/uuid-orders/table-maintenance-runs",
-    );
+    expect(calls[0]?.path).toBe("/v1/tables/uuid-orders/table-maintenance-runs");
   });
 
   it("shows per-operation attempts, metrics and error when expanded", async () => {

@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import type { TableDiscoveryRuleApiResponse } from "../api/types";
+import { describe, expect, it } from "vitest";
+import type { TableDiscoveryRuleApiResponse } from "../api/generated/model";
+import { stubCatalogApi } from "../test/catalogApiStub";
 import { jsonResponse } from "../test/fixtures";
 import { DiscoveryRulesPage } from "./DiscoveryRulesPage";
 
@@ -27,15 +28,10 @@ const RULES = [
   rule({ id: "r-early", priority: 10 }),
 ];
 
+// Answers the GETs in `responses` by path; any other GET is a 404.
 function stubApi(responses: Record<string, () => Response>) {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn((url: string) => {
-      const path = url.replace("/console/api", "");
-      const make = responses[path];
-      return Promise.resolve(make ? make() : jsonResponse({ detail: "not found" }, 404));
-    }),
-  );
+  const routes = Object.fromEntries(Object.entries(responses).map(([path, make]) => [`GET ${path}`, make]));
+  stubCatalogApi({ ...routes, "GET *": () => jsonResponse({ detail: "not found" }, 404) });
 }
 
 function renderPage() {
@@ -55,8 +51,6 @@ const OK = {
   "/v1/table-maintenance-presets": () =>
     jsonResponse([{ id: "preset-default", name: "default", settings: {}, created_at: "x", updated_at: "x" }]),
 };
-
-afterEach(() => vi.unstubAllGlobals());
 
 describe("DiscoveryRulesPage", () => {
   it("lists rules by priority, lowest first", async () => {

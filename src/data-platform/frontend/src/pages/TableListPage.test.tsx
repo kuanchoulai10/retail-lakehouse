@@ -2,8 +2,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { TableApiResponse } from "../api/types";
+import { beforeEach, describe, expect, it } from "vitest";
+import type { TableApiResponse } from "../api/generated/model";
+import { stubCatalogApi, type StubbedCall } from "../test/catalogApiStub";
+import { jsonResponse } from "../test/fixtures";
 import { TableListPage } from "./TableListPage";
 
 function table(overrides: Partial<TableApiResponse>): TableApiResponse {
@@ -37,15 +39,7 @@ const TABLES: TableApiResponse[] = [
 ];
 
 function stubTables(tables: TableApiResponse[]) {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn().mockResolvedValue(
-      new Response(JSON.stringify(tables), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    ),
-  );
+  return stubCatalogApi({ "GET /v1/tables": () => jsonResponse(tables) });
 }
 
 function rowNames(): string[] {
@@ -73,16 +67,10 @@ function renderPage() {
 }
 
 describe("TableListPage", () => {
+  let calls: StubbedCall[];
+
   beforeEach(() => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify(TABLES), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      ),
-    );
+    calls = stubTables(TABLES);
   });
 
   it("loads the tables from the API and renders their full names", async () => {
@@ -90,7 +78,7 @@ describe("TableListPage", () => {
 
     expect(await screen.findByText("iceberg.inventory.orders")).toBeInTheDocument();
     expect(screen.getByText("iceberg.e2e.tm_e2e_regions")).toBeInTheDocument();
-    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe("/console/api/v1/tables");
+    expect(calls[0]?.path).toBe("/v1/tables");
   });
 
   it("shows status, selection and source preset per row", async () => {
@@ -146,15 +134,7 @@ describe("TableListPage", () => {
   });
 
   it("shows the API error detail when loading fails", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ detail: "database unavailable" }), {
-          status: 503,
-          headers: { "Content-Type": "application/json" },
-        }),
-      ),
-    );
+    stubCatalogApi({ "GET /v1/tables": () => jsonResponse({ detail: "database unavailable" }, 503) });
     renderPage();
 
     expect(await screen.findByRole("alert")).toHaveTextContent("database unavailable");
@@ -194,7 +174,7 @@ describe("TableListPage", () => {
   });
 
   it("shows skeleton rows in a busy container while loading", () => {
-    vi.stubGlobal("fetch", vi.fn().mockReturnValue(new Promise(() => {})));
+    stubCatalogApi({ "GET /v1/tables": () => new Promise<Response>(() => {}) });
     const { container } = renderPage();
 
     expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();

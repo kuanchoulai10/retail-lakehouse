@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { TableCommitApiResponse } from "../../api/types";
+import { beforeEach, describe, expect, it } from "vitest";
+import type { TableCommitApiResponse } from "../../api/generated/model";
+import { stubCatalogApi, type StubbedCall } from "../../test/catalogApiStub";
 import { jsonResponse } from "../../test/fixtures";
 import { CommitsTab } from "./CommitsTab";
 
@@ -57,11 +58,12 @@ function commitRows(): HTMLElement[] {
 }
 
 describe("CommitsTab", () => {
+  let calls: StubbedCall[];
+
   beforeEach(() => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(jsonResponse({ items: ITEMS, truncated: false })),
-    );
+    calls = stubCatalogApi({
+      "GET /v1/tables/uuid-orders/commits": () => jsonResponse({ items: ITEMS, truncated: false }),
+    });
   });
 
   it("lists commits newest first with writer labels", async () => {
@@ -72,7 +74,7 @@ describe("CommitsTab", () => {
     expect(within(rows[0] as HTMLElement).getByText("replace")).toBeInTheDocument();
     expect(within(rows[0] as HTMLElement).getByText("Spark")).toBeInTheDocument();
     expect(within(rows[1] as HTMLElement).getByText("Kafka Connect")).toBeInTheDocument();
-    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe("/console/api/v1/tables/uuid-orders/commits");
+    expect(calls[0]?.path).toBe("/v1/tables/uuid-orders/commits");
   });
 
   it("renders null counters as a dash", async () => {

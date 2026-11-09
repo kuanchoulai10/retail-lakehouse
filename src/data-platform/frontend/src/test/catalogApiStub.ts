@@ -3,7 +3,8 @@ import type { CatalogApiResponse, CatalogTableApiResponse } from "../api/generat
 import { jsonResponse } from "./fixtures";
 import { server } from "./mswServer";
 
-export type StubHandler = (body: unknown) => Response;
+// A promise lets a test hold the response back (one that never settles keeps the query loading).
+export type StubHandler = (body: unknown) => Response | Promise<Response>;
 
 export interface StubbedCall {
   method: string;

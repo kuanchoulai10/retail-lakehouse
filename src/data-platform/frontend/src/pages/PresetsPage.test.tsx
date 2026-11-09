@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import type { TableMaintenancePresetApiResponse } from "../api/types";
+import { describe, expect, it } from "vitest";
+import type { TableMaintenancePresetApiResponse } from "../api/generated/model";
+import { callsTo, stubCatalogApi, type StubbedCall } from "../test/catalogApiStub";
 import { jsonResponse } from "../test/fixtures";
 import { PresetsPage } from "./PresetsPage";
 
@@ -18,8 +19,10 @@ const PRESET: TableMaintenancePresetApiResponse = {
   updated_at: "2026-11-04T13:06:08Z",
 };
 
+let calls: StubbedCall[] = [];
+
 function renderPage(response: Response) {
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
+  calls = stubCatalogApi({ "GET /v1/table-maintenance-presets": () => response });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
@@ -30,13 +33,11 @@ function renderPage(response: Response) {
   );
 }
 
-afterEach(() => vi.unstubAllGlobals());
-
 describe("PresetsPage", () => {
   it("reads the presets endpoint", async () => {
     renderPage(jsonResponse([PRESET]));
     await screen.findByRole("region", { name: "default" });
-    expect(fetch).toHaveBeenCalledWith("/console/api/v1/table-maintenance-presets", expect.anything());
+    expect(callsTo(calls, "GET", "/v1/table-maintenance-presets")).not.toHaveLength(0);
   });
 
   it("shows one panel per preset with its id and reconcile interval", async () => {
