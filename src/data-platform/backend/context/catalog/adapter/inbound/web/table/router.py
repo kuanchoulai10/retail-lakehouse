@@ -11,9 +11,9 @@ from context.catalog.adapter.inbound.web.shared import (
     use_cases_dependency,
 )
 from context.catalog.adapter.inbound.web.table.dto import (
+    CatalogTableApiResponse,
     CreateTableApiRequest,
     RenameTableApiRequest,
-    TableApiResponse,
     TableIdentifierApiResponse,
     UpdateTablePropertiesApiRequest,
 )
@@ -48,7 +48,9 @@ def list_tables(catalog: str, namespace: str, use_cases: UseCases) -> list[Table
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-def create_table(catalog: str, namespace: str, body: CreateTableApiRequest, use_cases: UseCases) -> TableApiResponse:
+def create_table(
+    catalog: str, namespace: str, body: CreateTableApiRequest, use_cases: UseCases
+) -> CatalogTableApiResponse:
     """Create an Iceberg table from the create table form."""
     output = use_cases.create_table.execute(
         CreateTableUseCaseInput(
@@ -67,14 +69,14 @@ def create_table(catalog: str, namespace: str, body: CreateTableApiRequest, use_
             properties=body.properties,
         )
     )
-    return TableApiResponse.model_validate(output)
+    return CatalogTableApiResponse.model_validate(output)
 
 
 @router.get("/{table}", name="get_catalog_table")
-def get_table(catalog: str, namespace: str, table: str, use_cases: UseCases) -> TableApiResponse:
+def get_table(catalog: str, namespace: str, table: str, use_cases: UseCases) -> CatalogTableApiResponse:
     """Return one Iceberg table with its schema, partition spec, sort order, snapshots, properties and summary."""
     output = use_cases.get_table.execute(GetTableUseCaseInput(catalog=catalog, namespace=_parts(namespace), name=table))
-    return TableApiResponse.model_validate(output)
+    return CatalogTableApiResponse.model_validate(output)
 
 
 @router.delete("/{table}", status_code=status.HTTP_204_NO_CONTENT)
@@ -104,7 +106,7 @@ def rename_table(
 @router.put("/{table}/properties")
 def update_table_properties(
     catalog: str, namespace: str, table: str, body: UpdateTablePropertiesApiRequest, use_cases: UseCases
-) -> TableApiResponse:
+) -> CatalogTableApiResponse:
     """Set and remove properties of the table that was loaded; 409 when it changed since."""
     output = use_cases.update_table_properties.execute(
         UpdateTablePropertiesUseCaseInput(
@@ -116,4 +118,4 @@ def update_table_properties(
             removals=body.removals,
         )
     )
-    return TableApiResponse.model_validate(output)
+    return CatalogTableApiResponse.model_validate(output)

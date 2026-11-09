@@ -5,4 +5,4 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ContextCatalogAdapterInboundWebTableDtoTableApiResponseProperties = {[key: string]: string};
+export type CatalogTableApiResponseProperties = {[key: string]: string};

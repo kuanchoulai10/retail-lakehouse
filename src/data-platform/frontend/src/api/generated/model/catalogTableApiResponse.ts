@@ -4,7 +4,7 @@
  * Data Platform API
  * OpenAPI spec version: 0.1.0
  */
-import type { ContextCatalogAdapterInboundWebTableDtoTableApiResponseProperties } from './contextCatalogAdapterInboundWebTableDtoTableApiResponseProperties';
+import type { CatalogTableApiResponseProperties } from './catalogTableApiResponseProperties';
 import type { PartitionSpecApiResponse } from './partitionSpecApiResponse';
 import type { SchemaApiResponse } from './schemaApiResponse';
 import type { SnapshotApiResponse } from './snapshotApiResponse';
@@ -14,7 +14,7 @@ import type { TableSummaryApiResponse } from './tableSummaryApiResponse';
 /**
  * Describe an Iceberg table: everything the table page's Overview, Schema, Snapshots and Properties show.
  */
-export interface ContextCatalogAdapterInboundWebTableDtoTableApiResponse {
+export interface CatalogTableApiResponse {
   catalog: string;
   current_snapshot_id: string | null;
   format_version: number;
@@ -23,7 +23,7 @@ export interface ContextCatalogAdapterInboundWebTableDtoTableApiResponse {
   name: string;
   namespace: string[];
   partition_spec: PartitionSpecApiResponse;
-  properties: ContextCatalogAdapterInboundWebTableDtoTableApiResponseProperties;
+  properties: CatalogTableApiResponseProperties;
   schema: SchemaApiResponse;
   snapshots: SnapshotApiResponse[];
   sort_order: SortOrderApiResponse;

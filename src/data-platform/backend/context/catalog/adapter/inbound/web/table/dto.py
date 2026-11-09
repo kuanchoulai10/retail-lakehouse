@@ -148,7 +148,7 @@ class TableSummaryApiResponse(BaseModel):
     total_files_size: int | None
 
 
-class TableApiResponse(BaseModel):
+class CatalogTableApiResponse(BaseModel):
     """Describe an Iceberg table: everything the table page's Overview, Schema, Snapshots and Properties show."""
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)

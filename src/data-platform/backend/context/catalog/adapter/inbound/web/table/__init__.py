@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from context.catalog.adapter.inbound.web.table.dto import (
+    CatalogTableApiResponse,
     CreateTableApiRequest,
     PartitionFieldApiRequest,
     PartitionFieldApiResponse,
@@ -12,7 +13,6 @@ from context.catalog.adapter.inbound.web.table.dto import (
     SnapshotApiResponse,
     SortFieldApiResponse,
     SortOrderApiResponse,
-    TableApiResponse,
     TableIdentifierApiResponse,
     TableSummaryApiResponse,
     UpdateTablePropertiesApiRequest,
@@ -29,7 +29,7 @@ __all__ = [
     "SnapshotApiResponse",
     "SortFieldApiResponse",
     "SortOrderApiResponse",
-    "TableApiResponse",
+    "CatalogTableApiResponse",
     "TableIdentifierApiResponse",
     "TableSummaryApiResponse",
     "UpdateTablePropertiesApiRequest",

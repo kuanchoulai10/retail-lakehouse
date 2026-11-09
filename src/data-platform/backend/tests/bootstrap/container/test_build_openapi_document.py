@@ -36,3 +36,10 @@ def test_operation_ids_are_the_route_names_and_unique():
         document["paths"]["/v1/catalogs/{catalog}/namespaces/{namespace}/tables"]["get"]["operationId"]
         == "list_catalog_tables"
     )
+
+
+def test_schema_names_are_the_dto_names():
+    """Two contexts never share a DTO name, so FastAPI never falls back to module-qualified schema names."""
+    document = build_openapi_document()
+
+    assert [name for name in document["components"]["schemas"] if "__" in name] == []

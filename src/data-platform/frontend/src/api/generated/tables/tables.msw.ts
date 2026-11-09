@@ -19,12 +19,12 @@ import type {
 } from 'msw';
 
 import type {
-  ContextCatalogAdapterInboundWebTableDtoTableApiResponse,
-  ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse,
+  CatalogTableApiResponse,
   CreateTableApiRequest,
   ExcludeTableApiRequest,
   IncludeTableApiRequest,
   RenameTableApiRequest,
+  TableApiResponse,
   TableCommitsApiResponse,
   TableHealthApiResponse,
   TableIdentifierApiResponse,
@@ -38,19 +38,19 @@ import type {
 
 export const getListCatalogTablesResponseMock = (): TableIdentifierApiResponse[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), namespace: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}})))})))
 
-export const getCreateTableResponseMock = (overrideResponse: Partial<Extract<ContextCatalogAdapterInboundWebTableDtoTableApiResponse, object>> = {}): ContextCatalogAdapterInboundWebTableDtoTableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), current_snapshot_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), format_version: faker.number.int(), last_updated_ms: faker.number.int(), location: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), namespace: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), partition_spec: {fields: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({field_id: faker.number.int(), name: faker.string.alpha({length: {min: 10, max: 20}}), source_id: faker.number.int(), transform: faker.string.alpha({length: {min: 10, max: 20}})})), spec_id: faker.number.int()}, properties: {
+export const getCreateTableResponseMock = (overrideResponse: Partial<Extract<CatalogTableApiResponse, object>> = {}): CatalogTableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), current_snapshot_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), format_version: faker.number.int(), last_updated_ms: faker.number.int(), location: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), namespace: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), partition_spec: {fields: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({field_id: faker.number.int(), name: faker.string.alpha({length: {min: 10, max: 20}}), source_id: faker.number.int(), transform: faker.string.alpha({length: {min: 10, max: 20}})})), spec_id: faker.number.int()}, properties: {
         [faker.string.alphanumeric(5)]: faker.string.alpha({length: {min: 10, max: 20}})
       }, schema: {fields: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({doc: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), id: faker.number.int(), name: faker.string.alpha({length: {min: 10, max: 20}}), required: faker.datatype.boolean(), type: faker.string.alpha({length: {min: 10, max: 20}})})), schema_id: faker.number.int()}, snapshots: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), operation: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), parent_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), summary: {
         [faker.string.alphanumeric(5)]: faker.string.alpha({length: {min: 10, max: 20}})
       }, timestamp_ms: faker.number.int()})), sort_order: {fields: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({direction: faker.string.alpha({length: {min: 10, max: 20}}), null_order: faker.string.alpha({length: {min: 10, max: 20}}), source_id: faker.number.int(), transform: faker.string.alpha({length: {min: 10, max: 20}})})), order_id: faker.number.int()}, summary: {total_data_files: faker.helpers.arrayElement([faker.number.int(),null,]), total_files_size: faker.helpers.arrayElement([faker.number.int(),null,]), total_records: faker.helpers.arrayElement([faker.number.int(),null,])}, uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
-export const getGetCatalogTableResponseMock = (overrideResponse: Partial<Extract<ContextCatalogAdapterInboundWebTableDtoTableApiResponse, object>> = {}): ContextCatalogAdapterInboundWebTableDtoTableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), current_snapshot_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), format_version: faker.number.int(), last_updated_ms: faker.number.int(), location: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), namespace: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), partition_spec: {fields: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({field_id: faker.number.int(), name: faker.string.alpha({length: {min: 10, max: 20}}), source_id: faker.number.int(), transform: faker.string.alpha({length: {min: 10, max: 20}})})), spec_id: faker.number.int()}, properties: {
+export const getGetCatalogTableResponseMock = (overrideResponse: Partial<Extract<CatalogTableApiResponse, object>> = {}): CatalogTableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), current_snapshot_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), format_version: faker.number.int(), last_updated_ms: faker.number.int(), location: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), namespace: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), partition_spec: {fields: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({field_id: faker.number.int(), name: faker.string.alpha({length: {min: 10, max: 20}}), source_id: faker.number.int(), transform: faker.string.alpha({length: {min: 10, max: 20}})})), spec_id: faker.number.int()}, properties: {
         [faker.string.alphanumeric(5)]: faker.string.alpha({length: {min: 10, max: 20}})
       }, schema: {fields: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({doc: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), id: faker.number.int(), name: faker.string.alpha({length: {min: 10, max: 20}}), required: faker.datatype.boolean(), type: faker.string.alpha({length: {min: 10, max: 20}})})), schema_id: faker.number.int()}, snapshots: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), operation: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), parent_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), summary: {
         [faker.string.alphanumeric(5)]: faker.string.alpha({length: {min: 10, max: 20}})
       }, timestamp_ms: faker.number.int()})), sort_order: {fields: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({direction: faker.string.alpha({length: {min: 10, max: 20}}), null_order: faker.string.alpha({length: {min: 10, max: 20}}), source_id: faker.number.int(), transform: faker.string.alpha({length: {min: 10, max: 20}})})), order_id: faker.number.int()}, summary: {total_data_files: faker.helpers.arrayElement([faker.number.int(),null,]), total_files_size: faker.helpers.arrayElement([faker.number.int(),null,]), total_records: faker.helpers.arrayElement([faker.number.int(),null,])}, uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
-export const getUpdateTablePropertiesResponseMock = (overrideResponse: Partial<Extract<ContextCatalogAdapterInboundWebTableDtoTableApiResponse, object>> = {}): ContextCatalogAdapterInboundWebTableDtoTableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), current_snapshot_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), format_version: faker.number.int(), last_updated_ms: faker.number.int(), location: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), namespace: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), partition_spec: {fields: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({field_id: faker.number.int(), name: faker.string.alpha({length: {min: 10, max: 20}}), source_id: faker.number.int(), transform: faker.string.alpha({length: {min: 10, max: 20}})})), spec_id: faker.number.int()}, properties: {
+export const getUpdateTablePropertiesResponseMock = (overrideResponse: Partial<Extract<CatalogTableApiResponse, object>> = {}): CatalogTableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), current_snapshot_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), format_version: faker.number.int(), last_updated_ms: faker.number.int(), location: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), namespace: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), partition_spec: {fields: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({field_id: faker.number.int(), name: faker.string.alpha({length: {min: 10, max: 20}}), source_id: faker.number.int(), transform: faker.string.alpha({length: {min: 10, max: 20}})})), spec_id: faker.number.int()}, properties: {
         [faker.string.alphanumeric(5)]: faker.string.alpha({length: {min: 10, max: 20}})
       }, schema: {fields: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({doc: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), id: faker.number.int(), name: faker.string.alpha({length: {min: 10, max: 20}}), required: faker.datatype.boolean(), type: faker.string.alpha({length: {min: 10, max: 20}})})), schema_id: faker.number.int()}, snapshots: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 10, max: 20}}), operation: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), parent_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), summary: {
         [faker.string.alphanumeric(5)]: faker.string.alpha({length: {min: 10, max: 20}})
@@ -58,19 +58,19 @@ export const getUpdateTablePropertiesResponseMock = (overrideResponse: Partial<E
 
 export const getRenameTableResponseMock = (overrideResponse: Partial<Extract<TableIdentifierApiResponse, object>> = {}): TableIdentifierApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), namespace: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
 
-export const getListTablesResponseMock = (): ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
+export const getListTablesResponseMock = (): TableApiResponse[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
         [faker.string.alphanumeric(5)]: {}
       }, registered_at: faker.date.past().toISOString().slice(0, 19) + 'Z', selection: faker.string.alpha({length: {min: 10, max: 20}}), settings: faker.helpers.arrayElement([null,]), source_preset_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), status: faker.string.alpha({length: {min: 10, max: 20}}), table: faker.string.alpha({length: {min: 10, max: 20}}), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', uuid: faker.string.alpha({length: {min: 10, max: 20}})})))
 
-export const getExcludeTableResponseMock = (overrideResponse: Partial<Extract<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse, object>> = {}): ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
+export const getExcludeTableResponseMock = (overrideResponse: Partial<Extract<TableApiResponse, object>> = {}): TableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
         [faker.string.alphanumeric(5)]: {}
       }, registered_at: faker.date.past().toISOString().slice(0, 19) + 'Z', selection: faker.string.alpha({length: {min: 10, max: 20}}), settings: faker.helpers.arrayElement([null,]), source_preset_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), status: faker.string.alpha({length: {min: 10, max: 20}}), table: faker.string.alpha({length: {min: 10, max: 20}}), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
-export const getIncludeTableResponseMock = (overrideResponse: Partial<Extract<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse, object>> = {}): ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
+export const getIncludeTableResponseMock = (overrideResponse: Partial<Extract<TableApiResponse, object>> = {}): TableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
         [faker.string.alphanumeric(5)]: {}
       }, registered_at: faker.date.past().toISOString().slice(0, 19) + 'Z', selection: faker.string.alpha({length: {min: 10, max: 20}}), settings: faker.helpers.arrayElement([null,]), source_preset_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), status: faker.string.alpha({length: {min: 10, max: 20}}), table: faker.string.alpha({length: {min: 10, max: 20}}), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
-export const getGetTableResponseMock = (overrideResponse: Partial<Extract<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse, object>> = {}): ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
+export const getGetTableResponseMock = (overrideResponse: Partial<Extract<TableApiResponse, object>> = {}): TableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
         [faker.string.alphanumeric(5)]: {}
       }, registered_at: faker.date.past().toISOString().slice(0, 19) + 'Z', selection: faker.string.alpha({length: {min: 10, max: 20}}), settings: faker.helpers.arrayElement([null,]), source_preset_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), status: faker.string.alpha({length: {min: 10, max: 20}}), table: faker.string.alpha({length: {min: 10, max: 20}}), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
@@ -82,19 +82,19 @@ export const getGetTableHealthResponseMock = (overrideResponse: Partial<Extract<
 
 export const getTriggerTableMaintenanceResponseMock = (overrideResponse: Partial<Extract<TriggerTableMaintenanceApiResponse, object>> = {}): TriggerTableMaintenanceApiResponse => ({accepted: faker.datatype.boolean(), ...overrideResponse})
 
-export const getPauseTableResponseMock = (overrideResponse: Partial<Extract<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse, object>> = {}): ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
+export const getPauseTableResponseMock = (overrideResponse: Partial<Extract<TableApiResponse, object>> = {}): TableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
         [faker.string.alphanumeric(5)]: {}
       }, registered_at: faker.date.past().toISOString().slice(0, 19) + 'Z', selection: faker.string.alpha({length: {min: 10, max: 20}}), settings: faker.helpers.arrayElement([null,]), source_preset_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), status: faker.string.alpha({length: {min: 10, max: 20}}), table: faker.string.alpha({length: {min: 10, max: 20}}), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
-export const getResetTableSelectionResponseMock = (overrideResponse: Partial<Extract<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse, object>> = {}): ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
+export const getResetTableSelectionResponseMock = (overrideResponse: Partial<Extract<TableApiResponse, object>> = {}): TableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
         [faker.string.alphanumeric(5)]: {}
       }, registered_at: faker.date.past().toISOString().slice(0, 19) + 'Z', selection: faker.string.alpha({length: {min: 10, max: 20}}), settings: faker.helpers.arrayElement([null,]), source_preset_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), status: faker.string.alpha({length: {min: 10, max: 20}}), table: faker.string.alpha({length: {min: 10, max: 20}}), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
-export const getResumeTableResponseMock = (overrideResponse: Partial<Extract<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse, object>> = {}): ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
+export const getResumeTableResponseMock = (overrideResponse: Partial<Extract<TableApiResponse, object>> = {}): TableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
         [faker.string.alphanumeric(5)]: {}
       }, registered_at: faker.date.past().toISOString().slice(0, 19) + 'Z', selection: faker.string.alpha({length: {min: 10, max: 20}}), settings: faker.helpers.arrayElement([null,]), source_preset_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), status: faker.string.alpha({length: {min: 10, max: 20}}), table: faker.string.alpha({length: {min: 10, max: 20}}), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
-export const getUpdateTableSettingsResponseMock = (overrideResponse: Partial<Extract<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse, object>> = {}): ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
+export const getUpdateTableSettingsResponseMock = (overrideResponse: Partial<Extract<TableApiResponse, object>> = {}): TableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
         [faker.string.alphanumeric(5)]: {}
       }, registered_at: faker.date.past().toISOString().slice(0, 19) + 'Z', selection: faker.string.alpha({length: {min: 10, max: 20}}), settings: faker.helpers.arrayElement([null,]), source_preset_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), status: faker.string.alpha({length: {min: 10, max: 20}}), table: faker.string.alpha({length: {min: 10, max: 20}}), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
@@ -115,7 +115,7 @@ export const getListCatalogTablesMockHandler = (overrideResponse?: TableIdentifi
   }, options)
 }
 
-export const getCreateTableMockHandler = (overrideResponse?: ContextCatalogAdapterInboundWebTableDtoTableApiResponse | ((info: Parameters<HttpResponseResolver<{ catalog: string; namespace: string }, CreateTableApiRequest>>[0]) => Promise<ContextCatalogAdapterInboundWebTableDtoTableApiResponse> | ContextCatalogAdapterInboundWebTableDtoTableApiResponse), options?: RequestHandlerOptions) => {
+export const getCreateTableMockHandler = (overrideResponse?: CatalogTableApiResponse | ((info: Parameters<HttpResponseResolver<{ catalog: string; namespace: string }, CreateTableApiRequest>>[0]) => Promise<CatalogTableApiResponse> | CatalogTableApiResponse), options?: RequestHandlerOptions) => {
   return http.post<{ catalog: string; namespace: string }, CreateTableApiRequest>('*/v1/catalogs/:catalog/namespaces/:namespace/tables', async (info: Parameters<HttpResponseResolver<{ catalog: string; namespace: string }, CreateTableApiRequest>>[0]) => {
 
 
@@ -137,7 +137,7 @@ export const getDeleteTableMockHandler = (overrideResponse?: void | ((info: Para
   }, options)
 }
 
-export const getGetCatalogTableMockHandler = (overrideResponse?: ContextCatalogAdapterInboundWebTableDtoTableApiResponse | ((info: Parameters<HttpResponseResolver<{ catalog: string; namespace: string; table: string }>>[0]) => Promise<ContextCatalogAdapterInboundWebTableDtoTableApiResponse> | ContextCatalogAdapterInboundWebTableDtoTableApiResponse), options?: RequestHandlerOptions) => {
+export const getGetCatalogTableMockHandler = (overrideResponse?: CatalogTableApiResponse | ((info: Parameters<HttpResponseResolver<{ catalog: string; namespace: string; table: string }>>[0]) => Promise<CatalogTableApiResponse> | CatalogTableApiResponse), options?: RequestHandlerOptions) => {
   return http.get<{ catalog: string; namespace: string; table: string }>('*/v1/catalogs/:catalog/namespaces/:namespace/tables/:table', async (info: Parameters<HttpResponseResolver<{ catalog: string; namespace: string; table: string }>>[0]) => {
 
 
@@ -149,7 +149,7 @@ export const getGetCatalogTableMockHandler = (overrideResponse?: ContextCatalogA
   }, options)
 }
 
-export const getUpdateTablePropertiesMockHandler = (overrideResponse?: ContextCatalogAdapterInboundWebTableDtoTableApiResponse | ((info: Parameters<HttpResponseResolver<{ catalog: string; namespace: string; table: string }, UpdateTablePropertiesApiRequest>>[0]) => Promise<ContextCatalogAdapterInboundWebTableDtoTableApiResponse> | ContextCatalogAdapterInboundWebTableDtoTableApiResponse), options?: RequestHandlerOptions) => {
+export const getUpdateTablePropertiesMockHandler = (overrideResponse?: CatalogTableApiResponse | ((info: Parameters<HttpResponseResolver<{ catalog: string; namespace: string; table: string }, UpdateTablePropertiesApiRequest>>[0]) => Promise<CatalogTableApiResponse> | CatalogTableApiResponse), options?: RequestHandlerOptions) => {
   return http.put<{ catalog: string; namespace: string; table: string }, UpdateTablePropertiesApiRequest>('*/v1/catalogs/:catalog/namespaces/:namespace/tables/:table/properties', async (info: Parameters<HttpResponseResolver<{ catalog: string; namespace: string; table: string }, UpdateTablePropertiesApiRequest>>[0]) => {
 
 
@@ -173,7 +173,7 @@ export const getRenameTableMockHandler = (overrideResponse?: TableIdentifierApiR
   }, options)
 }
 
-export const getListTablesMockHandler = (overrideResponse?: ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse[] | ((info: Parameters<HttpResponseResolver>[0]) => Promise<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse[]> | ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse[]), options?: RequestHandlerOptions) => {
+export const getListTablesMockHandler = (overrideResponse?: TableApiResponse[] | ((info: Parameters<HttpResponseResolver>[0]) => Promise<TableApiResponse[]> | TableApiResponse[]), options?: RequestHandlerOptions) => {
   return http.get('*/v1/tables', async (info: Parameters<HttpResponseResolver>[0]) => {
 
 
@@ -185,7 +185,7 @@ export const getListTablesMockHandler = (overrideResponse?: ContextTableMaintena
   }, options)
 }
 
-export const getExcludeTableMockHandler = (overrideResponse?: ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse | ((info: Parameters<HttpResponseResolver<PathParams, ExcludeTableApiRequest>>[0]) => Promise<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse> | ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse), options?: RequestHandlerOptions) => {
+export const getExcludeTableMockHandler = (overrideResponse?: TableApiResponse | ((info: Parameters<HttpResponseResolver<PathParams, ExcludeTableApiRequest>>[0]) => Promise<TableApiResponse> | TableApiResponse), options?: RequestHandlerOptions) => {
   return http.post<PathParams, ExcludeTableApiRequest>('*/v1/tables/exclude', async (info: Parameters<HttpResponseResolver<PathParams, ExcludeTableApiRequest>>[0]) => {
 
 
@@ -197,7 +197,7 @@ export const getExcludeTableMockHandler = (overrideResponse?: ContextTableMainte
   }, options)
 }
 
-export const getIncludeTableMockHandler = (overrideResponse?: ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse | ((info: Parameters<HttpResponseResolver<PathParams, IncludeTableApiRequest>>[0]) => Promise<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse> | ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse), options?: RequestHandlerOptions) => {
+export const getIncludeTableMockHandler = (overrideResponse?: TableApiResponse | ((info: Parameters<HttpResponseResolver<PathParams, IncludeTableApiRequest>>[0]) => Promise<TableApiResponse> | TableApiResponse), options?: RequestHandlerOptions) => {
   return http.post<PathParams, IncludeTableApiRequest>('*/v1/tables/include', async (info: Parameters<HttpResponseResolver<PathParams, IncludeTableApiRequest>>[0]) => {
 
 
@@ -209,7 +209,7 @@ export const getIncludeTableMockHandler = (overrideResponse?: ContextTableMainte
   }, options)
 }
 
-export const getGetTableMockHandler = (overrideResponse?: ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse> | ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse), options?: RequestHandlerOptions) => {
+export const getGetTableMockHandler = (overrideResponse?: TableApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<TableApiResponse> | TableApiResponse), options?: RequestHandlerOptions) => {
   return http.get<{ tableUuid: string }>('*/v1/tables/:tableUuid', async (info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => {
 
 
@@ -257,7 +257,7 @@ export const getTriggerTableMaintenanceMockHandler = (overrideResponse?: Trigger
   }, options)
 }
 
-export const getPauseTableMockHandler = (overrideResponse?: ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse> | ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse), options?: RequestHandlerOptions) => {
+export const getPauseTableMockHandler = (overrideResponse?: TableApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<TableApiResponse> | TableApiResponse), options?: RequestHandlerOptions) => {
   return http.post<{ tableUuid: string }>('*/v1/tables/:tableUuid/pause', async (info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => {
 
 
@@ -269,7 +269,7 @@ export const getPauseTableMockHandler = (overrideResponse?: ContextTableMaintena
   }, options)
 }
 
-export const getResetTableSelectionMockHandler = (overrideResponse?: ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse> | ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse), options?: RequestHandlerOptions) => {
+export const getResetTableSelectionMockHandler = (overrideResponse?: TableApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<TableApiResponse> | TableApiResponse), options?: RequestHandlerOptions) => {
   return http.post<{ tableUuid: string }>('*/v1/tables/:tableUuid/reset-selection', async (info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => {
 
 
@@ -281,7 +281,7 @@ export const getResetTableSelectionMockHandler = (overrideResponse?: ContextTabl
   }, options)
 }
 
-export const getResumeTableMockHandler = (overrideResponse?: ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse> | ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse), options?: RequestHandlerOptions) => {
+export const getResumeTableMockHandler = (overrideResponse?: TableApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<TableApiResponse> | TableApiResponse), options?: RequestHandlerOptions) => {
   return http.post<{ tableUuid: string }>('*/v1/tables/:tableUuid/resume', async (info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => {
 
 
@@ -293,7 +293,7 @@ export const getResumeTableMockHandler = (overrideResponse?: ContextTableMainten
   }, options)
 }
 
-export const getUpdateTableSettingsMockHandler = (overrideResponse?: ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }, UpdateTableSettingsApiRequest>>[0]) => Promise<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse> | ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse), options?: RequestHandlerOptions) => {
+export const getUpdateTableSettingsMockHandler = (overrideResponse?: TableApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }, UpdateTableSettingsApiRequest>>[0]) => Promise<TableApiResponse> | TableApiResponse), options?: RequestHandlerOptions) => {
   return http.put<{ tableUuid: string }, UpdateTableSettingsApiRequest>('*/v1/tables/:tableUuid/settings', async (info: Parameters<HttpResponseResolver<{ tableUuid: string }, UpdateTableSettingsApiRequest>>[0]) => {
 
 

@@ -24,8 +24,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  ContextCatalogAdapterInboundWebTableDtoTableApiResponse,
-  ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse,
+  CatalogTableApiResponse,
   CreateTableApiRequest,
   ExcludeTableApiRequest,
   HTTPValidationError,
@@ -33,6 +32,7 @@ import type {
   ListTableCommitsParams,
   ListTablesParams,
   RenameTableApiRequest,
+  TableApiResponse,
   TableCommitsApiResponse,
   TableHealthApiResponse,
   TableIdentifierApiResponse,
@@ -189,7 +189,7 @@ export const getCreateTableUrl = (catalog: string,
  */
 export const createTable = async (catalog: string,
     namespace: string,
-    createTableApiRequest: CreateTableApiRequest, options?: Parameters<typeof apiFetch>[1]): Promise<ContextCatalogAdapterInboundWebTableDtoTableApiResponse> => {
+    createTableApiRequest: CreateTableApiRequest, options?: Parameters<typeof apiFetch>[1]): Promise<CatalogTableApiResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -205,7 +205,7 @@ export const createTable = async (catalog: string,
     }
     return headers;
   };
-return apiFetch<ContextCatalogAdapterInboundWebTableDtoTableApiResponse>(getCreateTableUrl(catalog,namespace),
+return apiFetch<CatalogTableApiResponse>(getCreateTableUrl(catalog,namespace),
   {
     ...options,
     method: 'POST',
@@ -359,9 +359,9 @@ export const useDeleteTable = <TError = HTTPValidationError,
  */
 export const getCatalogTable = async (catalog: string,
     namespace: string,
-    table: string, options?: Parameters<typeof apiFetch>[1]): Promise<ContextCatalogAdapterInboundWebTableDtoTableApiResponse> => {
+    table: string, options?: Parameters<typeof apiFetch>[1]): Promise<CatalogTableApiResponse> => {
 
-  return apiFetch<ContextCatalogAdapterInboundWebTableDtoTableApiResponse>(getGetCatalogTableUrl(catalog,namespace,table),
+  return apiFetch<CatalogTableApiResponse>(getGetCatalogTableUrl(catalog,namespace,table),
   {
     ...options,
     method: 'GET'
@@ -477,7 +477,7 @@ export const getUpdateTablePropertiesUrl = (catalog: string,
 export const updateTableProperties = async (catalog: string,
     namespace: string,
     table: string,
-    updateTablePropertiesApiRequest: UpdateTablePropertiesApiRequest, options?: Parameters<typeof apiFetch>[1]): Promise<ContextCatalogAdapterInboundWebTableDtoTableApiResponse> => {
+    updateTablePropertiesApiRequest: UpdateTablePropertiesApiRequest, options?: Parameters<typeof apiFetch>[1]): Promise<CatalogTableApiResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -493,7 +493,7 @@ export const updateTableProperties = async (catalog: string,
     }
     return headers;
   };
-return apiFetch<ContextCatalogAdapterInboundWebTableDtoTableApiResponse>(getUpdateTablePropertiesUrl(catalog,namespace,table),
+return apiFetch<CatalogTableApiResponse>(getUpdateTablePropertiesUrl(catalog,namespace,table),
   {
     ...options,
     method: 'PUT',
@@ -665,9 +665,9 @@ export const useRenameTable = <TError = HTTPValidationError,
  * List the tables, optionally only those in one status.
  * @summary List Tables
  */
-export const listTables = async (params?: ListTablesParams, options?: Parameters<typeof apiFetch>[1]): Promise<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse[]> => {
+export const listTables = async (params?: ListTablesParams, options?: Parameters<typeof apiFetch>[1]): Promise<TableApiResponse[]> => {
 
-  return apiFetch<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse[]>(getListTablesUrl(params),
+  return apiFetch<TableApiResponse[]>(getListTablesUrl(params),
   {
     ...options,
     method: 'GET'
@@ -766,7 +766,7 @@ export const getExcludeTableUrl = () => {
  * Exclude a catalog table from maintenance by hand.
  * @summary Exclude Table
  */
-export const excludeTable = async (excludeTableApiRequest: ExcludeTableApiRequest, options?: Parameters<typeof apiFetch>[1]): Promise<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse> => {
+export const excludeTable = async (excludeTableApiRequest: ExcludeTableApiRequest, options?: Parameters<typeof apiFetch>[1]): Promise<TableApiResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -782,7 +782,7 @@ export const excludeTable = async (excludeTableApiRequest: ExcludeTableApiReques
     }
     return headers;
   };
-return apiFetch<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse>(getExcludeTableUrl(),
+return apiFetch<TableApiResponse>(getExcludeTableUrl(),
   {
     ...options,
     method: 'POST',
@@ -854,7 +854,7 @@ export const useExcludeTable = <TError = HTTPValidationError,
  * Include a catalog table in maintenance by hand.
  * @summary Include Table
  */
-export const includeTable = async (includeTableApiRequest: IncludeTableApiRequest, options?: Parameters<typeof apiFetch>[1]): Promise<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse> => {
+export const includeTable = async (includeTableApiRequest: IncludeTableApiRequest, options?: Parameters<typeof apiFetch>[1]): Promise<TableApiResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -870,7 +870,7 @@ export const includeTable = async (includeTableApiRequest: IncludeTableApiReques
     }
     return headers;
   };
-return apiFetch<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse>(getIncludeTableUrl(),
+return apiFetch<TableApiResponse>(getIncludeTableUrl(),
   {
     ...options,
     method: 'POST',
@@ -942,9 +942,9 @@ export const useIncludeTable = <TError = HTTPValidationError,
  * Return one table.
  * @summary Get Table
  */
-export const getTable = async (tableUuid: string, options?: Parameters<typeof apiFetch>[1]): Promise<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse> => {
+export const getTable = async (tableUuid: string, options?: Parameters<typeof apiFetch>[1]): Promise<TableApiResponse> => {
 
-  return apiFetch<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse>(getGetTableUrl(tableUuid),
+  return apiFetch<TableApiResponse>(getGetTableUrl(tableUuid),
   {
     ...options,
     method: 'GET'
@@ -1349,9 +1349,9 @@ export const useTriggerTableMaintenance = <TError = HTTPValidationError,
  * Pause maintenance of a table.
  * @summary Pause Table
  */
-export const pauseTable = async (tableUuid: string, options?: Parameters<typeof apiFetch>[1]): Promise<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse> => {
+export const pauseTable = async (tableUuid: string, options?: Parameters<typeof apiFetch>[1]): Promise<TableApiResponse> => {
 
-  return apiFetch<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse>(getPauseTableUrl(tableUuid),
+  return apiFetch<TableApiResponse>(getPauseTableUrl(tableUuid),
   {
     ...options,
     method: 'POST'
@@ -1423,9 +1423,9 @@ export const usePauseTable = <TError = HTTPValidationError,
  * Hand a manually selected table back to the discovery rules.
  * @summary Reset Table Selection
  */
-export const resetTableSelection = async (tableUuid: string, options?: Parameters<typeof apiFetch>[1]): Promise<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse> => {
+export const resetTableSelection = async (tableUuid: string, options?: Parameters<typeof apiFetch>[1]): Promise<TableApiResponse> => {
 
-  return apiFetch<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse>(getResetTableSelectionUrl(tableUuid),
+  return apiFetch<TableApiResponse>(getResetTableSelectionUrl(tableUuid),
   {
     ...options,
     method: 'POST'
@@ -1497,9 +1497,9 @@ export const useResetTableSelection = <TError = HTTPValidationError,
  * Resume maintenance of a table.
  * @summary Resume Table
  */
-export const resumeTable = async (tableUuid: string, options?: Parameters<typeof apiFetch>[1]): Promise<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse> => {
+export const resumeTable = async (tableUuid: string, options?: Parameters<typeof apiFetch>[1]): Promise<TableApiResponse> => {
 
-  return apiFetch<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse>(getResumeTableUrl(tableUuid),
+  return apiFetch<TableApiResponse>(getResumeTableUrl(tableUuid),
   {
     ...options,
     method: 'POST'
@@ -1572,7 +1572,7 @@ export const useResumeTable = <TError = HTTPValidationError,
  * @summary Update Table Settings
  */
 export const updateTableSettings = async (tableUuid: string,
-    updateTableSettingsApiRequest: UpdateTableSettingsApiRequest, options?: Parameters<typeof apiFetch>[1]): Promise<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse> => {
+    updateTableSettingsApiRequest: UpdateTableSettingsApiRequest, options?: Parameters<typeof apiFetch>[1]): Promise<TableApiResponse> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -1588,7 +1588,7 @@ export const updateTableSettings = async (tableUuid: string,
     }
     return headers;
   };
-return apiFetch<ContextTableMaintenanceAdapterInboundWebTableDtoTableApiResponse>(getUpdateTableSettingsUrl(tableUuid),
+return apiFetch<TableApiResponse>(getUpdateTableSettingsUrl(tableUuid),
   {
     ...options,
     method: 'PUT',

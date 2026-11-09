@@ -330,6 +330,97 @@
         "title": "CatalogApiResponse",
         "type": "object"
       },
+      "CatalogTableApiResponse": {
+        "description": "Describe an Iceberg table: everything the table page's Overview, Schema, Snapshots and Properties show.",
+        "properties": {
+          "catalog": {
+            "title": "Catalog",
+            "type": "string"
+          },
+          "current_snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Snapshot Id"
+          },
+          "format_version": {
+            "title": "Format Version",
+            "type": "integer"
+          },
+          "last_updated_ms": {
+            "title": "Last Updated Ms",
+            "type": "integer"
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "namespace": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Namespace",
+            "type": "array"
+          },
+          "partition_spec": {
+            "$ref": "#/components/schemas/PartitionSpecApiResponse"
+          },
+          "properties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Properties",
+            "type": "object"
+          },
+          "schema": {
+            "$ref": "#/components/schemas/SchemaApiResponse"
+          },
+          "snapshots": {
+            "items": {
+              "$ref": "#/components/schemas/SnapshotApiResponse"
+            },
+            "title": "Snapshots",
+            "type": "array"
+          },
+          "sort_order": {
+            "$ref": "#/components/schemas/SortOrderApiResponse"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/TableSummaryApiResponse"
+          },
+          "uuid": {
+            "title": "Uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "catalog",
+          "namespace",
+          "name",
+          "uuid",
+          "format_version",
+          "location",
+          "current_snapshot_id",
+          "last_updated_ms",
+          "schema",
+          "partition_spec",
+          "sort_order",
+          "snapshots",
+          "properties",
+          "summary"
+        ],
+        "title": "CatalogTableApiResponse",
+        "type": "object"
+      },
       "ConnectionConfigApiRequest": {
         "additionalProperties": false,
         "description": "Carry the remote catalog service an EXTERNAL catalog connects to.\n\n``connection_type`` REST is a catalog that speaks the Iceberg REST protocol.",
@@ -1667,6 +1758,103 @@
         "title": "StorageConfigApiResponse",
         "type": "object"
       },
+      "TableApiResponse": {
+        "description": "Describe a table.",
+        "properties": {
+          "catalog": {
+            "title": "Catalog",
+            "type": "string"
+          },
+          "matched_rule_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched Rule Id"
+          },
+          "namespace": {
+            "title": "Namespace",
+            "type": "string"
+          },
+          "operation_states": {
+            "additionalProperties": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Operation States",
+            "type": "object"
+          },
+          "registered_at": {
+            "format": "date-time",
+            "title": "Registered At",
+            "type": "string"
+          },
+          "selection": {
+            "title": "Selection",
+            "type": "string"
+          },
+          "settings": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settings"
+          },
+          "source_preset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Preset Id"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "table": {
+            "title": "Table",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "uuid": {
+            "title": "Uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uuid",
+          "catalog",
+          "namespace",
+          "table",
+          "status",
+          "selection",
+          "settings",
+          "matched_rule_id",
+          "source_preset_id",
+          "operation_states",
+          "registered_at",
+          "updated_at"
+        ],
+        "title": "TableApiResponse",
+        "type": "object"
+      },
       "TableCommitApiResponse": {
         "description": "Describe one commit of a table.",
         "properties": {
@@ -2648,194 +2836,6 @@
         ],
         "title": "ViewVersionApiResponse",
         "type": "object"
-      },
-      "context__catalog__adapter__inbound__web__table__dto__TableApiResponse": {
-        "description": "Describe an Iceberg table: everything the table page's Overview, Schema, Snapshots and Properties show.",
-        "properties": {
-          "catalog": {
-            "title": "Catalog",
-            "type": "string"
-          },
-          "current_snapshot_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Current Snapshot Id"
-          },
-          "format_version": {
-            "title": "Format Version",
-            "type": "integer"
-          },
-          "last_updated_ms": {
-            "title": "Last Updated Ms",
-            "type": "integer"
-          },
-          "location": {
-            "title": "Location",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "namespace": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Namespace",
-            "type": "array"
-          },
-          "partition_spec": {
-            "$ref": "#/components/schemas/PartitionSpecApiResponse"
-          },
-          "properties": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Properties",
-            "type": "object"
-          },
-          "schema": {
-            "$ref": "#/components/schemas/SchemaApiResponse"
-          },
-          "snapshots": {
-            "items": {
-              "$ref": "#/components/schemas/SnapshotApiResponse"
-            },
-            "title": "Snapshots",
-            "type": "array"
-          },
-          "sort_order": {
-            "$ref": "#/components/schemas/SortOrderApiResponse"
-          },
-          "summary": {
-            "$ref": "#/components/schemas/TableSummaryApiResponse"
-          },
-          "uuid": {
-            "title": "Uuid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "catalog",
-          "namespace",
-          "name",
-          "uuid",
-          "format_version",
-          "location",
-          "current_snapshot_id",
-          "last_updated_ms",
-          "schema",
-          "partition_spec",
-          "sort_order",
-          "snapshots",
-          "properties",
-          "summary"
-        ],
-        "title": "TableApiResponse",
-        "type": "object"
-      },
-      "context__table_maintenance__adapter__inbound__web__table__dto__TableApiResponse": {
-        "description": "Describe a table.",
-        "properties": {
-          "catalog": {
-            "title": "Catalog",
-            "type": "string"
-          },
-          "matched_rule_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Matched Rule Id"
-          },
-          "namespace": {
-            "title": "Namespace",
-            "type": "string"
-          },
-          "operation_states": {
-            "additionalProperties": {
-              "additionalProperties": true,
-              "type": "object"
-            },
-            "title": "Operation States",
-            "type": "object"
-          },
-          "registered_at": {
-            "format": "date-time",
-            "title": "Registered At",
-            "type": "string"
-          },
-          "selection": {
-            "title": "Selection",
-            "type": "string"
-          },
-          "settings": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Settings"
-          },
-          "source_preset_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Preset Id"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          },
-          "table": {
-            "title": "Table",
-            "type": "string"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          },
-          "uuid": {
-            "title": "Uuid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "uuid",
-          "catalog",
-          "namespace",
-          "table",
-          "status",
-          "selection",
-          "settings",
-          "matched_rule_id",
-          "source_preset_id",
-          "operation_states",
-          "registered_at",
-          "updated_at"
-        ],
-        "title": "TableApiResponse",
-        "type": "object"
       }
     }
   },
@@ -3650,7 +3650,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/context__catalog__adapter__inbound__web__table__dto__TableApiResponse"
+                  "$ref": "#/components/schemas/CatalogTableApiResponse"
                 }
               }
             },
@@ -3763,7 +3763,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/context__catalog__adapter__inbound__web__table__dto__TableApiResponse"
+                  "$ref": "#/components/schemas/CatalogTableApiResponse"
                 }
               }
             },
@@ -3834,7 +3834,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/context__catalog__adapter__inbound__web__table__dto__TableApiResponse"
+                  "$ref": "#/components/schemas/CatalogTableApiResponse"
                 }
               }
             },
@@ -4763,7 +4763,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/context__table_maintenance__adapter__inbound__web__table__dto__TableApiResponse"
+                    "$ref": "#/components/schemas/TableApiResponse"
                   },
                   "title": "Response List Tables",
                   "type": "array"
@@ -4808,7 +4808,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/context__table_maintenance__adapter__inbound__web__table__dto__TableApiResponse"
+                  "$ref": "#/components/schemas/TableApiResponse"
                 }
               }
             },
@@ -4850,7 +4850,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/context__table_maintenance__adapter__inbound__web__table__dto__TableApiResponse"
+                  "$ref": "#/components/schemas/TableApiResponse"
                 }
               }
             },
@@ -4893,7 +4893,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/context__table_maintenance__adapter__inbound__web__table__dto__TableApiResponse"
+                  "$ref": "#/components/schemas/TableApiResponse"
                 }
               }
             },
@@ -5104,7 +5104,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/context__table_maintenance__adapter__inbound__web__table__dto__TableApiResponse"
+                  "$ref": "#/components/schemas/TableApiResponse"
                 }
               }
             },
@@ -5147,7 +5147,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/context__table_maintenance__adapter__inbound__web__table__dto__TableApiResponse"
+                  "$ref": "#/components/schemas/TableApiResponse"
                 }
               }
             },
@@ -5190,7 +5190,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/context__table_maintenance__adapter__inbound__web__table__dto__TableApiResponse"
+                  "$ref": "#/components/schemas/TableApiResponse"
                 }
               }
             },
@@ -5243,7 +5243,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/context__table_maintenance__adapter__inbound__web__table__dto__TableApiResponse"
+                  "$ref": "#/components/schemas/TableApiResponse"
                 }
               }
             },
