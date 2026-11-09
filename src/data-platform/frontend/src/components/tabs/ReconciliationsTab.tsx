@@ -1,0 +1,329 @@
+import {
+  Badge,
+  Banner,
+  Button,
+  Drawer,
+  IconChevronDown,
+  IconChevronRight,
+  IconChevronUp,
+  IconCircleCheck,
+  IconRadar,
+  IconX,
+  List,
+  ListItem,
+  StatusBadge,
+  TextLink,
+} from "@retail-lakehouse/design-system";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { useId, useState } from "react";
+import { Link } from "react-router";
+import type {
+  ReconciliationOperationApiResponse,
+  TableReconciliationApiResponse,
+} from "@/api/generated/model";
+import {
+  getListTableReconciliationsQueryKey,
+  listTableReconciliations,
+} from "@/api/generated/table-reconciliations/table-reconciliations";
+import { PanelSkeleton } from "@/components/PanelSkeleton";
+import {
+  formatMeasured,
+  formatRule,
+  headline,
+  isManualRun,
+  isQuiet,
+  mainWakeText,
+  measurementLabel,
+  operationLabel,
+  reasonSentence,
+  resultLabel,
+  resultOrder,
+  wakeText,
+} from "@/components/tabs/reconciliationText";
+import { errorMessage, formatRelativeTime, formatTimestamp } from "@/format";
+
+const PAGE_SIZE = 50;
+
+const DAY_FORMAT = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
+const TIME_FORMAT = new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+
+function timeOf(r: TableReconciliationApiResponse): string {
+  return TIME_FORMAT.format(new Date(r.reconciled_at));
+}
+
+// A line of the timeline: one reconciliation, or a quiet stretch folded into one line.
+type Line = { kind: "record"; record: TableReconciliationApiResponse } | { kind: "quiet"; records: TableReconciliationApiResponse[] };
+
+type Day = { label: string; records: TableReconciliationApiResponse[] };
+
+// Records come newest first, so the days come out newest first too.
+function groupedByDay(records: TableReconciliationApiResponse[]): Day[] {
+  const days: Day[] = [];
+  for (const record of records) {
+    const label = `Reconciliations on ${DAY_FORMAT.format(new Date(record.reconciled_at))}`;
+    const last = days.at(-1);
+    if (last?.label === label) last.records.push(record);
+    else days.push({ label, records: [record] });
+  }
+  return days;
+}
+
+// Consecutive reconciliations that found nothing to do fold into one line, so hourly quiet
+// passes do not drown the ones that did something (spec anti-goal). A skipped one breaks the fold.
+function folded(records: TableReconciliationApiResponse[]): Line[] {
+  const lines: Line[] = [];
+  for (const record of records) {
+    const last = lines.at(-1);
+    if (isQuiet(record) && last?.kind === "quiet") last.records.push(record);
+    else lines.push(isQuiet(record) ? { kind: "quiet", records: [record] } : { kind: "record", record });
+  }
+  return lines.map((line) => (line.kind === "quiet" && line.records.length === 1 ? { kind: "record", record: line.records[0]! } : line));
+}
+
+function runPath(runId: string): string {
+  return `../maintenance?run=${encodeURIComponent(runId)}`;
+}
+
+function RunLink({ runId, className }: { runId: string; className?: string }) {
+  return (
+    <TextLink asChild className={className}>
+      <Link to={runPath(runId)} relative="path">
+        Open maintenance run <span className="font-mono">{runId}</span>
+      </Link>
+    </TextLink>
+  );
+}
+
+function startedRun(r: TableReconciliationApiResponse): string | null {
+  return r.run_id !== null && r.operations.some((op) => op.result === "started") ? r.run_id : null;
+}
+
+const ROW_BUTTON =
+  "flex min-w-0 flex-1 flex-col rounded-sm px-3 py-2 text-left hover:bg-hovered-variant focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring";
+
+function RecordLine({ record, onOpen }: { record: TableReconciliationApiResponse; onOpen: () => void }) {
+  const runId = startedRun(record);
+  return (
+    <li className="flex flex-col sm:flex-row sm:items-center">
+      <button type="button" className={ROW_BUTTON} onClick={onOpen}>
+        <span className="type-label-large flex flex-wrap items-center gap-2 break-words text-on-surface">
+          {headline(record)}
+          {record.dry_run && !isManualRun(record) && <Badge>Dry run</Badge>}
+        </span>
+        <span className="type-body-small text-on-surface-variant">
+          {mainWakeText(record)} at <span className="tabular-nums">{timeOf(record)}</span>,{" "}
+          <time dateTime={record.reconciled_at} title={formatTimestamp(record.reconciled_at)}>
+            {formatRelativeTime(record.reconciled_at)}
+          </time>
+        </span>
+      </button>
+      {runId !== null && <RunLink runId={runId} className="type-body-small shrink-0 px-3 pb-2 sm:pb-0" />}
+    </li>
+  );
+}
+
+function QuietLine({ records, onOpen }: { records: TableReconciliationApiResponse[]; onOpen: (r: TableReconciliationApiResponse) => void }) {
+  const [open, setOpen] = useState(false);
+  const listId = useId();
+  const first = records.at(-1)!;
+  const last = records[0]!;
+  return (
+    <li>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={open ? listId : undefined}
+        className="type-body-small flex w-full items-center gap-1 rounded-sm px-3 py-2 text-left text-on-surface-variant hover:bg-hovered-variant focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring"
+        onClick={() => setOpen((value) => !value)}
+      >
+        {open ? <IconChevronDown aria-hidden="true" size={16} /> : <IconChevronRight aria-hidden="true" size={16} />}
+        <span className="tabular-nums">
+          {records.length} reconciliations found nothing to do, {timeOf(first)}–{timeOf(last)}
+        </span>
+      </button>
+      {open && (
+        <List id={listId} className="pb-2 pl-6">
+          {records.map((record) => (
+            <ListItem
+              key={record.reconciliation_id}
+              title={
+                <span className="tabular-nums">
+                  {mainWakeText(record)} at {timeOf(record)}
+                </span>
+              }
+              onSelect={() => onOpen(record)}
+            />
+          ))}
+        </List>
+      )}
+    </li>
+  );
+}
+
+// One day of the timeline, drawn like the Commits tab: a mark on a line down the left.
+function DaySection({ day, onOpen }: { day: Day; onOpen: (r: TableReconciliationApiResponse) => void }) {
+  const headingId = useId();
+  return (
+    <section aria-labelledby={headingId} className="relative pb-6 pl-9 last:pb-0">
+      <span aria-hidden="true" className="absolute top-6 bottom-0 left-3 border-l border-outline" />
+      <IconRadar aria-hidden="true" className="absolute top-0 left-0 size-6 text-on-surface-variant" />
+      <h2 id={headingId} className="type-label-large leading-6 text-on-surface-variant">
+        {day.label}
+      </h2>
+      <List className="mt-2 divide-y divide-outline rounded-md border border-outline bg-surface">
+        {folded(day.records).map((line) =>
+          line.kind === "quiet" ? (
+            <QuietLine key={line.records[0]!.reconciliation_id} records={line.records} onOpen={onOpen} />
+          ) : (
+            <RecordLine key={line.record.reconciliation_id} record={line.record} onOpen={() => onOpen(line.record)} />
+          ),
+        )}
+      </List>
+    </section>
+  );
+}
+
+function MetMark({ met }: { met: boolean | null }) {
+  if (met === null) return <span aria-hidden="true" className="inline-block w-3.5 shrink-0" />;
+  return met ? (
+    <>
+      <IconCircleCheck aria-hidden="true" size={14} className="shrink-0 text-primary" />
+      <span className="sr-only">Met:</span>
+    </>
+  ) : (
+    <>
+      <IconX aria-hidden="true" size={14} className="shrink-0 text-on-surface-variant" />
+      <span className="sr-only">Not met:</span>
+    </>
+  );
+}
+
+function AllMeasurements({ operation }: { operation: ReconciliationOperationApiResponse }) {
+  const [open, setOpen] = useState(false);
+  const listId = useId();
+  const label = operationLabel(operation.operation);
+  const deciding = operation.measurements.filter((m) => m.threshold !== null).length;
+  return (
+    <>
+      <Button
+        styleType="ghost"
+        size="small"
+        aria-expanded={open}
+        aria-controls={open ? listId : undefined}
+        className="self-start"
+        onClick={() => setOpen((value) => !value)}
+      >
+        {open ? <IconChevronUp aria-hidden="true" size={14} /> : <IconChevronDown aria-hidden="true" size={14} />}
+        All measurements
+      </Button>
+      {open && (
+        <div id={listId} className="type-body-small flex flex-col gap-1">
+          {deciding > 1 && (
+            <p className="text-on-surface-variant">
+              {operation.combine === "any" ? "Starts when any measurement holds." : "Starts when every measurement holds."}
+            </p>
+          )}
+          <ul aria-label={`All measurements of ${label}`} className="flex flex-col gap-1">
+            {operation.measurements.map((m) => (
+              <li key={m.key} className="flex items-center justify-between gap-4">
+                <span className="flex min-w-0 items-center gap-1 text-on-surface-variant">
+                  <MetMark met={m.met} />
+                  {measurementLabel(m.key)}
+                </span>
+                <span className="shrink-0 tabular-nums text-on-surface">
+                  {formatMeasured(m.observed, m.unit)}
+                  {m.threshold !== null && <span className="text-on-surface-variant"> / {formatRule(m)}</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </>
+  );
+}
+
+function OperationBlock({ record, operation }: { record: TableReconciliationApiResponse; operation: ReconciliationOperationApiResponse }) {
+  const headingId = useId();
+  const status = operation.result === "started" || operation.result === "would_start" ? "notice" : "neutral";
+  const runId = operation.result === "started" ? startedRun(record) : null;
+  return (
+    <section aria-labelledby={headingId} className="flex flex-col gap-1 border-l-2 border-outline pl-4">
+      <div className="flex items-center justify-between gap-2">
+        <h3 id={headingId} className="type-label-large text-on-surface">
+          {operationLabel(operation.operation)}
+        </h3>
+        <StatusBadge status={status}>{resultLabel(operation.result)}</StatusBadge>
+      </div>
+      <p className="type-body-small text-on-surface-variant">{reasonSentence(operation, { manualRun: isManualRun(record) })}</p>
+      {runId !== null && <RunLink runId={runId} className="type-body-small self-start" />}
+      {operation.measurements.length > 0 && <AllMeasurements operation={operation} />}
+    </section>
+  );
+}
+
+function ReconciliationDetail({ record }: { record: TableReconciliationApiResponse }) {
+  const operations = [...record.operations].sort((a, b) => resultOrder(a.result) - resultOrder(b.result));
+  const manual = isManualRun(record);
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex gap-2">
+        <IconRadar aria-hidden="true" className="mt-0.5 shrink-0 text-on-surface-variant" size={18} />
+        <div>
+          <p className="type-body-medium text-on-surface">Woken by {wakeText(record)}</p>
+          <p className="type-body-small text-on-surface-variant">
+            <time dateTime={record.reconciled_at}>{formatTimestamp(record.reconciled_at)}</time>
+            {record.dry_run && (manual ? " · dry run is on; a manual run still runs" : " · dry run, nothing was started")}
+          </p>
+        </div>
+      </div>
+      {operations.map((operation) => (
+        <OperationBlock key={operation.operation} record={record} operation={operation} />
+      ))}
+    </div>
+  );
+}
+
+// Each time this table was reconciled, newest first: what woke it, what it decided and what it
+// started. Details open in a drawer; the full measurements sit one click further in.
+export function ReconciliationsTab({ tableUuid }: { tableUuid: string }) {
+  const [selected, setSelected] = useState<TableReconciliationApiResponse | null>(null);
+  const pages = useInfiniteQuery({
+    // Under the list's url key, so invalidating getListTableReconciliationsQueryKey(uuid) refetches it.
+    queryKey: [...getListTableReconciliationsQueryKey(tableUuid), "pages"],
+    queryFn: ({ pageParam, signal }) =>
+      listTableReconciliations(tableUuid, pageParam === null ? { limit: PAGE_SIZE } : { before: pageParam, limit: PAGE_SIZE }, { signal }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => (lastPage.length < PAGE_SIZE ? undefined : (lastPage.at(-1)?.reconciled_at ?? undefined)),
+  });
+
+  if (pages.isPending) return <PanelSkeleton label="Loading reconciliations…" />;
+  if (pages.isError) {
+    return <Banner type="negative" title={`Could not load reconciliations: ${errorMessage(pages.error)}`} />;
+  }
+  const records = pages.data.pages.flat();
+  if (records.length === 0) {
+    return <p className="type-body-medium text-on-surface-variant">No reconciliations yet.</p>;
+  }
+  return (
+    <>
+      {groupedByDay(records).map((day) => (
+        <DaySection key={day.label} day={day} onOpen={setSelected} />
+      ))}
+      {pages.hasNextPage && (
+        <Button
+          styleType="outlined"
+          size="small"
+          className="mt-4"
+          isLoading={pages.isFetchingNextPage}
+          onClick={() => void pages.fetchNextPage()}
+        >
+          Show older
+        </Button>
+      )}
+      <Drawer isOpen={selected !== null} onOpenChange={(open) => !open && setSelected(null)} title={selected ? headline(selected) : ""}>
+        {selected && <ReconciliationDetail record={selected} />}
+      </Drawer>
+    </>
+  );
+}

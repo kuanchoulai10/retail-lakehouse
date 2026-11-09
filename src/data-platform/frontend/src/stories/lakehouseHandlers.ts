@@ -17,6 +17,7 @@ import {
   getListTablesMockHandler,
 } from "@/api/generated/tables/tables.msw";
 import { getListTableMaintenanceRunsMockHandler } from "@/api/generated/table-maintenance-runs/table-maintenance-runs.msw";
+import { getListTableReconciliationsMockHandler } from "@/api/generated/table-reconciliations/table-reconciliations.msw";
 import { getListViewsMockHandler } from "@/api/generated/views/views.msw";
 import {
   CATALOGS,
@@ -27,6 +28,7 @@ import {
   NAMESPACES,
   ORDERS,
   PRESETS,
+  RECONCILIATIONS,
   RETAIL,
   RETAIL_TABLES,
   RULES,
@@ -69,6 +71,14 @@ export function lakehouseHandlers() {
       };
     }),
     getListTableMaintenanceRunsMockHandler(RUNS),
+    getListTableReconciliationsMockHandler(({ request }) => {
+      const query = new URL(request.url).searchParams;
+      const before = query.get("before");
+      const limit = Number(query.get("limit") ?? 50);
+      return RECONCILIATIONS.filter(
+        (r) => before === null || Date.parse(r.reconciled_at) < Date.parse(before),
+      ).slice(0, limit);
+    }),
     getListTableMaintenancePresetsMockHandler(PRESETS),
     getListTableDiscoveryRulesMockHandler(RULES),
     getGetTableDiscoverySettingsMockHandler({ enabled: true, updated_at: "2026-11-01T09:00:00Z" }),

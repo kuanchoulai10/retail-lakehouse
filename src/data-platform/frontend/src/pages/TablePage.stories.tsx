@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, within } from "storybook/test";
+import { expect, userEvent, within } from "storybook/test";
 import { getListCoveredCatalogsMockHandler } from "@/api/generated/table-discovery-settings/table-discovery-settings.msw";
 import { getGetTableMockHandler } from "@/api/generated/tables/tables.msw";
+import { getListTableReconciliationsMockHandler } from "@/api/generated/table-reconciliations/table-reconciliations.msw";
 import { apiError } from "@/stories/apiError";
 import { ConsolePage } from "@/stories/ConsolePage";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
@@ -60,6 +61,67 @@ export const CommitsPhone: Story = {
 export const Maintenance: Story = { args: { route: `${ORDERS}/maintenance` } };
 
 export const Settings: Story = { args: { route: `${ORDERS}/settings` } };
+
+export const Reconciliations: Story = {
+  args: { route: `${ORDERS}/reconciliations` },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole("button", { name: /^Started Rewrite data files/ })).toBeVisible();
+    await expect(canvas.getByRole("button", { name: /^4 reconciliations found nothing to do/ })).toBeVisible();
+    await expect(canvas.getByRole("button", { name: /^Would start Rewrite data files/ })).toHaveTextContent("Dry run");
+    await expect(canvas.getByRole("button", { name: /^Skipped: table paused/ })).toBeVisible();
+  },
+};
+
+export const ReconciliationDrawer: Story = {
+  args: { route: `${ORDERS}/reconciliations` },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole("button", { name: /^Started Rewrite data files/ }));
+    const drawer = within(await within(canvasElement.ownerDocument.body).findByRole("dialog"));
+    await expect(drawer.getByRole("heading", { level: 2, name: "Started Rewrite data files" })).toBeVisible();
+    await expect(drawer.getByText(/Catalog commit × 3/)).toBeVisible();
+    await expect(drawer.getByRole("link", { name: "Open maintenance run run-1" })).toHaveAttribute(
+      "href",
+      `${ORDERS}/maintenance?run=run-1`,
+    );
+    const measurements = drawer.getAllByRole("button", { name: "All measurements" })[0]!;
+    await userEvent.click(measurements);
+    await expect(measurements).toHaveAttribute("aria-expanded", "true");
+    await expect(drawer.getByRole("list", { name: "All measurements of Rewrite data files" })).toBeVisible();
+  },
+};
+
+export const ReconciliationsEmpty: Story = {
+  args: { route: `${ORDERS}/reconciliations` },
+  beforeEach({ msw }) {
+    msw.use(getListTableReconciliationsMockHandler([]));
+  },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText("No reconciliations yet.")).toBeVisible();
+  },
+};
+
+export const ReconciliationsError: Story = {
+  args: { route: `${ORDERS}/reconciliations` },
+  beforeEach({ msw }) {
+    msw.use(apiError("get", "/v1/tables/:tableUuid/reconciliations", "database down", 500));
+  },
+  play: async ({ canvasElement }) => {
+    await expect(
+      await within(canvasElement).findByText("Could not load reconciliations: database down"),
+    ).toBeVisible();
+  },
+};
+
+export const ReconciliationsPhone: Story = {
+  args: { route: `${ORDERS}/reconciliations` },
+  globals: PHONE,
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByRole("button", { name: /^Started Rewrite data files/ });
+    await expectNoHorizontalPageScroll(canvasElement);
+  },
+};
 
 export const Properties: Story = { args: { route: `${ORDERS}/properties` } };
 

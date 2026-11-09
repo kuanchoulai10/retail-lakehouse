@@ -19,7 +19,7 @@ import { TablePage } from "./TablePage";
 
 const TABLE = "/v1/catalogs/iceberg/namespaces/retail/tables/orders";
 const PAGE = "/catalogs/iceberg/namespaces/retail/tables/orders";
-const SIX_TABS = ["Overview", "Schema", "Commits", "Maintenance", "Properties", "Settings"];
+const SEVEN_TABS = ["Overview", "Schema", "Commits", "Maintenance", "Reconciliations", "Properties", "Settings"];
 
 function Location() {
   const location = useLocation();
@@ -103,18 +103,18 @@ function tabNames(): string[] {
 
 // These tests type into dialogs, which takes seconds under a loaded parallel run.
 describe("TablePage", { timeout: 15_000 }, () => {
-  it("every table shows the same six tabs", async () => {
+  it("every table shows the same seven tabs", async () => {
     stubTable();
     renderAt(PAGE);
     await screen.findByText("Maintenance: managed");
-    expect(tabNames()).toEqual(SIX_TABS);
+    expect(tabNames()).toEqual(SEVEN_TABS);
   });
 
-  it("every table shows the same six tabs when maintenance does not manage it", async () => {
+  it("every table shows the same seven tabs when maintenance does not manage it", async () => {
     stubTable({ covered: [] });
     renderAt(PAGE);
     await screen.findByText("Maintenance: not managed");
-    expect(tabNames()).toEqual(SIX_TABS);
+    expect(tabNames()).toEqual(SEVEN_TABS);
   });
 
   describe.each(UNMANAGED)("unmanaged table (%s)", (_reason, options, message) => {
@@ -348,7 +348,7 @@ describe("TablePage", { timeout: 15_000 }, () => {
     renderAt(`${PAGE}/properties`);
     await screen.findByText("write.format.default");
     screen.getByRole("tab", { name: "Properties" }).focus();
-    await user.keyboard("{ArrowLeft}");
+    await user.keyboard("{ArrowLeft}{ArrowLeft}");
     expect(await screen.findByText("No maintenance runs yet.")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Maintenance" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByTestId("location")).toHaveTextContent(`${PAGE}/maintenance`);

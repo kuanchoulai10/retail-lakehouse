@@ -3,6 +3,7 @@ import type {
   CatalogTableApiResponse,
   NamespaceApiResponse,
   NamespaceSummaryApiResponse,
+  ReconciliationOperationApiResponse,
   TableApiResponse,
   TableCommitsApiResponse,
   TableDiscoveryRuleApiResponse,
@@ -10,6 +11,7 @@ import type {
   TableIdentifierApiResponse,
   TableMaintenancePresetApiResponse,
   TableMaintenanceRunApiResponse,
+  TableReconciliationApiResponse,
   TableStorageApiResponse,
 } from "@/api/generated/model";
 
@@ -334,4 +336,116 @@ export const RULES: TableDiscoveryRuleApiResponse[] = [
     created_at: "2026-11-01T09:00:00Z",
     updated_at: "2026-11-01T09:00:00Z",
   },
+];
+
+const QUIET_OPERATIONS: ReconciliationOperationApiResponse[] = [
+  {
+    operation: "rewrite_data_files",
+    result: "not_needed",
+    combine: "all",
+    measurements: [
+      { key: "reducible_files", observed: 0, unit: "count", threshold: 5, comparison: ">=", met: false },
+      { key: "target_file_size", observed: 134217728, unit: "bytes", threshold: null, comparison: null, met: null },
+      { key: "qualifying_partitions", observed: 0, unit: "count", threshold: null, comparison: null, met: null },
+    ],
+    next_eligible_at: null,
+  },
+  {
+    operation: "rewrite_manifests",
+    result: "not_needed",
+    combine: "all",
+    measurements: [{ key: "small_manifests", observed: 12, unit: "count", threshold: 20, comparison: ">=", met: false }],
+    next_eligible_at: null,
+  },
+  {
+    operation: "expire_snapshots",
+    result: "not_needed",
+    combine: "all",
+    measurements: [{ key: "expirable_snapshots", observed: 0, unit: "count", threshold: 1, comparison: ">=", met: false }],
+    next_eligible_at: null,
+  },
+  { operation: "remove_orphan_files", result: "off", combine: "all", measurements: [], next_eligible_at: null },
+];
+
+function reconciliation(
+  id: string,
+  reconciledAt: string,
+  overrides: Partial<TableReconciliationApiResponse> = {},
+): TableReconciliationApiResponse {
+  return {
+    reconciliation_id: id,
+    table_uuid: ORDERS_UUID,
+    reconciled_at: reconciledAt,
+    wake_reasons: { schedule: 1 },
+    dry_run: false,
+    outcome: "planned",
+    skip_reason: null,
+    operations: QUIET_OPERATIONS,
+    run_id: null,
+    ...overrides,
+  };
+}
+
+// Newest first, as the API returns them: a run started by catalog commits, four quiet hourly
+// passes that fold into one line, a dry run that would have compacted, and a paused skip.
+export const RECONCILIATIONS: TableReconciliationApiResponse[] = [
+  reconciliation("rec-109", "2026-11-10T10:42:00Z", {
+    wake_reasons: { catalog_commit: 3 },
+    run_id: "run-1",
+    operations: [
+      {
+        operation: "rewrite_data_files",
+        result: "started",
+        combine: "all",
+        measurements: [
+          { key: "reducible_files", observed: 1240, unit: "count", threshold: 5, comparison: ">=", met: true },
+          { key: "target_file_size", observed: 134217728, unit: "bytes", threshold: null, comparison: null, met: null },
+          { key: "qualifying_partitions", observed: 3, unit: "count", threshold: null, comparison: null, met: null },
+        ],
+        next_eligible_at: null,
+      },
+      {
+        operation: "rewrite_manifests",
+        result: "not_needed",
+        combine: "all",
+        measurements: [{ key: "small_manifests", observed: 18, unit: "count", threshold: 20, comparison: ">=", met: false }],
+        next_eligible_at: null,
+      },
+      {
+        operation: "expire_snapshots",
+        result: "cooling_down",
+        combine: "all",
+        measurements: [{ key: "expirable_snapshots", observed: 312, unit: "count", threshold: 1, comparison: ">=", met: true }],
+        next_eligible_at: "2026-11-14T03:00:00Z",
+      },
+      { operation: "remove_orphan_files", result: "off", combine: "all", measurements: [], next_eligible_at: null },
+    ],
+  }),
+  reconciliation("rec-108", "2026-11-10T09:42:00Z"),
+  reconciliation("rec-107", "2026-11-10T08:42:00Z"),
+  reconciliation("rec-106", "2026-11-10T07:42:00Z"),
+  reconciliation("rec-105", "2026-11-10T06:42:00Z"),
+  reconciliation("rec-104", "2026-11-10T05:42:00Z", {
+    dry_run: true,
+    operations: [
+      {
+        operation: "rewrite_data_files",
+        result: "would_start",
+        combine: "all",
+        measurements: [
+          { key: "reducible_files", observed: 620, unit: "count", threshold: 5, comparison: ">=", met: true },
+          { key: "target_file_size", observed: 134217728, unit: "bytes", threshold: null, comparison: null, met: null },
+          { key: "qualifying_partitions", observed: 2, unit: "count", threshold: null, comparison: null, met: null },
+        ],
+        next_eligible_at: null,
+      },
+      ...QUIET_OPERATIONS.slice(1),
+    ],
+  }),
+  reconciliation("rec-103", "2026-11-10T04:42:00Z", {
+    wake_reasons: { paused: 1 },
+    outcome: "skipped",
+    skip_reason: "paused",
+    operations: [],
+  }),
 ];

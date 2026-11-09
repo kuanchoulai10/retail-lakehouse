@@ -23,6 +23,7 @@ import { CommitsTab } from "@/components/tabs/CommitsTab";
 import { MaintenanceTab } from "@/components/tabs/MaintenanceTab";
 import { OverviewTab } from "@/components/tabs/OverviewTab";
 import { PropertiesTab } from "@/components/tabs/PropertiesTab";
+import { ReconciliationsTab } from "@/components/tabs/ReconciliationsTab";
 import { SchemaTab } from "@/components/tabs/SchemaTab";
 import { SettingsTab } from "@/components/tabs/SettingsTab";
 import { errorMessage } from "@/format";
@@ -30,12 +31,13 @@ import { apiNamespace, namespaceFromParam, namespacePath, tablePath } from "@/li
 import { tableMaintenanceState, type TableMaintenanceState } from "@/lib/tableMaintenanceState";
 import { useLeavingPage } from "@/lib/useLeavingPage";
 
-// The same six tabs on every Iceberg table, managed or not (spec anti-goal).
+// The same seven tabs on every Iceberg table, managed or not (spec anti-goal).
 const TABS = [
   { key: "overview", label: "Overview" },
   { key: "schema", label: "Schema" },
   { key: "commits", label: "Commits" },
   { key: "maintenance", label: "Maintenance" },
+  { key: "reconciliations", label: "Reconciliations" },
   { key: "properties", label: "Properties" },
   { key: "settings", label: "Settings" },
 ] as const;
@@ -68,6 +70,10 @@ function tabBody(tab: TabKey, table: CatalogTableApiResponse, maintenance: Table
       return <MaintenanceGate state={maintenance}>{(managed) => <CommitsTab tableUuid={managed.uuid} />}</MaintenanceGate>;
     case "maintenance":
       return <MaintenanceGate state={maintenance}>{(managed) => <MaintenanceTab tableUuid={managed.uuid} />}</MaintenanceGate>;
+    case "reconciliations":
+      return (
+        <MaintenanceGate state={maintenance}>{(managed) => <ReconciliationsTab tableUuid={managed.uuid} />}</MaintenanceGate>
+      );
     case "settings":
       return <MaintenanceGate state={maintenance}>{(managed) => <SettingsTab tableUuid={managed.uuid} />}</MaintenanceGate>;
   }
