@@ -16,11 +16,15 @@ from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     SubmitMaintenanceOperationUseCaseInputFilterItem,
 )
+from context.table_maintenance.application.port.inbound.table_reconciliation import (
+    RecordTableReconciliationUseCaseInput,
+)
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fakes import (
     CREATED_AT,
     FakeCreateRun,
     FakeDelete,
     FakePlan,
+    FakeRecordReconciliation,
     FakeRecordResult,
     FakeStatus,
     FakeSubmit,
@@ -36,12 +40,14 @@ def _reconcile(
 ) -> tuple[TableReconciliationActivities, dict]:
     fakes = {
         "plan": FakePlan(),
+        "record": FakeRecordReconciliation(),
         "submit": submit or FakeSubmit(),
         "status": FakeStatus(),
         "delete": FakeDelete(),
     }
     activities = TableReconciliationActivities(
         plan=fakes["plan"],
+        record=fakes["record"],
         submit=fakes["submit"],
         status=fakes["status"],
         delete=fakes["delete"],
@@ -83,6 +89,49 @@ def test_plan_without_manual_operations_defaults_to_none():
     activities, fakes = _reconcile()
     activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW})
     assert fakes["plan"].requests[0].manual_operations is None
+
+
+CHECK = {
+    "operation": "rewrite_data_files",
+    "verdict": "due",
+    "combine": "all",
+    "measurements": [],
+    "next_eligible_at": None,
+}
+
+
+def test_record_reconciliation_passes_every_field_and_returns_dict():
+    """The record activity passes the reconciliation, its reasons, checks and run link to the use case."""
+    activities, fakes = _reconcile()
+    result = activities.record_table_reconciliation(
+        {
+            "reconciliation_id": "r1",
+            "table_uuid": "u1",
+            "reconciled_at": NOW,
+            "wake_reasons": {"catalog_commit": 3, "previous_run_finished": 1},
+            "dry_run": False,
+            "status": "planned",
+            "skip_reason": None,
+            "checks": [CHECK],
+            "run_id": "run-1",
+            "run_start_failed": False,
+        }
+    )
+    assert fakes["record"].requests == [
+        RecordTableReconciliationUseCaseInput(
+            reconciliation_id="r1",
+            table_uuid="u1",
+            reconciled_at=NOW_DT,
+            wake_reasons={"catalog_commit": 3, "previous_run_finished": 1},
+            dry_run=False,
+            status="planned",
+            skip_reason=None,
+            checks=[CHECK],
+            run_id="run-1",
+            run_start_failed=False,
+        )
+    ]
+    assert result == {"recorded": True}
 
 
 def test_submit_injects_callback_base_url_and_converts_filters():

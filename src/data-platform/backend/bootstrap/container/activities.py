@@ -31,6 +31,7 @@ class Activities:
         signal = self.workflow_signal
         return [
             reconciliation.plan_table_maintenance,
+            reconciliation.record_table_reconciliation,
             reconciliation.submit_maintenance_operation,
             reconciliation.get_maintenance_job_status,
             reconciliation.delete_maintenance_job,

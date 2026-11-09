@@ -141,3 +141,11 @@ class TriggerTableMaintenanceApiResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     accepted: bool
+
+
+class TriggerTableReconciliationApiResponse(BaseModel):
+    """Tell whether the reconcile request was accepted."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    accepted: bool

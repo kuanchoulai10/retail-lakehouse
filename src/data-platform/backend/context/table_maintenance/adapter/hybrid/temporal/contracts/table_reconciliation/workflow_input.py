@@ -19,7 +19,9 @@ class TableReconciliationWorkflowInput:
     ``next_plan_at`` (ISO-8601) is when the timer plans next; ``None`` means one
     ``reconcile_interval_seconds`` after start. That interval comes from the last
     plan and is also used after a failed plan. ``continue_as_new_after`` bounds
-    the loop iterations per run.
+    the loop iterations per run. ``wake_reasons`` counts, per reason, the wakes
+    not yet taken by a plan (``None`` means none), so the next reconciliation
+    records them.
     """
 
     table_uuid: str
@@ -31,3 +33,4 @@ class TableReconciliationWorkflowInput:
     next_plan_at: str | None = None
     reconcile_interval_seconds: int = 3600
     continue_as_new_after: int = 200
+    wake_reasons: dict[str, int] | None = None

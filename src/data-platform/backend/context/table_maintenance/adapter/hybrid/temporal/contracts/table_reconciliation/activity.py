@@ -9,3 +9,4 @@ class TableReconciliationActivity(StrEnum):
     """Name the activities a table reconciliation workflow calls."""
 
     PLAN_TABLE_MAINTENANCE = "plan_table_maintenance"
+    RECORD_TABLE_RECONCILIATION = "record_table_reconciliation"

@@ -40,6 +40,7 @@ _SIGNAL_BY_CHANGE = {
     "resumed": TableReconciliationSignal.RESUME,
     "stopped": TableReconciliationSignal.STOP,
     _MAINTENANCE_REQUESTED: TableReconciliationSignal.TRIGGER_NOW,
+    "reconcile_requested": TableReconciliationSignal.RECONCILE_NOW,
 }
 
 

@@ -28,6 +28,9 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
     SubmitMaintenanceOperationUseCaseInput,
     SubmitMaintenanceOperationUseCaseInputFilterItem,
 )
+from context.table_maintenance.application.port.inbound.table_reconciliation import (
+    RecordTableReconciliationUseCaseInput,
+)
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.inbound.table import (
@@ -38,10 +41,13 @@ if TYPE_CHECKING:
         GetMaintenanceJobStatusUseCase,
         SubmitMaintenanceOperationUseCase,
     )
+    from context.table_maintenance.application.port.inbound.table_reconciliation import (
+        RecordTableReconciliationUseCase,
+    )
 
 
 class TableReconciliationActivities:
-    """Plan, submit, poll and delete the Spark jobs of maintenance runs.
+    """Plan and record reconciliations, and submit, poll and delete the Spark jobs of maintenance runs.
 
     Each method wraps exactly one use case. Inputs and outputs are primitive dicts;
     ``now`` travels as an ISO-8601 string taken from ``workflow.now()``.
@@ -51,6 +57,7 @@ class TableReconciliationActivities:
         self,
         *,
         plan: PlanTableMaintenanceUseCase,
+        record: RecordTableReconciliationUseCase,
         submit: SubmitMaintenanceOperationUseCase,
         status: GetMaintenanceJobStatusUseCase,
         delete: DeleteMaintenanceJobUseCase,
@@ -58,6 +65,7 @@ class TableReconciliationActivities:
     ) -> None:
         """Bind the use cases and the base URL Spark jobs call back to."""
         self._plan = plan
+        self._record = record
         self._submit = submit
         self._status = status
         self._delete = delete
@@ -72,6 +80,26 @@ class TableReconciliationActivities:
                     table_uuid=request["table_uuid"],
                     now=datetime.fromisoformat(request["now"]),
                     manual_operations=request.get("manual_operations"),
+                )
+            )
+        return activity_payload(output)
+
+    @activity.defn(name=TableReconciliationActivity.RECORD_TABLE_RECONCILIATION)
+    def record_table_reconciliation(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Record one reconciliation: why it woke, what the plan found and the run it started."""
+        with translate_application_errors():
+            output = self._record.execute(
+                RecordTableReconciliationUseCaseInput(
+                    reconciliation_id=request["reconciliation_id"],
+                    table_uuid=request["table_uuid"],
+                    reconciled_at=datetime.fromisoformat(request["reconciled_at"]),
+                    wake_reasons=dict(request["wake_reasons"]),
+                    dry_run=request["dry_run"],
+                    status=request["status"],
+                    skip_reason=request["skip_reason"],
+                    checks=list(request["checks"]),
+                    run_id=request["run_id"],
+                    run_start_failed=request["run_start_failed"],
                 )
             )
         return activity_payload(output)

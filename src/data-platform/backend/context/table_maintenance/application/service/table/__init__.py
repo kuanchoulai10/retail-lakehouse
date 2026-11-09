@@ -66,6 +66,9 @@ from context.table_maintenance.application.service.table.table_output_fields imp
 from context.table_maintenance.application.service.table.trigger_table_maintenance import (
     TriggerTableMaintenanceService,
 )
+from context.table_maintenance.application.service.table.trigger_table_reconciliation import (
+    TriggerTableReconciliationService,
+)
 from context.table_maintenance.application.service.table.update_table_settings import (
     UpdateTableSettingsService,
 )
@@ -87,6 +90,7 @@ __all__ = [
     "SyncDiscoveredTablesService",
     "TableHintAction",
     "TriggerTableMaintenanceService",
+    "TriggerTableReconciliationService",
     "UpdateTableSettingsService",
     "load_catalog_table",
     "raise_not_in_catalog",

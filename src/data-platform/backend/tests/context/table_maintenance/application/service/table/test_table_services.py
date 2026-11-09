@@ -39,6 +39,7 @@ from context.table_maintenance.application.port.inbound.table import (
     ResetTableSelectionUseCaseInput,
     ResumeTableUseCaseInput,
     TriggerTableMaintenanceUseCaseInput,
+    TriggerTableReconciliationUseCaseInput,
     UpdateTableSettingsUseCaseInput,
 )
 from context.table_maintenance.application.service.shared import (
@@ -53,6 +54,7 @@ from context.table_maintenance.application.service.table import (
     ResetTableSelectionService,
     ResumeTableService,
     TriggerTableMaintenanceService,
+    TriggerTableReconciliationService,
     UpdateTableSettingsService,
 )
 
@@ -496,6 +498,46 @@ def test_trigger_unknown_table(tables_repo, signals):
         TriggerTableMaintenanceService(tables_repo, signals).execute(
             TriggerTableMaintenanceUseCaseInput(uuid="nope", operations=["rewrite_data_files"])
         )
+
+
+# --- reconcile now ---
+
+
+def test_reconcile_now_signals_the_workflow(tables_repo, signals, now):
+    """Reconciling now sends a reconcile request to the table's workflow."""
+    _active(tables_repo, now)
+    out = TriggerTableReconciliationService(tables_repo, signals).execute(
+        TriggerTableReconciliationUseCaseInput(uuid="u-1")
+    )
+    assert out.accepted is True
+    assert [_change(c) for c in signals.calls] == [("u-1", "reconcile_requested", [], True)]
+
+
+def test_reconcile_now_on_paused_table_is_accepted(tables_repo, signals, now):
+    """A paused table is still enrolled, so its reconciliation records the pause."""
+    _active(tables_repo, now).pause(now)
+    TriggerTableReconciliationService(tables_repo, signals).execute(TriggerTableReconciliationUseCaseInput(uuid="u-1"))
+    assert [_change(c) for c in signals.calls] == [("u-1", "reconcile_requested", [], True)]
+
+
+@pytest.mark.parametrize("make", [_excluded, _dropped], ids=["excluded", "dropped"])
+def test_reconcile_now_on_table_out_of_maintenance_conflicts(tables_repo, signals, now, make):
+    """Reconciling a table that is not enrolled raises ConflictError and signals nothing."""
+    make(tables_repo, now)
+    with pytest.raises(ConflictError):
+        TriggerTableReconciliationService(tables_repo, signals).execute(
+            TriggerTableReconciliationUseCaseInput(uuid="u-1")
+        )
+    assert signals.calls == []
+
+
+def test_reconcile_now_unknown_table(tables_repo, signals):
+    """Reconciling an unknown table raises NotFoundError."""
+    with pytest.raises(NotFoundError):
+        TriggerTableReconciliationService(tables_repo, signals).execute(
+            TriggerTableReconciliationUseCaseInput(uuid="nope")
+        )
+    assert signals.calls == []
 
 
 def test_settings_update_on_paused_table_starts_workflow_if_missing(tables_repo, signals, clock, now):

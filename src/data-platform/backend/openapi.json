@@ -2660,6 +2660,20 @@
         "title": "TriggerTableMaintenanceApiResponse",
         "type": "object"
       },
+      "TriggerTableReconciliationApiResponse": {
+        "description": "Tell whether the reconcile request was accepted.",
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "accepted"
+        ],
+        "title": "TriggerTableReconciliationApiResponse",
+        "type": "object"
+      },
       "UpdateCatalogApiRequest": {
         "additionalProperties": false,
         "description": "Carry the body that changes a catalog.\n\n``entity_version`` is the version that was loaded. ``properties`` replace the current ones,\nso they are required: a body that leaves them out must not wipe them.",
@@ -5340,6 +5354,49 @@
           }
         },
         "summary": "Pause Table",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/tables/{table_uuid}/reconcile": {
+      "post": {
+        "description": "Reconcile a table now by the normal rules, after any run in flight.",
+        "operationId": "reconcile_table",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_uuid",
+            "required": true,
+            "schema": {
+              "title": "Table Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TriggerTableReconciliationApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reconcile Table",
         "tags": [
           "tables"
         ]

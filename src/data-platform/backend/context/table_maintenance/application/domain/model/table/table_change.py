@@ -14,3 +14,4 @@ class TableChange(StrEnum):
     RESUMED = "resumed"
     STOPPED = "stopped"
     MAINTENANCE_REQUESTED = "maintenance_requested"
+    RECONCILE_REQUESTED = "reconcile_requested"

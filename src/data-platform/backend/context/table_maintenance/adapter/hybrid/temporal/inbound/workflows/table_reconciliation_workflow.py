@@ -37,6 +37,14 @@ _CANCEL_GRACE = timedelta(minutes=15)
 _ENDING_REASONS = frozenset({"dropped", "excluded"})
 _TRIGGER_SCHEDULED = "scheduled"
 _TRIGGER_MANUAL = "manual"
+_REASON_SCHEDULE = "schedule"
+_REASON_CATALOG_COMMIT = "catalog_commit"
+_REASON_SETTINGS_CHANGED = "settings_changed"
+_REASON_RESUMED = "resumed"
+_REASON_PAUSED = "paused"
+_REASON_MANUAL_RUN = "manual_run"
+_REASON_RECONCILE_NOW = "reconcile_now"
+_REASON_PREVIOUS_RUN_FINISHED = "previous_run_finished"
 
 
 @workflow.defn(name=TABLE_RECONCILIATION_WORKFLOW)
@@ -63,6 +71,19 @@ class TableReconciliationWorkflow:
     ``stop`` signal, ends the workflow once no run is in flight, but never on a
     stale decision (R31): any other signal after ``stop`` cancels the stop, and a
     wake that arrives while a plan says dropped or excluded makes it plan again.
+
+    Every wake also counts its reason (the timer counts ``schedule``; ``stop``
+    counts nothing). The reasons accumulate, through runs in flight and
+    continue-as-new, until the next plan takes them; reasons that arrive while
+    a plan is running belong to the plan they wake next. After each plan that
+    found the table, ``record_table_reconciliation`` stores the reconciliation
+    with those reasons, the plan's checks and the run it started (or that its
+    start failed). The run id is generated with the reconciliation id before
+    planning, so the record and the run agree. A failed plan records nothing
+    and drops its reasons; a failed record is logged and the loop goes on. A
+    plan with operations that is not started because the workflow is stopping
+    is not recorded either, since its due operations neither started nor
+    failed to start.
     """
 
     @workflow.init
@@ -81,6 +102,7 @@ class TableReconciliationWorkflow:
         self._next_plan_at = datetime.fromisoformat(input.next_plan_at) if input.next_plan_at else None
         self._continue_as_new_after = input.continue_as_new_after
         self._interval = timedelta(seconds=input.reconcile_interval_seconds)
+        self._wake_reasons: dict[str, int] = dict(input.wake_reasons or {})
         self._woken = False
         self._stopping = False
         self._planning = False
@@ -114,35 +136,40 @@ class TableReconciliationWorkflow:
     @workflow.signal(name=TableReconciliationSignal.SETTINGS_CHANGED)
     def settings_changed(self, payload: dict | None = None) -> None:
         """Wake the loop to re-plan with the settings stored in the database."""
-        self._wake(cancels_stop=True)
+        self._wake(_REASON_SETTINGS_CHANGED, cancels_stop=True)
 
     @workflow.signal(name=TableReconciliationSignal.TABLE_UPDATED)
     def table_updated(self, payload: dict | None = None) -> None:
         """Wake the loop because the table changed in the catalog."""
-        self._wake(cancels_stop=True)
+        self._wake(_REASON_CATALOG_COMMIT, cancels_stop=True)
 
     @workflow.signal(name=TableReconciliationSignal.PAUSE)
     def pause(self, payload: dict | None = None) -> None:
         """Wake the loop; the plan sees the paused table and skips."""
-        self._wake(cancels_stop=True)
+        self._wake(_REASON_PAUSED, cancels_stop=True)
 
     @workflow.signal(name=TableReconciliationSignal.RESUME)
     def resume(self, payload: dict | None = None) -> None:
         """Wake the loop; the plan sees the resumed table and plans again."""
-        self._wake(cancels_stop=True)
+        self._wake(_REASON_RESUMED, cancels_stop=True)
 
     @workflow.signal(name=TableReconciliationSignal.TRIGGER_NOW)
     def trigger_now(self, payload: dict | None = None) -> None:
         """Keep a manual trigger, replacing any pending one, and wake the loop."""
         operations = (payload or {}).get("operations") or []
         self._pending_manual = [str(op) for op in operations]
-        self._wake(cancels_stop=True)
+        self._wake(_REASON_MANUAL_RUN, cancels_stop=True)
+
+    @workflow.signal(name=TableReconciliationSignal.RECONCILE_NOW)
+    def reconcile_now(self, payload: dict | None = None) -> None:
+        """Wake the loop to reconcile by the normal rules, after any run in flight."""
+        self._wake(_REASON_RECONCILE_NOW, cancels_stop=True)
 
     @workflow.signal(name=TableReconciliationSignal.STOP)
     def stop(self, payload: dict | None = None) -> None:
         """End the workflow once no run is in flight; plan nothing more."""
         self._stopping = True
-        self._wake(cancels_stop=False)
+        self._wake(None, cancels_stop=False)
 
     @workflow.signal(name=TableReconciliationSignal.MAINTENANCE_FINISHED)
     def maintenance_finished(self, payload: dict | None = None) -> None:
@@ -153,11 +180,12 @@ class TableReconciliationWorkflow:
             workflow.logger.warning("ignoring maintenance_finished of run %s", run_id)
             return
         self._clear_in_flight()
+        self._count(_REASON_PREVIOUS_RUN_FINISHED)
         self._woken = True
 
     @workflow.query
     def state(self) -> dict[str, Any]:
-        """Report the run in flight, the pending manual trigger, the timer and the loop."""
+        """Report the run in flight, the pending manual trigger, the timer, the wake reasons and the loop."""
         return {
             "in_flight_run_id": self._in_flight_run_id,
             "in_flight_workflow_id": self._in_flight_workflow_id,
@@ -167,16 +195,22 @@ class TableReconciliationWorkflow:
             "next_plan_at": _iso(self._next_plan_at),
             "reconcile_interval_seconds": int(self._interval.total_seconds()),
             "woken": self._woken,
+            "wake_reasons": dict(self._wake_reasons),
             "planning": self._planning,
             "signals_handled": self._signals_handled,
         }
 
-    def _wake(self, *, cancels_stop: bool) -> None:
-        """Wake the loop; a decision signal after ``stop`` supersedes it (R31)."""
+    def _wake(self, reason: str | None, *, cancels_stop: bool) -> None:
+        """Wake the loop and count the reason; a decision signal after ``stop`` supersedes it (R31)."""
         self._signals_handled += 1
         if cancels_stop:
             self._stopping = False
+        if reason is not None:
+            self._count(reason)
         self._woken = True
+
+    def _count(self, reason: str) -> None:
+        self._wake_reasons[reason] = self._wake_reasons.get(reason, 0) + 1
 
     def _should_continue_as_new(self, iterations: int) -> bool:
         if self._stopping:
@@ -194,17 +228,19 @@ class TableReconciliationWorkflow:
             next_plan_at=_iso(self._next_plan_at),
             reconcile_interval_seconds=int(self._interval.total_seconds()),
             continue_as_new_after=self._continue_as_new_after,
+            wake_reasons=dict(self._wake_reasons),
         )
 
     async def _wait(self) -> None:
         wake_at = self._in_flight_deadline() or self._next_plan_at
         timeout = None if wake_at is None else wake_at - workflow.now()
         if timeout is not None and timeout <= timedelta(0):
+            self._count(_REASON_SCHEDULE)
             return
         try:
             await workflow.wait_condition(lambda: self._woken, timeout=timeout)
         except TimeoutError:
-            pass
+            self._count(_REASON_SCHEDULE)
 
     def _in_flight_deadline(self) -> datetime | None:
         if self._in_flight_run_id is None or self._in_flight_started_at is None:
@@ -265,12 +301,16 @@ class TableReconciliationWorkflow:
 
     async def _plan_and_start_once(self) -> bool:
         manual = self._pending_manual
+        reconciliation_id = str(workflow.uuid4())
+        run_id = str(workflow.uuid4())
+        now = workflow.now()
+        reasons, self._wake_reasons = self._wake_reasons, {}
         try:
             plan = await workflow.execute_activity(
                 TableReconciliationActivity.PLAN_TABLE_MAINTENANCE,
                 {
                     "table_uuid": self._table_uuid,
-                    "now": workflow.now().isoformat(),
+                    "now": now.isoformat(),
                     "manual_operations": manual or None,
                 },
                 start_to_close_timeout=_ACTIVITY_TIMEOUT,
@@ -285,18 +325,53 @@ class TableReconciliationWorkflow:
             return False
         self._interval = timedelta(seconds=plan["reconcile_interval_seconds"])
         self._next_plan_at = workflow.now() + self._interval
+        record = {"reconciliation_id": reconciliation_id, "reconciled_at": now.isoformat(), "wake_reasons": reasons}
         if self._stopping:
             self._consume_manual(manual, "the workflow is stopping")
+            if plan["status"] != "skip" and plan["operations"]:
+                workflow.logger.info("not recording reconciliation %s: the workflow is stopping", reconciliation_id)
+            else:
+                await self._record(record, plan, run_id=None, run_start_failed=False)
             return False
         if plan["status"] == "skip":
             self._consume_manual(manual, f"the table is skipped ({plan['reason']})")
+            await self._record(record, plan, run_id=None, run_start_failed=False)
             return plan["reason"] in _ENDING_REASONS
         if not plan["operations"]:
             self._consume_manual(manual, "nothing was planned")
+            await self._record(record, plan, run_id=None, run_start_failed=False)
             return False
         self._consume_manual(manual, None)
-        await self._start_run(plan, manual is not None)
+        started = await self._start_run(plan, manual is not None, run_id)
+        await self._record(record, plan, run_id=run_id if started else None, run_start_failed=not started)
         return False
+
+    async def _record(
+        self, record: dict[str, Any], plan: dict[str, Any], *, run_id: str | None, run_start_failed: bool
+    ) -> None:
+        """Store one reconciliation of a table the plan found; a failure is logged and the loop goes on."""
+        if not plan["table_found"]:
+            return
+        try:
+            await workflow.execute_activity(
+                TableReconciliationActivity.RECORD_TABLE_RECONCILIATION,
+                {
+                    **record,
+                    "table_uuid": self._table_uuid,
+                    "dry_run": plan["dry_run"],
+                    "status": plan["status"],
+                    "skip_reason": plan["reason"],
+                    "checks": plan["checks"],
+                    "run_id": run_id,
+                    "run_start_failed": run_start_failed,
+                },
+                start_to_close_timeout=_ACTIVITY_TIMEOUT,
+                retry_policy=_ACTIVITY_RETRY,
+            )
+        except ActivityError as error:
+            if is_cancelled_exception(error):
+                raise asyncio.CancelledError from error
+            workflow.logger.error("recording reconciliation %s failed: %s", record["reconciliation_id"], error)
 
     def _consume_manual(self, manual: list[str] | None, dropped_because: str | None) -> None:
         if manual is None or self._pending_manual is not manual:
@@ -305,8 +380,8 @@ class TableReconciliationWorkflow:
         if dropped_because is not None:
             workflow.logger.info("dropping manual trigger %s: %s", manual, dropped_because)
 
-    async def _start_run(self, plan: dict[str, Any], manual: bool) -> None:
-        run_id = str(workflow.uuid4())
+    async def _start_run(self, plan: dict[str, Any], manual: bool, run_id: str) -> bool:
+        """Start the child run under ``run_id``; False when it could not be started."""
         child_id = table_maintenance_workflow_id(plan["table_name"], run_id)
         self._in_flight_run_id = run_id
         self._in_flight_workflow_id = child_id
@@ -340,6 +415,8 @@ class TableReconciliationWorkflow:
                 _iso(self._next_plan_at),
             )
             self._clear_in_flight()
+            return False
+        return True
 
 
 def _iso(value: datetime | None) -> str | None:

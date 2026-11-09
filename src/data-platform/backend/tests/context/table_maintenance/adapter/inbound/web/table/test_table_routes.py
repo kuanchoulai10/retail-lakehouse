@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 
+from context.table_maintenance.application.exceptions import ConflictError, NotFoundError
 from context.table_maintenance.application.port.inbound.table import (
     ExcludeTableUseCaseInput,
     ExcludeTableUseCaseOutput,
@@ -24,6 +25,8 @@ from context.table_maintenance.application.port.inbound.table import (
     ResumeTableUseCaseOutput,
     TriggerTableMaintenanceUseCaseInput,
     TriggerTableMaintenanceUseCaseOutput,
+    TriggerTableReconciliationUseCaseInput,
+    TriggerTableReconciliationUseCaseOutput,
     UpdateTableSettingsUseCaseInput,
     UpdateTableSettingsUseCaseOutput,
 )
@@ -173,3 +176,29 @@ def test_trigger_table_maintenance_returns_202() -> None:
     assert response.status_code == 202
     assert response.json() == {"accepted": True}
     assert stub.requests == [TriggerTableMaintenanceUseCaseInput(uuid="u-1", operations=["rewrite_data_files"])]
+
+
+def test_reconcile_table_returns_202() -> None:
+    """Reconciling a table now returns 202 and passes the table to the use case."""
+    stub = StubUseCase(TriggerTableReconciliationUseCaseOutput(accepted=True))
+    client = build_client(trigger_table_reconciliation=stub)
+
+    response = client.post("/v1/tables/u-1/reconcile")
+
+    assert response.status_code == 202
+    assert response.json() == {"accepted": True}
+    assert stub.requests == [TriggerTableReconciliationUseCaseInput(uuid="u-1")]
+
+
+@pytest.mark.parametrize(
+    ("error", "code"),
+    [(NotFoundError("table nope not found"), 404), (ConflictError("table u-1 is excluded"), 409)],
+    ids=["unknown", "not-enrolled"],
+)
+def test_reconcile_table_maps_errors(error: Exception, code: int) -> None:
+    """An unknown table is 404 and a table out of maintenance is 409."""
+    client = build_client(trigger_table_reconciliation=StubUseCase(error=error))
+
+    response = client.post("/v1/tables/u-1/reconcile")
+
+    assert response.status_code == code

@@ -15,3 +15,4 @@ class TableReconciliationSignal(StrEnum):
     RESUME = "resume"
     STOP = "stop"
     MAINTENANCE_FINISHED = "maintenance_finished"
+    RECONCILE_NOW = "reconcile_now"

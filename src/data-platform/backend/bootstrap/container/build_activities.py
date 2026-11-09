@@ -25,6 +25,7 @@ def build_activities(use_cases: UseCases, client: Client, settings: AppSettings)
     return Activities(
         reconciliation=TableReconciliationActivities(
             plan=use_cases.plan_table_maintenance,
+            record=use_cases.record_table_reconciliation,
             submit=use_cases.submit_maintenance_operation,
             status=use_cases.get_maintenance_job_status,
             delete=use_cases.delete_maintenance_job,

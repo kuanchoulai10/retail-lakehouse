@@ -76,6 +76,11 @@ class StubTableReconciliationWorkflow:
         """Record a trigger_now signal."""
         self.received.append(("trigger_now", payload))
 
+    @workflow.signal(name="reconcile_now")
+    def reconcile_now(self, payload: dict) -> None:
+        """Record a reconcile_now signal."""
+        self.received.append(("reconcile_now", payload))
+
     @workflow.query
     def signals(self) -> list[tuple[str, dict]]:
         """Query returning the received signals."""

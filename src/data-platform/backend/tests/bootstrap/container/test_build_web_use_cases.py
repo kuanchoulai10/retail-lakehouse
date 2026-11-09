@@ -25,10 +25,10 @@ def _web_use_cases() -> WebUseCases:
 
 
 def test_every_web_use_case_is_populated():
-    """All 29 web use case fields are set."""
+    """All 30 web use case fields are set."""
     web = _web_use_cases()
 
-    assert len(fields(web)) == 29
+    assert len(fields(web)) == 30
     assert all(getattr(web, f.name) is not None for f in fields(web))
 
 

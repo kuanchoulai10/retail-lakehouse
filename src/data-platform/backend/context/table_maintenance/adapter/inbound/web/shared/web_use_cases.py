@@ -19,6 +19,7 @@ if TYPE_CHECKING:
         ResumeTableUseCase,
         SyncDiscoveredTablesUseCase,
         TriggerTableMaintenanceUseCase,
+        TriggerTableReconciliationUseCase,
         UpdateTableSettingsUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_discovery_rule import (
@@ -78,6 +79,7 @@ class WebUseCases:
     include_table: IncludeTableUseCase
     exclude_table: ExcludeTableUseCase
     trigger_table_maintenance: TriggerTableMaintenanceUseCase
+    trigger_table_reconciliation: TriggerTableReconciliationUseCase
     list_table_maintenance_runs: ListTableMaintenanceRunsUseCase
     get_table_maintenance_run: GetTableMaintenanceRunUseCase
     process_table_maintenance_callback: ProcessTableMaintenanceCallbackUseCase

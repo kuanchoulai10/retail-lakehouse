@@ -34,6 +34,9 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.eventually 
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_plan_activity import (
     ScriptedPlanActivity,
 )
+from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_record_activity import (
+    ScriptedRecordActivity,
+)
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_maintenance_stub_workflow import (
     TableMaintenanceStubWorkflow,
 )
@@ -53,6 +56,16 @@ EXPIRE = "expire_snapshots"
 REAL_TIMEOUT_SECONDS = 20
 
 
+def _check(operation: str, verdict: str = "due") -> dict[str, Any]:
+    return {
+        "operation": operation,
+        "verdict": verdict,
+        "combine": "all",
+        "measurements": [],
+        "next_eligible_at": None,
+    }
+
+
 def _planned(*operations: str, interval: int = 3600) -> dict[str, Any]:
     return {
         "status": "planned",
@@ -60,16 +73,26 @@ def _planned(*operations: str, interval: int = 3600) -> dict[str, Any]:
         "reconcile_interval_seconds": interval,
         "table_name": TABLE,
         "operations": [{"operation": op, "filters": [], "procedure_args": {}} for op in operations],
+        "dry_run": False,
+        "table_found": True,
+        "checks": [_check(op) for op in operations],
     }
 
 
-def _skip(reason: str, interval: int = 3600) -> dict[str, Any]:
+def _dry_run(*due: str) -> dict[str, Any]:
+    return {**_planned(), "dry_run": True, "checks": [_check(op) for op in due]}
+
+
+def _skip(reason: str, interval: int = 3600, *, table_found: bool = True) -> dict[str, Any]:
     return {
         "status": "skip",
         "reason": reason,
         "reconcile_interval_seconds": interval,
-        "table_name": TABLE,
+        "table_name": TABLE if table_found else None,
         "operations": [],
+        "dry_run": False,
+        "table_found": table_found,
+        "checks": [],
     }
 
 
@@ -89,6 +112,7 @@ class Harness:
     env: WorkflowEnvironment
     client: Client
     plans: ScriptedPlanActivity
+    recorder: ScriptedRecordActivity
     handle: WorkflowHandle | None = None
     sent: int = 0
 
@@ -125,6 +149,14 @@ class Harness:
 
         async def probe() -> list[dict[str, Any]]:
             return list(self.plans.requests)
+
+        return await eventually(probe, lambda r: len(r) >= count)
+
+    async def records(self, count: int) -> list[dict[str, Any]]:
+        """Wait until at least the given number of reconciliations were recorded and return them."""
+
+        async def probe() -> list[dict[str, Any]]:
+            return list(self.recorder.records)
 
         return await eventually(probe, lambda r: len(r) >= count)
 
@@ -192,14 +224,15 @@ def _run(
     async def go() -> None:
         async with await WorkflowEnvironment.start_time_skipping() as env:
             plans = ScriptedPlanActivity(script)
+            recorder = ScriptedRecordActivity()
             async with Worker(
                 env.client,
                 task_queue=TASK_QUEUE,
                 workflows=[TableReconciliationWorkflow, TableMaintenanceStubWorkflow],
-                activities=[plans.plan_table_maintenance],
+                activities=[plans.plan_table_maintenance, recorder.record_table_reconciliation],
                 workflow_runner=runner or SandboxedWorkflowRunner(),
             ):
-                await scenario(Harness(env, env.client, plans))
+                await scenario(Harness(env, env.client, plans, recorder))
 
     asyncio.run(go())
 
@@ -289,6 +322,9 @@ def test_trigger_now_without_operations_plans_all_due_as_manual():
         run_id = await h.in_flight()
         assert h.plans.requests[0]["manual_operations"] is None
         assert (await h.child(run_id))["trigger"] == "manual"
+        record = (await h.records(1))[0]
+        assert record["wake_reasons"] == {"manual_run": 1}
+        assert record["run_id"] == run_id
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
 
@@ -374,6 +410,10 @@ def test_skip_excluded_ends_workflow():
         await h.start()
         await h.ended()
         assert len(h.plans.requests) == 1
+        [record] = h.recorder.records
+        assert record["status"] == "skip"
+        assert record["skip_reason"] == "excluded"
+        assert record["wake_reasons"] == {"resumed": 1}
 
     _run(scenario, script=lambda _: _skip("excluded"))
 
@@ -446,9 +486,12 @@ def test_plan_failure_does_not_fail_workflow():
         due = datetime.fromisoformat(state["next_plan_at"])
         assert _within_a_second(due - datetime.fromisoformat(failed["now"]), 3600)
         assert await h.status() == WorkflowExecutionStatus.RUNNING
+        assert state["wake_reasons"] == {}
+        assert h.recorder.records == []
         await h.signal(TableReconciliationSignal.SETTINGS_CHANGED)
         await h.plan_count(2)
         await h.in_flight()
+        assert (await h.records(1))[0]["wake_reasons"] == {"settings_changed": 1}
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
 
@@ -570,6 +613,7 @@ def test_stop_during_plan_starts_no_child():
         h.plans.gate.set()
         await h.ended()
         assert len(h.plans.requests) == 1
+        assert h.recorder.records == []
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
 
@@ -660,3 +704,158 @@ def test_child_start_failure_keeps_workflow_alive(monkeypatch: pytest.MonkeyPatc
         script=lambda _: answers.pop(0),
         runner=UnsandboxedWorkflowRunner(),
     )
+
+
+# --- reconciliation records ---
+
+
+def test_timer_wake_records_schedule():
+    """A plan the timer woke is recorded with the schedule reason, the plan's time and its checks."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start(start_signal=None)
+        await h.env.sleep(timedelta(seconds=3700))
+        plan = (await h.plan_count(1))[0]
+        record = (await h.records(1))[0]
+        assert record["reconciliation_id"]
+        assert record["table_uuid"] == UUID
+        assert record["reconciled_at"] == plan["now"]
+        assert record["wake_reasons"] == {"schedule": 1}
+        assert record["dry_run"] is False
+        assert record["status"] == "planned"
+        assert record["skip_reason"] is None
+        assert record["checks"] == [_check(COMPACTION, "not_needed")]
+        assert record["run_id"] is None
+        assert record["run_start_failed"] is False
+
+    _run(scenario, script=lambda _: {**_planned(), "checks": [_check(COMPACTION, "not_needed")]})
+
+
+def test_three_catalog_commits_during_a_run_are_recorded_after_it_finishes():
+    """Wakes that arrive while a run is in flight are kept and recorded by the plan after it finishes."""
+    answers = [_planned(COMPACTION), _planned()]
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        run_id = await h.in_flight()
+        first = (await h.records(1))[0]
+        assert first["wake_reasons"] == {"resumed": 1}
+        assert first["run_id"] == run_id
+        assert (await h.child(run_id))["run_id"] == run_id
+        for _ in range(3):
+            await h.signal(TableReconciliationSignal.TABLE_UPDATED)
+        state = await h.settle()
+        assert state["wake_reasons"] == {"catalog_commit": 3}
+        assert len(h.recorder.records) == 1
+        await h.complete_child(run_id)
+        second = (await h.records(2))[1]
+        assert second["wake_reasons"] == {"catalog_commit": 3, "previous_run_finished": 1}
+        assert second["reconciliation_id"] != first["reconciliation_id"]
+        assert (await h.settle())["wake_reasons"] == {}
+
+    _run(scenario, script=lambda _: answers.pop(0))
+
+
+def test_reconcile_now_records_reconcile_now():
+    """A reconcile now signal plans by the normal rules and records its reason."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start(start_signal=None)
+        await h.signal(TableReconciliationSignal.RECONCILE_NOW)
+        assert (await h.plan_count(1))[0]["manual_operations"] is None
+        run_id = await h.in_flight()
+        assert (await h.child(run_id))["trigger"] == "scheduled"
+        record = (await h.records(1))[0]
+        assert record["wake_reasons"] == {"reconcile_now": 1}
+        assert record["run_id"] == run_id
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+def test_dry_run_plan_starts_nothing_and_records():
+    """A dry run plan with a due operation starts no run and is recorded as a dry run."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        record = (await h.records(1))[0]
+        state = await h.settle()
+        assert state["in_flight_run_id"] is None
+        assert record["dry_run"] is True
+        assert record["checks"] == [_check(COMPACTION)]
+        assert record["run_id"] is None
+        assert record["run_start_failed"] is False
+
+    _run(scenario, script=lambda _: _dry_run(COMPACTION))
+
+
+def test_failed_child_start_records_start_failed(monkeypatch: pytest.MonkeyPatch):
+    """A child that cannot be started is recorded as a failed start without a run id."""
+    import temporalio.workflow
+
+    async def failing_start(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
+        raise WorkflowAlreadyStartedError(kwargs["id"], args[0])
+
+    monkeypatch.setattr(temporalio.workflow, "start_child_workflow", failing_start)
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        record = (await h.records(1))[0]
+        assert (await h.settle())["in_flight_run_id"] is None
+        assert record["run_id"] is None
+        assert record["run_start_failed"] is True
+        assert record["checks"] == [_check(COMPACTION)]
+
+    _run(scenario, script=lambda _: _planned(COMPACTION), runner=UnsandboxedWorkflowRunner())
+
+
+def test_missing_table_records_nothing():
+    """A plan that finds no maintenance row for the table records nothing and ends the workflow."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        await h.ended()
+        assert len(h.plans.requests) == 1
+        assert h.recorder.records == []
+
+    _run(scenario, script=lambda _: _skip("dropped", table_found=False))
+
+
+def test_wake_reasons_survive_continue_as_new():
+    """Wake reasons gathered while a run is in flight are carried through continue as new."""
+    answers = [_planned(COMPACTION), _planned()]
+
+    async def scenario(h: Harness) -> None:
+        handle = await h.start(continue_as_new_after=2)
+        first_run = handle.result_run_id
+        run_id = await h.in_flight()
+        for _ in range(3):
+            await h.signal(TableReconciliationSignal.SETTINGS_CHANGED)
+
+        async def run_id_now() -> str | None:
+            return (await h.client.get_workflow_handle(WORKFLOW_ID).describe()).run_id
+
+        await eventually(run_id_now, lambda r: r != first_run)
+        assert (await h.state())["wake_reasons"] == {"settings_changed": 3}
+        await h.complete_child(run_id)
+        second = (await h.records(2))[1]
+        assert second["wake_reasons"] == {"settings_changed": 3, "previous_run_finished": 1}
+
+    _run(scenario, script=lambda _: answers.pop(0))
+
+
+def test_failed_record_does_not_stop_the_loop():
+    """A record that fails is logged; the run still starts and the next reconciliation is recorded."""
+    answers = [_planned(COMPACTION), _planned()]
+
+    async def scenario(h: Harness) -> None:
+        h.recorder.failures = 1
+        await h.start()
+        run_id = await h.in_flight()
+        await h.settle()
+        assert h.recorder.records == []
+        assert await h.status() == WorkflowExecutionStatus.RUNNING
+        await h.complete_child(run_id)
+        record = (await h.records(1))[0]
+        assert record["wake_reasons"] == {"previous_run_finished": 1}
+
+    _run(scenario, script=lambda _: answers.pop(0))

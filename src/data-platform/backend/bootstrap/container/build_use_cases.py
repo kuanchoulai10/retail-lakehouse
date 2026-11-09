@@ -21,6 +21,7 @@ from context.table_maintenance.application.service.table import (
     ResumeTableService,
     SyncDiscoveredTablesService,
     TriggerTableMaintenanceService,
+    TriggerTableReconciliationService,
     UpdateTableSettingsService,
 )
 from context.table_maintenance.application.service.table_discovery_rule import (
@@ -122,6 +123,7 @@ def build_use_cases(
         reset_table_selection=ResetTableSelectionService(tables, rules, presets, table_changes, clock=clock),
         resume_table=ResumeTableService(tables, table_changes, clock=clock),
         trigger_table_maintenance=TriggerTableMaintenanceService(tables, table_changes),
+        trigger_table_reconciliation=TriggerTableReconciliationService(tables, table_changes),
         update_table_settings=UpdateTableSettingsService(tables, table_changes, clock=clock),
         create_table_maintenance_run=CreateTableMaintenanceRunService(runs, tables),
         get_table_maintenance_run=GetTableMaintenanceRunService(runs),

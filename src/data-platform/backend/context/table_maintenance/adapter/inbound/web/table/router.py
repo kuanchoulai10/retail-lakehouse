@@ -20,6 +20,7 @@ from context.table_maintenance.adapter.inbound.web.table.dto import (
     TableStorageApiResponse,
     TriggerTableMaintenanceApiRequest,
     TriggerTableMaintenanceApiResponse,
+    TriggerTableReconciliationApiResponse,
     UpdateTableSettingsApiRequest,
 )
 from context.table_maintenance.application.port.inbound.table import (
@@ -34,6 +35,7 @@ from context.table_maintenance.application.port.inbound.table import (
     ResetTableSelectionUseCaseInput,
     ResumeTableUseCaseInput,
     TriggerTableMaintenanceUseCaseInput,
+    TriggerTableReconciliationUseCaseInput,
     UpdateTableSettingsUseCaseInput,
 )
 
@@ -141,3 +143,10 @@ def trigger_table_maintenance(
         TriggerTableMaintenanceUseCaseInput(uuid=table_uuid, operations=body.operations)
     )
     return TriggerTableMaintenanceApiResponse.model_validate(output)
+
+
+@router.post("/{table_uuid}/reconcile", status_code=status.HTTP_202_ACCEPTED)
+def reconcile_table(table_uuid: str, use_cases: UseCases) -> TriggerTableReconciliationApiResponse:
+    """Reconcile a table now by the normal rules, after any run in flight."""
+    output = use_cases.trigger_table_reconciliation.execute(TriggerTableReconciliationUseCaseInput(uuid=table_uuid))
+    return TriggerTableReconciliationApiResponse.model_validate(output)

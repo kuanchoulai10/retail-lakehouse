@@ -13,6 +13,7 @@ from context.table_maintenance.adapter.inbound.web.table.dto import (
     TableStorageApiResponse,
     TriggerTableMaintenanceApiRequest,
     TriggerTableMaintenanceApiResponse,
+    TriggerTableReconciliationApiResponse,
     UpdateTableSettingsApiRequest,
 )
 from context.table_maintenance.adapter.inbound.web.table.router import router
@@ -28,6 +29,7 @@ __all__ = [
     "TableStorageApiResponse",
     "TriggerTableMaintenanceApiRequest",
     "TriggerTableMaintenanceApiResponse",
+    "TriggerTableReconciliationApiResponse",
     "UpdateTableSettingsApiRequest",
     "router",
 ]

@@ -87,6 +87,7 @@ export * from './tableStorageApiResponseReclaimed';
 export * from './tableSummaryApiResponse';
 export * from './triggerTableMaintenanceApiRequest';
 export * from './triggerTableMaintenanceApiResponse';
+export * from './triggerTableReconciliationApiResponse';
 export * from './updateCatalogApiRequest';
 export * from './updateCatalogApiRequestProperties';
 export * from './updateNamespacePropertiesApiRequest';

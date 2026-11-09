@@ -81,6 +81,7 @@ def _change(
         ("paused", TableReconciliationSignal.PAUSE),
         ("resumed", TableReconciliationSignal.RESUME),
         ("stopped", TableReconciliationSignal.STOP),
+        ("reconcile_requested", TableReconciliationSignal.RECONCILE_NOW),
     ],
 )
 def test_each_change_maps_to_its_signal(harness, change, signal):
@@ -96,6 +97,7 @@ _SIGNAL_BY_TABLE_CHANGE = {
     TableChange.PAUSED: [TableReconciliationSignal.PAUSE, {}],
     TableChange.RESUMED: [TableReconciliationSignal.RESUME, {}],
     TableChange.STOPPED: [TableReconciliationSignal.STOP, {}],
+    TableChange.RECONCILE_REQUESTED: [TableReconciliationSignal.RECONCILE_NOW, {}],
     TableChange.MAINTENANCE_REQUESTED: [
         TableReconciliationSignal.TRIGGER_NOW,
         {"operations": []},

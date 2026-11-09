@@ -135,6 +135,15 @@ from context.table_maintenance.application.port.inbound.table.trigger_table_main
 from context.table_maintenance.application.port.inbound.table.trigger_table_maintenance.use_case import (
     TriggerTableMaintenanceUseCase,
 )
+from context.table_maintenance.application.port.inbound.table.trigger_table_reconciliation.input import (
+    TriggerTableReconciliationUseCaseInput,
+)
+from context.table_maintenance.application.port.inbound.table.trigger_table_reconciliation.output import (
+    TriggerTableReconciliationUseCaseOutput,
+)
+from context.table_maintenance.application.port.inbound.table.trigger_table_reconciliation.use_case import (
+    TriggerTableReconciliationUseCase,
+)
 from context.table_maintenance.application.port.inbound.table.update_table_settings.input import (
     UpdateTableSettingsUseCaseInput,
 )
@@ -195,6 +204,9 @@ __all__ = [
     "TriggerTableMaintenanceUseCase",
     "TriggerTableMaintenanceUseCaseInput",
     "TriggerTableMaintenanceUseCaseOutput",
+    "TriggerTableReconciliationUseCase",
+    "TriggerTableReconciliationUseCaseInput",
+    "TriggerTableReconciliationUseCaseOutput",
     "UpdateTableSettingsUseCase",
     "UpdateTableSettingsUseCaseInput",
     "UpdateTableSettingsUseCaseOutput",

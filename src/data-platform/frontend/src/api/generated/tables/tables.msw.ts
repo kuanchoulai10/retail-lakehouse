@@ -31,6 +31,7 @@ import type {
   TableStorageApiResponse,
   TriggerTableMaintenanceApiRequest,
   TriggerTableMaintenanceApiResponse,
+  TriggerTableReconciliationApiResponse,
   UpdateTablePropertiesApiRequest,
   UpdateTableSettingsApiRequest
 } from '../model';
@@ -85,6 +86,8 @@ export const getTriggerTableMaintenanceResponseMock = (overrideResponse: Partial
 export const getPauseTableResponseMock = (overrideResponse: Partial<Extract<TableApiResponse, object>> = {}): TableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
         [faker.string.alphanumeric(5)]: {}
       }, registered_at: faker.date.past().toISOString().slice(0, 19) + 'Z', selection: faker.string.alpha({length: {min: 10, max: 20}}), settings: faker.helpers.arrayElement([null,]), source_preset_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), status: faker.string.alpha({length: {min: 10, max: 20}}), table: faker.string.alpha({length: {min: 10, max: 20}}), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
+
+export const getReconcileTableResponseMock = (overrideResponse: Partial<Extract<TriggerTableReconciliationApiResponse, object>> = {}): TriggerTableReconciliationApiResponse => ({accepted: faker.datatype.boolean(), ...overrideResponse})
 
 export const getResetTableSelectionResponseMock = (overrideResponse: Partial<Extract<TableApiResponse, object>> = {}): TableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
         [faker.string.alphanumeric(5)]: {}
@@ -269,6 +272,18 @@ export const getPauseTableMockHandler = (overrideResponse?: TableApiResponse | (
   }, options)
 }
 
+export const getReconcileTableMockHandler = (overrideResponse?: TriggerTableReconciliationApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<TriggerTableReconciliationApiResponse> | TriggerTableReconciliationApiResponse), options?: RequestHandlerOptions) => {
+  return http.post<{ tableUuid: string }>('*/v1/tables/:tableUuid/reconcile', async (info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getReconcileTableResponseMock(),
+      { status: 202
+      })
+  }, options)
+}
+
 export const getResetTableSelectionMockHandler = (overrideResponse?: TableApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<TableApiResponse> | TableApiResponse), options?: RequestHandlerOptions) => {
   return http.post<{ tableUuid: string }>('*/v1/tables/:tableUuid/reset-selection', async (info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => {
 
@@ -331,6 +346,7 @@ export const getTablesMock = () => [
   getGetTableHealthMockHandler(),
   getTriggerTableMaintenanceMockHandler(),
   getPauseTableMockHandler(),
+  getReconcileTableMockHandler(),
   getResetTableSelectionMockHandler(),
   getResumeTableMockHandler(),
   getUpdateTableSettingsMockHandler(),

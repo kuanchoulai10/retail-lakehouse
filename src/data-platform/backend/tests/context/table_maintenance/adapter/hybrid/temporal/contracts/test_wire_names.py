@@ -66,6 +66,7 @@ def test_table_reconciliation_signals():
         "RESUME": "resume",
         "STOP": "stop",
         "MAINTENANCE_FINISHED": "maintenance_finished",
+        "RECONCILE_NOW": "reconcile_now",
     }
 
 
@@ -89,6 +90,7 @@ def test_table_reconciliation_activities():
     """The table reconciliation activity names are the stable wire names."""
     assert _values(TableReconciliationActivity) == {
         "PLAN_TABLE_MAINTENANCE": "plan_table_maintenance",
+        "RECORD_TABLE_RECONCILIATION": "record_table_reconciliation",
     }
 
 

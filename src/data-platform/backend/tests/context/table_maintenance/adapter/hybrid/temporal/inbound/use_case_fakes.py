@@ -31,6 +31,11 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
     SubmitMaintenanceOperationUseCaseInput,
     SubmitMaintenanceOperationUseCaseOutput,
 )
+from context.table_maintenance.application.port.inbound.table_reconciliation import (
+    RecordTableReconciliationUseCase,
+    RecordTableReconciliationUseCaseInput,
+    RecordTableReconciliationUseCaseOutput,
+)
 
 CREATED_AT = datetime(2026, 10, 24, tzinfo=UTC)
 
@@ -141,6 +146,19 @@ class FakeRecordResult(RecordTableMaintenanceOperationResultUseCase):
         """Record the request and return its run as running."""
         self.requests.append(request)
         return RecordTableMaintenanceOperationResultUseCaseOutput(run_id=request.run_id, status="running")
+
+
+class FakeRecordReconciliation(RecordTableReconciliationUseCase):
+    """Record reconciliation use case fake that records its requests."""
+
+    def __init__(self) -> None:
+        """Start with no recorded requests."""
+        self.requests: list[RecordTableReconciliationUseCaseInput] = []
+
+    def execute(self, request: RecordTableReconciliationUseCaseInput) -> RecordTableReconciliationUseCaseOutput:
+        """Record the request and report it recorded."""
+        self.requests.append(request)
+        return RecordTableReconciliationUseCaseOutput(recorded=True)
 
 
 class FakeSync(SyncDiscoveredTablesUseCase):
