@@ -6,26 +6,30 @@ import logging
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.shared import (
+    MaintenanceAssessment,
     MaintenanceOperation,
     MaintenancePlan,
     MaintenanceSettings,
+    OperationVerdict,
 )
 from context.table_maintenance.application.domain.model.table import (
     TableId,
     TableStatus,
 )
 from context.table_maintenance.application.domain.service.table import (
+    assess_maintenance,
     build_partition_filters,
     plan_manual_maintenance,
-    plan_scheduled_maintenance,
 )
 from context.table_maintenance.application.exceptions import ValidationError
 from context.table_maintenance.application.port.inbound.table import (
     PlanTableMaintenanceUseCase,
     PlanTableMaintenanceUseCaseInput,
     PlanTableMaintenanceUseCaseOutput,
+    PlanTableMaintenanceUseCaseOutputCheckItem,
     PlanTableMaintenanceUseCaseOutputFilterItem,
     PlanTableMaintenanceUseCaseOutputItem,
+    PlanTableMaintenanceUseCaseOutputMeasurementItem,
 )
 from context.table_maintenance.application.port.outbound.table import TableMetadataRef
 from context.table_maintenance.application.service.shared import translate_domain_errors
@@ -74,7 +78,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         manual = self._parse_manual(request.manual_operations)
         table = self._tables_repo.get(TableId(request.table_uuid))
         if table is None:
-            return _skip("dropped", MaintenanceSettings(), None)
+            return _skip("dropped", MaintenanceSettings(), None, table_found=False)
         settings = table.settings or MaintenanceSettings()
         reason = _SKIP_REASONS.get(table.status)
         if reason is not None:
@@ -87,15 +91,22 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
                 return _skip("not_found", settings, table)
             if manual is not None:
                 plan = plan_manual_maintenance(manual)
+                checks = _manual_checks(manual)
+            elif table.settings is None:
+                plan, checks = MaintenancePlan(), []
             else:
-                plan = plan_scheduled_maintenance(table, observation, request.now)
-            return self._render(table, settings, plan, observation, request)
+                assessment = assess_maintenance(table, settings, observation, request.now)
+                plan, checks = assessment.plan(), _scheduled_checks(assessment)
+                if settings.dry_run:
+                    plan = MaintenancePlan()
+            return self._render(table, settings, plan, checks, observation, request)
 
     def _render(
         self,
         table: Table,
         settings: MaintenanceSettings,
         plan: MaintenancePlan,
+        checks: list[PlanTableMaintenanceUseCaseOutputCheckItem],
         observation: TableObservation,
         request: PlanTableMaintenanceUseCaseInput,
     ) -> PlanTableMaintenanceUseCaseOutput:
@@ -118,6 +129,8 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             reconcile_interval_seconds=_interval(settings),
             table_name=table.name.fully_qualified(),
             operations=operations,
+            dry_run=settings.dry_run,
+            checks=checks,
         )
 
     @staticmethod
@@ -157,11 +170,58 @@ def _interval(settings: MaintenanceSettings) -> int:
     return int(settings.reconcile_interval.total_seconds())
 
 
-def _skip(reason: str, settings: MaintenanceSettings, table: Table | None) -> PlanTableMaintenanceUseCaseOutput:
+_VERDICTS = {
+    OperationVerdict.DUE: "due",
+    OperationVerdict.NOT_DUE: "not_needed",
+    OperationVerdict.COOLDOWN: "cooling_down",
+    OperationVerdict.DISABLED: "off",
+}
+
+
+def _scheduled_checks(assessment: MaintenanceAssessment) -> list[PlanTableMaintenanceUseCaseOutputCheckItem]:
+    return [
+        PlanTableMaintenanceUseCaseOutputCheckItem(
+            operation=a.operation.value,
+            verdict=_VERDICTS[a.verdict],
+            combine=a.combine.value,
+            measurements=[
+                PlanTableMaintenanceUseCaseOutputMeasurementItem(
+                    key=m.key,
+                    observed=m.observed,
+                    unit=m.unit.value,
+                    threshold=m.threshold,
+                    comparison=None if m.comparison is None else m.comparison.value,
+                    met=m.met,
+                )
+                for m in a.measurements
+            ],
+            next_eligible_at=a.next_eligible_at,
+        )
+        for a in assessment.operations
+    ]
+
+
+def _manual_checks(requested: list[MaintenanceOperation]) -> list[PlanTableMaintenanceUseCaseOutputCheckItem]:
+    return [
+        PlanTableMaintenanceUseCaseOutputCheckItem(
+            operation=op.value,
+            verdict="due" if op in requested else "not_checked",
+            combine="all",
+            measurements=[],
+            next_eligible_at=None,
+        )
+        for op in MaintenanceOperation.ordered()
+    ]
+
+
+def _skip(
+    reason: str, settings: MaintenanceSettings, table: Table | None, *, table_found: bool = True
+) -> PlanTableMaintenanceUseCaseOutput:
     return PlanTableMaintenanceUseCaseOutput(
         status="skip",
         reason=reason,
         reconcile_interval_seconds=_interval(settings),
         table_name=None if table is None else table.name.fully_qualified(),
         operations=[],
+        table_found=table_found,
     )

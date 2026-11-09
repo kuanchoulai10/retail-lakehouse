@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from datetime import datetime
     from typing import Any
 
 
@@ -27,6 +28,29 @@ class PlanTableMaintenanceUseCaseOutputItem:
 
 
 @dataclass(frozen=True)
+class PlanTableMaintenanceUseCaseOutputMeasurementItem:
+    """One measured value of an operation check, with its threshold when it is a condition."""
+
+    key: str
+    observed: int
+    unit: str
+    threshold: int | None
+    comparison: str | None
+    met: bool | None
+
+
+@dataclass(frozen=True)
+class PlanTableMaintenanceUseCaseOutputCheckItem:
+    """The verdict on one operation and the measurements behind it."""
+
+    operation: str
+    verdict: str
+    combine: str
+    measurements: list[PlanTableMaintenanceUseCaseOutputMeasurementItem]
+    next_eligible_at: datetime | None
+
+
+@dataclass(frozen=True)
 class PlanTableMaintenanceUseCaseOutput:
     """Carry the result of the request to plan the maintenance operations of a table.
 
@@ -39,3 +63,6 @@ class PlanTableMaintenanceUseCaseOutput:
     reconcile_interval_seconds: int
     table_name: str | None
     operations: list[PlanTableMaintenanceUseCaseOutputItem]
+    dry_run: bool = False
+    table_found: bool = True
+    checks: list[PlanTableMaintenanceUseCaseOutputCheckItem] = field(default_factory=list)

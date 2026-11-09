@@ -11,6 +11,7 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     MaintenanceSettings,
     RewriteDataFilesSettings,
+    RewriteManifestsSettings,
 )
 from context.table_maintenance.application.domain.model.table import (
     Table,
@@ -304,3 +305,85 @@ def test_plan_reports_malformed_observation_as_validation_error(planner, tables_
     _observe(catalog, now, manifests=[{}])
     with pytest.raises(ValidationError):
         _plan(planner, now)
+
+
+# --- checks and dry run ---
+
+
+def _checks(plan):
+    return {c.operation: c for c in plan.checks}
+
+
+def test_scheduled_plan_reports_a_check_per_operation(planner, tables_repo, catalog, now):
+    """A scheduled plan reports one check per operation with its verdict and measurements."""
+    settings = MaintenanceSettings(rewrite_manifests=RewriteManifestsSettings(enabled=False))
+    table = _table(tables_repo, now, settings)
+    table.record_operation_result(OPS.EXPIRE_SNAPSHOTS, True, now - timedelta(minutes=1))
+    _observe(catalog, now)
+    plan = _plan(planner, now)
+    checks = _checks(plan)
+    assert [c.operation for c in plan.checks] == [o.value for o in OPS.ordered()]
+    assert checks["rewrite_data_files"].verdict == "due"
+    assert checks["rewrite_manifests"].verdict == "off"
+    assert checks["expire_snapshots"].verdict == "cooling_down"
+    assert checks["expire_snapshots"].next_eligible_at is not None
+    assert checks["rewrite_data_files"].next_eligible_at is None
+    assert checks["rewrite_data_files"].combine == "all"
+    first = checks["rewrite_data_files"].measurements[0]
+    assert (first.key, first.unit, first.comparison, first.met) == ("reducible_files", "count", ">=", True)
+    assert isinstance(first.observed, int)
+    assert [o.operation for o in plan.operations] == [c.operation for c in plan.checks if c.verdict == "due"]
+    assert plan.dry_run is False
+    assert plan.table_found is True
+
+
+def test_dry_run_plans_no_operations_but_reports_due(planner, tables_repo, catalog, now):
+    """In dry run a scheduled plan has no operations while its checks still say due."""
+    _table(tables_repo, now, MaintenanceSettings(dry_run=True))
+    _observe(catalog, now)
+    plan = _plan(planner, now)
+    assert (plan.status, plan.operations, plan.dry_run) == ("planned", [], True)
+    assert _checks(plan)["rewrite_data_files"].verdict == "due"
+
+
+def test_manual_plan_runs_in_dry_run(planner, tables_repo, catalog, now):
+    """A manual plan still returns its operations when the table is in dry run."""
+    _table(tables_repo, now, MaintenanceSettings(dry_run=True))
+    _observe(catalog, now)
+    plan = _plan(planner, now, ["rewrite_manifests"])
+    assert [o.operation for o in plan.operations] == ["rewrite_manifests"]
+    assert plan.dry_run is True
+
+
+def test_manual_plan_marks_unrequested_not_checked(planner, tables_repo, catalog, now):
+    """A manual plan marks the requested operations due and the rest not checked."""
+    _table(tables_repo, now)
+    _observe(catalog, now)
+    plan = _plan(planner, now, ["rewrite_manifests"])
+    verdicts = {c.operation: c.verdict for c in plan.checks}
+    assert verdicts == {
+        "rewrite_data_files": "not_checked",
+        "rewrite_manifests": "due",
+        "expire_snapshots": "not_checked",
+        "remove_orphan_files": "not_checked",
+    }
+    assert all(c.measurements == [] and c.next_eligible_at is None for c in plan.checks)
+
+
+def test_missing_table_is_not_found_in_maintenance(planner, now):
+    """A table missing from maintenance is skipped as dropped and flagged not found."""
+    plan = _plan(planner, now, uuid="missing")
+    assert (plan.status, plan.reason, plan.table_found, plan.checks, plan.dry_run) == (
+        "skip",
+        "dropped",
+        False,
+        [],
+        False,
+    )
+
+
+def test_paused_table_skips_with_table_found(planner, tables_repo, now):
+    """A paused table is skipped but the table is found."""
+    _table(tables_repo, now).pause(now)
+    plan = _plan(planner, now)
+    assert (plan.status, plan.reason, plan.table_found, plan.checks) == ("skip", "paused", True, [])
