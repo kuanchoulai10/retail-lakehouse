@@ -34,6 +34,7 @@ const RESULT_LABELS: Record<string, string> = {
 const WAKE_REASONS: [string, string][] = [
   ["schedule", "Schedule"],
   ["catalog_commit", "Catalog commit"],
+  ["discovery_scan", "Discovery scan"],
   ["settings_changed", "Settings changed"],
   ["resumed", "Resumed"],
   ["paused", "Paused"],

@@ -91,6 +91,12 @@ describe("wakeText", () => {
       "Schedule, Settings changed, Previous run finished",
     );
   });
+
+  it("names a discovery scan and ranks it right after a catalog commit", () => {
+    expect(wakeText(record({ wake_reasons: { settings_changed: 1, discovery_scan: 1, catalog_commit: 1 } }))).toBe(
+      "Catalog commit, Discovery scan, Settings changed",
+    );
+  });
 });
 
 describe("reasonSentence", () => {

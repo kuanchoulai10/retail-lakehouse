@@ -167,7 +167,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
             SendTableChangeGatewayInput(
                 table_uuid=table.id.value,
                 table_name=table.name.fully_qualified(),
-                change=TableChange.UPDATED.value,
+                change=TableChange.SEEN.value,
                 is_enrolled=table.is_enrolled,
             )
         )

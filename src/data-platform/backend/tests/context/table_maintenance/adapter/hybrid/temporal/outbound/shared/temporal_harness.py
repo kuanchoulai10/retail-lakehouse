@@ -56,6 +56,11 @@ class StubTableReconciliationWorkflow:
         """Record a table_updated signal."""
         self.received.append(("table_updated", payload))
 
+    @workflow.signal(name="table_seen")
+    def table_seen(self, payload: dict) -> None:
+        """Record a table_seen signal."""
+        self.received.append(("table_seen", payload))
+
     @workflow.signal(name="pause")
     def pause(self, payload: dict) -> None:
         """Record a pause signal."""

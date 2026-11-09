@@ -15,4 +15,5 @@ def test_table_change_values():
         "stopped",
         "maintenance_requested",
         "reconcile_requested",
+        "seen",
     ]

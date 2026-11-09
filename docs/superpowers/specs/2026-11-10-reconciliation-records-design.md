@@ -102,6 +102,7 @@ The workflow tracks why it woke instead of a single `_woken` flag.
 |---|---|
 | `schedule` | The timer. |
 | `catalog_commit` | `table_updated`. |
+| `discovery_scan` | `table_seen` (discovery sync seeing the table). |
 | `settings_changed` | Settings signal. |
 | `resumed` | Resume signal. |
 | `paused` | Pause signal. |

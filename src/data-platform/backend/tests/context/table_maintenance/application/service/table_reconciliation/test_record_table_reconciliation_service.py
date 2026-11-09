@@ -225,3 +225,14 @@ def test_noop_path_still_purges_old_records(
 
     assert again.recorded is False
     assert repo.get(TableReconciliationId("old")) is None
+
+
+def test_discovery_scan_is_a_known_wake_reason(
+    service: RecordTableReconciliationService, repo: InMemoryTableReconciliationsRepo
+) -> None:
+    """A discovery scan is recorded as its own wake reason."""
+    service.execute(_input(wake_reasons={"discovery_scan": 1}))
+
+    saved = repo.get(TableReconciliationId("rec-1"))
+    assert saved is not None
+    assert {reason.value: count for reason, count in saved.wake_reasons.items()} == {"discovery_scan": 1}

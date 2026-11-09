@@ -946,3 +946,56 @@ def test_give_up_before_the_plan_timer_plans_once_as_previous_run_finished():
         assert len(h.plans.requests) == 1
 
     _run(scenario, script=lambda _: _planned(COMPACTION, interval=10**6))
+
+
+def test_discovery_scan_is_recorded_as_its_own_wake_reason():
+    """A discovery scan that sees the table wakes the loop and is recorded as a discovery scan."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        await h.records(1)
+        await h.signal(TableReconciliationSignal.TABLE_SEEN)
+        second = (await h.records(2))[1]
+        assert second["wake_reasons"] == {"discovery_scan": 1}
+
+    _run(scenario, script=lambda _: _planned())
+
+
+def test_catalog_commit_is_still_recorded_as_catalog_commit():
+    """A table update from the catalog is still recorded as a catalog commit, not a discovery scan."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        await h.records(1)
+        await h.signal(TableReconciliationSignal.TABLE_UPDATED)
+        second = (await h.records(2))[1]
+        assert second["wake_reasons"] == {"catalog_commit": 1}
+
+    _run(scenario, script=lambda _: _planned())
+
+
+def test_discovery_scan_starts_a_missing_workflow():
+    """Signal-with-start on a discovery scan starts the missing workflow and records the scan."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start(start_signal=TableReconciliationSignal.TABLE_SEEN)
+        first = (await h.records(1))[0]
+        assert first["wake_reasons"] == {"discovery_scan": 1}
+
+    _run(scenario, script=lambda _: _planned())
+
+
+def test_discovery_scan_after_stop_cancels_the_stop():
+    """A discovery scan after ``stop`` supersedes it, the same as a catalog commit."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = await h.in_flight()
+        await h.signal(TableReconciliationSignal.STOP)
+        await h.signal(TableReconciliationSignal.TABLE_SEEN)
+        assert (await h.settle())["stopping"] is False
+        await h.complete_child(first)
+        await h.plan_count(2)
+        assert await h.status() == WorkflowExecutionStatus.RUNNING
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))

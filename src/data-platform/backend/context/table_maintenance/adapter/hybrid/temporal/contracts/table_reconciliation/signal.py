@@ -16,3 +16,4 @@ class TableReconciliationSignal(StrEnum):
     STOP = "stop"
     MAINTENANCE_FINISHED = "maintenance_finished"
     RECONCILE_NOW = "reconcile_now"
+    TABLE_SEEN = "table_seen"

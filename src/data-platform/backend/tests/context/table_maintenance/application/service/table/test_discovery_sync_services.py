@@ -301,7 +301,7 @@ def test_sync_rename_keeps_settings(sync, tables_repo, catalog, signals, now):
     assert (out.registered, out.renamed, out.dropped) == (0, 1, 0)
     assert tables_repo.get(TableId("u-1")).name == TableName("iceberg", "sales", "new")
     assert tables_repo.get(TableId("u-1")).settings == settings
-    assert _calls(signals) == [("u-1", "updated", True)]
+    assert _calls(signals) == [("u-1", "seen", True)]
 
 
 def test_sync_never_redecides_manual_tables(sync, tables_repo, rules_repo, preset, catalog, now):
@@ -539,7 +539,7 @@ def test_sync_retry_after_failed_start_still_starts_workflow(
     assert tables_repo.get(TableId("u-1")) is not None
     out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
     assert (out.registered, out.ensured) == (0, 1)
-    assert _calls(signals) == [("u-1", "updated", True)]
+    assert _calls(signals) == [("u-1", "seen", True)]
 
 
 def test_sync_reensures_workflow_of_every_live_table_that_needs_one(sync, tables_repo, catalog, signals, now):
@@ -558,8 +558,8 @@ def test_sync_reensures_workflow_of_every_live_table_that_needs_one(sync, tables
     out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
     assert out.ensured == 2
     assert sorted(_calls(signals)) == [
-        ("u-active", "updated", True),
-        ("u-paused", "updated", True),
+        ("u-active", "seen", True),
+        ("u-paused", "seen", True),
     ]
 
 
@@ -569,7 +569,7 @@ def test_sync_reensures_renamed_table(sync, tables_repo, catalog, signals, now):
     catalog.add_table("iceberg", "sales", "new", "u-1")
     out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
     assert (out.renamed, out.ensured) == (1, 1)
-    assert _calls(signals) == [("u-1", "updated", True)]
+    assert _calls(signals) == [("u-1", "seen", True)]
 
 
 def test_sync_does_not_reensure_freshly_registered_table_twice(sync, rules_repo, preset, catalog, signals, now):

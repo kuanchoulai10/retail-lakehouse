@@ -10,6 +10,7 @@ class WakeReason(StrEnum):
 
     SCHEDULE = "schedule"
     CATALOG_COMMIT = "catalog_commit"
+    DISCOVERY_SCAN = "discovery_scan"
     SETTINGS_CHANGED = "settings_changed"
     RESUMED = "resumed"
     PAUSED = "paused"

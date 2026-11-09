@@ -39,6 +39,7 @@ _TRIGGER_SCHEDULED = "scheduled"
 _TRIGGER_MANUAL = "manual"
 _REASON_SCHEDULE = "schedule"
 _REASON_CATALOG_COMMIT = "catalog_commit"
+_REASON_DISCOVERY_SCAN = "discovery_scan"
 _REASON_SETTINGS_CHANGED = "settings_changed"
 _REASON_RESUMED = "resumed"
 _REASON_PAUSED = "paused"
@@ -147,6 +148,11 @@ class TableReconciliationWorkflow:
     def table_updated(self, payload: dict | None = None) -> None:
         """Wake the loop because the table changed in the catalog."""
         self._wake(_REASON_CATALOG_COMMIT, cancels_stop=True)
+
+    @workflow.signal(name=TableReconciliationSignal.TABLE_SEEN)
+    def table_seen(self, payload: dict | None = None) -> None:
+        """Wake the loop because a discovery scan saw the table."""
+        self._wake(_REASON_DISCOVERY_SCAN, cancels_stop=True)
 
     @workflow.signal(name=TableReconciliationSignal.PAUSE)
     def pause(self, payload: dict | None = None) -> None:
