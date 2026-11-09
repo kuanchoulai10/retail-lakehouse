@@ -80,10 +80,13 @@ class TableReconciliationWorkflow:
     with those reasons, the plan's checks and the run it started (or that its
     start failed). The run id is generated with the reconciliation id before
     planning, so the record and the run agree. A failed plan records nothing
-    and drops its reasons; a failed record is logged and the loop goes on. A
-    plan with no reason (after a stuck run is given up before the plan timer
-    is due, and nothing else woke the loop) is not recorded. A
-    plan with operations that is not started because the workflow is stopping
+    and drops its reasons; a failed record is logged and the loop goes on.
+    Each run ends once, counted as ``previous_run_finished``: when its
+    ``maintenance_finished`` arrives or when it is given up, whichever comes
+    first (a report after the give-up is ignored). The loop never plans
+    without a reason: a wake that leaves no reason and finds the plan timer not
+    yet due (such as a stale wake left by a report during the give-up grace)
+    goes back to waiting. A plan with operations that is not started because the workflow is stopping
     is not recorded either, since its due operations neither started nor
     failed to start.
     """
@@ -130,7 +133,7 @@ class TableReconciliationWorkflow:
             iterations += 1
             if self._in_flight_run_id is not None:
                 await self._give_up_stuck_run()
-            if self._in_flight_run_id is None and not self._stopping:
+            if self._in_flight_run_id is None and not self._stopping and self._has_reason_to_plan():
                 ends = await self._plan_and_start()
                 if ends and not self._woken:
                     return
@@ -211,6 +214,18 @@ class TableReconciliationWorkflow:
             self._count(reason)
         self._woken = True
 
+    def _has_reason_to_plan(self) -> bool:
+        """Count ``schedule`` when the plan timer is due; tell whether any reason calls for a plan.
+
+        ``schedule`` is counted here, once per plan. While a run is in flight the loop's timer is
+        that run's deadline, so a give-up is not a schedule wake; a tick that came due during the
+        run is counted when the run ends, which is why the plan after a run can carry
+        {previous_run_finished: 1, schedule: 1} without counting twice.
+        """
+        if self._next_plan_at is not None and workflow.now() >= self._next_plan_at:
+            self._count(_REASON_SCHEDULE)
+        return bool(self._wake_reasons)
+
     def _count(self, reason: str) -> None:
         self._wake_reasons[reason] = self._wake_reasons.get(reason, 0) + 1
 
@@ -272,6 +287,7 @@ class TableReconciliationWorkflow:
             workflow.logger.warning("cancelled run %s did not report back; no longer waiting", run_id)
         if self._in_flight_run_id == run_id:
             self._clear_in_flight()
+            self._count(_REASON_PREVIOUS_RUN_FINISHED)
 
     async def _cancel_child(self, run_id: str, workflow_id: str | None) -> None:
         if workflow_id is None:
@@ -305,13 +321,8 @@ class TableReconciliationWorkflow:
         reconciliation_id = str(workflow.uuid4())
         run_id = str(workflow.uuid4())
         now = workflow.now()
-        # ``schedule`` is counted here, once per plan, when the plan timer is due. While a run is
-        # in flight the loop's timer is that run's deadline, so a give-up is not a schedule wake;
-        # a tick that came due during the run is counted when the run ends, which is why the
-        # plan after a run can carry {previous_run_finished: 1, schedule: 1} without counting twice.
-        if self._next_plan_at is not None and now >= self._next_plan_at:
-            self._count(_REASON_SCHEDULE)
         reasons, self._wake_reasons = self._wake_reasons, {}
+        self._woken = False
         try:
             plan = await workflow.execute_activity(
                 TableReconciliationActivity.PLAN_TABLE_MAINTENANCE,
@@ -358,9 +369,6 @@ class TableReconciliationWorkflow:
     ) -> None:
         """Store one reconciliation of a table the plan found; a failure is logged and the loop goes on."""
         if not plan["table_found"]:
-            return
-        if not record["wake_reasons"]:
-            workflow.logger.info("not recording reconciliation %s: nothing woke it", record["reconciliation_id"])
             return
         try:
             await workflow.execute_activity(

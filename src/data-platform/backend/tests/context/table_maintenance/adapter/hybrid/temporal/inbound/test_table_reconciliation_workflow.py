@@ -563,7 +563,11 @@ def test_give_up_waits_a_grace_for_a_child_that_ignores_its_cancel():
         assert len(h.plans.requests) == 1
         await h.env.sleep(timedelta(minutes=2))
         await h.plan_count(2)
-        await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first))
+        await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first) and not s["planning"])
+        await h.complete_child(first)
+        await h.settle()
+        assert len(h.plans.requests) == 2
+        assert [r["wake_reasons"] for r in h.recorder.records] == [{"resumed": 1}, {"previous_run_finished": 1}]
 
     _run(scenario, script=lambda _: plan)
 
@@ -670,8 +674,8 @@ def test_carried_in_flight_run_without_workflow_id_is_given_up_without_grace():
         await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=1))
         await h.plan_count(1)
         await h.idle_after(state)
-        # The plan timer (one hour) came due while the run was stuck, so the plan after the give-up is a schedule wake.
-        assert [r["wake_reasons"] for r in (await h.records(1))] == [{"schedule": 1}]
+        # The give-up ends the run, and the plan timer (one hour) came due while it was stuck.
+        assert [r["wake_reasons"] for r in (await h.records(1))] == [{"previous_run_finished": 1, "schedule": 1}]
 
     _run(scenario, script=lambda _: _planned())
 
@@ -898,6 +902,10 @@ def test_given_up_run_before_the_plan_timer_is_not_recorded_as_schedule():
             {"resumed": 1},
             {"catalog_commit": 1, "previous_run_finished": 1},
         ]
+        # The child's report during the grace ends the same run: no second count, no extra plan.
+        await h.settle()
+        assert len(h.plans.requests) == 2
+        assert len(h.recorder.records) == 2
 
     _run(scenario, script=lambda _: answers.pop(0) if answers else _planned(interval=10**6))
 
@@ -918,8 +926,8 @@ def test_plan_timer_due_during_a_run_is_counted_once_it_finishes():
     _run(scenario, script=lambda _: answers.pop(0) if answers else _planned(interval=600))
 
 
-def test_plan_after_a_silent_give_up_before_the_plan_timer_is_not_recorded():
-    """A stuck run given up before the plan timer, with nothing else waking the loop, records nothing."""
+def test_give_up_before_the_plan_timer_plans_once_as_previous_run_finished():
+    """A stuck run given up before the plan timer ends the run: one plan, recorded with the run it starts."""
 
     async def scenario(h: Harness) -> None:
         await h.start(
@@ -928,10 +936,13 @@ def test_plan_after_a_silent_give_up_before_the_plan_timer_is_not_recorded():
             in_flight_operation_count=1,
             reconcile_interval_seconds=10**6,
         )
-        state = await eventually(h.state, lambda s: s["in_flight_started_at"])
+        await eventually(h.state, lambda s: s["in_flight_started_at"])
         await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=1))
-        await h.plan_count(1)
-        await h.idle_after(state)
-        assert h.recorder.records == []
+        run_id = (await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, "ghost")))["in_flight_run_id"]
+        [record] = await h.records(1)
+        assert record["wake_reasons"] == {"previous_run_finished": 1}
+        assert record["run_id"] == run_id
+        await h.settle()
+        assert len(h.plans.requests) == 1
 
-    _run(scenario, script=lambda _: _planned(interval=10**6))
+    _run(scenario, script=lambda _: _planned(COMPACTION, interval=10**6))
