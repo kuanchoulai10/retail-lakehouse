@@ -17,6 +17,7 @@ Namespace: istio-ingress
 | Path prefix | Backend | HTTPRoute (wave) | How the app serves under it |
 |---|---|---|---|
 | `/console` | `console:8080` in `lakehouse-control-plane` | `console` (`25-lakehouse-control-plane` chart) | the app's router basename and nginx are `/console` |
+| `/api` | `table-maintenance-api:8000` in `lakehouse-control-plane` | `table-maintenance-api` (`25-lakehouse-control-plane` chart) | the route rewrites `/api` to `/` (`URLRewrite` `ReplacePrefixMatch`) and the API runs with `GLAC_API__ROOT_PATH=/api` (FastAPI `root_path`), so the Swagger UI at `/api/docs` loads `/api/openapi.json` and "Try it out" calls `/api/v1/...`; the console keeps reaching the API through its own nginx at `/console/api/` |
 | `/kiali` | `kiali:20001` in `istio-system` | `kiali` (`23-kiali`) | `server.web_root: /kiali` |
 | `/kafka-ui` | `kafka-ui:8080` in `kafka-ui` | `kafka-ui` (`23-kafka-ui`) | `SERVER_SERVLET_CONTEXT_PATH=/kafka-ui` |
 | `/temporal` | `temporal-web:8080` in `temporal` | `temporal-web` (`21-temporal`) | `TEMPORAL_UI_PUBLIC_PATH=/temporal` |
