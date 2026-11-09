@@ -15,18 +15,21 @@ timeline
                                  : Shebangs and executable bits
                                  : shellcheck
                                  : Kubernetes label standard
-                                 : ty type check
-                                 : ruff lint and format
                                  : gitleaks secret scan
                                  : zizmor workflow audit
                                  : commitlint (commit message)
+                                 : eslint and tsc (console, design system)
+                                 : ty type check
+                                 : ruff lint and format
     Before Opening a PR <br> (task pre-pr) : + task pre-commit
-                                 : Console lint and typecheck
-                                 : Unit tests (backend, spark, scripts, console)
+                                 : Script tests
+                                 : Console and design-system unit tests
+                                 : Story browser tests with axe
+                                 : Backend and Spark unit tests
                                  : Architecture boundaries (import-linter)
                                  : Contract tests
     Before Merging <br> (task pre-merge) : + task pre-pr
-                                 : Dependency and code security scan
+                                 : Dependency and image security scan
                                  : Coverage floor
                                  : Integration tests
                                  : Build every image once, tagged by commit
@@ -64,39 +67,59 @@ Each gate answers its question in a specific environment. **The environment grow
 | Release | `task release` | Does the release hold under real traffic? | Production canary |
 | Nightly | `task nightly KUBE_CONTEXT=…` | Are there problems that only show over time? | Staging, on a schedule |
 
+### Run One Side
+
+**A change to the console should not wait for the backend's 2,000 tests, and the reverse.** The three local gates, pre-commit, pre-PR and pre-merge, take a `scope` of `frontend`, `backend` or `all`, which is the default:
+
+```bash
+task pre-commit
+task pre-pr scope=frontend
+task pre-merge scope=backend
+```
+
+Each of these gates runs a shared part, then `<gate>-frontend`, `<gate>-backend` or both. The shared part holds the checks that belong to neither side, such as the secret scan, shellcheck and the script tests, and the checks that span both sides, such as `contract-test`, `api-test` and `e2e-critical-test`. It runs whatever the scope. A gate passes its `scope` to the gate it starts, so `task pre-merge scope=frontend` runs the frontend half of pre-PR and pre-commit as well. Each half also runs on its own, for example `task checks:pre-pr-backend`, and `task` rejects any other `scope` value before it runs anything.
+
+Frontend means the console (`src/data-platform/frontend`) and the design system (`src/design-system`). Backend means every Python project, including the Spark runtime. Post-merge and the later gates test the whole deployed platform and take no `scope`.
+
 ### Pre-commit
 
-**Pre-commit keeps style arguments and leaked secrets out of code review.** `.pre-commit-config.yaml` installs two Git hooks. The `pre-commit` hook runs the checks below on the staged files, in this order, and `task pre-commit` runs the same checks on every file with `uv run pre-commit run --all-files --show-diff-on-failure`. The `commit-msg` hook runs `commitlint` on the message, so it runs only on a real `git commit`, never from `task pre-commit`.
+**Pre-commit keeps style arguments, type errors and leaked secrets out of code review.** `.pre-commit-config.yaml` installs two Git hooks. The `pre-commit` hook runs every check below on the staged files, and each check's `Files` pattern decides whether it fires, so a commit that only touches the console never starts ruff. The `commit-msg` hook runs `commitlint` on the message, so it runs only on a real `git commit`, never from `task pre-commit`.
 
-| Order | Hook | Source | What it checks | Files |
+**Every hook carries an `alias` naming its group**, and `pre-commit run <group> --all-files` runs only that group. `task pre-commit` runs the `shared` group on every file, then `frontend`, `backend` or both, as its `scope` asks. A new hook needs an alias, or no gate runs it.
+
+| Group | Hook | Source | What it checks | Files |
 |---|---|---|---|---|
-| 1 | `identity` | `meta` | Prints the files each hook receives, for troubleshooting | All |
-| 2 | `check-hooks-apply` | `meta` | Every configured hook matches at least one file | `.pre-commit-config.yaml` |
-| 3 | `check-merge-conflict` | `pre-commit-hooks` | No leftover merge conflict markers | All |
-| 4 | `trailing-whitespace` | `pre-commit-hooks` | No trailing whitespace (fixes it) | Text |
-| 5 | `check-toml` | `pre-commit-hooks` | TOML files parse | `*.toml` |
-| 6 | `check-executables-have-shebangs` | `pre-commit-hooks` | Executable files start with a shebang | Executables |
-| 7 | `check-shell-scripts-are-executable` | local | Shell scripts have the executable bit | Shell |
-| 8 | `shellcheck` | local | Shell script static analysis | Shell |
-| 9 | `k8s-labels` | local | Manifests follow the Kubernetes label standard (`scripts/check_k8s_labels.py`) | `platform/` |
-| 10 | `ty` | local | Type check outside the backend | Python |
-| 11 | `ty-backend` | local | Type check the backend project | `src/data-platform/backend/` |
-| 12 | `uv-export-backend` | local | `src/data-platform/backend/requirements.txt` matches `uv.lock` | `uv.lock`, backend `pyproject.toml` |
-| 13 | `ruff-check` | `ruff-pre-commit` | Python lint (fixes what it can) | Python |
-| 14 | `ruff-format` | `ruff-pre-commit` | Python formatting | Python |
-| 15 | `gitleaks` | `gitleaks` | No committed secrets | All |
-| 16 | `zizmor` | `zizmor-pre-commit` | GitHub Actions workflows are valid and safe | `.github/workflows/`, `.github/actions/` |
-| — | `commitlint` | local, `commit-msg` stage | Conventional commit message | Commit message |
+| shared | `identity` | `meta` | Prints the files each hook receives, for troubleshooting | All |
+| shared | `check-hooks-apply` | `meta` | Every configured hook matches at least one file | `.pre-commit-config.yaml` |
+| shared | `check-merge-conflict` | `pre-commit-hooks` | No leftover merge conflict markers | All |
+| shared | `trailing-whitespace` | `pre-commit-hooks` | No trailing whitespace (fixes it) | Text |
+| shared | `check-toml` | `pre-commit-hooks` | TOML files parse | `*.toml` |
+| shared | `check-executables-have-shebangs` | `pre-commit-hooks` | Executable files start with a shebang | Executables |
+| shared | `check-shell-scripts-are-executable` | local | Shell scripts have the executable bit | Shell |
+| shared | `shellcheck` | local | Shell script static analysis | Shell |
+| shared | `k8s-labels` | local | Manifests follow the Kubernetes label standard (`scripts/check_k8s_labels.py`) | `platform/` |
+| shared | `commitlint` | local, `commit-msg` stage | Conventional commit message | Commit message |
+| shared | `gitleaks` | `gitleaks` | No committed secrets | All |
+| shared | `zizmor` | `zizmor-pre-commit` | GitHub Actions workflows are valid and safe | `.github/workflows/`, `.github/actions/` |
+| frontend | `eslint-console` | local | Console lint | `src/data-platform/frontend/` |
+| frontend | `tsc-console` | local | Console type check, which also covers its use of the design system | Console, design system, `package-lock.json` |
+| frontend | `eslint-design-system` | local | Design-system lint | `src/design-system/` |
+| frontend | `tsc-design-system` | local | Design-system type check | Design system, `package-lock.json` |
+| backend | `ty` | local | Type check outside the backend project | Python |
+| backend | `ty-backend` | local | Type check the backend project | `src/data-platform/backend/` |
+| backend | `uv-export-backend` | local | `src/data-platform/backend/requirements.txt` matches `uv.lock` | `uv.lock`, backend `pyproject.toml` |
+| backend | `ruff-check` | `ruff-pre-commit` | Python lint (fixes what it can) | Python |
+| backend | `ruff-format` | `ruff-pre-commit` | Python formatting | Python |
 
-The checks finish in seconds on staged files, so they run on every commit.
+The checks finish in seconds on staged files, so they run on every commit. `tsc` checks a whole project rather than the staged files, which makes the frontend hooks the slowest of the set, but a type error caught at commit time is still cheaper than one caught in review. `ruff` and `ty` check the scripts under `scripts/` as well, so they sit in the backend group with the rest of the Python tooling.
 
 ### Pre-PR
 
-**Pre-PR proves the change is correct before anyone else spends time on it.** It first runs pre-commit on every file, then the console's `lint` and `typecheck`, then the four unit suites in parallel (`unit-test-backend`, `unit-test-spark`, `unit-test-scripts`, `unit-test-frontend`). After that come `arch-test`, which enforces the bounded-context boundaries with `lint-imports`, and `contract-test`. Nothing here starts a container, so a red pre-PR always points at the code, never at the environment.
+**Pre-PR proves the change is correct before anyone else spends time on it.** It first runs pre-commit on every file, then the script tests (`unit-test-scripts`). `pre-pr-frontend` runs the console and design-system unit suites in parallel (`unit-test-frontend`, `unit-test-design-system`), then `component-test`, which runs every design-system story in a browser with axe and its keyboard play function. `pre-pr-backend` runs the backend and Spark unit suites in parallel (`unit-test-backend`, `unit-test-spark`), then `arch-test`, which enforces the bounded-context boundaries with `lint-imports`. `contract-test` comes last for either side, because it checks the console's API types against the backend. Nothing here starts a container, so a red pre-PR always points at the code, never at the environment.
 
 ### Pre-merge
 
-**Pre-merge tests the commit that will land on `main`, not the commit the author pushed.** A merge queue rebases each candidate on the latest `main` and runs the gate on the result. Two pull requests that pass separately can still break `main` together, and this gate catches that. It first runs all of pre-PR, then `security-test`, `coverage-test`, `integration-test`, `build-test`, `api-test` and `e2e-critical-test`, in that order.
+**Pre-merge tests the commit that will land on `main`, not the commit the author pushed.** A merge queue rebases each candidate on the latest `main` and runs the gate on the result. Two pull requests that pass separately can still break `main` together, and this gate catches that. It first runs all of pre-PR. `pre-merge-frontend` then scans, measures coverage of and builds the console (`security-test-frontend`, `coverage-test-frontend`, `build-test-frontend`), and `pre-merge-backend` does the same for the backend and Spark runtime, with `integration-test` before the build. `api-test` and `e2e-critical-test` exercise the whole platform, so they run last for either side.
 
 Pre-merge also builds the deliverables. `build-test` builds `table-maintenance-backend`, `table-maintenance-spark` and the console once, tags them with the commit, and pushes them to the registry. **Every later gate deploys those same images and never rebuilds them**, so what passed pre-merge is exactly what reaches production. The API tests and the critical-path end-to-end test then run against a short-lived platform started from those images, which is torn down afterwards.
 
@@ -122,14 +145,15 @@ Most test tasks are planned but not built yet. **A planned task prints `TODO:// 
 
 | Test task | Gate | Status |
 |---|---|---|
-| `pre-commit` | Pre-commit | Runs |
-| `lint-frontend` | Pre-PR | Runs |
-| `unit-test-backend`, `unit-test-scripts`, `unit-test-frontend` | Pre-PR | Runs |
+| `pre-commit`, `pre-commit-frontend`, `pre-commit-backend` | Pre-commit | Runs |
+| `unit-test-scripts`, `unit-test-frontend`, `unit-test-design-system`, `component-test` | Pre-PR | Runs |
+| `unit-test-backend` | Pre-PR | Runs |
 | `unit-test-spark` | Pre-PR | Planned |
 | `arch-test` | Pre-PR | Runs |
 | `contract-test` | Pre-PR | Planned |
-| `security-test`, `coverage-test`, `integration-test` | Pre-merge | Planned |
-| `build-test` | Pre-merge | Console build runs; image build planned |
+| `security-test-*`, `coverage-test-*`, `integration-test` | Pre-merge | Planned |
+| `build-test-frontend` | Pre-merge | Console build runs; image build planned |
+| `build-test-backend` | Pre-merge | Planned |
 | `api-test`, `e2e-critical-test` | Pre-merge | Planned |
 | `deployment-test` | Post-merge, pre-release | Planned |
 | `smoke-test` | Post-merge | `apps:validate` runs; Bruno planned |
