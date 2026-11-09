@@ -51,6 +51,9 @@ if TYPE_CHECKING:
         RecordTableMaintenanceOperationResultUseCase,
         SubmitMaintenanceOperationUseCase,
     )
+    from context.table_maintenance.application.port.inbound.table_reconciliation import (
+        RecordTableReconciliationUseCase,
+    )
 
 
 @dataclass(frozen=True)
@@ -92,3 +95,4 @@ class UseCases:
     get_maintenance_job_status: GetMaintenanceJobStatusUseCase
     plan_table_maintenance: PlanTableMaintenanceUseCase
     submit_maintenance_operation: SubmitMaintenanceOperationUseCase
+    record_table_reconciliation: RecordTableReconciliationUseCase

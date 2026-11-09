@@ -18,6 +18,9 @@ from context.table_maintenance.adapter.outbound.table_maintenance_preset.sql imp
 from context.table_maintenance.adapter.outbound.table_maintenance_run.sql import (
     TableMaintenanceRunsSqlRepo,
 )
+from context.table_maintenance.adapter.outbound.table_reconciliation.sql import (
+    TableReconciliationsSqlRepo,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine
@@ -31,4 +34,5 @@ def build_repositories(engine: Engine) -> Repositories:
         table_maintenance_runs=TableMaintenanceRunsSqlRepo(engine),
         tables=TablesSqlRepo(engine),
         table_maintenance_presets=TableMaintenancePresetsSqlRepo(engine),
+        table_reconciliations=TableReconciliationsSqlRepo(engine),
     )

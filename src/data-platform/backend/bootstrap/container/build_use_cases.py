@@ -51,6 +51,9 @@ from context.table_maintenance.application.service.table_maintenance_run import 
     RecordTableMaintenanceOperationResultService,
     SubmitMaintenanceOperationService,
 )
+from context.table_maintenance.application.service.table_reconciliation import (
+    RecordTableReconciliationService,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -76,6 +79,7 @@ def build_use_cases(
     presets = repos.table_maintenance_presets
     runs = repos.table_maintenance_runs
     discovery = repos.table_discovery_settings
+    reconciliations = repos.table_reconciliations
     catalog = gateways.read_table_metadata
     table_changes = gateways.send_table_change
     return UseCases(
@@ -128,5 +132,6 @@ def build_use_cases(
         delete_maintenance_job=DeleteMaintenanceJobService(gateways.delete_maintenance_job),
         get_maintenance_job_status=GetMaintenanceJobStatusService(gateways.read_maintenance_job),
         plan_table_maintenance=PlanTableMaintenanceService(tables, catalog),
+        record_table_reconciliation=RecordTableReconciliationService(reconciliations),
         submit_maintenance_operation=SubmitMaintenanceOperationService(runs, tables, gateways.submit_maintenance_job),
     )

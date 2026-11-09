@@ -19,6 +19,9 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table_maintenance_run import (
         TableMaintenanceRunsRepo,
     )
+    from context.table_maintenance.application.port.outbound.table_reconciliation import (
+        TableReconciliationsRepo,
+    )
 
 
 @dataclass(frozen=True)
@@ -30,3 +33,4 @@ class Repositories:
     table_maintenance_runs: TableMaintenanceRunsRepo
     tables: TablesRepo
     table_maintenance_presets: TableMaintenancePresetsRepo
+    table_reconciliations: TableReconciliationsRepo
