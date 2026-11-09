@@ -177,9 +177,10 @@ tasks:
       - npm --prefix src/design-system test -- --run
 
   component-test:
-    desc: "Run the design-system stories as browser tests with axe"
+    desc: "Run the design-system and console stories as browser tests with axe"
     cmds:
       - npm --prefix src/design-system run test:stories
+      - npm --prefix src/data-platform/frontend run test:stories
 
   arch-test:
     desc: "Run architecture boundary tests (import-linter)"

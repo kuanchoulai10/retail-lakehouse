@@ -14,8 +14,8 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom/vitest"],
+    "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom/vitest", "msw-storybook-addon/csf3"],
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["src", "vite.config.ts", "eslint.config.js"]
+  "include": ["src", ".storybook", "vite.config.ts", "eslint.config.js"]
 }

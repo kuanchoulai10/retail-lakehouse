@@ -19,6 +19,11 @@ Rules for `src/data-platform/frontend` pages. **Build pages from `@retail-lakeho
 - **Invalidate and remove with the generated `getXQueryKey(...)`.** A key is `[url]` or `[url, params]`, so a list key without params is the prefix of every listing it covers (`getListNamespacesQueryKey(catalog)`: every namespace listing in the catalog); pass `exact: true` for one listing.
 - **Tests stub the network through MSW** (`stubCatalogApi`, or `server.use` with the generated `getXMockHandler`), and assert on requests through the stub's call log. Never `vi.stubGlobal("fetch")`.
 
+## Page stories
+
+- **Every page has stories in `src/pages/<Page>.stories.tsx`** (title `Pages/<name>`): `ConsolePage` (`src/stories/`) renders the whole console at a `route`, and the API is answered by `lakehouseHandlers()`, the generated MSW handlers fed from `src/stories/storyData.ts`. A story shows another state by putting handlers in front in `beforeEach` (`getXMockHandler(data)`, `apiError`, `apiPending`). Cover the loaded, empty or error states and phone width (`globals: PHONE` with `expectNoHorizontalPageScroll`).
+- Stories run as browser tests with axe (`npm --prefix src/data-platform/frontend run test:stories`, part of `task checks:component-test`); Storybook on port 6007 (`npm --prefix src/data-platform/frontend run storybook`).
+
 ## Catalog pages
 
 Catalog pages (spec `docs/superpowers/specs/2026-11-07-catalog-context-design.md`) follow one pattern, so every object type looks the same:

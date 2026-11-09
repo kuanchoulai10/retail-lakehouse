@@ -9,7 +9,10 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest",
+    "test": "vitest --project unit",
+    "test:stories": "vitest --run --project storybook",
+    "storybook": "storybook dev -p 6007",
+    "build-storybook": "storybook build",
     "generate:api": "orval --config orval.config.ts"
   },
   "dependencies": {
