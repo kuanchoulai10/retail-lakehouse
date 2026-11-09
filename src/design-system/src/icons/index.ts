@@ -4,10 +4,13 @@ import {
   IconAlertCircle as TablerIconAlertCircle,
   IconAlertTriangle as TablerIconAlertTriangle,
   IconArrowDown as TablerIconArrowDown,
+  IconArrowRight as TablerIconArrowRight,
   IconArrowUp as TablerIconArrowUp,
   IconBook as TablerIconBook,
+  IconCalendar as TablerIconCalendar,
   IconCheck as TablerIconCheck,
   IconChevronDown as TablerIconChevronDown,
+  IconChevronLeft as TablerIconChevronLeft,
   IconChevronRight as TablerIconChevronRight,
   IconChevronUp as TablerIconChevronUp,
   IconCircleCheck as TablerIconCircleCheck,
@@ -30,10 +33,13 @@ export const IconAdjustmentsHorizontal = withDefaultStroke(TablerIconAdjustments
 export const IconAlertCircle = withDefaultStroke(TablerIconAlertCircle);
 export const IconAlertTriangle = withDefaultStroke(TablerIconAlertTriangle);
 export const IconArrowDown = withDefaultStroke(TablerIconArrowDown);
+export const IconArrowRight = withDefaultStroke(TablerIconArrowRight);
 export const IconArrowUp = withDefaultStroke(TablerIconArrowUp);
 export const IconBook = withDefaultStroke(TablerIconBook);
+export const IconCalendar = withDefaultStroke(TablerIconCalendar);
 export const IconCheck = withDefaultStroke(TablerIconCheck);
 export const IconChevronDown = withDefaultStroke(TablerIconChevronDown);
+export const IconChevronLeft = withDefaultStroke(TablerIconChevronLeft);
 export const IconChevronRight = withDefaultStroke(TablerIconChevronRight);
 export const IconChevronUp = withDefaultStroke(TablerIconChevronUp);
 export const IconCircleCheck = withDefaultStroke(TablerIconCircleCheck);

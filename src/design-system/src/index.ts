@@ -32,6 +32,13 @@ export {
 } from "./components/DropdownMenu/DropdownMenu";
 export { ModalDialog, type ModalDialogProps } from "./components/ModalDialog/ModalDialog";
 export { Select, type SelectItem, type SelectProps } from "./components/Select/Select";
+export {
+  DatePicker,
+  type DatePickerProps,
+  type DateRange,
+  type RangeDatePickerProps,
+  type SingleDatePickerProps,
+} from "./components/DatePicker/DatePicker";
 export { Switch, type SwitchProps } from "./components/Switch/Switch";
 export { TextArea, type TextAreaProps } from "./components/TextArea/TextArea";
 export { TextField, type TextFieldProps } from "./components/TextField/TextField";
