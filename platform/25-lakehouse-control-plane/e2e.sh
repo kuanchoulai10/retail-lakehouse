@@ -571,12 +571,17 @@ assert_manual_run_recorded() {
   progress "reconciliation of ${uuid} records the manual run ${run_id}"
 }
 
+reconciliation_ids() {
+  api GET "/v1/tables/$1/reconciliations" | jq -c '[.[].reconciliation_id]'
+}
+
 wait_for_reconcile_now_record() {
-  local uuid="$1" deadline
+  local uuid="$1" before="$2" deadline
   deadline=$(( $(date +%s) + RECONCILE_TIMEOUT_SECONDS ))
   while (( $(date +%s) < deadline )); do
     if api GET "/v1/tables/${uuid}/reconciliations" \
-      | jq -e '[.[] | select((.wake_reasons.reconcile_now // 0) >= 1)] | length >= 1' >/dev/null; then
+      | jq -e --argjson before "${before}" '[.[] | select((.wake_reasons.reconcile_now // 0) >= 1
+        and (.reconciliation_id as $id | $before | index($id) | not))] | length >= 1' >/dev/null; then
       return 0
     fi
     sleep 5
@@ -720,9 +725,11 @@ jq -e '[.[] | select(.trigger == "manual") | .operations[].operation] | unique |
 ORDERS_MANUAL_RUN_ID="$(jq -r '[.[] | select(.trigger == "manual")] | .[0].run_id' <<<"${ORDERS_RUNS}")"
 assert_manual_run_recorded "${ORDERS_UUID}" "${ORDERS_MANUAL_RUN_ID}"
 
+wait_for_quiet_table "${ORDERS_UUID}"
+ORDERS_RECONCILIATIONS_BEFORE="$(reconciliation_ids "${ORDERS_UUID}")"
 progress "asking ${ORDERS} to reconcile now"
 api POST "/v1/tables/${ORDERS_UUID}/reconcile" >/dev/null
-wait_for_reconcile_now_record "${ORDERS_UUID}"
+wait_for_reconcile_now_record "${ORDERS_UUID}" "${ORDERS_RECONCILIATIONS_BEFORE}"
 progress "reconciliation of ${ORDERS_UUID} records the reconcile now request"
 
 progress "waiting for the ${REGIONS} scheduled compaction run"
