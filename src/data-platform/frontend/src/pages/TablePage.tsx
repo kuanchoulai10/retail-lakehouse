@@ -25,17 +25,15 @@ import { OverviewTab } from "@/components/tabs/OverviewTab";
 import { PropertiesTab } from "@/components/tabs/PropertiesTab";
 import { SchemaTab } from "@/components/tabs/SchemaTab";
 import { SettingsTab } from "@/components/tabs/SettingsTab";
-import { SnapshotsTab } from "@/components/tabs/SnapshotsTab";
 import { errorMessage } from "@/format";
 import { apiNamespace, namespaceFromParam, namespacePath, tablePath } from "@/lib/catalogPaths";
 import { tableMaintenanceState, type TableMaintenanceState } from "@/lib/tableMaintenanceState";
 import { useLeavingPage } from "@/lib/useLeavingPage";
 
-// The same seven tabs on every Iceberg table, managed or not (spec anti-goal).
+// The same six tabs on every Iceberg table, managed or not (spec anti-goal).
 const TABS = [
   { key: "overview", label: "Overview" },
   { key: "schema", label: "Schema" },
-  { key: "snapshots", label: "Snapshots" },
   { key: "commits", label: "Commits" },
   { key: "maintenance", label: "Maintenance" },
   { key: "properties", label: "Properties" },
@@ -64,8 +62,6 @@ function tabBody(tab: TabKey, table: CatalogTableApiResponse, maintenance: Table
       return <OverviewTab table={table} maintenance={maintenance} />;
     case "schema":
       return <SchemaTab table={table} />;
-    case "snapshots":
-      return <SnapshotsTab table={table} />;
     case "properties":
       return <PropertiesTab table={table} />;
     case "commits":

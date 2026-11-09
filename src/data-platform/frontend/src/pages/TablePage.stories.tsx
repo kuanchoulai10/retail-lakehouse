@@ -36,8 +36,6 @@ export const Schema: Story = {
   },
 };
 
-export const Snapshots: Story = { args: { route: `${ORDERS}/snapshots` } };
-
 export const Commits: Story = { args: { route: `${ORDERS}/commits` } };
 
 export const Maintenance: Story = { args: { route: `${ORDERS}/maintenance` } };

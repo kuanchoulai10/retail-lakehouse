@@ -19,7 +19,7 @@ import { TablePage } from "./TablePage";
 
 const TABLE = "/v1/catalogs/iceberg/namespaces/retail/tables/orders";
 const PAGE = "/catalogs/iceberg/namespaces/retail/tables/orders";
-const SEVEN_TABS = ["Overview", "Schema", "Snapshots", "Commits", "Maintenance", "Properties", "Settings"];
+const SIX_TABS = ["Overview", "Schema", "Commits", "Maintenance", "Properties", "Settings"];
 
 function Location() {
   const location = useLocation();
@@ -103,18 +103,18 @@ function tabNames(): string[] {
 
 // These tests type into dialogs, which takes seconds under a loaded parallel run.
 describe("TablePage", { timeout: 15_000 }, () => {
-  it("every table shows the same seven tabs", async () => {
+  it("every table shows the same six tabs", async () => {
     stubTable();
     renderAt(PAGE);
     await screen.findByText("Maintenance: managed");
-    expect(tabNames()).toEqual(SEVEN_TABS);
+    expect(tabNames()).toEqual(SIX_TABS);
   });
 
-  it("every table shows the same seven tabs when maintenance does not manage it", async () => {
+  it("every table shows the same six tabs when maintenance does not manage it", async () => {
     stubTable({ covered: [] });
     renderAt(PAGE);
     await screen.findByText("Maintenance: not managed");
-    expect(tabNames()).toEqual(SEVEN_TABS);
+    expect(tabNames()).toEqual(SIX_TABS);
   });
 
   describe.each(UNMANAGED)("unmanaged table (%s)", (_reason, options, message) => {
@@ -206,15 +206,12 @@ describe("TablePage", { timeout: 15_000 }, () => {
     expect(ddl).toHaveTextContent("`address` STRUCT<`city`: STRING NOT NULL, `zip`: STRING>");
   });
 
-  it("lists snapshots newest first with exact ids and the current one marked", async () => {
+  it("has no snapshots tab: its old url opens the overview", async () => {
     stubTable();
     renderAt(`${PAGE}/snapshots`);
-    const panel = await screen.findByRole("region", { name: "Snapshots" });
-    const rows = within(panel).getAllByRole("row").slice(1);
-    expect(rows[0]).toHaveTextContent("9007199254740993");
-    expect(rows[0]).toHaveTextContent("Current");
-    expect(rows[1]).toHaveTextContent("9007199254740992");
-    expect(rows[1]).not.toHaveTextContent("Current");
+    await screen.findByText("Maintenance: managed");
+    expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("tab", { name: "Snapshots" })).not.toBeInTheDocument();
   });
 
   it("rename navigates to the new url", async () => {
