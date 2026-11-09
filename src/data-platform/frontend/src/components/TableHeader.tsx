@@ -1,6 +1,6 @@
 import { Badge, Banner, Button } from "@retail-lakehouse/design-system";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CatalogTableApiResponse, TableApiResponse } from "@/api/generated/model";
 import { getListTableReconciliationsQueryKey } from "@/api/generated/table-reconciliations/table-reconciliations";
 import { pauseTable, resumeTable, useTriggerTableReconciliation } from "@/api/generated/tables/tables";
@@ -22,6 +22,9 @@ interface Props {
 }
 
 const DISABLED_REASON = "Only an active table can run maintenance";
+
+// The workflow writes its record after the 202, so the first refetch is usually early.
+const RECONCILE_REFRESH_DELAY_MS = 3000;
 
 function averageFileSize(table: CatalogTableApiResponse): string {
   const { total_files_size: bytes, total_data_files: files } = table.summary;
@@ -49,9 +52,18 @@ export function TableHeader({ table, managed, menuItems }: Props) {
     mutationFn: (uuid: string) => (paused ? resumeTable(uuid) : pauseTable(uuid)),
     onSuccess: (_result, uuid) => invalidateTableState(queryClient, uuid),
   });
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(refreshTimer.current), []);
   // A paused table is still reconciled: the record says it was skipped because it is paused.
   const reconcile = useTriggerTableReconciliation({
     mutation: {
+      onSuccess: (_result, { tableUuid }) => {
+        clearTimeout(refreshTimer.current);
+        refreshTimer.current = setTimeout(
+          () => queryClient.invalidateQueries({ queryKey: getListTableReconciliationsQueryKey(tableUuid) }),
+          RECONCILE_REFRESH_DELAY_MS,
+        );
+      },
       onSettled: (_result, _error, { tableUuid }) =>
         queryClient.invalidateQueries({ queryKey: getListTableReconciliationsQueryKey(tableUuid) }),
     },
@@ -151,6 +163,9 @@ export function TableHeader({ table, managed, menuItems }: Props) {
           title={`Could not change the table: ${errorMessage(toggle.error)}`}
           className="mb-4"
         />
+      )}
+      {reconcile.isSuccess && (
+        <Banner type="information" title="Reconciliation requested." className="mb-4" />
       )}
       {reconcile.isError && (
         <Banner

@@ -1,5 +1,4 @@
 import { Banner, createDataTableColumnHelper, DataTable, Panel } from "@retail-lakehouse/design-system";
-import { useState } from "react";
 import { useSearchParams } from "react-router";
 import type { TableMaintenanceRunApiResponse } from "@/api/generated/model";
 import { useListTableMaintenanceRuns } from "@/api/generated/table-maintenance-runs/table-maintenance-runs";
@@ -68,12 +67,13 @@ const columns = column.columns([
 ]);
 
 // `?run=<id>` (a reconciliation's link to the run it started) opens that run. The DataTable reads
-// it once on mount, and it mounts only after the runs load, so the first render's id is kept.
+// it once on mount, so it mounts only after the runs load and is keyed on the id: a new id
+// (back/forward) remounts it with the new run open.
 // The check runs against the latest runs the API returns; an older run counts as gone.
 export function MaintenanceTab({ tableUuid }: { tableUuid: string }) {
   const runs = useListTableMaintenanceRuns(tableUuid);
   const [searchParams] = useSearchParams();
-  const [linkedRunId] = useState(() => searchParams.get("run"));
+  const linkedRunId = searchParams.get("run");
 
   if (runs.isPending) return <PanelSkeleton label="Loading runs…" />;
   if (runs.isError) {
@@ -84,6 +84,7 @@ export function MaintenanceTab({ tableUuid }: { tableUuid: string }) {
     <Panel title="Maintenance runs">
       {missing && <Banner type="information" title="This run is no longer available" className="mb-4" />}
       <DataTable
+        key={linkedRunId ?? ""}
         caption="Maintenance runs, newest first"
         columns={columns}
         data={runs.data}

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useNavigate } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { TableMaintenanceRunApiResponse } from "../../api/generated/model";
 import { stubCatalogApi, type StubbedCall } from "../../test/catalogApiStub";
@@ -51,12 +51,22 @@ const OLDER_RUN: TableMaintenanceRunApiResponse = {
   operations: [],
 };
 
-function renderTab(route = "/") {
+function GoTo({ to }: { to: string }) {
+  const navigate = useNavigate();
+  return (
+    <button type="button" onClick={() => navigate(to)}>
+      go
+    </button>
+  );
+}
+
+function renderTab(route = "/", extra: React.ReactNode = null) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[route]}>
         <MaintenanceTab tableUuid="uuid-orders" />
+        {extra}
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -125,5 +135,20 @@ describe("MaintenanceTab", () => {
     expect(await screen.findByText("This run is no longer available")).toBeInTheDocument();
     expect(screen.getByText("manual")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Expand run run-1" })).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("changing ?run= while the tab is mounted opens the new run", async () => {
+    const user = userEvent.setup();
+    calls = stubCatalogApi({
+      "GET /v1/tables/uuid-orders/table-maintenance-runs": () => jsonResponse([RUN, OLDER_RUN]),
+    });
+    renderTab("/?run=run-gone", <GoTo to="/?run=run-2" />);
+    expect(await screen.findByText("This run is no longer available")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "go" }));
+    expect(await screen.findByRole("button", { name: "Collapse run run-2" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(screen.queryByText("This run is no longer available")).not.toBeInTheDocument();
   });
 });

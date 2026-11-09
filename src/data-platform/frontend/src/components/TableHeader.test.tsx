@@ -59,6 +59,26 @@ describe("TableHeader", () => {
     await vi.waitFor(() => expect(client.getQueryState(key)?.isInvalidated).toBe(true));
   });
 
+  it("confirms Reconcile now and refreshes reconciliations again after a delay", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const client = newClient();
+      const key = [...getListTableReconciliationsQueryKey("uuid-orders"), "pages"];
+      client.setQueryData(key, { pages: [], pageParams: [] });
+      renderHeader("active", client);
+      await user.click(screen.getByRole("button", { name: "Reconcile now" }));
+      expect(await screen.findByText("Reconciliation requested.")).toBeInTheDocument();
+      await vi.waitFor(() => expect(client.getQueryState(key)?.isInvalidated).toBe(true));
+      client.setQueryData(key, { pages: [], pageParams: [] });
+      expect(client.getQueryState(key)?.isInvalidated).toBe(false);
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("offers Reconcile now on a paused table, since the reconciliation records the pause", () => {
     renderHeader("paused");
     expect(screen.getByRole("button", { name: "Reconcile now" })).toBeEnabled();
