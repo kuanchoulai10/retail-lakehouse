@@ -51,6 +51,10 @@ spark:
 
 api:
   port: 8000
+  rootPath: /api
+  gateway:
+    name: platform-gateway
+    namespace: istio-ingress
   resources:
     requests:
       cpu: 100m

@@ -116,3 +116,12 @@ for path in /console /console/ /console/catalogs; do
 done
 gateway::curl /console/api/v1/tables -fsS | jq -e 'type == "array"' >/dev/null \
   || { echo "/console/api/v1/tables through the gateway is not a JSON array" >&2; exit 1; }
+
+gateway::assert_route_accepted "${NAMESPACE}" table-maintenance-api
+gateway::curl /api/openapi.json -fsS | jq -e '.servers == [{"url": "/api"}]' >/dev/null \
+  || { echo "/api/openapi.json through the gateway does not name /api as its server" >&2; exit 1; }
+DOCS="$(gateway::curl /api/docs -fsS)"
+grep -qF "'/api/openapi.json'" <<<"${DOCS}" \
+  ||{ echo "/api/docs through the gateway does not load /api/openapi.json" >&2; exit 1; }
+gateway::curl /api/v1/tables -fsS | jq -e 'type == "array"' >/dev/null \
+  || { echo "/api/v1/tables through the gateway is not a JSON array" >&2; exit 1; }
