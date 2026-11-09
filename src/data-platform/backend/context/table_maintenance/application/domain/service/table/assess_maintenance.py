@@ -10,6 +10,9 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenanceAssessment,
     MaintenanceOperation,
     MaintenanceSettings,
+    Measurement,
+    MeasurementComparison,
+    MeasurementUnit,
     OperationAssessment,
     OperationVerdict,
     PlannedOperation,
@@ -95,6 +98,10 @@ def _due(assessment: OperationAssessment, planned: PlannedOperation | None = Non
     )
 
 
+def _at_least(key: str, observed: int, threshold: int) -> Measurement:
+    return Measurement(key, observed, MeasurementUnit.COUNT, threshold, MeasurementComparison.AT_LEAST)
+
+
 def _assess_compaction(settings: MaintenanceSettings, observation: TableObservation) -> OperationAssessment:
     cfg = settings.rewrite_data_files
     op = MaintenanceOperation.REWRITE_DATA_FILES
@@ -113,15 +120,26 @@ def _assess_compaction(settings: MaintenanceSettings, observation: TableObservat
         size_bytes=target,
         size_source=source,
     )
+    target_size = Measurement("target_file_size", target, MeasurementUnit.BYTES)
     if cfg.scope == CompactionScope.TABLE:
         total = sum(r for _, r in reducible)
-        assessment = replace(base, measured=total)
+        assessment = replace(
+            base,
+            measured=total,
+            measurements=(_at_least("reducible_files", total, cfg.min_reducible_files), target_size),
+        )
         return _due(assessment) if total >= cfg.min_reducible_files else assessment
     qualifying = [(p, r) for p, r in reducible if r >= cfg.min_reducible_files]
+    total = sum(r for _, r in qualifying)
     assessment = replace(
         base,
-        measured=sum(r for _, r in qualifying),
+        measured=total,
         qualifying_partitions=len(qualifying),
+        measurements=(
+            _at_least("reducible_files", total, cfg.min_reducible_files),
+            target_size,
+            Measurement("qualifying_partitions", len(qualifying), MeasurementUnit.COUNT),
+        ),
     )
     if not qualifying:
         return assessment
@@ -149,6 +167,7 @@ def _assess_manifests(settings: MaintenanceSettings, observation: TableObservati
         threshold=cfg.min_small_manifests,
         size_bytes=threshold,
         size_source=source,
+        measurements=(_at_least("small_manifests", small, cfg.min_small_manifests),),
     )
     return _due(assessment) if small >= cfg.min_small_manifests else assessment
 
@@ -169,5 +188,6 @@ def _assess_snapshots(
         OperationVerdict.NOT_DUE,
         measured=expirable,
         threshold=1,
+        measurements=(_at_least("expirable_snapshots", expirable, 1),),
     )
     return _due(assessment) if expirable >= 1 else assessment

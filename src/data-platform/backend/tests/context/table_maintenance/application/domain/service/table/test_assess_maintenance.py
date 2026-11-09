@@ -9,9 +9,13 @@ import pytest
 
 from context.table_maintenance.application.domain.model.shared import (
     CompactionScope,
+    ConditionCombine,
     ExpireSnapshotsSettings,
     MaintenanceSettings,
     ManifestStats,
+    Measurement,
+    MeasurementComparison,
+    MeasurementUnit,
     OperationAssessment,
     OperationVerdict,
     PartitionFieldInfo,
@@ -19,6 +23,7 @@ from context.table_maintenance.application.domain.model.shared import (
     PartitionStats,
     RemoveOrphanFilesSettings,
     RewriteDataFilesSettings,
+    RewriteManifestsSettings,
     SizeSource,
     SnapshotInfo,
     TableObservation,
@@ -243,3 +248,67 @@ def test_plan_equals_due_operations():
         OperationVerdict.DUE,
     ]
     assert assessment.plan() == plan_scheduled_maintenance(t, o, NOW)
+
+
+def test_compaction_reports_reducible_files_and_context():
+    """Partition-scope compaction reports reducible files, the target size and qualifying partitions."""
+    s = compaction(min_reducible_files=5)
+    a = assess(table(s), obs(partitions=TWO_PARTITIONS), Op.REWRITE_DATA_FILES)
+    assert a.measurements == (
+        Measurement("reducible_files", 6, MeasurementUnit.COUNT, 5, MeasurementComparison.AT_LEAST),
+        Measurement("target_file_size", 536870912, MeasurementUnit.BYTES),
+        Measurement("qualifying_partitions", 1, MeasurementUnit.COUNT),
+    )
+    assert a.combine is ConditionCombine.ALL
+
+
+def test_compaction_table_scope_has_no_qualifying_partitions_measurement():
+    """Table-scope compaction reports no qualifying partitions."""
+    s = compaction(scope=CompactionScope.TABLE, min_reducible_files=5)
+    a = assess(table(s), obs(partitions=TWO_PARTITIONS), Op.REWRITE_DATA_FILES)
+    assert a.measurements == (
+        Measurement("reducible_files", 8, MeasurementUnit.COUNT, 5, MeasurementComparison.AT_LEAST),
+        Measurement("target_file_size", 536870912, MeasurementUnit.BYTES),
+    )
+
+
+def test_manifests_report_small_manifests():
+    """Manifest rewriting reports the small manifests against the minimum."""
+    s = replace(MaintenanceSettings(), rewrite_manifests=RewriteManifestsSettings(min_small_manifests=3))
+    o = obs(manifests=(ManifestStats(MIB),) * 4)
+    a = assess(table(s), o, Op.REWRITE_MANIFESTS)
+    assert a.measurements == (
+        Measurement("small_manifests", 4, MeasurementUnit.COUNT, 3, MeasurementComparison.AT_LEAST),
+    )
+    assert a.combine is ConditionCombine.ALL
+
+
+def test_snapshots_report_expirable_snapshots():
+    """Snapshot expiry reports the expirable snapshots against a threshold of one."""
+    a = assess(table(), obs(snapshots=snaps(14, 14)), Op.EXPIRE_SNAPSHOTS)
+    assert a.measurements == (
+        Measurement("expirable_snapshots", 4, MeasurementUnit.COUNT, 1, MeasurementComparison.AT_LEAST),
+    )
+
+
+def test_orphans_have_no_measurements():
+    """Orphan file removal has no measurements."""
+    assert assess(table(), obs(), Op.REMOVE_ORPHAN_FILES).measurements == ()
+
+
+def test_disabled_operation_has_no_measurements():
+    """A disabled operation has no measurements."""
+    t = table(compaction(enabled=False))
+    a = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES)
+    assert a.measurements == ()
+
+
+def test_cooldown_keeps_the_measurements():
+    """An operation in cooldown keeps its measurements."""
+    t = table(compaction())
+    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(NOW - timedelta(minutes=30))
+    a = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES)
+    assert a.verdict == OperationVerdict.COOLDOWN
+    assert a.measurements[0] == Measurement(
+        "reducible_files", 10, MeasurementUnit.COUNT, 5, MeasurementComparison.AT_LEAST
+    )

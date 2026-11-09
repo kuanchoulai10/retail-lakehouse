@@ -6,12 +6,18 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from base import ValueObject
+from context.table_maintenance.application.domain.model.shared.condition_combine import (
+    ConditionCombine,
+)
 
 if TYPE_CHECKING:
     from datetime import datetime
 
     from context.table_maintenance.application.domain.model.shared.maintenance_operation import (
         MaintenanceOperation,
+    )
+    from context.table_maintenance.application.domain.model.shared.measurement import (
+        Measurement,
     )
     from context.table_maintenance.application.domain.model.shared.operation_verdict import (
         OperationVerdict,
@@ -41,3 +47,5 @@ class OperationAssessment(ValueObject):
     size_bytes: int | None = None
     size_source: SizeSource | None = None
     planned: PlannedOperation | None = None
+    combine: ConditionCombine = ConditionCombine.ALL
+    measurements: tuple[Measurement, ...] = ()

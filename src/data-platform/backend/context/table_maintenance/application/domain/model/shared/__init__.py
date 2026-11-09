@@ -5,6 +5,9 @@ from __future__ import annotations
 from context.table_maintenance.application.domain.model.shared.compaction_scope import (
     CompactionScope,
 )
+from context.table_maintenance.application.domain.model.shared.condition_combine import (
+    ConditionCombine,
+)
 from context.table_maintenance.application.domain.model.shared.expire_snapshots_settings import (
     ExpireSnapshotsSettings,
 )
@@ -25,6 +28,15 @@ from context.table_maintenance.application.domain.model.shared.maintenance_setti
 )
 from context.table_maintenance.application.domain.model.shared.manifest_stats import (
     ManifestStats,
+)
+from context.table_maintenance.application.domain.model.shared.measurement import (
+    Measurement,
+)
+from context.table_maintenance.application.domain.model.shared.measurement_comparison import (
+    MeasurementComparison,
+)
+from context.table_maintenance.application.domain.model.shared.measurement_unit import (
+    MeasurementUnit,
 )
 from context.table_maintenance.application.domain.model.shared.operation_assessment import (
     OperationAssessment,
@@ -68,6 +80,7 @@ from context.table_maintenance.application.domain.model.shared.table_observation
 
 __all__ = [
     "CompactionScope",
+    "ConditionCombine",
     "ExpireSnapshotsSettings",
     "InvalidMaintenanceSettings",
     "MaintenanceAssessment",
@@ -75,6 +88,9 @@ __all__ = [
     "MaintenancePlan",
     "MaintenanceSettings",
     "ManifestStats",
+    "Measurement",
+    "MeasurementComparison",
+    "MeasurementUnit",
     "OperationAssessment",
     "OperationVerdict",
     "PartitionFieldInfo",
