@@ -113,14 +113,15 @@ def test_other_verdicts_map_by_name_and_next_eligible_is_parsed(
     """Other verdicts map by name and next eligible is parsed."""
     cooling = {
         "operation": "expire_snapshots",
-        "verdict": "cooldown",
+        "verdict": "cooling_down",
         "combine": "any",
         "measurements": [],
         "next_eligible_at": "2026-11-11T00:00:00+00:00",
     }
-    off = {**cooling, "operation": "remove_orphan_files", "verdict": "disabled", "next_eligible_at": None}
-    not_due = {**cooling, "operation": "rewrite_manifests", "verdict": "not_due", "next_eligible_at": None}
-    service.execute(_input(checks=[cooling, off, not_due], run_id=None))
+    off = {**cooling, "operation": "remove_orphan_files", "verdict": "off", "next_eligible_at": None}
+    not_due = {**cooling, "operation": "rewrite_manifests", "verdict": "not_needed", "next_eligible_at": None}
+    unchecked = {**not_due, "operation": "rewrite_data_files", "verdict": "not_checked", "combine": "all"}
+    service.execute(_input(checks=[cooling, off, not_due, unchecked], run_id=None))
 
     saved = repo.get(TableReconciliationId("rec-1"))
     assert saved is not None
@@ -129,6 +130,7 @@ def test_other_verdicts_map_by_name_and_next_eligible_is_parsed(
     assert by_op["expire_snapshots"].next_eligible_at == datetime(2026, 11, 11, tzinfo=UTC)
     assert by_op["remove_orphan_files"].result is OperationResult.OFF
     assert by_op["rewrite_manifests"].result is OperationResult.NOT_NEEDED
+    assert by_op["rewrite_data_files"].result is OperationResult.NOT_CHECKED
 
 
 def test_skip_is_recorded_with_reason(
@@ -197,6 +199,10 @@ def test_recording_twice_keeps_one_record(
         {"wake_reasons": {"bogus": 1}},
         {"wake_reasons": {}},
         {"checks": [{**_due_check(), "verdict": "bogus"}]},
+        {"checks": [{**_due_check(), "verdict": "not_due"}]},
+        {"checks": [{**_due_check(), "verdict": "cooldown"}]},
+        {"checks": [{**_due_check(), "verdict": "disabled"}]},
+        {"checks": [{**_due_check(), "measurements": ["x"]}]},
         {"run_id": None},
         {"status": "weird"},
         {"status": "skip", "skip_reason": None, "checks": [], "run_id": None},
@@ -206,3 +212,16 @@ def test_invalid_input_is_rejected(service: RecordTableReconciliationService, ov
     """Invalid input is rejected."""
     with pytest.raises(ValidationError):
         service.execute(_input(**overrides))
+
+
+def test_noop_path_still_purges_old_records(
+    service: RecordTableReconciliationService, repo: InMemoryTableReconciliationsRepo
+) -> None:
+    """A retried record that already exists still purges records past retention."""
+    service.execute(_input())
+    service.execute(_input(reconciliation_id="old", reconciled_at=NOW - timedelta(days=31), run_id=None, dry_run=True))
+
+    again = service.execute(_input())
+
+    assert again.recorded is False
+    assert repo.get(TableReconciliationId("old")) is None

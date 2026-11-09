@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from datetime import timedelta
 from typing import Any
 
@@ -28,11 +29,20 @@ from context.table_maintenance.application.exceptions import ValidationError
 from context.table_maintenance.application.port.inbound.table import (
     PlanTableMaintenanceUseCaseInput,
 )
+from context.table_maintenance.application.port.inbound.table_reconciliation import (
+    RecordTableReconciliationUseCaseInput,
+)
 from context.table_maintenance.application.port.outbound.table import (
     TableMetadataObservation,
 )
 from context.table_maintenance.application.service.table import (
     PlanTableMaintenanceService,
+)
+from context.table_maintenance.application.service.table_reconciliation import (
+    RecordTableReconciliationService,
+)
+from tests.context.table_maintenance.fakes.in_memory_table_reconciliations_repo import (
+    InMemoryTableReconciliationsRepo,
 )
 
 NAME = TableName("iceberg", "sales", "orders")
@@ -387,3 +397,47 @@ def test_paused_table_skips_with_table_found(planner, tables_repo, now):
     _table(tables_repo, now).pause(now)
     plan = _plan(planner, now)
     assert (plan.status, plan.reason, plan.table_found, plan.checks) == ("skip", "paused", True, [])
+
+
+def _record(plan, now, **overrides):
+    repo = InMemoryTableReconciliationsRepo()
+    fields = {
+        "reconciliation_id": "rec-1",
+        "table_uuid": "u-1",
+        "reconciled_at": now,
+        "wake_reasons": {"schedule": 1},
+        "dry_run": True,
+        "status": plan.status,
+        "skip_reason": plan.reason,
+        "checks": [asdict(check) for check in plan.checks],
+        "run_id": None,
+        "run_start_failed": False,
+    }
+    fields.update(overrides)
+    RecordTableReconciliationService(repo).execute(RecordTableReconciliationUseCaseInput(**fields))
+    return repo.list_all()[0]
+
+
+def test_scheduled_plan_checks_can_be_recorded(planner, tables_repo, catalog, now):
+    """The checks of a scheduled plan (due, off, cooling down, not needed) are accepted by the record service."""
+    settings = MaintenanceSettings(rewrite_manifests=RewriteManifestsSettings(enabled=False))
+    table = _table(tables_repo, now, settings)
+    table.record_operation_result(OPS.EXPIRE_SNAPSHOTS, True, now - timedelta(minutes=1))
+    _observe(catalog, now)
+    plan = _plan(planner, now)
+    record = _record(plan, now)
+    results = {op.operation.value: op.result.value for op in record.operations}
+    assert results["rewrite_manifests"] == "off"
+    assert results["expire_snapshots"] == "cooling_down"
+    assert results["rewrite_data_files"] == "would_start"
+
+
+def test_manual_plan_checks_can_be_recorded(planner, tables_repo, catalog, now):
+    """The checks of a manual plan (due and not checked) are accepted by the record service."""
+    _table(tables_repo, now)
+    _observe(catalog, now)
+    plan = _plan(planner, now, ["rewrite_data_files"])
+    record = _record(plan, now)
+    results = {op.operation.value: op.result.value for op in record.operations}
+    assert results["rewrite_data_files"] == "would_start"
+    assert results["expire_snapshots"] == "not_checked"
