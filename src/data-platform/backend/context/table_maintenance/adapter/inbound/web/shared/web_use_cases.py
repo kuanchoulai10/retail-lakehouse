@@ -44,6 +44,9 @@ if TYPE_CHECKING:
         ListTableMaintenanceRunsUseCase,
         ProcessTableMaintenanceCallbackUseCase,
     )
+    from context.table_maintenance.application.port.inbound.table_reconciliation import (
+        ListTableReconciliationsUseCase,
+    )
 
 
 @dataclass(frozen=True)
@@ -78,3 +81,4 @@ class WebUseCases:
     list_table_maintenance_runs: ListTableMaintenanceRunsUseCase
     get_table_maintenance_run: GetTableMaintenanceRunUseCase
     process_table_maintenance_callback: ProcessTableMaintenanceCallbackUseCase
+    list_table_reconciliations: ListTableReconciliationsUseCase

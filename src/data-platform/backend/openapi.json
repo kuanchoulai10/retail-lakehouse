@@ -1136,6 +1136,111 @@
         "title": "ProcessTableMaintenanceCallbackApiResponse",
         "type": "object"
       },
+      "ReconciliationMeasurementApiResponse": {
+        "description": "Describe one measurement; threshold, comparison and met are null for context.",
+        "properties": {
+          "comparison": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparison"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "met": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Met"
+          },
+          "observed": {
+            "title": "Observed",
+            "type": "integer"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "observed",
+          "unit",
+          "threshold",
+          "comparison",
+          "met"
+        ],
+        "title": "ReconciliationMeasurementApiResponse",
+        "type": "object"
+      },
+      "ReconciliationOperationApiResponse": {
+        "description": "Describe what a reconciliation measured and decided for one operation.",
+        "properties": {
+          "combine": {
+            "title": "Combine",
+            "type": "string"
+          },
+          "measurements": {
+            "items": {
+              "$ref": "#/components/schemas/ReconciliationMeasurementApiResponse"
+            },
+            "title": "Measurements",
+            "type": "array"
+          },
+          "next_eligible_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Eligible At"
+          },
+          "operation": {
+            "title": "Operation",
+            "type": "string"
+          },
+          "result": {
+            "title": "Result",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation",
+          "result",
+          "combine",
+          "measurements",
+          "next_eligible_at"
+        ],
+        "title": "ReconciliationOperationApiResponse",
+        "type": "object"
+      },
       "RenameTableApiRequest": {
         "additionalProperties": false,
         "description": "Name where the table goes: a namespace of the same catalog, by parts, and a name.",
@@ -2354,6 +2459,81 @@
           "finished_at"
         ],
         "title": "TableMaintenanceRunApiResponse",
+        "type": "object"
+      },
+      "TableReconciliationApiResponse": {
+        "description": "Describe one reconciliation of a table.",
+        "properties": {
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "operations": {
+            "items": {
+              "$ref": "#/components/schemas/ReconciliationOperationApiResponse"
+            },
+            "title": "Operations",
+            "type": "array"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reconciled_at": {
+            "format": "date-time",
+            "title": "Reconciled At",
+            "type": "string"
+          },
+          "reconciliation_id": {
+            "title": "Reconciliation Id",
+            "type": "string"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "skip_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skip Reason"
+          },
+          "table_uuid": {
+            "title": "Table Uuid",
+            "type": "string"
+          },
+          "wake_reasons": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Wake Reasons",
+            "type": "object"
+          }
+        },
+        "required": [
+          "reconciliation_id",
+          "table_uuid",
+          "reconciled_at",
+          "wake_reasons",
+          "dry_run",
+          "outcome",
+          "skip_reason",
+          "operations",
+          "run_id"
+        ],
+        "title": "TableReconciliationApiResponse",
         "type": "object"
       },
       "TableStorageApiResponse": {
@@ -5162,6 +5342,82 @@
         "summary": "Pause Table",
         "tags": [
           "tables"
+        ]
+      }
+    },
+    "/v1/tables/{table_uuid}/reconciliations": {
+      "get": {
+        "description": "List a table's reconciliations, newest first, strictly before ``before``.",
+        "operationId": "list_table_reconciliations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_uuid",
+            "required": true,
+            "schema": {
+              "title": "Table Uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Before"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TableReconciliationApiResponse"
+                  },
+                  "title": "Response List Table Reconciliations",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Table Reconciliations",
+        "tags": [
+          "table-reconciliations"
         ]
       }
     },

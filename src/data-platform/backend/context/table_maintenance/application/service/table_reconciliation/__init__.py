@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.application.service.table_reconciliation.list_table_reconciliations import (
+    ListTableReconciliationsService,
+)
 from context.table_maintenance.application.service.table_reconciliation.record_table_reconciliation import (
     RecordTableReconciliationService,
 )
 
-__all__ = ["RecordTableReconciliationService"]
+__all__ = ["ListTableReconciliationsService", "RecordTableReconciliationService"]

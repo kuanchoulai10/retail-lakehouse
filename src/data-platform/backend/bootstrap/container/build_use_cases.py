@@ -52,6 +52,7 @@ from context.table_maintenance.application.service.table_maintenance_run import 
     SubmitMaintenanceOperationService,
 )
 from context.table_maintenance.application.service.table_reconciliation import (
+    ListTableReconciliationsService,
     RecordTableReconciliationService,
 )
 
@@ -132,6 +133,7 @@ def build_use_cases(
         delete_maintenance_job=DeleteMaintenanceJobService(gateways.delete_maintenance_job),
         get_maintenance_job_status=GetMaintenanceJobStatusService(gateways.read_maintenance_job),
         plan_table_maintenance=PlanTableMaintenanceService(tables, catalog),
+        list_table_reconciliations=ListTableReconciliationsService(reconciliations),
         record_table_reconciliation=RecordTableReconciliationService(reconciliations),
         submit_maintenance_operation=SubmitMaintenanceOperationService(runs, tables, gateways.submit_maintenance_job),
     )

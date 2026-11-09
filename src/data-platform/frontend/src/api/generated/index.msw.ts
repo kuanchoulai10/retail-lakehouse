@@ -6,5 +6,6 @@ export { getTableDiscoveryRulesMock } from './table-discovery-rules/table-discov
 export { getTableDiscoverySettingsMock } from './table-discovery-settings/table-discovery-settings.msw'
 export { getTableMaintenancePresetsMock } from './table-maintenance-presets/table-maintenance-presets.msw'
 export { getTableMaintenanceRunsMock } from './table-maintenance-runs/table-maintenance-runs.msw'
+export { getTableReconciliationsMock } from './table-reconciliations/table-reconciliations.msw'
 export { getTablesMock } from './tables/tables.msw'
 export { getViewsMock } from './views/views.msw'
