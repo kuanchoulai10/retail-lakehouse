@@ -14,6 +14,7 @@ AGGREGATE_SQL_PACKAGES = (
     "context.table_maintenance.adapter.outbound.table_discovery_settings.sql",
     "context.table_maintenance.adapter.outbound.table_discovery_rule.sql",
     "context.table_maintenance.adapter.outbound.table_maintenance_run.sql",
+    "context.table_maintenance.adapter.outbound.table_reconciliation.sql",
     "context.table_maintenance.adapter.outbound.table.sql",
     "context.table_maintenance.adapter.outbound.table_maintenance_preset.sql",
 )

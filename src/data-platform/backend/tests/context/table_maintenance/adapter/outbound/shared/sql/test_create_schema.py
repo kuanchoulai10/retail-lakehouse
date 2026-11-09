@@ -39,3 +39,8 @@ def test_create_schema_lists_every_sql_package_that_defines_tables():
 def test_shared_sql_defines_no_table():
     """shared/sql holds only the metadata, column types and codecs, so it is excluded."""
     assert _registered_tables(SHARED_SQL) == []
+
+
+def test_create_schema_includes_the_reconciliations_package():
+    """The reconciliation records table is created with the control-plane schema."""
+    assert "context.table_maintenance.adapter.outbound.table_reconciliation.sql" in AGGREGATE_SQL_PACKAGES
