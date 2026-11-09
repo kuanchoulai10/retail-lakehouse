@@ -6,4 +6,4 @@ tasks:
   serve:
     desc: Serve docs locally
     cmds:
-      - uv run mkdocs serve --livereload -a localhost:8591
+      - uv run mkdocs serve --livereload -a localhost:{{.PORT | default 8591}}
