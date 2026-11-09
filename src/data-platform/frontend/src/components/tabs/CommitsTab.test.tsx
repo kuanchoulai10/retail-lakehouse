@@ -34,7 +34,7 @@ const ITEMS = [
     committed_at: "2026-10-30T12:00:00Z",
   }),
   commit({
-    snapshot_id: "3051729675574597005",
+    snapshot_id: "8127364509182736455",
     parent_id: "3051729675574597004",
     committed_at: "2026-10-31T12:00:00Z",
     operation: "replace",
@@ -46,8 +46,8 @@ const ITEMS = [
     summary: { "spark.app.id": "app-1" },
   }),
   commit({
-    snapshot_id: "3051729675574597006",
-    parent_id: "3051729675574597005",
+    snapshot_id: "5964018273645190826",
+    parent_id: "8127364509182736455",
     committed_at: "2026-10-31T13:00:00Z",
     operation: "delete",
     added_records: 0,
@@ -94,8 +94,8 @@ describe("CommitsTab", () => {
     ]);
     const latest = commitsOn("Commits on Oct 31, 2026");
     expect(latest).toHaveLength(2);
-    expect(within(latest[0] as HTMLElement).getByText("3051729675574597006")).toBeInTheDocument();
-    expect(within(latest[1] as HTMLElement).getByText("3051729675574597005")).toBeInTheDocument();
+    expect(within(latest[0] as HTMLElement).getByText("5964018")).toBeInTheDocument();
+    expect(within(latest[1] as HTMLElement).getByText("8127364")).toBeInTheDocument();
     expect(commitsOn("Commits on Oct 30, 2026")).toHaveLength(1);
     expect(calls[0]?.path).toBe("/v1/tables/uuid-orders/commits");
   });
@@ -113,7 +113,15 @@ describe("CommitsTab", () => {
     expect(replace).toHaveTextContent(/Spark committed \d+ d ago/);
   });
 
-  it("shows the parent id and summary JSON when a commit's details are opened", async () => {
+  it("shows the first seven digits of the snapshot id, as git shortens a commit hash", async () => {
+    renderTab();
+    await screen.findByRole("region", { name: "Commits on Oct 30, 2026" });
+    const row = commitsOn("Commits on Oct 30, 2026")[0] as HTMLElement;
+    expect(within(row).getByText("3051729")).toHaveAttribute("title", "3051729675574597004");
+    expect(within(row).queryByText("3051729675574597004")).not.toBeInTheDocument();
+  });
+
+  it("shows the full ids and summary JSON when a commit's details are opened", async () => {
     const user = userEvent.setup();
     renderTab();
     await screen.findByRole("region", { name: "Commits on Oct 30, 2026" });
@@ -124,6 +132,7 @@ describe("CommitsTab", () => {
     await user.click(toggle);
 
     expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Snapshot id: 3051729675574597004")).toBeInTheDocument();
     expect(screen.getByText("Parent id: 3051729675574597003")).toBeInTheDocument();
     expect(screen.getByText(/"kafka.connect.task-id": "0"/)).toBeInTheDocument();
   });

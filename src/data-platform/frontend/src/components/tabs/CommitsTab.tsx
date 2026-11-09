@@ -6,7 +6,6 @@ import {
   IconDots,
   IconGitCommit,
   List,
-  Panel,
   Tooltip,
 } from "@retail-lakehouse/design-system";
 import { useEffect, useId, useState } from "react";
@@ -66,6 +65,10 @@ function commitTitle(commit: TableCommitApiResponse): string {
   return changes.length > 0 ? `${name}: ${changes.join(", ")}` : name;
 }
 
+// Snapshot ids are random 64-bit numbers, so like a git hash the first seven digits name a
+// commit well enough to read; the full id is in the tooltip, the details and the copy button.
+const SHORT_ID_LENGTH = 7;
+
 function CopySnapshotId({ snapshotId }: { snapshotId: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -93,6 +96,7 @@ function CopySnapshotId({ snapshotId }: { snapshotId: string }) {
 function CommitDetail({ id, commit }: { id: string; commit: TableCommitApiResponse }) {
   return (
     <div id={id} className="border-t border-outline px-3 py-2">
+      <p className="type-code">Snapshot id: {commit.snapshot_id}</p>
       <p className="type-code">Parent id: {commit.parent_id ?? "—"}</p>
       <pre className="type-code mt-2 overflow-x-auto rounded-md bg-surface-container-dim p-2">
         {JSON.stringify(commit.summary, null, 2)}
@@ -118,7 +122,9 @@ function CommitRow({ commit }: { commit: TableCommitApiResponse }) {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <span className="type-code font-mono text-on-surface-variant">{commit.snapshot_id}</span>
+          <span className="type-code font-mono text-on-surface-variant" title={commit.snapshot_id}>
+            {commit.snapshot_id.slice(0, SHORT_ID_LENGTH)}
+          </span>
           <CopySnapshotId snapshotId={commit.snapshot_id} />
           <Tooltip content={open ? "Hide details" : "Show details"}>
             <IconButton
@@ -168,13 +174,11 @@ export function CommitsTab({ tableUuid }: { tableUuid: string }) {
   const days = groupedByDay(sortedNewestFirst(commits.data.items));
   return (
     <>
-      <Panel title="Commits">
-        {days.length === 0 ? (
-          <p className="type-body-medium text-on-surface-variant">No commits.</p>
-        ) : (
-          days.map((day) => <CommitDaySection key={day.label} day={day} />)
-        )}
-      </Panel>
+      {days.length === 0 ? (
+        <p className="type-body-medium text-on-surface-variant">No commits.</p>
+      ) : (
+        days.map((day) => <CommitDaySection key={day.label} day={day} />)
+      )}
       {commits.data.truncated && (
         <p className="type-body-small mt-3 text-notice-text">Showing the newest commits only.</p>
       )}
