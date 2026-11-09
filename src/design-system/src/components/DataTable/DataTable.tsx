@@ -25,6 +25,11 @@ export type DataTableProps<T extends RowData> = {
   renderDetail?: (row: T) => ReactNode;
   /** Names the row in its toggle: "Expand <label>" / "Collapse <label>". Defaults to the row id. */
   getRowLabel?: (row: T) => string;
+  /**
+   * Row ids (as given by getRowId) that start expanded. Read once on mount; unknown ids are
+   * ignored. Needs renderDetail to show anything.
+   */
+  initialExpandedRowIds?: string[];
 };
 
 const stickyFirst = "first:sticky first:left-0 first:z-10";
@@ -56,6 +61,7 @@ export function DataTable<T extends RowData>({
   className,
   renderDetail,
   getRowLabel,
+  initialExpandedRowIds,
 }: DataTableProps<T>) {
   const expandable = renderDetail !== undefined;
   const table = useTable({
@@ -65,7 +71,12 @@ export function DataTable<T extends RowData>({
     getRowCanExpand: () => expandable,
     autoResetExpanded: false,
     ...(getRowId ? { getRowId } : {}),
-    ...(initialSorting ? { initialState: { sorting: initialSorting } } : {}),
+    initialState: {
+      ...(initialSorting ? { sorting: initialSorting } : {}),
+      ...(initialExpandedRowIds
+        ? { expanded: Object.fromEntries(initialExpandedRowIds.map((id) => [id, true])) }
+        : {}),
+    },
   });
   const rows = table.getRowModel().rows;
 

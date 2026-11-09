@@ -211,6 +211,43 @@ export const ExpandableRowsByRowClick: Story = {
   },
 };
 
+const lettered: Row[] = [
+  { id: "a", name: "sales.orders", status: "active", files: 1204 },
+  { id: "b", name: "sales.customers", status: "paused", files: 88 },
+  { id: "c", name: "ops.events", status: "active", files: 5 },
+];
+
+export const InitialExpanded: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  render: () => (
+    <DataTable<Row>
+      caption="Initially expanded tables"
+      columns={plainColumns}
+      data={lettered}
+      getRowId={(row) => row.id}
+      getRowLabel={(row) => row.name}
+      renderDetail={renderDetail}
+      initialExpandedRowIds={["b", "unknown"]}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const opened = canvas.getByRole("button", { name: "Collapse sales.customers" });
+    await expect(opened).toHaveAttribute("aria-expanded", "true");
+    await expect(canvas.getByText("Detail of sales.customers")).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Expand sales.orders" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    await expect(canvas.getByRole("button", { name: "Expand ops.events" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    await expect(canvas.getAllByText(/^Detail of /)).toHaveLength(1);
+    await expect(canvas.getAllByRole("row")).toHaveLength(5);
+  },
+};
+
 const wideDetail = (row: WideRow) => <p>{`Detail of ${row.c0}`}</p>;
 
 export const ExpandableWidePhone: Story = {
