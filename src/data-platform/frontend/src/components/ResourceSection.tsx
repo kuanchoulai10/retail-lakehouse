@@ -5,7 +5,7 @@ import {
   DataTable,
   IconButton,
   Panel,
-  SerendieSymbolTrash,
+  IconTrash,
 } from "@retail-lakehouse/design-system";
 import { useState, type ReactNode } from "react";
 import type { RowData } from "@tanstack/react-table";
@@ -89,7 +89,7 @@ export function ResourceSection<Row extends RowData>({
             styleType="ghost"
             shape="rectangle"
             aria-label={`Delete ${objectName(info.row.original)}`}
-            icon={<SerendieSymbolTrash />}
+            icon={<IconTrash />}
             onClick={() => openDelete(info.row.original)}
           />
         </div>

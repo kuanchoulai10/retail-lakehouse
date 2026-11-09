@@ -1,10 +1,10 @@
 import { cva } from "class-variance-authority";
 import { forwardRef, type ComponentProps, type ReactNode } from "react";
 import {
-  SerendieSymbolAlertCircle,
-  SerendieSymbolAlertTriangle,
-  SerendieSymbolCheckCircle,
-  SerendieSymbolInformation,
+  IconAlertCircle,
+  IconAlertTriangle,
+  IconCircleCheck,
+  IconInfoCircle,
   type IconComponent,
 } from "../../icons";
 import { cn } from "../../lib/cn";
@@ -23,10 +23,10 @@ const bannerStyle = cva("flex items-start gap-3 rounded-md p-3", {
 });
 
 const icons: Record<BannerType, IconComponent> = {
-  information: SerendieSymbolInformation,
-  notice: SerendieSymbolAlertTriangle,
-  negative: SerendieSymbolAlertCircle,
-  positive: SerendieSymbolCheckCircle,
+  information: IconInfoCircle,
+  notice: IconAlertTriangle,
+  negative: IconAlertCircle,
+  positive: IconCircleCheck,
 };
 
 export type BannerProps = Omit<ComponentProps<"div">, "title"> & {

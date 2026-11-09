@@ -1,4 +1,4 @@
-import { SerendieSymbolSliderHorizontal } from "../../icons";
+import { IconPalette } from "../../icons";
 import { THEMES, type ThemeName } from "../../theme/themes";
 import { useTheme } from "../../theme/useTheme";
 import {
@@ -19,7 +19,7 @@ export function ThemePicker() {
         <IconButton
           aria-label={`Colour theme: ${current?.label ?? theme}`}
           styleType="ghost"
-          icon={<SerendieSymbolSliderHorizontal />}
+          icon={<IconPalette />}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

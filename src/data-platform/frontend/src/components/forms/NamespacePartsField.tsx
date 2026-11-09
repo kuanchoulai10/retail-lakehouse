@@ -1,7 +1,7 @@
 import {
   Button,
   IconButton,
-  SerendieSymbolClose,
+  IconX,
   TextField,
 } from "@retail-lakehouse/design-system";
 
@@ -35,7 +35,7 @@ export function NamespacePartsField({ parts, onChange }: Props) {
           <IconButton
             styleType="ghost"
             aria-label={`Remove level ${index + 1}`}
-            icon={<SerendieSymbolClose />}
+            icon={<IconX />}
             disabled={parts.length === 1}
             onClick={() => onChange(parts.filter((_, i) => i !== index))}
           />

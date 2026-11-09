@@ -1,6 +1,6 @@
 import { Slot } from "radix-ui";
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
-import { SerendieSymbolMenu } from "../../icons";
+import { IconMenu2 } from "../../icons";
 import { Drawer } from "../Drawer/Drawer";
 import { IconButton } from "../IconButton/IconButton";
 import { SideNavigation, type SideNavigationProps } from "../SideNavigation/SideNavigation";
@@ -74,7 +74,7 @@ export function AppLayout({
           <IconButton
             aria-label="Open navigation menu"
             styleType="ghost"
-            icon={<SerendieSymbolMenu />}
+            icon={<IconMenu2 />}
             className="md:hidden"
             onClick={() => setIsDrawerOpen(true)}
           />

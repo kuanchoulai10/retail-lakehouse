@@ -9,7 +9,7 @@ const FUNCTIONAL_COLOUR = /\b(?:rgba?|hsla?|oklch|oklab|lab|lch|color-mix)\(/;
 const PALETTE_COLOUR =
   /\b(?:bg|text|border(?:-[xytrblse])?|ring(?:-offset)?|inset-ring|fill|stroke|from|via|to|outline|divide|decoration|shadow|inset-shadow|drop-shadow|accent|caret|placeholder)-(?:red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|neutral|stone|black|white)(?:-\d{2,3})?\b/;
 const SD_TOKEN = /--sd-/;
-const FORBIDDEN_PACKAGE = /["'`](?:radix-ui|@radix-ui\/|lucide-react|@serendie\/)/;
+const FORBIDDEN_PACKAGE = /["'`](?:radix-ui|@radix-ui\/|lucide-react|@serendie\/|@tabler\/)/;
 const DESIGN_SYSTEM_DEEP_IMPORT =
   /["'`](?:@retail-lakehouse\/design-system\/(?!styles\.css["'`])|(?:\.\.\/)+design-system)/;
 const SHADCN_COLOUR_UTILITY =
@@ -24,7 +24,7 @@ const RULES: Record<string, RegExp[]> = {
     PALETTE_COLOUR,
   ],
   "Serendie tokens (--sd-*)": [SD_TOKEN],
-  "radix-ui, lucide-react or @serendie imports": [FORBIDDEN_PACKAGE],
+  "radix-ui, lucide-react, @serendie or @tabler imports": [FORBIDDEN_PACKAGE],
   "design-system imports other than @retail-lakehouse/design-system": [DESIGN_SYSTEM_DEEP_IMPORT],
   "old shadcn colour utilities": [SHADCN_COLOUR_UTILITY],
   "dark mode variants": [DARK_VARIANT],
@@ -86,6 +86,7 @@ describe("design-system boundary", () => {
     expect(FORBIDDEN_PACKAGE.test("import { X } from '@radix-ui/react-dialog';")).toBe(true);
     expect(FORBIDDEN_PACKAGE.test('import { X } from "lucide-react";')).toBe(true);
     expect(FORBIDDEN_PACKAGE.test('import { X } from "@serendie/symbols";')).toBe(true);
+    expect(FORBIDDEN_PACKAGE.test('import { IconX } from "@tabler/icons-react";')).toBe(true);
     expect(FORBIDDEN_PACKAGE.test('import { Button } from "@retail-lakehouse/design-system";')).toBe(false);
     expect(DESIGN_SYSTEM_DEEP_IMPORT.test('from "@retail-lakehouse/design-system/src/index";')).toBe(true);
     expect(DESIGN_SYSTEM_DEEP_IMPORT.test('from "../../../design-system/src/index";')).toBe(true);

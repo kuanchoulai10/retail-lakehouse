@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from "react";
-import { SerendieSymbolMoreHorizontal } from "../../icons";
+import { IconDots } from "../../icons";
 import { cn } from "../../lib/cn";
 import {
   DropdownMenu,
@@ -80,7 +80,7 @@ export function TitleBar({ breadcrumbs, title, actions, overflowActions }: Title
                 <IconButton
                   aria-label="More actions"
                   styleType="ghost"
-                  icon={<SerendieSymbolMoreHorizontal />}
+                  icon={<IconDots />}
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">

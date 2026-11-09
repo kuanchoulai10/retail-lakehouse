@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
-import { SerendieSymbolTrash } from "../../icons";
+import { IconTrash } from "../../icons";
 import { expectNoHorizontalPageScroll } from "../../stories/assertions";
 import { IconButton } from "./IconButton";
 
@@ -8,7 +8,7 @@ const meta = {
   title: "Components/IconButton",
   component: IconButton,
   args: {
-    icon: <SerendieSymbolTrash aria-hidden="true" />,
+    icon: <IconTrash aria-hidden="true" />,
     "aria-label": "Delete rule",
     onClick: fn(),
   },

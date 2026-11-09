@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
-import { SerendieSymbolMenu } from "../../icons";
+import { IconMenu2 } from "../../icons";
 import { expectNoHorizontalPageScroll } from "../../stories/assertions";
 import { Button } from "../Button/Button";
 import { IconButton } from "../IconButton/IconButton";
@@ -34,7 +34,7 @@ export const Default: Story = {
 
 export const WithItems: Story = {
   args: {
-    headingIconButton: <IconButton aria-label="Menu" styleType="ghost" icon={<SerendieSymbolMenu />} />,
+    headingIconButton: <IconButton aria-label="Menu" styleType="ghost" icon={<IconMenu2 />} />,
     trailingItems: <Button styleType="outlined">Sign out</Button>,
   },
 };

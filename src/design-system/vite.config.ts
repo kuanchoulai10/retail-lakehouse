@@ -27,7 +27,7 @@ export default defineConfig({
         plugins: [storybookTest({ configDir: path.join(dirname, ".storybook") })],
         optimizeDeps: {
           include: [
-            "@serendie/symbols",
+            "@tabler/icons-react",
             "@tanstack/react-table",
             "class-variance-authority",
             "clsx",

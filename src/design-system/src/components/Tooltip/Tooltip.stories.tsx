@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
-import { SerendieSymbolTrash } from "../../icons";
+import { IconTrash } from "../../icons";
 import { expectNoHorizontalPageScroll } from "../../stories/assertions";
 import { IconButton } from "../IconButton/IconButton";
 import { Tooltip, TooltipProvider } from "./Tooltip";
@@ -10,7 +10,7 @@ const meta = {
   component: Tooltip,
   args: {
     content: "Delete rule",
-    children: <IconButton aria-label="Delete rule" icon={<SerendieSymbolTrash aria-hidden="true" />} />,
+    children: <IconButton aria-label="Delete rule" icon={<IconTrash aria-hidden="true" />} />,
   },
   decorators: [
     (Story) => (

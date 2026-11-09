@@ -11,7 +11,7 @@ Rules for `src/design-system` (`@retail-lakehouse/design-system`, spec `docs/sup
 
 ## Components
 
-- **Stack:** Radix (`radix-ui`) for behaviour, Tailwind 4 for style, `cva` for variants, `cn` for class merging. Tables use TanStack Table. Icons only from `@serendie/symbols`, re-exported by `src/icons`. No `@serendie/ui`, Ark UI, Panda CSS or `lucide-react`.
+- **Stack:** Radix (`radix-ui`) for behaviour, Tailwind 4 for style, `cva` for variants, `cn` for class merging. Tables use TanStack Table. Icons only from Tabler (`@tabler/icons-react`, pinned), re-exported by name from `src/icons` (add an icon there before using it). No `@serendie/symbols`, `@serendie/ui`, Ark UI, Panda CSS or `lucide-react`.
 - **Names:** Serendie's name where Serendie has the component (`Button`, `IconButton`, `Badge`, `Divider`, `TextField`, `TextArea`, `CheckBox`, `Switch`, `Select`, `ModalDialog`, `DropdownMenu`, `Tooltip`, `Drawer`, `TopAppBar`, `Breadcrumbs`, `Tabs`, `List`, `DataTable`, `Banner`). A plain name where it has none (`AlertDialog`, `SideNavigation`, `TitleBar`, `AppLayout`, `Panel`, `EmptyState`, `Skeleton`, `StatusBadge`, `ThemePicker`, `ChartContainer`, `Table`, `TextLink`).
 - **Layout:** one folder per component under `src/components/<Name>/` holding `<Name>.tsx` and `<Name>.stories.tsx`. Export it, and its props type, from `src/index.ts`. The console imports only from `@retail-lakehouse/design-system`, never a deep path.
 - **Inventory is what the console needs**, not all of Serendie. Domain components (maintenance panels, delete-confirm wording) stay in the console.

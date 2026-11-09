@@ -4,7 +4,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  SerendieSymbolMoreHorizontal,
+  IconDots,
   type TitleBarOverflowAction,
 } from "@retail-lakehouse/design-system";
 
@@ -17,7 +17,7 @@ export function ActionsMenu({ items }: { items: ActionItem[] }) {
       <DropdownMenuTrigger asChild>
         <Button type="button" styleType="outlined">
           Actions
-          <SerendieSymbolMoreHorizontal aria-hidden="true" className="size-5" />
+          <IconDots aria-hidden="true" className="size-5" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

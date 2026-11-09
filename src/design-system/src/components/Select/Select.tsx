@@ -2,7 +2,7 @@ import { Select as SelectPrimitive } from "radix-ui";
 import { forwardRef, type ComponentProps } from "react";
 import { cn } from "../../lib/cn";
 import { FieldFrame, fieldControlStyle, type FieldProps } from "../../lib/Field";
-import { SerendieSymbolCheck, SerendieSymbolChevronDown } from "../../icons";
+import { IconCheck, IconChevronDown } from "../../icons";
 
 export type SelectItem = { value: string; label: string };
 
@@ -49,7 +49,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
           >
             <SelectPrimitive.Value placeholder={placeholder} />
             <SelectPrimitive.Icon asChild>
-              <SerendieSymbolChevronDown aria-hidden="true" className="size-6 shrink-0" />
+              <IconChevronDown aria-hidden="true" className="size-6 shrink-0" />
             </SelectPrimitive.Icon>
           </SelectPrimitive.Trigger>
           <SelectPrimitive.Portal>
@@ -73,7 +73,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
                   >
                     <SelectPrimitive.ItemText>{item.label}</SelectPrimitive.ItemText>
                     <SelectPrimitive.ItemIndicator className="absolute right-2">
-                      <SerendieSymbolCheck aria-hidden="true" className="size-5" />
+                      <IconCheck aria-hidden="true" className="size-5" />
                     </SelectPrimitive.ItemIndicator>
                   </SelectPrimitive.Item>
                 ))}

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
-import { SerendieSymbolBookOpen, SerendieSymbolLayoutGrid } from "../../icons";
+import { IconBook, IconTable } from "../../icons";
 import {
   expectFocusRing,
   expectNoHorizontalPageScroll,
@@ -34,8 +34,8 @@ function Harness() {
   const [path, setPath] = useState("/tables");
   const navigation: SideNavigationProps = {
     items: [
-      { href: "/tables", label: "Tables", icon: SerendieSymbolLayoutGrid, isActive: path === "/tables" },
-      { href: "/runs", label: "Runs", icon: SerendieSymbolBookOpen, isActive: path === "/runs" },
+      { href: "/tables", label: "Tables", icon: IconTable, isActive: path === "/tables" },
+      { href: "/runs", label: "Runs", icon: IconBook, isActive: path === "/runs" },
     ],
     renderLink: (item, children) => (
       <a

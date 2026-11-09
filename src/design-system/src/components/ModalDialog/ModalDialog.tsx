@@ -1,6 +1,6 @@
 import { Dialog } from "radix-ui";
 import type { ReactNode } from "react";
-import { SerendieSymbolClose } from "../../icons";
+import { IconX } from "../../icons";
 import { useReturnFocus } from "../../lib/useReturnFocus";
 import { IconButton } from "../IconButton/IconButton";
 
@@ -45,7 +45,7 @@ export function ModalDialog({
               )}
             </div>
             <Dialog.Close asChild>
-              <IconButton aria-label="Close" styleType="ghost" icon={<SerendieSymbolClose />} />
+              <IconButton aria-label="Close" styleType="ghost" icon={<IconX />} />
             </Dialog.Close>
           </div>
           <div className="type-body-large flex-1 overflow-y-auto px-6 py-4">{children}</div>

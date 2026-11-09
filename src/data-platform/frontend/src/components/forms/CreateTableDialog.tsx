@@ -4,7 +4,7 @@ import {
   CheckBox,
   IconButton,
   Select,
-  SerendieSymbolClose,
+  IconX,
   TextField as DesignSystemTextField,
 } from "@retail-lakehouse/design-system";
 import { useState } from "react";
@@ -171,7 +171,7 @@ export function CreateTableDialog({ catalog, namespace, onClose }: Props) {
               <IconButton
                 styleType="ghost"
                 aria-label={`Remove ${label.toLowerCase()}`}
-                icon={<SerendieSymbolClose />}
+                icon={<IconX />}
                 onClick={() => setFields(fields.filter((_, i) => i !== index))}
               />
             </div>
@@ -220,7 +220,7 @@ export function CreateTableDialog({ catalog, namespace, onClose }: Props) {
               <IconButton
                 styleType="ghost"
                 aria-label={`Remove ${label.toLowerCase()}`}
-                icon={<SerendieSymbolClose />}
+                icon={<IconX />}
                 onClick={() => setPartitions(partitions.filter((_, i) => i !== index))}
               />
             </div>

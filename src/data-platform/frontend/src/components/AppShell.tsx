@@ -1,9 +1,9 @@
 import {
   AppLayout,
-  SerendieSymbolBookOpen,
-  SerendieSymbolLayoutGrid,
-  SerendieSymbolMagnifyingGlass,
-  SerendieSymbolSliderHorizontal,
+  IconBook,
+  IconTable,
+  IconRadar,
+  IconAdjustmentsHorizontal,
   ThemePicker,
   type SideNavigationItem,
   type SideNavigationProps,
@@ -25,25 +25,25 @@ const NAV_ENTRIES: NavEntry[] = [
   {
     href: "/",
     label: "Tables",
-    icon: SerendieSymbolLayoutGrid,
+    icon: IconTable,
     matches: (pathname) => pathname === "/",
   },
   {
     href: catalogsPath(),
     label: "Catalog",
-    icon: SerendieSymbolBookOpen,
+    icon: IconBook,
     matches: (pathname) => pathname.startsWith(catalogsPath()),
   },
   {
     href: "/presets",
     label: "Presets",
-    icon: SerendieSymbolSliderHorizontal,
+    icon: IconAdjustmentsHorizontal,
     matches: (pathname) => pathname.startsWith("/presets"),
   },
   {
     href: "/discovery-rules",
     label: "Discovery rules",
-    icon: SerendieSymbolMagnifyingGlass,
+    icon: IconRadar,
     matches: (pathname) => pathname.startsWith("/discovery-rules"),
   },
 ];

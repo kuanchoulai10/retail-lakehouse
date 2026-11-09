@@ -1,6 +1,6 @@
 import { DropdownMenu as MenuPrimitive } from "radix-ui";
 import { forwardRef, type ComponentProps } from "react";
-import { SerendieSymbolCheck } from "../../icons";
+import { IconCheck } from "../../icons";
 import { cn } from "../../lib/cn";
 
 export const DropdownMenu = MenuPrimitive.Root;
@@ -46,7 +46,7 @@ export const DropdownMenuRadioItem = forwardRef<
 >(({ className, children, ...rest }, ref) => (
   <MenuPrimitive.RadioItem ref={ref} className={cn(itemStyle, "pl-9", className)} {...rest}>
     <MenuPrimitive.ItemIndicator className="absolute left-2">
-      <SerendieSymbolCheck aria-hidden="true" className="size-5" />
+      <IconCheck aria-hidden="true" className="size-5" />
     </MenuPrimitive.ItemIndicator>
     {children}
   </MenuPrimitive.RadioItem>

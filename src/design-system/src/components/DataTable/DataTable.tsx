@@ -1,10 +1,10 @@
 import { useTable, type RowData, type SortingState } from "@tanstack/react-table";
 import { Fragment, type MouseEvent, type ReactNode } from "react";
 import {
-  SerendieSymbolArrowDown,
-  SerendieSymbolArrowUp,
-  SerendieSymbolChevronRight,
-  SerendieSymbolChevronUpDown,
+  IconArrowDown,
+  IconArrowUp,
+  IconChevronRight,
+  IconSelector,
 } from "../../icons";
 import { cn } from "../../lib/cn";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../Table/Table";
@@ -108,11 +108,11 @@ export function DataTable<T extends RowData>({
                       >
                         {content}
                         {direction === "asc" ? (
-                          <SerendieSymbolArrowUp aria-hidden="true" className="size-4" />
+                          <IconArrowUp aria-hidden="true" className="size-4" />
                         ) : direction === "desc" ? (
-                          <SerendieSymbolArrowDown aria-hidden="true" className="size-4" />
+                          <IconArrowDown aria-hidden="true" className="size-4" />
                         ) : (
-                          <SerendieSymbolChevronUpDown aria-hidden="true" className="size-4" />
+                          <IconSelector aria-hidden="true" className="size-4" />
                         )}
                       </button>
                     ) : (
@@ -166,7 +166,7 @@ export function DataTable<T extends RowData>({
                               "focus-visible:outline-focus-ring",
                             )}
                           >
-                            <SerendieSymbolChevronRight
+                            <IconChevronRight
                               aria-hidden="true"
                               className={cn("size-4", expanded && "rotate-90")}
                             />

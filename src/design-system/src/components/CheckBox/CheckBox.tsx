@@ -1,7 +1,7 @@
 import { Checkbox as CheckboxPrimitive } from "radix-ui";
 import { forwardRef, useId, type ComponentProps } from "react";
 import { cn } from "../../lib/cn";
-import { SerendieSymbolCheck } from "../../icons";
+import { IconCheck } from "../../icons";
 
 export type CheckBoxProps = Omit<ComponentProps<typeof CheckboxPrimitive.Root>, "children"> & {
   label: string;
@@ -27,7 +27,7 @@ export const CheckBox = forwardRef<HTMLButtonElement, CheckBoxProps>(
           {...rest}
         >
           <CheckboxPrimitive.Indicator>
-            <SerendieSymbolCheck aria-hidden="true" className="size-4" />
+            <IconCheck aria-hidden="true" className="size-4" />
           </CheckboxPrimitive.Indicator>
         </CheckboxPrimitive.Root>
         <label

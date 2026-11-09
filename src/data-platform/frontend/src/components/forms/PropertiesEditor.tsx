@@ -1,7 +1,7 @@
 import {
   Button,
   IconButton,
-  SerendieSymbolClose,
+  IconX,
   TextField,
 } from "@retail-lakehouse/design-system";
 import type { PropertyRow } from "./propertyRows";
@@ -56,7 +56,7 @@ export function PropertiesEditor({ rows, onChange }: Props) {
             <IconButton
               styleType="ghost"
               aria-label={`Remove ${name}`}
-              icon={<SerendieSymbolClose />}
+              icon={<IconX />}
               onClick={() => onChange(rows.filter((_, i) => i !== index))}
             />
           </div>

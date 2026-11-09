@@ -1,6 +1,6 @@
 import { Dialog, VisuallyHidden } from "radix-ui";
 import type { ReactNode } from "react";
-import { SerendieSymbolClose } from "../../icons";
+import { IconX } from "../../icons";
 import { cn } from "../../lib/cn";
 import { useReturnFocus } from "../../lib/useReturnFocus";
 import { IconButton } from "../IconButton/IconButton";
@@ -47,7 +47,7 @@ export function Drawer({
           <div className="flex items-center justify-between gap-2 px-6 pt-4">
             {hideTitle ? <VisuallyHidden.Root>{heading}</VisuallyHidden.Root> : heading}
             <Dialog.Close asChild>
-              <IconButton aria-label="Close" styleType="ghost" icon={<SerendieSymbolClose />} />
+              <IconButton aria-label="Close" styleType="ghost" icon={<IconX />} />
             </Dialog.Close>
           </div>
           <div className="type-body-large flex-1 overflow-y-auto px-6 py-4">{children}</div>

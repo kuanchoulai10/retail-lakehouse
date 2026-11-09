@@ -1,6 +1,6 @@
 import { Slot } from "radix-ui";
 import type { ReactNode } from "react";
-import { SerendieSymbolChevronRight } from "../../icons";
+import { IconChevronRight } from "../../icons";
 
 export type BreadcrumbItem = { label: string; href?: string };
 
@@ -35,7 +35,7 @@ export function Breadcrumbs({ items, renderLink }: BreadcrumbsProps) {
                 </Slot.Root>
               )}
               {!isLast && (
-                <SerendieSymbolChevronRight aria-hidden="true" className="size-4 shrink-0" />
+                <IconChevronRight aria-hidden="true" className="size-4 shrink-0" />
               )}
             </li>
           );

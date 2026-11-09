@@ -35,3 +35,7 @@ Option 3. The design system lives in `src/design-system` as an npm workspace pac
 - Ported Serendie values or source carry the MIT notice, and the README credits Serendie. The product UI shows no Serendie or Mitsubishi Electric name.
 - The dark mode is gone. If it returns, a `konjo-dark` theme is the way in, because themes already switch by attribute.
 - The console image build now needs `src/design-system` in its context, and a design-system change rebuilds the console image.
+
+## Amendment (2026-11-09)
+
+Icons come from Tabler Icons (`@tabler/icons-react`, MIT) instead of `@serendie/symbols`, whose set did not cover what the console needs. The tokens, themes and component specs stay Serendie's, and `designSystemBoundary.test.ts` now also keeps `@tabler/*` out of console code.

@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
 import { expectFocusRing } from "../../stories/assertions";
-import { SerendieSymbolBookOpen, SerendieSymbolLayoutGrid } from "../../icons";
+import { IconBook, IconTable } from "../../icons";
 import { SideNavigation } from "./SideNavigation";
 
 const items = [
-  { href: "/tables", label: "Tables", icon: SerendieSymbolLayoutGrid, isActive: false },
-  { href: "/runs", label: "Runs", icon: SerendieSymbolBookOpen, isActive: true },
-  { href: "/presets", label: "Presets", icon: SerendieSymbolLayoutGrid, isActive: false },
+  { href: "/tables", label: "Tables", icon: IconTable, isActive: false },
+  { href: "/runs", label: "Runs", icon: IconBook, isActive: true },
+  { href: "/presets", label: "Presets", icon: IconTable, isActive: false },
 ];
 
 const meta = {

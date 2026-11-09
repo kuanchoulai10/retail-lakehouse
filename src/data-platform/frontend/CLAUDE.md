@@ -2,7 +2,7 @@
 
 Rules for `src/data-platform/frontend` pages. **Build pages from `@retail-lakehouse/design-system` (rules in `src/design-system/CLAUDE.md`); domain components stay here.**
 
-- **Import the design system only from `@retail-lakehouse/design-system`.** No deep paths, `radix-ui`, `@radix-ui/*`, `lucide-react` or `@serendie/*`. Icons come from the design system.
+- **Import the design system only from `@retail-lakehouse/design-system`.** No deep paths, `radix-ui`, `@radix-ui/*`, `lucide-react`, `@serendie/*` or `@tabler/*`. Icons come from the design system.
 - **A missing component goes to the design system**, with its story and keyboard test, not into the console. Domain components (`MaintenancePanels`, `MaintenanceGate`, `ConfirmDeleteDialog`'s wording, `ActionsMenu`) stay here, built from design-system parts.
 - **Semantic utilities only** (`bg-surface`, `text-on-surface-variant`, `border-outline`, `text-negative-text`). No raw hex, arbitrary or Tailwind palette colours, no `--sd-*`, no old shadcn names (`bg-background`, `text-muted-foreground`, `border-border`), no `dark:`. Enforced by `src/test/designSystemBoundary.test.ts`.
 - **Status colours only for status.** Not due, cooldown and disabled stay neutral; notice = due operation or truncated count; negative = error or failed run; positive = succeeded run only. Use `StatusBadge`; bare status text uses `negative-text`, `positive-text`, `notice-text`.

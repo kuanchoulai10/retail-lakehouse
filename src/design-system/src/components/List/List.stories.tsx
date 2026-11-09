@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
-import { SerendieSymbolBookOpen } from "../../icons";
+import { IconBook } from "../../icons";
 import { expectFocusRing } from "../../stories/assertions";
 import { List, ListItem } from "./List";
 
@@ -27,7 +27,7 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   render: () => (
     <List aria-label="Recent runs">
-      <ListItem title="Compaction" description="sales.orders" leadingIcon={<SerendieSymbolBookOpen />} />
+      <ListItem title="Compaction" description="sales.orders" leadingIcon={<IconBook />} />
       <ListItem title="Snapshot expiry" description="sales.items" onSelect={onSelect} />
       <ListItem title="Selected row" isSelected onSelect={onSelect} />
     </List>

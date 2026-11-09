@@ -1,25 +1,25 @@
-import type { ComponentType, SVGProps } from "react";
-
-export type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
+export type { Icon as IconComponent } from "@tabler/icons-react";
 
 export {
-  SerendieSymbolAlertCircle,
-  SerendieSymbolAlertTriangle,
-  SerendieSymbolArrowDown,
-  SerendieSymbolArrowUp,
-  SerendieSymbolBookOpen,
-  SerendieSymbolCheck,
-  SerendieSymbolCheckCircle,
-  SerendieSymbolChevronDown,
-  SerendieSymbolChevronRight,
-  SerendieSymbolChevronUp,
-  SerendieSymbolChevronUpDown,
-  SerendieSymbolClose,
-  SerendieSymbolInformation,
-  SerendieSymbolLayoutGrid,
-  SerendieSymbolMagnifyingGlass,
-  SerendieSymbolMenu,
-  SerendieSymbolMoreHorizontal,
-  SerendieSymbolSliderHorizontal,
-  SerendieSymbolTrash,
-} from "@serendie/symbols";
+  IconAdjustmentsHorizontal,
+  IconAlertCircle,
+  IconAlertTriangle,
+  IconArrowDown,
+  IconArrowUp,
+  IconBook,
+  IconCheck,
+  IconChevronDown,
+  IconChevronRight,
+  IconChevronUp,
+  IconCircleCheck,
+  IconDots,
+  IconInfoCircle,
+  IconMenu2,
+  IconPalette,
+  IconRadar,
+  IconSearch,
+  IconSelector,
+  IconTable,
+  IconTrash,
+  IconX,
+} from "@tabler/icons-react";
