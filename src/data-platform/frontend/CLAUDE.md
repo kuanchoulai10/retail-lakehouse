@@ -11,6 +11,14 @@ Rules for `src/data-platform/frontend` pages. **Build pages from `@retail-lakeho
 - **Columns come from `createDataTableColumnHelper`** and render through `DataTable`; `@tanstack/react-table` is imported here for types only.
 - **Phones count.** Every page works at phone width: no horizontal page scroll, tables scroll inside their container.
 
+## API
+
+- **Every API call goes through the generated client in `src/api/generated`** (Orval, from the backend's `openapi.json`): its hooks (`useGetCatalog`, `useListNamespaces`, ...), or its functions inside `useMutation` / `useQuery`. Never edit `src/api/generated`; change the backend DTO or `orval.config.ts` and run `task dev:generate-api`. `apiFetch` adds the `/console/api` prefix and throws `ApiError` (`src/api/apiError.ts`) with FastAPI's `detail`.
+- **Model types come from `@/api/generated/model`**, named as the backend DTOs (`CatalogApiResponse`, `CatalogTableApiResponse`, `TableApiResponse`). Where a generated type is looser than the page needs, adapt the component, not the type.
+- **Pass names unencoded**; the client encodes path segments and query values. A namespace is `apiNamespace(parts)`, the parts joined by U+001F.
+- **Invalidate and remove with the generated `getXQueryKey(...)`.** A key is `[url]` or `[url, params]`, so a list key without params is the prefix of every listing it covers (`getListNamespacesQueryKey(catalog)`: every namespace listing in the catalog); pass `exact: true` for one listing.
+- **Tests stub the network through MSW** (`stubCatalogApi`, or `server.use` with the generated `getXMockHandler`), and assert on requests through the stub's call log. Never `vi.stubGlobal("fetch")`.
+
 ## Catalog pages
 
 Catalog pages (spec `docs/superpowers/specs/2026-11-07-catalog-context-design.md`) follow one pattern, so every object type looks the same:
