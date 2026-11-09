@@ -5,15 +5,12 @@ import {
   Skeleton,
   TextLink,
 } from "@retail-lakehouse/design-system";
-import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { Link } from "react-router";
-import { apiGet } from "@/api/client";
-import type {
-  TableDiscoveryRuleApiResponse,
-  TableDiscoverySettingsApiResponse,
-  TableMaintenancePresetApiResponse,
-} from "@/api/types";
+import type { TableDiscoveryRuleApiResponse } from "@/api/generated/model";
+import { useListTableDiscoveryRules } from "@/api/generated/table-discovery-rules/table-discovery-rules";
+import { useGetTableDiscoverySettings } from "@/api/generated/table-discovery-settings/table-discovery-settings";
+import { useListTableMaintenancePresets } from "@/api/generated/table-maintenance-presets/table-maintenance-presets";
 import { PageHeader } from "@/components/PageHeader";
 import { errorMessage, formatTimestamp } from "@/format";
 
@@ -91,23 +88,14 @@ function LoadingRows() {
 }
 
 function DiscoveryState() {
-  const settings = useQuery({
-    queryKey: ["table-discovery-settings"],
-    queryFn: () => apiGet<TableDiscoverySettingsApiResponse>("/v1/table-discovery-settings"),
-  });
+  const settings = useGetTableDiscoverySettings();
   if (!settings.isSuccess) return null;
   return <span>{settings.data.enabled ? "Discovery is on" : "Discovery is off"}</span>;
 }
 
 export function DiscoveryRulesPage() {
-  const rules = useQuery({
-    queryKey: ["table-discovery-rules"],
-    queryFn: () => apiGet<TableDiscoveryRuleApiResponse[]>("/v1/table-discovery-rules"),
-  });
-  const presets = useQuery({
-    queryKey: ["table-maintenance-presets"],
-    queryFn: () => apiGet<TableMaintenancePresetApiResponse[]>("/v1/table-maintenance-presets"),
-  });
+  const rules = useListTableDiscoveryRules();
+  const presets = useListTableMaintenancePresets();
 
   const presetNames = useMemo(
     () => new Map((presets.data ?? []).map((preset) => [preset.id, preset.name])),

@@ -7,11 +7,10 @@ import {
   TextField,
   TextLink,
 } from "@retail-lakehouse/design-system";
-import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { apiGet } from "@/api/client";
-import type { TableApiResponse } from "@/api/types";
+import type { TableApiResponse } from "@/api/generated/model";
+import { useListTables } from "@/api/generated/tables/tables";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { errorMessage, formatTimestamp } from "@/format";
@@ -100,10 +99,7 @@ function LoadingRows() {
 export function TableListPage() {
   const [status, setStatus] = useState(ALL_STATUSES);
   const [search, setSearch] = useState("");
-  const tables = useQuery({
-    queryKey: ["tables"],
-    queryFn: () => apiGet<TableApiResponse[]>("/v1/tables"),
-  });
+  const tables = useListTables();
 
   const rows = useMemo(() => {
     const needle = search.trim().toLowerCase();

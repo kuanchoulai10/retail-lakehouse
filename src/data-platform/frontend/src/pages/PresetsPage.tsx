@@ -5,12 +5,12 @@ import {
   Divider,
   Panel,
 } from "@retail-lakehouse/design-system";
-import { useQuery } from "@tanstack/react-query";
-import { apiGet } from "@/api/client";
-import type { JsonObject, TableMaintenancePresetApiResponse } from "@/api/types";
+import type { TableMaintenancePresetApiResponse } from "@/api/generated/model";
+import { useListTableMaintenancePresets } from "@/api/generated/table-maintenance-presets/table-maintenance-presets";
 import { PageHeader } from "@/components/PageHeader";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { errorMessage, formatBytes, formatSeconds, formatTimestamp } from "@/format";
+import type { JsonObject } from "@/lib/jsonObject";
 
 const RECONCILE_INTERVAL = "reconcile_interval_seconds";
 
@@ -106,10 +106,7 @@ function PresetPanel({ preset }: { preset: TableMaintenancePresetApiResponse }) 
 }
 
 export function PresetsPage() {
-  const presets = useQuery({
-    queryKey: ["table-maintenance-presets"],
-    queryFn: () => apiGet<TableMaintenancePresetApiResponse[]>("/v1/table-maintenance-presets"),
-  });
+  const presets = useListTableMaintenancePresets();
 
   return (
     <section>
