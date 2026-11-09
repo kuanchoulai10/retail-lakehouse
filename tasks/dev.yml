@@ -34,3 +34,9 @@ tasks:
     internal: true
     cmds:
       - uv run pre-commit install
+
+  generate-api:
+    desc: "Export the backend's OpenAPI document and regenerate the console's client, types and MSW handlers"
+    cmds:
+      - uv run --project src/data-platform/backend --directory src/data-platform/backend python -m bootstrap.export_openapi openapi.json
+      - npm --prefix src/data-platform/frontend run generate:api
