@@ -1,10 +1,9 @@
 import { Banner, Button } from "@retail-lakehouse/design-system";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import type { CatalogTableApiResponse } from "@/api/catalogTypes";
-import { apiSend } from "@/api/client";
+import type { CatalogTableApiResponse, TableApiResponse } from "@/api/generated/model";
+import { pauseTable, resumeTable } from "@/api/generated/tables/tables";
 import { invalidateTableState } from "@/api/invalidateTableState";
-import type { TableApiResponse } from "@/api/types";
 import type { ActionItem } from "@/components/ActionsMenu";
 import { PageHeader } from "@/components/PageHeader";
 import { RunMaintenanceDialog } from "@/components/RunMaintenanceDialog";
@@ -40,7 +39,7 @@ export function TableHeader({ table, managed, menuItems }: Props) {
   const paused = status === "paused";
   const active = status === "active";
   const toggle = useMutation({
-    mutationFn: (uuid: string) => apiSend("POST", `/v1/tables/${uuid}/${paused ? "resume" : "pause"}`),
+    mutationFn: (uuid: string) => (paused ? resumeTable(uuid) : pauseTable(uuid)),
     onSuccess: (_result, uuid) => invalidateTableState(queryClient, uuid),
   });
 

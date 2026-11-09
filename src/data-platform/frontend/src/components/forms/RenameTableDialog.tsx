@@ -1,15 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { catalogQueryKeys } from "@/api/catalogQueryKeys";
-import type {
-  CatalogTableApiResponse,
-  RenameTableApiRequest,
-  TableIdentifierApiResponse,
-} from "@/api/catalogTypes";
-import { apiSend } from "@/api/client";
+import type { CatalogTableApiResponse, RenameTableApiRequest } from "@/api/generated/model";
+import { getListCatalogTablesQueryKey, renameTable } from "@/api/generated/tables/tables";
 import { errorMessage } from "@/format";
-import { tablePath, tableRenameApiPath } from "@/lib/catalogPaths";
+import { apiNamespace, tablePath } from "@/lib/catalogPaths";
 import { FormDialog } from "./FormDialog";
 import { NamespacePartsField } from "./NamespacePartsField";
 import { TextField } from "./TextField";
@@ -44,7 +39,7 @@ export function RenameTableDialog({ table, tab, onLeave, onClose }: Props) {
 
   const rename = useMutation({
     mutationFn: (body: RenameTableApiRequest) =>
-      apiSend<TableIdentifierApiResponse>("POST", tableRenameApiPath(table.catalog, table.namespace, table.name), body),
+      renameTable(table.catalog, apiNamespace(table.namespace), table.name, body),
     // The page stops loading the old name and drops its query when it unmounts (it is keyed by
     // the table's path, so the new URL mounts a fresh page and this dialog goes with the old
     // one). The namespace listings of both ends are refetched, and the source's even when the
@@ -57,7 +52,7 @@ export function RenameTableDialog({ table, tab, onLeave, onClose }: Props) {
       const namespaces = moved === undefined ? [table.namespace] : [table.namespace, moved.namespace];
       await Promise.all(
         namespaces.map((namespace) =>
-          queryClient.invalidateQueries({ queryKey: catalogQueryKeys.tables(table.catalog, namespace) }),
+          queryClient.invalidateQueries({ queryKey: getListCatalogTablesQueryKey(table.catalog, apiNamespace(namespace)) }),
         ),
       );
     },

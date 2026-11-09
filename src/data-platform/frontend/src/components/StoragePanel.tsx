@@ -1,5 +1,5 @@
 import { Divider, Panel } from "@retail-lakehouse/design-system";
-import type { TableStorageApiResponse, TableStorageReclaimedApiResponse } from "@/api/types";
+import type { TableStorageApiResponse, TableStorageApiResponseReclaimed } from "@/api/generated/model";
 import { formatBytes, formatCount } from "@/format";
 
 interface Props {
@@ -11,7 +11,25 @@ interface ReclaimedRow {
   value: string;
 }
 
-function reclaimedRows(reclaimed: TableStorageReclaimedApiResponse): ReclaimedRow[] {
+// The API types the reclaimed counters as an open map of numbers; a counter it leaves out is 0.
+function counters(map: TableStorageApiResponseReclaimed) {
+  const count = (key: string) => map[key] ?? 0;
+  return {
+    rewritten_data_files: count("rewritten_data_files"),
+    added_data_files: count("added_data_files"),
+    rewritten_bytes: count("rewritten_bytes"),
+    rewritten_manifests: count("rewritten_manifests"),
+    added_manifests: count("added_manifests"),
+    expired_snapshots: count("expired_snapshots"),
+    deleted_data_files: count("deleted_data_files"),
+    deleted_manifest_files: count("deleted_manifest_files"),
+    deleted_position_delete_files: count("deleted_position_delete_files"),
+    deleted_equality_delete_files: count("deleted_equality_delete_files"),
+  };
+}
+
+function reclaimedRows(map: TableStorageApiResponseReclaimed): ReclaimedRow[] {
+  const reclaimed = counters(map);
   const rows: ReclaimedRow[] = [];
   if (reclaimed.rewritten_data_files > 0 || reclaimed.added_data_files > 0) {
     rows.push({

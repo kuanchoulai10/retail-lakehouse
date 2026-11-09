@@ -4,7 +4,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
-import type { ViewApiResponse } from "../api/catalogTypes";
+import type { ViewApiResponse } from "../api/generated/model";
 import { callsTo, stubCatalogApi } from "../test/catalogApiStub";
 import { jsonResponse } from "../test/fixtures";
 import { settle, SuspendForever } from "../test/SuspendForever";

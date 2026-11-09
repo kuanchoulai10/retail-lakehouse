@@ -1,5 +1,5 @@
-import { ApiError } from "@/api/client";
-import type { TableApiResponse } from "@/api/types";
+import { ApiError } from "@/api/apiError";
+import type { TableApiResponse } from "@/api/generated/model";
 import type { MaintenanceEmptyReason } from "@/components/MaintenanceEmptyState";
 
 // Whether maintenance manages a catalog table, worked out from the catalogs maintenance covers

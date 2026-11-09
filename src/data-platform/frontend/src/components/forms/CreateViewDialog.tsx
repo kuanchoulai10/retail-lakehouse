@@ -1,11 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { TextArea } from "@retail-lakehouse/design-system";
 import { useState } from "react";
-import { catalogQueryKeys } from "@/api/catalogQueryKeys";
-import type { CreateViewApiRequest } from "@/api/catalogTypes";
-import { apiSend } from "@/api/client";
+import type { CreateViewApiRequest } from "@/api/generated/model";
+import { createView, getListViewsQueryKey } from "@/api/generated/views/views";
 import { errorMessage } from "@/format";
-import { viewsApiPath } from "@/lib/catalogPaths";
+import { apiNamespace } from "@/lib/catalogPaths";
 import { FormDialog } from "./FormDialog";
 import { TextField } from "./TextField";
 
@@ -26,11 +25,11 @@ export function CreateViewDialog({ catalog, namespace, onClose }: Props) {
   const [invalid, setInvalid] = useState<string | null>(null);
 
   const create = useMutation({
-    mutationFn: (body: CreateViewApiRequest) => apiSend("POST", viewsApiPath(catalog, namespace), body),
+    mutationFn: (body: CreateViewApiRequest) => createView(catalog, apiNamespace(namespace), body),
     // A write can fail after part of it landed, so the page refetches either way; the dialog
     // closes only on success and otherwise shows the API's message, which says what landed.
     onSettled: async (_data, error) => {
-      await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.views(catalog, namespace) });
+      await queryClient.invalidateQueries({ queryKey: getListViewsQueryKey(catalog, apiNamespace(namespace)) });
       if (error === null) onClose();
     },
   });

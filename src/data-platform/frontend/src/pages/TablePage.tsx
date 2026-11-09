@@ -1,11 +1,17 @@
 import { Banner, TabItem, TabList, TabPanel, Tabs } from "@retail-lakehouse/design-system";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type MouseEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { catalogQueryKeys } from "@/api/catalogQueryKeys";
-import type { CatalogTableApiResponse, CoveredCatalogsApiResponse } from "@/api/catalogTypes";
-import { ApiError, apiGet, apiSend } from "@/api/client";
-import type { TableApiResponse } from "@/api/types";
+import { ApiError } from "@/api/apiError";
+import type { CatalogTableApiResponse } from "@/api/generated/model";
+import { useListCoveredCatalogs } from "@/api/generated/table-discovery-settings/table-discovery-settings";
+import {
+  deleteTable,
+  getGetCatalogTableQueryKey,
+  getListCatalogTablesQueryKey,
+  useGetCatalogTable,
+  useGetTable,
+} from "@/api/generated/tables/tables";
 import { CatalogObjectNotFound } from "@/components/CatalogObjectNotFound";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { EditTablePropertiesDialog } from "@/components/forms/EditTablePropertiesDialog";
@@ -21,13 +27,7 @@ import { SchemaTab } from "@/components/tabs/SchemaTab";
 import { SettingsTab } from "@/components/tabs/SettingsTab";
 import { SnapshotsTab } from "@/components/tabs/SnapshotsTab";
 import { errorMessage } from "@/format";
-import {
-  maintenanceTableApiPath,
-  namespaceFromParam,
-  namespacePath,
-  tableApiPath,
-  tablePath,
-} from "@/lib/catalogPaths";
+import { apiNamespace, namespaceFromParam, namespacePath, tablePath } from "@/lib/catalogPaths";
 import { tableMaintenanceState, type TableMaintenanceState } from "@/lib/tableMaintenanceState";
 import { useLeavingPage } from "@/lib/useLeavingPage";
 
@@ -45,8 +45,6 @@ const TABS = [
 type TabKey = (typeof TABS)[number]["key"];
 
 type Dialog = "rename" | "edit" | "delete" | null;
-
-const COVERED_CATALOGS_KEY = ["covered-catalogs"] as const;
 
 function tabOf(segment: string | undefined): TabKey {
   return TABS.find((t) => t.key === segment)?.key ?? "overview";
@@ -99,34 +97,23 @@ function TableView({ catalog, parts, name, segment }: TableViewProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [dialog, setDialog] = useState<Dialog>(null);
-  const { leaving, leave } = useLeavingPage([catalogQueryKeys.table(catalog, parts, name)]);
+  const ns = apiNamespace(parts);
+  const { leaving, leave } = useLeavingPage([getGetCatalogTableQueryKey(catalog, ns, name)]);
 
-  const table = useQuery({
-    queryKey: catalogQueryKeys.table(catalog, parts, name),
-    queryFn: () => apiGet<CatalogTableApiResponse>(tableApiPath(catalog, parts, name)),
-    enabled: !leaving,
-  });
-  const covered = useQuery({
-    queryKey: COVERED_CATALOGS_KEY,
-    queryFn: async () =>
-      (await apiGet<CoveredCatalogsApiResponse>("/v1/table-discovery-settings/catalogs")).catalogs,
-  });
+  const table = useGetCatalogTable(catalog, ns, name, { query: { enabled: !leaving } });
+  const covered = useListCoveredCatalogs({ query: { select: (response) => response.catalogs } });
   const uuid = table.data?.uuid;
-  const maintenanceTable = useQuery({
-    // The key the maintenance tabs and invalidateTableState share.
-    queryKey: ["table", uuid ?? ""],
-    queryFn: () => apiGet<TableApiResponse>(maintenanceTableApiPath(uuid ?? "")),
-    enabled: uuid !== undefined && !leaving,
-  });
+  // The same query the maintenance tabs use, so invalidateTableState refetches it too.
+  const maintenanceTable = useGetTable(uuid ?? "", { query: { enabled: uuid !== undefined && !leaving } });
 
   const remove = useMutation({
-    mutationFn: () => apiSend("DELETE", tableApiPath(catalog, parts, name)),
+    mutationFn: () => deleteTable(catalog, ns, name),
     // Stop the table's queries before leaving, so nothing refetches what is gone (see
     // useLeavingPage); only the namespace's table listing is refetched.
     onSuccess: async () => {
       leave();
       navigate(namespacePath(catalog, parts));
-      await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.tables(catalog, parts), exact: true });
+      await queryClient.invalidateQueries({ queryKey: getListCatalogTablesQueryKey(catalog, ns), exact: true });
     },
   });
 

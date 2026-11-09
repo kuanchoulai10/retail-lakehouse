@@ -1,11 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { TableStorageApiResponse, TableStorageReclaimedApiResponse } from "../api/types";
+import type { TableStorageApiResponse, TableStorageApiResponseReclaimed } from "../api/generated/model";
 import { StoragePanel } from "./StoragePanel";
 
 function reclaimed(
-  overrides: Partial<TableStorageReclaimedApiResponse> = {},
-): TableStorageReclaimedApiResponse {
+  overrides: Partial<TableStorageApiResponseReclaimed> = {},
+): TableStorageApiResponseReclaimed {
   return {
     rewritten_data_files: 0,
     added_data_files: 0,

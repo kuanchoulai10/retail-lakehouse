@@ -1,4 +1,4 @@
-import type { TableCommitApiResponse } from "./api/types";
+import type { TableCommitApiResponse } from "./api/generated/model";
 
 const HOUR_MS = 3_600_000;
 const BUCKET_COUNT = 24;

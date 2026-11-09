@@ -1,6 +1,6 @@
 import { Panel } from "@retail-lakehouse/design-system";
 import type { ReactNode } from "react";
-import type { CatalogTableApiResponse } from "@/api/catalogTypes";
+import type { CatalogTableApiResponse } from "@/api/generated/model";
 import { MaintenanceGate } from "@/components/MaintenanceGate";
 import { MaintenancePanels } from "@/components/MaintenancePanels";
 import { formatBytes, formatCount, formatRelativeTime } from "@/format";

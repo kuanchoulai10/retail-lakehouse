@@ -1,5 +1,5 @@
 import { Panel } from "@retail-lakehouse/design-system";
-import type { TableMaintenanceRunApiResponse } from "@/api/types";
+import type { TableMaintenanceRunApiResponse } from "@/api/generated/model";
 import { RunStatusBadge } from "@/components/RunStatusBadge";
 import { formatDuration, formatTimestamp } from "@/format";
 

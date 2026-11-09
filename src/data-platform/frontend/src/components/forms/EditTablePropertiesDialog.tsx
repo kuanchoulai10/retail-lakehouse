@@ -1,10 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { catalogQueryKeys } from "@/api/catalogQueryKeys";
-import type { CatalogTableApiResponse, UpdateTablePropertiesApiRequest } from "@/api/catalogTypes";
-import { apiSend } from "@/api/client";
+import type { CatalogTableApiResponse, UpdateTablePropertiesApiRequest } from "@/api/generated/model";
+import { getGetCatalogTableQueryKey, updateTableProperties } from "@/api/generated/tables/tables";
 import { Button } from "@retail-lakehouse/design-system";
-import { tablePropertiesApiPath } from "@/lib/catalogPaths";
+import { apiNamespace } from "@/lib/catalogPaths";
 import { isConflict, updateErrorMessage } from "@/lib/updateErrorMessage";
 import { FormDialog } from "./FormDialog";
 import { PropertiesEditor } from "./PropertiesEditor";
@@ -24,11 +23,11 @@ export function EditTablePropertiesDialog({ table, onClose }: Props) {
   const [loaded] = useState(table.properties);
   const [expectedUuid] = useState(table.uuid);
   const [rows, setRows] = useState(() => rowsFromProperties(loaded));
-  const queryKey = catalogQueryKeys.table(table.catalog, table.namespace, table.name);
+  const queryKey = getGetCatalogTableQueryKey(table.catalog, apiNamespace(table.namespace), table.name);
 
   const update = useMutation({
     mutationFn: (body: UpdateTablePropertiesApiRequest) =>
-      apiSend("PUT", tablePropertiesApiPath(table.catalog, table.namespace, table.name), body),
+      updateTableProperties(table.catalog, apiNamespace(table.namespace), table.name, body),
     // A write can fail after part of it landed, so the page refetches either way; the dialog
     // closes only on success and otherwise shows the API's message, which says what landed.
     onSettled: async (_data, error) => {

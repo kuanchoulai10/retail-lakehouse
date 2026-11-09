@@ -1,14 +1,33 @@
 import { Banner, TextLink } from "@retail-lakehouse/design-system";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { catalogQueryKeys } from "@/api/catalogQueryKeys";
-import type {
-  NamespaceApiResponse,
-  NamespaceSummaryApiResponse,
-  TableIdentifierApiResponse,
-} from "@/api/catalogTypes";
-import { apiGet, apiSend } from "@/api/client";
+import {
+  deleteGenericTable,
+  getGetGenericTableQueryKey,
+  getListGenericTablesQueryKey,
+  useListGenericTables,
+} from "@/api/generated/generic-tables/generic-tables";
+import type { NamespaceSummaryApiResponse } from "@/api/generated/model";
+import {
+  deleteNamespace,
+  getGetNamespaceQueryKey,
+  getListNamespacesQueryKey,
+  useGetNamespace,
+  useListNamespaces,
+} from "@/api/generated/namespaces/namespaces";
+import {
+  deleteTable,
+  getGetCatalogTableQueryKey,
+  getListCatalogTablesQueryKey,
+  useListCatalogTables,
+} from "@/api/generated/tables/tables";
+import {
+  deleteView,
+  getGetViewQueryKey,
+  getListViewsQueryKey,
+  useListViews,
+} from "@/api/generated/views/views";
 import type { Crumb } from "@/components/Breadcrumbs";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { CreateNamespaceDialog } from "@/components/forms/CreateNamespaceDialog";
@@ -20,21 +39,14 @@ import { ResourceListPage } from "@/components/ResourceListPage";
 import { ResourceSection } from "@/components/ResourceSection";
 import { errorMessage } from "@/format";
 import {
+  apiNamespace,
   catalogPath,
   catalogsPath,
-  genericTableApiPath,
   genericTablePath,
-  genericTablesApiPath,
-  namespaceApiPath,
   namespaceFromParam,
   namespacePath,
-  namespacesApiPath,
-  tableApiPath,
   tablePath,
-  tablesApiPath,
-  viewApiPath,
   viewPath,
-  viewsApiPath,
 } from "@/lib/catalogPaths";
 import { useLeavingPage } from "@/lib/useLeavingPage";
 
@@ -77,66 +89,50 @@ function NamespaceDetailsPage({ catalog, parts }: { catalog: string; parts: stri
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [dialog, setDialog] = useState<Dialog>(null);
+  const ns = apiNamespace(parts);
+  const childrenParams = { parent: ns };
   const { leaving, leave } = useLeavingPage([
-    catalogQueryKeys.namespace(catalog, parts),
-    catalogQueryKeys.namespaces(catalog, parts),
-    catalogQueryKeys.tables(catalog, parts),
-    catalogQueryKeys.views(catalog, parts),
-    catalogQueryKeys.genericTables(catalog, parts),
+    getGetNamespaceQueryKey(catalog, ns),
+    getListNamespacesQueryKey(catalog, childrenParams),
+    getListCatalogTablesQueryKey(catalog, ns),
+    getListViewsQueryKey(catalog, ns),
+    getListGenericTablesQueryKey(catalog, ns),
   ]);
 
-  const namespace = useQuery({
-    queryKey: catalogQueryKeys.namespace(catalog, parts),
-    queryFn: () => apiGet<NamespaceApiResponse>(namespaceApiPath(catalog, parts)),
-    enabled: !leaving,
-  });
-  const children = useQuery({
-    queryKey: catalogQueryKeys.namespaces(catalog, parts),
-    queryFn: () => apiGet<NamespaceSummaryApiResponse[]>(namespacesApiPath(catalog, parts)),
-    enabled: !leaving,
-  });
-  const tables = useQuery({
-    queryKey: catalogQueryKeys.tables(catalog, parts),
-    queryFn: () => apiGet<TableIdentifierApiResponse[]>(tablesApiPath(catalog, parts)),
-    enabled: !leaving,
-  });
-  const views = useQuery({
-    queryKey: catalogQueryKeys.views(catalog, parts),
-    queryFn: () => apiGet<TableIdentifierApiResponse[]>(viewsApiPath(catalog, parts)),
-    enabled: !leaving,
-  });
-  const genericTables = useQuery({
-    queryKey: catalogQueryKeys.genericTables(catalog, parts),
-    queryFn: () => apiGet<TableIdentifierApiResponse[]>(genericTablesApiPath(catalog, parts)),
-    enabled: !leaving,
-  });
+  const query = { query: { enabled: !leaving } };
+  const namespace = useGetNamespace(catalog, ns, query);
+  const children = useListNamespaces(catalog, childrenParams, query);
+  const tables = useListCatalogTables(catalog, ns, query);
+  const views = useListViews(catalog, ns, query);
+  const genericTables = useListGenericTables(catalog, ns, query);
 
   const removeChild = useMutation({
-    mutationFn: (row: NamespaceSummaryApiResponse) => apiSend("DELETE", namespaceApiPath(catalog, row.namespace)),
+    mutationFn: (row: NamespaceSummaryApiResponse) => deleteNamespace(catalog, apiNamespace(row.namespace)),
     onSuccess: async (_result, row) => {
-      queryClient.removeQueries({ queryKey: catalogQueryKeys.namespace(catalog, row.namespace) });
-      await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.namespaceLists(catalog) });
+      queryClient.removeQueries({ queryKey: getGetNamespaceQueryKey(catalog, apiNamespace(row.namespace)) });
+      // Without params, the prefix of every namespace listing in the catalog.
+      await queryClient.invalidateQueries({ queryKey: getListNamespacesQueryKey(catalog) });
     },
   });
   const removeObject = useMutation({
     mutationFn: (row: ObjectRow) => {
       switch (row.type) {
         case "table":
-          return apiSend("DELETE", tableApiPath(catalog, parts, row.name));
+          return deleteTable(catalog, ns, row.name);
         case "view":
-          return apiSend("DELETE", viewApiPath(catalog, parts, row.name));
+          return deleteView(catalog, ns, row.name);
         case "generic table":
-          return apiSend("DELETE", genericTableApiPath(catalog, parts, row.name));
+          return deleteGenericTable(catalog, ns, row.name);
       }
     },
     // Drop the deleted object's own query, so a later visit does not show it from cache.
     onSuccess: (_result, row) => {
       const keys = {
-        table: [catalogQueryKeys.table(catalog, parts, row.name), catalogQueryKeys.tables(catalog, parts)],
-        view: [catalogQueryKeys.view(catalog, parts, row.name), catalogQueryKeys.views(catalog, parts)],
+        table: [getGetCatalogTableQueryKey(catalog, ns, row.name), getListCatalogTablesQueryKey(catalog, ns)],
+        view: [getGetViewQueryKey(catalog, ns, row.name), getListViewsQueryKey(catalog, ns)],
         "generic table": [
-          catalogQueryKeys.genericTable(catalog, parts, row.name),
-          catalogQueryKeys.genericTables(catalog, parts),
+          getGetGenericTableQueryKey(catalog, ns, row.name),
+          getListGenericTablesQueryKey(catalog, ns),
         ],
       };
       const [detail, list] = keys[row.type];
@@ -145,14 +141,17 @@ function NamespaceDetailsPage({ catalog, parts }: { catalog: string; parts: stri
     },
   });
   const removeSelf = useMutation({
-    mutationFn: () => apiSend("DELETE", namespaceApiPath(catalog, parts)),
+    mutationFn: () => deleteNamespace(catalog, ns),
     // Stop what this page loads before leaving, so nothing refetches the namespace that is
     // gone; it is dropped when the page unmounts (see useLeavingPage). Only the parent's list
     // is refetched.
     onSuccess: async () => {
       leave();
       navigate(parent.length === 0 ? catalogPath(catalog) : namespacePath(catalog, parent));
-      await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.namespaces(catalog, parent), exact: true });
+      await queryClient.invalidateQueries({
+        queryKey: getListNamespacesQueryKey(catalog, parent.length === 0 ? undefined : { parent: apiNamespace(parent) }),
+        exact: true,
+      });
     },
   });
 

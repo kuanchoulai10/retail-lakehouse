@@ -1,5 +1,5 @@
 import { createDataTableColumnHelper, DataTable, Panel } from "@retail-lakehouse/design-system";
-import type { TableCommitApiResponse } from "@/api/types";
+import type { TableCommitApiResponse } from "@/api/generated/model";
 import { formatCount, formatTimestamp } from "@/format";
 
 const column = createDataTableColumnHelper<TableCommitApiResponse>();

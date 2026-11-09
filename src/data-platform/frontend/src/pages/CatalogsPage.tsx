@@ -1,26 +1,27 @@
 import { Banner, TextLink } from "@retail-lakehouse/design-system";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router";
-import { catalogQueryKeys } from "@/api/catalogQueryKeys";
-import type { CatalogApiResponse } from "@/api/catalogTypes";
-import { apiGet, apiSend } from "@/api/client";
+import {
+  deleteCatalog,
+  getGetCatalogQueryKey,
+  getListCatalogsQueryKey,
+  useListCatalogs,
+} from "@/api/generated/catalogs/catalogs";
+import type { CatalogApiResponse } from "@/api/generated/model";
 import { CreateCatalogDialog } from "@/components/forms/CreateCatalogDialog";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { ResourceListPage } from "@/components/ResourceListPage";
 import { errorMessage } from "@/format";
-import { catalogApiPath, catalogPath, catalogsApiPath } from "@/lib/catalogPaths";
+import { catalogPath } from "@/lib/catalogPaths";
 
 export function CatalogsPage() {
   const queryClient = useQueryClient();
-  const catalogs = useQuery({
-    queryKey: catalogQueryKeys.catalogs(),
-    queryFn: () => apiGet<CatalogApiResponse[]>(catalogsApiPath()),
-  });
+  const catalogs = useListCatalogs();
   const remove = useMutation({
-    mutationFn: (catalog: CatalogApiResponse) => apiSend("DELETE", catalogApiPath(catalog.name)),
+    mutationFn: (catalog: CatalogApiResponse) => deleteCatalog(catalog.name),
     onSuccess: async (_result, catalog) => {
-      queryClient.removeQueries({ queryKey: catalogQueryKeys.catalog(catalog.name) });
-      await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.catalogs() });
+      queryClient.removeQueries({ queryKey: getGetCatalogQueryKey(catalog.name) });
+      await queryClient.invalidateQueries({ queryKey: getListCatalogsQueryKey() });
     },
   });
 

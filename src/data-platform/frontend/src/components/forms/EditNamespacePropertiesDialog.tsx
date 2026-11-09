@@ -1,9 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { catalogQueryKeys } from "@/api/catalogQueryKeys";
-import type { NamespaceApiResponse, UpdateNamespacePropertiesApiRequest } from "@/api/catalogTypes";
-import { apiSend } from "@/api/client";
-import { namespacePropertiesApiPath } from "@/lib/catalogPaths";
+import type { NamespaceApiResponse, UpdateNamespacePropertiesApiRequest } from "@/api/generated/model";
+import {
+  getGetNamespaceQueryKey,
+  updateNamespaceProperties,
+} from "@/api/generated/namespaces/namespaces";
+import { apiNamespace } from "@/lib/catalogPaths";
 import { updateErrorMessage } from "@/lib/updateErrorMessage";
 import { FormDialog } from "./FormDialog";
 import { PropertiesEditor } from "./PropertiesEditor";
@@ -24,12 +26,12 @@ export function EditNamespacePropertiesDialog({ namespace, onClose }: Props) {
 
   const update = useMutation({
     mutationFn: (body: UpdateNamespacePropertiesApiRequest) =>
-      apiSend("PUT", namespacePropertiesApiPath(namespace.catalog, namespace.namespace), body),
+      updateNamespaceProperties(namespace.catalog, apiNamespace(namespace.namespace), body),
     // A write can fail after part of it landed, so the page refetches either way; the dialog
     // closes only on success and otherwise shows the API's message, which says what landed.
     onSettled: async (_data, error) => {
       await queryClient.invalidateQueries({
-        queryKey: catalogQueryKeys.namespace(namespace.catalog, namespace.namespace),
+        queryKey: getGetNamespaceQueryKey(namespace.catalog, apiNamespace(namespace.namespace)),
       });
       if (error === null) onClose();
     },

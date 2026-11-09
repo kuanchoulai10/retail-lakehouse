@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getListTableMaintenanceRunsQueryKey } from "../api/generated/table-maintenance-runs/table-maintenance-runs";
+import { getGetTableHealthQueryKey } from "../api/generated/tables/tables";
 import { catalogTableFixture } from "../test/catalogApiStub";
 import { jsonResponse, tableFixture } from "../test/fixtures";
 import { TableHeader } from "./TableHeader";
@@ -23,7 +25,7 @@ function renderHeader(status = "active", client = newClient(), extra: React.Reac
 }
 
 function HealthProbe({ queryFn }: { queryFn: () => Promise<unknown> }) {
-  useQuery({ queryKey: ["health", "uuid-orders"], queryFn });
+  useQuery({ queryKey: getGetTableHealthQueryKey("uuid-orders"), queryFn });
   return null;
 }
 
@@ -99,14 +101,14 @@ describe("TableHeader", () => {
     const user = userEvent.setup();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({ accepted: true }, 202)));
     const client = newClient();
-    client.setQueryData(["runs", "uuid-orders"], []);
-    client.setQueryData(["health", "uuid-orders"], {});
+    client.setQueryData(getListTableMaintenanceRunsQueryKey("uuid-orders"), []);
+    client.setQueryData(getGetTableHealthQueryKey("uuid-orders"), {});
     renderHeader("active", client);
     await user.click(screen.getByRole("button", { name: "Run maintenance" }));
     await user.click(screen.getByRole("button", { name: "Run" }));
     await vi.waitFor(() => {
-      expect(client.getQueryState(["runs", "uuid-orders"])?.isInvalidated).toBe(true);
-      expect(client.getQueryState(["health", "uuid-orders"])?.isInvalidated).toBe(true);
+      expect(client.getQueryState(getListTableMaintenanceRunsQueryKey("uuid-orders"))?.isInvalidated).toBe(true);
+      expect(client.getQueryState(getGetTableHealthQueryKey("uuid-orders"))?.isInvalidated).toBe(true);
     });
   });
 

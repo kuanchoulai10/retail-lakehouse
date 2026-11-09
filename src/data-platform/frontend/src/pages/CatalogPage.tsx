@@ -1,10 +1,20 @@
 import { Banner, TextLink } from "@retail-lakehouse/design-system";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
-import { catalogQueryKeys } from "@/api/catalogQueryKeys";
-import type { CatalogApiResponse, NamespaceSummaryApiResponse } from "@/api/catalogTypes";
-import { apiGet, apiSend } from "@/api/client";
+import {
+  deleteCatalog,
+  getGetCatalogQueryKey,
+  getListCatalogsQueryKey,
+  useGetCatalog,
+} from "@/api/generated/catalogs/catalogs";
+import type { NamespaceSummaryApiResponse } from "@/api/generated/model";
+import {
+  deleteNamespace,
+  getGetNamespaceQueryKey,
+  getListNamespacesQueryKey,
+  useListNamespaces,
+} from "@/api/generated/namespaces/namespaces";
 import { CatalogDetails } from "@/components/CatalogDetails";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { CreateNamespaceDialog } from "@/components/forms/CreateNamespaceDialog";
@@ -13,13 +23,7 @@ import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { PropertiesPanel } from "@/components/PropertiesPanel";
 import { ResourceListPage } from "@/components/ResourceListPage";
 import { errorMessage } from "@/format";
-import {
-  catalogApiPath,
-  catalogsPath,
-  namespaceApiPath,
-  namespacePath,
-  namespacesApiPath,
-} from "@/lib/catalogPaths";
+import { apiNamespace, catalogsPath, namespacePath } from "@/lib/catalogPaths";
 import { useLeavingPage } from "@/lib/useLeavingPage";
 
 type Dialog = "edit" | "delete" | null;
@@ -34,34 +38,27 @@ function CatalogDetailsPage({ name }: { name: string }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [dialog, setDialog] = useState<Dialog>(null);
-  const { leaving, leave } = useLeavingPage([catalogQueryKeys.catalog(name), catalogQueryKeys.namespaceLists(name)]);
+  // The namespace listing key without params is the prefix of every listing in the catalog.
+  const { leaving, leave } = useLeavingPage([getGetCatalogQueryKey(name), getListNamespacesQueryKey(name)]);
 
-  const catalog = useQuery({
-    queryKey: catalogQueryKeys.catalog(name),
-    queryFn: () => apiGet<CatalogApiResponse>(catalogApiPath(name)),
-    enabled: !leaving,
-  });
-  const namespaces = useQuery({
-    queryKey: catalogQueryKeys.namespaces(name, []),
-    queryFn: () => apiGet<NamespaceSummaryApiResponse[]>(namespacesApiPath(name, [])),
-    enabled: !leaving,
-  });
+  const catalog = useGetCatalog(name, { query: { enabled: !leaving } });
+  const namespaces = useListNamespaces(name, undefined, { query: { enabled: !leaving } });
 
   const removeNamespace = useMutation({
-    mutationFn: (row: NamespaceSummaryApiResponse) => apiSend("DELETE", namespaceApiPath(name, row.namespace)),
+    mutationFn: (row: NamespaceSummaryApiResponse) => deleteNamespace(name, apiNamespace(row.namespace)),
     onSuccess: async (_result, row) => {
-      queryClient.removeQueries({ queryKey: catalogQueryKeys.namespace(name, row.namespace) });
-      await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.namespaceLists(name) });
+      queryClient.removeQueries({ queryKey: getGetNamespaceQueryKey(name, apiNamespace(row.namespace)) });
+      await queryClient.invalidateQueries({ queryKey: getListNamespacesQueryKey(name) });
     },
   });
   const removeCatalog = useMutation({
-    mutationFn: () => apiSend("DELETE", catalogApiPath(name)),
+    mutationFn: () => deleteCatalog(name),
     // Stop the catalog's queries before leaving, so nothing refetches the catalog that is
     // gone; they are dropped when the page unmounts (see useLeavingPage).
     onSuccess: async () => {
       leave();
       navigate(catalogsPath());
-      await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.catalogs() });
+      await queryClient.invalidateQueries({ queryKey: getListCatalogsQueryKey() });
     },
   });
 

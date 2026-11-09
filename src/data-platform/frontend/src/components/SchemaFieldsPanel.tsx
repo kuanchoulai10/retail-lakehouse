@@ -1,5 +1,5 @@
 import { createDataTableColumnHelper, DataTable, Panel } from "@retail-lakehouse/design-system";
-import type { SchemaApiResponse, SchemaFieldApiResponse } from "@/api/catalogTypes";
+import type { SchemaApiResponse, SchemaFieldApiResponse } from "@/api/generated/model";
 
 const column = createDataTableColumnHelper<SchemaFieldApiResponse>();
 

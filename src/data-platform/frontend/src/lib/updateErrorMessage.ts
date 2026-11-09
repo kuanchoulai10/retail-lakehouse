@@ -1,4 +1,4 @@
-import { ApiError } from "@/api/client";
+import { ApiError } from "@/api/apiError";
 import { errorMessage } from "@/format";
 
 // The message for a failed update. A 409 means someone changed the object after this page

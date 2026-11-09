@@ -1,10 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { catalogQueryKeys } from "@/api/catalogQueryKeys";
-import type { CreateGenericTableApiRequest } from "@/api/catalogTypes";
-import { apiSend } from "@/api/client";
+import {
+  createGenericTable,
+  getListGenericTablesQueryKey,
+} from "@/api/generated/generic-tables/generic-tables";
+import type { CreateGenericTableApiRequest } from "@/api/generated/model";
 import { errorMessage } from "@/format";
-import { genericTablesApiPath } from "@/lib/catalogPaths";
+import { apiNamespace } from "@/lib/catalogPaths";
 import { FormDialog } from "./FormDialog";
 import { PropertiesEditor } from "./PropertiesEditor";
 import { propertiesFromRows, type PropertyRow } from "./propertyRows";
@@ -28,11 +30,11 @@ export function CreateGenericTableDialog({ catalog, namespace, onClose }: Props)
 
   const create = useMutation({
     mutationFn: (body: CreateGenericTableApiRequest) =>
-      apiSend("POST", genericTablesApiPath(catalog, namespace), body),
+      createGenericTable(catalog, apiNamespace(namespace), body),
     // A write can fail after part of it landed, so the page refetches either way; the dialog
     // closes only on success and otherwise shows the API's message, which says what landed.
     onSettled: async (_data, error) => {
-      await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.genericTables(catalog, namespace) });
+      await queryClient.invalidateQueries({ queryKey: getListGenericTablesQueryKey(catalog, apiNamespace(namespace)) });
       if (error === null) onClose();
     },
   });

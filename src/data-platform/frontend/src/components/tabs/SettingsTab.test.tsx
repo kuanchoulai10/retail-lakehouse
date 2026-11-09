@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getGetTableHealthQueryKey } from "../../api/generated/tables/tables";
 import type { TableApiResponse } from "../../api/types";
 import { jsonResponse, tableFixture } from "../../test/fixtures";
 import { SettingsTab } from "./SettingsTab";
@@ -39,7 +40,7 @@ function mockApi(table: TableApiResponse, putResponse: () => Response) {
 
 function renderTab() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  client.setQueryData(["health", "uuid-orders"], {});
+  client.setQueryData(getGetTableHealthQueryKey("uuid-orders"), {});
   render(
     <QueryClientProvider client={client}>
       <SettingsTab tableUuid="uuid-orders" />
@@ -48,8 +49,8 @@ function renderTab() {
   return client;
 }
 
-function isStale(client: QueryClient, key: string) {
-  return client.getQueryState([key, "uuid-orders"])?.isInvalidated;
+function healthIsStale(client: QueryClient) {
+  return client.getQueryState(getGetTableHealthQueryKey("uuid-orders"))?.isInvalidated;
 }
 
 function puts(fetchMock: ReturnType<typeof mockApi>) {
@@ -105,7 +106,7 @@ describe("SettingsTab", () => {
     await screen.findByRole("group", { name: "rewrite_data_files" });
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     await vi.waitFor(() => {
-      expect(isStale(client, "health")).toBe(true);
+      expect(healthIsStale(client)).toBe(true);
     });
   });
 
@@ -115,7 +116,7 @@ describe("SettingsTab", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Reset to preset" }));
     await userEvent.click(screen.getByRole("button", { name: "Confirm reset" }));
     await vi.waitFor(() => {
-      expect(isStale(client, "health")).toBe(true);
+      expect(healthIsStale(client)).toBe(true);
     });
   });
 

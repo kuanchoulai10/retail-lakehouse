@@ -1,4 +1,4 @@
-import { ApiError } from "./client";
+import { ApiError } from "./apiError";
 
 const MAX_RETRIES = 3;
 

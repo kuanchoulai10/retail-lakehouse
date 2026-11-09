@@ -1,5 +1,5 @@
 import { Banner, createDataTableColumnHelper, DataTable, Panel } from "@retail-lakehouse/design-system";
-import type { CatalogTableApiResponse, PartitionFieldApiResponse, SortFieldApiResponse } from "@/api/catalogTypes";
+import type { CatalogTableApiResponse, PartitionFieldApiResponse, SortFieldApiResponse } from "@/api/generated/model";
 import { SchemaFieldsPanel } from "@/components/SchemaFieldsPanel";
 import { sparkTableDdl } from "@/lib/sparkTableDdl";
 

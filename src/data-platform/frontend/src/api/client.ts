@@ -1,29 +1,8 @@
+import { ApiError, errorDetail } from "./apiError";
+
+export { ApiError };
+
 const API_PREFIX = "/console/api";
-
-export class ApiError extends Error {
-  readonly status: number;
-  readonly detail: string;
-
-  constructor(status: number, detail: string) {
-    super(`API error ${status}: ${detail}`);
-    this.name = "ApiError";
-    this.status = status;
-    this.detail = detail;
-  }
-}
-
-async function errorDetail(response: Response): Promise<string> {
-  try {
-    const body: unknown = await response.json();
-    if (body && typeof body === "object" && "detail" in body) {
-      const { detail } = body as { detail: unknown };
-      return typeof detail === "string" ? detail : JSON.stringify(detail);
-    }
-  } catch {
-    // The error body is not JSON; fall back to the status text below.
-  }
-  return response.statusText || `HTTP ${response.status}`;
-}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_PREFIX}${path}`, init);

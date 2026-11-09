@@ -1,4 +1,4 @@
-import type { CatalogTableApiResponse } from "@/api/catalogTypes";
+import type { CatalogTableApiResponse } from "@/api/generated/model";
 import { PropertiesPanel } from "@/components/PropertiesPanel";
 
 export function PropertiesTab({ table }: { table: CatalogTableApiResponse }) {

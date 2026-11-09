@@ -1,10 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { catalogQueryKeys } from "@/api/catalogQueryKeys";
-import type { CreateNamespaceApiRequest } from "@/api/catalogTypes";
-import { apiSend } from "@/api/client";
+import type { CreateNamespaceApiRequest } from "@/api/generated/model";
+import { createNamespace, getListNamespacesQueryKey } from "@/api/generated/namespaces/namespaces";
 import { errorMessage } from "@/format";
-import { namespacesApiPath } from "@/lib/catalogPaths";
 import { FormDialog } from "./FormDialog";
 import { PropertiesEditor } from "./PropertiesEditor";
 import { propertiesFromRows, type PropertyRow } from "./propertyRows";
@@ -27,12 +25,11 @@ export function CreateNamespaceDialog({ catalog, parent, onClose }: Props) {
   const [invalid, setInvalid] = useState<string | null>(null);
 
   const create = useMutation({
-    mutationFn: (body: CreateNamespaceApiRequest) =>
-      apiSend("POST", namespacesApiPath(catalog, []), body),
+    mutationFn: (body: CreateNamespaceApiRequest) => createNamespace(catalog, body),
     // A write can fail after part of it landed, so the page refetches either way; the dialog
     // closes only on success and otherwise shows the API's message, which says what landed.
     onSettled: async (_data, error) => {
-      await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.namespaceLists(catalog) });
+      await queryClient.invalidateQueries({ queryKey: getListNamespacesQueryKey(catalog) });
       if (error === null) onClose();
     },
   });

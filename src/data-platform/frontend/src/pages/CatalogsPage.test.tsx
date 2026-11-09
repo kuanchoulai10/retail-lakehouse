@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
-import type { CatalogApiResponse } from "../api/catalogTypes";
+import type { CatalogApiResponse } from "../api/generated/model";
 import { bodyOf, callsTo, catalogFixture, stubCatalogApi } from "../test/catalogApiStub";
 import { jsonResponse } from "../test/fixtures";
 import { CatalogsPage } from "./CatalogsPage";

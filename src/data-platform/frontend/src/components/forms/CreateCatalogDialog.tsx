@@ -1,10 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { catalogQueryKeys } from "@/api/catalogQueryKeys";
-import type { CatalogKind, CreateCatalogApiRequest } from "@/api/catalogTypes";
-import { apiSend } from "@/api/client";
+import { createCatalog, getListCatalogsQueryKey } from "@/api/generated/catalogs/catalogs";
+import type { CreateCatalogApiRequest, CreateCatalogApiRequestType } from "@/api/generated/model";
 import { errorMessage } from "@/format";
-import { catalogsApiPath } from "@/lib/catalogPaths";
 import { ConnectionConfigFields } from "./ConnectionConfigFields";
 import { connectionConfigRequest, connectionFormError, emptyConnectionForm } from "./connectionForm";
 import { FormDialog } from "./FormDialog";
@@ -21,18 +19,18 @@ const KIND_OPTIONS = [
 export function CreateCatalogDialog({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
-  const [kind, setKind] = useState<CatalogKind>("INTERNAL");
+  const [kind, setKind] = useState<CreateCatalogApiRequestType>("INTERNAL");
   const [baseLocation, setBaseLocation] = useState("");
   const [storage, setStorage] = useState(emptyStorageForm);
   const [connection, setConnection] = useState(emptyConnectionForm);
   const [invalid, setInvalid] = useState<string | null>(null);
 
   const create = useMutation({
-    mutationFn: (body: CreateCatalogApiRequest) => apiSend("POST", catalogsApiPath(), body),
+    mutationFn: (body: CreateCatalogApiRequest) => createCatalog(body),
     // A write can fail after part of it landed, so the page refetches either way; the dialog
     // closes only on success and otherwise shows the API's message, which says what landed.
     onSettled: async (_data, error) => {
-      await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.catalogs() });
+      await queryClient.invalidateQueries({ queryKey: getListCatalogsQueryKey() });
       if (error === null) onClose();
     },
   });

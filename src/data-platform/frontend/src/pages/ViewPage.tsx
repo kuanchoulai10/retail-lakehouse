@@ -5,12 +5,12 @@ import {
   DataTable,
   Panel,
 } from "@retail-lakehouse/design-system";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { catalogQueryKeys } from "@/api/catalogQueryKeys";
-import type { ViewApiResponse, ViewVersionApiResponse } from "@/api/catalogTypes";
-import { ApiError, apiGet, apiSend } from "@/api/client";
+import { ApiError } from "@/api/apiError";
+import type { ViewVersionApiResponse } from "@/api/generated/model";
+import { deleteView, getGetViewQueryKey, getListViewsQueryKey, useGetView } from "@/api/generated/views/views";
 import { CatalogObjectNotFound } from "@/components/CatalogObjectNotFound";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { PageHeader } from "@/components/PageHeader";
@@ -19,7 +19,7 @@ import { PropertiesPanel } from "@/components/PropertiesPanel";
 import { SchemaFieldsPanel } from "@/components/SchemaFieldsPanel";
 import { errorMessage, formatTimestamp } from "@/format";
 import { catalogObjectCrumbs } from "@/lib/catalogObjectCrumbs";
-import { namespaceFromParam, namespacePath, viewApiPath } from "@/lib/catalogPaths";
+import { apiNamespace, namespaceFromParam, namespacePath } from "@/lib/catalogPaths";
 import { useLeavingPage } from "@/lib/useLeavingPage";
 
 const versionColumn = createDataTableColumnHelper<ViewVersionApiResponse>();
@@ -69,19 +69,16 @@ function ViewDetails({ catalog, parts, name }: ViewDetailsProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [deleting, setDeleting] = useState(false);
-  const { leaving, leave } = useLeavingPage([catalogQueryKeys.view(catalog, parts, name)]);
+  const ns = apiNamespace(parts);
+  const { leaving, leave } = useLeavingPage([getGetViewQueryKey(catalog, ns, name)]);
 
-  const view = useQuery({
-    queryKey: catalogQueryKeys.view(catalog, parts, name),
-    queryFn: () => apiGet<ViewApiResponse>(viewApiPath(catalog, parts, name)),
-    enabled: !leaving,
-  });
+  const view = useGetView(catalog, ns, name, { query: { enabled: !leaving } });
   const remove = useMutation({
-    mutationFn: () => apiSend("DELETE", viewApiPath(catalog, parts, name)),
+    mutationFn: () => deleteView(catalog, ns, name),
     onSuccess: async () => {
       leave();
       navigate(namespacePath(catalog, parts));
-      await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.views(catalog, parts), exact: true });
+      await queryClient.invalidateQueries({ queryKey: getListViewsQueryKey(catalog, ns), exact: true });
     },
   });
 

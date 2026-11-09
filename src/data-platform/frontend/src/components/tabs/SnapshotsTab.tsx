@@ -1,5 +1,5 @@
 import { Badge, createDataTableColumnHelper, DataTable, Panel } from "@retail-lakehouse/design-system";
-import type { CatalogTableApiResponse, SnapshotApiResponse } from "@/api/catalogTypes";
+import type { CatalogTableApiResponse, SnapshotApiResponse } from "@/api/generated/model";
 import { formatTimestamp } from "@/format";
 
 // Newest first; ids are 64-bit decimal strings, so a tie is broken with BigInt, never Number.

@@ -1,9 +1,13 @@
 import type {
   AuthenticationParametersApiRequest,
-  AuthenticationType,
+  AuthenticationParametersApiRequestAuthenticationType,
   ConnectionConfigApiRequest,
-  ConnectionType,
-} from "@/api/catalogTypes";
+  ConnectionConfigApiRequestConnectionType,
+} from "@/api/generated/model";
+
+// The generated unions include null (the fields are optional); the form holds a chosen value or none.
+type ConnectionType = NonNullable<ConnectionConfigApiRequestConnectionType>;
+type AuthenticationType = NonNullable<AuthenticationParametersApiRequestAuthenticationType>;
 import { splitList } from "./storageForm";
 
 // The connection fields of the create catalog form for an EXTERNAL catalog. The secrets

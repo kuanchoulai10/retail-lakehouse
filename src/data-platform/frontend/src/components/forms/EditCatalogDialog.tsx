@@ -1,10 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { catalogQueryKeys } from "@/api/catalogQueryKeys";
-import type { CatalogApiResponse, UpdateCatalogApiRequest } from "@/api/catalogTypes";
-import { apiSend } from "@/api/client";
+import {
+  getGetCatalogQueryKey,
+  getListCatalogsQueryKey,
+  updateCatalog,
+} from "@/api/generated/catalogs/catalogs";
+import type { CatalogApiResponse, UpdateCatalogApiRequest } from "@/api/generated/model";
 import { Button } from "@retail-lakehouse/design-system";
-import { catalogApiPath } from "@/lib/catalogPaths";
 import { isConflict, updateErrorMessage } from "@/lib/updateErrorMessage";
 import { FormDialog } from "./FormDialog";
 import { PropertiesEditor } from "./PropertiesEditor";
@@ -40,12 +42,12 @@ export function EditCatalogDialog({ catalog, onClose }: Props) {
 
   const refetchCatalog = () =>
     Promise.all([
-      queryClient.invalidateQueries({ queryKey: catalogQueryKeys.catalog(catalog.name) }),
-      queryClient.invalidateQueries({ queryKey: catalogQueryKeys.catalogs() }),
+      queryClient.invalidateQueries({ queryKey: getGetCatalogQueryKey(catalog.name) }),
+      queryClient.invalidateQueries({ queryKey: getListCatalogsQueryKey() }),
     ]);
 
   const update = useMutation({
-    mutationFn: (body: UpdateCatalogApiRequest) => apiSend("PUT", catalogApiPath(catalog.name), body),
+    mutationFn: (body: UpdateCatalogApiRequest) => updateCatalog(catalog.name, body),
     // A write can fail after part of it landed, so the page refetches either way; the dialog
     // closes only on success and otherwise shows the API's message, which says what landed.
     onSettled: async (_data, error) => {

@@ -8,11 +8,10 @@ import {
   TextField as DesignSystemTextField,
 } from "@retail-lakehouse/design-system";
 import { useState } from "react";
-import { catalogQueryKeys } from "@/api/catalogQueryKeys";
-import type { CreateTableApiRequest, SchemaFieldApiRequest } from "@/api/catalogTypes";
-import { apiSend } from "@/api/client";
+import type { CreateTableApiRequest, SchemaFieldApiRequest } from "@/api/generated/model";
+import { createTable, getListCatalogTablesQueryKey } from "@/api/generated/tables/tables";
 import { errorMessage } from "@/format";
-import { tablesApiPath } from "@/lib/catalogPaths";
+import { apiNamespace } from "@/lib/catalogPaths";
 import { FormDialog } from "./FormDialog";
 import { PropertiesEditor } from "./PropertiesEditor";
 import { propertiesFromRows, type PropertyRow } from "./propertyRows";
@@ -63,11 +62,11 @@ export function CreateTableDialog({ catalog, namespace, onClose }: Props) {
   const [invalid, setInvalid] = useState<string | null>(null);
 
   const create = useMutation({
-    mutationFn: (body: CreateTableApiRequest) => apiSend("POST", tablesApiPath(catalog, namespace), body),
+    mutationFn: (body: CreateTableApiRequest) => createTable(catalog, apiNamespace(namespace), body),
     // A write can fail after part of it landed, so the page refetches either way; the dialog
     // closes only on success and otherwise shows the API's message, which says what landed.
     onSettled: async (_data, error) => {
-      await queryClient.invalidateQueries({ queryKey: catalogQueryKeys.tables(catalog, namespace) });
+      await queryClient.invalidateQueries({ queryKey: getListCatalogTablesQueryKey(catalog, apiNamespace(namespace)) });
       if (error === null) onClose();
     },
   });

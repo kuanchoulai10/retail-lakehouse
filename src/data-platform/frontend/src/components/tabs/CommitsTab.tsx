@@ -1,7 +1,6 @@
 import { Banner, createDataTableColumnHelper, DataTable, Panel } from "@retail-lakehouse/design-system";
-import { useQuery } from "@tanstack/react-query";
-import { apiGet } from "@/api/client";
-import type { TableCommitApiResponse, TableCommitsApiResponse } from "@/api/types";
+import type { TableCommitApiResponse } from "@/api/generated/model";
+import { useListTableCommits } from "@/api/generated/tables/tables";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { errorMessage, formatCount, formatTimestamp } from "@/format";
 import { writerLabel } from "@/writerLabel";
@@ -58,10 +57,7 @@ const columns = column.columns([
 ]);
 
 export function CommitsTab({ tableUuid }: { tableUuid: string }) {
-  const commits = useQuery({
-    queryKey: ["commits", tableUuid],
-    queryFn: () => apiGet<TableCommitsApiResponse>(`/v1/tables/${tableUuid}/commits`),
-  });
+  const commits = useListTableCommits(tableUuid);
 
   if (commits.isPending) return <PanelSkeleton label="Loading commits…" />;
   if (commits.isError) {

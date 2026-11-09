@@ -1,6 +1,6 @@
 import { Banner, Button, cn, Divider, Panel } from "@retail-lakehouse/design-system";
 import { useState } from "react";
-import type { TableHealthApiResponse, TableHealthOperationApiResponse } from "@/api/types";
+import type { TableHealthApiResponse, TableHealthOperationApiResponse } from "@/api/generated/model";
 import { RunMaintenanceDialog } from "@/components/RunMaintenanceDialog";
 import { formatTimestamp } from "@/format";
 

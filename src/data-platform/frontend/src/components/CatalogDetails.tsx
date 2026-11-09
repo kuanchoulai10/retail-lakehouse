@@ -1,6 +1,6 @@
 import { Panel } from "@retail-lakehouse/design-system";
 import type { ReactNode } from "react";
-import type { CatalogApiResponse } from "@/api/catalogTypes";
+import type { CatalogApiResponse } from "@/api/generated/model";
 
 interface Entry {
   label: string;

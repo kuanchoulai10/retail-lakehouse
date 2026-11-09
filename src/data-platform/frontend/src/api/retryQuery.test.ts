@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ApiError } from "./client";
+import { ApiError } from "./apiError";
 import { retryQuery } from "./retryQuery";
 
 describe("retryQuery", () => {

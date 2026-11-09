@@ -1,8 +1,8 @@
 import type {
   StorageConfigApiRequest,
   StorageConfigApiResponse,
-  StorageType,
-} from "@/api/catalogTypes";
+  StorageConfigApiRequestStorageType as StorageType,
+} from "@/api/generated/model";
 
 export const STORAGE_TYPES: StorageType[] = ["S3", "AZURE", "GCS", "FILE"];
 

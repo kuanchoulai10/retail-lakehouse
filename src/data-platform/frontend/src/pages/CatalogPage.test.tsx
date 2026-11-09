@@ -4,7 +4,9 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
-import type { NamespaceSummaryApiResponse } from "../api/catalogTypes";
+import { getGetCatalogQueryKey } from "../api/generated/catalogs/catalogs";
+import type { NamespaceSummaryApiResponse } from "../api/generated/model";
+import { getListNamespacesQueryKey } from "../api/generated/namespaces/namespaces";
 import { bodyOf, callsTo, catalogFixture, stubCatalogApi, type StubHandler } from "../test/catalogApiStub";
 import { jsonResponse } from "../test/fixtures";
 import { settle, SuspendForever } from "../test/SuspendForever";
@@ -210,7 +212,7 @@ describe("CatalogPage", { timeout: 15_000 }, () => {
     await screen.findByRole("link", { name: "retail" });
     await openAction(user, "Edit");
     version = 8;
-    await client.invalidateQueries({ queryKey: ["catalog", "iceberg"] });
+    await client.invalidateQueries({ queryKey: getGetCatalogQueryKey("iceberg") });
     await vi.waitFor(() =>
       expect(screen.getByRole("region", { name: "Storage", hidden: true })).toHaveTextContent("8"),
     );
@@ -232,8 +234,8 @@ describe("CatalogPage", { timeout: 15_000 }, () => {
     const after = calls.slice(before).filter((call) => call.method === "GET");
     expect(after.map((call) => call.path)).not.toContain("/v1/catalogs/iceberg");
     expect(after.map((call) => call.path)).not.toContain("/v1/catalogs/iceberg/namespaces");
-    expect(client.getQueryCache().findAll({ queryKey: ["catalog", "iceberg"] })).toHaveLength(0);
-    expect(client.getQueryCache().findAll({ queryKey: ["namespaces", "iceberg"] })).toHaveLength(0);
+    expect(client.getQueryCache().findAll({ queryKey: getGetCatalogQueryKey("iceberg") })).toHaveLength(0);
+    expect(client.getQueryCache().findAll({ queryKey: getListNamespacesQueryKey("iceberg") })).toHaveLength(0);
   });
 
   it("tells the user that a dot is part of a namespace name", async () => {

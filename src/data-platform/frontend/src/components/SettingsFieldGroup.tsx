@@ -1,6 +1,6 @@
 import { Select, Switch, TextField } from "@retail-lakehouse/design-system";
 import { Panel } from "@retail-lakehouse/design-system";
-import type { JsonObject } from "../api/types";
+import type { JsonObject } from "@/lib/jsonObject";
 
 export interface SettingsField {
   key: string;

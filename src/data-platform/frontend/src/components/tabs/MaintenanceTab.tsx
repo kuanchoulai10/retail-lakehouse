@@ -1,12 +1,11 @@
 import { Banner, createDataTableColumnHelper, DataTable, Panel } from "@retail-lakehouse/design-system";
-import { useQuery } from "@tanstack/react-query";
-import { apiGet } from "@/api/client";
-import type { JsonObject, TableMaintenanceRunApiResponse } from "@/api/types";
+import type { TableMaintenanceRunApiResponse } from "@/api/generated/model";
+import { useListTableMaintenanceRuns } from "@/api/generated/table-maintenance-runs/table-maintenance-runs";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { RunStatusBadge } from "@/components/RunStatusBadge";
 import { errorMessage, formatDuration, formatTimestamp } from "@/format";
 
-function OperationDetail({ operation }: { operation: JsonObject }) {
+function OperationDetail({ operation }: { operation: Record<string, unknown> }) {
   const attempts = Number(operation.attempts ?? 0);
   const metrics = Object.entries((operation.metrics as Record<string, number> | undefined) ?? {});
   const error = operation.error as string | null | undefined;
@@ -67,11 +66,7 @@ const columns = column.columns([
 ]);
 
 export function MaintenanceTab({ tableUuid }: { tableUuid: string }) {
-  const runs = useQuery({
-    queryKey: ["runs", tableUuid],
-    queryFn: () =>
-      apiGet<TableMaintenanceRunApiResponse[]>(`/v1/tables/${tableUuid}/table-maintenance-runs`),
-  });
+  const runs = useListTableMaintenanceRuns(tableUuid);
 
   if (runs.isPending) return <PanelSkeleton label="Loading runs…" />;
   if (runs.isError) {

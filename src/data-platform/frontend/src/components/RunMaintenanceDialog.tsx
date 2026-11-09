@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Banner, Button, CheckBox, ModalDialog } from "@retail-lakehouse/design-system";
 import { useState } from "react";
-import { apiSend } from "@/api/client";
+import { getListTableMaintenanceRunsQueryKey } from "@/api/generated/table-maintenance-runs/table-maintenance-runs";
+import { getGetTableHealthQueryKey, triggerTableMaintenance } from "@/api/generated/tables/tables";
 import { errorMessage } from "@/format";
 
 export const ALL_OPERATIONS = [
@@ -28,12 +29,14 @@ export function RunMaintenanceDialog({
   const [selected, setSelected] = useState<string[]>(initialOperations);
   const run = useMutation({
     mutationFn: () =>
-      apiSend("POST", `/v1/tables/${tableUuid}/maintenance`, {
+      triggerTableMaintenance(tableUuid, {
         operations: ALL_OPERATIONS.filter((op) => selected.includes(op)),
       }),
     onSuccess: async () => {
       await Promise.all(
-        ["runs", "health"].map((key) => queryClient.invalidateQueries({ queryKey: [key, tableUuid] })),
+        [getListTableMaintenanceRunsQueryKey(tableUuid), getGetTableHealthQueryKey(tableUuid)].map((queryKey) =>
+          queryClient.invalidateQueries({ queryKey }),
+        ),
       );
       onClose();
     },

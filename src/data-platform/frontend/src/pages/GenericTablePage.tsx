@@ -1,10 +1,14 @@
 import { Banner, Panel } from "@retail-lakehouse/design-system";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { catalogQueryKeys } from "@/api/catalogQueryKeys";
-import type { GenericTableApiResponse } from "@/api/catalogTypes";
-import { ApiError, apiGet, apiSend } from "@/api/client";
+import { ApiError } from "@/api/apiError";
+import {
+  deleteGenericTable,
+  getGetGenericTableQueryKey,
+  getListGenericTablesQueryKey,
+  useGetGenericTable,
+} from "@/api/generated/generic-tables/generic-tables";
 import { CatalogObjectNotFound } from "@/components/CatalogObjectNotFound";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { PageHeader } from "@/components/PageHeader";
@@ -12,7 +16,7 @@ import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { PropertiesPanel } from "@/components/PropertiesPanel";
 import { errorMessage } from "@/format";
 import { catalogObjectCrumbs } from "@/lib/catalogObjectCrumbs";
-import { genericTableApiPath, namespaceFromParam, namespacePath } from "@/lib/catalogPaths";
+import { apiNamespace, namespaceFromParam, namespacePath } from "@/lib/catalogPaths";
 import { useLeavingPage } from "@/lib/useLeavingPage";
 
 // The fixed generic table page. A generic table has no schema, snapshots or uuid, and Polaris
@@ -33,20 +37,17 @@ function GenericTableView({ catalog, parts, name }: GenericTableViewProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [deleting, setDeleting] = useState(false);
-  const { leaving, leave } = useLeavingPage([catalogQueryKeys.genericTable(catalog, parts, name)]);
+  const ns = apiNamespace(parts);
+  const { leaving, leave } = useLeavingPage([getGetGenericTableQueryKey(catalog, ns, name)]);
 
-  const genericTable = useQuery({
-    queryKey: catalogQueryKeys.genericTable(catalog, parts, name),
-    queryFn: () => apiGet<GenericTableApiResponse>(genericTableApiPath(catalog, parts, name)),
-    enabled: !leaving,
-  });
+  const genericTable = useGetGenericTable(catalog, ns, name, { query: { enabled: !leaving } });
   const remove = useMutation({
-    mutationFn: () => apiSend("DELETE", genericTableApiPath(catalog, parts, name)),
+    mutationFn: () => deleteGenericTable(catalog, ns, name),
     onSuccess: async () => {
       leave();
       navigate(namespacePath(catalog, parts));
       await queryClient.invalidateQueries({
-        queryKey: catalogQueryKeys.genericTables(catalog, parts),
+        queryKey: getListGenericTablesQueryKey(catalog, ns),
         exact: true,
       });
     },

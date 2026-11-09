@@ -1,4 +1,4 @@
-import type { CatalogTableApiResponse } from "@/api/catalogTypes";
+import type { CatalogTableApiResponse } from "@/api/generated/model";
 import { quoteIdentifier, sparkColumnType } from "./sparkColumnType";
 
 // Spark SQL with the Iceberg runtime, because that is the dialect Iceberg documents its DDL in

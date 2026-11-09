@@ -1,5 +1,5 @@
 import { http } from "msw";
-import type { CatalogApiResponse, CatalogTableApiResponse } from "../api/catalogTypes";
+import type { CatalogApiResponse, CatalogTableApiResponse } from "../api/generated/model";
 import { jsonResponse } from "./fixtures";
 import { server } from "./mswServer";
 

@@ -1,6 +1,6 @@
 import { Banner } from "@retail-lakehouse/design-system";
 import type { ReactNode } from "react";
-import type { TableApiResponse } from "@/api/types";
+import type { TableApiResponse } from "@/api/generated/model";
 import { MaintenanceEmptyState } from "@/components/MaintenanceEmptyState";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { errorMessage } from "@/format";

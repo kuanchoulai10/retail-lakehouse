@@ -9,9 +9,11 @@ import {
 } from "@retail-lakehouse/design-system";
 import { useState } from "react";
 import { Panel } from "@retail-lakehouse/design-system";
-import { apiGet, apiSend } from "../api/client";
-import { invalidateTableState } from "../api/invalidateTableState";
-import type { JsonObject, TableApiResponse, TableMaintenancePresetApiResponse } from "../api/types";
+import type { TableApiResponse } from "@/api/generated/model";
+import { getTableMaintenancePreset } from "@/api/generated/table-maintenance-presets/table-maintenance-presets";
+import { updateTableSettings } from "@/api/generated/tables/tables";
+import { invalidateTableState } from "@/api/invalidateTableState";
+import type { JsonObject } from "@/lib/jsonObject";
 import { errorMessage } from "../format";
 import { SettingsFieldGroup, type SettingsField } from "./SettingsFieldGroup";
 
@@ -64,16 +66,13 @@ export function SettingsForm({ table }: Props) {
   const [confirming, setConfirming] = useState(false);
 
   const save = useMutation({
-    mutationFn: (settings: JsonObject) =>
-      apiSend("PUT", `/v1/tables/${table.uuid}/settings`, settings),
+    mutationFn: (settings: JsonObject) => updateTableSettings(table.uuid, settings),
     onSuccess: () => invalidateTableState(queryClient, table.uuid),
   });
   const reset = useMutation({
     mutationFn: async (presetId: string) => {
-      const preset = await apiGet<TableMaintenancePresetApiResponse>(
-        `/v1/table-maintenance-presets/${presetId}`,
-      );
-      await apiSend("PUT", `/v1/tables/${table.uuid}/settings`, preset.settings);
+      const preset = await getTableMaintenancePreset(presetId);
+      await updateTableSettings(table.uuid, preset.settings);
     },
     onSuccess: () => invalidateTableState(queryClient, table.uuid),
   });

@@ -4,7 +4,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
-import type { TableIdentifierApiResponse } from "../api/catalogTypes";
+import type { TableIdentifierApiResponse } from "../api/generated/model";
+import { getGetNamespaceQueryKey } from "../api/generated/namespaces/namespaces";
 import { bodyOf, callsTo, stubCatalogApi, type StubHandler } from "../test/catalogApiStub";
 import { jsonResponse } from "../test/fixtures";
 import { settle, SuspendForever } from "../test/SuspendForever";
@@ -292,7 +293,7 @@ describe("NamespacePage", { timeout: 15_000 }, () => {
     await screen.findByRole("region", { name: "Tables and views" });
     await openAction(user, "Edit properties");
     properties = { owner: "kc", added_elsewhere: "x" };
-    await client.invalidateQueries({ queryKey: ["namespace", "iceberg", ["retail"]] });
+    await client.invalidateQueries({ queryKey: getGetNamespaceQueryKey("iceberg", "retail") });
     await vi.waitFor(() =>
       expect(screen.getByRole("region", { name: "Properties", hidden: true })).toHaveTextContent(
         "added_elsewhere",

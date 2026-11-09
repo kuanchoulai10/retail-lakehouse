@@ -1,6 +1,6 @@
 import { CHART_COLOURS, ChartContainer, Divider, Panel } from "@retail-lakehouse/design-system";
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from "recharts";
-import type { TableCommitApiResponse } from "@/api/types";
+import type { TableCommitApiResponse } from "@/api/generated/model";
 import { formatCount, formatRelativeTime } from "@/format";
 import { hourlyCommitBuckets, writerMix } from "@/freshness";
 import { writerLabel } from "@/writerLabel";
