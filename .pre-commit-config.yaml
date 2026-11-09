@@ -6,20 +6,27 @@ repos:
   - repo: meta
     hooks:
       - id: identity
+        alias: shared
         name: Print checked files
         description: Print input to the static check hooks for troubleshooting
       - id: check-hooks-apply
+        alias: shared
         name: Check if all hooks apply to the repository
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: "3e8a8703264a2f4a69428a0aa4dcb512790b2c8c" # v6.0.0
     hooks:
       - id: check-merge-conflict
+        alias: shared
       - id: trailing-whitespace
+        alias: shared
       - id: check-toml
+        alias: shared
       - id: check-executables-have-shebangs
+        alias: shared
   - repo: local
     hooks:
       - id: check-shell-scripts-are-executable
+        alias: shared
         name: Check shell scripts are executable
         entry: "bash -c 'rc=0; for f in \"$@\"; do if [[ ! -x \"$f\" ]]; then echo \"not executable $f\"; rc=1; fi; done; exit $rc' --"
         language: system
@@ -27,6 +34,7 @@ repos:
   - repo: local
     hooks:
       - id: shellcheck
+        alias: shared
         name: shellcheck
         entry: shellcheck
         language: system
@@ -34,6 +42,7 @@ repos:
   - repo: local
     hooks:
       - id: k8s-labels
+        alias: shared
         name: Kubernetes label standard
         entry: uv run --no-project --with pyyaml python scripts/check_k8s_labels.py
         language: system
@@ -42,6 +51,7 @@ repos:
   - repo: local
     hooks:
       - id: commitlint
+        alias: shared
         name: Commitlint
         entry: npx --no -- commitlint --edit
         language: system
@@ -49,12 +59,14 @@ repos:
   - repo: local
     hooks:
       - id: ty
+        alias: backend
         name: ty
         entry: uv run ty check
         language: system
         types: [python]
         exclude: ^src/data-platform/(backend|scheduler)/
       - id: ty-backend
+        alias: backend
         name: ty (backend)
         entry: uv run --project src/data-platform/backend --directory src/data-platform/backend ty check
         language: system
@@ -64,25 +76,60 @@ repos:
   - repo: local
     hooks:
       - id: uv-export-backend
+        alias: backend
         name: uv export (table-maintenance backend requirements)
         entry: uv export --package table-maintenance-backend --locked --no-dev --no-emit-project --no-header --quiet -o src/data-platform/backend/requirements.txt
         language: system
         files: ^(uv\.lock|src/data-platform/backend/(pyproject\.toml|requirements\.txt))$
         pass_filenames: false
+  - repo: local
+    hooks:
+      - id: eslint-console
+        alias: frontend
+        name: eslint (console)
+        entry: npm --prefix src/data-platform/frontend run lint
+        language: system
+        files: ^src/data-platform/frontend/
+        pass_filenames: false
+      - id: tsc-console
+        alias: frontend
+        name: tsc (console)
+        entry: npm --prefix src/data-platform/frontend run typecheck
+        language: system
+        files: ^(src/data-platform/frontend/|src/design-system/|package-lock\.json$)
+        pass_filenames: false
+      - id: eslint-design-system
+        alias: frontend
+        name: eslint (design system)
+        entry: npm --prefix src/design-system run lint
+        language: system
+        files: ^src/design-system/
+        pass_filenames: false
+      - id: tsc-design-system
+        alias: frontend
+        name: tsc (design system)
+        entry: npm --prefix src/design-system run typecheck
+        language: system
+        files: ^(src/design-system/|package-lock\.json$)
+        pass_filenames: false
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: "aca6d4c8045a504e2812ea4bedff1d0a09e437bc" # v0.15.8
     hooks:
       - id: ruff-check
+        alias: backend
         args: [ --fix ]
       - id: ruff-format
+        alias: backend
   - repo: https://github.com/gitleaks/gitleaks
     rev: "83d9cd684c87d95d656c1458ef04895a7f1cbd8e" # v8.30.1
     hooks:
       - id: gitleaks
+        alias: shared
   - repo: https://github.com/woodruffw/zizmor-pre-commit
     rev: "ea2eb407b4cbce87cf0d502f36578950494f5ac9" # v1.23.1
     hooks:
       - id: zizmor
+        alias: shared
         name: Run zizmor to check for github workflow syntax errors
         types: [yaml]
         files: ^\.github/workflows/.*$|^\.github/actions/.*$

@@ -48,19 +48,25 @@ tasks:
     silent: true
 
   pre-commit:
-    desc: "Gate: is the code clean?"
+    desc: "Gate: is the code clean? scope=frontend|backend|all (default all)"
     cmds:
       - task: checks:pre-commit
+        vars:
+          scope: '{{.scope | default "all"}}'
 
   pre-pr:
-    desc: "Gate: is my change logically correct?"
+    desc: "Gate: is my change logically correct? scope=frontend|backend|all (default all)"
     cmds:
       - task: checks:pre-pr
+        vars:
+          scope: '{{.scope | default "all"}}'
 
   pre-merge:
-    desc: "Gate: will main still work after this merge?"
+    desc: "Gate: will main still work after this merge? scope=frontend|backend|all (default all)"
     cmds:
       - task: checks:pre-merge
+        vars:
+          scope: '{{.scope | default "all"}}'
 
   post-merge:
     desc: "Gate: is main healthy once deployed to the shared environment?"

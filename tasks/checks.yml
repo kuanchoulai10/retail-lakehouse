@@ -4,31 +4,98 @@ version: '3'
 
 tasks:
   pre-commit:
-    desc: "Gate: is the code clean? (before a commit: lint, format, type)"
+    desc: "Gate: is the code clean? (before a commit: lint, format, type) scope=frontend|backend|all (default all)"
+    vars:
+      scope: '{{.scope | default "all"}}'
+    requires:
+      vars:
+        - name: scope
+          enum: [frontend, backend, all]
     cmds:
-      - uv run pre-commit run --all-files --show-diff-on-failure
+      - uv run pre-commit run shared --all-files --show-diff-on-failure
+      - task: pre-commit-frontend
+        if: '[ "{{.scope}}" != backend ]'
+      - task: pre-commit-backend
+        if: '[ "{{.scope}}" != frontend ]'
+
+  pre-commit-frontend:
+    desc: "Lint and type-check the console and the design system (pre-commit hooks aliased frontend)"
+    cmds:
+      - uv run pre-commit run frontend --all-files --show-diff-on-failure
+
+  pre-commit-backend:
+    desc: "Lint, format and type-check the Python code (pre-commit hooks aliased backend)"
+    cmds:
+      - uv run pre-commit run backend --all-files --show-diff-on-failure
 
   pre-pr:
-    desc: "Gate: is my change logically correct? (local, no services: unit, architecture, contract)"
+    desc: "Gate: is my change logically correct? (local, no services: unit, architecture, contract) scope=frontend|backend|all (default all)"
+    vars:
+      scope: '{{.scope | default "all"}}'
+    requires:
+      vars:
+        - name: scope
+          enum: [frontend, backend, all]
     cmds:
       - task: pre-commit
-      - task: lint-frontend
-      - task: lint-design-system
-      - task: unit-test
-      - task: component-test
-      - task: arch-test
+        vars:
+          scope: '{{.scope}}'
+      - task: unit-test-scripts
+      - task: pre-pr-frontend
+        if: '[ "{{.scope}}" != backend ]'
+      - task: pre-pr-backend
+        if: '[ "{{.scope}}" != frontend ]'
       - task: contract-test
 
+  pre-pr-frontend:
+    desc: "Run the console and design-system unit tests and the story browser tests"
+    deps:
+      - unit-test-frontend
+      - unit-test-design-system
+    cmds:
+      - task: component-test
+
+  pre-pr-backend:
+    desc: "Run the backend and Spark unit tests and the import-linter boundaries"
+    deps:
+      - unit-test-backend
+      - unit-test-spark
+    cmds:
+      - task: arch-test
+
   pre-merge:
-    desc: "Gate: will main still work after this merge? (merge queue candidate on an ephemeral platform)"
+    desc: "Gate: will main still work after this merge? (merge queue candidate on an ephemeral platform) scope=frontend|backend|all (default all)"
+    vars:
+      scope: '{{.scope | default "all"}}'
+    requires:
+      vars:
+        - name: scope
+          enum: [frontend, backend, all]
     cmds:
       - task: pre-pr
-      - task: security-test
-      - task: coverage-test
-      - task: integration-test
-      - task: build-test
+        vars:
+          scope: '{{.scope}}'
+      - task: pre-merge-frontend
+        if: '[ "{{.scope}}" != backend ]'
+      - task: pre-merge-backend
+        if: '[ "{{.scope}}" != frontend ]'
       - task: api-test
       - task: e2e-critical-test
+
+  pre-merge-frontend:
+    desc: "Scan, measure coverage of and build the console"
+    cmds:
+      - task: security-test-frontend
+      - task: coverage-test-frontend
+      - task: build-test-frontend
+
+  pre-merge-backend:
+    desc: "Scan, measure coverage of, integration-test and build the backend and Spark runtime"
+    cmds:
+      - task: security-test-backend
+      - task: coverage-test-backend
+      - task: integration-test
+      - task: build-test-backend
 
   post-merge:
     desc: "Gate: is main healthy once deployed to the shared environment? (staging, same artifacts as pre-merge)"
@@ -114,18 +181,6 @@ tasks:
     cmds:
       - npm --prefix src/design-system run test:stories
 
-  lint-frontend:
-    desc: "Lint and type-check the console"
-    cmds:
-      - npm --prefix src/data-platform/frontend run lint
-      - npm --prefix src/data-platform/frontend run typecheck
-
-  lint-design-system:
-    desc: "Lint and type-check the design system"
-    cmds:
-      - npm --prefix src/design-system run lint
-      - npm --prefix src/design-system run typecheck
-
   arch-test:
     desc: "Run architecture boundary tests (import-linter)"
     cmds:
@@ -139,12 +194,34 @@ tasks:
   security-test:
     desc: "Scan for vulnerable dependencies and insecure code"
     cmds:
-      - cmd: echo "TODO:// pip-audit for backend and spark, npm audit for the console, image scan for the three images"
+      - task: security-test-frontend
+      - task: security-test-backend
+
+  security-test-frontend:
+    desc: "Scan the console's dependencies and image"
+    cmds:
+      - cmd: echo "TODO:// npm audit for the console and the design system, image scan for console"
+
+  security-test-backend:
+    desc: "Scan the backend's and Spark runtime's dependencies and images"
+    cmds:
+      - cmd: echo "TODO:// pip-audit for backend and spark, image scan for table-maintenance-backend and table-maintenance-spark"
 
   coverage-test:
     desc: "Enforce test coverage thresholds"
     cmds:
-      - cmd: echo "TODO:// pytest --cov with a floor for the backend, vitest --coverage for the console"
+      - task: coverage-test-frontend
+      - task: coverage-test-backend
+
+  coverage-test-frontend:
+    desc: "Enforce the console's test coverage threshold"
+    cmds:
+      - cmd: echo "TODO:// vitest --coverage with a floor for the console and the design system"
+
+  coverage-test-backend:
+    desc: "Enforce the backend's test coverage threshold"
+    cmds:
+      - cmd: echo "TODO:// pytest --cov with a floor for the backend"
 
   integration-test:
     desc: "Run backend adapters against real dependencies"
@@ -154,8 +231,19 @@ tasks:
   build-test:
     desc: "Build every deliverable once, tagged by commit, for every later gate to reuse"
     cmds:
+      - task: build-test-frontend
+      - task: build-test-backend
+
+  build-test-frontend:
+    desc: "Build the console once, tagged by commit"
+    cmds:
       - npm --prefix src/data-platform/frontend run build
-      - cmd: echo "TODO:// docker build table-maintenance-backend, table-maintenance-spark and console with the build.sh source tags and push them to the registry"
+      - cmd: echo "TODO:// docker build console with the build.sh source tag and push it to the registry"
+
+  build-test-backend:
+    desc: "Build the backend and Spark runtime images once, tagged by commit"
+    cmds:
+      - cmd: echo "TODO:// docker build table-maintenance-backend and table-maintenance-spark with the build.sh source tags and push them to the registry"
 
   api-test:
     desc: "Run the Bruno API collection against a running backend"
