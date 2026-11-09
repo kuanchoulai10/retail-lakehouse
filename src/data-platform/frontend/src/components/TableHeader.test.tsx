@@ -4,6 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getListTableMaintenanceRunsQueryKey } from "../api/generated/table-maintenance-runs/table-maintenance-runs";
+import { getListTableReconciliationsQueryKey } from "../api/generated/table-reconciliations/table-reconciliations";
+import type { TableApiResponse } from "../api/generated/model";
 import { getGetTableHealthQueryKey } from "../api/generated/tables/tables";
 import { bodyOf, catalogTableFixture, stubCatalogApi, type StubbedCall } from "../test/catalogApiStub";
 import { jsonResponse, tableFixture } from "../test/fixtures";
@@ -13,11 +15,16 @@ function newClient() {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } });
 }
 
-function renderHeader(status = "active", client = newClient(), extra: React.ReactNode = null) {
+function renderHeader(
+  status = "active",
+  client = newClient(),
+  extra: React.ReactNode = null,
+  managed: Partial<TableApiResponse> = {},
+) {
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <TableHeader table={catalogTableFixture()} managed={tableFixture({ status })} menuItems={[]} />
+        <TableHeader table={catalogTableFixture()} managed={tableFixture({ status, ...managed })} menuItems={[]} />
         {extra}
       </MemoryRouter>
     </QueryClientProvider>,
@@ -37,7 +44,44 @@ describe("TableHeader", () => {
       "POST /v1/tables/uuid-orders/pause": () => jsonResponse(tableFixture({ status: "paused" })),
       "POST /v1/tables/uuid-orders/resume": () => jsonResponse(tableFixture()),
       "POST /v1/tables/uuid-orders/maintenance": () => jsonResponse({ accepted: true }, 202),
+      "POST /v1/tables/uuid-orders/reconcile": () => jsonResponse({ accepted: true }, 202),
     });
+  });
+
+  it("Reconcile now posts and refreshes reconciliations", async () => {
+    const user = userEvent.setup();
+    const client = newClient();
+    const key = [...getListTableReconciliationsQueryKey("uuid-orders"), "pages"];
+    client.setQueryData(key, { pages: [], pageParams: [] });
+    renderHeader("active", client);
+    await user.click(screen.getByRole("button", { name: "Reconcile now" }));
+    await vi.waitFor(() => expect(calls[0]).toMatchObject({ method: "POST", path: "/v1/tables/uuid-orders/reconcile" }));
+    await vi.waitFor(() => expect(client.getQueryState(key)?.isInvalidated).toBe(true));
+  });
+
+  it("offers Reconcile now on a paused table, since the reconciliation records the pause", () => {
+    renderHeader("paused");
+    expect(screen.getByRole("button", { name: "Reconcile now" })).toBeEnabled();
+  });
+
+  it("shows the API detail when Reconcile now is refused", async () => {
+    calls = stubCatalogApi({
+      "POST /v1/tables/uuid-orders/reconcile": () => jsonResponse({ detail: "table is excluded" }, 409),
+    });
+    const user = userEvent.setup();
+    renderHeader();
+    await user.click(screen.getByRole("button", { name: "Reconcile now" }));
+    expect(await screen.findByText("Could not reconcile the table: table is excluded")).toBeInTheDocument();
+  });
+
+  it("dry run badge shows when settings say dry run", () => {
+    renderHeader("active", newClient(), null, { settings: { dry_run: true } });
+    expect(screen.getByText("Dry run")).toBeInTheDocument();
+  });
+
+  it("shows no dry run badge when settings do not say dry run", () => {
+    renderHeader("active", newClient(), null, { settings: { dry_run: false } });
+    expect(screen.queryByText("Dry run")).not.toBeInTheDocument();
   });
 
   it("shows the name, status, preset and rule", () => {
@@ -180,6 +224,18 @@ describe("TableHeader", () => {
 });
 
 describe("TableHeader of an unmanaged table", () => {
+  it("Reconcile now is hidden for an unmanaged table", () => {
+    render(
+      <QueryClientProvider client={newClient()}>
+        <MemoryRouter>
+          <TableHeader table={catalogTableFixture()} managed={null} menuItems={[]} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(screen.queryByRole("button", { name: "Reconcile now" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Dry run")).not.toBeInTheDocument();
+  });
+
   it("shows the catalog numbers and the menu but no maintenance actions", () => {
     render(
       <QueryClientProvider client={newClient()}>

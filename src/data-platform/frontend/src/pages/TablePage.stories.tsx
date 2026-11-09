@@ -131,6 +131,17 @@ export const Paused: Story = {
   },
 };
 
+export const DryRunHeader: Story = {
+  beforeEach({ msw }) {
+    msw.use(getGetTableMockHandler({ ...MAINTAINED_ORDERS, settings: { dry_run: true } }));
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText("Dry run")).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Reconcile now" })).toBeEnabled();
+  },
+};
+
 export const CatalogNotCovered: Story = {
   beforeEach({ msw }) {
     msw.use(getListCoveredCatalogsMockHandler({ catalogs: [] }));

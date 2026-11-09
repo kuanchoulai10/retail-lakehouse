@@ -162,4 +162,18 @@ describe("SettingsTab", () => {
     const body = puts(calls)[0]?.body as { remove_orphan_files: { enabled: boolean } };
     expect(body.remove_orphan_files.enabled).toBe(true);
   });
+
+  it("saving the dry run switch sends dry_run true", async () => {
+    const calls = mockApi(table, () => jsonResponse(table));
+    renderTab();
+    const toggle = await screen.findByRole("switch", { name: "Dry run" });
+    expect(toggle).not.toBeChecked();
+    expect(toggle).toHaveAccessibleDescription(
+      "Reconcile and record as usual, but start no maintenance. Run maintenance still runs.",
+    );
+    await userEvent.click(toggle);
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await vi.waitFor(() => expect(puts(calls)[0]).toBeDefined());
+    expect(puts(calls)[0]?.body).toEqual({ ...SETTINGS, dry_run: true });
+  });
 });

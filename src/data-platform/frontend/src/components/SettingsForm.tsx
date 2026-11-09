@@ -5,6 +5,7 @@ import {
   AlertDialogCancel,
   Banner,
   Button,
+  Switch,
   TextField,
 } from "@retail-lakehouse/design-system";
 import { useState } from "react";
@@ -16,6 +17,9 @@ import { invalidateTableState } from "@/api/invalidateTableState";
 import type { JsonObject } from "@/lib/jsonObject";
 import { errorMessage } from "../format";
 import { SettingsFieldGroup, type SettingsField } from "./SettingsFieldGroup";
+
+const DRY_RUN_DESCRIPTION =
+  "Reconcile and record as usual, but start no maintenance. Run maintenance still runs.";
 
 const INTERVAL: SettingsField = { key: "min_interval_seconds", kind: "number" };
 
@@ -93,6 +97,18 @@ export function SettingsForm({ table }: Props) {
         <Banner type="information" title="This table has no maintenance settings yet." />
       )}
       <Panel title="Reconciliation">
+        <div className="mb-4">
+          <Switch
+            id="dry_run"
+            label="Dry run"
+            aria-describedby="dry_run-description"
+            checked={draft.dry_run === true}
+            onCheckedChange={(checked) => setDraft({ ...draft, dry_run: checked })}
+          />
+          <p id="dry_run-description" className="type-body-small text-on-surface-variant">
+            {DRY_RUN_DESCRIPTION}
+          </p>
+        </div>
         <div>
           <TextField
             id="reconcile_interval_seconds"

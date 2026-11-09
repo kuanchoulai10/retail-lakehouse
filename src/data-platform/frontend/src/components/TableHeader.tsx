@@ -1,8 +1,9 @@
-import { Banner, Button } from "@retail-lakehouse/design-system";
+import { Badge, Banner, Button } from "@retail-lakehouse/design-system";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { CatalogTableApiResponse, TableApiResponse } from "@/api/generated/model";
-import { pauseTable, resumeTable } from "@/api/generated/tables/tables";
+import { getListTableReconciliationsQueryKey } from "@/api/generated/table-reconciliations/table-reconciliations";
+import { pauseTable, resumeTable, useTriggerTableReconciliation } from "@/api/generated/tables/tables";
 import { invalidateTableState } from "@/api/invalidateTableState";
 import type { ActionItem } from "@/components/ActionsMenu";
 import { PageHeader } from "@/components/PageHeader";
@@ -28,7 +29,13 @@ function averageFileSize(table: CatalogTableApiResponse): string {
   return `avg ${formatBytes(bytes / files)} / file`;
 }
 
-// Numbers come from the catalog; Pause/Resume and Run maintenance only when maintenance manages it.
+// The table's own settings are the ones that apply: a preset's settings are copied onto the table.
+function isDryRun(managed: TableApiResponse | null): boolean {
+  return managed?.settings?.dry_run === true;
+}
+
+// Numbers come from the catalog; Pause/Resume, Run maintenance and Reconcile now only when
+// maintenance manages it.
 // The maintenance actions live here, not in a child, so the phone overflow menu opens the same
 // dialog and runs the same toggle as the buttons.
 export function TableHeader({ table, managed, menuItems }: Props) {
@@ -41,6 +48,13 @@ export function TableHeader({ table, managed, menuItems }: Props) {
   const toggle = useMutation({
     mutationFn: (uuid: string) => (paused ? resumeTable(uuid) : pauseTable(uuid)),
     onSuccess: (_result, uuid) => invalidateTableState(queryClient, uuid),
+  });
+  // A paused table is still reconciled: the record says it was skipped because it is paused.
+  const reconcile = useTriggerTableReconciliation({
+    mutation: {
+      onSettled: (_result, _error, { tableUuid }) =>
+        queryClient.invalidateQueries({ queryKey: getListTableReconciliationsQueryKey(tableUuid) }),
+    },
   });
 
   function openRunDialog() {
@@ -60,6 +74,11 @@ export function TableHeader({ table, managed, menuItems }: Props) {
             onSelect: openRunDialog,
             disabled: !active,
             ...(active ? {} : { description: DISABLED_REASON }),
+          },
+          {
+            label: "Reconcile now",
+            onSelect: () => reconcile.mutate({ tableUuid: managed.uuid }),
+            disabled: reconcile.isPending,
           },
           { label: toggleLabel, onSelect: () => toggle.mutate(managed.uuid), disabled: toggle.isPending },
         ];
@@ -89,6 +108,14 @@ export function TableHeader({ table, managed, menuItems }: Props) {
               <Button
                 type="button"
                 styleType="outlined"
+                disabled={reconcile.isPending}
+                onClick={() => reconcile.mutate({ tableUuid: managed.uuid })}
+              >
+                Reconcile now
+              </Button>
+              <Button
+                type="button"
+                styleType="outlined"
                 disabled={toggle.isPending}
                 onClick={() => toggle.mutate(managed.uuid)}
               >
@@ -103,6 +130,7 @@ export function TableHeader({ table, managed, menuItems }: Props) {
         {managed !== null && (
           <>
             <StatusBadge status={managed.status} />
+            {isDryRun(managed) && <Badge>Dry run</Badge>}
             <span>Preset: {managed.source_preset_id ?? "—"}</span>
             <span>Rule: {managed.matched_rule_id ?? "—"}</span>
           </>
@@ -121,6 +149,13 @@ export function TableHeader({ table, managed, menuItems }: Props) {
         <Banner
           type="negative"
           title={`Could not change the table: ${errorMessage(toggle.error)}`}
+          className="mb-4"
+        />
+      )}
+      {reconcile.isError && (
+        <Banner
+          type="negative"
+          title={`Could not reconcile the table: ${errorMessage(reconcile.error)}`}
           className="mb-4"
         />
       )}
