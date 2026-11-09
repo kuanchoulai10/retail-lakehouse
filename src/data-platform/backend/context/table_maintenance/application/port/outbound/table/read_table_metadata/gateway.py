@@ -14,6 +14,9 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_commit_page import (
         TableCommitPage,
     )
+    from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_commit_selection import (
+        TableCommitSelection,
+    )
     from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_metadata import (
         TableMetadata,
     )
@@ -47,8 +50,12 @@ class ReadTableMetadataGateway(Gateway):
         """Return the table's statistics, or None when it does not exist."""
 
     @abstractmethod
-    def list_commits(self, ref: TableMetadataRef, since: str | None, limit: int) -> TableCommitPage | None:
-        """Return up to ``limit`` commits at or after ``since``, newest first.
+    def list_commits(
+        self,
+        ref: TableMetadataRef,
+        selection: TableCommitSelection,
+    ) -> TableCommitPage | None:
+        """Return up to ``selection.limit`` of the commits ``selection`` keeps, newest first.
 
         None when the table does not exist.
         """

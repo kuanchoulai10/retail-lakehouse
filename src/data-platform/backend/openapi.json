@@ -4918,7 +4918,7 @@
     },
     "/v1/tables/{table_uuid}/commits": {
       "get": {
-        "description": "Return the commits of one table, newest first.",
+        "description": "Return the commits of one table, newest first: at or after ``since``, before ``before``, by ``writer``.",
         "operationId": "list_table_commits",
         "parameters": [
           {
@@ -4957,6 +4957,44 @@
                 }
               ],
               "title": "Since"
+            }
+          },
+          {
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Before"
+            }
+          },
+          {
+            "in": "query",
+            "name": "writer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "kafka_connect",
+                    "spark",
+                    "unknown"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Writer"
             }
           }
         ],

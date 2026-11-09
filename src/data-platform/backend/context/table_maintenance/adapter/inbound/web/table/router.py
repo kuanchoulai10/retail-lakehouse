@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime  # noqa: TC003
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, status
 
@@ -90,10 +90,12 @@ def list_table_commits(
     use_cases: UseCases,
     limit: Annotated[int, Query(ge=1, le=1000)] = 100,
     since: datetime | None = None,
+    before: datetime | None = None,
+    writer: Literal["kafka_connect", "spark", "unknown"] | None = None,
 ) -> TableCommitsApiResponse:
-    """Return the commits of one table, newest first."""
+    """Return the commits of one table, newest first: at or after ``since``, before ``before``, by ``writer``."""
     output = use_cases.list_table_commits.execute(
-        ListTableCommitsUseCaseInput(uuid=table_uuid, limit=limit, since=since)
+        ListTableCommitsUseCaseInput(uuid=table_uuid, limit=limit, since=since, before=before, writer=writer)
     )
     return TableCommitsApiResponse.model_validate(output)
 

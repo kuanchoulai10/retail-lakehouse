@@ -19,6 +19,7 @@ from context.table_maintenance.application.port.outbound.table import (
     ReadTableMetadataGateway,
     ReadTableMetadataGatewayListInput,
     TableCommitPage,
+    TableCommitSelection,
     TableMetadata,
     TableMetadataObservation,
     TableMetadataRef,
@@ -82,12 +83,16 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
             return None
         return observation_from_table(table)
 
-    def list_commits(self, ref: TableMetadataRef, since: str | None, limit: int) -> TableCommitPage | None:
-        """Return up to ``limit`` commits at or after ``since``, newest first, or None when the table is gone."""
+    def list_commits(
+        self,
+        ref: TableMetadataRef,
+        selection: TableCommitSelection,
+    ) -> TableCommitPage | None:
+        """Return up to ``selection.limit`` of the selected commits, newest first, or None when the table is gone."""
         table = self._load(ref)
         if table is None:
             return None
-        return commit_page_from_table(table, since, limit)
+        return commit_page_from_table(table, selection)
 
     def measure_storage(self, ref: TableMetadataRef) -> TableStorageMeasure | None:
         """Return the table's current and referenced storage, or None when the table does not exist."""

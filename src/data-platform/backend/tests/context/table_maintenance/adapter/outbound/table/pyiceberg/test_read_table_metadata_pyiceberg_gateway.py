@@ -22,6 +22,7 @@ from context.table_maintenance.adapter.outbound.table.pyiceberg import (
 )
 from context.table_maintenance.application.port.outbound.table import (
     ReadTableMetadataGatewayListInput,
+    TableCommitSelection,
     TableMetadataRef,
 )
 from context.table_maintenance.application.service.table import (
@@ -316,7 +317,7 @@ def test_list_commits_newest_first_with_limit(catalog: SqlCatalog, gateway: Read
         table.append(_rows([day], day=day))
     snapshots = catalog.load_table("db.events").metadata.snapshots
 
-    page = gateway.list_commits(_ref(), since=None, limit=2)
+    page = gateway.list_commits(_ref(), TableCommitSelection(limit=2))
 
     assert page is not None
     assert page.table_uuid == str(table.metadata.table_uuid)
@@ -337,16 +338,48 @@ def test_list_commits_since(catalog: SqlCatalog, gateway: ReadTableMetadataPyIce
     table = _partitioned(catalog)
     for day in (1, 2, 3):
         table.append(_rows([day], day=day))
-    everything = gateway.list_commits(_ref(), since=None, limit=10)
+    everything = gateway.list_commits(_ref(), TableCommitSelection(limit=10))
     assert everything is not None
     assert everything.truncated is False
     second = everything.commits[1]["committed_at"]
 
-    page = gateway.list_commits(_ref(), since=second, limit=10)
+    page = gateway.list_commits(_ref(), TableCommitSelection(limit=10, since=second))
 
     assert page is not None
     assert len(page.commits) == 2
     assert page.truncated is False
+
+
+def test_list_commits_before(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
+    """Listing commits before a time leaves out the commit made at that time and every later one."""
+    table = _partitioned(catalog)
+    for day in (1, 2, 3):
+        table.append(_rows([day], day=day))
+    everything = gateway.list_commits(_ref(), TableCommitSelection(limit=10))
+    assert everything is not None
+    newest = everything.commits[0]["committed_at"]
+
+    page = gateway.list_commits(_ref(), TableCommitSelection(limit=10, before=newest))
+
+    assert page is not None
+    assert [c["snapshot_id"] for c in page.commits] == [c["snapshot_id"] for c in everything.commits[1:]]
+
+
+def test_list_commits_by_writer(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
+    """Listing commits by writer keeps only that writer's commits, before the limit is applied."""
+    table = _partitioned(catalog)
+    for day in (1, 2):
+        table.append(_rows([day], day=day))
+
+    unknown = gateway.list_commits(_ref(), TableCommitSelection(limit=1, writer="unknown"))
+    spark = gateway.list_commits(_ref(), TableCommitSelection(limit=1, writer="spark"))
+
+    assert unknown is not None
+    assert len(unknown.commits) == 1
+    assert unknown.truncated is True
+    assert spark is not None
+    assert spark.commits == []
+    assert spark.truncated is False
 
 
 def test_measure_storage_counts_files_kept_by_old_snapshots(
@@ -390,5 +423,5 @@ def test_reads_return_none_for_missing_table(catalog: SqlCatalog, gateway: ReadT
     catalog.create_namespace("db")
     ref = _ref(table="nope")
 
-    assert gateway.list_commits(ref, since=None, limit=5) is None
+    assert gateway.list_commits(ref, TableCommitSelection(limit=5)) is None
     assert gateway.measure_storage(ref) is None

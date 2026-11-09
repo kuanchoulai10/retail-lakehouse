@@ -4,6 +4,7 @@
  * Data Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { ListTableCommitsWriter } from './listTableCommitsWriter';
 
 export type ListTableCommitsParams = {
 /**
@@ -12,4 +13,6 @@ export type ListTableCommitsParams = {
  */
 limit?: number;
 since?: string | null;
+before?: string | null;
+writer?: ListTableCommitsWriter;
 };

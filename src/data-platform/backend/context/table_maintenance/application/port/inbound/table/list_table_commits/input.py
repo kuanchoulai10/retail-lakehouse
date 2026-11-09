@@ -16,3 +16,5 @@ class ListTableCommitsUseCaseInput:
     uuid: str
     limit: int = 100
     since: datetime | None = None
+    before: datetime | None = None
+    writer: str | None = None

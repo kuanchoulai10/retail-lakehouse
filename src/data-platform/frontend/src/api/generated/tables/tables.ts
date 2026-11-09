@@ -1048,7 +1048,7 @@ export const getListTableCommitsUrl = (tableUuid: string,
 }
 
 /**
- * Return the commits of one table, newest first.
+ * Return the commits of one table, newest first: at or after ``since``, before ``before``, by ``writer``.
  * @summary List Table Commits
  */
 export const listTableCommits = async (tableUuid: string,

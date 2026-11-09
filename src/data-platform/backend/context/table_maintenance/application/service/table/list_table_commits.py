@@ -11,6 +11,9 @@ from context.table_maintenance.application.port.inbound.table import (
     ListTableCommitsUseCaseOutput,
     ListTableCommitsUseCaseOutputItem,
 )
+from context.table_maintenance.application.port.outbound.table import (
+    TableCommitSelection,
+)
 from context.table_maintenance.application.service.table.load_catalog_table import (
     load_catalog_table,
 )
@@ -26,6 +29,10 @@ if TYPE_CHECKING:
         ReadTableMetadataGateway,
         TablesRepo,
     )
+
+
+def _iso(moment: datetime | None) -> str | None:
+    return None if moment is None else moment.isoformat()
 
 
 def _to_item(commit: dict[str, Any]) -> ListTableCommitsUseCaseOutputItem:
@@ -57,8 +64,15 @@ class ListTableCommitsService(ListTableCommitsUseCase):
     def execute(self, request: ListTableCommitsUseCaseInput) -> ListTableCommitsUseCaseOutput:
         """Return the commits or raise NotFoundError."""
         table, ref = load_catalog_table(self._tables_repo, request.uuid)
-        since = None if request.since is None else request.since.isoformat()
-        page = self._catalog_gateway.list_commits(ref, since, request.limit)
+        page = self._catalog_gateway.list_commits(
+            ref,
+            TableCommitSelection(
+                limit=request.limit,
+                since=_iso(request.since),
+                before=_iso(request.before),
+                writer=request.writer,
+            ),
+        )
         if page is None or page.table_uuid != table.id.value:
             raise_not_in_catalog(table)
         return ListTableCommitsUseCaseOutput(

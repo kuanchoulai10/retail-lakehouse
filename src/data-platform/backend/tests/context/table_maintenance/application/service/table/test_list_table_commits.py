@@ -24,7 +24,10 @@ from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.table import (
     ListTableCommitsUseCaseInput,
 )
-from context.table_maintenance.application.port.outbound.table import TableCommitPage
+from context.table_maintenance.application.port.outbound.table import (
+    TableCommitPage,
+    TableCommitSelection,
+)
 from context.table_maintenance.application.service.table import ListTableCommitsService
 
 KEY = ("iceberg", "sales", "orders")
@@ -113,17 +116,17 @@ def test_truncated_passes_through(service, catalog):
     assert output.truncated is True
 
 
-def test_limit_and_since_are_forwarded(service, catalog):
-    """The limit and since arguments are forwarded to the catalog."""
+def test_limit_time_window_and_writer_are_forwarded(service, catalog):
+    """The limit, the time window and the writer are forwarded to the catalog."""
     catalog.commit_pages[KEY] = TableCommitPage(table_uuid="u-1", commits=[], truncated=False)
     since = datetime(2026, 10, 1, tzinfo=UTC)
+    before = datetime(2026, 10, 8, tzinfo=UTC)
 
-    service.execute(ListTableCommitsUseCaseInput(uuid="u-1", limit=5, since=since))
+    service.execute(ListTableCommitsUseCaseInput(uuid="u-1", limit=5, since=since, before=before, writer="spark"))
 
-    name, (_, got_since, got_limit) = catalog.calls[-1]
+    name, (_, got) = catalog.calls[-1]
     assert name == "list_commits"
-    assert got_since == since.isoformat()
-    assert got_limit == 5
+    assert got == TableCommitSelection(limit=5, since=since.isoformat(), before=before.isoformat(), writer="spark")
 
 
 def test_commits_unknown_table_raises_not_found(service):

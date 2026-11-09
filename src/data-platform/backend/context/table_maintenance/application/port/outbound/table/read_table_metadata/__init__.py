@@ -9,6 +9,9 @@ from context.table_maintenance.application.port.outbound.table.read_table_metada
 from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_commit_page import (
     TableCommitPage,
 )
+from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_commit_selection import (
+    TableCommitSelection,
+)
 from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_metadata import (
     TableMetadata,
 )
@@ -24,6 +27,7 @@ from context.table_maintenance.application.port.outbound.table.read_table_metada
 
 __all__ = [
     "ReadTableMetadataGateway",
+    "TableCommitSelection",
     "ReadTableMetadataGatewayListInput",
     "TableCommitPage",
     "TableMetadataObservation",

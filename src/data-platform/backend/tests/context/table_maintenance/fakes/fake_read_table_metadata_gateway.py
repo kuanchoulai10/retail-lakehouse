@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table import (
         ReadTableMetadataGatewayListInput,
         TableCommitPage,
+        TableCommitSelection,
         TableMetadataObservation,
         TableStorageMeasure,
     )
@@ -63,9 +64,13 @@ class FakeReadTableMetadataGateway(ReadTableMetadataGateway):
         self.calls.append(("observe_table", ref))
         return self.observations.get((ref.catalog, ref.namespace, ref.table))
 
-    def list_commits(self, ref: TableMetadataRef, since: str | None, limit: int) -> TableCommitPage | None:
+    def list_commits(
+        self,
+        ref: TableMetadataRef,
+        selection: TableCommitSelection,
+    ) -> TableCommitPage | None:
         """Return the registered commit page or None."""
-        self.calls.append(("list_commits", (ref, since, limit)))
+        self.calls.append(("list_commits", (ref, selection)))
         return self.commit_pages.get((ref.catalog, ref.namespace, ref.table))
 
     def measure_storage(self, ref: TableMetadataRef) -> TableStorageMeasure | None:

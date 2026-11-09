@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+from datetime import UTC, datetime
 
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.table import (
@@ -101,3 +102,33 @@ def test_commits_404_detail() -> None:
 
     assert response.status_code == 404
     assert response.json()["detail"] == message
+
+
+def test_commits_forward_the_time_window_and_writer() -> None:
+    """The since, before and writer query parameters reach the use case."""
+    stub = StubUseCase(_output())
+    client = build_client(list_table_commits=stub)
+
+    response = client.get(
+        "/v1/tables/u-1/commits",
+        params={"since": "2026-10-01T00:00:00Z", "before": "2026-10-08T00:00:00Z", "writer": "spark"},
+    )
+
+    assert response.status_code == 200
+    assert stub.requests == [
+        ListTableCommitsUseCaseInput(
+            uuid="u-1",
+            since=datetime(2026, 10, 1, tzinfo=UTC),
+            before=datetime(2026, 10, 8, tzinfo=UTC),
+            writer="spark",
+        )
+    ]
+
+
+def test_commits_reject_an_unknown_writer() -> None:
+    """A writer other than the known ones is a validation error."""
+    client = build_client(list_table_commits=StubUseCase(_output()))
+
+    response = client.get("/v1/tables/u-1/commits", params={"writer": "flink"})
+
+    assert response.status_code == 422

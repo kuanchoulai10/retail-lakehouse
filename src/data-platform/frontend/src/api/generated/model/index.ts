@@ -37,6 +37,7 @@ export * from './hTTPValidationError';
 export * from './includeTableApiRequest';
 export * from './listNamespacesParams';
 export * from './listTableCommitsParams';
+export * from './listTableCommitsWriter';
 export * from './listTableMaintenanceRunsParams';
 export * from './listTablesParams';
 export * from './namespaceApiResponse';
