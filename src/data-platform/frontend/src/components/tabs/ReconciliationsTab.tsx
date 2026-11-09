@@ -31,7 +31,9 @@ import {
   formatRule,
   headline,
   isManualRun,
-  isQuiet,
+  foldKey,
+  foldText,
+  formatTime,
   mainWakeText,
   measurementLabel,
   operationLabel,
@@ -45,14 +47,9 @@ import { errorMessage, formatRelativeTime, formatTimestamp } from "@/format";
 const PAGE_SIZE = 50;
 
 const DAY_FORMAT = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
-const TIME_FORMAT = new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 
-function timeOf(r: TableReconciliationApiResponse): string {
-  return TIME_FORMAT.format(new Date(r.reconciled_at));
-}
-
-// A line of the timeline: one reconciliation, or a quiet stretch folded into one line.
-type Line = { kind: "record"; record: TableReconciliationApiResponse } | { kind: "quiet"; records: TableReconciliationApiResponse[] };
+// A line of the timeline: one reconciliation, or a stretch of alike ones folded into one line.
+type Line = { kind: "record"; record: TableReconciliationApiResponse } | { kind: "fold"; key: string; records: TableReconciliationApiResponse[] };
 
 type Day = { label: string; records: TableReconciliationApiResponse[] };
 
@@ -68,16 +65,18 @@ function groupedByDay(records: TableReconciliationApiResponse[]): Day[] {
   return days;
 }
 
-// Consecutive reconciliations that found nothing to do fold into one line, so hourly quiet
-// passes do not drown the ones that did something (spec anti-goal). A skipped one breaks the fold.
+// Consecutive reconciliations that started nothing and read the same fold into one line, so
+// hourly quiet passes or the skips of a paused table do not drown the ones that did something
+// (spec anti-goal). A different headline, or one that started something, breaks the fold.
 function folded(records: TableReconciliationApiResponse[]): Line[] {
   const lines: Line[] = [];
   for (const record of records) {
+    const key = foldKey(record);
     const last = lines.at(-1);
-    if (isQuiet(record) && last?.kind === "quiet") last.records.push(record);
-    else lines.push(isQuiet(record) ? { kind: "quiet", records: [record] } : { kind: "record", record });
+    if (key !== null && last?.kind === "fold" && last.key === key) last.records.push(record);
+    else lines.push(key === null ? { kind: "record", record } : { kind: "fold", key, records: [record] });
   }
-  return lines.map((line) => (line.kind === "quiet" && line.records.length === 1 ? { kind: "record", record: line.records[0]! } : line));
+  return lines.map((line) => (line.kind === "fold" && line.records.length === 1 ? { kind: "record", record: line.records[0]! } : line));
 }
 
 function runPath(runId: string): string {
@@ -98,65 +97,60 @@ function startedRun(r: TableReconciliationApiResponse): string | null {
   return r.run_id !== null && r.operations.some((op) => op.result === "started") ? r.run_id : null;
 }
 
-const ROW_BUTTON =
-  "flex min-w-0 flex-1 flex-col rounded-sm px-3 py-2 text-left hover:bg-hovered-variant focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring";
-
 function RecordLine({ record, onOpen }: { record: TableReconciliationApiResponse; onOpen: () => void }) {
   const runId = startedRun(record);
   return (
-    <li className="flex flex-col sm:flex-row sm:items-center">
-      <button type="button" className={ROW_BUTTON} onClick={onOpen}>
-        <span className="type-label-large flex flex-wrap items-center gap-2 break-words text-on-surface">
+    <ListItem
+      title={
+        <span className="flex flex-wrap items-center gap-2">
           {headline(record)}
           {record.dry_run && !isManualRun(record) && <Badge>Dry run</Badge>}
         </span>
-        <span className="type-body-small text-on-surface-variant">
-          {mainWakeText(record)} at <span className="tabular-nums">{timeOf(record)}</span>,{" "}
+      }
+      description={
+        <>
+          {mainWakeText(record)} at <span className="tabular-nums">{formatTime(record.reconciled_at)}</span>,{" "}
           <time dateTime={record.reconciled_at} title={formatTimestamp(record.reconciled_at)}>
             {formatRelativeTime(record.reconciled_at)}
           </time>
-        </span>
-      </button>
-      {runId !== null && <RunLink runId={runId} className="type-body-small shrink-0 px-3 pb-2 sm:pb-0" />}
-    </li>
+        </>
+      }
+      onSelect={onOpen}
+      trailingAction={runId === null ? undefined : <RunLink runId={runId} />}
+    />
   );
 }
 
-function QuietLine({ records, onOpen }: { records: TableReconciliationApiResponse[]; onOpen: (r: TableReconciliationApiResponse) => void }) {
+function FoldLine({ records, onOpen }: { records: TableReconciliationApiResponse[]; onOpen: (r: TableReconciliationApiResponse) => void }) {
   const [open, setOpen] = useState(false);
   const listId = useId();
-  const first = records.at(-1)!;
-  const last = records[0]!;
   return (
-    <li>
-      <button
-        type="button"
+    <>
+      <ListItem
+        title={<span className="tabular-nums">{foldText(records)}</span>}
+        leadingIcon={open ? <IconChevronDown /> : <IconChevronRight />}
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
-        className="type-body-small flex w-full items-center gap-1 rounded-sm px-3 py-2 text-left text-on-surface-variant hover:bg-hovered-variant focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus-ring"
-        onClick={() => setOpen((value) => !value)}
-      >
-        {open ? <IconChevronDown aria-hidden="true" size={16} /> : <IconChevronRight aria-hidden="true" size={16} />}
-        <span className="tabular-nums">
-          {records.length} reconciliations found nothing to do, {timeOf(first)}–{timeOf(last)}
-        </span>
-      </button>
+        onSelect={() => setOpen((value) => !value)}
+      />
       {open && (
-        <List id={listId} className="pb-2 pl-6">
-          {records.map((record) => (
-            <ListItem
-              key={record.reconciliation_id}
-              title={
-                <span className="tabular-nums">
-                  {mainWakeText(record)} at {timeOf(record)}
-                </span>
-              }
-              onSelect={() => onOpen(record)}
-            />
-          ))}
-        </List>
+        <li>
+          <List id={listId} className="pb-2 pl-6">
+            {records.map((record) => (
+              <ListItem
+                key={record.reconciliation_id}
+                title={
+                  <span className="tabular-nums">
+                    {mainWakeText(record)} at {formatTime(record.reconciled_at)}
+                  </span>
+                }
+                onSelect={() => onOpen(record)}
+              />
+            ))}
+          </List>
+        </li>
       )}
-    </li>
+    </>
   );
 }
 
@@ -172,8 +166,8 @@ function DaySection({ day, onOpen }: { day: Day; onOpen: (r: TableReconciliation
       </h2>
       <List className="mt-2 divide-y divide-outline rounded-md border border-outline bg-surface">
         {folded(day.records).map((line) =>
-          line.kind === "quiet" ? (
-            <QuietLine key={line.records[0]!.reconciliation_id} records={line.records} onOpen={onOpen} />
+          line.kind === "fold" ? (
+            <FoldLine key={line.records[0]!.reconciliation_id} records={line.records} onOpen={onOpen} />
           ) : (
             <RecordLine key={line.record.reconciliation_id} record={line.record} onOpen={() => onOpen(line.record)} />
           ),
@@ -187,7 +181,7 @@ function MetMark({ met }: { met: boolean | null }) {
   if (met === null) return <span aria-hidden="true" className="inline-block w-3.5 shrink-0" />;
   return met ? (
     <>
-      <IconCircleCheck aria-hidden="true" size={14} className="shrink-0 text-primary" />
+      <IconCircleCheck aria-hidden="true" size={14} className="shrink-0 text-on-surface-variant" />
       <span className="sr-only">Met:</span>
     </>
   ) : (
@@ -287,7 +281,13 @@ function ReconciliationDetail({ record }: { record: TableReconciliationApiRespon
 // Each time this table was reconciled, newest first: what woke it, what it decided and what it
 // started. Details open in a drawer; the full measurements sit one click further in.
 export function ReconciliationsTab({ tableUuid }: { tableUuid: string }) {
-  const [selected, setSelected] = useState<TableReconciliationApiResponse | null>(null);
+  // The drawer keeps showing the last record it opened while it closes, so it never empties mid-way.
+  const [shown, setShown] = useState<TableReconciliationApiResponse | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const open = (record: TableReconciliationApiResponse) => {
+    setShown(record);
+    setIsOpen(true);
+  };
   const pages = useInfiniteQuery({
     // Under the list's url key, so invalidating getListTableReconciliationsQueryKey(uuid) refetches it.
     queryKey: [...getListTableReconciliationsQueryKey(tableUuid), "pages"],
@@ -308,7 +308,7 @@ export function ReconciliationsTab({ tableUuid }: { tableUuid: string }) {
   return (
     <>
       {groupedByDay(records).map((day) => (
-        <DaySection key={day.label} day={day} onOpen={setSelected} />
+        <DaySection key={day.label} day={day} onOpen={open} />
       ))}
       {pages.hasNextPage && (
         <Button
@@ -321,8 +321,8 @@ export function ReconciliationsTab({ tableUuid }: { tableUuid: string }) {
           Show older
         </Button>
       )}
-      <Drawer isOpen={selected !== null} onOpenChange={(open) => !open && setSelected(null)} title={selected ? headline(selected) : ""}>
-        {selected && <ReconciliationDetail record={selected} />}
+      <Drawer isOpen={isOpen} onOpenChange={setIsOpen} title={shown ? headline(shown) : ""}>
+        {shown && <ReconciliationDetail record={shown} />}
       </Drawer>
     </>
   );

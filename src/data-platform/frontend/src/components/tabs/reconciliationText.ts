@@ -114,13 +114,43 @@ function withResult(r: TableReconciliationApiResponse, result: string): string[]
   return r.operations.filter((op) => op.result === result).map((op) => operationLabel(op.operation));
 }
 
-// Started nothing, would start nothing and failed to start nothing: a line that can fold.
-export function isQuiet(r: TableReconciliationApiResponse): boolean {
-  return r.outcome === "planned" && headline(r) === "Nothing to do";
+const TIME_FORMAT = new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+
+export function formatTime(iso: string): string {
+  return TIME_FORMAT.format(new Date(iso));
+}
+
+function skipText(r: TableReconciliationApiResponse): string {
+  return `skipped: table ${(r.skip_reason ?? "skipped").replaceAll("_", " ")}`;
+}
+
+// Started, would start or failed to start nothing.
+function startedNothing(r: TableReconciliationApiResponse): boolean {
+  return !r.operations.some((op) => ["started", "would_start", "start_failed"].includes(op.result));
+}
+
+// Consecutive reconciliations with the same fold key fold into one line, so hourly passes that
+// did nothing, or an hourly skip of a paused table, do not drown the ones that did something.
+// null: the reconciliation did something and always gets its own line.
+export function foldKey(r: TableReconciliationApiResponse): string | null {
+  return startedNothing(r) ? headline(r) : null;
+}
+
+// "{n} reconciliations found nothing to do, {first}–{last}" for records newest first, or
+// "{n} reconciliations skipped: table paused, …" for a stretch of skips.
+export function foldText(records: TableReconciliationApiResponse[]): string {
+  const newest = records[0];
+  const oldest = records.at(-1);
+  if (newest === undefined || oldest === undefined) return "";
+  const what = newest.outcome === "skipped" ? skipText(newest) : "found nothing to do";
+  return `${records.length} reconciliations ${what}, ${formatTime(oldest.reconciled_at)}–${formatTime(newest.reconciled_at)}`;
 }
 
 export function headline(r: TableReconciliationApiResponse): string {
-  if (r.outcome === "skipped") return `Skipped: table ${(r.skip_reason ?? "skipped").replaceAll("_", " ")}`;
+  if (r.outcome === "skipped") {
+    const text = skipText(r);
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
   const parts: string[] = [];
   const started = withResult(r, "started");
   if (started.length > 0) {
@@ -181,11 +211,12 @@ function citeAll(ms: ReconciliationMeasurementApiResponse[], op: ReconciliationO
   return ms.map((m) => cite(m, op)).join(" and ");
 }
 
-// The deciding measurements that kept it from being due: for "all" the unmet ones, for "any"
-// every one (none was met).
+// The deciding measurements that kept it from being due: for "all" the unmet ones; for "any"
+// every one when none was met, and none as soon as one was.
 function holdingBack(op: ReconciliationOperationApiResponse): ReconciliationMeasurementApiResponse[] {
   const ms = deciding(op);
-  return op.combine === "any" ? ms : ms.filter((m) => m.met !== true);
+  if (op.combine === "any") return ms.some((m) => m.met === true) ? [] : ms;
+  return ms.filter((m) => m.met !== true);
 }
 
 function nextAllowed(op: ReconciliationOperationApiResponse): string {

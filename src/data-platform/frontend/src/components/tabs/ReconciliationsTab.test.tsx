@@ -160,6 +160,24 @@ describe("ReconciliationsTab", () => {
     expect(lines[2]).toContain("6 reconciliations found nothing to do, 01:42–06:42");
   });
 
+  it("consecutive paused skips fold into one line", async () => {
+    const skip = (id: string, hour: number): TableReconciliationApiResponse => ({
+      ...quiet(id, at(10, hour)),
+      outcome: "skipped",
+      skip_reason: "paused",
+      operations: [],
+    });
+    stubList([...hours(10, 6, 7), skip("s5", 5), skip("s4", 4), skip("s3", 3), ...hours(10, 1, 2)]);
+    renderTab();
+    const day = await screen.findByRole("region", { name: "Reconciliations on Nov 10, 2026" });
+    const lines = within(day).getAllByRole("listitem").map((li) => li.textContent ?? "");
+    expect(lines).toEqual([
+      "2 reconciliations found nothing to do, 06:42–07:42",
+      "3 reconciliations skipped: table paused, 03:42–05:42",
+      "2 reconciliations found nothing to do, 01:42–02:42",
+    ]);
+  });
+
   it("shows a lone quiet record as its own line", async () => {
     stubList([STARTED, quiet("rec-lone", at(10, 9))]);
     renderTab();
@@ -225,10 +243,11 @@ describe("ReconciliationsTab", () => {
     const list = within(compaction).getByRole("list", { name: "All measurements of Rewrite data files" });
     const [reducible, target, partitions] = within(list).getAllByRole("listitem") as [HTMLElement, HTMLElement, HTMLElement];
     expect(reducible).toHaveTextContent(/Reducible files.*1,240.*≥ 5/);
-    expect(reducible).toHaveTextContent(/\bmet\b/i);
+    expect(reducible).toHaveTextContent(/^Met:/);
+    expect(reducible).not.toHaveTextContent(/Not met/);
     expect(target).toHaveTextContent(/Target file size.*128\.0 MB/);
-    expect(target).not.toHaveTextContent(/\bmet\b/i);
-    expect(partitions).not.toHaveTextContent(/\bmet\b/i);
+    expect(target).not.toHaveTextContent(/met:/i);
+    expect(partitions).not.toHaveTextContent(/met:/i);
   });
 
   it("run link points at the maintenance tab with the run id", async () => {

@@ -4,7 +4,7 @@ import type {
   ReconciliationOperationApiResponse,
   TableReconciliationApiResponse,
 } from "../../api/generated/model";
-import { headline, reasonSentence, wakeText } from "./reconciliationText";
+import { foldText, headline, reasonSentence, wakeText } from "./reconciliationText";
 
 function measurement(overrides: Partial<ReconciliationMeasurementApiResponse>): ReconciliationMeasurementApiResponse {
   return { key: "small_manifests", observed: 12, unit: "count", threshold: 20, comparison: ">=", met: false, ...overrides };
@@ -161,6 +161,27 @@ describe("reasonSentence", () => {
     );
   });
 
+  it("cooling down with any combine and a met measurement says it was due", () => {
+    const at = new Date(2026, 10, 14, 3, 0).toISOString();
+    const measurements = [
+      measurement({ key: "small_manifests", observed: 42, threshold: 20, met: true }),
+      measurement({ key: "manifests_per_snapshot", observed: 61, threshold: 100, comparison: ">", met: false }),
+    ];
+    expect(reasonSentence(op({ result: "cooling_down", combine: "any", measurements, next_eligible_at: at }))).toBe(
+      "Due (small manifests 42 (≥ 20)), but it ran recently; next allowed Nov 14, 03:00.",
+    );
+  });
+
+  it("not needed with any combine cites every deciding measurement", () => {
+    const measurements = [
+      measurement({ key: "small_manifests", observed: 12, threshold: 20, met: false }),
+      measurement({ key: "manifests_per_snapshot", observed: 61, threshold: 100, comparison: ">", met: false }),
+    ];
+    expect(reasonSentence(op({ result: "not_needed", combine: "any", measurements }))).toBe(
+      "Not yet: small manifests 12 (≥ 20) and manifests per snapshot 61 (> 100).",
+    );
+  });
+
   it("cooling down with nothing measured only names the time", () => {
     const at = new Date(2026, 10, 14, 3, 0).toISOString();
     expect(reasonSentence(op({ result: "cooling_down", measurements: [], next_eligible_at: at }))).toBe(
@@ -181,5 +202,21 @@ describe("reasonSentence", () => {
     expect(reasonSentence(op({ result: "started", measurements: [m] }))).toBe("Because small manifests 2.0 KB (> 1.0 KB).");
     const s = measurement({ key: "oldest_snapshot_age", observed: 7200, unit: "seconds", threshold: 3600, comparison: ">=", met: true });
     expect(reasonSentence(op({ result: "started", measurements: [s] }))).toBe("Because oldest snapshot age 2 h (≥ 1 h).");
+  });
+});
+
+describe("foldText", () => {
+  const local = (hour: number) => new Date(2026, 10, 10, hour, 42).toISOString();
+
+  it("names a quiet stretch by its first and last time", () => {
+    const records = [record({ reconciled_at: local(4) }), record({ reconciled_at: local(3) })];
+    expect(foldText(records)).toBe("2 reconciliations found nothing to do, 03:42–04:42");
+  });
+
+  it("names a stretch of skips by the skip reason", () => {
+    const records = [4, 3, 2].map((hour) =>
+      record({ reconciled_at: local(hour), outcome: "skipped", skip_reason: "paused", wake_reasons: { schedule: 1 } }),
+    );
+    expect(foldText(records)).toBe("3 reconciliations skipped: table paused, 02:42–04:42");
   });
 });
