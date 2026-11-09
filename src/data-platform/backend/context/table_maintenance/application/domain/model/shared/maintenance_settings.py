@@ -35,6 +35,7 @@ class MaintenanceSettings(ValueObject):
     """Bundle the reconcile interval and per-operation settings of a table."""
 
     reconcile_interval: timedelta = field(default_factory=lambda: timedelta(hours=1))
+    dry_run: bool = False
     rewrite_data_files: RewriteDataFilesSettings = field(default_factory=RewriteDataFilesSettings)
     rewrite_manifests: RewriteManifestsSettings = field(default_factory=RewriteManifestsSettings)
     expire_snapshots: ExpireSnapshotsSettings = field(default_factory=ExpireSnapshotsSettings)

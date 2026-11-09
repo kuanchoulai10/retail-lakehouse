@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 _ROOT_KEYS = {
     "reconcile_interval_seconds",
+    "dry_run",
     "rewrite_data_files",
     "rewrite_manifests",
     "expire_snapshots",
@@ -182,6 +183,7 @@ def maintenance_settings_from_dict(data: Mapping[str, Any]) -> MaintenanceSettin
                 if "reconcile_interval_seconds" in data
                 else default.reconcile_interval
             ),
+            dry_run=_bool(data["dry_run"], "dry_run") if "dry_run" in data else default.dry_run,
             rewrite_data_files=_rewrite_data_files(data),
             rewrite_manifests=_rewrite_manifests(data),
             expire_snapshots=_expire_snapshots(data),

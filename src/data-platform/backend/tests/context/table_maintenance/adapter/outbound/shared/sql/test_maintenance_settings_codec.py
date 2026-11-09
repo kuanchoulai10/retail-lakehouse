@@ -56,3 +56,12 @@ def test_encode_rejects_sub_second_duration():
         MaintenanceSettingsCodec.encode(
             MaintenanceSettings(expire_snapshots=ExpireSnapshotsSettings(older_than=timedelta(days=1, microseconds=1)))
         )
+
+
+def test_dry_run_roundtrip_and_missing_key_means_false():
+    """The dry_run flag is stored, and a stored dict without it decodes to False."""
+    encoded = MaintenanceSettingsCodec.encode(MaintenanceSettings(dry_run=True))
+    assert encoded["dry_run"] is True
+    assert MaintenanceSettingsCodec.decode(encoded).dry_run is True
+    del encoded["dry_run"]
+    assert MaintenanceSettingsCodec.decode(encoded).dry_run is False

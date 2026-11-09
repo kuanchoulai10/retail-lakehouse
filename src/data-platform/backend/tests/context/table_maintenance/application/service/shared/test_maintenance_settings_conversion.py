@@ -81,3 +81,22 @@ def test_invalid_input_raises_validation_error(data: dict):
     """Invalid input raises a ValidationError."""
     with pytest.raises(ValidationError):
         maintenance_settings_from_dict(data)
+
+
+def test_dry_run_round_trips():
+    """A true dry_run survives to_dict then from_dict."""
+    settings = MaintenanceSettings(dry_run=True)
+    data = maintenance_settings_to_dict(settings)
+    assert data["dry_run"] is True
+    assert maintenance_settings_from_dict(data) == settings
+
+
+def test_missing_dry_run_means_false():
+    """A stored dict without the dry_run key means False."""
+    assert maintenance_settings_from_dict({"reconcile_interval_seconds": 60}).dry_run is False
+
+
+def test_dry_run_must_be_boolean():
+    """A non-boolean dry_run is rejected."""
+    with pytest.raises(ValidationError):
+        maintenance_settings_from_dict({"dry_run": "yes"})

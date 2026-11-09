@@ -37,6 +37,7 @@ class MaintenanceSettingsCodec:
         rof = settings.remove_orphan_files
         return {
             "reconcile_interval_seconds": _seconds(settings.reconcile_interval),
+            "dry_run": settings.dry_run,
             "rewrite_data_files": {
                 "enabled": rdf.enabled,
                 "min_interval_seconds": _seconds(rdf.min_interval),
@@ -72,6 +73,7 @@ class MaintenanceSettingsCodec:
         rof = data["remove_orphan_files"]
         return MaintenanceSettings(
             reconcile_interval=timedelta(seconds=data["reconcile_interval_seconds"]),
+            dry_run=data.get("dry_run", False),
             rewrite_data_files=RewriteDataFilesSettings(
                 enabled=rdf["enabled"],
                 min_interval=timedelta(seconds=rdf["min_interval_seconds"]),

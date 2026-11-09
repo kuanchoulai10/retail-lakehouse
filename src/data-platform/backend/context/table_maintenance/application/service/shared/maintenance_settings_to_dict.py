@@ -24,6 +24,7 @@ def maintenance_settings_to_dict(settings: MaintenanceSettings) -> dict[str, Any
     rof = settings.remove_orphan_files
     return {
         "reconcile_interval_seconds": _seconds(settings.reconcile_interval),
+        "dry_run": settings.dry_run,
         "rewrite_data_files": {
             "enabled": rdf.enabled,
             "min_interval_seconds": _seconds(rdf.min_interval),
