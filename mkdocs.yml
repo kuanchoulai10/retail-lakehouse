@@ -4,6 +4,7 @@ nav:
   - index.md
   - prerequisites.md
   - deployment.md
+  - quality-gates.md
   - Argo CD:
     - argocd/deployment.md
     - argocd/cli.md
