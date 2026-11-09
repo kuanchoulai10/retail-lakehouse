@@ -61,6 +61,11 @@ Open issues and deferred work. Not loaded automatically; read the entries for th
 - CheckBox and Switch have no invalid-state stories.
 - Breadcrumb links and the DataTable expand toggle are below the 44px touch target on phones.
 - The ThemePicker icon is the same as the Presets nav icon; give one of them another symbol.
+- Switch the design-system icons from `@serendie/symbols` to Tabler Icons (owner's call, 2026-11-09: the Serendie set does not cover what the console needs). Keep them re-exported from `src/icons` so the console never imports the icon package directly, and update the "Icons only from `@serendie/symbols`" rule in `src/design-system/CLAUDE.md`.
+- Adopt Mock Service Worker (MSW) to mock the backend API at the network layer, so Storybook stories and console tests render real pages against canned responses (owner's call, 2026-11-09).
+- Add page-level Storybook stories (whole console pages, not only components), on top of MSW for their data (owner's call, 2026-11-09).
+- Expose the backend API's Swagger UI through `platform-gateway`, so it can be opened from the gateway like the console (owner's call, 2026-11-09).
+- Adopt Pydantic in the backend domain model (owner's call, 2026-11-09). This reverses the current rule "Domain depends on nothing except `base/` and stdlib. No Pydantic" (`src/data-platform/backend/CLAUDE.md`, import-linter contract `domain-pure`, which forbids `pydantic` in the domain and base layers): record the decision in an ADR, then change the contract, the DDD base types (`ValueObject`, `Entity`, `DomainEvent` are frozen or `eq=False` dataclasses) and the rule together.
 - Document that composite components (`AppLayout`, `TitleBar`, `Panel`, dialogs) take no `ref` or `className`.
 - `SemanticToken` is spelled twice in `semanticTokens.ts` (the union and `SEMANTIC_TOKENS`); derive the union from the array.
 - `resolveThemeTokens` reads the token CSS with flat parsing and would misread nested blocks (for example a `@media` rule inside a theme selector).
