@@ -1,0 +1,5372 @@
+{
+  "components": {
+    "schemas": {
+      "AuthenticationParametersApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry how an external catalog's connection authenticates; each field belongs to one type.\n\nOAUTH uses ``token_uri``, ``client_id``, ``client_secret`` and ``scopes``; BEARER uses\n``bearer_token``; SIGV4 uses the ``role_*``, ``external_id`` and ``signing_*`` fields;\nIMPLICIT uses none. The secrets are sent to the catalog, never returned, and left out of ``repr``.",
+        "properties": {
+          "authentication_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "OAUTH",
+                  "BEARER",
+                  "SIGV4",
+                  "IMPLICIT"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authentication Type"
+          },
+          "bearer_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bearer Token"
+          },
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "client_secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Secret"
+          },
+          "external_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Id"
+          },
+          "role_arn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role Arn"
+          },
+          "role_session_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role Session Name"
+          },
+          "scopes": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scopes"
+          },
+          "signing_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signing Name"
+          },
+          "signing_region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signing Region"
+          },
+          "token_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token Uri"
+          }
+        },
+        "title": "AuthenticationParametersApiRequest",
+        "type": "object"
+      },
+      "AuthenticationParametersApiResponse": {
+        "description": "Describe how a connection authenticates; secrets are never part of it.",
+        "properties": {
+          "authentication_type": {
+            "title": "Authentication Type",
+            "type": "string"
+          },
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "external_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Id"
+          },
+          "role_arn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role Arn"
+          },
+          "role_session_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role Session Name"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
+          },
+          "signing_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signing Name"
+          },
+          "signing_region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Signing Region"
+          },
+          "token_uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token Uri"
+          }
+        },
+        "required": [
+          "authentication_type",
+          "token_uri",
+          "client_id",
+          "scopes",
+          "role_arn",
+          "role_session_name",
+          "external_id",
+          "signing_region",
+          "signing_name"
+        ],
+        "title": "AuthenticationParametersApiResponse",
+        "type": "object"
+      },
+      "CatalogApiResponse": {
+        "description": "Describe a catalog.",
+        "properties": {
+          "connection_config": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConnectionConfigApiResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "default_base_location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Base Location"
+          },
+          "entity_version": {
+            "title": "Entity Version",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "properties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Properties",
+            "type": "object"
+          },
+          "storage_config": {
+            "$ref": "#/components/schemas/StorageConfigApiResponse"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "default_base_location",
+          "properties",
+          "storage_config",
+          "connection_config",
+          "entity_version",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "CatalogApiResponse",
+        "type": "object"
+      },
+      "ConnectionConfigApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the remote catalog service an EXTERNAL catalog connects to.\n\n``connection_type`` REST is a catalog that speaks the Iceberg REST protocol.",
+        "properties": {
+          "authentication": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthenticationParametersApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "connection_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "REST",
+                  "HADOOP",
+                  "HIVE"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Type"
+          },
+          "uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uri"
+          }
+        },
+        "title": "ConnectionConfigApiRequest",
+        "type": "object"
+      },
+      "ConnectionConfigApiResponse": {
+        "description": "Describe the remote catalog service an EXTERNAL catalog connects to.",
+        "properties": {
+          "authentication": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthenticationParametersApiResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "connection_type": {
+            "title": "Connection Type",
+            "type": "string"
+          },
+          "uri": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uri"
+          }
+        },
+        "required": [
+          "connection_type",
+          "uri",
+          "authentication"
+        ],
+        "title": "ConnectionConfigApiResponse",
+        "type": "object"
+      },
+      "CoveredCatalogsApiResponse": {
+        "description": "List the catalogs maintenance covers.",
+        "properties": {
+          "catalogs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Catalogs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "catalogs"
+        ],
+        "title": "CoveredCatalogsApiResponse",
+        "type": "object"
+      },
+      "CreateCatalogApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the body that creates a catalog; an EXTERNAL catalog also needs ``connection_config``.",
+        "properties": {
+          "connection_config": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConnectionConfigApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "default_base_location": {
+            "title": "Default Base Location",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "storage_config": {
+            "$ref": "#/components/schemas/StorageConfigApiRequest"
+          },
+          "type": {
+            "enum": [
+              "INTERNAL",
+              "EXTERNAL"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "default_base_location",
+          "storage_config"
+        ],
+        "title": "CreateCatalogApiRequest",
+        "type": "object"
+      },
+      "CreateGenericTableApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the create generic table form: name, format, optional base location and doc, properties.",
+        "properties": {
+          "base_location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Location"
+          },
+          "doc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc"
+          },
+          "format": {
+            "title": "Format",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "properties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Properties",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name",
+          "format"
+        ],
+        "title": "CreateGenericTableApiRequest",
+        "type": "object"
+      },
+      "CreateNamespaceApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the create namespace form: the parts of the new namespace and its properties.",
+        "properties": {
+          "namespace": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Namespace",
+            "type": "array"
+          },
+          "properties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Properties",
+            "type": "object"
+          }
+        },
+        "required": [
+          "namespace"
+        ],
+        "title": "CreateNamespaceApiRequest",
+        "type": "object"
+      },
+      "CreateTableApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the create table form: name, schema fields, optional partition fields, optional location, properties.",
+        "properties": {
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "partition_fields": {
+            "items": {
+              "$ref": "#/components/schemas/PartitionFieldApiRequest"
+            },
+            "title": "Partition Fields",
+            "type": "array"
+          },
+          "properties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Properties",
+            "type": "object"
+          },
+          "schema_fields": {
+            "items": {
+              "$ref": "#/components/schemas/SchemaFieldApiRequest"
+            },
+            "title": "Schema Fields",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "schema_fields"
+        ],
+        "title": "CreateTableApiRequest",
+        "type": "object"
+      },
+      "CreateTableDiscoveryRuleApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the body that creates a discovery rule.",
+        "properties": {
+          "catalog_pattern": {
+            "default": "*",
+            "title": "Catalog Pattern",
+            "type": "string"
+          },
+          "effect": {
+            "title": "Effect",
+            "type": "string"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "namespace_pattern": {
+            "default": "*",
+            "title": "Namespace Pattern",
+            "type": "string"
+          },
+          "preset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset Id"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "integer"
+          },
+          "table_pattern": {
+            "default": "*",
+            "title": "Table Pattern",
+            "type": "string"
+          }
+        },
+        "required": [
+          "priority",
+          "effect"
+        ],
+        "title": "CreateTableDiscoveryRuleApiRequest",
+        "type": "object"
+      },
+      "CreateTableMaintenancePresetApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the body that creates a table maintenance preset.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "settings": {
+            "additionalProperties": true,
+            "title": "Settings",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CreateTableMaintenancePresetApiRequest",
+        "type": "object"
+      },
+      "CreateViewApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the create view form: name, sql and the sql dialect.",
+        "properties": {
+          "dialect": {
+            "title": "Dialect",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sql": {
+            "title": "Sql",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "sql",
+          "dialect"
+        ],
+        "title": "CreateViewApiRequest",
+        "type": "object"
+      },
+      "ExcludeTableApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the body that excludes a table by hand.",
+        "properties": {
+          "catalog": {
+            "title": "Catalog",
+            "type": "string"
+          },
+          "namespace": {
+            "title": "Namespace",
+            "type": "string"
+          },
+          "table": {
+            "title": "Table",
+            "type": "string"
+          }
+        },
+        "required": [
+          "catalog",
+          "namespace",
+          "table"
+        ],
+        "title": "ExcludeTableApiRequest",
+        "type": "object"
+      },
+      "GenericTableApiResponse": {
+        "description": "Describe a generic table: format, base location, doc and properties; it has no schema or snapshots.",
+        "properties": {
+          "base_location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Location"
+          },
+          "catalog": {
+            "title": "Catalog",
+            "type": "string"
+          },
+          "doc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc"
+          },
+          "format": {
+            "title": "Format",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "namespace": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Namespace",
+            "type": "array"
+          },
+          "properties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Properties",
+            "type": "object"
+          }
+        },
+        "required": [
+          "catalog",
+          "namespace",
+          "name",
+          "format",
+          "base_location",
+          "doc",
+          "properties"
+        ],
+        "title": "GenericTableApiResponse",
+        "type": "object"
+      },
+      "GenericTableIdentifierApiResponse": {
+        "description": "Name a generic table in a listing.",
+        "properties": {
+          "catalog": {
+            "title": "Catalog",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "namespace": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Namespace",
+            "type": "array"
+          }
+        },
+        "required": [
+          "catalog",
+          "namespace",
+          "name"
+        ],
+        "title": "GenericTableIdentifierApiResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "IncludeTableApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the body that includes a table by hand.",
+        "properties": {
+          "catalog": {
+            "title": "Catalog",
+            "type": "string"
+          },
+          "namespace": {
+            "title": "Namespace",
+            "type": "string"
+          },
+          "preset_id": {
+            "title": "Preset Id",
+            "type": "string"
+          },
+          "table": {
+            "title": "Table",
+            "type": "string"
+          }
+        },
+        "required": [
+          "catalog",
+          "namespace",
+          "table",
+          "preset_id"
+        ],
+        "title": "IncludeTableApiRequest",
+        "type": "object"
+      },
+      "NamespaceApiResponse": {
+        "description": "Describe a namespace: its catalog, its parts and its properties.",
+        "properties": {
+          "catalog": {
+            "title": "Catalog",
+            "type": "string"
+          },
+          "namespace": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Namespace",
+            "type": "array"
+          },
+          "properties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Properties",
+            "type": "object"
+          }
+        },
+        "required": [
+          "catalog",
+          "namespace",
+          "properties"
+        ],
+        "title": "NamespaceApiResponse",
+        "type": "object"
+      },
+      "NamespaceSummaryApiResponse": {
+        "description": "Name a namespace in a listing, which carries no properties.",
+        "properties": {
+          "catalog": {
+            "title": "Catalog",
+            "type": "string"
+          },
+          "namespace": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Namespace",
+            "type": "array"
+          }
+        },
+        "required": [
+          "catalog",
+          "namespace"
+        ],
+        "title": "NamespaceSummaryApiResponse",
+        "type": "object"
+      },
+      "PartitionFieldApiRequest": {
+        "additionalProperties": false,
+        "description": "One partition field of the create table form: the top-level column and its transform.",
+        "properties": {
+          "source_column": {
+            "title": "Source Column",
+            "type": "string"
+          },
+          "transform": {
+            "title": "Transform",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_column",
+          "transform"
+        ],
+        "title": "PartitionFieldApiRequest",
+        "type": "object"
+      },
+      "PartitionFieldApiResponse": {
+        "description": "One partition field.",
+        "properties": {
+          "field_id": {
+            "title": "Field Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "integer"
+          },
+          "transform": {
+            "title": "Transform",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "field_id",
+          "name",
+          "transform"
+        ],
+        "title": "PartitionFieldApiResponse",
+        "type": "object"
+      },
+      "PartitionSpecApiResponse": {
+        "description": "The default partition spec; no fields means unpartitioned.",
+        "properties": {
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/PartitionFieldApiResponse"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "spec_id": {
+            "title": "Spec Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "spec_id",
+          "fields"
+        ],
+        "title": "PartitionSpecApiResponse",
+        "type": "object"
+      },
+      "ProcessTableMaintenanceCallbackApiRequest": {
+        "description": "Carry the result a Spark job reports for one operation attempt.",
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "metrics": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Metrics",
+            "type": "object"
+          },
+          "operation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operation"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "succeeded": {
+            "title": "Succeeded",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "attempt",
+          "succeeded"
+        ],
+        "title": "ProcessTableMaintenanceCallbackApiRequest",
+        "type": "object"
+      },
+      "ProcessTableMaintenanceCallbackApiResponse": {
+        "description": "Tell whether the callback was accepted.",
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "accepted"
+        ],
+        "title": "ProcessTableMaintenanceCallbackApiResponse",
+        "type": "object"
+      },
+      "RenameTableApiRequest": {
+        "additionalProperties": false,
+        "description": "Name where the table goes: a namespace of the same catalog, by parts, and a name.",
+        "properties": {
+          "target_name": {
+            "title": "Target Name",
+            "type": "string"
+          },
+          "target_namespace": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Target Namespace",
+            "type": "array"
+          }
+        },
+        "required": [
+          "target_namespace",
+          "target_name"
+        ],
+        "title": "RenameTableApiRequest",
+        "type": "object"
+      },
+      "ScanDiscoveryApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the body that scans a catalog or one namespace.",
+        "properties": {
+          "catalog": {
+            "title": "Catalog",
+            "type": "string"
+          },
+          "namespace": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Namespace"
+          }
+        },
+        "required": [
+          "catalog"
+        ],
+        "title": "ScanDiscoveryApiRequest",
+        "type": "object"
+      },
+      "ScanDiscoveryApiResponse": {
+        "description": "Describe what a scan registered.",
+        "properties": {
+          "dropped": {
+            "title": "Dropped",
+            "type": "integer"
+          },
+          "ensured": {
+            "title": "Ensured",
+            "type": "integer"
+          },
+          "registered": {
+            "title": "Registered",
+            "type": "integer"
+          },
+          "renamed": {
+            "title": "Renamed",
+            "type": "integer"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "registered",
+          "renamed",
+          "dropped",
+          "skipped",
+          "ensured"
+        ],
+        "title": "ScanDiscoveryApiResponse",
+        "type": "object"
+      },
+      "SchemaApiResponse": {
+        "description": "A schema: its id and its top-level fields, as a table or a view carries it.",
+        "properties": {
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/SchemaFieldApiResponse"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "schema_id": {
+            "title": "Schema Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_id",
+          "fields"
+        ],
+        "title": "SchemaApiResponse",
+        "type": "object"
+      },
+      "SchemaFieldApiRequest": {
+        "additionalProperties": false,
+        "description": "One column of the create table form; ``type`` is an Iceberg primitive or the nested type syntax.",
+        "properties": {
+          "doc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "required": {
+            "default": true,
+            "title": "Required",
+            "type": "boolean"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "SchemaFieldApiRequest",
+        "type": "object"
+      },
+      "SchemaFieldApiResponse": {
+        "description": "One top-level column of a schema; ``type`` is text.",
+        "properties": {
+          "doc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "required",
+          "doc"
+        ],
+        "title": "SchemaFieldApiResponse",
+        "type": "object"
+      },
+      "SnapshotApiResponse": {
+        "description": "One snapshot; ids are decimal strings and ``summary`` holds the summary's keys other than ``operation``.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "operation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operation"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "summary": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Summary",
+            "type": "object"
+          },
+          "timestamp_ms": {
+            "title": "Timestamp Ms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "parent_id",
+          "timestamp_ms",
+          "operation",
+          "summary"
+        ],
+        "title": "SnapshotApiResponse",
+        "type": "object"
+      },
+      "SortFieldApiResponse": {
+        "description": "One sort field; ``direction`` is ``asc`` or ``desc``, ``null_order`` ``nulls-first`` or ``nulls-last``.",
+        "properties": {
+          "direction": {
+            "title": "Direction",
+            "type": "string"
+          },
+          "null_order": {
+            "title": "Null Order",
+            "type": "string"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "integer"
+          },
+          "transform": {
+            "title": "Transform",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "transform",
+          "direction",
+          "null_order"
+        ],
+        "title": "SortFieldApiResponse",
+        "type": "object"
+      },
+      "SortOrderApiResponse": {
+        "description": "The default sort order; no fields means unsorted.",
+        "properties": {
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/SortFieldApiResponse"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "order_id": {
+            "title": "Order Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "order_id",
+          "fields"
+        ],
+        "title": "SortOrderApiResponse",
+        "type": "object"
+      },
+      "StorageConfigApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the storage fields of the catalog forms; each type uses only its own fields.",
+        "properties": {
+          "allowed_locations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Locations",
+            "type": "array"
+          },
+          "consent_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Url"
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint"
+          },
+          "endpoint_internal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint Internal"
+          },
+          "external_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Id"
+          },
+          "gcs_service_account": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gcs Service Account"
+          },
+          "multi_tenant_app_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Multi Tenant App Name"
+          },
+          "path_style_access": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path Style Access"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "role_arn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role Arn"
+          },
+          "storage_type": {
+            "enum": [
+              "S3",
+              "AZURE",
+              "GCS",
+              "FILE"
+            ],
+            "title": "Storage Type",
+            "type": "string"
+          },
+          "sts_endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sts Endpoint"
+          },
+          "sts_unavailable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sts Unavailable"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id"
+          }
+        },
+        "required": [
+          "storage_type"
+        ],
+        "title": "StorageConfigApiRequest",
+        "type": "object"
+      },
+      "StorageConfigApiResponse": {
+        "description": "Describe where a catalog keeps its data; unset fields are null.",
+        "properties": {
+          "allowed_locations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed Locations",
+            "type": "array"
+          },
+          "consent_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consent Url"
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint"
+          },
+          "endpoint_internal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endpoint Internal"
+          },
+          "external_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Id"
+          },
+          "gcs_service_account": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gcs Service Account"
+          },
+          "multi_tenant_app_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Multi Tenant App Name"
+          },
+          "path_style_access": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path Style Access"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "role_arn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role Arn"
+          },
+          "storage_type": {
+            "title": "Storage Type",
+            "type": "string"
+          },
+          "sts_endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sts Endpoint"
+          },
+          "sts_unavailable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sts Unavailable"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id"
+          },
+          "user_arn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Arn"
+          }
+        },
+        "required": [
+          "storage_type",
+          "allowed_locations",
+          "region",
+          "role_arn",
+          "external_id",
+          "user_arn",
+          "endpoint",
+          "endpoint_internal",
+          "sts_endpoint",
+          "sts_unavailable",
+          "path_style_access",
+          "tenant_id",
+          "multi_tenant_app_name",
+          "consent_url",
+          "gcs_service_account"
+        ],
+        "title": "StorageConfigApiResponse",
+        "type": "object"
+      },
+      "TableCommitApiResponse": {
+        "description": "Describe one commit of a table.",
+        "properties": {
+          "added_data_files": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Added Data Files"
+          },
+          "added_delete_files": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Added Delete Files"
+          },
+          "added_records": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Added Records"
+          },
+          "committed_at": {
+            "format": "date-time",
+            "title": "Committed At",
+            "type": "string"
+          },
+          "deleted_data_files": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted Data Files"
+          },
+          "deleted_records": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted Records"
+          },
+          "operation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operation"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "removed_delete_files": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Removed Delete Files"
+          },
+          "snapshot_id": {
+            "title": "Snapshot Id",
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Summary",
+            "type": "object"
+          },
+          "writer": {
+            "title": "Writer",
+            "type": "string"
+          }
+        },
+        "required": [
+          "snapshot_id",
+          "parent_id",
+          "committed_at",
+          "operation",
+          "writer",
+          "added_records",
+          "deleted_records",
+          "added_data_files",
+          "deleted_data_files",
+          "added_delete_files",
+          "removed_delete_files",
+          "summary"
+        ],
+        "title": "TableCommitApiResponse",
+        "type": "object"
+      },
+      "TableCommitsApiResponse": {
+        "description": "Carry the commits of a table, newest first.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TableCommitApiResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "truncated"
+        ],
+        "title": "TableCommitsApiResponse",
+        "type": "object"
+      },
+      "TableDiscoveryRuleApiResponse": {
+        "description": "Describe a discovery rule.",
+        "properties": {
+          "catalog_pattern": {
+            "title": "Catalog Pattern",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "effect": {
+            "title": "Effect",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "namespace_pattern": {
+            "title": "Namespace Pattern",
+            "type": "string"
+          },
+          "preset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset Id"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "integer"
+          },
+          "table_pattern": {
+            "title": "Table Pattern",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "priority",
+          "effect",
+          "catalog_pattern",
+          "namespace_pattern",
+          "table_pattern",
+          "preset_id",
+          "enabled",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "TableDiscoveryRuleApiResponse",
+        "type": "object"
+      },
+      "TableDiscoverySettingsApiResponse": {
+        "description": "Describe the discovery settings.",
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "updated_at"
+        ],
+        "title": "TableDiscoverySettingsApiResponse",
+        "type": "object"
+      },
+      "TableHealthApiResponse": {
+        "description": "Describe the maintenance health of a table.",
+        "properties": {
+          "equality_delete_files": {
+            "title": "Equality Delete Files",
+            "type": "integer"
+          },
+          "not_scheduled_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Not Scheduled Reason"
+          },
+          "operations": {
+            "items": {
+              "$ref": "#/components/schemas/TableHealthOperationApiResponse"
+            },
+            "title": "Operations",
+            "type": "array"
+          },
+          "position_delete_files": {
+            "title": "Position Delete Files",
+            "type": "integer"
+          },
+          "scheduled": {
+            "title": "Scheduled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "scheduled",
+          "not_scheduled_reason",
+          "operations",
+          "position_delete_files",
+          "equality_delete_files"
+        ],
+        "title": "TableHealthApiResponse",
+        "type": "object"
+      },
+      "TableHealthOperationApiResponse": {
+        "description": "Describe the scheduler's verdict on one maintenance operation.",
+        "properties": {
+          "measured": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measured"
+          },
+          "next_eligible_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Eligible At"
+          },
+          "operation": {
+            "title": "Operation",
+            "type": "string"
+          },
+          "qualifying_partitions": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualifying Partitions"
+          },
+          "size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Bytes"
+          },
+          "size_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Source"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "verdict": {
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation",
+          "verdict",
+          "measured",
+          "threshold",
+          "next_eligible_at",
+          "qualifying_partitions",
+          "size_bytes",
+          "size_source"
+        ],
+        "title": "TableHealthOperationApiResponse",
+        "type": "object"
+      },
+      "TableIdentifierApiResponse": {
+        "description": "Name a table in a listing or after a rename.",
+        "properties": {
+          "catalog": {
+            "title": "Catalog",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "namespace": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Namespace",
+            "type": "array"
+          }
+        },
+        "required": [
+          "catalog",
+          "namespace",
+          "name"
+        ],
+        "title": "TableIdentifierApiResponse",
+        "type": "object"
+      },
+      "TableMaintenancePresetApiResponse": {
+        "description": "Describe a table maintenance preset.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "settings": {
+            "additionalProperties": true,
+            "title": "Settings",
+            "type": "object"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "settings",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "TableMaintenancePresetApiResponse",
+        "type": "object"
+      },
+      "TableMaintenanceRunApiResponse": {
+        "description": "Describe a maintenance run.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "execution_ref": {
+            "title": "Execution Ref",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "operations": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Operations",
+            "type": "array"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "table_uuid": {
+            "title": "Table Uuid",
+            "type": "string"
+          },
+          "trigger": {
+            "title": "Trigger",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "table_uuid",
+          "execution_ref",
+          "trigger",
+          "status",
+          "operations",
+          "created_at",
+          "finished_at"
+        ],
+        "title": "TableMaintenanceRunApiResponse",
+        "type": "object"
+      },
+      "TableStorageApiResponse": {
+        "description": "Describe the storage of a table and what maintenance reclaimed.",
+        "properties": {
+          "attempts_without_metrics": {
+            "title": "Attempts Without Metrics",
+            "type": "integer"
+          },
+          "current_bytes": {
+            "title": "Current Bytes",
+            "type": "integer"
+          },
+          "current_files": {
+            "title": "Current Files",
+            "type": "integer"
+          },
+          "old_snapshot_bytes": {
+            "title": "Old Snapshot Bytes",
+            "type": "integer"
+          },
+          "old_snapshot_files": {
+            "title": "Old Snapshot Files",
+            "type": "integer"
+          },
+          "reclaimed": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Reclaimed",
+            "type": "object"
+          },
+          "window_days": {
+            "title": "Window Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "current_bytes",
+          "current_files",
+          "old_snapshot_bytes",
+          "old_snapshot_files",
+          "window_days",
+          "reclaimed",
+          "attempts_without_metrics"
+        ],
+        "title": "TableStorageApiResponse",
+        "type": "object"
+      },
+      "TableSummaryApiResponse": {
+        "description": "The current snapshot's totals, each null when not reported.",
+        "properties": {
+          "total_data_files": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Data Files"
+          },
+          "total_files_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Files Size"
+          },
+          "total_records": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Records"
+          }
+        },
+        "required": [
+          "total_records",
+          "total_data_files",
+          "total_files_size"
+        ],
+        "title": "TableSummaryApiResponse",
+        "type": "object"
+      },
+      "TriggerTableMaintenanceApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the operations to run now.",
+        "properties": {
+          "operations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Operations",
+            "type": "array"
+          }
+        },
+        "required": [
+          "operations"
+        ],
+        "title": "TriggerTableMaintenanceApiRequest",
+        "type": "object"
+      },
+      "TriggerTableMaintenanceApiResponse": {
+        "description": "Tell whether the trigger was accepted.",
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "accepted"
+        ],
+        "title": "TriggerTableMaintenanceApiResponse",
+        "type": "object"
+      },
+      "UpdateCatalogApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the body that changes a catalog.\n\n``entity_version`` is the version that was loaded. ``properties`` replace the current ones,\nso they are required: a body that leaves them out must not wipe them.",
+        "properties": {
+          "default_base_location": {
+            "title": "Default Base Location",
+            "type": "string"
+          },
+          "entity_version": {
+            "title": "Entity Version",
+            "type": "integer"
+          },
+          "properties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Properties",
+            "type": "object"
+          },
+          "storage_config": {
+            "$ref": "#/components/schemas/StorageConfigApiRequest"
+          }
+        },
+        "required": [
+          "entity_version",
+          "default_base_location",
+          "properties",
+          "storage_config"
+        ],
+        "title": "UpdateCatalogApiRequest",
+        "type": "object"
+      },
+      "UpdateNamespacePropertiesApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the properties to set and the property keys to remove.",
+        "properties": {
+          "removals": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Removals",
+            "type": "array"
+          },
+          "updates": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Updates",
+            "type": "object"
+          }
+        },
+        "title": "UpdateNamespacePropertiesApiRequest",
+        "type": "object"
+      },
+      "UpdateTableDiscoveryRuleApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the body that replaces the fields of a discovery rule.",
+        "properties": {
+          "catalog_pattern": {
+            "default": "*",
+            "title": "Catalog Pattern",
+            "type": "string"
+          },
+          "effect": {
+            "title": "Effect",
+            "type": "string"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "namespace_pattern": {
+            "default": "*",
+            "title": "Namespace Pattern",
+            "type": "string"
+          },
+          "preset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset Id"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "integer"
+          },
+          "table_pattern": {
+            "default": "*",
+            "title": "Table Pattern",
+            "type": "string"
+          }
+        },
+        "required": [
+          "priority",
+          "effect"
+        ],
+        "title": "UpdateTableDiscoveryRuleApiRequest",
+        "type": "object"
+      },
+      "UpdateTableDiscoverySettingsApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the body that switches discovery on or off.",
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "UpdateTableDiscoverySettingsApiRequest",
+        "type": "object"
+      },
+      "UpdateTableMaintenancePresetApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the body that changes a table maintenance preset; omitted fields stay.",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "settings": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settings"
+          }
+        },
+        "title": "UpdateTableMaintenancePresetApiRequest",
+        "type": "object"
+      },
+      "UpdateTablePropertiesApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the loaded table's uuid, the properties to set and the property keys to remove.",
+        "properties": {
+          "expected_uuid": {
+            "title": "Expected Uuid",
+            "type": "string"
+          },
+          "removals": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Removals",
+            "type": "array"
+          },
+          "updates": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Updates",
+            "type": "object"
+          }
+        },
+        "required": [
+          "expected_uuid"
+        ],
+        "title": "UpdateTablePropertiesApiRequest",
+        "type": "object"
+      },
+      "UpdateTableSettingsApiRequest": {
+        "additionalProperties": true,
+        "description": "Carry the settings object that replaces the table settings.",
+        "title": "UpdateTableSettingsApiRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "ViewApiResponse": {
+        "description": "Describe an Iceberg view: what the view page's sql, schema, versions and properties show.\n\n``sql`` (the application's ``query``), ``dialect`` and ``default_namespace`` are the current version's, and\n``view_schema`` (``schema`` in JSON) is the schema of that version.",
+        "properties": {
+          "catalog": {
+            "title": "Catalog",
+            "type": "string"
+          },
+          "current_version_id": {
+            "title": "Current Version Id",
+            "type": "integer"
+          },
+          "default_namespace": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Default Namespace",
+            "type": "array"
+          },
+          "dialect": {
+            "title": "Dialect",
+            "type": "string"
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "namespace": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Namespace",
+            "type": "array"
+          },
+          "properties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Properties",
+            "type": "object"
+          },
+          "schema": {
+            "$ref": "#/components/schemas/SchemaApiResponse"
+          },
+          "sql": {
+            "title": "Sql",
+            "type": "string"
+          },
+          "uuid": {
+            "title": "Uuid",
+            "type": "string"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/ViewVersionApiResponse"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "catalog",
+          "namespace",
+          "name",
+          "uuid",
+          "location",
+          "sql",
+          "dialect",
+          "default_namespace",
+          "current_version_id",
+          "schema",
+          "versions",
+          "properties"
+        ],
+        "title": "ViewApiResponse",
+        "type": "object"
+      },
+      "ViewIdentifierApiResponse": {
+        "description": "Name a view in a listing.",
+        "properties": {
+          "catalog": {
+            "title": "Catalog",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "namespace": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Namespace",
+            "type": "array"
+          }
+        },
+        "required": [
+          "catalog",
+          "namespace",
+          "name"
+        ],
+        "title": "ViewIdentifierApiResponse",
+        "type": "object"
+      },
+      "ViewVersionApiResponse": {
+        "description": "One version of the view: its id, when it was made and its sql, which the JSON names ``sql``.",
+        "properties": {
+          "sql": {
+            "title": "Sql",
+            "type": "string"
+          },
+          "timestamp_ms": {
+            "title": "Timestamp Ms",
+            "type": "integer"
+          },
+          "version_id": {
+            "title": "Version Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version_id",
+          "timestamp_ms",
+          "sql"
+        ],
+        "title": "ViewVersionApiResponse",
+        "type": "object"
+      },
+      "context__catalog__adapter__inbound__web__table__dto__TableApiResponse": {
+        "description": "Describe an Iceberg table: everything the table page's Overview, Schema, Snapshots and Properties show.",
+        "properties": {
+          "catalog": {
+            "title": "Catalog",
+            "type": "string"
+          },
+          "current_snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Snapshot Id"
+          },
+          "format_version": {
+            "title": "Format Version",
+            "type": "integer"
+          },
+          "last_updated_ms": {
+            "title": "Last Updated Ms",
+            "type": "integer"
+          },
+          "location": {
+            "title": "Location",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "namespace": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Namespace",
+            "type": "array"
+          },
+          "partition_spec": {
+            "$ref": "#/components/schemas/PartitionSpecApiResponse"
+          },
+          "properties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Properties",
+            "type": "object"
+          },
+          "schema": {
+            "$ref": "#/components/schemas/SchemaApiResponse"
+          },
+          "snapshots": {
+            "items": {
+              "$ref": "#/components/schemas/SnapshotApiResponse"
+            },
+            "title": "Snapshots",
+            "type": "array"
+          },
+          "sort_order": {
+            "$ref": "#/components/schemas/SortOrderApiResponse"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/TableSummaryApiResponse"
+          },
+          "uuid": {
+            "title": "Uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "catalog",
+          "namespace",
+          "name",
+          "uuid",
+          "format_version",
+          "location",
+          "current_snapshot_id",
+          "last_updated_ms",
+          "schema",
+          "partition_spec",
+          "sort_order",
+          "snapshots",
+          "properties",
+          "summary"
+        ],
+        "title": "TableApiResponse",
+        "type": "object"
+      },
+      "context__table_maintenance__adapter__inbound__web__table__dto__TableApiResponse": {
+        "description": "Describe a table.",
+        "properties": {
+          "catalog": {
+            "title": "Catalog",
+            "type": "string"
+          },
+          "matched_rule_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched Rule Id"
+          },
+          "namespace": {
+            "title": "Namespace",
+            "type": "string"
+          },
+          "operation_states": {
+            "additionalProperties": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Operation States",
+            "type": "object"
+          },
+          "registered_at": {
+            "format": "date-time",
+            "title": "Registered At",
+            "type": "string"
+          },
+          "selection": {
+            "title": "Selection",
+            "type": "string"
+          },
+          "settings": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settings"
+          },
+          "source_preset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Preset Id"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "table": {
+            "title": "Table",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "uuid": {
+            "title": "Uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uuid",
+          "catalog",
+          "namespace",
+          "table",
+          "status",
+          "selection",
+          "settings",
+          "matched_rule_id",
+          "source_preset_id",
+          "operation_states",
+          "registered_at",
+          "updated_at"
+        ],
+        "title": "TableApiResponse",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Data Platform API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/healthz": {
+      "get": {
+        "operationId": "healthz",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Healthz",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Healthz"
+      }
+    },
+    "/v1/catalogs": {
+      "get": {
+        "description": "List every catalog.",
+        "operationId": "list_catalogs",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CatalogApiResponse"
+                  },
+                  "title": "Response List Catalogs",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Catalogs",
+        "tags": [
+          "catalogs"
+        ]
+      },
+      "post": {
+        "description": "Create a catalog and let its admin role manage its content.",
+        "operationId": "create_catalog",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCatalogApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Catalog",
+        "tags": [
+          "catalogs"
+        ]
+      }
+    },
+    "/v1/catalogs/{catalog}": {
+      "delete": {
+        "description": "Delete an empty catalog.",
+        "operationId": "delete_catalog",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Catalog",
+        "tags": [
+          "catalogs"
+        ]
+      },
+      "get": {
+        "description": "Return one catalog.",
+        "operationId": "get_catalog",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Catalog",
+        "tags": [
+          "catalogs"
+        ]
+      },
+      "put": {
+        "description": "Change a catalog's properties and storage config as of the version that was loaded.",
+        "operationId": "update_catalog",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCatalogApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Catalog",
+        "tags": [
+          "catalogs"
+        ]
+      }
+    },
+    "/v1/catalogs/{catalog}/namespaces": {
+      "get": {
+        "description": "List the direct children of a namespace, or the top level of the catalog.",
+        "operationId": "list_namespaces",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Parent parts joined by U+001F (%1F); empty for the top level",
+            "in": "query",
+            "name": "parent",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "Parent parts joined by U+001F (%1F); empty for the top level",
+              "title": "Parent",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NamespaceSummaryApiResponse"
+                  },
+                  "title": "Response List Namespaces",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Namespaces",
+        "tags": [
+          "namespaces"
+        ]
+      },
+      "post": {
+        "description": "Create a namespace with its properties.",
+        "operationId": "create_namespace",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNamespaceApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NamespaceApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Namespace",
+        "tags": [
+          "namespaces"
+        ]
+      }
+    },
+    "/v1/catalogs/{catalog}/namespaces/{namespace}": {
+      "delete": {
+        "description": "Delete an empty namespace.",
+        "operationId": "delete_namespace",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "title": "Namespace",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Namespace",
+        "tags": [
+          "namespaces"
+        ]
+      },
+      "get": {
+        "description": "Return one namespace; ``namespace`` is its parts joined by U+001F (%1F).",
+        "operationId": "get_namespace",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "title": "Namespace",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NamespaceApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Namespace",
+        "tags": [
+          "namespaces"
+        ]
+      }
+    },
+    "/v1/catalogs/{catalog}/namespaces/{namespace}/generic-tables": {
+      "get": {
+        "description": "List the generic tables directly in the namespace.",
+        "operationId": "list_generic_tables",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "title": "Namespace",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GenericTableIdentifierApiResponse"
+                  },
+                  "title": "Response List Generic Tables",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Generic Tables",
+        "tags": [
+          "generic-tables"
+        ]
+      },
+      "post": {
+        "description": "Create a generic table from the create generic table form.",
+        "operationId": "create_generic_table",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "title": "Namespace",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGenericTableApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericTableApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Generic Table",
+        "tags": [
+          "generic-tables"
+        ]
+      }
+    },
+    "/v1/catalogs/{catalog}/namespaces/{namespace}/generic-tables/{generic_table}": {
+      "delete": {
+        "description": "Drop the generic table.",
+        "operationId": "delete_generic_table",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "title": "Namespace",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "generic_table",
+            "required": true,
+            "schema": {
+              "title": "Generic Table",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Generic Table",
+        "tags": [
+          "generic-tables"
+        ]
+      },
+      "get": {
+        "description": "Return one generic table with its format, base location, doc and properties.",
+        "operationId": "get_generic_table",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "title": "Namespace",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "generic_table",
+            "required": true,
+            "schema": {
+              "title": "Generic Table",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericTableApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Generic Table",
+        "tags": [
+          "generic-tables"
+        ]
+      }
+    },
+    "/v1/catalogs/{catalog}/namespaces/{namespace}/properties": {
+      "put": {
+        "description": "Set and remove properties of a namespace.",
+        "operationId": "update_namespace_properties",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "title": "Namespace",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNamespacePropertiesApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NamespaceApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Namespace Properties",
+        "tags": [
+          "namespaces"
+        ]
+      }
+    },
+    "/v1/catalogs/{catalog}/namespaces/{namespace}/tables": {
+      "get": {
+        "description": "List the Iceberg tables directly in the namespace.",
+        "operationId": "list_catalog_tables",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "title": "Namespace",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TableIdentifierApiResponse"
+                  },
+                  "title": "Response List Catalog Tables",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Catalog Tables",
+        "tags": [
+          "tables"
+        ]
+      },
+      "post": {
+        "description": "Create an Iceberg table from the create table form.",
+        "operationId": "create_table",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "title": "Namespace",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTableApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/context__catalog__adapter__inbound__web__table__dto__TableApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Table",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/catalogs/{catalog}/namespaces/{namespace}/tables/{table}": {
+      "delete": {
+        "description": "Drop the table; its files are never purged.",
+        "operationId": "delete_table",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "title": "Namespace",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "table",
+            "required": true,
+            "schema": {
+              "title": "Table",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Table",
+        "tags": [
+          "tables"
+        ]
+      },
+      "get": {
+        "description": "Return one Iceberg table with its schema, partition spec, sort order, snapshots, properties and summary.",
+        "operationId": "get_catalog_table",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "title": "Namespace",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "table",
+            "required": true,
+            "schema": {
+              "title": "Table",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/context__catalog__adapter__inbound__web__table__dto__TableApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Catalog Table",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/catalogs/{catalog}/namespaces/{namespace}/tables/{table}/properties": {
+      "put": {
+        "description": "Set and remove properties of the table that was loaded; 409 when it changed since.",
+        "operationId": "update_table_properties",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "title": "Namespace",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "table",
+            "required": true,
+            "schema": {
+              "title": "Table",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTablePropertiesApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/context__catalog__adapter__inbound__web__table__dto__TableApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Table Properties",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/catalogs/{catalog}/namespaces/{namespace}/tables/{table}/rename": {
+      "post": {
+        "description": "Rename the table or move it to another namespace of the catalog; return where it now is.",
+        "operationId": "rename_table",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "title": "Namespace",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "table",
+            "required": true,
+            "schema": {
+              "title": "Table",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameTableApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableIdentifierApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rename Table",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/catalogs/{catalog}/namespaces/{namespace}/views": {
+      "get": {
+        "description": "List the Iceberg views directly in the namespace.",
+        "operationId": "list_views",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "title": "Namespace",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ViewIdentifierApiResponse"
+                  },
+                  "title": "Response List Views",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Views",
+        "tags": [
+          "views"
+        ]
+      },
+      "post": {
+        "description": "Create an Iceberg view from the create view form.",
+        "operationId": "create_view",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "title": "Namespace",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateViewApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create View",
+        "tags": [
+          "views"
+        ]
+      }
+    },
+    "/v1/catalogs/{catalog}/namespaces/{namespace}/views/{view}": {
+      "delete": {
+        "description": "Drop the view.",
+        "operationId": "delete_view",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "title": "Namespace",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "view",
+            "required": true,
+            "schema": {
+              "title": "View",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete View",
+        "tags": [
+          "views"
+        ]
+      },
+      "get": {
+        "description": "Return one Iceberg view with its sql, schema, versions and properties.",
+        "operationId": "get_view",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "namespace",
+            "required": true,
+            "schema": {
+              "title": "Namespace",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "view",
+            "required": true,
+            "schema": {
+              "title": "View",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ViewApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get View",
+        "tags": [
+          "views"
+        ]
+      }
+    },
+    "/v1/table-discovery-rules": {
+      "get": {
+        "description": "List the discovery rules.",
+        "operationId": "list_table_discovery_rules",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TableDiscoveryRuleApiResponse"
+                  },
+                  "title": "Response List Table Discovery Rules",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Table Discovery Rules",
+        "tags": [
+          "table-discovery-rules"
+        ]
+      },
+      "post": {
+        "description": "Create a discovery rule.",
+        "operationId": "create_table_discovery_rule",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTableDiscoveryRuleApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableDiscoveryRuleApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Table Discovery Rule",
+        "tags": [
+          "table-discovery-rules"
+        ]
+      }
+    },
+    "/v1/table-discovery-rules/{rule_id}": {
+      "delete": {
+        "description": "Delete a discovery rule.",
+        "operationId": "delete_table_discovery_rule",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Table Discovery Rule",
+        "tags": [
+          "table-discovery-rules"
+        ]
+      },
+      "patch": {
+        "description": "Replace the fields of a discovery rule.",
+        "operationId": "update_table_discovery_rule",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTableDiscoveryRuleApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableDiscoveryRuleApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Table Discovery Rule",
+        "tags": [
+          "table-discovery-rules"
+        ]
+      }
+    },
+    "/v1/table-discovery-settings": {
+      "get": {
+        "description": "Return whether discovery is enabled.",
+        "operationId": "get_table_discovery_settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableDiscoverySettingsApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Table Discovery Settings",
+        "tags": [
+          "table-discovery-settings"
+        ]
+      },
+      "put": {
+        "description": "Switch discovery on or off.",
+        "operationId": "update_table_discovery_settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTableDiscoverySettingsApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableDiscoverySettingsApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Table Discovery Settings",
+        "tags": [
+          "table-discovery-settings"
+        ]
+      }
+    },
+    "/v1/table-discovery-settings/catalogs": {
+      "get": {
+        "description": "List the catalogs maintenance covers.",
+        "operationId": "list_covered_catalogs",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoveredCatalogsApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Covered Catalogs",
+        "tags": [
+          "table-discovery-settings"
+        ]
+      }
+    },
+    "/v1/table-discovery-settings/scan": {
+      "post": {
+        "description": "Scan a catalog, or one namespace, for tables to manage.",
+        "operationId": "scan_discovery",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanDiscoveryApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanDiscoveryApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Scan Discovery",
+        "tags": [
+          "table-discovery-settings"
+        ]
+      }
+    },
+    "/v1/table-maintenance-presets": {
+      "get": {
+        "description": "List the table maintenance presets.",
+        "operationId": "list_table_maintenance_presets",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TableMaintenancePresetApiResponse"
+                  },
+                  "title": "Response List Table Maintenance Presets",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Table Maintenance Presets",
+        "tags": [
+          "table-maintenance-presets"
+        ]
+      },
+      "post": {
+        "description": "Create a table maintenance preset.",
+        "operationId": "create_table_maintenance_preset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTableMaintenancePresetApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableMaintenancePresetApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Table Maintenance Preset",
+        "tags": [
+          "table-maintenance-presets"
+        ]
+      }
+    },
+    "/v1/table-maintenance-presets/{preset_id}": {
+      "delete": {
+        "description": "Delete a table maintenance preset.",
+        "operationId": "delete_table_maintenance_preset",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "preset_id",
+            "required": true,
+            "schema": {
+              "title": "Preset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Table Maintenance Preset",
+        "tags": [
+          "table-maintenance-presets"
+        ]
+      },
+      "get": {
+        "description": "Return one table maintenance preset.",
+        "operationId": "get_table_maintenance_preset",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "preset_id",
+            "required": true,
+            "schema": {
+              "title": "Preset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableMaintenancePresetApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Table Maintenance Preset",
+        "tags": [
+          "table-maintenance-presets"
+        ]
+      },
+      "patch": {
+        "description": "Change the name or the settings of a table maintenance preset.",
+        "operationId": "update_table_maintenance_preset",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "preset_id",
+            "required": true,
+            "schema": {
+              "title": "Preset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTableMaintenancePresetApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableMaintenancePresetApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Table Maintenance Preset",
+        "tags": [
+          "table-maintenance-presets"
+        ]
+      }
+    },
+    "/v1/table-maintenance-runs/{run_id}": {
+      "get": {
+        "description": "Return one maintenance run.",
+        "operationId": "get_table_maintenance_run",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableMaintenanceRunApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Table Maintenance Run",
+        "tags": [
+          "table-maintenance-runs"
+        ]
+      }
+    },
+    "/v1/table-maintenance-runs/{run_id}/operations/{operation}/result": {
+      "post": {
+        "description": "Accept the result a Spark job reports for one operation attempt.",
+        "operationId": "process_table_maintenance_callback",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "operation",
+            "required": true,
+            "schema": {
+              "title": "Operation",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProcessTableMaintenanceCallbackApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProcessTableMaintenanceCallbackApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Process Table Maintenance Callback",
+        "tags": [
+          "table-maintenance-runs"
+        ]
+      }
+    },
+    "/v1/tables": {
+      "get": {
+        "description": "List the tables, optionally only those in one status.",
+        "operationId": "list_tables",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/context__table_maintenance__adapter__inbound__web__table__dto__TableApiResponse"
+                  },
+                  "title": "Response List Tables",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Tables",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/tables/exclude": {
+      "post": {
+        "description": "Exclude a catalog table from maintenance by hand.",
+        "operationId": "exclude_table",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExcludeTableApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/context__table_maintenance__adapter__inbound__web__table__dto__TableApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Exclude Table",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/tables/include": {
+      "post": {
+        "description": "Include a catalog table in maintenance by hand.",
+        "operationId": "include_table",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IncludeTableApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/context__table_maintenance__adapter__inbound__web__table__dto__TableApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Include Table",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/tables/{table_uuid}": {
+      "get": {
+        "description": "Return one table.",
+        "operationId": "get_table",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_uuid",
+            "required": true,
+            "schema": {
+              "title": "Table Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/context__table_maintenance__adapter__inbound__web__table__dto__TableApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Table",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/tables/{table_uuid}/commits": {
+      "get": {
+        "description": "Return the commits of one table, newest first.",
+        "operationId": "list_table_commits",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_uuid",
+            "required": true,
+            "schema": {
+              "title": "Table Uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 1000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableCommitsApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Table Commits",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/tables/{table_uuid}/health": {
+      "get": {
+        "description": "Return the scheduler's maintenance evaluation of one table.",
+        "operationId": "get_table_health",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_uuid",
+            "required": true,
+            "schema": {
+              "title": "Table Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableHealthApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Table Health",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/tables/{table_uuid}/maintenance": {
+      "post": {
+        "description": "Run the given operations on a table now.",
+        "operationId": "trigger_table_maintenance",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_uuid",
+            "required": true,
+            "schema": {
+              "title": "Table Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TriggerTableMaintenanceApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TriggerTableMaintenanceApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trigger Table Maintenance",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/tables/{table_uuid}/pause": {
+      "post": {
+        "description": "Pause maintenance of a table.",
+        "operationId": "pause_table",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_uuid",
+            "required": true,
+            "schema": {
+              "title": "Table Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/context__table_maintenance__adapter__inbound__web__table__dto__TableApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pause Table",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/tables/{table_uuid}/reset-selection": {
+      "post": {
+        "description": "Hand a manually selected table back to the discovery rules.",
+        "operationId": "reset_table_selection",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_uuid",
+            "required": true,
+            "schema": {
+              "title": "Table Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/context__table_maintenance__adapter__inbound__web__table__dto__TableApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset Table Selection",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/tables/{table_uuid}/resume": {
+      "post": {
+        "description": "Resume maintenance of a table.",
+        "operationId": "resume_table",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_uuid",
+            "required": true,
+            "schema": {
+              "title": "Table Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/context__table_maintenance__adapter__inbound__web__table__dto__TableApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resume Table",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/tables/{table_uuid}/settings": {
+      "put": {
+        "description": "Replace the settings of a table.",
+        "operationId": "update_table_settings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_uuid",
+            "required": true,
+            "schema": {
+              "title": "Table Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTableSettingsApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/context__table_maintenance__adapter__inbound__web__table__dto__TableApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Table Settings",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/tables/{table_uuid}/storage": {
+      "get": {
+        "description": "Return the current and old-snapshot storage of one table.",
+        "operationId": "get_table_storage",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_uuid",
+            "required": true,
+            "schema": {
+              "title": "Table Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableStorageApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Table Storage",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/tables/{table_uuid}/table-maintenance-runs": {
+      "get": {
+        "description": "List the latest maintenance runs of a table.",
+        "operationId": "list_table_maintenance_runs",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_uuid",
+            "required": true,
+            "schema": {
+              "title": "Table Uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TableMaintenanceRunApiResponse"
+                  },
+                  "title": "Response List Table Maintenance Runs",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Table Maintenance Runs",
+        "tags": [
+          "table-maintenance-runs"
+        ]
+      }
+    }
+  }
+}

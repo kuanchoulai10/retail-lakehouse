@@ -416,6 +416,7 @@ BOUNDARY_FREE_MODULES = {
     "bootstrap.worker",
     "bootstrap.event_consumer",
     "bootstrap.migrate",
+    "bootstrap.export_openapi",
 }
 
 

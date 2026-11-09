@@ -40,7 +40,7 @@ def _parts(namespace: str) -> list[str]:
     return namespace.split(_SEPARATOR) if namespace else []
 
 
-@router.get("")
+@router.get("", name="list_catalog_tables")
 def list_tables(catalog: str, namespace: str, use_cases: UseCases) -> list[TableIdentifierApiResponse]:
     """List the Iceberg tables directly in the namespace."""
     output = use_cases.list_tables.execute(ListTablesUseCaseInput(catalog=catalog, namespace=_parts(namespace)))
@@ -70,7 +70,7 @@ def create_table(catalog: str, namespace: str, body: CreateTableApiRequest, use_
     return TableApiResponse.model_validate(output)
 
 
-@router.get("/{table}")
+@router.get("/{table}", name="get_catalog_table")
 def get_table(catalog: str, namespace: str, table: str, use_cases: UseCases) -> TableApiResponse:
     """Return one Iceberg table with its schema, partition spec, sort order, snapshots, properties and summary."""
     output = use_cases.get_table.execute(GetTableUseCaseInput(catalog=catalog, namespace=_parts(namespace), name=table))

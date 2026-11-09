@@ -9,6 +9,13 @@ from fastapi import FastAPI
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from fastapi.routing import APIRoute
+
+
+def _operation_id(route: APIRoute) -> str:
+    """Name each operation after its route, which the console's generated client uses for its hook names."""
+    return route.name
+
 
 def create_api_app(*registrations: Callable[[FastAPI], None], root_path: str = "") -> FastAPI:
     """Build the API app with a health check, then let each context register its routes.
@@ -17,7 +24,7 @@ def create_api_app(*registrations: Callable[[FastAPI], None], root_path: str = "
     the platform gateway). It moves the docs' OpenAPI URL and the OpenAPI ``servers``
     entry; requests that arrive without the prefix still route.
     """
-    app = FastAPI(title="Data Platform API", root_path=root_path)
+    app = FastAPI(title="Data Platform API", generate_unique_id_function=_operation_id, root_path=root_path)
 
     @app.get("/healthz")
     def healthz() -> dict[str, str]:
