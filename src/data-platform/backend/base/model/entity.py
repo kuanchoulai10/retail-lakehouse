@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict
 
 from base import enforce_max_depth
 from base.model.entity_id import EntityId
+from base.model.validated_copy import validated_copy
 
 
 class Entity[ID: EntityId](BaseModel):
@@ -59,3 +60,17 @@ class Entity[ID: EntityId](BaseModel):
     def __hash__(self) -> int:
         """Hash by identity so entities work correctly in sets and dicts."""
         return hash(self.id)
+
+    def _assign_together(self, **changes: object) -> None:
+        """Change related fields in one step.
+
+        A cross-field validator re-runs on every single assignment, so two
+        fields that are valid only together cannot be assigned one after the
+        other. This builds a validated copy with changes (every
+        validator runs, untouched fields keep their values) and only then
+        takes it over; if validation fails, nothing changes. Private
+        attributes such as pending events are kept.
+        """
+        candidate = validated_copy(self, **changes)
+        self.__dict__.update(candidate.__dict__)
+        self.__pydantic_fields_set__ |= candidate.__pydantic_fields_set__

@@ -79,20 +79,15 @@ class TableDiscoveryRule(AggregateRoot[TableDiscoveryRuleId]):
     ) -> None:
         """Replace the rule's definition, leaving it unchanged if invalid.
 
-        The model validator re-runs on every assignment, so assigning the
-        effect and the preset one at a time would fail on the half-changed
-        state. The new definition is built and validated as a whole first,
-        then taken over in one step.
+        An invalid effect and preset pair raises a plain ValueError and a
+        wrong type raises ValidationError; both answer 422.
         """
         _validate(effect, preset_id)
-        candidate = TableDiscoveryRule(
-            id=self.id,
+        self._assign_together(
             priority=priority,
             effect=effect,
             pattern=pattern,
             preset_id=preset_id,
             enabled=enabled,
-            created_at=self.created_at,
             updated_at=now,
         )
-        self.__dict__.update(candidate.__dict__)
