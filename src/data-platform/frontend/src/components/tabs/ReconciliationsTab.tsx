@@ -204,6 +204,8 @@ function AllMeasurements({ operation }: { operation: ReconciliationOperationApiR
   const [open, setOpen] = useState(false);
   const listId = useId();
   const label = operationLabel(operation.operation);
+  // Lines with a threshold carry a met mark; the combine rule only matters with two or more.
+  const deciding = operation.measurements.filter((m) => m.threshold !== null).length;
   return (
     <>
       <Button
@@ -219,9 +221,11 @@ function AllMeasurements({ operation }: { operation: ReconciliationOperationApiR
       </Button>
       {open && (
         <div id={listId} className="type-body-small flex flex-col gap-1">
-          <p className="text-on-surface-variant">
-            {operation.combine === "any" ? "Starts when any line holds" : "Starts when every line holds"}
-          </p>
+          {deciding > 1 && (
+            <p className="text-on-surface-variant">
+              {operation.combine === "any" ? "Starts when any marked line holds" : "Starts when every marked line holds"}
+            </p>
+          )}
           <ul aria-label={`All measurements of ${label}`} className="flex flex-col gap-1">
             {operation.measurements.map((m) => (
               <li key={m.key} className="flex items-center justify-between gap-4">

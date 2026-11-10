@@ -71,6 +71,13 @@ export const Reconciliations: Story = {
     await expect(canvas.getByRole("button", { name: /^Would start Rewrite data files/ })).toHaveTextContent("Dry run");
     await expect(canvas.getByRole("button", { name: /^Skipped: table paused/ })).toBeVisible();
     await expect(canvas.getByRole("link", { name: "Open maintenance run run-1" })).toHaveTextContent(/^Run run-1$/);
+    const day = canvas.getByRole("region", { name: /^Reconciliations on / });
+    for (const part of Array.from(day.querySelectorAll<HTMLElement>("ul, li, button"))) {
+      const style = getComputedStyle(part);
+      await expect(
+        [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth],
+      ).toEqual(["0px", "0px", "0px", "0px"]);
+    }
   },
 };
 

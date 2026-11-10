@@ -273,31 +273,33 @@ describe("ReconciliationsTab", () => {
     expect(within(day).getByRole("heading", { level: 2 })).toHaveTextContent(/Nov 10, 2026$/);
     const markers = Array.from(day.querySelectorAll("[data-marker]")).map((m) => m.getAttribute("data-marker"));
     expect(markers).toEqual(["filled", "outlined", "filled", "dashed"]);
-    expect(day.querySelector(".border")).toBeNull();
   });
 
-  it("All measurements says how the lines combine", async () => {
+  it("All measurements says how two or more marked lines combine, and stays quiet for one", async () => {
     const user = userEvent.setup();
-    const any: TableReconciliationApiResponse = {
+    const deciding = (met: boolean) => [
+      { key: "small_manifests", observed: 12, unit: "count", threshold: 20, comparison: ">=", met },
+      { key: "manifests_per_snapshot", observed: 61, unit: "count", threshold: 100, comparison: ">", met: false },
+    ];
+    const record: TableReconciliationApiResponse = {
       ...STARTED,
       operations: [
-        ...STARTED.operations.filter((o) => o.operation !== "rewrite_manifests"),
-        op({
-          operation: "rewrite_manifests",
-          combine: "any",
-          measurements: [{ key: "small_manifests", observed: 12, unit: "count", threshold: 20, comparison: ">=", met: false }],
-        }),
+        ...STARTED.operations.filter((o) => o.operation !== "rewrite_manifests" && o.operation !== "expire_snapshots"),
+        op({ operation: "rewrite_manifests", combine: "any", measurements: deciding(false) }),
+        op({ operation: "expire_snapshots", combine: "all", measurements: deciding(true) }),
       ],
     };
-    stubList([any]);
+    stubList([record]);
     renderTab();
     const dialog = await openDrawer(user, /Started Rewrite data files/);
-    const compaction = within(dialog).getByRole("region", { name: "Rewrite data files" });
-    await user.click(within(compaction).getByRole("button", { name: "All measurements" }));
-    expect(within(compaction).getByText("Starts when every line holds")).toBeInTheDocument();
-    const manifests = within(dialog).getByRole("region", { name: "Rewrite manifests" });
-    await user.click(within(manifests).getByRole("button", { name: "All measurements" }));
-    expect(within(manifests).getByText("Starts when any line holds")).toBeInTheDocument();
+    const open = async (name: string) => {
+      const block = within(dialog).getByRole("region", { name });
+      await user.click(within(block).getByRole("button", { name: "All measurements" }));
+      return block;
+    };
+    expect(within(await open("Rewrite manifests")).getByText("Starts when any marked line holds")).toBeInTheDocument();
+    expect(within(await open("Expire snapshots")).getByText("Starts when every marked line holds")).toBeInTheDocument();
+    expect(within(await open("Rewrite data files")).queryByText(/^Starts when/)).not.toBeInTheDocument();
   });
 
   it("shows No reconciliations yet. when empty", async () => {
