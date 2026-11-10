@@ -156,6 +156,7 @@ def test_assignment_rechecks_invariants():
     rec = _record()
     with pytest.raises(ValidationError):
         rec.run_id = TableMaintenanceRunId("run-1")
+    assert rec.run_id is None
 
 
 def test_operation_outcome_is_immutable():

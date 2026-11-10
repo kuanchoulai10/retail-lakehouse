@@ -61,6 +61,26 @@ class Entity[ID: EntityId](BaseModel):
         """Hash by identity so entities work correctly in sets and dicts."""
         return hash(self.id)
 
+    def __setattr__(self, name: str, value: Any) -> None:  # noqa: ANN401
+        """Assign a field, leaving the entity unchanged when the assignment is rejected.
+
+        Pydantic stores the value before a cross-field validator runs and does
+        not take it back on failure, so the previous value and the set of
+        explicitly assigned fields are restored here.
+        """
+        if name not in type(self).model_fields:
+            super().__setattr__(name, value)
+            return
+        previous = self.__dict__[name]
+        fields_set = set(self.__pydantic_fields_set__)
+        try:
+            super().__setattr__(name, value)
+        except Exception:
+            self.__dict__[name] = previous
+            self.__pydantic_fields_set__.clear()
+            self.__pydantic_fields_set__.update(fields_set)
+            raise
+
     def _assign_together(self, **changes: object) -> None:
         """Change related fields in one step.
 
