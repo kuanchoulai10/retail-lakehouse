@@ -4,7 +4,7 @@
 
 set -uo pipefail
 
-output=$(task pre-pr 2>&1) || {
+output=$(task gates:pre-pr 2>&1) || {
   # Extract last 30 lines of failure output for context
   tail_output=$(echo "$output" | tail -30)
   jq -n \

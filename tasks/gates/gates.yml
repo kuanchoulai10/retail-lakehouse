@@ -2,6 +2,18 @@
 
 version: '3'
 
+includes:
+  frontend:
+    taskfile: ./frontend/frontend.yml
+    dir: '{{.ROOT_DIR}}'
+  backend:
+    taskfile: ./backend/backend.yml
+    dir: '{{.ROOT_DIR}}'
+  scripts:
+    taskfile: '../../scripts/Taskfile.yml'
+    dir: '../../scripts'
+    internal: true
+
 tasks:
   pre-commit:
     desc: "Gate: is the code clean? (before a commit: lint, format, type) scope=frontend|backend|all (default all)"
@@ -15,17 +27,7 @@ tasks:
     cmds:
       - uv run pre-commit run shared --all-files --show-diff-on-failure
       - for: { var: scopes }
-        task: 'pre-commit-{{.ITEM}}'
-
-  pre-commit-frontend:
-    desc: "Lint and type-check the console and the design system (pre-commit hooks aliased frontend)"
-    cmds:
-      - uv run pre-commit run frontend --all-files --show-diff-on-failure
-
-  pre-commit-backend:
-    desc: "Lint, format and type-check the Python code (pre-commit hooks aliased backend)"
-    cmds:
-      - uv run pre-commit run backend --all-files --show-diff-on-failure
+        task: '{{.ITEM}}:pre-commit'
 
   pre-pr:
     desc: "Gate: is my change logically correct? (local, no services: unit, architecture, contract) scope=frontend|backend|all (default all)"
@@ -40,35 +42,18 @@ tasks:
         vars:
           scope: '{{.scope}}'
       - task: scripts:unit-test
-      - task: pre-pr-sides
+      - task: pre-pr-scopes
         vars:
           scope: '{{.scope}}'
-      - task: system:contract-test
+      - task: :system:contract-test
 
-  pre-pr-sides:
+  pre-pr-scopes:
     internal: true
     vars:
       scopes: '{{if eq .scope "all"}}frontend backend{{else}}{{.scope}}{{end}}'
     deps:
       - for: { var: scopes }
-        task: 'pre-pr-{{.ITEM}}'
-
-  pre-pr-frontend:
-    desc: "Run the design-system and console unit tests, then their story browser tests"
-    deps:
-      - design-system:unit-test
-      - console:unit-test
-    cmds:
-      - task: design-system:component-test
-      - task: console:component-test
-
-  pre-pr-backend:
-    desc: "Run the backend and Spark unit tests, then the backend's import-linter boundaries"
-    deps:
-      - backend:unit-test
-      - spark:unit-test
-    cmds:
-      - task: backend:arch-test
+        task: '{{.ITEM}}:pre-pr'
 
   pre-merge:
     desc: "Gate: will main still work after this merge? (merge queue candidate on an ephemeral platform) scope=frontend|backend|all (default all)"
@@ -82,38 +67,19 @@ tasks:
       - task: pre-pr
         vars:
           scope: '{{.scope}}'
-      - task: pre-merge-sides
+      - task: pre-merge-scopes
         vars:
           scope: '{{.scope}}'
-      - task: system:api-test
-      - task: system:e2e-critical-test
+      - task: :system:api-test
+      - task: :system:e2e-critical-test
 
-  pre-merge-sides:
+  pre-merge-scopes:
     internal: true
     vars:
       scopes: '{{if eq .scope "all"}}frontend backend{{else}}{{.scope}}{{end}}'
     deps:
       - for: { var: scopes }
-        task: 'pre-merge-{{.ITEM}}'
-
-  pre-merge-frontend:
-    desc: "Scan, measure coverage of and build the design system and the console"
-    cmds:
-      - task: design-system:security-test
-      - task: console:security-test
-      - task: design-system:coverage-test
-      - task: console:coverage-test
-      - task: console:build-test
-
-  pre-merge-backend:
-    desc: "Scan, measure coverage of, integration-test and build the backend and the Spark runtime"
-    cmds:
-      - task: backend:security-test
-      - task: spark:security-test
-      - task: backend:coverage-test
-      - task: backend:integration-test
-      - task: backend:build-test
-      - task: spark:build-test
+        task: '{{.ITEM}}:pre-merge'
 
   post-merge:
     desc: "Gate: is main healthy once deployed to the shared environment? (staging, same artifacts as pre-merge)"
@@ -121,10 +87,10 @@ tasks:
       vars:
         - name: KUBE_CONTEXT
     cmds:
-      - task: system:deployment-test
+      - task: :system:deployment-test
         vars:
           KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
-      - task: system:smoke-test
+      - task: :system:smoke-test
         vars:
           KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
 
@@ -134,17 +100,17 @@ tasks:
       vars:
         - name: KUBE_CONTEXT
     cmds:
-      - task: system:deployment-test
+      - task: :system:deployment-test
         vars:
           KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
-      - task: system:migration-test
-      - task: system:rollback-test
-      - task: system:performance-test
+      - task: :system:migration-test
+      - task: :system:rollback-test
+      - task: :system:performance-test
 
   release:
     desc: "Gate: does the release hold under real traffic? (production canary, automatic rollback)"
     cmds:
-      - task: system:canary-test
+      - task: :system:canary-test
 
   nightly:
     desc: "Gate: are there problems that only show over time? (staging, scheduled)"
@@ -152,19 +118,17 @@ tasks:
       vars:
         - name: KUBE_CONTEXT
     cmds:
-      - task: system:e2e-full-test
+      - task: :system:e2e-full-test
         vars:
           KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
-      - task: system:soak-test
-      - task: system:resilience-test
-      - task: system:performance-test
-      - task: system:dependency-test
+      - task: :system:soak-test
+      - task: :system:resilience-test
+      - task: :system:performance-test
+      - task: :system:dependency-test
 
   unit-test:
     desc: "Run every component's unit tests in parallel"
     deps:
       - scripts:unit-test
-      - design-system:unit-test
-      - console:unit-test
+      - frontend:unit-test
       - backend:unit-test
-      - spark:unit-test

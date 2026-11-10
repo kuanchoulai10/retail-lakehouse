@@ -49,4 +49,4 @@ Follow Serendie's components: read the component's source in `serendie/serendie`
 2. Write the story first, with a play function for keyboard and focus behaviour. Run it and watch it fail.
 3. Build `<Name>.tsx` on the Radix primitive (or a native element) with Tailwind semantic utilities and the density utilities.
 4. Export it from `src/index.ts`.
-5. Run lint, typecheck, unit tests and story tests (`task pre-pr` covers them).
+5. Run lint, typecheck, unit tests and story tests (`task gates:pre-pr` covers them).

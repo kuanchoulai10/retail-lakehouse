@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+includes:
+  design-system:
+    taskfile: '../../../src/design-system/Taskfile.yml'
+    dir: '../../../src/design-system'
+    internal: true
+  console:
+    taskfile: '../../../src/data-platform/frontend/Taskfile.yml'
+    dir: '../../../src/data-platform/frontend'
+    internal: true
+
+tasks:
+  pre-commit:
+    desc: "Lint and type-check the console and the design system (pre-commit hooks aliased frontend)"
+    cmds:
+      - uv run pre-commit run frontend --all-files --show-diff-on-failure
+
+  unit-test:
+    desc: "Run the design-system and console unit tests in parallel"
+    deps:
+      - design-system:unit-test
+      - console:unit-test
+
+  pre-pr:
+    desc: "Run the design-system and console unit tests, then their story browser tests"
+    deps:
+      - unit-test
+    cmds:
+      - task: design-system:component-test
+      - task: console:component-test
+
+  pre-merge:
+    desc: "Scan, measure coverage of and build the design system and the console"
+    cmds:
+      - task: design-system:security-test
+      - task: console:security-test
+      - task: design-system:coverage-test
+      - task: console:coverage-test
+      - task: console:build-test
