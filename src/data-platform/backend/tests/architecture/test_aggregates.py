@@ -39,6 +39,21 @@ class Widget(AggregateRoot[WidgetId]):
     """A widget."""
 '''
 
+GADGET = '''"""Gadget aggregate, on the Pydantic base."""
+
+from __future__ import annotations
+
+from base.model import AggregateRoot, EntityId
+
+
+class GadgetId(EntityId):
+    """Identify a gadget."""
+
+
+class Gadget(AggregateRoot[GadgetId]):
+    """A gadget."""
+'''
+
 STRAY = '''"""Not an aggregate: a plain dataclass."""
 
 from __future__ import annotations
@@ -90,17 +105,18 @@ def test_catalog_aggregates_are_derived():
 
 
 def test_package_without_aggregate_root_is_not_an_aggregate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    """A model package without an aggregate root class is not counted as an aggregate."""
+    """A model package without a root of either base is not counted as an aggregate."""
     name = build_fixture_context(
         tmp_path,
         {
             "application/domain/model/widget/__init__.py": WIDGET,
+            "application/domain/model/gadget/__init__.py": GADGET,
             "application/domain/model/stray/__init__.py": STRAY,
             "application/domain/model/shared/__init__.py": SHARED,
         },
     )
     monkeypatch.syspath_prepend(str(tmp_path))
-    assert derive_aggregates(f"{name}.application.domain.model") == {"widget"}
+    assert derive_aggregates(f"{name}.application.domain.model") == {"widget", "gadget"}
 
 
 def test_architecture_tests_name_no_context():

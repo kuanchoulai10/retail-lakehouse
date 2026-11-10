@@ -18,6 +18,11 @@ Bases with an intermediate abstract layer in ``base/`` (e.g. ``EntityId``
 under ``ValueObject``; ``AggregateRoot`` under ``Entity``) exclude that
 subtree from their own check — the subtree is governed by its own
 intermediate base's contract.
+
+The Pydantic bases in ``base.model`` carry the same contracts. A Pydantic
+generic parametrization (``AggregateRoot[TableId]``) is a real class in the
+chain but not a layer of the hierarchy, so it does not count towards the depth.
+Only classes of the source packages are checked, not test stubs.
 """
 
 from __future__ import annotations
@@ -41,6 +46,11 @@ from base import (
     UseCase,
     ValueObject,
 )
+from base.model import AggregateRoot as ModelAggregateRoot
+from base.model import DomainEvent as ModelDomainEvent
+from base.model import Entity as ModelEntity
+from base.model import EntityId as ModelEntityId
+from base.model import ValueObject as ModelValueObject
 from tests.architecture.contexts import context_dir, context_names
 
 BACKEND = Path(__file__).resolve().parents[2]
@@ -69,6 +79,16 @@ def _import_all_modules() -> None:
 _import_all_modules()
 
 
+def _is_parametrization(cls: type) -> bool:
+    """Return whether ``cls`` is a Pydantic generic parametrization such as ``Entity[TableId]``."""
+    metadata = getattr(cls, "__pydantic_generic_metadata__", None)
+    return bool(metadata and metadata.get("origin") is not None)
+
+
+def _is_source(cls: type) -> bool:
+    return cls.__module__.split(".", 1)[0] in SOURCE_PACKAGES
+
+
 def _all_subclasses(cls: type) -> set[type]:
     """Return all transitive subclasses of cls (excluding cls itself)."""
     found: set[type] = set()
@@ -83,20 +103,31 @@ def _all_subclasses(cls: type) -> set[type]:
 
 
 def _shortest_depth(cls: type, base: type) -> int:
-    """Shortest inheritance distance from cls to base via ``__bases__``."""
+    """Shortest inheritance distance from cls to base via ``__bases__``, skipping parametrizations.
+
+    The distance counts the classes on the path from ``cls`` up to, but not
+    including, ``base``; a parametrization on the path counts zero.
+    """
     if cls is base:
         return 0
-    queue: deque[tuple[type, int]] = deque([(cls, 0)])
+    queue: deque[tuple[type, int]] = deque([(cls, _layer(cls))])
     visited: set[type] = {cls}
     while queue:
         current, depth = queue.popleft()
         for parent in current.__bases__:
             if parent is base:
-                return depth + 1
+                return depth
             if parent not in visited and isinstance(parent, type) and issubclass(parent, base):
                 visited.add(parent)
-                queue.append((parent, depth + 1))
+                if _layer(parent):
+                    queue.append((parent, depth + 1))
+                else:
+                    queue.appendleft((parent, depth))
     raise AssertionError(f"{cls!r} is not a subclass of {base!r}")
+
+
+def _layer(cls: type) -> int:
+    return 0 if _is_parametrization(cls) else 1
 
 
 def _qualified_name(cls: type) -> str:
@@ -115,13 +146,18 @@ DEPTH_CONTRACTS: list[tuple[type, int, tuple[type, ...]]] = [
     (Gateway, 2, ()),
     (UseCase, 2, ()),
     (EventHandler, 1, ()),
+    (ModelValueObject, 1, ()),
+    (ModelEntityId, 1, ()),
+    (ModelEntity, 1, (ModelAggregateRoot,)),
+    (ModelAggregateRoot, 1, ()),
+    (ModelDomainEvent, 1, ()),
 ]
 
 
 @pytest.mark.parametrize(
     "base,max_depth,exclude_subtrees",
     DEPTH_CONTRACTS,
-    ids=[c[0].__name__ for c in DEPTH_CONTRACTS],
+    ids=[_qualified_name(c[0]) for c in DEPTH_CONTRACTS],
 )
 def test_inheritance_depth(base: type, max_depth: int, exclude_subtrees: tuple[type, ...]) -> None:
     """Each base class has no subclass chain deeper than its contract allows."""
@@ -132,7 +168,7 @@ def test_inheritance_depth(base: type, max_depth: int, exclude_subtrees: tuple[t
 
     violations: list[tuple[str, int]] = []
     for cls in _all_subclasses(base):
-        if cls in excluded:
+        if cls in excluded or not _is_source(cls):
             continue
         depth = _shortest_depth(cls, base)
         if depth > max_depth:
@@ -170,3 +206,17 @@ def test_aggregate_repos_extend_repository(context: str) -> None:
     if violations:
         formatted = "\n".join(f"  {v}" for v in sorted(violations))
         pytest.fail(f"These *Repo port classes must extend base.repository.Repository:\n{formatted}")
+
+
+class _ProbeId(ModelEntityId):
+    """An id for the parametrization probe."""
+
+
+class _Probe(ModelAggregateRoot[_ProbeId]):
+    """An aggregate whose chain holds two parametrizations."""
+
+
+def test_a_parametrization_is_not_a_layer() -> None:
+    """``AggregateRoot[_ProbeId]`` and ``Entity[ID]`` on the path count zero."""
+    assert _shortest_depth(_Probe, ModelAggregateRoot) == 1
+    assert _shortest_depth(_Probe, ModelEntity) == 2

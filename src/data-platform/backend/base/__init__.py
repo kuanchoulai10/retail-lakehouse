@@ -14,10 +14,12 @@ Provides the foundational tactical patterns for structuring domain models:
   objects and repositories to fulfil a business action.
 - EventHandler: An abstract handler for a specific domain event type.
 - EventDispatcher: Routes domain events to registered handlers.
+- enforce_max_depth: Rejects a subclass deeper than its base allows.
 """
 
 from __future__ import annotations
 
+from base._inheritance_guard import enforce_max_depth
 from base.aggregate_root import AggregateRoot
 from base.domain_event import DomainEvent
 from base.entity import Entity
@@ -42,4 +44,5 @@ __all__ = [
     "Store",
     "UseCase",
     "ValueObject",
+    "enforce_max_depth",
 ]
