@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from sqlalchemy import Engine, RowMapping
 
     from base import EntityId
+    from base.model import EntityId as ModelEntityId
 
 
 def _to_values(settings: TableDiscoverySettings) -> dict[str, Any]:
@@ -57,7 +58,7 @@ class TableDiscoverySettingsSqlRepo(TableDiscoverySettingsRepo):
             raise ConflictError(str(exc.orig)) from exc
         return entity
 
-    def get(self, entity_id: EntityId) -> TableDiscoverySettings | None:
+    def get(self, entity_id: EntityId | ModelEntityId) -> TableDiscoverySettings | None:
         """Return the settings with the given id, or None."""
         with self._engine.connect() as conn:
             row = conn.execute(select(t).where(t.c.id == entity_id.value)).first()

@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-from base import EntityId
+from base.model import EntityId
 
 
-@dataclass(frozen=True)
 class TableMaintenancePresetId(EntityId):
     """Identify a TableMaintenancePreset."""

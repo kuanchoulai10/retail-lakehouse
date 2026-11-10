@@ -32,7 +32,7 @@ def _include(rule_id: str, priority: int, preset: str = "t1") -> TableDiscoveryR
         TableDiscoveryRuleId(rule_id),
         priority,
         RuleEffect.INCLUDE,
-        TablePattern("iceberg", "inv*", "*"),
+        TablePattern(catalog="iceberg", namespace="inv*", table="*"),
         TableMaintenancePresetId(preset),
         True,
         NOW,
@@ -52,7 +52,7 @@ def test_roundtrip(repo: TableDiscoveryRulesSqlRepo):
     assert loaded is not None
     assert loaded.priority == 5
     assert loaded.effect is RuleEffect.INCLUDE
-    assert loaded.pattern == TablePattern("iceberg", "inv*", "*")
+    assert loaded.pattern == TablePattern(catalog="iceberg", namespace="inv*", table="*")
     assert loaded.preset_id == TableMaintenancePresetId("t1")
     assert loaded.enabled is True
     assert loaded.created_at == NOW
@@ -89,13 +89,13 @@ def test_update_persists(repo: TableDiscoveryRulesSqlRepo):
     rule = _include("r1", 5)
     repo.create(rule)
     later = datetime(2026, 11, 1, tzinfo=UTC)
-    rule.update(9, RuleEffect.EXCLUDE, TablePattern("c", "n", "t"), None, False, later)
+    rule.update(9, RuleEffect.EXCLUDE, TablePattern(catalog="c", namespace="n", table="t"), None, False, later)
     repo.update(rule)
     loaded = repo.get(rule.id)
     assert loaded is not None
     assert loaded.priority == 9
     assert loaded.effect is RuleEffect.EXCLUDE
-    assert loaded.pattern == TablePattern("c", "n", "t")
+    assert loaded.pattern == TablePattern(catalog="c", namespace="n", table="t")
     assert loaded.preset_id is None
     assert loaded.enabled is False
     assert loaded.updated_at == later
@@ -138,3 +138,15 @@ def test_create_duplicate_primary_key_raises_conflict(repo: TableDiscoveryRulesS
     repo.create(_include("r1", 1))
     with pytest.raises(ConflictError):
         repo.create(_include("r1", 2))
+
+
+def test_roundtrip_reads_an_equal_aggregate(repo: TableDiscoveryRulesSqlRepo):
+    """A stored row reads back with the same dump and the same field types."""
+    original = _include("r1", 5)
+    repo.create(original)
+    loaded = repo.get(TableDiscoveryRuleId("r1"))
+    assert loaded is not None
+    assert loaded.model_dump() == original.model_dump()
+    assert {k: type(v) for k, v in loaded.model_dump().items()} == {
+        k: type(v) for k, v in original.model_dump().items()
+    }

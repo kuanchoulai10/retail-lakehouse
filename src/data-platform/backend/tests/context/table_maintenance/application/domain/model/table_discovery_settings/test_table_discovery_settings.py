@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+import pytest
+from pydantic import ValidationError
+
 from context.table_maintenance.application.domain.model.table_discovery_settings import (
     TableDiscoverySettings,
     TableDiscoverySettingsId,
@@ -28,3 +31,10 @@ def test_disable_enable():
     assert s.updated_at == T1
     s.enable(T1 + timedelta(minutes=1))
     assert s.enabled
+
+
+def test_settings_reject_wrong_type_on_assignment():
+    """Assigning a wrong type to a field is rejected."""
+    s = TableDiscoverySettings.create(now=T0)
+    with pytest.raises(ValidationError):
+        s.enabled = "yes"  # ty: ignore[invalid-assignment]

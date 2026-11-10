@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+import pytest
+from pydantic import ValidationError
+
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceSettings,
 )
@@ -46,3 +49,10 @@ def test_rename_and_update_settings():
     assert t.settings == new
     assert t.updated_at == T1 + timedelta(hours=1)
     assert t.created_at == T0
+
+
+def test_preset_rejects_wrong_type_on_assignment():
+    """Assigning a wrong type to a field is rejected."""
+    t = make()
+    with pytest.raises(ValidationError):
+        t.name = 5  # ty: ignore[invalid-assignment]

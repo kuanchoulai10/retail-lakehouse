@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from base import EntityId
+    from base.model import EntityId as ModelEntityId
 
 
 class InMemoryTableDiscoverySettingsRepo(TableDiscoverySettingsRepo):
@@ -30,7 +31,7 @@ class InMemoryTableDiscoverySettingsRepo(TableDiscoverySettingsRepo):
         self.settings = entity
         return entity
 
-    def get(self, entity_id: EntityId) -> TableDiscoverySettings | None:
+    def get(self, entity_id: EntityId | ModelEntityId) -> TableDiscoverySettings | None:
         """Return the singleton when the id is ``global``."""
         return self.settings if entity_id == GLOBAL_ID else None
 

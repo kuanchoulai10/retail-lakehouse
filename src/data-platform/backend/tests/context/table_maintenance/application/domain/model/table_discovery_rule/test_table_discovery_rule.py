@@ -5,9 +5,9 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from pydantic import ValidationError
 
 from context.table_maintenance.application.domain.model.table_discovery_rule import (
-    InvalidTableDiscoveryRule,
     RuleEffect,
     TableDiscoveryRule,
     TableDiscoveryRuleId,
@@ -43,15 +43,15 @@ def test_create():
     assert r.created_at == r.updated_at == T0
 
 
-def test_include_rule_requires_preset():
+def test_include_rule_without_preset_is_rejected():
     """An include rule without a preset is rejected."""
-    with pytest.raises(InvalidTableDiscoveryRule):
+    with pytest.raises(ValidationError, match="an include rule requires a preset"):
         make(RuleEffect.INCLUDE, None)
 
 
 def test_exclude_rule_rejects_preset():
     """An exclude rule that names a preset is rejected."""
-    with pytest.raises(InvalidTableDiscoveryRule):
+    with pytest.raises(ValidationError, match="an exclude rule must not have a preset"):
         make(RuleEffect.EXCLUDE, TableMaintenancePresetId("t1"))
     assert make(RuleEffect.EXCLUDE, None).preset_id is None
 
@@ -75,15 +75,49 @@ def test_update():
     assert r.created_at == T0
 
 
-def test_invalid_update_leaves_state_unchanged():
+def test_update_to_invalid_rule_leaves_rule_unchanged():
     """An invalid update is rejected and leaves the rule as it was."""
     r = make()
-    with pytest.raises(InvalidTableDiscoveryRule):
+    with pytest.raises(ValueError, match="an include rule requires a preset"):
         r.update(
             priority=5,
             effect=RuleEffect.INCLUDE,
             pattern=TablePattern(),
             preset_id=None,
+            enabled=False,
+            now=T1,
+        )
+    assert r.priority == 10
+    assert r.enabled
+    assert r.updated_at == T0
+    assert r.effect == RuleEffect.INCLUDE
+    assert r.preset_id == DEFAULT_PRESET_ID
+    assert r.pattern == TablePattern()
+
+
+def test_rule_rejects_wrong_type_on_assignment():
+    """Assigning a wrong type to a field is rejected."""
+    r = make()
+    with pytest.raises(ValidationError):
+        r.priority = "high"  # ty: ignore[invalid-assignment]
+
+
+def test_table_pattern_is_immutable():
+    """A pattern cannot be changed after creation."""
+    p = TablePattern()
+    with pytest.raises(ValidationError):
+        p.table = "x"
+
+
+def test_update_with_wrong_type_leaves_rule_unchanged():
+    """A wrong-typed argument is rejected before anything is assigned."""
+    r = make()
+    with pytest.raises(ValidationError):
+        r.update(
+            priority="high",  # ty: ignore[invalid-argument-type]
+            effect=RuleEffect.INCLUDE,
+            pattern=TablePattern(),
+            preset_id=DEFAULT_PRESET_ID,
             enabled=False,
             now=T1,
         )

@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from context.table_maintenance.application.domain.model.table_discovery_rule.invalid_table_discovery_rule import (
-    InvalidTableDiscoveryRule,
-)
 from context.table_maintenance.application.domain.model.table_discovery_rule.rule_effect import (
     RuleEffect,
 )
@@ -19,7 +16,6 @@ from context.table_maintenance.application.domain.model.table_discovery_rule.tab
 )
 
 __all__ = [
-    "InvalidTableDiscoveryRule",
     "RuleEffect",
     "TableDiscoveryRule",
     "TableDiscoveryRuleId",

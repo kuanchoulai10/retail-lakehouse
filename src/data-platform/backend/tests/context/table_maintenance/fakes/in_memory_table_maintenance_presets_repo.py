@@ -11,6 +11,7 @@ from context.table_maintenance.application.port.outbound.table_maintenance_prese
 
 if TYPE_CHECKING:
     from base import EntityId
+    from base.model import EntityId as ModelEntityId
     from context.table_maintenance.application.domain.model.table_maintenance_preset import (
         TableMaintenancePreset,
     )
@@ -30,7 +31,7 @@ class InMemoryTableMaintenancePresetsRepo(TableMaintenancePresetsRepo):
         self.items[entity.id.value] = entity
         return entity
 
-    def get(self, entity_id: EntityId) -> TableMaintenancePreset | None:
+    def get(self, entity_id: EntityId | ModelEntityId) -> TableMaintenancePreset | None:
         """Return the preset or None."""
         return self.items.get(entity_id.value)
 
@@ -45,7 +46,7 @@ class InMemoryTableMaintenancePresetsRepo(TableMaintenancePresetsRepo):
         self.items[preset.id.value] = preset
         return preset
 
-    def delete(self, entity_id: EntityId) -> None:
+    def delete(self, entity_id: EntityId | ModelEntityId) -> None:
         """Remove a preset if present."""
         self.items.pop(entity_id.value, None)
 

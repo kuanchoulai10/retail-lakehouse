@@ -73,3 +73,15 @@ def test_create_duplicate_primary_key_raises_conflict(
     repo.create(TableDiscoverySettings.create(NOW))
     with pytest.raises(ConflictError):
         repo.create(TableDiscoverySettings.create(NOW))
+
+
+def test_roundtrip_reads_an_equal_aggregate(repo: TableDiscoverySettingsSqlRepo):
+    """A stored row reads back with the same dump and the same field types."""
+    original = TableDiscoverySettings.create(NOW, enabled=False)
+    repo.create(original)
+    loaded = repo.get(GLOBAL_ID)
+    assert loaded is not None
+    assert loaded.model_dump() == original.model_dump()
+    assert {k: type(v) for k, v in loaded.model_dump().items()} == {
+        k: type(v) for k, v in original.model_dump().items()
+    }

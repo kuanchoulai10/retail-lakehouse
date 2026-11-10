@@ -64,9 +64,9 @@ class UpdateTableDiscoveryRuleService(UpdateTableDiscoveryRuleUseCase):
                 request.priority,
                 effect,
                 TablePattern(
-                    request.catalog_pattern,
-                    request.namespace_pattern,
-                    request.table_pattern,
+                    catalog=request.catalog_pattern,
+                    namespace=request.namespace_pattern,
+                    table=request.table_pattern,
                 ),
                 preset_id,
                 request.enabled,

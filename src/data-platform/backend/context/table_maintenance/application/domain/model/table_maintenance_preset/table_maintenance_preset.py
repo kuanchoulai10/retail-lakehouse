@@ -2,23 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from datetime import datetime
 
-from base import AggregateRoot
+from base.model import AggregateRoot
+from context.table_maintenance.application.domain.model.shared import (
+    MaintenanceSettings,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_preset.table_maintenance_preset_id import (
     TableMaintenancePresetId,
 )
 
-if TYPE_CHECKING:
-    from datetime import datetime
 
-    from context.table_maintenance.application.domain.model.shared import (
-        MaintenanceSettings,
-    )
-
-
-@dataclass(eq=False)
 class TableMaintenancePreset(AggregateRoot[TableMaintenancePresetId]):
     """A named, reusable set of maintenance settings."""
 

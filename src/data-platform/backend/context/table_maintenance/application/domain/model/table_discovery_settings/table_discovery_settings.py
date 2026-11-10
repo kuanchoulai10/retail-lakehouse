@@ -2,21 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from datetime import datetime
 
-from base import AggregateRoot
+from base.model import AggregateRoot
 from context.table_maintenance.application.domain.model.table_discovery_settings.table_discovery_settings_id import (
     TableDiscoverySettingsId,
 )
 
-if TYPE_CHECKING:
-    from datetime import datetime
-
 GLOBAL_ID = TableDiscoverySettingsId("global")
 
 
-@dataclass(eq=False)
 class TableDiscoverySettings(AggregateRoot[TableDiscoverySettingsId]):
     """The singleton switch that turns table discovery on or off."""
 

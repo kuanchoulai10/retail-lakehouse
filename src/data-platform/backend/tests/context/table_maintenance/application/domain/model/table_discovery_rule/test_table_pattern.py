@@ -15,7 +15,7 @@ def test_defaults_match_all():
 
 def test_pattern_matches_globs():
     """A pattern matches table names by glob on each part and rejects the others."""
-    p = TablePattern("iceberg", "sales*", "*_raw")
+    p = TablePattern(catalog="iceberg", namespace="sales*", table="*_raw")
     assert p.matches(TableName(catalog="iceberg", namespace="sales_eu", table="orders_raw"))
     assert not p.matches(TableName(catalog="iceberg", namespace="inventory", table="orders_raw"))
     assert not p.matches(TableName(catalog="other", namespace="sales_eu", table="orders_raw"))
@@ -24,4 +24,6 @@ def test_pattern_matches_globs():
 
 def test_matching_is_case_sensitive():
     """Pattern matching is case sensitive."""
-    assert not TablePattern("iceberg", "Sales*").matches(TableName(catalog="iceberg", namespace="sales_eu", table="t"))
+    assert not TablePattern(catalog="iceberg", namespace="Sales*").matches(
+        TableName(catalog="iceberg", namespace="sales_eu", table="t")
+    )

@@ -2,17 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from fnmatch import fnmatchcase
 from typing import TYPE_CHECKING
 
-from base import ValueObject
+from base.model import ValueObject
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.table import TableName
 
 
-@dataclass(frozen=True)
 class TablePattern(ValueObject):
     """Match tables by case-sensitive glob on catalog, namespace and table."""
 

@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from sqlalchemy import Engine
 
     from base import EntityId
+    from base.model import EntityId as ModelEntityId
     from context.table_maintenance.application.port.outbound.table_discovery_rule import (
         TableDiscoveryRule,
         TableMaintenancePresetId,
@@ -44,7 +45,7 @@ class TableDiscoveryRulesSqlRepo(TableDiscoveryRulesRepo):
             raise ConflictError(str(exc.orig)) from exc
         return entity
 
-    def get(self, entity_id: EntityId) -> TableDiscoveryRule | None:
+    def get(self, entity_id: EntityId | ModelEntityId) -> TableDiscoveryRule | None:
         """Return the rule with the given id, or None."""
         with self._engine.connect() as conn:
             row = conn.execute(select(t).where(t.c.id == entity_id.value)).first()
@@ -65,7 +66,7 @@ class TableDiscoveryRulesSqlRepo(TableDiscoveryRulesRepo):
                 raise LookupError(f"discovery rule {rule.id.value} does not exist")
         return rule
 
-    def delete(self, entity_id: EntityId) -> None:
+    def delete(self, entity_id: EntityId | ModelEntityId) -> None:
         """Delete the rule with the given id."""
         with self._engine.begin() as conn:
             conn.execute(delete(t).where(t.c.id == entity_id.value))

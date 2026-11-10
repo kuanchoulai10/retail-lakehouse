@@ -117,3 +117,15 @@ def test_list_all_ordered_by_name(repo: TableMaintenancePresetsSqlRepo):
     repo.create(_preset("2", "alpha"))
     repo.create(_preset("3", "mid"))
     assert [t.name for t in repo.list_all()] == ["alpha", "mid", "zeta"]
+
+
+def test_roundtrip_reads_an_equal_aggregate(repo: TableMaintenancePresetsSqlRepo):
+    """A stored row reads back with the same dump and the same field types."""
+    original = _preset("t1", "default")
+    repo.create(original)
+    loaded = repo.get(TableMaintenancePresetId("t1"))
+    assert loaded is not None
+    assert loaded.model_dump() == original.model_dump()
+    assert {k: type(v) for k, v in loaded.model_dump().items()} == {
+        k: type(v) for k, v in original.model_dump().items()
+    }
