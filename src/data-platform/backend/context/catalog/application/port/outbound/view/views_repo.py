@@ -10,6 +10,7 @@ from context.catalog.application.domain.model.view import View
 
 if TYPE_CHECKING:
     from base import EntityId
+    from base.model import EntityId as ModelEntityId
     from context.catalog.application.domain.model.namespace import NamespaceId
     from context.catalog.application.domain.model.view import ViewId
 
@@ -24,9 +25,13 @@ class ViewsRepo(Repository[View]):
     """
 
     @abstractmethod
+    def get(self, entity_id: EntityId | ModelEntityId) -> View | None:
+        """Return the view with the given id, or None when there is none."""
+
+    @abstractmethod
     def list_in(self, namespace: NamespaceId) -> list[ViewId]:
         """Return the ids of the views directly in ``namespace``; NotFoundError for an unknown namespace."""
 
     @abstractmethod
-    def delete(self, entity_id: EntityId) -> None:
+    def delete(self, entity_id: EntityId | ModelEntityId) -> None:
         """Drop the view from the catalog; NotFoundError for an unknown one."""

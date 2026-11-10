@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, replace
+from dataclasses import replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -74,7 +74,7 @@ def test_get_returns_the_view_and_unknown_is_not_found(views_repo: InMemoryViews
     created = _create(views_repo)
     service = GetViewService(views_repo)
 
-    assert asdict(service.execute(GetViewUseCaseInput("sales", ["retail", "a.b"], "top_orders"))) == asdict(created)
+    assert vars(service.execute(GetViewUseCaseInput("sales", ["retail", "a.b"], "top_orders"))) == vars(created)
     with pytest.raises(NotFoundError, match="missing"):
         service.execute(GetViewUseCaseInput("sales", ["retail", "a.b"], "missing"))
 

@@ -20,6 +20,7 @@ from context.catalog.application.port.outbound.table import NamespaceId, Table, 
 
 if TYPE_CHECKING:
     from base import EntityId
+    from base.model import EntityId as ModelEntityId
     from context.catalog.adapter.outbound.shared.polaris import PolarisHttpClient
 
 
@@ -51,7 +52,7 @@ class TablesPolarisRepo(TablesRepo):
 
         An unpartitioned spec and a missing location are left out, so Polaris applies its defaults.
         """
-        body: dict[str, Any] = {"name": entity.id.name, "schema": iceberg_schema_to_polaris(entity.schema)}
+        body: dict[str, Any] = {"name": entity.id.name, "schema": iceberg_schema_to_polaris(entity.current_schema)}
         if entity.partition_spec.fields:
             body["partition-spec"] = partition_spec_to_polaris(entity.partition_spec)
         if entity.location:
@@ -62,7 +63,7 @@ class TablesPolarisRepo(TablesRepo):
         )
         return table_from_polaris(entity.id, response)
 
-    def get(self, entity_id: EntityId) -> Table | None:
+    def get(self, entity_id: EntityId | ModelEntityId) -> Table | None:
         """GET the table; Polaris's 404 means there is none."""
         table_id = TableId(entity_id.value)
         try:
@@ -114,7 +115,7 @@ class TablesPolarisRepo(TablesRepo):
         )
         return table_from_polaris(entity_id, response)
 
-    def delete(self, entity_id: EntityId) -> None:
+    def delete(self, entity_id: EntityId | ModelEntityId) -> None:
         """DELETE the table with ``purgeRequested=false``, so its files stay."""
         self._polaris.catalog_request(
             "DELETE", _table_path(TableId(entity_id.value)), params={"purgeRequested": "false"}

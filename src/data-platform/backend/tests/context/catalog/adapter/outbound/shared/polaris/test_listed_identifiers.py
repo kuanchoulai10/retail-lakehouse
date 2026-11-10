@@ -28,6 +28,7 @@ def test_returns_namespace_parts_and_name_of_each_identifier():
         httpx.Response(200, text="<html>nope</html>"),
         httpx.Response(200, json={"identifiers": [{"namespace": "retail", "name": "v"}]}),
         httpx.Response(200, json={"identifiers": [{"namespace": ["retail"], "name": 7}]}),
+        httpx.Response(200, json={"identifiers": [{"namespace": ["retail", 1], "name": "v"}]}),
         httpx.Response(200, json={"identifiers": [{"name": "v"}]}),
         httpx.Response(200, json={"identifiers": ["v"]}),
         httpx.Response(200, json={"identifiers": 3}),

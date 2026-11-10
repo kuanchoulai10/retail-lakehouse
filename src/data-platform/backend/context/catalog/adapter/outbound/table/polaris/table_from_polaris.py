@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from context.catalog.adapter.outbound.shared.polaris import read_polaris_reply
+from context.catalog.adapter.outbound.shared.polaris import (
+    polaris_integer,
+    polaris_text,
+    polaris_text_map,
+    read_polaris_reply,
+)
 from context.catalog.adapter.outbound.table.polaris.partition_spec_from_polaris import (
     partition_spec_from_polaris,
 )
@@ -13,7 +18,7 @@ from context.catalog.adapter.outbound.table.polaris.sort_order_from_polaris impo
 from context.catalog.adapter.outbound.table.polaris.table_schema_from_polaris import (
     table_schema_from_polaris,
 )
-from context.catalog.application.port.outbound.table import Table
+from context.catalog.application.port.outbound.table import Snapshot, Table
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -25,27 +30,43 @@ if TYPE_CHECKING:
 _NO_SNAPSHOT = -1
 
 
+def _current_snapshot_id(value: object) -> int | None:
+    if value is None:
+        return None
+    current = polaris_integer(value, "current-snapshot-id")
+    return None if current == _NO_SNAPSHOT else current
+
+
+def _snapshots(value: Any) -> list[Snapshot]:  # noqa: ANN401
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise TypeError(f"snapshots must be a list, not {value!r}")
+    return [snapshot_from_polaris(snapshot) for snapshot in value]
+
+
 def _table(table_id: TableId, metadata: Mapping[str, Any]) -> Table:
-    current = metadata.get("current-snapshot-id")
     return Table(
         id=table_id,
-        uuid=str(metadata["table-uuid"]),
-        format_version=int(metadata["format-version"]),
-        location=str(metadata["location"]),
-        current_snapshot_id=None if current in (None, _NO_SNAPSHOT) else int(current),
-        last_updated_ms=int(metadata["last-updated-ms"]),
-        schema=table_schema_from_polaris(metadata),
+        uuid=polaris_text(metadata["table-uuid"], "table-uuid"),
+        format_version=polaris_integer(metadata["format-version"], "format-version"),
+        location=polaris_text(metadata["location"], "location"),
+        current_snapshot_id=_current_snapshot_id(metadata.get("current-snapshot-id")),
+        last_updated_ms=polaris_integer(metadata["last-updated-ms"], "last-updated-ms"),
+        current_schema=table_schema_from_polaris(metadata),
         partition_spec=partition_spec_from_polaris(metadata),
         sort_order=sort_order_from_polaris(metadata),
-        snapshots=[snapshot_from_polaris(snapshot) for snapshot in metadata.get("snapshots") or []],
-        properties={str(key): str(value) for key, value in (metadata.get("properties") or {}).items()},
+        snapshots=_snapshots(metadata.get("snapshots")),
+        properties=polaris_text_map(metadata.get("properties"), "properties"),
     )
 
 
 def table_from_polaris(table_id: TableId, response: httpx.Response) -> Table:
     """Map the ``metadata`` of a LoadTableResult or CommitTableResponse reply to a Table.
 
-    v1's -1 snapshot id means none. A reply that is not JSON, has no ``metadata``, or holds
+    v1's -1 snapshot id means none, and missing or null snapshots or properties are none.
+    Nothing is coerced: a value of the wrong type (a bool where an integer belongs, a number
+    where text belongs) is refused. A reply that is not JSON, has no ``metadata``, or holds
     metadata this backend cannot read raises CatalogUnavailableError naming the table, so the
     API answers 502 rather than 500.
     """

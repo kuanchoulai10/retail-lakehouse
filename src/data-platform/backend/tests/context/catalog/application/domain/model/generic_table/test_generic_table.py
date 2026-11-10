@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from context.catalog.application.domain.model.generic_table import GenericTable, GenericTableId
 
@@ -45,3 +46,31 @@ def test_generic_table_id_refuses_the_unit_separator_inside_any_component(catalo
     """A U+001F inside the catalog, a namespace part or the name would split differently, so it is refused."""
     with pytest.raises(ValueError, match=message):
         GenericTableId.of(catalog, namespace, name)
+
+
+def test_generic_table_id_is_built_positionally_and_strict():
+    """The id keeps its positional form and takes only a string."""
+    assert GenericTableId("sales\x1fretail\x1fevents") == GenericTableId.of("sales", ("retail",), "events")
+    with pytest.raises(ValidationError):
+        GenericTableId(1)  # ty: ignore[invalid-argument-type]
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("format", 1), ("base_location", 2), ("doc", b"clicks"), ("properties", {"a": 1}), ("properties", [("a", "b")])],
+)
+def test_assigning_a_wrong_type_is_rejected_and_changes_nothing(field: str, value: object):
+    """Every assignment is validated strictly; a rejected one leaves the generic table as it was."""
+    table = GenericTable(
+        id=GenericTableId.of("sales", ("retail",), "events"),
+        format="delta",
+        base_location=None,
+        doc=None,
+        properties={"owner": "data-eng"},
+    )
+    before = table.model_dump()
+
+    with pytest.raises(ValidationError):
+        setattr(table, field, value)
+
+    assert table.model_dump() == before

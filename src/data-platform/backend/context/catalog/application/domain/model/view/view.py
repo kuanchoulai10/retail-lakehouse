@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from pydantic import Field
 
-from base import AggregateRoot
+from base.model import AggregateRoot
 from context.catalog.application.domain.model.shared import Schema
 from context.catalog.application.domain.model.view.view_id import ViewId
 from context.catalog.application.domain.model.view.view_version import ViewVersion
@@ -13,11 +13,10 @@ _FIRST_VERSION = 1
 _NO_SCHEMA_ID = 0
 
 
-@dataclass(eq=False)
 class View(AggregateRoot[ViewId]):
     """An Iceberg view as the catalog holds it: uuid, location, schema, versions and properties.
 
-    ``schema`` is the schema of the current version, the same shape as a table's. The catalog
+    ``current_schema`` is the schema of the current version, the same shape as a table's. The catalog
     assigns ``uuid`` and, unless one is asked for, ``location`` when it saves the view; a view
     defined for create (``define``) has them as None, every view loaded from the catalog has them.
     """
@@ -25,10 +24,10 @@ class View(AggregateRoot[ViewId]):
     id: ViewId
     uuid: str | None
     location: str | None
-    schema: Schema
+    current_schema: Schema
     current_version_id: int
-    versions: list[ViewVersion] = field(default_factory=list)
-    properties: dict[str, str] = field(default_factory=dict)
+    versions: list[ViewVersion] = Field(default_factory=list)
+    properties: dict[str, str] = Field(default_factory=dict)
 
     @classmethod
     def define(
@@ -44,9 +43,18 @@ class View(AggregateRoot[ViewId]):
             id=id,
             uuid=None,
             location=None,
-            schema=Schema(schema_id=_NO_SCHEMA_ID, fields=()),
+            current_schema=Schema(schema_id=_NO_SCHEMA_ID, fields=()),
             current_version_id=_FIRST_VERSION,
-            versions=[ViewVersion(_FIRST_VERSION, timestamp_ms, _NO_SCHEMA_ID, query, dialect, default_namespace)],
+            versions=[
+                ViewVersion(
+                    version_id=_FIRST_VERSION,
+                    timestamp_ms=timestamp_ms,
+                    schema_id=_NO_SCHEMA_ID,
+                    query=query,
+                    dialect=dialect,
+                    default_namespace=default_namespace,
+                )
+            ],
             properties={},
         )
 

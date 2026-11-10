@@ -24,7 +24,7 @@ def view_to_polaris(view: View) -> dict[str, Any]:
     body: dict[str, Any] = {"name": view.id.name}
     if view.location:
         body["location"] = view.location
-    body["schema"] = iceberg_schema_to_polaris(view.schema)
+    body["schema"] = iceberg_schema_to_polaris(view.current_schema)
     body["view-version"] = {
         "version-id": version.version_id,
         "timestamp-ms": version.timestamp_ms,

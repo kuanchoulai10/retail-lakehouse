@@ -75,7 +75,9 @@ def _with_snapshots(repo: InMemoryTablesRepo) -> None:
         location="s3://w/retail/orders",
         current_snapshot_id=2,
         last_updated_ms=20,
-        schema=Schema(schema_id=0, fields=(SchemaField(id=1, name="order_id", type="long", required=True, doc=None),)),
+        current_schema=Schema(
+            schema_id=0, fields=(SchemaField(id=1, name="order_id", type="long", required=True, doc=None),)
+        ),
         partition_spec=PartitionSpec.unpartitioned(),
         sort_order=SortOrder.unsorted(),
         snapshots=[

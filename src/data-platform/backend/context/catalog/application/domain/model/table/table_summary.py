@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from base import ValueObject
+from base.model import ValueObject
 
 if TYPE_CHECKING:
     from context.catalog.application.domain.model.table.snapshot import Snapshot
@@ -22,7 +21,6 @@ def _count(summary: dict[str, str], key: str) -> int | None:
         return None
 
 
-@dataclass(frozen=True)
 class TableSummary(ValueObject):
     """The record count, data file count and total file size in bytes of a table's current snapshot.
 

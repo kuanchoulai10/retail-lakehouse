@@ -28,6 +28,7 @@ from context.catalog.application.port.outbound.namespace import (
 
 if TYPE_CHECKING:
     from base import EntityId
+    from base.model import EntityId as ModelEntityId
     from context.catalog.adapter.outbound.shared.polaris import PolarisHttpClient
 
 _SEPARATOR = "\x1f"
@@ -47,7 +48,7 @@ class NamespacesPolarisRepo(NamespacesRepo):
         response = self._polaris.catalog_request("POST", iceberg_namespace_path(entity.catalog), json=body)
         return namespace_from_polaris(entity.catalog, entity.parts, response)
 
-    def get(self, entity_id: EntityId) -> Namespace | None:
+    def get(self, entity_id: EntityId | ModelEntityId) -> Namespace | None:
         """GET the namespace; Polaris's 404 means there is none."""
         namespace_id = NamespaceId(entity_id.value)
         try:
@@ -98,7 +99,7 @@ class NamespacesPolarisRepo(NamespacesRepo):
             raise NotFoundError(f"namespace {list(entity_id.parts)} not found in catalog {entity_id.catalog}")
         return saved
 
-    def delete(self, entity_id: EntityId) -> None:
+    def delete(self, entity_id: EntityId | ModelEntityId) -> None:
         """DELETE the namespace; Polaris refuses one that is not empty."""
         namespace_id = NamespaceId(entity_id.value)
         self._polaris.catalog_request("DELETE", iceberg_namespace_path(namespace_id.catalog, namespace_id.parts))

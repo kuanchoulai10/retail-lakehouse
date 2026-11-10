@@ -10,6 +10,7 @@ from context.catalog.application.domain.model.namespace import Namespace
 
 if TYPE_CHECKING:
     from base import EntityId
+    from base.model import EntityId as ModelEntityId
     from context.catalog.application.domain.model.catalog import CatalogId
     from context.catalog.application.domain.model.namespace import NamespaceId
 
@@ -23,6 +24,10 @@ class NamespacesRepo(Repository[Namespace]):
     """
 
     @abstractmethod
+    def get(self, entity_id: EntityId | ModelEntityId) -> Namespace | None:
+        """Return the namespace with the given id, or None when there is none."""
+
+    @abstractmethod
     def list_in(self, catalog: CatalogId, parent: tuple[str, ...]) -> list[Namespace]:
         """Return the direct children of ``parent`` (the top level when it is empty), without properties."""
 
@@ -34,5 +39,5 @@ class NamespacesRepo(Repository[Namespace]):
         """
 
     @abstractmethod
-    def delete(self, entity_id: EntityId) -> None:
+    def delete(self, entity_id: EntityId | ModelEntityId) -> None:
         """Delete the namespace; one that still holds content or children is refused, never emptied."""

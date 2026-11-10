@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from context.catalog.adapter.outbound.shared.polaris import read_polaris_reply
+from context.catalog.adapter.outbound.shared.polaris import polaris_text_map, read_polaris_reply
 from context.catalog.application.port.outbound.generic_table import GenericTable
 
 if TYPE_CHECKING:
@@ -22,13 +22,6 @@ def _optional_text(table: Mapping[str, Any], key: str) -> str | None:
     return value
 
 
-def _properties(table: Mapping[str, Any]) -> dict[str, str]:
-    properties = table.get("properties") or {}
-    if not isinstance(properties, dict):
-        raise TypeError(f"properties must be an object, not {properties!r}")
-    return {str(key): str(value) for key, value in properties.items()}
-
-
 def _generic_table(table_id: GenericTableId, table: Mapping[str, Any]) -> GenericTable:
     format_ = table["format"]
     if not isinstance(format_, str):
@@ -38,7 +31,7 @@ def _generic_table(table_id: GenericTableId, table: Mapping[str, Any]) -> Generi
         format=format_,
         base_location=_optional_text(table, "base-location"),
         doc=_optional_text(table, "doc"),
-        properties=_properties(table),
+        properties=polaris_text_map(table.get("properties"), "properties"),
     )
 
 

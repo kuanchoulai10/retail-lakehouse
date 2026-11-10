@@ -76,8 +76,8 @@ def test_load_maps_schema_partition_sort_snapshots_and_summary():
     assert table is not None
     assert (table.uuid, table.format_version, table.location) == (UUID, 2, "s3://lakehouse/iceberg/retail/orders")
     assert (table.current_snapshot_id, table.last_updated_ms) == (3051729675574597004, 1762516800123)
-    assert table.schema.schema_id == 1
-    assert [(f.id, f.name, f.type, f.required, f.doc) for f in table.schema.fields] == [
+    assert table.current_schema.schema_id == 1
+    assert [(f.id, f.name, f.type, f.required, f.doc) for f in table.current_schema.fields] == [
         (1, "order_id", "long", True, "Primary key from MySQL"),
         (2, "customer_id", "long", False, None),
         (3, "order_ts", "timestamptz", False, None),
@@ -157,7 +157,7 @@ def test_load_maps_map_types_and_optional_nested_elements():
     table = TablesPolarisRepo(stub.client()).get(ORDERS_ID)
 
     assert table is not None
-    assert table.schema.fields[-1].type == "map<string, list<required int>>"
+    assert table.current_schema.fields[-1].type == "map<string, list<required int>>"
 
 
 def test_get_unknown_table_is_none():
@@ -479,8 +479,148 @@ def test_v1_metadata_without_schemas_or_specs_uses_the_single_schema_and_spec():
     table = TablesPolarisRepo(stub.client()).get(ORDERS_ID)
 
     assert table is not None
-    assert [f.name for f in table.schema.fields] == ["order_id", "customer_id", "order_ts"]
+    assert [f.name for f in table.current_schema.fields] == ["order_id", "customer_id", "order_ts"]
     assert table.partition_spec == PartitionSpec(
         spec_id=0, fields=(PartitionField(source_id=3, field_id=1000, name="order_ts_day", transform="day"),)
     )
     assert table.sort_order == SortOrder.unsorted()
+
+
+def _snapshot(metadata: dict[str, Any]) -> dict[str, Any]:
+    return metadata["snapshots"][1]
+
+
+def _schema_field(metadata: dict[str, Any]) -> dict[str, Any]:
+    return metadata["schemas"][1]["fields"][0]
+
+
+def _partition_field(metadata: dict[str, Any]) -> dict[str, Any]:
+    return metadata["partition-specs"][1]["fields"][0]
+
+
+def _sort_field(metadata: dict[str, Any]) -> dict[str, Any]:
+    return metadata["sort-orders"][1]["fields"][0]
+
+
+ILL_TYPED = {
+    "table-uuid is a number": lambda m: m.update({"table-uuid": 7}),
+    "format-version is a bool": lambda m: m.update({"format-version": True}),
+    "format-version is text": lambda m: m.update({"format-version": "2"}),
+    "location is null": lambda m: m.update({"location": None}),
+    "location is a number": lambda m: m.update({"location": 3}),
+    "current-snapshot-id is text": lambda m: m.update({"current-snapshot-id": "3051729675574597004"}),
+    "current-snapshot-id is a bool": lambda m: m.update({"current-snapshot-id": True}),
+    "last-updated-ms is a float": lambda m: m.update({"last-updated-ms": 1762516800123.0}),
+    "last-updated-ms is text": lambda m: m.update({"last-updated-ms": "1762516800123"}),
+    "properties is a list of pairs": lambda m: m.update({"properties": [["owner", "data-eng"]]}),
+    "properties is an empty list": lambda m: m.update({"properties": []}),
+    "property value is a number": lambda m: m.update({"properties": {"owner": 1}}),
+    "snapshots is an object": lambda m: m.update({"snapshots": {}}),
+    "snapshot-id is text": lambda m: _snapshot(m).update({"snapshot-id": "3051729675574597004"}),
+    "parent-snapshot-id is text": lambda m: _snapshot(m).update({"parent-snapshot-id": "8333017788700497002"}),
+    "timestamp-ms is a bool": lambda m: _snapshot(m).update({"timestamp-ms": True}),
+    "summary is a list of pairs": lambda m: _snapshot(m).update({"summary": [["operation", "append"]]}),
+    "summary value is a number": lambda m: _snapshot(m).update(
+        {"summary": {"operation": "append", "added-records": 60}}
+    ),
+    "operation is a number": lambda m: _snapshot(m).update({"summary": {"operation": 1}}),
+    "current-schema-id is a bool": lambda m: m.update({"current-schema-id": True}),
+    "schema-id is text": lambda m: m["schemas"][1].update({"schema-id": "1"}),
+    "schema field id is text": lambda m: _schema_field(m).update({"id": "1"}),
+    "schema field name is a number": lambda m: _schema_field(m).update({"name": 1}),
+    "schema field required is text": lambda m: _schema_field(m).update({"required": "yes"}),
+    "default-spec-id is a bool": lambda m: m.update({"default-spec-id": True}),
+    "partition source-id is text": lambda m: _partition_field(m).update({"source-id": "3"}),
+    "partition field-id is a float": lambda m: _partition_field(m).update({"field-id": 1000.0}),
+    "partition name is a number": lambda m: _partition_field(m).update({"name": 5}),
+    "partition transform is null": lambda m: _partition_field(m).update({"transform": None}),
+    "default-sort-order-id is a bool": lambda m: m.update({"default-sort-order-id": True}),
+    "sort source-id is text": lambda m: _sort_field(m).update({"source-id": "1"}),
+    "sort transform is a number": lambda m: _sort_field(m).update({"transform": 1}),
+}
+
+
+@pytest.mark.parametrize("change", ILL_TYPED.values(), ids=ILL_TYPED.keys())
+def test_ill_typed_value_from_polaris_is_unavailable(change: Any):  # noqa: ANN401
+    """A value of the wrong type is refused, never coerced into the table (a bool is not an integer)."""
+    body = _load_result()
+    change(body["metadata"])
+    stub = PolarisStub()
+    stub.on("GET", ORDERS, httpx.Response(200, json=body))
+
+    with pytest.raises(CatalogUnavailableError, match="table orders in a form this backend cannot read"):
+        TablesPolarisRepo(stub.client()).get(ORDERS_ID)
+
+
+def test_absent_optional_values_from_polaris_keep_their_defaults():
+    """No properties, snapshots, summary, parent or required flag, and -1 for no snapshot, read as before."""
+    body = _load_result()
+    metadata = body["metadata"]
+    metadata.pop("properties")
+    metadata["current-snapshot-id"] = -1
+    metadata["snapshots"] = None
+    _schema_field(metadata).pop("required")
+    stub = PolarisStub()
+    stub.on("GET", ORDERS, httpx.Response(200, json=body))
+
+    table = TablesPolarisRepo(stub.client()).get(ORDERS_ID)
+
+    assert table is not None
+    assert (table.properties, table.snapshots, table.current_snapshot_id) == ({}, [], None)
+    assert table.current_schema.fields[0].required is False
+
+
+def test_a_loaded_table_holds_real_tuples_and_enums():
+    """The mapper hands the strict domain tuples and enums, so every field has its declared type."""
+    stub = PolarisStub()
+    stub.on("GET", ORDERS, httpx.Response(200, json=_load_result()))
+
+    table = TablesPolarisRepo(stub.client()).get(ORDERS_ID)
+
+    assert table is not None
+    assert type(table.partition_spec.fields) is tuple
+    assert type(table.sort_order.fields) is tuple
+    assert type(table.sort_order.fields[0].direction) is SortDirection
+    assert type(table.sort_order.fields[0].null_order) is NullOrder
+    assert type(table.snapshots) is list
+
+
+CREATE_REQUEST_BYTES = (
+    b'{"name":"orders","schema":{"type":"struct","schema-id":0,"fields":[{"id":1,"name":"order_id","type":"long",'
+    b'"required":true,"doc":"key"},{"id":2,"name":"order_ts","type":"timestamptz","required":false},{"id":3,'
+    b'"name":"tags","type":{"type":"list","element-id":4,"element":"string","element-required":false},'
+    b'"required":false}]},"partition-spec":{"spec-id":0,"fields":[{"source-id":2,"field-id":1000,'
+    b'"name":"order_ts_day","transform":"day"}]},"location":"s3://lakehouse/custom/orders",'
+    b'"properties":{"owner":"data-eng"}}'
+)
+
+
+def test_create_request_bytes_are_unchanged():
+    """The create body is byte for byte what it was before the domain moved to Pydantic."""
+    stub = PolarisStub()
+    stub.on("POST", TABLES, httpx.Response(200, json=_load_result()))
+    spec = PartitionSpec(
+        spec_id=0, fields=(PartitionField(source_id=2, field_id=1000, name="order_ts_day", transform="day"),)
+    )
+
+    TablesPolarisRepo(stub.client()).create(_new_orders(spec, location="s3://lakehouse/custom/orders"))
+
+    assert stub.requests[0].content == CREATE_REQUEST_BYTES
+
+
+def test_update_and_rename_request_bytes_are_unchanged():
+    """The commit and rename bodies are byte for byte what they were before the domain moved to Pydantic."""
+    stub = PolarisStub()
+    stub.on("POST", ORDERS, httpx.Response(200, json=_load_result()))
+    stub.on("POST", "/api/catalog/v1/sales/tables/rename", httpx.Response(204))
+    repo = TablesPolarisRepo(stub.client())
+
+    repo.update_properties(ORDERS_ID, "u-1", {"tier": "gold"}, ["stale"])
+    repo.rename(ORDERS_ID, TableId.of("sales", ("archive", "a.b"), "orders_2025"))
+
+    assert [request.content for request in stub.requests] == [
+        b'{"requirements":[{"type":"assert-table-uuid","uuid":"u-1"}],"updates":[{"action":"set-properties",'
+        b'"updates":{"tier":"gold"}},{"action":"remove-properties","removals":["stale"]}]}',
+        b'{"source":{"namespace":["retail"],"name":"orders"},"destination":{"namespace":["archive","a.b"],'
+        b'"name":"orders_2025"}}',
+    ]

@@ -10,6 +10,7 @@ from context.catalog.application.domain.model.table import Table
 
 if TYPE_CHECKING:
     from base import EntityId
+    from base.model import EntityId as ModelEntityId
     from context.catalog.application.domain.model.namespace import NamespaceId
     from context.catalog.application.domain.model.table import TableId
 
@@ -22,6 +23,10 @@ class TablesRepo(Repository[Table]):
     namespace does not exist. ``get`` returns None for an unknown table. ``list_all`` returns
     every table of every catalog.
     """
+
+    @abstractmethod
+    def get(self, entity_id: EntityId | ModelEntityId) -> Table | None:
+        """Return the table with the given id, or None when there is none."""
 
     @abstractmethod
     def list_in(self, namespace: NamespaceId) -> list[TableId]:
@@ -45,5 +50,5 @@ class TablesRepo(Repository[Table]):
         """
 
     @abstractmethod
-    def delete(self, entity_id: EntityId) -> None:
+    def delete(self, entity_id: EntityId | ModelEntityId) -> None:
         """Drop the table from the catalog; its data and metadata files are never purged."""

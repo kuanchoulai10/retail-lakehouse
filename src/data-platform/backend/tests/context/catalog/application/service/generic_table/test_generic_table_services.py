@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, replace
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 import pytest
@@ -45,7 +45,7 @@ def test_create_then_get_returns_the_generic_table(generic_tables_repo: InMemory
         GetGenericTableUseCaseInput("sales", ["retail"], "events")
     )
 
-    assert asdict(fetched) == asdict(created)
+    assert vars(fetched) == vars(created)
     assert (fetched.catalog, fetched.namespace, fetched.name) == ("sales", ["retail"], "events")
     assert (fetched.format, fetched.base_location, fetched.doc, fetched.properties) == (
         "delta",

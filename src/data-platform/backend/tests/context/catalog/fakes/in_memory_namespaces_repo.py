@@ -9,6 +9,7 @@ from context.catalog.application.port.outbound.namespace import Namespace, Names
 
 if TYPE_CHECKING:
     from base import EntityId
+    from base.model import EntityId as ModelEntityId
     from context.catalog.application.port.outbound.namespace import CatalogId
 
 
@@ -30,7 +31,7 @@ class InMemoryNamespacesRepo(NamespacesRepo):
         self.items[key] = dict(entity.properties)
         return self._load(entity.id)
 
-    def get(self, entity_id: EntityId) -> Namespace | None:
+    def get(self, entity_id: EntityId | ModelEntityId) -> Namespace | None:
         """Return the namespace, or None."""
         if entity_id.value not in self.items:
             return None
@@ -59,7 +60,7 @@ class InMemoryNamespacesRepo(NamespacesRepo):
         stored.update(updates)
         return self._load(entity_id)
 
-    def delete(self, entity_id: EntityId) -> None:
+    def delete(self, entity_id: EntityId | ModelEntityId) -> None:
         """Remove the namespace; unknown raises NotFoundError, one with children ConflictError."""
         if entity_id.value not in self.items:
             raise NotFoundError(f"Namespace does not exist: {entity_id.value}")
@@ -68,5 +69,5 @@ class InMemoryNamespacesRepo(NamespacesRepo):
             raise ConflictError(f"Namespace {entity_id.value!r} is not empty")
         del self.items[entity_id.value]
 
-    def _load(self, entity_id: EntityId) -> Namespace:
+    def _load(self, entity_id: EntityId | ModelEntityId) -> Namespace:
         return Namespace(id=NamespaceId(entity_id.value), properties=dict(self.items[entity_id.value]))

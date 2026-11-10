@@ -2,21 +2,23 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from typing import TYPE_CHECKING
 
+from base.model import validated_copy
 from context.catalog.application.exceptions import ConflictError, NotFoundError
 from context.catalog.application.port.outbound.table import Table, TableId, TablesRepo
 
 if TYPE_CHECKING:
     from base import EntityId
+    from base.model import EntityId as ModelEntityId
     from context.catalog.application.port.outbound.table import NamespaceId
 
 LAST_UPDATED_MS = 1762516800000
 
 
 def _copy(table: Table, **changes: object) -> Table:
-    return replace(table, properties=dict(table.properties), snapshots=list(table.snapshots), **changes)
+    """Return a validated copy; it shares no mutable state with table and holds no pending events."""
+    return validated_copy(table, **changes)
 
 
 class InMemoryTablesRepo(TablesRepo):
@@ -46,7 +48,7 @@ class InMemoryTablesRepo(TablesRepo):
         )
         return _copy(self.items[entity.id.value])
 
-    def get(self, entity_id: EntityId) -> Table | None:
+    def get(self, entity_id: EntityId | ModelEntityId) -> Table | None:
         """Return a copy of the table, or None."""
         stored = self.items.get(entity_id.value)
         return None if stored is None else _copy(stored)
@@ -85,10 +87,10 @@ class InMemoryTablesRepo(TablesRepo):
             raise ConflictError(f"Requirement failed: UUID does not match: expected {expected_uuid} != {stored.uuid}")
         properties = {key: value for key, value in stored.properties.items() if key not in removals}
         properties.update(updates)
-        self.items[entity_id.value] = replace(stored, properties=properties)
+        self.items[entity_id.value] = _copy(stored, properties=properties)
         return _copy(self.items[entity_id.value])
 
-    def delete(self, entity_id: EntityId) -> None:
+    def delete(self, entity_id: EntityId | ModelEntityId) -> None:
         """Remove the table without purging its files; an unknown one raises NotFoundError."""
         if self.items.pop(entity_id.value, None) is None:
             raise NotFoundError(f"Table does not exist: {entity_id.value}")

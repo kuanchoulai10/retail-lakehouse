@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-from base import EntityId
+from base.model import EntityId
 from context.catalog.application.domain.model.shared import reject_unit_separator
 
 _SEPARATOR = "\x1f"
 
 
-@dataclass(frozen=True)
 class NamespaceId(EntityId):
     """Identify a namespace by its catalog and its parts, joined by the unit separator U+001F.
 

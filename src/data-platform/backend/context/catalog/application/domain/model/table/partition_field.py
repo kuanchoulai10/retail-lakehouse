@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-from base import ValueObject
+from base.model import ValueObject
 
 
-@dataclass(frozen=True)
 class PartitionField(ValueObject):
     """One field of a partition spec: the source column id, the field's own id, its name and its transform.
 

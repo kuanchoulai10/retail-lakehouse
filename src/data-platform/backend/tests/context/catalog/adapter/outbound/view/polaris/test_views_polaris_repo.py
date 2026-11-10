@@ -74,15 +74,29 @@ def test_load_view_maps_uuid_location_schema_versions_and_properties():
         "trino",
         ("retail", "a.b"),
     )
-    assert view.schema.schema_id == 1
-    assert [(f.id, f.name, f.type, f.required, f.doc) for f in view.schema.fields] == [
+    assert view.current_schema.schema_id == 1
+    assert [(f.id, f.name, f.type, f.required, f.doc) for f in view.current_schema.fields] == [
         (1, "order_id", "long", True, "key"),
         (2, "amount", "decimal(10,2)", False, None),
         (3, "tags", "list<string>", False, None),
     ]
     assert view.versions == [
-        ViewVersion(1, 1762516800000, 0, "SELECT 1", "spark", ("retail",)),
-        ViewVersion(2, 1762520400000, 1, "SELECT order_id, amount FROM orders", "trino", ("retail", "a.b")),
+        ViewVersion(
+            version_id=1,
+            timestamp_ms=1762516800000,
+            schema_id=0,
+            query="SELECT 1",
+            dialect="spark",
+            default_namespace=("retail",),
+        ),
+        ViewVersion(
+            version_id=2,
+            timestamp_ms=1762520400000,
+            schema_id=1,
+            query="SELECT order_id, amount FROM orders",
+            dialect="trino",
+            default_namespace=("retail", "a.b"),
+        ),
     ]
     assert view.properties == {"comment": "top orders"}
 
@@ -277,3 +291,63 @@ def test_view_name_is_percent_encoded_as_one_path_segment_in_the_raw_path(name: 
         ("GET", f"{VIEWS}/{encoded}"),
         ("DELETE", f"{VIEWS}/{encoded}"),
     ]
+
+
+ILL_TYPED = {
+    "current-version-id is a bool": lambda m: m.update({"current-version-id": True}),
+    "current-version-id is text": lambda m: m.update({"current-version-id": "2"}),
+    "view-uuid is a number": lambda m: m.update({"view-uuid": 7}),
+    "location is null": lambda m: m.update({"location": None}),
+    "version-id is text": lambda m: m["versions"][1].update({"version-id": "2"}),
+    "timestamp-ms is a float": lambda m: m["versions"][1].update({"timestamp-ms": 1762520400000.0}),
+    "schema-id of a version is a bool": lambda m: m["versions"][1].update({"schema-id": True}),
+    "properties is an empty list": lambda m: m.update({"properties": []}),
+    "property value is a number": lambda m: m.update({"properties": {"comment": 1}}),
+    "schema field id is text": lambda m: m["schemas"][1]["fields"][0].update({"id": "1"}),
+}
+
+
+@pytest.mark.parametrize("change", ILL_TYPED.values(), ids=ILL_TYPED.keys())
+def test_ill_typed_value_from_polaris_is_unavailable(change: Any):  # noqa: ANN401
+    """A value of the wrong type is refused, never coerced into the view (a bool is not an integer)."""
+    stub = PolarisStub()
+    stub.on("GET", TOP, _variant(change))
+
+    with pytest.raises(CatalogUnavailableError, match="view top_orders in a form this backend cannot read"):
+        ViewsPolarisRepo(stub.client()).get(TOP_ID)
+
+
+def test_a_loaded_view_holds_real_tuples():
+    """The mapper hands the strict domain tuples for the default namespace."""
+    stub = PolarisStub()
+    stub.on("GET", TOP, httpx.Response(200, json=_load_result()))
+
+    view = ViewsPolarisRepo(stub.client()).get(TOP_ID)
+
+    assert view is not None
+    assert type(view.versions) is list
+    assert all(type(version.default_namespace) is tuple for version in view.versions)
+
+
+def test_create_request_bytes_are_unchanged():
+    """The create body is byte for byte what it was before the domain moved to Pydantic."""
+    stub = PolarisStub()
+    stub.on("POST", VIEWS, httpx.Response(200, json=_load_result()))
+    view = View.define(
+        id=TOP_ID,
+        query="SELECT 1",
+        dialect="spark",
+        default_namespace=("retail", "a.b"),
+        timestamp_ms=1762516800000,
+    )
+    view.location = "s3://w/custom"
+    view.properties = {"comment": "c"}
+
+    ViewsPolarisRepo(stub.client()).create(view)
+
+    assert stub.requests[0].content == (
+        b'{"name":"top_orders","location":"s3://w/custom","schema":{"type":"struct","schema-id":0,"fields":[]},'
+        b'"view-version":{"version-id":1,"timestamp-ms":1762516800000,"schema-id":0,"summary":{"engine-name":'
+        b'"spark","engine-version":"1.0.0"},"representations":[{"type":"sql","sql":"SELECT 1","dialect":"spark"}],'
+        b'"default-namespace":["retail","a.b"]},"properties":{"comment":"c"}}'
+    )

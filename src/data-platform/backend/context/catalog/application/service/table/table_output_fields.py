@@ -20,10 +20,10 @@ def table_output_fields(table: Table) -> dict[str, Any]:
         "current_snapshot_id": table.current_snapshot_id,
         "last_updated_ms": table.last_updated_ms,
         "schema": {
-            "schema_id": table.schema.schema_id,
+            "schema_id": table.current_schema.schema_id,
             "fields": [
                 {"id": f.id, "name": f.name, "type": f.type, "required": f.required, "doc": f.doc}
-                for f in table.schema.fields
+                for f in table.current_schema.fields
             ],
         },
         "partition_spec": {

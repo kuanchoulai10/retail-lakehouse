@@ -21,10 +21,10 @@ def view_output_fields(view: View) -> dict[str, Any]:
         "default_namespace": list(view.default_namespace),
         "current_version_id": view.current_version_id,
         "schema": {
-            "schema_id": view.schema.schema_id,
+            "schema_id": view.current_schema.schema_id,
             "fields": [
                 {"id": f.id, "name": f.name, "type": f.type, "required": f.required, "doc": f.doc}
-                for f in view.schema.fields
+                for f in view.current_schema.fields
             ],
         },
         "versions": [

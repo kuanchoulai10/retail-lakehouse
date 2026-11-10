@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-from base import ValueObject
+from base.model import ValueObject
 
 
-@dataclass(frozen=True)
 class ViewVersion(ValueObject):
     """One version of a view: when it was made, its schema, its query (the SQL text), its dialect and namespace."""
 

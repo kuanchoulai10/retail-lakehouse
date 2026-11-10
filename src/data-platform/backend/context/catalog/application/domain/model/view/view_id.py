@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-from base import EntityId
+from base.model import EntityId
 from context.catalog.application.domain.model.shared import reject_unit_separator
 
 _SEPARATOR = "\x1f"
 
 
-@dataclass(frozen=True)
 class ViewId(EntityId):
     """Identify a view by its catalog, its namespace parts and its name, joined by U+001F.
 

@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from context.catalog.adapter.outbound.shared.polaris import iceberg_schema_from_polaris, read_polaris_reply
+from context.catalog.adapter.outbound.shared.polaris import (
+    iceberg_schema_from_polaris,
+    polaris_integer,
+    polaris_text,
+    polaris_text_map,
+    read_polaris_reply,
+)
 from context.catalog.adapter.outbound.view.polaris.view_version_from_polaris import (
     view_version_from_polaris,
 )
@@ -32,24 +38,17 @@ def _schema_of(metadata: Mapping[str, Any], version: ViewVersion) -> Schema:
     raise ValueError(f"schema-id {version.schema_id} of the current version matches no schema")
 
 
-def _properties(metadata: Mapping[str, Any]) -> dict[str, str]:
-    properties = metadata.get("properties") or {}
-    if not isinstance(properties, dict):
-        raise TypeError(f"properties must be an object, not {properties!r}")
-    return {str(key): str(value) for key, value in properties.items()}
-
-
 def _view(view_id: ViewId, metadata: Mapping[str, Any]) -> View:
     versions = [view_version_from_polaris(version) for version in metadata["versions"]]
-    current = _current_version(versions, int(metadata["current-version-id"]))
+    current = _current_version(versions, polaris_integer(metadata["current-version-id"], "current-version-id"))
     return View(
         id=view_id,
-        uuid=str(metadata["view-uuid"]),
-        location=str(metadata["location"]),
-        schema=_schema_of(metadata, current),
+        uuid=polaris_text(metadata["view-uuid"], "view-uuid"),
+        location=polaris_text(metadata["location"], "location"),
+        current_schema=_schema_of(metadata, current),
         current_version_id=current.version_id,
         versions=versions,
-        properties=_properties(metadata),
+        properties=polaris_text_map(metadata.get("properties"), "properties"),
     )
 
 

@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-from base import ValueObject
+from base.model import ValueObject
 
 
-@dataclass(frozen=True)
 class Snapshot(ValueObject):
     """One snapshot of a table: its id, its parent, when it was made, by which operation, and its summary.
 

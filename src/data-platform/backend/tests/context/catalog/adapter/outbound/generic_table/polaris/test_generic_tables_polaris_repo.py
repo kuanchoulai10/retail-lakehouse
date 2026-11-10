@@ -149,7 +149,9 @@ def test_create_leaves_out_an_absent_location_and_doc():
     stub = PolarisStub()
     stub.on("POST", TABLES, httpx.Response(200, json={"table": {"name": "events", "format": "delta"}}))
 
-    GenericTablesPolarisRepo(stub.client()).create(GenericTable(EVENTS_ID, "delta", None, None, {}))
+    GenericTablesPolarisRepo(stub.client()).create(
+        GenericTable(id=EVENTS_ID, format="delta", base_location=None, doc=None, properties={})
+    )
 
     (request,) = stub.requests
     assert json.loads(request.content) == {"name": "events", "format": "delta", "properties": {}}
@@ -253,3 +255,47 @@ def test_generic_table_name_is_percent_encoded_as_one_path_segment_in_the_raw_pa
         ("GET", f"{TABLES}/{encoded}"),
         ("DELETE", f"{TABLES}/{encoded}"),
     ]
+
+
+@pytest.mark.parametrize(
+    "table",
+    [
+        {"name": "events", "format": "delta", "properties": []},
+        {"name": "events", "format": "delta", "properties": ""},
+        {"name": "events", "format": "delta", "properties": {"owner": 1}},
+        {"name": "events", "format": "delta", "properties": {"owner": None}},
+    ],
+)
+def test_ill_typed_value_from_polaris_is_unavailable(table: dict[str, Any]):
+    """Properties that are not an object of text values are refused, never coerced to text or emptied."""
+    stub = PolarisStub()
+    stub.on("GET", EVENTS, httpx.Response(200, json={"table": table}))
+
+    with pytest.raises(CatalogUnavailableError, match="generic table events in a form this backend cannot read"):
+        GenericTablesPolarisRepo(stub.client()).get(EVENTS_ID)
+
+
+def test_null_properties_from_polaris_are_empty():
+    """A null properties value reads as no properties, as before."""
+    stub = PolarisStub()
+    stub.on(
+        "GET", EVENTS, httpx.Response(200, json={"table": {"name": "events", "format": "delta", "properties": None}})
+    )
+
+    table = GenericTablesPolarisRepo(stub.client()).get(EVENTS_ID)
+
+    assert table is not None
+    assert table.properties == {}
+
+
+def test_create_request_bytes_are_unchanged():
+    """The create body is byte for byte what it was before the domain moved to Pydantic."""
+    stub = PolarisStub()
+    stub.on("POST", TABLES, httpx.Response(200, json=REPLY))
+
+    GenericTablesPolarisRepo(stub.client()).create(_events())
+
+    assert stub.requests[0].content == (
+        b'{"name":"events","format":"delta","base-location":"s3://w/events","doc":"clicks",'
+        b'"properties":{"owner":"data-eng"}}'
+    )

@@ -35,6 +35,9 @@ from context.catalog.adapter.outbound.shared.polaris.polaris_error_mapper import
 from context.catalog.adapter.outbound.shared.polaris.polaris_http_client import (
     PolarisHttpClient,
 )
+from context.catalog.adapter.outbound.shared.polaris.polaris_integer import polaris_integer
+from context.catalog.adapter.outbound.shared.polaris.polaris_text import polaris_text
+from context.catalog.adapter.outbound.shared.polaris.polaris_text_map import polaris_text_map
 from context.catalog.adapter.outbound.shared.polaris.raise_for_paged_listing import (
     raise_for_paged_listing,
 )
@@ -51,6 +54,9 @@ __all__ = [
     "listed_namespaces",
     "listed_catalog_names",
     "PolarisHttpClient",
+    "polaris_integer",
+    "polaris_text",
+    "polaris_text_map",
     "iceberg_namespace_path",
     "iceberg_schema_from_polaris",
     "iceberg_schema_to_polaris",

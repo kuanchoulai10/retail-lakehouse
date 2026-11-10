@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from typing import TYPE_CHECKING
 
+from base.model import validated_copy
 from context.catalog.application.exceptions import ConflictError, NotFoundError
 from context.catalog.application.port.outbound.generic_table import (
     GenericTable,
@@ -14,6 +14,7 @@ from context.catalog.application.port.outbound.generic_table import (
 
 if TYPE_CHECKING:
     from base import EntityId
+    from base.model import EntityId as ModelEntityId
     from context.catalog.application.port.outbound.generic_table import NamespaceId
 
 
@@ -28,17 +29,17 @@ class InMemoryGenericTablesRepo(GenericTablesRepo):
         """Store a new generic table; a taken name raises ConflictError."""
         if entity.id.value in self.items:
             raise ConflictError(f"Generic table already exists: {entity.id.name}")
-        self.items[entity.id.value] = replace(entity, properties=dict(entity.properties))
-        return replace(entity, properties=dict(entity.properties))
+        self.items[entity.id.value] = validated_copy(entity)
+        return validated_copy(entity)
 
-    def get(self, entity_id: EntityId) -> GenericTable | None:
+    def get(self, entity_id: EntityId | ModelEntityId) -> GenericTable | None:
         """Return a copy of the generic table, or None."""
         stored = self.items.get(entity_id.value)
-        return None if stored is None else replace(stored, properties=dict(stored.properties))
+        return None if stored is None else validated_copy(stored)
 
     def list_all(self) -> list[GenericTable]:
         """Return every generic table ordered by id."""
-        return [replace(self.items[key]) for key in sorted(self.items)]
+        return [validated_copy(self.items[key]) for key in sorted(self.items)]
 
     def list_in(self, namespace: NamespaceId) -> list[GenericTableId]:
         """Return the ids of the generic tables directly in ``namespace``."""
@@ -49,7 +50,7 @@ class InMemoryGenericTablesRepo(GenericTablesRepo):
                 found.append(table_id)
         return found
 
-    def delete(self, entity_id: EntityId) -> None:
+    def delete(self, entity_id: EntityId | ModelEntityId) -> None:
         """Remove the generic table; an unknown one raises NotFoundError."""
         if self.items.pop(entity_id.value, None) is None:
             raise NotFoundError(f"Generic table does not exist: {entity_id.value}")

@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-from base import AggregateRoot
+from base.model import AggregateRoot
 from context.catalog.application.domain.model.namespace.namespace_id import NamespaceId
 
 
-@dataclass(eq=False)
 class Namespace(AggregateRoot[NamespaceId]):
     """A namespace: a named level inside a catalog that groups tables, views and child namespaces.
 

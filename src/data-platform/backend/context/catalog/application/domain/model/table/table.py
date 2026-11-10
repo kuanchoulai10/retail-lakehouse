@@ -2,21 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from pydantic import Field
 
-from base import AggregateRoot
+from base.model import AggregateRoot
+from context.catalog.application.domain.model.shared import Schema
+from context.catalog.application.domain.model.table.partition_spec import PartitionSpec
+from context.catalog.application.domain.model.table.snapshot import Snapshot
 from context.catalog.application.domain.model.table.sort_order import SortOrder
 from context.catalog.application.domain.model.table.table_id import TableId
 from context.catalog.application.domain.model.table.table_summary import TableSummary
 
-if TYPE_CHECKING:
-    from context.catalog.application.domain.model.shared import Schema
-    from context.catalog.application.domain.model.table.partition_spec import PartitionSpec
-    from context.catalog.application.domain.model.table.snapshot import Snapshot
 
-
-@dataclass(eq=False)
 class Table(AggregateRoot[TableId]):
     """An Iceberg table as the catalog holds it: uuid, current schema, default spec and order, snapshots, properties.
 
@@ -31,11 +27,11 @@ class Table(AggregateRoot[TableId]):
     location: str | None
     current_snapshot_id: int | None
     last_updated_ms: int | None
-    schema: Schema
+    current_schema: Schema
     partition_spec: PartitionSpec
     sort_order: SortOrder
-    snapshots: list[Snapshot] = field(default_factory=list)
-    properties: dict[str, str] = field(default_factory=dict)
+    snapshots: list[Snapshot] = Field(default_factory=list)
+    properties: dict[str, str] = Field(default_factory=dict)
 
     @classmethod
     def define(
@@ -54,7 +50,7 @@ class Table(AggregateRoot[TableId]):
             location=location,
             current_snapshot_id=None,
             last_updated_ms=None,
-            schema=schema,
+            current_schema=schema,
             partition_spec=partition_spec,
             sort_order=SortOrder.unsorted(),
             snapshots=[],

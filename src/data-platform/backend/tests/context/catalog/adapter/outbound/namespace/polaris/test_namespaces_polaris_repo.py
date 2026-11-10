@@ -35,7 +35,9 @@ def test_create_posts_the_namespace_with_properties():
     stub = PolarisStub()
     stub.on("POST", NAMESPACES, httpx.Response(200, json={"namespace": ["raw"], "properties": {"owner": "de"}}))
 
-    saved = NamespacesPolarisRepo(stub.client()).create(Namespace(NamespaceId.of("sales", ("raw",)), {"owner": "de"}))
+    saved = NamespacesPolarisRepo(stub.client()).create(
+        Namespace(id=NamespaceId.of("sales", ("raw",)), properties={"owner": "de"})
+    )
 
     (request,) = stub.requests
     assert (request.method, request.url.path) == ("POST", NAMESPACES)
@@ -50,7 +52,7 @@ def test_namespace_part_with_dot_round_trips():
     stub.on("GET", f"{NAMESPACES}/a.b", httpx.Response(200, json={"namespace": ["a.b"], "properties": {"k": "v"}}))
     repo = NamespacesPolarisRepo(stub.client())
 
-    created = repo.create(Namespace(NamespaceId.of("sales", ("a.b",)), {}))
+    created = repo.create(Namespace(id=NamespaceId.of("sales", ("a.b",)), properties={}))
     fetched = repo.get(NamespaceId.of("sales", ("a.b",)))
 
     assert _body(stub.requests[0])["namespace"] == ["a.b"]
@@ -119,7 +121,7 @@ def test_create_existing_namespace_is_a_conflict():
     stub.on("POST", NAMESPACES, _error(409, "Namespace already exists: raw"))
 
     with pytest.raises(ConflictError, match="already exists"):
-        NamespacesPolarisRepo(stub.client()).create(Namespace(NamespaceId.of("sales", ("raw",)), {}))
+        NamespacesPolarisRepo(stub.client()).create(Namespace(id=NamespaceId.of("sales", ("raw",)), properties={}))
 
 
 def test_delete_sends_delete_on_the_namespace_path():
@@ -234,7 +236,7 @@ _HTML = httpx.Response(200, text="<html>proxy error</html>", headers={"content-t
 _JSON_LIST = httpx.Response(200, json=[["raw"]])
 _RAW = NamespaceId.of("sales", ("raw",))
 _OPERATIONS = {
-    "create": ("POST", NAMESPACES, lambda repo: repo.create(Namespace(_RAW, {}))),
+    "create": ("POST", NAMESPACES, lambda repo: repo.create(Namespace(id=_RAW, properties={}))),
     "get": ("GET", f"{NAMESPACES}/raw", lambda repo: repo.get(_RAW)),
     "list_in": ("GET", NAMESPACES, lambda repo: repo.list_in(CatalogId.of("sales"), ())),
     "list_all": ("GET", CATALOGS, lambda repo: repo.list_all()),
@@ -325,3 +327,50 @@ def test_failing_updates_without_removals_are_reported_unchanged():
         NamespacesPolarisRepo(stub.client()).update_properties(_RAW, {"tier": "gold"}, [])
 
     assert "removals were applied" not in str(raised.value)
+
+
+@pytest.mark.parametrize(
+    "properties",
+    [[], "", {"owner": 1}, {"owner": None}, [["owner", "de"]]],
+    ids=["empty-list", "empty-text", "number-value", "null-value", "list-of-pairs"],
+)
+def test_ill_typed_value_from_polaris_is_unavailable(properties: object):
+    """Properties that are not an object of text values are refused, never coerced to text or emptied."""
+    stub = PolarisStub()
+    stub.on("GET", f"{NAMESPACES}/raw", httpx.Response(200, json={"namespace": ["raw"], "properties": properties}))
+
+    with pytest.raises(CatalogUnavailableError, match="namespace \\['raw'\\] in a form this backend cannot read"):
+        NamespacesPolarisRepo(stub.client()).get(NamespaceId.of("sales", ("raw",)))
+
+
+@pytest.mark.parametrize("body", [{"namespace": ["raw"]}, {"namespace": ["raw"], "properties": None}])
+def test_absent_or_null_properties_from_polaris_are_empty(body: dict[str, Any]):
+    """A reply without properties, or with null ones, reads as no properties, as before."""
+    stub = PolarisStub()
+    stub.on("GET", f"{NAMESPACES}/raw", httpx.Response(200, json=body))
+
+    namespace = NamespacesPolarisRepo(stub.client()).get(NamespaceId.of("sales", ("raw",)))
+
+    assert namespace is not None
+    assert namespace.properties == {}
+
+
+def test_write_request_bytes_are_unchanged():
+    """The create and properties bodies are byte for byte what they were before the domain moved to Pydantic."""
+    stub = PolarisStub()
+    stub.on(
+        "POST", NAMESPACES, httpx.Response(200, json={"namespace": ["retail", "a.b"], "properties": {"owner": "x"}})
+    )
+    stub.on("POST", f"{NAMESPACES}/retail/properties", httpx.Response(200, json={}), httpx.Response(200, json={}))
+    stub.on("GET", f"{NAMESPACES}/retail", httpx.Response(200, json={"namespace": ["retail"], "properties": {}}))
+    repo = NamespacesPolarisRepo(stub.client())
+
+    repo.create(Namespace(id=NamespaceId.of("sales", ("retail", "a.b")), properties={"owner": "x"}))
+    repo.update_properties(NamespaceId.of("sales", ("retail",)), {"tier": "gold"}, ["stale"])
+
+    assert [request.content for request in stub.requests] == [
+        b'{"namespace":["retail","a.b"],"properties":{"owner":"x"}}',
+        b'{"removals":["stale"]}',
+        b'{"updates":{"tier":"gold"}}',
+        b"",
+    ]
