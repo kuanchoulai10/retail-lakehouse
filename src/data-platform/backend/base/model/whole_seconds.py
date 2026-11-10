@@ -12,8 +12,11 @@ def _to_timedelta(value: object) -> timedelta:
     if isinstance(value, timedelta):
         return value
     if isinstance(value, int) and not isinstance(value, bool):
-        return timedelta(seconds=value)
-    raise ValueError("must be a timedelta or a whole number of seconds")
+        try:
+            return timedelta(seconds=value)
+        except OverflowError as exc:
+            raise ValueError("too large for a duration") from exc
+    raise ValueError("must be a whole number of seconds")
 
 
 def _to_seconds(value: timedelta) -> int:
@@ -30,6 +33,7 @@ WholeSeconds = Annotated[
 """A ``timedelta`` in the domain, integer seconds on the wire.
 
 Validation takes a ``timedelta`` or an ``int`` of seconds (never a
-``bool`` or a ``float``). JSON-mode serialization writes an ``int`` and
+``bool`` or a ``float``); seconds beyond the ``timedelta`` range are a
+validation error. JSON-mode serialization writes an ``int`` and
 raises ``ValueError`` for a duration that is not whole seconds.
 """

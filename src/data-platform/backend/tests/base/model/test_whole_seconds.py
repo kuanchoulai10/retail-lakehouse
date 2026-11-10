@@ -40,6 +40,20 @@ def test_rejects_a_non_int(value: object) -> None:
         _Timeout.model_validate({"duration": value})
 
 
+@pytest.mark.parametrize("value", [1.5, "90"])
+def test_rejection_message_names_only_seconds(value: object) -> None:
+    """The message speaks of seconds, not of the domain's ``timedelta``."""
+    with pytest.raises(ValidationError) as caught:
+        _Timeout.model_validate({"duration": value})
+    assert caught.value.errors()[0]["msg"] == "Value error, must be a whole number of seconds"
+
+
+def test_rejects_seconds_beyond_timedelta_range_as_a_validation_error() -> None:
+    """Seconds too large for a ``timedelta`` are a validation error, not an OverflowError."""
+    with pytest.raises(ValidationError, match="too large"):
+        _Timeout.model_validate_json('{"duration": 1000000000000000}')
+
+
 def test_rejects_a_bool_from_json() -> None:
     """A JSON ``true`` is rejected."""
     with pytest.raises(ValidationError):

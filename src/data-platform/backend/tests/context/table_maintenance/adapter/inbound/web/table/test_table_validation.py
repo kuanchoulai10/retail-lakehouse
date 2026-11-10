@@ -128,12 +128,14 @@ def test_unknown_nested_settings_key_returns_422(client) -> None:
         ),
         (
             {"reconcile_interval_seconds": 1.5},
-            "reconcile_interval_seconds: must be a timedelta or a whole number of seconds",
+            "reconcile_interval_seconds: must be a whole number of seconds",
         ),
+        ({"reconcile_interval": 3600}, "reconcile_interval: Extra inputs are not permitted"),
+        ({"reconcile_interval_seconds": 10**15}, "reconcile_interval_seconds: too large for a duration"),
     ],
 )
 def test_mistyped_settings_return_422_with_one_line(client, settings, detail) -> None:
-    """A boolean for an integer, an integer for a boolean or fractional seconds answer 422 in one line."""
+    """A mistyped value, a field name instead of its wire name, or out-of-range seconds answer 422 in one line."""
     response = client.put("/v1/tables/u-1/settings", json=settings)
 
     assert response.status_code == 422

@@ -60,3 +60,14 @@ def test_valid_settings_are_created(client) -> None:
     assert response.status_code == 201
     orphan = response.json()["settings"]["remove_orphan_files"]
     assert orphan["older_than_seconds"] == 172800
+
+
+def test_nested_domain_field_name_returns_422(client) -> None:
+    """A nested field name is not a wire name: ``older_than`` is rejected, only ``older_than_seconds`` is read."""
+    response = client.post(
+        "/v1/table-maintenance-presets",
+        json={"name": "named", "settings": {"remove_orphan_files": {"older_than": 172800}}},
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "remove_orphan_files.older_than: Extra inputs are not permitted"}

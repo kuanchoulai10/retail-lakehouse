@@ -33,6 +33,12 @@ class _Schedule(ValueObject):
     retries: int = 0
 
 
+class _Plan(ValueObject):
+    """A value object nesting another one."""
+
+    schedule: _Schedule
+
+
 def _schedule() -> _Schedule:
     return _Schedule(unit=_Unit.HOUR, min_interval=timedelta(hours=1), retries=2)
 
@@ -68,10 +74,27 @@ def test_from_primitives_reads_wire_values() -> None:
     assert schedule == _schedule()
 
 
-def test_from_primitives_accepts_the_field_name() -> None:
-    """The field name is accepted beside its ``*_seconds`` alias."""
-    schedule = _Schedule.from_primitives({"unit": "hour", "min_interval": 3600, "retries": 2})
-    assert schedule.min_interval == timedelta(hours=1)
+def test_from_primitives_rejects_the_field_name() -> None:
+    """The wire form accepts only the ``*_seconds`` alias, never the field name."""
+    with pytest.raises(ValidationError, match="min_interval_seconds"):
+        _Schedule.from_primitives({"unit": "hour", "min_interval": 3600, "retries": 2})
+
+
+def test_from_primitives_rejects_a_nested_field_name() -> None:
+    """A nested value object read from the wire also accepts only its aliases."""
+    with pytest.raises(ValidationError, match="schedule.min_interval_seconds"):
+        _Plan.from_primitives({"schedule": {"unit": "hour", "min_interval": 3600}})
+
+
+def test_from_primitives_reads_a_nested_alias() -> None:
+    """A nested value object reads its aliases from the wire."""
+    plan = _Plan.from_primitives({"schedule": {"unit": "hour", "min_interval_seconds": 3600, "retries": 2}})
+    assert plan.schedule == _schedule()
+
+
+def test_constructor_takes_the_field_name() -> None:
+    """Code builds a value object by field name."""
+    assert _Schedule(unit=_Unit.HOUR, min_interval=timedelta(hours=1)).min_interval == timedelta(hours=1)
 
 
 def test_to_primitives_writes_wire_values() -> None:

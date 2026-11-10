@@ -185,7 +185,7 @@ def test_partial_section_overrides_only_given_fields() -> None:
         ({"reconcile_interval_seconds": 0}, "reconcile_interval_seconds: must be positive"),
         (
             {"reconcile_interval_seconds": 1.5},
-            "reconcile_interval_seconds: must be a timedelta or a whole number of seconds",
+            "reconcile_interval_seconds: must be a whole number of seconds",
         ),
         (
             {"remove_orphan_files": {"older_than_seconds": 3600}},
@@ -200,6 +200,18 @@ def test_partial_section_overrides_only_given_fields() -> None:
             "rewrite_manifests.small_manifest_bytes: Input should be greater than 0",
         ),
         ({"rewrite_data_files": "nope"}, "rewrite_data_files: Input should be an object"),
+        (
+            {"reconcile_interval": 3600},
+            "reconcile_interval: Extra inputs are not permitted",
+        ),
+        (
+            {"remove_orphan_files": {"older_than": 172800}},
+            "remove_orphan_files.older_than: Extra inputs are not permitted",
+        ),
+        (
+            {"reconcile_interval_seconds": 10**15},
+            "reconcile_interval_seconds: too large for a duration",
+        ),
         (
             {"rewrite_data_files": {"scope": "galaxy"}},
             "rewrite_data_files.scope: Input should be 'partition' or 'table'",
