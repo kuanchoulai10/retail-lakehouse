@@ -38,6 +38,8 @@ def _authentication(parameters: dict[str, Any]) -> AuthenticationParameters:
         if field not in _SECRETS and parameters.get(key) is not None
     }
     if "scopes" in values:
+        if not isinstance(values["scopes"], list):
+            raise TypeError(f"scopes must be a list, not {values['scopes']!r}")
         values["scopes"] = tuple(values["scopes"])
     authentication_type = polaris_enum(AuthenticationType, parameters.get("authenticationType"), "authentication type")
     return AuthenticationParameters(authentication_type=authentication_type, **values)

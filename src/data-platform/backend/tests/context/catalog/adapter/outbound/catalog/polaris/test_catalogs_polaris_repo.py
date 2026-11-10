@@ -354,6 +354,19 @@ def test_unknown_enum_value_from_polaris_is_unavailable(change: dict[str, Any], 
         {"storageConfigInfo": {"storageType": "S3", "stsUnavailable": "yes"}},
         {"storageConfigInfo": {"storageType": "AZURE", "allowedLocations": ["abfss://c@a/"]}},
         {"connectionConfigInfo": {"connectionType": "HIVE", "uri": 9083}},
+        {"entityVersion": True},
+        {"entityVersion": "3"},
+        {"entityVersion": 3.0},
+        {"createTimestamp": True},
+        {"lastUpdateTimestamp": "1794052800000"},
+        {"properties": [["owner", "data"]]},
+        {"storageConfigInfo": {"storageType": "S3", "allowedLocations": "s3://b/"}},
+        {
+            "connectionConfigInfo": {
+                "connectionType": "HIVE",
+                "authenticationParameters": {"authenticationType": "OAUTH", "scopes": "x"},
+            }
+        },
     ],
 )
 def test_ill_typed_value_from_polaris_is_unavailable(change: dict[str, Any]):
