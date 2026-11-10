@@ -4,7 +4,7 @@ version: '3'
 
 tasks:
   e2e-full-test:
-    desc: "Run the full lakehouse control plane end-to-end test on the cluster"
+    summary: "Run the full lakehouse control plane end-to-end test on the cluster"
     requires:
       vars:
         - name: KUBE_CONTEXT
@@ -12,21 +12,21 @@ tasks:
       - KUBE_CONTEXT={{.KUBE_CONTEXT}} bash platform/25-lakehouse-control-plane/e2e.sh
 
   soak-test:
-    desc: "Run the platform under steady load for hours and watch for leaks"
+    summary: "Run the platform under steady load for hours and watch for leaks"
     cmds:
       - cmd: echo "TODO:// keep CDC and maintenance running for hours, assert memory stays flat and no pod restarts"
 
   resilience-test:
-    desc: "Check recovery from dependency outages"
+    summary: "Check recovery from dependency outages"
     cmds:
       - cmd: echo "TODO:// kill Kafka, RustFS, Polaris, Temporal or the backend DB mid-run and assert the run recovers"
 
   performance-full-test:
-    desc: "Run the full performance suite and track the trend over time (does not block)"
+    summary: "Run the full performance suite and track the trend over time (does not block)"
     cmds:
       - cmd: echo "TODO:// longer load on maintenance, catalog API and console bundle size, compared with previous nights"
 
   dependency-test:
-    desc: "Check compatibility with newer dependencies"
+    summary: "Check compatibility with newer dependencies"
     cmds:
       - cmd: echo "TODO:// uv lock --upgrade and npm update in a scratch copy, then run the unit tests"

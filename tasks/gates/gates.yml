@@ -126,7 +126,7 @@ tasks:
       - task: pre-release:performance-critical-test
 
   deployment-test:
-    desc: "Deploy the build-test images to KUBE_CONTEXT and verify the rollout (post-merge on staging, pre-release on a production-like cluster)"
+    summary: "Deploy the build-test images to KUBE_CONTEXT and verify the rollout (post-merge on staging, pre-release on a production-like cluster)"
     requires:
       vars:
         - name: KUBE_CONTEXT

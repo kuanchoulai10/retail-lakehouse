@@ -10,7 +10,7 @@ includes:
 
 tasks:
   smoke-test:
-    desc: "Check the deployed platform answers"
+    summary: "Check the deployed platform answers"
     requires:
       vars:
         - name: KUBE_CONTEXT

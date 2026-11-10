@@ -4,6 +4,6 @@ version: '3'
 
 tasks:
   canary-test:
-    desc: "Shift a slice of production traffic to the release and watch its metrics"
+    summary: "Shift a slice of production traffic to the release and watch its metrics"
     cmds:
       - cmd: echo "TODO:// route a small share of traffic to the new version, compare error rate and latency with the current one, roll back automatically on regression"

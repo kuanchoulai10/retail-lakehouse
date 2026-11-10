@@ -144,7 +144,7 @@ Pre-merge also builds the deliverables. The `build-test` tasks build `table-main
 
 ### Post-merge
 
-Each gate's own tests live in `tasks/gates/<gate>/<gate>.yml` and run alone as `task gates:<gate>:<name>`.
+Each gate's own tests live in `tasks/gates/<gate>/<gate>.yml` and run alone as `task gates:<gate>:<name>`. They carry a `summary` instead of a `desc`, which keeps them out of `task --list`; `task --list-all` shows them and `task --summary gates:<gate>:<name>` describes one.
 
 **Post-merge catches what only a shared, long-lived environment exposes**: leftover state, real network policies, other teams' traffic. It deploys the pre-merge images to staging with `deployment-test`. Then `smoke-test` checks that the platform answers, using `task apps:validate` and a read-only Bruno collection sent through the gateway.
 
