@@ -13,11 +13,17 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
 if TYPE_CHECKING:
     from datetime import datetime
 
+    from base import EntityId
+    from base.model import EntityId as ModelEntityId
     from context.table_maintenance.application.domain.model.table import TableId
 
 
 class TableMaintenanceRunsRepo(Repository[TableMaintenanceRun]):
     """Persist and query TableMaintenanceRun aggregates."""
+
+    @abstractmethod
+    def get(self, entity_id: EntityId | ModelEntityId) -> TableMaintenanceRun | None:
+        """Return the run with the given id, or None when it does not exist."""
 
     @abstractmethod
     def update(self, run: TableMaintenanceRun) -> TableMaintenanceRun:

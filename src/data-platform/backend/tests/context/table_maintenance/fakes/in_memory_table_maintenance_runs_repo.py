@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from base import EntityId
+    from base.model import EntityId as ModelEntityId
     from context.table_maintenance.application.domain.model.table import TableId
     from context.table_maintenance.application.domain.model.table_maintenance_run import (
         TableMaintenanceRun,
@@ -30,7 +31,7 @@ class InMemoryTableMaintenanceRunsRepo(TableMaintenanceRunsRepo):
         self.items[entity.id.value] = entity
         return entity
 
-    def get(self, entity_id: EntityId) -> TableMaintenanceRun | None:
+    def get(self, entity_id: EntityId | ModelEntityId) -> TableMaintenanceRun | None:
         """Return the run or None."""
         return self.items.get(entity_id.value)
 

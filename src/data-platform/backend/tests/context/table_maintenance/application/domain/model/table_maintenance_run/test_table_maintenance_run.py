@@ -5,13 +5,16 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from pydantic import ValidationError
 
+from base.model import validated_copy
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation as Op,
 )
 from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     InvalidRunTransition,
+    OperationRun,
     OperationRunStatus,
     RunStatus,
     TableMaintenanceRun,
@@ -253,3 +256,41 @@ def test_attach_job_name_is_guarded():
     run.succeed(Op.REWRITE_DATA_FILES, 1, {}, _now(2))
     with pytest.raises(InvalidRunTransition):
         run.attach_job_name(Op.REWRITE_DATA_FILES, 1, "j1")
+
+
+def test_forbidden_transition_still_raises_invalid_run_transition():
+    """A forbidden transition raises InvalidRunTransition, not a ValidationError."""
+    run = _run([Op.EXPIRE_SNAPSHOTS])
+    with pytest.raises(InvalidRunTransition):
+        run.succeed(Op.EXPIRE_SNAPSHOTS, 1, {}, _now(1))
+    assert issubclass(InvalidRunTransition, ValueError)
+
+
+def test_operation_update_revalidates():
+    """Changing an operation goes through validation and rejects a wrong type."""
+    operation = OperationRun(operation=Op.EXPIRE_SNAPSHOTS)
+    with pytest.raises(ValidationError):
+        validated_copy(operation, attempts="many")
+
+
+def test_operation_run_is_immutable():
+    """An operation run cannot be changed in place."""
+    operation = OperationRun(operation=Op.EXPIRE_SNAPSHOTS)
+    with pytest.raises(ValidationError):
+        operation.attempts = 3
+
+
+def test_run_rejects_a_wrong_typed_assignment():
+    """Assigning a wrong type to a run field raises ValidationError."""
+    run = _run()
+    with pytest.raises(ValidationError):
+        run.created_at = "yesterday"  # ty: ignore[invalid-assignment]
+
+
+def test_failed_state_change_leaves_the_run_unchanged():
+    """A rejected transition leaves the operations as they were."""
+    run = _run([Op.EXPIRE_SNAPSHOTS])
+    before = run.model_dump()
+    with pytest.raises(InvalidRunTransition):
+        run.start_attempt(Op.EXPIRE_SNAPSHOTS, 5, None, _now(1))
+    assert run.model_dump() == before

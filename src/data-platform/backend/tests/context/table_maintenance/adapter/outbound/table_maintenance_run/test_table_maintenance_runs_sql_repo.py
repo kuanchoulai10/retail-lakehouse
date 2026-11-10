@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
 
+from base.model import validated_copy
 from context.table_maintenance.adapter.outbound.table_maintenance_run.sql import (
     TableMaintenanceRunsSqlRepo,
 )
@@ -54,7 +54,7 @@ def test_roundtrip_with_operation_details(repo: TableMaintenanceRunsSqlRepo):
     run = _run("r1")
     metrics = {"rewritten_data_files_count": 12}
     run.operations = (
-        replace(
+        validated_copy(
             run.operations[0],
             status=OperationRunStatus.SUCCEEDED,
             attempts=2,
@@ -64,7 +64,7 @@ def test_roundtrip_with_operation_details(repo: TableMaintenanceRunsSqlRepo):
             metrics=metrics,
             expected_files=40,
         ),
-        replace(run.operations[1], status=OperationRunStatus.FAILED, error="boom"),
+        validated_copy(run.operations[1], status=OperationRunStatus.FAILED, error="boom"),
     )
     run.finished_at = NOW + timedelta(minutes=5)
     repo.create(run)
@@ -77,6 +77,7 @@ def test_roundtrip_with_operation_details(repo: TableMaintenanceRunsSqlRepo):
     assert loaded.created_at.tzinfo is not None
     assert loaded.finished_at == NOW + timedelta(minutes=5)
     assert loaded.operations == run.operations
+    assert loaded.model_dump() == run.model_dump()
     first = loaded.operations[0]
     assert first.operation is MaintenanceOperation.REWRITE_DATA_FILES
     assert first.started_at == NOW
@@ -99,7 +100,7 @@ def test_update_persists(repo: TableMaintenanceRunsSqlRepo):
     run = _run("r1")
     repo.create(run)
     run.operations = (
-        replace(run.operations[0], status=OperationRunStatus.RUNNING, attempts=1),
+        validated_copy(run.operations[0], status=OperationRunStatus.RUNNING, attempts=1),
         run.operations[1],
     )
     run.finished_at = NOW + timedelta(hours=1)

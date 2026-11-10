@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from base import AggregateRoot
+from base.model import AggregateRoot, validated_copy
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
 )
+from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_run.invalid_run_transition import (
     InvalidRunTransition,
 )
@@ -24,15 +25,12 @@ from context.table_maintenance.application.domain.model.table_maintenance_run.ru
 from context.table_maintenance.application.domain.model.table_maintenance_run.table_maintenance_run_id import (
     TableMaintenanceRunId,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_run.trigger_type import (
+    TriggerType,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from datetime import datetime
-
-    from context.table_maintenance.application.domain.model.table import TableId
-    from context.table_maintenance.application.domain.model.table_maintenance_run.trigger_type import (
-        TriggerType,
-    )
 
 _TERMINAL = frozenset(
     {
@@ -43,7 +41,6 @@ _TERMINAL = frozenset(
 )
 
 
-@dataclass(eq=False)
 class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
     """Track one execution of maintenance operations against a table."""
 
@@ -121,7 +118,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             return
         self._require_startable(current, operation, attempt)
         self._replace(
-            replace(
+            validated_copy(
                 current,
                 status=OperationRunStatus.RUNNING,
                 attempts=attempt,
@@ -149,7 +146,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             msg = f"attempt {attempt} of {operation} already has job {current.job_name}"
             raise InvalidRunTransition(msg)
         self.operations = tuple(
-            replace(run, job_name=job_name) if run.operation == operation else run for run in self.operations
+            validated_copy(run, job_name=job_name) if run.operation == operation else run for run in self.operations
         )
 
     def succeed(
@@ -186,7 +183,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             msg = f"cannot skip {operation} in status {current.status}"
             raise InvalidRunTransition(msg)
         self._replace(
-            replace(
+            validated_copy(
                 current,
                 status=OperationRunStatus.SKIPPED,
                 error=reason,
@@ -217,7 +214,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             msg = f"cannot mark {operation} {outcome} from status {current.status}"
             raise InvalidRunTransition(msg)
         self._replace(
-            replace(
+            validated_copy(
                 current,
                 status=outcome,
                 finished_at=now,
@@ -247,8 +244,6 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         raise InvalidRunTransition(msg)
 
     def _replace(self, updated: OperationRun, now: datetime) -> None:
-        self.operations = tuple(updated if run.operation == updated.operation else run for run in self.operations)
-        if all(run.status in _TERMINAL for run in self.operations):
-            self.finished_at = now
-        else:
-            self.finished_at = None
+        operations = tuple(updated if run.operation == updated.operation else run for run in self.operations)
+        finished_at = now if all(run.status in _TERMINAL for run in operations) else None
+        self._assign_together(operations=operations, finished_at=finished_at)
