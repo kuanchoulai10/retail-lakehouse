@@ -369,6 +369,7 @@ pydantic==2.12.5 \
     #   pydantic-extra-types
     #   pydantic-settings
     #   pyiceberg
+    #   table-maintenance-backend
 pydantic-core==2.41.5 \
     --hash=sha256:0177272f88ab8312479336e1d777f6b124537d47f2123f89cb37e0accea97f90 \
     --hash=sha256:08daa51ea16ad373ffd5e7606252cc32f07bc72b28284b6bc9c6df804816476e \

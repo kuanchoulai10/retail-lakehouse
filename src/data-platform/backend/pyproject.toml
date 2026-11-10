@@ -12,6 +12,7 @@ dependencies = [
     "pyarrow>=18",
     "temporalio>=1.8",
     "confluent-kafka>=2.6,<3",
+    "pydantic>=2.11,<3",
     "pydantic-settings>=2.6",
     "uvicorn[standard]>=0.30",
 ]
