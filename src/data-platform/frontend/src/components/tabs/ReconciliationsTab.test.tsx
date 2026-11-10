@@ -51,10 +51,12 @@ function quiet(id: string, reconciledAt: string): TableReconciliationApiResponse
   };
 }
 
+const RUN_ID = "0b9e3c1a-2f4d-4c8e-9a1b-5d6e7f8a9b0c";
+
 const STARTED: TableReconciliationApiResponse = {
   ...quiet("rec-started", at(10, 10)),
   wake_reasons: { catalog_commit: 3, schedule: 1 },
-  run_id: "run-42",
+  run_id: RUN_ID,
   operations: [
     op({
       operation: "remove_orphan_files",
@@ -226,7 +228,7 @@ describe("ReconciliationsTab", () => {
     renderTab();
     const dialog = await openDrawer(user, /Started Rewrite data files/);
     const compaction = within(dialog).getByRole("region", { name: "Rewrite data files" });
-    expect(within(compaction).getByText("Because reducible files 1,240 across 3 partitions (≥ 5 per partition).")).toBeInTheDocument();
+    expect(within(compaction).getByText("Because reducible files 1,240 across 3 partitions (needs ≥ 5 per partition).")).toBeInTheDocument();
     expect(within(compaction).queryByText(/target file size/i)).not.toBeInTheDocument();
   });
 
@@ -254,15 +256,48 @@ describe("ReconciliationsTab", () => {
     const user = userEvent.setup();
     renderTab();
     const row = (await screen.findByRole("button", { name: /Started Rewrite data files/ })).closest("li") as HTMLElement;
-    expect(within(row).getByRole("link", { name: "Open maintenance run run-42" })).toHaveAttribute(
-      "href",
-      "/tables/orders/maintenance?run=run-42",
-    );
+    const lineLink = within(row).getByRole("link", { name: `Open maintenance run ${RUN_ID}` });
+    expect(lineLink).toHaveAttribute("href", `/tables/orders/maintenance?run=${RUN_ID}`);
+    expect(lineLink).toHaveTextContent(/^Run 0b9e3c1a$/);
+    expect(within(lineLink).getByText("0b9e3c1a")).toHaveClass("font-mono");
     const dialog = await openDrawer(user, /Started Rewrite data files/);
-    expect(within(dialog).getByRole("link", { name: "Open maintenance run run-42" })).toHaveAttribute(
-      "href",
-      "/tables/orders/maintenance?run=run-42",
-    );
+    const drawerLink = within(dialog).getByRole("link", { name: `Open maintenance run ${RUN_ID}` });
+    expect(drawerLink).toHaveAttribute("href", `/tables/orders/maintenance?run=${RUN_ID}`);
+    expect(drawerLink).toHaveTextContent(/^Open maintenance run 0b9e3c1a$/);
+  });
+
+  it("draws an open timeline: a filled marker for what started, outlined for others, dashed for a fold", async () => {
+    stubList([STARTED, quiet("rec-lone", at(10, 9)), { ...DRY_RUN, reconciled_at: at(10, 8) }, ...hours(10, 1, 3)]);
+    renderTab();
+    const day = await screen.findByRole("region", { name: "Reconciliations on Nov 10, 2026" });
+    expect(within(day).getByRole("heading", { level: 2 })).toHaveTextContent(/Nov 10, 2026$/);
+    const markers = Array.from(day.querySelectorAll("[data-marker]")).map((m) => m.getAttribute("data-marker"));
+    expect(markers).toEqual(["filled", "outlined", "filled", "dashed"]);
+    expect(day.querySelector(".border")).toBeNull();
+  });
+
+  it("All measurements says how the lines combine", async () => {
+    const user = userEvent.setup();
+    const any: TableReconciliationApiResponse = {
+      ...STARTED,
+      operations: [
+        ...STARTED.operations.filter((o) => o.operation !== "rewrite_manifests"),
+        op({
+          operation: "rewrite_manifests",
+          combine: "any",
+          measurements: [{ key: "small_manifests", observed: 12, unit: "count", threshold: 20, comparison: ">=", met: false }],
+        }),
+      ],
+    };
+    stubList([any]);
+    renderTab();
+    const dialog = await openDrawer(user, /Started Rewrite data files/);
+    const compaction = within(dialog).getByRole("region", { name: "Rewrite data files" });
+    await user.click(within(compaction).getByRole("button", { name: "All measurements" }));
+    expect(within(compaction).getByText("Starts when every line holds")).toBeInTheDocument();
+    const manifests = within(dialog).getByRole("region", { name: "Rewrite manifests" });
+    await user.click(within(manifests).getByRole("button", { name: "All measurements" }));
+    expect(within(manifests).getByText("Starts when any line holds")).toBeInTheDocument();
   });
 
   it("shows No reconciliations yet. when empty", async () => {

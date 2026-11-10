@@ -9,10 +9,10 @@ import {
   IconCircleCheck,
   IconRadar,
   IconX,
-  List,
-  ListItem,
   StatusBadge,
   TextLink,
+  Timeline,
+  TimelineItem,
 } from "@retail-lakehouse/design-system";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useId, useState } from "react";
@@ -51,16 +51,16 @@ const DAY_FORMAT = new Intl.DateTimeFormat("en-US", { month: "short", day: "nume
 // A line of the timeline: one reconciliation, or a stretch of alike ones folded into one line.
 type Line = { kind: "record"; record: TableReconciliationApiResponse } | { kind: "fold"; key: string; records: TableReconciliationApiResponse[] };
 
-type Day = { label: string; records: TableReconciliationApiResponse[] };
+type Day = { date: string; records: TableReconciliationApiResponse[] };
 
 // Records come newest first, so the days come out newest first too.
 function groupedByDay(records: TableReconciliationApiResponse[]): Day[] {
   const days: Day[] = [];
   for (const record of records) {
-    const label = `Reconciliations on ${DAY_FORMAT.format(new Date(record.reconciled_at))}`;
+    const date = DAY_FORMAT.format(new Date(record.reconciled_at));
     const last = days.at(-1);
-    if (last?.label === label) last.records.push(record);
-    else days.push({ label, records: [record] });
+    if (last?.date === date) last.records.push(record);
+    else days.push({ date, records: [record] });
   }
   return days;
 }
@@ -83,11 +83,12 @@ function runPath(runId: string): string {
   return `../maintenance?run=${encodeURIComponent(runId)}`;
 }
 
-function RunLink({ runId, className }: { runId: string; className?: string }) {
+// Shows the run id's first 8 characters; the accessible name carries the whole id.
+function RunLink({ runId, label, className }: { runId: string; label: string; className?: string }) {
   return (
     <TextLink asChild className={className}>
-      <Link to={runPath(runId)} relative="path">
-        Open maintenance run <span className="font-mono">{runId}</span>
+      <Link to={runPath(runId)} relative="path" aria-label={`Open maintenance run ${runId}`}>
+        {label} <span className="font-mono">{runId.slice(0, 8)}</span>
       </Link>
     </TextLink>
   );
@@ -97,10 +98,16 @@ function startedRun(r: TableReconciliationApiResponse): string | null {
   return r.run_id !== null && r.operations.some((op) => op.result === "started") ? r.run_id : null;
 }
 
+// Filled when the reconciliation started, or in dry run would have started, something.
+function startedSomething(r: TableReconciliationApiResponse): boolean {
+  return r.operations.some((op) => op.result === "started" || op.result === "would_start");
+}
+
 function RecordLine({ record, onOpen }: { record: TableReconciliationApiResponse; onOpen: () => void }) {
   const runId = startedRun(record);
   return (
-    <ListItem
+    <TimelineItem
+      marker={startedSomething(record) ? "filled" : "outlined"}
       title={
         <span className="flex flex-wrap items-center gap-2">
           {headline(record)}
@@ -116,7 +123,7 @@ function RecordLine({ record, onOpen }: { record: TableReconciliationApiResponse
         </>
       }
       onSelect={onOpen}
-      trailingAction={runId === null ? undefined : <RunLink runId={runId} />}
+      trailingAction={runId === null ? undefined : <RunLink runId={runId} label="Run" className="whitespace-nowrap" />}
     />
   );
 }
@@ -125,46 +132,47 @@ function FoldLine({ records, onOpen }: { records: TableReconciliationApiResponse
   const [open, setOpen] = useState(false);
   const listId = useId();
   return (
-    <>
-      <ListItem
-        title={<span className="tabular-nums">{foldText(records)}</span>}
-        leadingIcon={open ? <IconChevronDown /> : <IconChevronRight />}
-        aria-expanded={open}
-        aria-controls={open ? listId : undefined}
-        onSelect={() => setOpen((value) => !value)}
-      />
+    <TimelineItem
+      marker="dashed"
+      title={
+        <span className="flex items-center gap-1 tabular-nums">
+          {open ? <IconChevronDown aria-hidden="true" size={16} /> : <IconChevronRight aria-hidden="true" size={16} />}
+          {foldText(records)}
+        </span>
+      }
+      aria-expanded={open}
+      aria-controls={open ? listId : undefined}
+      onSelect={() => setOpen((value) => !value)}
+    >
       {open && (
-        <li>
-          <List id={listId} className="pb-2 pl-6">
-            {records.map((record) => (
-              <ListItem
-                key={record.reconciliation_id}
-                title={
-                  <span className="tabular-nums">
-                    {mainWakeText(record)} at {formatTime(record.reconciled_at)}
-                  </span>
-                }
-                onSelect={() => onOpen(record)}
-              />
-            ))}
-          </List>
-        </li>
+        <Timeline id={listId} nested>
+          {records.map((record) => (
+            <TimelineItem
+              key={record.reconciliation_id}
+              title={
+                <span className="tabular-nums">
+                  {mainWakeText(record)} at {formatTime(record.reconciled_at)}
+                </span>
+              }
+              onSelect={() => onOpen(record)}
+            />
+          ))}
+        </Timeline>
       )}
-    </>
+    </TimelineItem>
   );
 }
 
-// One day of the timeline, drawn like the Commits tab: a mark on a line down the left.
+// One day of the timeline: the date as a plain label, then its reconciliations on a line down
+// the left, one marker each.
 function DaySection({ day, onOpen }: { day: Day; onOpen: (r: TableReconciliationApiResponse) => void }) {
   const headingId = useId();
   return (
-    <section aria-labelledby={headingId} className="relative pb-6 pl-9 last:pb-0">
-      <span aria-hidden="true" className="absolute top-6 bottom-0 left-3 border-l border-outline" />
-      <IconRadar aria-hidden="true" className="absolute top-0 left-0 size-6 text-on-surface-variant" />
-      <h2 id={headingId} className="type-label-large leading-6 text-on-surface-variant">
-        {day.label}
+    <section aria-labelledby={headingId} className="pb-6 last:pb-0">
+      <h2 id={headingId} className="type-label-large mb-1 text-on-surface-variant">
+        <span className="sr-only">Reconciliations on</span> {day.date}
       </h2>
-      <List className="mt-2 divide-y divide-outline rounded-md border border-outline bg-surface">
+      <Timeline>
         {folded(day.records).map((line) =>
           line.kind === "fold" ? (
             <FoldLine key={line.records[0]!.reconciliation_id} records={line.records} onOpen={onOpen} />
@@ -172,7 +180,7 @@ function DaySection({ day, onOpen }: { day: Day; onOpen: (r: TableReconciliation
             <RecordLine key={line.record.reconciliation_id} record={line.record} onOpen={() => onOpen(line.record)} />
           ),
         )}
-      </List>
+      </Timeline>
     </section>
   );
 }
@@ -196,7 +204,6 @@ function AllMeasurements({ operation }: { operation: ReconciliationOperationApiR
   const [open, setOpen] = useState(false);
   const listId = useId();
   const label = operationLabel(operation.operation);
-  const deciding = operation.measurements.filter((m) => m.threshold !== null).length;
   return (
     <>
       <Button
@@ -212,11 +219,9 @@ function AllMeasurements({ operation }: { operation: ReconciliationOperationApiR
       </Button>
       {open && (
         <div id={listId} className="type-body-small flex flex-col gap-1">
-          {deciding > 1 && (
-            <p className="text-on-surface-variant">
-              {operation.combine === "any" ? "Starts when any measurement holds." : "Starts when every measurement holds."}
-            </p>
-          )}
+          <p className="text-on-surface-variant">
+            {operation.combine === "any" ? "Starts when any line holds" : "Starts when every line holds"}
+          </p>
           <ul aria-label={`All measurements of ${label}`} className="flex flex-col gap-1">
             {operation.measurements.map((m) => (
               <li key={m.key} className="flex items-center justify-between gap-4">
@@ -250,7 +255,7 @@ function OperationBlock({ record, operation }: { record: TableReconciliationApiR
         <StatusBadge status={status}>{resultLabel(operation.result)}</StatusBadge>
       </div>
       <p className="type-body-small text-on-surface-variant">{reasonSentence(operation, { manualRun: isManualRun(record) })}</p>
-      {runId !== null && <RunLink runId={runId} className="type-body-small self-start" />}
+      {runId !== null && <RunLink runId={runId} label="Open maintenance run" className="type-body-small self-start" />}
       {operation.measurements.length > 0 && <AllMeasurements operation={operation} />}
     </section>
   );
@@ -308,7 +313,7 @@ export function ReconciliationsTab({ tableUuid }: { tableUuid: string }) {
   return (
     <>
       {groupedByDay(records).map((day) => (
-        <DaySection key={day.label} day={day} onOpen={open} />
+        <DaySection key={day.date} day={day} onOpen={open} />
       ))}
       {pages.hasNextPage && (
         <Button

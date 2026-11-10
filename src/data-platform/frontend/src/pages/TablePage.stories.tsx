@@ -70,6 +70,7 @@ export const Reconciliations: Story = {
     await expect(canvas.getByRole("button", { name: /^4 reconciliations found nothing to do/ })).toBeVisible();
     await expect(canvas.getByRole("button", { name: /^Would start Rewrite data files/ })).toHaveTextContent("Dry run");
     await expect(canvas.getByRole("button", { name: /^Skipped: table paused/ })).toBeVisible();
+    await expect(canvas.getByRole("link", { name: "Open maintenance run run-1" })).toHaveTextContent(/^Run run-1$/);
   },
 };
 

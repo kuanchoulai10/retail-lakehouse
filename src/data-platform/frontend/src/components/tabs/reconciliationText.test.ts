@@ -102,19 +102,19 @@ describe("wakeText", () => {
 describe("reasonSentence", () => {
   it("started cites the met deciding measurements", () => {
     expect(reasonSentence(op({ result: "started", measurements: [REDUCIBLE_MET, context("target_file_size", 134217728, "bytes")] }))).toBe(
-      "Because reducible files 1,240 (≥ 5).",
+      "Because reducible files 1,240 (needs ≥ 5).",
     );
   });
 
   it("words partition-scope compaction per partition, never comparing the sum with the threshold", () => {
     const measurements = [REDUCIBLE_MET, context("target_file_size", 134217728, "bytes"), context("qualifying_partitions", 3)];
     expect(reasonSentence(op({ result: "started", operation: "rewrite_data_files", measurements }))).toBe(
-      "Because reducible files 1,240 across 3 partitions (≥ 5 per partition).",
+      "Because reducible files 1,240 across 3 partitions (needs ≥ 5 per partition).",
     );
   });
 
   it("would start reads like started", () => {
-    expect(reasonSentence(op({ result: "would_start", measurements: [REDUCIBLE_MET] }))).toBe("Because reducible files 1,240 (≥ 5).");
+    expect(reasonSentence(op({ result: "would_start", measurements: [REDUCIBLE_MET] }))).toBe("Because reducible files 1,240 (needs ≥ 5).");
   });
 
   it("an operation with nothing to measure is due whenever its cooldown allows", () => {
@@ -129,12 +129,12 @@ describe("reasonSentence", () => {
 
   it("start failed says it was due but could not start", () => {
     expect(reasonSentence(op({ result: "start_failed", measurements: [REDUCIBLE_MET] }))).toBe(
-      "Due (reducible files 1,240 (≥ 5)), but the run could not be started.",
+      "Due: reducible files 1,240 (needs ≥ 5), but the run could not be started.",
     );
   });
 
   it("not needed cites the unmet measurements", () => {
-    expect(reasonSentence(op({ result: "not_needed" }))).toBe("Not yet: small manifests 12 (≥ 20).");
+    expect(reasonSentence(op({ result: "not_needed" }))).toBe("Not yet: small manifests 12 (needs ≥ 20).");
   });
 
   it("not needed with no qualifying partition says so per partition", () => {
@@ -143,7 +143,7 @@ describe("reasonSentence", () => {
       context("qualifying_partitions", 0),
     ];
     expect(reasonSentence(op({ result: "not_needed", measurements }))).toBe(
-      "Not yet: reducible files 0 across 0 partitions (≥ 5 per partition).",
+      "Not yet: reducible files 0 across 0 partitions (needs ≥ 5 per partition).",
     );
   });
 
@@ -157,13 +157,13 @@ describe("reasonSentence", () => {
           next_eligible_at: at,
         }),
       ),
-    ).toBe("Due (expirable snapshots 312 (≥ 1)), but it ran recently; next allowed Nov 14, 03:00.");
+    ).toBe("Due: expirable snapshots 312 (needs ≥ 1), but it ran recently; next allowed Nov 14, 03:00.");
   });
 
   it("cooling down below the threshold says not yet and when it is next allowed", () => {
     const at = new Date(2026, 10, 14, 3, 0).toISOString();
     expect(reasonSentence(op({ result: "cooling_down", next_eligible_at: at }))).toBe(
-      "Not yet: small manifests 12 (≥ 20); next allowed Nov 14, 03:00.",
+      "Not yet: small manifests 12 (needs ≥ 20); next allowed Nov 14, 03:00.",
     );
   });
 
@@ -174,7 +174,7 @@ describe("reasonSentence", () => {
       measurement({ key: "manifests_per_snapshot", observed: 61, threshold: 100, comparison: ">", met: false }),
     ];
     expect(reasonSentence(op({ result: "cooling_down", combine: "any", measurements, next_eligible_at: at }))).toBe(
-      "Due (small manifests 42 (≥ 20)), but it ran recently; next allowed Nov 14, 03:00.",
+      "Due: small manifests 42 (needs ≥ 20), but it ran recently; next allowed Nov 14, 03:00.",
     );
   });
 
@@ -184,7 +184,7 @@ describe("reasonSentence", () => {
       measurement({ key: "manifests_per_snapshot", observed: 61, threshold: 100, comparison: ">", met: false }),
     ];
     expect(reasonSentence(op({ result: "not_needed", combine: "any", measurements }))).toBe(
-      "Not yet: small manifests 12 (≥ 20) and manifests per snapshot 61 (> 100).",
+      "Not yet: small manifests 12 (needs ≥ 20) and manifests per snapshot 61 (needs > 100).",
     );
   });
 
@@ -193,6 +193,35 @@ describe("reasonSentence", () => {
     expect(reasonSentence(op({ result: "cooling_down", measurements: [], next_eligible_at: at }))).toBe(
       "Ran recently; next allowed Nov 14, 03:00.",
     );
+  });
+
+  it("not needed reads the threshold as what it needs", () => {
+    const m = measurement({ key: "expirable_snapshots", observed: 0, threshold: 1, met: false });
+    expect(reasonSentence(op({ result: "not_needed", operation: "expire_snapshots", measurements: [m] }))).toBe(
+      "Not yet: expirable snapshots 0 (needs ≥ 1).",
+    );
+  });
+
+  it("cooling down in partition scope never nests parentheses", () => {
+    const at = new Date(2026, 10, 14, 3, 0).toISOString();
+    const measurements = [
+      measurement({ key: "reducible_files", observed: 15, threshold: 2, met: true }),
+      context("qualifying_partitions", 2),
+    ];
+    const sentence = reasonSentence(
+      op({ result: "cooling_down", operation: "rewrite_data_files", measurements, next_eligible_at: at }),
+    );
+    expect(sentence).toBe(
+      "Due: reducible files 15 across 2 partitions (needs ≥ 2 per partition), but it ran recently; next allowed Nov 14, 03:00.",
+    );
+    expect(sentence).not.toMatch(/\([^)]*\(/);
+  });
+
+  it("start failed in partition scope never nests parentheses", () => {
+    const measurements = [REDUCIBLE_MET, context("qualifying_partitions", 3)];
+    const sentence = reasonSentence(op({ result: "start_failed", operation: "rewrite_data_files", measurements }));
+    expect(sentence).toBe("Due: reducible files 1,240 across 3 partitions (needs ≥ 5 per partition), but the run could not be started.");
+    expect(sentence).not.toMatch(/\([^)]*\(/);
   });
 
   it("off says it is turned off", () => {
@@ -205,9 +234,9 @@ describe("reasonSentence", () => {
 
   it("formats bytes and seconds in their unit", () => {
     const m = measurement({ key: "small_manifests", observed: 2048, unit: "bytes", threshold: 1024, comparison: ">", met: true });
-    expect(reasonSentence(op({ result: "started", measurements: [m] }))).toBe("Because small manifests 2.0 KB (> 1.0 KB).");
+    expect(reasonSentence(op({ result: "started", measurements: [m] }))).toBe("Because small manifests 2.0 KB (needs > 1.0 KB).");
     const s = measurement({ key: "oldest_snapshot_age", observed: 7200, unit: "seconds", threshold: 3600, comparison: ">=", met: true });
-    expect(reasonSentence(op({ result: "started", measurements: [s] }))).toBe("Because oldest snapshot age 2 h (≥ 1 h).");
+    expect(reasonSentence(op({ result: "started", measurements: [s] }))).toBe("Because oldest snapshot age 2 h (needs ≥ 1 h).");
   });
 });
 

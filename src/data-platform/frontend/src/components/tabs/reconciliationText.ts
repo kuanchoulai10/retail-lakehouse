@@ -190,7 +190,7 @@ export function wakeText(r: TableReconciliationApiResponse): string {
   return wakeReasons(r).map(wakeLabel).join(", ");
 }
 
-// "reducible files 1,240 (≥ 5)". In partition scope the observed value is a sum over the
+// "reducible files 1,240 (needs ≥ 5)". In partition scope the observed value is a sum over the
 // qualifying partitions while the threshold applies to each one, so it says so instead of
 // implying the sum was compared with the threshold.
 function cite(m: ReconciliationMeasurementApiResponse, op: ReconciliationOperationApiResponse): string {
@@ -199,9 +199,9 @@ function cite(m: ReconciliationMeasurementApiResponse, op: ReconciliationOperati
   const partitions = op.measurements.find((other) => other.key === "qualifying_partitions");
   if (m.key === "reducible_files" && partitions !== undefined) {
     const count = partitions.observed;
-    return `${name} ${observed} across ${formatCount(count)} ${count === 1 ? "partition" : "partitions"} (${formatRule(m)} per partition)`;
+    return `${name} ${observed} across ${formatCount(count)} ${count === 1 ? "partition" : "partitions"} (needs ${formatRule(m)} per partition)`;
   }
-  return `${name} ${observed} (${formatRule(m)})`;
+  return `${name} ${observed} (needs ${formatRule(m)})`;
 }
 
 function deciding(op: ReconciliationOperationApiResponse): ReconciliationMeasurementApiResponse[] {
@@ -235,7 +235,7 @@ export function reasonSentence(op: ReconciliationOperationApiResponse, { manualR
       return met.length > 0 ? `Because ${citeAll(met, op)}.` : "Due whenever its cooldown allows.";
     case "start_failed":
       return met.length > 0
-        ? `Due (${citeAll(met, op)}), but the run could not be started.`
+        ? `Due: ${citeAll(met, op)}, but the run could not be started.`
         : "Due, but the run could not be started.";
     case "not_needed": {
       const held = holdingBack(op);
@@ -245,7 +245,7 @@ export function reasonSentence(op: ReconciliationOperationApiResponse, { manualR
       const when = nextAllowed(op);
       const held = holdingBack(op);
       if (held.length > 0) return `Not yet: ${citeAll(held, op)}${when ? `; ${when}` : ""}.`;
-      if (met.length > 0) return `Due (${citeAll(met, op)}), but it ran recently${when ? `; ${when}` : ""}.`;
+      if (met.length > 0) return `Due: ${citeAll(met, op)}, but it ran recently${when ? `; ${when}` : ""}.`;
       return when ? `Ran recently; ${when}.` : "Ran recently.";
     }
     case "off":
