@@ -10,6 +10,7 @@ from context.catalog.application.domain.model.catalog import Catalog
 
 if TYPE_CHECKING:
     from base import EntityId
+    from base.model import EntityId as ModelEntityId
 
 
 class CatalogsRepo(Repository[Catalog]):
@@ -20,6 +21,10 @@ class CatalogsRepo(Repository[Catalog]):
     """
 
     @abstractmethod
+    def get(self, entity_id: EntityId | ModelEntityId) -> Catalog | None:
+        """Return the catalog with the given id, or None when there is none."""
+
+    @abstractmethod
     def update(self, catalog: Catalog) -> Catalog:
         """Save the changed catalog and return it as saved.
 
@@ -27,5 +32,5 @@ class CatalogsRepo(Repository[Catalog]):
         """
 
     @abstractmethod
-    def delete(self, entity_id: EntityId) -> None:
+    def delete(self, entity_id: EntityId | ModelEntityId) -> None:
         """Delete the catalog; one that still holds namespaces is refused, never emptied."""

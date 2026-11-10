@@ -2,16 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
-
-from base import ValueObject
-
-if TYPE_CHECKING:
-    from context.catalog.application.domain.model.shared.schema_field import SchemaField
+from base.model import ValueObject
+from context.catalog.application.domain.model.shared.schema_field import SchemaField
 
 
-@dataclass(frozen=True)
 class Schema(ValueObject):
     """The current schema of a table: its id and its top-level fields in order."""
 

@@ -278,7 +278,9 @@ def test_create_table_with_malformed_type_is_a_validation_error():
     stub = PolarisStub()
     table = Table.define(
         id=ORDERS_ID,
-        schema=Schema(schema_id=0, fields=(SchemaField(1, "bad", "list<string", True, None),)),
+        schema=Schema(
+            schema_id=0, fields=(SchemaField(id=1, name="bad", type="list<string", required=True, doc=None),)
+        ),
         partition_spec=PartitionSpec.unpartitioned(),
         location=None,
         properties={},

@@ -2,23 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from datetime import datetime
 
-from base import AggregateRoot
+from base.model import AggregateRoot
 from context.catalog.application.domain.model.catalog.catalog_id import CatalogId
-
-if TYPE_CHECKING:
-    from datetime import datetime
-
-    from context.catalog.application.domain.model.catalog.catalog_type import CatalogType
-    from context.catalog.application.domain.model.catalog.connection_config import ConnectionConfig
-    from context.catalog.application.domain.model.catalog.storage_config import StorageConfig
+from context.catalog.application.domain.model.catalog.catalog_type import CatalogType
+from context.catalog.application.domain.model.catalog.connection_config import ConnectionConfig
+from context.catalog.application.domain.model.catalog.storage_config import StorageConfig
 
 _DEFAULT_BASE_LOCATION = "default-base-location"
 
 
-@dataclass(eq=False)
 class Catalog(AggregateRoot[CatalogId]):
     """A catalog: a named, versioned container of namespaces, kept by the catalog service.
 
@@ -77,7 +71,10 @@ class Catalog(AggregateRoot[CatalogId]):
         """Replace the properties and storage config, as a change made to ``loaded_version``.
 
         ``default_base_location`` wins over a ``default-base-location`` entry in ``properties``.
+        The three fields change together: when one is invalid, none changes.
         """
-        self.properties = {**properties, _DEFAULT_BASE_LOCATION: default_base_location}
-        self.storage_config = storage_config
-        self.entity_version = loaded_version
+        self._assign_together(
+            properties={**properties, _DEFAULT_BASE_LOCATION: default_base_location},
+            storage_config=storage_config,
+            entity_version=loaded_version,
+        )

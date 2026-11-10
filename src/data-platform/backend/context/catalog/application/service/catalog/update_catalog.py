@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from base.model import validation_message
 from context.catalog.application.exceptions import (
     ConflictError,
     NotFoundError,
@@ -20,8 +21,8 @@ from context.catalog.application.service.catalog.catalog_id_from_name import (
 from context.catalog.application.service.catalog.catalog_output_fields import (
     catalog_output_fields,
 )
-from context.catalog.application.service.catalog.storage_config_from_dict import (
-    storage_config_from_dict,
+from context.catalog.application.service.catalog.storage_config_from_request import (
+    storage_config_from_request,
 )
 
 if TYPE_CHECKING:
@@ -41,16 +42,19 @@ class UpdateCatalogService(UpdateCatalogUseCase):
         default_base_location = request.default_base_location.strip()
         if not default_base_location:
             raise ValidationError("default base location must not be blank")
-        storage_config = storage_config_from_dict(request.storage_config)
+        storage_config = storage_config_from_request(request.storage_config)
         catalog = self._catalogs_repo.get(catalog_id)
         if catalog is None:
             raise NotFoundError(f"catalog {request.name} not found")
-        catalog.reconfigure(
-            default_base_location=default_base_location,
-            properties=request.properties,
-            storage_config=storage_config,
-            loaded_version=request.entity_version,
-        )
+        try:
+            catalog.reconfigure(
+                default_base_location=default_base_location,
+                properties=request.properties,
+                storage_config=storage_config,
+                loaded_version=request.entity_version,
+            )
+        except ValueError as exc:
+            raise ValidationError(validation_message(exc)) from None
         try:
             saved = self._catalogs_repo.update(catalog)
         except ConflictError as exc:

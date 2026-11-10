@@ -132,6 +132,11 @@ def test_update_puts_the_current_entity_version():
         "properties": {"default-base-location": "s3://bucket/sales"},
         "storageConfigInfo": POLARIS_STORAGE,
     }
+    assert request.content == (
+        b'{"currentEntityVersion":3,"properties":{"default-base-location":"s3://bucket/sales"},'
+        b'"storageConfigInfo":{"storageType":"S3","allowedLocations":["s3://bucket/"],"endpoint":"http://rustfs:9000",'
+        b'"pathStyleAccess":true}}'
+    )
     assert saved.entity_version == 4
 
 
@@ -234,6 +239,14 @@ def test_create_external_catalog_sends_the_exact_connection_config_info():
     (request,) = stub.requests
     assert _body(request)["catalog"]["type"] == "EXTERNAL"
     assert _body(request)["catalog"]["connectionConfigInfo"] == POLARIS_OAUTH_CONNECTION
+    assert request.content == (
+        b'{"catalog":{"name":"sales","type":"EXTERNAL","properties":{"default-base-location":"s3://bucket/sales"},'
+        b'"storageConfigInfo":{"storageType":"S3","allowedLocations":["s3://bucket/"],"endpoint":"http://rustfs:9000",'
+        b'"pathStyleAccess":true},"connectionConfigInfo":{"connectionType":"ICEBERG_REST",'
+        b'"uri":"https://remote.example/api/catalog","authenticationParameters":{"authenticationType":"OAUTH",'
+        b'"tokenUri":"https://remote.example/oauth/tokens","clientId":"remote-client","clientSecret":"remote-s3cr3t",'
+        b'"scopes":["PRINCIPAL_ROLE:ALL"]}}}}'
+    )
 
 
 @pytest.mark.parametrize(
@@ -332,6 +345,50 @@ def test_unknown_enum_value_from_polaris_is_unavailable(change: dict[str, Any], 
         CatalogUnavailableError, match=f"Polaris returned catalog sales in a form this backend cannot read: .*{message}"
     ):
         CatalogsPolarisRepo(stub.client()).get(CatalogId.of("sales"))
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"properties": {"retention": 7}},
+        {"storageConfigInfo": {"storageType": "S3", "stsUnavailable": "yes"}},
+        {"storageConfigInfo": {"storageType": "AZURE", "allowedLocations": ["abfss://c@a/"]}},
+        {"connectionConfigInfo": {"connectionType": "HIVE", "uri": 9083}},
+    ],
+)
+def test_ill_typed_value_from_polaris_is_unavailable(change: dict[str, Any]):
+    """A value of the wrong type, or a storage that breaks a domain rule, is an upstream fault: a 502."""
+    stub = PolarisStub()
+    stub.on("GET", f"{CATALOGS}/sales", httpx.Response(200, json=_polaris_catalog() | change))
+
+    with pytest.raises(
+        CatalogUnavailableError, match="Polaris returned catalog sales in a form this backend cannot read"
+    ):
+        CatalogsPolarisRepo(stub.client()).get(CatalogId.of("sales"))
+
+
+def test_read_catalog_holds_domain_types():
+    """A catalog read from Polaris holds tuples and enums, never the JSON lists and strings it came as."""
+    stub = PolarisStub()
+    reply = _polaris_catalog() | {
+        "type": "EXTERNAL",
+        "connectionConfigInfo": {
+            "connectionType": "ICEBERG_REST",
+            "authenticationParameters": {"authenticationType": "OAUTH", "clientId": "c", "scopes": ["a"]},
+        },
+    }
+    stub.on("GET", f"{CATALOGS}/sales", httpx.Response(200, json=reply))
+
+    catalog = CatalogsPolarisRepo(stub.client()).get(CatalogId.of("sales"))
+
+    assert catalog is not None
+    assert type(catalog.type) is CatalogType
+    assert type(catalog.storage_config.storage_type) is StorageType
+    assert type(catalog.storage_config.allowed_locations) is tuple
+    assert catalog.connection_config is not None
+    assert type(catalog.connection_config.connection_type) is ConnectionType
+    assert catalog.connection_config.authentication is not None
+    assert type(catalog.connection_config.authentication.scopes) is tuple
 
 
 _HTML = httpx.Response(200, text="<html>proxy error</html>", headers={"content-type": "text/html"})

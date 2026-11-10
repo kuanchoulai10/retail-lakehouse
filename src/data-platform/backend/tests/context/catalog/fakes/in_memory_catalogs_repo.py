@@ -2,22 +2,24 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from base.model import validated_copy
 from context.catalog.application.exceptions import ConflictError, NotFoundError
 from context.catalog.application.port.outbound.catalog import CatalogsRepo
 
 if TYPE_CHECKING:
     from base import EntityId
+    from base.model import EntityId as ModelEntityId
     from context.catalog.application.port.outbound.catalog import Catalog
 
 NOW = datetime(2026, 11, 7, 12, 0, tzinfo=UTC)
 
 
 def _copy(catalog: Catalog, **changes: object) -> Catalog:
-    return replace(catalog, properties=dict(catalog.properties), **changes)
+    """Return a validated copy; it shares no mutable state with catalog and holds no pending events."""
+    return validated_copy(catalog, **changes)
 
 
 class InMemoryCatalogsRepo(CatalogsRepo):
@@ -37,7 +39,7 @@ class InMemoryCatalogsRepo(CatalogsRepo):
         self.items[entity.id.value] = _copy(entity, entity_version=1, created_at=NOW, updated_at=NOW)
         return _copy(self.items[entity.id.value])
 
-    def get(self, entity_id: EntityId) -> Catalog | None:
+    def get(self, entity_id: EntityId | ModelEntityId) -> Catalog | None:
         """Return a copy of the catalog, or None."""
         stored = self.items.get(entity_id.value)
         return None if stored is None else _copy(stored)
@@ -56,7 +58,7 @@ class InMemoryCatalogsRepo(CatalogsRepo):
         self.items[catalog.id.value] = _copy(catalog, entity_version=stored.entity_version + 1, updated_at=NOW)
         return _copy(self.items[catalog.id.value])
 
-    def delete(self, entity_id: EntityId) -> None:
+    def delete(self, entity_id: EntityId | ModelEntityId) -> None:
         """Remove the catalog; an unknown one raises NotFoundError."""
         if self.items.pop(entity_id.value, None) is None:
             raise NotFoundError(f"Catalog not found: {entity_id.value}")

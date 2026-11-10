@@ -29,11 +29,11 @@ from context.catalog.application.service.catalog.catalog_id_from_name import (
 from context.catalog.application.service.catalog.catalog_output_fields import (
     catalog_output_fields,
 )
-from context.catalog.application.service.catalog.connection_config_from_dict import (
-    connection_config_from_dict,
+from context.catalog.application.service.catalog.connection_config_from_request import (
+    connection_config_from_request,
 )
-from context.catalog.application.service.catalog.storage_config_from_dict import (
-    storage_config_from_dict,
+from context.catalog.application.service.catalog.storage_config_from_request import (
+    storage_config_from_request,
 )
 
 if TYPE_CHECKING:
@@ -74,12 +74,12 @@ class CreateCatalogService(CreateCatalogUseCase):
             catalog_type = CatalogType(request.type)
         except ValueError:
             raise ValidationError(f"catalog type must be one of {_CATALOG_TYPES}, not {request.type!r}") from None
-        storage_config = storage_config_from_dict(request.storage_config)
+        storage_config = storage_config_from_request(request.storage_config)
         connection_config = None
         if request.connection_config is not None:
             if catalog_type is not CatalogType.EXTERNAL:
                 raise ValidationError("connection_config applies only to EXTERNAL catalogs")
-            connection_config = connection_config_from_dict(request.connection_config)
+            connection_config = connection_config_from_request(request.connection_config)
         elif catalog_type is CatalogType.EXTERNAL:
             raise ValidationError("an EXTERNAL catalog needs a connection_config")
         created = self._catalogs_repo.create(

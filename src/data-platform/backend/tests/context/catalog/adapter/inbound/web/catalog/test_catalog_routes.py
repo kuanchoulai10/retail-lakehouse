@@ -261,6 +261,40 @@ def test_external_catalog_without_authentication_type_returns_422():
     response = _real_create_client().post("/v1/catalogs", json=body)
 
     assert response.status_code == 422
+    assert response.json() == {"detail": "connection_config.authentication.authentication_type: Field required"}
+
+
+def test_external_catalog_without_authentication_returns_422():
+    """The connection's authentication is required on create, though a catalog may be read back without it."""
+    body = {**EXTERNAL_BODY, "connection_config": {"connection_type": "HIVE", "uri": "thrift://h"}}
+
+    response = _real_create_client().post("/v1/catalogs", json=body)
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "connection_config.authentication: Field required"}
+
+
+EXTERNAL_RESPONSE_TEXT = (
+    '{"name":"sales","type":"EXTERNAL","default_base_location":"s3://bucket/sales",'
+    '"properties":{"default-base-location":"s3://bucket/sales"},'
+    '"storage_config":{"storage_type":"S3","allowed_locations":["s3://bucket/"],"region":null,"role_arn":null,'
+    '"external_id":null,"user_arn":null,"endpoint":"http://rustfs:9000","endpoint_internal":null,'
+    '"sts_endpoint":null,"sts_unavailable":null,"path_style_access":true,"tenant_id":null,'
+    '"multi_tenant_app_name":null,"consent_url":null,"gcs_service_account":null},'
+    '"connection_config":{"connection_type":"REST","uri":"https://remote.example/api/catalog",'
+    '"authentication":{"authentication_type":"OAUTH","token_uri":"https://remote.example/oauth/tokens",'
+    '"client_id":"remote-client","scopes":["PRINCIPAL_ROLE:ALL"],"role_arn":null,"role_session_name":null,'
+    '"external_id":null,"signing_region":null,"signing_name":null}},'
+    '"entity_version":1,"created_at":"2026-11-07T12:00:00Z","updated_at":"2026-11-07T12:00:00Z"}'
+)
+
+
+def test_created_external_catalog_body_is_unchanged():
+    """The created external catalog is described byte for byte as before the domain moved to Pydantic."""
+    response = _real_create_client().post("/v1/catalogs", json=EXTERNAL_BODY)
+
+    assert response.status_code == 201
+    assert response.text == EXTERNAL_RESPONSE_TEXT
 
 
 def test_response_never_contains_a_connection_secret():

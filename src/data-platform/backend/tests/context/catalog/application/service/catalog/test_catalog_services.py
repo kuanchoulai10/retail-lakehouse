@@ -171,35 +171,48 @@ def test_create_internal_catalog_has_no_connection(catalogs_repo, content_grant_
     ("overrides", "message"),
     [
         ({"name": "  "}, "catalog name must not be blank"),
-        ({"name": "a\x1fb"}, "catalog name must not contain the unit separator U\\+001F"),
+        ({"name": "a\x1fb"}, "catalog name must not contain the unit separator U+001F"),
         ({"default_base_location": ""}, "default base location must not be blank"),
-        ({"type": "FEDERATED"}, "catalog type must be one of INTERNAL, EXTERNAL"),
-        ({"storage_config": {"allowed_locations": []}}, "storage_type is required"),
-        ({"storage_config": {"storage_type": "S3", "bucket": "b"}}, "unknown storage config field"),
-        ({"storage_config": {"storage_type": "S3", "user_arn": "arn:x"}}, "unknown storage config field.*user_arn"),
-        ({"storage_config": {"storage_type": "NFS"}}, "storage type must be one of S3, AZURE, GCS, FILE"),
-        ({"storage_config": {"storage_type": "AZURE"}}, "tenant_id is required for AZURE storage"),
+        ({"type": "FEDERATED"}, "catalog type must be one of INTERNAL, EXTERNAL, not 'FEDERATED'"),
+        ({"storage_config": {"allowed_locations": []}}, "storage_config.storage_type: Field required"),
+        (
+            {"storage_config": {"storage_type": "S3", "bucket": "b"}},
+            "storage_config.bucket: Extra inputs are not permitted",
+        ),
+        (
+            {"storage_config": {"storage_type": "S3", "user_arn": "arn:x"}},
+            "storage_config.user_arn: Extra inputs are not permitted",
+        ),
+        (
+            {"storage_config": {"storage_type": "NFS"}},
+            "storage_config.storage_type: Input should be 'S3', 'AZURE', 'GCS' or 'FILE'",
+        ),
+        ({"storage_config": {"storage_type": "AZURE"}}, "storage_config.tenant_id: required for AZURE storage"),
         ({"type": "EXTERNAL"}, "an EXTERNAL catalog needs a connection_config"),
         ({"connection_config": OAUTH_CONNECTION}, "connection_config applies only to EXTERNAL catalogs"),
-        ({"type": "EXTERNAL", "connection_config": {"uri": "https://r"}}, "connection_type is required"),
+        (
+            {"type": "EXTERNAL", "connection_config": {"uri": "https://r"}},
+            "connection_config.connection_type: Field required",
+        ),
         (
             {"type": "EXTERNAL", "connection_config": {**OAUTH_CONNECTION, "connection_type": "JDBC"}},
-            "connection type must be one of REST, HADOOP, HIVE",
+            "connection_config.connection_type: Input should be 'REST', 'HADOOP' or 'HIVE'",
         ),
         (
             {"type": "EXTERNAL", "connection_config": {"connection_type": "HIVE", "uri": "thrift://h"}},
-            "connection_config.authentication is required",
+            "connection_config.authentication: Field required",
         ),
         (
             {"type": "EXTERNAL", "connection_config": {**OAUTH_CONNECTION, "port": 1}},
-            "unknown connection config field.*port",
+            "connection_config.port: Extra inputs are not permitted",
         ),
         (
             {
                 "type": "EXTERNAL",
                 "connection_config": {**OAUTH_CONNECTION, "authentication": {"authentication_type": "KERBEROS"}},
             },
-            "authentication type must be one of OAUTH, BEARER, SIGV4, IMPLICIT",
+            "connection_config.authentication.authentication_type: "
+            "Input should be 'OAUTH', 'BEARER', 'SIGV4' or 'IMPLICIT'",
         ),
         (
             {
@@ -209,17 +222,41 @@ def test_create_internal_catalog_has_no_connection(catalogs_repo, content_grant_
                     "authentication": {"authentication_type": "OAUTH", "bearer_token": "t"},
                 },
             },
-            "bearer_token does not apply to OAUTH authentication",
+            "connection_config.authentication: bearer_token does not apply to OAUTH authentication",
         ),
     ],
 )
 def test_create_catalog_rejects_invalid_input(catalogs_repo, content_grant_gateway, overrides, message):
-    """Invalid input is a validation error and creates nothing."""
-    with pytest.raises(ValidationError, match=message):
+    """Invalid input is a validation error with a one-line message, and creates nothing."""
+    with pytest.raises(ValidationError) as raised:
         CreateCatalogService(catalogs_repo, content_grant_gateway).execute(_create_input(**overrides))
 
+    assert str(raised.value) == message
     assert catalogs_repo.items == {}
     assert content_grant_gateway.calls == []
+
+
+@pytest.mark.parametrize(
+    ("storage_config", "message"),
+    [
+        ({"storage_type": "S3", "user_arn": "arn:x"}, "storage_config.user_arn: Extra inputs are not permitted"),
+        ({"storage_type": "AZURE"}, "storage_config.tenant_id: required for AZURE storage"),
+        (
+            {"storage_type": "S3", "allowed_locations": "s3://b/"},
+            "storage_config.allowed_locations: Input should be a valid array",
+        ),
+    ],
+)
+def test_update_catalog_rejects_invalid_storage(catalogs_repo, storage_config, message):
+    """An update's storage config is checked like a create's, and the stored catalog is left as it was."""
+    _create(catalogs_repo)
+    before = catalogs_repo.items["sales"].model_dump()
+
+    with pytest.raises(ValidationError) as raised:
+        UpdateCatalogService(catalogs_repo).execute(_update_input(entity_version=1, storage_config=storage_config))
+
+    assert str(raised.value) == message
+    assert catalogs_repo.items["sales"].model_dump() == before
 
 
 def test_update_catalog_sends_the_version_the_caller_loaded(catalogs_repo):

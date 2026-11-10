@@ -27,7 +27,7 @@ def test_defined_table_has_no_catalog_assigned_facts_yet():
     """A table defined for create has no uuid, format version or snapshots until the catalog saves it."""
     table = Table.define(
         id=TableId.of("sales", ("retail",), "orders"),
-        schema=Schema(schema_id=0, fields=(SchemaField(1, "id", "long", True, None),)),
+        schema=Schema(schema_id=0, fields=(SchemaField(id=1, name="id", type="long", required=True, doc=None),)),
         partition_spec=PartitionSpec.unpartitioned(),
         location=None,
         properties={},

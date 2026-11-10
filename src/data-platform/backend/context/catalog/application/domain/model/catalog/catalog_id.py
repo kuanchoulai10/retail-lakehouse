@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-from base import EntityId
+from base.model import EntityId
 from context.catalog.application.domain.model.shared import reject_unit_separator
 
 
-@dataclass(frozen=True)
 class CatalogId(EntityId):
     """Identify a catalog by its name, which is unique within the catalog service."""
 
