@@ -48,11 +48,16 @@ export type TimelineItemProps = Omit<ComponentProps<"li">, "title" | "onSelect" 
   description?: ReactNode;
   // Beside the entry, outside its button, so it can be a link or another control of its own.
   trailingAction?: ReactNode;
-  onSelect?: () => void;
-  // Passed to the entry's button, for an entry that discloses more entries (its children).
-  "aria-expanded"?: boolean;
-  "aria-controls"?: string;
-};
+} & (
+    | {
+        onSelect: () => void;
+        // Passed to the entry's button, for an entry that discloses more entries (its children).
+        "aria-expanded"?: boolean;
+        "aria-controls"?: string;
+      }
+    // Without onSelect the entry is not a button, so it cannot carry the disclosure state.
+    | { onSelect?: undefined; "aria-expanded"?: never; "aria-controls"?: never }
+  );
 
 export const TimelineItem = forwardRef<HTMLLIElement, TimelineItemProps>(
   (
@@ -74,7 +79,7 @@ export const TimelineItem = forwardRef<HTMLLIElement, TimelineItemProps>(
     const quiet = nested || marker === "dashed";
     const titleType = quiet ? "type-body-small" : "type-label-large";
     const contentStyle = cn(
-      "flex min-h-row min-w-0 flex-1 flex-col justify-center rounded-sm px-2 text-left",
+      "flex min-h-row min-w-0 flex-1 flex-col justify-start rounded-sm px-2 text-left",
       quiet ? "py-1 text-on-surface-variant" : "py-2 text-on-surface",
     );
     const content = (

@@ -13,8 +13,6 @@ export type ListItemProps = Omit<ComponentProps<"li">, "title" | "onSelect" | "a
   description?: ReactNode;
   leadingIcon?: ReactNode;
   trailingItem?: ReactNode;
-  // Beside the row, outside its button, so it can be a link or another control of its own.
-  trailingAction?: ReactNode;
   isSelected?: boolean;
   onSelect?: () => void;
   // Passed to the row's button, for a row that discloses more content.
@@ -29,7 +27,6 @@ export const ListItem = forwardRef<HTMLLIElement, ListItemProps>(
       description,
       leadingIcon,
       trailingItem,
-      trailingAction,
       isSelected = false,
       onSelect,
       "aria-expanded": ariaExpanded,
@@ -79,9 +76,8 @@ export const ListItem = forwardRef<HTMLLIElement, ListItemProps>(
       <div className={rowStyle}>{content}</div>
     );
     return (
-      <li ref={ref} className={cn(trailingAction !== undefined && "flex items-center", className)} {...rest}>
+      <li ref={ref} className={className} {...rest}>
         {row}
-        {trailingAction !== undefined && <span className="type-body-small shrink-0 px-3">{trailingAction}</span>}
       </li>
     );
   },

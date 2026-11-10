@@ -8,6 +8,38 @@ import { Timeline, TimelineItem } from "./Timeline";
 const onOpenEntry = fn();
 const onOpenNested = fn();
 
+// Disclosure props belong to an entry that is a button, so they require onSelect.
+// @ts-expect-error aria-expanded without onSelect would be silently dropped.
+const disclosureWithoutButton = <TimelineItem title="x" aria-expanded={false} />;
+void disclosureWithoutButton;
+
+// Each marker's vertical centre sits within 2px of the centre of its title's first line.
+async function expectMarkersOnFirstLine(timeline: HTMLElement): Promise<void> {
+  for (const marker of Array.from(timeline.querySelectorAll<HTMLElement>(":scope > li > div > [data-marker]"))) {
+    const dot = marker.firstElementChild as HTMLElement;
+    const title = marker.nextElementSibling!.firstElementChild as HTMLElement;
+    const range = title.ownerDocument.createRange();
+    range.selectNodeContents(title);
+    const lines = Array.from(range.getClientRects());
+    const firstTop = Math.min(...lines.map((r) => r.top));
+    const firstLine = lines.filter((r) => r.top < firstTop + 4);
+    const lineCentre = (Math.min(...firstLine.map((r) => r.top)) + Math.max(...firstLine.map((r) => r.bottom))) / 2;
+    const box = dot.getBoundingClientRect();
+    await expect(Math.abs(box.top + box.height / 2 - lineCentre)).toBeLessThanOrEqual(2);
+  }
+}
+
+// An open timeline: no box, and no borders on the entries or their buttons.
+async function expectNoBorders(timeline: HTMLElement): Promise<void> {
+  const parts = [timeline, ...Array.from(timeline.querySelectorAll<HTMLElement>("li, button"))];
+  for (const part of parts) {
+    const style = getComputedStyle(part);
+    await expect(
+      [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth],
+    ).toEqual(["0px", "0px", "0px", "0px"]);
+  }
+}
+
 const meta = {
   title: "Components/Timeline",
   component: Timeline,
@@ -78,7 +110,8 @@ export const Default: Story = {
     const canvas = within(canvasElement);
     const timeline = canvas.getByRole("list", { name: "Maintenance checks" });
     await expect(within(timeline).getAllByRole("listitem")).toHaveLength(3);
-    await expect(getComputedStyle(timeline).borderTopWidth).toBe("0px");
+    await expectNoBorders(timeline);
+    await expectMarkersOnFirstLine(timeline);
     const markers = Array.from(timeline.querySelectorAll("[data-marker]")).map((m) => m.getAttribute("data-marker"));
     await expect(markers).toEqual(["filled", "dashed", "outlined"]);
 
@@ -127,11 +160,16 @@ export const Phone: Story = {
         onSelect={onOpenEntry}
         trailingAction={<a href="#run-42">Run 0b9e3c1a</a>}
       />
+      <FoldedEntry />
       <TimelineItem marker="outlined" title="Skipped: table paused" description="Schedule at 05:42" />
     </Timeline>
   ),
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByRole("link", { name: "Run 0b9e3c1a" })).toBeVisible();
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole("link", { name: "Run 0b9e3c1a" })).toBeVisible();
+    const timeline = canvas.getByRole("list", { name: "Maintenance checks" });
+    await expectNoBorders(timeline);
+    await expectMarkersOnFirstLine(timeline);
     await expectNoHorizontalPageScroll(canvasElement);
   },
 };

@@ -28,7 +28,7 @@ Rules for `src/design-system` (`@retail-lakehouse/design-system`, spec `docs/sup
 
 Follow Serendie's components: read the component's source in `serendie/serendie` (`src/components/<Name>/`) and use the same token for the same part. The theme colour carries interaction and selection; the status colours carry status only.
 
-- **Links and selected or active states use the theme colour:** `text-primary` for links (`TextLink`, `Breadcrumbs`) and the active tab; `bg-selected-surface` with `text-on-surface` for a selected list item or nav item (its icon `text-primary`); `bg-inverse-primary` for table headers and expanded or selected rows; `bg-primary-container` for filled buttons, checked check boxes and switches.
+- **Links and selected or active states use the theme colour:** `text-primary` for links (`TextLink`, `Breadcrumbs`) and the active tab; `bg-selected-surface` with `text-on-surface` for a selected list item or nav item (its icon `text-primary`); `bg-inverse-primary` for table headers and expanded or selected rows; `bg-primary-container` for filled buttons, checked check boxes and switches; `bg-primary` (with `border-primary`) for an active timeline marker, an entry that started something.
 - **Hover is `bg-hovered-variant`** on a surface and `bg-hovered` over a filled control. Never a derived colour such as `bg-on-surface/5`.
 - **Overlays:** menus and select lists on `bg-surface-container-bright`, tooltips `bg-inverse-surface` with `text-inverse-on-surface`.
 - **Where we depart from Serendie for contrast:** secondary text on `selected-surface` is `text-on-surface`, not `on-surface-variant` (about 3.3:1); control borders use `outline-dim`, not `outline`.

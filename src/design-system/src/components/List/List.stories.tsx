@@ -45,7 +45,10 @@ export const Default: Story = {
   },
 };
 
-const onOpenRow = fn();
+// A list item has no action beside its row; a Timeline entry does.
+// @ts-expect-error trailingAction is not a ListItem prop.
+const rowWithAction = <ListItem title="x" trailingAction={<a href="#run-42">Open run</a>} />;
+void rowWithAction;
 
 function DisclosureRow() {
   const [open, setOpen] = useState(false);
@@ -63,34 +66,15 @@ function DisclosureRow() {
   );
 }
 
-// A row whose button opens it, with an action beside the button rather than inside it (a link
-// cannot sit in a button), and a row that discloses more rows.
-export const WithTrailingAction: Story = {
+// A row that discloses more rows.
+export const Disclosure: Story = {
   render: () => (
-    <List aria-label="Reconciliations">
-      <ListItem
-        title="Started Rewrite data files"
-        description="Catalog commit at 10:42"
-        onSelect={onOpenRow}
-        trailingAction={<a href="#run-42">Open run</a>}
-      />
+    <List aria-label="Runs">
       <DisclosureRow />
     </List>
   ),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const row = canvas.getByRole("button", { name: /Started Rewrite data files/ });
-    const link = canvas.getByRole("link", { name: "Open run" });
-    await expect(row).not.toContainElement(link);
-    await expect(row.closest("li")).toContainElement(link);
-
-    await userEvent.tab();
-    await expectFocusRing(row);
-    await userEvent.keyboard("{Enter}");
-    await expect(onOpenRow).toHaveBeenCalledTimes(1);
-    await userEvent.tab();
-    await expect(link).toHaveFocus();
-
     const disclosure = canvas.getByRole("button", { name: "4 runs found nothing to do" });
     await userEvent.tab();
     await expectFocusRing(disclosure);
@@ -98,6 +82,8 @@ export const WithTrailingAction: Story = {
     await userEvent.keyboard(" ");
     await expect(disclosure).toHaveAttribute("aria-expanded", "true");
     await expect(disclosure).toHaveAttribute("aria-controls", "hidden-runs");
+    await userEvent.keyboard("{Enter}");
+    await expect(disclosure).toHaveAttribute("aria-expanded", "false");
     await expectNoHorizontalPageScroll(canvasElement);
   },
 };
