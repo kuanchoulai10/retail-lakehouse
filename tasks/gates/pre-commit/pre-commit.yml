@@ -1,0 +1,14 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+tasks:
+  frontend:
+    desc: "Lint and type-check the console and the design system (pre-commit hooks aliased frontend)"
+    cmds:
+      - uv run pre-commit run frontend --all-files --show-diff-on-failure
+
+  backend:
+    desc: "Lint, format and type-check the Python code (pre-commit hooks aliased backend)"
+    cmds:
+      - uv run pre-commit run backend --all-files --show-diff-on-failure

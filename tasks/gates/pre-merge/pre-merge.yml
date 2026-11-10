@@ -2,7 +2,44 @@
 
 version: '3'
 
+includes:
+  design-system:
+    taskfile: ../../../src/design-system/Taskfile.yml
+    dir: ../../../src/design-system
+    internal: true
+  console:
+    taskfile: ../../../src/data-platform/frontend/Taskfile.yml
+    dir: ../../../src/data-platform/frontend
+    internal: true
+  backend:
+    taskfile: ../../../src/data-platform/backend/Taskfile.yml
+    dir: ../../../src/data-platform/backend
+    internal: true
+  spark:
+    taskfile: ../../../src/data-platform/runtime/spark/Taskfile.yml
+    dir: ../../../src/data-platform/runtime/spark
+    internal: true
+
 tasks:
+  frontend:
+    desc: "Scan, measure coverage of and build the design system and the console"
+    cmds:
+      - task: design-system:security-test
+      - task: console:security-test
+      - task: design-system:coverage-test
+      - task: console:coverage-test
+      - task: console:build-test
+
+  backend:
+    desc: "Scan, measure coverage of, integration-test and build the backend and the Spark runtime"
+    cmds:
+      - task: backend:security-test
+      - task: spark:security-test
+      - task: backend:coverage-test
+      - task: backend:integration-test
+      - task: backend:build-test
+      - task: spark:build-test
+
   api-test:
     summary: "Run the Bruno API collection against a running backend"
     cmds:

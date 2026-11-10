@@ -3,16 +3,9 @@
 version: '3'
 
 includes:
-  frontend:
-    taskfile: ./frontend/frontend.yml
+  pre-commit:
+    taskfile: ./pre-commit/pre-commit.yml
     dir: '{{.ROOT_DIR}}'
-  backend:
-    taskfile: ./backend/backend.yml
-    dir: '{{.ROOT_DIR}}'
-  scripts:
-    taskfile: '../../scripts/Taskfile.yml'
-    dir: '../../scripts'
-    internal: true
   pre-pr:
     taskfile: ./pre-pr/pre-pr.yml
     dir: '{{.ROOT_DIR}}'
@@ -45,7 +38,7 @@ tasks:
     cmds:
       - uv run pre-commit run shared --all-files --show-diff-on-failure
       - for: { var: scopes }
-        task: '{{.ITEM}}:pre-commit'
+        task: 'pre-commit:{{.ITEM}}'
 
   pre-pr:
     desc: "Gate: is my change logically correct? (local, no services: unit, architecture, contract) scope=frontend|backend|all (default all)"
@@ -59,7 +52,7 @@ tasks:
       - task: pre-commit
         vars:
           scope: '{{.scope}}'
-      - task: scripts:unit-test
+      - task: pre-pr:scripts:unit-test
       - task: pre-pr-scopes
         vars:
           scope: '{{.scope}}'
@@ -71,7 +64,7 @@ tasks:
       scopes: '{{if eq .scope "all"}}frontend backend{{else}}{{.scope}}{{end}}'
     deps:
       - for: { var: scopes }
-        task: '{{.ITEM}}:pre-pr'
+        task: 'pre-pr:{{.ITEM}}'
 
   pre-merge:
     desc: "Gate: will main still work after this merge? (merge queue candidate on an ephemeral platform) scope=frontend|backend|all (default all)"
@@ -97,7 +90,7 @@ tasks:
       scopes: '{{if eq .scope "all"}}frontend backend{{else}}{{.scope}}{{end}}'
     deps:
       - for: { var: scopes }
-        task: '{{.ITEM}}:pre-merge'
+        task: 'pre-merge:{{.ITEM}}'
 
   post-merge:
     desc: "Gate: is main healthy once deployed to the shared environment? (staging, same artifacts as pre-merge)"
@@ -151,10 +144,3 @@ tasks:
       - task: nightly:resilience-test
       - task: nightly:performance-full-test
       - task: nightly:dependency-test
-
-  unit-test:
-    desc: "Run every component's unit tests in parallel"
-    deps:
-      - scripts:unit-test
-      - frontend:unit-test
-      - backend:unit-test
