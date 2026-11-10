@@ -47,6 +47,13 @@ export { Breadcrumbs, type BreadcrumbItem, type BreadcrumbsProps } from "./compo
 export { TextLink, type TextLinkProps } from "./components/TextLink/TextLink";
 export { List, ListItem, type ListItemProps } from "./components/List/List";
 export {
+  Timeline,
+  TimelineItem,
+  type TimelineItemProps,
+  type TimelineMarker,
+  type TimelineProps,
+} from "./components/Timeline/Timeline";
+export {
   SideNavigation,
   type SideNavigationItem,
   type SideNavigationProps,
