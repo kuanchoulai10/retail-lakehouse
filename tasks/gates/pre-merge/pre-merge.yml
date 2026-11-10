@@ -1,0 +1,14 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+tasks:
+  api-test:
+    desc: "Run the Bruno API collection against a running backend"
+    cmds:
+      - cmd: echo "TODO:// bru run the API collection against the ephemeral platform, secrets passed with --env-var"
+
+  e2e-critical-test:
+    desc: "Run the critical-path end-to-end test in minutes on an ephemeral platform"
+    cmds:
+      - cmd: echo "TODO:// provision an ephemeral platform from the build-test images; catalog round trip, create a table, write rows, trigger one maintenance run, read it back through Trino; tear it down"

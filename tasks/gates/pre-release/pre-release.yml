@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+tasks:
+  migration-test:
+    desc: "Run database migrations against a copy of production-sized data"
+    cmds:
+      - cmd: echo "TODO:// restore a production-sized table-maintenance-db snapshot, run the migrate Job, assert the schema and row counts"
+
+  rollback-test:
+    desc: "Roll back to the previous release and verify it still serves"
+    cmds:
+      - cmd: echo "TODO:// helm rollback to the previous release tags, rerun the smoke test, roll forward again"
+
+  performance-critical-test:
+    desc: "Check the key performance numbers against release thresholds (blocks the release)"
+    cmds:
+      - cmd: echo "TODO:// maintenance run duration on a large table and catalog API latency against thresholds"

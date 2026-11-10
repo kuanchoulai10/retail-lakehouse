@@ -18,9 +18,6 @@ includes:
   gates:
     taskfile: ./tasks/gates/gates.yml
     dir: '{{.ROOT_DIR}}'
-  system:
-    taskfile: ./tasks/system.yml
-    dir: '{{.ROOT_DIR}}'
   cluster:
     taskfile: ./tasks/cluster.yml
     dir: '{{.ROOT_DIR}}'

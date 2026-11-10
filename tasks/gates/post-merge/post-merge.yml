@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+includes:
+  apps:
+    taskfile: ../../apps.yml
+    dir: ../../..
+    internal: true
+
+tasks:
+  smoke-test:
+    desc: "Check the deployed platform answers"
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+    cmds:
+      - task: apps:validate
+        vars:
+          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
+      - cmd: echo "TODO:// bru run the read-only smoke collection through the platform gateway"

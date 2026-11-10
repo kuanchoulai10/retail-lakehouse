@@ -13,6 +13,24 @@ includes:
     taskfile: '../../scripts/Taskfile.yml'
     dir: '../../scripts'
     internal: true
+  pre-pr:
+    taskfile: ./pre-pr/pre-pr.yml
+    dir: '{{.ROOT_DIR}}'
+  pre-merge:
+    taskfile: ./pre-merge/pre-merge.yml
+    dir: '{{.ROOT_DIR}}'
+  post-merge:
+    taskfile: ./post-merge/post-merge.yml
+    dir: '{{.ROOT_DIR}}'
+  pre-release:
+    taskfile: ./pre-release/pre-release.yml
+    dir: '{{.ROOT_DIR}}'
+  release:
+    taskfile: ./release/release.yml
+    dir: '{{.ROOT_DIR}}'
+  nightly:
+    taskfile: ./nightly/nightly.yml
+    dir: '{{.ROOT_DIR}}'
 
 tasks:
   pre-commit:
@@ -45,7 +63,7 @@ tasks:
       - task: pre-pr-scopes
         vars:
           scope: '{{.scope}}'
-      - task: :system:contract-test
+      - task: pre-pr:contract-test
 
   pre-pr-scopes:
     internal: true
@@ -70,8 +88,8 @@ tasks:
       - task: pre-merge-scopes
         vars:
           scope: '{{.scope}}'
-      - task: :system:api-test
-      - task: :system:e2e-critical-test
+      - task: pre-merge:api-test
+      - task: pre-merge:e2e-critical-test
 
   pre-merge-scopes:
     internal: true
@@ -87,10 +105,10 @@ tasks:
       vars:
         - name: KUBE_CONTEXT
     cmds:
-      - task: :system:deployment-test
+      - task: deployment-test
         vars:
           KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
-      - task: :system:smoke-test
+      - task: post-merge:smoke-test
         vars:
           KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
 
@@ -100,17 +118,25 @@ tasks:
       vars:
         - name: KUBE_CONTEXT
     cmds:
-      - task: :system:deployment-test
+      - task: deployment-test
         vars:
           KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
-      - task: :system:migration-test
-      - task: :system:rollback-test
-      - task: :system:performance-test
+      - task: pre-release:migration-test
+      - task: pre-release:rollback-test
+      - task: pre-release:performance-critical-test
+
+  deployment-test:
+    desc: "Deploy the build-test images to KUBE_CONTEXT and verify the rollout (post-merge on staging, pre-release on a production-like cluster)"
+    requires:
+      vars:
+        - name: KUBE_CONTEXT
+    cmds:
+      - cmd: echo "TODO:// deploy the build-test image tags to {{.KUBE_CONTEXT}}, assert the images are on the node, the rollout finished and no pod restarted"
 
   release:
     desc: "Gate: does the release hold under real traffic? (production canary, automatic rollback)"
     cmds:
-      - task: :system:canary-test
+      - task: release:canary-test
 
   nightly:
     desc: "Gate: are there problems that only show over time? (staging, scheduled)"
@@ -118,13 +144,13 @@ tasks:
       vars:
         - name: KUBE_CONTEXT
     cmds:
-      - task: :system:e2e-full-test
+      - task: nightly:e2e-full-test
         vars:
           KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
-      - task: :system:soak-test
-      - task: :system:resilience-test
-      - task: :system:performance-test
-      - task: :system:dependency-test
+      - task: nightly:soak-test
+      - task: nightly:resilience-test
+      - task: nightly:performance-full-test
+      - task: nightly:dependency-test
 
   unit-test:
     desc: "Run every component's unit tests in parallel"

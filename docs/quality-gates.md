@@ -6,22 +6,22 @@ A change to retail-lakehouse passes six quality gates on its way from a develope
 
 ## How the Tasks Are Organised
 
-**Gates, components and system tests each live in their own place, so adding one never means editing the other two.**
+**Gates, scopes, gate tests and components each live in their own file, so no file grows past a screen or two and adding one never means editing the others.**
 
 | Layer | Where | Run as | What it holds |
 |---|---|---|---|
-| Gate | `tasks/gates/gates.yml` | `task gates:pre-pr scope=backend` | Which tests run at this point, in what order. Never a command. |
+| Gate | `tasks/gates/gates.yml` | `task gates:pre-pr scope=backend` | Which tests run at this point, in what order, plus `deployment-test`, the one gate test two gates share |
 | Scope | `tasks/gates/frontend/frontend.yml`, `tasks/gates/backend/backend.yml` | `task gates:backend:pre-pr` | Which components belong to this side, and what each gate runs for them |
 | Component | the component's own `Taskfile.yml` | `task -d src/data-platform/backend unit-test` | How this component runs each kind of test, in its own directory |
-| System | `tasks/system.yml` | `task system:e2e-full-test KUBE_CONTEXT=…` | Tests that span components or need a running platform |
+| Gate test | `tasks/gates/<gate>/<gate>.yml` | `task gates:nightly:e2e-full-test KUBE_CONTEXT=…` | Tests that span components or need a running platform, beside the one gate that runs them |
 
 **A scope file includes the components that belong to it**: `frontend.yml` includes `design-system` and `console` (`src/data-platform/frontend`), `backend.yml` includes `backend` and `spark` (`src/data-platform/runtime/spark`), and `gates.yml` itself includes `scripts`, which belongs to neither side. **Every component uses the same task names**, `unit-test`, `component-test`, `arch-test`, `security-test`, `coverage-test`, `integration-test` and `build-test`, and defines only the ones it has. A scope calls them as `<component>:<kind>-test`, so a component that names its tests differently is invisible to the gates. The component includes are internal, which keeps them out of `task --list`; to run one alone, point `task` at its directory, for example `task -d src/design-system component-test`.
 
-Running `task gates:pre-pr` fans out like this. Pre-commit runs first, because a formatting failure makes the rest pointless. The script tests follow. `gates:frontend:pre-pr` and `gates:backend:pre-pr` then run at the same time, each starting its components' unit tests in parallel before its slower checks. `system:contract-test` runs last, once both halves pass. A failure on either side fails the gate.
+Running `task gates:pre-pr` fans out like this. Pre-commit runs first, because a formatting failure makes the rest pointless. The script tests follow. `gates:frontend:pre-pr` and `gates:backend:pre-pr` then run at the same time, each starting its components' unit tests in parallel before its slower checks. `gates:pre-pr:contract-test` runs last, once both halves pass. A failure on either side fails the gate.
 
-Two rules keep the layers apart. **A component never calls another component**; anything that needs two of them belongs in `tasks/system.yml` or a gate. **A test that needs a cluster is a system test**, because pre-PR runs with no services.
+Two rules keep the layers apart. **A component never calls another component**; anything that needs two of them is a gate test. **A test that needs a cluster is a gate test of a later gate**, because pre-PR runs with no services.
 
-To add a component, give it a `Taskfile.yml` with the task names it supports, include it as internal in its scope file with `dir` set to its directory, and add one line per test kind to that scope's gate tasks. To add a kind of test, add the task to each component that has it and a line to the scope task that runs it. To add a system test, add it to `tasks/system.yml` and to its gate. Task resolves a leading `:` one level up, not at the root, which is why scope files include their own components instead of reaching for the root.
+To add a component, give it a `Taskfile.yml` with the task names it supports, include it as internal in its scope file with `dir` set to its directory, and add one line per test kind to that scope's gate tasks. To add a kind of test, add the task to each component that has it and a line to the scope task that runs it. To add a gate test, add it to that gate's own file and call it from the gate in `gates.yml`; a test two gates run with the same checks stays one task in `gates.yml` (as `deployment-test` does, pointed at a different `KUBE_CONTEXT` by each gate), while a test whose checks differ by gate becomes two names, as `e2e-critical-test` and `e2e-full-test`, or `performance-critical-test` and `performance-full-test`, do. Task resolves a leading `:` one level up, not at the root, which is why a scope or gate file includes what it calls (`pre-pr.yml` includes `dev`, `post-merge.yml` includes `apps`) instead of reaching for the root.
 
 ## The Journey
 
@@ -138,19 +138,19 @@ The checks finish in seconds on staged files, so they run on every commit. `tsc`
 
 ### Pre-merge
 
-**Pre-merge tests the commit that will land on `main`, not the commit the author pushed.** A merge queue rebases each candidate on the latest `main` and runs the gate on the result. Two pull requests that pass separately can still break `main` together, and this gate catches that. It first runs all of pre-PR. `gates:frontend:pre-merge` then scans and measures coverage of the design system and the console and builds the console (`security-test`, `coverage-test`, `console:build-test`), and `gates:backend:pre-merge` does the same for the backend and Spark runtime, with `backend:integration-test` before the build. The two halves run in parallel. `system:api-test` and `system:e2e-critical-test` exercise the whole platform, so they run last for either side.
+**Pre-merge tests the commit that will land on `main`, not the commit the author pushed.** A merge queue rebases each candidate on the latest `main` and runs the gate on the result. Two pull requests that pass separately can still break `main` together, and this gate catches that. It first runs all of pre-PR. `gates:frontend:pre-merge` then scans and measures coverage of the design system and the console and builds the console (`security-test`, `coverage-test`, `console:build-test`), and `gates:backend:pre-merge` does the same for the backend and Spark runtime, with `backend:integration-test` before the build. The two halves run in parallel. `api-test` and `e2e-critical-test` exercise the whole platform, so they run last for either side.
 
 Pre-merge also builds the deliverables. The `build-test` tasks build `table-maintenance-backend`, `table-maintenance-spark` and the console once, tags them with the commit, and pushes them to the registry. **Every later gate deploys those same images and never rebuilds them**, so what passed pre-merge is exactly what reaches production. The API tests and the critical-path end-to-end test then run against a short-lived platform started from those images, which is torn down afterwards.
 
 ### Post-merge
 
-The tests from here on are system tests in `tasks/system.yml`, run alone as `task system:<name>`.
+Each gate's own tests live in `tasks/gates/<gate>/<gate>.yml` and run alone as `task gates:<gate>:<name>`.
 
 **Post-merge catches what only a shared, long-lived environment exposes**: leftover state, real network policies, other teams' traffic. It deploys the pre-merge images to staging with `deployment-test`. Then `smoke-test` checks that the platform answers, using `task apps:validate` and a read-only Bruno collection sent through the gateway.
 
 ### Pre-release
 
-**Pre-release checks the risks that only matter at production scale.** `migration-test` runs the database migrations against a production-sized copy of `table-maintenance-db`. `rollback-test` rolls back to the previous release and forward again. `performance-test` measures maintenance run duration, catalog API latency and console bundle size against thresholds.
+**Pre-release checks the risks that only matter at production scale.** `migration-test` runs the database migrations against a production-sized copy of `table-maintenance-db`. `rollback-test` rolls back to the previous release and forward again. `performance-critical-test` checks maintenance run duration and catalog API latency against release thresholds, and a breach blocks the release.
 
 ### Release
 
@@ -158,7 +158,7 @@ The tests from here on are system tests in `tasks/system.yml`, run alone as `tas
 
 ### Nightly
 
-**Nightly runs the tests too slow to run on every merge.** `e2e-full-test` runs `platform/25-lakehouse-control-plane/e2e.sh` end to end. `soak-test` keeps CDC and maintenance running for hours. `resilience-test` kills Kafka, RustFS, Polaris, Temporal or the backend database during a run. `dependency-test` tries the next `uv lock --upgrade` and `npm update`. A nightly failure does not block a merge. It opens work for the next day.
+**Nightly runs the tests too slow to run on every merge.** `e2e-full-test` runs `platform/25-lakehouse-control-plane/e2e.sh` end to end. `soak-test` keeps CDC and maintenance running for hours. `resilience-test` kills Kafka, RustFS, Polaris, Temporal or the backend database during a run. `performance-full-test` runs the longer performance suite, console bundle size included, and compares it with previous nights. `dependency-test` tries the next `uv lock --upgrade` and `npm update`. A nightly failure does not block a merge. It opens work for the next day.
 
 ## What Runs Today
 
@@ -171,17 +171,17 @@ Most test tasks are planned but not built yet. **A planned task prints `TODO:// 
 | `design-system:component-test`, `console:component-test` | Pre-PR | Runs |
 | `backend:unit-test`, `backend:arch-test` | Pre-PR | Runs |
 | `spark:unit-test` | Pre-PR | Planned |
-| `system:contract-test` | Pre-PR | Console API check runs; Polaris and Spark Operator contracts planned |
+| `gates:pre-pr:contract-test` | Pre-PR | Console API check runs; Polaris and Spark Operator contracts planned |
 | `<component>:security-test`, `<component>:coverage-test`, `backend:integration-test` | Pre-merge | Planned |
 | `console:build-test` | Pre-merge | Console build runs; image build planned |
 | `backend:build-test`, `spark:build-test` | Pre-merge | Planned |
-| `system:api-test`, `system:e2e-critical-test` | Pre-merge | Planned |
-| `system:deployment-test` | Post-merge, pre-release | Planned |
-| `system:smoke-test` | Post-merge | `apps:validate` runs; Bruno planned |
-| `system:migration-test`, `system:rollback-test`, `system:performance-test` | Pre-release | Planned |
-| `system:canary-test` | Release | Planned |
-| `system:e2e-full-test` | Nightly | Runs |
-| `system:soak-test`, `system:resilience-test`, `system:dependency-test` | Nightly | Planned |
+| `gates:pre-merge:api-test`, `gates:pre-merge:e2e-critical-test` | Pre-merge | Planned |
+| `gates:deployment-test` | Post-merge, pre-release | Planned |
+| `gates:post-merge:smoke-test` | Post-merge | `apps:validate` runs; Bruno planned |
+| `gates:pre-release:migration-test`, `gates:pre-release:rollback-test`, `gates:pre-release:performance-critical-test` | Pre-release | Planned |
+| `gates:release:canary-test` | Release | Planned |
+| `gates:nightly:e2e-full-test` | Nightly | Runs |
+| `gates:nightly:soak-test`, `gates:nightly:resilience-test`, `gates:nightly:performance-full-test`, `gates:nightly:dependency-test` | Nightly | Planned |
 
 ## References
 

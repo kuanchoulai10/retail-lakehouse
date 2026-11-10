@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+includes:
+  dev:
+    taskfile: ../../dev.yml
+    dir: ../../..
+    internal: true
+
+tasks:
+  contract-test:
+    desc: "Check the contracts between components"
+    cmds:
+      - task: contract-test-console-api
+      - cmd: echo "TODO:// backend Polaris adapters vs the Polaris 1.8 OpenAPI; backend SparkApplication manifest vs the Spark Operator CRD"
+
+  contract-test-console-api:
+    desc: "Check that the committed openapi.json and the console's generated client match the backend"
+    cmds:
+      - task: dev:generate-api
+      - git diff --exit-code -- src/data-platform/backend/openapi.json src/data-platform/frontend/src/api/generated
+      - test -z "$(git status --porcelain -- src/data-platform/frontend/src/api/generated)"
