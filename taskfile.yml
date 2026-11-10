@@ -25,18 +25,23 @@ includes:
   scripts:
     taskfile: ./scripts/Taskfile.yml
     dir: ./scripts
+    internal: true
   design-system:
     taskfile: ./src/design-system/Taskfile.yml
     dir: ./src/design-system
+    internal: true
   console:
     taskfile: ./src/data-platform/frontend/Taskfile.yml
     dir: ./src/data-platform/frontend
+    internal: true
   backend:
     taskfile: ./src/data-platform/backend/Taskfile.yml
     dir: ./src/data-platform/backend
+    internal: true
   spark:
     taskfile: ./src/data-platform/runtime/spark/Taskfile.yml
     dir: ./src/data-platform/runtime/spark
+    internal: true
   cluster:
     taskfile: ./tasks/cluster.yml
     dir: '{{.ROOT_DIR}}'

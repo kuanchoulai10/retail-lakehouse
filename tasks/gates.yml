@@ -7,14 +7,14 @@ tasks:
     desc: "Gate: is the code clean? (before a commit: lint, format, type) scope=frontend|backend|all (default all)"
     vars:
       scope: '{{.scope | default "all"}}'
-      SIDES: '{{if eq .scope "all"}}frontend backend{{else}}{{.scope}}{{end}}'
+      scopes: '{{if eq .scope "all"}}frontend backend{{else}}{{.scope}}{{end}}'
     requires:
       vars:
         - name: scope
           enum: [frontend, backend, all]
     cmds:
       - uv run pre-commit run shared --all-files --show-diff-on-failure
-      - for: { var: SIDES }
+      - for: { var: scopes }
         task: 'pre-commit-{{.ITEM}}'
 
   pre-commit-frontend:
@@ -48,9 +48,9 @@ tasks:
   pre-pr-sides:
     internal: true
     vars:
-      SIDES: '{{if eq .scope "all"}}frontend backend{{else}}{{.scope}}{{end}}'
+      scopes: '{{if eq .scope "all"}}frontend backend{{else}}{{.scope}}{{end}}'
     deps:
-      - for: { var: SIDES }
+      - for: { var: scopes }
         task: 'pre-pr-{{.ITEM}}'
 
   pre-pr-frontend:
@@ -91,9 +91,9 @@ tasks:
   pre-merge-sides:
     internal: true
     vars:
-      SIDES: '{{if eq .scope "all"}}frontend backend{{else}}{{.scope}}{{end}}'
+      scopes: '{{if eq .scope "all"}}frontend backend{{else}}{{.scope}}{{end}}'
     deps:
-      - for: { var: SIDES }
+      - for: { var: scopes }
         task: 'pre-merge-{{.ITEM}}'
 
   pre-merge-frontend:

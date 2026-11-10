@@ -11,10 +11,10 @@ A change to retail-lakehouse passes six quality gates on its way from a develope
 | Layer | Where | Run as | What it holds |
 |---|---|---|---|
 | Gate | `tasks/gates.yml`, flattened into the root | `task pre-pr scope=backend` | Which tests run at this point, in what order. Never a command. |
-| Component | the component's own `Taskfile.yml` | `task backend:unit-test` | How this component runs each kind of test, in its own directory |
+| Component | the component's own `Taskfile.yml`, included as internal | `task -d src/data-platform/backend unit-test` | How this component runs each kind of test, in its own directory |
 | System | `tasks/system.yml` | `task system:e2e-full-test KUBE_CONTEXT=…` | Tests that span components or need a running platform |
 
-The components are `scripts`, `design-system`, `console` (`src/data-platform/frontend`), `backend` and `spark` (`src/data-platform/runtime/spark`). **Every component uses the same task names**, `unit-test`, `component-test`, `arch-test`, `security-test`, `coverage-test`, `integration-test` and `build-test`, and defines only the ones it has. A gate calls them as `<component>:<kind>-test`, so a component that names its tests differently is invisible to the gates.
+The components are `scripts`, `design-system`, `console` (`src/data-platform/frontend`), `backend` and `spark` (`src/data-platform/runtime/spark`). **Every component uses the same task names**, `unit-test`, `component-test`, `arch-test`, `security-test`, `coverage-test`, `integration-test` and `build-test`, and defines only the ones it has. A gate calls them as `<component>:<kind>-test`, so a component that names its tests differently is invisible to the gates. The component includes are internal, which keeps them out of `task --list`; to run one alone, point `task` at its directory, for example `task -d src/design-system component-test`.
 
 Running `task pre-pr` fans out like this. Pre-commit runs first, because a formatting failure makes the rest pointless. The script tests follow. `pre-pr-frontend` and `pre-pr-backend` then run at the same time, each starting its components' unit tests in parallel before its slower checks. `system:contract-test` runs last, once both halves pass. A failure on either side fails the gate.
 
