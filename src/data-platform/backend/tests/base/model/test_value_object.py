@@ -4,11 +4,16 @@ from __future__ import annotations
 
 from datetime import timedelta
 from enum import StrEnum
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from pydantic import Field, ValidationError
 
 from base.model import ValueObject, WholeSeconds
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
 class _Unit(StrEnum):
@@ -77,6 +82,19 @@ def test_to_primitives_writes_wire_values() -> None:
 def test_primitives_round_trip() -> None:
     """``from_primitives`` reads back what ``to_primitives`` wrote."""
     assert _Schedule.from_primitives(_schedule().to_primitives()) == _schedule()
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        MappingProxyType({"unit": "hour", "min_interval_seconds": 3600}),
+        {"unit": "hour", "min_interval_seconds": timedelta(hours=1)},
+    ],
+)
+def test_from_primitives_rejects_non_json_input_as_a_value_error(data: Mapping[str, Any]) -> None:
+    """Input that is not JSON-compatible primitives is a ValueError (a 422), not a TypeError (a 500)."""
+    with pytest.raises(ValueError, match="JSON-compatible"):
+        _Schedule.from_primitives(data)
 
 
 def test_third_level_subclass_is_rejected() -> None:

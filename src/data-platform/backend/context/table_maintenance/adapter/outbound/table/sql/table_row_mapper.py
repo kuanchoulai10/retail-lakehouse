@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING, Any
 
 from context.table_maintenance.adapter.outbound.shared.sql import (
     IsoDatetimeCodec,
-    MaintenanceSettingsCodec,
 )
 from context.table_maintenance.application.port.outbound.table import (
     MaintenanceOperation,
+    MaintenanceSettings,
     OperationState,
     Table,
     TableDiscoveryRuleId,
@@ -37,7 +37,7 @@ class TableRowMapper:
             "table_name": table.name.table,
             "status": table.status.value,
             "selection": table.selection.value,
-            "settings_json": (None if table.settings is None else MaintenanceSettingsCodec.encode(table.settings)),
+            "settings_json": (None if table.settings is None else table.settings.to_primitives()),
             "matched_rule_id": (None if table.matched_rule_id is None else table.matched_rule_id.value),
             "source_preset_id": (None if table.source_preset_id is None else table.source_preset_id.value),
             "registered_at": table.registered_at,
@@ -66,7 +66,7 @@ class TableRowMapper:
             ),
             status=TableStatus(row["status"]),
             selection=TableSelection(row["selection"]),
-            settings=None if settings is None else MaintenanceSettingsCodec.decode(settings),
+            settings=None if settings is None else MaintenanceSettings.from_primitives(settings),
             matched_rule_id=None if matched is None else TableDiscoveryRuleId(matched),
             source_preset_id=None if preset is None else TableMaintenancePresetId(preset),
             registered_at=row["registered_at"],

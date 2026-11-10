@@ -60,3 +60,14 @@ def test_serializing_a_fractional_second_raises() -> None:
     """A duration that is not whole seconds cannot be written."""
     with pytest.raises(ValueError, match="whole number of seconds"):
         _Timeout(duration=timedelta(milliseconds=1500)).model_dump(mode="json")
+
+
+def test_serializing_a_huge_duration_keeps_its_microseconds() -> None:
+    """A very large duration with a stray microsecond is rejected, not rounded away by float seconds."""
+    with pytest.raises(ValueError, match="whole number of seconds"):
+        _Timeout(duration=timedelta(days=10**6, microseconds=1)).model_dump(mode="json")
+
+
+def test_serializes_a_huge_whole_duration_exactly() -> None:
+    """A very large whole duration is written exactly."""
+    assert _Timeout(duration=timedelta(days=10**6)).model_dump(mode="json") == {"duration": 10**6 * 86400}

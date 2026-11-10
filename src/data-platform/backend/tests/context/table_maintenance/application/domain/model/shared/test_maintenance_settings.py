@@ -5,11 +5,11 @@ from __future__ import annotations
 from datetime import timedelta
 
 import pytest
+from pydantic import ValidationError
 
 from context.table_maintenance.application.domain.model.shared import (
     CompactionScope,
     ExpireSnapshotsSettings,
-    InvalidMaintenanceSettings,
     MaintenanceOperation,
     MaintenanceSettings,
     RemoveOrphanFilesSettings,
@@ -48,7 +48,7 @@ def test_for_operation_min_interval_and_enabled():
 
 def test_remove_orphan_files_older_than_below_one_day_rejected():
     """An orphan file retention below one day is rejected."""
-    with pytest.raises(InvalidMaintenanceSettings):
+    with pytest.raises(ValidationError):
         RemoveOrphanFilesSettings(older_than=timedelta(hours=23))
     RemoveOrphanFilesSettings(older_than=timedelta(days=1))
 
@@ -70,10 +70,11 @@ def test_non_positive_intervals_rejected():
         lambda: RewriteManifestsSettings(small_manifest_bytes=0),
     ]
     for make in bad:
-        with pytest.raises(InvalidMaintenanceSettings):
+        with pytest.raises(ValidationError):
             make()
 
 
-def test_invalid_is_value_error():
-    """The invalid settings error is a ValueError."""
-    assert issubclass(InvalidMaintenanceSettings, ValueError)
+def test_invalid_settings_error_is_a_value_error():
+    """A broken invariant raises a ValueError, which the application maps to a validation error."""
+    with pytest.raises(ValueError, match="must be positive"):
+        ExpireSnapshotsSettings(min_interval=timedelta(0))

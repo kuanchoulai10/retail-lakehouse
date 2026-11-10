@@ -33,7 +33,7 @@ def test_orphan_older_than_below_one_day_returns_422(client) -> None:
     )
 
     assert response.status_code == 422
-    assert "detail" in response.json()
+    assert response.json() == {"detail": "remove_orphan_files.older_than_seconds: must be at least 1 day"}
 
 
 def test_unknown_settings_key_returns_422(client) -> None:
@@ -44,6 +44,7 @@ def test_unknown_settings_key_returns_422(client) -> None:
     )
 
     assert response.status_code == 422
+    assert response.json() == {"detail": "expire_snapshot: Extra inputs are not permitted"}
 
 
 def test_valid_settings_are_created(client) -> None:

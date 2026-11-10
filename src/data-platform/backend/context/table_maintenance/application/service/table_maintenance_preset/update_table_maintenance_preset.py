@@ -5,6 +5,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from context.table_maintenance.application.domain.model.shared import (
+    MaintenanceSettings,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_preset import (
     TableMaintenancePresetId,
 )
@@ -19,7 +22,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_preset
     UpdateTableMaintenancePresetUseCaseOutput,
 )
 from context.table_maintenance.application.service.shared import (
-    maintenance_settings_from_dict,
+    translate_domain_errors,
 )
 from context.table_maintenance.application.service.table_maintenance_preset.table_maintenance_preset_output_fields import (  # noqa: E501
     table_maintenance_preset_output_fields,
@@ -52,7 +55,10 @@ class UpdateTableMaintenancePresetService(UpdateTableMaintenancePresetUseCase):
         if preset is None:
             raise NotFoundError(f"table maintenance preset {request.id} not found")
         now = self._clock()
-        settings = None if request.settings is None else maintenance_settings_from_dict(request.settings)
+        settings = None
+        if request.settings is not None:
+            with translate_domain_errors():
+                settings = MaintenanceSettings.from_primitives(request.settings)
         if request.name is not None:
             name = request.name.strip()
             if not name:

@@ -11,9 +11,6 @@ from context.table_maintenance.application.domain.model.shared.condition_combine
 from context.table_maintenance.application.domain.model.shared.expire_snapshots_settings import (
     ExpireSnapshotsSettings,
 )
-from context.table_maintenance.application.domain.model.shared.invalid_maintenance_settings import (
-    InvalidMaintenanceSettings,
-)
 from context.table_maintenance.application.domain.model.shared.maintenance_assessment import (
     MaintenanceAssessment,
 )
@@ -56,6 +53,9 @@ from context.table_maintenance.application.domain.model.shared.partition_stats i
 from context.table_maintenance.application.domain.model.shared.planned_operation import (
     PlannedOperation,
 )
+from context.table_maintenance.application.domain.model.shared.positive_duration import (
+    PositiveDuration,
+)
 from context.table_maintenance.application.domain.model.shared.remove_orphan_files_settings import (
     RemoveOrphanFilesSettings,
 )
@@ -82,7 +82,6 @@ __all__ = [
     "CompactionScope",
     "ConditionCombine",
     "ExpireSnapshotsSettings",
-    "InvalidMaintenanceSettings",
     "MaintenanceAssessment",
     "MaintenanceOperation",
     "MaintenancePlan",
@@ -97,6 +96,7 @@ __all__ = [
     "PartitionSpecInfo",
     "PartitionStats",
     "PlannedOperation",
+    "PositiveDuration",
     "RemoveOrphanFilesSettings",
     "RewriteDataFilesSettings",
     "RewriteManifestsSettings",

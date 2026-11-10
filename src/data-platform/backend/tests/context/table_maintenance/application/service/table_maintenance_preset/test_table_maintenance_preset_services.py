@@ -30,9 +30,6 @@ from context.table_maintenance.application.port.inbound.table_maintenance_preset
     ListTableMaintenancePresetsUseCaseInput,
     UpdateTableMaintenancePresetUseCaseInput,
 )
-from context.table_maintenance.application.service.shared import (
-    maintenance_settings_to_dict,
-)
 from context.table_maintenance.application.service.table_maintenance_preset import (
     CreateTableMaintenancePresetService,
     DeleteTableMaintenancePresetService,
@@ -121,7 +118,7 @@ def test_update_preset_keeps_omitted_fields(presets_repo, clock):
     service = UpdateTableMaintenancePresetService(presets_repo, clock=clock)
     out = service.execute(UpdateTableMaintenancePresetUseCaseInput(id="t-1"))
     assert out.name == "gold"
-    assert out.settings == maintenance_settings_to_dict(seeded.settings)
+    assert out.settings == seeded.settings.to_primitives()
 
 
 def test_update_preset_name_taken_by_other_conflicts(presets_repo, clock):

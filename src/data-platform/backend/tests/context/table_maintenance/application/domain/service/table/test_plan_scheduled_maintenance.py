@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
+from base.model import validated_copy
 from context.table_maintenance.application.domain.model.shared import (
     CompactionScope,
     ExpireSnapshotsSettings,
@@ -93,14 +93,14 @@ def only(settings: MaintenanceSettings, op: Op) -> MaintenanceSettings:
     for o in Op.ordered():
         name = o.value
         cfg = settings.for_operation(o)
-        changes[name] = replace(cfg, enabled=(o == op))
-    return replace(settings, **changes)
+        changes[name] = validated_copy(cfg, enabled=(o == op))
+    return validated_copy(settings, **changes)
 
 
 def compact_only(**kw) -> MaintenanceSettings:
     """Return settings with only data file compaction enabled, using the given overrides."""
     cfg = RewriteDataFilesSettings(**kw)
-    return only(replace(MaintenanceSettings(), rewrite_data_files=cfg), Op.REWRITE_DATA_FILES)
+    return only(validated_copy(MaintenanceSettings(), rewrite_data_files=cfg), Op.REWRITE_DATA_FILES)
 
 
 def snaps(n, old):
@@ -187,7 +187,7 @@ def test_cooldown_skips_operation():
 def test_disabled_operation_never_planned():
     """A disabled operation is never planned."""
     s = only(MaintenanceSettings(), Op.REMOVE_ORPHAN_FILES)
-    s = replace(s, remove_orphan_files=RemoveOrphanFilesSettings(enabled=False))
+    s = validated_copy(s, remove_orphan_files=RemoveOrphanFilesSettings(enabled=False))
     assert plan_scheduled_maintenance(table(s), obs(partitions=(part(10),)), NOW).is_empty
 
 
@@ -201,7 +201,7 @@ def test_expire_snapshots_due_only_when_something_expires():
 def test_current_snapshot_is_never_expirable():
     """The current snapshot is never counted as expirable."""
     s = only(MaintenanceSettings(), Op.EXPIRE_SNAPSHOTS)
-    s = replace(s, expire_snapshots=ExpireSnapshotsSettings(retain_last=1))
+    s = validated_copy(s, expire_snapshots=ExpireSnapshotsSettings(retain_last=1))
     old = (
         SnapshotInfo(1, NOW - timedelta(days=5)),
         SnapshotInfo(2, NOW - timedelta(days=4)),
@@ -230,7 +230,7 @@ def test_manifest_threshold_from_settings_and_property():
     assert not plan_scheduled_maintenance(table(s), obs(manifests=m), NOW).is_empty
     prop = obs(manifests=m, properties={"commit.manifest.target-size-bytes": str(MIB)})
     assert plan_scheduled_maintenance(table(s), prop, NOW).is_empty
-    s2 = replace(s, rewrite_manifests=RewriteManifestsSettings(small_manifest_bytes=MIB))
+    s2 = validated_copy(s, rewrite_manifests=RewriteManifestsSettings(small_manifest_bytes=MIB))
     assert plan_scheduled_maintenance(table(s2), obs(manifests=m), NOW).is_empty
 
 
@@ -285,7 +285,7 @@ def test_manifest_equal_to_threshold_is_not_small():
 def test_snapshot_committed_exactly_at_cutoff_is_not_expirable():
     """A snapshot committed exactly at the cutoff is not expirable."""
     s = only(MaintenanceSettings(), Op.EXPIRE_SNAPSHOTS)
-    s = replace(s, expire_snapshots=ExpireSnapshotsSettings(retain_last=1))
+    s = validated_copy(s, expire_snapshots=ExpireSnapshotsSettings(retain_last=1))
     snaps_ = (SnapshotInfo(1, NOW - timedelta(days=1)), SnapshotInfo(2, NOW))
     assert plan_scheduled_maintenance(table(s), obs(snapshots=snaps_), NOW).is_empty
 

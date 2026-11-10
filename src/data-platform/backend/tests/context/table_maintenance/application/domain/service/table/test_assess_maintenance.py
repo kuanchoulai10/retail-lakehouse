@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from base.model import validated_copy
 from context.table_maintenance.application.domain.model.shared import (
     CompactionScope,
     ConditionCombine,
@@ -112,7 +112,7 @@ def assess(t: Table, o: TableObservation, op: Op) -> OperationAssessment:
 
 def compaction(**kw) -> MaintenanceSettings:
     """Build settings with the given data file compaction overrides."""
-    return replace(MaintenanceSettings(), rewrite_data_files=RewriteDataFilesSettings(**kw))
+    return validated_copy(MaintenanceSettings(), rewrite_data_files=RewriteDataFilesSettings(**kw))
 
 
 TWO_PARTITIONS = (part(6, value=1), part(2, value=2))
@@ -175,7 +175,7 @@ def test_expire_snapshots_counts_expirable():
     """The snapshot expiry measure counts the snapshots that can be expired."""
 
     def with_retain(n: int) -> MaintenanceSettings:
-        return replace(
+        return validated_copy(
             MaintenanceSettings(),
             expire_snapshots=ExpireSnapshotsSettings(retain_last=n),
         )
@@ -201,7 +201,7 @@ def test_cooldown_reports_next_eligible_time():
 
 def test_disabled_operation_has_no_measures():
     """A disabled operation reports no measure and no eligibility time."""
-    s = replace(
+    s = validated_copy(
         compaction(enabled=False),
         remove_orphan_files=RemoveOrphanFilesSettings(enabled=False),
     )
@@ -274,7 +274,7 @@ def test_compaction_table_scope_has_no_qualifying_partitions_measurement():
 
 def test_manifests_report_small_manifests():
     """Manifest rewriting reports the small manifests against the minimum."""
-    s = replace(MaintenanceSettings(), rewrite_manifests=RewriteManifestsSettings(min_small_manifests=3))
+    s = validated_copy(MaintenanceSettings(), rewrite_manifests=RewriteManifestsSettings(min_small_manifests=3))
     o = obs(manifests=(ManifestStats(MIB),) * 4)
     a = assess(table(s), o, Op.REWRITE_MANIFESTS)
     assert a.measurements == (

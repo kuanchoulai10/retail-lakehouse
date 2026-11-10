@@ -42,9 +42,6 @@ from context.table_maintenance.application.port.inbound.table import (
     TriggerTableReconciliationUseCaseInput,
     UpdateTableSettingsUseCaseInput,
 )
-from context.table_maintenance.application.service.shared import (
-    maintenance_settings_to_dict,
-)
 from context.table_maintenance.application.service.table import (
     ExcludeTableService,
     GetTableService,
@@ -237,7 +234,7 @@ def test_include_new_table_registers_manual_and_starts_workflow(
     assert out.uuid == "u-9"
     assert (out.status, out.selection) == ("active", "manual")
     assert out.source_preset_id == "t-1"
-    assert out.settings == maintenance_settings_to_dict(preset.settings)
+    assert out.settings == preset.settings.to_primitives()
     assert [_change(c) for c in signals.calls] == [("u-9", "resumed", [], True)]
     assert [c.table_name for c in signals.calls] == ["iceberg.sales.orders"]
 
@@ -263,7 +260,7 @@ def test_include_reactivates_excluded_table_as_manual(tables_repo, presets_repo,
     catalog.add_table("iceberg", "sales", "orders", "u-9")
     out = _include_service(tables_repo, presets_repo, catalog, signals, clock).execute(_include_input())
     assert (out.status, out.selection) == ("active", "manual")
-    assert out.settings == maintenance_settings_to_dict(preset.settings)
+    assert out.settings == preset.settings.to_primitives()
     assert out.source_preset_id == "t-1"
     assert len(tables_repo.list_all()) == 1
     assert [_change(c) for c in signals.calls] == [("u-9", "resumed", [], True)]
@@ -381,7 +378,7 @@ def test_reset_selection_applies_matching_include_rule(
     assert (out.status, out.selection) == ("active", "auto")
     assert out.matched_rule_id == "r-1"
     assert out.source_preset_id == "t-1"
-    assert out.settings == maintenance_settings_to_dict(preset.settings)
+    assert out.settings == preset.settings.to_primitives()
     assert [_change(c) for c in signals.calls] == [("u-1", "resumed", [], True)]
 
 

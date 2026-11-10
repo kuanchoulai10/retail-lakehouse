@@ -17,10 +17,9 @@ def _to_timedelta(value: object) -> timedelta:
 
 
 def _to_seconds(value: timedelta) -> int:
-    seconds = value.total_seconds()
-    if not seconds.is_integer():
+    if value.microseconds:
         raise ValueError(f"duration {value} is not a whole number of seconds")
-    return int(seconds)
+    return value // timedelta(seconds=1)
 
 
 WholeSeconds = Annotated[

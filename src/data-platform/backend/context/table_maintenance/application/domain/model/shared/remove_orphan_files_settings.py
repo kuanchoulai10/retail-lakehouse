@@ -2,28 +2,37 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from datetime import timedelta
 
-from base import ValueObject
-from context.table_maintenance.application.domain.model.shared.invalid_maintenance_settings import (
-    InvalidMaintenanceSettings,
+from pydantic import Field, field_validator
+
+from base.model import ValueObject, WholeSeconds
+from context.table_maintenance.application.domain.model.shared.positive_duration import (
+    PositiveDuration,
 )
 
 MIN_OLDER_THAN = timedelta(days=1)
 
 
-@dataclass(frozen=True)
 class RemoveOrphanFilesSettings(ValueObject):
     """Configure removal of orphan files; ``older_than`` must be at least 1 day."""
 
     enabled: bool = True
-    min_interval: timedelta = field(default_factory=lambda: timedelta(days=7))
-    older_than: timedelta = field(default_factory=lambda: timedelta(days=3))
+    min_interval: PositiveDuration = Field(
+        default=timedelta(days=7),
+        validation_alias="min_interval_seconds",
+        serialization_alias="min_interval_seconds",
+    )
+    older_than: WholeSeconds = Field(
+        default=timedelta(days=3),
+        validation_alias="older_than_seconds",
+        serialization_alias="older_than_seconds",
+    )
 
-    def __post_init__(self) -> None:
-        """Reject non-positive intervals and an unsafe ``older_than``."""
-        if self.min_interval <= timedelta(0):
-            raise InvalidMaintenanceSettings("min_interval must be positive")
-        if self.older_than < MIN_OLDER_THAN:
-            raise InvalidMaintenanceSettings("older_than must be at least 1 day")
+    @field_validator("older_than")
+    @classmethod
+    def _at_least_one_day(cls, value: timedelta) -> timedelta:
+        """Reject an ``older_than`` that could delete files of a running write."""
+        if value < MIN_OLDER_THAN:
+            raise ValueError("must be at least 1 day")
+        return value

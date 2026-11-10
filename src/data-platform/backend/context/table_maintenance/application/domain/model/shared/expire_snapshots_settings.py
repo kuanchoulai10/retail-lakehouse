@@ -2,29 +2,28 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from datetime import timedelta
 
-from base import ValueObject
-from context.table_maintenance.application.domain.model.shared.invalid_maintenance_settings import (
-    InvalidMaintenanceSettings,
+from pydantic import Field, PositiveInt
+
+from base.model import ValueObject
+from context.table_maintenance.application.domain.model.shared.positive_duration import (
+    PositiveDuration,
 )
 
 
-@dataclass(frozen=True)
 class ExpireSnapshotsSettings(ValueObject):
     """Configure expiry of old snapshots."""
 
     enabled: bool = True
-    min_interval: timedelta = field(default_factory=lambda: timedelta(hours=6))
-    older_than: timedelta = field(default_factory=lambda: timedelta(days=1))
-    retain_last: int = 10
-
-    def __post_init__(self) -> None:
-        """Reject non-positive durations and counts."""
-        if self.min_interval <= timedelta(0):
-            raise InvalidMaintenanceSettings("min_interval must be positive")
-        if self.older_than <= timedelta(0):
-            raise InvalidMaintenanceSettings("older_than must be positive")
-        if self.retain_last <= 0:
-            raise InvalidMaintenanceSettings("retain_last must be positive")
+    min_interval: PositiveDuration = Field(
+        default=timedelta(hours=6),
+        validation_alias="min_interval_seconds",
+        serialization_alias="min_interval_seconds",
+    )
+    older_than: PositiveDuration = Field(
+        default=timedelta(days=1),
+        validation_alias="older_than_seconds",
+        serialization_alias="older_than_seconds",
+    )
+    retain_last: PositiveInt = 10

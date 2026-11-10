@@ -5,6 +5,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
+from base.model import validation_message
 from context.table_maintenance.application.domain.model.table import (
     InvalidTableTransition,
 )
@@ -26,15 +27,15 @@ def translate_domain_errors() -> Iterator[None]:
     """Translate domain and repo errors into application exceptions.
 
     InvalidTableTransition and InvalidRunTransition become ConflictError, any
-    other ValueError (which covers invalid settings and rules) becomes
-    ValidationError, and a repo LookupError becomes NotFoundError. Application
-    exceptions pass through.
+    other ValueError (which covers invalid settings and rules, Pydantic's
+    included) becomes ValidationError with a one-line message, and a repo
+    LookupError becomes NotFoundError. Application exceptions pass through.
     """
     try:
         yield
     except (InvalidTableTransition, InvalidRunTransition) as exc:
         raise ConflictError(str(exc)) from exc
     except ValueError as exc:
-        raise ValidationError(str(exc)) from exc
+        raise ValidationError(validation_message(exc)) from exc
     except LookupError as exc:
         raise NotFoundError(str(exc)) from exc

@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from datetime import timedelta
 
-from base import ValueObject
+from pydantic import Field
+
+from base.model import ValueObject
 from context.table_maintenance.application.domain.model.shared.expire_snapshots_settings import (
     ExpireSnapshotsSettings,
 )
-from context.table_maintenance.application.domain.model.shared.invalid_maintenance_settings import (
-    InvalidMaintenanceSettings,
-)
 from context.table_maintenance.application.domain.model.shared.maintenance_operation import (
     MaintenanceOperation,
+)
+from context.table_maintenance.application.domain.model.shared.positive_duration import (
+    PositiveDuration,
 )
 from context.table_maintenance.application.domain.model.shared.remove_orphan_files_settings import (
     RemoveOrphanFilesSettings,
@@ -30,21 +31,19 @@ type OperationSettings = (
 )
 
 
-@dataclass(frozen=True)
 class MaintenanceSettings(ValueObject):
     """Bundle the reconcile interval and per-operation settings of a table."""
 
-    reconcile_interval: timedelta = field(default_factory=lambda: timedelta(hours=1))
+    reconcile_interval: PositiveDuration = Field(
+        default=timedelta(hours=1),
+        validation_alias="reconcile_interval_seconds",
+        serialization_alias="reconcile_interval_seconds",
+    )
     dry_run: bool = False
-    rewrite_data_files: RewriteDataFilesSettings = field(default_factory=RewriteDataFilesSettings)
-    rewrite_manifests: RewriteManifestsSettings = field(default_factory=RewriteManifestsSettings)
-    expire_snapshots: ExpireSnapshotsSettings = field(default_factory=ExpireSnapshotsSettings)
-    remove_orphan_files: RemoveOrphanFilesSettings = field(default_factory=RemoveOrphanFilesSettings)
-
-    def __post_init__(self) -> None:
-        """Reject a non-positive reconcile interval."""
-        if self.reconcile_interval <= timedelta(0):
-            raise InvalidMaintenanceSettings("reconcile_interval must be positive")
+    rewrite_data_files: RewriteDataFilesSettings = Field(default_factory=RewriteDataFilesSettings)
+    rewrite_manifests: RewriteManifestsSettings = Field(default_factory=RewriteManifestsSettings)
+    expire_snapshots: ExpireSnapshotsSettings = Field(default_factory=ExpireSnapshotsSettings)
+    remove_orphan_files: RemoveOrphanFilesSettings = Field(default_factory=RemoveOrphanFilesSettings)
 
     def for_operation(self, operation: MaintenanceOperation) -> OperationSettings:
         """Return the settings of one operation."""

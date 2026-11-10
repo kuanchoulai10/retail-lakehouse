@@ -4,10 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from context.table_maintenance.application.service.shared import (
-    maintenance_settings_to_dict,
-)
-
 if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.table_maintenance_preset import (
         TableMaintenancePreset,
@@ -21,7 +17,7 @@ def table_maintenance_preset_output_fields(
     return {
         "id": preset.id.value,
         "name": preset.name,
-        "settings": maintenance_settings_to_dict(preset.settings),
+        "settings": preset.settings.to_primitives(),
         "created_at": preset.created_at,
         "updated_at": preset.updated_at,
     }

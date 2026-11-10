@@ -28,8 +28,6 @@ from tests.architecture.contexts import BACKEND, context_dir, context_names
 UTILITY_FILES = {
     "event_serializer.py",
     "table_properties_serializer.py",
-    "maintenance_settings_from_dict.py",
-    "maintenance_settings_to_dict.py",
     "translate_domain_errors.py",
     "table_maintenance_preset_output_fields.py",
     "table_discovery_rule_output_fields.py",

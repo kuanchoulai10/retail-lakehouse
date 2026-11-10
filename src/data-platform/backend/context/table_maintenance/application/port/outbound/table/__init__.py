@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
+    MaintenanceSettings,
 )
 from context.table_maintenance.application.domain.model.table import (
     OperationState,
@@ -61,6 +62,7 @@ from context.table_maintenance.application.port.outbound.table.tables_repo impor
 
 __all__ = [
     "MaintenanceOperation",
+    "MaintenanceSettings",
     "OperationState",
     "TableSelection",
     "TableDiscoveryRuleId",

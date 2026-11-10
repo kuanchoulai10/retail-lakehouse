@@ -6,6 +6,9 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+from context.table_maintenance.application.domain.model.shared import (
+    MaintenanceSettings,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_preset import (
     TableMaintenancePreset,
     TableMaintenancePresetId,
@@ -20,7 +23,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_preset
     CreateTableMaintenancePresetUseCaseOutput,
 )
 from context.table_maintenance.application.service.shared import (
-    maintenance_settings_from_dict,
+    translate_domain_errors,
 )
 from context.table_maintenance.application.service.table_maintenance_preset.table_maintenance_preset_output_fields import (  # noqa: E501
     table_maintenance_preset_output_fields,
@@ -54,7 +57,8 @@ class CreateTableMaintenancePresetService(CreateTableMaintenancePresetUseCase):
         name = request.name.strip()
         if not name:
             raise ValidationError("preset name must not be blank")
-        settings = maintenance_settings_from_dict(request.settings)
+        with translate_domain_errors():
+            settings = MaintenanceSettings.from_primitives(request.settings)
         if self._presets_repo.find_by_name(name) is not None:
             raise ConflictError(f"preset name {name!r} already exists")
         preset = TableMaintenancePreset.create(TableMaintenancePresetId(self._new_id()), name, settings, self._clock())

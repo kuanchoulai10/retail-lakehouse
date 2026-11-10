@@ -49,8 +49,16 @@ class ValueObject(BaseModel):
 
     @classmethod
     def from_primitives(cls, data: Mapping[str, Any]) -> Self:
-        """Build from JSON-compatible primitives, validated in strict JSON mode."""
-        return cls.model_validate_json(json.dumps(data))
+        """Build from JSON-compatible primitives, validated in strict JSON mode.
+
+        Input that is not JSON-compatible (a ``timedelta`` value, a mapping
+        that is not a ``dict``) raises ``ValueError``, like any invalid input.
+        """
+        try:
+            payload = json.dumps(data)
+        except TypeError as exc:
+            raise ValueError(f"{cls.__name__} input must be JSON-compatible primitives: {exc}") from exc
+        return cls.model_validate_json(payload)
 
     def to_primitives(self) -> dict[str, Any]:
         """Return JSON-compatible primitives keyed by alias."""

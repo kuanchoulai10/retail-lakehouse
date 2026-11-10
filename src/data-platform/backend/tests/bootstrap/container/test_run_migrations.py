@@ -19,9 +19,6 @@ from context.table_maintenance.application.port.inbound.table_maintenance_preset
     CreateTableMaintenancePresetUseCaseInput,
     ListTableMaintenancePresetsUseCaseInput,
 )
-from context.table_maintenance.application.service.shared import (
-    maintenance_settings_to_dict,
-)
 from tests.bootstrap.container.container_support import (
     NOW,
     fake_gateways,
@@ -44,7 +41,7 @@ def test_migrate_seeds_default_preset_once():
     presets = use_cases.list_table_maintenance_presets.execute(ListTableMaintenancePresetsUseCaseInput()).items
     rules = use_cases.list_table_discovery_rules.execute(ListTableDiscoveryRulesUseCaseInput())
     assert [t.name for t in presets] == ["default"]
-    assert presets[0].settings == maintenance_settings_to_dict(MaintenanceSettings())
+    assert presets[0].settings == MaintenanceSettings().to_primitives()
     assert rules.items == []
 
 

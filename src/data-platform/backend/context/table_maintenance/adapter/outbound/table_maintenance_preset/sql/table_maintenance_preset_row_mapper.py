@@ -4,10 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from context.table_maintenance.adapter.outbound.shared.sql import (
-    MaintenanceSettingsCodec,
-)
 from context.table_maintenance.application.port.outbound.table_maintenance_preset import (
+    MaintenanceSettings,
     TableMaintenancePreset,
     TableMaintenancePresetId,
 )
@@ -25,7 +23,7 @@ class TableMaintenancePresetRowMapper:
         return {
             "id": preset.id.value,
             "name": preset.name,
-            "settings_json": MaintenanceSettingsCodec.encode(preset.settings),
+            "settings_json": preset.settings.to_primitives(),
             "created_at": preset.created_at,
             "updated_at": preset.updated_at,
         }
@@ -36,7 +34,7 @@ class TableMaintenancePresetRowMapper:
         return TableMaintenancePreset(
             id=TableMaintenancePresetId(row["id"]),
             name=row["name"],
-            settings=MaintenanceSettingsCodec.decode(row["settings_json"]),
+            settings=MaintenanceSettings.from_primitives(row["settings_json"]),
             created_at=row["created_at"],
             updated_at=row["updated_at"],
         )

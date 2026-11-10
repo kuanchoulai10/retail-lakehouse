@@ -5,6 +5,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from context.table_maintenance.application.domain.model.shared import (
+    MaintenanceSettings,
+)
 from context.table_maintenance.application.domain.model.table import (
     TableChange,
     TableId,
@@ -19,7 +22,6 @@ from context.table_maintenance.application.port.outbound.table import (
     SendTableChangeGatewayInput,
 )
 from context.table_maintenance.application.service.shared import (
-    maintenance_settings_from_dict,
     translate_domain_errors,
 )
 from context.table_maintenance.application.service.table.table_output_fields import (
@@ -55,8 +57,8 @@ class UpdateTableSettingsService(UpdateTableSettingsUseCase):
         table = self._tables_repo.get(TableId(request.uuid))
         if table is None:
             raise NotFoundError(f"table {request.uuid} not found")
-        settings = maintenance_settings_from_dict(request.settings)
         with translate_domain_errors():
+            settings = MaintenanceSettings.from_primitives(request.settings)
             table.update_settings(settings, self._clock())
             self._tables_repo.update(table)
         self._table_change_gateway.send(
