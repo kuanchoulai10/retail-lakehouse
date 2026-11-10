@@ -30,15 +30,16 @@ tasks:
     desc: "Gate: is the code clean? (before a commit: lint, format, type) scope=frontend|backend|all (default all)"
     vars:
       scope: '{{.scope | default "all"}}'
-      scopes: '{{if eq .scope "all"}}frontend backend{{else}}{{.scope}}{{end}}'
     requires:
       vars:
         - name: scope
           enum: [frontend, backend, all]
     cmds:
       - uv run pre-commit run shared --all-files --show-diff-on-failure
-      - for: { var: scopes }
-        task: 'pre-commit:{{.ITEM}}'
+      - task: pre-commit:frontend
+        if: '[ "{{.scope}}" != backend ]'
+      - task: pre-commit:backend
+        if: '[ "{{.scope}}" != frontend ]'
 
   pre-pr:
     desc: "Gate: is my change logically correct? (local, no services: unit, architecture, contract) scope=frontend|backend|all (default all)"
@@ -53,18 +54,11 @@ tasks:
         vars:
           scope: '{{.scope}}'
       - task: pre-pr:scripts:unit-test
-      - task: pre-pr-scopes
-        vars:
-          scope: '{{.scope}}'
+      - task: pre-pr:frontend
+        if: '[ "{{.scope}}" != backend ]'
+      - task: pre-pr:backend
+        if: '[ "{{.scope}}" != frontend ]'
       - task: pre-pr:contract-test
-
-  pre-pr-scopes:
-    internal: true
-    vars:
-      scopes: '{{if eq .scope "all"}}frontend backend{{else}}{{.scope}}{{end}}'
-    deps:
-      - for: { var: scopes }
-        task: 'pre-pr:{{.ITEM}}'
 
   pre-merge:
     desc: "Gate: will main still work after this merge? (merge queue candidate on an ephemeral platform) scope=frontend|backend|all (default all)"
@@ -78,19 +72,12 @@ tasks:
       - task: pre-pr
         vars:
           scope: '{{.scope}}'
-      - task: pre-merge-scopes
-        vars:
-          scope: '{{.scope}}'
+      - task: pre-merge:frontend
+        if: '[ "{{.scope}}" != backend ]'
+      - task: pre-merge:backend
+        if: '[ "{{.scope}}" != frontend ]'
       - task: pre-merge:api-test
       - task: pre-merge:e2e-critical-test
-
-  pre-merge-scopes:
-    internal: true
-    vars:
-      scopes: '{{if eq .scope "all"}}frontend backend{{else}}{{.scope}}{{end}}'
-    deps:
-      - for: { var: scopes }
-        task: 'pre-merge:{{.ITEM}}'
 
   post-merge:
     desc: "Gate: is main healthy once deployed to the shared environment? (staging, same artifacts as pre-merge)"
