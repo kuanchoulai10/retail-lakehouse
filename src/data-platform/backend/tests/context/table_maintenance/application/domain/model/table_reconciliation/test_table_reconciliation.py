@@ -37,7 +37,15 @@ def _outcome(op: Op, result: OperationResult = OperationResult.NOT_NEEDED) -> Op
         operation=op,
         result=result,
         combine=ConditionCombine.ALL,
-        measurements=(Measurement("small_files", 3, MeasurementUnit.COUNT, 10, MeasurementComparison.AT_LEAST),),
+        measurements=(
+            Measurement(
+                key="small_files",
+                observed=3,
+                unit=MeasurementUnit.COUNT,
+                threshold=10,
+                comparison=MeasurementComparison.AT_LEAST,
+            ),
+        ),
     )
 
 

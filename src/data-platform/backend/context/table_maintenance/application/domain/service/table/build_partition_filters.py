@@ -52,8 +52,8 @@ def build_partition_filters(
     quoted_catalog = "`" + catalog.replace("`", "``") + "`"
     return tuple(
         SpecFilter(
-            spec_id,
-            _spec_where(quoted_catalog, specs_by_id[spec_id], grouped[spec_id]),
+            spec_id=spec_id,
+            where=_spec_where(quoted_catalog, specs_by_id[spec_id], grouped[spec_id]),
         )
         for spec_id in sorted(grouped)
     )

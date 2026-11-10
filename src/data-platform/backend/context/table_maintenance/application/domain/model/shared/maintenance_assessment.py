@@ -2,21 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
-
-from base import ValueObject
+from base.model import ValueObject
 from context.table_maintenance.application.domain.model.shared.maintenance_plan import (
     MaintenancePlan,
 )
-
-if TYPE_CHECKING:
-    from context.table_maintenance.application.domain.model.shared.operation_assessment import (
-        OperationAssessment,
-    )
+from context.table_maintenance.application.domain.model.shared.operation_assessment import (
+    OperationAssessment,
+)
 
 
-@dataclass(frozen=True)
 class MaintenanceAssessment(ValueObject):
     """Hold one assessment per operation, in canonical execution order."""
 
@@ -24,4 +18,4 @@ class MaintenanceAssessment(ValueObject):
 
     def plan(self) -> MaintenancePlan:
         """Return the plan made of the due operations."""
-        return MaintenancePlan(tuple(a.planned for a in self.operations if a.planned is not None))
+        return MaintenancePlan(operations=tuple(a.planned for a in self.operations if a.planned is not None))

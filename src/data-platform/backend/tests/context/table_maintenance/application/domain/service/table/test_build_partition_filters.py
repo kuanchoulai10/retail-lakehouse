@@ -16,15 +16,24 @@ from context.table_maintenance.application.domain.service.table import (
 
 
 def _field(name, column, source_type, transform, field_id=1000):
-    return PartitionFieldInfo(field_id, name, column, source_type, transform)
+    return PartitionFieldInfo(
+        field_id=field_id, name=name, source_column=column, source_type=source_type, transform=transform
+    )
 
 
 def _spec(spec_id, *fields):
-    return PartitionSpecInfo(spec_id, tuple(fields))
+    return PartitionSpecInfo(spec_id=spec_id, fields=tuple(fields))
 
 
 def _part(spec_id, *values):
-    return PartitionStats(spec_id, tuple(values), 1, 0, 0, 1)
+    return PartitionStats(
+        spec_id=spec_id,
+        values=tuple(values),
+        data_file_count=1,
+        position_delete_file_count=0,
+        equality_delete_file_count=0,
+        total_data_file_size_bytes=1,
+    )
 
 
 def _where(spec, *partitions):
@@ -197,12 +206,12 @@ def test_void_fields_are_skipped():
 def test_all_void_spec_yields_empty_where():
     """A spec whose fields are all void gives an empty where clause."""
     spec = _spec(1, _field("old", "old", "string", "void"))
-    assert build_partition_filters("iceberg", [spec], [_part(1, None)]) == (SpecFilter(1, ""),)
+    assert build_partition_filters("iceberg", [spec], [_part(1, None)]) == (SpecFilter(spec_id=1, where=""),)
 
 
 def test_unpartitioned_spec_yields_empty_where():
     """An unpartitioned spec gives an empty where clause."""
-    assert build_partition_filters("iceberg", [_spec(0)], [_part(0)]) == (SpecFilter(0, ""),)
+    assert build_partition_filters("iceberg", [_spec(0)], [_part(0)]) == (SpecFilter(spec_id=0, where=""),)
 
 
 def test_one_filter_per_spec_id():
@@ -211,8 +220,8 @@ def test_one_filter_per_spec_id():
     spec1 = _spec(1, _field("b", "id", "long", "bucket[8]"))
     result = build_partition_filters("iceberg", [spec1, spec0], [_part(1, 2), _part(0, "eu"), _part(0, "us")])
     assert result == (
-        SpecFilter(0, "(`region` = 'eu') OR (`region` = 'us')"),
-        SpecFilter(1, "(`iceberg`.system.bucket(8, `id`) = 2)"),
+        SpecFilter(spec_id=0, where="(`region` = 'eu') OR (`region` = 'us')"),
+        SpecFilter(spec_id=1, where="(`iceberg`.system.bucket(8, `id`) = 2)"),
     )
 
 

@@ -2,16 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from datetime import datetime
 
-from base import ValueObject
-
-if TYPE_CHECKING:
-    from datetime import datetime
+from base.model import ValueObject
 
 
-@dataclass(frozen=True)
 class SnapshotInfo(ValueObject):
     """Identify one snapshot and when it was committed."""
 

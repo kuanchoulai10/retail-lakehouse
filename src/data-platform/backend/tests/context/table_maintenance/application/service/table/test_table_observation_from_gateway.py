@@ -68,17 +68,33 @@ def test_converts_every_part_of_the_observation():
     assert result.properties == {"write.target-file-size-bytes": "1024"}
     assert result.current_snapshot_id == 7
     assert result.specs == (
-        PartitionSpecInfo(0, (PartitionFieldInfo(1000, "region", "region", "string", "identity"),)),
+        PartitionSpecInfo(
+            spec_id=0,
+            fields=(
+                PartitionFieldInfo(
+                    field_id=1000, name="region", source_column="region", source_type="string", transform="identity"
+                ),
+            ),
+        ),
     )
-    assert result.partitions == (PartitionStats(0, ("eu",), 4, 1, 2, 4096),)
-    assert result.manifests == (ManifestStats(100), ManifestStats(200))
+    assert result.partitions == (
+        PartitionStats(
+            spec_id=0,
+            values=("eu",),
+            data_file_count=4,
+            position_delete_file_count=1,
+            equality_delete_file_count=2,
+            total_data_file_size_bytes=4096,
+        ),
+    )
+    assert result.manifests == (ManifestStats(length_bytes=100), ManifestStats(length_bytes=200))
     assert [s.snapshot_id for s in result.snapshots] == [6, 7, 8]
 
 
 def test_committed_at_becomes_aware_utc():
     """Snapshot commit times become timezone aware in UTC."""
     result = table_observation_from_gateway(_gateway_observation())
-    assert result.snapshots[0] == SnapshotInfo(6, datetime(2026, 10, 1, 8, 0, tzinfo=UTC))
+    assert result.snapshots[0] == SnapshotInfo(snapshot_id=6, committed_at=datetime(2026, 10, 1, 8, 0, tzinfo=UTC))
     assert result.snapshots[1].committed_at == datetime(2026, 10, 2, 10, tzinfo=UTC)
     assert result.snapshots[2].committed_at == datetime(2026, 10, 3, 10, tzinfo=UTC)
     assert all(s.committed_at.utcoffset() == timedelta(0) for s in result.snapshots)

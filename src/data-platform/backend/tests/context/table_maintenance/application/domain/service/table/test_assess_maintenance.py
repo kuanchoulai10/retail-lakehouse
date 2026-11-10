@@ -50,7 +50,10 @@ from context.table_maintenance.application.domain.service.table import (
 
 NOW = datetime(2026, 10, 24, 12, tzinfo=UTC)
 MIB = 1024 * 1024
-DAY_SPEC = PartitionSpecInfo(0, (PartitionFieldInfo(1000, "d", "ts", "timestamp", "day"),))
+DAY_SPEC = PartitionSpecInfo(
+    spec_id=0,
+    fields=(PartitionFieldInfo(field_id=1000, name="d", source_column="ts", source_type="timestamp", transform="day"),),
+)
 
 
 def table(settings=None) -> Table:
@@ -67,7 +70,14 @@ def table(settings=None) -> Table:
 
 def part(reducible, spec_id=0, value=0) -> PartitionStats:
     """Build partition stats with the given reducible file count."""
-    return PartitionStats(spec_id, (value,), reducible, 0, 0, 0)
+    return PartitionStats(
+        spec_id=spec_id,
+        values=(value,),
+        data_file_count=reducible,
+        position_delete_file_count=0,
+        equality_delete_file_count=0,
+        total_data_file_size_bytes=0,
+    )
 
 
 def obs(
@@ -81,13 +91,13 @@ def obs(
 ) -> TableObservation:
     """Build a table observation from the given properties, snapshots, specs and partitions."""
     return TableObservation(
-        "u",
-        properties or {},
-        current_snapshot_id,
-        specs,
-        partitions,
-        manifests,
-        snapshots,
+        table_uuid="u",
+        properties=properties or {},
+        current_snapshot_id=current_snapshot_id,
+        specs=specs,
+        partitions=partitions,
+        manifests=manifests,
+        snapshots=snapshots,
     )
 
 
@@ -95,8 +105,7 @@ def snaps(n, old):
     """Build snapshots of which the given number are old."""
     return tuple(
         SnapshotInfo(
-            i,
-            NOW - (timedelta(days=2, minutes=i) if i < old else timedelta(minutes=i)),
+            snapshot_id=i, committed_at=NOW - (timedelta(days=2, minutes=i) if i < old else timedelta(minutes=i))
         )
         for i in range(n)
     )
@@ -162,7 +171,7 @@ def test_manifest_size_source():
     """The manifest size is taken from the table property or the default, and its source is reported."""
     o = obs(
         properties={"commit.manifest.target-size-bytes": str(MIB)},
-        manifests=(ManifestStats(MIB // 2),) * 2,
+        manifests=(ManifestStats(length_bytes=MIB // 2),) * 2,
     )
     a = assess(table(), o, Op.REWRITE_MANIFESTS)
     assert (a.size_bytes, a.size_source) == (MIB, SizeSource.TABLE_PROPERTY)
@@ -236,7 +245,7 @@ def test_plan_equals_due_operations():
     t.operation_states[Op.REWRITE_MANIFESTS] = OperationState(NOW - timedelta(minutes=10))
     o = obs(
         partitions=(part(10, value=1), part(1, value=2)),
-        manifests=(ManifestStats(MIB),) * 5,
+        manifests=(ManifestStats(length_bytes=MIB),) * 5,
         snapshots=snaps(12, 11),
     )
     assert t.settings is not None
@@ -255,9 +264,15 @@ def test_compaction_reports_reducible_files_and_context():
     s = compaction(min_reducible_files=5)
     a = assess(table(s), obs(partitions=TWO_PARTITIONS), Op.REWRITE_DATA_FILES)
     assert a.measurements == (
-        Measurement("reducible_files", 6, MeasurementUnit.COUNT, 5, MeasurementComparison.AT_LEAST),
-        Measurement("target_file_size", 536870912, MeasurementUnit.BYTES),
-        Measurement("qualifying_partitions", 1, MeasurementUnit.COUNT),
+        Measurement(
+            key="reducible_files",
+            observed=6,
+            unit=MeasurementUnit.COUNT,
+            threshold=5,
+            comparison=MeasurementComparison.AT_LEAST,
+        ),
+        Measurement(key="target_file_size", observed=536870912, unit=MeasurementUnit.BYTES),
+        Measurement(key="qualifying_partitions", observed=1, unit=MeasurementUnit.COUNT),
     )
     assert a.combine is ConditionCombine.ALL
 
@@ -267,18 +282,30 @@ def test_compaction_table_scope_has_no_qualifying_partitions_measurement():
     s = compaction(scope=CompactionScope.TABLE, min_reducible_files=5)
     a = assess(table(s), obs(partitions=TWO_PARTITIONS), Op.REWRITE_DATA_FILES)
     assert a.measurements == (
-        Measurement("reducible_files", 8, MeasurementUnit.COUNT, 5, MeasurementComparison.AT_LEAST),
-        Measurement("target_file_size", 536870912, MeasurementUnit.BYTES),
+        Measurement(
+            key="reducible_files",
+            observed=8,
+            unit=MeasurementUnit.COUNT,
+            threshold=5,
+            comparison=MeasurementComparison.AT_LEAST,
+        ),
+        Measurement(key="target_file_size", observed=536870912, unit=MeasurementUnit.BYTES),
     )
 
 
 def test_manifests_report_small_manifests():
     """Manifest rewriting reports the small manifests against the minimum."""
     s = validated_copy(MaintenanceSettings(), rewrite_manifests=RewriteManifestsSettings(min_small_manifests=3))
-    o = obs(manifests=(ManifestStats(MIB),) * 4)
+    o = obs(manifests=(ManifestStats(length_bytes=MIB),) * 4)
     a = assess(table(s), o, Op.REWRITE_MANIFESTS)
     assert a.measurements == (
-        Measurement("small_manifests", 4, MeasurementUnit.COUNT, 3, MeasurementComparison.AT_LEAST),
+        Measurement(
+            key="small_manifests",
+            observed=4,
+            unit=MeasurementUnit.COUNT,
+            threshold=3,
+            comparison=MeasurementComparison.AT_LEAST,
+        ),
     )
     assert a.combine is ConditionCombine.ALL
 
@@ -287,7 +314,13 @@ def test_snapshots_report_expirable_snapshots():
     """Snapshot expiry reports the expirable snapshots against a threshold of one."""
     a = assess(table(), obs(snapshots=snaps(14, 14)), Op.EXPIRE_SNAPSHOTS)
     assert a.measurements == (
-        Measurement("expirable_snapshots", 4, MeasurementUnit.COUNT, 1, MeasurementComparison.AT_LEAST),
+        Measurement(
+            key="expirable_snapshots",
+            observed=4,
+            unit=MeasurementUnit.COUNT,
+            threshold=1,
+            comparison=MeasurementComparison.AT_LEAST,
+        ),
     )
 
 
@@ -310,5 +343,9 @@ def test_cooldown_keeps_the_measurements():
     a = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES)
     assert a.verdict == OperationVerdict.COOLDOWN
     assert a.measurements[0] == Measurement(
-        "reducible_files", 10, MeasurementUnit.COUNT, 5, MeasurementComparison.AT_LEAST
+        key="reducible_files",
+        observed=10,
+        unit=MeasurementUnit.COUNT,
+        threshold=5,
+        comparison=MeasurementComparison.AT_LEAST,
     )

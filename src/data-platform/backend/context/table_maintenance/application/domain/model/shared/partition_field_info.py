@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-from base import ValueObject
+from base.model import ValueObject
 
 
-@dataclass(frozen=True)
 class PartitionFieldInfo(ValueObject):
     """Describe one field of an Iceberg partition spec in Iceberg's string forms."""
 

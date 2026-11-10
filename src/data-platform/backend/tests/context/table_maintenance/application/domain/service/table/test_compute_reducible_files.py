@@ -19,7 +19,14 @@ GIB = 1024 * MIB
 
 def stats(data, pos, eq, size) -> PartitionStats:
     """Build partition stats with the given file counts and size."""
-    return PartitionStats(0, (), data, pos, eq, size)
+    return PartitionStats(
+        spec_id=0,
+        values=(),
+        data_file_count=data,
+        position_delete_file_count=pos,
+        equality_delete_file_count=eq,
+        total_data_file_size_bytes=size,
+    )
 
 
 def test_reducible_files_formula():

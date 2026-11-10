@@ -2,18 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
-
-from base import ValueObject
-
-if TYPE_CHECKING:
-    from context.table_maintenance.application.domain.model.shared.partition_field_info import (
-        PartitionFieldInfo,
-    )
+from base.model import ValueObject
+from context.table_maintenance.application.domain.model.shared.partition_field_info import (
+    PartitionFieldInfo,
+)
 
 
-@dataclass(frozen=True)
 class PartitionSpecInfo(ValueObject):
     """Describe one partition spec of a table."""
 

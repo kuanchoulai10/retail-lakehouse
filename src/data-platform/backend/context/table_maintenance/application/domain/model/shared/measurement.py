@@ -2,21 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from pydantic import model_validator
 
-from base import ValueObject
+from base.model import ValueObject
 from context.table_maintenance.application.domain.model.shared.measurement_comparison import (
     MeasurementComparison,
 )
-
-if TYPE_CHECKING:
-    from context.table_maintenance.application.domain.model.shared.measurement_unit import (
-        MeasurementUnit,
-    )
+from context.table_maintenance.application.domain.model.shared.measurement_unit import (
+    MeasurementUnit,
+)
 
 
-@dataclass(frozen=True)
 class Measurement(ValueObject):
     """Hold one observed value and, when it is a condition, the threshold it is compared with.
 
@@ -29,10 +25,12 @@ class Measurement(ValueObject):
     threshold: int | None = None
     comparison: MeasurementComparison | None = None
 
-    def __post_init__(self) -> None:
+    @model_validator(mode="after")
+    def _threshold_and_comparison_together(self) -> Measurement:
         """Reject a threshold without a comparison, or a comparison without a threshold."""
         if (self.threshold is None) != (self.comparison is None):
             raise ValueError("threshold and comparison must be given together")
+        return self
 
     @property
     def met(self) -> bool | None:

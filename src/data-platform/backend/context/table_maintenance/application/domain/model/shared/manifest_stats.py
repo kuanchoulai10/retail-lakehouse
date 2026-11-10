@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-from base import ValueObject
+from base.model import ValueObject
 
 
-@dataclass(frozen=True)
 class ManifestStats(ValueObject):
     """Hold the size of one manifest file."""
 

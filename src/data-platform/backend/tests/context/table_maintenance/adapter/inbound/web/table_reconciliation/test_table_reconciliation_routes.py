@@ -50,8 +50,14 @@ def _reconciliation(rec_id: str, at: datetime, table: str = "t-1") -> TableRecon
                 result=OperationResult.NOT_NEEDED,
                 combine=ConditionCombine.ALL,
                 measurements=(
-                    Measurement("small_files", 3, MeasurementUnit.COUNT, 10, MeasurementComparison.AT_LEAST),
-                    Measurement("data_bytes", 5, MeasurementUnit.BYTES),
+                    Measurement(
+                        key="small_files",
+                        observed=3,
+                        unit=MeasurementUnit.COUNT,
+                        threshold=10,
+                        comparison=MeasurementComparison.AT_LEAST,
+                    ),
+                    Measurement(key="data_bytes", observed=5, unit=MeasurementUnit.BYTES),
                 ),
             )
         ],

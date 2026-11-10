@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from context.table_maintenance.application.domain.model.shared import (
     Measurement,
@@ -13,21 +14,38 @@ from context.table_maintenance.application.domain.model.shared import (
 
 def test_measurement_met_and_context():
     """A measurement is met by its comparison; without a threshold it is context only."""
-    assert Measurement("x", 5, MeasurementUnit.COUNT, 5, MeasurementComparison.AT_LEAST).met is True
-    assert Measurement("x", 5, MeasurementUnit.COUNT, 5, MeasurementComparison.MORE_THAN).met is False
-    assert Measurement("x", 5, MeasurementUnit.BYTES).met is None
+    assert (
+        Measurement(
+            key="x", observed=5, unit=MeasurementUnit.COUNT, threshold=5, comparison=MeasurementComparison.AT_LEAST
+        ).met
+        is True
+    )
+    assert (
+        Measurement(
+            key="x", observed=5, unit=MeasurementUnit.COUNT, threshold=5, comparison=MeasurementComparison.MORE_THAN
+        ).met
+        is False
+    )
+    assert Measurement(key="x", observed=5, unit=MeasurementUnit.BYTES).met is None
 
 
-def test_measurement_rejects_threshold_without_comparison():
+def test_threshold_without_comparison_is_rejected():
     """A threshold needs a comparison."""
-    with pytest.raises(ValueError, match="comparison"):
-        Measurement("x", 5, MeasurementUnit.COUNT, 5)
+    with pytest.raises(ValidationError, match="comparison"):
+        Measurement(key="x", observed=5, unit=MeasurementUnit.COUNT, threshold=5)
 
 
-def test_measurement_rejects_comparison_without_threshold():
+def test_comparison_without_threshold_is_rejected():
     """A comparison needs a threshold."""
-    with pytest.raises(ValueError, match="threshold"):
-        Measurement("x", 5, MeasurementUnit.COUNT, None, MeasurementComparison.AT_LEAST)
+    with pytest.raises(ValidationError, match="threshold"):
+        Measurement(key="x", observed=5, unit=MeasurementUnit.COUNT, comparison=MeasurementComparison.AT_LEAST)
+
+
+def test_measurement_is_immutable():
+    """A measurement cannot be changed after construction."""
+    measurement = Measurement(key="x", observed=5, unit=MeasurementUnit.COUNT)
+    with pytest.raises(ValidationError):
+        measurement.observed = 6
 
 
 @pytest.mark.parametrize(
@@ -41,4 +59,6 @@ def test_measurement_rejects_comparison_without_threshold():
 )
 def test_measurement_comparisons_at_the_threshold(comparison, expected):
     """Each comparison is evaluated against the threshold."""
-    assert Measurement("x", 5, MeasurementUnit.COUNT, 5, comparison).met is expected
+    assert (
+        Measurement(key="x", observed=5, unit=MeasurementUnit.COUNT, threshold=5, comparison=comparison).met is expected
+    )

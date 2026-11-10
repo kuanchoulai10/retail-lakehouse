@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-from base import ValueObject
+from base.model import ValueObject
 
 
-@dataclass(frozen=True)
 class PartitionStats(ValueObject):
     """Hold file statistics of one partition, values in Iceberg's internal form."""
 

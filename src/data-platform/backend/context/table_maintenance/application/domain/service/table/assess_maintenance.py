@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from typing import TYPE_CHECKING
 
+from base.model import validated_copy
 from context.table_maintenance.application.domain.model.shared import (
     CompactionScope,
     MaintenanceAssessment,
@@ -45,7 +45,7 @@ def assess_maintenance(
 ) -> MaintenanceAssessment:
     """Evaluate every operation of a table, regardless of the table's status."""
     return MaintenanceAssessment(
-        tuple(_assess(op, table, settings, observation, now) for op in MaintenanceOperation.ordered())
+        operations=tuple(_assess(op, table, settings, observation, now) for op in MaintenanceOperation.ordered())
     )
 
 
@@ -57,7 +57,7 @@ def _assess(
     now: datetime,
 ) -> OperationAssessment:
     if not settings.enabled(op):
-        return OperationAssessment(op, OperationVerdict.DISABLED)
+        return OperationAssessment(operation=op, verdict=OperationVerdict.DISABLED)
     assessment = _measure(op, settings, observation, now)
     state = table.operation_state(op)
     if state.last_attempt_at is None:
@@ -65,7 +65,7 @@ def _assess(
     next_eligible_at = state.last_attempt_at + state.effective_cooldown(settings.min_interval(op))
     if now >= next_eligible_at:
         return assessment
-    return replace(
+    return validated_copy(
         assessment,
         verdict=OperationVerdict.COOLDOWN,
         next_eligible_at=next_eligible_at,
@@ -87,19 +87,27 @@ def _measure(
         case MaintenanceOperation.EXPIRE_SNAPSHOTS:
             return _assess_snapshots(settings, observation, now)
         case MaintenanceOperation.REMOVE_ORPHAN_FILES:
-            return OperationAssessment(op, OperationVerdict.DUE, planned=PlannedOperation(op))
+            return OperationAssessment(
+                operation=op, verdict=OperationVerdict.DUE, planned=PlannedOperation(operation=op)
+            )
 
 
 def _due(assessment: OperationAssessment, planned: PlannedOperation | None = None) -> OperationAssessment:
-    return replace(
+    return validated_copy(
         assessment,
         verdict=OperationVerdict.DUE,
-        planned=PlannedOperation(assessment.operation) if planned is None else planned,
+        planned=PlannedOperation(operation=assessment.operation) if planned is None else planned,
     )
 
 
 def _at_least(key: str, observed: int, threshold: int) -> Measurement:
-    return Measurement(key, observed, MeasurementUnit.COUNT, threshold, MeasurementComparison.AT_LEAST)
+    return Measurement(
+        key=key,
+        observed=observed,
+        unit=MeasurementUnit.COUNT,
+        threshold=threshold,
+        comparison=MeasurementComparison.AT_LEAST,
+    )
 
 
 def _assess_compaction(settings: MaintenanceSettings, observation: TableObservation) -> OperationAssessment:
@@ -114,16 +122,16 @@ def _assess_compaction(settings: MaintenanceSettings, observation: TableObservat
         source = SizeSource.DEFAULT
     reducible = [(p, compute_reducible_files(p, target)) for p in observation.partitions]
     base = OperationAssessment(
-        op,
-        OperationVerdict.NOT_DUE,
+        operation=op,
+        verdict=OperationVerdict.NOT_DUE,
         threshold=cfg.min_reducible_files,
         size_bytes=target,
         size_source=source,
     )
-    target_size = Measurement("target_file_size", target, MeasurementUnit.BYTES)
+    target_size = Measurement(key="target_file_size", observed=target, unit=MeasurementUnit.BYTES)
     if cfg.scope == CompactionScope.TABLE:
         total = sum(r for _, r in reducible)
-        assessment = replace(
+        assessment = validated_copy(
             base,
             measured=total,
             measurements=(_at_least("reducible_files", total, cfg.min_reducible_files), target_size),
@@ -131,14 +139,14 @@ def _assess_compaction(settings: MaintenanceSettings, observation: TableObservat
         return _due(assessment) if total >= cfg.min_reducible_files else assessment
     qualifying = [(p, r) for p, r in reducible if r >= cfg.min_reducible_files]
     total = sum(r for _, r in qualifying)
-    assessment = replace(
+    assessment = validated_copy(
         base,
         measured=total,
         qualifying_partitions=len(qualifying),
         measurements=(
             _at_least("reducible_files", total, cfg.min_reducible_files),
             target_size,
-            Measurement("qualifying_partitions", len(qualifying), MeasurementUnit.COUNT),
+            Measurement(key="qualifying_partitions", observed=len(qualifying), unit=MeasurementUnit.COUNT),
         ),
     )
     if not qualifying:
@@ -147,7 +155,7 @@ def _assess_compaction(settings: MaintenanceSettings, observation: TableObservat
     partitioned = {s.spec_id for s in observation.specs if not s.is_unpartitioned}
     if any(p.spec_id not in partitioned for p in selected):
         return _due(assessment)
-    return _due(assessment, PlannedOperation(op, selected))
+    return _due(assessment, PlannedOperation(operation=op, partitions=selected))
 
 
 def _assess_manifests(settings: MaintenanceSettings, observation: TableObservation) -> OperationAssessment:
@@ -161,8 +169,8 @@ def _assess_manifests(settings: MaintenanceSettings, observation: TableObservati
         threshold, source = DEFAULT_SMALL_MANIFEST_BYTES, SizeSource.DEFAULT
     small = sum(1 for m in observation.manifests if m.length_bytes < threshold)
     assessment = OperationAssessment(
-        MaintenanceOperation.REWRITE_MANIFESTS,
-        OperationVerdict.NOT_DUE,
+        operation=MaintenanceOperation.REWRITE_MANIFESTS,
+        verdict=OperationVerdict.NOT_DUE,
         measured=small,
         threshold=cfg.min_small_manifests,
         size_bytes=threshold,
@@ -184,8 +192,8 @@ def _assess_snapshots(
         if s.committed_at < cutoff and s.snapshot_id != observation.current_snapshot_id
     )
     assessment = OperationAssessment(
-        MaintenanceOperation.EXPIRE_SNAPSHOTS,
-        OperationVerdict.NOT_DUE,
+        operation=MaintenanceOperation.EXPIRE_SNAPSHOTS,
+        verdict=OperationVerdict.NOT_DUE,
         measured=expirable,
         threshold=1,
         measurements=(_at_least("expirable_snapshots", expirable, 1),),

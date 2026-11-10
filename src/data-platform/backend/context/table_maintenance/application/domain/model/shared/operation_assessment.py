@@ -2,35 +2,29 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from datetime import datetime
 
-from base import ValueObject
+from base.model import ValueObject
 from context.table_maintenance.application.domain.model.shared.condition_combine import (
     ConditionCombine,
 )
-
-if TYPE_CHECKING:
-    from datetime import datetime
-
-    from context.table_maintenance.application.domain.model.shared.maintenance_operation import (
-        MaintenanceOperation,
-    )
-    from context.table_maintenance.application.domain.model.shared.measurement import (
-        Measurement,
-    )
-    from context.table_maintenance.application.domain.model.shared.operation_verdict import (
-        OperationVerdict,
-    )
-    from context.table_maintenance.application.domain.model.shared.planned_operation import (
-        PlannedOperation,
-    )
-    from context.table_maintenance.application.domain.model.shared.size_source import (
-        SizeSource,
-    )
+from context.table_maintenance.application.domain.model.shared.maintenance_operation import (
+    MaintenanceOperation,
+)
+from context.table_maintenance.application.domain.model.shared.measurement import (
+    Measurement,
+)
+from context.table_maintenance.application.domain.model.shared.operation_verdict import (
+    OperationVerdict,
+)
+from context.table_maintenance.application.domain.model.shared.planned_operation import (
+    PlannedOperation,
+)
+from context.table_maintenance.application.domain.model.shared.size_source import (
+    SizeSource,
+)
 
 
-@dataclass(frozen=True)
 class OperationAssessment(ValueObject):
     """Hold the verdict on one operation and the measures behind it.
 

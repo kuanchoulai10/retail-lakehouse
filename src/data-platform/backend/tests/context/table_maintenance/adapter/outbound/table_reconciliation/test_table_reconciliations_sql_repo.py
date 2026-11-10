@@ -84,15 +84,29 @@ def test_create_and_get_round_trip(repo: TableReconciliationsRepo):
                 result=OperationResult.STARTED,
                 combine=ConditionCombine.ANY,
                 measurements=(
-                    Measurement("small_files", 30, MeasurementUnit.COUNT, 10, MeasurementComparison.AT_LEAST),
-                    Measurement("total_bytes", 5000, MeasurementUnit.BYTES),
+                    Measurement(
+                        key="small_files",
+                        observed=30,
+                        unit=MeasurementUnit.COUNT,
+                        threshold=10,
+                        comparison=MeasurementComparison.AT_LEAST,
+                    ),
+                    Measurement(key="total_bytes", observed=5000, unit=MeasurementUnit.BYTES),
                 ),
             ),
             OperationOutcome(
                 operation=Op.EXPIRE_SNAPSHOTS,
                 result=OperationResult.COOLING_DOWN,
                 combine=ConditionCombine.ALL,
-                measurements=(Measurement("age", 60, MeasurementUnit.SECONDS, 3600, MeasurementComparison.AT_MOST),),
+                measurements=(
+                    Measurement(
+                        key="age",
+                        observed=60,
+                        unit=MeasurementUnit.SECONDS,
+                        threshold=3600,
+                        comparison=MeasurementComparison.AT_MOST,
+                    ),
+                ),
                 next_eligible_at=NOW + timedelta(hours=1),
             ),
         ),

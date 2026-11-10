@@ -40,8 +40,11 @@ from context.table_maintenance.application.domain.service.table import (
 
 NOW = datetime(2026, 10, 24, 12, tzinfo=UTC)
 MIB = 1024 * 1024
-DAY_SPEC = PartitionSpecInfo(0, (PartitionFieldInfo(1000, "d", "ts", "timestamp", "day"),))
-NO_SPEC = PartitionSpecInfo(1, ())
+DAY_SPEC = PartitionSpecInfo(
+    spec_id=0,
+    fields=(PartitionFieldInfo(field_id=1000, name="d", source_column="ts", source_type="timestamp", transform="day"),),
+)
+NO_SPEC = PartitionSpecInfo(spec_id=1, fields=())
 
 
 def table(settings=None) -> Table:
@@ -58,7 +61,14 @@ def table(settings=None) -> Table:
 
 def part(reducible, spec_id=0, value=0) -> PartitionStats:
     """Build partition stats with the given reducible file count."""
-    return PartitionStats(spec_id, (value,), reducible, 0, 0, 0)
+    return PartitionStats(
+        spec_id=spec_id,
+        values=(value,),
+        data_file_count=reducible,
+        position_delete_file_count=0,
+        equality_delete_file_count=0,
+        total_data_file_size_bytes=0,
+    )
 
 
 def obs(
@@ -72,13 +82,13 @@ def obs(
 ) -> TableObservation:
     """Build a table observation from the given properties, snapshots, manifests and partitions."""
     return TableObservation(
-        "u",
-        properties or {},
-        current_snapshot_id,
-        specs,
-        partitions,
-        manifests,
-        snapshots,
+        table_uuid="u",
+        properties=properties or {},
+        current_snapshot_id=current_snapshot_id,
+        specs=specs,
+        partitions=partitions,
+        manifests=manifests,
+        snapshots=snapshots,
     )
 
 
@@ -107,8 +117,7 @@ def snaps(n, old):
     """Build snapshots of which the given number are old."""
     return tuple(
         SnapshotInfo(
-            i,
-            NOW - (timedelta(days=2, minutes=i) if i < old else timedelta(minutes=i)),
+            snapshot_id=i, committed_at=NOW - (timedelta(days=2, minutes=i) if i < old else timedelta(minutes=i))
         )
         for i in range(n)
     )
@@ -133,7 +142,19 @@ def test_table_scope_sums_partitions():
 
 def test_unpartitioned_table_plans_whole_table():
     """An unpartitioned table is compacted as a whole."""
-    o = obs(specs=(NO_SPEC,), partitions=(PartitionStats(1, (), 10, 0, 0, 0),))
+    o = obs(
+        specs=(NO_SPEC,),
+        partitions=(
+            PartitionStats(
+                spec_id=1,
+                values=(),
+                data_file_count=10,
+                position_delete_file_count=0,
+                equality_delete_file_count=0,
+                total_data_file_size_bytes=0,
+            ),
+        ),
+    )
     plan = plan_scheduled_maintenance(table(compact_only()), o, NOW)
     assert ops(plan) == [Op.REWRITE_DATA_FILES]
     assert plan.operations[0].partitions == ()
@@ -149,7 +170,17 @@ def test_mixed_specs_with_unpartitioned_selection_plans_whole_table():
     """When the selection includes an unpartitioned spec the whole table is planned."""
     o = obs(
         specs=(DAY_SPEC, NO_SPEC),
-        partitions=(part(6, value=1), PartitionStats(1, (), 6, 0, 0, 0)),
+        partitions=(
+            part(6, value=1),
+            PartitionStats(
+                spec_id=1,
+                values=(),
+                data_file_count=6,
+                position_delete_file_count=0,
+                equality_delete_file_count=0,
+                total_data_file_size_bytes=0,
+            ),
+        ),
     )
     plan = plan_scheduled_maintenance(table(compact_only()), o, NOW)
     assert ops(plan) == [Op.REWRITE_DATA_FILES]
@@ -158,7 +189,12 @@ def test_mixed_specs_with_unpartitioned_selection_plans_whole_table():
 
 def test_partitions_of_two_partitioned_specs_stay_partition_scoped():
     """Partitions of two partitioned specs stay partition scoped."""
-    other = PartitionSpecInfo(2, (PartitionFieldInfo(1001, "m", "ts", "timestamp", "month"),))
+    other = PartitionSpecInfo(
+        spec_id=2,
+        fields=(
+            PartitionFieldInfo(field_id=1001, name="m", source_column="ts", source_type="timestamp", transform="month"),
+        ),
+    )
     o = obs(
         specs=(DAY_SPEC, other),
         partitions=(part(6, value=1), part(6, spec_id=2, value=2), part(1, value=3)),
@@ -203,8 +239,8 @@ def test_current_snapshot_is_never_expirable():
     s = only(MaintenanceSettings(), Op.EXPIRE_SNAPSHOTS)
     s = validated_copy(s, expire_snapshots=ExpireSnapshotsSettings(retain_last=1))
     old = (
-        SnapshotInfo(1, NOW - timedelta(days=5)),
-        SnapshotInfo(2, NOW - timedelta(days=4)),
+        SnapshotInfo(snapshot_id=1, committed_at=NOW - timedelta(days=5)),
+        SnapshotInfo(snapshot_id=2, committed_at=NOW - timedelta(days=4)),
     )
     assert plan_scheduled_maintenance(table(s), obs(snapshots=old, current_snapshot_id=1), NOW).is_empty
     assert ops(plan_scheduled_maintenance(table(s), obs(snapshots=old, current_snapshot_id=2), NOW)) == [
@@ -215,8 +251,8 @@ def test_current_snapshot_is_never_expirable():
 def test_rewrite_manifests_due_on_small_manifest_count():
     """Manifest rewriting is planned when enough small manifests exist."""
     s = only(MaintenanceSettings(), Op.REWRITE_MANIFESTS)
-    small = ManifestStats(MIB)
-    big = ManifestStats(9 * MIB)
+    small = ManifestStats(length_bytes=MIB)
+    big = ManifestStats(length_bytes=9 * MIB)
     assert ops(plan_scheduled_maintenance(table(s), obs(manifests=(small,) * 5 + (big,)), NOW)) == [
         Op.REWRITE_MANIFESTS
     ]
@@ -225,7 +261,7 @@ def test_rewrite_manifests_due_on_small_manifest_count():
 
 def test_manifest_threshold_from_settings_and_property():
     """The small manifest threshold comes from the settings and the table property."""
-    m = (ManifestStats(2 * MIB),) * 5
+    m = (ManifestStats(length_bytes=2 * MIB),) * 5
     s = only(MaintenanceSettings(), Op.REWRITE_MANIFESTS)
     assert not plan_scheduled_maintenance(table(s), obs(manifests=m), NOW).is_empty
     prop = obs(manifests=m, properties={"commit.manifest.target-size-bytes": str(MIB)})
@@ -248,7 +284,7 @@ def test_plan_order_is_canonical():
     """Planned operations follow the canonical order."""
     o = obs(
         partitions=(part(10),),
-        manifests=(ManifestStats(MIB),) * 5,
+        manifests=(ManifestStats(length_bytes=MIB),) * 5,
         snapshots=snaps(12, 11),
     )
     assert ops(plan_scheduled_maintenance(table(), o, NOW)) == list(Op.ordered())
@@ -278,7 +314,7 @@ def test_cooldown_boundary_is_inclusive():
 def test_manifest_equal_to_threshold_is_not_small():
     """A manifest exactly at the size threshold is not counted as small."""
     s = only(MaintenanceSettings(), Op.REWRITE_MANIFESTS)
-    m = (ManifestStats(8 * MIB),) * 5
+    m = (ManifestStats(length_bytes=8 * MIB),) * 5
     assert plan_scheduled_maintenance(table(s), obs(manifests=m), NOW).is_empty
 
 
@@ -286,7 +322,10 @@ def test_snapshot_committed_exactly_at_cutoff_is_not_expirable():
     """A snapshot committed exactly at the cutoff is not expirable."""
     s = only(MaintenanceSettings(), Op.EXPIRE_SNAPSHOTS)
     s = validated_copy(s, expire_snapshots=ExpireSnapshotsSettings(retain_last=1))
-    snaps_ = (SnapshotInfo(1, NOW - timedelta(days=1)), SnapshotInfo(2, NOW))
+    snaps_ = (
+        SnapshotInfo(snapshot_id=1, committed_at=NOW - timedelta(days=1)),
+        SnapshotInfo(snapshot_id=2, committed_at=NOW),
+    )
     assert plan_scheduled_maintenance(table(s), obs(snapshots=snaps_), NOW).is_empty
 
 
@@ -300,7 +339,16 @@ def test_table_scope_sum_equal_to_threshold_is_planned():
 def test_malformed_target_file_size_property_falls_back_to_default():
     """A malformed target file size property falls back to the default."""
     s = compact_only()
-    ten_files_5gib = (PartitionStats(0, (1,), 10, 0, 0, 5 * 1024 * MIB),)
+    ten_files_5gib = (
+        PartitionStats(
+            spec_id=0,
+            values=(1,),
+            data_file_count=10,
+            position_delete_file_count=0,
+            equality_delete_file_count=0,
+            total_data_file_size_bytes=5 * 1024 * MIB,
+        ),
+    )
     for bad in ("abc", "0", "-5"):
         o = obs(
             properties={"write.target-file-size-bytes": bad},
@@ -317,7 +365,7 @@ def test_malformed_target_file_size_property_falls_back_to_default():
 def test_malformed_manifest_size_property_falls_back_to_default():
     """A malformed manifest size property falls back to the default."""
     s = only(MaintenanceSettings(), Op.REWRITE_MANIFESTS)
-    m = (ManifestStats(MIB),) * 5
+    m = (ManifestStats(length_bytes=MIB),) * 5
     for bad in ("abc", "0", "-5"):
         o = obs(properties={"commit.manifest.target-size-bytes": bad}, manifests=m)
         assert ops(plan_scheduled_maintenance(table(s), o, NOW)) == [Op.REWRITE_MANIFESTS]

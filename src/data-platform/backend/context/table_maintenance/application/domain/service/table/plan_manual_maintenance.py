@@ -19,4 +19,6 @@ def plan_manual_maintenance(
 ) -> MaintenancePlan:
     """Plan every named operation on the whole table, de-duplicated, in order."""
     requested = set(operations)
-    return MaintenancePlan(tuple(PlannedOperation(op) for op in MaintenanceOperation.ordered() if op in requested))
+    return MaintenancePlan(
+        operations=tuple(PlannedOperation(operation=op) for op in MaintenanceOperation.ordered() if op in requested)
+    )
