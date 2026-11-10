@@ -74,3 +74,9 @@ def test_only_the_first_error_is_reported() -> None:
 def test_a_plain_value_error_is_its_text() -> None:
     """Any other ``ValueError`` is its string."""
     assert validation_message(ValueError("bad value")) == "bad value"
+
+
+def test_validation_error_without_details_falls_back_to_str() -> None:
+    """A ValidationError that lists no errors yields its own text."""
+    exc = ValidationError.from_exception_data("Empty", [])
+    assert validation_message(exc) == str(exc)

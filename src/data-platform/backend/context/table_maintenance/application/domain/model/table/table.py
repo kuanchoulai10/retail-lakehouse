@@ -228,5 +228,6 @@ class Table(AggregateRoot[TableId]):
         """Record an operation outcome; allowed in any non-dropped status."""
         self._ensure_not_dropped()
         state = self.operation_state(op)
-        self.operation_states[op] = state.after_success(at) if succeeded else state.after_failure(at)
+        new_state = state.after_success(at) if succeeded else state.after_failure(at)
+        self.operation_states = {**self.operation_states, op: new_state}
         self.updated_at = at

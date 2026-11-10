@@ -126,3 +126,10 @@ def test_third_level_subclass_is_rejected() -> None:
 
         class _Deeper(_Schedule):
             pass
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
+def test_from_primitives_rejects_non_finite_numbers(bad: float) -> None:
+    """NaN and Infinity are not JSON; they raise ValueError."""
+    with pytest.raises(ValueError, match="JSON"):
+        _Schedule.from_primitives({"unit": "hour", "min_interval_seconds": 3600, "retries": bad})

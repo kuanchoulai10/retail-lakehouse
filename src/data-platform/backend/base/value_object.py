@@ -55,10 +55,10 @@ class ValueObject(BaseModel):
         Only wire names are read: a field with an alias (``min_interval_seconds``)
         rejects its field name (``min_interval``) as an unknown key, at every
         nesting level. Input that is not JSON-compatible (a ``timedelta`` value, a mapping
-        that is not a ``dict``) raises ``ValueError``, like any invalid input.
+        that is not a ``dict``, NaN or Infinity) raises ``ValueError``, like any invalid input.
         """
         try:
-            payload = json.dumps(data)
+            payload = json.dumps(data, allow_nan=False)
         except TypeError as exc:
             raise ValueError(f"{cls.__name__} input must be JSON-compatible primitives: {exc}") from exc
         return cls.model_validate_json(payload, by_alias=True, by_name=False)

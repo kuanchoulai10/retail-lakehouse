@@ -89,7 +89,8 @@ class Entity[ID: EntityId](BaseModel):
         other. This builds a validated copy with changes (every
         validator runs, untouched fields keep their values) and only then
         takes it over; if validation fails, nothing changes. Private
-        attributes such as pending events are kept.
+        attributes such as pending events are kept. Afterwards every
+        field counts as set, because ``validated_copy`` passes all fields.
         """
         candidate = validated_copy(self, **changes)
         self.__dict__.update(candidate.__dict__)

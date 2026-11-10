@@ -27,7 +27,7 @@ BACKEND = Path(__file__).resolve().parents[2]
 def _domain_model_classes() -> list[type[BaseModel]]:
     found: list[type[BaseModel]] = []
     for name in context_names():
-        package = importlib.import_module(f"{context_module(name)}.application.domain.model")
+        package = importlib.import_module(f"{context_module(name)}.application.domain")
         modules = [package.__name__]
         modules += [info.name for info in pkgutil.walk_packages(package.__path__, prefix=f"{package.__name__}.")]
         for module_name in modules:

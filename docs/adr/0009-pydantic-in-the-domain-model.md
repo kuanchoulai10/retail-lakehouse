@@ -27,5 +27,5 @@ The full design is in `docs/superpowers/specs/2026-11-10-pydantic-domain-model-d
 - Invariants and converters become declarations and `model_validate` / `model_dump`, so there is less hand-written code to keep correct.
 - The domain now depends on a third-party library. The allow-list keeps that dependency to Pydantic alone.
 - `model_copy` does not validate, so domain code derives a changed copy through one helper that does, and an architecture test forbids bare `model_copy`.
-- Annotations that were `TYPE_CHECKING`-only may have to become runtime imports, so import cycles are checked by architecture tests.
+- Annotations that were `TYPE_CHECKING`-only may have to become runtime imports, so import cycles are checked by architecture tests (`tests/architecture/test_domain_models_complete.py`).
 - Adapters that hand a `list` to a `tuple` field, or a plain string to an enum field, now fail under strict mode at runtime.

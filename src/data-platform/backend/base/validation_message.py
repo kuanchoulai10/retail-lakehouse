@@ -14,7 +14,7 @@ def validation_message(exc: ValueError) -> str:
     ``"<dotted.loc>: <msg>"`` (just ``<msg>`` for a model-level error),
     without Pydantic's ``"Value error, "`` prefix; otherwise ``str(exc)``.
     """
-    if not isinstance(exc, ValidationError):
+    if not isinstance(exc, ValidationError) or not exc.errors():
         return str(exc)
     first = exc.errors()[0]
     message = first["msg"].removeprefix(_VALUE_ERROR_PREFIX)
