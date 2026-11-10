@@ -22,7 +22,7 @@ Rules for `src/data-platform/frontend` pages. **Build pages from `@retail-lakeho
 ## Page stories
 
 - **Every page has stories in `src/pages/<Page>.stories.tsx`** (title `Pages/<name>`): `ConsolePage` (`src/stories/`) renders the whole console at a `route`, and the API is answered by `lakehouseHandlers()`, the generated MSW handlers fed from `src/stories/storyData.ts`. A story shows another state by putting handlers in front in `beforeEach` (`getXMockHandler(data)`, `apiError`, `apiPending`). Cover the loaded, empty or error states and phone width (`globals: PHONE` with `expectNoHorizontalPageScroll`).
-- Stories run as browser tests with axe (`npm --prefix src/data-platform/frontend run test:stories`, part of `task checks:component-test`); Storybook on port 6007 (`npm --prefix src/data-platform/frontend run storybook`). Its sidebar also shows the design system's Storybook (a ref to port 6006, which must be running; set `DESIGN_SYSTEM_STORYBOOK_URL` to its tailnet URL to browse from another device). Both Storybooks accept `*.ts.net` hosts for `tailscale serve`, and the design system's allows being embedded from another origin.
+- Stories run as browser tests with axe (`npm --prefix src/data-platform/frontend run test:stories`, `task console:component-test`, part of `task pre-pr`); Storybook on port 6007 (`npm --prefix src/data-platform/frontend run storybook`). Its sidebar also shows the design system's Storybook (a ref to port 6006, which must be running; set `DESIGN_SYSTEM_STORYBOOK_URL` to its tailnet URL to browse from another device). Both Storybooks accept `*.ts.net` hosts for `tailscale serve`, and the design system's allows being embedded from another origin.
 
 ## Catalog pages
 

@@ -15,9 +15,28 @@ includes:
   dev:
     taskfile: ./tasks/dev.yml
     dir: '{{.ROOT_DIR}}'
-  checks:
-    taskfile: ./tasks/checks.yml
+  gates:
+    taskfile: ./tasks/gates.yml
     dir: '{{.ROOT_DIR}}'
+    flatten: true
+  system:
+    taskfile: ./tasks/system.yml
+    dir: '{{.ROOT_DIR}}'
+  scripts:
+    taskfile: ./scripts/Taskfile.yml
+    dir: ./scripts
+  design-system:
+    taskfile: ./src/design-system/Taskfile.yml
+    dir: ./src/design-system
+  console:
+    taskfile: ./src/data-platform/frontend/Taskfile.yml
+    dir: ./src/data-platform/frontend
+  backend:
+    taskfile: ./src/data-platform/backend/Taskfile.yml
+    dir: ./src/data-platform/backend
+  spark:
+    taskfile: ./src/data-platform/runtime/spark/Taskfile.yml
+    dir: ./src/data-platform/runtime/spark
   cluster:
     taskfile: ./tasks/cluster.yml
     dir: '{{.ROOT_DIR}}'
@@ -46,67 +65,6 @@ tasks:
     cmds:
       - task --list
     silent: true
-
-  pre-commit:
-    desc: "Gate: is the code clean? scope=frontend|backend|all (default all)"
-    cmds:
-      - task: checks:pre-commit
-        vars:
-          scope: '{{.scope | default "all"}}'
-
-  pre-pr:
-    desc: "Gate: is my change logically correct? scope=frontend|backend|all (default all)"
-    cmds:
-      - task: checks:pre-pr
-        vars:
-          scope: '{{.scope | default "all"}}'
-
-  pre-merge:
-    desc: "Gate: will main still work after this merge? scope=frontend|backend|all (default all)"
-    cmds:
-      - task: checks:pre-merge
-        vars:
-          scope: '{{.scope | default "all"}}'
-
-  post-merge:
-    desc: "Gate: is main healthy once deployed to the shared environment?"
-    requires:
-      vars:
-        - name: KUBE_CONTEXT
-    cmds:
-      - task: checks:post-merge
-        vars:
-          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
-
-  pre-release:
-    desc: "Gate: can this exact build go to production?"
-    requires:
-      vars:
-        - name: KUBE_CONTEXT
-    cmds:
-      - task: checks:pre-release
-        vars:
-          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
-
-  release:
-    desc: "Gate: does the release hold under real traffic?"
-    cmds:
-      - task: checks:release
-
-  nightly:
-    desc: "Gate: are there problems that only show over time?"
-    requires:
-      vars:
-        - name: KUBE_CONTEXT
-    cmds:
-      - task: checks:nightly
-        vars:
-          KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
-
-  unit-test:
-    desc: "Run all unit tests in parallel"
-    cmds:
-      - task: checks:unit-test
 
   serve-docs:
     desc: Serve docs locally

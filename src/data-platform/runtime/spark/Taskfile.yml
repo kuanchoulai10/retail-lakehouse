@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+tasks:
+  unit-test:
+    desc: "Run the Spark runtime unit tests"
+    cmds:
+      - cmd: echo "TODO:// uv run pytest -v"
+
+  security-test:
+    desc: "Scan the Spark runtime's dependencies and image"
+    cmds:
+      - cmd: echo "TODO:// pip-audit for the Spark runtime, image scan for table-maintenance-spark"
+
+  build-test:
+    desc: "Build the Spark runtime image once, tagged by commit"
+    cmds:
+      - cmd: echo "TODO:// docker build table-maintenance-spark with the build.sh source tag and push it to the registry"

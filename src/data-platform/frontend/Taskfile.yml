@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+tasks:
+  unit-test:
+    desc: "Run the console unit tests"
+    cmds:
+      - npm test -- --run
+
+  component-test:
+    desc: "Run the console stories as browser tests with axe"
+    cmds:
+      - npm run test:stories
+
+  security-test:
+    desc: "Scan the console's dependencies and image"
+    cmds:
+      - cmd: echo "TODO:// npm audit for the console, image scan for console"
+
+  coverage-test:
+    desc: "Enforce the console's test coverage floor"
+    cmds:
+      - cmd: echo "TODO:// vitest --coverage with a floor for the console"
+
+  build-test:
+    desc: "Build the console once, tagged by commit"
+    cmds:
+      - npm run build
+      - cmd: echo "TODO:// docker build console with the build.sh source tag and push it to the registry"

@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+tasks:
+  unit-test:
+    desc: "Run the backend unit tests (includes the pytest architecture tests)"
+    cmds:
+      - uv run pytest -v
+
+  arch-test:
+    desc: "Check the bounded-context boundaries with import-linter"
+    cmds:
+      - uv run lint-imports
+
+  security-test:
+    desc: "Scan the backend's dependencies and image"
+    cmds:
+      - cmd: echo "TODO:// pip-audit for the backend, image scan for table-maintenance-backend"
+
+  coverage-test:
+    desc: "Enforce the backend's test coverage floor"
+    cmds:
+      - cmd: echo "TODO:// pytest --cov with a floor for the backend"
+
+  integration-test:
+    desc: "Run the backend adapters against real dependencies"
+    cmds:
+      - cmd: echo "TODO:// catalog adapters vs a Polaris container, SQL repos vs PostgreSQL, Temporal workflows vs the Temporal test server"
+
+  build-test:
+    desc: "Build the backend image once, tagged by commit"
+    cmds:
+      - cmd: echo "TODO:// docker build table-maintenance-backend with the build.sh source tag and push it to the registry"

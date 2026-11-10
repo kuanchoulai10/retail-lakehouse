@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+tasks:
+  unit-test:
+    desc: "Run the design-system unit tests"
+    cmds:
+      - npm test -- --run
+
+  component-test:
+    desc: "Run the design-system stories as browser tests with axe"
+    cmds:
+      - npm run test:stories
+
+  security-test:
+    desc: "Scan the design system's dependencies"
+    cmds:
+      - cmd: echo "TODO:// npm audit for the design system"
+
+  coverage-test:
+    desc: "Enforce the design system's test coverage floor"
+    cmds:
+      - cmd: echo "TODO:// vitest --coverage with a floor for the design system"
