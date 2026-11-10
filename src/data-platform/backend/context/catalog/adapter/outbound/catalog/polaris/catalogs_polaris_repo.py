@@ -24,7 +24,6 @@ from context.catalog.application.port.outbound.catalog import CatalogsRepo
 
 if TYPE_CHECKING:
     from base import EntityId
-    from base.model import EntityId as ModelEntityId
     from context.catalog.adapter.outbound.shared.polaris import PolarisHttpClient
     from context.catalog.application.port.outbound.catalog import Catalog
 
@@ -50,7 +49,7 @@ class CatalogsPolarisRepo(CatalogsRepo):
         response = self._polaris.management_request("POST", "/catalogs", json=body)
         return catalog_from_polaris(response, entity.name)
 
-    def get(self, entity_id: EntityId | ModelEntityId) -> Catalog | None:
+    def get(self, entity_id: EntityId) -> Catalog | None:
         """GET the catalog; Polaris's 404 means there is none."""
         try:
             response = self._polaris.management_request("GET", management_catalog_path(entity_id.value))
@@ -73,6 +72,6 @@ class CatalogsPolarisRepo(CatalogsRepo):
         response = self._polaris.management_request("PUT", management_catalog_path(catalog.name), json=body)
         return catalog_from_polaris(response, catalog.name)
 
-    def delete(self, entity_id: EntityId | ModelEntityId) -> None:
+    def delete(self, entity_id: EntityId) -> None:
         """DELETE the catalog; Polaris refuses one that is not empty."""
         self._polaris.management_request("DELETE", management_catalog_path(entity_id.value))

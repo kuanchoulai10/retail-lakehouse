@@ -24,7 +24,6 @@ if TYPE_CHECKING:
     from sqlalchemy import Engine
 
     from base import EntityId
-    from base.model import EntityId as ModelEntityId
     from context.table_maintenance.application.port.outbound.table_maintenance_run import (
         TableId,
         TableMaintenanceRun,
@@ -50,7 +49,7 @@ class TableMaintenanceRunsSqlRepo(TableMaintenanceRunsRepo):
             raise ConflictError(str(exc.orig)) from exc
         return entity
 
-    def get(self, entity_id: EntityId | ModelEntityId) -> TableMaintenanceRun | None:
+    def get(self, entity_id: EntityId) -> TableMaintenanceRun | None:
         """Return the run with the given id, or None."""
         with self._engine.connect() as conn:
             row = conn.execute(select(t).where(t.c.id == entity_id.value)).first()

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from base.model import AggregateRoot
+from base import AggregateRoot
 from context.catalog.application.domain.model.catalog.catalog_id import CatalogId
 from context.catalog.application.domain.model.catalog.catalog_type import CatalogType
 from context.catalog.application.domain.model.catalog.connection_config import ConnectionConfig

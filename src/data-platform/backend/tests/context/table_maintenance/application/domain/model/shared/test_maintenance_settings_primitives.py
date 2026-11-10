@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from base.model import validation_message
+from base import validation_message
 from context.table_maintenance.application.domain.model.shared import (
     CompactionScope,
     ExpireSnapshotsSettings,

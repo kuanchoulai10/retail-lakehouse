@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field, model_validator
 
-from base.model import ValueObject
+from base import ValueObject
 from context.catalog.application.domain.model.catalog.authentication_type import (
     AuthenticationType,
 )

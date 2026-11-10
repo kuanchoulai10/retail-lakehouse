@@ -18,7 +18,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from base.model import validation_message
+from base import validation_message
 from context.catalog.application.domain.model.catalog import (
     AuthenticationParameters,
     AuthenticationType,

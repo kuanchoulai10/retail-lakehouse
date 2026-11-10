@@ -1,13 +1,12 @@
 """Tests for EventHandler ABC."""
 
-from dataclasses import dataclass
+from __future__ import annotations
 
 import pytest
 
 from base import DomainEvent, EventHandler
 
 
-@dataclass(frozen=True)
 class _StubEvent(DomainEvent):
     value: str
 

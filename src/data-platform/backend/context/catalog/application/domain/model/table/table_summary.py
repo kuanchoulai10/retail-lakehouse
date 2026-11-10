@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from base.model import ValueObject
+from base import ValueObject
 
 if TYPE_CHECKING:
     from context.catalog.application.domain.model.table.snapshot import Snapshot

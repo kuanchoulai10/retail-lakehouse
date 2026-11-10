@@ -6,7 +6,7 @@ from datetime import datetime
 
 from pydantic import model_validator
 
-from base.model import AggregateRoot
+from base import AggregateRoot
 from context.table_maintenance.application.domain.model.table_discovery_rule.rule_effect import (
     RuleEffect,
 )

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from base.model import ValueObject, validated_copy
+from base import ValueObject, validated_copy
 
 
 class OperationState(ValueObject):

@@ -12,7 +12,6 @@ from context.table_maintenance.application.domain.model.table_discovery_rule imp
 
 if TYPE_CHECKING:
     from base import EntityId
-    from base.model import EntityId as ModelEntityId
     from context.table_maintenance.application.domain.model.table_maintenance_preset import (
         TableMaintenancePresetId,
     )
@@ -22,15 +21,11 @@ class TableDiscoveryRulesRepo(Repository[TableDiscoveryRule]):
     """Persist and query TableDiscoveryRule aggregates."""
 
     @abstractmethod
-    def get(self, entity_id: EntityId | ModelEntityId) -> TableDiscoveryRule | None:
-        """Return the rule with the given id, or None when it does not exist."""
-
-    @abstractmethod
     def update(self, rule: TableDiscoveryRule) -> TableDiscoveryRule:
         """Persist the changed rule and return it."""
 
     @abstractmethod
-    def delete(self, entity_id: EntityId | ModelEntityId) -> None:
+    def delete(self, entity_id: EntityId) -> None:
         """Delete the rule with the given id."""
 
     @abstractmethod

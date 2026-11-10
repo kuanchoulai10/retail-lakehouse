@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from base.model import ValueObject
+from base import ValueObject
 from context.catalog.application.domain.model.table.partition_field import PartitionField
 
 

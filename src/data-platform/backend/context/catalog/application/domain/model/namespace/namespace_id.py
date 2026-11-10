@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from base.model import EntityId
+from base import EntityId
 from context.catalog.application.domain.model.shared import reject_unit_separator
 
 _SEPARATOR = "\x1f"

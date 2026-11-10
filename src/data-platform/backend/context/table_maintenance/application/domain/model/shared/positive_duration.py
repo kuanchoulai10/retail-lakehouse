@@ -7,7 +7,7 @@ from typing import Annotated
 
 from pydantic import AfterValidator
 
-from base.model import WholeSeconds
+from base import WholeSeconds
 
 
 def _positive(value: timedelta) -> timedelta:

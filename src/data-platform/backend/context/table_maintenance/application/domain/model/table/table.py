@@ -6,7 +6,7 @@ from datetime import datetime
 
 from pydantic import Field
 
-from base.model import AggregateRoot
+from base import AggregateRoot
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     MaintenanceSettings,

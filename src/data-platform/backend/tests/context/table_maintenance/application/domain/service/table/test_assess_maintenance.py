@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from base.model import validated_copy
+from base import validated_copy
 from context.table_maintenance.application.domain.model.shared import (
     CompactionScope,
     ConditionCombine,

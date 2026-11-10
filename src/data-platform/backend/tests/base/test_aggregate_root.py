@@ -1,63 +1,75 @@
-"""Tests for AggregateRoot base type."""
+"""Tests for the Pydantic AggregateRoot base type."""
 
-from dataclasses import dataclass
+from __future__ import annotations
 
-from base import AggregateRoot, DomainEvent, EntityId
+import pytest
+
+from base import AggregateRoot, DomainEvent, Entity, EntityId
 
 
-@dataclass(frozen=True)
-class OrderId(EntityId):
+class _OrderId(EntityId):
     """Test stub for EntityId."""
 
-    pass
 
-
-@dataclass(frozen=True)
-class OrderCreated(DomainEvent):
+class _OrderPlaced(DomainEvent):
     """Test stub for DomainEvent."""
 
     order_id: str
 
 
-@dataclass(eq=False)
-class Order(AggregateRoot[OrderId]):
+class _Order(AggregateRoot[_OrderId]):
     """Test stub for AggregateRoot."""
 
-    id: OrderId
     total: int
 
 
-def test_aggregate_root_is_entity():
-    """AggregateRoot should be a subclass of Entity."""
-    from base import Entity
+def _order() -> _Order:
+    return _Order(id=_OrderId("1"), total=100)
 
+
+def test_is_an_entity() -> None:
+    """An aggregate root is an entity."""
     assert issubclass(AggregateRoot, Entity)
 
 
-def test_no_events_initially():
-    """Verify that a new AggregateRoot has no domain events."""
-    order = Order(id=OrderId("1"), total=100)
-    assert order.collect_events() == []
+def test_no_events_initially() -> None:
+    """A new aggregate has no pending events."""
+    assert _order().collect_events() == []
 
 
-def test_register_and_collect_events():
-    """Verify that registered events are returned by collect_events."""
-    order = Order(id=OrderId("1"), total=100)
-    event = OrderCreated(order_id="1")
+def test_collect_events_returns_registered_events_once() -> None:
+    """Registered events come back once, then the list is empty."""
+    order = _order()
+    event = _OrderPlaced(order_id="1")
     order.register_event(event)
     assert order.collect_events() == [event]
-
-
-def test_collect_events_clears():
-    """collect_events should return events and clear the internal list."""
-    order = Order(id=OrderId("1"), total=100)
-    order.register_event(OrderCreated(order_id="1"))
-    order.collect_events()
     assert order.collect_events() == []
 
 
-def test_aggregate_root_is_not_a_dataclass():
-    """AggregateRoot itself should be a plain class, not a dataclass."""
-    import dataclasses
+def test_events_are_not_dumped() -> None:
+    """Pending events never appear in a dump."""
+    order = _order()
+    order.register_event(_OrderPlaced(order_id="1"))
+    assert order.model_dump() == {"id": "1", "total": 100}
 
-    assert not dataclasses.is_dataclass(AggregateRoot)
+
+def test_events_are_not_compared() -> None:
+    """Pending events take no part in equality."""
+    order = _order()
+    order.register_event(_OrderPlaced(order_id="1"))
+    assert order == _order()
+
+
+def test_events_are_per_instance() -> None:
+    """Each aggregate keeps its own pending events."""
+    order = _order()
+    order.register_event(_OrderPlaced(order_id="1"))
+    assert _order().collect_events() == []
+
+
+def test_third_level_subclass_is_rejected() -> None:
+    """A concrete aggregate extends AggregateRoot directly."""
+    with pytest.raises(TypeError, match="max inheritance depth"):
+
+        class _Deeper(_Order):
+            pass

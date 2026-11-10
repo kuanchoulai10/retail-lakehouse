@@ -36,11 +36,11 @@ known-first-party = ["base", "bootstrap", "context", "tests"]
 runtime-evaluated-base-classes = [
     "pydantic.BaseModel",
     "pydantic_settings.BaseSettings",
-    "base.model.ValueObject",
-    "base.model.EntityId",
-    "base.model.Entity",
-    "base.model.AggregateRoot",
-    "base.model.DomainEvent",
+    "base.ValueObject",
+    "base.EntityId",
+    "base.Entity",
+    "base.AggregateRoot",
+    "base.DomainEvent",
 ]
 runtime-evaluated-decorators = [
     "fastapi.APIRouter.delete",

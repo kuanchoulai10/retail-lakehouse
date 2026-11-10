@@ -26,7 +26,6 @@ AGGREGATE_LAYERS = (
 )
 KERNEL_BOUNDARIES = (
     "base",
-    "base/model",
     "bootstrap/configs",
     "bootstrap/container",
 )

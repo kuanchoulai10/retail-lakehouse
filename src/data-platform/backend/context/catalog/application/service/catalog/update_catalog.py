@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from base.model import validation_message
+from base import validation_message
 from context.catalog.application.exceptions import (
     ConflictError,
     NotFoundError,

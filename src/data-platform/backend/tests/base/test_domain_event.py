@@ -1,51 +1,58 @@
-"""Tests for DomainEvent base type."""
+"""Tests for the Pydantic DomainEvent base type."""
 
-from abc import ABC
-from dataclasses import dataclass
+from __future__ import annotations
+
 from datetime import UTC, datetime
+
+import pytest
+from pydantic import ValidationError
 
 from base import DomainEvent
 
 
-@dataclass(frozen=True)
-class OrderPlaced(DomainEvent):
+class _OrderPlaced(DomainEvent):
     """Test stub for DomainEvent."""
 
     order_id: str
     total: int
 
 
-def test_domain_event_is_abstract():
-    """Verify that DomainEvent is a subclass of ABC."""
-    assert issubclass(DomainEvent, ABC)
+def test_occurred_at_defaults_to_now_in_utc() -> None:
+    """``occurred_at`` is set to the current UTC time."""
+    before = datetime.now(UTC)
+    event = _OrderPlaced(order_id="1", total=100)
+    assert event.occurred_at.tzinfo is UTC
+    assert before <= event.occurred_at <= datetime.now(UTC)
 
 
-def test_event_has_occurred_at():
-    """Verify that a DomainEvent automatically gets a UTC occurred_at timestamp."""
-    event = OrderPlaced(order_id="1", total=100)
-    assert isinstance(event.occurred_at, datetime)
-    assert event.occurred_at.tzinfo == UTC
+def test_occurred_at_can_be_given() -> None:
+    """``occurred_at`` can be set explicitly."""
+    moment = datetime(2026, 1, 1, tzinfo=UTC)
+    assert _OrderPlaced(order_id="1", total=100, occurred_at=moment).occurred_at == moment
 
 
-def test_event_carries_data():
-    """Verify that a DomainEvent stores its custom fields."""
-    event = OrderPlaced(order_id="1", total=100)
-    assert event.order_id == "1"
-    assert event.total == 100
+def test_is_frozen() -> None:
+    """An event rejects assignment."""
+    event = _OrderPlaced(order_id="1", total=100)
+    with pytest.raises(ValidationError):
+        event.total = 5
 
 
-def test_event_is_immutable():
-    """Verify that DomainEvent fields cannot be reassigned."""
-    import pytest
-
-    event = OrderPlaced(order_id="1", total=100)
-    with pytest.raises(AttributeError):
-        event.order_id = "2"  # type: ignore[misc]  # ty: ignore[invalid-assignment]
+def test_strict_rejects_a_bool_for_an_int() -> None:
+    """Strict mode rejects a bool where an int is expected."""
+    with pytest.raises(ValidationError):
+        _OrderPlaced.model_validate({"order_id": "1", "total": True})
 
 
-def test_equal_events():
-    """Verify that two DomainEvents with the same data are equal."""
-    ts = datetime(2026, 1, 1, tzinfo=UTC)
-    a = OrderPlaced(order_id="1", total=100, occurred_at=ts)
-    b = OrderPlaced(order_id="1", total=100, occurred_at=ts)
-    assert a == b
+def test_rejects_an_unknown_key() -> None:
+    """``extra="forbid"`` rejects a key that is not a field."""
+    with pytest.raises(ValidationError):
+        _OrderPlaced.model_validate({"order_id": "1", "total": 1, "colour": "red"})
+
+
+def test_third_level_subclass_is_rejected() -> None:
+    """A concrete event extends DomainEvent directly."""
+    with pytest.raises(TypeError, match="max inheritance depth"):
+
+        class _Deeper(_OrderPlaced):
+            pass

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from base.model import validated_copy
+from base import validated_copy
 from context.table_maintenance.application.domain.model.shared import (
     CompactionScope,
     MaintenanceAssessment,

@@ -5,7 +5,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
-from base.model import validation_message
+from base import validation_message
 from context.table_maintenance.application.domain.model.table import (
     InvalidTableTransition,
 )

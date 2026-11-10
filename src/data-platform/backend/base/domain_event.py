@@ -1,48 +1,44 @@
-"""Define the DomainEvent base class."""
+"""Define the Pydantic DomainEvent base class."""
 
 from __future__ import annotations
 
-from abc import ABC
-from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from base._inheritance_guard import enforce_max_depth
 
 
-@dataclass(frozen=True)
-class DomainEvent(ABC):  # noqa: B024
+def _now() -> datetime:
+    return datetime.now(UTC)
+
+
+class DomainEvent(BaseModel):
     """A record of something meaningful that occurred in the domain.
 
-    DomainEvents are named in past tense (OrderPlaced, PaymentReceived)
-    and capture the facts of what happened, not commands for what should
-    happen next. They are immutable: once an event has occurred, it
-    cannot be changed.
-
-    Every event carries an ``occurred_at`` timestamp that is automatically
-    set to the current UTC time at construction.
-
-    Examples: OrderPlaced(order_id), InventoryAdjusted(sku, delta),
-    SnapshotExpired(table, expired_count).
-
-    Rules:
-        - Immutable: events describe the past and cannot be altered.
-        - Named in past tense: describes what already happened.
-        - Self-contained: carries all data needed to understand the event.
-        - Timestamped: ``occurred_at`` is set automatically.
+    Named in past tense (OrderPlaced), frozen and strict. Every event
+    carries ``occurred_at``, which defaults to the current UTC time.
 
     Usage::
 
-        @dataclass(frozen=True)
         class OrderPlaced(DomainEvent):
             order_id: str
             total: int
-
-    Subclasses must use @dataclass(frozen=True) to enforce immutability.
     """
 
-    occurred_at: datetime = field(default_factory=lambda: datetime.now(UTC), kw_only=True)
+    model_config = ConfigDict(
+        frozen=True,
+        strict=True,
+        extra="forbid",
+        validate_by_name=True,
+        validate_by_alias=True,
+    )
 
-    def __init_subclass__(cls, **kwargs: object) -> None:
+    occurred_at: datetime = Field(default_factory=_now)
+
+    @classmethod
+    def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
         """Enforce flat hierarchy: concrete events extend DomainEvent directly (max depth 1)."""
-        super().__init_subclass__(**kwargs)
+        super().__pydantic_init_subclass__(**kwargs)
         enforce_max_depth(cls, DomainEvent, 1)

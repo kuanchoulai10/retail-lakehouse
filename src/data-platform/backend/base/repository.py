@@ -10,10 +10,9 @@ from base.entity import Entity
 
 if TYPE_CHECKING:
     from base.entity_id import EntityId
-    from base.model import Entity as ModelEntity
 
 
-class Repository[E: Entity | ModelEntity](ABC):
+class Repository[E: Entity](ABC):
     """An interface for retrieving and persisting Entities.
 
     The Repository mediates between the domain layer and the data-mapping
@@ -23,9 +22,7 @@ class Repository[E: Entity | ModelEntity](ABC):
     infrastructure concerns.
 
     Type parameter ``E`` is bound to Entity, ensuring only domain objects
-    with identity are managed through repositories. While the domain moves
-    to Pydantic, an Entity of either base (``base`` or ``base.model``) is
-    accepted; the port of a Pydantic aggregate widens ``get`` to take its id.
+    with identity are managed through repositories.
 
     The base contract is intentionally minimal: ``create``, ``get``,
     ``list_all``. Mutation and removal are not universal — historical

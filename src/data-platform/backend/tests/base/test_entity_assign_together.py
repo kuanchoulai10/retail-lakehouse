@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError, model_validator
 
-from base.model import AggregateRoot, DomainEvent, EntityId
+from base import AggregateRoot, DomainEvent, EntityId
 
 
 class _RangeId(EntityId):

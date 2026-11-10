@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from base.model import ValueObject
+from base import ValueObject
 from context.table_maintenance.application.domain.model.shared.planned_operation import (
     PlannedOperation,
 )

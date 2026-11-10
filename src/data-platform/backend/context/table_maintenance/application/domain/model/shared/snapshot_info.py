@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from base.model import ValueObject
+from base import ValueObject
 
 
 class SnapshotInfo(ValueObject):

@@ -64,7 +64,8 @@ Open issues and deferred work. Not loaded automatically; read the entries for th
 - Select and DropdownMenu have no axe story in their open state (the listbox and menu are only checked closed).
 - CheckBox and Switch have no invalid-state stories.
 - Breadcrumb links and the DataTable expand toggle are below the 44px touch target on phones.
-- Move the backend domain model from dataclasses to Pydantic v2: the dependency rule is done (ADR 0009); the remaining tasks are in `docs/superpowers/plans/2026-11-10-pydantic-domain-model.md`.
+- One catalog that Polaris returns in a shape the domain refuses makes the whole `GET /v1/catalogs` list fail (502) instead of skipping or flagging that catalog (pre-existing, kept by the Pydantic move).
+- `pydantic` is not a direct dependency in `src/data-platform/backend/pyproject.toml`; it arrives through FastAPI / pydantic-settings, but the domain base types need ≥ 2.11 (`validate_by_name` / `validate_by_alias`). Owner to decide whether to declare `pydantic>=2.11`.
 - Document that composite components (`AppLayout`, `TitleBar`, `Panel`, dialogs) take no `ref` or `className`.
 - `SemanticToken` is spelled twice in `semanticTokens.ts` (the union and `SEMANTIC_TOKENS`); derive the union from the array.
 - `resolveThemeTokens` reads the token CSS with flat parsing and would misread nested blocks (for example a `@media` rule inside a theme selector).

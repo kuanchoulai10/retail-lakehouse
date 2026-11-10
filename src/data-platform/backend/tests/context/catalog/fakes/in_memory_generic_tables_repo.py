@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from base.model import validated_copy
+from base import validated_copy
 from context.catalog.application.exceptions import ConflictError, NotFoundError
 from context.catalog.application.port.outbound.generic_table import (
     GenericTable,
@@ -14,7 +14,6 @@ from context.catalog.application.port.outbound.generic_table import (
 
 if TYPE_CHECKING:
     from base import EntityId
-    from base.model import EntityId as ModelEntityId
     from context.catalog.application.port.outbound.generic_table import NamespaceId
 
 
@@ -32,7 +31,7 @@ class InMemoryGenericTablesRepo(GenericTablesRepo):
         self.items[entity.id.value] = validated_copy(entity)
         return validated_copy(entity)
 
-    def get(self, entity_id: EntityId | ModelEntityId) -> GenericTable | None:
+    def get(self, entity_id: EntityId) -> GenericTable | None:
         """Return a copy of the generic table, or None."""
         stored = self.items.get(entity_id.value)
         return None if stored is None else validated_copy(stored)
@@ -50,7 +49,7 @@ class InMemoryGenericTablesRepo(GenericTablesRepo):
                 found.append(table_id)
         return found
 
-    def delete(self, entity_id: EntityId | ModelEntityId) -> None:
+    def delete(self, entity_id: EntityId) -> None:
         """Remove the generic table; an unknown one raises NotFoundError."""
         if self.items.pop(entity_id.value, None) is None:
             raise NotFoundError(f"Generic table does not exist: {entity_id.value}")

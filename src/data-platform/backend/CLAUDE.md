@@ -95,12 +95,21 @@ Today there are two contexts. `table_maintenance` schedules Iceberg maintenance 
 
 ## DDD Base Types (`base/`)
 
-Shared kernel with zero external dependencies (stdlib only):
-- `ValueObject` — frozen dataclass, equality by value
-- `EntityId` — typed identifier (extends ValueObject)
-- `Entity[ID]` — identity-based equality, `@dataclass(eq=False)`
-- `AggregateRoot[ID]` — Entity + domain event collection
-- `DomainEvent` — frozen dataclass with auto `occurred_at`
+Shared kernel on Pydantic v2 (stdlib, `pydantic`, `pydantic_core`, `annotated_types`; nothing project-internal). Import everything from `base`.
+
+The domain model types, all strict (no coercion: `True` is not an `int`, a `list` is not a `tuple`, a plain `str` is not a `StrEnum`) and `extra="forbid"`:
+- `ValueObject` — frozen, equality by value. A subclass declares fields, no decorator: `class Money(ValueObject): amount: int; currency: str`. Invariants go in `field_validator` / `model_validator(mode="after")` raising plain `ValueError`. Wire input goes through `Money.from_primitives(data)` (strict JSON mode, only the wire names / aliases are accepted); wire output through `to_primitives()` (JSON primitives keyed by alias). Never `model_validate` wire data directly.
+- `EntityId` — a `RootModel[str]`, frozen, built positionally: `class OrderId(EntityId): pass`, `OrderId("1")`; `.value` gives the string. Ids of different kinds never compare equal.
+- `Entity[ID]` — `class User(Entity[UserId]): name: str`; equal and hashed by class and `id`. `validate_assignment=True`, and an assignment is atomic: a rejected one (field or cross-field after-validator) leaves the entity unchanged. Fields checked together by a cross-field validator are changed in one step with `self._assign_together(a=..., b=...)` (only the changed fields), never one after the other and never through `__dict__`. Reassign containers (`self.x = (*self.x, v)`) instead of mutating them in place.
+- `AggregateRoot[ID]` — `class Order(AggregateRoot[OrderId]): total: int`; an Entity that records events with `register_event()` and hands them over with `collect_events()` (a private attribute, never dumped or compared).
+- `DomainEvent` — frozen, `class OrderPlaced(DomainEvent): order_id: str`; `occurred_at` defaults to now (UTC).
+- `WholeSeconds` — `Annotated[timedelta, ...]`: a `timedelta` in the domain, integer seconds on the wire. Declare it with a matching alias pair, `min_interval: WholeSeconds = Field(validation_alias="min_interval_seconds", serialization_alias="min_interval_seconds")`; a non-whole-second duration is rejected when encoded.
+- `validated_copy(model, **changes)` — a changed copy of a value object that runs every validator. Domain code never calls `model_copy` (it skips validation), and never copies an aggregate (pending events would be lost).
+- `validation_message(exc)` — a one-line message for a `ValidationError` (or any `ValueError`); services, ports and exceptions use it instead of importing Pydantic. A broken invariant answers 422 with that line; `InvalidTableTransition` / `InvalidRunTransition` still answer 409.
+
+Concrete domain types extend these bases directly (max depth 1, checked at class creation and by `test_inheritance_depth.py`). The five model bases are listed in ruff's `runtime-evaluated-base-classes`, so field-type imports stay at runtime; import the base from `base`, never `pydantic.BaseModel` directly.
+
+The ports and helpers:
 - `EventHandler[E]` — ABC for handling one domain event type
 - `EventDispatcher` — concrete (non-subclassable) router from events to handlers
 - `Repository[E]` — generic persistence ABC

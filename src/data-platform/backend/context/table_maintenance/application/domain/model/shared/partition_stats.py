@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from base.model import ValueObject
+from base import ValueObject
 
 
 class PartitionStats(ValueObject):

@@ -1,57 +1,82 @@
-"""Tests for EntityId base type."""
+"""Tests for the Pydantic EntityId base type."""
 
-from dataclasses import dataclass
+from __future__ import annotations
+
+import pytest
+from pydantic import ValidationError
 
 from base import EntityId, ValueObject
 
 
-@dataclass(frozen=True)
-class UserId(EntityId):
+class _Id(EntityId):
     """Test stub for EntityId."""
 
-    pass
+
+class _OtherId(EntityId):
+    """A second EntityId kind with the same raw values."""
 
 
-@dataclass(frozen=True)
-class OrderId(EntityId):
-    """Test stub for EntityId."""
+class _Pair(ValueObject):
+    """A two-field value object built by keyword."""
 
-    pass
-
-
-def test_entity_id_is_value_object():
-    """Verify that EntityId is a subclass of ValueObject."""
-    assert issubclass(EntityId, ValueObject)
+    name: str
+    count: int
 
 
-def test_has_value():
-    """Verify that EntityId stores its value."""
-    uid = UserId(value="user-1")
-    assert uid.value == "user-1"
+def test_positional_construction_type_checks() -> None:
+    """An id is built positionally and a value object by keyword, and both type-check."""
+    identifier = _Id("a")
+    pair = _Pair(name="n", count=1)
+    assert identifier.value == "a"
+    assert pair.count == 1
 
 
-def test_str_returns_value():
-    """Verify that str() returns the underlying value."""
-    uid = UserId(value="user-1")
-    assert str(uid) == "user-1"
+def test_value_returns_the_raw_string() -> None:
+    """``value`` is the wrapped string."""
+    assert _Id("a").value == "a"
 
 
-def test_equal_same_type_same_value():
-    """Verify that two EntityIds of the same type and value are equal."""
-    a = UserId(value="1")
-    b = UserId(value="1")
-    assert a == b
+def test_str_returns_the_value() -> None:
+    """``str()`` is the raw identifier."""
+    assert str(_Id("a")) == "a"
 
 
-def test_not_equal_different_value():
-    """Verify that two EntityIds with different values are not equal."""
-    a = UserId(value="1")
-    b = UserId(value="2")
-    assert a != b
+def test_same_kind_same_value_is_equal() -> None:
+    """Two ids of one kind with one value are equal."""
+    assert _Id("a") == _Id("a")
 
 
-def test_different_id_types_not_equal():
-    """UserId('1') != OrderId('1') even though value is the same."""
-    u = UserId(value="1")
-    o = OrderId(value="1")
-    assert u != o
+def test_different_value_is_not_equal() -> None:
+    """Two ids of one kind with different values differ."""
+    assert _Id("a") != _Id("b")
+
+
+def test_different_kind_same_value_is_not_equal() -> None:
+    """Ids of different kinds never compare equal."""
+    assert _Id("a") != _OtherId("a")
+
+
+def test_is_hashable() -> None:
+    """Equal ids collapse in a set."""
+    assert {_Id("a"), _Id("a")} == {_Id("a")}
+
+
+def test_is_frozen() -> None:
+    """An id cannot be reassigned."""
+    identifier = _Id("a")
+    with pytest.raises(ValidationError):
+        identifier.root = "b"
+
+
+def test_strict_rejects_a_non_string() -> None:
+    """Strict mode rejects an int where a string is expected."""
+    with pytest.raises(ValidationError):
+        _Id.model_validate(1)
+
+
+def test_third_level_subclass_is_rejected() -> None:
+    """A concrete id extends EntityId directly."""
+    with pytest.raises(TypeError, match="max inheritance depth"):
+
+        class _Deeper(_Id):
+            pass

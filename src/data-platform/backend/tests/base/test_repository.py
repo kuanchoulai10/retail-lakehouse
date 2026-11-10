@@ -1,24 +1,19 @@
 """Tests for Repository base type."""
 
-from dataclasses import dataclass
+from __future__ import annotations
 
 import pytest
 
 from base import Entity, EntityId, Repository
 
 
-@dataclass(frozen=True)
 class ItemId(EntityId):
     """Test stub for EntityId."""
 
-    pass
 
-
-@dataclass(eq=False)
 class Item(Entity[ItemId]):
     """Test stub for Entity."""
 
-    id: ItemId
     name: str
 
 

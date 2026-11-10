@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from base.model import validated_copy
+from base import validated_copy
 from context.table_maintenance.adapter.outbound.table_maintenance_run.sql import (
     TableMaintenanceRunsSqlRepo,
 )

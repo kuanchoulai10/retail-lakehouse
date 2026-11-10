@@ -7,7 +7,7 @@ from typing import Self
 import pytest
 from pydantic import ValidationError, field_validator, model_validator
 
-from base.model import ValueObject, validation_message
+from base import ValueObject, validation_message
 
 
 class _Inner(ValueObject):

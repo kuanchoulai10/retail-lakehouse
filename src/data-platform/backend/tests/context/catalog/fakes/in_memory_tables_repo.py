@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from base.model import validated_copy
+from base import validated_copy
 from context.catalog.application.exceptions import ConflictError, NotFoundError
 from context.catalog.application.port.outbound.table import Table, TableId, TablesRepo
 
 if TYPE_CHECKING:
     from base import EntityId
-    from base.model import EntityId as ModelEntityId
     from context.catalog.application.port.outbound.table import NamespaceId
 
 LAST_UPDATED_MS = 1762516800000
@@ -48,7 +47,7 @@ class InMemoryTablesRepo(TablesRepo):
         )
         return _copy(self.items[entity.id.value])
 
-    def get(self, entity_id: EntityId | ModelEntityId) -> Table | None:
+    def get(self, entity_id: EntityId) -> Table | None:
         """Return a copy of the table, or None."""
         stored = self.items.get(entity_id.value)
         return None if stored is None else _copy(stored)
@@ -90,7 +89,7 @@ class InMemoryTablesRepo(TablesRepo):
         self.items[entity_id.value] = _copy(stored, properties=properties)
         return _copy(self.items[entity_id.value])
 
-    def delete(self, entity_id: EntityId | ModelEntityId) -> None:
+    def delete(self, entity_id: EntityId) -> None:
         """Remove the table without purging its files; an unknown one raises NotFoundError."""
         if self.items.pop(entity_id.value, None) is None:
             raise NotFoundError(f"Table does not exist: {entity_id.value}")

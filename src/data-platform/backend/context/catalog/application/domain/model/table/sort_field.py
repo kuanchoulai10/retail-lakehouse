@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from base.model import ValueObject
+from base import ValueObject
 from context.catalog.application.domain.model.table.null_order import NullOrder
 from context.catalog.application.domain.model.table.sort_direction import SortDirection
 

@@ -6,7 +6,7 @@ from datetime import timedelta
 
 from pydantic import Field, field_validator
 
-from base.model import ValueObject, WholeSeconds
+from base import ValueObject, WholeSeconds
 from context.table_maintenance.application.domain.model.shared.positive_duration import (
     PositiveDuration,
 )

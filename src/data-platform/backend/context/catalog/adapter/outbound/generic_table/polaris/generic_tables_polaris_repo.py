@@ -23,7 +23,6 @@ from context.catalog.application.port.outbound.generic_table import (
 
 if TYPE_CHECKING:
     from base import EntityId
-    from base.model import EntityId as ModelEntityId
     from context.catalog.adapter.outbound.shared.polaris import PolarisHttpClient
 
 _POLARIS_API = "/polaris"
@@ -64,7 +63,7 @@ class GenericTablesPolarisRepo(GenericTablesRepo):
         )
         return generic_table_from_polaris(entity.id, response)
 
-    def get(self, entity_id: EntityId | ModelEntityId) -> GenericTable | None:
+    def get(self, entity_id: EntityId) -> GenericTable | None:
         """GET the generic table; Polaris's 404 means there is none."""
         table_id = GenericTableId(entity_id.value)
         try:
@@ -89,6 +88,6 @@ class GenericTablesPolarisRepo(GenericTablesRepo):
                     found.append(table)
         return found
 
-    def delete(self, entity_id: EntityId | ModelEntityId) -> None:
+    def delete(self, entity_id: EntityId) -> None:
         """DELETE the generic table."""
         self._polaris.catalog_request("DELETE", _table_path(GenericTableId(entity_id.value)))

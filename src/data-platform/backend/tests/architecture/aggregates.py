@@ -1,9 +1,8 @@
 """Aggregate names of a context, derived from its domain model.
 
 An aggregate is a child package of ``application/domain/model`` (except
-``shared``) that defines a subclass of ``base.AggregateRoot`` or of its Pydantic
-counterpart ``base.model.AggregateRoot``. The list comes
-from the model, not from the directories of other layers, so a stray or
+``shared``) that defines a subclass of ``base.AggregateRoot``. The list comes from the
+model, not from the directories of other layers, so a stray or
 misspelt directory in another layer still fails the aggregate axis.
 """
 
@@ -14,22 +13,20 @@ import pkgutil
 from typing import TYPE_CHECKING
 
 from base import AggregateRoot
-from base.model import AggregateRoot as ModelAggregateRoot
 from tests.architecture.contexts import context_module
 
 if TYPE_CHECKING:
     from types import ModuleType
 
 SHARED = "shared"
-AGGREGATE_ROOT_BASES = (AggregateRoot, ModelAggregateRoot)
 
 
 def _defines_aggregate_root(module: ModuleType) -> bool:
     return any(
         isinstance(value, type)
         and value.__module__ == module.__name__
-        and issubclass(value, AGGREGATE_ROOT_BASES)
-        and value not in AGGREGATE_ROOT_BASES
+        and issubclass(value, AggregateRoot)
+        and value is not AggregateRoot
         for value in vars(module).values()
     )
 

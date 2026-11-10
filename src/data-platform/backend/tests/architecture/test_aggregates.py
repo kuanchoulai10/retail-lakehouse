@@ -25,12 +25,9 @@ WIDGET = '''"""Widget aggregate."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from base import AggregateRoot, EntityId
 
 
-@dataclass(frozen=True)
 class WidgetId(EntityId):
     """Identify a widget."""
 
@@ -39,11 +36,11 @@ class Widget(AggregateRoot[WidgetId]):
     """A widget."""
 '''
 
-GADGET = '''"""Gadget aggregate, on the Pydantic base."""
+GADGET = '''"""Gadget aggregate."""
 
 from __future__ import annotations
 
-from base.model import AggregateRoot, EntityId
+from base import AggregateRoot, EntityId
 
 
 class GadgetId(EntityId):
@@ -72,12 +69,9 @@ SHARED = '''"""Shared kernel of the model: never an aggregate, even with a root 
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from base import AggregateRoot, EntityId
 
 
-@dataclass(frozen=True)
 class SharedId(EntityId):
     """Identify a shared thing."""
 
@@ -105,7 +99,7 @@ def test_catalog_aggregates_are_derived():
 
 
 def test_package_without_aggregate_root_is_not_an_aggregate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    """A model package without a root of either base is not counted as an aggregate."""
+    """A model package without an aggregate root is not counted as an aggregate."""
     name = build_fixture_context(
         tmp_path,
         {

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from base.model import AggregateRoot
+from base import AggregateRoot
 from context.catalog.application.domain.model.generic_table.generic_table_id import GenericTableId
 
 

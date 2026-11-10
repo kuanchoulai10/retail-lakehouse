@@ -1,64 +1,84 @@
-"""Tests for Entity base type."""
+"""Tests for the Pydantic Entity base type."""
 
-from dataclasses import dataclass
+from __future__ import annotations
+
+import pytest
+from pydantic import ValidationError
 
 from base import Entity, EntityId
 
 
-@dataclass(frozen=True)
-class UserId(EntityId):
+class _UserId(EntityId):
     """Test stub for EntityId."""
 
-    pass
 
-
-@dataclass(eq=False)
-class User(Entity[UserId]):
+class _User(Entity[_UserId]):
     """Test stub for Entity."""
 
-    id: UserId
     name: str
-    email: str
 
 
-def test_entity_is_base_class():
-    """Verify that Entity is a subclass of ABC."""
-    from abc import ABC
+class _Account(Entity[_UserId]):
+    """A second entity kind sharing the id type."""
 
-    assert issubclass(Entity, ABC)
-
-
-def test_equal_by_id():
-    """Verify that two Entities with the same id are equal."""
-    a = User(id=UserId("1"), name="Alice", email="a@example.com")
-    b = User(id=UserId("1"), name="Bob", email="b@example.com")
-    assert a == b
+    name: str
 
 
-def test_not_equal_different_id():
-    """Verify that two Entities with different ids are not equal."""
-    a = User(id=UserId("1"), name="Alice", email="a@example.com")
-    b = User(id=UserId("2"), name="Alice", email="a@example.com")
-    assert a != b
+def test_same_id_different_fields_is_equal() -> None:
+    """Entities are equal by identity, not by their other fields."""
+    assert _User(id=_UserId("1"), name="a") == _User(id=_UserId("1"), name="b")
 
 
-def test_hash_by_id():
-    """Verify that Entities with the same id produce the same hash."""
-    a = User(id=UserId("1"), name="Alice", email="a@example.com")
-    b = User(id=UserId("1"), name="Bob", email="b@example.com")
-    assert hash(a) == hash(b)
-    assert len({a, b}) == 1
+def test_same_id_hashes_alike() -> None:
+    """Entities with one id hash alike."""
+    assert hash(_User(id=_UserId("1"), name="a")) == hash(_User(id=_UserId("1"), name="b"))
 
 
-def test_not_equal_to_other_types():
-    """Verify that an Entity is not equal to non-Entity types."""
-    a = User(id=UserId("1"), name="Alice", email="a@example.com")
-    assert a != "1"
-    assert a != 1
+def test_different_id_is_not_equal() -> None:
+    """Entities with different ids differ."""
+    assert _User(id=_UserId("1"), name="a") != _User(id=_UserId("2"), name="a")
 
 
-def test_entity_is_not_a_dataclass():
-    """Entity itself should be a plain class, not a dataclass."""
-    import dataclasses
+def test_different_kind_is_not_equal() -> None:
+    """Entities of different classes differ even with one id."""
+    assert _User(id=_UserId("1"), name="a") != _Account(id=_UserId("1"), name="a")
 
-    assert not dataclasses.is_dataclass(Entity)
+
+def test_is_mutable() -> None:
+    """An entity accepts a valid assignment."""
+    user = _User(id=_UserId("1"), name="a")
+    user.name = "b"
+    assert user.name == "b"
+
+
+def test_validates_assignment() -> None:
+    """``validate_assignment`` rejects a wrong type."""
+    user = _User(id=_UserId("1"), name="a")
+    field = "name"
+    with pytest.raises(ValidationError):
+        setattr(user, field, 1)
+
+
+def test_a_raw_string_is_read_as_the_id() -> None:
+    """Pydantic validates a nested root model from its raw value, even in strict mode."""
+    assert _User.model_validate({"id": "1", "name": "a"}).id == _UserId("1")
+
+
+def test_strict_rejects_a_wrongly_typed_id() -> None:
+    """Strict mode still rejects an int where the id's string is expected."""
+    with pytest.raises(ValidationError):
+        _User.model_validate({"id": 1, "name": "a"})
+
+
+def test_rejects_an_unknown_key() -> None:
+    """``extra="forbid"`` rejects a key that is not a field."""
+    with pytest.raises(ValidationError):
+        _User.model_validate({"id": _UserId("1"), "name": "a", "colour": "red"})
+
+
+def test_third_level_subclass_is_rejected() -> None:
+    """A concrete entity extends Entity directly."""
+    with pytest.raises(TypeError, match="max inheritance depth"):
+
+        class _Deeper(_User):
+            pass

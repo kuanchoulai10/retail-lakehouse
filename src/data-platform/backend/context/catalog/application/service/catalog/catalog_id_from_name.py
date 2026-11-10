@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from base.model import validation_message
+from base import validation_message
 from context.catalog.application.domain.model.catalog import CatalogId
 from context.catalog.application.exceptions import ValidationError
 

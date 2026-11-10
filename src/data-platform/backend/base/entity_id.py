@@ -1,40 +1,40 @@
-"""Define the EntityId base class."""
+"""Define the Pydantic EntityId base class."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from typing import Any
+
+from pydantic import ConfigDict, RootModel
 
 from base._inheritance_guard import enforce_max_depth
-from base.value_object import ValueObject
 
 
-@dataclass(frozen=True)
-class EntityId(ValueObject):
+class EntityId(RootModel[str]):
     """A typed identifier for an Entity.
 
-    Wraps a raw string value in a distinct type so that IDs belonging to
-    different Entity kinds cannot be accidentally mixed up.
+    Wraps a raw string in a distinct type so that ids of different Entity
+    kinds cannot be mixed up: ``OrderId("1") != UserId("1")``. Built
+    positionally, frozen, hashable and strict (only a ``str`` is accepted).
 
-    Subclass per Entity type for compile-time safety::
+    Subclass per Entity type::
 
-        @dataclass(frozen=True)
         class OrderId(EntityId):
             pass
-
-        @dataclass(frozen=True)
-        class UserId(EntityId):
-            pass
-
-    ``OrderId("1") != UserId("1")`` — same value, different types.
     """
 
-    value: str
+    model_config = ConfigDict(frozen=True, strict=True)
 
-    def __init_subclass__(cls, **kwargs: object) -> None:
-        """Enforce flat hierarchy: concrete IDs extend EntityId directly (max depth 1)."""
-        super().__init_subclass__(**kwargs)
+    @classmethod
+    def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+        """Enforce flat hierarchy: concrete ids extend EntityId directly (max depth 1)."""
+        super().__pydantic_init_subclass__(**kwargs)
         enforce_max_depth(cls, EntityId, 1)
+
+    @property
+    def value(self) -> str:
+        """Return the raw identifier string."""
+        return self.root
 
     def __str__(self) -> str:
         """Return the raw identifier string."""
-        return self.value
+        return self.root

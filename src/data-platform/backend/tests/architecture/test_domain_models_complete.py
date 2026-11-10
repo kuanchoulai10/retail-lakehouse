@@ -7,7 +7,7 @@ each domain model and checking ``__pydantic_complete__`` finds that at test
 time instead.
 
 ``model_copy(update=...)`` skips validation, so a changed copy could break
-an invariant silently; the domain copies through ``base.model.validated_copy``.
+an invariant silently; the domain copies through ``base.validated_copy``.
 """
 
 from __future__ import annotations
@@ -65,7 +65,7 @@ def test_domain_never_calls_model_copy() -> None:
         for path in sorted((context_dir(name) / "application" / "domain").rglob("*.py"))
         for line in model_copy_calls(path.read_text())
     ]
-    assert violations == [], "use base.model.validated_copy instead of model_copy:\n" + "\n".join(violations)
+    assert violations == [], "use base.validated_copy instead of model_copy:\n" + "\n".join(violations)
 
 
 def test_model_copy_scan_finds_a_call() -> None:

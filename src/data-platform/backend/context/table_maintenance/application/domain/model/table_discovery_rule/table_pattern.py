@@ -5,7 +5,7 @@ from __future__ import annotations
 from fnmatch import fnmatchcase
 from typing import TYPE_CHECKING
 
-from base.model import ValueObject
+from base import ValueObject
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.table import TableName

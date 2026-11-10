@@ -7,7 +7,7 @@ from typing import Self
 import pytest
 from pydantic import ValidationError, model_validator
 
-from base.model import ValueObject, validated_copy
+from base import ValueObject, validated_copy
 
 
 class _Range(ValueObject):

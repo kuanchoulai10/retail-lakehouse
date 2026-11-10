@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from base.model import AggregateRoot
+from base import AggregateRoot
 from context.catalog.application.domain.model.shared import Schema
 from context.catalog.application.domain.model.table.partition_spec import PartitionSpec
 from context.catalog.application.domain.model.table.snapshot import Snapshot

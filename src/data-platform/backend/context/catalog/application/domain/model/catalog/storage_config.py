@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import Field, ValidationInfo, field_validator
 
-from base.model import ValueObject
+from base import ValueObject
 from context.catalog.application.domain.model.catalog.storage_type import StorageType
 
 

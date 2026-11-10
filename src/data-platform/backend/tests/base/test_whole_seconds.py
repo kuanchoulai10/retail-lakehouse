@@ -7,7 +7,7 @@ from datetime import timedelta
 import pytest
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from base.model import WholeSeconds
+from base import WholeSeconds
 
 
 class _Timeout(BaseModel):

@@ -17,7 +17,6 @@ from context.catalog.application.port.outbound.view import NamespaceId, View, Vi
 
 if TYPE_CHECKING:
     from base import EntityId
-    from base.model import EntityId as ModelEntityId
     from context.catalog.adapter.outbound.shared.polaris import PolarisHttpClient
 
 
@@ -43,7 +42,7 @@ class ViewsPolarisRepo(ViewsRepo):
         )
         return view_from_polaris(entity.id, response)
 
-    def get(self, entity_id: EntityId | ModelEntityId) -> View | None:
+    def get(self, entity_id: EntityId) -> View | None:
         """GET the view; Polaris's 404 means there is none."""
         view_id = ViewId(entity_id.value)
         try:
@@ -68,6 +67,6 @@ class ViewsPolarisRepo(ViewsRepo):
                     found.append(view)
         return found
 
-    def delete(self, entity_id: EntityId | ModelEntityId) -> None:
+    def delete(self, entity_id: EntityId) -> None:
         """DELETE the view."""
         self._polaris.catalog_request("DELETE", _view_path(ViewId(entity_id.value)))

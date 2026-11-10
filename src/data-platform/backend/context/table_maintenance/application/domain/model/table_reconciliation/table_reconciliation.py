@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import model_validator
 
-from base.model import AggregateRoot
+from base import AggregateRoot
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
 )

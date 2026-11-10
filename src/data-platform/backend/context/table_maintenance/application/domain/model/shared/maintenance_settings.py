@@ -6,7 +6,7 @@ from datetime import timedelta
 
 from pydantic import Field
 
-from base.model import ValueObject
+from base import ValueObject
 from context.table_maintenance.application.domain.model.shared.expire_snapshots_settings import (
     ExpireSnapshotsSettings,
 )

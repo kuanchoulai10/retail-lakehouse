@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from base.model import AggregateRoot
+from base import AggregateRoot
 from context.catalog.application.domain.model.namespace.namespace_id import NamespaceId
 
 

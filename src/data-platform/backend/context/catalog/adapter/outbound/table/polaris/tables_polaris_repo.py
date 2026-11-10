@@ -20,7 +20,6 @@ from context.catalog.application.port.outbound.table import NamespaceId, Table, 
 
 if TYPE_CHECKING:
     from base import EntityId
-    from base.model import EntityId as ModelEntityId
     from context.catalog.adapter.outbound.shared.polaris import PolarisHttpClient
 
 
@@ -63,7 +62,7 @@ class TablesPolarisRepo(TablesRepo):
         )
         return table_from_polaris(entity.id, response)
 
-    def get(self, entity_id: EntityId | ModelEntityId) -> Table | None:
+    def get(self, entity_id: EntityId) -> Table | None:
         """GET the table; Polaris's 404 means there is none."""
         table_id = TableId(entity_id.value)
         try:
@@ -115,7 +114,7 @@ class TablesPolarisRepo(TablesRepo):
         )
         return table_from_polaris(entity_id, response)
 
-    def delete(self, entity_id: EntityId | ModelEntityId) -> None:
+    def delete(self, entity_id: EntityId) -> None:
         """DELETE the table with ``purgeRequested=false``, so its files stay."""
         self._polaris.catalog_request(
             "DELETE", _table_path(TableId(entity_id.value)), params={"purgeRequested": "false"}

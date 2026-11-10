@@ -12,22 +12,17 @@ from context.table_maintenance.application.domain.model.table_maintenance_preset
 
 if TYPE_CHECKING:
     from base import EntityId
-    from base.model import EntityId as ModelEntityId
 
 
 class TableMaintenancePresetsRepo(Repository[TableMaintenancePreset]):
     """Persist and query TableMaintenancePreset aggregates."""
 
     @abstractmethod
-    def get(self, entity_id: EntityId | ModelEntityId) -> TableMaintenancePreset | None:
-        """Return the preset with the given id, or None when it does not exist."""
-
-    @abstractmethod
     def update(self, preset: TableMaintenancePreset) -> TableMaintenancePreset:
         """Persist the changed preset and return it."""
 
     @abstractmethod
-    def delete(self, entity_id: EntityId | ModelEntityId) -> None:
+    def delete(self, entity_id: EntityId) -> None:
         """Delete the preset with the given id."""
 
     @abstractmethod

@@ -6,7 +6,7 @@ from datetime import datetime
 
 from pydantic import Field
 
-from base.model import ValueObject
+from base import ValueObject
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
 )

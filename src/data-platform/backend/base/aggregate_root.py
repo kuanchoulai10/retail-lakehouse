@@ -1,10 +1,11 @@
-"""Define the AggregateRoot base class."""
+"""Define the Pydantic AggregateRoot base class."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
-from base._inheritance_guard import enforce_max_depth
+from pydantic import PrivateAttr
+
 from base.entity import Entity
 from base.entity_id import EntityId
 
@@ -13,48 +14,33 @@ if TYPE_CHECKING:
 
 
 class AggregateRoot[ID: EntityId](Entity[ID]):
-    """An Entity that acts as the entry point and consistency boundary for a cluster of related objects.
+    """An Entity that is the entry point and consistency boundary of a cluster of objects.
 
-    External code should only modify the cluster through the AggregateRoot,
-    never by reaching into child Entities or ValueObjects directly. This
-    ensures invariants are enforced in one place.
+    External code changes the cluster only through the root, so its
+    invariants are enforced in one place. The root records DomainEvents
+    with ``register_event()``; the caller takes them with
+    ``collect_events()`` after the operation. Pending events are a private
+    attribute: never dumped, never compared.
 
-    The AggregateRoot also collects DomainEvents that record what happened
-    during a business operation. After the operation completes, the caller
-    retrieves the events via ``collect_events()`` and dispatches them.
-
-    Examples: Order (owns OrderLines), Account (owns Transactions).
-
-    Rules:
-        - Consistency boundary: all changes within the aggregate are atomic.
-        - Single entry point: external code interacts only with the root.
-        - Event producer: records DomainEvents via ``register_event()``.
-        - collect_events() returns accumulated events and clears the list.
+    Concrete aggregates extend AggregateRoot directly (max depth 1,
+    counted from here rather than from Entity).
 
     Usage::
 
-        @dataclass(eq=False)
         class Order(AggregateRoot[OrderId]):
             total: int
-
-    Subclasses must use @dataclass(eq=False) to preserve identity-based equality.
     """
 
-    def __init_subclass__(cls, **kwargs: object) -> None:
-        """Forward kwargs to super and enforce flat hierarchy (max depth 1)."""
-        super().__init_subclass__(**kwargs)
-        enforce_max_depth(cls, AggregateRoot, 1)
+    _depth_base: ClassVar[bool] = True
+
+    _events: list[DomainEvent] = PrivateAttr(default_factory=list)
 
     def register_event(self, event: DomainEvent) -> None:
         """Append a domain event to be collected later."""
-        if not hasattr(self, "_events"):
-            self._events: list[DomainEvent] = []
         self._events.append(event)
 
     def collect_events(self) -> list[DomainEvent]:
         """Return all accumulated events and clear the internal list."""
-        if not hasattr(self, "_events"):
-            return []
         events = list(self._events)
         self._events.clear()
         return events

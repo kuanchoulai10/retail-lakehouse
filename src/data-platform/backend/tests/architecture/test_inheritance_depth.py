@@ -14,13 +14,11 @@ Limits derive from DDD best practices:
   - EventHandler — concrete handlers extend it directly, max depth 1.
   - EventDispatcher — concrete utility, must not be subclassed.
 
-Bases with an intermediate abstract layer in ``base/`` (e.g. ``EntityId``
-under ``ValueObject``; ``AggregateRoot`` under ``Entity``) exclude that
-subtree from their own check — the subtree is governed by its own
-intermediate base's contract.
+Bases with an intermediate abstract layer in ``base/`` (``AggregateRoot``
+under ``Entity``) exclude that subtree from their own check — the subtree is
+governed by its own intermediate base's contract.
 
-The Pydantic bases in ``base.model`` carry the same contracts. A Pydantic
-generic parametrization (``AggregateRoot[TableId]``) is a real class in the
+A Pydantic generic parametrization (``AggregateRoot[TableId]``) is a real class in the
 chain but not a layer of the hierarchy, so it does not count towards the depth.
 Only classes of the source packages are checked, not test stubs.
 """
@@ -46,11 +44,6 @@ from base import (
     UseCase,
     ValueObject,
 )
-from base.model import AggregateRoot as ModelAggregateRoot
-from base.model import DomainEvent as ModelDomainEvent
-from base.model import Entity as ModelEntity
-from base.model import EntityId as ModelEntityId
-from base.model import ValueObject as ModelValueObject
 from tests.architecture.contexts import context_dir, context_names
 
 BACKEND = Path(__file__).resolve().parents[2]
@@ -136,7 +129,7 @@ def _qualified_name(cls: type) -> str:
 
 # Each contract is a base, its maximum depth and the subtrees excluded from the count.
 DEPTH_CONTRACTS: list[tuple[type, int, tuple[type, ...]]] = [
-    (ValueObject, 1, (EntityId,)),
+    (ValueObject, 1, ()),
     (EntityId, 1, ()),
     (Entity, 1, (AggregateRoot,)),
     (AggregateRoot, 1, ()),
@@ -146,11 +139,6 @@ DEPTH_CONTRACTS: list[tuple[type, int, tuple[type, ...]]] = [
     (Gateway, 2, ()),
     (UseCase, 2, ()),
     (EventHandler, 1, ()),
-    (ModelValueObject, 1, ()),
-    (ModelEntityId, 1, ()),
-    (ModelEntity, 1, (ModelAggregateRoot,)),
-    (ModelAggregateRoot, 1, ()),
-    (ModelDomainEvent, 1, ()),
 ]
 
 
@@ -208,15 +196,15 @@ def test_aggregate_repos_extend_repository(context: str) -> None:
         pytest.fail(f"These *Repo port classes must extend base.repository.Repository:\n{formatted}")
 
 
-class _ProbeId(ModelEntityId):
+class _ProbeId(EntityId):
     """An id for the parametrization probe."""
 
 
-class _Probe(ModelAggregateRoot[_ProbeId]):
+class _Probe(AggregateRoot[_ProbeId]):
     """An aggregate whose chain holds two parametrizations."""
 
 
 def test_a_parametrization_is_not_a_layer() -> None:
     """``AggregateRoot[_ProbeId]`` and ``Entity[ID]`` on the path count zero."""
-    assert _shortest_depth(_Probe, ModelAggregateRoot) == 1
-    assert _shortest_depth(_Probe, ModelEntity) == 2
+    assert _shortest_depth(_Probe, AggregateRoot) == 1
+    assert _shortest_depth(_Probe, Entity) == 2

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from base.model import validation_message
+from base import validation_message
 from context.catalog.application.domain.model.catalog import StorageConfig
 from context.catalog.application.exceptions import ValidationError
 

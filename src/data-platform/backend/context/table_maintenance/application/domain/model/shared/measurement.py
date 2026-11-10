@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import model_validator
 
-from base.model import ValueObject
+from base import ValueObject
 from context.table_maintenance.application.domain.model.shared.measurement_comparison import (
     MeasurementComparison,
 )

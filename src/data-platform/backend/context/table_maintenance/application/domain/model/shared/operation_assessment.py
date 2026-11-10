@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from base.model import ValueObject
+from base import ValueObject
 from context.table_maintenance.application.domain.model.shared.condition_combine import (
     ConditionCombine,
 )

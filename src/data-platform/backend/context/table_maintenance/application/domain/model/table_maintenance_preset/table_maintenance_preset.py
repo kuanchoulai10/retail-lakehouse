@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from base.model import AggregateRoot
+from base import AggregateRoot
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceSettings,
 )

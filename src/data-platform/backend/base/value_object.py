@@ -1,36 +1,68 @@
-"""Define the ValueObject base class."""
+"""Define the Pydantic ValueObject base class."""
 
 from __future__ import annotations
 
-from abc import ABC
-from dataclasses import dataclass
+import json
+from typing import TYPE_CHECKING, Any, Self
+
+from pydantic import BaseModel, ConfigDict
+
+from base._inheritance_guard import enforce_max_depth
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
-@dataclass(frozen=True)
-class ValueObject(ABC):  # noqa: B024
+class ValueObject(BaseModel):
     """An immutable, self-contained descriptor with no conceptual identity.
 
-    Two ValueObjects are equal when all of their attributes are equal,
-    regardless of where or when they were created. Because they carry no
-    identity, they are freely shareable and safe to use as dict keys or
-    set members.
+    Two ValueObjects are equal when all of their fields are equal. They
+    are frozen, so they are hashable and freely shareable. Validation is
+    strict (no coercion: ``True`` is not an ``int``) and unknown keys are
+    rejected, so an invalid value never gets built.
 
-    Examples: Money(amount, currency), Address(street, city, zip),
-    DateRange(start, end).
-
-    Rules:
-        - Immutable: once created, attributes never change.
-        - Equality by value: compared by all attributes, not by reference.
-        - Side-effect free: methods return new instances rather than mutating.
-        - Self-validating: invalid states are rejected at construction time.
+    A value read from or written to the outside world goes through
+    ``from_primitives`` / ``to_primitives``: JSON-compatible primitives,
+    enums as their values, durations as integer seconds under their
+    ``*_seconds`` alias. Code builds a value object by field name; the wire
+    form accepts only the aliases.
 
     Usage::
 
-        @dataclass(frozen=True)
         class Money(ValueObject):
             amount: int
             currency: str
-
-    Subclasses must use @dataclass(frozen=True). Python enforces this:
-    a non-frozen dataclass cannot inherit from a frozen one.
     """
+
+    model_config = ConfigDict(
+        frozen=True,
+        strict=True,
+        extra="forbid",
+        validate_by_name=True,
+        validate_by_alias=True,
+    )
+
+    @classmethod
+    def __pydantic_init_subclass__(cls, **kwargs: Any) -> None:
+        """Enforce flat hierarchy: concrete value objects extend ValueObject directly (max depth 1)."""
+        super().__pydantic_init_subclass__(**kwargs)
+        enforce_max_depth(cls, ValueObject, 1)
+
+    @classmethod
+    def from_primitives(cls, data: Mapping[str, Any]) -> Self:
+        """Build from JSON-compatible primitives, validated in strict JSON mode.
+
+        Only wire names are read: a field with an alias (``min_interval_seconds``)
+        rejects its field name (``min_interval``) as an unknown key, at every
+        nesting level. Input that is not JSON-compatible (a ``timedelta`` value, a mapping
+        that is not a ``dict``) raises ``ValueError``, like any invalid input.
+        """
+        try:
+            payload = json.dumps(data)
+        except TypeError as exc:
+            raise ValueError(f"{cls.__name__} input must be JSON-compatible primitives: {exc}") from exc
+        return cls.model_validate_json(payload, by_alias=True, by_name=False)
+
+    def to_primitives(self) -> dict[str, Any]:
+        """Return JSON-compatible primitives keyed by alias."""
+        return self.model_dump(mode="json", by_alias=True)

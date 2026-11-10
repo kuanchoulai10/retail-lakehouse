@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pydantic import field_validator
 
-from base.model import ValueObject
+from base import ValueObject
 
 
 class TableName(ValueObject):

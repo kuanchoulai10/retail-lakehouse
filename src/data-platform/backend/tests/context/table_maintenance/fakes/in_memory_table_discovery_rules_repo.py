@@ -10,7 +10,6 @@ from context.table_maintenance.application.port.outbound.table_discovery_rule im
 
 if TYPE_CHECKING:
     from base import EntityId
-    from base.model import EntityId as ModelEntityId
     from context.table_maintenance.application.domain.model.table_discovery_rule import (
         TableDiscoveryRule,
     )
@@ -31,7 +30,7 @@ class InMemoryTableDiscoveryRulesRepo(TableDiscoveryRulesRepo):
         self.items[entity.id.value] = entity
         return entity
 
-    def get(self, entity_id: EntityId | ModelEntityId) -> TableDiscoveryRule | None:
+    def get(self, entity_id: EntityId) -> TableDiscoveryRule | None:
         """Return the rule or None."""
         return self.items.get(entity_id.value)
 
@@ -46,7 +45,7 @@ class InMemoryTableDiscoveryRulesRepo(TableDiscoveryRulesRepo):
         self.items[rule.id.value] = rule
         return rule
 
-    def delete(self, entity_id: EntityId | ModelEntityId) -> None:
+    def delete(self, entity_id: EntityId) -> None:
         """Remove a rule if present."""
         self.items.pop(entity_id.value, None)
 

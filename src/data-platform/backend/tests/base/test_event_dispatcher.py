@@ -1,16 +1,14 @@
 """Tests for EventDispatcher."""
 
-from dataclasses import dataclass
+from __future__ import annotations
 
 from base import DomainEvent, EventDispatcher, EventHandler
 
 
-@dataclass(frozen=True)
 class _EventA(DomainEvent):
     value: str
 
 
-@dataclass(frozen=True)
 class _EventB(DomainEvent):
     value: int
 
