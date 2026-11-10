@@ -23,7 +23,6 @@ forbidden_modules =
     fastapi
     kubernetes
     confluent_kafka
-    pydantic
     httpx
 
 [importlinter:contract:application-ring-order]
@@ -52,8 +51,18 @@ forbidden_modules =
     fastapi
     kubernetes
     confluent_kafka
-    pydantic
     httpx
+
+[importlinter:contract:application-outer-rings-pydantic-free]
+name = Services, ports and exceptions reach Pydantic only through the domain
+type = forbidden
+source_modules =
+    context.*.application.service
+    context.*.application.port
+    context.*.application.exceptions
+forbidden_modules =
+    pydantic
+allow_indirect_imports = true
 
 [importlinter:contract:adapters-see-only-ports]
 name = Adapters import application only through ports and exceptions

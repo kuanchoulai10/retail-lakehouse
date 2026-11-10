@@ -28,7 +28,7 @@ Topic files load on demand: a nested `CLAUDE.md` is read when you work on files 
 | Console UI rules | `src/data-platform/frontend/CLAUDE.md` |
 | History of what landed and finished initiatives | `docs/agents/project-history.md` |
 | Known follow-ups and deferred work | `docs/agents/known-follow-ups.md` |
-| Architecture decisions | `docs/adr/` (0005 bounded contexts, 0006 choosing an outbound port, 0007 one-time secrets, 0008 design system on Serendie tokens) |
+| Architecture decisions | `docs/adr/` (0005 bounded contexts, 0006 choosing an outbound port, 0007 one-time secrets, 0008 design system on Serendie tokens, 0009 pydantic in the domain) |
 
 Keep this file to rules that apply everywhere; put topic rules in the topic file. When work lands, add a line to `docs/agents/project-history.md` and update the topic file it changes.
 

@@ -14,6 +14,7 @@ REQUIRED_CONTRACTS = {
     "domain-pure",
     "application-ring-order",
     "application-no-outer-rings",
+    "application-outer-rings-pydantic-free",
     "adapters-see-only-ports",
     "adapter-directions-separate",
     "hybrid-directions-separate",
