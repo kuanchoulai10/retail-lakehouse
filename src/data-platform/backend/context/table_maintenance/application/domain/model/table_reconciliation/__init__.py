@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-from context.table_maintenance.application.domain.model.table_reconciliation.invalid_reconciliation import (
-    InvalidReconciliation,
-)
 from context.table_maintenance.application.domain.model.table_reconciliation.operation_outcome import (
     OperationOutcome,
 )
@@ -25,7 +22,6 @@ from context.table_maintenance.application.domain.model.table_reconciliation.wak
 )
 
 __all__ = [
-    "InvalidReconciliation",
     "OperationOutcome",
     "OperationResult",
     "ReconciliationOutcome",

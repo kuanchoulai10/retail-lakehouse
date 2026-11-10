@@ -13,11 +13,17 @@ from context.table_maintenance.application.domain.model.table_reconciliation imp
 if TYPE_CHECKING:
     from datetime import datetime
 
+    from base import EntityId
+    from base.model import EntityId as ModelEntityId
     from context.table_maintenance.application.domain.model.table import TableId
 
 
 class TableReconciliationsRepo(Repository[TableReconciliation]):
     """Persist and query TableReconciliation aggregates."""
+
+    @abstractmethod
+    def get(self, entity_id: EntityId | ModelEntityId) -> TableReconciliation | None:
+        """Return the reconciliation with the given id, or None when it does not exist."""
 
     @abstractmethod
     def list_by_table(

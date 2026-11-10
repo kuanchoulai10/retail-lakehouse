@@ -2,25 +2,19 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from datetime import datetime
 
-from base import ValueObject
-
-if TYPE_CHECKING:
-    from datetime import datetime
-
-    from context.table_maintenance.application.domain.model.shared import (
-        ConditionCombine,
-        MaintenanceOperation,
-        Measurement,
-    )
-    from context.table_maintenance.application.domain.model.table_reconciliation.operation_result import (
-        OperationResult,
-    )
+from base.model import ValueObject
+from context.table_maintenance.application.domain.model.shared import (
+    ConditionCombine,
+    MaintenanceOperation,
+    Measurement,
+)
+from context.table_maintenance.application.domain.model.table_reconciliation.operation_result import (
+    OperationResult,
+)
 
 
-@dataclass(frozen=True)
 class OperationOutcome(ValueObject):
     """Record what a reconciliation measured and decided for one operation."""
 

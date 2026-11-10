@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from base import EntityId
+    from base.model import EntityId as ModelEntityId
     from context.table_maintenance.application.domain.model.table import TableId
     from context.table_maintenance.application.domain.model.table_reconciliation import (
         TableReconciliation,
@@ -33,7 +34,7 @@ class InMemoryTableReconciliationsRepo(TableReconciliationsRepo):
         self.items[entity.id.value] = entity
         return entity
 
-    def get(self, entity_id: EntityId) -> TableReconciliation | None:
+    def get(self, entity_id: EntityId | ModelEntityId) -> TableReconciliation | None:
         """Return the reconciliation or None."""
         return self.items.get(entity_id.value)
 

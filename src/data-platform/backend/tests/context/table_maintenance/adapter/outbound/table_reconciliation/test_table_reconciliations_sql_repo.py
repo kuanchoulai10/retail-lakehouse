@@ -115,6 +115,7 @@ def test_create_and_get_round_trip(repo: TableReconciliationsRepo):
     repo.create(rec)
     loaded = repo.get(TableReconciliationId("r1"))
     assert loaded is not None
+    assert loaded.model_dump() == rec.model_dump()
     assert loaded.table_uuid == rec.table_uuid
     assert loaded.reconciled_at == NOW
     assert loaded.wake_reasons == {WakeReason.SCHEDULE: 2, WakeReason.RESUMED: 1}
