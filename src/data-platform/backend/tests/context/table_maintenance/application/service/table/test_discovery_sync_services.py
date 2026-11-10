@@ -174,8 +174,8 @@ def test_sync_skips_when_discovery_disabled(
 def test_sync_disabled_still_renames_and_drops(sync, tables_repo, catalog, signals, table_discovery_settings_repo, now):
     """With discovery disabled, sync still renames and drops existing tables."""
     table_discovery_settings_repo.settings.disable(now)
-    _row(tables_repo, now, "u-1", TableName("iceberg", "sales", "old"))
-    _row(tables_repo, now, "u-2", TableName("iceberg", "sales", "gone"))
+    _row(tables_repo, now, "u-1", TableName(catalog="iceberg", namespace="sales", table="old"))
+    _row(tables_repo, now, "u-2", TableName(catalog="iceberg", namespace="sales", table="gone"))
     catalog.add_table("iceberg", "sales", "new", "u-1")
     out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
     assert (out.registered, out.renamed, out.dropped) == (0, 1, 1)
@@ -195,8 +195,8 @@ def test_sync_skips_table_whose_rule_preset_is_missing(sync, tables_repo, rules_
 
 def test_sync_namespace_scope_never_drops(sync, tables_repo, catalog, signals, now):
     """A sync scoped to a namespace never drops tables."""
-    _row(tables_repo, now, "u-in", TableName("iceberg", "sales", "gone"))
-    _row(tables_repo, now, "u-other-ns", TableName("iceberg", "hr", "gone"))
+    _row(tables_repo, now, "u-in", TableName(catalog="iceberg", namespace="sales", table="gone"))
+    _row(tables_repo, now, "u-other-ns", TableName(catalog="iceberg", namespace="hr", table="gone"))
     out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg", namespace="sales"))
     assert out.dropped == 0
     assert tables_repo.get(TableId("u-in")).status == TableStatus.ACTIVE
@@ -207,7 +207,7 @@ def test_sync_namespace_scope_never_drops(sync, tables_repo, catalog, signals, n
 def test_sync_namespace_scope_still_registers_and_renames(sync, tables_repo, rules_repo, preset, catalog, now):
     """A sync scoped to a namespace still registers and renames tables."""
     _include_all(rules_repo, now)
-    _row(tables_repo, now, "u-1", TableName("iceberg", "sales", "old"))
+    _row(tables_repo, now, "u-1", TableName(catalog="iceberg", namespace="sales", table="old"))
     catalog.add_table("iceberg", "sales", "new", "u-1")
     catalog.add_table("iceberg", "sales", "fresh", "u-2")
     out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg", namespace="sales"))
@@ -216,9 +216,9 @@ def test_sync_namespace_scope_still_registers_and_renames(sync, tables_repo, rul
 
 def test_sync_catalog_wide_drops_only_rows_of_that_catalog(sync, tables_repo, catalog, signals, now):
     """A catalog-wide sync drops only the rows of that catalog that are gone."""
-    _row(tables_repo, now, "u-1", TableName("iceberg", "sales", "gone"))
-    _row(tables_repo, now, "u-2", TableName("iceberg", "hr", "gone"))
-    _row(tables_repo, now, "u-other-cat", TableName("other", "sales", "gone"))
+    _row(tables_repo, now, "u-1", TableName(catalog="iceberg", namespace="sales", table="gone"))
+    _row(tables_repo, now, "u-2", TableName(catalog="iceberg", namespace="hr", table="gone"))
+    _row(tables_repo, now, "u-other-cat", TableName(catalog="other", namespace="sales", table="gone"))
     out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
     assert out.dropped == 2
     assert tables_repo.get(TableId("u-1")).status == TableStatus.DROPPED
@@ -232,8 +232,10 @@ def test_sync_catalog_wide_drops_only_rows_of_that_catalog(sync, tables_repo, ca
 
 def test_sync_drops_excluded_without_stop_signal_and_ignores_dropped(sync, tables_repo, catalog, signals, now):
     """Sync drops an excluded table without a stop signal and ignores tables already dropped."""
-    tables_repo.create(Table.exclude_manual(TableId("u-1"), TableName("iceberg", "sales", "x"), now))
-    already = _row(tables_repo, now, "u-2", TableName("iceberg", "sales", "y"))
+    tables_repo.create(
+        Table.exclude_manual(TableId("u-1"), TableName(catalog="iceberg", namespace="sales", table="x"), now)
+    )
+    already = _row(tables_repo, now, "u-2", TableName(catalog="iceberg", namespace="sales", table="y"))
     already.mark_dropped(now)
     out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
     assert out.dropped == 1
@@ -243,7 +245,7 @@ def test_sync_drops_excluded_without_stop_signal_and_ignores_dropped(sync, table
 
 def test_sync_dropped_row_whose_uuid_reappears_is_not_renamed_or_revived(sync, tables_repo, catalog, signals, now):
     """A dropped row whose uuid reappears in the catalog is neither renamed nor revived."""
-    row = _row(tables_repo, now, "u-1", TableName("iceberg", "sales", "old"))
+    row = _row(tables_repo, now, "u-1", TableName(catalog="iceberg", namespace="sales", table="old"))
     row.mark_dropped(now)
     catalog.add_table("iceberg", "sales", "new", "u-1")
     out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
@@ -285,7 +287,7 @@ def test_sync_one_bad_table_is_skipped_not_fatal(sync, tables_repo, rules_repo, 
 
 def test_sync_persists_rename(sync, tables_repo, catalog, log, now):
     """A rename found by sync is persisted with one update."""
-    _row(tables_repo, now, "u-1", TableName("iceberg", "sales", "old"))
+    _row(tables_repo, now, "u-1", TableName(catalog="iceberg", namespace="sales", table="old"))
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
     catalog.add_table("iceberg", "sales", "new", "u-1")
     sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
@@ -294,12 +296,12 @@ def test_sync_persists_rename(sync, tables_repo, catalog, log, now):
 
 def test_sync_rename_keeps_settings(sync, tables_repo, catalog, signals, now):
     """A renamed table keeps its settings."""
-    table = _row(tables_repo, now, "u-1", TableName("iceberg", "sales", "old"))
+    table = _row(tables_repo, now, "u-1", TableName(catalog="iceberg", namespace="sales", table="old"))
     settings = table.settings
     catalog.add_table("iceberg", "sales", "new", "u-1")
     out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
     assert (out.registered, out.renamed, out.dropped) == (0, 1, 0)
-    assert tables_repo.get(TableId("u-1")).name == TableName("iceberg", "sales", "new")
+    assert tables_repo.get(TableId("u-1")).name == TableName(catalog="iceberg", namespace="sales", table="new")
     assert tables_repo.get(TableId("u-1")).settings == settings
     assert _calls(signals) == [("u-1", "seen", True)]
 
@@ -307,8 +309,8 @@ def test_sync_rename_keeps_settings(sync, tables_repo, catalog, signals, now):
 def test_sync_never_redecides_manual_tables(sync, tables_repo, rules_repo, preset, catalog, now):
     """Sync renames a manually selected table but never re-decides its selection."""
     _rule(rules_repo, now, RuleEffect.EXCLUDE, None)
-    manual = _row(tables_repo, now, "u-1", TableName("iceberg", "sales", "old"), True)
-    auto = _row(tables_repo, now, "u-2", TableName("iceberg", "sales", "auto"))
+    manual = _row(tables_repo, now, "u-1", TableName(catalog="iceberg", namespace="sales", table="old"), True)
+    auto = _row(tables_repo, now, "u-2", TableName(catalog="iceberg", namespace="sales", table="auto"))
     catalog.add_table("iceberg", "sales", "new", "u-1")
     catalog.add_table("iceberg", "sales", "auto", "u-2")
     out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
@@ -359,7 +361,7 @@ def test_table_hint_without_name_requests_namespace_discovery(hint, discovery_re
 
 def test_table_hint_for_registered_table_signals_table_updated(hint, tables_repo, catalog, signals, now):
     """A hint for a registered table signals that the table was updated."""
-    _row(tables_repo, now, "u-1", TableName("iceberg", "sales", "orders"))
+    _row(tables_repo, now, "u-1", TableName(catalog="iceberg", namespace="sales", table="orders"))
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     out = hint.execute(_hint())
     assert out.action == "signalled"
@@ -369,7 +371,7 @@ def test_table_hint_for_registered_table_signals_table_updated(hint, tables_repo
 
 def test_table_hint_for_registered_paused_table_still_signals(hint, tables_repo, catalog, signals, now):
     """A hint for a paused table is still signalled."""
-    _row(tables_repo, now, "u-1", TableName("iceberg", "sales", "orders")).pause(now)
+    _row(tables_repo, now, "u-1", TableName(catalog="iceberg", namespace="sales", table="orders")).pause(now)
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     assert hint.execute(_hint()).action == "signalled"
     assert len(signals.calls) == 1
@@ -377,7 +379,9 @@ def test_table_hint_for_registered_paused_table_still_signals(hint, tables_repo,
 
 def test_table_hint_for_excluded_registered_table_is_ignored(hint, tables_repo, catalog, signals, now):
     """A hint for an excluded table is ignored."""
-    tables_repo.create(Table.exclude_manual(TableId("u-1"), TableName("iceberg", "sales", "orders"), now))
+    tables_repo.create(
+        Table.exclude_manual(TableId("u-1"), TableName(catalog="iceberg", namespace="sales", table="orders"), now)
+    )
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     assert hint.execute(_hint()).action == "ignored"
     assert signals.calls == []
@@ -402,10 +406,10 @@ def _busy_observation(uuid):
 
 def test_table_hint_for_registered_table_signals_but_cooldown_blocks_replan(hint, tables_repo, catalog, signals, now):
     """A hint signals the workflow, while a cooldown still blocks a new plan."""
-    cooling = _row(tables_repo, now, "u-1", TableName("iceberg", "sales", "orders"))
+    cooling = _row(tables_repo, now, "u-1", TableName(catalog="iceberg", namespace="sales", table="orders"))
     for op in MaintenanceOperation.ordered():
         cooling.record_operation_result(op, True, now - timedelta(minutes=1))
-    _row(tables_repo, now, "u-2", TableName("iceberg", "sales", "fresh"))
+    _row(tables_repo, now, "u-2", TableName(catalog="iceberg", namespace="sales", table="fresh"))
     for uuid, name in (("u-1", "orders"), ("u-2", "fresh")):
         catalog.add_table("iceberg", "sales", name, uuid)
         catalog.observations[("iceberg", "sales", name)] = _busy_observation(uuid)
@@ -420,7 +424,7 @@ def test_table_hint_for_registered_table_signals_but_cooldown_blocks_replan(hint
 
 def test_table_hint_with_new_name_renames_then_signals(hint, tables_repo, catalog, signals, now):
     """A hint with a new table name renames the row and then signals."""
-    _row(tables_repo, now, "u-1", TableName("iceberg", "sales", "old"))
+    _row(tables_repo, now, "u-1", TableName(catalog="iceberg", namespace="sales", table="old"))
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     out = hint.execute(_hint())
     assert out.action == "renamed"
@@ -451,7 +455,7 @@ def test_table_hint_ignores_unregistered_table_without_match_or_when_disabled(
 
 def test_table_hint_for_missing_table_with_row_requests_discovery(hint, tables_repo, discovery_requests, now):
     """A hint for a table gone from the catalog but still stored requests discovery."""
-    _row(tables_repo, now, "u-1", TableName("iceberg", "sales", "orders"))
+    _row(tables_repo, now, "u-1", TableName(catalog="iceberg", namespace="sales", table="orders"))
     out = hint.execute(_hint())
     assert out.action == "discovery_requested"
     assert [(c.catalog, c.namespace) for c in discovery_requests.calls] == [("iceberg", None)]
@@ -465,7 +469,7 @@ def test_table_hint_for_missing_unknown_table_is_ignored(hint, discovery_request
 
 def test_table_hint_for_dropped_registered_row_is_ignored(hint, tables_repo, catalog, signals, now):
     """A hint for a dropped row is ignored."""
-    _row(tables_repo, now, "u-1", TableName("iceberg", "sales", "orders")).mark_dropped(now)
+    _row(tables_repo, now, "u-1", TableName(catalog="iceberg", namespace="sales", table="orders")).mark_dropped(now)
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     assert hint.execute(_hint()).action == "ignored"
     assert signals.calls == []
@@ -485,7 +489,7 @@ def test_table_hint_new_uuid_over_live_same_name_row_requests_catalog_discovery(
 ):
     """A new uuid under the name of a live row registers it and requests a catalog discovery."""
     _include_all(rules_repo, now)
-    _row(tables_repo, now, "u-old", TableName("iceberg", "sales", "orders"))
+    _row(tables_repo, now, "u-old", TableName(catalog="iceberg", namespace="sales", table="orders"))
     catalog.add_table("iceberg", "sales", "orders", "u-new")
     assert hint.execute(_hint()).action == "registered"
     assert tables_repo.get(TableId("u-new")) is not None
@@ -504,7 +508,7 @@ def test_table_hint_fresh_registration_requests_no_discovery(
 
 def test_table_hint_persists_rename(hint, tables_repo, catalog, log, now):
     """A rename found through a hint is persisted with one update."""
-    _row(tables_repo, now, "u-1", TableName("iceberg", "sales", "old"))
+    _row(tables_repo, now, "u-1", TableName(catalog="iceberg", namespace="sales", table="old"))
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     hint.execute(_hint())
@@ -544,10 +548,12 @@ def test_sync_retry_after_failed_start_still_starts_workflow(
 
 def test_sync_reensures_workflow_of_every_live_table_that_needs_one(sync, tables_repo, catalog, signals, now):
     """Sync makes sure every live table has its workflow."""
-    _row(tables_repo, now, "u-active", TableName("iceberg", "sales", "a"))
-    _row(tables_repo, now, "u-paused", TableName("iceberg", "sales", "p")).pause(now)
-    tables_repo.create(Table.exclude_manual(TableId("u-excluded"), TableName("iceberg", "sales", "x"), now))
-    _row(tables_repo, now, "u-dropped", TableName("iceberg", "sales", "d")).mark_dropped(now)
+    _row(tables_repo, now, "u-active", TableName(catalog="iceberg", namespace="sales", table="a"))
+    _row(tables_repo, now, "u-paused", TableName(catalog="iceberg", namespace="sales", table="p")).pause(now)
+    tables_repo.create(
+        Table.exclude_manual(TableId("u-excluded"), TableName(catalog="iceberg", namespace="sales", table="x"), now)
+    )
+    _row(tables_repo, now, "u-dropped", TableName(catalog="iceberg", namespace="sales", table="d")).mark_dropped(now)
     for uuid, name in (
         ("u-active", "a"),
         ("u-paused", "p"),
@@ -565,7 +571,7 @@ def test_sync_reensures_workflow_of_every_live_table_that_needs_one(sync, tables
 
 def test_sync_reensures_renamed_table(sync, tables_repo, catalog, signals, now):
     """Sync re-ensures the workflow of a renamed table."""
-    _row(tables_repo, now, "u-1", TableName("iceberg", "sales", "old"))
+    _row(tables_repo, now, "u-1", TableName(catalog="iceberg", namespace="sales", table="old"))
     catalog.add_table("iceberg", "sales", "new", "u-1")
     out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
     assert (out.renamed, out.ensured) == (1, 1)
@@ -583,7 +589,7 @@ def test_sync_does_not_reensure_freshly_registered_table_twice(sync, rules_repo,
 
 def test_sync_namespace_scope_does_not_reensure(sync, tables_repo, catalog, signals, now):
     """A sync scoped to a namespace does not re-ensure workflows."""
-    _row(tables_repo, now, "u-1", TableName("iceberg", "sales", "orders"))
+    _row(tables_repo, now, "u-1", TableName(catalog="iceberg", namespace="sales", table="orders"))
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     out = sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg", namespace="sales"))
     assert out.ensured == 0

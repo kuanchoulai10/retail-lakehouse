@@ -51,7 +51,7 @@ def table(settings=None) -> Table:
     """Build an active auto table with the given settings."""
     return Table.register_auto(
         TableId("u"),
-        TableName("c", "n", "t"),
+        TableName(catalog="c", namespace="n", table="t"),
         TableDiscoveryRuleId("r"),
         TableMaintenancePresetId("t"),
         settings or MaintenanceSettings(),
@@ -212,11 +212,15 @@ def test_cooldown_skips_operation():
     """An operation in cooldown is not planned until the cooldown ends."""
     o = obs(partitions=(part(10),))
     t = table(compact_only())
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(NOW - timedelta(minutes=30))
+    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(last_attempt_at=NOW - timedelta(minutes=30))
     assert plan_scheduled_maintenance(t, o, NOW).is_empty
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(NOW - timedelta(hours=3), consecutive_failures=2)
+    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
+        last_attempt_at=NOW - timedelta(hours=3), consecutive_failures=2
+    )
     assert plan_scheduled_maintenance(t, o, NOW).is_empty
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(NOW - timedelta(hours=5), consecutive_failures=2)
+    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
+        last_attempt_at=NOW - timedelta(hours=5), consecutive_failures=2
+    )
     assert not plan_scheduled_maintenance(t, o, NOW).is_empty
 
 
@@ -275,7 +279,7 @@ def test_remove_orphan_files_due_after_interval():
     s = only(MaintenanceSettings(), Op.REMOVE_ORPHAN_FILES)
     t = table(s)
     assert ops(plan_scheduled_maintenance(t, obs(), NOW)) == [Op.REMOVE_ORPHAN_FILES]
-    t.operation_states[Op.REMOVE_ORPHAN_FILES] = OperationState(NOW - timedelta(days=6))
+    t.operation_states[Op.REMOVE_ORPHAN_FILES] = OperationState(last_attempt_at=NOW - timedelta(days=6))
     assert plan_scheduled_maintenance(t, obs(), NOW).is_empty
     assert RemoveOrphanFilesSettings().min_interval == timedelta(days=7)
 
@@ -296,7 +300,7 @@ def test_paused_excluded_or_settingless_table_yields_empty_plan():
     paused = table()
     paused.pause(NOW)
     assert plan_scheduled_maintenance(paused, o, NOW).is_empty
-    excluded = Table.exclude_manual(TableId("u"), TableName("c", "n", "t"), NOW)
+    excluded = Table.exclude_manual(TableId("u"), TableName(catalog="c", namespace="n", table="t"), NOW)
     assert plan_scheduled_maintenance(excluded, o, NOW).is_empty
     dropped = table()
     dropped.mark_dropped(NOW)
@@ -307,7 +311,7 @@ def test_cooldown_boundary_is_inclusive():
     """An operation is planned exactly when its cooldown ends."""
     t = table(compact_only())
     o = obs(partitions=(part(10),))
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(NOW - timedelta(hours=1))
+    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(last_attempt_at=NOW - timedelta(hours=1))
     assert ops(plan_scheduled_maintenance(t, o, NOW)) == [Op.REWRITE_DATA_FILES]
 
 

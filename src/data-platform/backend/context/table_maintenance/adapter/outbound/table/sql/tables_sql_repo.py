@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from sqlalchemy import Engine
 
     from base import EntityId
+    from base.model import EntityId as ModelEntityId
     from context.table_maintenance.application.port.outbound.table import (
         Table,
         TableName,
@@ -49,7 +50,7 @@ class TablesSqlRepo(TablesRepo):
             raise ConflictError(str(exc.orig)) from exc
         return entity
 
-    def get(self, entity_id: EntityId) -> Table | None:
+    def get(self, entity_id: EntityId | ModelEntityId) -> Table | None:
         """Return the table with the given uuid, or None."""
         with self._engine.connect() as conn:
             row = conn.execute(select(t).where(t.c.uuid == entity_id.value)).first()

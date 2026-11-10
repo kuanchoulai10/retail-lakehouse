@@ -60,7 +60,7 @@ def table(settings=None) -> Table:
     """Build an active auto table with the given settings."""
     return Table.register_auto(
         TableId("u"),
-        TableName("c", "n", "t"),
+        TableName(catalog="c", namespace="n", table="t"),
         TableDiscoveryRuleId("r"),
         TableMaintenancePresetId("t"),
         settings or MaintenanceSettings(),
@@ -200,7 +200,7 @@ def test_expire_snapshots_counts_expirable():
 def test_cooldown_reports_next_eligible_time():
     """An operation in cooldown reports when it is next eligible and has no plan."""
     t = table(compaction())
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(NOW - timedelta(minutes=30))
+    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(last_attempt_at=NOW - timedelta(minutes=30))
     a = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES)
     assert a.verdict == OperationVerdict.COOLDOWN
     assert a.next_eligible_at == NOW + timedelta(minutes=30)
@@ -215,7 +215,7 @@ def test_disabled_operation_has_no_measures():
         remove_orphan_files=RemoveOrphanFilesSettings(enabled=False),
     )
     t = table(s)
-    t.operation_states[Op.REMOVE_ORPHAN_FILES] = OperationState(NOW)
+    t.operation_states[Op.REMOVE_ORPHAN_FILES] = OperationState(last_attempt_at=NOW)
     a = assess(t, obs(), Op.REMOVE_ORPHAN_FILES)
     assert a.verdict == OperationVerdict.DISABLED
     assert a.measured is None
@@ -242,7 +242,7 @@ def test_assessment_ignores_status():
 def test_plan_equals_due_operations():
     """The plan of an assessment equals the plan of scheduled maintenance."""
     t = table()
-    t.operation_states[Op.REWRITE_MANIFESTS] = OperationState(NOW - timedelta(minutes=10))
+    t.operation_states[Op.REWRITE_MANIFESTS] = OperationState(last_attempt_at=NOW - timedelta(minutes=10))
     o = obs(
         partitions=(part(10, value=1), part(1, value=2)),
         manifests=(ManifestStats(length_bytes=MIB),) * 5,
@@ -339,7 +339,7 @@ def test_disabled_operation_has_no_measurements():
 def test_cooldown_keeps_the_measurements():
     """An operation in cooldown keeps its measurements."""
     t = table(compaction())
-    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(NOW - timedelta(minutes=30))
+    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(last_attempt_at=NOW - timedelta(minutes=30))
     a = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES)
     assert a.verdict == OperationVerdict.COOLDOWN
     assert a.measurements[0] == Measurement(

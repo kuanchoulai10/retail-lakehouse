@@ -11,6 +11,8 @@ from context.table_maintenance.application.domain.model.table import Table
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from base import EntityId
+    from base.model import EntityId as ModelEntityId
     from context.table_maintenance.application.domain.model.table import (
         TableName,
         TableStatus,
@@ -19,6 +21,10 @@ if TYPE_CHECKING:
 
 class TablesRepo(Repository[Table]):
     """Persist and query Table aggregates."""
+
+    @abstractmethod
+    def get(self, entity_id: EntityId | ModelEntityId) -> Table | None:
+        """Return the table with the given id, or None when it does not exist."""
 
     @abstractmethod
     def update(self, table: Table) -> Table:

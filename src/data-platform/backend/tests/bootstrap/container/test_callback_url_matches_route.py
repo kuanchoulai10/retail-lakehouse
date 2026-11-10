@@ -52,7 +52,7 @@ def _submitted_callback_url() -> str:
     tables.create(
         Table.register_auto(
             TableId("u-1"),
-            TableName("iceberg", "sales", "orders"),
+            TableName(catalog="iceberg", namespace="sales", table="orders"),
             TableDiscoveryRuleId("r-1"),
             TableMaintenancePresetId("p-1"),
             MaintenanceSettings(),

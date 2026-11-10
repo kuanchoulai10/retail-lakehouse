@@ -42,7 +42,7 @@ def _table(
 ) -> Table:
     return Table(
         id=TableId(uuid),
-        name=name or TableName("iceberg", "inventory", "orders"),
+        name=name or TableName(catalog="iceberg", namespace="inventory", table="orders"),
         status=status,
         selection=TableSelection.AUTO,
         settings=MaintenanceSettings(reconcile_interval=timedelta(minutes=45)),
@@ -85,6 +85,18 @@ def test_roundtrip_field_by_field(repo: TablesSqlRepo):
     assert state.last_attempt_at is not None
     assert state.last_attempt_at.tzinfo is not None
     assert loaded.collect_events() == []
+
+
+def test_roundtrip_reads_an_equal_aggregate(repo: TablesSqlRepo):
+    """A stored row reads back into a table whose every field, by value and type, is the original's."""
+    original = _table()
+    repo.create(original)
+    loaded = repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.model_dump() == original.model_dump()
+    assert {name: type(getattr(loaded, name)) for name in Table.model_fields} == {
+        name: type(getattr(original, name)) for name in Table.model_fields
+    }
 
 
 def test_roundtrip_with_none_settings_and_links(repo: TablesSqlRepo):
@@ -145,18 +157,18 @@ def test_update_missing_raises(repo: TablesSqlRepo):
 
 def test_find_by_name_exact_match(repo: TablesSqlRepo):
     """Finding by name matches the exact catalog, namespace and table name."""
-    repo.create(_table("u1", TableName("iceberg", "inventory", "orders")))
-    repo.create(_table("u2", TableName("iceberg", "inventory", "orders2")))
-    found = repo.find_by_name(TableName("iceberg", "inventory", "orders"))
+    repo.create(_table("u1", TableName(catalog="iceberg", namespace="inventory", table="orders")))
+    repo.create(_table("u2", TableName(catalog="iceberg", namespace="inventory", table="orders2")))
+    found = repo.find_by_name(TableName(catalog="iceberg", namespace="inventory", table="orders"))
     assert found is not None
     assert found.id == TableId("u1")
-    assert repo.find_by_name(TableName("iceberg", "inventory", "Orders")) is None
-    assert repo.find_by_name(TableName("other", "inventory", "orders")) is None
+    assert repo.find_by_name(TableName(catalog="iceberg", namespace="inventory", table="Orders")) is None
+    assert repo.find_by_name(TableName(catalog="other", namespace="inventory", table="orders")) is None
 
 
 def test_find_by_name_ignores_dropped_and_allows_reuse(repo: TablesSqlRepo):
     """Finding by name ignores dropped tables, so a name can be reused by a new table."""
-    name = TableName("iceberg", "inventory", "orders")
+    name = TableName(catalog="iceberg", namespace="inventory", table="orders")
     repo.create(_table("old", name, TableStatus.DROPPED))
     assert repo.find_by_name(name) is None
     repo.create(_table("new", name, TableStatus.ACTIVE))
@@ -167,7 +179,7 @@ def test_find_by_name_ignores_dropped_and_allows_reuse(repo: TablesSqlRepo):
 
 def test_find_by_name_prefers_most_recently_updated(repo: TablesSqlRepo):
     """When several tables share a name the most recently updated one is found."""
-    name = TableName("iceberg", "inventory", "orders")
+    name = TableName(catalog="iceberg", namespace="inventory", table="orders")
     repo.create(_table("a", name, updated_at=NOW))
     repo.create(_table("b", name, updated_at=NOW + timedelta(minutes=1)))
     found = repo.find_by_name(name)
@@ -177,9 +189,9 @@ def test_find_by_name_prefers_most_recently_updated(repo: TablesSqlRepo):
 
 def test_list_by_statuses(repo: TablesSqlRepo):
     """Listing by statuses returns the tables in those statuses and none for an empty list."""
-    repo.create(_table("a", TableName("c", "n", "a"), TableStatus.ACTIVE))
-    repo.create(_table("b", TableName("c", "n", "b"), TableStatus.PAUSED))
-    repo.create(_table("c", TableName("c", "n", "c"), TableStatus.DROPPED))
+    repo.create(_table("a", TableName(catalog="c", namespace="n", table="a"), TableStatus.ACTIVE))
+    repo.create(_table("b", TableName(catalog="c", namespace="n", table="b"), TableStatus.PAUSED))
+    repo.create(_table("c", TableName(catalog="c", namespace="n", table="c"), TableStatus.DROPPED))
     got = repo.list_by_statuses([TableStatus.ACTIVE, TableStatus.PAUSED])
     assert [t.id.value for t in got] == ["a", "b"]
     assert repo.list_by_statuses([]) == []
@@ -187,10 +199,10 @@ def test_list_by_statuses(repo: TablesSqlRepo):
 
 def test_list_all_ordered_by_name(repo: TablesSqlRepo):
     """Listing all tables orders them by name."""
-    repo.create(_table("1", TableName("b", "n", "t")))
-    repo.create(_table("2", TableName("a", "z", "t")))
-    repo.create(_table("3", TableName("a", "n", "z")))
-    repo.create(_table("4", TableName("a", "n", "a")))
+    repo.create(_table("1", TableName(catalog="b", namespace="n", table="t")))
+    repo.create(_table("2", TableName(catalog="a", namespace="z", table="t")))
+    repo.create(_table("3", TableName(catalog="a", namespace="n", table="z")))
+    repo.create(_table("4", TableName(catalog="a", namespace="n", table="a")))
     assert [t.id.value for t in repo.list_all()] == ["4", "3", "2", "1"]
 
 
@@ -198,7 +210,7 @@ def test_create_duplicate_primary_key_raises_conflict(repo: TablesSqlRepo):
     """Creating a table with an existing id raises ConflictError."""
     repo.create(_table("dup"))
     with pytest.raises(ConflictError):
-        repo.create(_table("dup", TableName("c", "n", "other")))
+        repo.create(_table("dup", TableName(catalog="c", namespace="n", table="other")))
 
 
 def test_tables_sql_table_name_is_tables():

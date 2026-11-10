@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from datetime import datetime
 
-from base import AggregateRoot
+from pydantic import Field
+
+from base.model import AggregateRoot
+from context.table_maintenance.application.domain.model.shared import (
+    MaintenanceOperation,
+    MaintenanceSettings,
+)
 from context.table_maintenance.application.domain.model.table.invalid_table_transition import (
     InvalidTableTransition,
 )
@@ -13,32 +18,23 @@ from context.table_maintenance.application.domain.model.table.operation_state im
     OperationState,
 )
 from context.table_maintenance.application.domain.model.table.table_id import TableId
+from context.table_maintenance.application.domain.model.table.table_name import (
+    TableName,
+)
 from context.table_maintenance.application.domain.model.table.table_selection import (
     TableSelection,
 )
 from context.table_maintenance.application.domain.model.table.table_status import (
     TableStatus,
 )
-
-if TYPE_CHECKING:
-    from datetime import datetime
-
-    from context.table_maintenance.application.domain.model.shared import (
-        MaintenanceOperation,
-        MaintenanceSettings,
-    )
-    from context.table_maintenance.application.domain.model.table.table_name import (
-        TableName,
-    )
-    from context.table_maintenance.application.domain.model.table_discovery_rule import (
-        TableDiscoveryRuleId,
-    )
-    from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-        TableMaintenancePresetId,
-    )
+from context.table_maintenance.application.domain.model.table_discovery_rule import (
+    TableDiscoveryRuleId,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_preset import (
+    TableMaintenancePresetId,
+)
 
 
-@dataclass(eq=False)
 class Table(AggregateRoot[TableId]):
     """Hold the maintenance state of one Iceberg table, identified by its uuid."""
 
@@ -51,7 +47,7 @@ class Table(AggregateRoot[TableId]):
     source_preset_id: TableMaintenancePresetId | None
     registered_at: datetime
     updated_at: datetime
-    operation_states: dict[MaintenanceOperation, OperationState] = field(default_factory=dict)
+    operation_states: dict[MaintenanceOperation, OperationState] = Field(default_factory=dict)
 
     @classmethod
     def register_auto(

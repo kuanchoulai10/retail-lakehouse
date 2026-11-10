@@ -43,7 +43,7 @@ def _register(repo, now):
     repo.create(
         Table.register_auto(
             TableId("u-1"),
-            TableName(*KEY),
+            TableName(catalog=KEY[0], namespace=KEY[1], table=KEY[2]),
             TableDiscoveryRuleId("r-1"),
             TableMaintenancePresetId("t-1"),
             MaintenanceSettings(),

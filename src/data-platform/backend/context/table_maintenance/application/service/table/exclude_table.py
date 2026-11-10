@@ -61,7 +61,7 @@ class ExcludeTableService(ExcludeTableUseCase):
         """Exclude the table, registering it without settings if unknown."""
         now = self._clock()
         with translate_domain_errors():
-            name = TableName(request.catalog, request.namespace, request.table)
+            name = TableName(catalog=request.catalog, namespace=request.namespace, table=request.table)
             found = self._catalog_gateway.load_table(
                 TableMetadataRef(request.catalog, request.namespace, request.table)
             )
@@ -73,7 +73,7 @@ class ExcludeTableService(ExcludeTableUseCase):
                 self._tables_repo.update(table)
             else:
                 uuid = TableId(found.table_uuid)
-                name = TableName(found.catalog, found.namespace, found.table)
+                name = TableName(catalog=found.catalog, namespace=found.namespace, table=found.table)
                 existing = self._tables_repo.get(uuid)
                 if existing is None:
                     table = Table.exclude_manual(uuid, name, now)

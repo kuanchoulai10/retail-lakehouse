@@ -10,12 +10,15 @@ import importlib
 import subprocess
 import sys
 import typing
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
 
-from base import AggregateRoot, Repository
-from tests.architecture.aggregates import aggregates, derive_aggregates
+from base import AggregateRoot, EntityId, Repository
+from base.model import AggregateRoot as ModelAggregateRoot
+from base.model import EntityId as ModelEntityId
+from tests.architecture.aggregates import AGGREGATE_ROOT_BASES, aggregates, derive_aggregates
 from tests.architecture.boundaries import (
     BACKEND,
     PROJECT_PACKAGES,
@@ -275,14 +278,24 @@ def test_every_boundary_imports_in_isolation(boundary: str):
     assert result.returncode == 0, result.stderr
 
 
-def _generic_argument(cls: type, origin: type) -> type:
-    """Return the type argument ``cls`` passes to the generic base ``origin``."""
+def _generic_argument(cls: type, origins: tuple[type, ...]) -> type:
+    """Return the type argument ``cls`` passes to one of the generic bases ``origins``.
+
+    A plain generic records ``Base[Arg]`` in ``__orig_bases__``; a Pydantic
+    generic creates a real class ``Base[Arg]`` whose
+    ``__pydantic_generic_metadata__`` names the origin and the arguments.
+    """
     for klass in cls.__mro__:
+        metadata = getattr(klass, "__pydantic_generic_metadata__", None)
+        if metadata is not None and metadata["origin"] in origins:
+            (argument,) = metadata["args"]
+            return argument
         for base in getattr(klass, "__orig_bases__", ()):
-            if typing.get_origin(base) is origin:
+            if typing.get_origin(base) in origins:
                 (argument,) = typing.get_args(base)
                 return argument
-    msg = f"{cls.__name__} does not subclass {origin.__name__}[...]"
+    names = " or ".join(origin.__name__ for origin in origins)
+    msg = f"{cls.__name__} does not subclass {names}[...]"
     raise AssertionError(msg)
 
 
@@ -308,14 +321,43 @@ def _repository_ports() -> list[tuple[str, type]]:
 )
 def test_repository_port_exports_its_aggregate_and_id(boundary: str, repo: type):
     """Adapters see only ports, so a repo port re-exports its aggregate and the id type."""
-    aggregate = _generic_argument(repo, Repository)
-    entity_id = _generic_argument(aggregate, AggregateRoot)
+    aggregate = _generic_argument(repo, (Repository,))
+    entity_id = _generic_argument(aggregate, AGGREGATE_ROOT_BASES)
     package = importlib.import_module(boundary)
     for exported in (aggregate, entity_id):
         assert getattr(package, exported.__name__, None) is exported, (
             f"{boundary} must re-export {exported.__name__} (used by {repo.__name__})"
         )
         assert exported.__name__ in package.__all__, exported.__name__
+
+
+class _ModelGadgetId(ModelEntityId):
+    """Identify a Pydantic gadget."""
+
+
+class _ModelGadget(ModelAggregateRoot[_ModelGadgetId]):
+    """A Pydantic aggregate."""
+
+
+@dataclass(frozen=True)
+class _GadgetId(EntityId):
+    """Identify a dataclass gadget."""
+
+
+class _Gadget(AggregateRoot[_GadgetId]):
+    """A dataclass aggregate."""
+
+
+@pytest.mark.parametrize(("aggregate", "entity_id"), [(_ModelGadget, _ModelGadgetId), (_Gadget, _GadgetId)])
+def test_generic_argument_reads_the_id_of_either_aggregate_root(aggregate: type, entity_id: type):
+    """The id type is found for a Pydantic aggregate and for a dataclass one."""
+    assert _generic_argument(aggregate, AGGREGATE_ROOT_BASES) is entity_id
+
+
+def test_generic_argument_reports_a_missing_generic_base():
+    """A class without the generic base is reported, naming every accepted base."""
+    with pytest.raises(AssertionError, match="does not subclass AggregateRoot or AggregateRoot"):
+        _generic_argument(_GadgetId, AGGREGATE_ROOT_BASES)
 
 
 def aggregates_without_one_repository_port(wanted: set[str], counts: dict[str, int]) -> list[str]:

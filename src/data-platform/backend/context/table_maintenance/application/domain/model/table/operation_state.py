@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
-from base import ValueObject
+from base.model import ValueObject, validated_copy
 
 
-@dataclass(frozen=True)
 class OperationState(ValueObject):
     """Track the last attempt and failure streak of one maintenance operation."""
 
@@ -21,11 +19,11 @@ class OperationState(ValueObject):
 
     def after_success(self, at: datetime) -> OperationState:
         """Return the state after a successful attempt."""
-        return replace(self, last_attempt_at=at, consecutive_failures=0)
+        return validated_copy(self, last_attempt_at=at, consecutive_failures=0)
 
     def after_failure(self, at: datetime) -> OperationState:
         """Return the state after a failed attempt."""
-        return replace(
+        return validated_copy(
             self,
             last_attempt_at=at,
             consecutive_failures=self.consecutive_failures + 1,

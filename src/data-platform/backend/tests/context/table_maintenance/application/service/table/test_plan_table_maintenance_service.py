@@ -45,7 +45,7 @@ from tests.context.table_maintenance.fakes.in_memory_table_reconciliations_repo 
     InMemoryTableReconciliationsRepo,
 )
 
-NAME = TableName("iceberg", "sales", "orders")
+NAME = TableName(catalog="iceberg", namespace="sales", table="orders")
 KEY = ("iceberg", "sales", "orders")
 OPS = MaintenanceOperation
 
@@ -123,11 +123,11 @@ def _plan(planner, now, manual=None, uuid="u-1"):
 def test_plan_skip_reasons(planner, tables_repo, catalog, now):
     """Each table that cannot be planned is skipped with the reason for it."""
     assert _plan(planner, now, uuid="missing").reason == "dropped"
-    dropped = _table(tables_repo, now, uuid="u-d", name=TableName("c", "n", "d"))
+    dropped = _table(tables_repo, now, uuid="u-d", name=TableName(catalog="c", namespace="n", table="d"))
     dropped.mark_dropped(now)
-    excluded = Table.exclude_manual(TableId("u-e"), TableName("c", "n", "e"), now)
+    excluded = Table.exclude_manual(TableId("u-e"), TableName(catalog="c", namespace="n", table="e"), now)
     tables_repo.create(excluded)
-    paused = _table(tables_repo, now, uuid="u-p", name=TableName("c", "n", "p"))
+    paused = _table(tables_repo, now, uuid="u-p", name=TableName(catalog="c", namespace="n", table="p"))
     paused.pause(now)
     gone = _table(tables_repo, now)
     results = {uuid: _plan(planner, now, uuid=uuid) for uuid in ("u-d", "u-e", "u-p", gone.id.value)}
@@ -150,7 +150,7 @@ def test_plan_carries_the_fully_qualified_table_name(planner, tables_repo, catal
 
 def test_plan_skip_carries_the_table_name_when_the_table_is_known(planner, tables_repo, catalog, now):
     """A skipped plan carries the table name when the table is known and None otherwise."""
-    paused = _table(tables_repo, now, uuid="u-p", name=TableName("c", "n", "p"))
+    paused = _table(tables_repo, now, uuid="u-p", name=TableName(catalog="c", namespace="n", table="p"))
     paused.pause(now)
     assert _plan(planner, now, uuid="u-p").table_name == "c.n.p"
     assert _plan(planner, now, uuid="missing").table_name is None

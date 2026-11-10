@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from pydantic import ValidationError
 
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
@@ -258,3 +259,31 @@ def test_apply_auto_include_keeps_source_preset_when_settings_kept():
     t.apply_auto_decision(RULE, TableMaintenancePresetId("t2"), SETTINGS, T1)
     assert t.source_preset_id == PRESET
     assert t.matched_rule_id == RULE
+
+
+def test_table_rejects_wrong_type_on_assignment():
+    """Every assignment is validated: a string is not a datetime."""
+    t = auto()
+    with pytest.raises(ValidationError):
+        t.updated_at = "2026-01-01T00:00:00Z"  # ty: ignore[invalid-assignment]
+    assert t.updated_at == T0
+
+
+def test_table_name_rejects_an_empty_table_as_a_validation_error():
+    """An empty table name is a broken invariant at construction."""
+    with pytest.raises(ValidationError, match="table name must not be empty"):
+        TableName(catalog="iceberg", namespace="inventory", table="")
+
+
+def test_operation_state_is_immutable():
+    """An operation state changes only by building a new one."""
+    state = OperationState()
+    with pytest.raises(ValidationError):
+        state.consecutive_failures = 1
+
+
+def test_table_equality_follows_identity():
+    """Two tables with one id are equal even when their state differs."""
+    a, b = auto(), auto()
+    b.pause(T1)
+    assert a == b and hash(a) == hash(b)

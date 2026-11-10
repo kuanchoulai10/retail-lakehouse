@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from pydantic import field_validator
 
-from base import ValueObject
+from base.model import ValueObject
 
 
-@dataclass(frozen=True)
 class TableName(ValueObject):
     """Locate an Iceberg table by catalog, namespace and table name.
 
@@ -18,10 +17,12 @@ class TableName(ValueObject):
     namespace: str
     table: str
 
-    def __post_init__(self) -> None:
-        """Reject an empty table name."""
-        if not self.table:
+    @field_validator("table")
+    @classmethod
+    def _table_is_not_empty(cls, value: str) -> str:
+        if not value:
             raise ValueError("table name must not be empty")
+        return value
 
     def qualified(self) -> str:
         """Return ``namespace.table``."""

@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from base import EntityId
+    from base.model import EntityId as ModelEntityId
     from context.table_maintenance.application.domain.model.table import (
         Table,
         TableName,
@@ -32,7 +33,7 @@ class InMemoryTablesRepo(TablesRepo):
         self.items[entity.id.value] = entity
         return entity
 
-    def get(self, entity_id: EntityId) -> Table | None:
+    def get(self, entity_id: EntityId | ModelEntityId) -> Table | None:
         """Return the table or None."""
         return self.items.get(entity_id.value)
 

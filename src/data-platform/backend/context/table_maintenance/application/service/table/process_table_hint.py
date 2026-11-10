@@ -94,7 +94,7 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         return ProcessTableHintUseCaseOutput(action=TableHintAction.DISCOVERY_REQUESTED.value)
 
     def _handle_missing(self, request: ProcessTableHintUseCaseInput) -> ProcessTableHintUseCaseOutput:
-        name = TableName(request.catalog, request.namespace, request.table or "")
+        name = TableName(catalog=request.catalog, namespace=request.namespace, table=request.table or "")
         if self._tables_repo.find_by_name(name) is None:
             return ProcessTableHintUseCaseOutput(action=TableHintAction.IGNORED.value)
         self._discovery_request_gateway.send(SendDiscoveryRequestGatewayInput(request.catalog, None))
@@ -108,7 +108,7 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         if table.status == TableStatus.DROPPED:
             return TableHintAction.IGNORED
         action = TableHintAction.IGNORED
-        name = TableName(found.catalog, found.namespace, found.table)
+        name = TableName(catalog=found.catalog, namespace=found.namespace, table=found.table)
         if table.name != name:
             table.rename(name, now)
             self._tables_repo.update(table)
@@ -129,7 +129,7 @@ class ProcessTableHintService(ProcessTableHintUseCase):
     def _register(self, found: TableMetadata, now: datetime) -> TableHintAction:
         if not self._table_discovery_settings_repo.get_settings().enabled:
             return TableHintAction.IGNORED
-        name = TableName(found.catalog, found.namespace, found.table)
+        name = TableName(catalog=found.catalog, namespace=found.namespace, table=found.table)
         stale = self._tables_repo.find_by_name(name)
         outcome = register_discovered_table(
             found,

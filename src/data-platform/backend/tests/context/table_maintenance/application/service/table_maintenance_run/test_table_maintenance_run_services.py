@@ -56,7 +56,7 @@ def table(tables_repo, now):
     """Provide a stored active table."""
     t = Table.register_auto(
         TableId("u-1"),
-        TableName("iceberg", "sales", "orders"),
+        TableName(catalog="iceberg", namespace="sales", table="orders"),
         TableDiscoveryRuleId("r-1"),
         TableMaintenancePresetId("t-1"),
         MaintenanceSettings(),

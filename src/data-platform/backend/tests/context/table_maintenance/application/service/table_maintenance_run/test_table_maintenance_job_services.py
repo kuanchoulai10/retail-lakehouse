@@ -55,7 +55,7 @@ from tests.context.table_maintenance.fakes.in_memory_table_maintenance_runs_repo
 )
 from tests.context.table_maintenance.fakes.track_calls import track_calls
 
-NAME = TableName("iceberg", "sales", "orders")
+NAME = TableName(catalog="iceberg", namespace="sales", table="orders")
 KEY = ("iceberg", "sales", "orders")
 OPS = MaintenanceOperation
 

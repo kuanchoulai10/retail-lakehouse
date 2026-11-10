@@ -54,7 +54,7 @@ def register_discovered_table(  # noqa: PLR0913
     preset settings and starts its reconciliation workflow. An EXCLUDE match, or no
     match, registers nothing. A rule whose preset is missing is SKIPPED.
     """
-    name = TableName(found.catalog, found.namespace, found.table)
+    name = TableName(catalog=found.catalog, namespace=found.namespace, table=found.table)
     rule = match_table_discovery_rule(rules, name)
     if rule is None or rule.effect != RuleEffect.INCLUDE or rule.preset_id is None:
         return RegistrationOutcome.NOT_SELECTED

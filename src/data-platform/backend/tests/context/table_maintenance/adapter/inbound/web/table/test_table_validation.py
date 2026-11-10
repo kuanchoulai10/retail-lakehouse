@@ -42,7 +42,7 @@ def repo() -> InMemoryTablesRepo:
     repo.create(
         Table.include_manual(
             TableId("u-1"),
-            TableName("iceberg", "sales", "orders"),
+            TableName(catalog="iceberg", namespace="sales", table="orders"),
             TableMaintenancePresetId("t-1"),
             MaintenanceSettings(),
             NOW,

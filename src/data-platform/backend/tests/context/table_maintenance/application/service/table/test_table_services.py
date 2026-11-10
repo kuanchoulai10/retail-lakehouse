@@ -55,7 +55,7 @@ from context.table_maintenance.application.service.table import (
     UpdateTableSettingsService,
 )
 
-NAME = TableName("iceberg", "sales", "orders")
+NAME = TableName(catalog="iceberg", namespace="sales", table="orders")
 PRESET_SETTINGS = MaintenanceSettings(rewrite_data_files=RewriteDataFilesSettings(min_reducible_files=9))
 
 
@@ -101,7 +101,7 @@ def _change(call):
 def test_list_tables_all_and_by_status(tables_repo, now):
     """Listing returns all tables, or only those of the requested status."""
     _active(tables_repo, now, "u-1")
-    paused = _active(tables_repo, now, "u-2", TableName("iceberg", "sales", "items"))
+    paused = _active(tables_repo, now, "u-2", TableName(catalog="iceberg", namespace="sales", table="items"))
     paused.pause(now)
     service = ListTablesService(tables_repo)
     assert len(service.execute(ListTablesUseCaseInput()).items) == 2
@@ -268,7 +268,7 @@ def test_include_reactivates_excluded_table_as_manual(tables_repo, presets_repo,
 
 def test_include_renames_row_when_catalog_name_changed(tables_repo, presets_repo, preset, catalog, signals, clock, now):
     """Including a table renames its row when the catalog name changed."""
-    _excluded(tables_repo, now, "u-9", TableName("iceberg", "sales", "old_orders"))
+    _excluded(tables_repo, now, "u-9", TableName(catalog="iceberg", namespace="sales", table="old_orders"))
     catalog.add_table("iceberg", "sales", "orders", "u-9")
     out = _include_service(tables_repo, presets_repo, catalog, signals, clock).execute(_include_input())
     assert out.table == "orders"
@@ -343,7 +343,7 @@ def test_exclude_dropped_table_conflicts(tables_repo, catalog, signals, clock, n
 
 def test_exclude_renames_existing_row_to_catalog_name(tables_repo, catalog, signals, clock, now):
     """Excluding a table renames its row to the catalog name."""
-    _active(tables_repo, now, "u-9", TableName("iceberg", "sales", "old_orders"))
+    _active(tables_repo, now, "u-9", TableName(catalog="iceberg", namespace="sales", table="old_orders"))
     catalog.add_table("iceberg", "sales", "orders", "u-9")
     out = _exclude_service(tables_repo, catalog, signals, clock).execute(_exclude_input())
     assert (out.table, out.status) == ("orders", "excluded")

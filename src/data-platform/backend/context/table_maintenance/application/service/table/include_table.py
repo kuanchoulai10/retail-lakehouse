@@ -75,7 +75,7 @@ class IncludeTableService(IncludeTableUseCase):
             raise NotFoundError(f"table maintenance preset {request.preset_id} not found")
         now = self._clock()
         with translate_domain_errors():
-            name = TableName(found.catalog, found.namespace, found.table)
+            name = TableName(catalog=found.catalog, namespace=found.namespace, table=found.table)
             uuid = TableId(found.table_uuid)
             table = self._tables_repo.get(uuid)
             if table is None:

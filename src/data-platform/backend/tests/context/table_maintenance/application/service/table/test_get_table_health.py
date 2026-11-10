@@ -30,7 +30,7 @@ from context.table_maintenance.application.port.outbound.table import (
 from context.table_maintenance.application.service.table import GetTableHealthService
 
 KEY = ("iceberg", "sales", "orders")
-NAME = TableName(*KEY)
+NAME = TableName(catalog=KEY[0], namespace=KEY[1], table=KEY[2])
 
 
 def _register(repo, now, settings):

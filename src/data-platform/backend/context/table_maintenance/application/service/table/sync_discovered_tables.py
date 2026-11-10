@@ -152,7 +152,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
             if outcome == RegistrationOutcome.REGISTERED:
                 return _REGISTERED, None
             return (_SKIPPED if outcome == RegistrationOutcome.SKIPPED else ""), None
-        name = TableName(found.catalog, found.namespace, found.table)
+        name = TableName(catalog=found.catalog, namespace=found.namespace, table=found.table)
         if existing.status != TableStatus.DROPPED and existing.name != name:
             existing.rename(name, now)
             self._tables_repo.update(existing)

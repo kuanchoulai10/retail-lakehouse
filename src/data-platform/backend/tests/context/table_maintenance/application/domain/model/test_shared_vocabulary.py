@@ -28,18 +28,18 @@ def test_maintenance_operation_ordered_follows_spec_order():
 
 def test_table_name_qualified():
     """A table name is qualified by its namespace."""
-    assert TableName("iceberg", "a.b", "t").qualified() == "a.b.t"
+    assert TableName(catalog="iceberg", namespace="a.b", table="t").qualified() == "a.b.t"
 
 
 def test_table_name_fully_qualified_includes_the_catalog():
     """The fully qualified table name starts with the catalog."""
-    assert TableName("iceberg", "a.b", "t").fully_qualified() == "iceberg.a.b.t"
+    assert TableName(catalog="iceberg", namespace="a.b", table="t").fully_qualified() == "iceberg.a.b.t"
 
 
 def test_table_name_rejects_empty_table():
     """A table name with an empty table part is rejected."""
     with pytest.raises(ValueError):
-        TableName("iceberg", "a.b", "")
+        TableName(catalog="iceberg", namespace="a.b", table="")
 
 
 def test_table_uuid_wraps_value():
