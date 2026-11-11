@@ -27,6 +27,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     SmallManifestsCondition,
 )
 from context.table_maintenance.application.domain.service.shared import (
+    TARGET_FILE_SIZE_PROPERTY,
     positive_int_property,
     resolve_target_file_size,
 )
@@ -44,7 +45,6 @@ if TYPE_CHECKING:
 
 DEFAULT_SMALL_MANIFEST_BYTES = 8 * 1024 * 1024
 MANIFEST_TARGET_SIZE_PROPERTY = "commit.manifest.target-size-bytes"
-TARGET_FILE_SIZE_PROPERTY = "write.target-file-size-bytes"
 
 
 def assess_maintenance(
