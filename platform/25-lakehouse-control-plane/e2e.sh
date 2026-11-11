@@ -664,6 +664,7 @@ ensure_policy tm-e2e-orders "e2e: manual runs only, lowered execution values" "$
 | .operations.rewrite_manifests.enabled = false
 | .operations.expire_snapshots.enabled = false
 | .operations.remove_orphan_files.enabled = false
+| .operations.rewrite_data_files.execution_policy.min_input_files = 1
 | .operations.expire_snapshots.execution_policy = {older_than_seconds: ${EXPIRE_AGE_SECONDS}, retain_last: 1}
 | .operations.remove_orphan_files.execution_policy.older_than_seconds = 86400
 JQ
