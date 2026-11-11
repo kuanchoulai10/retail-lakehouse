@@ -636,16 +636,16 @@ progress "ensuring the discovery rule ${CATALOG} / ${SCHEMA} / tm_e2e_*"
 RULES="$(api GET /v1/discovery-rules)"
 RULE_ID="$(jq -r --arg ns "${SCHEMA}" \
   '.rules[] | select(.action == "include" and .catalogs == ["iceberg"]
-    and .namespaces == [$ns] and .tables == ["tm_e2e_*"]) | .id' <<<"${RULES}" | head -n 1)"
+    and .namespaces == [$ns] and .tables == ["tm_e2e_*"] and .enabled) | .id' <<<"${RULES}" | head -n 1)"
 if [[ -z "${RULE_ID}" ]]; then
   api PUT /v1/discovery-rules "$(jq -c --arg ns "${SCHEMA}" '{
     version: .version,
-    rules: ([.rules[] | {id, priority, action, enabled, catalogs, namespaces, tables}]
-      + [{priority: (([.rules[].priority] | max // 9) + 1), action: "include", enabled: true,
-          catalogs: ["iceberg"], namespaces: [$ns], tables: ["tm_e2e_*"]}])}' <<<"${RULES}")" >/dev/null
+    rules: ([{priority: (([.rules[].priority] | min // 11) - 1), action: "include", enabled: true,
+          catalogs: ["iceberg"], namespaces: [$ns], tables: ["tm_e2e_*"]}]
+      + [.rules[] | {id, priority, action, enabled, catalogs, namespaces, tables}])}' <<<"${RULES}")" >/dev/null
   RULE_ID="$(api GET /v1/discovery-rules | jq -r --arg ns "${SCHEMA}" \
     '.rules[] | select(.action == "include" and .catalogs == ["iceberg"]
-      and .namespaces == [$ns] and .tables == ["tm_e2e_*"]) | .id' | head -n 1)"
+      and .namespaces == [$ns] and .tables == ["tm_e2e_*"] and .enabled) | .id' | head -n 1)"
 fi
 progress "discovery rule ${RULE_ID}"
 
@@ -657,6 +657,26 @@ CREATE TABLE IF NOT EXISTS ${CATALOG}.${SCHEMA}.${ORDERS} (
 CREATE TABLE IF NOT EXISTS ${CATALOG}.${SCHEMA}.${REGIONS} (
   id BIGINT, region VARCHAR, note VARCHAR
 ) WITH (partitioning = ARRAY['region'])"
+
+progress "creating the policies tm-e2e-orders (inert for scheduling) and tm-e2e-regions and attaching them before any write"
+ensure_policy tm-e2e-orders "e2e: manual runs only, lowered execution values" "$(cat <<JQ
+.operations.rewrite_data_files.enabled = false
+| .operations.rewrite_manifests.enabled = false
+| .operations.expire_snapshots.enabled = false
+| .operations.remove_orphan_files.enabled = false
+| .operations.expire_snapshots.execution_policy = {older_than_seconds: ${EXPIRE_AGE_SECONDS}, retain_last: 1}
+| .operations.remove_orphan_files.execution_policy.older_than_seconds = 86400
+JQ
+)"
+ensure_policy tm-e2e-regions "e2e: per-partition compaction" "$(cat <<JQ
+.reconcile_interval_seconds = 300
+| .operations.rewrite_data_files.scope.unit = "partition"
+| .operations.rewrite_data_files.trigger_policy.conditions.reducible_files = {at_least: 2}
+| .operations.rewrite_data_files.trigger_policy.cooldown_seconds = 60
+JQ
+)"
+attach_policy tm-e2e-orders "${ORDERS}"
+attach_policy tm-e2e-regions "${REGIONS}"
 
 progress "inserting 20 single-row orders, 8 single-row regions, and deleting one order"
 STATEMENTS=""
@@ -690,21 +710,6 @@ progress "waiting for event-driven runs to settle"
 wait_for_quiet_table "${ORDERS_UUID}"
 wait_for_quiet_table "${REGIONS_UUID}"
 
-progress "creating the policies tm-e2e-orders and tm-e2e-regions from the default policy"
-ensure_policy tm-e2e-orders "e2e: lowered thresholds" "$(cat <<JQ
-.operations.rewrite_data_files.trigger_policy.conditions.reducible_files = {at_least: 2}
-| .operations.rewrite_manifests.trigger_policy.conditions.small_manifests.at_least = 1
-| .operations.expire_snapshots.execution_policy = {older_than_seconds: ${EXPIRE_AGE_SECONDS}, retain_last: 1}
-| .operations.remove_orphan_files.execution_policy.older_than_seconds = 86400
-JQ
-)"
-ensure_policy tm-e2e-regions "e2e: per-partition compaction" "$(cat <<JQ
-.operations.rewrite_data_files.scope.unit = "partition"
-| .operations.rewrite_data_files.trigger_policy.conditions.reducible_files = {at_least: 2}
-| .operations.rewrite_data_files.trigger_policy.cooldown_seconds = 60
-JQ
-)"
-
 WAIT_SECONDS=$(( LAST_WRITE_AT + EXPIRE_AGE_SECONDS + 5 - $(date +%s) ))
 if (( WAIT_SECONDS > 0 )); then
   sleep "${WAIT_SECONDS}"
@@ -724,15 +729,12 @@ progress "before: ${REGIONS} files=${REGIONS_FILES_BEFORE} snapshots=${REGIONS_S
 ORDERS_BEFORE_RUNS="$(run_ids "${ORDERS_UUID}")"
 REGIONS_BEFORE_RUNS="$(run_ids "${REGIONS_UUID}")"
 
-progress "attaching tm-e2e-orders to ${ORDERS} and triggering all four operations"
-attach_policy tm-e2e-orders "${ORDERS}"
+progress "checking the applicable policies and triggering all four operations on ${ORDERS}"
 assert_applicable_policy "${ORDERS_UUID}" tm-e2e-orders
+assert_applicable_policy "${REGIONS_UUID}" tm-e2e-regions
 api POST "/v1/tables/${ORDERS_UUID}/maintenance" '{"operations": ["rewrite_data_files",
   "rewrite_manifests", "expire_snapshots", "remove_orphan_files"]}' >/dev/null
 
-progress "attaching tm-e2e-regions to ${REGIONS} so the scheduled plan compacts through where filters"
-attach_policy tm-e2e-regions "${REGIONS}"
-assert_applicable_policy "${REGIONS_UUID}" tm-e2e-regions
 
 progress "waiting for the ${ORDERS} manual run (up to ${RUN_TIMEOUT_SECONDS}s)"
 ORDERS_RUNS="$(wait_for_new_run "${ORDERS_UUID}" "${ORDERS_BEFORE_RUNS}" '.trigger == "manual"')"
