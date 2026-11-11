@@ -35,6 +35,15 @@ if TYPE_CHECKING:
         ListCoveredCatalogsUseCase,
         UpdateTableDiscoverySettingsUseCase,
     )
+    from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
+        CreateTableMaintenancePolicyUseCase,
+        DeleteTableMaintenancePolicyUseCase,
+        EnsureDefaultTableMaintenancePolicyUseCase,
+        GetTableMaintenancePolicyUseCase,
+        GetTableMaintenancePolicyVersionUseCase,
+        ListTableMaintenancePoliciesUseCase,
+        UpdateTableMaintenancePolicyUseCase,
+    )
     from context.table_maintenance.application.port.inbound.table_maintenance_preset import (
         CreateTableMaintenancePresetUseCase,
         DeleteTableMaintenancePresetUseCase,
@@ -76,6 +85,13 @@ class UseCases:
     get_table_maintenance_preset: GetTableMaintenancePresetUseCase
     list_table_maintenance_presets: ListTableMaintenancePresetsUseCase
     update_table_maintenance_preset: UpdateTableMaintenancePresetUseCase
+    create_table_maintenance_policy: CreateTableMaintenancePolicyUseCase
+    delete_table_maintenance_policy: DeleteTableMaintenancePolicyUseCase
+    ensure_default_table_maintenance_policy: EnsureDefaultTableMaintenancePolicyUseCase
+    get_table_maintenance_policy: GetTableMaintenancePolicyUseCase
+    get_table_maintenance_policy_version: GetTableMaintenancePolicyVersionUseCase
+    list_table_maintenance_policies: ListTableMaintenancePoliciesUseCase
+    update_table_maintenance_policy: UpdateTableMaintenancePolicyUseCase
     exclude_table: ExcludeTableUseCase
     get_table: GetTableUseCase
     get_table_health: GetTableHealthUseCase

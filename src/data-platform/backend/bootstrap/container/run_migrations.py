@@ -8,6 +8,12 @@ from typing import TYPE_CHECKING
 from bootstrap.container.build_repositories import build_repositories
 from bootstrap.container.seed_default_preset import seed_default_preset
 from context.table_maintenance.adapter.outbound.shared.sql import create_schema
+from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
+    EnsureDefaultTableMaintenancePolicyUseCaseInput,
+)
+from context.table_maintenance.application.service.table_maintenance_policy import (
+    EnsureDefaultTableMaintenancePolicyService,
+)
 from context.table_maintenance.application.service.table_maintenance_preset import (
     CreateTableMaintenancePresetService,
     ListTableMaintenancePresetsService,
@@ -26,9 +32,19 @@ def run_migrations(engine: Engine) -> None:
     upgrades. No discovery rule is seeded.
     """
     create_schema(engine)
-    presets = build_repositories(engine).table_maintenance_presets
+    repos = build_repositories(engine)
+    presets = repos.table_maintenance_presets
     created = seed_default_preset(
         ListTableMaintenancePresetsService(presets),
         CreateTableMaintenancePresetService(presets),
     )
-    logger.info("schema ready; default preset %s", "created" if created else "kept")
+    policy_created = (
+        EnsureDefaultTableMaintenancePolicyService(repos.table_maintenance_policies)
+        .execute(EnsureDefaultTableMaintenancePolicyUseCaseInput())
+        .created
+    )
+    logger.info(
+        "schema ready; default preset %s; default policy %s",
+        "created" if created else "kept",
+        "created" if policy_created else "kept",
+    )

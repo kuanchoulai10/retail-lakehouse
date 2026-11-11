@@ -30,6 +30,7 @@ UTILITY_FILES = {
     "table_properties_serializer.py",
     "translate_domain_errors.py",
     "table_maintenance_preset_output_fields.py",
+    "table_maintenance_policy_output_fields.py",
     "table_discovery_rule_output_fields.py",
     "table_output_fields.py",
     "table_maintenance_run_output_fields.py",
@@ -63,6 +64,7 @@ KNOWN_VERBS = {
     "List",
     "Update",
     "Delete",
+    "Ensure",
     # Lifecycle
     "Complete",
     "Fail",

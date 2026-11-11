@@ -12,8 +12,14 @@ from context.table_maintenance.adapter.outbound.shared.sql import create_schema
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceSettings,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    MaintenancePolicyContent,
+)
 from context.table_maintenance.application.port.inbound.table_discovery_rule import (
     ListTableDiscoveryRulesUseCaseInput,
+)
+from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
+    ListTableMaintenancePoliciesUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_preset import (
     CreateTableMaintenancePresetUseCaseInput,
@@ -55,3 +61,16 @@ def test_migrate_does_not_seed_when_a_preset_exists():
 
     presets = _use_cases(engine).list_table_maintenance_presets.execute(ListTableMaintenancePresetsUseCaseInput()).items
     assert [t.name for t in presets] == ["nightly"]
+
+
+def test_run_migrations_seeds_default_policy():
+    """Migrating creates the default policy once, at version 1."""
+    engine = build_engine(sqlite_settings())
+
+    run_migrations(engine)
+    run_migrations(engine)
+
+    use_cases = _use_cases(engine)
+    items = use_cases.list_table_maintenance_policies.execute(ListTableMaintenancePoliciesUseCaseInput()).items
+    assert [(p.name, p.version) for p in items] == [("default", 1)]
+    assert items[0].content == MaintenancePolicyContent.platform_default().to_primitives()

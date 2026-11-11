@@ -35,6 +35,15 @@ from context.table_maintenance.application.service.table_discovery_settings impo
     ListCoveredCatalogsService,
     UpdateTableDiscoverySettingsService,
 )
+from context.table_maintenance.application.service.table_maintenance_policy import (
+    CreateTableMaintenancePolicyService,
+    DeleteTableMaintenancePolicyService,
+    EnsureDefaultTableMaintenancePolicyService,
+    GetTableMaintenancePolicyService,
+    GetTableMaintenancePolicyVersionService,
+    ListTableMaintenancePoliciesService,
+    UpdateTableMaintenancePolicyService,
+)
 from context.table_maintenance.application.service.table_maintenance_preset import (
     CreateTableMaintenancePresetService,
     DeleteTableMaintenancePresetService,
@@ -79,6 +88,7 @@ def build_use_cases(
     tables = repos.tables
     rules = repos.table_discovery_rules
     presets = repos.table_maintenance_presets
+    policies = repos.table_maintenance_policies
     runs = repos.table_maintenance_runs
     discovery = repos.table_discovery_settings
     reconciliations = repos.table_reconciliations
@@ -112,6 +122,13 @@ def build_use_cases(
         get_table_maintenance_preset=GetTableMaintenancePresetService(presets),
         list_table_maintenance_presets=ListTableMaintenancePresetsService(presets),
         update_table_maintenance_preset=UpdateTableMaintenancePresetService(presets, clock=clock),
+        create_table_maintenance_policy=CreateTableMaintenancePolicyService(policies, clock=clock),
+        delete_table_maintenance_policy=DeleteTableMaintenancePolicyService(policies),
+        ensure_default_table_maintenance_policy=EnsureDefaultTableMaintenancePolicyService(policies, clock=clock),
+        get_table_maintenance_policy=GetTableMaintenancePolicyService(policies),
+        get_table_maintenance_policy_version=GetTableMaintenancePolicyVersionService(policies),
+        list_table_maintenance_policies=ListTableMaintenancePoliciesService(policies),
+        update_table_maintenance_policy=UpdateTableMaintenancePolicyService(policies, clock=clock),
         exclude_table=ExcludeTableService(tables, catalog, table_changes, clock=clock),
         get_table=GetTableService(tables),
         get_table_health=GetTableHealthService(tables, catalog, clock=clock),
