@@ -105,7 +105,7 @@ def build_use_cases(
             policies, attachments, catalog, tables, table_changes
         ),
         list_table_maintenance_policy_attachments=ListTableMaintenancePolicyAttachmentsService(
-            attachments, catalog, tables
+            policies, attachments, catalog, tables
         ),
         resolve_applicable_table_maintenance_policy=resolve_applicable_policy,
         create_table_maintenance_policy=CreateTableMaintenancePolicyService(policies, clock=clock),

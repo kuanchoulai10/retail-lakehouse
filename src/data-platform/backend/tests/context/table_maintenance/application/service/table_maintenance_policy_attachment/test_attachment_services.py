@@ -82,7 +82,7 @@ class _World:
             self.policies, self.attachments, self.gateway, self.tables
         )
         self.list_attachments = ListTableMaintenancePolicyAttachmentsService(
-            self.attachments, self.gateway, self.tables
+            self.policies, self.attachments, self.gateway, self.tables
         )
 
     def attach(self, type_, path, policy):
@@ -243,6 +243,12 @@ def test_list_filters_by_policy(world):
         ListTableMaintenancePolicyAttachmentsUseCaseInput(policy_name="silver")
     ).items
     assert [i.path for i in items] == [("prod", "sales")]
+
+
+def test_list_for_an_unknown_policy_is_not_found(world):
+    """Listing the attachments of a policy that does not exist answers NotFoundError."""
+    with pytest.raises(NotFoundError):
+        world.list_attachments.execute(ListTableMaintenancePolicyAttachmentsUseCaseInput(policy_name="nope"))
 
 
 def test_delete_attached_policy_conflicts(world):

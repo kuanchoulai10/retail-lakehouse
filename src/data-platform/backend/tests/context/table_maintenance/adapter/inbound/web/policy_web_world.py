@@ -97,7 +97,7 @@ class PolicyWebWorld:
                 policies, attachments, catalog, tables, changes
             ),
             list_table_maintenance_policy_attachments=ListTableMaintenancePolicyAttachmentsService(
-                attachments, catalog, tables
+                policies, attachments, catalog, tables
             ),
             resolve_applicable_table_maintenance_policy=ResolveApplicableTableMaintenancePolicyService(
                 policies, attachments, catalog, tables

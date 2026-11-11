@@ -68,6 +68,11 @@ def test_list_mappings_marks_orphans(world: PolicyWebWorld) -> None:
     ]
 
 
+def test_list_mappings_of_an_unknown_policy_is_404(world: PolicyWebWorld) -> None:
+    """GET mappings of a policy that does not exist answers 404, like GET and DELETE of the same name."""
+    assert world.client.get("/v1/maintenance-policies/nope/mappings").status_code == 404
+
+
 def test_list_mappings_keeps_live_targets_not_orphaned(world: PolicyWebWorld) -> None:
     """A target still in the catalog is not orphaned."""
     world.attach("gold", "table", ["prod", "sales", "eu", "orders"])

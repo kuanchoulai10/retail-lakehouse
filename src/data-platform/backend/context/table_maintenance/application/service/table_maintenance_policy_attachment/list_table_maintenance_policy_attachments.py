@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
     ListTableMaintenancePolicyAttachmentsUseCase,
     ListTableMaintenancePolicyAttachmentsUseCaseInput,
@@ -28,6 +29,9 @@ from context.table_maintenance.application.service.table_maintenance_policy_atta
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table import ReadTableMetadataGateway, TablesRepo
+    from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
+        TableMaintenancePoliciesRepo,
+    )
     from context.table_maintenance.application.port.outbound.table_maintenance_policy_attachment import (
         PolicyTarget,
         TableMaintenancePolicyAttachmentsRepo,
@@ -39,11 +43,13 @@ class ListTableMaintenancePolicyAttachmentsService(ListTableMaintenancePolicyAtt
 
     def __init__(
         self,
+        policies_repo: TableMaintenancePoliciesRepo,
         attachments_repo: TableMaintenancePolicyAttachmentsRepo,
         gateway: ReadTableMetadataGateway,
         tables_repo: TablesRepo,
     ) -> None:
         """Bind the repos and the catalog gateway."""
+        self._policies_repo = policies_repo
         self._attachments_repo = attachments_repo
         self._gateway = gateway
         self._tables_repo = tables_repo
@@ -51,12 +57,14 @@ class ListTableMaintenancePolicyAttachmentsService(ListTableMaintenancePolicyAtt
     def execute(
         self, request: ListTableMaintenancePolicyAttachmentsUseCaseInput
     ) -> ListTableMaintenancePolicyAttachmentsUseCaseOutput:
-        """Return the attachments, each orphaned when its target is no longer in the catalog."""
+        """Return the attachments, each orphaned when its target left the catalog; an unknown policy is not found."""
         if request.policy_name is None:
             attachments = self._attachments_repo.list_all()
         else:
             with translate_domain_errors():
                 name = TableMaintenancePolicyName(request.policy_name)
+            if self._policies_repo.get(name) is None:
+                raise NotFoundError(f"table maintenance policy {request.policy_name} not found")
             attachments = self._attachments_repo.list_for_policy(name)
         listings: dict[str, list[TableMetadataRef] | None] = {}
         return ListTableMaintenancePolicyAttachmentsUseCaseOutput(
