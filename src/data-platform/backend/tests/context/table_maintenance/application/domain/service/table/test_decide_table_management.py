@@ -44,7 +44,7 @@ def _rule(rid: str, action: RuleAction, priority: int = 10) -> TableDiscoveryRul
 
 def _rules(*rules: TableDiscoveryRule) -> TableDiscoveryRules:
     aggregate = TableDiscoveryRules.empty()
-    aggregate.replace(rules, 0, T0)
+    aggregate.replace(rules, 0, T0, new_ids={rule.id for rule in rules})
     return aggregate
 
 

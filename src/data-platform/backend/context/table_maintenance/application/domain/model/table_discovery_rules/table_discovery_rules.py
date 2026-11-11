@@ -18,12 +18,18 @@ from context.table_maintenance.application.domain.model.table_discovery_rules.ta
     GLOBAL_TABLE_DISCOVERY_RULES_ID,
     TableDiscoveryRulesId,
 )
+from context.table_maintenance.application.domain.model.table_discovery_rules.unknown_discovery_rule_id import (
+    UnknownDiscoveryRuleId,
+)
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Collection, Sequence
     from datetime import datetime
 
     from context.table_maintenance.application.domain.model.table import TableName
+    from context.table_maintenance.application.domain.model.table_discovery_rules.table_discovery_rule_id import (
+        TableDiscoveryRuleId,
+    )
 
 
 class TableDiscoveryRules(AggregateRoot[TableDiscoveryRulesId]):
@@ -56,16 +62,28 @@ class TableDiscoveryRules(AggregateRoot[TableDiscoveryRulesId]):
         """Return the platform's rules before any were saved: none, at version 0."""
         return cls(id=GLOBAL_TABLE_DISCOVERY_RULES_ID, rules=(), version=0)
 
-    def replace(self, rules: Sequence[TableDiscoveryRule], expected_version: int, now: datetime) -> None:
+    def replace(
+        self,
+        rules: Sequence[TableDiscoveryRule],
+        expected_version: int,
+        now: datetime,
+        *,
+        new_ids: Collection[TableDiscoveryRuleId] = (),
+    ) -> None:
         """Replace every rule as the next version; reject a stale expected_version.
 
-        A rule whose id is already in the list keeps its creation time, and its
-        update time too when its definition did not change; any other rule is
-        created at now. An invalid list leaves the rules unchanged.
+        Every rule is either one already in the list, by id, or one of new_ids;
+        any other id is rejected, so a client cannot mint ids. A rule kept by id
+        keeps its creation time, and its update time too when its definition did
+        not change; a new rule is created at now. An invalid list leaves the
+        rules unchanged.
         """
         if expected_version != self.version:
             raise StaleDiscoveryRulesVersion(f"discovery rules are at version {self.version}, not {expected_version}")
         current = {rule.id: rule for rule in self.rules}
+        unknown = [rule.id for rule in rules if rule.id not in current and rule.id not in new_ids]
+        if unknown:
+            raise UnknownDiscoveryRuleId(f"unknown discovery rule id {unknown[0].value}")
         merged = [_revise(current.get(rule.id), rule, now) for rule in rules]
         self._assign_together(
             rules=tuple(sorted(merged, key=lambda rule: rule.priority)),

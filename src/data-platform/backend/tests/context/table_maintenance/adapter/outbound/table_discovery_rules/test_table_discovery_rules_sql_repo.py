@@ -41,7 +41,7 @@ def _rule(rid: str, priority: int, action: RuleAction = RuleAction.INCLUDE, *, e
 
 def _replaced(repo: TableDiscoveryRulesSqlRepo, *rules: TableDiscoveryRule, at: datetime = NOW) -> TableDiscoveryRules:
     aggregate = repo.get_rules()
-    aggregate.replace(rules, aggregate.version, at)
+    aggregate.replace(rules, aggregate.version, at, new_ids={rule.id for rule in rules})
     return aggregate
 
 

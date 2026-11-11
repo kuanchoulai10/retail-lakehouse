@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 from context.table_maintenance.application.exceptions import ConflictError, ValidationError
@@ -14,6 +16,7 @@ from context.table_maintenance.application.port.inbound.table_discovery_rules im
     ReplaceTableDiscoveryRulesUseCaseInput,
     ReplaceTableDiscoveryRulesUseCaseInputItem,
 )
+from context.table_maintenance.application.port.outbound.table import SendDiscoveryRequestGateway
 from context.table_maintenance.application.service.table_discovery_rules import (
     GetTableDiscoveryRulesService,
     ListCoveredCatalogsService,
@@ -21,7 +24,23 @@ from context.table_maintenance.application.service.table_discovery_rules import 
     ReplaceTableDiscoveryRulesService,
 )
 
+if TYPE_CHECKING:
+    from context.table_maintenance.application.port.outbound.table import SendDiscoveryRequestGatewayInput
+
 COVERED = ("iceberg", "lake")
+
+
+class _FailingFor(SendDiscoveryRequestGateway):
+    """Fail to start discovery for one catalog and record the rest."""
+
+    def __init__(self, catalog: str) -> None:
+        self._catalog = catalog
+        self.calls: list[SendDiscoveryRequestGatewayInput] = []
+
+    def send(self, input: SendDiscoveryRequestGatewayInput) -> None:  # noqa: A002
+        if input.catalog == self._catalog:
+            raise RuntimeError(f"cannot start discovery for {input.catalog}")
+        self.calls.append(input)
 
 
 def _item(rid=None, priority=10, action="include", *, enabled=True, catalogs=("*",), namespaces=("*",), tables=("*",)):
@@ -73,12 +92,12 @@ def test_save_stores_the_whole_list_in_priority_order(replace, get, now):
             version=0,
             rules=[
                 _item(priority=20, tables=("orders", "tmp_*")),
-                _item("keep-me", priority=10, action="exclude", namespaces=("prod.*",)),
+                _item(priority=10, action="exclude", namespaces=("prod.*",)),
             ],
         )
     )
     assert out.version == 1
-    assert [(r.id, r.priority, r.action) for r in out.rules] == [("keep-me", 10, "exclude"), ("id-1", 20, "include")]
+    assert [(r.id, r.priority, r.action) for r in out.rules] == [("id-2", 10, "exclude"), ("id-1", 20, "include")]
     assert out.rules[1].tables == ["orders", "tmp_*"]
     assert (out.rules[0].created_at, out.rules[0].updated_at) == (now, now)
     stored = get.execute(GetTableDiscoveryRulesUseCaseInput())
@@ -92,6 +111,36 @@ def test_save_discovers_each_covered_catalog_once(replace, discovery_requests):
     assert [(c.catalog, c.namespace) for c in discovery_requests.calls] == [("iceberg", None), ("lake", None)]
 
 
+def test_each_save_starts_its_own_discovery_runs(replace, discovery_requests):
+    """Two saves in a row each start discovery with their own saved version, so a later save is not lost."""
+    replace.execute(ReplaceTableDiscoveryRulesUseCaseInput(version=0, rules=[_item()]))
+    replace.execute(ReplaceTableDiscoveryRulesUseCaseInput(version=1, rules=[]))
+    assert [(c.catalog, c.rules_version) for c in discovery_requests.calls] == [
+        ("iceberg", 1),
+        ("lake", 1),
+        ("iceberg", 2),
+        ("lake", 2),
+    ]
+
+
+def test_a_failed_discovery_start_still_answers_the_saved_rules(rules_repo, clock, new_id, caplog):
+    """When starting discovery fails for one catalog, the save still answers its rules and the others are sent."""
+    gateway = _FailingFor("iceberg")
+    service = ReplaceTableDiscoveryRulesService(rules_repo, gateway, COVERED, clock=clock, new_id=new_id)
+    out = service.execute(ReplaceTableDiscoveryRulesUseCaseInput(version=0, rules=[_item()]))
+    assert (out.version, [r.id for r in out.rules]) == (1, ["id-1"])
+    assert [c.catalog for c in gateway.calls] == ["lake"]
+    assert "iceberg" in caplog.text
+
+
+def test_an_id_not_in_the_saved_list_is_rejected(replace, get, discovery_requests):
+    """A rule id the stored list does not hold is a validation error; nothing is saved or discovered."""
+    with pytest.raises(ValidationError, match="unknown discovery rule id made-up"):
+        replace.execute(ReplaceTableDiscoveryRulesUseCaseInput(version=0, rules=[_item("made-up")]))
+    assert get.execute(GetTableDiscoveryRulesUseCaseInput()).version == 0
+    assert discovery_requests.calls == []
+
+
 def test_equal_priorities_rejected_and_nothing_saved_or_discovered(replace, get, discovery_requests):
     """Two rules with one priority answer a validation error; nothing is saved and nothing discovered."""
     with pytest.raises(ValidationError, match="priority 10"):
@@ -102,12 +151,12 @@ def test_equal_priorities_rejected_and_nothing_saved_or_discovered(replace, get,
 
 def test_stale_version_conflicts(replace, get, discovery_requests):
     """A save from a version that is no longer current conflicts and changes nothing."""
-    replace.execute(ReplaceTableDiscoveryRulesUseCaseInput(version=0, rules=[_item("a")]))
+    replace.execute(ReplaceTableDiscoveryRulesUseCaseInput(version=0, rules=[_item()]))
     discovery_requests.calls.clear()
     with pytest.raises(ConflictError, match="version 1, not 0"):
         replace.execute(ReplaceTableDiscoveryRulesUseCaseInput(version=0, rules=[]))
     stored = get.execute(GetTableDiscoveryRulesUseCaseInput())
-    assert (stored.version, [r.id for r in stored.rules]) == (1, ["a"])
+    assert (stored.version, [r.id for r in stored.rules]) == (1, ["id-1"])
     assert discovery_requests.calls == []
 
 
@@ -129,7 +178,7 @@ def test_invalid_rule_rejected(replace, discovery_requests, item):
 
 def test_save_with_no_rules_empties_the_list(replace, get):
     """Saving an empty list removes every rule."""
-    replace.execute(ReplaceTableDiscoveryRulesUseCaseInput(version=0, rules=[_item("a")]))
+    replace.execute(ReplaceTableDiscoveryRulesUseCaseInput(version=0, rules=[_item()]))
     out = replace.execute(ReplaceTableDiscoveryRulesUseCaseInput(version=1, rules=[]))
     assert (out.version, out.rules) == (2, [])
     assert get.execute(GetTableDiscoveryRulesUseCaseInput()).rules == []

@@ -51,7 +51,7 @@ def _rule(rules_repo, now, action, tables=("*",), rid="r-1", priority=10):  # no
         now=now,
     )
     rules = rules_repo.get_rules()
-    rules.replace((*rules.rules, rule), rules.version, now)
+    rules.replace((*rules.rules, rule), rules.version, now, new_ids={rule.id})
     rules_repo.save(rules)
 
 

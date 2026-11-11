@@ -24,6 +24,9 @@ from context.table_maintenance.application.domain.model.table_discovery_rules.ta
     GLOBAL_TABLE_DISCOVERY_RULES_ID,
     TableDiscoveryRulesId,
 )
+from context.table_maintenance.application.domain.model.table_discovery_rules.unknown_discovery_rule_id import (
+    UnknownDiscoveryRuleId,
+)
 
 __all__ = [
     "GLOBAL_TABLE_DISCOVERY_RULES_ID",
@@ -34,4 +37,5 @@ __all__ = [
     "TableDiscoveryRuleId",
     "TableDiscoveryRules",
     "TableDiscoveryRulesId",
+    "UnknownDiscoveryRuleId",
 ]

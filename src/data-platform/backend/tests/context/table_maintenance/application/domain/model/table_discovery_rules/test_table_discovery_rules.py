@@ -15,6 +15,7 @@ from context.table_maintenance.application.domain.model.table_discovery_rules im
     TableDiscoveryRule,
     TableDiscoveryRuleId,
     TableDiscoveryRules,
+    UnknownDiscoveryRuleId,
 )
 
 T0 = datetime(2026, 11, 1, tzinfo=UTC)
@@ -55,7 +56,7 @@ def _decided(rules: TableDiscoveryRules, name: TableName) -> str | None:
 
 def _rules(*rules: TableDiscoveryRule) -> TableDiscoveryRules:
     aggregate = TableDiscoveryRules.empty()
-    aggregate.replace(rules, 0, T0)
+    aggregate.replace(rules, 0, T0, new_ids={rule.id for rule in rules})
     return aggregate
 
 
@@ -130,7 +131,7 @@ def test_equal_priorities_rejected_and_list_unchanged():
     """Two rules with one priority are rejected; the list stays as it was."""
     rules = _rules(_rule("a", 10))
     with pytest.raises(ValueError, match="priority 5"):
-        rules.replace((_rule("a", 5), _rule("b", 5)), 1, T1)
+        rules.replace((_rule("a", 5), _rule("b", 5)), 1, T1, new_ids={TableDiscoveryRuleId("b")})
     assert ([r.id.value for r in rules.rules], rules.rules[0].priority, rules.version) == (["a"], 10, 1)
 
 
@@ -155,6 +156,7 @@ def test_replace_keeps_created_at_and_touches_only_changed_rules():
         (_rule("same", 1, now=T1), _rule("edited", 2, RuleAction.EXCLUDE, now=T1), _rule("new", 3, now=T1)),
         1,
         T1,
+        new_ids={TableDiscoveryRuleId("new")},
     )
     by_id = {r.id.value: r for r in rules.rules}
     assert (by_id["same"].created_at, by_id["same"].updated_at) == (T0, T0)
@@ -172,3 +174,17 @@ def test_replace_with_empty_list_removes_every_rule():
     rules = _rules(_rule("a", 1))
     rules.replace((), 1, T1)
     assert (rules.rules, rules.version) == ((), 2)
+
+
+def test_an_id_neither_stored_nor_new_is_rejected_and_list_unchanged():
+    """A rule must either be in the list already or be declared new; a made-up id is rejected."""
+    rules = _rules(_rule("a", 1))
+    with pytest.raises(UnknownDiscoveryRuleId, match="unknown discovery rule id made-up"):
+        rules.replace((_rule("a", 1), _rule("made-up", 2)), 1, T1)
+    assert ([r.id.value for r in rules.rules], rules.version) == (["a"], 1)
+
+
+def test_unknown_discovery_rule_id_is_a_value_error():
+    """A made-up id is an invalid request, not a conflict."""
+    assert issubclass(UnknownDiscoveryRuleId, ValueError)
+    assert not issubclass(UnknownDiscoveryRuleId, StaleDiscoveryRulesVersion)

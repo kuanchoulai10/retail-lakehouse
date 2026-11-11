@@ -61,7 +61,7 @@ class PreviewTableDiscoveryRulesService(PreviewTableDiscoveryRulesUseCase):
                 table_discovery_rule_from_request(item, item.id or f"#{index}", now)
                 for index, item in enumerate(request.rules)
             ]
-            rules.replace(candidates, rules.version, now)
+            rules.replace(candidates, rules.version, now, new_ids={rule.id for rule in candidates})
         tables = [
             _decide(rules, ref)
             for catalog_name in self._catalog_names

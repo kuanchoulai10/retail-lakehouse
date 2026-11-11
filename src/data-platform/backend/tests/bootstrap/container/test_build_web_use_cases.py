@@ -61,3 +61,21 @@ def test_app_serves_requests_end_to_end_on_sqlite():
     assert (listing["version"], [r["priority"] for r in listing["rules"]]) == (1, [1])
     stale = client.put("/v1/discovery-rules", json={"version": 0, "rules": []})
     assert stale.status_code == 409
+
+
+def test_saving_a_rule_id_the_list_does_not_hold_answers_422():
+    """A PUT naming a rule id the saved list does not hold is refused with 422 and saves nothing."""
+    client = TestClient(create_api_app(lambda app: register_routes(app, _web_use_cases())))
+    rule = {
+        "id": "made-up",
+        "priority": 1,
+        "action": "exclude",
+        "enabled": True,
+        "catalogs": ["*"],
+        "namespaces": ["*"],
+        "tables": ["tmp_*"],
+    }
+    response = client.put("/v1/discovery-rules", json={"version": 0, "rules": [rule]})
+    assert response.status_code == 422
+    assert "unknown discovery rule id made-up" in response.json()["detail"]
+    assert client.get("/v1/discovery-rules").json()["version"] == 0

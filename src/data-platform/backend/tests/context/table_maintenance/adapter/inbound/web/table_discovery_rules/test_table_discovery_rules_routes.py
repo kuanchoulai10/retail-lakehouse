@@ -145,4 +145,4 @@ def test_list_covered_catalogs() -> None:
 def test_old_discovery_endpoints_are_gone(method: str, path: str) -> None:
     """The per-rule, switch, scan and old covered-catalog endpoints no longer exist."""
     response = build_client().request(method, path, json={})
-    assert response.status_code in (404, 405)
+    assert response.status_code == 404

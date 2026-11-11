@@ -48,3 +48,15 @@ def test_discovery_schedule_id_is_per_catalog():
     """The discovery schedule id is the shared prefix followed by the catalog name."""
     assert table_discovery_schedule_id("iceberg") == "table-discovery:catalog=iceberg"
     assert table_discovery_schedule_id("iceberg").startswith(TABLE_DISCOVERY_SCHEDULE_ID_PREFIX)
+
+
+def test_discovery_workflow_id_of_a_rules_save_carries_the_saved_version():
+    """A run started by a rules save has its own id per saved version, apart from the event-triggered ad hoc run."""
+    assert (
+        table_discovery_adhoc_workflow_id("c", None, rules_version=3)
+        == "table-discovery:catalog=c:trigger=rules-saved:version=3"
+    )
+    assert table_discovery_adhoc_workflow_id("c", None, rules_version=3) != table_discovery_adhoc_workflow_id("c", None)
+    assert table_discovery_adhoc_workflow_id("c", None, rules_version=3) != table_discovery_adhoc_workflow_id(
+        "c", None, rules_version=4
+    )

@@ -47,3 +47,23 @@ def test_discovery_request_starts_one_adhoc_workflow(harness):
         "table-discovery:catalog=iceberg:namespace=sales:trigger=adhoc": ("iceberg.sales · ad hoc"),
         "table-discovery:catalog=iceberg:trigger=adhoc": "iceberg · ad hoc",
     }
+
+
+def test_rules_saved_requests_start_one_workflow_per_saved_version(harness):
+    """Each rules save starts its own run, even while the run of an earlier save or an event is still going."""
+    gateway = SendDiscoveryRequestTemporalGateway(harness.client, harness.bridge)
+    gateway.send(SendDiscoveryRequestGatewayInput("lake", None))
+    gateway.send(SendDiscoveryRequestGatewayInput("lake", None, rules_version=1))
+    gateway.send(SendDiscoveryRequestGatewayInput("lake", None, rules_version=2))
+    query = "WorkflowId STARTS_WITH 'table-discovery:catalog=lake'"
+    expected = [
+        "table-discovery:catalog=lake:trigger=adhoc",
+        "table-discovery:catalog=lake:trigger=rules-saved:version=1",
+        "table-discovery:catalog=lake:trigger=rules-saved:version=2",
+    ]
+    ids = sorted(_ids(harness, query))
+    deadline = time.time() + 10
+    while ids != expected and time.time() < deadline:
+        time.sleep(0.1)
+        ids = sorted(_ids(harness, query))
+    assert ids == expected
