@@ -96,10 +96,13 @@ class TableMaintenancePoliciesSqlRepo(TableMaintenancePoliciesRepo):
         return None if row is None else TableMaintenancePolicyRowMapper.to_version(row._mapping)
 
     def delete(self, entity_id: EntityId) -> None:
-        """Delete the policy and all its versions."""
-        with self._engine.begin() as conn:
-            conn.execute(delete(versions).where(versions.c.name == entity_id.value))
-            conn.execute(delete(policies).where(policies.c.name == entity_id.value))
+        """Delete the policy and all its versions; one attached meanwhile raises ConflictError and stays."""
+        try:
+            with self._engine.begin() as conn:
+                conn.execute(delete(versions).where(versions.c.name == entity_id.value))
+                conn.execute(delete(policies).where(policies.c.name == entity_id.value))
+        except IntegrityError as exc:
+            raise ConflictError(f"policy {entity_id.value} is still attached to a catalog, namespace or table") from exc
 
     @staticmethod
     def _insert_version(conn: Connection, policy: TableMaintenancePolicy) -> None:

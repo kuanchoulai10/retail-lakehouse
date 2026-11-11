@@ -6,15 +6,26 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
+from sqlalchemy import create_engine, event
+from sqlalchemy.pool import StaticPool
 
+from context.table_maintenance.adapter.outbound.shared.sql import create_schema
 from context.table_maintenance.adapter.outbound.table_maintenance_policy.sql import (
     TableMaintenancePoliciesSqlRepo,
+)
+from context.table_maintenance.adapter.outbound.table_maintenance_policy_attachment.sql import (
+    TableMaintenancePolicyAttachmentsSqlRepo,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     MaintenancePolicyContent,
     StalePolicyVersion,
     TableMaintenancePolicy,
     TableMaintenancePolicyName,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
+    PolicyTarget,
+    PolicyTargetType,
+    TableMaintenancePolicyAttachment,
 )
 from context.table_maintenance.application.exceptions import ConflictError
 
@@ -108,3 +119,23 @@ def test_delete_removes_versions_too(repo: TableMaintenancePoliciesSqlRepo):
     assert repo.get(NAME) is None
     assert repo.get_version(NAME, 1) is None
     assert repo.get_version(NAME, 2) is None
+
+
+def _engine_enforcing_foreign_keys() -> Engine:
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    event.listen(engine, "connect", lambda dbapi_connection, _: dbapi_connection.execute("PRAGMA foreign_keys=ON"))
+    create_schema(engine)
+    return engine
+
+
+def test_delete_of_a_policy_attached_meanwhile_conflicts():
+    """An attachment landing after the delete's check makes the delete a ConflictError and keeps the policy."""
+    engine = _engine_enforcing_foreign_keys()
+    repo = TableMaintenancePoliciesSqlRepo(engine)
+    repo.create(_policy())
+    target = PolicyTarget(type=PolicyTargetType.CATALOG, path=("prod",))
+    TableMaintenancePolicyAttachmentsSqlRepo(engine).create(TableMaintenancePolicyAttachment.attach(target, NAME, NOW))
+    with pytest.raises(ConflictError):
+        repo.delete(NAME)
+    assert repo.get(NAME) is not None
+    assert repo.get_version(NAME, 1) is not None

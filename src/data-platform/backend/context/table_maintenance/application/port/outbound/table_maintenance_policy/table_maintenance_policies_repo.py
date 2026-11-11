@@ -31,4 +31,4 @@ class TableMaintenancePoliciesRepo(Repository[TableMaintenancePolicy]):
 
     @abstractmethod
     def delete(self, entity_id: EntityId) -> None:
-        """Delete the policy and all its versions."""
+        """Delete the policy and all its versions; raise ConflictError when it is attached anywhere."""
