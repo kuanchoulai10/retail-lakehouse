@@ -267,11 +267,15 @@ describe("DiscoveryRulesPage", () => {
     const held = new Promise<void>((resolve) => {
       release = resolve;
     });
+    let heldArrived = false;
     stubApi({
       "GET /v1/discovery-rules": () => jsonResponse({ version: 0, rules: [] }),
       "POST /v1/discovery-rules/preview": async (body) => {
         const { rules } = body as { rules: { action: string }[] };
-        if (rules[0]?.action === "exclude") await held;
+        if (rules[0]?.action === "exclude") {
+          heldArrived = true;
+          await held;
+        }
         const index = rules.findIndex((r) => r.action === "include");
         return jsonResponse({
           tables: [
@@ -302,7 +306,7 @@ describe("DiscoveryRulesPage", () => {
     expect(await within(preview).findByRole("group", { name: before })).toBeInTheDocument();
 
     await user.click(within(ruleRow("20")).getByRole("button", { name: "Move rule 20 up" }));
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await waitFor(() => expect(heldArrived).toBe(true));
     // The held answer is not in yet: the tables shown still belong to the list sent before.
     expect(preview).toHaveAttribute("aria-busy", "true");
     expect(within(preview).getByRole("group", { name: before })).toBeInTheDocument();
