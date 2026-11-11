@@ -46,12 +46,12 @@ describe("OperationPolicySection", () => {
     expect(separators).toHaveLength(2);
     expect(conditions[0]?.nextElementSibling).toBe(separators[0]);
     expect(separators[0]?.nextElementSibling).toBe(conditions[1]);
-    expect(within(conditions[0]!).getByRole("spinbutton", { name: "Small manifests at least" })).toHaveValue(5);
+    expect(within(conditions[0]!).getByRole("textbox", { name: "Small manifests at least" })).toHaveValue("5");
   });
 
   it("shows the cooldown in the trigger group and the rest in the execution group", () => {
     renderSection([{ label: "Small manifests", fields: [field("Small manifests at least", "5")] }]);
-    expect(within(triggerGroup()).getByRole("spinbutton", { name: "Cooldown (seconds)" })).toHaveValue(3600);
+    expect(within(triggerGroup()).getByRole("textbox", { name: "Cooldown (seconds)" })).toHaveValue("3600");
     expect(within(triggerGroup()).queryByText("or", { exact: true })).not.toBeInTheDocument();
     const execution = within(screen.getByRole("group", { name: "Rewrite manifests" })).getByRole("group", {
       name: "Execution",

@@ -30,14 +30,14 @@ describe("PolicyEditor", () => {
     });
     const onClose = vi.fn();
     const user = userEvent.setup();
-    renderEditor(<PolicyEditor template={policyContentFixture()} onClose={onClose} />);
+    renderEditor(<PolicyEditor content={policyContentFixture()} onClose={onClose} />);
     const dialog = await screen.findByRole("dialog", { name: "New policy" });
     await user.type(within(dialog).getByRole("textbox", { name: "Name" }), "weekly");
     await replace(user, within(dialog).getByRole("textbox", { name: "Description" }), "Weekly tidy-up");
-    await replace(user, within(dialog).getByRole("spinbutton", { name: "Reconcile interval (seconds)" }), "7200");
+    await replace(user, within(dialog).getByRole("textbox", { name: "Reconcile interval (seconds)" }), "7200");
     await user.click(within(dialog).getByRole("switch", { name: "Dry run" }));
     const expire = section("Expire snapshots");
-    await replace(user, within(expire).getByRole("spinbutton", { name: "Retain last" }), "3");
+    await replace(user, within(expire).getByRole("textbox", { name: "Retain last" }), "3");
     await user.click(within(section("Remove orphan files")).getByRole("switch", { name: "Enabled" }));
     await user.click(within(dialog).getByRole("button", { name: "Create policy" }));
 
@@ -59,12 +59,12 @@ describe("PolicyEditor", () => {
       "PUT /v1/maintenance-policies/nightly": () => jsonResponse({ ...NIGHTLY, version: 5 }),
     });
     const user = userEvent.setup();
-    renderEditor(<PolicyEditor policy={NIGHTLY} onClose={vi.fn()} />);
+    renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={vi.fn()} />);
     const rewrite = section("Rewrite data files");
-    await replace(user, within(rewrite).getByRole("spinbutton", { name: "Reducible files at least" }), "");
-    await replace(user, within(rewrite).getByRole("spinbutton", { name: "Target file size (bytes)" }), "134217728");
+    await replace(user, within(rewrite).getByRole("textbox", { name: "Reducible files at least" }), "");
+    await replace(user, within(rewrite).getByRole("textbox", { name: "Target file size (bytes)" }), "134217728");
     const manifests = section("Rewrite manifests");
-    await replace(user, within(manifests).getByRole("spinbutton", { name: "Smaller than (bytes)" }), "8388608");
+    await replace(user, within(manifests).getByRole("textbox", { name: "Smaller than (bytes)" }), "8388608");
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(callsTo(calls, "PUT", "/v1/maintenance-policies/nightly")).toHaveLength(1));
@@ -84,7 +84,7 @@ describe("PolicyEditor", () => {
     });
     const onClose = vi.fn();
     const user = userEvent.setup();
-    renderEditor(<PolicyEditor policy={NIGHTLY} onClose={onClose} />);
+    renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={onClose} />);
     const dialog = await screen.findByRole("dialog", { name: "Edit policy" });
     expect(within(dialog).queryByRole("textbox", { name: "Name" })).not.toBeInTheDocument();
     await user.click(within(section("Rewrite manifests")).getByRole("switch", { name: "Enabled" }));
@@ -108,7 +108,7 @@ describe("PolicyEditor", () => {
     });
     const onClose = vi.fn();
     const user = userEvent.setup();
-    renderEditor(<PolicyEditor policy={NIGHTLY} onClose={onClose} />);
+    renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={onClose} />);
     await user.click(await screen.findByRole("button", { name: "Save" }));
 
     expect(
@@ -117,7 +117,7 @@ describe("PolicyEditor", () => {
     expect(onClose).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Reload" }));
     await waitFor(() =>
-      expect(screen.getByRole("spinbutton", { name: "Reconcile interval (seconds)" })).toHaveValue(600),
+      expect(screen.getByRole("textbox", { name: "Reconcile interval (seconds)" })).toHaveValue("600"),
     );
     expect(screen.queryByText(/Someone else changed this policy/)).not.toBeInTheDocument();
 
@@ -131,7 +131,7 @@ describe("PolicyEditor", () => {
       "POST /v1/maintenance-policies": () => jsonResponse({ detail: "policy weekly already exists" }, 409),
     });
     const user = userEvent.setup();
-    renderEditor(<PolicyEditor template={policyContentFixture()} onClose={vi.fn()} />);
+    renderEditor(<PolicyEditor content={policyContentFixture()} onClose={vi.fn()} />);
     await user.type(await screen.findByRole("textbox", { name: "Name" }), "weekly");
     await user.click(screen.getByRole("button", { name: "Create policy" }));
     expect(await screen.findByText("policy weekly already exists")).toBeInTheDocument();
@@ -140,7 +140,7 @@ describe("PolicyEditor", () => {
   it("refuses a name the API would refuse, without sending it", async () => {
     const calls = stubCatalogApi({});
     const user = userEvent.setup();
-    renderEditor(<PolicyEditor template={policyContentFixture()} onClose={vi.fn()} />);
+    renderEditor(<PolicyEditor content={policyContentFixture()} onClose={vi.fn()} />);
     await user.type(await screen.findByRole("textbox", { name: "Name" }), "nightly policy");
     await user.click(screen.getByRole("button", { name: "Create policy" }));
     expect(
@@ -152,16 +152,29 @@ describe("PolicyEditor", () => {
   it("refuses a value that is not a whole number, naming the field", async () => {
     const calls = stubCatalogApi({});
     const user = userEvent.setup();
-    renderEditor(<PolicyEditor policy={NIGHTLY} onClose={vi.fn()} />);
-    await replace(user, within(section("Expire snapshots")).getByRole("spinbutton", { name: "Retain last" }), "");
+    renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={vi.fn()} />);
+    await replace(user, within(section("Expire snapshots")).getByRole("textbox", { name: "Retain last" }), "");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(screen.getByText("Expire snapshots: Retain last must be a whole number.")).toBeInTheDocument();
     expect(calls).toEqual([]);
   });
 
+  it("refuses a half-typed optional threshold instead of sending it as not checked", async () => {
+    const calls = stubCatalogApi({});
+    const user = userEvent.setup();
+    renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={vi.fn()} />);
+    const reducible = within(section("Rewrite data files")).getByLabelText("Reducible files at least");
+    await replace(user, reducible, "1e");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(
+      screen.getByText("Rewrite data files: Reducible files at least must be a whole number."),
+    ).toBeInTheDocument();
+    expect(calls).toEqual([]);
+  });
+
   it("shows each operation with its scope only on rewrite data files", () => {
     stubCatalogApi({});
-    renderEditor(<PolicyEditor policy={NIGHTLY} onClose={vi.fn()} />);
+    renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={vi.fn()} />);
     for (const name of ["Rewrite data files", "Rewrite manifests", "Expire snapshots", "Remove orphan files"]) {
       expect(within(section(name)).getByRole("group", { name: "Trigger" })).toBeInTheDocument();
       expect(within(section(name)).getByRole("group", { name: "Execution" })).toBeInTheDocument();

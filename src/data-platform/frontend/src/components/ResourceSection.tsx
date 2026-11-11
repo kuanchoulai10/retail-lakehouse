@@ -25,6 +25,8 @@ export interface ResourceSectionProps<Row extends RowData> {
   // Messages for parts of the list that could not be loaded; the rows that did load still show.
   errors?: string[];
   newLabel: string;
+  // Disables the New button; say why through `errors`.
+  newDisabled?: boolean;
   renderForm: (controls: { onClose: () => void }) => ReactNode;
   // A string when every row is the same kind of object; a function for a mixed list.
   objectKind: string | ((row: Row) => string);
@@ -50,6 +52,7 @@ export function ResourceSection<Row extends RowData>({
   emptyText = "None yet.",
   errors = [],
   newLabel,
+  newDisabled = false,
   renderForm,
   objectKind,
   objectName,
@@ -126,7 +129,7 @@ export function ResourceSection<Row extends RowData>({
       <Panel
         title={title}
         actions={
-          <Button type="button" size="small" onClick={() => setCreating(true)}>
+          <Button type="button" size="small" disabled={newDisabled} onClick={() => setCreating(true)}>
             {newLabel}
           </Button>
         }

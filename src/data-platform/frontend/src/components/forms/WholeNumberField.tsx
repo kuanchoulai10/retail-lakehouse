@@ -17,7 +17,8 @@ function readBack(value: string, unit: WholeNumberInput["unit"]): string | undef
   return unit === "seconds" ? formatSeconds(number) : formatBytes(number);
 }
 
-// A whole-number field kept as text, so an empty optional value and a half-typed one survive
+// A whole-number field kept as text (not type="number", which reports half-typed input such as
+// "1e" as empty), so an empty optional value and a half-typed one survive
 // until the form is submitted and checked.
 export function WholeNumberField({ label, value, onChange, hint, unit }: WholeNumberInput) {
   const description = [readBack(value, unit), hint].filter((part) => part !== undefined).join(". ");
@@ -25,10 +26,8 @@ export function WholeNumberField({ label, value, onChange, hint, unit }: WholeNu
     <TextField
       label={label}
       description={description === "" ? undefined : description}
-      type="number"
+      type="text"
       inputMode="numeric"
-      min={0}
-      step={1}
       className="tabular-nums"
       value={value}
       onChange={(event) => onChange(event.target.value)}

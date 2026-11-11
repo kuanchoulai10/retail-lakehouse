@@ -52,6 +52,21 @@ export const OnlyDefault: Story = {
   },
 };
 
+export const NoDefault: Story = {
+  beforeEach({ msw }) {
+    msw.use(getListTableMaintenancePoliciesMockHandler({ policies: POLICIES.slice(1) }));
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByText(
+        "The default policy is missing, so a new policy has nothing to start from. Reload the page.",
+      ),
+    ).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "New policy" })).toBeDisabled();
+  },
+};
+
 export const AttachmentsLoading: Story = {
   beforeEach({ msw }) {
     msw.use(apiPending("/v1/maintenance-policies/retail-nightly/mappings"));
@@ -70,7 +85,7 @@ export const Editor: Story = {
     const dialog = await screen.findByRole("dialog", { name: "Edit policy" });
     const rewrite = within(dialog).getByRole("group", { name: "Rewrite data files" });
     await expect(within(rewrite).getByRole("combobox", { name: "Scope" })).toHaveTextContent("Whole table");
-    await expect(within(rewrite).getByRole("spinbutton", { name: "Reducible files at least" })).toHaveValue(20);
+    await expect(within(rewrite).getByRole("textbox", { name: "Reducible files at least" })).toHaveValue("20");
   },
 };
 

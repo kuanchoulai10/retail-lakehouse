@@ -156,6 +156,19 @@ describe("PoliciesPage", () => {
     await waitFor(() => expect(callsTo(calls, "GET", "/v1/maintenance-policies")).toHaveLength(2));
   });
 
+  it("disables New policy and says why when the list has no default to start from", async () => {
+    stubApi({
+      "GET /v1/maintenance-policies": () =>
+        jsonResponse({ policies: POLICIES.filter((policy) => policy.name !== "default") }),
+    });
+    renderPage();
+    await screen.findByText("Nightly compaction");
+    expect(screen.getByRole("button", { name: "New policy" })).toBeDisabled();
+    expect(
+      screen.getByText("The default policy is missing, so a new policy has nothing to start from. Reload the page."),
+    ).toBeInTheDocument();
+  });
+
   it("shows an error when the policies cannot be loaded", async () => {
     stubApi({ "GET /v1/maintenance-policies": () => jsonResponse({ detail: "boom" }, 500) });
     renderPage();

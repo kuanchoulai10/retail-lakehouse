@@ -17,6 +17,10 @@ import { errorMessage } from "@/format";
 import type { PolicyContent } from "@/lib/policyDraft";
 
 const DEFAULT_POLICY = "default";
+// The server always seeds `default`; a new policy copies it, so without it there is nothing
+// to start from, and the console never guesses the values.
+const NO_DEFAULT_MESSAGE =
+  "The default policy is missing, so a new policy has nothing to start from. Reload the page.";
 
 type Policy = ListedTableMaintenancePolicyApiResponse;
 
@@ -96,12 +100,13 @@ export function PoliciesPage() {
         rowKey={(row) => row.name}
         emptyText="No policies."
         newLabel="New policy"
-        renderForm={({ onClose }) => (
-          <PolicyEditor
-            template={defaultPolicy === undefined ? undefined : { ...contentOf(defaultPolicy), description: "" }}
-            onClose={onClose}
-          />
-        )}
+        newDisabled={defaultPolicy === undefined}
+        errors={defaultPolicy === undefined ? [NO_DEFAULT_MESSAGE] : []}
+        renderForm={({ onClose }) =>
+          defaultPolicy !== undefined && (
+            <PolicyEditor content={{ ...contentOf(defaultPolicy), description: "" }} onClose={onClose} />
+          )
+        }
         rowActions={(row) => (
           <Button
             type="button"
@@ -127,7 +132,9 @@ export function PoliciesPage() {
           await remove.mutateAsync(row);
         }}
       />
-      {editing !== null && <PolicyEditor policy={editing} onClose={() => setEditing(null)} />}
+      {editing !== null && (
+        <PolicyEditor policy={editing} content={contentOf(editing)} onClose={() => setEditing(null)} />
+      )}
     </>
   );
 }

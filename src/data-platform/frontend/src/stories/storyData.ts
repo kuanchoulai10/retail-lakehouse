@@ -16,7 +16,7 @@ import type {
   TableReconciliationApiResponse,
   TableStorageApiResponse,
 } from "@/api/generated/model";
-import { FALLBACK_POLICY_CONTENT } from "@/lib/policyDraft";
+import type { PolicyContent } from "@/lib/policyDraft";
 
 // One small lakehouse for the page stories: catalog iceberg, namespace retail, table orders.
 
@@ -440,6 +440,36 @@ export const RECONCILIATIONS: TableReconciliationApiResponse[] = [
   }),
 ];
 
+// The spec's default policy content, the base of the policies below (story data only).
+export const DEFAULT_POLICY_CONTENT: PolicyContent = {
+  description: "",
+  reconcile_interval_seconds: 3600,
+  dry_run: false,
+  operations: {
+    rewrite_data_files: {
+      enabled: true,
+      scope: { unit: "partition" },
+      trigger_policy: { cooldown_seconds: 3600, conditions: { reducible_files: { at_least: 5 } } },
+      execution_policy: { target_file_size_bytes: null, min_input_files: 2, partial_progress: { enabled: true, max_commits: null } },
+    },
+    rewrite_manifests: {
+      enabled: true,
+      trigger_policy: { cooldown_seconds: 21600, conditions: { small_manifests: { at_least: 5, smaller_than_bytes: null } } },
+      execution_policy: {},
+    },
+    expire_snapshots: {
+      enabled: true,
+      trigger_policy: { cooldown_seconds: 21600, conditions: { expirable_snapshots: { at_least: 1 } } },
+      execution_policy: { older_than_seconds: 86400, retain_last: 10 },
+    },
+    remove_orphan_files: {
+      enabled: true,
+      trigger_policy: { cooldown_seconds: 604800, conditions: {} },
+      execution_policy: { older_than_seconds: 259200 },
+    },
+  },
+};
+
 function policy(overrides: Partial<ListedTableMaintenancePolicyApiResponse>): ListedTableMaintenancePolicyApiResponse {
   return {
     name: "default",
@@ -447,7 +477,7 @@ function policy(overrides: Partial<ListedTableMaintenancePolicyApiResponse>): Li
     attachment_count: 0,
     created_at: "2026-11-01T09:00:00Z",
     updated_at: "2026-11-01T09:00:00Z",
-    ...FALLBACK_POLICY_CONTENT,
+    ...DEFAULT_POLICY_CONTENT,
     ...overrides,
   };
 }
@@ -463,9 +493,9 @@ export const POLICIES: ListedTableMaintenancePolicyApiResponse[] = [
     attachment_count: 2,
     reconcile_interval_seconds: 86400,
     operations: {
-      ...FALLBACK_POLICY_CONTENT.operations,
+      ...DEFAULT_POLICY_CONTENT.operations,
       rewrite_data_files: {
-        ...FALLBACK_POLICY_CONTENT.operations.rewrite_data_files,
+        ...DEFAULT_POLICY_CONTENT.operations.rewrite_data_files,
         scope: { unit: "table" },
         trigger_policy: { cooldown_seconds: 86400, conditions: { reducible_files: { at_least: 20 } } },
       },

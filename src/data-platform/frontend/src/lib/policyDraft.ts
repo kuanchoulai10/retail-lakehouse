@@ -44,37 +44,6 @@ export interface PolicyDraft {
 
 export const POLICY_NAME_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
-// What a new policy starts from when the list has no `default` to copy. The server always
-// seeds `default`, so this only guards a list read mid-way; the values are the spec's default.
-export const FALLBACK_POLICY_CONTENT: PolicyContent = {
-  description: "",
-  reconcile_interval_seconds: 3600,
-  dry_run: false,
-  operations: {
-    rewrite_data_files: {
-      enabled: true,
-      scope: { unit: "partition" },
-      trigger_policy: { cooldown_seconds: 3600, conditions: { reducible_files: { at_least: 5 } } },
-      execution_policy: { target_file_size_bytes: null, min_input_files: 2, partial_progress: { enabled: true, max_commits: null } },
-    },
-    rewrite_manifests: {
-      enabled: true,
-      trigger_policy: { cooldown_seconds: 21600, conditions: { small_manifests: { at_least: 5, smaller_than_bytes: null } } },
-      execution_policy: {},
-    },
-    expire_snapshots: {
-      enabled: true,
-      trigger_policy: { cooldown_seconds: 21600, conditions: { expirable_snapshots: { at_least: 1 } } },
-      execution_policy: { older_than_seconds: 86400, retain_last: 10 },
-    },
-    remove_orphan_files: {
-      enabled: true,
-      trigger_policy: { cooldown_seconds: 604800, conditions: {} },
-      execution_policy: { older_than_seconds: 259200 },
-    },
-  },
-};
-
 function text(value: number | null | undefined): string {
   return value === null || value === undefined ? "" : String(value);
 }

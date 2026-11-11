@@ -13,7 +13,6 @@ import { errorMessage } from "@/format";
 import {
   contentFromDraft,
   draftFromContent,
-  FALLBACK_POLICY_CONTENT,
   POLICY_NAME_PATTERN,
   type PolicyContent,
   type PolicyDraft,
@@ -28,10 +27,12 @@ const CONFLICT_MESSAGE = "Someone else changed this policy. Reload to see their 
 const NAME_MESSAGE = "A name uses letters, digits, - and _ only, at most 64 characters.";
 
 interface Props {
-  // The policy to edit; without one the editor creates a policy.
-  policy?: Pick<TableMaintenancePolicyApiResponse, "name" | "version"> & PolicyContent;
-  // What a new policy starts from: the default policy's content, as the page passes it.
-  template?: PolicyContent;
+  // The policy being edited, at the version `content` was read at; without one the editor
+  // creates a policy.
+  policy?: Pick<TableMaintenancePolicyApiResponse, "name" | "version">;
+  // What the form starts from: the edited policy's content, or for a new policy the default
+  // policy's, as the page passes it. The editor never makes values up.
+  content: PolicyContent;
   onClose: () => void;
 }
 
@@ -39,14 +40,14 @@ type Write =
   | { kind: "create"; name: string; content: PolicyContent }
   | { kind: "update"; name: string; version: number; content: PolicyContent };
 
-export function PolicyEditor({ policy, template, onClose }: Props) {
+export function PolicyEditor({ policy, content, onClose }: Props) {
   const queryClient = useQueryClient();
   // The version the edit started from; a refetch while the dialog is open must not move it
   // forward, or the save would overwrite a change made meanwhile. Reload moves it on purpose.
   const [loaded, setLoaded] = useState(() =>
     policy === undefined ? null : { name: policy.name, version: policy.version },
   );
-  const [draft, setDraft] = useState<PolicyDraft>(() => draftFromContent(policy ?? template ?? FALLBACK_POLICY_CONTENT));
+  const [draft, setDraft] = useState<PolicyDraft>(() => draftFromContent(content));
   const [name, setName] = useState("");
   const [invalid, setInvalid] = useState<string | null>(null);
 
