@@ -24,7 +24,7 @@ function renderHeader(
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <TableHeader table={catalogTableFixture()} managed={tableFixture({ status, ...managed })} menuItems={[]} />
+        <TableHeader table={catalogTableFixture()} managed={tableFixture({ status, ...managed })} policy={null} menuItems={[]} />
         {extra}
       </MemoryRouter>
     </QueryClientProvider>,
@@ -213,7 +213,7 @@ describe("TableHeader of an unmanaged table", () => {
     render(
       <QueryClientProvider client={newClient()}>
         <MemoryRouter>
-          <TableHeader table={catalogTableFixture()} managed={null} menuItems={[]} />
+          <TableHeader table={catalogTableFixture()} managed={null} policy={null} menuItems={[]} />
         </MemoryRouter>
       </QueryClientProvider>,
     );
@@ -227,6 +227,7 @@ describe("TableHeader of an unmanaged table", () => {
           <TableHeader
             table={catalogTableFixture()}
             managed={null}
+            policy={null}
             menuItems={[{ label: "Rename", onSelect: () => {} }]}
           />
         </MemoryRouter>

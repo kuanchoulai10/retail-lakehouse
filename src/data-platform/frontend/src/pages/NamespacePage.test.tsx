@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { TableIdentifierApiResponse } from "../api/generated/model";
 import { getGetNamespaceQueryKey } from "../api/generated/namespaces/namespaces";
 import { bodyOf, callsTo, stubCatalogApi, type StubHandler } from "../test/catalogApiStub";
-import { jsonResponse } from "../test/fixtures";
+import { jsonResponse, policyContentFixture } from "../test/fixtures";
 import { settle, SuspendForever } from "../test/SuspendForever";
 import { NamespacePage } from "./NamespacePage";
 
@@ -56,6 +56,17 @@ async function openAction(user: ReturnType<typeof userEvent.setup>, label: strin
 
 // These tests type whole forms, which takes seconds under a loaded parallel run.
 describe("NamespacePage", { timeout: 15_000 }, () => {
+  it("shows the policy the namespace inherits and where from", async () => {
+    stubNamespace({
+      "GET /v1/applicable-policy?catalog=iceberg&namespace=retail": () =>
+        jsonResponse({ ...policyContentFixture(), name: "nightly", version: 4, target: { type: "catalog", path: ["iceberg"], table_uuid: null } }),
+    });
+    renderAt("/catalogs/iceberg/namespaces/retail");
+    const panel = await screen.findByRole("region", { name: "Maintenance policy" });
+    expect(await within(panel).findByText(/Inherited from catalog/)).toBeInTheDocument();
+    expect(within(panel).queryByRole("button", { name: "Detach" })).not.toBeInTheDocument();
+  });
+
   it("namespace page lists tables views and generic tables with a type column", async () => {
     stubNamespace();
     renderAt("/catalogs/iceberg/namespaces/retail");

@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { useListTableMaintenancePolicyMappings } from "@/api/generated/maintenance-policies/maintenance-policies";
 import type { PolicyTargetApiResponse } from "@/api/generated/model";
 import { errorMessage } from "@/format";
-import { catalogPath, namespacePath, tablePath } from "@/lib/catalogPaths";
+import { targetPagePath } from "@/lib/policyPaths";
 
 const TARGET_TYPES: Record<string, string> = {
   catalog: "Catalog",
@@ -11,19 +11,9 @@ const TARGET_TYPES: Record<string, string> = {
   table: "Table",
 };
 
-// A target's path is the catalog, then the namespace levels, then the table name for a table.
-function targetPath(target: PolicyTargetApiResponse): string | null {
-  const [catalog, ...rest] = target.path;
-  if (catalog === undefined) return null;
-  if (target.type === "catalog") return catalogPath(catalog);
-  if (target.type === "namespace") return namespacePath(catalog, rest);
-  const table = rest.at(-1);
-  return target.type === "table" && table !== undefined ? tablePath(catalog, rest.slice(0, -1), table) : null;
-}
-
 function Target({ target, orphaned }: { target: PolicyTargetApiResponse; orphaned: boolean }) {
   const name = target.path.join(".");
-  const href = orphaned ? null : targetPath(target);
+  const href = orphaned ? null : targetPagePath(target);
   return (
     <li className="flex flex-wrap items-center gap-x-2 gap-y-1">
       <span className="text-on-surface-variant">{TARGET_TYPES[target.type] ?? target.type}</span>

@@ -4,7 +4,7 @@ import type {
   ReconciliationOperationApiResponse,
   TableReconciliationApiResponse,
 } from "../../api/generated/model";
-import { foldText, headline, reasonSentence, wakeText } from "./reconciliationText";
+import { foldKey, foldText, headline, policyLabel, policyOrigin, reasonSentence, wakeText } from "./reconciliationText";
 
 function measurement(overrides: Partial<ReconciliationMeasurementApiResponse>): ReconciliationMeasurementApiResponse {
   return { key: "small_manifests", observed: 12, unit: "count", threshold: 20, comparison: ">=", met: false, ...overrides };
@@ -227,7 +227,7 @@ describe("reasonSentence", () => {
   });
 
   it("off says it is turned off", () => {
-    expect(reasonSentence(op({ result: "off", measurements: [] }))).toBe("Turned off in this table's settings.");
+    expect(reasonSentence(op({ result: "off", measurements: [] }))).toBe("Turned off in the policy.");
   });
 
   it("not checked says the manual run did not name it", () => {
@@ -255,5 +255,29 @@ describe("foldText", () => {
       record({ reconciled_at: local(hour), outcome: "skipped", skip_reason: "not_found", wake_reasons: { schedule: 1 } }),
     );
     expect(foldText(records)).toBe("3 reconciliations skipped: table not found, 02:42–04:42");
+  });
+});
+
+describe("policyLabel", () => {
+  it("names the policy and the version the reconciliation used", () => {
+    expect(policyLabel(record({ policy_name: "nightly", policy_version: 4 }))).toBe("nightly v4");
+  });
+});
+
+describe("policyOrigin", () => {
+  it("says where the policy came from", () => {
+    expect(policyOrigin(record({ policy_target: null }))).toBe("the platform default");
+    expect(policyOrigin(record({ policy_target: { type: "table", path: ["iceberg", "retail", "orders"] } }))).toBe(
+      "attached to this table",
+    );
+    expect(policyOrigin(record({ policy_target: { type: "namespace", path: ["iceberg", "retail"] } }))).toBe(
+      "inherited from namespace iceberg.retail",
+    );
+  });
+});
+
+describe("foldKey", () => {
+  it("keeps quiet records under different policy versions apart", () => {
+    expect(foldKey(record({ policy_version: 1 }))).not.toBe(foldKey(record({ policy_version: 2 })));
   });
 });

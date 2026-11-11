@@ -4,6 +4,7 @@ import type {
   TableReconciliationApiResponse,
 } from "@/api/generated/model";
 import { formatBytes, formatCount, formatSeconds } from "@/format";
+import { targetKind, targetName } from "@/lib/policyPaths";
 
 // What a reconciliation's record says, in words: the line headline, the wake reasons and one
 // reason sentence per operation. Built from the structured record so the wording can change
@@ -130,9 +131,10 @@ function startedNothing(r: TableReconciliationApiResponse): boolean {
 
 // Consecutive reconciliations with the same fold key fold into one line, so hourly passes that
 // did nothing, or an hourly skip of a table missing from the catalog, do not drown the ones that did something.
+// A change of policy or version breaks the fold, so a fold decided under one policy version only.
 // null: the reconciliation did something and always gets its own line.
 export function foldKey(r: TableReconciliationApiResponse): string | null {
-  return startedNothing(r) ? headline(r) : null;
+  return startedNothing(r) ? `${headline(r)}\u001f${policyLabel(r)}` : null;
 }
 
 // "{n} reconciliations found nothing to do, {first}–{last}" for records newest first, or
@@ -246,10 +248,23 @@ export function reasonSentence(op: ReconciliationOperationApiResponse, { manualR
       return when ? `Ran recently; ${when}.` : "Ran recently.";
     }
     case "off":
-      return "Turned off in this table's settings.";
+      return "Turned off in the policy.";
     case "not_checked":
       return "Not part of this manual run.";
     default:
       return resultLabel(op.result);
   }
+}
+
+// "nightly v4": the policy and the version this reconciliation decided with.
+export function policyLabel(r: TableReconciliationApiResponse): string {
+  return `${r.policy_name} v${r.policy_version}`;
+}
+
+// Where that policy came from, relative to this table, to follow "Policy nightly v4, ".
+export function policyOrigin(r: TableReconciliationApiResponse): string {
+  const target = r.policy_target;
+  if (target === null) return "the platform default";
+  if (target.type === "table") return "attached to this table";
+  return `inherited from ${targetKind(target)} ${targetName(target)}`;
 }

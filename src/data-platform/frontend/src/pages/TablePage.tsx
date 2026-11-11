@@ -3,7 +3,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type MouseEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { ApiError } from "@/api/apiError";
-import type { CatalogTableApiResponse } from "@/api/generated/model";
+import type { CatalogTableApiResponse, TableApiResponse } from "@/api/generated/model";
+import { useGetTableApplicableMaintenancePolicy } from "@/api/generated/maintenance-policies/maintenance-policies";
 import { useListCoveredCatalogs } from "@/api/generated/discovery-rules/discovery-rules";
 import {
   deleteTable,
@@ -12,6 +13,7 @@ import {
   useGetCatalogTable,
   useGetTable,
 } from "@/api/generated/tables/tables";
+import { ApplicablePolicyPanel } from "@/components/ApplicablePolicyPanel";
 import { CatalogObjectNotFound } from "@/components/CatalogObjectNotFound";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { EditTablePropertiesDialog } from "@/components/forms/EditTablePropertiesDialog";
@@ -30,13 +32,14 @@ import { apiNamespace, namespaceFromParam, namespacePath, tablePath } from "@/li
 import { tableMaintenanceState, type TableMaintenanceState } from "@/lib/tableMaintenanceState";
 import { useLeavingPage } from "@/lib/useLeavingPage";
 
-// The same six tabs on every Iceberg table, managed or not (spec anti-goal).
+// The same tabs on every Iceberg table, managed or not (spec anti-goal).
 const TABS = [
   { key: "overview", label: "Overview" },
   { key: "schema", label: "Schema" },
   { key: "commits", label: "Commits" },
   { key: "maintenance", label: "Maintenance" },
   { key: "reconciliations", label: "Reconciliations" },
+  { key: "policy", label: "Policy" },
   { key: "properties", label: "Properties" },
 ] as const;
 
@@ -56,7 +59,21 @@ function isNotFound(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404;
 }
 
-function tabBody(tab: TabKey, table: CatalogTableApiResponse, maintenance: TableMaintenanceState) {
+// The policy is read by the table's uuid, which only maintenance's record of the table answers.
+function PolicyTab({ table, tableUuid }: { table: CatalogTableApiResponse; tableUuid: string }) {
+  return (
+    <ApplicablePolicyPanel
+      scope={{ type: "table", catalog: table.catalog, namespace: table.namespace, table: table.name, tableUuid }}
+    />
+  );
+}
+
+function tabBody(
+  tab: TabKey,
+  table: CatalogTableApiResponse,
+  maintenance: TableMaintenanceState,
+  record: TableApiResponse | undefined,
+) {
   switch (tab) {
     case "overview":
       return <OverviewTab table={table} maintenance={maintenance} />;
@@ -71,6 +88,13 @@ function tabBody(tab: TabKey, table: CatalogTableApiResponse, maintenance: Table
     case "reconciliations":
       return (
         <MaintenanceGate state={maintenance}>{(managed) => <ReconciliationsTab tableUuid={managed.uuid} />}</MaintenanceGate>
+      );
+    case "policy":
+      // Every table maintenance has a record of has a policy, managed or not; the rest say why not.
+      return record === undefined ? (
+        <MaintenanceGate state={maintenance}>{(managed) => <PolicyTab table={table} tableUuid={managed.uuid} />}</MaintenanceGate>
+      ) : (
+        <PolicyTab table={table} tableUuid={record.uuid} />
       );
   }
 }
@@ -103,6 +127,11 @@ function TableView({ catalog, parts, name, segment }: TableViewProps) {
   const uuid = table.data?.uuid;
   // The same query the maintenance tabs use, so invalidateTableState refetches it too.
   const maintenanceTable = useGetTable(uuid ?? "", { query: { enabled: uuid !== undefined && !leaving } });
+  const recordUuid = maintenanceTable.data?.uuid;
+  // The Policy tab's query, so the header's dry-run badge follows an attach or detach there.
+  const policy = useGetTableApplicableMaintenancePolicy(recordUuid ?? "", {
+    query: { enabled: recordUuid !== undefined && !leaving },
+  });
 
   const remove = useMutation({
     mutationFn: () => deleteTable(catalog, ns, name),
@@ -142,6 +171,7 @@ function TableView({ catalog, parts, name, segment }: TableViewProps) {
       <TableHeader
         table={table.data}
         managed={maintenance.kind === "managed" ? maintenance.table : null}
+        policy={policy.data ?? null}
         menuItems={menuItems}
       />
       <Tabs value={tab} onValueChange={(next) => navigate(tablePath(catalog, parts, name, next))}>
@@ -154,7 +184,7 @@ function TableView({ catalog, parts, name, segment }: TableViewProps) {
         </TabList>
         {TABS.map((t) => (
           <TabPanel key={t.key} value={t.key} forceMount className="data-[state=inactive]:hidden">
-            {t.key === tab ? <div className="type-body-medium">{tabBody(tab, table.data, maintenance)}</div> : null}
+            {t.key === tab ? <div className="type-body-medium">{tabBody(tab, table.data, maintenance, maintenanceTable.data)}</div> : null}
           </TabPanel>
         ))}
       </Tabs>

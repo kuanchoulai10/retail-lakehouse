@@ -1,4 +1,5 @@
 import type {
+  ApplicableTableMaintenancePolicyApiResponse,
   CatalogApiResponse,
   CatalogTableApiResponse,
   ListedTableMaintenancePolicyApiResponse,
@@ -385,6 +386,9 @@ function reconciliation(
 export const RECONCILIATIONS: TableReconciliationApiResponse[] = [
   reconciliation("rec-109", "2026-11-10T10:42:00Z", {
     wake_reasons: { catalog_commit: 3 },
+    policy_name: "retail-nightly",
+    policy_version: 4,
+    policy_target: { type: "namespace", path: ["iceberg", "retail"] },
     run_id: "run-1",
     operations: [
       {
@@ -518,3 +522,13 @@ export const POLICY_MAPPINGS: ListedTableMaintenancePolicyMappingApiResponse[] =
     attached_at: "2026-11-02T09:00:00Z",
   },
 ];
+
+const RETAIL_TARGET = { type: "namespace", path: ["iceberg", "retail"], table_uuid: null };
+
+// What applies where in the story lakehouse: retail-nightly is attached to namespace retail
+// (POLICY_MAPPINGS), so the namespace has it attached, its tables inherit it, and the catalog
+// falls back to the platform default.
+export function applicablePolicy(catalog: string, namespace: string[] = []): ApplicableTableMaintenancePolicyApiResponse {
+  const inRetail = catalog === "iceberg" && namespace[0] === "retail";
+  return { ...POLICIES[inRetail ? 1 : 0]!, target: inRetail ? RETAIL_TARGET : null };
+}

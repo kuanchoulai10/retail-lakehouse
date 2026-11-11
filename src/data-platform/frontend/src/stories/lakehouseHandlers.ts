@@ -8,9 +8,14 @@ import {
   getReplaceTableDiscoveryRulesMockHandler,
 } from "@/api/generated/discovery-rules/discovery-rules.msw";
 import {
+  getAttachTableMaintenancePolicyMockHandler,
   getCreateTableMaintenancePolicyMockHandler,
   getDeleteTableMaintenancePolicyMockHandler,
+  getDetachTableMaintenancePolicyMockHandler,
+  getGetApplicableMaintenancePolicyMockHandler,
+  getGetTableApplicableMaintenancePolicyMockHandler,
   getGetTableMaintenancePolicyMockHandler,
+  getGetTableMaintenancePolicyVersionMockHandler,
   getListTableMaintenancePoliciesMockHandler,
   getListTableMaintenancePolicyMappingsMockHandler,
   getUpdateTableMaintenancePolicyMockHandler,
@@ -28,6 +33,7 @@ import { getListTableMaintenanceRunsMockHandler } from "@/api/generated/table-ma
 import { getListTableReconciliationsMockHandler } from "@/api/generated/table-reconciliations/table-reconciliations.msw";
 import { getListViewsMockHandler } from "@/api/generated/views/views.msw";
 import {
+  applicablePolicy,
   CATALOGS,
   COMMITS,
   HEALTH,
@@ -107,5 +113,20 @@ export function lakehouseHandlers() {
       return { ...current, version: current.version + 1 };
     }),
     getDeleteTableMaintenancePolicyMockHandler(),
+    getGetTableMaintenancePolicyVersionMockHandler(({ params }) => {
+      const policy = POLICIES.find((p) => p.name === params.name) ?? POLICIES[0]!;
+      return { ...policy, version: Number(params.version) };
+    }),
+    getGetApplicableMaintenancePolicyMockHandler(({ request }) => {
+      const query = new URL(request.url).searchParams;
+      return applicablePolicy(query.get("catalog") ?? "", query.get("namespace")?.split(".") ?? []);
+    }),
+    getGetTableApplicableMaintenancePolicyMockHandler(applicablePolicy(ORDERS.catalog, ORDERS.namespace)),
+    getAttachTableMaintenancePolicyMockHandler(async ({ params, request }) => ({
+      policy_name: params.name,
+      target: { ...((await request.json()).target), table_uuid: null },
+      attached_at: "2026-11-12T09:00:00Z",
+    })),
+    getDetachTableMaintenancePolicyMockHandler(),
   ];
 }

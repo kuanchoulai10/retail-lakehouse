@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, within } from "storybook/test";
+import { expect, userEvent, within } from "storybook/test";
 import { getListCatalogTablesMockHandler } from "@/api/generated/tables/tables.msw";
 import { getListViewsMockHandler } from "@/api/generated/views/views.msw";
 import { ConsolePage } from "@/stories/ConsolePage";
@@ -24,6 +24,15 @@ export const Default: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole("link", { name: "orders" })).toBeVisible();
     await expect(canvas.getByRole("link", { name: "daily_revenue" })).toBeVisible();
+  },
+};
+
+export const PolicyAttachedHere: Story = {
+  play: async ({ canvasElement }) => {
+    const panel = within(await within(canvasElement).findByRole("region", { name: "Maintenance policy" }));
+    await expect(await panel.findByText("Attached here")).toBeVisible();
+    await userEvent.click(panel.getByRole("button", { name: "Detach" }));
+    await expect(panel.queryByRole("alert")).toBeNull();
   },
 };
 

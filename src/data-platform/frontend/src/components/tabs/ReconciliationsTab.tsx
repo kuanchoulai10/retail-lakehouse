@@ -37,12 +37,15 @@ import {
   mainWakeText,
   measurementLabel,
   operationLabel,
+  policyLabel,
+  policyOrigin,
   reasonSentence,
   resultLabel,
   resultOrder,
   wakeText,
 } from "@/components/tabs/reconciliationText";
 import { errorMessage, formatRelativeTime, formatTimestamp } from "@/format";
+import { policyVersionPath } from "@/lib/policyPaths";
 
 const PAGE_SIZE = 50;
 
@@ -120,6 +123,8 @@ function RecordLine({ record, onOpen }: { record: TableReconciliationApiResponse
           <time dateTime={record.reconciled_at} title={formatTimestamp(record.reconciled_at)}>
             {formatRelativeTime(record.reconciled_at)}
           </time>
+          {" · "}
+          <span className="font-mono">{policyLabel(record)}</span>
         </>
       }
       onSelect={onOpen}
@@ -275,6 +280,13 @@ function ReconciliationDetail({ record }: { record: TableReconciliationApiRespon
           <p className="type-body-small text-on-surface-variant">
             <time dateTime={record.reconciled_at}>{formatTimestamp(record.reconciled_at)}</time>
             {record.dry_run && (manual ? " · dry run is on; a manual run still runs" : " · dry run, nothing was started")}
+          </p>
+          <p className="type-body-small text-on-surface-variant">
+            Policy{" "}
+            <TextLink asChild inline className="font-mono">
+              <Link to={policyVersionPath(record.policy_name, record.policy_version)}>{policyLabel(record)}</Link>
+            </TextLink>
+            , {policyOrigin(record)}
           </p>
         </div>
       </div>

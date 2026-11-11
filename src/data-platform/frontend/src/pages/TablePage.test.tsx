@@ -13,13 +13,13 @@ import {
   stubCatalogApi,
   type StubHandler,
 } from "../test/catalogApiStub";
-import { jsonResponse, tableFixture } from "../test/fixtures";
+import { jsonResponse, policyContentFixture, tableFixture } from "../test/fixtures";
 import { settle, SuspendForever } from "../test/SuspendForever";
 import { TablePage } from "./TablePage";
 
 const TABLE = "/v1/catalogs/iceberg/namespaces/retail/tables/orders";
 const PAGE = "/catalogs/iceberg/namespaces/retail/tables/orders";
-const SIX_TABS = ["Overview", "Schema", "Commits", "Maintenance", "Reconciliations", "Properties"];
+const TABS = ["Overview", "Schema", "Commits", "Maintenance", "Reconciliations", "Policy", "Properties"];
 
 function Location() {
   const location = useLocation();
@@ -103,18 +103,18 @@ function tabNames(): string[] {
 
 // These tests type into dialogs, which takes seconds under a loaded parallel run.
 describe("TablePage", { timeout: 15_000 }, () => {
-  it("every table shows the same six tabs, with no settings tab", async () => {
+  it("every table shows the same tabs, with no settings tab", async () => {
     stubTable();
     renderAt(PAGE);
     await screen.findByText("Maintenance: managed");
-    expect(tabNames()).toEqual(SIX_TABS);
+    expect(tabNames()).toEqual(TABS);
   });
 
-  it("every table shows the same six tabs when maintenance does not manage it", async () => {
+  it("every table shows the same tabs when maintenance does not manage it", async () => {
     stubTable({ covered: [] });
     renderAt(PAGE);
     await screen.findByText("Maintenance: not managed");
-    expect(tabNames()).toEqual(SIX_TABS);
+    expect(tabNames()).toEqual(TABS);
   });
 
   it("the old settings path shows the overview", async () => {
@@ -136,6 +136,23 @@ describe("TablePage", { timeout: 15_000 }, () => {
         expect(screen.queryByRole("button", { name: /Pause|Resume/ })).not.toBeInTheDocument();
       },
     );
+  });
+
+  it("policy tab shows the policy that applies, and the header says when it is a dry run", async () => {
+    const applicable = { ...policyContentFixture(), name: "scratch", version: 2, dry_run: true, target: null };
+    stubTable({ extra: { "GET /v1/tables/uuid-orders/applicable-policy": () => jsonResponse(applicable) } });
+    renderAt(`${PAGE}/policy`);
+    expect(await screen.findByText("Platform default")).toBeInTheDocument();
+    const heading = screen.getByRole("heading", { level: 1, name: "orders" });
+    const header = within(heading.closest("header") as HTMLElement);
+    expect(header.getByText("Dry run")).toBeInTheDocument();
+    expect(header.getByText((_, el) => el?.tagName === "SPAN" && el.textContent === "Policy: scratch v2")).toBeInTheDocument();
+  });
+
+  it("policy tab shows why there is none when maintenance has no record of the table", async () => {
+    stubTable({ covered: ["other"] });
+    renderAt(`${PAGE}/policy`);
+    expect(await screen.findByText("this catalog is not covered by maintenance")).toBeInTheDocument();
   });
 
   it("never asks maintenance about a catalog it does not cover for the commits tab", async () => {
@@ -355,7 +372,7 @@ describe("TablePage", { timeout: 15_000 }, () => {
     renderAt(`${PAGE}/properties`);
     await screen.findByText("write.format.default");
     screen.getByRole("tab", { name: "Properties" }).focus();
-    await user.keyboard("{ArrowLeft}{ArrowLeft}");
+    await user.keyboard("{ArrowLeft}{ArrowLeft}{ArrowLeft}");
     expect(await screen.findByText("No maintenance runs yet.")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Maintenance" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByTestId("location")).toHaveTextContent(`${PAGE}/maintenance`);

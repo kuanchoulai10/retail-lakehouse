@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
 import { getListCoveredCatalogsMockHandler } from "@/api/generated/discovery-rules/discovery-rules.msw";
+import { getGetTableApplicableMaintenancePolicyMockHandler } from "@/api/generated/maintenance-policies/maintenance-policies.msw";
 import { getGetTableMockHandler } from "@/api/generated/tables/tables.msw";
 import { getListTableReconciliationsMockHandler } from "@/api/generated/table-reconciliations/table-reconciliations.msw";
 import { apiError } from "@/stories/apiError";
@@ -8,7 +9,7 @@ import { ConsolePage } from "@/stories/ConsolePage";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
 import { lakehouseHandlers } from "@/stories/lakehouseHandlers";
 import { PHONE } from "@/stories/phone";
-import { MAINTAINED_ORDERS } from "@/stories/storyData";
+import { MAINTAINED_ORDERS, POLICIES } from "@/stories/storyData";
 
 const ORDERS = "/catalogs/iceberg/namespaces/retail/tables/orders";
 
@@ -125,6 +126,70 @@ export const ReconciliationsPhone: Story = {
   globals: PHONE,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByRole("button", { name: /^Started Rewrite data files/ });
+    await expectNoHorizontalPageScroll(canvasElement);
+  },
+};
+
+export const ReconciliationPolicyLink: Story = {
+  args: { route: `${ORDERS}/reconciliations` },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const row = await canvas.findByRole("button", { name: /^Started Rewrite data files/ });
+    await expect(row).toHaveTextContent("retail-nightly v4");
+    await userEvent.click(row);
+    const drawer = within(await within(canvasElement.ownerDocument.body).findByRole("dialog"));
+    await expect(drawer.getByRole("link", { name: "retail-nightly v4" })).toHaveAttribute(
+      "href",
+      "/policies/retail-nightly/versions/4",
+    );
+    await expect(drawer.getByText(/inherited from namespace iceberg\.retail/)).toBeVisible();
+  },
+};
+
+export const Policy: Story = {
+  args: { route: `${ORDERS}/policy` },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const panel = within(await canvas.findByRole("region", { name: "Maintenance policy" }));
+    await expect(await panel.findByRole("link", { name: "iceberg.retail" })).toBeVisible();
+    await expect(panel.getByRole("link", { name: "retail-nightly v4" })).toBeVisible();
+    await expect(panel.queryByRole("button", { name: "Detach" })).toBeNull();
+  },
+};
+
+export const PolicyDryRun: Story = {
+  args: { route: `${ORDERS}/policy` },
+  beforeEach({ msw }) {
+    msw.use(getGetTableApplicableMaintenancePolicyMockHandler({ ...POLICIES[2]!, target: null }));
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText("Platform default")).toBeVisible();
+    const header = within(canvas.getByRole("heading", { level: 1, name: "orders" }).closest("header") as HTMLElement);
+    await expect(header.getByText("Dry run")).toBeVisible();
+  },
+};
+
+export const PolicyCatalogNotCovered: Story = {
+  args: { route: `${ORDERS}/policy` },
+  beforeEach({ msw }) {
+    msw.use(
+      getListCoveredCatalogsMockHandler({ catalogs: [] }),
+      apiError("get", "/v1/tables/:tableUuid", "table uuid-orders not found", 404),
+    );
+  },
+  play: async ({ canvasElement }) => {
+    await expect(
+      await within(canvasElement).findByText("this catalog is not covered by maintenance"),
+    ).toBeVisible();
+  },
+};
+
+export const PolicyPhone: Story = {
+  args: { route: `${ORDERS}/policy` },
+  globals: PHONE,
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByRole("region", { name: "Maintenance policy" });
     await expectNoHorizontalPageScroll(canvasElement);
   },
 };

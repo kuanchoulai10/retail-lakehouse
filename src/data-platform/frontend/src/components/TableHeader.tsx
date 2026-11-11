@@ -1,7 +1,11 @@
-import { Banner, Button } from "@retail-lakehouse/design-system";
+import { Badge, Banner, Button } from "@retail-lakehouse/design-system";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import type { CatalogTableApiResponse, TableApiResponse } from "@/api/generated/model";
+import type {
+  ApplicableTableMaintenancePolicyApiResponse,
+  CatalogTableApiResponse,
+  TableApiResponse,
+} from "@/api/generated/model";
 import { getListTableReconciliationsQueryKey } from "@/api/generated/table-reconciliations/table-reconciliations";
 import { useTriggerTableReconciliation } from "@/api/generated/tables/tables";
 import type { ActionItem } from "@/components/ActionsMenu";
@@ -16,6 +20,8 @@ interface Props {
   table: CatalogTableApiResponse;
   // Maintenance's record when it manages the table; null otherwise.
   managed: TableApiResponse | null;
+  // The policy that applies to the table, once read; shown only on a managed table.
+  policy: ApplicableTableMaintenancePolicyApiResponse | null;
   // The Actions menu's items, shown on every table.
   menuItems: ActionItem[];
 }
@@ -35,7 +41,7 @@ function averageFileSize(table: CatalogTableApiResponse): string {
 // it. The discovery rules alone decide whether it does, so there is no pause or include here.
 // The maintenance actions live here, not in a child, so the phone overflow menu opens the same
 // dialog as the buttons.
-export function TableHeader({ table, managed, menuItems }: Props) {
+export function TableHeader({ table, managed, policy, menuItems }: Props) {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [openCount, setOpenCount] = useState(0);
@@ -119,6 +125,12 @@ export function TableHeader({ table, managed, menuItems }: Props) {
         {managed !== null && (
           <>
             <StatusBadge status={managed.status} />
+            {policy?.dry_run === true && <Badge>Dry run</Badge>}
+            {policy !== null && (
+              <span>
+                Policy: <span className="font-mono">{policy.name}</span> v{policy.version}
+              </span>
+            )}
             <span>Rule: {managed.matched_rule_id ?? "—"}</span>
           </>
         )}

@@ -311,6 +311,17 @@ describe("ReconciliationsTab", () => {
     expect(await screen.findByText("No reconciliations yet.")).toBeInTheDocument();
   });
 
+  it("each line names the policy and version it used, linking to that version from its details", async () => {
+    const user = userEvent.setup();
+    stubList([{ ...STARTED, policy_name: "nightly", policy_version: 4, policy_target: { type: "namespace", path: ["iceberg", "retail"] } }]);
+    renderTab();
+    const row = await screen.findByRole("button", { name: /Started Rewrite data files/ });
+    expect(row).toHaveTextContent("nightly v4");
+    const dialog = await openDrawer(user, /Started Rewrite data files/);
+    expect(within(dialog).getByRole("link", { name: "nightly v4" })).toHaveAttribute("href", "/policies/nightly/versions/4");
+    expect(within(dialog).getByText(/inherited from namespace iceberg\.retail/)).toBeInTheDocument();
+  });
+
   it("says so when the list cannot be loaded", async () => {
     stubCatalogApi({ "GET /v1/tables/uuid-orders/reconciliations*": () => jsonResponse({ detail: "database down" }, 500) });
     renderTab();
