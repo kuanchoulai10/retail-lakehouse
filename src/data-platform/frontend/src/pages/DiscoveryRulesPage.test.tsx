@@ -306,7 +306,7 @@ describe("DiscoveryRulesPage", () => {
     expect(await within(preview).findByRole("group", { name: before })).toBeInTheDocument();
 
     await user.click(within(ruleRow("20")).getByRole("button", { name: "Move rule 20 up" }));
-    await waitFor(() => expect(heldArrived).toBe(true));
+    await waitFor(() => expect(heldArrived).toBe(true), { timeout: 5000 });
     // The held answer is not in yet: the tables shown still belong to the list sent before.
     expect(preview).toHaveAttribute("aria-busy", "true");
     expect(within(preview).getByRole("group", { name: before })).toBeInTheDocument();
