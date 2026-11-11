@@ -690,6 +690,11 @@ for id in $(seq 1 8); do
   STATEMENTS+="INSERT INTO ${CATALOG}.${SCHEMA}.${REGIONS} VALUES (${id}, ${region}, 'note-${id}');"
 done
 STATEMENTS+="DELETE FROM ${CATALOG}.${SCHEMA}.${ORDERS} WHERE id = 3"
+REGIONS_BEFORE_RUNS='[]'
+KNOWN_REGIONS_UUID="$(table_uuid "${REGIONS}")"
+if [[ -n "${KNOWN_REGIONS_UUID}" ]]; then
+  REGIONS_BEFORE_RUNS="$(run_ids "${KNOWN_REGIONS_UUID}")"
+fi
 trino_sql "${STATEMENTS}"
 LAST_WRITE_AT="$(date +%s)"
 
@@ -728,7 +733,6 @@ ORDERS_OBJECTS_BEFORE="$(object_count "${ORDERS_PREFIX}")"
 progress "before: ${ORDERS} files=${ORDERS_FILES_BEFORE} snapshots=${ORDERS_SNAPSHOTS_BEFORE} objects=${ORDERS_OBJECTS_BEFORE}"
 
 ORDERS_BEFORE_RUNS="$(run_ids "${ORDERS_UUID}")"
-REGIONS_BEFORE_RUNS='[]'
 
 progress "checking the applicable policies of both tables"
 assert_applicable_policy "${ORDERS_UUID}" tm-e2e-orders
