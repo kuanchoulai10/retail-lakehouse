@@ -13,11 +13,11 @@ from context.table_maintenance.application.domain.model.table import (
     TableName,
     TableStatus,
 )
-from context.table_maintenance.application.domain.model.table_discovery_rule import (
-    RuleEffect,
+from context.table_maintenance.application.domain.model.table_discovery_rules import (
+    GlobList,
+    RuleAction,
     TableDiscoveryRule,
     TableDiscoveryRuleId,
-    TablePattern,
 )
 from context.table_maintenance.application.exceptions import ConflictError
 from context.table_maintenance.application.port.inbound.table import (
@@ -36,19 +36,31 @@ from context.table_maintenance.application.service.table import (
 )
 from tests.context.table_maintenance.fakes.track_calls import track_calls
 
-DEFAULT_PATTERN = TablePattern()
 
-
-def _rule(rules_repo, now, effect, pattern=DEFAULT_PATTERN, rid="r-1", priority=10):
-    rules_repo.create(TableDiscoveryRule.create(TableDiscoveryRuleId(rid), priority, effect, pattern, True, now))
+def _rule(rules_repo, now, action, tables=("*",), rid="r-1", priority=10):  # noqa: PLR0913
+    """Add one enabled rule to the saved discovery rules."""
+    every = GlobList(globs=("*",))
+    rule = TableDiscoveryRule.create(
+        id=TableDiscoveryRuleId(rid),
+        priority=priority,
+        action=action,
+        enabled=True,
+        catalogs=every,
+        namespaces=every,
+        tables=GlobList(globs=tables),
+        now=now,
+    )
+    rules = rules_repo.get_rules()
+    rules.replace((*rules.rules, rule), rules.version, now)
+    rules_repo.save(rules)
 
 
 def _include_all(rules_repo, now):
-    _rule(rules_repo, now, RuleEffect.INCLUDE)
+    _rule(rules_repo, now, RuleAction.INCLUDE)
 
 
 def _exclude_all(rules_repo, now, rid="r-ex"):
-    _rule(rules_repo, now, RuleEffect.EXCLUDE, rid=rid, priority=1)
+    _rule(rules_repo, now, RuleAction.EXCLUDE, rid=rid, priority=1)
 
 
 def _row(repo, now, uuid, name, *, unmanaged=False):
@@ -64,12 +76,11 @@ def _name(table, namespace="sales"):
 
 
 @pytest.fixture
-def sync(tables_repo, rules_repo, table_discovery_settings_repo, catalog, signals, clock):
+def sync(tables_repo, rules_repo, catalog, signals, clock):
     """Provide the sync discovered tables service on the fakes."""
     return SyncDiscoveredTablesService(
         tables_repo,
         rules_repo,
-        table_discovery_settings_repo,
         catalog,
         signals,
         clock=clock,
@@ -120,37 +131,13 @@ def test_sync_registers_include_match_as_managed(sync, tables_repo, rules_repo, 
 
 def test_sync_exclude_match_and_no_match_register_nothing(sync, tables_repo, rules_repo, catalog, signals, now):
     """Sync registers nothing for tables that match an exclude rule or no rule."""
-    _rule(rules_repo, now, RuleEffect.EXCLUDE, TablePattern(table="tmp_*"))
+    _rule(rules_repo, now, RuleAction.EXCLUDE, ("tmp_*",))
     catalog.add_table("iceberg", "sales", "tmp_x", "u-1")
     catalog.add_table("iceberg", "sales", "orders", "u-2")
     out = sync.execute(_catalog_wide())
     assert out.registered == 0
     assert tables_repo.list_all() == []
     assert signals.calls == []
-
-
-def test_sync_skips_when_discovery_disabled(
-    sync, tables_repo, rules_repo, catalog, signals, table_discovery_settings_repo, now
-):
-    """With discovery disabled, sync registers no new table."""
-    _include_all(rules_repo, now)
-    table_discovery_settings_repo.settings.disable(now)
-    catalog.add_table("iceberg", "sales", "orders", "u-1")
-    out = sync.execute(_catalog_wide())
-    assert out.registered == 0
-    assert tables_repo.list_all() == []
-    assert signals.calls == []
-
-
-def test_sync_registers_when_no_table_discovery_settings_row_exists(
-    sync, tables_repo, rules_repo, table_discovery_settings_repo, catalog, now
-):
-    """Without a stored settings row, discovery counts as enabled and sync registers tables."""
-    assert table_discovery_settings_repo.get_settings().enabled is True
-    _include_all(rules_repo, now)
-    catalog.add_table("iceberg", "sales", "orders", "u-1")
-    out = sync.execute(_catalog_wide())
-    assert out.registered == 1
 
 
 def test_sync_one_bad_table_is_skipped_not_fatal(sync, tables_repo, rules_repo, catalog, now, monkeypatch):
@@ -203,7 +190,7 @@ def test_known_managed_table_without_any_matching_rule_becomes_unmanaged(sync, t
 
 def test_unmanaged_table_is_managed_again_when_rule_includes_it(sync, tables_repo, rules_repo, catalog, signals, now):
     """An unmanaged table an include rule now decides is managed again and its workflow started."""
-    _rule(rules_repo, now, RuleEffect.INCLUDE, rid="r-2")
+    _rule(rules_repo, now, RuleAction.INCLUDE, rid="r-2")
     _row(tables_repo, now, "u-1", _name("orders"), unmanaged=True)
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     out = sync.execute(_catalog_wide())
@@ -230,7 +217,7 @@ def test_managed_table_now_decided_by_another_include_rule_records_it(
     sync, tables_repo, rules_repo, catalog, signals, log, now
 ):
     """A managed table matched first by another include rule stores that rule and stays managed."""
-    _rule(rules_repo, now, RuleEffect.INCLUDE, rid="r-2", priority=1)
+    _rule(rules_repo, now, RuleAction.INCLUDE, rid="r-2", priority=1)
     _row(tables_repo, now, "u-1", _name("orders"))
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
@@ -246,7 +233,7 @@ def test_namespace_pass_stores_a_rule_change_without_signalling(
     sync, tables_repo, rules_repo, catalog, signals, log, now
 ):
     """A rule-only change is stored; a namespace pass does not signal the still-managed table."""
-    _rule(rules_repo, now, RuleEffect.INCLUDE, rid="r-2", priority=1)
+    _rule(rules_repo, now, RuleAction.INCLUDE, rid="r-2", priority=1)
     _row(tables_repo, now, "u-1", _name("orders"))
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
@@ -264,34 +251,6 @@ def test_unchanged_managed_table_is_not_stored_again(sync, tables_repo, rules_re
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
     sync.execute(_catalog_wide())
     assert log == []
-
-
-def test_sync_disabled_still_renames_and_drops(sync, tables_repo, catalog, signals, table_discovery_settings_repo, now):
-    """With discovery disabled, sync still renames and drops existing tables."""
-    table_discovery_settings_repo.settings.disable(now)
-    _row(tables_repo, now, "u-1", _name("old"))
-    _row(tables_repo, now, "u-2", _name("gone"))
-    catalog.add_table("iceberg", "sales", "new", "u-1")
-    out = sync.execute(_catalog_wide())
-    assert (out.registered, out.renamed, out.dropped) == (0, 1, 1)
-    assert tables_repo.get(TableId("u-1")).name.table == "new"
-    assert tables_repo.get(TableId("u-2")).status == TableStatus.DROPPED
-
-
-def test_sync_disabled_never_decides_known_tables_again(
-    sync, tables_repo, catalog, signals, table_discovery_settings_repo, now
-):
-    """With discovery disabled, a known table keeps its management although no rule matches it."""
-    table_discovery_settings_repo.settings.disable(now)
-    _row(tables_repo, now, "u-1", _name("orders"))
-    _row(tables_repo, now, "u-2", _name("other"), unmanaged=True)
-    catalog.add_table("iceberg", "sales", "orders", "u-1")
-    catalog.add_table("iceberg", "sales", "other", "u-2")
-    out = sync.execute(_catalog_wide())
-    assert tables_repo.get(TableId("u-1")).status == TableStatus.MANAGED
-    assert tables_repo.get(TableId("u-2")).status == TableStatus.UNMANAGED
-    assert (out.managed, out.unmanaged, out.ensured) == (0, 0, 1)
-    assert _calls(signals) == [("u-1", "seen", True)]
 
 
 def test_sync_persists_rename(sync, tables_repo, rules_repo, catalog, log, now):
@@ -363,7 +322,7 @@ def test_namespace_pass_never_unmanages_missing_tables(sync, tables_repo, rules_
 def test_sync_namespace_scope_still_registers_renames_and_decides(sync, tables_repo, rules_repo, catalog, now):
     """A sync scoped to a namespace still registers, renames and decides the tables it lists."""
     _include_all(rules_repo, now)
-    _rule(rules_repo, now, RuleEffect.EXCLUDE, TablePattern(table="tmp_*"), rid="r-ex", priority=1)
+    _rule(rules_repo, now, RuleAction.EXCLUDE, ("tmp_*",), rid="r-ex", priority=1)
     _row(tables_repo, now, "u-1", _name("old"))
     _row(tables_repo, now, "u-3", _name("tmp_x"))
     catalog.add_table("iceberg", "sales", "new", "u-1")
@@ -375,7 +334,7 @@ def test_sync_namespace_scope_still_registers_renames_and_decides(sync, tables_r
 
 def test_sync_namespace_scope_signals_management_changes(sync, tables_repo, rules_repo, catalog, signals, now):
     """A namespace pass starts the workflow of a table managed again and stops one unmanaged."""
-    _rule(rules_repo, now, RuleEffect.INCLUDE, TablePattern(table="back"))
+    _rule(rules_repo, now, RuleAction.INCLUDE, ("back",))
     _row(tables_repo, now, "u-back", _name("back"), unmanaged=True)
     _row(tables_repo, now, "u-out", _name("out"))
     catalog.add_table("iceberg", "sales", "back", "u-back")
@@ -445,7 +404,7 @@ def test_sync_retry_after_failed_start_still_starts_workflow(
 def test_sync_reensures_workflow_of_every_managed_table(sync, tables_repo, rules_repo, catalog, signals, now):
     """Sync makes sure every managed table has its workflow, and only those."""
     _include_all(rules_repo, now)
-    _rule(rules_repo, now, RuleEffect.EXCLUDE, TablePattern(table="x"), rid="r-ex", priority=1)
+    _rule(rules_repo, now, RuleAction.EXCLUDE, ("x",), rid="r-ex", priority=1)
     _row(tables_repo, now, "u-managed", _name("a"))
     _row(tables_repo, now, "u-other", _name("b"))
     _row(tables_repo, now, "u-unmanaged", _name("x"), unmanaged=True)
@@ -490,12 +449,11 @@ def test_sync_namespace_scope_does_not_reensure(sync, tables_repo, rules_repo, c
 
 
 @pytest.fixture
-def hint(tables_repo, rules_repo, table_discovery_settings_repo, catalog, signals, discovery_requests, clock):
+def hint(tables_repo, rules_repo, catalog, signals, discovery_requests, clock):
     """Provide the process table hint service on the fakes."""
     return ProcessTableHintService(
         tables_repo,
         rules_repo,
-        table_discovery_settings_repo,
         catalog,
         signals,
         discovery_requests,
@@ -553,17 +511,6 @@ def test_table_hint_manages_an_unmanaged_table_the_rules_include(hint, tables_re
     assert hint.execute(_hint()).action == "managed"
     assert tables_repo.get(TableId("u-1")).status == TableStatus.MANAGED
     assert _calls(signals) == [("u-1", "updated", True)]
-
-
-def test_table_hint_with_discovery_disabled_keeps_management(
-    hint, tables_repo, catalog, signals, table_discovery_settings_repo, now
-):
-    """With discovery disabled, a hint signals a managed table without deciding it again."""
-    table_discovery_settings_repo.settings.disable(now)
-    _row(tables_repo, now, "u-1", _name("orders"))
-    catalog.add_table("iceberg", "sales", "orders", "u-1")
-    assert hint.execute(_hint()).action == "signalled"
-    assert tables_repo.get(TableId("u-1")).status == TableStatus.MANAGED
 
 
 def _busy_observation(uuid):
@@ -624,14 +571,9 @@ def test_table_hint_registers_unregistered_table_by_rules(hint, tables_repo, rul
     assert _calls(signals) == [("u-1", "updated", True)]
 
 
-def test_table_hint_ignores_unregistered_table_without_match_or_when_disabled(
-    hint, tables_repo, rules_repo, catalog, table_discovery_settings_repo, now
-):
-    """A hint for an unregistered table is ignored when no rule matches or discovery is disabled."""
+def test_table_hint_ignores_unregistered_table_without_match(hint, tables_repo, catalog):
+    """A hint for an unregistered table is ignored when no rule matches, as with no rules at all."""
     catalog.add_table("iceberg", "sales", "orders", "u-1")
-    assert hint.execute(_hint()).action == "ignored"
-    _include_all(rules_repo, now)
-    table_discovery_settings_repo.settings.disable(now)
     assert hint.execute(_hint()).action == "ignored"
     assert tables_repo.list_all() == []
 

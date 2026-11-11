@@ -57,7 +57,7 @@ def test_api_mounts_both_contexts(tmp_path):
         bridge.close()
 
     paths = {getattr(route, "path", None) for route in app.routes}
-    assert {"/v1/table-discovery-rules", "/v1/catalogs", "/v1/catalogs/{catalog}"} <= paths
+    assert {"/v1/discovery-rules", "/v1/catalogs", "/v1/catalogs/{catalog}"} <= paths
     assert app.state.catalog_use_cases is not None
     assert app.state.table_maintenance_use_cases is not None
 
@@ -74,7 +74,7 @@ def test_api_serves_its_docs_under_the_configured_root_path(tmp_path):
         client = TestClient(app)
 
         servers = client.get("/openapi.json").json()["servers"]
-        status = client.get("/v1/table-discovery-rules").status_code
+        status = client.get("/v1/discovery-rules").status_code
     finally:
         bridge.close()
 

@@ -12,7 +12,7 @@ from context.table_maintenance.application.domain.model.table import (
     TableName,
     TableStatus,
 )
-from context.table_maintenance.application.domain.model.table_discovery_rule import (
+from context.table_maintenance.application.domain.model.table_discovery_rules import (
     TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.port.outbound.table.read_table_metadata.catalog_not_found_error import (

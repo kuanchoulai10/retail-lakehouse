@@ -38,10 +38,10 @@ from context.table_maintenance.application.service.table.registration_outcome im
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable
 
-    from context.table_maintenance.application.domain.model.table_discovery_rule import (
-        TableDiscoveryRule,
+    from context.table_maintenance.application.domain.model.table_discovery_rules import (
+        TableDiscoveryRules,
     )
     from context.table_maintenance.application.port.outbound.table import (
         ReadTableMetadataGateway,
@@ -49,11 +49,8 @@ if TYPE_CHECKING:
         TableMetadata,
         TablesRepo,
     )
-    from context.table_maintenance.application.port.outbound.table_discovery_rule import (
+    from context.table_maintenance.application.port.outbound.table_discovery_rules import (
         TableDiscoveryRulesRepo,
-    )
-    from context.table_maintenance.application.port.outbound.table_discovery_settings import (
-        TableDiscoverySettingsRepo,
     )
     from context.table_maintenance.application.service.table.known_table_outcome import (
         KnownTableOutcome,
@@ -65,11 +62,10 @@ _DROP_SCAN_STATUSES = (TableStatus.MANAGED, TableStatus.UNMANAGED)
 class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
     """Make the registry match the tables currently in the catalog and the discovery rules."""
 
-    def __init__(  # noqa: PLR0913
+    def __init__(
         self,
         tables_repo: TablesRepo,
         rules_repo: TableDiscoveryRulesRepo,
-        table_discovery_settings_repo: TableDiscoverySettingsRepo,
         catalog_gateway: ReadTableMetadataGateway,
         table_change_gateway: SendTableChangeGateway,
         *,
@@ -78,7 +74,6 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         """Bind the repos, the gateways and the clock."""
         self._tables_repo = tables_repo
         self._rules_repo = rules_repo
-        self._table_discovery_settings_repo = table_discovery_settings_repo
         self._catalog_gateway = catalog_gateway
         self._table_change_gateway = table_change_gateway
         self._clock = clock
@@ -88,9 +83,8 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
 
         Every table listed is decided by the discovery rules: an unknown one the
         rules manage is registered as managed, a known one is managed or unmanaged
-        as the rules now say (counted in ``managed`` / ``unmanaged``). While
-        discovery is switched off nothing is registered or decided, and renames
-        still run. Only a catalog-wide sync (no namespace) marks missing tables
+        as the rules now say (counted in ``managed`` / ``unmanaged``); with no
+        rules nothing is managed. Only a catalog-wide sync (no namespace) marks missing tables
         dropped, since a namespace scan cannot tell a drop from a move, and a
         table it does not list is never decided. A table that fails is counted in
         ``skipped``. A catalog-wide sync also signal-with-starts the
@@ -99,8 +93,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         is picked up again.
         """
         now = self._clock()
-        enabled = self._table_discovery_settings_repo.get_settings().enabled
-        rules = self._rules_repo.list_all() if enabled else None
+        rules = self._rules_repo.get_rules()
         seen_change = TableChange.SEEN if request.namespace is None else None
         refs = self._catalog_gateway.list_tables(ReadTableMetadataGatewayListInput(request.catalog, request.namespace))
         seen: set[str] = set()
@@ -138,15 +131,13 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
     def _sync_table(
         self,
         found: TableMetadata,
-        rules: Sequence[TableDiscoveryRule] | None,
+        rules: TableDiscoveryRules,
         seen_change: TableChange | None,
         now: datetime,
     ) -> RegistrationOutcome | KnownTableOutcome | None:
         """Register an unknown table, or apply the discovery to a known live one; None for neither."""
         existing = self._tables_repo.get(TableId(found.table_uuid))
         if existing is None:
-            if rules is None:
-                return None
             return register_discovered_table(
                 found, rules, self._tables_repo, self._table_change_gateway, TableChange.SEEN, now
             )

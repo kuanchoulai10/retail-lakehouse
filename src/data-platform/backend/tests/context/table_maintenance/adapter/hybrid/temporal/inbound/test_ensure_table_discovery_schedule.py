@@ -60,10 +60,9 @@ def _ensure(
     h: TemporalHarness,
     catalogs: list[str],
     *,
-    paused: bool,
     interval: timedelta = timedelta(minutes=10),
 ) -> None:
-    h.bridge.run(lambda: ensure_table_discovery_schedule(h.client, catalogs, paused=paused, interval=interval))
+    h.bridge.run(lambda: ensure_table_discovery_schedule(h.client, catalogs, interval=interval))
 
 
 def _describe(h: TemporalHarness, catalog: str) -> ScheduleDescription:
@@ -71,12 +70,12 @@ def _describe(h: TemporalHarness, catalog: str) -> ScheduleDescription:
     return h.bridge.run(handle.describe)
 
 
-def test_discovery_schedule_created_once_and_paused_flag_applied(h):
-    """The schedule runs every ten minutes, skips overlaps and takes the paused flag from the call."""
-    _ensure(h, [CATALOG], paused=True)
+def test_discovery_schedule_created_once_and_never_paused(h):
+    """The schedule runs every ten minutes, skips overlaps and is never paused."""
+    _ensure(h, [CATALOG])
 
     desc = _describe(h, CATALOG)
-    assert desc.schedule.state.paused is True
+    assert desc.schedule.state.paused is False
     assert desc.schedule.spec.intervals[0].every == timedelta(minutes=10)
     assert desc.schedule.policy.overlap == ScheduleOverlapPolicy.SKIP
     action = desc.schedule.action
@@ -98,19 +97,18 @@ def test_discovery_schedule_created_once_and_paused_flag_applied(h):
 
     assert h.bridge.run(decoded_args) == [TableDiscoveryWorkflowInput(CATALOG)]
 
-    _ensure(h, [CATALOG], paused=True, interval=timedelta(minutes=5))
+    _ensure(h, [CATALOG], interval=timedelta(minutes=5))
     desc = _describe(h, CATALOG)
-    assert desc.schedule.state.paused is True
+    assert desc.schedule.state.paused is False
     assert desc.schedule.spec.intervals[0].every == timedelta(minutes=5)
 
-    _ensure(h, [CATALOG], paused=False)
-    assert _describe(h, CATALOG).schedule.state.paused is False
-    _ensure(h, [CATALOG], paused=False)
+    h.bridge.run(lambda: h.client.get_schedule_handle(table_discovery_schedule_id(CATALOG)).pause(note="by hand"))
+    _ensure(h, [CATALOG])
     assert _describe(h, CATALOG).schedule.state.paused is False
 
 
 def test_one_schedule_per_catalog(h):
     """Each catalog gets its own schedule that is not paused."""
-    _ensure(h, [CATALOG, f"{CATALOG}-2"], paused=False)
+    _ensure(h, [CATALOG, f"{CATALOG}-2"])
     assert _describe(h, CATALOG).schedule.state.paused is False
     assert _describe(h, f"{CATALOG}-2").schedule.state.paused is False

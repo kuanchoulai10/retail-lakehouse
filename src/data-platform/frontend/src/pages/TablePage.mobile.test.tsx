@@ -26,7 +26,7 @@ describe("TablePage on a phone", () => {
     stubCatalogApi({
       [`GET /v1/catalogs/iceberg/namespaces/retail/tables/${LONG_NAME}`]: () =>
         jsonResponse(catalogTableFixture({ name: LONG_NAME })),
-      "GET /v1/table-discovery-settings/catalogs": () => jsonResponse({ catalogs: [] }),
+      "GET /v1/discovery-rules/catalogs": () => jsonResponse({ catalogs: [] }),
     });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(

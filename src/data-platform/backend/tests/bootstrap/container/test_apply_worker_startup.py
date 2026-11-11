@@ -13,20 +13,7 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound import (
     ensure_table_discovery_schedule,
     ensure_table_maintenance_admission,
 )
-from context.table_maintenance.adapter.outbound.table_discovery_settings.sql import (
-    TableDiscoverySettingsSqlRepo,
-)
-from context.table_maintenance.application.domain.model.table_discovery_settings import (
-    TableDiscoverySettings,
-)
-from context.table_maintenance.application.service.table_discovery_settings import (
-    GetTableDiscoverySettingsService,
-)
-from tests.bootstrap.container.container_support import (
-    NOW,
-    sqlite_engine,
-    sqlite_settings,
-)
+from tests.bootstrap.container.container_support import sqlite_settings
 
 if TYPE_CHECKING:
     from temporalio.client import Client
@@ -44,7 +31,7 @@ class Recorder:
         self.calls.append((args, kwargs))
 
 
-def _run(repo: TableDiscoverySettingsSqlRepo) -> tuple[Recorder, Recorder, object]:
+def _run() -> tuple[Recorder, Recorder, object]:
     schedule, admission, client = Recorder(), Recorder(), object()
     settings = sqlite_settings(
         catalog=CatalogSettings(names=["a", "b"]),
@@ -55,7 +42,6 @@ def _run(repo: TableDiscoverySettingsSqlRepo) -> tuple[Recorder, Recorder, objec
         apply_worker_startup(
             cast("Client", client),
             settings,
-            GetTableDiscoverySettingsService(repo),
             ensure_schedule=schedule,
             ensure_admission=admission,
         )
@@ -63,31 +49,17 @@ def _run(repo: TableDiscoverySettingsSqlRepo) -> tuple[Recorder, Recorder, objec
     return schedule, admission, client
 
 
-def test_absent_discovery_row_means_enabled_schedules_unpaused():
-    """Without a stored discovery setting the schedules are ensured unpaused."""
-    schedule, _, client = _run(TableDiscoverySettingsSqlRepo(sqlite_engine()))
+def test_worker_startup_never_pauses_schedule():
+    """The discovery schedules are ensured for every covered catalog with no paused flag: they always run."""
+    schedule, _, client = _run()
 
-    assert schedule.calls == [
-        (
-            (client, ["a", "b"]),
-            {"paused": False, "interval": timedelta(seconds=120)},
-        )
-    ]
-
-
-def test_disabled_discovery_pauses_the_schedules():
-    """A disabled discovery setting makes the schedules paused."""
-    repo = TableDiscoverySettingsSqlRepo(sqlite_engine())
-    repo.save(TableDiscoverySettings.create(NOW, enabled=False))
-
-    schedule, _, _ = _run(repo)
-
-    assert schedule.calls[0][1]["paused"] is True
+    assert schedule.calls == [((client, ["a", "b"]), {"interval": timedelta(seconds=120)})]
+    assert "paused" not in inspect.signature(ensure_table_discovery_schedule).parameters
 
 
 def test_admission_is_ensured_with_the_configured_limit():
     """The admission workflow is ensured with the configured concurrency limit."""
-    _, admission, client = _run(TableDiscoverySettingsSqlRepo(sqlite_engine()))
+    _, admission, client = _run()
 
     assert admission.calls == [
         (
@@ -106,7 +78,7 @@ def test_defaults_are_the_real_functions_and_the_kwargs_bind_to_them():
     assert parameters["ensure_schedule"].default is ensure_table_discovery_schedule
     assert parameters["ensure_admission"].default is ensure_table_maintenance_admission
 
-    schedule, admission, _ = _run(TableDiscoverySettingsSqlRepo(sqlite_engine()))
+    schedule, admission, _ = _run()
 
     for real, recorder in (
         (ensure_table_discovery_schedule, schedule),

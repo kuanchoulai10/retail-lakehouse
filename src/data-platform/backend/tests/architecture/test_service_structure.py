@@ -32,6 +32,7 @@ UTILITY_FILES = {
     "table_maintenance_policy_output_fields.py",
     "policy_target_from_request.py",
     "table_discovery_rule_output_fields.py",
+    "table_discovery_rule_from_request.py",
     "table_output_fields.py",
     "table_maintenance_run_output_fields.py",
     "maintenance_procedure_args.py",
@@ -70,6 +71,8 @@ KNOWN_VERBS = {
     "Attach",
     "Detach",
     "Resolve",
+    "Replace",
+    "Preview",
     # Lifecycle
     "Complete",
     "Fail",

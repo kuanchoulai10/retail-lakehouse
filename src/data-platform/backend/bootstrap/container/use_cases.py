@@ -18,16 +18,11 @@ if TYPE_CHECKING:
         TriggerTableMaintenanceUseCase,
         TriggerTableReconciliationUseCase,
     )
-    from context.table_maintenance.application.port.inbound.table_discovery_rule import (
-        CreateTableDiscoveryRuleUseCase,
-        DeleteTableDiscoveryRuleUseCase,
-        ListTableDiscoveryRulesUseCase,
-        UpdateTableDiscoveryRuleUseCase,
-    )
-    from context.table_maintenance.application.port.inbound.table_discovery_settings import (
-        GetTableDiscoverySettingsUseCase,
+    from context.table_maintenance.application.port.inbound.table_discovery_rules import (
+        GetTableDiscoveryRulesUseCase,
         ListCoveredCatalogsUseCase,
-        UpdateTableDiscoverySettingsUseCase,
+        PreviewTableDiscoveryRulesUseCase,
+        ReplaceTableDiscoveryRulesUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
         CreateTableMaintenancePolicyUseCase,
@@ -64,15 +59,12 @@ if TYPE_CHECKING:
 class UseCases:
     """Hold one instance of every application service, keyed by use case."""
 
-    get_table_discovery_settings: GetTableDiscoverySettingsUseCase
     list_covered_catalogs: ListCoveredCatalogsUseCase
     process_table_hint: ProcessTableHintUseCase
     sync_discovered_tables: SyncDiscoveredTablesUseCase
-    update_table_discovery_settings: UpdateTableDiscoverySettingsUseCase
-    create_table_discovery_rule: CreateTableDiscoveryRuleUseCase
-    delete_table_discovery_rule: DeleteTableDiscoveryRuleUseCase
-    list_table_discovery_rules: ListTableDiscoveryRulesUseCase
-    update_table_discovery_rule: UpdateTableDiscoveryRuleUseCase
+    get_table_discovery_rules: GetTableDiscoveryRulesUseCase
+    replace_table_discovery_rules: ReplaceTableDiscoveryRulesUseCase
+    preview_table_discovery_rules: PreviewTableDiscoveryRulesUseCase
     attach_table_maintenance_policy: AttachTableMaintenancePolicyUseCase
     detach_table_maintenance_policy: DetachTableMaintenancePolicyUseCase
     list_table_maintenance_policy_attachments: ListTableMaintenancePolicyAttachmentsUseCase

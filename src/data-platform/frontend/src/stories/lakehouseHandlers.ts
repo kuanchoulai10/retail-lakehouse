@@ -2,10 +2,9 @@ import { getListCatalogsMockHandler, getGetCatalogMockHandler } from "@/api/gene
 import { getListGenericTablesMockHandler } from "@/api/generated/generic-tables/generic-tables.msw";
 import { getGetNamespaceMockHandler, getListNamespacesMockHandler } from "@/api/generated/namespaces/namespaces.msw";
 import {
-  getGetTableDiscoverySettingsMockHandler,
+  getGetTableDiscoveryRulesMockHandler,
   getListCoveredCatalogsMockHandler,
-} from "@/api/generated/table-discovery-settings/table-discovery-settings.msw";
-import { getListTableDiscoveryRulesMockHandler } from "@/api/generated/table-discovery-rules/table-discovery-rules.msw";
+} from "@/api/generated/discovery-rules/discovery-rules.msw";
 import {
   getGetCatalogTableMockHandler,
   getGetTableHealthMockHandler,
@@ -77,7 +76,6 @@ export function lakehouseHandlers() {
         (r) => before === null || Date.parse(r.reconciled_at) < Date.parse(before),
       ).slice(0, limit);
     }),
-    getListTableDiscoveryRulesMockHandler(RULES),
-    getGetTableDiscoverySettingsMockHandler({ enabled: true, updated_at: "2026-11-01T09:00:00Z" }),
+    getGetTableDiscoveryRulesMockHandler({ version: 1, rules: RULES }),
   ];
 }

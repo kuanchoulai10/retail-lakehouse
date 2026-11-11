@@ -23,9 +23,6 @@ from context.table_maintenance.adapter.hybrid.temporal.outbound.table import (
     SendDiscoveryRequestTemporalGateway,
     SendTableChangeTemporalGateway,
 )
-from context.table_maintenance.adapter.hybrid.temporal.outbound.table_discovery_settings import (
-    UpdateTableDiscoveryScheduleTemporalGateway,
-)
 from context.table_maintenance.adapter.hybrid.temporal.outbound.table_maintenance_run import (
     SendMaintenanceResultTemporalGateway,
 )
@@ -37,8 +34,8 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import
     ReadMaintenanceJobK8sGateway,
     SubmitMaintenanceJobK8sGateway,
 )
-from context.table_maintenance.application.port.inbound.table_discovery_rule import (
-    ListTableDiscoveryRulesUseCaseInput,
+from context.table_maintenance.application.port.inbound.table_discovery_rules import (
+    GetTableDiscoveryRulesUseCaseInput,
 )
 from tests.bootstrap.container.container_support import (
     NOW,
@@ -97,10 +94,6 @@ def test_gateways_are_built_without_connecting():
     assert isinstance(gateways.send_table_change, SendTableChangeTemporalGateway)
     assert isinstance(gateways.send_discovery_request, SendDiscoveryRequestTemporalGateway)
     assert isinstance(gateways.send_maintenance_result, SendMaintenanceResultTemporalGateway)
-    assert isinstance(
-        gateways.update_table_discovery_schedule,
-        UpdateTableDiscoveryScheduleTemporalGateway,
-    )
     assert isinstance(gateways.submit_maintenance_job, SubmitMaintenanceJobK8sGateway)
     assert isinstance(gateways.read_maintenance_job, ReadMaintenanceJobK8sGateway)
     assert isinstance(gateways.delete_maintenance_job, DeleteMaintenanceJobK8sGateway)
@@ -123,6 +116,6 @@ def test_use_cases_work_against_the_sql_repos():
     """A built use case runs against the SQL repositories."""
     use_cases = build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
 
-    listing = use_cases.list_table_discovery_rules.execute(ListTableDiscoveryRulesUseCaseInput())
+    rules = use_cases.get_table_discovery_rules.execute(GetTableDiscoveryRulesUseCaseInput())
 
-    assert listing.items == []
+    assert (rules.version, rules.rules) == (0, [])

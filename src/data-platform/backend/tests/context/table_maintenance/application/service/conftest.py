@@ -25,9 +25,6 @@ from tests.context.table_maintenance.fakes.fake_read_table_metadata_gateway impo
 from tests.context.table_maintenance.fakes.in_memory_table_discovery_rules_repo import (
     InMemoryTableDiscoveryRulesRepo,
 )
-from tests.context.table_maintenance.fakes.in_memory_table_discovery_settings_repo import (
-    InMemoryTableDiscoverySettingsRepo,
-)
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_repo import (
     InMemoryTableMaintenancePoliciesRepo,
 )
@@ -54,9 +51,6 @@ from tests.context.table_maintenance.fakes.recording_send_table_change_gateway i
 )
 from tests.context.table_maintenance.fakes.recording_submit_maintenance_job_gateway import (
     RecordingSubmitMaintenanceJobGateway,
-)
-from tests.context.table_maintenance.fakes.recording_update_table_discovery_schedule_gateway import (
-    RecordingUpdateTableDiscoveryScheduleGateway,
 )
 
 if TYPE_CHECKING:
@@ -86,14 +80,8 @@ def new_id() -> Callable[[], str]:
 
 @pytest.fixture
 def rules_repo() -> InMemoryTableDiscoveryRulesRepo:
-    """Provide an in-memory discovery rules repository."""
+    """Provide an in-memory discovery rules repository holding no rules."""
     return InMemoryTableDiscoveryRulesRepo()
-
-
-@pytest.fixture
-def table_discovery_settings_repo() -> InMemoryTableDiscoverySettingsRepo:
-    """Provide an in-memory discovery settings repository."""
-    return InMemoryTableDiscoverySettingsRepo(NOW)
 
 
 @pytest.fixture
@@ -106,12 +94,6 @@ def tables_repo() -> InMemoryTablesRepo:
 def signals() -> RecordingSendTableChangeGateway:
     """Provide a table change gateway that records the changes sent."""
     return RecordingSendTableChangeGateway()
-
-
-@pytest.fixture
-def schedule() -> RecordingUpdateTableDiscoveryScheduleGateway:
-    """Provide a discovery schedule gateway that records its updates."""
-    return RecordingUpdateTableDiscoveryScheduleGateway()
 
 
 @pytest.fixture

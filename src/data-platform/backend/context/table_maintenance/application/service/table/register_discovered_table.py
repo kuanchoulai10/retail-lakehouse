@@ -9,11 +9,8 @@ from context.table_maintenance.application.domain.model.table import (
     TableId,
     TableName,
 )
-from context.table_maintenance.application.domain.model.table_discovery_rule import (
-    RuleEffect,
-)
-from context.table_maintenance.application.domain.service.table_discovery_rule import (
-    match_table_discovery_rule,
+from context.table_maintenance.application.domain.model.table_discovery_rules import (
+    RuleAction,
 )
 from context.table_maintenance.application.port.outbound.table import (
     SendTableChangeGatewayInput,
@@ -23,12 +20,11 @@ from context.table_maintenance.application.service.table.registration_outcome im
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
     from datetime import datetime
 
     from context.table_maintenance.application.domain.model.table import TableChange
-    from context.table_maintenance.application.domain.model.table_discovery_rule import (
-        TableDiscoveryRule,
+    from context.table_maintenance.application.domain.model.table_discovery_rules import (
+        TableDiscoveryRules,
     )
     from context.table_maintenance.application.port.outbound.table import (
         SendTableChangeGateway,
@@ -39,7 +35,7 @@ if TYPE_CHECKING:
 
 def register_discovered_table(  # noqa: PLR0913
     found: TableMetadata,
-    rules: Sequence[TableDiscoveryRule],
+    rules: TableDiscoveryRules,
     tables_repo: TablesRepo,
     table_change_gateway: SendTableChangeGateway,
     change: TableChange,
@@ -52,8 +48,8 @@ def register_discovered_table(  # noqa: PLR0913
     registers nothing.
     """
     name = TableName(catalog=found.catalog, namespace=found.namespace, table=found.table)
-    rule = match_table_discovery_rule(rules, name)
-    if rule is None or rule.effect != RuleEffect.INCLUDE:
+    rule = rules.decide(name)
+    if rule is None or rule.action != RuleAction.INCLUDE:
         return RegistrationOutcome.NOT_SELECTED
     table = Table.register(TableId(found.table_uuid), name, rule.id, now)
     tables_repo.create(table)

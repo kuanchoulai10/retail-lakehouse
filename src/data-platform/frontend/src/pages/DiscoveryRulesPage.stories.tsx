@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, within } from "storybook/test";
-import { getListTableDiscoveryRulesMockHandler } from "@/api/generated/table-discovery-rules/table-discovery-rules.msw";
+import { getGetTableDiscoveryRulesMockHandler } from "@/api/generated/discovery-rules/discovery-rules.msw";
 import { ConsolePage } from "@/stories/ConsolePage";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
 import { lakehouseHandlers } from "@/stories/lakehouseHandlers";
@@ -20,20 +20,20 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText("iceberg.retail.*")).toBeVisible();
+    await expect(await within(canvasElement).findByText("retail")).toBeVisible();
   },
 };
 
 export const NoRules: Story = {
   beforeEach({ msw }) {
-    msw.use(getListTableDiscoveryRulesMockHandler([]));
+    msw.use(getGetTableDiscoveryRulesMockHandler({ version: 0, rules: [] }));
   },
 };
 
 export const Phone: Story = {
   globals: PHONE,
   play: async ({ canvasElement }) => {
-    await within(canvasElement).findByText("iceberg.retail.*");
+    await within(canvasElement).findByText("retail");
     await expectNoHorizontalPageScroll(canvasElement);
   },
 };

@@ -6,16 +6,16 @@
  */
 
 /**
- * Describe a discovery rule.
+ * Describe one discovery rule.
  */
 export interface TableDiscoveryRuleApiResponse {
-  catalog_pattern: string;
+  action: string;
+  catalogs: string[];
   created_at: string;
-  effect: string;
   enabled: boolean;
   id: string;
-  namespace_pattern: string;
+  namespaces: string[];
   priority: number;
-  table_pattern: string;
+  tables: string[];
   updated_at: string;
 }

@@ -26,9 +26,9 @@ from tests.context.table_maintenance.adapter.inbound.web.web_test_support import
 )
 def test_application_errors_map_to_status_and_detail(error: Exception, status: int) -> None:
     """Each application error maps to its HTTP status with the error message as detail."""
-    client = build_client(get_table_discovery_settings=StubUseCase(error=error))
+    client = build_client(get_table_discovery_rules=StubUseCase(error=error))
 
-    response = client.get("/v1/table-discovery-settings")
+    response = client.get("/v1/discovery-rules")
 
     assert response.status_code == status
     assert response.json() == {"detail": str(error)}

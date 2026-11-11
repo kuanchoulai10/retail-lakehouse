@@ -5,9 +5,8 @@ import {
   Skeleton,
 } from "@retail-lakehouse/design-system";
 import { useMemo } from "react";
+import { useGetTableDiscoveryRules } from "@/api/generated/discovery-rules/discovery-rules";
 import type { TableDiscoveryRuleApiResponse } from "@/api/generated/model";
-import { useListTableDiscoveryRules } from "@/api/generated/table-discovery-rules/table-discovery-rules";
-import { useGetTableDiscoverySettings } from "@/api/generated/table-discovery-settings/table-discovery-settings";
 import { PageHeader } from "@/components/PageHeader";
 import { errorMessage, formatTimestamp } from "@/format";
 
@@ -19,12 +18,17 @@ function capitalise(word: string): string {
   return word.charAt(0).toUpperCase() + word.slice(1);
 }
 
-function pattern(rule: TableDiscoveryRuleApiResponse): string {
-  return `${rule.catalog_pattern}.${rule.namespace_pattern}.${rule.table_pattern}`;
+function byPriority(a: TableDiscoveryRuleApiResponse, b: TableDiscoveryRuleApiResponse): number {
+  return a.priority - b.priority;
 }
 
-function byEvaluationOrder(a: TableDiscoveryRuleApiResponse, b: TableDiscoveryRuleApiResponse): number {
-  return a.priority - b.priority || a.id.localeCompare(b.id);
+function globsColumn(field: "catalogs" | "namespaces" | "tables", header: string) {
+  return column.accessor((rule) => rule[field].join(", "), {
+    id: field,
+    header,
+    enableSorting: false,
+    cell: (info) => <span className="type-code whitespace-nowrap">{info.getValue()}</span>,
+  });
 }
 
 function rulesColumns() {
@@ -34,13 +38,10 @@ function rulesColumns() {
       enableSorting: false,
       cell: (info) => <span className="tabular-nums">{info.getValue()}</span>,
     }),
-    column.accessor("effect", { header: "Effect", enableSorting: false, cell: (info) => capitalise(info.getValue()) }),
-    column.accessor((rule) => pattern(rule), {
-      id: "pattern",
-      header: "Pattern",
-      enableSorting: false,
-      cell: (info) => <span className="type-code whitespace-nowrap">{info.getValue()}</span>,
-    }),
+    column.accessor("action", { header: "Action", enableSorting: false, cell: (info) => capitalise(info.getValue()) }),
+    globsColumn("catalogs", "Catalogs"),
+    globsColumn("namespaces", "Namespaces"),
+    globsColumn("tables", "Tables"),
     column.accessor((rule) => (rule.enabled ? "Enabled" : "Disabled"), {
       id: "state",
       header: "State",
@@ -69,21 +70,14 @@ function LoadingRows() {
   );
 }
 
-function DiscoveryState() {
-  const settings = useGetTableDiscoverySettings();
-  if (!settings.isSuccess) return null;
-  return <span>{settings.data.enabled ? "Discovery is on" : "Discovery is off"}</span>;
-}
-
 export function DiscoveryRulesPage() {
-  const rules = useListTableDiscoveryRules();
-  const ordered = useMemo(() => [...(rules.data ?? [])].sort(byEvaluationOrder), [rules.data]);
+  const rules = useGetTableDiscoveryRules();
+  const ordered = useMemo(() => [...(rules.data?.rules ?? [])].sort(byPriority), [rules.data]);
   const columns = useMemo(() => rulesColumns(), []);
 
   return (
     <section>
       <PageHeader title="Discovery rules">
-        <DiscoveryState />
         <span>Lowest priority first; the first enabled rule that matches a table decides.</span>
       </PageHeader>
       {rules.isError && (

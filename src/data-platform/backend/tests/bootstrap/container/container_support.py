@@ -29,9 +29,6 @@ from tests.context.table_maintenance.fakes.recording_send_table_change_gateway i
 from tests.context.table_maintenance.fakes.recording_submit_maintenance_job_gateway import (
     RecordingSubmitMaintenanceJobGateway,
 )
-from tests.context.table_maintenance.fakes.recording_update_table_discovery_schedule_gateway import (
-    RecordingUpdateTableDiscoveryScheduleGateway,
-)
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine
@@ -63,7 +60,6 @@ def fake_gateways() -> Gateways:
         send_table_change=RecordingSendTableChangeGateway(),
         send_discovery_request=RecordingSendDiscoveryRequestGateway(),
         send_maintenance_result=RecordingSendMaintenanceResultGateway(),
-        update_table_discovery_schedule=RecordingUpdateTableDiscoveryScheduleGateway(),
         submit_maintenance_job=RecordingSubmitMaintenanceJobGateway(),
         read_maintenance_job=FakeReadMaintenanceJobGateway(),
         delete_maintenance_job=RecordingDeleteMaintenanceJobGateway(),

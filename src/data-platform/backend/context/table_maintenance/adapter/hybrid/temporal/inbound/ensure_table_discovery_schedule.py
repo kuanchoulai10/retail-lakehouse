@@ -37,7 +37,6 @@ async def ensure_table_discovery_schedule(
     client: Client,
     catalogs: list[str],
     *,
-    paused: bool,
     interval: timedelta = timedelta(minutes=10),
 ) -> None:
     """Create each catalog's discovery schedule, or bring an existing one up to date.
@@ -45,12 +44,12 @@ async def ensure_table_discovery_schedule(
     A Temporal schedule holds one action, so every catalog gets its own schedule
     ``table-discovery:catalog={catalog}`` starting ``TableDiscoveryWorkflow`` for that catalog
     every ``interval``, skipping a firing while the previous run is still going.
-    Calling it again is idempotent: it rewrites the action and the interval and
-    applies ``paused``.
+    The schedules always run: calling it again is idempotent, rewrites the action
+    and the interval, and unpauses a schedule that was paused by hand.
     """
     for catalog in catalogs:
         schedule_id = table_discovery_schedule_id(catalog)
-        schedule = _schedule(catalog, paused=paused, interval=interval)
+        schedule = _schedule(catalog, interval=interval)
         try:
             await client.create_schedule(schedule_id, schedule)
             continue
@@ -62,13 +61,10 @@ async def ensure_table_discovery_schedule(
             return ScheduleUpdate(schedule=new)
 
         await handle.update(replace)
-        if paused:
-            await handle.pause(note=_NOTE)
-        else:
-            await handle.unpause(note=_NOTE)
+        await handle.unpause(note=_NOTE)
 
 
-def _schedule(catalog: str, *, paused: bool, interval: timedelta) -> Schedule:
+def _schedule(catalog: str, *, interval: timedelta) -> Schedule:
     return Schedule(
         action=ScheduleActionStartWorkflow(
             TABLE_DISCOVERY_WORKFLOW,
@@ -79,5 +75,5 @@ def _schedule(catalog: str, *, paused: bool, interval: timedelta) -> Schedule:
         ),
         spec=ScheduleSpec(intervals=[ScheduleIntervalSpec(every=interval)]),
         policy=SchedulePolicy(overlap=ScheduleOverlapPolicy.SKIP),
-        state=ScheduleState(paused=paused, note=_NOTE),
+        state=ScheduleState(paused=False, note=_NOTE),
     )

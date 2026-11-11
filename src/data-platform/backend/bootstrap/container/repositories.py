@@ -7,11 +7,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table import TablesRepo
-    from context.table_maintenance.application.port.outbound.table_discovery_rule import (
+    from context.table_maintenance.application.port.outbound.table_discovery_rules import (
         TableDiscoveryRulesRepo,
-    )
-    from context.table_maintenance.application.port.outbound.table_discovery_settings import (
-        TableDiscoverySettingsRepo,
     )
     from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
         TableMaintenancePoliciesRepo,
@@ -31,7 +28,6 @@ if TYPE_CHECKING:
 class Repositories:
     """Hold one repository per aggregate."""
 
-    table_discovery_settings: TableDiscoverySettingsRepo
     table_discovery_rules: TableDiscoveryRulesRepo
     table_maintenance_runs: TableMaintenanceRunsRepo
     tables: TablesRepo

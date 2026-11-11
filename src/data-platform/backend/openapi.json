@@ -685,46 +685,6 @@
         "title": "CreateTableApiRequest",
         "type": "object"
       },
-      "CreateTableDiscoveryRuleApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry the body that creates a discovery rule.",
-        "properties": {
-          "catalog_pattern": {
-            "default": "*",
-            "title": "Catalog Pattern",
-            "type": "string"
-          },
-          "effect": {
-            "title": "Effect",
-            "type": "string"
-          },
-          "enabled": {
-            "default": true,
-            "title": "Enabled",
-            "type": "boolean"
-          },
-          "namespace_pattern": {
-            "default": "*",
-            "title": "Namespace Pattern",
-            "type": "string"
-          },
-          "priority": {
-            "title": "Priority",
-            "type": "integer"
-          },
-          "table_pattern": {
-            "default": "*",
-            "title": "Table Pattern",
-            "type": "string"
-          }
-        },
-        "required": [
-          "priority",
-          "effect"
-        ],
-        "title": "CreateTableDiscoveryRuleApiRequest",
-        "type": "object"
-      },
       "CreateViewApiRequest": {
         "additionalProperties": false,
         "description": "Carry the create view form: name, sql and the sql dialect.",
@@ -748,6 +708,47 @@
           "dialect"
         ],
         "title": "CreateViewApiRequest",
+        "type": "object"
+      },
+      "DiscoveryPreviewTableApiResponse": {
+        "description": "Describe one table of a preview: the rule that would decide it, or null, and whether it would be managed.",
+        "properties": {
+          "catalog": {
+            "title": "Catalog",
+            "type": "string"
+          },
+          "managed": {
+            "title": "Managed",
+            "type": "boolean"
+          },
+          "namespace": {
+            "title": "Namespace",
+            "type": "string"
+          },
+          "rule_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule Id"
+          },
+          "table": {
+            "title": "Table",
+            "type": "string"
+          }
+        },
+        "required": [
+          "catalog",
+          "namespace",
+          "table",
+          "rule_id",
+          "managed"
+        ],
+        "title": "DiscoveryPreviewTableApiResponse",
         "type": "object"
       },
       "GenericTableApiResponse": {
@@ -977,6 +978,51 @@
         "title": "PartitionSpecApiResponse",
         "type": "object"
       },
+      "PreviewTableDiscoveryRulesApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry a whole candidate rule list, unsaved.",
+        "properties": {
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/TableDiscoveryRuleApiRequest"
+            },
+            "title": "Rules",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rules"
+        ],
+        "title": "PreviewTableDiscoveryRulesApiRequest",
+        "type": "object"
+      },
+      "PreviewTableDiscoveryRulesApiResponse": {
+        "description": "Describe every table of the covered catalogs under a candidate rule list, with counts.",
+        "properties": {
+          "managed": {
+            "title": "Managed",
+            "type": "integer"
+          },
+          "tables": {
+            "items": {
+              "$ref": "#/components/schemas/DiscoveryPreviewTableApiResponse"
+            },
+            "title": "Tables",
+            "type": "array"
+          },
+          "unmanaged": {
+            "title": "Unmanaged",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tables",
+          "managed",
+          "unmanaged"
+        ],
+        "title": "PreviewTableDiscoveryRulesApiResponse",
+        "type": "object"
+      },
       "ProcessTableMaintenanceCallbackApiRequest": {
         "description": "Carry the result a Spark job reports for one operation attempt.",
         "properties": {
@@ -1195,64 +1241,27 @@
         "title": "RenameTableApiRequest",
         "type": "object"
       },
-      "ScanDiscoveryApiRequest": {
+      "ReplaceTableDiscoveryRulesApiRequest": {
         "additionalProperties": false,
-        "description": "Carry the body that scans a catalog or one namespace.",
+        "description": "Carry the whole new rule list and the version it was edited from.",
         "properties": {
-          "catalog": {
-            "title": "Catalog",
-            "type": "string"
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/TableDiscoveryRuleApiRequest"
+            },
+            "title": "Rules",
+            "type": "array"
           },
-          "namespace": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Namespace"
-          }
-        },
-        "required": [
-          "catalog"
-        ],
-        "title": "ScanDiscoveryApiRequest",
-        "type": "object"
-      },
-      "ScanDiscoveryApiResponse": {
-        "description": "Describe what a scan registered.",
-        "properties": {
-          "dropped": {
-            "title": "Dropped",
-            "type": "integer"
-          },
-          "ensured": {
-            "title": "Ensured",
-            "type": "integer"
-          },
-          "registered": {
-            "title": "Registered",
-            "type": "integer"
-          },
-          "renamed": {
-            "title": "Renamed",
-            "type": "integer"
-          },
-          "skipped": {
-            "title": "Skipped",
+          "version": {
+            "title": "Version",
             "type": "integer"
           }
         },
         "required": [
-          "registered",
-          "renamed",
-          "dropped",
-          "skipped",
-          "ensured"
+          "version",
+          "rules"
         ],
-        "title": "ScanDiscoveryApiResponse",
+        "title": "ReplaceTableDiscoveryRulesApiRequest",
         "type": "object"
       },
       "SchemaApiResponse": {
@@ -2012,20 +2021,83 @@
         "title": "TableCommitsApiResponse",
         "type": "object"
       },
-      "TableDiscoveryRuleApiResponse": {
-        "description": "Describe a discovery rule.",
+      "TableDiscoveryRuleApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry one rule of a rule list; a rule without ``id`` is new.",
         "properties": {
-          "catalog_pattern": {
-            "title": "Catalog Pattern",
+          "action": {
+            "title": "Action",
             "type": "string"
+          },
+          "catalogs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Catalogs",
+            "type": "array"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "namespaces": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Namespaces",
+            "type": "array"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "integer"
+          },
+          "tables": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tables",
+            "type": "array"
+          }
+        },
+        "required": [
+          "priority",
+          "action",
+          "enabled",
+          "catalogs",
+          "namespaces",
+          "tables"
+        ],
+        "title": "TableDiscoveryRuleApiRequest",
+        "type": "object"
+      },
+      "TableDiscoveryRuleApiResponse": {
+        "description": "Describe one discovery rule.",
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "catalogs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Catalogs",
+            "type": "array"
           },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
-            "type": "string"
-          },
-          "effect": {
-            "title": "Effect",
             "type": "string"
           },
           "enabled": {
@@ -2036,17 +2108,23 @@
             "title": "Id",
             "type": "string"
           },
-          "namespace_pattern": {
-            "title": "Namespace Pattern",
-            "type": "string"
+          "namespaces": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Namespaces",
+            "type": "array"
           },
           "priority": {
             "title": "Priority",
             "type": "integer"
           },
-          "table_pattern": {
-            "title": "Table Pattern",
-            "type": "string"
+          "tables": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tables",
+            "type": "array"
           },
           "updated_at": {
             "format": "date-time",
@@ -2057,35 +2135,37 @@
         "required": [
           "id",
           "priority",
-          "effect",
-          "catalog_pattern",
-          "namespace_pattern",
-          "table_pattern",
+          "action",
           "enabled",
+          "catalogs",
+          "namespaces",
+          "tables",
           "created_at",
           "updated_at"
         ],
         "title": "TableDiscoveryRuleApiResponse",
         "type": "object"
       },
-      "TableDiscoverySettingsApiResponse": {
-        "description": "Describe the discovery settings.",
+      "TableDiscoveryRulesApiResponse": {
+        "description": "Describe the discovery rules in priority order with the list's version.",
         "properties": {
-          "enabled": {
-            "title": "Enabled",
-            "type": "boolean"
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/TableDiscoveryRuleApiResponse"
+            },
+            "title": "Rules",
+            "type": "array"
           },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
+          "version": {
+            "title": "Version",
+            "type": "integer"
           }
         },
         "required": [
-          "enabled",
-          "updated_at"
+          "version",
+          "rules"
         ],
-        "title": "TableDiscoverySettingsApiResponse",
+        "title": "TableDiscoveryRulesApiResponse",
         "type": "object"
       },
       "TableHealthApiResponse": {
@@ -2599,61 +2679,6 @@
           }
         },
         "title": "UpdateNamespacePropertiesApiRequest",
-        "type": "object"
-      },
-      "UpdateTableDiscoveryRuleApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry the body that replaces the fields of a discovery rule.",
-        "properties": {
-          "catalog_pattern": {
-            "default": "*",
-            "title": "Catalog Pattern",
-            "type": "string"
-          },
-          "effect": {
-            "title": "Effect",
-            "type": "string"
-          },
-          "enabled": {
-            "default": true,
-            "title": "Enabled",
-            "type": "boolean"
-          },
-          "namespace_pattern": {
-            "default": "*",
-            "title": "Namespace Pattern",
-            "type": "string"
-          },
-          "priority": {
-            "title": "Priority",
-            "type": "integer"
-          },
-          "table_pattern": {
-            "default": "*",
-            "title": "Table Pattern",
-            "type": "string"
-          }
-        },
-        "required": [
-          "priority",
-          "effect"
-        ],
-        "title": "UpdateTableDiscoveryRuleApiRequest",
-        "type": "object"
-      },
-      "UpdateTableDiscoverySettingsApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry the body that switches discovery on or off.",
-        "properties": {
-          "enabled": {
-            "title": "Enabled",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "enabled"
-        ],
-        "title": "UpdateTableDiscoverySettingsApiRequest",
         "type": "object"
       },
       "UpdateTablePropertiesApiRequest": {
@@ -4176,188 +4201,35 @@
         ]
       }
     },
-    "/v1/table-discovery-rules": {
+    "/v1/discovery-rules": {
       "get": {
-        "description": "List the discovery rules.",
-        "operationId": "list_table_discovery_rules",
+        "description": "Return the discovery rules in priority order with the list's version.",
+        "operationId": "get_table_discovery_rules",
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/TableDiscoveryRuleApiResponse"
-                  },
-                  "title": "Response List Table Discovery Rules",
-                  "type": "array"
+                  "$ref": "#/components/schemas/TableDiscoveryRulesApiResponse"
                 }
               }
             },
             "description": "Successful Response"
           }
         },
-        "summary": "List Table Discovery Rules",
+        "summary": "Get Table Discovery Rules",
         "tags": [
-          "table-discovery-rules"
-        ]
-      },
-      "post": {
-        "description": "Create a discovery rule.",
-        "operationId": "create_table_discovery_rule",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTableDiscoveryRuleApiRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TableDiscoveryRuleApiResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Table Discovery Rule",
-        "tags": [
-          "table-discovery-rules"
-        ]
-      }
-    },
-    "/v1/table-discovery-rules/{rule_id}": {
-      "delete": {
-        "description": "Delete a discovery rule.",
-        "operationId": "delete_table_discovery_rule",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "rule_id",
-            "required": true,
-            "schema": {
-              "title": "Rule Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Delete Table Discovery Rule",
-        "tags": [
-          "table-discovery-rules"
-        ]
-      },
-      "patch": {
-        "description": "Replace the fields of a discovery rule.",
-        "operationId": "update_table_discovery_rule",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "rule_id",
-            "required": true,
-            "schema": {
-              "title": "Rule Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTableDiscoveryRuleApiRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TableDiscoveryRuleApiResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Update Table Discovery Rule",
-        "tags": [
-          "table-discovery-rules"
-        ]
-      }
-    },
-    "/v1/table-discovery-settings": {
-      "get": {
-        "description": "Return whether discovery is enabled.",
-        "operationId": "get_table_discovery_settings",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TableDiscoverySettingsApiResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get Table Discovery Settings",
-        "tags": [
-          "table-discovery-settings"
+          "discovery-rules"
         ]
       },
       "put": {
-        "description": "Switch discovery on or off.",
-        "operationId": "update_table_discovery_settings",
+        "description": "Replace the whole rule list from the version read, then discover tables in every covered catalog.",
+        "operationId": "replace_table_discovery_rules",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateTableDiscoverySettingsApiRequest"
+                "$ref": "#/components/schemas/ReplaceTableDiscoveryRulesApiRequest"
               }
             }
           },
@@ -4368,7 +4240,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TableDiscoverySettingsApiResponse"
+                  "$ref": "#/components/schemas/TableDiscoveryRulesApiResponse"
                 }
               }
             },
@@ -4385,13 +4257,13 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Update Table Discovery Settings",
+        "summary": "Replace Table Discovery Rules",
         "tags": [
-          "table-discovery-settings"
+          "discovery-rules"
         ]
       }
     },
-    "/v1/table-discovery-settings/catalogs": {
+    "/v1/discovery-rules/catalogs": {
       "get": {
         "description": "List the catalogs maintenance covers.",
         "operationId": "list_covered_catalogs",
@@ -4409,30 +4281,30 @@
         },
         "summary": "List Covered Catalogs",
         "tags": [
-          "table-discovery-settings"
+          "discovery-rules"
         ]
       }
     },
-    "/v1/table-discovery-settings/scan": {
+    "/v1/discovery-rules/preview": {
       "post": {
-        "description": "Scan a catalog, or one namespace, for tables to manage.",
-        "operationId": "scan_discovery",
+        "description": "Show which tables of the covered catalogs a candidate rule list would manage; saves nothing.",
+        "operationId": "preview_table_discovery_rules",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ScanDiscoveryApiRequest"
+                "$ref": "#/components/schemas/PreviewTableDiscoveryRulesApiRequest"
               }
             }
           },
           "required": true
         },
         "responses": {
-          "202": {
+          "200": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScanDiscoveryApiResponse"
+                  "$ref": "#/components/schemas/PreviewTableDiscoveryRulesApiResponse"
                 }
               }
             },
@@ -4449,9 +4321,9 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Scan Discovery",
+        "summary": "Preview Table Discovery Rules",
         "tags": [
-          "table-discovery-settings"
+          "discovery-rules"
         ]
       }
     },

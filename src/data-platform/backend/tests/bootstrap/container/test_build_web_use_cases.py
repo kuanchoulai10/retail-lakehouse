@@ -25,10 +25,10 @@ def _web_use_cases() -> WebUseCases:
 
 
 def test_every_web_use_case_is_populated():
-    """All 19 web use case fields are set."""
+    """All 15 web use case fields are set."""
     web = _web_use_cases()
 
-    assert len(fields(web)) == 19
+    assert len(fields(web)) == 15
     assert all(getattr(web, f.name) is not None for f in fields(web))
 
 
@@ -43,11 +43,21 @@ def test_web_use_cases_reuse_the_application_services():
 
 
 def test_app_serves_requests_end_to_end_on_sqlite():
-    """The app serves health, create and list requests end to end on SQLite."""
+    """The app serves health, save and read requests end to end on SQLite."""
     client = TestClient(create_api_app(lambda app: register_routes(app, _web_use_cases())))
 
     assert client.get("/healthz").json() == {"status": "ok"}
-    created = client.post("/v1/table-discovery-rules", json={"priority": 1, "effect": "exclude"})
-    assert created.status_code == 201
-    listing = client.get("/v1/table-discovery-rules")
-    assert [item["priority"] for item in listing.json()] == [1]
+    rule = {
+        "priority": 1,
+        "action": "exclude",
+        "enabled": True,
+        "catalogs": ["*"],
+        "namespaces": ["*"],
+        "tables": ["tmp_*"],
+    }
+    saved = client.put("/v1/discovery-rules", json={"version": 0, "rules": [rule]})
+    assert saved.status_code == 200
+    listing = client.get("/v1/discovery-rules").json()
+    assert (listing["version"], [r["priority"] for r in listing["rules"]]) == (1, [1])
+    stale = client.put("/v1/discovery-rules", json={"version": 0, "rules": []})
+    assert stale.status_code == 409

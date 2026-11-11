@@ -56,7 +56,7 @@ interface Options {
 function stubTable({ table = catalogTableFixture(), covered = ["iceberg"], maintenanceTable, extra = {} }: Options = {}) {
   return stubCatalogApi({
     [`GET ${TABLE}`]: () => jsonResponse(table),
-    "GET /v1/table-discovery-settings/catalogs": () => jsonResponse({ catalogs: covered }),
+    "GET /v1/discovery-rules/catalogs": () => jsonResponse({ catalogs: covered }),
     "GET /v1/tables/uuid-orders": maintenanceTable ?? (() => jsonResponse(maintenance())),
     "GET /v1/tables/uuid-orders/commits*": () => jsonResponse({ items: [], truncated: false }),
     "GET /v1/tables/uuid-orders/health": () =>

@@ -12,20 +12,14 @@ if TYPE_CHECKING:
         GetTableUseCase,
         ListTableCommitsUseCase,
         ListTablesUseCase,
-        SyncDiscoveredTablesUseCase,
         TriggerTableMaintenanceUseCase,
         TriggerTableReconciliationUseCase,
     )
-    from context.table_maintenance.application.port.inbound.table_discovery_rule import (
-        CreateTableDiscoveryRuleUseCase,
-        DeleteTableDiscoveryRuleUseCase,
-        ListTableDiscoveryRulesUseCase,
-        UpdateTableDiscoveryRuleUseCase,
-    )
-    from context.table_maintenance.application.port.inbound.table_discovery_settings import (
-        GetTableDiscoverySettingsUseCase,
+    from context.table_maintenance.application.port.inbound.table_discovery_rules import (
+        GetTableDiscoveryRulesUseCase,
         ListCoveredCatalogsUseCase,
-        UpdateTableDiscoverySettingsUseCase,
+        PreviewTableDiscoveryRulesUseCase,
+        ReplaceTableDiscoveryRulesUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
         GetTableMaintenanceRunUseCase,
@@ -41,14 +35,10 @@ if TYPE_CHECKING:
 class WebUseCases:
     """Hold every use case the web API calls; the composition root builds it."""
 
-    create_table_discovery_rule: CreateTableDiscoveryRuleUseCase
-    list_table_discovery_rules: ListTableDiscoveryRulesUseCase
-    update_table_discovery_rule: UpdateTableDiscoveryRuleUseCase
-    delete_table_discovery_rule: DeleteTableDiscoveryRuleUseCase
-    get_table_discovery_settings: GetTableDiscoverySettingsUseCase
+    get_table_discovery_rules: GetTableDiscoveryRulesUseCase
+    replace_table_discovery_rules: ReplaceTableDiscoveryRulesUseCase
+    preview_table_discovery_rules: PreviewTableDiscoveryRulesUseCase
     list_covered_catalogs: ListCoveredCatalogsUseCase
-    update_table_discovery_settings: UpdateTableDiscoverySettingsUseCase
-    sync_discovered_tables: SyncDiscoveredTablesUseCase
     list_tables: ListTablesUseCase
     get_table: GetTableUseCase
     get_table_health: GetTableHealthUseCase

@@ -18,18 +18,12 @@ from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
 from context.table_maintenance.adapter.hybrid.temporal.outbound.table import (
     SendTableChangeTemporalGateway,
 )
-from context.table_maintenance.adapter.hybrid.temporal.outbound.table_discovery_settings import (
-    UpdateTableDiscoveryScheduleTemporalGateway,
-)
 from context.table_maintenance.adapter.hybrid.temporal.outbound.table_maintenance_run import (
     SendMaintenanceResultTemporalGateway,
 )
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.outbound.table import (
     SendTableChangeGatewayInput,
-)
-from context.table_maintenance.application.port.outbound.table_discovery_settings import (
-    UpdateTableDiscoveryScheduleGatewayInput,
 )
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
     SendMaintenanceResultGatewayInput,
@@ -104,12 +98,3 @@ def test_maintenance_result_not_found_maps_to_not_found_error(bridge):
     gateway = SendMaintenanceResultTemporalGateway(client, bridge)  # ty: ignore[invalid-argument-type]
     with pytest.raises(NotFoundError):
         gateway.send(_result_input())
-
-
-@pytest.mark.parametrize("paused", [True, False])
-def test_schedule_update_propagates_other_rpc_errors(bridge, paused):
-    """The schedule gateway raises RPC errors other than not found, whether paused or not."""
-    client = _FailingClient(RPCStatusCode.INVALID_ARGUMENT)
-    gateway = UpdateTableDiscoveryScheduleTemporalGateway(client, bridge)  # ty: ignore[invalid-argument-type]
-    with pytest.raises(RPCError):
-        gateway.update(UpdateTableDiscoveryScheduleGatewayInput(paused=paused))

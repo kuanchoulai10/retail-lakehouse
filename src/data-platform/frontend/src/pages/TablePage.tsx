@@ -4,7 +4,7 @@ import { useState, type MouseEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { ApiError } from "@/api/apiError";
 import type { CatalogTableApiResponse } from "@/api/generated/model";
-import { useListCoveredCatalogs } from "@/api/generated/table-discovery-settings/table-discovery-settings";
+import { useListCoveredCatalogs } from "@/api/generated/discovery-rules/discovery-rules";
 import {
   deleteTable,
   getGetCatalogTableQueryKey,

@@ -18,16 +18,11 @@ from context.table_maintenance.application.service.table import (
     TriggerTableMaintenanceService,
     TriggerTableReconciliationService,
 )
-from context.table_maintenance.application.service.table_discovery_rule import (
-    CreateTableDiscoveryRuleService,
-    DeleteTableDiscoveryRuleService,
-    ListTableDiscoveryRulesService,
-    UpdateTableDiscoveryRuleService,
-)
-from context.table_maintenance.application.service.table_discovery_settings import (
-    GetTableDiscoverySettingsService,
+from context.table_maintenance.application.service.table_discovery_rules import (
+    GetTableDiscoveryRulesService,
     ListCoveredCatalogsService,
-    UpdateTableDiscoverySettingsService,
+    PreviewTableDiscoveryRulesService,
+    ReplaceTableDiscoveryRulesService,
 )
 from context.table_maintenance.application.service.table_maintenance_policy import (
     CreateTableMaintenancePolicyService,
@@ -83,33 +78,26 @@ def build_use_cases(
     policies = repos.table_maintenance_policies
     attachments = repos.table_maintenance_policy_attachments
     runs = repos.table_maintenance_runs
-    discovery = repos.table_discovery_settings
     reconciliations = repos.table_reconciliations
     catalog = gateways.read_table_metadata
     table_changes = gateways.send_table_change
     resolve_applicable_policy = ResolveApplicableTableMaintenancePolicyService(policies, attachments, catalog)
     return UseCases(
-        get_table_discovery_settings=GetTableDiscoverySettingsService(discovery),
         list_covered_catalogs=ListCoveredCatalogsService(catalog_names),
         process_table_hint=ProcessTableHintService(
             tables,
             rules,
-            discovery,
             catalog,
             table_changes,
             gateways.send_discovery_request,
             clock=clock,
         ),
-        sync_discovered_tables=SyncDiscoveredTablesService(
-            tables, rules, discovery, catalog, table_changes, clock=clock
+        sync_discovered_tables=SyncDiscoveredTablesService(tables, rules, catalog, table_changes, clock=clock),
+        get_table_discovery_rules=GetTableDiscoveryRulesService(rules),
+        replace_table_discovery_rules=ReplaceTableDiscoveryRulesService(
+            rules, gateways.send_discovery_request, catalog_names, clock=clock
         ),
-        update_table_discovery_settings=UpdateTableDiscoverySettingsService(
-            discovery, gateways.update_table_discovery_schedule, clock=clock
-        ),
-        create_table_discovery_rule=CreateTableDiscoveryRuleService(rules, clock=clock),
-        delete_table_discovery_rule=DeleteTableDiscoveryRuleService(rules),
-        list_table_discovery_rules=ListTableDiscoveryRulesService(rules),
-        update_table_discovery_rule=UpdateTableDiscoveryRuleService(rules, clock=clock),
+        preview_table_discovery_rules=PreviewTableDiscoveryRulesService(catalog, catalog_names, clock=clock),
         attach_table_maintenance_policy=AttachTableMaintenancePolicyService(
             policies, attachments, catalog, clock=clock
         ),

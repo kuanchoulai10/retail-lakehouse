@@ -6,11 +6,8 @@ from typing import TYPE_CHECKING
 
 from bootstrap.container.repositories import Repositories
 from context.table_maintenance.adapter.outbound.table.sql import TablesSqlRepo
-from context.table_maintenance.adapter.outbound.table_discovery_rule.sql import (
+from context.table_maintenance.adapter.outbound.table_discovery_rules.sql import (
     TableDiscoveryRulesSqlRepo,
-)
-from context.table_maintenance.adapter.outbound.table_discovery_settings.sql import (
-    TableDiscoverySettingsSqlRepo,
 )
 from context.table_maintenance.adapter.outbound.table_maintenance_policy.sql import (
     TableMaintenancePoliciesSqlRepo,
@@ -32,7 +29,6 @@ if TYPE_CHECKING:
 def build_repositories(engine: Engine) -> Repositories:
     """Build the SQL repositories on one engine."""
     return Repositories(
-        table_discovery_settings=TableDiscoverySettingsSqlRepo(engine),
         table_discovery_rules=TableDiscoveryRulesSqlRepo(engine),
         table_maintenance_runs=TableMaintenanceRunsSqlRepo(engine),
         tables=TablesSqlRepo(engine),

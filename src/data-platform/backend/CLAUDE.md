@@ -16,7 +16,7 @@ Everything below, except `base/`, `bootstrap/` and `entrypoint.py`, lives inside
 
 ### Backend Structure
 
-Backend code is grouped by **bounded context** first. Inside a context, one **aggregate axis** runs through every layer: each layer directory is split into the same aggregate directories plus `shared` for what spans aggregates. For `table_maintenance` the aggregates are `table`, `table_discovery_rule`, `table_discovery_settings`, `table_maintenance_policy`, `table_maintenance_policy_attachment`, `table_maintenance_run`, `table_reconciliation`; for `catalog` they are `catalog`, `namespace`, `table`, `generic_table`, `view`.
+Backend code is grouped by **bounded context** first. Inside a context, one **aggregate axis** runs through every layer: each layer directory is split into the same aggregate directories plus `shared` for what spans aggregates. For `table_maintenance` the aggregates are `table`, `table_discovery_rules`, `table_maintenance_policy`, `table_maintenance_policy_attachment`, `table_maintenance_run`, `table_reconciliation`; for `catalog` they are `catalog`, `namespace`, `table`, `generic_table`, `view`.
 
 ```
 backend/
@@ -87,7 +87,7 @@ Today there are two contexts. `table_maintenance` schedules Iceberg maintenance 
 - **Ruff config only extends the root.** The backend `[tool.ruff]` extends the root `ruff.toml` and adds only isort first-party and flake8-type-checking lists; never add ignores, selects or rule-threshold overrides to the backend pyproject. Enforced by `tests/architecture/test_ruff_config.py`.
 - **Long import heads keep `# noqa: E501`.** A `from <module> import (` head that cannot fit in 120 characters (long port and adapter paths that follow the naming rules) carries `# noqa: E501`; the owner accepted these markers on 2026-11-07, so do not rename modules to shorten them. Any other line must fit.
 - **Naming and structure.** Inbound ports, outbound ports, services and web DTOs follow the naming tables below: `test_inbound_port_structure.py`, `test_outbound_port_structure.py`, `test_service_structure.py`, `test_dto_naming.py`; top-level layout `test_directory_structure.py`; inheritance depth `test_inheritance_depth.py`.
-- **DTOs live in the adapter.** `CreateTableDiscoveryRuleApiRequest`/`TableDiscoveryRuleApiResponse` are in `adapter/inbound/web/table_discovery_rule/dto.py` with plain types (no domain enums).
+- **DTOs live in the adapter.** `ReplaceTableDiscoveryRulesApiRequest`/`TableDiscoveryRulesApiResponse` are in `adapter/inbound/web/table_discovery_rules/dto.py` with plain types (no domain enums).
 - **Use case results live in the application layer.** Services convert domain objects to application-layer result dataclasses so adapters never see domain types.
 - **Bootstrap** is the only layer allowed to import from all other layers. It is the composition root.
 - **Single image, four components**: `GLAC_COMPONENT=api` (default), `worker`, `event_consumer`, or `migrate` via `entrypoint.py`.

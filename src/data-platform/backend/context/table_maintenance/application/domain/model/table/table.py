@@ -21,7 +21,7 @@ from context.table_maintenance.application.domain.model.table.table_name import 
 from context.table_maintenance.application.domain.model.table.table_status import (
     TableStatus,
 )
-from context.table_maintenance.application.domain.model.table_discovery_rule import (
+from context.table_maintenance.application.domain.model.table_discovery_rules import (
     TableDiscoveryRuleId,
 )
 
