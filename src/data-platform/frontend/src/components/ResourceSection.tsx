@@ -7,7 +7,7 @@ import {
   Panel,
   IconTrash,
 } from "@retail-lakehouse/design-system";
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import type { RowData } from "@tanstack/react-table";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
@@ -31,6 +31,12 @@ export interface ResourceSectionProps<Row extends RowData> {
   objectName: (row: Row) => string;
   fullPath: (row: Row) => string;
   onDelete: (row: Row) => Promise<void>;
+  // Controls shown before the row's delete, such as Edit.
+  rowActions?: (row: Row) => ReactNode;
+  // Why a row cannot be deleted; its delete is then disabled and describes the reason.
+  deleteDisabledReason?: (row: Row) => string | null;
+  // The delete dialog's description, for objects that are not deleted from the catalog.
+  deleteConsequence?: (row: Row) => ReactNode;
 }
 
 // One list of child objects: a table of rows, a New button, and a typed-name delete per row.
@@ -49,7 +55,11 @@ export function ResourceSection<Row extends RowData>({
   objectName,
   fullPath,
   onDelete,
+  rowActions,
+  deleteDisabledReason,
+  deleteConsequence,
 }: ResourceSectionProps<Row>) {
+  const reasonId = useId();
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<Row | null>(null);
   const [pending, setPending] = useState(false);
@@ -83,17 +93,31 @@ export function ResourceSection<Row extends RowData>({
     column.display({
       id: "actions",
       header: () => <span className="sr-only">Actions</span>,
-      cell: (info) => (
-        <div className="flex justify-end">
-          <IconButton
-            styleType="ghost"
-            shape="rectangle"
-            aria-label={`Delete ${objectName(info.row.original)}`}
-            icon={<IconTrash />}
-            onClick={() => openDelete(info.row.original)}
-          />
-        </div>
-      ),
+      cell: (info) => {
+        const row = info.row.original;
+        const reason = deleteDisabledReason?.(row) ?? null;
+        const id = `${reasonId}-${info.row.id}`;
+        return (
+          <div className="flex items-center justify-end gap-1">
+            {rowActions?.(row)}
+            <IconButton
+              styleType="ghost"
+              shape="rectangle"
+              aria-label={`Delete ${objectName(row)}`}
+              icon={<IconTrash />}
+              disabled={reason !== null}
+              title={reason ?? undefined}
+              aria-describedby={reason === null ? undefined : id}
+              onClick={() => openDelete(row)}
+            />
+            {reason !== null && (
+              <span id={id} className="sr-only">
+                {reason}
+              </span>
+            )}
+          </div>
+        );
+      },
     }),
   ]);
 
@@ -132,6 +156,7 @@ export function ResourceSection<Row extends RowData>({
           objectKind={kindOf(deleting)}
           objectName={objectName(deleting)}
           fullPath={fullPath(deleting)}
+          consequence={deleteConsequence?.(deleting)}
           isPending={pending}
           error={error}
           onConfirm={() => void confirmDelete(deleting)}

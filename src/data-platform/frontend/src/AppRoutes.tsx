@@ -5,6 +5,7 @@ import { CatalogsPage } from "./pages/CatalogsPage";
 import { DiscoveryRulesPage } from "./pages/DiscoveryRulesPage";
 import { GenericTablePage } from "./pages/GenericTablePage";
 import { NamespacePage } from "./pages/NamespacePage";
+import { PoliciesPage } from "./pages/PoliciesPage";
 import { TableListPage } from "./pages/TableListPage";
 import { TablePage } from "./pages/TablePage";
 import { ViewPage } from "./pages/ViewPage";
@@ -30,6 +31,7 @@ export function AppRoutes() {
     <Routes>
       <Route path="/" element={<TableListPage />} />
       <Route path="/discovery-rules" element={<DiscoveryRulesPage />} />
+      <Route path="/policies" element={<PoliciesPage />} />
       <Route path="/catalogs" element={<CatalogsPage />} />
       <Route path="/catalogs/:catalog" element={<CatalogPage />} />
       <Route path="/catalogs/:catalog/namespaces/:namespace" element={<NamespacePage />} />

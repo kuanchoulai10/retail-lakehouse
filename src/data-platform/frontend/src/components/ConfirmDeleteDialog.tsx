@@ -5,7 +5,7 @@ import {
   Button,
   TextField,
 } from "@retail-lakehouse/design-system";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { errorMessage } from "@/format";
 
 interface Props {
@@ -17,6 +17,8 @@ interface Props {
   onConfirm: () => void;
   isPending: boolean;
   error: unknown;
+  // What the delete takes with it, for an object that is not in the catalog (a policy).
+  consequence?: ReactNode;
 }
 
 export function ConfirmDeleteDialog({
@@ -28,6 +30,7 @@ export function ConfirmDeleteDialog({
   onConfirm,
   isPending,
   error,
+  consequence,
 }: Props) {
   const [typed, setTyped] = useState("");
   const [wasOpen, setWasOpen] = useState(open);
@@ -42,10 +45,12 @@ export function ConfirmDeleteDialog({
       onOpenChange={onOpenChange}
       title={`Delete ${objectKind}`}
       description={
-        <>
-          This deletes <span className="font-mono">{fullPath}</span> from the catalog. It cannot be
-          undone.
-        </>
+        consequence ?? (
+          <>
+            This deletes <span className="font-mono">{fullPath}</span> from the catalog. It cannot be
+            undone.
+          </>
+        )
       }
       footer={
         <>

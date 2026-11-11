@@ -36,7 +36,16 @@ describe("AppShell", () => {
       "Tables",
       "Catalog",
       "Discovery rules",
+      "Policies",
     ]);
+  });
+
+  it("links the policies page and marks it current there", () => {
+    renderShell("/policies");
+    const nav = screen.getByRole("navigation", { name: "Main" });
+    const link = within(nav).getByRole("link", { name: "Policies" });
+    expect(link).toHaveAttribute("href", "/policies");
+    expect(link).toHaveAttribute("aria-current", "page");
   });
 
   it("links the discovery rules page", () => {

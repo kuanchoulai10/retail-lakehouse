@@ -1,6 +1,8 @@
 import type {
   CatalogApiResponse,
   CatalogTableApiResponse,
+  ListedTableMaintenancePolicyApiResponse,
+  ListedTableMaintenancePolicyMappingApiResponse,
   NamespaceApiResponse,
   NamespaceSummaryApiResponse,
   ReconciliationOperationApiResponse,
@@ -14,6 +16,7 @@ import type {
   TableReconciliationApiResponse,
   TableStorageApiResponse,
 } from "@/api/generated/model";
+import { FALLBACK_POLICY_CONTENT } from "@/lib/policyDraft";
 
 // One small lakehouse for the page stories: catalog iceberg, namespace retail, table orders.
 
@@ -435,4 +438,53 @@ export const RECONCILIATIONS: TableReconciliationApiResponse[] = [
     skip_reason: "not_found",
     operations: [],
   }),
+];
+
+function policy(overrides: Partial<ListedTableMaintenancePolicyApiResponse>): ListedTableMaintenancePolicyApiResponse {
+  return {
+    name: "default",
+    version: 1,
+    attachment_count: 0,
+    created_at: "2026-11-01T09:00:00Z",
+    updated_at: "2026-11-01T09:00:00Z",
+    ...FALLBACK_POLICY_CONTENT,
+    ...overrides,
+  };
+}
+
+// The default, one policy attached to a namespace and to a catalog that has since been
+// dropped, and one attached nowhere.
+export const POLICIES: ListedTableMaintenancePolicyApiResponse[] = [
+  policy({ name: "default", description: "Platform default", version: 3 }),
+  policy({
+    name: "retail-nightly",
+    description: "Compacts whole tables once a day",
+    version: 4,
+    attachment_count: 2,
+    reconcile_interval_seconds: 86400,
+    operations: {
+      ...FALLBACK_POLICY_CONTENT.operations,
+      rewrite_data_files: {
+        ...FALLBACK_POLICY_CONTENT.operations.rewrite_data_files,
+        scope: { unit: "table" },
+        trigger_policy: { cooldown_seconds: 86400, conditions: { reducible_files: { at_least: 20 } } },
+      },
+    },
+  }),
+  policy({ name: "scratch", description: "", version: 1, dry_run: true }),
+];
+
+export const POLICY_MAPPINGS: ListedTableMaintenancePolicyMappingApiResponse[] = [
+  {
+    policy_name: "retail-nightly",
+    target: { type: "namespace", path: ["iceberg", "retail"], table_uuid: null },
+    orphaned: false,
+    attached_at: "2026-11-03T09:00:00Z",
+  },
+  {
+    policy_name: "retail-nightly",
+    target: { type: "catalog", path: ["legacy"], table_uuid: null },
+    orphaned: true,
+    attached_at: "2026-11-02T09:00:00Z",
+  },
 ];

@@ -1,5 +1,6 @@
 import {
   AppLayout,
+  IconAdjustmentsHorizontal,
   IconBook,
   IconTable,
   IconRadar,
@@ -38,6 +39,12 @@ const NAV_ENTRIES: NavEntry[] = [
     label: "Discovery rules",
     icon: IconRadar,
     matches: (pathname) => pathname.startsWith("/discovery-rules"),
+  },
+  {
+    href: "/policies",
+    label: "Policies",
+    icon: IconAdjustmentsHorizontal,
+    matches: (pathname) => pathname.startsWith("/policies"),
   },
 ];
 

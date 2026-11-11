@@ -8,6 +8,14 @@ import {
   getReplaceTableDiscoveryRulesMockHandler,
 } from "@/api/generated/discovery-rules/discovery-rules.msw";
 import {
+  getCreateTableMaintenancePolicyMockHandler,
+  getDeleteTableMaintenancePolicyMockHandler,
+  getGetTableMaintenancePolicyMockHandler,
+  getListTableMaintenancePoliciesMockHandler,
+  getListTableMaintenancePolicyMappingsMockHandler,
+  getUpdateTableMaintenancePolicyMockHandler,
+} from "@/api/generated/maintenance-policies/maintenance-policies.msw";
+import {
   getGetCatalogTableMockHandler,
   getGetTableHealthMockHandler,
   getGetTableMockHandler,
@@ -27,6 +35,8 @@ import {
   MAINTAINED_TABLES,
   NAMESPACES,
   ORDERS,
+  POLICIES,
+  POLICY_MAPPINGS,
   RECONCILIATIONS,
   RETAIL,
   RETAIL_TABLES,
@@ -82,5 +92,20 @@ export function lakehouseHandlers() {
     getGetTableDiscoveryRulesMockHandler({ version: 1, rules: RULES }),
     getPreviewTableDiscoveryRulesMockHandler(RULES_PREVIEW),
     getReplaceTableDiscoveryRulesMockHandler({ version: 2, rules: RULES }),
+    getListTableMaintenancePoliciesMockHandler({ policies: POLICIES }),
+    getListTableMaintenancePolicyMappingsMockHandler(({ params }) => ({
+      mappings: POLICY_MAPPINGS.filter((mapping) => mapping.policy_name === params.name),
+    })),
+    getGetTableMaintenancePolicyMockHandler(({ params }) => POLICIES.find((p) => p.name === params.name) ?? POLICIES[0]!),
+    getCreateTableMaintenancePolicyMockHandler(async ({ request }) => ({
+      ...POLICIES[0]!,
+      ...((await request.json()) as object),
+      version: 1,
+    })),
+    getUpdateTableMaintenancePolicyMockHandler(({ params }) => {
+      const current = POLICIES.find((p) => p.name === params.name) ?? POLICIES[0]!;
+      return { ...current, version: current.version + 1 };
+    }),
+    getDeleteTableMaintenancePolicyMockHandler(),
   ];
 }

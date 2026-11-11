@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
+import { jsonResponse } from "./test/fixtures";
 import { AppRoutes } from "./AppRoutes";
 import { stubCatalogApi } from "./test/catalogApiStub";
 
@@ -26,4 +27,10 @@ describe("AppRoutes", () => {
       expect(calls).toEqual([]);
     },
   );
+
+  it("renders the policies page at /policies", async () => {
+    stubCatalogApi({ "GET /v1/maintenance-policies": () => jsonResponse({ policies: [] }) });
+    renderAt("/policies");
+    expect(await screen.findByRole("heading", { name: "Policies" })).toBeInTheDocument();
+  });
 });
