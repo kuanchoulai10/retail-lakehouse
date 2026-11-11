@@ -35,6 +35,9 @@ function record(overrides: Partial<TableReconciliationApiResponse>): TableReconc
     skip_reason: null,
     operations: [],
     run_id: null,
+    policy_name: "default",
+    policy_version: 1,
+    policy_target: null,
     ...overrides,
   };
 }

@@ -50,6 +50,9 @@ def _input(**overrides: object) -> RecordTableReconciliationUseCaseInput:
         checks=[_due_check()],
         run_id="run-1",
         run_start_failed=False,
+        policy_name="default",
+        policy_version=3,
+        policy_target=None,
     )
     return replace(base, **overrides)
 
@@ -234,3 +237,52 @@ def test_discovery_scan_is_a_known_wake_reason(
     saved = repo.get(TableReconciliationId("rec-1"))
     assert saved is not None
     assert {reason.value: count for reason, count in saved.wake_reasons.items()} == {"discovery_scan": 1}
+
+
+def test_record_keeps_policy_name_version_and_target(
+    service: RecordTableReconciliationService, repo: InMemoryTableReconciliationsRepo
+) -> None:
+    """The record keeps the plan's policy name, version and the target it was attached to."""
+    service.execute(
+        _input(
+            policy_name="nightly",
+            policy_version=4,
+            policy_target={"type": "namespace", "path": ["prod", "sales"]},
+        )
+    )
+
+    saved = repo.get(TableReconciliationId("rec-1"))
+    assert saved is not None
+    assert (saved.policy_name, saved.policy_version) == ("nightly", 4)
+    assert saved.policy_target is not None
+    assert (saved.policy_target.type.value, saved.policy_target.path) == ("namespace", ("prod", "sales"))
+
+
+def test_record_keeps_a_table_target_with_its_uuid(
+    service: RecordTableReconciliationService, repo: InMemoryTableReconciliationsRepo
+) -> None:
+    """A table target arrives with the table's uuid, as the plan reports it."""
+    target = {"type": "table", "path": ["prod", "sales", "orders"], "table_uuid": "table-1"}
+    service.execute(_input(policy_target=target))
+
+    saved = repo.get(TableReconciliationId("rec-1"))
+    assert saved is not None
+    assert saved.policy_target is not None
+    assert saved.policy_target.table_uuid == "table-1"
+
+
+def test_default_fallback_records_no_target(
+    service: RecordTableReconciliationService, repo: InMemoryTableReconciliationsRepo
+) -> None:
+    """The default policy with nothing attached records a null target."""
+    service.execute(_input(policy_target=None))
+
+    saved = repo.get(TableReconciliationId("rec-1"))
+    assert saved is not None
+    assert saved.policy_target is None
+
+
+def test_a_malformed_policy_target_is_a_validation_error(service: RecordTableReconciliationService) -> None:
+    """A target that is not a valid policy target is rejected."""
+    with pytest.raises(ValidationError):
+        service.execute(_input(policy_target={"type": "galaxy", "path": ["x"]}))

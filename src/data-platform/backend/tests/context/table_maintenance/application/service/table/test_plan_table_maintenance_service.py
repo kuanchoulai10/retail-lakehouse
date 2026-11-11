@@ -502,6 +502,9 @@ def _record(plan, now, **overrides):
         "checks": [asdict(check) for check in plan.checks],
         "run_id": None,
         "run_start_failed": False,
+        "policy_name": plan.policy_name,
+        "policy_version": plan.policy_version,
+        "policy_target": plan.policy_target,
     }
     fields.update(overrides)
     RecordTableReconciliationService(repo).execute(RecordTableReconciliationUseCaseInput(**fields))

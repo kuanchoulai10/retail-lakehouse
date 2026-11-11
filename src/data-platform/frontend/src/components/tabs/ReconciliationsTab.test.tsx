@@ -48,6 +48,9 @@ function quiet(id: string, reconciledAt: string): TableReconciliationApiResponse
     skip_reason: null,
     operations: QUIET_OPERATIONS,
     run_id: null,
+    policy_name: "default",
+    policy_version: 1,
+    policy_target: null,
   };
 }
 

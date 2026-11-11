@@ -12,6 +12,10 @@ from context.table_maintenance.application.domain.model.shared import (
     MeasurementUnit,
 )
 from context.table_maintenance.application.domain.model.table import TableId
+from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
+    PolicyTarget,
+    PolicyTargetType,
+)
 from context.table_maintenance.application.domain.model.table_reconciliation import (
     OperationOutcome,
     OperationResult,
@@ -60,6 +64,9 @@ def _reconciliation(rec_id: str, at: datetime, table: str = "t-1") -> TableRecon
             )
         ],
         run_id=None,
+        policy_name="nightly",
+        policy_version=4,
+        policy_target=PolicyTarget(type=PolicyTargetType.NAMESPACE, path=("prod", "sales")),
     )
 
 
@@ -144,3 +151,12 @@ def test_context_measurement_has_null_threshold_and_met() -> None:
     assert body["wake_reasons"] == {"schedule": 1}
     assert body["outcome"] == "planned"
     assert body["run_id"] is None
+
+
+def test_response_names_the_policy_used() -> None:
+    """Each record carries the policy name, version and target."""
+    body = _client(_reconciliation("a", NOW)).get("/v1/tables/t-1/reconciliations").json()[0]
+
+    assert body["policy_name"] == "nightly"
+    assert body["policy_version"] == 4
+    assert body["policy_target"] == {"type": "namespace", "path": ["prod", "sales"]}

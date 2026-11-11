@@ -52,6 +52,7 @@ export * from './processTableMaintenanceCallbackApiRequestMetrics';
 export * from './processTableMaintenanceCallbackApiResponse';
 export * from './reconciliationMeasurementApiResponse';
 export * from './reconciliationOperationApiResponse';
+export * from './reconciliationPolicyTargetApiResponse';
 export * from './renameTableApiRequest';
 export * from './scanDiscoveryApiRequest';
 export * from './scanDiscoveryApiResponse';

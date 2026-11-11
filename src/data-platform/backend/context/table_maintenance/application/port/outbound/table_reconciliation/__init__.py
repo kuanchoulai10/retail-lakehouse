@@ -9,6 +9,9 @@ from context.table_maintenance.application.domain.model.shared import (
     MeasurementUnit,
 )
 from context.table_maintenance.application.domain.model.table import TableId
+from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
+    PolicyTarget,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRunId,
 )
@@ -32,6 +35,7 @@ __all__ = [
     "TableMaintenanceRunId",
     "OperationOutcome",
     "OperationResult",
+    "PolicyTarget",
     "ReconciliationOutcome",
     "TableId",
     "TableReconciliation",

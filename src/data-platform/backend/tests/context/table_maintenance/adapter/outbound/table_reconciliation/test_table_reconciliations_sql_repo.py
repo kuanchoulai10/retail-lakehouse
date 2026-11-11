@@ -19,6 +19,10 @@ from context.table_maintenance.application.domain.model.shared import (
     MeasurementUnit,
 )
 from context.table_maintenance.application.domain.model.table import TableId
+from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
+    PolicyTarget,
+    PolicyTargetType,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRunId,
 )
@@ -56,6 +60,9 @@ def _rec(rec_id: str, table: str = "u1", at: datetime = NOW) -> TableReconciliat
         skip_reason=None,
         operations=(),
         run_id=None,
+        policy_name="default",
+        policy_version=1,
+        policy_target=None,
     )
 
 
@@ -108,6 +115,9 @@ def test_create_and_get_round_trip(repo: TableReconciliationsRepo):
             ),
         ),
         run_id=TableMaintenanceRunId("run-1"),
+        policy_name="nightly",
+        policy_version=4,
+        policy_target=PolicyTarget(type=PolicyTargetType.TABLE, path=("prod", "sales", "orders"), table_uuid="u1"),
     )
     repo.create(rec)
     loaded = repo.get(TableReconciliationId("r1"))
@@ -115,6 +125,8 @@ def test_create_and_get_round_trip(repo: TableReconciliationsRepo):
     assert loaded.model_dump() == rec.model_dump()
     assert loaded.table_uuid == rec.table_uuid
     assert loaded.reconciled_at == NOW
+    assert (loaded.policy_name, loaded.policy_version) == ("nightly", 4)
+    assert loaded.policy_target == rec.policy_target
     assert loaded.wake_reasons == {WakeReason.SCHEDULE: 2, WakeReason.RESUMED: 1}
     assert loaded.dry_run is False
     assert loaded.outcome is ReconciliationOutcome.PLANNED
@@ -138,6 +150,9 @@ def test_skipped_round_trip(repo: TableReconciliationsRepo):
         skip_reason="paused",
         operations=(),
         run_id=None,
+        policy_name="default",
+        policy_version=1,
+        policy_target=None,
     )
     repo.create(rec)
     loaded = repo.get(TableReconciliationId("s1"))

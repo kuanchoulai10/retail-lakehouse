@@ -5,6 +5,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ReconciliationOperationApiResponse } from './reconciliationOperationApiResponse';
+import type { ReconciliationPolicyTargetApiResponse } from './reconciliationPolicyTargetApiResponse';
 import type { TableReconciliationApiResponseWakeReasons } from './tableReconciliationApiResponseWakeReasons';
 
 /**
@@ -14,6 +15,9 @@ export interface TableReconciliationApiResponse {
   dry_run: boolean;
   operations: ReconciliationOperationApiResponse[];
   outcome: string;
+  policy_name: string;
+  policy_target: ReconciliationPolicyTargetApiResponse | null;
+  policy_version: number;
   reconciled_at: string;
   reconciliation_id: string;
   run_id: string | null;

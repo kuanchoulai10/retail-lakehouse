@@ -100,6 +100,9 @@ class TableReconciliationActivities:
                     checks=list(request["checks"]),
                     run_id=request["run_id"],
                     run_start_failed=request["run_start_failed"],
+                    policy_name=request["policy_name"],
+                    policy_version=request["policy_version"],
+                    policy_target=request["policy_target"],
                 )
             )
         return activity_payload(output)

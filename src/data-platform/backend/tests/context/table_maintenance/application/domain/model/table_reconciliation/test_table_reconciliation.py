@@ -16,6 +16,10 @@ from context.table_maintenance.application.domain.model.shared import (
     MeasurementUnit,
 )
 from context.table_maintenance.application.domain.model.table import TableId
+from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
+    PolicyTarget,
+    PolicyTargetType,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRunId,
 )
@@ -58,6 +62,9 @@ def _record(**overrides):
         "skip_reason": None,
         "operations": (_outcome(Op.EXPIRE_SNAPSHOTS),),
         "run_id": None,
+        "policy_name": "default",
+        "policy_version": 3,
+        "policy_target": None,
     }
     args.update(overrides)
     return TableReconciliation.record(**args)
@@ -139,6 +146,9 @@ def test_direct_construction_checks_the_invariants():
             skip_reason=None,
             operations=(),
             run_id=None,
+            policy_name="default",
+            policy_version=1,
+            policy_target=None,
         )
 
 
@@ -162,3 +172,16 @@ def test_operation_outcome_is_immutable():
     outcome = _outcome(Op.EXPIRE_SNAPSHOTS)
     with pytest.raises(ValidationError):
         outcome.result = OperationResult.OFF
+
+
+def test_record_keeps_policy_name_version_and_target():
+    """A record names the policy, its version and where it was attached."""
+    target = PolicyTarget(type=PolicyTargetType.NAMESPACE, path=("prod", "sales"))
+    rec = _record(policy_name="nightly", policy_version=4, policy_target=target)
+    assert (rec.policy_name, rec.policy_version, rec.policy_target) == ("nightly", 4, target)
+
+
+def test_record_rejects_a_policy_version_below_one():
+    """A policy version is at least 1."""
+    with pytest.raises(ValidationError):
+        _record(policy_version=0)

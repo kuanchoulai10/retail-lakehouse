@@ -31,6 +31,15 @@ class ReconciliationOperationApiResponse(BaseModel):
     next_eligible_at: datetime | None
 
 
+class ReconciliationPolicyTargetApiResponse(BaseModel):
+    """Describe where the policy a reconciliation used was attached."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    type: str
+    path: list[str]
+
+
 class TableReconciliationApiResponse(BaseModel):
     """Describe one reconciliation of a table."""
 
@@ -45,3 +54,6 @@ class TableReconciliationApiResponse(BaseModel):
     skip_reason: str | None
     operations: list[ReconciliationOperationApiResponse]
     run_id: str | None
+    policy_name: str
+    policy_version: int
+    policy_target: ReconciliationPolicyTargetApiResponse | None

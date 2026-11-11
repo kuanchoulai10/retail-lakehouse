@@ -117,6 +117,9 @@ def test_record_reconciliation_passes_every_field_and_returns_dict():
             "checks": [CHECK],
             "run_id": "run-1",
             "run_start_failed": False,
+            "policy_name": "nightly",
+            "policy_version": 4,
+            "policy_target": {"type": "catalog", "path": ["prod"]},
         }
     )
     assert fakes["record"].requests == [
@@ -131,6 +134,9 @@ def test_record_reconciliation_passes_every_field_and_returns_dict():
             checks=[CHECK],
             run_id="run-1",
             run_start_failed=False,
+            policy_name="nightly",
+            policy_version=4,
+            policy_target={"type": "catalog", "path": ["prod"]},
         )
     ]
     assert result == {"recorded": True}

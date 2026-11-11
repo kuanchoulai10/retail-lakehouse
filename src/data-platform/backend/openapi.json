@@ -1236,6 +1236,28 @@
         "title": "ReconciliationOperationApiResponse",
         "type": "object"
       },
+      "ReconciliationPolicyTargetApiResponse": {
+        "description": "Describe where the policy a reconciliation used was attached.",
+        "properties": {
+          "path": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Path",
+            "type": "array"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "path"
+        ],
+        "title": "ReconciliationPolicyTargetApiResponse",
+        "type": "object"
+      },
       "RenameTableApiRequest": {
         "additionalProperties": false,
         "description": "Name where the table goes: a namespace of the same catalog, by parts, and a name.",
@@ -2474,6 +2496,24 @@
             "title": "Outcome",
             "type": "string"
           },
+          "policy_name": {
+            "title": "Policy Name",
+            "type": "string"
+          },
+          "policy_target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReconciliationPolicyTargetApiResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "integer"
+          },
           "reconciled_at": {
             "format": "date-time",
             "title": "Reconciled At",
@@ -2526,7 +2566,10 @@
           "outcome",
           "skip_reason",
           "operations",
-          "run_id"
+          "run_id",
+          "policy_name",
+          "policy_version",
+          "policy_target"
         ],
         "title": "TableReconciliationApiResponse",
         "type": "object"

@@ -12,6 +12,7 @@ from context.table_maintenance.application.port.inbound.table_reconciliation imp
     ListTableReconciliationsUseCaseOutputItem,
     ListTableReconciliationsUseCaseOutputMeasurement,
     ListTableReconciliationsUseCaseOutputOperation,
+    ListTableReconciliationsUseCaseOutputPolicyTarget,
 )
 
 if TYPE_CHECKING:
@@ -51,7 +52,17 @@ def _item(reconciliation: TableReconciliation) -> ListTableReconciliationsUseCas
         skip_reason=reconciliation.skip_reason,
         operations=[_operation(op) for op in reconciliation.operations],
         run_id=reconciliation.run_id.value if reconciliation.run_id else None,
+        policy_name=reconciliation.policy_name,
+        policy_version=reconciliation.policy_version,
+        policy_target=_policy_target(reconciliation),
     )
+
+
+def _policy_target(reconciliation: TableReconciliation) -> ListTableReconciliationsUseCaseOutputPolicyTarget | None:
+    target = reconciliation.policy_target
+    if target is None:
+        return None
+    return ListTableReconciliationsUseCaseOutputPolicyTarget(type=target.type.value, path=list(target.path))
 
 
 def _operation(outcome: OperationOutcome) -> ListTableReconciliationsUseCaseOutputOperation:

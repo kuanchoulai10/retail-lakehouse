@@ -32,6 +32,14 @@ class ListTableReconciliationsUseCaseOutputOperation:
 
 
 @dataclass(frozen=True)
+class ListTableReconciliationsUseCaseOutputPolicyTarget:
+    """Where the policy a reconciliation used was attached."""
+
+    type: str
+    path: list[str]
+
+
+@dataclass(frozen=True)
 class ListTableReconciliationsUseCaseOutputItem:
     """One reconciliation of the listing."""
 
@@ -44,6 +52,9 @@ class ListTableReconciliationsUseCaseOutputItem:
     skip_reason: str | None
     operations: list[ListTableReconciliationsUseCaseOutputOperation]
     run_id: str | None
+    policy_name: str
+    policy_version: int
+    policy_target: ListTableReconciliationsUseCaseOutputPolicyTarget | None
 
 
 @dataclass(frozen=True)

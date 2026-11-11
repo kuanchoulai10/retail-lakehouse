@@ -65,6 +65,10 @@ def _check(operation: str, verdict: str = "due") -> dict[str, Any]:
     }
 
 
+POLICY = {"policy_name": "nightly", "policy_version": 4, "policy_target": {"type": "catalog", "path": ["prod"]}}
+NO_POLICY = {"policy_name": None, "policy_version": None, "policy_target": None}
+
+
 def _planned(*operations: str, interval: int = 3600) -> dict[str, Any]:
     return {
         "status": "planned",
@@ -75,6 +79,7 @@ def _planned(*operations: str, interval: int = 3600) -> dict[str, Any]:
         "dry_run": False,
         "table_found": True,
         "checks": [_check(op) for op in operations],
+        **POLICY,
     }
 
 
@@ -92,6 +97,7 @@ def _skip(reason: str, interval: int = 3600, *, table_found: bool = True) -> dic
         "dry_run": False,
         "table_found": table_found,
         "checks": [],
+        **(POLICY if table_found else NO_POLICY),
     }
 
 
@@ -734,6 +740,9 @@ def test_timer_wake_records_schedule():
         assert record["checks"] == [_check(COMPACTION, "not_needed")]
         assert record["run_id"] is None
         assert record["run_start_failed"] is False
+        assert record["policy_name"] == "nightly"
+        assert record["policy_version"] == 4
+        assert record["policy_target"] == {"type": "catalog", "path": ["prod"]}
 
     _run(scenario, script=lambda _: {**_planned(), "checks": [_check(COMPACTION, "not_needed")]})
 

@@ -8,6 +8,7 @@ from context.table_maintenance.application.port.inbound.table_reconciliation.lis
     ListTableReconciliationsUseCaseOutputItem,
     ListTableReconciliationsUseCaseOutputMeasurement,
     ListTableReconciliationsUseCaseOutputOperation,
+    ListTableReconciliationsUseCaseOutputPolicyTarget,
 )
 from context.table_maintenance.application.port.inbound.table_reconciliation.list_table_reconciliations.use_case import (  # noqa: E501
     ListTableReconciliationsUseCase,
@@ -20,4 +21,5 @@ __all__ = [
     "ListTableReconciliationsUseCaseOutputItem",
     "ListTableReconciliationsUseCaseOutputMeasurement",
     "ListTableReconciliationsUseCaseOutputOperation",
+    "ListTableReconciliationsUseCaseOutputPolicyTarget",
 ]

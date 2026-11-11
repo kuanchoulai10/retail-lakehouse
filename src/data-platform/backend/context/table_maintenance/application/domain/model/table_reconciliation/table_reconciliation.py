@@ -5,13 +5,16 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from pydantic import model_validator
+from pydantic import PositiveInt, model_validator
 
 from base import AggregateRoot
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
 )
 from context.table_maintenance.application.domain.model.table import TableId
+from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
+    PolicyTarget,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRunId,
 )
@@ -36,7 +39,11 @@ if TYPE_CHECKING:
 
 
 class TableReconciliation(AggregateRoot[TableReconciliationId]):
-    """Record one pass of the reconciler over a table and what it decided."""
+    """Record one pass of the reconciler over a table and what it decided.
+
+    ``policy_name``, ``policy_version`` and ``policy_target`` name the maintenance policy the
+    pass assessed with and where it is attached (``None`` for the default with nothing attached).
+    """
 
     id: TableReconciliationId
     table_uuid: TableId
@@ -47,6 +54,9 @@ class TableReconciliation(AggregateRoot[TableReconciliationId]):
     skip_reason: str | None
     operations: tuple[OperationOutcome, ...]
     run_id: TableMaintenanceRunId | None
+    policy_name: str
+    policy_version: PositiveInt
+    policy_target: PolicyTarget | None
 
     @model_validator(mode="after")
     def _combinations_that_cannot_happen(self) -> TableReconciliation:
@@ -81,6 +91,9 @@ class TableReconciliation(AggregateRoot[TableReconciliationId]):
         skip_reason: str | None,
         operations: Iterable[OperationOutcome],
         run_id: TableMaintenanceRunId | None,
+        policy_name: str,
+        policy_version: int,
+        policy_target: PolicyTarget | None,
     ) -> TableReconciliation:
         """Record a reconciliation, keeping its operations in execution order."""
         position = {op: i for i, op in enumerate(MaintenanceOperation.ordered())}
@@ -94,4 +107,7 @@ class TableReconciliation(AggregateRoot[TableReconciliationId]):
             skip_reason=skip_reason,
             operations=tuple(sorted(operations, key=lambda o: position[o.operation])),
             run_id=run_id,
+            policy_name=policy_name,
+            policy_version=policy_version,
+            policy_target=policy_target,
         )
