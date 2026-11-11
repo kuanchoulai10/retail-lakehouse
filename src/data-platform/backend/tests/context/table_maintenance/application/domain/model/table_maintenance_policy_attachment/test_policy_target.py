@@ -1,0 +1,69 @@
+"""Test the PolicyTarget value object and the attachment aggregate."""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime
+
+import pytest
+
+from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    TableMaintenancePolicyName,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
+    PolicyTarget,
+    PolicyTargetType,
+    TableMaintenancePolicyAttachment,
+)
+
+NOW = datetime(2026, 1, 1, tzinfo=UTC)
+
+
+def test_table_target_requires_uuid():
+    """A table target without a uuid is rejected."""
+    with pytest.raises(ValueError, match="table_uuid"):
+        PolicyTarget(type=PolicyTargetType.TABLE, path=("c", "n", "t"))
+
+
+def test_non_table_target_rejects_uuid():
+    """A catalog or namespace target must not carry a uuid."""
+    with pytest.raises(ValueError, match="table_uuid"):
+        PolicyTarget(type=PolicyTargetType.CATALOG, path=("c",), table_uuid="u")
+
+
+@pytest.mark.parametrize(
+    ("type_", "path"),
+    [
+        (PolicyTargetType.CATALOG, ("c", "n")),
+        (PolicyTargetType.CATALOG, ()),
+        (PolicyTargetType.NAMESPACE, ("c",)),
+    ],
+)
+def test_path_length_is_checked(type_, path):
+    """The path length must suit the target type."""
+    with pytest.raises(ValueError, match="path"):
+        PolicyTarget(type=type_, path=path)
+
+
+def test_attachment_id_of_table_is_its_uuid_and_survives_rename():
+    """A table target is keyed by uuid, whatever its path."""
+    a = PolicyTarget(type=PolicyTargetType.TABLE, path=("c", "n", "t"), table_uuid="u-1")
+    b = PolicyTarget(type=PolicyTargetType.TABLE, path=("c", "m", "renamed"), table_uuid="u-1")
+    assert a.attachment_id().value == "table:u-1"
+    assert a.attachment_id() == b.attachment_id()
+
+
+def test_attachment_id_of_namespace_joins_the_path():
+    """A namespace target is keyed by type and unit-separated path."""
+    target = PolicyTarget(type=PolicyTargetType.NAMESPACE, path=("c", "a", "b"))
+    assert target.attachment_id().value == "namespace:c\x1fa\x1fb"
+
+
+def test_attach_and_replace_policy():
+    """An attachment records its policy and moves to another."""
+    target = PolicyTarget(type=PolicyTargetType.CATALOG, path=("c",))
+    attachment = TableMaintenancePolicyAttachment.attach(target, TableMaintenancePolicyName("gold"), NOW)
+    assert attachment.id == target.attachment_id()
+    later = datetime(2026, 2, 1, tzinfo=UTC)
+    attachment.replace_policy(TableMaintenancePolicyName("silver"), later)
+    assert attachment.policy_name.value == "silver"
+    assert attachment.attached_at == later

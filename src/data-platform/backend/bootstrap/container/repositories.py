@@ -16,6 +16,9 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
         TableMaintenancePoliciesRepo,
     )
+    from context.table_maintenance.application.port.outbound.table_maintenance_policy_attachment import (
+        TableMaintenancePolicyAttachmentsRepo,
+    )
     from context.table_maintenance.application.port.outbound.table_maintenance_preset import (
         TableMaintenancePresetsRepo,
     )
@@ -37,4 +40,5 @@ class Repositories:
     tables: TablesRepo
     table_maintenance_presets: TableMaintenancePresetsRepo
     table_maintenance_policies: TableMaintenancePoliciesRepo
+    table_maintenance_policy_attachments: TableMaintenancePolicyAttachmentsRepo
     table_reconciliations: TableReconciliationsRepo

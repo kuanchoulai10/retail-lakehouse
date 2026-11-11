@@ -36,6 +36,9 @@ from context.table_maintenance.application.service.table_maintenance_policy impo
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_repo import (
     InMemoryTableMaintenancePoliciesRepo,
 )
+from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policy_attachments_repo import (
+    InMemoryTableMaintenancePolicyAttachmentsRepo,
+)
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
 CONTENT = MaintenancePolicyContent.platform_default().to_primitives()
@@ -134,16 +137,18 @@ def test_delete_removes_policy():
     """Deleting a policy removes it."""
     repo = InMemoryTableMaintenancePoliciesRepo()
     _create(repo)
-    DeleteTableMaintenancePolicyService(repo).execute(DeleteTableMaintenancePolicyUseCaseInput(name="gold"))
+    DeleteTableMaintenancePolicyService(repo, InMemoryTableMaintenancePolicyAttachmentsRepo()).execute(
+        DeleteTableMaintenancePolicyUseCaseInput(name="gold")
+    )
     assert repo.get(TableMaintenancePolicyName("gold")) is None
 
 
 def test_delete_missing_is_not_found():
     """Deleting an unknown policy is NotFoundError."""
     with pytest.raises(NotFoundError):
-        DeleteTableMaintenancePolicyService(InMemoryTableMaintenancePoliciesRepo()).execute(
-            DeleteTableMaintenancePolicyUseCaseInput(name="nope")
-        )
+        DeleteTableMaintenancePolicyService(
+            InMemoryTableMaintenancePoliciesRepo(), InMemoryTableMaintenancePolicyAttachmentsRepo()
+        ).execute(DeleteTableMaintenancePolicyUseCaseInput(name="nope"))
 
 
 def test_delete_default_conflicts():
@@ -153,7 +158,9 @@ def test_delete_default_conflicts():
         EnsureDefaultTableMaintenancePolicyUseCaseInput()
     )
     with pytest.raises(ConflictError):
-        DeleteTableMaintenancePolicyService(repo).execute(DeleteTableMaintenancePolicyUseCaseInput(name="default"))
+        DeleteTableMaintenancePolicyService(repo, InMemoryTableMaintenancePolicyAttachmentsRepo()).execute(
+            DeleteTableMaintenancePolicyUseCaseInput(name="default")
+        )
 
 
 def test_ensure_default_is_idempotent():

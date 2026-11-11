@@ -44,6 +44,12 @@ from context.table_maintenance.application.service.table_maintenance_policy impo
     ListTableMaintenancePoliciesService,
     UpdateTableMaintenancePolicyService,
 )
+from context.table_maintenance.application.service.table_maintenance_policy_attachment import (
+    AttachTableMaintenancePolicyService,
+    DetachTableMaintenancePolicyService,
+    ListTableMaintenancePolicyAttachmentsService,
+    ResolveApplicableTableMaintenancePolicyService,
+)
 from context.table_maintenance.application.service.table_maintenance_preset import (
     CreateTableMaintenancePresetService,
     DeleteTableMaintenancePresetService,
@@ -89,6 +95,7 @@ def build_use_cases(
     rules = repos.table_discovery_rules
     presets = repos.table_maintenance_presets
     policies = repos.table_maintenance_policies
+    attachments = repos.table_maintenance_policy_attachments
     runs = repos.table_maintenance_runs
     discovery = repos.table_discovery_settings
     reconciliations = repos.table_reconciliations
@@ -122,8 +129,16 @@ def build_use_cases(
         get_table_maintenance_preset=GetTableMaintenancePresetService(presets),
         list_table_maintenance_presets=ListTableMaintenancePresetsService(presets),
         update_table_maintenance_preset=UpdateTableMaintenancePresetService(presets, clock=clock),
+        attach_table_maintenance_policy=AttachTableMaintenancePolicyService(
+            policies, attachments, catalog, clock=clock
+        ),
+        detach_table_maintenance_policy=DetachTableMaintenancePolicyService(attachments, catalog),
+        list_table_maintenance_policy_attachments=ListTableMaintenancePolicyAttachmentsService(attachments),
+        resolve_applicable_table_maintenance_policy=ResolveApplicableTableMaintenancePolicyService(
+            policies, attachments, catalog
+        ),
         create_table_maintenance_policy=CreateTableMaintenancePolicyService(policies, clock=clock),
-        delete_table_maintenance_policy=DeleteTableMaintenancePolicyService(policies),
+        delete_table_maintenance_policy=DeleteTableMaintenancePolicyService(policies, attachments),
         ensure_default_table_maintenance_policy=EnsureDefaultTableMaintenancePolicyService(policies, clock=clock),
         get_table_maintenance_policy=GetTableMaintenancePolicyService(policies),
         get_table_maintenance_policy_version=GetTableMaintenancePolicyVersionService(policies),

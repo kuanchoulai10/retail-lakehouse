@@ -31,6 +31,7 @@ UTILITY_FILES = {
     "translate_domain_errors.py",
     "table_maintenance_preset_output_fields.py",
     "table_maintenance_policy_output_fields.py",
+    "policy_target_from_request.py",
     "table_discovery_rule_output_fields.py",
     "table_output_fields.py",
     "table_maintenance_run_output_fields.py",
@@ -65,6 +66,9 @@ KNOWN_VERBS = {
     "Update",
     "Delete",
     "Ensure",
+    "Attach",
+    "Detach",
+    "Resolve",
     # Lifecycle
     "Complete",
     "Fail",
