@@ -8,11 +8,10 @@ from typing import Any
 
 import pytest
 
+from base import validated_copy
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     MaintenanceSettings,
-    RewriteDataFilesSettings,
-    RewriteManifestsSettings,
 )
 from context.table_maintenance.application.domain.model.table import (
     Table,
@@ -22,12 +21,28 @@ from context.table_maintenance.application.domain.model.table import (
 from context.table_maintenance.application.domain.model.table_discovery_rule import (
     TableDiscoveryRuleId,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    DEFAULT_POLICY_NAME,
+    AtLeast,
+    MaintenancePolicyContent,
+    PartialProgress,
+    RewriteDataFilesConditions,
+    RewriteDataFilesExecutionPolicy,
+    RewriteDataFilesTriggerPolicy,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_preset import (
     TableMaintenancePresetId,
 )
 from context.table_maintenance.application.exceptions import ValidationError
 from context.table_maintenance.application.port.inbound.table import (
     PlanTableMaintenanceUseCaseInput,
+)
+from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
+    CreateTableMaintenancePolicyUseCaseInput,
+    UpdateTableMaintenancePolicyUseCaseInput,
+)
+from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
+    AttachTableMaintenancePolicyUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_reconciliation import (
     RecordTableReconciliationUseCaseInput,
@@ -38,25 +53,34 @@ from context.table_maintenance.application.port.outbound.table import (
 from context.table_maintenance.application.service.table import (
     PlanTableMaintenanceService,
 )
+from context.table_maintenance.application.service.table_maintenance_policy import (
+    CreateTableMaintenancePolicyService,
+    UpdateTableMaintenancePolicyService,
+)
+from context.table_maintenance.application.service.table_maintenance_policy_attachment import (
+    AttachTableMaintenancePolicyService,
+)
 from context.table_maintenance.application.service.table_reconciliation import (
     RecordTableReconciliationService,
 )
 from tests.context.table_maintenance.fakes.in_memory_table_reconciliations_repo import (
     InMemoryTableReconciliationsRepo,
 )
+from tests.context.table_maintenance.fakes.policy_with_operation import policy_with_operation
 
 NAME = TableName(catalog="iceberg", namespace="sales", table="orders")
 KEY = ("iceberg", "sales", "orders")
 OPS = MaintenanceOperation
+DEFAULT = MaintenancePolicyContent.platform_default()
 
 
-def _table(repo, now, settings=None, uuid="u-1", name=NAME):
+def _table(repo, now, uuid="u-1", name=NAME):
     table = Table.register_auto(
         TableId(uuid),
         name,
         TableDiscoveryRuleId("r-1"),
         TableMaintenancePresetId("t-1"),
-        settings or MaintenanceSettings(),
+        MaintenanceSettings(),
         now,
     )
     repo.create(table)
@@ -108,9 +132,28 @@ def _observe(catalog, now, **overrides):
 
 
 @pytest.fixture
-def planner(tables_repo, catalog):
+def policies(policies_repo):
+    """Provide the policies repo holding the platform default policy."""
+    return policies_repo
+
+
+@pytest.fixture
+def attachments(attachments_repo):
+    """Provide the policy attachments repo."""
+    return attachments_repo
+
+
+@pytest.fixture
+def planner(tables_repo, catalog, resolve_applicable_policy):
     """Provide the plan table maintenance service on the fakes."""
-    return PlanTableMaintenanceService(tables_repo, catalog)
+    return PlanTableMaintenanceService(tables_repo, catalog, resolve_applicable_policy)
+
+
+def _use_policy(policies, now, content):
+    """Replace the default policy's content, so it applies to every table."""
+    UpdateTableMaintenancePolicyService(policies, clock=lambda: now).execute(
+        UpdateTableMaintenancePolicyUseCaseInput(name=DEFAULT_POLICY_NAME, content=content.to_primitives(), version=1)
+    )
 
 
 def _plan(planner, now, manual=None, uuid="u-1"):
@@ -196,16 +239,21 @@ def test_plan_orders_operations_and_renders_procedure_args(planner, tables_repo,
     assert plan.reconcile_interval_seconds == 3600
 
 
-def test_plan_target_file_size_comes_from_settings(planner, tables_repo, catalog, now):
-    """The target file size and reconcile interval in the plan come from the settings."""
-    _table(
-        tables_repo,
-        now,
-        MaintenanceSettings(
-            reconcile_interval=timedelta(minutes=5),
-            rewrite_data_files=RewriteDataFilesSettings(target_file_size_bytes=1024, min_reducible_files=1),
+def test_plan_target_file_size_comes_from_the_policy(planner, tables_repo, catalog, policies, now):
+    """The target file size and reconcile interval in the plan come from the applicable policy."""
+    policy = policy_with_operation(
+        validated_copy(DEFAULT, reconcile_interval=timedelta(minutes=5)),
+        OPS.REWRITE_DATA_FILES,
+        trigger_policy=RewriteDataFilesTriggerPolicy(
+            cooldown=timedelta(hours=1),
+            conditions=RewriteDataFilesConditions(reducible_files=AtLeast(at_least=1)),
+        ),
+        execution_policy=RewriteDataFilesExecutionPolicy(
+            target_file_size_bytes=1024, min_input_files=2, partial_progress=PartialProgress(enabled=True)
         ),
     )
+    _use_policy(policies, now, policy)
+    _table(tables_repo, now)
     _observe(
         catalog,
         now,
@@ -268,10 +316,10 @@ def test_scheduled_plan_respects_cooldown(planner, tables_repo, catalog, now):
     assert "rewrite_data_files" in [o.operation for o in control.operations]
 
 
-def test_manual_plan_ignores_disabled_and_cooldown(planner, tables_repo, catalog, now):
-    """A manual plan ignores both disabled settings and the cooldown."""
-    settings = MaintenanceSettings(rewrite_data_files=RewriteDataFilesSettings(enabled=False))
-    table = _table(tables_repo, now, settings)
+def test_manual_plan_ignores_disabled_and_cooldown(planner, tables_repo, catalog, policies, now):
+    """A manual plan ignores both a disabled operation and the cooldown."""
+    _use_policy(policies, now, policy_with_operation(DEFAULT, OPS.REWRITE_DATA_FILES, enabled=False))
+    table = _table(tables_repo, now)
     table.record_operation_result(OPS.REMOVE_ORPHAN_FILES, True, now)
     _observe(catalog, now)
     plan = _plan(planner, now, ["remove_orphan_files", "rewrite_data_files"])
@@ -317,6 +365,47 @@ def test_plan_reports_malformed_observation_as_validation_error(planner, tables_
         _plan(planner, now)
 
 
+# --- applicable policy ---
+
+
+def test_plan_output_names_resolved_policy(planner, tables_repo, catalog, policies, attachments, now):
+    """The plan names the policy it applied, its version and where it is attached."""
+    _table(tables_repo, now)
+    _observe(catalog, now)
+    gold = validated_copy(DEFAULT, reconcile_interval=timedelta(minutes=10), dry_run=True)
+    CreateTableMaintenancePolicyService(policies, clock=lambda: now).execute(
+        CreateTableMaintenancePolicyUseCaseInput(name="gold", content=gold.to_primitives())
+    )
+    AttachTableMaintenancePolicyService(policies, attachments, catalog, clock=lambda: now).execute(
+        AttachTableMaintenancePolicyUseCaseInput(target_type="namespace", path=("iceberg", "sales"), policy_name="gold")
+    )
+    plan = _plan(planner, now)
+    assert (plan.policy_name, plan.policy_version) == ("gold", 1)
+    assert plan.policy_target == {"type": "namespace", "path": ["iceberg", "sales"]}
+    assert (plan.reconcile_interval_seconds, plan.dry_run) == (600, True)
+
+
+def test_plan_without_attachment_names_the_default_policy(planner, tables_repo, catalog, now):
+    """With nothing attached, the plan applies the default policy and has no target."""
+    _table(tables_repo, now)
+    _observe(catalog, now)
+    plan = _plan(planner, now)
+    assert (plan.policy_name, plan.policy_version, plan.policy_target) == (DEFAULT_POLICY_NAME, 1, None)
+
+
+def test_skipped_plan_names_the_policy_for_its_interval(planner, tables_repo, policies, now):
+    """A skipped plan of a known table takes its interval from the applicable policy."""
+    _use_policy(policies, now, validated_copy(DEFAULT, reconcile_interval=timedelta(minutes=2)))
+    _table(tables_repo, now).pause(now)
+    plan = _plan(planner, now)
+    assert (plan.reason, plan.reconcile_interval_seconds, plan.policy_name, plan.policy_version) == (
+        "paused",
+        120,
+        DEFAULT_POLICY_NAME,
+        2,
+    )
+
+
 # --- checks and dry run ---
 
 
@@ -324,10 +413,10 @@ def _checks(plan):
     return {c.operation: c for c in plan.checks}
 
 
-def test_scheduled_plan_reports_a_check_per_operation(planner, tables_repo, catalog, now):
+def test_scheduled_plan_reports_a_check_per_operation(planner, tables_repo, catalog, policies, now):
     """A scheduled plan reports one check per operation with its verdict and measurements."""
-    settings = MaintenanceSettings(rewrite_manifests=RewriteManifestsSettings(enabled=False))
-    table = _table(tables_repo, now, settings)
+    _use_policy(policies, now, policy_with_operation(DEFAULT, OPS.REWRITE_MANIFESTS, enabled=False))
+    table = _table(tables_repo, now)
     table.record_operation_result(OPS.EXPIRE_SNAPSHOTS, True, now - timedelta(minutes=1))
     _observe(catalog, now)
     plan = _plan(planner, now)
@@ -338,7 +427,6 @@ def test_scheduled_plan_reports_a_check_per_operation(planner, tables_repo, cata
     assert checks["expire_snapshots"].verdict == "cooling_down"
     assert checks["expire_snapshots"].next_eligible_at is not None
     assert checks["rewrite_data_files"].next_eligible_at is None
-    assert checks["rewrite_data_files"].combine == "all"
     first = checks["rewrite_data_files"].measurements[0]
     assert (first.key, first.unit, first.comparison, first.met) == ("reducible_files", "count", ">=", True)
     assert isinstance(first.observed, int)
@@ -347,18 +435,20 @@ def test_scheduled_plan_reports_a_check_per_operation(planner, tables_repo, cata
     assert plan.table_found is True
 
 
-def test_dry_run_plans_no_operations_but_reports_due(planner, tables_repo, catalog, now):
+def test_dry_run_plans_no_operations_but_reports_due(planner, tables_repo, catalog, policies, now):
     """In dry run a scheduled plan has no operations while its checks still say due."""
-    _table(tables_repo, now, MaintenanceSettings(dry_run=True))
+    _use_policy(policies, now, validated_copy(DEFAULT, dry_run=True))
+    _table(tables_repo, now)
     _observe(catalog, now)
     plan = _plan(planner, now)
     assert (plan.status, plan.operations, plan.dry_run) == ("planned", [], True)
     assert _checks(plan)["rewrite_data_files"].verdict == "due"
 
 
-def test_manual_plan_runs_in_dry_run(planner, tables_repo, catalog, now):
+def test_manual_plan_runs_in_dry_run(planner, tables_repo, catalog, policies, now):
     """A manual plan still returns its operations when the table is in dry run."""
-    _table(tables_repo, now, MaintenanceSettings(dry_run=True))
+    _use_policy(policies, now, validated_copy(DEFAULT, dry_run=True))
+    _table(tables_repo, now)
     _observe(catalog, now)
     plan = _plan(planner, now, ["rewrite_manifests"])
     assert [o.operation for o in plan.operations] == ["rewrite_manifests"]
@@ -418,10 +508,10 @@ def _record(plan, now, **overrides):
     return repo.list_all()[0]
 
 
-def test_scheduled_plan_checks_can_be_recorded(planner, tables_repo, catalog, now):
+def test_scheduled_plan_checks_can_be_recorded(planner, tables_repo, catalog, policies, now):
     """The checks of a scheduled plan (due, off, cooling down, not needed) are accepted by the record service."""
-    settings = MaintenanceSettings(rewrite_manifests=RewriteManifestsSettings(enabled=False))
-    table = _table(tables_repo, now, settings)
+    _use_policy(policies, now, policy_with_operation(DEFAULT, OPS.REWRITE_MANIFESTS, enabled=False))
+    table = _table(tables_repo, now)
     table.record_operation_result(OPS.EXPIRE_SNAPSHOTS, True, now - timedelta(minutes=1))
     _observe(catalog, now)
     plan = _plan(planner, now)

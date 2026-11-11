@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any
 
 from context.table_maintenance.adapter.outbound.shared.sql import IsoDatetimeCodec
 from context.table_maintenance.application.port.outbound.table_reconciliation import (
-    ConditionCombine,
     MaintenanceOperation,
     Measurement,
     MeasurementComparison,
@@ -50,7 +49,6 @@ def _encode_operation(op: OperationOutcome) -> dict[str, Any]:
     return {
         "operation": op.operation.value,
         "result": op.result.value,
-        "combine": op.combine.value,
         "measurements": [_encode_measurement(m) for m in op.measurements],
         "next_eligible_at": IsoDatetimeCodec.encode(op.next_eligible_at),
     }
@@ -60,7 +58,6 @@ def _decode_operation(data: dict[str, Any]) -> OperationOutcome:
     return OperationOutcome(
         operation=MaintenanceOperation(data["operation"]),
         result=OperationResult(data["result"]),
-        combine=ConditionCombine(data["combine"]),
         measurements=tuple(_decode_measurement(m) for m in data["measurements"]),
         next_eligible_at=IsoDatetimeCodec.decode(data["next_eligible_at"]),
     )

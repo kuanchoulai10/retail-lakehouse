@@ -32,7 +32,7 @@ def test_maps_a_recorded_reconciliation_to_plain_items() -> None:
     assert (item.reconciliation_id, item.outcome, item.run_id) == ("rec-1", "planned", "run-1")
     assert item.wake_reasons == {"schedule": 1}
     operation = item.operations[0]
-    assert (operation.operation, operation.result, operation.combine) == ("rewrite_data_files", "started", "all")
+    assert (operation.operation, operation.result) == ("rewrite_data_files", "started")
     assert [(m.key, m.met) for m in operation.measurements] == [("small_files", True), ("data_bytes", None)]
 
 

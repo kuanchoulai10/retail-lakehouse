@@ -45,7 +45,6 @@ class PlanTableMaintenanceUseCaseOutputCheckItem:
 
     operation: str
     verdict: str
-    combine: str
     measurements: list[PlanTableMaintenanceUseCaseOutputMeasurementItem]
     next_eligible_at: datetime | None
 
@@ -55,7 +54,10 @@ class PlanTableMaintenanceUseCaseOutput:
     """Carry the result of the request to plan the maintenance operations of a table.
 
     ``table_name`` is the fully qualified ``catalog.namespace.table`` name, or
-    ``None`` when the table is not managed (any more).
+    ``None`` when the table is not managed (any more). ``policy_name``,
+    ``policy_version`` and ``policy_target`` name the maintenance policy that
+    was applied and where it is attached (``None`` for the default with nothing
+    attached); they are ``None`` only when the table is unknown.
     """
 
     status: str
@@ -66,3 +68,6 @@ class PlanTableMaintenanceUseCaseOutput:
     dry_run: bool = False
     table_found: bool = True
     checks: list[PlanTableMaintenanceUseCaseOutputCheckItem] = field(default_factory=list)
+    policy_name: str | None = None
+    policy_version: int | None = None
+    policy_target: dict[str, Any] | None = None

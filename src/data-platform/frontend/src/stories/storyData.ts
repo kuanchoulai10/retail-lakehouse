@@ -342,7 +342,6 @@ const QUIET_OPERATIONS: ReconciliationOperationApiResponse[] = [
   {
     operation: "rewrite_data_files",
     result: "not_needed",
-    combine: "all",
     measurements: [
       { key: "reducible_files", observed: 0, unit: "count", threshold: 5, comparison: ">=", met: false },
       { key: "target_file_size", observed: 134217728, unit: "bytes", threshold: null, comparison: null, met: null },
@@ -353,18 +352,16 @@ const QUIET_OPERATIONS: ReconciliationOperationApiResponse[] = [
   {
     operation: "rewrite_manifests",
     result: "not_needed",
-    combine: "all",
     measurements: [{ key: "small_manifests", observed: 12, unit: "count", threshold: 20, comparison: ">=", met: false }],
     next_eligible_at: null,
   },
   {
     operation: "expire_snapshots",
     result: "not_needed",
-    combine: "all",
     measurements: [{ key: "expirable_snapshots", observed: 0, unit: "count", threshold: 1, comparison: ">=", met: false }],
     next_eligible_at: null,
   },
-  { operation: "remove_orphan_files", result: "off", combine: "all", measurements: [], next_eligible_at: null },
+  { operation: "remove_orphan_files", result: "off", measurements: [], next_eligible_at: null },
 ];
 
 function reconciliation(
@@ -396,7 +393,6 @@ export const RECONCILIATIONS: TableReconciliationApiResponse[] = [
       {
         operation: "rewrite_data_files",
         result: "started",
-        combine: "all",
         measurements: [
           { key: "reducible_files", observed: 1240, unit: "count", threshold: 5, comparison: ">=", met: true },
           { key: "target_file_size", observed: 134217728, unit: "bytes", threshold: null, comparison: null, met: null },
@@ -407,18 +403,16 @@ export const RECONCILIATIONS: TableReconciliationApiResponse[] = [
       {
         operation: "rewrite_manifests",
         result: "not_needed",
-        combine: "all",
         measurements: [{ key: "small_manifests", observed: 18, unit: "count", threshold: 20, comparison: ">=", met: false }],
         next_eligible_at: null,
       },
       {
         operation: "expire_snapshots",
         result: "cooling_down",
-        combine: "all",
         measurements: [{ key: "expirable_snapshots", observed: 312, unit: "count", threshold: 1, comparison: ">=", met: true }],
         next_eligible_at: "2026-11-14T03:00:00Z",
       },
-      { operation: "remove_orphan_files", result: "off", combine: "all", measurements: [], next_eligible_at: null },
+      { operation: "remove_orphan_files", result: "off", measurements: [], next_eligible_at: null },
     ],
   }),
   reconciliation("rec-108", "2026-11-10T09:42:00Z"),
@@ -431,7 +425,6 @@ export const RECONCILIATIONS: TableReconciliationApiResponse[] = [
       {
         operation: "rewrite_data_files",
         result: "would_start",
-        combine: "all",
         measurements: [
           { key: "reducible_files", observed: 620, unit: "count", threshold: 5, comparison: ">=", met: true },
           { key: "target_file_size", observed: 134217728, unit: "bytes", threshold: null, comparison: null, met: null },

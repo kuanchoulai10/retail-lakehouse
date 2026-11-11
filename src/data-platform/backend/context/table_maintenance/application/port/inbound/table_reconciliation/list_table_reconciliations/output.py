@@ -27,7 +27,6 @@ class ListTableReconciliationsUseCaseOutputOperation:
 
     operation: str
     result: str
-    combine: str
     measurements: list[ListTableReconciliationsUseCaseOutputMeasurement]
     next_eligible_at: datetime | None
 

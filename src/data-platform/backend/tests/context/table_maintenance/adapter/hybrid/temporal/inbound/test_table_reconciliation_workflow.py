@@ -60,7 +60,6 @@ def _check(operation: str, verdict: str = "due") -> dict[str, Any]:
     return {
         "operation": operation,
         "verdict": verdict,
-        "combine": "all",
         "measurements": [],
         "next_eligible_at": None,
     }

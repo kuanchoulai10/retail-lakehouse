@@ -8,13 +8,12 @@ import pytest
 from pydantic import ValidationError
 
 from context.table_maintenance.application.domain.model.shared import (
-    ConditionCombine,
+    MaintenanceOperation as Op,
+)
+from context.table_maintenance.application.domain.model.shared import (
     Measurement,
     MeasurementComparison,
     MeasurementUnit,
-)
-from context.table_maintenance.application.domain.model.shared import (
-    MaintenanceOperation as Op,
 )
 from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
@@ -36,7 +35,6 @@ def _outcome(op: Op, result: OperationResult = OperationResult.NOT_NEEDED) -> Op
     return OperationOutcome(
         operation=op,
         result=result,
-        combine=ConditionCombine.ALL,
         measurements=(
             Measurement(
                 key="small_files",

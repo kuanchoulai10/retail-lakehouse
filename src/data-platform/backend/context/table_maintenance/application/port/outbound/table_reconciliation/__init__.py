@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from context.table_maintenance.application.domain.model.shared import (
-    ConditionCombine,
     MaintenanceOperation,
     Measurement,
     MeasurementComparison,
@@ -26,7 +25,6 @@ from context.table_maintenance.application.port.outbound.table_reconciliation.ta
 )
 
 __all__ = [
-    "ConditionCombine",
     "MaintenanceOperation",
     "Measurement",
     "MeasurementComparison",

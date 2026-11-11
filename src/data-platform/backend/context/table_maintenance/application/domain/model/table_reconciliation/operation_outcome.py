@@ -6,7 +6,6 @@ from datetime import datetime
 
 from base import ValueObject
 from context.table_maintenance.application.domain.model.shared import (
-    ConditionCombine,
     MaintenanceOperation,
     Measurement,
 )
@@ -20,6 +19,5 @@ class OperationOutcome(ValueObject):
 
     operation: MaintenanceOperation
     result: OperationResult
-    combine: ConditionCombine
     measurements: tuple[Measurement, ...]
     next_eligible_at: datetime | None = None

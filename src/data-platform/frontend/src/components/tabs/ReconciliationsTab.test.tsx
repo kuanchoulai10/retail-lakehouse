@@ -18,7 +18,7 @@ function at(day: number, hour: number, minute = 42): string {
 }
 
 function op(overrides: Partial<ReconciliationOperationApiResponse>): ReconciliationOperationApiResponse {
-  return { operation: "rewrite_manifests", result: "not_needed", combine: "all", measurements: [], next_eligible_at: null, ...overrides };
+  return { operation: "rewrite_manifests", result: "not_needed", measurements: [], next_eligible_at: null, ...overrides };
 }
 
 const QUIET_OPERATIONS = [
@@ -275,7 +275,7 @@ describe("ReconciliationsTab", () => {
     expect(markers).toEqual(["filled", "outlined", "filled", "dashed"]);
   });
 
-  it("All measurements says how two or more marked lines combine, and stays quiet for one", async () => {
+  it("All measurements says any marked line starts it when there are two or more, and stays quiet for one", async () => {
     const user = userEvent.setup();
     const deciding = (met: boolean) => [
       { key: "small_manifests", observed: 12, unit: "count", threshold: 20, comparison: ">=", met },
@@ -285,8 +285,8 @@ describe("ReconciliationsTab", () => {
       ...STARTED,
       operations: [
         ...STARTED.operations.filter((o) => o.operation !== "rewrite_manifests" && o.operation !== "expire_snapshots"),
-        op({ operation: "rewrite_manifests", combine: "any", measurements: deciding(false) }),
-        op({ operation: "expire_snapshots", combine: "all", measurements: deciding(true) }),
+        op({ operation: "rewrite_manifests", measurements: deciding(false) }),
+        op({ operation: "expire_snapshots", measurements: deciding(true) }),
       ],
     };
     stubList([record]);
@@ -298,7 +298,7 @@ describe("ReconciliationsTab", () => {
       return block;
     };
     expect(within(await open("Rewrite manifests")).getByText("Starts when any marked line holds")).toBeInTheDocument();
-    expect(within(await open("Expire snapshots")).getByText("Starts when every marked line holds")).toBeInTheDocument();
+    expect(within(await open("Expire snapshots")).getByText("Starts when any marked line holds")).toBeInTheDocument();
     expect(within(await open("Rewrite data files")).queryByText(/^Starts when/)).not.toBeInTheDocument();
   });
 

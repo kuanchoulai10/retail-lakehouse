@@ -5,9 +5,6 @@ from __future__ import annotations
 from context.table_maintenance.application.domain.model.shared.compaction_scope import (
     CompactionScope,
 )
-from context.table_maintenance.application.domain.model.shared.condition_combine import (
-    ConditionCombine,
-)
 from context.table_maintenance.application.domain.model.shared.expire_snapshots_settings import (
     ExpireSnapshotsSettings,
 )
@@ -80,7 +77,6 @@ from context.table_maintenance.application.domain.model.shared.table_observation
 
 __all__ = [
     "CompactionScope",
-    "ConditionCombine",
     "ExpireSnapshotsSettings",
     "MaintenanceAssessment",
     "MaintenanceOperation",

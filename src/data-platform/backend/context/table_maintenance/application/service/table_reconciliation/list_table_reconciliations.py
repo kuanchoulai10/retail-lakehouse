@@ -58,7 +58,6 @@ def _operation(outcome: OperationOutcome) -> ListTableReconciliationsUseCaseOutp
     return ListTableReconciliationsUseCaseOutputOperation(
         operation=outcome.operation.value,
         result=outcome.result.value,
-        combine=outcome.combine.value,
         measurements=[_measurement(m) for m in outcome.measurements],
         next_eligible_at=outcome.next_eligible_at,
     )

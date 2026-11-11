@@ -81,6 +81,9 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
         "dry_run": False,
         "table_found": True,
         "checks": [],
+        "policy_name": "gold",
+        "policy_version": 3,
+        "policy_target": {"type": "namespace", "path": ["iceberg", "sales"]},
     }
 
 
@@ -94,7 +97,6 @@ def test_plan_without_manual_operations_defaults_to_none():
 CHECK = {
     "operation": "rewrite_data_files",
     "verdict": "due",
-    "combine": "all",
     "measurements": [],
     "next_eligible_at": None,
 }

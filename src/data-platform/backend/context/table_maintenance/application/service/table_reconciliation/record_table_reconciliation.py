@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from context.table_maintenance.application.domain.model.shared import (
-    ConditionCombine,
     MaintenanceOperation,
     Measurement,
     MeasurementComparison,
@@ -116,7 +115,6 @@ def _operation_outcome(check: dict[str, Any], request: RecordTableReconciliation
     try:
         verdict = check["verdict"]
         operation = MaintenanceOperation(check["operation"])
-        combine = ConditionCombine(check["combine"])
         measurements = tuple(_measurement(m) for m in check.get("measurements", []))
         next_eligible_at = _instant(check.get("next_eligible_at"))
     except (KeyError, ValueError, TypeError, AttributeError) as exc:
@@ -124,7 +122,6 @@ def _operation_outcome(check: dict[str, Any], request: RecordTableReconciliation
     return OperationOutcome(
         operation=operation,
         result=_result(verdict, request),
-        combine=combine,
         measurements=measurements,
         next_eligible_at=next_eligible_at,
     )

@@ -6,10 +6,8 @@ from typing import TYPE_CHECKING
 
 from base import validated_copy
 from context.table_maintenance.application.domain.model.shared import (
-    CompactionScope,
     MaintenanceAssessment,
     MaintenanceOperation,
-    MaintenanceSettings,
     Measurement,
     MeasurementComparison,
     MeasurementUnit,
@@ -19,9 +17,21 @@ from context.table_maintenance.application.domain.model.shared import (
     SizeSource,
     TableObservation,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    AtLeast,
+    CompactionUnit,
+    ExpireSnapshotsPolicy,
+    MaintenancePolicyContent,
+    RewriteDataFilesPolicy,
+    RewriteManifestsPolicy,
+    SmallManifestsCondition,
+)
 from context.table_maintenance.application.domain.service.shared import (
     positive_int_property,
     resolve_target_file_size,
+)
+from context.table_maintenance.application.domain.service.table.any_condition_holds import (
+    any_condition_holds,
 )
 from context.table_maintenance.application.domain.service.table.compute_reducible_files import (
     compute_reducible_files,
@@ -39,30 +49,44 @@ TARGET_FILE_SIZE_PROPERTY = "write.target-file-size-bytes"
 
 def assess_maintenance(
     table: Table,
-    settings: MaintenanceSettings,
+    policy: MaintenancePolicyContent,
     observation: TableObservation,
     now: datetime,
 ) -> MaintenanceAssessment:
-    """Evaluate every operation of a table, regardless of the table's status."""
+    """Evaluate every operation of a table against a policy, regardless of the table's status.
+
+    An operation is due when it is enabled, its cooldown (with the failure backoff)
+    has passed, and its conditions are empty or any of them holds.
+    """
     return MaintenanceAssessment(
-        operations=tuple(_assess(op, table, settings, observation, now) for op in MaintenanceOperation.ordered())
+        operations=tuple(_assess(op, table, policy, observation, now) for op in MaintenanceOperation.ordered())
     )
 
 
 def _assess(
     op: MaintenanceOperation,
     table: Table,
-    settings: MaintenanceSettings,
+    policy: MaintenancePolicyContent,
     observation: TableObservation,
     now: datetime,
 ) -> OperationAssessment:
-    if not settings.enabled(op):
+    operation_policy = policy.operations.for_operation(op)
+    if not operation_policy.enabled:
         return OperationAssessment(operation=op, verdict=OperationVerdict.DISABLED)
-    assessment = _measure(op, settings, observation, now)
+    measured, planned = _measure(op, policy, observation, now)
+    conditions = operation_policy.trigger_policy.conditions
+    if conditions.is_empty() or any_condition_holds(measured.measurements):
+        assessment = validated_copy(
+            measured,
+            verdict=OperationVerdict.DUE,
+            planned=PlannedOperation(operation=op) if planned is None else planned,
+        )
+    else:
+        assessment = measured
     state = table.operation_state(op)
     if state.last_attempt_at is None:
         return assessment
-    next_eligible_at = state.last_attempt_at + state.effective_cooldown(settings.min_interval(op))
+    next_eligible_at = state.last_attempt_at + state.effective_cooldown(operation_policy.trigger_policy.cooldown)
     if now >= next_eligible_at:
         return assessment
     return validated_copy(
@@ -75,127 +99,125 @@ def _assess(
 
 def _measure(
     op: MaintenanceOperation,
-    settings: MaintenanceSettings,
+    policy: MaintenancePolicyContent,
     observation: TableObservation,
     now: datetime,
-) -> OperationAssessment:
+) -> tuple[OperationAssessment, PlannedOperation | None]:
+    """Return the not-due assessment with its measurements, and the operation to plan if it is due.
+
+    A planned operation of None means the whole table.
+    """
     match op:
         case MaintenanceOperation.REWRITE_DATA_FILES:
-            return _assess_compaction(settings, observation)
+            return _measure_compaction(policy.operations.rewrite_data_files, observation)
         case MaintenanceOperation.REWRITE_MANIFESTS:
-            return _assess_manifests(settings, observation)
+            return _measure_manifests(policy.operations.rewrite_manifests, observation), None
         case MaintenanceOperation.EXPIRE_SNAPSHOTS:
-            return _assess_snapshots(settings, observation, now)
+            return _measure_snapshots(policy.operations.expire_snapshots, observation, now), None
         case MaintenanceOperation.REMOVE_ORPHAN_FILES:
-            return OperationAssessment(
-                operation=op, verdict=OperationVerdict.DUE, planned=PlannedOperation(operation=op)
-            )
+            return OperationAssessment(operation=op, verdict=OperationVerdict.NOT_DUE), None
 
 
-def _due(assessment: OperationAssessment, planned: PlannedOperation | None = None) -> OperationAssessment:
-    return validated_copy(
-        assessment,
-        verdict=OperationVerdict.DUE,
-        planned=PlannedOperation(operation=assessment.operation) if planned is None else planned,
-    )
+def _at_least(condition: AtLeast | SmallManifestsCondition | None) -> int | None:
+    return None if condition is None else condition.at_least
 
 
-def _at_least(key: str, observed: int, threshold: int) -> Measurement:
+def _count(key: str, observed: int, at_least: int | None) -> Measurement:
+    """Return a count, compared with the condition's threshold when there is one."""
+    if at_least is None:
+        return Measurement(key=key, observed=observed, unit=MeasurementUnit.COUNT)
     return Measurement(
         key=key,
         observed=observed,
         unit=MeasurementUnit.COUNT,
-        threshold=threshold,
+        threshold=at_least,
         comparison=MeasurementComparison.AT_LEAST,
     )
 
 
-def _assess_compaction(settings: MaintenanceSettings, observation: TableObservation) -> OperationAssessment:
-    cfg = settings.rewrite_data_files
+def _measure_compaction(
+    policy: RewriteDataFilesPolicy, observation: TableObservation
+) -> tuple[OperationAssessment, PlannedOperation | None]:
     op = MaintenanceOperation.REWRITE_DATA_FILES
-    target = resolve_target_file_size(cfg, observation.properties)
-    if cfg.target_file_size_bytes is not None:
-        source = SizeSource.SETTINGS
-    elif positive_int_property(observation.properties, TARGET_FILE_SIZE_PROPERTY):
-        source = SizeSource.TABLE_PROPERTY
-    else:
-        source = SizeSource.DEFAULT
+    condition = policy.trigger_policy.conditions.reducible_files
+    target = resolve_target_file_size(observation.properties)
+    source = (
+        SizeSource.TABLE_PROPERTY
+        if positive_int_property(observation.properties, TARGET_FILE_SIZE_PROPERTY)
+        else SizeSource.DEFAULT
+    )
     reducible = [(p, compute_reducible_files(p, target)) for p in observation.partitions]
     base = OperationAssessment(
         operation=op,
         verdict=OperationVerdict.NOT_DUE,
-        threshold=cfg.min_reducible_files,
+        threshold=_at_least(condition),
         size_bytes=target,
         size_source=source,
     )
     target_size = Measurement(key="target_file_size", observed=target, unit=MeasurementUnit.BYTES)
-    if cfg.scope == CompactionScope.TABLE:
+    if policy.scope.unit == CompactionUnit.TABLE or condition is None:
         total = sum(r for _, r in reducible)
-        assessment = validated_copy(
-            base,
-            measured=total,
-            measurements=(_at_least("reducible_files", total, cfg.min_reducible_files), target_size),
+        measured = validated_copy(
+            base, measured=total, measurements=(_count("reducible_files", total, _at_least(condition)), target_size)
         )
-        return _due(assessment) if total >= cfg.min_reducible_files else assessment
-    qualifying = [(p, r) for p, r in reducible if r >= cfg.min_reducible_files]
+        return measured, None
+    qualifying = [(p, r) for p, r in reducible if r >= condition.at_least]
     total = sum(r for _, r in qualifying)
-    assessment = validated_copy(
+    measured = validated_copy(
         base,
         measured=total,
         qualifying_partitions=len(qualifying),
         measurements=(
-            _at_least("reducible_files", total, cfg.min_reducible_files),
+            _count("reducible_files", total, _at_least(condition)),
             target_size,
             Measurement(key="qualifying_partitions", observed=len(qualifying), unit=MeasurementUnit.COUNT),
         ),
     )
-    if not qualifying:
-        return assessment
     selected = tuple(p for p, _ in qualifying)
     partitioned = {s.spec_id for s in observation.specs if not s.is_unpartitioned}
-    if any(p.spec_id not in partitioned for p in selected):
-        return _due(assessment)
-    return _due(assessment, PlannedOperation(operation=op, partitions=selected))
+    if not selected or any(p.spec_id not in partitioned for p in selected):
+        return measured, None
+    return measured, PlannedOperation(operation=op, partitions=selected)
 
 
-def _assess_manifests(settings: MaintenanceSettings, observation: TableObservation) -> OperationAssessment:
-    cfg = settings.rewrite_manifests
+def _measure_manifests(policy: RewriteManifestsPolicy, observation: TableObservation) -> OperationAssessment:
+    condition = policy.trigger_policy.conditions.small_manifests
     prop = positive_int_property(observation.properties, MANIFEST_TARGET_SIZE_PROPERTY)
-    if cfg.small_manifest_bytes is not None:
-        threshold, source = cfg.small_manifest_bytes, SizeSource.SETTINGS
+    if condition is not None and condition.smaller_than_bytes is not None:
+        threshold, source = condition.smaller_than_bytes, SizeSource.SETTINGS
     elif prop is not None:
         threshold, source = prop, SizeSource.TABLE_PROPERTY
     else:
         threshold, source = DEFAULT_SMALL_MANIFEST_BYTES, SizeSource.DEFAULT
     small = sum(1 for m in observation.manifests if m.length_bytes < threshold)
-    assessment = OperationAssessment(
+    return OperationAssessment(
         operation=MaintenanceOperation.REWRITE_MANIFESTS,
         verdict=OperationVerdict.NOT_DUE,
         measured=small,
-        threshold=cfg.min_small_manifests,
+        threshold=_at_least(condition),
         size_bytes=threshold,
         size_source=source,
-        measurements=(_at_least("small_manifests", small, cfg.min_small_manifests),),
+        measurements=(_count("small_manifests", small, _at_least(condition)),),
     )
-    return _due(assessment) if small >= cfg.min_small_manifests else assessment
 
 
-def _assess_snapshots(
-    settings: MaintenanceSettings, observation: TableObservation, now: datetime
+def _measure_snapshots(
+    policy: ExpireSnapshotsPolicy, observation: TableObservation, now: datetime
 ) -> OperationAssessment:
-    cfg = settings.expire_snapshots
+    """Count the snapshots the execution policy would expire: the one condition that reads execution values."""
+    execution = policy.execution_policy
+    condition = policy.trigger_policy.conditions.expirable_snapshots
     newest_first = sorted(observation.snapshots, key=lambda s: s.committed_at, reverse=True)
-    cutoff = now - cfg.older_than
+    cutoff = now - execution.older_than
     expirable = sum(
         1
-        for s in newest_first[cfg.retain_last :]
+        for s in newest_first[execution.retain_last :]
         if s.committed_at < cutoff and s.snapshot_id != observation.current_snapshot_id
     )
-    assessment = OperationAssessment(
+    return OperationAssessment(
         operation=MaintenanceOperation.EXPIRE_SNAPSHOTS,
         verdict=OperationVerdict.NOT_DUE,
         measured=expirable,
-        threshold=1,
-        measurements=(_at_least("expirable_snapshots", expirable, 1),),
+        threshold=_at_least(condition),
+        measurements=(_count("expirable_snapshots", expirable, _at_least(condition)),),
     )
-    return _due(assessment) if expirable >= 1 else assessment

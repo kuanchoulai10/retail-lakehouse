@@ -6,6 +6,9 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.table import TableStatus
+from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    MaintenancePolicyContent,
+)
 from context.table_maintenance.application.domain.service.table import (
     assess_maintenance,
 )
@@ -14,6 +17,10 @@ from context.table_maintenance.application.port.inbound.table import (
     GetTableHealthUseCaseInput,
     GetTableHealthUseCaseOutput,
     GetTableHealthUseCaseOutputItem,
+)
+from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
+    ResolveApplicableTableMaintenancePolicyUseCase,
+    ResolveApplicableTableMaintenancePolicyUseCaseInput,
 )
 from context.table_maintenance.application.service.shared import translate_domain_errors
 from context.table_maintenance.application.service.table.load_catalog_table import (
@@ -64,12 +71,14 @@ class GetTableHealthService(GetTableHealthUseCase):
         self,
         tables_repo: TablesRepo,
         catalog_gateway: ReadTableMetadataGateway,
+        resolve_applicable_policy: ResolveApplicableTableMaintenancePolicyUseCase,
         *,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
-        """Bind the repo, the catalog gateway and the clock."""
+        """Bind the repo, the catalog gateway, the applicable policy resolution and the clock."""
         self._tables_repo = tables_repo
         self._catalog_gateway = catalog_gateway
+        self._resolve_applicable_policy = resolve_applicable_policy
         self._clock = clock
 
     def execute(self, request: GetTableHealthUseCaseInput) -> GetTableHealthUseCaseOutput:
@@ -84,11 +93,18 @@ class GetTableHealthService(GetTableHealthUseCase):
         settings = table.settings
         if reason is None and settings is None:
             reason = "no_settings"
-        items = (
-            []
-            if settings is None
-            else [_to_item(a) for a in assess_maintenance(table, settings, observation, self._clock()).operations]
-        )
+        items = []
+        if settings is not None:
+            applied = self._resolve_applicable_policy.execute(
+                ResolveApplicableTableMaintenancePolicyUseCaseInput(
+                    catalog=table.name.catalog,
+                    table_uuid=table.id.value,
+                    namespace=table.name.namespace,
+                    table=table.name.table,
+                )
+            )
+            policy = MaintenancePolicyContent.from_primitives(applied.content)
+            items = [_to_item(a) for a in assess_maintenance(table, policy, observation, self._clock()).operations]
         return GetTableHealthUseCaseOutput(
             scheduled=reason is None,
             not_scheduled_reason=reason,

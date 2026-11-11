@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from context.table_maintenance.application.domain.model.shared import (
     PartitionStats,
-    RewriteDataFilesSettings,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    PartialProgress,
+    RewriteDataFilesExecutionPolicy,
 )
 from context.table_maintenance.application.domain.service.shared import (
+    resolve_execution_target_file_size,
     resolve_target_file_size,
 )
 from context.table_maintenance.application.domain.service.table import (
@@ -37,9 +41,18 @@ def test_reducible_files_formula():
 
 
 def test_target_file_size_resolution_order():
-    """The target file size is the explicit setting, then the table property, then the default."""
-    assert resolve_target_file_size(RewriteDataFilesSettings(), {}) == 536870912
+    """The measured target file size is the table property, then the default."""
+    assert resolve_target_file_size({}) == 536870912
+    assert resolve_target_file_size({"write.target-file-size-bytes": "1000"}) == 1000
+
+
+def test_execution_target_file_size_resolution_order():
+    """The executed target file size is the execution policy's value, then the table property, then the default."""
     props = {"write.target-file-size-bytes": "1000"}
-    assert resolve_target_file_size(RewriteDataFilesSettings(), props) == 1000
-    explicit = RewriteDataFilesSettings(target_file_size_bytes=7)
-    assert resolve_target_file_size(explicit, props) == 7
+    unset = RewriteDataFilesExecutionPolicy(min_input_files=2, partial_progress=PartialProgress(enabled=True))
+    assert resolve_execution_target_file_size(unset, {}) == 536870912
+    assert resolve_execution_target_file_size(unset, props) == 1000
+    explicit = RewriteDataFilesExecutionPolicy(
+        target_file_size_bytes=7, min_input_files=2, partial_progress=PartialProgress(enabled=True)
+    )
+    assert resolve_execution_target_file_size(explicit, props) == 7

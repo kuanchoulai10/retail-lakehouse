@@ -62,6 +62,9 @@ class FakePlan(PlanTableMaintenanceUseCase):
                     procedure_args={"strategy": "binpack"},
                 )
             ],
+            policy_name="gold",
+            policy_version=3,
+            policy_target={"type": "namespace", "path": ["iceberg", "sales"]},
         )
 
 

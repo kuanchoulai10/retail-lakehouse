@@ -30,7 +30,6 @@ def _due_check(operation: str = "rewrite_data_files") -> dict:
     return {
         "operation": operation,
         "verdict": "due",
-        "combine": "all",
         "measurements": [
             {"key": "small_files", "observed": 12, "unit": "count", "threshold": 10, "comparison": ">=", "met": True},
             {"key": "data_bytes", "observed": 5, "unit": "bytes", "threshold": None, "comparison": None, "met": None},
@@ -114,13 +113,12 @@ def test_other_verdicts_map_by_name_and_next_eligible_is_parsed(
     cooling = {
         "operation": "expire_snapshots",
         "verdict": "cooling_down",
-        "combine": "any",
         "measurements": [],
         "next_eligible_at": "2026-11-11T00:00:00+00:00",
     }
     off = {**cooling, "operation": "remove_orphan_files", "verdict": "off", "next_eligible_at": None}
     not_due = {**cooling, "operation": "rewrite_manifests", "verdict": "not_needed", "next_eligible_at": None}
-    unchecked = {**not_due, "operation": "rewrite_data_files", "verdict": "not_checked", "combine": "all"}
+    unchecked = {**not_due, "operation": "rewrite_data_files", "verdict": "not_checked"}
     service.execute(_input(checks=[cooling, off, not_due, unchecked], run_id=None))
 
     saved = repo.get(TableReconciliationId("rec-1"))

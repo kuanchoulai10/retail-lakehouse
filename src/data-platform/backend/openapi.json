@@ -1199,10 +1199,6 @@
       "ReconciliationOperationApiResponse": {
         "description": "Describe what a reconciliation measured and decided for one operation.",
         "properties": {
-          "combine": {
-            "title": "Combine",
-            "type": "string"
-          },
           "measurements": {
             "items": {
               "$ref": "#/components/schemas/ReconciliationMeasurementApiResponse"
@@ -1234,7 +1230,6 @@
         "required": [
           "operation",
           "result",
-          "combine",
           "measurements",
           "next_eligible_at"
         ],

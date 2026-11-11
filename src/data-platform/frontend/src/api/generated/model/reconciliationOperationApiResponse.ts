@@ -10,7 +10,6 @@ import type { ReconciliationMeasurementApiResponse } from './reconciliationMeasu
  * Describe what a reconciliation measured and decided for one operation.
  */
 export interface ReconciliationOperationApiResponse {
-  combine: string;
   measurements: ReconciliationMeasurementApiResponse[];
   next_eligible_at: string | null;
   operation: string;

@@ -16,10 +16,15 @@ from context.table_maintenance.application.domain.service.table.assess_maintenan
 if TYPE_CHECKING:
     from datetime import datetime
 
+    from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+        MaintenancePolicyContent,
+    )
 
-def plan_scheduled_maintenance(table: Table, observation: TableObservation, now: datetime) -> MaintenancePlan:
-    """Decide which operations are due for a table given its observation."""
-    settings = table.settings
-    if table.status != TableStatus.ACTIVE or settings is None:
+
+def plan_scheduled_maintenance(
+    table: Table, policy: MaintenancePolicyContent, observation: TableObservation, now: datetime
+) -> MaintenancePlan:
+    """Decide which operations are due for an active table under its applicable policy."""
+    if table.status != TableStatus.ACTIVE:
         return MaintenancePlan()
-    return assess_maintenance(table, settings, observation, now).plan()
+    return assess_maintenance(table, policy, observation, now).plan()

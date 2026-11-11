@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 class RecordTableReconciliationUseCaseInput:
     """Carry one reconciliation pass to record, as plain values.
 
-    ``checks`` holds the plan's check items as dicts (operation, verdict, combine,
+    ``checks`` holds the plan's check items as dicts (operation, verdict,
     measurements, next_eligible_at), the shape they have after crossing a Temporal activity.
     """
 

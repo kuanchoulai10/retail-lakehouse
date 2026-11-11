@@ -5,9 +5,6 @@ from __future__ import annotations
 from datetime import datetime
 
 from base import ValueObject
-from context.table_maintenance.application.domain.model.shared.condition_combine import (
-    ConditionCombine,
-)
 from context.table_maintenance.application.domain.model.shared.maintenance_operation import (
     MaintenanceOperation,
 )
@@ -41,5 +38,4 @@ class OperationAssessment(ValueObject):
     size_bytes: int | None = None
     size_source: SizeSource | None = None
     planned: PlannedOperation | None = None
-    combine: ConditionCombine = ConditionCombine.ALL
     measurements: tuple[Measurement, ...] = ()

@@ -9,12 +9,14 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenanceAssessment,
     MaintenanceOperation,
     MaintenancePlan,
-    MaintenanceSettings,
     OperationVerdict,
 )
 from context.table_maintenance.application.domain.model.table import (
     TableId,
     TableStatus,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    MaintenancePolicyContent,
 )
 from context.table_maintenance.application.domain.service.table import (
     assess_maintenance,
@@ -30,6 +32,11 @@ from context.table_maintenance.application.port.inbound.table import (
     PlanTableMaintenanceUseCaseOutputFilterItem,
     PlanTableMaintenanceUseCaseOutputItem,
     PlanTableMaintenanceUseCaseOutputMeasurementItem,
+)
+from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
+    ResolveApplicableTableMaintenancePolicyUseCase,
+    ResolveApplicableTableMaintenancePolicyUseCaseInput,
+    ResolveApplicableTableMaintenancePolicyUseCaseOutput,
 )
 from context.table_maintenance.application.port.outbound.table import TableMetadataRef
 from context.table_maintenance.application.service.shared import translate_domain_errors
@@ -63,10 +70,16 @@ _SKIP_REASONS = {
 class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
     """Decide which maintenance operations a table needs right now."""
 
-    def __init__(self, tables_repo: TablesRepo, catalog_gateway: ReadTableMetadataGateway) -> None:
-        """Bind the repo and the catalog gateway."""
+    def __init__(
+        self,
+        tables_repo: TablesRepo,
+        catalog_gateway: ReadTableMetadataGateway,
+        resolve_applicable_policy: ResolveApplicableTableMaintenancePolicyUseCase,
+    ) -> None:
+        """Bind the repo, the catalog gateway and the applicable policy resolution."""
         self._tables_repo = tables_repo
         self._catalog_gateway = catalog_gateway
+        self._resolve_applicable_policy = resolve_applicable_policy
 
     def execute(self, request: PlanTableMaintenanceUseCaseInput) -> PlanTableMaintenanceUseCaseOutput:
         """Plan the due operations, or the requested ones for a manual trigger.
@@ -74,37 +87,49 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         ``now`` comes from the caller so that a workflow can supply a deterministic
         time. The result is a skip with a reason when the table is dropped, excluded,
         paused or gone from the catalog; otherwise it is planned, possibly empty.
+        Every plan of a known table resolves the policy that applies to it, whose
+        reconcile interval, dry run and operation policies it follows.
         """
         manual = self._parse_manual(request.manual_operations)
         table = self._tables_repo.get(TableId(request.table_uuid))
         if table is None:
-            return _skip("dropped", MaintenanceSettings(), None, table_found=False)
-        settings = table.settings or MaintenanceSettings()
+            return _skip_unknown_table()
+        applied = self._resolve(table)
+        policy = MaintenancePolicyContent.from_primitives(applied.content)
         reason = _SKIP_REASONS.get(table.status)
         if reason is not None:
-            return _skip(reason, settings, table)
+            return _skip(reason, applied, policy, table)
         ref = TableMetadataRef(table.name.catalog, table.name.namespace, table.name.table)
         gateway_observation = self._catalog_gateway.observe_table(ref)
         with translate_domain_errors():
             observation = None if gateway_observation is None else table_observation_from_gateway(gateway_observation)
             if observation is None or observation.table_uuid != table.id.value:
-                return _skip("not_found", settings, table)
+                return _skip("not_found", applied, policy, table)
             if manual is not None:
                 plan = plan_manual_maintenance(manual)
                 checks = _manual_checks(manual)
-            elif table.settings is None:
-                plan, checks = MaintenancePlan(), []
             else:
-                assessment = assess_maintenance(table, settings, observation, request.now)
+                assessment = assess_maintenance(table, policy, observation, request.now)
                 plan, checks = assessment.plan(), _scheduled_checks(assessment)
-                if settings.dry_run:
+                if policy.dry_run:
                     plan = MaintenancePlan()
-            return self._render(table, settings, plan, checks, observation, request)
+            return self._render(table, applied, policy, plan, checks, observation, request)
+
+    def _resolve(self, table: Table) -> ResolveApplicableTableMaintenancePolicyUseCaseOutput:
+        return self._resolve_applicable_policy.execute(
+            ResolveApplicableTableMaintenancePolicyUseCaseInput(
+                catalog=table.name.catalog,
+                table_uuid=table.id.value,
+                namespace=table.name.namespace,
+                table=table.name.table,
+            )
+        )
 
     def _render(
         self,
         table: Table,
-        settings: MaintenanceSettings,
+        applied: ResolveApplicableTableMaintenancePolicyUseCaseOutput,
+        policy: MaintenancePolicyContent,
         plan: MaintenancePlan,
         checks: list[PlanTableMaintenanceUseCaseOutputCheckItem],
         observation: TableObservation,
@@ -120,17 +145,20 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
                 PlanTableMaintenanceUseCaseOutputItem(
                     operation=planned.operation.value,
                     filters=filters,
-                    procedure_args=maintenance_procedure_args(planned.operation, settings, properties, request.now),
+                    procedure_args=maintenance_procedure_args(planned.operation, policy, properties, request.now),
                 )
             )
         return PlanTableMaintenanceUseCaseOutput(
             status="planned",
             reason=None,
-            reconcile_interval_seconds=_interval(settings),
+            reconcile_interval_seconds=_interval(policy),
             table_name=table.name.fully_qualified(),
             operations=operations,
-            dry_run=settings.dry_run,
+            dry_run=policy.dry_run,
             checks=checks,
+            policy_name=applied.policy_name,
+            policy_version=applied.version,
+            policy_target=applied.target,
         )
 
     @staticmethod
@@ -166,8 +194,8 @@ def _partition_filters(
     return [PlanTableMaintenanceUseCaseOutputFilterItem(f.spec_id, f.where) for f in built]
 
 
-def _interval(settings: MaintenanceSettings) -> int:
-    return int(settings.reconcile_interval.total_seconds())
+def _interval(policy: MaintenancePolicyContent) -> int:
+    return int(policy.reconcile_interval.total_seconds())
 
 
 _VERDICTS = {
@@ -183,7 +211,6 @@ def _scheduled_checks(assessment: MaintenanceAssessment) -> list[PlanTableMainte
         PlanTableMaintenanceUseCaseOutputCheckItem(
             operation=a.operation.value,
             verdict=_VERDICTS[a.verdict],
-            combine=a.combine.value,
             measurements=[
                 PlanTableMaintenanceUseCaseOutputMeasurementItem(
                     key=m.key,
@@ -206,7 +233,6 @@ def _manual_checks(requested: list[MaintenanceOperation]) -> list[PlanTableMaint
         PlanTableMaintenanceUseCaseOutputCheckItem(
             operation=op.value,
             verdict="due" if op in requested else "not_checked",
-            combine="all",
             measurements=[],
             next_eligible_at=None,
         )
@@ -215,13 +241,30 @@ def _manual_checks(requested: list[MaintenanceOperation]) -> list[PlanTableMaint
 
 
 def _skip(
-    reason: str, settings: MaintenanceSettings, table: Table | None, *, table_found: bool = True
+    reason: str,
+    applied: ResolveApplicableTableMaintenancePolicyUseCaseOutput,
+    policy: MaintenancePolicyContent,
+    table: Table,
 ) -> PlanTableMaintenanceUseCaseOutput:
     return PlanTableMaintenanceUseCaseOutput(
         status="skip",
         reason=reason,
-        reconcile_interval_seconds=_interval(settings),
-        table_name=None if table is None else table.name.fully_qualified(),
+        reconcile_interval_seconds=_interval(policy),
+        table_name=table.name.fully_qualified(),
         operations=[],
-        table_found=table_found,
+        policy_name=applied.policy_name,
+        policy_version=applied.version,
+        policy_target=applied.target,
+    )
+
+
+def _skip_unknown_table() -> PlanTableMaintenanceUseCaseOutput:
+    """Skip a table maintenance does not know; no policy applies, so the interval is the platform default's."""
+    return PlanTableMaintenanceUseCaseOutput(
+        status="skip",
+        reason="dropped",
+        reconcile_interval_seconds=_interval(MaintenancePolicyContent.platform_default()),
+        table_name=None,
+        operations=[],
+        table_found=False,
     )

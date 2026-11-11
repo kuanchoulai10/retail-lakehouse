@@ -27,7 +27,6 @@ class ReconciliationOperationApiResponse(BaseModel):
 
     operation: str
     result: str
-    combine: str
     measurements: list[ReconciliationMeasurementApiResponse]
     next_eligible_at: datetime | None
 

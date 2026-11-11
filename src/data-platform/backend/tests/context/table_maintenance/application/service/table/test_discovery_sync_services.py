@@ -419,7 +419,9 @@ def _busy_observation(uuid):
     )
 
 
-def test_table_hint_for_registered_table_signals_but_cooldown_blocks_replan(hint, tables_repo, catalog, signals, now):
+def test_table_hint_for_registered_table_signals_but_cooldown_blocks_replan(
+    hint, tables_repo, catalog, signals, resolve_applicable_policy, now
+):
     """A hint signals the workflow, while a cooldown still blocks a new plan."""
     cooling = _row(tables_repo, now, "u-1", TableName(catalog="iceberg", namespace="sales", table="orders"))
     for op in MaintenanceOperation.ordered():
@@ -430,7 +432,7 @@ def test_table_hint_for_registered_table_signals_but_cooldown_blocks_replan(hint
         catalog.observations[("iceberg", "sales", name)] = _busy_observation(uuid)
     assert hint.execute(_hint()).action == "signalled"
     assert _calls(signals) == [("u-1", "updated", True)]
-    planner = PlanTableMaintenanceService(tables_repo, catalog)
+    planner = PlanTableMaintenanceService(tables_repo, catalog, resolve_applicable_policy)
     blocked = planner.execute(PlanTableMaintenanceUseCaseInput("u-1", now))
     assert (blocked.status, blocked.operations) == ("planned", [])
     control = planner.execute(PlanTableMaintenanceUseCaseInput("u-2", now))

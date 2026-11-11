@@ -101,6 +101,7 @@ def build_use_cases(
     reconciliations = repos.table_reconciliations
     catalog = gateways.read_table_metadata
     table_changes = gateways.send_table_change
+    resolve_applicable_policy = ResolveApplicableTableMaintenancePolicyService(policies, attachments, catalog)
     return UseCases(
         get_table_discovery_settings=GetTableDiscoverySettingsService(discovery),
         list_covered_catalogs=ListCoveredCatalogsService(catalog_names),
@@ -134,9 +135,7 @@ def build_use_cases(
         ),
         detach_table_maintenance_policy=DetachTableMaintenancePolicyService(attachments, catalog),
         list_table_maintenance_policy_attachments=ListTableMaintenancePolicyAttachmentsService(attachments),
-        resolve_applicable_table_maintenance_policy=ResolveApplicableTableMaintenancePolicyService(
-            policies, attachments, catalog
-        ),
+        resolve_applicable_table_maintenance_policy=resolve_applicable_policy,
         create_table_maintenance_policy=CreateTableMaintenancePolicyService(policies, clock=clock),
         delete_table_maintenance_policy=DeleteTableMaintenancePolicyService(policies, attachments),
         ensure_default_table_maintenance_policy=EnsureDefaultTableMaintenancePolicyService(policies, clock=clock),
@@ -146,7 +145,7 @@ def build_use_cases(
         update_table_maintenance_policy=UpdateTableMaintenancePolicyService(policies, clock=clock),
         exclude_table=ExcludeTableService(tables, catalog, table_changes, clock=clock),
         get_table=GetTableService(tables),
-        get_table_health=GetTableHealthService(tables, catalog, clock=clock),
+        get_table_health=GetTableHealthService(tables, catalog, resolve_applicable_policy, clock=clock),
         get_table_storage=GetTableStorageService(tables, catalog, runs, clock=clock),
         list_table_commits=ListTableCommitsService(tables, catalog),
         include_table=IncludeTableService(tables, presets, catalog, table_changes, clock=clock),
@@ -166,7 +165,7 @@ def build_use_cases(
         record_table_maintenance_operation_result=RecordTableMaintenanceOperationResultService(runs, tables),
         delete_maintenance_job=DeleteMaintenanceJobService(gateways.delete_maintenance_job),
         get_maintenance_job_status=GetMaintenanceJobStatusService(gateways.read_maintenance_job),
-        plan_table_maintenance=PlanTableMaintenanceService(tables, catalog),
+        plan_table_maintenance=PlanTableMaintenanceService(tables, catalog, resolve_applicable_policy),
         list_table_reconciliations=ListTableReconciliationsService(reconciliations),
         record_table_reconciliation=RecordTableReconciliationService(reconciliations),
         submit_maintenance_operation=SubmitMaintenanceOperationService(runs, tables, gateways.submit_maintenance_job),

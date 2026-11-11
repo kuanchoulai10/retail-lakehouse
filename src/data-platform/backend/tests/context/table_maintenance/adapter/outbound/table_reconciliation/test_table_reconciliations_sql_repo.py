@@ -11,13 +11,12 @@ from context.table_maintenance.adapter.outbound.table_reconciliation.sql import 
     TableReconciliationsSqlRepo,
 )
 from context.table_maintenance.application.domain.model.shared import (
-    ConditionCombine,
+    MaintenanceOperation as Op,
+)
+from context.table_maintenance.application.domain.model.shared import (
     Measurement,
     MeasurementComparison,
     MeasurementUnit,
-)
-from context.table_maintenance.application.domain.model.shared import (
-    MaintenanceOperation as Op,
 )
 from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
@@ -82,7 +81,6 @@ def test_create_and_get_round_trip(repo: TableReconciliationsRepo):
             OperationOutcome(
                 operation=Op.REWRITE_DATA_FILES,
                 result=OperationResult.STARTED,
-                combine=ConditionCombine.ANY,
                 measurements=(
                     Measurement(
                         key="small_files",
@@ -97,7 +95,6 @@ def test_create_and_get_round_trip(repo: TableReconciliationsRepo):
             OperationOutcome(
                 operation=Op.EXPIRE_SNAPSHOTS,
                 result=OperationResult.COOLING_DOWN,
-                combine=ConditionCombine.ALL,
                 measurements=(
                     Measurement(
                         key="age",

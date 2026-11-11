@@ -6,7 +6,6 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.shared import (
-    ConditionCombine,
     MaintenanceOperation,
     Measurement,
     MeasurementComparison,
@@ -48,7 +47,6 @@ def _reconciliation(rec_id: str, at: datetime, table: str = "t-1") -> TableRecon
             OperationOutcome(
                 operation=MaintenanceOperation.REWRITE_DATA_FILES,
                 result=OperationResult.NOT_NEEDED,
-                combine=ConditionCombine.ALL,
                 measurements=(
                     Measurement(
                         key="small_files",
@@ -131,7 +129,7 @@ def test_context_measurement_has_null_threshold_and_met() -> None:
     operation = body["operations"][0]
     assert operation["operation"] == "rewrite_data_files"
     assert operation["result"] == "not_needed"
-    assert operation["combine"] == "all"
+    assert "combine" not in operation
     assert operation["next_eligible_at"] is None
     condition, context = operation["measurements"]
     assert (condition["threshold"], condition["comparison"], condition["met"]) == (10, ">=", False)

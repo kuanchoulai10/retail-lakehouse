@@ -212,12 +212,11 @@ function citeAll(ms: ReconciliationMeasurementApiResponse[], op: ReconciliationO
   return ms.map((m) => cite(m, op)).join(" and ");
 }
 
-// The deciding measurements that kept it from being due: for "all" the unmet ones; for "any"
+// The deciding measurements that kept it from being due. Conditions combine with OR, so that is
 // every one when none was met, and none as soon as one was.
 function holdingBack(op: ReconciliationOperationApiResponse): ReconciliationMeasurementApiResponse[] {
   const ms = deciding(op);
-  if (op.combine === "any") return ms.some((m) => m.met === true) ? [] : ms;
-  return ms.filter((m) => m.met !== true);
+  return ms.some((m) => m.met === true) ? [] : ms;
 }
 
 function nextAllowed(op: ReconciliationOperationApiResponse): string {

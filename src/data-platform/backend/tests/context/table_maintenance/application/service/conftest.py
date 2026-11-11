@@ -7,6 +7,15 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
+    EnsureDefaultTableMaintenancePolicyUseCaseInput,
+)
+from context.table_maintenance.application.service.table_maintenance_policy import (
+    EnsureDefaultTableMaintenancePolicyService,
+)
+from context.table_maintenance.application.service.table_maintenance_policy_attachment import (
+    ResolveApplicableTableMaintenancePolicyService,
+)
 from tests.context.table_maintenance.fakes.fake_read_maintenance_job_gateway import (
     FakeReadMaintenanceJobGateway,
 )
@@ -18,6 +27,12 @@ from tests.context.table_maintenance.fakes.in_memory_table_discovery_rules_repo 
 )
 from tests.context.table_maintenance.fakes.in_memory_table_discovery_settings_repo import (
     InMemoryTableDiscoverySettingsRepo,
+)
+from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_repo import (
+    InMemoryTableMaintenancePoliciesRepo,
+)
+from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policy_attachments_repo import (
+    InMemoryTableMaintenancePolicyAttachmentsRepo,
 )
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_presets_repo import (
     InMemoryTableMaintenancePresetsRepo,
@@ -154,3 +169,29 @@ def discovery_requests() -> RecordingSendDiscoveryRequestGateway:
 def log() -> list[tuple[str, str]]:
     """Provide the shared list that the in-memory repositories write their calls to."""
     return []
+
+
+@pytest.fixture
+def policies_repo() -> InMemoryTableMaintenancePoliciesRepo:
+    """Provide a policies repo holding the platform default policy (version 1)."""
+    repo = InMemoryTableMaintenancePoliciesRepo()
+    EnsureDefaultTableMaintenancePolicyService(repo, clock=lambda: NOW).execute(
+        EnsureDefaultTableMaintenancePolicyUseCaseInput()
+    )
+    return repo
+
+
+@pytest.fixture
+def attachments_repo() -> InMemoryTableMaintenancePolicyAttachmentsRepo:
+    """Provide an empty policy attachments repo."""
+    return InMemoryTableMaintenancePolicyAttachmentsRepo()
+
+
+@pytest.fixture
+def resolve_applicable_policy(
+    policies_repo: InMemoryTableMaintenancePoliciesRepo,
+    attachments_repo: InMemoryTableMaintenancePolicyAttachmentsRepo,
+    catalog: FakeReadTableMetadataGateway,
+) -> ResolveApplicableTableMaintenancePolicyService:
+    """Provide the applicable policy resolution on the fakes."""
+    return ResolveApplicableTableMaintenancePolicyService(policies_repo, attachments_repo, catalog)

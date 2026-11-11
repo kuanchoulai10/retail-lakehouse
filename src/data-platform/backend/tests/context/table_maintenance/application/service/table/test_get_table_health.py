@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 
 from context.table_maintenance.application.domain.model.shared import (
+    MaintenanceOperation,
     MaintenanceSettings,
 )
 from context.table_maintenance.application.domain.model.table import (
@@ -17,6 +18,10 @@ from context.table_maintenance.application.domain.model.table import (
 from context.table_maintenance.application.domain.model.table_discovery_rule import (
     TableDiscoveryRuleId,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    DEFAULT_POLICY_NAME,
+    MaintenancePolicyContent,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_preset import (
     TableMaintenancePresetId,
 )
@@ -24,10 +29,17 @@ from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.table import (
     GetTableHealthUseCaseInput,
 )
+from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
+    UpdateTableMaintenancePolicyUseCaseInput,
+)
 from context.table_maintenance.application.port.outbound.table import (
     TableMetadataObservation,
 )
 from context.table_maintenance.application.service.table import GetTableHealthService
+from context.table_maintenance.application.service.table_maintenance_policy import (
+    UpdateTableMaintenancePolicyService,
+)
+from tests.context.table_maintenance.fakes.policy_with_operation import policy_with_operation
 
 KEY = ("iceberg", "sales", "orders")
 NAME = TableName(catalog=KEY[0], namespace=KEY[1], table=KEY[2])
@@ -72,9 +84,9 @@ def _observe(catalog, **overrides):
 
 
 @pytest.fixture
-def service(tables_repo, catalog, clock):
+def service(tables_repo, catalog, resolve_applicable_policy, clock):
     """Provide the table health service on the fakes."""
-    return GetTableHealthService(tables_repo, catalog, clock=clock)
+    return GetTableHealthService(tables_repo, catalog, resolve_applicable_policy, clock=clock)
 
 
 def _health(service):
@@ -100,6 +112,22 @@ def test_active_table_reports_each_operation_in_order(service, tables_repo, cata
     assert compaction.verdict == "due"
     assert compaction.measured is not None
     assert compaction.size_source == "default"
+
+
+def test_health_assesses_with_the_applicable_policy(service, tables_repo, catalog, policies_repo, now):
+    """The operations are assessed against the policy that applies to the table, not its settings."""
+    content = policy_with_operation(
+        MaintenancePolicyContent.platform_default(), MaintenanceOperation.REWRITE_DATA_FILES, enabled=False
+    )
+    UpdateTableMaintenancePolicyService(policies_repo, clock=lambda: now).execute(
+        UpdateTableMaintenancePolicyUseCaseInput(name=DEFAULT_POLICY_NAME, content=content.to_primitives(), version=1)
+    )
+    _register(tables_repo, now, MaintenanceSettings())
+    _observe(catalog)
+
+    output = _health(service)
+
+    assert output.operations[0].verdict == "disabled"
 
 
 def test_paused_table_is_not_scheduled_but_assessed(service, tables_repo, catalog, now):
