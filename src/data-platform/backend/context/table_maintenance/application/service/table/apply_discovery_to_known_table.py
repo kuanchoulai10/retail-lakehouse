@@ -48,11 +48,12 @@ def apply_discovery_to_known_table(  # noqa: PLR0913
 
     The table is renamed when its name changed and, unless ``rules`` is None
     (discovery is switched off), decided again by the rules; both are stored in
-    one update. A table the rules unmanage is sent ``stopped``; one they manage
-    again is sent ``seen_change`` (``seen`` when None) as a managed table, so its
-    workflow starts again under the same ID. A table whose management did not
-    change is sent ``seen_change`` only when it is managed and ``seen_change`` is
-    given.
+    one update, which also stores a new deciding rule (``rule_changed``). A table
+    the rules unmanage is sent ``stopped``; one they manage again is sent
+    ``seen_change`` (``seen`` when None) as a managed table, so its workflow starts
+    again under the same ID. A table whose management did not change (a rule-only
+    change included) is sent ``seen_change`` only when it is managed and
+    ``seen_change`` is given.
     """
     renamed = table.name != name
     if renamed:

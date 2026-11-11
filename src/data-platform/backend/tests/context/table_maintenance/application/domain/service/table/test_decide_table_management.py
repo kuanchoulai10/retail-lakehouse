@@ -81,3 +81,10 @@ def test_a_dropped_table_cannot_be_decided():
     t.mark_dropped(T1)
     with pytest.raises(InvalidTableTransition):
         decide_table_management(t, [], T1)
+
+
+def test_another_include_rule_deciding_a_managed_table_is_a_rule_change():
+    """A managed table now decided by another include rule stays managed and reports the rule change."""
+    t = _managed()
+    assert decide_table_management(t, [_rule("r-2", RuleEffect.INCLUDE)], T1) == TableManagementChange.RULE_CHANGED
+    assert (t.status, t.matched_rule_id) == (TableStatus.MANAGED, TableDiscoveryRuleId("r-2"))

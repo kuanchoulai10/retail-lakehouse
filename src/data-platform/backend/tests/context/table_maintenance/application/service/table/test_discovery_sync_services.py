@@ -242,15 +242,44 @@ def test_unmanaged_table_still_excluded_is_left_alone(sync, tables_repo, rules_r
     assert signals.calls == []
 
 
-def test_managed_table_now_decided_by_another_include_rule_records_it(sync, tables_repo, rules_repo, catalog, now):
-    """A managed table matched first by another include rule records that rule and stays managed."""
+def test_managed_table_now_decided_by_another_include_rule_records_it(
+    sync, tables_repo, rules_repo, catalog, signals, log, now
+):
+    """A managed table matched first by another include rule stores that rule and stays managed."""
     _rule(rules_repo, now, RuleEffect.INCLUDE, rid="r-2", priority=1)
     _row(tables_repo, now, "u-1", _name("orders"))
     catalog.add_table("iceberg", "sales", "orders", "u-1")
+    track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
     out = sync.execute(_catalog_wide())
     table = tables_repo.get(TableId("u-1"))
     assert (table.status, table.matched_rule_id) == (TableStatus.MANAGED, TableDiscoveryRuleId("r-2"))
     assert (out.managed, out.unmanaged, out.ensured) == (0, 0, 1)
+    assert log == [("tables.update", "u-1")]
+    assert _calls(signals) == [("u-1", "seen", True)]
+
+
+def test_namespace_pass_stores_a_rule_change_without_signalling(
+    sync, tables_repo, rules_repo, catalog, signals, log, now
+):
+    """A rule-only change is stored; a namespace pass does not signal the still-managed table."""
+    _rule(rules_repo, now, RuleEffect.INCLUDE, rid="r-2", priority=1)
+    _row(tables_repo, now, "u-1", _name("orders"))
+    catalog.add_table("iceberg", "sales", "orders", "u-1")
+    track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
+    sync.execute(_namespace())
+    assert tables_repo.get(TableId("u-1")).matched_rule_id == TableDiscoveryRuleId("r-2")
+    assert log == [("tables.update", "u-1")]
+    assert signals.calls == []
+
+
+def test_unchanged_managed_table_is_not_stored_again(sync, tables_repo, rules_repo, catalog, log, now):
+    """A managed table the same include rule still decides is not written."""
+    _include_all(rules_repo, now)
+    _row(tables_repo, now, "u-1", _name("orders"))
+    catalog.add_table("iceberg", "sales", "orders", "u-1")
+    track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
+    sync.execute(_catalog_wide())
+    assert log == []
 
 
 def test_sync_disabled_still_renames_and_drops(sync, tables_repo, catalog, signals, table_discovery_settings_repo, now):
