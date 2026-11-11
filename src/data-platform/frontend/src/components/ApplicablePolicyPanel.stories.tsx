@@ -43,7 +43,7 @@ export const AttachedHere: Story = {
 };
 
 export const Inherited: Story = {
-  args: { scope: { type: "table", catalog: "iceberg", namespace: ["retail"], table: "orders", tableUuid: "uuid-orders" } },
+  args: { scope: { type: "table", catalog: "iceberg", namespace: ["retail"], table: "orders", tableUuid: "uuid-orders", recorded: true } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole("link", { name: "iceberg.retail" })).toBeVisible();

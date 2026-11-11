@@ -170,7 +170,8 @@ export const PolicyDryRun: Story = {
   },
 };
 
-export const PolicyCatalogNotCovered: Story = {
+// A table maintenance has no record of still shows the policy that applies, asked by its name.
+export const PolicyNotRecorded: Story = {
   args: { route: `${ORDERS}/policy` },
   beforeEach({ msw }) {
     msw.use(
@@ -179,9 +180,10 @@ export const PolicyCatalogNotCovered: Story = {
     );
   },
   play: async ({ canvasElement }) => {
-    await expect(
-      await within(canvasElement).findByText("this catalog is not covered by maintenance"),
-    ).toBeVisible();
+    const panel = within(await within(canvasElement).findByRole("region", { name: "Maintenance policy" }));
+    await expect(await panel.findByRole("link", { name: "retail-nightly v4" })).toBeVisible();
+    await expect(panel.getByRole("button", { name: "Attach policy" })).toBeVisible();
+    await expect(within(canvasElement).queryByText("this catalog is not covered by maintenance")).toBeNull();
   },
 };
 

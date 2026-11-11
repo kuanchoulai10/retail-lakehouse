@@ -143,3 +143,24 @@ def test_applicable_policy_for_a_namespace_and_a_catalog(world: PolicyWebWorld) 
     assert (namespace["name"], namespace["target"]["path"]) == ("default", ["prod", "sales"])
     catalog = world.client.get("/v1/applicable-policy", params={"catalog": "prod"}).json()
     assert (catalog["name"], catalog["target"]["type"]) == ("gold", "catalog")
+
+
+def test_applicable_policy_for_a_table_table_maintenance_has_no_record_of(world: PolicyWebWorld) -> None:
+    """GET /applicable-policy with a table resolves it through the catalog; its own attachment applies."""
+    world.catalog.add_table("prod", "sales.eu", "returns", "u-2")
+    params = {"catalog": "prod", "namespace": "sales.eu", "table": "returns"}
+    world.attach("default", "namespace", ["prod", "sales"])
+    inherited = world.client.get("/v1/applicable-policy", params=params).json()
+    assert (inherited["name"], inherited["target"]["type"]) == ("default", "namespace")
+    assert world.attach("gold", "table", ["prod", "sales", "eu", "returns"]).status_code == 200
+    own = world.client.get("/v1/applicable-policy", params=params).json()
+    assert (own["name"], own["target"]) == (
+        "gold",
+        {"type": "table", "path": ["prod", "sales", "eu", "returns"], "table_uuid": "u-2"},
+    )
+
+
+def test_applicable_policy_for_a_table_missing_from_the_catalog_is_404(world: PolicyWebWorld) -> None:
+    """A table the catalog does not hold answers 404."""
+    params = {"catalog": "prod", "namespace": "sales.eu", "table": "ghost"}
+    assert world.client.get("/v1/applicable-policy", params=params).status_code == 404

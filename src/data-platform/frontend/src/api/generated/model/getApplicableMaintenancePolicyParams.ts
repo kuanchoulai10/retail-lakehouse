@@ -8,4 +8,5 @@
 export type GetApplicableMaintenancePolicyParams = {
 catalog: string;
 namespace?: string | null;
+table?: string | null;
 };

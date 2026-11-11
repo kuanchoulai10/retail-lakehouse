@@ -8,10 +8,12 @@ import { bodyOf, callsTo, stubCatalogApi, type StubHandler } from "../test/catal
 import { jsonResponse, policyContentFixture, policyFixture } from "../test/fixtures";
 import { ApplicablePolicyPanel, type PolicyScope } from "./ApplicablePolicyPanel";
 
-const TABLE_SCOPE: PolicyScope = { type: "table", catalog: "iceberg", namespace: ["retail"], table: "orders", tableUuid: "uuid-orders" };
+const TABLE_SCOPE: PolicyScope = { type: "table", catalog: "iceberg", namespace: ["retail"], table: "orders", tableUuid: "uuid-orders", recorded: true };
+const UNRECORDED_TABLE_SCOPE: PolicyScope = { ...TABLE_SCOPE, recorded: false };
 const NAMESPACE_SCOPE: PolicyScope = { type: "namespace", catalog: "iceberg", namespace: ["retail", "eu"] };
 const TABLE_APPLICABLE = "GET /v1/tables/uuid-orders/applicable-policy";
 const NAMESPACE_APPLICABLE = "GET /v1/applicable-policy?catalog=iceberg&namespace=retail.eu";
+const UNRECORDED_TABLE_APPLICABLE = "GET /v1/applicable-policy?catalog=iceberg&namespace=retail&table=orders";
 
 function applicable(
   target: PolicyTargetApiResponse | null,
@@ -91,5 +93,23 @@ describe("ApplicablePolicyPanel", () => {
       target: { type: "namespace", path: ["iceberg", "retail", "eu"] },
     });
     await waitFor(() => expect(callsTo(calls, "GET", "/v1/applicable-policy?catalog=iceberg&namespace=retail.eu")).toHaveLength(2));
+  });
+
+  it("asks by name for a table maintenance has no record of, and detaches its own attachment by uuid", async () => {
+    const calls = stubApi({
+      [UNRECORDED_TABLE_APPLICABLE]: () =>
+        jsonResponse(applicable({ type: "table", path: ["iceberg", "retail", "orders"], table_uuid: "uuid-orders" })),
+      "DELETE /v1/maintenance-policies/nightly/mappings": () => new Response(null, { status: 204 }),
+    });
+    renderPanel(UNRECORDED_TABLE_SCOPE);
+    expect(await screen.findByText("Attached here")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Detach" }));
+    await waitFor(() =>
+      expect(callsTo(calls, "GET", "/v1/applicable-policy?catalog=iceberg&namespace=retail&table=orders")).toHaveLength(2),
+    );
+    expect(bodyOf(calls, "DELETE", "/v1/maintenance-policies/nightly/mappings")).toEqual({
+      target: { type: "table", path: ["iceberg", "retail", "orders"], table_uuid: "uuid-orders" },
+    });
+    expect(callsTo(calls, "GET", "/v1/tables/uuid-orders/applicable-policy")).toHaveLength(0);
   });
 });

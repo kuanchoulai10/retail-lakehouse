@@ -3812,7 +3812,7 @@
     },
     "/v1/applicable-policy": {
       "get": {
-        "description": "Return the policy that applies to a catalog, or to a dot-joined namespace in it.",
+        "description": "Return the policy that applies to a catalog, a dot-joined namespace in it, or a table in that namespace.\n\nA table is found in the catalog by name, so it need not be one table maintenance has a record of;\n404 when the catalog does not hold it.",
         "operationId": "get_applicable_maintenance_policy",
         "parameters": [
           {
@@ -3838,6 +3838,22 @@
                 }
               ],
               "title": "Namespace"
+            }
+          },
+          {
+            "in": "query",
+            "name": "table",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Table"
             }
           }
         ],

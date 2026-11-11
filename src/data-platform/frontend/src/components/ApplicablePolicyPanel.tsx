@@ -24,12 +24,15 @@ function attachedHere(scope: PolicyScope, target: PolicyTargetApiResponse | null
   return target.path.length === path.length && target.path.every((part, index) => part === path[index]);
 }
 
-// The table page asks by uuid, so the answer counts a table attachment; the catalog and
-// namespace pages ask by name, the namespace dot-joined as the API takes it.
+// A table maintenance has a record of is asked by uuid, the name it plans under; any other
+// target is asked by name, the namespace dot-joined as the API takes it. Either answer counts a
+// table attachment, since the API finds an unrecorded table's uuid in the catalog.
 function applicableQuery(scope: PolicyScope) {
-  if (scope.type === "table") return getGetTableApplicableMaintenancePolicyQueryOptions(scope.tableUuid);
+  if (scope.type === "table" && scope.recorded) return getGetTableApplicableMaintenancePolicyQueryOptions(scope.tableUuid);
+  if (scope.type === "catalog") return getGetApplicableMaintenancePolicyQueryOptions({ catalog: scope.catalog });
+  const namespace = scope.namespace.join(".");
   return getGetApplicableMaintenancePolicyQueryOptions(
-    scope.type === "catalog" ? { catalog: scope.catalog } : { catalog: scope.catalog, namespace: scope.namespace.join(".") },
+    scope.type === "table" ? { catalog: scope.catalog, namespace, table: scope.table } : { catalog: scope.catalog, namespace },
   );
 }
 

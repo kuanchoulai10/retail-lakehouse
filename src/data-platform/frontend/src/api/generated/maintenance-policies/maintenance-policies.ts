@@ -76,7 +76,10 @@ export const getGetApplicableMaintenancePolicyUrl = (params: GetApplicableMainte
 }
 
 /**
- * Return the policy that applies to a catalog, or to a dot-joined namespace in it.
+ * Return the policy that applies to a catalog, a dot-joined namespace in it, or a table in that namespace.
+ *
+ * A table is found in the catalog by name, so it need not be one table maintenance has a record of;
+ * 404 when the catalog does not hold it.
  * @summary Get Applicable Maintenance Policy
  */
 export const getApplicableMaintenancePolicy = async (params: GetApplicableMaintenancePolicyParams, options?: Parameters<typeof apiFetch>[1]): Promise<ApplicableTableMaintenancePolicyApiResponse> => {

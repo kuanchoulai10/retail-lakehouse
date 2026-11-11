@@ -59,11 +59,19 @@ function isNotFound(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404;
 }
 
-// The policy is read by the table's uuid, which only maintenance's record of the table answers.
-function PolicyTab({ table, tableUuid }: { table: CatalogTableApiResponse; tableUuid: string }) {
+// Every table has a policy: one maintenance has a record of is read by that record's uuid, any
+// other by its name in the catalog, so it can be attached before maintenance manages it.
+function PolicyTab({ table, record }: { table: CatalogTableApiResponse; record: TableApiResponse | undefined }) {
   return (
     <ApplicablePolicyPanel
-      scope={{ type: "table", catalog: table.catalog, namespace: table.namespace, table: table.name, tableUuid }}
+      scope={{
+        type: "table",
+        catalog: table.catalog,
+        namespace: table.namespace,
+        table: table.name,
+        tableUuid: record?.uuid ?? table.uuid,
+        recorded: record !== undefined,
+      }}
     />
   );
 }
@@ -72,7 +80,7 @@ function tabBody(
   tab: TabKey,
   table: CatalogTableApiResponse,
   maintenance: TableMaintenanceState,
-  record: TableApiResponse | undefined,
+  record: { data: TableApiResponse | undefined; isPending: boolean },
 ) {
   switch (tab) {
     case "overview":
@@ -90,12 +98,8 @@ function tabBody(
         <MaintenanceGate state={maintenance}>{(managed) => <ReconciliationsTab tableUuid={managed.uuid} />}</MaintenanceGate>
       );
     case "policy":
-      // Every table maintenance has a record of has a policy, managed or not; the rest say why not.
-      return record === undefined ? (
-        <MaintenanceGate state={maintenance}>{(managed) => <PolicyTab table={table} tableUuid={managed.uuid} />}</MaintenanceGate>
-      ) : (
-        <PolicyTab table={table} tableUuid={record.uuid} />
-      );
+      // Wait for maintenance's answer, so the panel asks once and the right way.
+      return record.isPending ? <PanelSkeleton label="Loading policy…" /> : <PolicyTab table={table} record={record.data} />;
   }
 }
 
@@ -184,7 +188,7 @@ function TableView({ catalog, parts, name, segment }: TableViewProps) {
         </TabList>
         {TABS.map((t) => (
           <TabPanel key={t.key} value={t.key} forceMount className="data-[state=inactive]:hidden">
-            {t.key === tab ? <div className="type-body-medium">{tabBody(tab, table.data, maintenance, maintenanceTable.data)}</div> : null}
+            {t.key === tab ? <div className="type-body-medium">{tabBody(tab, table.data, maintenance, maintenanceTable)}</div> : null}
           </TabPanel>
         ))}
       </Tabs>

@@ -101,11 +101,15 @@ def get_table_applicable_maintenance_policy(
 
 @router.get("/applicable-policy")
 def get_applicable_maintenance_policy(
-    catalog: str, use_cases: UseCases, namespace: str | None = None
+    catalog: str, use_cases: UseCases, namespace: str | None = None, table: str | None = None
 ) -> ApplicableTableMaintenancePolicyApiResponse:
-    """Return the policy that applies to a catalog, or to a dot-joined namespace in it."""
+    """Return the policy that applies to a catalog, a dot-joined namespace in it, or a table in that namespace.
+
+    A table is found in the catalog by name, so it need not be one table maintenance has a record of;
+    404 when the catalog does not hold it.
+    """
     output = use_cases.resolve_applicable_table_maintenance_policy.execute(
-        ResolveApplicableTableMaintenancePolicyUseCaseInput(catalog=catalog, namespace=namespace)
+        ResolveApplicableTableMaintenancePolicyUseCaseInput(catalog=catalog, namespace=namespace, table=table)
     )
     return _applicable_response(output)
 

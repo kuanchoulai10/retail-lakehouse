@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { describe, expect, it, vi } from "vitest";
@@ -13,7 +13,7 @@ import {
   stubCatalogApi,
   type StubHandler,
 } from "../test/catalogApiStub";
-import { jsonResponse, policyContentFixture, tableFixture } from "../test/fixtures";
+import { jsonResponse, policyContentFixture, policyFixture, tableFixture } from "../test/fixtures";
 import { settle, SuspendForever } from "../test/SuspendForever";
 import { TablePage } from "./TablePage";
 
@@ -149,10 +149,36 @@ describe("TablePage", { timeout: 15_000 }, () => {
     expect(header.getByText((_, el) => el?.tagName === "SPAN" && el.textContent === "Policy: scratch v2")).toBeInTheDocument();
   });
 
-  it("policy tab shows why there is none when maintenance has no record of the table", async () => {
-    stubTable({ covered: ["other"] });
+  it("policy tab asks by name for a table maintenance has no record of, and attaches to it", async () => {
+    const byName = "/v1/applicable-policy?catalog=iceberg&namespace=retail&table=orders";
+    const calls = stubTable({
+      covered: ["other"],
+      maintenanceTable: () => jsonResponse({ detail: "table uuid-orders not found" }, 404),
+      extra: {
+        [`GET ${byName}`]: () => jsonResponse({ ...policyContentFixture(), name: "default", version: 1, target: null }),
+        "GET /v1/maintenance-policies": () =>
+          jsonResponse({ policies: [policyFixture({ name: "default" }), policyFixture({ name: "scratch" })] }),
+        "PUT /v1/maintenance-policies/scratch/mappings": () =>
+          jsonResponse({
+            policy_name: "scratch",
+            target: { type: "table", path: ["iceberg", "retail", "orders"], table_uuid: "uuid-orders" },
+            attached_at: "2026-11-12T09:00:00Z",
+          }),
+      },
+    });
     renderAt(`${PAGE}/policy`);
-    expect(await screen.findByText("this catalog is not covered by maintenance")).toBeInTheDocument();
+    expect(await screen.findByText("Platform default")).toBeInTheDocument();
+    expect(screen.queryByText("this catalog is not covered by maintenance")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Attach policy" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("combobox", { name: "Policy" }));
+    await userEvent.click(await screen.findByRole("option", { name: "scratch" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Attach" }));
+    await waitFor(() => expect(callsTo(calls, "GET", byName)).toHaveLength(2));
+    expect(bodyOf(calls, "PUT", "/v1/maintenance-policies/scratch/mappings")).toEqual({
+      target: { type: "table", path: ["iceberg", "retail", "orders"] },
+    });
+    expect(callsTo(calls, "GET", "/v1/tables/uuid-orders/applicable-policy")).toHaveLength(0);
   });
 
   it("never asks maintenance about a catalog it does not cover for the commits tab", async () => {
