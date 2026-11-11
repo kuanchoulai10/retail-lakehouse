@@ -13,6 +13,7 @@ from context.table_maintenance.application.exceptions import (
     NotFoundError,
     ValidationError,
 )
+from context.table_maintenance.application.port.outbound.table import CatalogNotFoundError
 
 if TYPE_CHECKING:
     import threading
@@ -45,7 +46,7 @@ def _execute_with_retry(
     for attempt in range(1, max_attempts + 1):
         try:
             use_case.execute(hint)
-        except (ValidationError, NotFoundError) as exc:
+        except (ValidationError, NotFoundError, CatalogNotFoundError) as exc:
             logger.warning("Dropping table hint %s without retry: %s", hint, exc)
             return
         except Exception:
