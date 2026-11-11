@@ -12,4 +12,6 @@ class TableHintAction(StrEnum):
     SIGNALLED = "signalled"
     RENAMED = "renamed"
     REGISTERED = "registered"
+    MANAGED = "managed"
+    UNMANAGED = "unmanaged"
     IGNORED = "ignored"

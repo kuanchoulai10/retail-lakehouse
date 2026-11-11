@@ -11,7 +11,6 @@ import pytest
 from base import validated_copy
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
-    MaintenanceSettings,
 )
 from context.table_maintenance.application.domain.model.table import (
     Table,
@@ -29,9 +28,6 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     RewriteDataFilesConditions,
     RewriteDataFilesExecutionPolicy,
     RewriteDataFilesTriggerPolicy,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-    TableMaintenancePresetId,
 )
 from context.table_maintenance.application.exceptions import ValidationError
 from context.table_maintenance.application.port.inbound.table import (
@@ -75,14 +71,7 @@ DEFAULT = MaintenancePolicyContent.platform_default()
 
 
 def _table(repo, now, uuid="u-1", name=NAME):
-    table = Table.register_auto(
-        TableId(uuid),
-        name,
-        TableDiscoveryRuleId("r-1"),
-        TableMaintenancePresetId("t-1"),
-        MaintenanceSettings(),
-        now,
-    )
+    table = Table.register(TableId(uuid), name, TableDiscoveryRuleId("r-1"), now)
     repo.create(table)
     return table
 
@@ -168,16 +157,13 @@ def test_plan_skip_reasons(planner, tables_repo, catalog, now):
     assert _plan(planner, now, uuid="missing").reason == "dropped"
     dropped = _table(tables_repo, now, uuid="u-d", name=TableName(catalog="c", namespace="n", table="d"))
     dropped.mark_dropped(now)
-    excluded = Table.exclude_manual(TableId("u-e"), TableName(catalog="c", namespace="n", table="e"), now)
-    tables_repo.create(excluded)
-    paused = _table(tables_repo, now, uuid="u-p", name=TableName(catalog="c", namespace="n", table="p"))
-    paused.pause(now)
+    unmanaged = _table(tables_repo, now, uuid="u-u", name=TableName(catalog="c", namespace="n", table="u"))
+    unmanaged.unmanage(now)
     gone = _table(tables_repo, now)
-    results = {uuid: _plan(planner, now, uuid=uuid) for uuid in ("u-d", "u-e", "u-p", gone.id.value)}
+    results = {uuid: _plan(planner, now, uuid=uuid) for uuid in ("u-d", "u-u", gone.id.value)}
     assert {k: (v.status, v.reason) for k, v in results.items()} == {
         "u-d": ("skip", "dropped"),
-        "u-e": ("skip", "excluded"),
-        "u-p": ("skip", "paused"),
+        "u-u": ("skip", "unmanaged"),
         "u-1": ("skip", "not_found"),
     }
     assert all(v.operations == [] for v in results.values())
@@ -193,9 +179,9 @@ def test_plan_carries_the_fully_qualified_table_name(planner, tables_repo, catal
 
 def test_plan_skip_carries_the_table_name_when_the_table_is_known(planner, tables_repo, catalog, now):
     """A skipped plan carries the table name when the table is known and None otherwise."""
-    paused = _table(tables_repo, now, uuid="u-p", name=TableName(catalog="c", namespace="n", table="p"))
-    paused.pause(now)
-    assert _plan(planner, now, uuid="u-p").table_name == "c.n.p"
+    unmanaged = _table(tables_repo, now, uuid="u-u", name=TableName(catalog="c", namespace="n", table="u"))
+    unmanaged.unmanage(now)
+    assert _plan(planner, now, uuid="u-u").table_name == "c.n.u"
     assert _plan(planner, now, uuid="missing").table_name is None
 
 
@@ -396,10 +382,10 @@ def test_plan_without_attachment_names_the_default_policy(planner, tables_repo, 
 def test_skipped_plan_names_the_policy_for_its_interval(planner, tables_repo, policies, now):
     """A skipped plan of a known table takes its interval from the applicable policy."""
     _use_policy(policies, now, validated_copy(DEFAULT, reconcile_interval=timedelta(minutes=2)))
-    _table(tables_repo, now).pause(now)
+    _table(tables_repo, now).unmanage(now)
     plan = _plan(planner, now)
     assert (plan.reason, plan.reconcile_interval_seconds, plan.policy_name, plan.policy_version) == (
-        "paused",
+        "unmanaged",
         120,
         DEFAULT_POLICY_NAME,
         2,
@@ -482,11 +468,11 @@ def test_missing_table_is_not_found_in_maintenance(planner, now):
     )
 
 
-def test_paused_table_skips_with_table_found(planner, tables_repo, now):
-    """A paused table is skipped but the table is found."""
-    _table(tables_repo, now).pause(now)
+def test_unmanaged_table_skips_with_table_found(planner, tables_repo, now):
+    """An unmanaged table is skipped but the table is found."""
+    _table(tables_repo, now).unmanage(now)
     plan = _plan(planner, now)
-    assert (plan.status, plan.reason, plan.table_found, plan.checks) == ("skip", "paused", True, [])
+    assert (plan.status, plan.reason, plan.table_found, plan.checks) == ("skip", "unmanaged", True, [])
 
 
 def _record(plan, now, **overrides):

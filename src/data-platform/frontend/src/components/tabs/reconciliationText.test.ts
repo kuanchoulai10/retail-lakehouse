@@ -68,7 +68,7 @@ describe("headline", () => {
   });
 
   it("names the skip reason", () => {
-    expect(headline(record({ outcome: "skipped", skip_reason: "paused" }))).toBe("Skipped: table paused");
+    expect(headline(record({ outcome: "skipped", skip_reason: "unmanaged" }))).toBe("Skipped: table unmanaged");
     expect(headline(record({ outcome: "skipped", skip_reason: "not_found" }))).toBe("Skipped: table not found");
   });
 
@@ -89,14 +89,14 @@ describe("wakeText", () => {
   });
 
   it("breaks ties in the order the reasons are defined", () => {
-    expect(wakeText(record({ wake_reasons: { previous_run_finished: 1, settings_changed: 1, schedule: 1 } }))).toBe(
-      "Schedule, Settings changed, Previous run finished",
+    expect(wakeText(record({ wake_reasons: { previous_run_finished: 1, policy_changed: 1, schedule: 1 } }))).toBe(
+      "Schedule, Policy changed, Previous run finished",
     );
   });
 
   it("names a discovery scan and ranks it right after a catalog commit", () => {
-    expect(wakeText(record({ wake_reasons: { settings_changed: 1, discovery_scan: 1, catalog_commit: 1 } }))).toBe(
-      "Catalog commit, Discovery scan, Settings changed",
+    expect(wakeText(record({ wake_reasons: { policy_changed: 1, discovery_scan: 1, catalog_commit: 1 } }))).toBe(
+      "Catalog commit, Discovery scan, Policy changed",
     );
   });
 });
@@ -252,8 +252,8 @@ describe("foldText", () => {
 
   it("names a stretch of skips by the skip reason", () => {
     const records = [4, 3, 2].map((hour) =>
-      record({ reconciled_at: local(hour), outcome: "skipped", skip_reason: "paused", wake_reasons: { schedule: 1 } }),
+      record({ reconciled_at: local(hour), outcome: "skipped", skip_reason: "not_found", wake_reasons: { schedule: 1 } }),
     );
-    expect(foldText(records)).toBe("3 reconciliations skipped: table paused, 02:42–04:42");
+    expect(foldText(records)).toBe("3 reconciliations skipped: table not found, 02:42–04:42");
   });
 });

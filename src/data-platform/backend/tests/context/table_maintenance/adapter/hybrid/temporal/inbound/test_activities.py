@@ -304,6 +304,8 @@ def test_sync_passes_catalog_and_namespace():
         "dropped": 3,
         "skipped": 4,
         "ensured": 0,
+        "managed": 0,
+        "unmanaged": 0,
     }
     activities.sync_discovered_tables({"catalog": "iceberg"})
     assert sync.requests[1].namespace is None

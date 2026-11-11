@@ -1,10 +1,9 @@
-import { Badge, Banner, Button } from "@retail-lakehouse/design-system";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Banner, Button } from "@retail-lakehouse/design-system";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import type { CatalogTableApiResponse, TableApiResponse } from "@/api/generated/model";
 import { getListTableReconciliationsQueryKey } from "@/api/generated/table-reconciliations/table-reconciliations";
-import { pauseTable, resumeTable, useTriggerTableReconciliation } from "@/api/generated/tables/tables";
-import { invalidateTableState } from "@/api/invalidateTableState";
+import { useTriggerTableReconciliation } from "@/api/generated/tables/tables";
 import type { ActionItem } from "@/components/ActionsMenu";
 import { PageHeader } from "@/components/PageHeader";
 import { RunMaintenanceDialog } from "@/components/RunMaintenanceDialog";
@@ -21,7 +20,7 @@ interface Props {
   menuItems: ActionItem[];
 }
 
-const DISABLED_REASON = "Only an active table can run maintenance";
+const DISABLED_REASON = "Only a managed table can run maintenance";
 
 // The workflow writes its record after the 202, so the first refetch is usually early.
 const RECONCILE_REFRESH_DELAY_MS = 3000;
@@ -32,29 +31,17 @@ function averageFileSize(table: CatalogTableApiResponse): string {
   return `avg ${formatBytes(bytes / files)} / file`;
 }
 
-// The table's own settings are the ones that apply: a preset's settings are copied onto the table.
-function isDryRun(managed: TableApiResponse | null): boolean {
-  return managed?.settings?.dry_run === true;
-}
-
-// Numbers come from the catalog; Pause/Resume, Run maintenance and Reconcile now only when
-// maintenance manages it.
+// Numbers come from the catalog; Run maintenance and Reconcile now only when maintenance manages
+// it. The discovery rules alone decide whether it does, so there is no pause or include here.
 // The maintenance actions live here, not in a child, so the phone overflow menu opens the same
-// dialog and runs the same toggle as the buttons.
+// dialog as the buttons.
 export function TableHeader({ table, managed, menuItems }: Props) {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [openCount, setOpenCount] = useState(0);
-  const status = managed?.status.toLowerCase();
-  const paused = status === "paused";
-  const active = status === "active";
-  const toggle = useMutation({
-    mutationFn: (uuid: string) => (paused ? resumeTable(uuid) : pauseTable(uuid)),
-    onSuccess: (_result, uuid) => invalidateTableState(queryClient, uuid),
-  });
+  const active = managed?.status.toLowerCase() === "managed";
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(refreshTimer.current), []);
-  // A paused table is still reconciled: the record says it was skipped because it is paused.
   const reconcile = useTriggerTableReconciliation({
     mutation: {
       onSuccess: (_result, { tableUuid }) => {
@@ -76,7 +63,6 @@ export function TableHeader({ table, managed, menuItems }: Props) {
 
   const snapshot = currentSnapshot(table);
   const size = table.summary.total_files_size;
-  const toggleLabel = paused ? "Resume" : "Pause";
   const maintenanceItems: ActionItem[] =
     managed === null
       ? []
@@ -92,7 +78,6 @@ export function TableHeader({ table, managed, menuItems }: Props) {
             onSelect: () => reconcile.mutate({ tableUuid: managed.uuid }),
             disabled: reconcile.isPending,
           },
-          { label: toggleLabel, onSelect: () => toggle.mutate(managed.uuid), disabled: toggle.isPending },
         ];
 
   return (
@@ -125,14 +110,6 @@ export function TableHeader({ table, managed, menuItems }: Props) {
               >
                 Reconcile now
               </Button>
-              <Button
-                type="button"
-                styleType="outlined"
-                disabled={toggle.isPending}
-                onClick={() => toggle.mutate(managed.uuid)}
-              >
-                {toggleLabel}
-              </Button>
             </>
           )
         }
@@ -142,8 +119,6 @@ export function TableHeader({ table, managed, menuItems }: Props) {
         {managed !== null && (
           <>
             <StatusBadge status={managed.status} />
-            {isDryRun(managed) && <Badge>Dry run</Badge>}
-            <span>Preset: {managed.source_preset_id ?? "—"}</span>
             <span>Rule: {managed.matched_rule_id ?? "—"}</span>
           </>
         )}
@@ -157,13 +132,6 @@ export function TableHeader({ table, managed, menuItems }: Props) {
           {formatRelativeTime(snapshot === undefined ? null : new Date(snapshot.timestamp_ms).toISOString())}
         </span>
       </PageHeader>
-      {toggle.isError && (
-        <Banner
-          type="negative"
-          title={`Could not change the table: ${errorMessage(toggle.error)}`}
-          className="mb-4"
-        />
-      )}
       {reconcile.isSuccess && (
         <Banner type="information" title="Reconciliation requested." className="mb-4" />
       )}

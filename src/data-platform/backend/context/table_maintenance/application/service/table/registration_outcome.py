@@ -10,4 +10,3 @@ class RegistrationOutcome(StrEnum):
 
     REGISTERED = "registered"
     NOT_SELECTED = "not_selected"
-    SKIPPED = "skipped"

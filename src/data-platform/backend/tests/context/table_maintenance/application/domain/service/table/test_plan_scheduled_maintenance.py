@@ -8,7 +8,6 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation as Op,
 )
 from context.table_maintenance.application.domain.model.shared import (
-    MaintenanceSettings,
     ManifestStats,
     PartitionFieldInfo,
     PartitionSpecInfo,
@@ -34,9 +33,6 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     RewriteManifestsTriggerPolicy,
     SmallManifestsCondition,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-    TableMaintenancePresetId,
-)
 from context.table_maintenance.application.domain.service.table import (
     plan_scheduled_maintenance,
 )
@@ -54,13 +50,11 @@ NO_SPEC = PartitionSpecInfo(spec_id=1, fields=())
 
 
 def table() -> Table:
-    """Build an active auto table."""
-    return Table.register_auto(
+    """Build a managed table."""
+    return Table.register(
         TableId("u"),
         TableName(catalog="c", namespace="n", table="t"),
         TableDiscoveryRuleId("r"),
-        TableMaintenancePresetId("t"),
-        MaintenanceSettings(),
         NOW - timedelta(days=30),
     )
 
@@ -304,14 +298,12 @@ def test_plan_order_is_canonical():
     assert ops(plan_scheduled_maintenance(table(), DEFAULT, o, NOW)) == list(Op.ordered())
 
 
-def test_paused_excluded_or_settingless_table_yields_empty_plan():
-    """A paused, excluded or dropped table gets an empty plan."""
+def test_unmanaged_or_dropped_table_yields_empty_plan():
+    """An unmanaged or dropped table gets an empty plan."""
     o = obs(partitions=(part(10),))
-    paused = table()
-    paused.pause(NOW)
-    assert plan_scheduled_maintenance(paused, DEFAULT, o, NOW).is_empty
-    excluded = Table.exclude_manual(TableId("u"), TableName(catalog="c", namespace="n", table="t"), NOW)
-    assert plan_scheduled_maintenance(excluded, DEFAULT, o, NOW).is_empty
+    unmanaged = table()
+    unmanaged.unmanage(NOW)
+    assert plan_scheduled_maintenance(unmanaged, DEFAULT, o, NOW).is_empty
     dropped = table()
     dropped.mark_dropped(NOW)
     assert plan_scheduled_maintenance(dropped, DEFAULT, o, NOW).is_empty

@@ -32,7 +32,7 @@ function lineText(line: TableHealthOperationApiResponse, scheduled: boolean): st
         ? "in cooldown"
         : `in cooldown until ${formatTimestamp(line.next_eligible_at)}`;
     case "due":
-      return scheduled ? measurement(line) : `${measurement(line)} (would be due when resumed)`;
+      return scheduled ? measurement(line) : `${measurement(line)} (would be due if managed)`;
     case "not_due":
       return line.measured === null ? measurement(line) : `${measurement(line)} (not due)`;
     default:

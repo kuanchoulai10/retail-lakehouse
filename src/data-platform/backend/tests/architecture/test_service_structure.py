@@ -39,6 +39,8 @@ UTILITY_FILES = {
     "table_observation_from_gateway.py",
     "register_discovered_table.py",
     "registration_outcome.py",
+    "apply_discovery_to_known_table.py",
+    "known_table_outcome.py",
     "table_hint_action.py",
     "load_catalog_table.py",
     "raise_not_in_catalog.py",

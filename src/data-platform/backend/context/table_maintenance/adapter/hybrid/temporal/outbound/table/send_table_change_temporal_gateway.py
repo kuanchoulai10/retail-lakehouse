@@ -35,9 +35,7 @@ _MAINTENANCE_REQUESTED = "maintenance_requested"
 
 _SIGNAL_BY_CHANGE = {
     "updated": TableReconciliationSignal.TABLE_UPDATED,
-    "settings_changed": TableReconciliationSignal.SETTINGS_CHANGED,
-    "paused": TableReconciliationSignal.PAUSE,
-    "resumed": TableReconciliationSignal.RESUME,
+    "policy_changed": TableReconciliationSignal.POLICY_CHANGED,
     "stopped": TableReconciliationSignal.STOP,
     _MAINTENANCE_REQUESTED: TableReconciliationSignal.TRIGGER_NOW,
     "reconcile_requested": TableReconciliationSignal.RECONCILE_NOW,
@@ -48,9 +46,9 @@ _SIGNAL_BY_CHANGE = {
 class SendTableChangeTemporalGateway(SendTableChangeGateway):
     """Signal a table's reconciliation workflow through Temporal.
 
-    Each change maps to one workflow signal. An enrolled table uses
+    Each change maps to one workflow signal. A managed table uses
     signal-with-start, so its workflow is started when it is missing; for a
-    table that is not enrolled the signal only reaches a running workflow.
+    table that is not managed the signal only reaches a running workflow.
     """
 
     def __init__(self, client: Client, bridge: AsyncLoopBridge) -> None:
@@ -59,7 +57,7 @@ class SendTableChangeTemporalGateway(SendTableChangeGateway):
         self._bridge = bridge
 
     def send(self, input: SendTableChangeGatewayInput) -> None:  # noqa: A002
-        """Signal the workflow, starting it first when the table is enrolled."""
+        """Signal the workflow, starting it first when the table is managed."""
         try:
             signal = _SIGNAL_BY_CHANGE[input.change]
         except KeyError:
@@ -77,7 +75,7 @@ class SendTableChangeTemporalGateway(SendTableChangeGateway):
         payload: dict[str, Any],
     ) -> None:
         workflow_id = table_reconciliation_workflow_id(input.table_uuid)
-        if input.is_enrolled:
+        if input.is_managed:
             await self._client.start_workflow(
                 TABLE_RECONCILIATION_WORKFLOW,
                 TableReconciliationWorkflowInput(table_uuid=input.table_uuid),

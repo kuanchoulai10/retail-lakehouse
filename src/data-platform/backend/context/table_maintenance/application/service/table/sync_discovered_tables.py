@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from context.table_maintenance.application.domain.model.table import (
     TableChange,
     TableId,
+    TableManagementChange,
     TableName,
     TableStatus,
 )
@@ -26,6 +27,9 @@ from context.table_maintenance.application.port.outbound.table import (
     SendTableChangeGatewayInput,
 )
 from context.table_maintenance.application.service.shared import translate_domain_errors
+from context.table_maintenance.application.service.table.apply_discovery_to_known_table import (
+    apply_discovery_to_known_table,
+)
 from context.table_maintenance.application.service.table.register_discovered_table import (
     register_discovered_table,
 )
@@ -36,7 +40,6 @@ from context.table_maintenance.application.service.table.registration_outcome im
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
-    from context.table_maintenance.application.domain.model.table import Table
     from context.table_maintenance.application.domain.model.table_discovery_rule import (
         TableDiscoveryRule,
     )
@@ -52,24 +55,20 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table_discovery_settings import (
         TableDiscoverySettingsRepo,
     )
-    from context.table_maintenance.application.port.outbound.table_maintenance_preset import (
-        TableMaintenancePresetsRepo,
+    from context.table_maintenance.application.service.table.known_table_outcome import (
+        KnownTableOutcome,
     )
 
-_REGISTERED = "registered"
-_RENAMED = "renamed"
-_SKIPPED = "skipped"
-_DROP_SCAN_STATUSES = (TableStatus.ACTIVE, TableStatus.PAUSED, TableStatus.EXCLUDED)
+_DROP_SCAN_STATUSES = (TableStatus.MANAGED, TableStatus.UNMANAGED)
 
 
 class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
-    """Make the registry match the tables currently in the catalog."""
+    """Make the registry match the tables currently in the catalog and the discovery rules."""
 
     def __init__(  # noqa: PLR0913
         self,
         tables_repo: TablesRepo,
         rules_repo: TableDiscoveryRulesRepo,
-        presets_repo: TableMaintenancePresetsRepo,
         table_discovery_settings_repo: TableDiscoverySettingsRepo,
         catalog_gateway: ReadTableMetadataGateway,
         table_change_gateway: SendTableChangeGateway,
@@ -79,29 +78,34 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         """Bind the repos, the gateways and the clock."""
         self._tables_repo = tables_repo
         self._rules_repo = rules_repo
-        self._presets_repo = presets_repo
         self._table_discovery_settings_repo = table_discovery_settings_repo
         self._catalog_gateway = catalog_gateway
         self._table_change_gateway = table_change_gateway
         self._clock = clock
 
     def execute(self, request: SyncDiscoveredTablesUseCaseInput) -> SyncDiscoveredTablesUseCaseOutput:
-        """Register, rename and drop tables within the catalog or namespace scope.
+        """Register, rename, decide and drop tables within the catalog or namespace scope.
 
-        New tables are registered only while discovery is enabled; renames always run.
-        Only a catalog-wide sync (no namespace) marks missing tables dropped, since
-        a namespace scan cannot tell a drop from a move. Known tables are never
-        re-decided, and a table that fails is counted in ``skipped``. A
-        catalog-wide sync also signal-with-starts the reconciliation workflow of every
-        known live table that needs one (counted in ``ensured``), so a table whose
-        workflow was never started, or was lost, is picked up again.
+        Every table listed is decided by the discovery rules: an unknown one the
+        rules manage is registered as managed, a known one is managed or unmanaged
+        as the rules now say (counted in ``managed`` / ``unmanaged``). While
+        discovery is switched off nothing is registered or decided, and renames
+        still run. Only a catalog-wide sync (no namespace) marks missing tables
+        dropped, since a namespace scan cannot tell a drop from a move, and a
+        table it does not list is never decided. A table that fails is counted in
+        ``skipped``. A catalog-wide sync also signal-with-starts the
+        reconciliation workflow of every known managed table (counted in
+        ``ensured``), so a table whose workflow was never started, or was lost,
+        is picked up again.
         """
         now = self._clock()
         enabled = self._table_discovery_settings_repo.get_settings().enabled
-        rules = self._rules_repo.list_all() if enabled else []
+        rules = self._rules_repo.list_all() if enabled else None
+        seen_change = TableChange.SEEN if request.namespace is None else None
         refs = self._catalog_gateway.list_tables(ReadTableMetadataGatewayListInput(request.catalog, request.namespace))
         seen: set[str] = set()
-        registered = renamed = skipped = ensured = 0
+        known: list[KnownTableOutcome] = []
+        registered = skipped = 0
         for ref in refs:
             found = self._catalog_gateway.load_table(ref)
             if found is None:
@@ -109,69 +113,49 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
             seen.add(found.table_uuid)
             try:
                 with translate_domain_errors():
-                    outcome, existing = self._sync_table(found, enabled, rules, now)
+                    outcome = self._sync_table(found, rules, seen_change, now)
             except ConflictError, ValidationError, NotFoundError:
                 skipped += 1
                 continue
-            registered += outcome == _REGISTERED
-            renamed += outcome == _RENAMED
-            skipped += outcome == _SKIPPED
-            if request.namespace is None and existing is not None:
-                ensured += self._ensure_enrolled(existing)
+            if isinstance(outcome, RegistrationOutcome):
+                registered += outcome == RegistrationOutcome.REGISTERED
+            elif outcome is not None:
+                known.append(outcome)
         dropped = 0
         if request.namespace is None:
             with translate_domain_errors():
                 dropped = self._drop_missing(request, seen, now)
         return SyncDiscoveredTablesUseCaseOutput(
             registered=registered,
-            renamed=renamed,
+            renamed=sum(o.renamed for o in known),
             dropped=dropped,
             skipped=skipped,
-            ensured=ensured,
+            ensured=sum(o.signalled for o in known),
+            managed=sum(o.change == TableManagementChange.MANAGED for o in known),
+            unmanaged=sum(o.change == TableManagementChange.UNMANAGED for o in known),
         )
 
     def _sync_table(
         self,
         found: TableMetadata,
-        enabled: bool,
-        rules: Sequence[TableDiscoveryRule],
+        rules: Sequence[TableDiscoveryRule] | None,
+        seen_change: TableChange | None,
         now: datetime,
-    ) -> tuple[str, Table | None]:
+    ) -> RegistrationOutcome | KnownTableOutcome | None:
+        """Register an unknown table, or apply the discovery to a known live one; None for neither."""
         existing = self._tables_repo.get(TableId(found.table_uuid))
         if existing is None:
-            if not enabled:
-                return "", None
-            outcome = register_discovered_table(
-                found,
-                rules,
-                self._tables_repo,
-                self._presets_repo,
-                self._table_change_gateway,
-                now,
+            if rules is None:
+                return None
+            return register_discovered_table(
+                found, rules, self._tables_repo, self._table_change_gateway, TableChange.SEEN, now
             )
-            if outcome == RegistrationOutcome.REGISTERED:
-                return _REGISTERED, None
-            return (_SKIPPED if outcome == RegistrationOutcome.SKIPPED else ""), None
+        if existing.status == TableStatus.DROPPED:
+            return None
         name = TableName(catalog=found.catalog, namespace=found.namespace, table=found.table)
-        if existing.status != TableStatus.DROPPED and existing.name != name:
-            existing.rename(name, now)
-            self._tables_repo.update(existing)
-            return _RENAMED, existing
-        return "", existing
-
-    def _ensure_enrolled(self, table: Table) -> bool:
-        """Tell the runtime an enrolled table was seen, so it is kept under maintenance."""
-        if not table.is_enrolled:
-            return False
-        self._table_change_gateway.send(
-            SendTableChangeGatewayInput(
-                table_uuid=table.id.value,
-                table_name=table.name.fully_qualified(),
-                change=TableChange.SEEN.value,
-                is_enrolled=table.is_enrolled,
-            )
+        return apply_discovery_to_known_table(
+            existing, name, rules, self._tables_repo, self._table_change_gateway, seen_change, now
         )
-        return True
 
     def _drop_missing(
         self,
@@ -183,17 +167,17 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         for table in self._tables_repo.list_by_statuses(_DROP_SCAN_STATUSES):
             if table.id.value in seen or not _in_scope(table.name, request):
                 continue
-            was_enrolled = table.is_enrolled
+            was_managed = table.is_managed
             table.mark_dropped(now)
             self._tables_repo.update(table)
             dropped += 1
-            if was_enrolled:
+            if was_managed:
                 self._table_change_gateway.send(
                     SendTableChangeGatewayInput(
                         table_uuid=table.id.value,
                         table_name=table.name.fully_qualified(),
                         change=TableChange.STOPPED.value,
-                        is_enrolled=table.is_enrolled,
+                        is_managed=table.is_managed,
                     )
                 )
         return dropped

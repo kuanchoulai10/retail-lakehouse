@@ -27,10 +27,10 @@ describe("MaintenanceEmptyState", () => {
     );
   });
 
-  it("explains a table excluded by hand", () => {
-    renderReason("excluded");
-    expect(screen.getByText("excluded from maintenance by hand")).toBeInTheDocument();
-    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  it("explains a table the discovery rules no longer include and links to them", () => {
+    renderReason("unmanaged");
+    expect(screen.getByText("the discovery rules no longer include this table")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Discovery rules" })).toHaveAttribute("href", "/discovery-rules");
   });
 
   it("explains a table recorded as dropped", () => {

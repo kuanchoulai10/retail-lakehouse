@@ -7,10 +7,16 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class SyncDiscoveredTablesUseCaseOutput:
-    """Carry the result of the request to synchronise the registry with the tables found in the catalog."""
+    """Carry the result of the request to synchronise the registry with the tables found in the catalog.
+
+    ``managed`` counts known tables the rules managed again, ``unmanaged`` known
+    tables they stopped managing.
+    """
 
     registered: int
     renamed: int
     dropped: int
     skipped: int
     ensured: int = 0
+    managed: int = 0
+    unmanaged: int = 0

@@ -8,7 +8,6 @@ import pytest
 
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
-    MaintenanceSettings,
 )
 from context.table_maintenance.application.domain.model.table import (
     Table,
@@ -17,9 +16,6 @@ from context.table_maintenance.application.domain.model.table import (
 )
 from context.table_maintenance.application.domain.model.table_discovery_rule import (
     TableDiscoveryRuleId,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-    TableMaintenancePresetId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRun,
@@ -61,14 +57,7 @@ OPS = MaintenanceOperation
 
 
 def _table(repo, now, settings=None, uuid="u-1", name=NAME):
-    table = Table.register_auto(
-        TableId(uuid),
-        name,
-        TableDiscoveryRuleId("r-1"),
-        TableMaintenancePresetId("t-1"),
-        settings or MaintenanceSettings(),
-        now,
-    )
+    table = Table.register(TableId(uuid), name, TableDiscoveryRuleId("r-1"), now)
     repo.create(table)
     return table
 

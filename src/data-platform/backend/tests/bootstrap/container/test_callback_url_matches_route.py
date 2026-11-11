@@ -6,7 +6,6 @@ from urllib.parse import urlsplit
 
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
-    MaintenanceSettings,
 )
 from context.table_maintenance.application.domain.model.table import (
     Table,
@@ -15,9 +14,6 @@ from context.table_maintenance.application.domain.model.table import (
 )
 from context.table_maintenance.application.domain.model.table_discovery_rule import (
     TableDiscoveryRuleId,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-    TableMaintenancePresetId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRun,
@@ -50,12 +46,10 @@ from tests.context.table_maintenance.fakes.recording_submit_maintenance_job_gate
 def _submitted_callback_url() -> str:
     tables = InMemoryTablesRepo()
     tables.create(
-        Table.register_auto(
+        Table.register(
             TableId("u-1"),
             TableName(catalog="iceberg", namespace="sales", table="orders"),
             TableDiscoveryRuleId("r-1"),
-            TableMaintenancePresetId("p-1"),
-            MaintenanceSettings(),
             NOW,
         )
     )

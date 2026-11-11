@@ -2,15 +2,6 @@
 
 from __future__ import annotations
 
-from context.table_maintenance.application.port.inbound.table.exclude_table.input import (
-    ExcludeTableUseCaseInput,
-)
-from context.table_maintenance.application.port.inbound.table.exclude_table.output import (
-    ExcludeTableUseCaseOutput,
-)
-from context.table_maintenance.application.port.inbound.table.exclude_table.use_case import (
-    ExcludeTableUseCase,
-)
 from context.table_maintenance.application.port.inbound.table.get_table.input import (
     GetTableUseCaseInput,
 )
@@ -39,15 +30,6 @@ from context.table_maintenance.application.port.inbound.table.get_table_storage.
 from context.table_maintenance.application.port.inbound.table.get_table_storage.use_case import (
     GetTableStorageUseCase,
 )
-from context.table_maintenance.application.port.inbound.table.include_table.input import (
-    IncludeTableUseCaseInput,
-)
-from context.table_maintenance.application.port.inbound.table.include_table.output import (
-    IncludeTableUseCaseOutput,
-)
-from context.table_maintenance.application.port.inbound.table.include_table.use_case import (
-    IncludeTableUseCase,
-)
 from context.table_maintenance.application.port.inbound.table.list_table_commits.input import (
     ListTableCommitsUseCaseInput,
 )
@@ -67,15 +49,6 @@ from context.table_maintenance.application.port.inbound.table.list_tables.output
 )
 from context.table_maintenance.application.port.inbound.table.list_tables.use_case import (
     ListTablesUseCase,
-)
-from context.table_maintenance.application.port.inbound.table.pause_table.input import (
-    PauseTableUseCaseInput,
-)
-from context.table_maintenance.application.port.inbound.table.pause_table.output import (
-    PauseTableUseCaseOutput,
-)
-from context.table_maintenance.application.port.inbound.table.pause_table.use_case import (
-    PauseTableUseCase,
 )
 from context.table_maintenance.application.port.inbound.table.plan_table_maintenance.input import (
     PlanTableMaintenanceUseCaseInput,
@@ -98,24 +71,6 @@ from context.table_maintenance.application.port.inbound.table.process_table_hint
 )
 from context.table_maintenance.application.port.inbound.table.process_table_hint.use_case import (
     ProcessTableHintUseCase,
-)
-from context.table_maintenance.application.port.inbound.table.reset_table_selection.input import (
-    ResetTableSelectionUseCaseInput,
-)
-from context.table_maintenance.application.port.inbound.table.reset_table_selection.output import (
-    ResetTableSelectionUseCaseOutput,
-)
-from context.table_maintenance.application.port.inbound.table.reset_table_selection.use_case import (
-    ResetTableSelectionUseCase,
-)
-from context.table_maintenance.application.port.inbound.table.resume_table.input import (
-    ResumeTableUseCaseInput,
-)
-from context.table_maintenance.application.port.inbound.table.resume_table.output import (
-    ResumeTableUseCaseOutput,
-)
-from context.table_maintenance.application.port.inbound.table.resume_table.use_case import (
-    ResumeTableUseCase,
 )
 from context.table_maintenance.application.port.inbound.table.sync_discovered_tables.input import (
     SyncDiscoveredTablesUseCaseInput,
@@ -144,20 +99,8 @@ from context.table_maintenance.application.port.inbound.table.trigger_table_reco
 from context.table_maintenance.application.port.inbound.table.trigger_table_reconciliation.use_case import (
     TriggerTableReconciliationUseCase,
 )
-from context.table_maintenance.application.port.inbound.table.update_table_settings.input import (
-    UpdateTableSettingsUseCaseInput,
-)
-from context.table_maintenance.application.port.inbound.table.update_table_settings.output import (
-    UpdateTableSettingsUseCaseOutput,
-)
-from context.table_maintenance.application.port.inbound.table.update_table_settings.use_case import (
-    UpdateTableSettingsUseCase,
-)
 
 __all__ = [
-    "ExcludeTableUseCase",
-    "ExcludeTableUseCaseInput",
-    "ExcludeTableUseCaseOutput",
     "GetTableUseCase",
     "GetTableUseCaseInput",
     "GetTableUseCaseOutput",
@@ -172,16 +115,10 @@ __all__ = [
     "ListTableCommitsUseCaseInput",
     "ListTableCommitsUseCaseOutput",
     "ListTableCommitsUseCaseOutputItem",
-    "IncludeTableUseCase",
-    "IncludeTableUseCaseInput",
-    "IncludeTableUseCaseOutput",
     "ListTablesUseCase",
     "ListTablesUseCaseInput",
     "ListTablesUseCaseOutput",
     "ListTablesUseCaseOutputItem",
-    "PauseTableUseCase",
-    "PauseTableUseCaseInput",
-    "PauseTableUseCaseOutput",
     "PlanTableMaintenanceUseCase",
     "PlanTableMaintenanceUseCaseInput",
     "PlanTableMaintenanceUseCaseOutput",
@@ -192,12 +129,6 @@ __all__ = [
     "ProcessTableHintUseCase",
     "ProcessTableHintUseCaseInput",
     "ProcessTableHintUseCaseOutput",
-    "ResetTableSelectionUseCase",
-    "ResetTableSelectionUseCaseInput",
-    "ResetTableSelectionUseCaseOutput",
-    "ResumeTableUseCase",
-    "ResumeTableUseCaseInput",
-    "ResumeTableUseCaseOutput",
     "SyncDiscoveredTablesUseCase",
     "SyncDiscoveredTablesUseCaseInput",
     "SyncDiscoveredTablesUseCaseOutput",
@@ -207,7 +138,4 @@ __all__ = [
     "TriggerTableReconciliationUseCase",
     "TriggerTableReconciliationUseCaseInput",
     "TriggerTableReconciliationUseCaseOutput",
-    "UpdateTableSettingsUseCase",
-    "UpdateTableSettingsUseCaseInput",
-    "UpdateTableSettingsUseCaseOutput",
 ]

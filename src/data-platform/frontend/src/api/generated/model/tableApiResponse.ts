@@ -5,7 +5,6 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { TableApiResponseOperationStates } from './tableApiResponseOperationStates';
-import type { TableApiResponseSettings } from './tableApiResponseSettings';
 
 /**
  * Describe a table.
@@ -16,9 +15,6 @@ export interface TableApiResponse {
   namespace: string;
   operation_states: TableApiResponseOperationStates;
   registered_at: string;
-  selection: string;
-  settings: TableApiResponseSettings;
-  source_preset_id: string | null;
   status: string;
   table: string;
   updated_at: string;

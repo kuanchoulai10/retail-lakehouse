@@ -121,7 +121,9 @@ class Harness:
     handle: WorkflowHandle | None = None
     sent: int = 0
 
-    async def start(self, start_signal: str | None = TableReconciliationSignal.RESUME, **fields: Any) -> WorkflowHandle:
+    async def start(
+        self, start_signal: str | None = TableReconciliationSignal.TABLE_SEEN, **fields: Any
+    ) -> WorkflowHandle:
         """Start the workflow with a start signal and the given input fields."""
         options: dict[str, Any] = {}
         if start_signal is not None:
@@ -343,7 +345,7 @@ def test_child_result_received_after_continue_as_new():
         run_id = await h.in_flight()
         await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE]})
         for _ in range(3):
-            await h.signal(TableReconciliationSignal.SETTINGS_CHANGED)
+            await h.signal(TableReconciliationSignal.POLICY_CHANGED)
 
         async def run_id_now() -> str | None:
             return (await h.client.get_workflow_handle(WORKFLOW_ID).describe()).run_id
@@ -408,8 +410,8 @@ def test_stop_with_nothing_in_flight_ends_immediately():
     _run(scenario)
 
 
-def test_skip_excluded_ends_workflow():
-    """A plan that skips an excluded table ends the workflow."""
+def test_skip_unmanaged_ends_workflow():
+    """A plan that skips an unmanaged table ends the workflow."""
 
     async def scenario(h: Harness) -> None:
         await h.start()
@@ -417,10 +419,10 @@ def test_skip_excluded_ends_workflow():
         assert len(h.plans.requests) == 1
         [record] = h.recorder.records
         assert record["status"] == "skip"
-        assert record["skip_reason"] == "excluded"
-        assert record["wake_reasons"] == {"resumed": 1}
+        assert record["skip_reason"] == "unmanaged"
+        assert record["wake_reasons"] == {"discovery_scan": 1}
 
-    _run(scenario, script=lambda _: _skip("excluded"))
+    _run(scenario, script=lambda _: _skip("unmanaged"))
 
 
 def test_skip_dropped_ends_workflow():
@@ -433,36 +435,36 @@ def test_skip_dropped_ends_workflow():
     _run(scenario, script=lambda _: _skip("dropped"))
 
 
-def test_pause_skips_plans_resume_restores():
-    """Pausing makes plans skip and resuming restores planning."""
-    paused = {"value": True}
+def test_unmanaged_reason_ends_workflow_after_in_flight_run():
+    """A table unmanaged while a run is in flight ends the workflow only after the run reports back."""
+    unmanaged = {"value": False}
 
     def script(_: dict[str, Any]) -> dict[str, Any]:
-        return _skip("paused") if paused["value"] else _planned(COMPACTION)
+        return _skip("unmanaged") if unmanaged["value"] else _planned(COMPACTION)
 
     async def scenario(h: Harness) -> None:
         await h.start()
-        await h.plan_count(1)
-        await h.signal(TableReconciliationSignal.PAUSE)
-        await h.plan_count(2)
-        await h.settle()
-        assert (await h.state())["in_flight_run_id"] is None
-        assert await h.status() == WorkflowExecutionStatus.RUNNING
-        paused["value"] = False
-        await h.signal(TableReconciliationSignal.RESUME)
         run_id = await h.in_flight()
-        assert (await h.child(run_id))["trigger"] == "scheduled"
-        assert len(h.plans.requests) == 3
+        unmanaged["value"] = True
+        await h.signal(TableReconciliationSignal.TABLE_UPDATED)
+        state = await h.settle()
+        assert state["in_flight_run_id"] == run_id
+        assert len(h.plans.requests) == 1
+        assert await h.status() == WorkflowExecutionStatus.RUNNING
+        await h.complete_child(run_id)
+        await h.ended()
+        assert len(h.plans.requests) == 2
+        assert h.recorder.records[-1]["skip_reason"] == "unmanaged"
 
     _run(scenario, script=script)
 
 
-def test_manual_trigger_on_paused_table_is_dropped():
-    """A manual trigger on a paused table is planned once and then dropped."""
-    paused = {"value": True}
+def test_manual_trigger_on_a_table_missing_from_the_catalog_is_dropped():
+    """A manual trigger on a table the catalog does not have is planned once and then dropped."""
+    missing = {"value": True}
 
     def script(_: dict[str, Any]) -> dict[str, Any]:
-        return _skip("paused") if paused["value"] else _planned(COMPACTION)
+        return _skip("not_found") if missing["value"] else _planned(COMPACTION)
 
     async def scenario(h: Harness) -> None:
         await h.start(start_signal=None)
@@ -470,8 +472,8 @@ def test_manual_trigger_on_paused_table_is_dropped():
         assert (await h.plan_count(1))[0]["manual_operations"] == [EXPIRE]
         await h.settle()
         assert (await h.state())["pending_manual"] is None
-        paused["value"] = False
-        await h.signal(TableReconciliationSignal.RESUME)
+        missing["value"] = False
+        await h.signal(TableReconciliationSignal.TABLE_UPDATED)
         assert (await h.plan_count(2))[1]["manual_operations"] is None
         run_id = await h.in_flight()
         assert (await h.child(run_id))["trigger"] == "scheduled"
@@ -493,10 +495,10 @@ def test_plan_failure_does_not_fail_workflow():
         assert await h.status() == WorkflowExecutionStatus.RUNNING
         assert state["wake_reasons"] == {}
         assert h.recorder.records == []
-        await h.signal(TableReconciliationSignal.SETTINGS_CHANGED)
+        await h.signal(TableReconciliationSignal.POLICY_CHANGED)
         await h.plan_count(2)
         await h.in_flight()
-        assert (await h.records(1))[0]["wake_reasons"] == {"settings_changed": 1}
+        assert (await h.records(1))[0]["wake_reasons"] == {"policy_changed": 1}
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
 
@@ -535,7 +537,7 @@ def test_in_flight_run_is_given_up_only_after_the_child_worst_case():
         await h.plan_count(2)
         await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first) and not s["planning"])
         # The cancelled child reports back, so the next plan wakes on its finish, not on schedule.
-        assert [r["wake_reasons"] for r in h.recorder.records] == [{"resumed": 1}, {"previous_run_finished": 1}]
+        assert [r["wake_reasons"] for r in h.recorder.records] == [{"discovery_scan": 1}, {"previous_run_finished": 1}]
 
     _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE, interval=10**6))
 
@@ -572,19 +574,19 @@ def test_give_up_waits_a_grace_for_a_child_that_ignores_its_cancel():
         await h.complete_child(first)
         await h.settle()
         assert len(h.plans.requests) == 2
-        assert [r["wake_reasons"] for r in h.recorder.records] == [{"resumed": 1}, {"previous_run_finished": 1}]
+        assert [r["wake_reasons"] for r in h.recorder.records] == [{"discovery_scan": 1}, {"previous_run_finished": 1}]
 
     _run(scenario, script=lambda _: plan)
 
 
-def test_include_after_exclude_while_in_flight_keeps_workflow():
-    """Including a table again while a run is in flight keeps the workflow from stopping."""
+def test_managed_again_while_in_flight_keeps_workflow():
+    """A table managed again while a run is in flight keeps the workflow from stopping."""
 
     async def scenario(h: Harness) -> None:
         await h.start()
         first = await h.in_flight()
         await h.signal(TableReconciliationSignal.STOP)
-        await h.signal(TableReconciliationSignal.RESUME)
+        await h.signal(TableReconciliationSignal.TABLE_SEEN)
         assert (await h.settle())["stopping"] is False
         await h.complete_child(first)
         await h.plan_count(2)
@@ -594,15 +596,15 @@ def test_include_after_exclude_while_in_flight_keeps_workflow():
     _run(scenario, script=lambda _: _planned(COMPACTION))
 
 
-def test_excluded_plan_with_wake_during_activity_replans():
-    """An excluded plan followed by a wake signal during the activity plans again."""
-    answers = [_skip("excluded"), _planned(COMPACTION)]
+def test_unmanaged_plan_with_wake_during_activity_replans():
+    """An unmanaged plan followed by a wake signal during the activity plans again."""
+    answers = [_skip("unmanaged"), _planned(COMPACTION)]
 
     async def scenario(h: Harness) -> None:
         h.plans.gate = asyncio.Event()
         await h.start()
         await h.plan_count(1)
-        await h.signal(TableReconciliationSignal.RESUME)
+        await h.signal(TableReconciliationSignal.TABLE_SEEN)
         await eventually(h.state, lambda s: s["signals_handled"] >= h.sent)
         h.plans.gate.set()
         await h.plan_count(2)
@@ -707,7 +709,7 @@ def test_child_start_failure_keeps_workflow_alive(monkeypatch: pytest.MonkeyPatc
         assert state["in_flight_run_id"] is None
         assert state["in_flight_started_at"] is None
         assert await h.status() == WorkflowExecutionStatus.RUNNING
-        await h.signal(TableReconciliationSignal.SETTINGS_CHANGED)
+        await h.signal(TableReconciliationSignal.POLICY_CHANGED)
         await h.plan_count(2)
         run_id = await h.in_flight()
         assert (await h.child(run_id))["plan"] == _planned(EXPIRE)
@@ -755,7 +757,7 @@ def test_three_catalog_commits_during_a_run_are_recorded_after_it_finishes():
         await h.start()
         run_id = await h.in_flight()
         first = (await h.records(1))[0]
-        assert first["wake_reasons"] == {"resumed": 1}
+        assert first["wake_reasons"] == {"discovery_scan": 1}
         assert first["run_id"] == run_id
         assert (await h.child(run_id))["run_id"] == run_id
         for _ in range(3):
@@ -845,16 +847,16 @@ def test_wake_reasons_survive_continue_as_new():
         first_run = handle.result_run_id
         run_id = await h.in_flight()
         for _ in range(3):
-            await h.signal(TableReconciliationSignal.SETTINGS_CHANGED)
+            await h.signal(TableReconciliationSignal.POLICY_CHANGED)
 
         async def run_id_now() -> str | None:
             return (await h.client.get_workflow_handle(WORKFLOW_ID).describe()).run_id
 
         await eventually(run_id_now, lambda r: r != first_run)
-        assert (await h.state())["wake_reasons"] == {"settings_changed": 3}
+        assert (await h.state())["wake_reasons"] == {"policy_changed": 3}
         await h.complete_child(run_id)
         second = (await h.records(2))[1]
-        assert second["wake_reasons"] == {"settings_changed": 3, "previous_run_finished": 1}
+        assert second["wake_reasons"] == {"policy_changed": 3, "previous_run_finished": 1}
 
     _run(scenario, script=lambda _: answers.pop(0))
 
@@ -888,7 +890,7 @@ def test_reason_arriving_during_a_plan_goes_on_the_next_record():
         await eventually(h.state, lambda s: s["signals_handled"] >= h.sent)
         h.plans.gate.set()
         first, second = (await h.records(2))[:2]
-        assert first["wake_reasons"] == {"resumed": 1}
+        assert first["wake_reasons"] == {"discovery_scan": 1}
         assert second["wake_reasons"] == {"catalog_commit": 1}
 
     _run(scenario, script=lambda _: _planned())
@@ -907,7 +909,7 @@ def test_given_up_run_before_the_plan_timer_is_not_recorded_as_schedule():
         await eventually(h.state, lambda s: s["in_flight_run_id"] != first and not s["planning"])
         records = await h.records(2)
         assert [r["wake_reasons"] for r in records] == [
-            {"resumed": 1},
+            {"discovery_scan": 1},
             {"catalog_commit": 1, "previous_run_finished": 1},
         ]
         # The child's report during the grace ends the same run: no second count, no extra plan.

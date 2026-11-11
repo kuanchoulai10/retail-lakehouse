@@ -14,11 +14,8 @@ function table(overrides: Partial<TableApiResponse>): TableApiResponse {
     catalog: "iceberg",
     namespace: "inventory",
     table: "orders",
-    status: "active",
-    selection: "auto",
-    settings: null,
+    status: "managed",
     matched_rule_id: "rule-1",
-    source_preset_id: "default",
     operation_states: {},
     registered_at: "2026-10-30T10:00:00Z",
     updated_at: "2026-10-31T08:00:00Z",
@@ -32,9 +29,8 @@ const TABLES: TableApiResponse[] = [
     uuid: "uuid-regions",
     namespace: "e2e",
     table: "tm_e2e_regions",
-    status: "paused",
-    selection: "manual",
-    source_preset_id: "nightly",
+    status: "unmanaged",
+    matched_rule_id: null,
   }),
 ];
 
@@ -81,15 +77,16 @@ describe("TableListPage", () => {
     expect(calls[0]?.path).toBe("/v1/tables");
   });
 
-  it("shows status, selection and source preset per row", async () => {
+  it("shows the status and the managing rule per row, with no selection or preset", async () => {
     renderPage();
 
-    const row = (await screen.findByText("iceberg.e2e.tm_e2e_regions")).closest("tr");
-    expect(row).not.toBeNull();
-    const cells = within(row as HTMLElement);
-    expect(cells.getByText("Paused")).toBeInTheDocument();
-    expect(cells.getByText("manual")).toBeInTheDocument();
-    expect(cells.getByText("nightly")).toBeInTheDocument();
+    const managed = within((await screen.findByText("iceberg.inventory.orders")).closest("tr") as HTMLElement);
+    expect(managed.getByText("Managed")).toBeInTheDocument();
+    expect(managed.getByText("rule-1")).toBeInTheDocument();
+    const unmanaged = within(screen.getByText("iceberg.e2e.tm_e2e_regions").closest("tr") as HTMLElement);
+    expect(unmanaged.getByText("Unmanaged")).toBeInTheDocument();
+    expect(unmanaged.getByText("—")).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: /Selection|Source preset/ })).not.toBeInTheDocument();
   });
 
   it("filters the rows by status", async () => {
@@ -98,7 +95,7 @@ describe("TableListPage", () => {
     await screen.findByText("iceberg.inventory.orders");
 
     await user.click(screen.getByRole("combobox", { name: "Status" }));
-    await user.click(await screen.findByRole("option", { name: "Paused" }));
+    await user.click(await screen.findByRole("option", { name: "Unmanaged" }));
 
     expect(screen.queryByText("iceberg.inventory.orders")).not.toBeInTheDocument();
     expect(screen.getByText("iceberg.e2e.tm_e2e_regions")).toBeInTheDocument();

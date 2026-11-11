@@ -34,15 +34,13 @@ _ACTIVITY_TIMEOUT = timedelta(minutes=2)
 _ACTIVITY_RETRY = RetryPolicy(maximum_attempts=5, initial_interval=timedelta(seconds=2), backoff_coefficient=2.0)
 _IN_FLIGHT_PER_OPERATION = TableMaintenanceAttemptPolicy().operation_worst_case() + timedelta(hours=1)
 _CANCEL_GRACE = timedelta(minutes=15)
-_ENDING_REASONS = frozenset({"dropped", "excluded"})
+_ENDING_REASONS = frozenset({"dropped", "unmanaged"})
 _TRIGGER_SCHEDULED = "scheduled"
 _TRIGGER_MANUAL = "manual"
 _REASON_SCHEDULE = "schedule"
 _REASON_CATALOG_COMMIT = "catalog_commit"
 _REASON_DISCOVERY_SCAN = "discovery_scan"
-_REASON_SETTINGS_CHANGED = "settings_changed"
-_REASON_RESUMED = "resumed"
-_REASON_PAUSED = "paused"
+_REASON_POLICY_CHANGED = "policy_changed"
 _REASON_MANUAL_RUN = "manual_run"
 _REASON_RECONCILE_NOW = "reconcile_now"
 _REASON_PREVIOUS_RUN_FINISHED = "previous_run_finished"
@@ -55,7 +53,8 @@ class TableReconciliationWorkflow:
     The loop wakes on its timer (the table's reconcile interval, from the last
     plan; one hour at first) or on any signal, and then asks
     ``plan_table_maintenance``, which reloads the table: the database is the
-    authority on pause, resume and settings, so those signals only wake the loop.
+    authority on whether the table is managed and the policy applies at plan
+    time, so a policy change only wakes the loop.
     A non-empty plan starts a ``TableMaintenanceWorkflow`` child that outlives this run
     (``ABANDON``) and reports back only through ``maintenance_finished``, which is
     why the run in flight survives continue-as-new. While a run is in flight
@@ -68,10 +67,10 @@ class TableReconciliationWorkflow:
     is awaited for up to 15 minutes (less if the cancel fails because the child
     is gone or no workflow ID was recorded), so a new
     run does not overlap the old one's Spark job. A skip
-    because the table was dropped or excluded, or a
+    because the table was dropped or unmanaged, or a
     ``stop`` signal, ends the workflow once no run is in flight, but never on a
     stale decision (R31): any other signal after ``stop`` cancels the stop, and a
-    wake that arrives while a plan says dropped or excluded makes it plan again.
+    wake that arrives while a plan says dropped or unmanaged makes it plan again.
 
     Every wake also counts its reason (a due plan timer counts ``schedule``;
     ``stop`` counts nothing). The reasons accumulate, through runs in flight and
@@ -139,10 +138,10 @@ class TableReconciliationWorkflow:
                 if ends and not self._woken:
                     return
 
-    @workflow.signal(name=TableReconciliationSignal.SETTINGS_CHANGED)
-    def settings_changed(self, payload: dict | None = None) -> None:
-        """Wake the loop to re-plan with the settings stored in the database."""
-        self._wake(_REASON_SETTINGS_CHANGED, cancels_stop=True)
+    @workflow.signal(name=TableReconciliationSignal.POLICY_CHANGED)
+    def policy_changed(self, payload: dict | None = None) -> None:
+        """Wake the loop to re-plan with the policy that now applies."""
+        self._wake(_REASON_POLICY_CHANGED, cancels_stop=True)
 
     @workflow.signal(name=TableReconciliationSignal.TABLE_UPDATED)
     def table_updated(self, payload: dict | None = None) -> None:
@@ -153,16 +152,6 @@ class TableReconciliationWorkflow:
     def table_seen(self, payload: dict | None = None) -> None:
         """Wake the loop because a discovery scan saw the table."""
         self._wake(_REASON_DISCOVERY_SCAN, cancels_stop=True)
-
-    @workflow.signal(name=TableReconciliationSignal.PAUSE)
-    def pause(self, payload: dict | None = None) -> None:
-        """Wake the loop; the plan sees the paused table and skips."""
-        self._wake(_REASON_PAUSED, cancels_stop=True)
-
-    @workflow.signal(name=TableReconciliationSignal.RESUME)
-    def resume(self, payload: dict | None = None) -> None:
-        """Wake the loop; the plan sees the resumed table and plans again."""
-        self._wake(_REASON_RESUMED, cancels_stop=True)
 
     @workflow.signal(name=TableReconciliationSignal.TRIGGER_NOW)
     def trigger_now(self, payload: dict | None = None) -> None:

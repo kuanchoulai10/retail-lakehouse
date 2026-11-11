@@ -46,10 +46,10 @@ class StubTableReconciliationWorkflow:
         """Wait forever so signals can be collected."""
         await workflow.wait_condition(lambda: False)
 
-    @workflow.signal(name="settings_changed")
-    def settings_changed(self, payload: dict) -> None:
-        """Record a settings_changed signal."""
-        self.received.append(("settings_changed", payload))
+    @workflow.signal(name="policy_changed")
+    def policy_changed(self, payload: dict) -> None:
+        """Record a policy_changed signal."""
+        self.received.append(("policy_changed", payload))
 
     @workflow.signal(name="table_updated")
     def table_updated(self, payload: dict) -> None:
@@ -60,16 +60,6 @@ class StubTableReconciliationWorkflow:
     def table_seen(self, payload: dict) -> None:
         """Record a table_seen signal."""
         self.received.append(("table_seen", payload))
-
-    @workflow.signal(name="pause")
-    def pause(self, payload: dict) -> None:
-        """Record a pause signal."""
-        self.received.append(("pause", payload))
-
-    @workflow.signal(name="resume")
-    def resume(self, payload: dict) -> None:
-        """Record a resume signal."""
-        self.received.append(("resume", payload))
 
     @workflow.signal(name="stop")
     def stop(self, payload: dict) -> None:

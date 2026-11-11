@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 def plan_scheduled_maintenance(
     table: Table, policy: MaintenancePolicyContent, observation: TableObservation, now: datetime
 ) -> MaintenancePlan:
-    """Decide which operations are due for an active table under its applicable policy."""
-    if table.status != TableStatus.ACTIVE:
+    """Decide which operations are due for a managed table under its applicable policy."""
+    if table.status != TableStatus.MANAGED:
         return MaintenancePlan()
     return assess_maintenance(table, policy, observation, now).plan()

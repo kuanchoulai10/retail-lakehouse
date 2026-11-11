@@ -9,9 +9,7 @@ class TableChange(StrEnum):
     """What changed about a table, as told to the maintenance runtime."""
 
     UPDATED = "updated"
-    SETTINGS_CHANGED = "settings_changed"
-    PAUSED = "paused"
-    RESUMED = "resumed"
+    POLICY_CHANGED = "policy_changed"
     STOPPED = "stopped"
     MAINTENANCE_REQUESTED = "maintenance_requested"
     RECONCILE_REQUESTED = "reconcile_requested"

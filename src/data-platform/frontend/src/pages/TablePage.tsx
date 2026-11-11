@@ -25,13 +25,12 @@ import { OverviewTab } from "@/components/tabs/OverviewTab";
 import { PropertiesTab } from "@/components/tabs/PropertiesTab";
 import { ReconciliationsTab } from "@/components/tabs/ReconciliationsTab";
 import { SchemaTab } from "@/components/tabs/SchemaTab";
-import { SettingsTab } from "@/components/tabs/SettingsTab";
 import { errorMessage } from "@/format";
 import { apiNamespace, namespaceFromParam, namespacePath, tablePath } from "@/lib/catalogPaths";
 import { tableMaintenanceState, type TableMaintenanceState } from "@/lib/tableMaintenanceState";
 import { useLeavingPage } from "@/lib/useLeavingPage";
 
-// The same seven tabs on every Iceberg table, managed or not (spec anti-goal).
+// The same six tabs on every Iceberg table, managed or not (spec anti-goal).
 const TABS = [
   { key: "overview", label: "Overview" },
   { key: "schema", label: "Schema" },
@@ -39,7 +38,6 @@ const TABS = [
   { key: "maintenance", label: "Maintenance" },
   { key: "reconciliations", label: "Reconciliations" },
   { key: "properties", label: "Properties" },
-  { key: "settings", label: "Settings" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -74,13 +72,11 @@ function tabBody(tab: TabKey, table: CatalogTableApiResponse, maintenance: Table
       return (
         <MaintenanceGate state={maintenance}>{(managed) => <ReconciliationsTab tableUuid={managed.uuid} />}</MaintenanceGate>
       );
-    case "settings":
-      return <MaintenanceGate state={maintenance}>{(managed) => <SettingsTab tableUuid={managed.uuid} />}</MaintenanceGate>;
   }
 }
 
 // One page for every Iceberg table, joining two contexts by the table uuid only: the catalog
-// table (Polaris facts) and maintenance's table (commits, runs, settings). Keyed by the
+// table (Polaris facts) and maintenance's table (commits, runs, reconciliations). Keyed by the
 // table's path, so a rename or delete always unmounts it and the next table gets a fresh page.
 export function TablePage() {
   const { catalog = "", namespace: param = "", table: name = "", tab } = useParams();

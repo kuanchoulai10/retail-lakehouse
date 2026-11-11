@@ -6,9 +6,6 @@ from datetime import UTC, datetime
 
 import pytest
 
-from context.table_maintenance.application.domain.model.shared import (
-    MaintenanceSettings,
-)
 from context.table_maintenance.application.domain.model.table import (
     Table,
     TableId,
@@ -16,9 +13,6 @@ from context.table_maintenance.application.domain.model.table import (
 )
 from context.table_maintenance.application.domain.model.table_discovery_rule import (
     TableDiscoveryRuleId,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-    TableMaintenancePresetId,
 )
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.table import (
@@ -37,13 +31,8 @@ KEY = ("iceberg", "sales", "orders")
 def service(tables_repo, catalog, now):
     """Provide the list table commits service on the fakes."""
     tables_repo.create(
-        Table.register_auto(
-            TableId("u-1"),
-            TableName(catalog=KEY[0], namespace=KEY[1], table=KEY[2]),
-            TableDiscoveryRuleId("r-1"),
-            TableMaintenancePresetId("t-1"),
-            MaintenanceSettings(),
-            now,
+        Table.register(
+            TableId("u-1"), TableName(catalog=KEY[0], namespace=KEY[1], table=KEY[2]), TableDiscoveryRuleId("r-1"), now
         )
     )
     return ListTableCommitsService(tables_repo, catalog)

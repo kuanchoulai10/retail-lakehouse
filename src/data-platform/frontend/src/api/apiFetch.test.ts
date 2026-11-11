@@ -1,7 +1,7 @@
 import { http, HttpResponse } from "msw";
 import { server } from "../test/mswServer";
 import { ApiError } from "./apiError";
-import { getTable, listTables, pauseTable } from "./generated/tables/tables";
+import { getTable, listTables, triggerTableReconciliation } from "./generated/tables/tables";
 import { getGetNamespaceUrl } from "./generated/namespaces/namespaces";
 
 describe("apiFetch, through the generated client", () => {
@@ -48,13 +48,13 @@ describe("apiFetch, through the generated client", () => {
   it("sends a JSON body with its content type, and none when there is no body", async () => {
     const seen: { contentType: string | null; body: string }[] = [];
     server.use(
-      http.post("/console/api/v1/tables/:uuid/pause", async ({ request }) => {
+      http.post("/console/api/v1/tables/:uuid/reconcile", async ({ request }) => {
         seen.push({ contentType: request.headers.get("Content-Type"), body: await request.text() });
-        return HttpResponse.json({ uuid: "u" });
+        return HttpResponse.json({ accepted: true }, { status: 202 });
       }),
     );
 
-    await pauseTable("u");
+    await triggerTableReconciliation("u");
 
     expect(seen).toEqual([{ contentType: null, body: "" }]);
   });

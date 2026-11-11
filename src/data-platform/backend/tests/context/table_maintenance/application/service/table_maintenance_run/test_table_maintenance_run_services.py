@@ -8,7 +8,6 @@ import pytest
 
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
-    MaintenanceSettings,
 )
 from context.table_maintenance.application.domain.model.table import (
     Table,
@@ -22,9 +21,6 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     MaintenancePolicyContent,
     PartialProgress,
     RewriteDataFilesExecutionPolicy,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-    TableMaintenancePresetId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRun,
@@ -61,12 +57,10 @@ RDF = OPS.REWRITE_DATA_FILES
 @pytest.fixture
 def table(tables_repo, now):
     """Provide a stored active table."""
-    t = Table.register_auto(
+    t = Table.register(
         TableId("u-1"),
         TableName(catalog="iceberg", namespace="sales", table="orders"),
         TableDiscoveryRuleId("r-1"),
-        TableMaintenancePresetId("t-1"),
-        MaintenanceSettings(),
         now,
     )
     tables_repo.create(t)

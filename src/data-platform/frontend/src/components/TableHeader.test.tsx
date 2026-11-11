@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
@@ -16,7 +16,7 @@ function newClient() {
 }
 
 function renderHeader(
-  status = "active",
+  status = "managed",
   client = newClient(),
   extra: React.ReactNode = null,
   managed: Partial<TableApiResponse> = {},
@@ -31,18 +31,11 @@ function renderHeader(
   );
 }
 
-function HealthProbe({ queryFn }: { queryFn: () => Promise<unknown> }) {
-  useQuery({ queryKey: getGetTableHealthQueryKey("uuid-orders"), queryFn });
-  return null;
-}
-
 describe("TableHeader", () => {
   let calls: StubbedCall[];
 
   beforeEach(() => {
     calls = stubCatalogApi({
-      "POST /v1/tables/uuid-orders/pause": () => jsonResponse(tableFixture({ status: "paused" })),
-      "POST /v1/tables/uuid-orders/resume": () => jsonResponse(tableFixture()),
       "POST /v1/tables/uuid-orders/maintenance": () => jsonResponse({ accepted: true }, 202),
       "POST /v1/tables/uuid-orders/reconcile": () => jsonResponse({ accepted: true }, 202),
     });
@@ -53,7 +46,7 @@ describe("TableHeader", () => {
     const client = newClient();
     const key = [...getListTableReconciliationsQueryKey("uuid-orders"), "pages"];
     client.setQueryData(key, { pages: [], pageParams: [] });
-    renderHeader("active", client);
+    renderHeader("managed", client);
     await user.click(screen.getByRole("button", { name: "Reconcile now" }));
     await vi.waitFor(() => expect(calls[0]).toMatchObject({ method: "POST", path: "/v1/tables/uuid-orders/reconcile" }));
     await vi.waitFor(() => expect(client.getQueryState(key)?.isInvalidated).toBe(true));
@@ -66,7 +59,7 @@ describe("TableHeader", () => {
       const client = newClient();
       const key = [...getListTableReconciliationsQueryKey("uuid-orders"), "pages"];
       client.setQueryData(key, { pages: [], pageParams: [] });
-      renderHeader("active", client);
+      renderHeader("managed", client);
       await user.click(screen.getByRole("button", { name: "Reconcile now" }));
       expect(await screen.findByText("Reconciliation requested.")).toBeInTheDocument();
       await vi.waitFor(() => expect(client.getQueryState(key)?.isInvalidated).toBe(true));
@@ -79,37 +72,22 @@ describe("TableHeader", () => {
     }
   });
 
-  it("offers Reconcile now on a paused table, since the reconciliation records the pause", () => {
-    renderHeader("paused");
-    expect(screen.getByRole("button", { name: "Reconcile now" })).toBeEnabled();
-  });
-
   it("shows the API detail when Reconcile now is refused", async () => {
     calls = stubCatalogApi({
-      "POST /v1/tables/uuid-orders/reconcile": () => jsonResponse({ detail: "table is excluded" }, 409),
+      "POST /v1/tables/uuid-orders/reconcile": () => jsonResponse({ detail: "table is unmanaged" }, 409),
     });
     const user = userEvent.setup();
     renderHeader();
     await user.click(screen.getByRole("button", { name: "Reconcile now" }));
-    expect(await screen.findByText("Could not reconcile the table: table is excluded")).toBeInTheDocument();
+    expect(await screen.findByText("Could not reconcile the table: table is unmanaged")).toBeInTheDocument();
   });
 
-  it("dry run badge shows when settings say dry run", () => {
-    renderHeader("active", newClient(), null, { settings: { dry_run: true } });
-    expect(screen.getByText("Dry run")).toBeInTheDocument();
-  });
-
-  it("shows no dry run badge when settings do not say dry run", () => {
-    renderHeader("active", newClient(), null, { settings: { dry_run: false } });
-    expect(screen.queryByText("Dry run")).not.toBeInTheDocument();
-  });
-
-  it("shows the name, status, preset and rule", () => {
+  it("shows the name, status and deciding rule, and no preset", () => {
     renderHeader();
     expect(screen.getByRole("heading", { level: 1, name: "orders" })).toBeInTheDocument();
-    expect(screen.getByText("Active")).toBeInTheDocument();
-    expect(screen.getByText(/Preset: default/)).toBeInTheDocument();
+    expect(screen.getByText("Managed")).toBeInTheDocument();
     expect(screen.getByText(/Rule: rule-1/)).toBeInTheDocument();
+    expect(screen.queryByText(/Preset:/)).not.toBeInTheDocument();
   });
 
   it("shows the summary numbers from the catalog", () => {
@@ -122,27 +100,14 @@ describe("TableHeader", () => {
     expect(screen.getByText("last commit 3 h ago")).toBeInTheDocument();
   });
 
-  it("posts /pause when Pause is clicked", async () => {
+  it("offers no Pause or Resume: the discovery rules alone decide what is managed", async () => {
     const user = userEvent.setup();
     renderHeader();
-    await user.click(screen.getByRole("button", { name: "Pause" }));
-    await vi.waitFor(() => expect(calls[0]).toMatchObject({ method: "POST", path: "/v1/tables/uuid-orders/pause" }));
-  });
-
-  it("posts /resume when the table is paused", async () => {
-    const user = userEvent.setup();
-    renderHeader("paused");
-    await user.click(screen.getByRole("button", { name: "Resume" }));
-    await vi.waitFor(() => expect(calls[0]?.path).toBe("/v1/tables/uuid-orders/resume"));
-  });
-
-  it("refetches health after Pause", async () => {
-    const user = userEvent.setup();
-    const healthFn = vi.fn().mockResolvedValue({});
-    renderHeader("active", newClient(), <HealthProbe queryFn={healthFn} />);
-    await vi.waitFor(() => expect(healthFn).toHaveBeenCalledTimes(1));
-    await user.click(screen.getByRole("button", { name: "Pause" }));
-    await vi.waitFor(() => expect(healthFn).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole("button", { name: "Pause" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Resume" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    expect(await screen.findByRole("menuitem", { name: "Reconcile now" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: /Pause|Resume/ })).not.toBeInTheDocument();
   });
 
   it("returns focus to Run maintenance after Escape", async () => {
@@ -168,7 +133,7 @@ describe("TableHeader", () => {
     const client = newClient();
     client.setQueryData(getListTableMaintenanceRunsQueryKey("uuid-orders"), []);
     client.setQueryData(getGetTableHealthQueryKey("uuid-orders"), {});
-    renderHeader("active", client);
+    renderHeader("managed", client);
     await user.click(screen.getByRole("button", { name: "Run maintenance" }));
     await user.click(screen.getByRole("button", { name: "Run" }));
     await vi.waitFor(() => {
@@ -177,11 +142,11 @@ describe("TableHeader", () => {
     });
   });
 
-  it("disables Run maintenance unless the table is active", () => {
-    renderHeader("paused");
+  it("disables Run maintenance unless the table is managed", () => {
+    renderHeader("unmanaged");
     const button = screen.getByRole("button", { name: "Run maintenance" });
     expect(button).toBeDisabled();
-    expect(button).toHaveAccessibleDescription("Only an active table can run maintenance");
+    expect(button).toHaveAccessibleDescription("Only a managed table can run maintenance");
   });
 
   it("wraps a long title on a phone and truncates it from md so it cannot overflow", () => {
@@ -201,15 +166,15 @@ describe("TableHeader", () => {
 
   it("gives the disabled phone overflow item the same reason as the button", async () => {
     const user = userEvent.setup();
-    renderHeader("paused");
+    renderHeader("unmanaged");
     await user.click(screen.getByRole("button", { name: "More actions" }));
     const item = await screen.findByRole("menuitem", { name: "Run maintenance" });
     expect(item).toHaveAttribute("aria-disabled", "true");
-    expect(item).toHaveAccessibleDescription("Only an active table can run maintenance");
+    expect(item).toHaveAccessibleDescription("Only a managed table can run maintenance");
   });
 
-  it("enables Run maintenance on an active table", () => {
-    renderHeader("active");
+  it("enables Run maintenance on a managed table", () => {
+    renderHeader("managed");
     expect(screen.getByRole("button", { name: "Run maintenance" })).toBeEnabled();
   });
 
@@ -253,7 +218,6 @@ describe("TableHeader of an unmanaged table", () => {
       </QueryClientProvider>,
     );
     expect(screen.queryByRole("button", { name: "Reconcile now" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Dry run")).not.toBeInTheDocument();
   });
 
   it("shows the catalog numbers and the menu but no maintenance actions", () => {

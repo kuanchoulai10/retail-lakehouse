@@ -8,7 +8,6 @@ import pytest
 
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
-    MaintenanceSettings,
 )
 from context.table_maintenance.application.domain.model.table import (
     Table,
@@ -21,9 +20,6 @@ from context.table_maintenance.application.domain.model.table_discovery_rule imp
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     DEFAULT_POLICY_NAME,
     MaintenancePolicyContent,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-    TableMaintenancePresetId,
 )
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.table import (
@@ -45,15 +41,8 @@ KEY = ("iceberg", "sales", "orders")
 NAME = TableName(catalog=KEY[0], namespace=KEY[1], table=KEY[2])
 
 
-def _register(repo, now, settings):
-    table = Table.register_auto(
-        TableId("u-1"),
-        NAME,
-        TableDiscoveryRuleId("r-1"),
-        TableMaintenancePresetId("t-1"),
-        settings,
-        now,
-    )
+def _register(repo, now):
+    table = Table.register(TableId("u-1"), NAME, TableDiscoveryRuleId("r-1"), now)
     repo.create(table)
     return table
 
@@ -93,9 +82,9 @@ def _health(service):
     return service.execute(GetTableHealthUseCaseInput(uuid="u-1"))
 
 
-def test_active_table_reports_each_operation_in_order(service, tables_repo, catalog, now):
-    """An active table is scheduled and reports every operation in canonical order."""
-    _register(tables_repo, now, MaintenanceSettings())
+def test_managed_table_reports_each_operation_in_order(service, tables_repo, catalog, now):
+    """A managed table is scheduled and reports every operation in canonical order."""
+    _register(tables_repo, now)
     _observe(catalog)
 
     output = _health(service)
@@ -122,7 +111,7 @@ def test_health_assesses_with_the_applicable_policy(service, tables_repo, catalo
     UpdateTableMaintenancePolicyService(policies_repo, clock=lambda: now).execute(
         UpdateTableMaintenancePolicyUseCaseInput(name=DEFAULT_POLICY_NAME, content=content.to_primitives(), version=1)
     )
-    _register(tables_repo, now, MaintenanceSettings())
+    _register(tables_repo, now)
     _observe(catalog)
 
     output = _health(service)
@@ -130,33 +119,32 @@ def test_health_assesses_with_the_applicable_policy(service, tables_repo, catalo
     assert output.operations[0].verdict == "disabled"
 
 
-def test_paused_table_is_not_scheduled_but_assessed(service, tables_repo, catalog, now):
-    """A paused table is reported as not scheduled but its operations are still assessed."""
-    _register(tables_repo, now, MaintenanceSettings()).pause(now)
+def test_unmanaged_table_is_not_scheduled_but_assessed(service, tables_repo, catalog, now):
+    """An unmanaged table is reported as not scheduled but its operations are still assessed."""
+    _register(tables_repo, now).unmanage(now)
     _observe(catalog)
 
     output = _health(service)
 
     assert output.scheduled is False
-    assert output.not_scheduled_reason == "paused"
+    assert output.not_scheduled_reason == "unmanaged"
     assert len(output.operations) == 4
 
 
-def test_table_without_settings_has_no_lines(service, tables_repo, catalog, now):
-    """A table without settings reports no operations."""
-    _register(tables_repo, now, MaintenanceSettings()).settings = None
+def test_every_managed_table_is_scheduled_and_assessed(service, tables_repo, catalog, now):
+    """A managed table needs nothing of its own to be scheduled: the applicable policy always applies."""
+    _register(tables_repo, now)
     _observe(catalog)
 
     output = _health(service)
 
-    assert output.scheduled is False
-    assert output.not_scheduled_reason == "no_settings"
-    assert output.operations == []
+    assert (output.scheduled, output.not_scheduled_reason) == (True, None)
+    assert len(output.operations) == 4
 
 
 def test_delete_file_counts_are_summed(service, tables_repo, catalog, now):
     """Position and equality delete files are summed across partitions."""
-    _register(tables_repo, now, MaintenanceSettings())
+    _register(tables_repo, now)
     _observe(
         catalog,
         partitions=[_partition(["eu"], pos=2, eq=1), _partition(["us"], pos=3, eq=4)],
@@ -170,7 +158,7 @@ def test_delete_file_counts_are_summed(service, tables_repo, catalog, now):
 
 def test_health_404_when_not_in_catalog(service, tables_repo, now):
     """A table missing from the catalog raises NotFoundError."""
-    _register(tables_repo, now, MaintenanceSettings())
+    _register(tables_repo, now)
 
     with pytest.raises(NotFoundError, match="is not in the catalog$"):
         _health(service)

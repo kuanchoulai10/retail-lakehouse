@@ -35,9 +35,7 @@ const WAKE_REASONS: [string, string][] = [
   ["schedule", "Schedule"],
   ["catalog_commit", "Catalog commit"],
   ["discovery_scan", "Discovery scan"],
-  ["settings_changed", "Settings changed"],
-  ["resumed", "Resumed"],
-  ["paused", "Paused"],
+  ["policy_changed", "Policy changed"],
   ["manual_run", "Manual run"],
   ["reconcile_now", "Reconcile now"],
   ["previous_run_finished", "Previous run finished"],
@@ -131,14 +129,14 @@ function startedNothing(r: TableReconciliationApiResponse): boolean {
 }
 
 // Consecutive reconciliations with the same fold key fold into one line, so hourly passes that
-// did nothing, or an hourly skip of a paused table, do not drown the ones that did something.
+// did nothing, or an hourly skip of a table missing from the catalog, do not drown the ones that did something.
 // null: the reconciliation did something and always gets its own line.
 export function foldKey(r: TableReconciliationApiResponse): string | null {
   return startedNothing(r) ? headline(r) : null;
 }
 
 // "{n} reconciliations found nothing to do, {first}–{last}" for records newest first, or
-// "{n} reconciliations skipped: table paused, …" for a stretch of skips.
+// "{n} reconciliations skipped: table not found, …" for a stretch of skips.
 export function foldText(records: TableReconciliationApiResponse[]): string {
   const newest = records[0];
   const oldest = records.at(-1);

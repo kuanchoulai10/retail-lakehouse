@@ -46,8 +46,7 @@ if TYPE_CHECKING:
 
 _NOT_SCHEDULED_REASONS = {
     TableStatus.DROPPED: "dropped",
-    TableStatus.EXCLUDED: "excluded",
-    TableStatus.PAUSED: "paused",
+    TableStatus.UNMANAGED: "unmanaged",
 }
 
 
@@ -90,21 +89,16 @@ class GetTableHealthService(GetTableHealthUseCase):
         if observation is None or observation.table_uuid != table.id.value:
             raise_not_in_catalog(table)
         reason = _NOT_SCHEDULED_REASONS.get(table.status)
-        settings = table.settings
-        if reason is None and settings is None:
-            reason = "no_settings"
-        items = []
-        if settings is not None:
-            applied = self._resolve_applicable_policy.execute(
-                ResolveApplicableTableMaintenancePolicyUseCaseInput(
-                    catalog=table.name.catalog,
-                    table_uuid=table.id.value,
-                    namespace=table.name.namespace,
-                    table=table.name.table,
-                )
+        applied = self._resolve_applicable_policy.execute(
+            ResolveApplicableTableMaintenancePolicyUseCaseInput(
+                catalog=table.name.catalog,
+                table_uuid=table.id.value,
+                namespace=table.name.namespace,
+                table=table.name.table,
             )
-            policy = MaintenancePolicyContent.from_primitives(applied.content)
-            items = [_to_item(a) for a in assess_maintenance(table, policy, observation, self._clock()).operations]
+        )
+        policy = MaintenancePolicyContent.from_primitives(applied.content)
+        items = [_to_item(a) for a in assess_maintenance(table, policy, observation, self._clock()).operations]
         return GetTableHealthUseCaseOutput(
             scheduled=reason is None,
             not_scheduled_reason=reason,

@@ -53,16 +53,16 @@ function renderPanel(value: TableHealthApiResponse) {
 
 describe("HealthPanel", () => {
   it("shows the not-scheduled banner and suffixes due lines", () => {
-    renderPanel(health({ scheduled: false, not_scheduled_reason: "paused" }));
-    expect(screen.getByText("The scheduler skips this table: paused")).toBeInTheDocument();
+    renderPanel(health({ scheduled: false, not_scheduled_reason: "unmanaged" }));
+    expect(screen.getByText("The scheduler skips this table: unmanaged")).toBeInTheDocument();
     expect(
-      screen.getByText(/12 reducible files in 3 partitions, threshold 5 \(would be due when resumed\)/),
+      screen.getByText(/12 reducible files in 3 partitions, threshold 5 \(would be due if managed\)/),
     ).toBeInTheDocument();
   });
 
   it("keeps the not-scheduled notice neutral", () => {
-    renderPanel(health({ scheduled: false, not_scheduled_reason: "paused" }));
-    expect(screen.getByText("The scheduler skips this table: paused")).not.toHaveClass(
+    renderPanel(health({ scheduled: false, not_scheduled_reason: "unmanaged" }));
+    expect(screen.getByText("The scheduler skips this table: unmanaged")).not.toHaveClass(
       "text-notice-text",
     );
   });
@@ -80,7 +80,7 @@ describe("HealthPanel", () => {
   });
 
   it("hides Run now while the scheduler skips the table", () => {
-    renderPanel(health({ scheduled: false, not_scheduled_reason: "paused" }));
+    renderPanel(health({ scheduled: false, not_scheduled_reason: "unmanaged" }));
     expect(screen.queryByRole("button", { name: "Run now" })).not.toBeInTheDocument();
   });
 

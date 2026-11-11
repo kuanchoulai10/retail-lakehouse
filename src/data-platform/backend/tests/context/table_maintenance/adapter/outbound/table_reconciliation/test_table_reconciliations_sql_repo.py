@@ -80,7 +80,7 @@ def test_create_and_get_round_trip(repo: TableReconciliationsRepo):
         id=TableReconciliationId("r1"),
         table_uuid=TableId("u1"),
         reconciled_at=NOW,
-        wake_reasons={WakeReason.SCHEDULE: 2, WakeReason.RESUMED: 1},
+        wake_reasons={WakeReason.SCHEDULE: 2, WakeReason.DISCOVERY_SCAN: 1},
         dry_run=False,
         outcome=ReconciliationOutcome.PLANNED,
         skip_reason=None,
@@ -127,7 +127,7 @@ def test_create_and_get_round_trip(repo: TableReconciliationsRepo):
     assert loaded.reconciled_at == NOW
     assert (loaded.policy_name, loaded.policy_version) == ("nightly", 4)
     assert loaded.policy_target == rec.policy_target
-    assert loaded.wake_reasons == {WakeReason.SCHEDULE: 2, WakeReason.RESUMED: 1}
+    assert loaded.wake_reasons == {WakeReason.SCHEDULE: 2, WakeReason.DISCOVERY_SCAN: 1}
     assert loaded.dry_run is False
     assert loaded.outcome is ReconciliationOutcome.PLANNED
     assert loaded.skip_reason is None
@@ -144,7 +144,7 @@ def test_skipped_round_trip(repo: TableReconciliationsRepo):
         id=TableReconciliationId("s1"),
         table_uuid=TableId("u1"),
         reconciled_at=NOW,
-        wake_reasons={WakeReason.PAUSED: 1},
+        wake_reasons={WakeReason.POLICY_CHANGED: 1},
         dry_run=False,
         outcome=ReconciliationOutcome.SKIPPED,
         skip_reason="paused",

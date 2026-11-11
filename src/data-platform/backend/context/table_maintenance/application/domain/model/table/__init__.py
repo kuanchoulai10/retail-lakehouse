@@ -13,11 +13,11 @@ from context.table_maintenance.application.domain.model.table.table_change impor
     TableChange,
 )
 from context.table_maintenance.application.domain.model.table.table_id import TableId
+from context.table_maintenance.application.domain.model.table.table_management_change import (
+    TableManagementChange,
+)
 from context.table_maintenance.application.domain.model.table.table_name import (
     TableName,
-)
-from context.table_maintenance.application.domain.model.table.table_selection import (
-    TableSelection,
 )
 from context.table_maintenance.application.domain.model.table.table_status import (
     TableStatus,
@@ -29,7 +29,7 @@ __all__ = [
     "Table",
     "TableChange",
     "TableId",
+    "TableManagementChange",
     "TableName",
-    "TableSelection",
     "TableStatus",
 ]

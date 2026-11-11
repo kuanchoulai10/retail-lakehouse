@@ -781,31 +781,6 @@
         "title": "CreateViewApiRequest",
         "type": "object"
       },
-      "ExcludeTableApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry the body that excludes a table by hand.",
-        "properties": {
-          "catalog": {
-            "title": "Catalog",
-            "type": "string"
-          },
-          "namespace": {
-            "title": "Namespace",
-            "type": "string"
-          },
-          "table": {
-            "title": "Table",
-            "type": "string"
-          }
-        },
-        "required": [
-          "catalog",
-          "namespace",
-          "table"
-        ],
-        "title": "ExcludeTableApiRequest",
-        "type": "object"
-      },
       "GenericTableApiResponse": {
         "description": "Describe a generic table: format, base location, doc and properties; it has no schema or snapshots.",
         "properties": {
@@ -908,36 +883,6 @@
           }
         },
         "title": "HTTPValidationError",
-        "type": "object"
-      },
-      "IncludeTableApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry the body that includes a table by hand.",
-        "properties": {
-          "catalog": {
-            "title": "Catalog",
-            "type": "string"
-          },
-          "namespace": {
-            "title": "Namespace",
-            "type": "string"
-          },
-          "preset_id": {
-            "title": "Preset Id",
-            "type": "string"
-          },
-          "table": {
-            "title": "Table",
-            "type": "string"
-          }
-        },
-        "required": [
-          "catalog",
-          "namespace",
-          "table",
-          "preset_id"
-        ],
-        "title": "IncludeTableApiRequest",
         "type": "object"
       },
       "NamespaceApiResponse": {
@@ -1915,33 +1860,6 @@
             "title": "Registered At",
             "type": "string"
           },
-          "selection": {
-            "title": "Selection",
-            "type": "string"
-          },
-          "settings": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Settings"
-          },
-          "source_preset_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Preset Id"
-          },
           "status": {
             "title": "Status",
             "type": "string"
@@ -1966,10 +1884,7 @@
           "namespace",
           "table",
           "status",
-          "selection",
-          "settings",
           "matched_rule_id",
-          "source_preset_id",
           "operation_states",
           "registered_at",
           "updated_at"
@@ -2890,12 +2805,6 @@
           "expected_uuid"
         ],
         "title": "UpdateTablePropertiesApiRequest",
-        "type": "object"
-      },
-      "UpdateTableSettingsApiRequest": {
-        "additionalProperties": true,
-        "description": "Carry the settings object that replaces the table settings.",
-        "title": "UpdateTableSettingsApiRequest",
         "type": "object"
       },
       "ValidationError": {
@@ -5021,90 +4930,6 @@
         ]
       }
     },
-    "/v1/tables/exclude": {
-      "post": {
-        "description": "Exclude a catalog table from maintenance by hand.",
-        "operationId": "exclude_table",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ExcludeTableApiRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TableApiResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Exclude Table",
-        "tags": [
-          "tables"
-        ]
-      }
-    },
-    "/v1/tables/include": {
-      "post": {
-        "description": "Include a catalog table in maintenance by hand.",
-        "operationId": "include_table",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/IncludeTableApiRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TableApiResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Include Table",
-        "tags": [
-          "tables"
-        ]
-      }
-    },
     "/v1/tables/{table_uuid}": {
       "get": {
         "description": "Return one table.",
@@ -5354,49 +5179,6 @@
         ]
       }
     },
-    "/v1/tables/{table_uuid}/pause": {
-      "post": {
-        "description": "Pause maintenance of a table.",
-        "operationId": "pause_table",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "table_uuid",
-            "required": true,
-            "schema": {
-              "title": "Table Uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TableApiResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Pause Table",
-        "tags": [
-          "tables"
-        ]
-      }
-    },
     "/v1/tables/{table_uuid}/reconcile": {
       "post": {
         "description": "Reconcile a table now by the normal rules, after any run in flight.",
@@ -5513,145 +5295,6 @@
         "summary": "List Table Reconciliations",
         "tags": [
           "table-reconciliations"
-        ]
-      }
-    },
-    "/v1/tables/{table_uuid}/reset-selection": {
-      "post": {
-        "description": "Hand a manually selected table back to the discovery rules.",
-        "operationId": "reset_table_selection",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "table_uuid",
-            "required": true,
-            "schema": {
-              "title": "Table Uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TableApiResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Reset Table Selection",
-        "tags": [
-          "tables"
-        ]
-      }
-    },
-    "/v1/tables/{table_uuid}/resume": {
-      "post": {
-        "description": "Resume maintenance of a table.",
-        "operationId": "resume_table",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "table_uuid",
-            "required": true,
-            "schema": {
-              "title": "Table Uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TableApiResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Resume Table",
-        "tags": [
-          "tables"
-        ]
-      }
-    },
-    "/v1/tables/{table_uuid}/settings": {
-      "put": {
-        "description": "Replace the settings of a table.",
-        "operationId": "update_table_settings",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "table_uuid",
-            "required": true,
-            "schema": {
-              "title": "Table Uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTableSettingsApiRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TableApiResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Update Table Settings",
-        "tags": [
-          "tables"
         ]
       }
     },

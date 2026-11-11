@@ -165,11 +165,11 @@ describe("ReconciliationsTab", () => {
     expect(lines[2]).toContain("6 reconciliations found nothing to do, 01:42–06:42");
   });
 
-  it("consecutive paused skips fold into one line", async () => {
+  it("consecutive skips fold into one line", async () => {
     const skip = (id: string, hour: number): TableReconciliationApiResponse => ({
       ...quiet(id, at(10, hour)),
       outcome: "skipped",
-      skip_reason: "paused",
+      skip_reason: "not_found",
       operations: [],
     });
     stubList([...hours(10, 6, 7), skip("s5", 5), skip("s4", 4), skip("s3", 3), ...hours(10, 1, 2)]);
@@ -178,7 +178,7 @@ describe("ReconciliationsTab", () => {
     const lines = within(day).getAllByRole("listitem").map((li) => li.textContent ?? "");
     expect(lines).toEqual([
       "2 reconciliations found nothing to do, 06:42–07:42",
-      "3 reconciliations skipped: table paused, 03:42–05:42",
+      "3 reconciliations skipped: table not found, 03:42–05:42",
       "2 reconciliations found nothing to do, 01:42–02:42",
     ]);
   });

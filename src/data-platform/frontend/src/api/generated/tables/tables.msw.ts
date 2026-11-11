@@ -14,15 +14,12 @@ import {
 } from 'msw';
 import type {
   HttpResponseResolver,
-  PathParams,
   RequestHandlerOptions
 } from 'msw';
 
 import type {
   CatalogTableApiResponse,
   CreateTableApiRequest,
-  ExcludeTableApiRequest,
-  IncludeTableApiRequest,
   RenameTableApiRequest,
   TableApiResponse,
   TableCommitsApiResponse,
@@ -32,8 +29,7 @@ import type {
   TriggerTableMaintenanceApiRequest,
   TriggerTableMaintenanceApiResponse,
   TriggerTableReconciliationApiResponse,
-  UpdateTablePropertiesApiRequest,
-  UpdateTableSettingsApiRequest
+  UpdateTablePropertiesApiRequest
 } from '../model';
 
 
@@ -61,19 +57,11 @@ export const getRenameTableResponseMock = (overrideResponse: Partial<Extract<Tab
 
 export const getListTablesResponseMock = (): TableApiResponse[] => (Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
         [faker.string.alphanumeric(5)]: {}
-      }, registered_at: faker.date.past().toISOString().slice(0, 19) + 'Z', selection: faker.string.alpha({length: {min: 10, max: 20}}), settings: faker.helpers.arrayElement([null,]), source_preset_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), status: faker.string.alpha({length: {min: 10, max: 20}}), table: faker.string.alpha({length: {min: 10, max: 20}}), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', uuid: faker.string.alpha({length: {min: 10, max: 20}})})))
-
-export const getExcludeTableResponseMock = (overrideResponse: Partial<Extract<TableApiResponse, object>> = {}): TableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
-        [faker.string.alphanumeric(5)]: {}
-      }, registered_at: faker.date.past().toISOString().slice(0, 19) + 'Z', selection: faker.string.alpha({length: {min: 10, max: 20}}), settings: faker.helpers.arrayElement([null,]), source_preset_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), status: faker.string.alpha({length: {min: 10, max: 20}}), table: faker.string.alpha({length: {min: 10, max: 20}}), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
-
-export const getIncludeTableResponseMock = (overrideResponse: Partial<Extract<TableApiResponse, object>> = {}): TableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
-        [faker.string.alphanumeric(5)]: {}
-      }, registered_at: faker.date.past().toISOString().slice(0, 19) + 'Z', selection: faker.string.alpha({length: {min: 10, max: 20}}), settings: faker.helpers.arrayElement([null,]), source_preset_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), status: faker.string.alpha({length: {min: 10, max: 20}}), table: faker.string.alpha({length: {min: 10, max: 20}}), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
+      }, registered_at: faker.date.past().toISOString().slice(0, 19) + 'Z', status: faker.string.alpha({length: {min: 10, max: 20}}), table: faker.string.alpha({length: {min: 10, max: 20}}), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', uuid: faker.string.alpha({length: {min: 10, max: 20}})})))
 
 export const getGetTableResponseMock = (overrideResponse: Partial<Extract<TableApiResponse, object>> = {}): TableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
         [faker.string.alphanumeric(5)]: {}
-      }, registered_at: faker.date.past().toISOString().slice(0, 19) + 'Z', selection: faker.string.alpha({length: {min: 10, max: 20}}), settings: faker.helpers.arrayElement([null,]), source_preset_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), status: faker.string.alpha({length: {min: 10, max: 20}}), table: faker.string.alpha({length: {min: 10, max: 20}}), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
+      }, registered_at: faker.date.past().toISOString().slice(0, 19) + 'Z', status: faker.string.alpha({length: {min: 10, max: 20}}), table: faker.string.alpha({length: {min: 10, max: 20}}), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
 export const getListTableCommitsResponseMock = (overrideResponse: Partial<Extract<TableCommitsApiResponse, object>> = {}): TableCommitsApiResponse => ({items: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({added_data_files: faker.helpers.arrayElement([faker.number.int(),null,]), added_delete_files: faker.helpers.arrayElement([faker.number.int(),null,]), added_records: faker.helpers.arrayElement([faker.number.int(),null,]), committed_at: faker.date.past().toISOString().slice(0, 19) + 'Z', deleted_data_files: faker.helpers.arrayElement([faker.number.int(),null,]), deleted_records: faker.helpers.arrayElement([faker.number.int(),null,]), operation: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), parent_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), removed_delete_files: faker.helpers.arrayElement([faker.number.int(),null,]), snapshot_id: faker.string.alpha({length: {min: 10, max: 20}}), summary: {
         [faker.string.alphanumeric(5)]: faker.string.alpha({length: {min: 10, max: 20}})
@@ -83,23 +71,7 @@ export const getGetTableHealthResponseMock = (overrideResponse: Partial<Extract<
 
 export const getTriggerTableMaintenanceResponseMock = (overrideResponse: Partial<Extract<TriggerTableMaintenanceApiResponse, object>> = {}): TriggerTableMaintenanceApiResponse => ({accepted: faker.datatype.boolean(), ...overrideResponse})
 
-export const getPauseTableResponseMock = (overrideResponse: Partial<Extract<TableApiResponse, object>> = {}): TableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
-        [faker.string.alphanumeric(5)]: {}
-      }, registered_at: faker.date.past().toISOString().slice(0, 19) + 'Z', selection: faker.string.alpha({length: {min: 10, max: 20}}), settings: faker.helpers.arrayElement([null,]), source_preset_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), status: faker.string.alpha({length: {min: 10, max: 20}}), table: faker.string.alpha({length: {min: 10, max: 20}}), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
-
 export const getTriggerTableReconciliationResponseMock = (overrideResponse: Partial<Extract<TriggerTableReconciliationApiResponse, object>> = {}): TriggerTableReconciliationApiResponse => ({accepted: faker.datatype.boolean(), ...overrideResponse})
-
-export const getResetTableSelectionResponseMock = (overrideResponse: Partial<Extract<TableApiResponse, object>> = {}): TableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
-        [faker.string.alphanumeric(5)]: {}
-      }, registered_at: faker.date.past().toISOString().slice(0, 19) + 'Z', selection: faker.string.alpha({length: {min: 10, max: 20}}), settings: faker.helpers.arrayElement([null,]), source_preset_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), status: faker.string.alpha({length: {min: 10, max: 20}}), table: faker.string.alpha({length: {min: 10, max: 20}}), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
-
-export const getResumeTableResponseMock = (overrideResponse: Partial<Extract<TableApiResponse, object>> = {}): TableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
-        [faker.string.alphanumeric(5)]: {}
-      }, registered_at: faker.date.past().toISOString().slice(0, 19) + 'Z', selection: faker.string.alpha({length: {min: 10, max: 20}}), settings: faker.helpers.arrayElement([null,]), source_preset_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), status: faker.string.alpha({length: {min: 10, max: 20}}), table: faker.string.alpha({length: {min: 10, max: 20}}), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
-
-export const getUpdateTableSettingsResponseMock = (overrideResponse: Partial<Extract<TableApiResponse, object>> = {}): TableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
-        [faker.string.alphanumeric(5)]: {}
-      }, registered_at: faker.date.past().toISOString().slice(0, 19) + 'Z', selection: faker.string.alpha({length: {min: 10, max: 20}}), settings: faker.helpers.arrayElement([null,]), source_preset_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), status: faker.string.alpha({length: {min: 10, max: 20}}), table: faker.string.alpha({length: {min: 10, max: 20}}), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
 export const getGetTableStorageResponseMock = (overrideResponse: Partial<Extract<TableStorageApiResponse, object>> = {}): TableStorageApiResponse => ({attempts_without_metrics: faker.number.int(), current_bytes: faker.number.int(), current_files: faker.number.int(), old_snapshot_bytes: faker.number.int(), old_snapshot_files: faker.number.int(), reclaimed: {
         [faker.string.alphanumeric(5)]: faker.number.int()
@@ -188,30 +160,6 @@ export const getListTablesMockHandler = (overrideResponse?: TableApiResponse[] |
   }, options)
 }
 
-export const getExcludeTableMockHandler = (overrideResponse?: TableApiResponse | ((info: Parameters<HttpResponseResolver<PathParams, ExcludeTableApiRequest>>[0]) => Promise<TableApiResponse> | TableApiResponse), options?: RequestHandlerOptions) => {
-  return http.post<PathParams, ExcludeTableApiRequest>('*/v1/tables/exclude', async (info: Parameters<HttpResponseResolver<PathParams, ExcludeTableApiRequest>>[0]) => {
-
-
-    return HttpResponse.json(overrideResponse !== undefined
-    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getExcludeTableResponseMock(),
-      { status: 200
-      })
-  }, options)
-}
-
-export const getIncludeTableMockHandler = (overrideResponse?: TableApiResponse | ((info: Parameters<HttpResponseResolver<PathParams, IncludeTableApiRequest>>[0]) => Promise<TableApiResponse> | TableApiResponse), options?: RequestHandlerOptions) => {
-  return http.post<PathParams, IncludeTableApiRequest>('*/v1/tables/include', async (info: Parameters<HttpResponseResolver<PathParams, IncludeTableApiRequest>>[0]) => {
-
-
-    return HttpResponse.json(overrideResponse !== undefined
-    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getIncludeTableResponseMock(),
-      { status: 200
-      })
-  }, options)
-}
-
 export const getGetTableMockHandler = (overrideResponse?: TableApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<TableApiResponse> | TableApiResponse), options?: RequestHandlerOptions) => {
   return http.get<{ tableUuid: string }>('*/v1/tables/:tableUuid', async (info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => {
 
@@ -260,18 +208,6 @@ export const getTriggerTableMaintenanceMockHandler = (overrideResponse?: Trigger
   }, options)
 }
 
-export const getPauseTableMockHandler = (overrideResponse?: TableApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<TableApiResponse> | TableApiResponse), options?: RequestHandlerOptions) => {
-  return http.post<{ tableUuid: string }>('*/v1/tables/:tableUuid/pause', async (info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => {
-
-
-    return HttpResponse.json(overrideResponse !== undefined
-    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getPauseTableResponseMock(),
-      { status: 200
-      })
-  }, options)
-}
-
 export const getTriggerTableReconciliationMockHandler = (overrideResponse?: TriggerTableReconciliationApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<TriggerTableReconciliationApiResponse> | TriggerTableReconciliationApiResponse), options?: RequestHandlerOptions) => {
   return http.post<{ tableUuid: string }>('*/v1/tables/:tableUuid/reconcile', async (info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => {
 
@@ -280,42 +216,6 @@ export const getTriggerTableReconciliationMockHandler = (overrideResponse?: Trig
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
     : getTriggerTableReconciliationResponseMock(),
       { status: 202
-      })
-  }, options)
-}
-
-export const getResetTableSelectionMockHandler = (overrideResponse?: TableApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<TableApiResponse> | TableApiResponse), options?: RequestHandlerOptions) => {
-  return http.post<{ tableUuid: string }>('*/v1/tables/:tableUuid/reset-selection', async (info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => {
-
-
-    return HttpResponse.json(overrideResponse !== undefined
-    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getResetTableSelectionResponseMock(),
-      { status: 200
-      })
-  }, options)
-}
-
-export const getResumeTableMockHandler = (overrideResponse?: TableApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<TableApiResponse> | TableApiResponse), options?: RequestHandlerOptions) => {
-  return http.post<{ tableUuid: string }>('*/v1/tables/:tableUuid/resume', async (info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => {
-
-
-    return HttpResponse.json(overrideResponse !== undefined
-    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getResumeTableResponseMock(),
-      { status: 200
-      })
-  }, options)
-}
-
-export const getUpdateTableSettingsMockHandler = (overrideResponse?: TableApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }, UpdateTableSettingsApiRequest>>[0]) => Promise<TableApiResponse> | TableApiResponse), options?: RequestHandlerOptions) => {
-  return http.put<{ tableUuid: string }, UpdateTableSettingsApiRequest>('*/v1/tables/:tableUuid/settings', async (info: Parameters<HttpResponseResolver<{ tableUuid: string }, UpdateTableSettingsApiRequest>>[0]) => {
-
-
-    return HttpResponse.json(overrideResponse !== undefined
-    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getUpdateTableSettingsResponseMock(),
-      { status: 200
       })
   }, options)
 }
@@ -339,16 +239,10 @@ export const getTablesMock = () => [
   getUpdateTablePropertiesMockHandler(),
   getRenameTableMockHandler(),
   getListTablesMockHandler(),
-  getExcludeTableMockHandler(),
-  getIncludeTableMockHandler(),
   getGetTableMockHandler(),
   getListTableCommitsMockHandler(),
   getGetTableHealthMockHandler(),
   getTriggerTableMaintenanceMockHandler(),
-  getPauseTableMockHandler(),
   getTriggerTableReconciliationMockHandler(),
-  getResetTableSelectionMockHandler(),
-  getResumeTableMockHandler(),
-  getUpdateTableSettingsMockHandler(),
   getGetTableStorageMockHandler()
 ]

@@ -9,8 +9,8 @@ describe("statusTone", () => {
     ["error", "negative"],
     ["due", "notice"],
     ["truncated", "notice"],
-    ["active", "neutral"],
-    ["paused", "neutral"],
+    ["managed", "neutral"],
+    ["unmanaged", "neutral"],
     ["running", "neutral"],
   ])("maps %s to %s", (status, tone) => {
     expect(statusTone(status)).toBe(tone);

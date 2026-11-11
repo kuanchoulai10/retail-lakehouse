@@ -8,27 +8,15 @@ import pytest
 
 from context.table_maintenance.application.exceptions import ConflictError, NotFoundError
 from context.table_maintenance.application.port.inbound.table import (
-    ExcludeTableUseCaseInput,
-    ExcludeTableUseCaseOutput,
     GetTableUseCaseInput,
     GetTableUseCaseOutput,
-    IncludeTableUseCaseInput,
-    IncludeTableUseCaseOutput,
     ListTablesUseCaseInput,
     ListTablesUseCaseOutput,
     ListTablesUseCaseOutputItem,
-    PauseTableUseCaseInput,
-    PauseTableUseCaseOutput,
-    ResetTableSelectionUseCaseInput,
-    ResetTableSelectionUseCaseOutput,
-    ResumeTableUseCaseInput,
-    ResumeTableUseCaseOutput,
     TriggerTableMaintenanceUseCaseInput,
     TriggerTableMaintenanceUseCaseOutput,
     TriggerTableReconciliationUseCaseInput,
     TriggerTableReconciliationUseCaseOutput,
-    UpdateTableSettingsUseCaseInput,
-    UpdateTableSettingsUseCaseOutput,
 )
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import (
     NOW,
@@ -41,11 +29,8 @@ FIELDS: dict[str, Any] = {
     "catalog": "iceberg",
     "namespace": "sales",
     "table": "orders",
-    "status": "active",
-    "selection": "auto",
-    "settings": {"reconcile_interval_seconds": 3600},
+    "status": "managed",
     "matched_rule_id": "r-1",
-    "source_preset_id": "t-1",
     "operation_states": {"rewrite_data_files": {"last_attempt_at": NOW, "consecutive_failures": 0}},
     "registered_at": NOW,
     "updated_at": NOW,
@@ -58,11 +43,11 @@ def test_list_tables_passes_the_status_filter() -> None:
     stub = StubUseCase(ListTablesUseCaseOutput(items=[item]))
     client = build_client(list_tables=stub)
 
-    response = client.get("/v1/tables", params={"status": "active"})
+    response = client.get("/v1/tables", params={"status": "managed"})
 
     assert response.status_code == 200
     assert response.json()[0]["uuid"] == "u-1"
-    assert stub.requests == [ListTablesUseCaseInput(status="active")]
+    assert stub.requests == [ListTablesUseCaseInput(status="managed")]
 
 
 def test_list_tables_without_filter() -> None:
@@ -90,80 +75,34 @@ def test_get_table() -> None:
     assert stub.requests == [GetTableUseCaseInput(uuid="u-1")]
 
 
-def test_put_settings_sends_the_body_as_settings() -> None:
-    """Putting settings passes the request body to the use case as the table settings."""
-    stub = StubUseCase(UpdateTableSettingsUseCaseOutput(**FIELDS))
-    client = build_client(update_table_settings=stub)
-    settings = {"expire_snapshots": {"retain_last": 5}}
+def test_get_table_has_no_selection_settings_or_preset() -> None:
+    """A table answers its status and deciding rule, nothing about manual selection, settings or presets."""
+    client = build_client(get_table=StubUseCase(GetTableUseCaseOutput(**FIELDS)))
 
-    response = client.put("/v1/tables/u-1/settings", json=settings)
+    body = client.get("/v1/tables/u-1").json()
 
-    assert response.status_code == 200
-    assert stub.requests == [UpdateTableSettingsUseCaseInput(uuid="u-1", settings=settings)]
+    assert body["status"] == "managed"
+    assert not {"selection", "settings", "source_preset_id"} & body.keys()
 
 
 @pytest.mark.parametrize(
-    ("action", "field", "port_input", "port_output"),
+    ("method", "path"),
     [
-        (
-            "pause",
-            "pause_table",
-            PauseTableUseCaseInput,
-            PauseTableUseCaseOutput,
-        ),
-        (
-            "resume",
-            "resume_table",
-            ResumeTableUseCaseInput,
-            ResumeTableUseCaseOutput,
-        ),
-        (
-            "reset-selection",
-            "reset_table_selection",
-            ResetTableSelectionUseCaseInput,
-            ResetTableSelectionUseCaseOutput,
-        ),
+        ("post", "/v1/tables/u-1/pause"),
+        ("post", "/v1/tables/u-1/resume"),
+        ("post", "/v1/tables/u-1/reset-selection"),
+        ("put", "/v1/tables/u-1/settings"),
+        ("post", "/v1/tables/include"),
+        ("post", "/v1/tables/exclude"),
     ],
 )
-def test_lifecycle_actions(action, field, port_input, port_output) -> None:
-    """Each lifecycle action calls its use case with the table uuid and returns the table."""
-    stub = StubUseCase(port_output(**FIELDS))
-    client = build_client(**{field: stub})
+def test_manual_selection_and_settings_routes_are_gone(method: str, path: str) -> None:
+    """Pausing, resuming, including, excluding, resetting the selection and table settings are no longer served."""
+    client = build_client()
 
-    response = client.post(f"/v1/tables/u-1/{action}")
+    response = client.request(method, path, json={})
 
-    assert response.status_code == 200
-    assert response.json()["uuid"] == "u-1"
-    assert stub.requests == [port_input(uuid="u-1")]
-
-
-def test_include_table() -> None:
-    """Including a table passes the request body to the include use case."""
-    stub = StubUseCase(IncludeTableUseCaseOutput(**FIELDS))
-    client = build_client(include_table=stub)
-    body = {
-        "catalog": "iceberg",
-        "namespace": "sales",
-        "table": "orders",
-        "preset_id": "t-1",
-    }
-
-    response = client.post("/v1/tables/include", json=body)
-
-    assert response.status_code == 200
-    assert stub.requests == [IncludeTableUseCaseInput(**body)]
-
-
-def test_exclude_table() -> None:
-    """Excluding a table passes the request body to the exclude use case."""
-    stub = StubUseCase(ExcludeTableUseCaseOutput(**FIELDS))
-    client = build_client(exclude_table=stub)
-    body = {"catalog": "iceberg", "namespace": "sales", "table": "orders"}
-
-    response = client.post("/v1/tables/exclude", json=body)
-
-    assert response.status_code == 200
-    assert stub.requests == [ExcludeTableUseCaseInput(**body)]
+    assert response.status_code in (404, 405)
 
 
 def test_trigger_table_maintenance_returns_202() -> None:
@@ -192,8 +131,8 @@ def test_reconcile_table_returns_202() -> None:
 
 @pytest.mark.parametrize(
     ("error", "code"),
-    [(NotFoundError("table nope not found"), 404), (ConflictError("table u-1 is excluded"), 409)],
-    ids=["unknown", "not-enrolled"],
+    [(NotFoundError("table nope not found"), 404), (ConflictError("table u-1 is unmanaged"), 409)],
+    ids=["unknown", "unmanaged"],
 )
 def test_reconcile_table_maps_errors(error: Exception, code: int) -> None:
     """An unknown table is 404 and a table out of maintenance is 409."""

@@ -60,8 +60,6 @@ export const CommitsPhone: Story = {
 
 export const Maintenance: Story = { args: { route: `${ORDERS}/maintenance` } };
 
-export const Settings: Story = { args: { route: `${ORDERS}/settings` } };
-
 export const Reconciliations: Story = {
   args: { route: `${ORDERS}/reconciliations` },
   play: async ({ canvasElement }) => {
@@ -69,7 +67,7 @@ export const Reconciliations: Story = {
     await expect(await canvas.findByRole("button", { name: /^Started Rewrite data files/ })).toBeVisible();
     await expect(canvas.getByRole("button", { name: /^4 reconciliations found nothing to do/ })).toBeVisible();
     await expect(canvas.getByRole("button", { name: /^Would start Rewrite data files/ })).toHaveTextContent("Dry run");
-    await expect(canvas.getByRole("button", { name: /^Skipped: table paused/ })).toBeVisible();
+    await expect(canvas.getByRole("button", { name: /^Skipped: table not found/ })).toBeVisible();
     await expect(canvas.getByRole("link", { name: "Open maintenance run run-1" })).toHaveTextContent(/^Run run-1$/);
     const day = canvas.getByRole("region", { name: /^Reconciliations on / });
     for (const part of Array.from(day.querySelectorAll<HTMLElement>("ul, li, button"))) {
@@ -133,20 +131,14 @@ export const ReconciliationsPhone: Story = {
 
 export const Properties: Story = { args: { route: `${ORDERS}/properties` } };
 
-export const Paused: Story = {
+export const Unmanaged: Story = {
   beforeEach({ msw }) {
-    msw.use(getGetTableMockHandler({ ...MAINTAINED_ORDERS, status: "paused" }));
-  },
-};
-
-export const DryRunHeader: Story = {
-  beforeEach({ msw }) {
-    msw.use(getGetTableMockHandler({ ...MAINTAINED_ORDERS, settings: { dry_run: true } }));
+    msw.use(getGetTableMockHandler({ ...MAINTAINED_ORDERS, status: "unmanaged", matched_rule_id: null }));
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText("Dry run")).toBeVisible();
-    await expect(canvas.getByRole("button", { name: "Reconcile now" })).toBeEnabled();
+    await expect(await canvas.findByText("the discovery rules no longer include this table")).toBeVisible();
+    await expect(canvas.queryByRole("button", { name: /Pause|Resume/ })).toBeNull();
   },
 };
 

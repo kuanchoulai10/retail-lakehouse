@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 
 @dataclass(frozen=True)
 class SendTableChangeGatewayInput:
-    """Name the table, what changed about it and whether it is enrolled.
+    """Name the table, what changed about it and whether it is managed.
 
     ``table_name`` is the fully qualified ``catalog.namespace.table`` name.
     ``change`` is a ``TableChange`` value. ``operations`` is used only by
@@ -17,5 +17,5 @@ class SendTableChangeGatewayInput:
     table_uuid: str
     table_name: str
     change: str
-    is_enrolled: bool
+    is_managed: bool
     operations: list[str] = field(default_factory=list)

@@ -1,12 +1,12 @@
 import { EmptyState, TextLink } from "@retail-lakehouse/design-system";
 import { Link } from "react-router";
 
-export type MaintenanceEmptyReason = "catalog-not-covered" | "not-found" | "excluded" | "dropped";
+export type MaintenanceEmptyReason = "catalog-not-covered" | "not-found" | "unmanaged" | "dropped";
 
 const MESSAGES: Record<MaintenanceEmptyReason, string> = {
   "catalog-not-covered": "this catalog is not covered by maintenance",
   "not-found": "no discovery rule includes this table",
-  excluded: "excluded from maintenance by hand",
+  unmanaged: "the discovery rules no longer include this table",
   dropped: "maintenance recorded this table as dropped",
 };
 
@@ -18,7 +18,7 @@ export function MaintenanceEmptyState({ reason }: { reason: MaintenanceEmptyReas
       description={
         <>
           Reason: <span>{MESSAGES[reason]}</span>
-          {reason === "not-found" && (
+          {(reason === "not-found" || reason === "unmanaged") && (
             <>
               {" "}
               (see{" "}

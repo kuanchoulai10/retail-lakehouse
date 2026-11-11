@@ -6,21 +6,17 @@ from datetime import UTC, datetime
 
 import pytest
 
-from context.table_maintenance.application.domain.model.shared import (
-    MaintenanceSettings,
-)
 from context.table_maintenance.application.domain.model.table import (
     Table,
     TableId,
     TableName,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-    TableMaintenancePresetId,
+from context.table_maintenance.application.domain.model.table_discovery_rule import (
+    TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.service.table import (
     ListTablesService,
     TriggerTableMaintenanceService,
-    UpdateTableSettingsService,
 )
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import (
     build_client,
@@ -40,11 +36,10 @@ def repo() -> InMemoryTablesRepo:
     """Provide an in-memory table repository."""
     repo = InMemoryTablesRepo()
     repo.create(
-        Table.include_manual(
+        Table.register(
             TableId("u-1"),
             TableName(catalog="iceberg", namespace="sales", table="orders"),
-            TableMaintenancePresetId("t-1"),
-            MaintenanceSettings(),
+            TableDiscoveryRuleId("r-1"),
             NOW,
         )
     )
@@ -62,7 +57,6 @@ def client(repo, signals):
     """Provide a test client wired to the repository and the signal gateway."""
     return build_client(
         trigger_table_maintenance=TriggerTableMaintenanceService(repo, signals),
-        update_table_settings=UpdateTableSettingsService(repo, signals),
         list_tables=ListTablesService(repo),
     )
 
@@ -99,47 +93,22 @@ def test_trigger_signals_the_workflow(client, signals) -> None:
     assert [c.change for c in signals.calls] == ["maintenance_requested"]
 
 
-def test_orphan_older_than_below_one_day_returns_422(client) -> None:
-    """An orphan retention below one day is rejected with 422."""
-    response = client.put(
-        "/v1/tables/u-1/settings",
-        json={"remove_orphan_files": {"older_than_seconds": 60}},
-    )
+def test_trigger_unmanaged_table_returns_409(client, repo, signals) -> None:
+    """Triggering maintenance on an unmanaged table returns 409 and sends nothing."""
+    repo.items["u-1"].unmanage(NOW)
 
-    assert response.status_code == 422
-    assert response.json() == {"detail": "remove_orphan_files.older_than_seconds: must be at least 1 day"}
+    response = client.post("/v1/tables/u-1/maintenance", json={"operations": ["rewrite_data_files"]})
 
-
-def test_unknown_nested_settings_key_returns_422(client) -> None:
-    """An unknown key in nested settings is rejected with 422."""
-    response = client.put("/v1/tables/u-1/settings", json={"expire_snapshots": {"keep": 1}})
-
-    assert response.status_code == 422
-    assert response.json() == {"detail": "expire_snapshots.keep: Extra inputs are not permitted"}
+    assert response.status_code == 409
+    assert signals.calls == []
 
 
-@pytest.mark.parametrize(
-    ("settings", "detail"),
-    [
-        ({"dry_run": 1}, "dry_run: Input should be a valid boolean"),
-        (
-            {"rewrite_data_files": {"min_reducible_files": True}},
-            "rewrite_data_files.min_reducible_files: Input should be a valid integer",
-        ),
-        (
-            {"reconcile_interval_seconds": 1.5},
-            "reconcile_interval_seconds: must be a whole number of seconds",
-        ),
-        ({"reconcile_interval": 3600}, "reconcile_interval: Extra inputs are not permitted"),
-        ({"reconcile_interval_seconds": 10**15}, "reconcile_interval_seconds: too large for a duration"),
-    ],
-)
-def test_mistyped_settings_return_422_with_one_line(client, settings, detail) -> None:
-    """A mistyped value, a field name instead of its wire name, or out-of-range seconds answer 422 in one line."""
-    response = client.put("/v1/tables/u-1/settings", json=settings)
+def test_status_filter_lists_unmanaged_tables(client, repo) -> None:
+    """The status filter takes the managed, unmanaged and dropped statuses."""
+    repo.items["u-1"].unmanage(NOW)
 
-    assert response.status_code == 422
-    assert response.json() == {"detail": detail}
+    assert [t["uuid"] for t in client.get("/v1/tables", params={"status": "unmanaged"}).json()] == ["u-1"]
+    assert client.get("/v1/tables", params={"status": "managed"}).json() == []
 
 
 def test_invalid_status_filter_returns_422(client) -> None:

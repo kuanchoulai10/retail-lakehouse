@@ -7,22 +7,16 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.inbound.table import (
-        ExcludeTableUseCase,
         GetTableHealthUseCase,
         GetTableStorageUseCase,
         GetTableUseCase,
-        IncludeTableUseCase,
         ListTableCommitsUseCase,
         ListTablesUseCase,
-        PauseTableUseCase,
         PlanTableMaintenanceUseCase,
         ProcessTableHintUseCase,
-        ResetTableSelectionUseCase,
-        ResumeTableUseCase,
         SyncDiscoveredTablesUseCase,
         TriggerTableMaintenanceUseCase,
         TriggerTableReconciliationUseCase,
-        UpdateTableSettingsUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_discovery_rule import (
         CreateTableDiscoveryRuleUseCase,
@@ -102,19 +96,13 @@ class UseCases:
     get_table_maintenance_policy_version: GetTableMaintenancePolicyVersionUseCase
     list_table_maintenance_policies: ListTableMaintenancePoliciesUseCase
     update_table_maintenance_policy: UpdateTableMaintenancePolicyUseCase
-    exclude_table: ExcludeTableUseCase
     get_table: GetTableUseCase
     get_table_health: GetTableHealthUseCase
     get_table_storage: GetTableStorageUseCase
     list_table_commits: ListTableCommitsUseCase
-    include_table: IncludeTableUseCase
     list_tables: ListTablesUseCase
-    pause_table: PauseTableUseCase
-    reset_table_selection: ResetTableSelectionUseCase
-    resume_table: ResumeTableUseCase
     trigger_table_maintenance: TriggerTableMaintenanceUseCase
     trigger_table_reconciliation: TriggerTableReconciliationUseCase
-    update_table_settings: UpdateTableSettingsUseCase
     create_table_maintenance_run: CreateTableMaintenanceRunUseCase
     get_table_maintenance_run: GetTableMaintenanceRunUseCase
     list_table_maintenance_runs: ListTableMaintenanceRunsUseCase

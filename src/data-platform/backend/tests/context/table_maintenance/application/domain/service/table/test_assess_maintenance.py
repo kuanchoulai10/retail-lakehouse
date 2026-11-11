@@ -10,7 +10,6 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation as Op,
 )
 from context.table_maintenance.application.domain.model.shared import (
-    MaintenanceSettings,
     ManifestStats,
     Measurement,
     MeasurementComparison,
@@ -49,9 +48,6 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     RewriteManifestsTriggerPolicy,
     SmallManifestsCondition,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-    TableMaintenancePresetId,
-)
 from context.table_maintenance.application.domain.service.table import (
     any_condition_holds,
     assess_maintenance,
@@ -69,13 +65,11 @@ DAY_SPEC = PartitionSpecInfo(
 
 
 def table() -> Table:
-    """Build an active auto table."""
-    return Table.register_auto(
+    """Build a managed table."""
+    return Table.register(
         TableId("u"),
         TableName(catalog="c", namespace="n", table="t"),
         TableDiscoveryRuleId("r"),
-        TableMaintenancePresetId("t"),
-        MaintenanceSettings(),
         NOW - timedelta(days=30),
     )
 
@@ -364,7 +358,7 @@ def test_disabled_operation_has_no_measures():
 def test_assessment_ignores_status():
     """The assessment does not depend on the table status, unlike the plan."""
     t = table()
-    t.pause(NOW)
+    t.unmanage(NOW)
     o = obs(partitions=(part(10),))
     assert assess(t, o, Op.REWRITE_DATA_FILES).verdict == OperationVerdict.DUE
     assert plan_scheduled_maintenance(t, DEFAULT, o, NOW).is_empty

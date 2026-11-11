@@ -7,22 +7,16 @@ from typing import TYPE_CHECKING
 
 from bootstrap.container.use_cases import UseCases
 from context.table_maintenance.application.service.table import (
-    ExcludeTableService,
     GetTableHealthService,
     GetTableService,
     GetTableStorageService,
-    IncludeTableService,
     ListTableCommitsService,
     ListTablesService,
-    PauseTableService,
     PlanTableMaintenanceService,
     ProcessTableHintService,
-    ResetTableSelectionService,
-    ResumeTableService,
     SyncDiscoveredTablesService,
     TriggerTableMaintenanceService,
     TriggerTableReconciliationService,
-    UpdateTableSettingsService,
 )
 from context.table_maintenance.application.service.table_discovery_rule import (
     CreateTableDiscoveryRuleService,
@@ -108,7 +102,6 @@ def build_use_cases(
         process_table_hint=ProcessTableHintService(
             tables,
             rules,
-            presets,
             discovery,
             catalog,
             table_changes,
@@ -116,7 +109,7 @@ def build_use_cases(
             clock=clock,
         ),
         sync_discovered_tables=SyncDiscoveredTablesService(
-            tables, rules, presets, discovery, catalog, table_changes, clock=clock
+            tables, rules, discovery, catalog, table_changes, clock=clock
         ),
         update_table_discovery_settings=UpdateTableDiscoverySettingsService(
             discovery, gateways.update_table_discovery_schedule, clock=clock
@@ -143,19 +136,13 @@ def build_use_cases(
         get_table_maintenance_policy_version=GetTableMaintenancePolicyVersionService(policies),
         list_table_maintenance_policies=ListTableMaintenancePoliciesService(policies),
         update_table_maintenance_policy=UpdateTableMaintenancePolicyService(policies, clock=clock),
-        exclude_table=ExcludeTableService(tables, catalog, table_changes, clock=clock),
         get_table=GetTableService(tables),
         get_table_health=GetTableHealthService(tables, catalog, resolve_applicable_policy, clock=clock),
         get_table_storage=GetTableStorageService(tables, catalog, runs, clock=clock),
         list_table_commits=ListTableCommitsService(tables, catalog),
-        include_table=IncludeTableService(tables, presets, catalog, table_changes, clock=clock),
         list_tables=ListTablesService(tables),
-        pause_table=PauseTableService(tables, table_changes, clock=clock),
-        reset_table_selection=ResetTableSelectionService(tables, rules, presets, table_changes, clock=clock),
-        resume_table=ResumeTableService(tables, table_changes, clock=clock),
         trigger_table_maintenance=TriggerTableMaintenanceService(tables, table_changes),
         trigger_table_reconciliation=TriggerTableReconciliationService(tables, table_changes),
-        update_table_settings=UpdateTableSettingsService(tables, table_changes, clock=clock),
         create_table_maintenance_run=CreateTableMaintenanceRunService(runs, tables),
         get_table_maintenance_run=GetTableMaintenanceRunService(runs),
         list_table_maintenance_runs=ListTableMaintenanceRunsService(runs),

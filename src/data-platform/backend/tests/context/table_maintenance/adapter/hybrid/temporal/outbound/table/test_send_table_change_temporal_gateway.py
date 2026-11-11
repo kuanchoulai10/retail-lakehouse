@@ -60,7 +60,7 @@ def _change(
     table_uuid: str,
     change: str,
     *,
-    is_enrolled: bool,
+    is_managed: bool,
     table_name: str = "iceberg.sales.orders",
     operations: list[str] | None = None,
 ) -> SendTableChangeGatewayInput:
@@ -68,7 +68,7 @@ def _change(
         table_uuid=table_uuid,
         table_name=table_name,
         change=change,
-        is_enrolled=is_enrolled,
+        is_managed=is_managed,
         operations=operations or [],
     )
 
@@ -77,9 +77,7 @@ def _change(
     ("change", "signal"),
     [
         ("updated", TableReconciliationSignal.TABLE_UPDATED),
-        ("settings_changed", TableReconciliationSignal.SETTINGS_CHANGED),
-        ("paused", TableReconciliationSignal.PAUSE),
-        ("resumed", TableReconciliationSignal.RESUME),
+        ("policy_changed", TableReconciliationSignal.POLICY_CHANGED),
         ("stopped", TableReconciliationSignal.STOP),
         ("reconcile_requested", TableReconciliationSignal.RECONCILE_NOW),
         ("seen", TableReconciliationSignal.TABLE_SEEN),
@@ -88,15 +86,13 @@ def _change(
 def test_each_change_maps_to_its_signal(harness, change, signal):
     """Each table change is delivered to the reconciliation workflow as its own signal."""
     gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
-    gateway.send(_change(f"map-{change}", change, is_enrolled=True))
+    gateway.send(_change(f"map-{change}", change, is_managed=True))
     assert _signals(harness, f"map-{change}") == [[signal, {}]]
 
 
 _SIGNAL_BY_TABLE_CHANGE = {
     TableChange.UPDATED: [TableReconciliationSignal.TABLE_UPDATED, {}],
-    TableChange.SETTINGS_CHANGED: [TableReconciliationSignal.SETTINGS_CHANGED, {}],
-    TableChange.PAUSED: [TableReconciliationSignal.PAUSE, {}],
-    TableChange.RESUMED: [TableReconciliationSignal.RESUME, {}],
+    TableChange.POLICY_CHANGED: [TableReconciliationSignal.POLICY_CHANGED, {}],
     TableChange.STOPPED: [TableReconciliationSignal.STOP, {}],
     TableChange.RECONCILE_REQUESTED: [TableReconciliationSignal.RECONCILE_NOW, {}],
     TableChange.SEEN: [TableReconciliationSignal.TABLE_SEEN, {}],
@@ -112,7 +108,7 @@ def test_every_table_change_member_is_sent_as_its_signal(harness, change):
     """Every member of the table change enum is delivered as the signal it maps to."""
     gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
     uuid = f"member-{change.value}"
-    gateway.send(_change(uuid, change.value, is_enrolled=True))
+    gateway.send(_change(uuid, change.value, is_managed=True))
     assert _signals(harness, uuid) == [_SIGNAL_BY_TABLE_CHANGE[change]]
 
 
@@ -123,7 +119,7 @@ def test_maintenance_requested_carries_the_operations(harness):
         _change(
             "trigger",
             "maintenance_requested",
-            is_enrolled=True,
+            is_managed=True,
             operations=["expire_snapshots", "rewrite_data_files"],
         )
     )
@@ -135,19 +131,19 @@ def test_maintenance_requested_carries_the_operations(harness):
     ]
 
 
-def test_pause_of_an_enrolled_table_starts_the_missing_workflow_paused(harness):
-    """Pausing an enrolled table whose workflow is missing starts it and then delivers the pause."""
+def test_change_of_a_managed_table_starts_the_missing_workflow(harness):
+    """A change to a managed table whose workflow is missing starts it and then delivers the change."""
     gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
-    assert not _workflow_exists(harness, "pause-start")
-    gateway.send(_change("pause-start", "paused", is_enrolled=True))
-    assert _signals(harness, "pause-start") == [[TableReconciliationSignal.PAUSE, {}]]
+    assert not _workflow_exists(harness, "seen-start")
+    gateway.send(_change("seen-start", "seen", is_managed=True))
+    assert _signals(harness, "seen-start") == [[TableReconciliationSignal.TABLE_SEEN, {}]]
 
 
-def test_enrolled_changes_start_one_workflow_and_deliver_both(harness):
-    """Two changes to an enrolled table start one workflow and deliver both signals to it."""
+def test_managed_changes_start_one_workflow_and_deliver_both(harness):
+    """Two changes to a managed table start one workflow and deliver both signals to it."""
     gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
-    for change in ("settings_changed", "updated"):
-        gateway.send(_change("swl", change, is_enrolled=True))
+    for change in ("policy_changed", "updated"):
+        gateway.send(_change("swl", change, is_managed=True))
 
     async def count() -> int:
         found = [
@@ -162,7 +158,7 @@ def test_enrolled_changes_start_one_workflow_and_deliver_both(harness):
         found = harness.bridge.run(count)
     assert found == 1
     assert [s for s, _ in _signals(harness, "swl", want=2)] == [
-        TableReconciliationSignal.SETTINGS_CHANGED,
+        TableReconciliationSignal.POLICY_CHANGED,
         TableReconciliationSignal.TABLE_UPDATED,
     ]
 
@@ -171,7 +167,7 @@ def test_start_sets_the_table_summary_only_on_the_first_start(harness):
     """The workflow summary names the table and is set by the first start only."""
     gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
     for table_name in ("iceberg.sales.orders", "iceberg.sales.renamed"):
-        gateway.send(_change("summary", "settings_changed", is_enrolled=True, table_name=table_name))
+        gateway.send(_change("summary", "policy_changed", is_managed=True, table_name=table_name))
 
     async def summary() -> str | None:
         handle = harness.client.get_workflow_handle(table_reconciliation_workflow_id("summary"))
@@ -180,21 +176,21 @@ def test_start_sets_the_table_summary_only_on_the_first_start(harness):
     assert harness.bridge.run(summary) == "iceberg.sales.orders"
 
 
-def test_not_enrolled_change_reaches_a_running_workflow(harness):
-    """A change to a table that is not enrolled is still delivered to a running workflow."""
+def test_unmanaged_change_reaches_a_running_workflow(harness):
+    """A change to a table that is not managed is still delivered to a running workflow."""
     gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
-    gateway.send(_change("plain", "settings_changed", is_enrolled=True))
-    gateway.send(_change("plain", "stopped", is_enrolled=False))
+    gateway.send(_change("plain", "policy_changed", is_managed=True))
+    gateway.send(_change("plain", "stopped", is_managed=False))
     assert [s for s, _ in _signals(harness, "plain", want=2)] == [
-        TableReconciliationSignal.SETTINGS_CHANGED,
+        TableReconciliationSignal.POLICY_CHANGED,
         TableReconciliationSignal.STOP,
     ]
 
 
-def test_not_enrolled_change_never_starts_a_workflow(harness):
-    """A change to a table that is not enrolled does not start a workflow."""
+def test_unmanaged_change_never_starts_a_workflow(harness):
+    """A change to a table that is not managed does not start a workflow."""
     gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
-    gateway.send(_change("missing", "stopped", is_enrolled=False))
+    gateway.send(_change("missing", "stopped", is_managed=False))
     assert not _workflow_exists(harness, "missing")
 
 
@@ -202,4 +198,4 @@ def test_unknown_change_is_rejected(harness):
     """An unknown table change is rejected with a ValueError."""
     gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
     with pytest.raises(ValueError, match="unknown table change"):
-        gateway.send(_change("unknown", "renamed", is_enrolled=True))
+        gateway.send(_change("unknown", "renamed", is_managed=True))

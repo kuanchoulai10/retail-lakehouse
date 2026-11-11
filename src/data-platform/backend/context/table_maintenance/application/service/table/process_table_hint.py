@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from context.table_maintenance.application.domain.model.table import (
     TableChange,
     TableId,
+    TableManagementChange,
     TableName,
     TableStatus,
 )
@@ -18,10 +19,12 @@ from context.table_maintenance.application.port.inbound.table import (
 )
 from context.table_maintenance.application.port.outbound.table import (
     SendDiscoveryRequestGatewayInput,
-    SendTableChangeGatewayInput,
     TableMetadataRef,
 )
 from context.table_maintenance.application.service.shared import translate_domain_errors
+from context.table_maintenance.application.service.table.apply_discovery_to_known_table import (
+    apply_discovery_to_known_table,
+)
 from context.table_maintenance.application.service.table.register_discovered_table import (
     register_discovered_table,
 )
@@ -35,6 +38,9 @@ from context.table_maintenance.application.service.table.table_hint_action impor
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from context.table_maintenance.application.domain.model.table_discovery_rule import (
+        TableDiscoveryRule,
+    )
     from context.table_maintenance.application.port.outbound.table import (
         ReadTableMetadataGateway,
         SendDiscoveryRequestGateway,
@@ -48,9 +54,6 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table_discovery_settings import (
         TableDiscoverySettingsRepo,
     )
-    from context.table_maintenance.application.port.outbound.table_maintenance_preset import (
-        TableMaintenancePresetsRepo,
-    )
 
 
 class ProcessTableHintService(ProcessTableHintUseCase):
@@ -60,7 +63,6 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         self,
         tables_repo: TablesRepo,
         rules_repo: TableDiscoveryRulesRepo,
-        presets_repo: TableMaintenancePresetsRepo,
         table_discovery_settings_repo: TableDiscoverySettingsRepo,
         catalog_gateway: ReadTableMetadataGateway,
         table_change_gateway: SendTableChangeGateway,
@@ -71,7 +73,6 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         """Bind the repos, the gateways and the clock."""
         self._tables_repo = tables_repo
         self._rules_repo = rules_repo
-        self._presets_repo = presets_repo
         self._table_discovery_settings_repo = table_discovery_settings_repo
         self._catalog_gateway = catalog_gateway
         self._table_change_gateway = table_change_gateway
@@ -79,7 +80,12 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         self._clock = clock
 
     def execute(self, request: ProcessTableHintUseCaseInput) -> ProcessTableHintUseCaseOutput:
-        """Handle the hint; ``event_type`` does not change the behaviour."""
+        """Handle the hint; ``event_type`` does not change the behaviour.
+
+        A hint naming one table applies the same steps as a discovery pass to that
+        table: an unknown one the rules manage is registered, a known one is
+        renamed and decided again, and a managed one is signalled ``updated``.
+        """
         if request.table is None:
             return self._request_discovery(request)
         found = self._catalog_gateway.load_table(TableMetadataRef(request.catalog, request.namespace, request.table))
@@ -107,36 +113,42 @@ class ProcessTableHintService(ProcessTableHintUseCase):
             return self._register(found, now)
         if table.status == TableStatus.DROPPED:
             return TableHintAction.IGNORED
-        action = TableHintAction.IGNORED
         name = TableName(catalog=found.catalog, namespace=found.namespace, table=found.table)
-        if table.name != name:
-            table.rename(name, now)
-            self._tables_repo.update(table)
-            action = TableHintAction.RENAMED
-        if table.is_enrolled:
-            self._table_change_gateway.send(
-                SendTableChangeGatewayInput(
-                    table_uuid=table.id.value,
-                    table_name=table.name.fully_qualified(),
-                    change=TableChange.UPDATED.value,
-                    is_enrolled=table.is_enrolled,
-                )
-            )
-            if action == TableHintAction.IGNORED:
-                action = TableHintAction.SIGNALLED
-        return action
+        outcome = apply_discovery_to_known_table(
+            table,
+            name,
+            self._rules(),
+            self._tables_repo,
+            self._table_change_gateway,
+            TableChange.UPDATED,
+            now,
+        )
+        if outcome.change == TableManagementChange.MANAGED:
+            return TableHintAction.MANAGED
+        if outcome.change == TableManagementChange.UNMANAGED:
+            return TableHintAction.UNMANAGED
+        if outcome.renamed:
+            return TableHintAction.RENAMED
+        return TableHintAction.SIGNALLED if outcome.signalled else TableHintAction.IGNORED
+
+    def _rules(self) -> list[TableDiscoveryRule] | None:
+        """Return the discovery rules, or None while discovery is switched off."""
+        if not self._table_discovery_settings_repo.get_settings().enabled:
+            return None
+        return self._rules_repo.list_all()
 
     def _register(self, found: TableMetadata, now: datetime) -> TableHintAction:
-        if not self._table_discovery_settings_repo.get_settings().enabled:
+        rules = self._rules()
+        if rules is None:
             return TableHintAction.IGNORED
         name = TableName(catalog=found.catalog, namespace=found.namespace, table=found.table)
         stale = self._tables_repo.find_by_name(name)
         outcome = register_discovered_table(
             found,
-            self._rules_repo.list_all(),
+            rules,
             self._tables_repo,
-            self._presets_repo,
             self._table_change_gateway,
+            TableChange.UPDATED,
             now,
         )
         if outcome == RegistrationOutcome.REGISTERED:

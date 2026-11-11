@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 from context.table_maintenance.adapter.inbound.web.table.dto import (
-    ExcludeTableApiRequest,
-    IncludeTableApiRequest,
     TableApiResponse,
     TableCommitApiResponse,
     TableCommitsApiResponse,
@@ -14,13 +12,10 @@ from context.table_maintenance.adapter.inbound.web.table.dto import (
     TriggerTableMaintenanceApiRequest,
     TriggerTableMaintenanceApiResponse,
     TriggerTableReconciliationApiResponse,
-    UpdateTableSettingsApiRequest,
 )
 from context.table_maintenance.adapter.inbound.web.table.router import router
 
 __all__ = [
-    "ExcludeTableApiRequest",
-    "IncludeTableApiRequest",
     "TableApiResponse",
     "TableCommitApiResponse",
     "TableCommitsApiResponse",
@@ -30,6 +25,5 @@ __all__ = [
     "TriggerTableMaintenanceApiRequest",
     "TriggerTableMaintenanceApiResponse",
     "TriggerTableReconciliationApiResponse",
-    "UpdateTableSettingsApiRequest",
     "router",
 ]

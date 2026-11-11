@@ -19,7 +19,7 @@ import { TablePage } from "./TablePage";
 
 const TABLE = "/v1/catalogs/iceberg/namespaces/retail/tables/orders";
 const PAGE = "/catalogs/iceberg/namespaces/retail/tables/orders";
-const SEVEN_TABS = ["Overview", "Schema", "Commits", "Maintenance", "Reconciliations", "Properties", "Settings"];
+const SIX_TABS = ["Overview", "Schema", "Commits", "Maintenance", "Reconciliations", "Properties"];
 
 function Location() {
   const location = useLocation();
@@ -81,9 +81,9 @@ const UNMANAGED: [string, Options, string][] = [
     "no discovery rule includes this table",
   ],
   [
-    "excluded",
-    { maintenanceTable: () => jsonResponse(maintenance({ status: "excluded" })) },
-    "excluded from maintenance by hand",
+    "unmanaged",
+    { maintenanceTable: () => jsonResponse(maintenance({ status: "unmanaged" })) },
+    "the discovery rules no longer include this table",
   ],
   [
     "dropped",
@@ -103,23 +103,30 @@ function tabNames(): string[] {
 
 // These tests type into dialogs, which takes seconds under a loaded parallel run.
 describe("TablePage", { timeout: 15_000 }, () => {
-  it("every table shows the same seven tabs", async () => {
+  it("every table shows the same six tabs, with no settings tab", async () => {
     stubTable();
     renderAt(PAGE);
     await screen.findByText("Maintenance: managed");
-    expect(tabNames()).toEqual(SEVEN_TABS);
+    expect(tabNames()).toEqual(SIX_TABS);
   });
 
-  it("every table shows the same seven tabs when maintenance does not manage it", async () => {
+  it("every table shows the same six tabs when maintenance does not manage it", async () => {
     stubTable({ covered: [] });
     renderAt(PAGE);
     await screen.findByText("Maintenance: not managed");
-    expect(tabNames()).toEqual(SEVEN_TABS);
+    expect(tabNames()).toEqual(SIX_TABS);
+  });
+
+  it("the old settings path shows the overview", async () => {
+    stubTable();
+    renderAt(`${PAGE}/settings`);
+    expect(await screen.findByText("Maintenance: managed")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
   });
 
   describe.each(UNMANAGED)("unmanaged table (%s)", (_reason, options, message) => {
-    it.each(["commits", "maintenance", "settings"])(
-      "unmanaged table shows the empty state on commits maintenance and settings: %s",
+    it.each(["commits", "maintenance", "reconciliations"])(
+      "unmanaged table shows the empty state on commits maintenance and reconciliations: %s",
       async (tab) => {
         stubTable(options);
         renderAt(`${PAGE}/${tab}`);
@@ -149,11 +156,11 @@ describe("TablePage", { timeout: 15_000 }, () => {
   });
 
   it("shows the not managed marker and the empty state on overview", async () => {
-    stubTable({ maintenanceTable: () => jsonResponse(maintenance({ status: "excluded" })) });
+    stubTable({ maintenanceTable: () => jsonResponse(maintenance({ status: "unmanaged" })) });
     renderAt(PAGE);
     const summary = await screen.findByRole("region", { name: "Table" });
     expect(await within(summary).findByText("Maintenance: not managed")).toBeInTheDocument();
-    expect(screen.getByText("excluded from maintenance by hand")).toBeInTheDocument();
+    expect(screen.getByText("the discovery rules no longer include this table")).toBeInTheDocument();
   });
 
   it("shows the header numbers from the catalog summary", async () => {
@@ -172,11 +179,11 @@ describe("TablePage", { timeout: 15_000 }, () => {
     );
   });
 
-  it("shows pause and run maintenance only when the table is managed", async () => {
-    stubTable({ maintenanceTable: () => jsonResponse(maintenance({ status: "paused" })) });
+  it("shows run maintenance and no pause or resume when the table is managed", async () => {
+    stubTable();
     renderAt(PAGE);
-    expect(await screen.findByRole("button", { name: "Resume" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Run maintenance" })).toBeDisabled();
+    expect(await screen.findByRole("button", { name: "Run maintenance" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: /Pause|Resume/ })).not.toBeInTheDocument();
   });
 
   it("shows the polaris tabs when maintenance fails to answer", async () => {

@@ -6,25 +6,21 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
+from sqlalchemy import inspect
 
 from context.table_maintenance.adapter.outbound.table.sql import TablesSqlRepo
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
-    MaintenanceSettings,
 )
 from context.table_maintenance.application.domain.model.table import (
     OperationState,
     Table,
     TableId,
     TableName,
-    TableSelection,
     TableStatus,
 )
 from context.table_maintenance.application.domain.model.table_discovery_rule import (
     TableDiscoveryRuleId,
-)
-from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-    TableMaintenancePresetId,
 )
 from context.table_maintenance.application.exceptions import ConflictError
 
@@ -37,17 +33,14 @@ NOW = datetime(2026, 10, 24, 12, 0, tzinfo=UTC)
 def _table(
     uuid: str = "u1",
     name: TableName | None = None,
-    status: TableStatus = TableStatus.ACTIVE,
+    status: TableStatus = TableStatus.MANAGED,
     updated_at: datetime = NOW,
 ) -> Table:
     return Table(
         id=TableId(uuid),
         name=name or TableName(catalog="iceberg", namespace="inventory", table="orders"),
         status=status,
-        selection=TableSelection.AUTO,
-        settings=MaintenanceSettings(reconcile_interval=timedelta(minutes=45)),
         matched_rule_id=TableDiscoveryRuleId("r1"),
-        source_preset_id=TableMaintenancePresetId("t1"),
         registered_at=NOW,
         updated_at=updated_at,
         operation_states={
@@ -71,11 +64,8 @@ def test_roundtrip_field_by_field(repo: TablesSqlRepo):
     assert loaded is not None
     assert loaded.id == original.id
     assert loaded.name == original.name
-    assert loaded.status is TableStatus.ACTIVE
-    assert loaded.selection is TableSelection.AUTO
-    assert loaded.settings == original.settings
+    assert loaded.status is TableStatus.MANAGED
     assert loaded.matched_rule_id == TableDiscoveryRuleId("r1")
-    assert loaded.source_preset_id == TableMaintenancePresetId("t1")
     assert loaded.registered_at == NOW
     assert loaded.registered_at.tzinfo is not None
     assert loaded.updated_at == NOW
@@ -99,20 +89,23 @@ def test_roundtrip_reads_an_equal_aggregate(repo: TablesSqlRepo):
     }
 
 
-def test_roundtrip_with_none_settings_and_links(repo: TablesSqlRepo):
-    """A table without settings or rule and preset links round trips with them as None."""
-    table = _table()
-    table.settings = None
+def test_roundtrip_of_an_unmanaged_table_without_a_rule(repo: TablesSqlRepo):
+    """An unmanaged table without a deciding rule round trips with its status and no rule."""
+    table = _table(status=TableStatus.UNMANAGED)
     table.matched_rule_id = None
-    table.source_preset_id = None
     table.operation_states = {}
     repo.create(table)
     loaded = repo.get(table.id)
     assert loaded is not None
-    assert loaded.settings is None
+    assert loaded.status is TableStatus.UNMANAGED
     assert loaded.matched_rule_id is None
-    assert loaded.source_preset_id is None
     assert loaded.operation_states == {}
+
+
+def test_tables_have_no_selection_settings_or_preset_columns(engine: Engine):
+    """The tables table keeps no manual selection, per-table settings or source preset."""
+    columns = {c["name"] for c in inspect(engine).get_columns("tables")}
+    assert not {"selection", "settings_json", "source_preset_id"} & columns
 
 
 def test_loaded_state_does_not_alias_between_loads(repo: TablesSqlRepo):
@@ -136,7 +129,7 @@ def test_update_persists_changes(repo: TablesSqlRepo):
     table = _table()
     repo.create(table)
     later = NOW + timedelta(hours=1)
-    table.status = TableStatus.PAUSED
+    table.status = TableStatus.UNMANAGED
     table.updated_at = later
     table.operation_states[MaintenanceOperation.REWRITE_MANIFESTS] = OperationState(
         last_attempt_at=later, consecutive_failures=1
@@ -144,7 +137,7 @@ def test_update_persists_changes(repo: TablesSqlRepo):
     repo.update(table)
     loaded = repo.get(table.id)
     assert loaded is not None
-    assert loaded.status is TableStatus.PAUSED
+    assert loaded.status is TableStatus.UNMANAGED
     assert loaded.updated_at == later
     assert loaded.operation_states == table.operation_states
 
@@ -171,7 +164,7 @@ def test_find_by_name_ignores_dropped_and_allows_reuse(repo: TablesSqlRepo):
     name = TableName(catalog="iceberg", namespace="inventory", table="orders")
     repo.create(_table("old", name, TableStatus.DROPPED))
     assert repo.find_by_name(name) is None
-    repo.create(_table("new", name, TableStatus.ACTIVE))
+    repo.create(_table("new", name, TableStatus.MANAGED))
     found = repo.find_by_name(name)
     assert found is not None
     assert found.id == TableId("new")
@@ -189,10 +182,10 @@ def test_find_by_name_prefers_most_recently_updated(repo: TablesSqlRepo):
 
 def test_list_by_statuses(repo: TablesSqlRepo):
     """Listing by statuses returns the tables in those statuses and none for an empty list."""
-    repo.create(_table("a", TableName(catalog="c", namespace="n", table="a"), TableStatus.ACTIVE))
-    repo.create(_table("b", TableName(catalog="c", namespace="n", table="b"), TableStatus.PAUSED))
+    repo.create(_table("a", TableName(catalog="c", namespace="n", table="a"), TableStatus.MANAGED))
+    repo.create(_table("b", TableName(catalog="c", namespace="n", table="b"), TableStatus.UNMANAGED))
     repo.create(_table("c", TableName(catalog="c", namespace="n", table="c"), TableStatus.DROPPED))
-    got = repo.list_by_statuses([TableStatus.ACTIVE, TableStatus.PAUSED])
+    got = repo.list_by_statuses([TableStatus.MANAGED, TableStatus.UNMANAGED])
     assert [t.id.value for t in got] == ["a", "b"]
     assert repo.list_by_statuses([]) == []
 

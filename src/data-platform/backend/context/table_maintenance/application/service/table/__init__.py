@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from context.table_maintenance.application.service.table.exclude_table import (
-    ExcludeTableService,
+from context.table_maintenance.application.service.table.apply_discovery_to_known_table import (
+    apply_discovery_to_known_table,
 )
 from context.table_maintenance.application.service.table.get_table import (
     GetTableService,
@@ -14,8 +14,8 @@ from context.table_maintenance.application.service.table.get_table_health import
 from context.table_maintenance.application.service.table.get_table_storage import (
     GetTableStorageService,
 )
-from context.table_maintenance.application.service.table.include_table import (
-    IncludeTableService,
+from context.table_maintenance.application.service.table.known_table_outcome import (
+    KnownTableOutcome,
 )
 from context.table_maintenance.application.service.table.list_table_commits import (
     ListTableCommitsService,
@@ -25,9 +25,6 @@ from context.table_maintenance.application.service.table.list_tables import (
 )
 from context.table_maintenance.application.service.table.load_catalog_table import (
     load_catalog_table,
-)
-from context.table_maintenance.application.service.table.pause_table import (
-    PauseTableService,
 )
 from context.table_maintenance.application.service.table.plan_table_maintenance import (
     PlanTableMaintenanceService,
@@ -43,12 +40,6 @@ from context.table_maintenance.application.service.table.register_discovered_tab
 )
 from context.table_maintenance.application.service.table.registration_outcome import (
     RegistrationOutcome,
-)
-from context.table_maintenance.application.service.table.reset_table_selection import (
-    ResetTableSelectionService,
-)
-from context.table_maintenance.application.service.table.resume_table import (
-    ResumeTableService,
 )
 from context.table_maintenance.application.service.table.summary_int import summary_int
 from context.table_maintenance.application.service.table.sync_discovered_tables import (
@@ -69,29 +60,22 @@ from context.table_maintenance.application.service.table.trigger_table_maintenan
 from context.table_maintenance.application.service.table.trigger_table_reconciliation import (
     TriggerTableReconciliationService,
 )
-from context.table_maintenance.application.service.table.update_table_settings import (
-    UpdateTableSettingsService,
-)
 
 __all__ = [
-    "ExcludeTableService",
+    "KnownTableOutcome",
+    "apply_discovery_to_known_table",
     "GetTableService",
     "GetTableHealthService",
     "GetTableStorageService",
-    "IncludeTableService",
     "ListTableCommitsService",
     "ListTablesService",
-    "PauseTableService",
     "PlanTableMaintenanceService",
     "ProcessTableHintService",
     "RegistrationOutcome",
-    "ResetTableSelectionService",
-    "ResumeTableService",
     "SyncDiscoveredTablesService",
     "TableHintAction",
     "TriggerTableMaintenanceService",
     "TriggerTableReconciliationService",
-    "UpdateTableSettingsService",
     "load_catalog_table",
     "raise_not_in_catalog",
     "register_discovered_table",

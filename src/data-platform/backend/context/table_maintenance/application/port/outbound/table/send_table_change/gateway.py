@@ -18,4 +18,4 @@ class SendTableChangeGateway(Gateway):
 
     @abstractmethod
     def send(self, input: SendTableChangeGatewayInput) -> None:  # noqa: A002
-        """Deliver the change; an enrolled table is brought under maintenance first."""
+        """Deliver the change; a managed table is brought under maintenance first."""

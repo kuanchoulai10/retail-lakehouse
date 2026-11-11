@@ -59,11 +59,9 @@ def test_task_queue_and_fixed_ids():
 def test_table_reconciliation_signals():
     """The table reconciliation signal names are the stable wire names."""
     assert _values(TableReconciliationSignal) == {
-        "SETTINGS_CHANGED": "settings_changed",
+        "POLICY_CHANGED": "policy_changed",
         "TABLE_UPDATED": "table_updated",
         "TRIGGER_NOW": "trigger_now",
-        "PAUSE": "pause",
-        "RESUME": "resume",
         "STOP": "stop",
         "MAINTENANCE_FINISHED": "maintenance_finished",
         "RECONCILE_NOW": "reconcile_now",

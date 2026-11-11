@@ -51,14 +51,14 @@ class TriggerTableMaintenanceService(TriggerTableMaintenanceUseCase):
         table = self._tables_repo.get(TableId(request.uuid))
         if table is None:
             raise NotFoundError(f"table {request.uuid} not found")
-        if not table.is_enrolled:
+        if not table.is_managed:
             raise ConflictError(f"table {request.uuid} is {table.status.value} and cannot be maintained")
         self._table_change_gateway.send(
             SendTableChangeGatewayInput(
                 table_uuid=table.id.value,
                 table_name=table.name.fully_qualified(),
                 change=TableChange.MAINTENANCE_REQUESTED.value,
-                is_enrolled=table.is_enrolled,
+                is_managed=table.is_managed,
                 operations=[op.value for op in MaintenanceOperation.ordered() if op in requested],
             )
         )

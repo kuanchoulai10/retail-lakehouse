@@ -7,20 +7,14 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.inbound.table import (
-        ExcludeTableUseCase,
         GetTableHealthUseCase,
         GetTableStorageUseCase,
         GetTableUseCase,
-        IncludeTableUseCase,
         ListTableCommitsUseCase,
         ListTablesUseCase,
-        PauseTableUseCase,
-        ResetTableSelectionUseCase,
-        ResumeTableUseCase,
         SyncDiscoveredTablesUseCase,
         TriggerTableMaintenanceUseCase,
         TriggerTableReconciliationUseCase,
-        UpdateTableSettingsUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_discovery_rule import (
         CreateTableDiscoveryRuleUseCase,
@@ -72,12 +66,6 @@ class WebUseCases:
     get_table_health: GetTableHealthUseCase
     get_table_storage: GetTableStorageUseCase
     list_table_commits: ListTableCommitsUseCase
-    update_table_settings: UpdateTableSettingsUseCase
-    pause_table: PauseTableUseCase
-    resume_table: ResumeTableUseCase
-    reset_table_selection: ResetTableSelectionUseCase
-    include_table: IncludeTableUseCase
-    exclude_table: ExcludeTableUseCase
     trigger_table_maintenance: TriggerTableMaintenanceUseCase
     trigger_table_reconciliation: TriggerTableReconciliationUseCase
     list_table_maintenance_runs: ListTableMaintenanceRunsUseCase

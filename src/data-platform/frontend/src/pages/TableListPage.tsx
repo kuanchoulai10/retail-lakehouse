@@ -17,7 +17,7 @@ import { errorMessage, formatTimestamp } from "@/format";
 import { tablePath } from "@/lib/catalogPaths";
 
 const ALL_STATUSES = "all";
-const STATUSES = ["active", "paused", "excluded", "dropped"] as const;
+const STATUSES = ["managed", "unmanaged", "dropped"] as const;
 const SKELETON_ROWS = 5;
 const NO_ROWS: TableApiResponse[] = [];
 
@@ -62,16 +62,12 @@ const columns = column.columns([
     sortFn: "text",
     cell: (info) => <StatusBadge status={info.getValue()} />,
   }),
-  column.accessor((t) => t.selection, {
-    id: "selection",
-    header: "Selection",
+  // The discovery rule that manages the table; an unmanaged or dropped table has none.
+  column.accessor((t) => t.matched_rule_id ?? "", {
+    id: "matched_rule",
+    header: "Rule",
     sortFn: "text",
-  }),
-  column.accessor((t) => t.source_preset_id ?? "", {
-    id: "source_preset",
-    header: "Source preset",
-    sortFn: "text",
-    cell: (info) => info.getValue() || "—",
+    cell: (info) => (info.getValue() ? <span className="font-mono">{info.getValue()}</span> : "—"),
   }),
   column.accessor((t) => t.updated_at, {
     id: "updated_at",

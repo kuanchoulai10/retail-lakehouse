@@ -37,18 +37,18 @@ class TriggerTableReconciliationService(TriggerTableReconciliationUseCase):
         self._table_change_gateway = table_change_gateway
 
     def execute(self, request: TriggerTableReconciliationUseCaseInput) -> TriggerTableReconciliationUseCaseOutput:
-        """Check the table is enrolled, then send a reconcile request."""
+        """Check the table is managed, then send a reconcile request."""
         table = self._tables_repo.get(TableId(request.uuid))
         if table is None:
             raise NotFoundError(f"table {request.uuid} not found")
-        if not table.is_enrolled:
+        if not table.is_managed:
             raise ConflictError(f"table {request.uuid} is {table.status.value} and cannot be reconciled")
         self._table_change_gateway.send(
             SendTableChangeGatewayInput(
                 table_uuid=table.id.value,
                 table_name=table.name.fully_qualified(),
                 change=TableChange.RECONCILE_REQUESTED.value,
-                is_enrolled=table.is_enrolled,
+                is_managed=table.is_managed,
                 operations=[],
             )
         )
