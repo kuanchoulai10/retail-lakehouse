@@ -693,6 +693,12 @@ STATEMENTS+="DELETE FROM ${CATALOG}.${SCHEMA}.${ORDERS} WHERE id = 3"
 trino_sql "${STATEMENTS}"
 LAST_WRITE_AT="$(date +%s)"
 
+REGIONS_PREFIX="$(data_prefix "${REGIONS}")"
+REGIONS_FILES_BEFORE="$(trino_count "${REGIONS}\$files")"
+REGIONS_SNAPSHOTS_BEFORE="$(trino_count "${REGIONS}\$snapshots")"
+REGIONS_OBJECTS_BEFORE="$(object_count "${REGIONS_PREFIX}")"
+progress "before: ${REGIONS} files=${REGIONS_FILES_BEFORE} snapshots=${REGIONS_SNAPSHOTS_BEFORE} objects=${REGIONS_OBJECTS_BEFORE} (counted before discovery, while its scheduled compaction may already be due)"
+
 progress "waiting for discovery of both tables (up to ${DISCOVERY_TIMEOUT_SECONDS}s)"
 ORDERS_UUID="$(wait_for_table "${ORDERS}")"
 REGIONS_UUID="$(wait_for_table "${REGIONS}")"
@@ -716,25 +722,21 @@ if (( WAIT_SECONDS > 0 )); then
 fi
 
 ORDERS_PREFIX="$(data_prefix "${ORDERS}")"
-REGIONS_PREFIX="$(data_prefix "${REGIONS}")"
 ORDERS_FILES_BEFORE="$(trino_count "${ORDERS}\$files")"
 ORDERS_SNAPSHOTS_BEFORE="$(trino_count "${ORDERS}\$snapshots")"
 ORDERS_OBJECTS_BEFORE="$(object_count "${ORDERS_PREFIX}")"
-REGIONS_FILES_BEFORE="$(trino_count "${REGIONS}\$files")"
-REGIONS_SNAPSHOTS_BEFORE="$(trino_count "${REGIONS}\$snapshots")"
-REGIONS_OBJECTS_BEFORE="$(object_count "${REGIONS_PREFIX}")"
 progress "before: ${ORDERS} files=${ORDERS_FILES_BEFORE} snapshots=${ORDERS_SNAPSHOTS_BEFORE} objects=${ORDERS_OBJECTS_BEFORE}"
-progress "before: ${REGIONS} files=${REGIONS_FILES_BEFORE} snapshots=${REGIONS_SNAPSHOTS_BEFORE} objects=${REGIONS_OBJECTS_BEFORE}"
 
 ORDERS_BEFORE_RUNS="$(run_ids "${ORDERS_UUID}")"
-REGIONS_BEFORE_RUNS="$(run_ids "${REGIONS_UUID}")"
+REGIONS_BEFORE_RUNS='[]'
 
-progress "checking the applicable policies and triggering all four operations on ${ORDERS}"
+progress "checking the applicable policies of both tables"
 assert_applicable_policy "${ORDERS_UUID}" tm-e2e-orders
 assert_applicable_policy "${REGIONS_UUID}" tm-e2e-regions
+
+progress "triggering all four operations on ${ORDERS}"
 api POST "/v1/tables/${ORDERS_UUID}/maintenance" '{"operations": ["rewrite_data_files",
   "rewrite_manifests", "expire_snapshots", "remove_orphan_files"]}' >/dev/null
-
 
 progress "waiting for the ${ORDERS} manual run (up to ${RUN_TIMEOUT_SECONDS}s)"
 ORDERS_RUNS="$(wait_for_new_run "${ORDERS_UUID}" "${ORDERS_BEFORE_RUNS}" '.trigger == "manual"')"
