@@ -20,9 +20,6 @@ from context.table_maintenance.application.domain.service.table.decide_table_man
 from context.table_maintenance.application.domain.service.table.plan_manual_maintenance import (
     plan_manual_maintenance,
 )
-from context.table_maintenance.application.domain.service.table.plan_scheduled_maintenance import (
-    plan_scheduled_maintenance,
-)
 
 __all__ = [
     "any_condition_holds",
@@ -31,5 +28,4 @@ __all__ = [
     "compute_reducible_files",
     "decide_table_management",
     "plan_manual_maintenance",
-    "plan_scheduled_maintenance",
 ]

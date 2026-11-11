@@ -27,7 +27,6 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
         CreateTableMaintenancePolicyUseCase,
         DeleteTableMaintenancePolicyUseCase,
-        EnsureDefaultTableMaintenancePolicyUseCase,
         GetTableMaintenancePolicyUseCase,
         GetTableMaintenancePolicyVersionUseCase,
         ListTableMaintenancePoliciesUseCase,
@@ -71,7 +70,6 @@ class UseCases:
     resolve_applicable_table_maintenance_policy: ResolveApplicableTableMaintenancePolicyUseCase
     create_table_maintenance_policy: CreateTableMaintenancePolicyUseCase
     delete_table_maintenance_policy: DeleteTableMaintenancePolicyUseCase
-    ensure_default_table_maintenance_policy: EnsureDefaultTableMaintenancePolicyUseCase
     get_table_maintenance_policy: GetTableMaintenancePolicyUseCase
     get_table_maintenance_policy_version: GetTableMaintenancePolicyVersionUseCase
     list_table_maintenance_policies: ListTableMaintenancePoliciesUseCase

@@ -37,6 +37,9 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import
 from context.table_maintenance.application.port.inbound.table_discovery_rules import (
     GetTableDiscoveryRulesUseCaseInput,
 )
+from context.table_maintenance.application.service.table_maintenance_policy import (
+    EnsureDefaultTableMaintenancePolicyService,
+)
 from tests.bootstrap.container.container_support import (
     NOW,
     fake_gateways,
@@ -46,6 +49,10 @@ from tests.bootstrap.container.container_support import (
 
 if TYPE_CHECKING:
     from pyiceberg.catalog import Catalog
+
+
+MIGRATION_ONLY_SERVICES: set[type] = {EnsureDefaultTableMaintenancePolicyService}
+"""Services the migrate component builds itself (`run_migrations`); no API, worker or consumer calls them."""
 
 
 def _all_service_classes() -> set[type]:
@@ -103,13 +110,14 @@ def test_gateways_are_built_without_connecting():
 
 
 def test_use_cases_hold_one_instance_of_every_service():
-    """The use cases hold exactly one instance of every application service."""
+    """The use cases hold exactly one instance of every application service the migrate component does not own."""
     use_cases = build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
 
     values = [getattr(use_cases, f.name) for f in fields(use_cases)]
     assert all(isinstance(value, UseCase) for value in values)
-    assert {type(value) for value in values} == _all_service_classes()
-    assert len(values) == len(_all_service_classes())
+    expected = _all_service_classes() - MIGRATION_ONLY_SERVICES
+    assert {type(value) for value in values} == expected
+    assert len(values) == len(expected)
 
 
 def test_use_cases_work_against_the_sql_repos():

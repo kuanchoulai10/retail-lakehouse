@@ -51,7 +51,6 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 from context.table_maintenance.application.domain.service.table import (
     any_condition_holds,
     assess_maintenance,
-    plan_scheduled_maintenance,
 )
 from tests.context.table_maintenance.fakes.policy_with_operation import policy_with_operation
 
@@ -356,16 +355,15 @@ def test_disabled_operation_has_no_measures():
 
 
 def test_assessment_ignores_status():
-    """The assessment does not depend on the table status, unlike the plan."""
+    """The assessment does not depend on the table status; the planner skips an unmanaged table before it."""
     t = table()
     t.unmanage(NOW)
     o = obs(partitions=(part(10),))
     assert assess(t, o, Op.REWRITE_DATA_FILES).verdict == OperationVerdict.DUE
-    assert plan_scheduled_maintenance(t, DEFAULT, o, NOW).is_empty
 
 
 def test_plan_equals_due_operations():
-    """The plan of an assessment equals the plan of scheduled maintenance."""
+    """The plan of an assessment holds exactly its due operations, in order."""
     t = table()
     t.operation_states[Op.REWRITE_MANIFESTS] = OperationState(last_attempt_at=NOW - timedelta(minutes=10))
     o = obs(
@@ -380,7 +378,11 @@ def test_plan_equals_due_operations():
         OperationVerdict.DUE,
         OperationVerdict.DUE,
     ]
-    assert assessment.plan() == plan_scheduled_maintenance(t, DEFAULT, o, NOW)
+    assert [p.operation for p in assessment.plan().operations] == [
+        Op.REWRITE_DATA_FILES,
+        Op.EXPIRE_SNAPSHOTS,
+        Op.REMOVE_ORPHAN_FILES,
+    ]
 
 
 def test_compaction_reports_reducible_files_and_context():

@@ -1,4 +1,4 @@
-"""Test which operations and partitions scheduled maintenance plans for a table."""
+"""Test which operations and partitions the plan of a table's maintenance assessment holds."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation as Op,
 )
 from context.table_maintenance.application.domain.model.shared import (
+    MaintenancePlan,
     ManifestStats,
     PartitionFieldInfo,
     PartitionSpecInfo,
@@ -33,9 +34,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     RewriteManifestsTriggerPolicy,
     SmallManifestsCondition,
 )
-from context.table_maintenance.application.domain.service.table import (
-    plan_scheduled_maintenance,
-)
+from context.table_maintenance.application.domain.service.table import assess_maintenance
 from tests.context.table_maintenance.fakes.policy_with_only_operation import policy_with_only_operation
 from tests.context.table_maintenance.fakes.policy_with_operation import policy_with_operation
 
@@ -92,6 +91,13 @@ def obs(
     )
 
 
+def plan_of(
+    table: Table, policy: MaintenancePolicyContent, observation: TableObservation, now: datetime
+) -> MaintenancePlan:
+    """Return the plan of the table's maintenance assessment, as the planner builds it."""
+    return assess_maintenance(table, policy, observation, now).plan()
+
+
 def ops(plan):
     """Return the operations of a plan."""
     return [p.operation for p in plan.operations]
@@ -126,7 +132,7 @@ def snaps(n, old):
 def test_partition_scope_selects_only_partitions_over_threshold():
     """With partition scope only the partitions over the threshold are planned for compaction."""
     o = obs(partitions=(part(2, value=1), part(5, value=2), part(9, value=3)))
-    plan = plan_scheduled_maintenance(table(), compact_only(), o, NOW)
+    plan = plan_of(table(), compact_only(), o, NOW)
     assert ops(plan) == [Op.REWRITE_DATA_FILES]
     assert plan.operations[0].partitions == (o.partitions[1], o.partitions[2])
 
@@ -135,7 +141,7 @@ def test_table_scope_sums_partitions():
     """With table scope the reducible files of all partitions are summed and the whole table is planned."""
     s = compact_only(CompactionUnit.TABLE)
     o = obs(partitions=(part(2, value=1), part(2, value=2), part(2, value=3)))
-    plan = plan_scheduled_maintenance(table(), s, o, NOW)
+    plan = plan_of(table(), s, o, NOW)
     assert plan.operations[0].operation == Op.REWRITE_DATA_FILES
     assert plan.operations[0].partitions == ()
 
@@ -155,7 +161,7 @@ def test_unpartitioned_table_plans_whole_table():
             ),
         ),
     )
-    plan = plan_scheduled_maintenance(table(), compact_only(), o, NOW)
+    plan = plan_of(table(), compact_only(), o, NOW)
     assert ops(plan) == [Op.REWRITE_DATA_FILES]
     assert plan.operations[0].partitions == ()
 
@@ -163,7 +169,7 @@ def test_unpartitioned_table_plans_whole_table():
 def test_unknown_spec_counts_as_unpartitioned():
     """Partitions of an unknown spec are treated as unpartitioned."""
     o = obs(partitions=(part(10, spec_id=99),))
-    assert plan_scheduled_maintenance(table(), compact_only(), o, NOW).operations[0].partitions == ()
+    assert plan_of(table(), compact_only(), o, NOW).operations[0].partitions == ()
 
 
 def test_mixed_specs_with_unpartitioned_selection_plans_whole_table():
@@ -182,7 +188,7 @@ def test_mixed_specs_with_unpartitioned_selection_plans_whole_table():
             ),
         ),
     )
-    plan = plan_scheduled_maintenance(table(), compact_only(), o, NOW)
+    plan = plan_of(table(), compact_only(), o, NOW)
     assert ops(plan) == [Op.REWRITE_DATA_FILES]
     assert plan.operations[0].partitions == ()
 
@@ -199,13 +205,13 @@ def test_partitions_of_two_partitioned_specs_stay_partition_scoped():
         specs=(DAY_SPEC, other),
         partitions=(part(6, value=1), part(6, spec_id=2, value=2), part(1, value=3)),
     )
-    plan = plan_scheduled_maintenance(table(), compact_only(), o, NOW)
+    plan = plan_of(table(), compact_only(), o, NOW)
     assert plan.operations[0].partitions == o.partitions[:2]
 
 
 def test_no_partition_over_threshold_plans_nothing():
     """No partition over the threshold plans nothing."""
-    assert plan_scheduled_maintenance(table(), compact_only(), obs(partitions=(part(4),)), NOW).is_empty
+    assert plan_of(table(), compact_only(), obs(partitions=(part(4),)), NOW).is_empty
 
 
 def test_cooldown_skips_operation():
@@ -213,28 +219,28 @@ def test_cooldown_skips_operation():
     o = obs(partitions=(part(10),))
     t = table()
     t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(last_attempt_at=NOW - timedelta(minutes=30))
-    assert plan_scheduled_maintenance(t, P, o, NOW).is_empty
+    assert plan_of(t, P, o, NOW).is_empty
     t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
         last_attempt_at=NOW - timedelta(hours=3), consecutive_failures=2
     )
-    assert plan_scheduled_maintenance(t, P, o, NOW).is_empty
+    assert plan_of(t, P, o, NOW).is_empty
     t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
         last_attempt_at=NOW - timedelta(hours=5), consecutive_failures=2
     )
-    assert not plan_scheduled_maintenance(t, P, o, NOW).is_empty
+    assert not plan_of(t, P, o, NOW).is_empty
 
 
 def test_disabled_operation_never_planned():
     """A disabled operation is never planned."""
     s = policy_with_operation(policy_with_only_operation(Op.REMOVE_ORPHAN_FILES), Op.REMOVE_ORPHAN_FILES, enabled=False)
-    assert plan_scheduled_maintenance(table(), s, obs(partitions=(part(10),)), NOW).is_empty
+    assert plan_of(table(), s, obs(partitions=(part(10),)), NOW).is_empty
 
 
 def test_expire_snapshots_due_only_when_something_expires():
     """Snapshot expiry is planned only when some snapshot can expire."""
     s = policy_with_only_operation(Op.EXPIRE_SNAPSHOTS)
-    assert ops(plan_scheduled_maintenance(table(), s, obs(snapshots=snaps(12, 11)), NOW)) == [Op.EXPIRE_SNAPSHOTS]
-    assert plan_scheduled_maintenance(table(), s, obs(snapshots=snaps(10, 10)), NOW).is_empty
+    assert ops(plan_of(table(), s, obs(snapshots=snaps(12, 11)), NOW)) == [Op.EXPIRE_SNAPSHOTS]
+    assert plan_of(table(), s, obs(snapshots=snaps(10, 10)), NOW).is_empty
 
 
 def test_current_snapshot_is_never_expirable():
@@ -244,10 +250,8 @@ def test_current_snapshot_is_never_expirable():
         SnapshotInfo(snapshot_id=1, committed_at=NOW - timedelta(days=5)),
         SnapshotInfo(snapshot_id=2, committed_at=NOW - timedelta(days=4)),
     )
-    assert plan_scheduled_maintenance(table(), s, obs(snapshots=old, current_snapshot_id=1), NOW).is_empty
-    assert ops(plan_scheduled_maintenance(table(), s, obs(snapshots=old, current_snapshot_id=2), NOW)) == [
-        Op.EXPIRE_SNAPSHOTS
-    ]
+    assert plan_of(table(), s, obs(snapshots=old, current_snapshot_id=1), NOW).is_empty
+    assert ops(plan_of(table(), s, obs(snapshots=old, current_snapshot_id=2), NOW)) == [Op.EXPIRE_SNAPSHOTS]
 
 
 def test_rewrite_manifests_due_on_small_manifest_count():
@@ -255,19 +259,17 @@ def test_rewrite_manifests_due_on_small_manifest_count():
     s = policy_with_only_operation(Op.REWRITE_MANIFESTS)
     small = ManifestStats(length_bytes=MIB)
     big = ManifestStats(length_bytes=9 * MIB)
-    assert ops(plan_scheduled_maintenance(table(), s, obs(manifests=(small,) * 5 + (big,)), NOW)) == [
-        Op.REWRITE_MANIFESTS
-    ]
-    assert plan_scheduled_maintenance(table(), s, obs(manifests=(small,) * 4), NOW).is_empty
+    assert ops(plan_of(table(), s, obs(manifests=(small,) * 5 + (big,)), NOW)) == [Op.REWRITE_MANIFESTS]
+    assert plan_of(table(), s, obs(manifests=(small,) * 4), NOW).is_empty
 
 
 def test_manifest_threshold_from_settings_and_property():
     """The small manifest threshold comes from the condition and the table property."""
     m = (ManifestStats(length_bytes=2 * MIB),) * 5
     s = policy_with_only_operation(Op.REWRITE_MANIFESTS)
-    assert not plan_scheduled_maintenance(table(), s, obs(manifests=m), NOW).is_empty
+    assert not plan_of(table(), s, obs(manifests=m), NOW).is_empty
     prop = obs(manifests=m, properties={"commit.manifest.target-size-bytes": str(MIB)})
-    assert plan_scheduled_maintenance(table(), s, prop, NOW).is_empty
+    assert plan_of(table(), s, prop, NOW).is_empty
     trigger = RewriteManifestsTriggerPolicy(
         cooldown=timedelta(hours=6),
         conditions=RewriteManifestsConditions(
@@ -275,16 +277,16 @@ def test_manifest_threshold_from_settings_and_property():
         ),
     )
     s2 = policy_with_operation(s, Op.REWRITE_MANIFESTS, trigger_policy=trigger)
-    assert plan_scheduled_maintenance(table(), s2, obs(manifests=m), NOW).is_empty
+    assert plan_of(table(), s2, obs(manifests=m), NOW).is_empty
 
 
 def test_remove_orphan_files_due_after_interval():
     """Orphan file removal is planned again once its cooldown has passed."""
     s = policy_with_only_operation(Op.REMOVE_ORPHAN_FILES)
     t = table()
-    assert ops(plan_scheduled_maintenance(t, s, obs(), NOW)) == [Op.REMOVE_ORPHAN_FILES]
+    assert ops(plan_of(t, s, obs(), NOW)) == [Op.REMOVE_ORPHAN_FILES]
     t.operation_states[Op.REMOVE_ORPHAN_FILES] = OperationState(last_attempt_at=NOW - timedelta(days=6))
-    assert plan_scheduled_maintenance(t, s, obs(), NOW).is_empty
+    assert plan_of(t, s, obs(), NOW).is_empty
     assert DEFAULT.operations.remove_orphan_files.trigger_policy.cooldown == timedelta(days=7)
 
 
@@ -295,18 +297,7 @@ def test_plan_order_is_canonical():
         manifests=(ManifestStats(length_bytes=MIB),) * 5,
         snapshots=snaps(12, 11),
     )
-    assert ops(plan_scheduled_maintenance(table(), DEFAULT, o, NOW)) == list(Op.ordered())
-
-
-def test_unmanaged_or_dropped_table_yields_empty_plan():
-    """An unmanaged or dropped table gets an empty plan."""
-    o = obs(partitions=(part(10),))
-    unmanaged = table()
-    unmanaged.unmanage(NOW)
-    assert plan_scheduled_maintenance(unmanaged, DEFAULT, o, NOW).is_empty
-    dropped = table()
-    dropped.mark_dropped(NOW)
-    assert plan_scheduled_maintenance(dropped, DEFAULT, o, NOW).is_empty
+    assert ops(plan_of(table(), DEFAULT, o, NOW)) == list(Op.ordered())
 
 
 def test_cooldown_boundary_is_inclusive():
@@ -314,14 +305,14 @@ def test_cooldown_boundary_is_inclusive():
     t = table()
     o = obs(partitions=(part(10),))
     t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(last_attempt_at=NOW - timedelta(hours=1))
-    assert ops(plan_scheduled_maintenance(t, P, o, NOW)) == [Op.REWRITE_DATA_FILES]
+    assert ops(plan_of(t, P, o, NOW)) == [Op.REWRITE_DATA_FILES]
 
 
 def test_manifest_equal_to_threshold_is_not_small():
     """A manifest exactly at the size threshold is not counted as small."""
     s = policy_with_only_operation(Op.REWRITE_MANIFESTS)
     m = (ManifestStats(length_bytes=8 * MIB),) * 5
-    assert plan_scheduled_maintenance(table(), s, obs(manifests=m), NOW).is_empty
+    assert plan_of(table(), s, obs(manifests=m), NOW).is_empty
 
 
 def test_snapshot_committed_exactly_at_cutoff_is_not_expirable():
@@ -331,14 +322,14 @@ def test_snapshot_committed_exactly_at_cutoff_is_not_expirable():
         SnapshotInfo(snapshot_id=1, committed_at=NOW - timedelta(days=1)),
         SnapshotInfo(snapshot_id=2, committed_at=NOW),
     )
-    assert plan_scheduled_maintenance(table(), s, obs(snapshots=snaps_), NOW).is_empty
+    assert plan_of(table(), s, obs(snapshots=snaps_), NOW).is_empty
 
 
 def test_table_scope_sum_equal_to_threshold_is_planned():
     """A table scope sum equal to the threshold is planned."""
     s = compact_only(CompactionUnit.TABLE)
     o = obs(partitions=(part(2, value=1), part(3, value=2)))
-    assert ops(plan_scheduled_maintenance(table(), s, o, NOW)) == [Op.REWRITE_DATA_FILES]
+    assert ops(plan_of(table(), s, o, NOW)) == [Op.REWRITE_DATA_FILES]
 
 
 def test_malformed_target_file_size_property_falls_back_to_default():
@@ -359,12 +350,12 @@ def test_malformed_target_file_size_property_falls_back_to_default():
             properties={"write.target-file-size-bytes": bad},
             partitions=ten_files_5gib,
         )
-        assert plan_scheduled_maintenance(table(), s, o, NOW).is_empty
+        assert plan_of(table(), s, o, NOW).is_empty
     valid = obs(
         properties={"write.target-file-size-bytes": str(500 * 1024 * 1024 * 1024)},
         partitions=ten_files_5gib,
     )
-    assert ops(plan_scheduled_maintenance(table(), s, valid, NOW)) == [Op.REWRITE_DATA_FILES]
+    assert ops(plan_of(table(), s, valid, NOW)) == [Op.REWRITE_DATA_FILES]
 
 
 def test_malformed_manifest_size_property_falls_back_to_default():
@@ -373,4 +364,4 @@ def test_malformed_manifest_size_property_falls_back_to_default():
     m = (ManifestStats(length_bytes=MIB),) * 5
     for bad in ("abc", "0", "-5"):
         o = obs(properties={"commit.manifest.target-size-bytes": bad}, manifests=m)
-        assert ops(plan_scheduled_maintenance(table(), s, o, NOW)) == [Op.REWRITE_MANIFESTS]
+        assert ops(plan_of(table(), s, o, NOW)) == [Op.REWRITE_MANIFESTS]

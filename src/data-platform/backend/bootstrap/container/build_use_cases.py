@@ -27,7 +27,6 @@ from context.table_maintenance.application.service.table_discovery_rules import 
 from context.table_maintenance.application.service.table_maintenance_policy import (
     CreateTableMaintenancePolicyService,
     DeleteTableMaintenancePolicyService,
-    EnsureDefaultTableMaintenancePolicyService,
     GetTableMaintenancePolicyService,
     GetTableMaintenancePolicyVersionService,
     ListTableMaintenancePoliciesService,
@@ -110,7 +109,6 @@ def build_use_cases(
         resolve_applicable_table_maintenance_policy=resolve_applicable_policy,
         create_table_maintenance_policy=CreateTableMaintenancePolicyService(policies, clock=clock),
         delete_table_maintenance_policy=DeleteTableMaintenancePolicyService(policies, attachments),
-        ensure_default_table_maintenance_policy=EnsureDefaultTableMaintenancePolicyService(policies, clock=clock),
         get_table_maintenance_policy=GetTableMaintenancePolicyService(policies),
         get_table_maintenance_policy_version=GetTableMaintenancePolicyVersionService(policies),
         list_table_maintenance_policies=ListTableMaintenancePoliciesService(policies, attachments),
