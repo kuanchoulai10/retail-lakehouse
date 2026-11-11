@@ -183,6 +183,15 @@ def test_attach_to_missing_target_is_404(world, type_, path):
     assert world.attachments.list_all() == []
 
 
+def test_attach_to_parent_only_namespace_works(world):
+    """A namespace whose tables all sit in child namespaces still exists; a name prefix does not count."""
+    world.gateway.drop_table("prod", "sales", "customers")
+    world.attach("namespace", ("prod", "sales"), "gold")
+    assert world.resolve_orders().policy_name == "gold"
+    with pytest.raises(NotFoundError):
+        world.attach("namespace", ("prod", "sal"), "gold")
+
+
 def test_attach_missing_policy_is_404(world):
     """Attaching an unknown policy answers NotFoundError."""
     with pytest.raises(NotFoundError):

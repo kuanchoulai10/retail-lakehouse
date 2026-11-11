@@ -31,8 +31,8 @@ def policy_target_from_request(
 
     A table target takes its uuid from the catalog unless ``table_uuid`` is given, and a missing
     table is NotFoundError. With ``must_exist`` a catalog or namespace must also hold at least one
-    table, because the table-reading gateway cannot list catalogs or namespaces and an empty
-    namespace reads as a missing one.
+    table, itself or in a child namespace, because the table-reading gateway cannot list
+    catalogs or namespaces and an empty one reads as a missing one.
     """
     with translate_domain_errors():
         kind = PolicyTargetType(target_type)
@@ -49,8 +49,14 @@ def policy_target_from_request(
             table_uuid = table.table_uuid
         with translate_domain_errors():
             return PolicyTarget(type=kind, path=path, table_uuid=table_uuid)
-    if must_exist:
-        namespace = ".".join(path[1:]) or None
-        if not gateway.list_tables(ReadTableMetadataGatewayListInput(catalog=path[0], namespace=namespace)):
-            raise NotFoundError(f"{kind} {'.'.join(path)} not found")
+    if must_exist and not _exists(gateway, kind, path):
+        raise NotFoundError(f"{kind} {'.'.join(path)} not found")
     return target
+
+
+def _exists(gateway: ReadTableMetadataGateway, kind: PolicyTargetType, path: tuple[str, ...]) -> bool:
+    tables = gateway.list_tables(ReadTableMetadataGatewayListInput(catalog=path[0]))
+    if kind == PolicyTargetType.CATALOG:
+        return bool(tables)
+    namespace = ".".join(path[1:])
+    return any(t.namespace == namespace or t.namespace.startswith(f"{namespace}.") for t in tables)

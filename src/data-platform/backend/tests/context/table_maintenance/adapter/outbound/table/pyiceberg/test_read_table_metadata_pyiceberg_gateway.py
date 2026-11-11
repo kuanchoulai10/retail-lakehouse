@@ -11,7 +11,7 @@ import pyarrow as pa
 import pytest
 from pyiceberg.catalog import Catalog
 from pyiceberg.catalog.sql import SqlCatalog
-from pyiceberg.exceptions import ServerError
+from pyiceberg.exceptions import RESTError, ServerError
 from pyiceberg.partitioning import PartitionField, PartitionSpec
 from pyiceberg.schema import Schema
 from pyiceberg.transforms import BucketTransform, DayTransform, IdentityTransform
@@ -425,3 +425,28 @@ def test_reads_return_none_for_missing_table(catalog: SqlCatalog, gateway: ReadT
 
     assert gateway.list_commits(ref, TableCommitSelection(limit=5)) is None
     assert gateway.measure_storage(ref) is None
+
+
+def test_unknown_catalog_reads_as_empty() -> None:
+    """A catalog the server rejects by name has no tables and no table."""
+
+    def factory(name: str) -> Catalog:
+        raise RESTError("RESTError: unknown warehouse")
+
+    gateway = ReadTableMetadataPyIcebergGateway(factory)
+
+    assert gateway.list_tables(ReadTableMetadataGatewayListInput("nope")) == []
+    assert gateway.list_tables(ReadTableMetadataGatewayListInput("nope", "db")) == []
+    assert gateway.load_table(_ref()) is None
+
+
+def test_catalog_open_server_errors_still_propagate() -> None:
+    """A server error while opening the catalog is not an unknown catalog."""
+
+    def factory(name: str) -> Catalog:
+        raise ServerError("boom")
+
+    gateway = ReadTableMetadataPyIcebergGateway(factory)
+
+    with pytest.raises(ServerError):
+        gateway.list_tables(ReadTableMetadataGatewayListInput("lake"))

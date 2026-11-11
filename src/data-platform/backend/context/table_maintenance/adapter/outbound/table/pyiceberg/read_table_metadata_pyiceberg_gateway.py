@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pyiceberg.exceptions import NoSuchNamespaceError, NoSuchTableError
+from pyiceberg.exceptions import NoSuchNamespaceError, NoSuchTableError, RESTError
 
 from context.table_maintenance.adapter.outbound.table.pyiceberg.commit_page_mapper import (
     commit_page_from_table,
@@ -37,8 +37,11 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
     """Read Iceberg metadata through PyIceberg, one catalog per Polaris catalog.
 
     Only "table or namespace does not exist" is mapped to None or an empty
-    list. Every other failure propagates, so a transient catalog error can
-    never look like an empty catalog.
+    list. A catalog that cannot be opened because the server rejects its name
+    (a bare RESTError, such as Polaris answering 404 for an unknown
+    warehouse) reads as having no tables. Every other failure, including
+    server, availability and authorisation errors, propagates, so a transient
+    catalog error can never look like an empty catalog.
     """
 
     def __init__(self, catalog_factory: Callable[[str], Catalog]) -> None:
@@ -50,7 +53,9 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
         input: ReadTableMetadataGatewayListInput,  # noqa: A002
     ) -> list[TableMetadataRef]:
         """List the tables of one namespace, or walk every namespace when none is given, sorted by name."""
-        catalog = self._catalog_factory(input.catalog)
+        catalog = self._open(input.catalog)
+        if catalog is None:
+            return []
         if input.namespace is not None:
             return self._tables_of(catalog, input.catalog, tuple(input.namespace.split(".")))
         refs: list[TableMetadataRef] = []
@@ -101,8 +106,18 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
             return None
         return storage_measure_from_table(table)
 
+    def _open(self, name: str) -> Catalog | None:
+        try:
+            return self._catalog_factory(name)
+        except RESTError as exc:
+            if type(exc) is not RESTError:
+                raise
+            return None
+
     def _load(self, ref: TableMetadataRef) -> Table | None:
-        catalog = self._catalog_factory(ref.catalog)
+        catalog = self._open(ref.catalog)
+        if catalog is None:
+            return None
         identifier = (*ref.namespace.split("."), ref.table)
         try:
             return catalog.load_table(identifier)
