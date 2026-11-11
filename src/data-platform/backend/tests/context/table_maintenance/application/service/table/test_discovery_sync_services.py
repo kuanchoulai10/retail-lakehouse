@@ -19,9 +19,6 @@ from context.table_maintenance.application.domain.model.table_discovery_rule imp
     TableDiscoveryRuleId,
     TablePattern,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-    TableMaintenancePresetId,
-)
 from context.table_maintenance.application.exceptions import ConflictError
 from context.table_maintenance.application.port.inbound.table import (
     PlanTableMaintenanceUseCaseInput,
@@ -40,15 +37,10 @@ from context.table_maintenance.application.service.table import (
 from tests.context.table_maintenance.fakes.track_calls import track_calls
 
 DEFAULT_PATTERN = TablePattern()
-# A rule's preset is ignored by discovery; the old rule aggregate still requires one on an include rule.
-UNUSED_PRESET = TableMaintenancePresetId("no-such-preset")
 
 
 def _rule(rules_repo, now, effect, pattern=DEFAULT_PATTERN, rid="r-1", priority=10):
-    preset = UNUSED_PRESET if effect == RuleEffect.INCLUDE else None
-    rules_repo.create(
-        TableDiscoveryRule.create(TableDiscoveryRuleId(rid), priority, effect, pattern, preset, True, now)
-    )
+    rules_repo.create(TableDiscoveryRule.create(TableDiscoveryRuleId(rid), priority, effect, pattern, True, now))
 
 
 def _include_all(rules_repo, now):
@@ -124,14 +116,6 @@ def test_sync_registers_include_match_as_managed(sync, tables_repo, rules_repo, 
     assert table.matched_rule_id == TableDiscoveryRuleId("r-1")
     assert _calls(signals) == [("u-1", "seen", True)]
     assert [c.table_name for c in signals.calls] == ["iceberg.sales.orders"]
-
-
-def test_sync_registers_although_the_rule_preset_is_missing(sync, tables_repo, rules_repo, catalog, now):
-    """A rule's preset plays no part in discovery any more."""
-    _include_all(rules_repo, now)
-    catalog.add_table("iceberg", "sales", "orders", "u-1")
-    out = sync.execute(_catalog_wide())
-    assert (out.registered, out.skipped) == (1, 0)
 
 
 def test_sync_exclude_match_and_no_match_register_nothing(sync, tables_repo, rules_repo, catalog, signals, now):

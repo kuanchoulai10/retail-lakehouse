@@ -10,7 +10,7 @@ def test_document_holds_both_contexts_routes():
     document = build_openapi_document()
 
     assert document["info"]["title"] == "Data Platform API"
-    assert {"/v1/table-maintenance-presets", "/v1/catalogs", "/v1/catalogs/{catalog}"} <= set(document["paths"])
+    assert {"/v1/table-discovery-rules", "/v1/catalogs", "/v1/catalogs/{catalog}"} <= set(document["paths"])
     assert document["components"]["schemas"]
 
 

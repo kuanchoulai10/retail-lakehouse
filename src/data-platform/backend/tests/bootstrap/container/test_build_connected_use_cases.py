@@ -10,8 +10,8 @@ from bootstrap.container import build_connected_use_cases, build_engine, run_mig
 from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
     AsyncLoopBridge,
 )
-from context.table_maintenance.application.port.inbound.table_maintenance_preset import (
-    ListTableMaintenancePresetsUseCaseInput,
+from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
+    ListTableMaintenancePoliciesUseCaseInput,
 )
 from tests.bootstrap.container.container_support import sqlite_settings
 
@@ -39,7 +39,7 @@ def test_connects_the_gateway_client_on_the_bridge_loop(tmp_path):
             connect=connect,
             k8s_api_factory=MagicMock,
         )
-        listing = use_cases.list_table_maintenance_presets.execute(ListTableMaintenancePresetsUseCaseInput())
+        listing = use_cases.list_table_maintenance_policies.execute(ListTableMaintenancePoliciesUseCaseInput())
     finally:
         bridge.close()
 

@@ -14,9 +14,6 @@ from context.table_maintenance.adapter.inbound.web.table_discovery_rule import (
 from context.table_maintenance.adapter.inbound.web.table_discovery_settings import (
     router as discovery_router,
 )
-from context.table_maintenance.adapter.inbound.web.table_maintenance_preset import (
-    router as table_maintenance_preset_router,
-)
 from context.table_maintenance.adapter.inbound.web.table_maintenance_run import (
     router as table_maintenance_run_router,
 )
@@ -39,7 +36,6 @@ def register_routes(app: FastAPI, use_cases: WebUseCases) -> None:
     for router in (
         table_discovery_rule_router,
         discovery_router,
-        table_maintenance_preset_router,
         table_router,
         table_maintenance_run_router,
         table_reconciliation_router,

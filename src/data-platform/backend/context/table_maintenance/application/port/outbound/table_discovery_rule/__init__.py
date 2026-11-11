@@ -8,9 +8,6 @@ from context.table_maintenance.application.domain.model.table_discovery_rule imp
     TableDiscoveryRuleId,
     TablePattern,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-    TableMaintenancePresetId,
-)
 from context.table_maintenance.application.port.outbound.table_discovery_rule.table_discovery_rules_repo import (
     TableDiscoveryRulesRepo,
 )
@@ -21,5 +18,4 @@ __all__ = [
     "TableDiscoveryRuleId",
     "TableDiscoveryRule",
     "TableDiscoveryRulesRepo",
-    "TableMaintenancePresetId",
 ]

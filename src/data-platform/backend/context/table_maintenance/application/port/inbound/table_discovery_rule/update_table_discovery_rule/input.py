@@ -15,5 +15,4 @@ class UpdateTableDiscoveryRuleUseCaseInput:
     catalog_pattern: str = "*"
     namespace_pattern: str = "*"
     table_pattern: str = "*"
-    preset_id: str | None = None
     enabled: bool = True

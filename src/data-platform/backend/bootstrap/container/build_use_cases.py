@@ -44,13 +44,6 @@ from context.table_maintenance.application.service.table_maintenance_policy_atta
     ListTableMaintenancePolicyAttachmentsService,
     ResolveApplicableTableMaintenancePolicyService,
 )
-from context.table_maintenance.application.service.table_maintenance_preset import (
-    CreateTableMaintenancePresetService,
-    DeleteTableMaintenancePresetService,
-    GetTableMaintenancePresetService,
-    ListTableMaintenancePresetsService,
-    UpdateTableMaintenancePresetService,
-)
 from context.table_maintenance.application.service.table_maintenance_run import (
     CreateTableMaintenanceRunService,
     DeleteMaintenanceJobService,
@@ -87,7 +80,6 @@ def build_use_cases(
     """Build every application service on the given repositories and gateways."""
     tables = repos.tables
     rules = repos.table_discovery_rules
-    presets = repos.table_maintenance_presets
     policies = repos.table_maintenance_policies
     attachments = repos.table_maintenance_policy_attachments
     runs = repos.table_maintenance_runs
@@ -114,15 +106,10 @@ def build_use_cases(
         update_table_discovery_settings=UpdateTableDiscoverySettingsService(
             discovery, gateways.update_table_discovery_schedule, clock=clock
         ),
-        create_table_discovery_rule=CreateTableDiscoveryRuleService(rules, presets, clock=clock),
+        create_table_discovery_rule=CreateTableDiscoveryRuleService(rules, clock=clock),
         delete_table_discovery_rule=DeleteTableDiscoveryRuleService(rules),
         list_table_discovery_rules=ListTableDiscoveryRulesService(rules),
-        update_table_discovery_rule=UpdateTableDiscoveryRuleService(rules, presets, clock=clock),
-        create_table_maintenance_preset=CreateTableMaintenancePresetService(presets, clock=clock),
-        delete_table_maintenance_preset=DeleteTableMaintenancePresetService(presets, rules),
-        get_table_maintenance_preset=GetTableMaintenancePresetService(presets),
-        list_table_maintenance_presets=ListTableMaintenancePresetsService(presets),
-        update_table_maintenance_preset=UpdateTableMaintenancePresetService(presets, clock=clock),
+        update_table_discovery_rule=UpdateTableDiscoveryRuleService(rules, clock=clock),
         attach_table_maintenance_policy=AttachTableMaintenancePolicyService(
             policies, attachments, catalog, clock=clock
         ),

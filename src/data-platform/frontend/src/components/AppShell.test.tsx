@@ -29,21 +29,19 @@ describe("AppShell", () => {
     expect(within(nav).getByRole("link", { name: "Tables" })).toHaveAttribute("href", "/");
   });
 
-  it("lists the four console sections in the main navigation", () => {
+  it("lists the console sections in the main navigation", () => {
     renderShell();
     const nav = screen.getByRole("navigation", { name: "Main" });
     expect(within(nav).getAllByRole("link").map((link) => link.textContent)).toEqual([
       "Tables",
       "Catalog",
-      "Presets",
       "Discovery rules",
     ]);
   });
 
-  it("links the presets and discovery rules pages", () => {
+  it("links the discovery rules page", () => {
     renderShell();
     const nav = screen.getByRole("navigation", { name: "Main" });
-    expect(within(nav).getByRole("link", { name: "Presets" })).toHaveAttribute("href", "/presets");
     expect(within(nav).getByRole("link", { name: "Discovery rules" })).toHaveAttribute(
       "href",
       "/discovery-rules",
@@ -60,9 +58,9 @@ describe("AppShell", () => {
   });
 
   it("marks only the current section as the current page", () => {
-    renderShell("/presets");
+    renderShell("/discovery-rules");
     const nav = screen.getByRole("navigation", { name: "Main" });
-    expect(within(nav).getByRole("link", { name: "Presets" })).toHaveAttribute("aria-current", "page");
+    expect(within(nav).getByRole("link", { name: "Discovery rules" })).toHaveAttribute("aria-current", "page");
     expect(within(nav).getByRole("link", { name: "Tables" })).not.toHaveAttribute("aria-current");
   });
 

@@ -3,14 +3,11 @@ import {
   createDataTableColumnHelper,
   DataTable,
   Skeleton,
-  TextLink,
 } from "@retail-lakehouse/design-system";
 import { useMemo } from "react";
-import { Link } from "react-router";
 import type { TableDiscoveryRuleApiResponse } from "@/api/generated/model";
 import { useListTableDiscoveryRules } from "@/api/generated/table-discovery-rules/table-discovery-rules";
 import { useGetTableDiscoverySettings } from "@/api/generated/table-discovery-settings/table-discovery-settings";
-import { useListTableMaintenancePresets } from "@/api/generated/table-maintenance-presets/table-maintenance-presets";
 import { PageHeader } from "@/components/PageHeader";
 import { errorMessage, formatTimestamp } from "@/format";
 
@@ -30,7 +27,7 @@ function byEvaluationOrder(a: TableDiscoveryRuleApiResponse, b: TableDiscoveryRu
   return a.priority - b.priority || a.id.localeCompare(b.id);
 }
 
-function rulesColumns(presetNames: Map<string, string>) {
+function rulesColumns() {
   return column.columns([
     column.accessor("priority", {
       header: "Priority",
@@ -43,21 +40,6 @@ function rulesColumns(presetNames: Map<string, string>) {
       header: "Pattern",
       enableSorting: false,
       cell: (info) => <span className="type-code whitespace-nowrap">{info.getValue()}</span>,
-    }),
-    column.accessor("preset_id", {
-      header: "Preset",
-      enableSorting: false,
-      cell: (info) => {
-        const presetId = info.getValue();
-        if (presetId === null) return <span className="text-on-surface-variant">—</span>;
-        return (
-          <TextLink asChild className="font-mono">
-            <Link to={`/presets#preset-${presetId}`}>
-              {presetNames.get(presetId) ?? presetId}
-            </Link>
-          </TextLink>
-        );
-      },
     }),
     column.accessor((rule) => (rule.enabled ? "Enabled" : "Disabled"), {
       id: "state",
@@ -95,14 +77,8 @@ function DiscoveryState() {
 
 export function DiscoveryRulesPage() {
   const rules = useListTableDiscoveryRules();
-  const presets = useListTableMaintenancePresets();
-
-  const presetNames = useMemo(
-    () => new Map((presets.data ?? []).map((preset) => [preset.id, preset.name])),
-    [presets.data],
-  );
   const ordered = useMemo(() => [...(rules.data ?? [])].sort(byEvaluationOrder), [rules.data]);
-  const columns = useMemo(() => rulesColumns(presetNames), [presetNames]);
+  const columns = useMemo(() => rulesColumns(), []);
 
   return (
     <section>

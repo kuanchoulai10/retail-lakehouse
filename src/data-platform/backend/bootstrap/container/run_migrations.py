@@ -6,17 +6,12 @@ import logging
 from typing import TYPE_CHECKING
 
 from bootstrap.container.build_repositories import build_repositories
-from bootstrap.container.seed_default_preset import seed_default_preset
 from context.table_maintenance.adapter.outbound.shared.sql import create_schema
 from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
     EnsureDefaultTableMaintenancePolicyUseCaseInput,
 )
 from context.table_maintenance.application.service.table_maintenance_policy import (
     EnsureDefaultTableMaintenancePolicyService,
-)
-from context.table_maintenance.application.service.table_maintenance_preset import (
-    CreateTableMaintenancePresetService,
-    ListTableMaintenancePresetsService,
 )
 
 if TYPE_CHECKING:
@@ -26,25 +21,16 @@ logger = logging.getLogger(__name__)
 
 
 def run_migrations(engine: Engine) -> None:
-    """Create the missing tables, then seed the default preset once.
+    """Create the missing tables, then seed the default policy once.
 
     ``create_schema`` adds missing tables and applies its idempotent column
     upgrades. No discovery rule is seeded.
     """
     create_schema(engine)
     repos = build_repositories(engine)
-    presets = repos.table_maintenance_presets
-    created = seed_default_preset(
-        ListTableMaintenancePresetsService(presets),
-        CreateTableMaintenancePresetService(presets),
-    )
     policy_created = (
         EnsureDefaultTableMaintenancePolicyService(repos.table_maintenance_policies)
         .execute(EnsureDefaultTableMaintenancePolicyUseCaseInput())
         .created
     )
-    logger.info(
-        "schema ready; default preset %s; default policy %s",
-        "created" if created else "kept",
-        "created" if policy_created else "kept",
-    )
+    logger.info("schema ready; default policy %s", "created" if policy_created else "kept")

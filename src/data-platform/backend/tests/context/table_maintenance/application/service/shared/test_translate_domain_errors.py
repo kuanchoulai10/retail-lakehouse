@@ -6,8 +6,8 @@ from datetime import timedelta
 
 import pytest
 
-from context.table_maintenance.application.domain.model.shared import (
-    MaintenanceSettings,
+from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    RemoveOrphanFilesExecutionPolicy,
 )
 from context.table_maintenance.application.exceptions import (
     NotFoundError,
@@ -21,15 +21,15 @@ from context.table_maintenance.application.service.shared import (
 def test_an_invalid_value_object_becomes_a_one_line_validation_error() -> None:
     """A broken invariant reads as one line naming the field."""
     with pytest.raises(ValidationError) as caught, translate_domain_errors():
-        MaintenanceSettings.from_primitives({"remove_orphan_files": {"older_than_seconds": 60}})
-    assert str(caught.value) == "remove_orphan_files.older_than_seconds: must be at least 1 day"
+        RemoveOrphanFilesExecutionPolicy.from_primitives({"older_than_seconds": 60})
+    assert str(caught.value) == "older_than_seconds: must be at least 1 day"
 
 
 def test_an_invalid_construction_becomes_a_validation_error() -> None:
     """Building a value object with a broken invariant in code is a validation error too."""
     with pytest.raises(ValidationError) as caught, translate_domain_errors():
-        MaintenanceSettings(reconcile_interval=timedelta(0))
-    assert str(caught.value) == "reconcile_interval: must be positive"
+        RemoveOrphanFilesExecutionPolicy(older_than=timedelta(0))
+    assert str(caught.value) == "older_than: must be at least 1 day"
 
 
 def test_a_plain_value_error_keeps_its_message() -> None:

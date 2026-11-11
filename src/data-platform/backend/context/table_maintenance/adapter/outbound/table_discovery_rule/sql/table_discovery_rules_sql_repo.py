@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import delete, func, insert, select, update
+from sqlalchemy import delete, insert, select, update
 from sqlalchemy.exc import IntegrityError
 
 from context.table_maintenance.adapter.outbound.table_discovery_rule.sql.table_discovery_rule_row_mapper import (
@@ -24,7 +24,6 @@ if TYPE_CHECKING:
     from base import EntityId
     from context.table_maintenance.application.port.outbound.table_discovery_rule import (
         TableDiscoveryRule,
-        TableMaintenancePresetId,
     )
 
 
@@ -69,9 +68,3 @@ class TableDiscoveryRulesSqlRepo(TableDiscoveryRulesRepo):
         """Delete the rule with the given id."""
         with self._engine.begin() as conn:
             conn.execute(delete(t).where(t.c.id == entity_id.value))
-
-    def count_by_preset(self, preset_id: TableMaintenancePresetId) -> int:
-        """Return how many rules reference the preset."""
-        stmt = select(func.count()).select_from(t).where(t.c.preset_id == preset_id.value)
-        with self._engine.connect() as conn:
-            return int(conn.execute(stmt).scalar_one())

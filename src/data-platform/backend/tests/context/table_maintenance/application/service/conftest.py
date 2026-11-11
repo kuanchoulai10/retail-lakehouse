@@ -34,9 +34,6 @@ from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policy_attachments_repo import (
     InMemoryTableMaintenancePolicyAttachmentsRepo,
 )
-from tests.context.table_maintenance.fakes.in_memory_table_maintenance_presets_repo import (
-    InMemoryTableMaintenancePresetsRepo,
-)
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_runs_repo import (
     InMemoryTableMaintenanceRunsRepo,
 )
@@ -85,12 +82,6 @@ def new_id() -> Callable[[], str]:
     """Provide an id generator that returns id-1, id-2 and so on."""
     counter = iter(range(1, 1000))
     return lambda: f"id-{next(counter)}"
-
-
-@pytest.fixture
-def presets_repo() -> InMemoryTableMaintenancePresetsRepo:
-    """Provide an in-memory presets repository."""
-    return InMemoryTableMaintenancePresetsRepo()
 
 
 @pytest.fixture

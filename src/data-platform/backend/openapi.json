@@ -708,17 +708,6 @@
             "title": "Namespace Pattern",
             "type": "string"
           },
-          "preset_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Preset Id"
-          },
           "priority": {
             "title": "Priority",
             "type": "integer"
@@ -734,26 +723,6 @@
           "effect"
         ],
         "title": "CreateTableDiscoveryRuleApiRequest",
-        "type": "object"
-      },
-      "CreateTableMaintenancePresetApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry the body that creates a table maintenance preset.",
-        "properties": {
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "settings": {
-            "additionalProperties": true,
-            "title": "Settings",
-            "type": "object"
-          }
-        },
-        "required": [
-          "name"
-        ],
-        "title": "CreateTableMaintenancePresetApiRequest",
         "type": "object"
       },
       "CreateViewApiRequest": {
@@ -2071,17 +2040,6 @@
             "title": "Namespace Pattern",
             "type": "string"
           },
-          "preset_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Preset Id"
-          },
           "priority": {
             "title": "Priority",
             "type": "integer"
@@ -2103,7 +2061,6 @@
           "catalog_pattern",
           "namespace_pattern",
           "table_pattern",
-          "preset_id",
           "enabled",
           "created_at",
           "updated_at"
@@ -2292,43 +2249,6 @@
           "name"
         ],
         "title": "TableIdentifierApiResponse",
-        "type": "object"
-      },
-      "TableMaintenancePresetApiResponse": {
-        "description": "Describe a table maintenance preset.",
-        "properties": {
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "settings": {
-            "additionalProperties": true,
-            "title": "Settings",
-            "type": "object"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "settings",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "TableMaintenancePresetApiResponse",
         "type": "object"
       },
       "TableMaintenanceRunApiResponse": {
@@ -2704,17 +2624,6 @@
             "title": "Namespace Pattern",
             "type": "string"
           },
-          "preset_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Preset Id"
-          },
           "priority": {
             "title": "Priority",
             "type": "integer"
@@ -2745,37 +2654,6 @@
           "enabled"
         ],
         "title": "UpdateTableDiscoverySettingsApiRequest",
-        "type": "object"
-      },
-      "UpdateTableMaintenancePresetApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry the body that changes a table maintenance preset; omitted fields stay.",
-        "properties": {
-          "name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name"
-          },
-          "settings": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Settings"
-          }
-        },
-        "title": "UpdateTableMaintenancePresetApiRequest",
         "type": "object"
       },
       "UpdateTablePropertiesApiRequest": {
@@ -4574,200 +4452,6 @@
         "summary": "Scan Discovery",
         "tags": [
           "table-discovery-settings"
-        ]
-      }
-    },
-    "/v1/table-maintenance-presets": {
-      "get": {
-        "description": "List the table maintenance presets.",
-        "operationId": "list_table_maintenance_presets",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/TableMaintenancePresetApiResponse"
-                  },
-                  "title": "Response List Table Maintenance Presets",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "List Table Maintenance Presets",
-        "tags": [
-          "table-maintenance-presets"
-        ]
-      },
-      "post": {
-        "description": "Create a table maintenance preset.",
-        "operationId": "create_table_maintenance_preset",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTableMaintenancePresetApiRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TableMaintenancePresetApiResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Table Maintenance Preset",
-        "tags": [
-          "table-maintenance-presets"
-        ]
-      }
-    },
-    "/v1/table-maintenance-presets/{preset_id}": {
-      "delete": {
-        "description": "Delete a table maintenance preset.",
-        "operationId": "delete_table_maintenance_preset",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "preset_id",
-            "required": true,
-            "schema": {
-              "title": "Preset Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Delete Table Maintenance Preset",
-        "tags": [
-          "table-maintenance-presets"
-        ]
-      },
-      "get": {
-        "description": "Return one table maintenance preset.",
-        "operationId": "get_table_maintenance_preset",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "preset_id",
-            "required": true,
-            "schema": {
-              "title": "Preset Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TableMaintenancePresetApiResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Table Maintenance Preset",
-        "tags": [
-          "table-maintenance-presets"
-        ]
-      },
-      "patch": {
-        "description": "Change the name or the settings of a table maintenance preset.",
-        "operationId": "update_table_maintenance_preset",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "preset_id",
-            "required": true,
-            "schema": {
-              "title": "Preset Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateTableMaintenancePresetApiRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TableMaintenancePresetApiResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Update Table Maintenance Preset",
-        "tags": [
-          "table-maintenance-presets"
         ]
       }
     },

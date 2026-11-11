@@ -27,13 +27,6 @@ if TYPE_CHECKING:
         ListCoveredCatalogsUseCase,
         UpdateTableDiscoverySettingsUseCase,
     )
-    from context.table_maintenance.application.port.inbound.table_maintenance_preset import (
-        CreateTableMaintenancePresetUseCase,
-        DeleteTableMaintenancePresetUseCase,
-        GetTableMaintenancePresetUseCase,
-        ListTableMaintenancePresetsUseCase,
-        UpdateTableMaintenancePresetUseCase,
-    )
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
         GetTableMaintenanceRunUseCase,
         ListTableMaintenanceRunsUseCase,
@@ -56,11 +49,6 @@ class WebUseCases:
     list_covered_catalogs: ListCoveredCatalogsUseCase
     update_table_discovery_settings: UpdateTableDiscoverySettingsUseCase
     sync_discovered_tables: SyncDiscoveredTablesUseCase
-    create_table_maintenance_preset: CreateTableMaintenancePresetUseCase
-    list_table_maintenance_presets: ListTableMaintenancePresetsUseCase
-    get_table_maintenance_preset: GetTableMaintenancePresetUseCase
-    update_table_maintenance_preset: UpdateTableMaintenancePresetUseCase
-    delete_table_maintenance_preset: DeleteTableMaintenancePresetUseCase
     list_tables: ListTablesUseCase
     get_table: GetTableUseCase
     get_table_health: GetTableHealthUseCase

@@ -25,10 +25,10 @@ def _web_use_cases() -> WebUseCases:
 
 
 def test_every_web_use_case_is_populated():
-    """All 24 web use case fields are set."""
+    """All 19 web use case fields are set."""
     web = _web_use_cases()
 
-    assert len(fields(web)) == 24
+    assert len(fields(web)) == 19
     assert all(getattr(web, f.name) is not None for f in fields(web))
 
 
@@ -47,7 +47,7 @@ def test_app_serves_requests_end_to_end_on_sqlite():
     client = TestClient(create_api_app(lambda app: register_routes(app, _web_use_cases())))
 
     assert client.get("/healthz").json() == {"status": "ok"}
-    created = client.post("/v1/table-maintenance-presets", json={"name": "nightly"})
+    created = client.post("/v1/table-discovery-rules", json={"priority": 1, "effect": "exclude"})
     assert created.status_code == 201
-    listing = client.get("/v1/table-maintenance-presets")
-    assert [item["name"] for item in listing.json()] == ["nightly"]
+    listing = client.get("/v1/table-discovery-rules")
+    assert [item["priority"] for item in listing.json()] == [1]

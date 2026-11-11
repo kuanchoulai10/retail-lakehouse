@@ -184,7 +184,7 @@ def _measure_manifests(policy: RewriteManifestsPolicy, observation: TableObserva
     condition = policy.trigger_policy.conditions.small_manifests
     prop = positive_int_property(observation.properties, MANIFEST_TARGET_SIZE_PROPERTY)
     if condition is not None and condition.smaller_than_bytes is not None:
-        threshold, source = condition.smaller_than_bytes, SizeSource.SETTINGS
+        threshold, source = condition.smaller_than_bytes, SizeSource.CONDITION
     elif prop is not None:
         threshold, source = prop, SizeSource.TABLE_PROPERTY
     else:

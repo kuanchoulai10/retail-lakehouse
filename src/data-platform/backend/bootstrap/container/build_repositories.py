@@ -18,9 +18,6 @@ from context.table_maintenance.adapter.outbound.table_maintenance_policy.sql imp
 from context.table_maintenance.adapter.outbound.table_maintenance_policy_attachment.sql import (
     TableMaintenancePolicyAttachmentsSqlRepo,
 )
-from context.table_maintenance.adapter.outbound.table_maintenance_preset.sql import (
-    TableMaintenancePresetsSqlRepo,
-)
 from context.table_maintenance.adapter.outbound.table_maintenance_run.sql import (
     TableMaintenanceRunsSqlRepo,
 )
@@ -39,7 +36,6 @@ def build_repositories(engine: Engine) -> Repositories:
         table_discovery_rules=TableDiscoveryRulesSqlRepo(engine),
         table_maintenance_runs=TableMaintenanceRunsSqlRepo(engine),
         tables=TablesSqlRepo(engine),
-        table_maintenance_presets=TableMaintenancePresetsSqlRepo(engine),
         table_maintenance_policies=TableMaintenancePoliciesSqlRepo(engine),
         table_maintenance_policy_attachments=TableMaintenancePolicyAttachmentsSqlRepo(engine),
         table_reconciliations=TableReconciliationsSqlRepo(engine),

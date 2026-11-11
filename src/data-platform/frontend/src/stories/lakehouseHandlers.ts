@@ -6,7 +6,6 @@ import {
   getListCoveredCatalogsMockHandler,
 } from "@/api/generated/table-discovery-settings/table-discovery-settings.msw";
 import { getListTableDiscoveryRulesMockHandler } from "@/api/generated/table-discovery-rules/table-discovery-rules.msw";
-import { getListTableMaintenancePresetsMockHandler } from "@/api/generated/table-maintenance-presets/table-maintenance-presets.msw";
 import {
   getGetCatalogTableMockHandler,
   getGetTableHealthMockHandler,
@@ -27,7 +26,6 @@ import {
   MAINTAINED_TABLES,
   NAMESPACES,
   ORDERS,
-  PRESETS,
   RECONCILIATIONS,
   RETAIL,
   RETAIL_TABLES,
@@ -79,7 +77,6 @@ export function lakehouseHandlers() {
         (r) => before === null || Date.parse(r.reconciled_at) < Date.parse(before),
       ).slice(0, limit);
     }),
-    getListTableMaintenancePresetsMockHandler(PRESETS),
     getListTableDiscoveryRulesMockHandler(RULES),
     getGetTableDiscoverySettingsMockHandler({ enabled: true, updated_at: "2026-11-01T09:00:00Z" }),
   ];

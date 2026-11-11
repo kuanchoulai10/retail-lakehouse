@@ -20,9 +20,6 @@ from context.table_maintenance.application.domain.model.table_discovery_rule imp
     TableDiscoveryRuleId,
     TablePattern,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-    TableMaintenancePresetId,
-)
 from context.table_maintenance.application.domain.service.table import decide_table_management
 
 T0 = datetime(2026, 1, 1, tzinfo=UTC)
@@ -31,8 +28,7 @@ NAME = TableName(catalog="iceberg", namespace="sales", table="orders")
 
 
 def _rule(rid: str, effect: RuleEffect, priority: int = 10) -> TableDiscoveryRule:
-    preset = TableMaintenancePresetId("p") if effect == RuleEffect.INCLUDE else None
-    return TableDiscoveryRule.create(TableDiscoveryRuleId(rid), priority, effect, TablePattern(), preset, True, T0)
+    return TableDiscoveryRule.create(TableDiscoveryRuleId(rid), priority, effect, TablePattern(), True, T0)
 
 
 def _managed() -> Table:

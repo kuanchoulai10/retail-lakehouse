@@ -8,7 +8,6 @@ from context.table_maintenance.application.port.outbound.table_discovery_rule im
     RuleEffect,
     TableDiscoveryRule,
     TableDiscoveryRuleId,
-    TableMaintenancePresetId,
     TablePattern,
 )
 
@@ -29,7 +28,6 @@ class TableDiscoveryRuleRowMapper:
             "pattern_catalog": rule.pattern.catalog,
             "pattern_namespace": rule.pattern.namespace,
             "pattern_table": rule.pattern.table,
-            "preset_id": None if rule.preset_id is None else rule.preset_id.value,
             "enabled": rule.enabled,
             "created_at": rule.created_at,
             "updated_at": rule.updated_at,
@@ -38,7 +36,6 @@ class TableDiscoveryRuleRowMapper:
     @staticmethod
     def to_aggregate(row: RowMapping) -> TableDiscoveryRule:
         """Rebuild the aggregate from a row without registering events."""
-        preset_id = row["preset_id"]
         return TableDiscoveryRule(
             id=TableDiscoveryRuleId(row["id"]),
             priority=row["priority"],
@@ -48,7 +45,6 @@ class TableDiscoveryRuleRowMapper:
                 namespace=row["pattern_namespace"],
                 table=row["pattern_table"],
             ),
-            preset_id=None if preset_id is None else TableMaintenancePresetId(preset_id),
             enabled=row["enabled"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],

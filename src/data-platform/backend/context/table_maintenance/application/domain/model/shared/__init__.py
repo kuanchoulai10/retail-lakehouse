@@ -2,12 +2,6 @@
 
 from __future__ import annotations
 
-from context.table_maintenance.application.domain.model.shared.compaction_scope import (
-    CompactionScope,
-)
-from context.table_maintenance.application.domain.model.shared.expire_snapshots_settings import (
-    ExpireSnapshotsSettings,
-)
 from context.table_maintenance.application.domain.model.shared.maintenance_assessment import (
     MaintenanceAssessment,
 )
@@ -16,9 +10,6 @@ from context.table_maintenance.application.domain.model.shared.maintenance_opera
 )
 from context.table_maintenance.application.domain.model.shared.maintenance_plan import (
     MaintenancePlan,
-)
-from context.table_maintenance.application.domain.model.shared.maintenance_settings import (
-    MaintenanceSettings,
 )
 from context.table_maintenance.application.domain.model.shared.manifest_stats import (
     ManifestStats,
@@ -53,15 +44,6 @@ from context.table_maintenance.application.domain.model.shared.planned_operation
 from context.table_maintenance.application.domain.model.shared.positive_duration import (
     PositiveDuration,
 )
-from context.table_maintenance.application.domain.model.shared.remove_orphan_files_settings import (
-    RemoveOrphanFilesSettings,
-)
-from context.table_maintenance.application.domain.model.shared.rewrite_data_files_settings import (
-    RewriteDataFilesSettings,
-)
-from context.table_maintenance.application.domain.model.shared.rewrite_manifests_settings import (
-    RewriteManifestsSettings,
-)
 from context.table_maintenance.application.domain.model.shared.size_source import (
     SizeSource,
 )
@@ -76,12 +58,9 @@ from context.table_maintenance.application.domain.model.shared.table_observation
 )
 
 __all__ = [
-    "CompactionScope",
-    "ExpireSnapshotsSettings",
     "MaintenanceAssessment",
     "MaintenanceOperation",
     "MaintenancePlan",
-    "MaintenanceSettings",
     "ManifestStats",
     "Measurement",
     "MeasurementComparison",
@@ -93,9 +72,6 @@ __all__ = [
     "PartitionStats",
     "PlannedOperation",
     "PositiveDuration",
-    "RemoveOrphanFilesSettings",
-    "RewriteDataFilesSettings",
-    "RewriteManifestsSettings",
     "SizeSource",
     "SnapshotInfo",
     "SpecFilter",

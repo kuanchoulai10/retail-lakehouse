@@ -19,7 +19,6 @@ class CreateTableDiscoveryRuleUseCaseOutput:
     catalog_pattern: str
     namespace_pattern: str
     table_pattern: str
-    preset_id: str | None
     enabled: bool
     created_at: datetime
     updated_at: datetime

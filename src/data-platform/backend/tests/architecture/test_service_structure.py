@@ -29,7 +29,6 @@ UTILITY_FILES = {
     "event_serializer.py",
     "table_properties_serializer.py",
     "translate_domain_errors.py",
-    "table_maintenance_preset_output_fields.py",
     "table_maintenance_policy_output_fields.py",
     "policy_target_from_request.py",
     "table_discovery_rule_output_fields.py",

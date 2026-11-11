@@ -15,7 +15,6 @@ export interface TableDiscoveryRuleApiResponse {
   enabled: boolean;
   id: string;
   namespace_pattern: string;
-  preset_id: string | null;
   priority: number;
   table_pattern: string;
   updated_at: string;

@@ -304,7 +304,7 @@ def test_manifest_size_source():
     d = assess(table(), obs(), Op.REWRITE_MANIFESTS)
     assert (d.size_bytes, d.size_source) == (8 * MIB, SizeSource.DEFAULT)
     s = assess(table(), o, Op.REWRITE_MANIFESTS, manifests(smaller_than_bytes=MIB // 4))
-    assert (s.size_bytes, s.size_source, s.measured) == (MIB // 4, SizeSource.SETTINGS, 0)
+    assert (s.size_bytes, s.size_source, s.measured) == (MIB // 4, SizeSource.CONDITION, 0)
 
 
 def test_expire_snapshots_counts_expirable():

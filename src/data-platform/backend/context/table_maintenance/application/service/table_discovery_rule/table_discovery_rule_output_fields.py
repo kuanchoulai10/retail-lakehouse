@@ -19,7 +19,6 @@ def table_discovery_rule_output_fields(rule: TableDiscoveryRule) -> dict[str, An
         "catalog_pattern": rule.pattern.catalog,
         "namespace_pattern": rule.pattern.namespace,
         "table_pattern": rule.pattern.table,
-        "preset_id": None if rule.preset_id is None else rule.preset_id.value,
         "enabled": rule.enabled,
         "created_at": rule.created_at,
         "updated_at": rule.updated_at,

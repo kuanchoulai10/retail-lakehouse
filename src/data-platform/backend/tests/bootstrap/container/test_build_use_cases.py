@@ -32,16 +32,13 @@ from context.table_maintenance.adapter.hybrid.temporal.outbound.table_maintenanc
 from context.table_maintenance.adapter.outbound.table.pyiceberg import (
     ReadTableMetadataPyIcebergGateway,
 )
-from context.table_maintenance.adapter.outbound.table_maintenance_preset.sql import (
-    TableMaintenancePresetsSqlRepo,
-)
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import (
     DeleteMaintenanceJobK8sGateway,
     ReadMaintenanceJobK8sGateway,
     SubmitMaintenanceJobK8sGateway,
 )
-from context.table_maintenance.application.port.inbound.table_maintenance_preset import (
-    ListTableMaintenancePresetsUseCaseInput,
+from context.table_maintenance.application.port.inbound.table_discovery_rule import (
+    ListTableDiscoveryRulesUseCaseInput,
 )
 from tests.bootstrap.container.container_support import (
     NOW,
@@ -71,7 +68,6 @@ def test_repositories_are_sql_repos_on_the_engine():
     """Every repository is a SQL repository bound to the engine."""
     repos = build_repositories(sqlite_engine())
 
-    assert isinstance(repos.table_maintenance_presets, TableMaintenancePresetsSqlRepo)
     assert all(getattr(repos, f.name) is not None for f in fields(repos))
 
 
@@ -127,6 +123,6 @@ def test_use_cases_work_against_the_sql_repos():
     """A built use case runs against the SQL repositories."""
     use_cases = build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
 
-    listing = use_cases.list_table_maintenance_presets.execute(ListTableMaintenancePresetsUseCaseInput())
+    listing = use_cases.list_table_discovery_rules.execute(ListTableDiscoveryRulesUseCaseInput())
 
     assert listing.items == []

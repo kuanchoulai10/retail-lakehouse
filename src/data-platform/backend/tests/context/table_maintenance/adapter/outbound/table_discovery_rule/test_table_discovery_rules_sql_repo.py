@@ -16,9 +16,6 @@ from context.table_maintenance.application.domain.model.table_discovery_rule imp
     TableDiscoveryRuleId,
     TablePattern,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-    TableMaintenancePresetId,
-)
 from context.table_maintenance.application.exceptions import ConflictError
 
 if TYPE_CHECKING:
@@ -27,13 +24,12 @@ if TYPE_CHECKING:
 NOW = datetime(2026, 10, 24, tzinfo=UTC)
 
 
-def _include(rule_id: str, priority: int, preset: str = "t1") -> TableDiscoveryRule:
+def _include(rule_id: str, priority: int) -> TableDiscoveryRule:
     return TableDiscoveryRule.create(
         TableDiscoveryRuleId(rule_id),
         priority,
         RuleEffect.INCLUDE,
         TablePattern(catalog="iceberg", namespace="inv*", table="*"),
-        TableMaintenancePresetId(preset),
         True,
         NOW,
     )
@@ -53,7 +49,6 @@ def test_roundtrip(repo: TableDiscoveryRulesSqlRepo):
     assert loaded.priority == 5
     assert loaded.effect is RuleEffect.INCLUDE
     assert loaded.pattern == TablePattern(catalog="iceberg", namespace="inv*", table="*")
-    assert loaded.preset_id == TableMaintenancePresetId("t1")
     assert loaded.enabled is True
     assert loaded.created_at == NOW
     assert loaded.created_at.tzinfo is not None
@@ -61,21 +56,19 @@ def test_roundtrip(repo: TableDiscoveryRulesSqlRepo):
     assert loaded.collect_events() == []
 
 
-def test_exclude_rule_roundtrip_without_preset(repo: TableDiscoveryRulesSqlRepo):
-    """A disabled exclude rule without a preset round trips with no preset."""
+def test_disabled_exclude_rule_roundtrip(repo: TableDiscoveryRulesSqlRepo):
+    """A disabled exclude rule round trips."""
     rule = TableDiscoveryRule.create(
         TableDiscoveryRuleId("x"),
         1,
         RuleEffect.EXCLUDE,
         TablePattern(),
-        None,
         False,
         NOW,
     )
     repo.create(rule)
     loaded = repo.get(rule.id)
     assert loaded is not None
-    assert loaded.preset_id is None
     assert loaded.enabled is False
 
 
@@ -89,14 +82,13 @@ def test_update_persists(repo: TableDiscoveryRulesSqlRepo):
     rule = _include("r1", 5)
     repo.create(rule)
     later = datetime(2026, 11, 1, tzinfo=UTC)
-    rule.update(9, RuleEffect.EXCLUDE, TablePattern(catalog="c", namespace="n", table="t"), None, False, later)
+    rule.update(9, RuleEffect.EXCLUDE, TablePattern(catalog="c", namespace="n", table="t"), False, later)
     repo.update(rule)
     loaded = repo.get(rule.id)
     assert loaded is not None
     assert loaded.priority == 9
     assert loaded.effect is RuleEffect.EXCLUDE
     assert loaded.pattern == TablePattern(catalog="c", namespace="n", table="t")
-    assert loaded.preset_id is None
     assert loaded.enabled is False
     assert loaded.updated_at == later
 
@@ -121,16 +113,6 @@ def test_list_all_ordered_by_priority_then_id(repo: TableDiscoveryRulesSqlRepo):
     repo.create(_include("c", 1))
     repo.create(_include("a", 2))
     assert [r.id.value for r in repo.list_all()] == ["c", "a", "b"]
-
-
-def test_count_by_preset(repo: TableDiscoveryRulesSqlRepo):
-    """Counting by preset returns how many rules point to each preset."""
-    repo.create(_include("r1", 1, "t1"))
-    repo.create(_include("r2", 2, "t1"))
-    repo.create(_include("r3", 3, "t2"))
-    assert repo.count_by_preset(TableMaintenancePresetId("t1")) == 2
-    assert repo.count_by_preset(TableMaintenancePresetId("t2")) == 1
-    assert repo.count_by_preset(TableMaintenancePresetId("t3")) == 0
 
 
 def test_create_duplicate_primary_key_raises_conflict(repo: TableDiscoveryRulesSqlRepo):

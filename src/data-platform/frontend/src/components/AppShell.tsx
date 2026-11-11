@@ -3,7 +3,6 @@ import {
   IconBook,
   IconTable,
   IconRadar,
-  IconAdjustmentsHorizontal,
   ThemePicker,
   type SideNavigationItem,
   type SideNavigationProps,
@@ -33,12 +32,6 @@ const NAV_ENTRIES: NavEntry[] = [
     label: "Catalog",
     icon: IconBook,
     matches: (pathname) => pathname.startsWith(catalogsPath()),
-  },
-  {
-    href: "/presets",
-    label: "Presets",
-    icon: IconAdjustmentsHorizontal,
-    matches: (pathname) => pathname.startsWith("/presets"),
   },
   {
     href: "/discovery-rules",

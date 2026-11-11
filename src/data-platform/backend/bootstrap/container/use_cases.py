@@ -44,13 +44,6 @@ if TYPE_CHECKING:
         ListTableMaintenancePolicyAttachmentsUseCase,
         ResolveApplicableTableMaintenancePolicyUseCase,
     )
-    from context.table_maintenance.application.port.inbound.table_maintenance_preset import (
-        CreateTableMaintenancePresetUseCase,
-        DeleteTableMaintenancePresetUseCase,
-        GetTableMaintenancePresetUseCase,
-        ListTableMaintenancePresetsUseCase,
-        UpdateTableMaintenancePresetUseCase,
-    )
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
         CreateTableMaintenanceRunUseCase,
         DeleteMaintenanceJobUseCase,
@@ -80,11 +73,6 @@ class UseCases:
     delete_table_discovery_rule: DeleteTableDiscoveryRuleUseCase
     list_table_discovery_rules: ListTableDiscoveryRulesUseCase
     update_table_discovery_rule: UpdateTableDiscoveryRuleUseCase
-    create_table_maintenance_preset: CreateTableMaintenancePresetUseCase
-    delete_table_maintenance_preset: DeleteTableMaintenancePresetUseCase
-    get_table_maintenance_preset: GetTableMaintenancePresetUseCase
-    list_table_maintenance_presets: ListTableMaintenancePresetsUseCase
-    update_table_maintenance_preset: UpdateTableMaintenancePresetUseCase
     attach_table_maintenance_policy: AttachTableMaintenancePolicyUseCase
     detach_table_maintenance_policy: DetachTableMaintenancePolicyUseCase
     list_table_maintenance_policy_attachments: ListTableMaintenancePolicyAttachmentsUseCase

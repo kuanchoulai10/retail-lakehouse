@@ -9,7 +9,6 @@ import type {
   TableDiscoveryRuleApiResponse,
   TableHealthApiResponse,
   TableIdentifierApiResponse,
-  TableMaintenancePresetApiResponse,
   TableMaintenanceRunApiResponse,
   TableReconciliationApiResponse,
   TableStorageApiResponse,
@@ -293,21 +292,6 @@ export const RUNS: TableMaintenanceRunApiResponse[] = [
   },
 ];
 
-export const PRESETS: TableMaintenancePresetApiResponse[] = [
-  {
-    id: "preset-default",
-    name: "default",
-    settings: {
-      reconcile_interval_seconds: 3600,
-      rewrite_data_files: { enabled: true, min_interval_seconds: 3600, target_file_size_bytes: null },
-      expire_snapshots: { enabled: true, older_than_seconds: 604800, retain_last: 5 },
-      remove_orphan_files: { enabled: false, older_than_seconds: 259200 },
-    },
-    created_at: "2026-11-01T09:00:00Z",
-    updated_at: "2026-11-01T09:00:00Z",
-  },
-];
-
 export const RULES: TableDiscoveryRuleApiResponse[] = [
   {
     id: "rule-retail",
@@ -316,7 +300,6 @@ export const RULES: TableDiscoveryRuleApiResponse[] = [
     catalog_pattern: "iceberg",
     namespace_pattern: "retail",
     table_pattern: "*",
-    preset_id: "preset-default",
     enabled: true,
     created_at: "2026-11-01T09:00:00Z",
     updated_at: "2026-11-01T09:00:00Z",
@@ -328,7 +311,6 @@ export const RULES: TableDiscoveryRuleApiResponse[] = [
     catalog_pattern: "*",
     namespace_pattern: "*",
     table_pattern: "tmp_*",
-    preset_id: null,
     enabled: false,
     created_at: "2026-11-01T09:00:00Z",
     updated_at: "2026-11-01T09:00:00Z",

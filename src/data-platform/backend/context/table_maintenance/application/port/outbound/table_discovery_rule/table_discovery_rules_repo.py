@@ -12,9 +12,6 @@ from context.table_maintenance.application.domain.model.table_discovery_rule imp
 
 if TYPE_CHECKING:
     from base import EntityId
-    from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-        TableMaintenancePresetId,
-    )
 
 
 class TableDiscoveryRulesRepo(Repository[TableDiscoveryRule]):
@@ -27,7 +24,3 @@ class TableDiscoveryRulesRepo(Repository[TableDiscoveryRule]):
     @abstractmethod
     def delete(self, entity_id: EntityId) -> None:
         """Delete the rule with the given id."""
-
-    @abstractmethod
-    def count_by_preset(self, preset_id: TableMaintenancePresetId) -> int:
-        """Return how many rules reference the preset."""

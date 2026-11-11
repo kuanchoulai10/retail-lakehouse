@@ -28,7 +28,7 @@ async def _connect(_: TemporalSettings) -> MagicMock:
 
 
 def test_api_builds_and_serves_without_a_kubeconfig(tmp_path):
-    """The API builds on SQLite without a kubeconfig and serves health and preset requests."""
+    """The API builds on SQLite without a kubeconfig and serves health requests and no longer serves presets."""
     settings = sqlite_settings()
     settings.sqlite.path = str(tmp_path / "tm.db")
     run_migrations(build_engine(settings))
@@ -38,11 +38,11 @@ def test_api_builds_and_serves_without_a_kubeconfig(tmp_path):
         client = TestClient(app)
 
         assert client.get("/healthz").status_code == 200
-        presets = client.get("/v1/table-maintenance-presets").json()
+        removed = client.get("/v1/table-maintenance-presets").status_code
     finally:
         bridge.close()
 
-    assert [t["name"] for t in presets] == ["default"]
+    assert removed == 404
 
 
 def test_api_mounts_both_contexts(tmp_path):
@@ -57,7 +57,7 @@ def test_api_mounts_both_contexts(tmp_path):
         bridge.close()
 
     paths = {getattr(route, "path", None) for route in app.routes}
-    assert {"/v1/table-maintenance-presets", "/v1/catalogs", "/v1/catalogs/{catalog}"} <= paths
+    assert {"/v1/table-discovery-rules", "/v1/catalogs", "/v1/catalogs/{catalog}"} <= paths
     assert app.state.catalog_use_cases is not None
     assert app.state.table_maintenance_use_cases is not None
 
@@ -74,9 +74,9 @@ def test_api_serves_its_docs_under_the_configured_root_path(tmp_path):
         client = TestClient(app)
 
         servers = client.get("/openapi.json").json()["servers"]
-        presets = client.get("/v1/table-maintenance-presets").status_code
+        status = client.get("/v1/table-discovery-rules").status_code
     finally:
         bridge.close()
 
     assert servers == [{"url": "/api"}]
-    assert presets == 200
+    assert status == 200

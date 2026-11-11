@@ -13,9 +13,6 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.table_discovery_rule import (
         TableDiscoveryRule,
     )
-    from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-        TableMaintenancePresetId,
-    )
 
 
 class InMemoryTableDiscoveryRulesRepo(TableDiscoveryRulesRepo):
@@ -48,7 +45,3 @@ class InMemoryTableDiscoveryRulesRepo(TableDiscoveryRulesRepo):
     def delete(self, entity_id: EntityId) -> None:
         """Remove a rule if present."""
         self.items.pop(entity_id.value, None)
-
-    def count_by_preset(self, preset_id: TableMaintenancePresetId) -> int:
-        """Count the rules that reference the preset."""
-        return sum(1 for r in self.items.values() if r.preset_id == preset_id)

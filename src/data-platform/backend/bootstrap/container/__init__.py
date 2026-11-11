@@ -28,7 +28,6 @@ from bootstrap.container.lazy_k8s_api import LazyK8sApi
 from bootstrap.container.repositories import Repositories
 from bootstrap.container.run_event_consumer import run_event_consumer
 from bootstrap.container.run_migrations import run_migrations
-from bootstrap.container.seed_default_preset import seed_default_preset
 from bootstrap.container.use_cases import UseCases
 
 __all__ = [
@@ -60,5 +59,4 @@ __all__ = [
     "create_api_app",
     "run_event_consumer",
     "run_migrations",
-    "seed_default_preset",
 ]

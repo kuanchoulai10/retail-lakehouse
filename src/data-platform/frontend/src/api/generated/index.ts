@@ -4,7 +4,6 @@ export * from './generic-tables/generic-tables';
 export * from './namespaces/namespaces';
 export * from './table-discovery-rules/table-discovery-rules';
 export * from './table-discovery-settings/table-discovery-settings';
-export * from './table-maintenance-presets/table-maintenance-presets';
 export * from './table-maintenance-runs/table-maintenance-runs';
 export * from './table-reconciliations/table-reconciliations';
 export * from './tables/tables';

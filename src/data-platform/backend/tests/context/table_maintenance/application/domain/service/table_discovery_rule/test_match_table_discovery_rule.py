@@ -11,9 +11,6 @@ from context.table_maintenance.application.domain.model.table_discovery_rule imp
     TableDiscoveryRuleId,
     TablePattern,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_preset import (
-    TableMaintenancePresetId,
-)
 from context.table_maintenance.application.domain.service.table_discovery_rule import (
     match_table_discovery_rule,
 )
@@ -28,7 +25,6 @@ def rule(rid, priority, effect, pattern, enabled=True) -> TableDiscoveryRule:
         priority=priority,
         effect=effect,
         pattern=pattern,
-        preset_id=TableMaintenancePresetId("t") if effect == RuleEffect.INCLUDE else None,
         enabled=enabled,
         now=NOW,
     )

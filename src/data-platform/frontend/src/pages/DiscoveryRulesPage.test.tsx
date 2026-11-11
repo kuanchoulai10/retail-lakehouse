@@ -15,7 +15,6 @@ function rule(overrides: Partial<TableDiscoveryRuleApiResponse>): TableDiscovery
     catalog_pattern: "iceberg",
     namespace_pattern: "e2e",
     table_pattern: "tm_e2e_*",
-    preset_id: "preset-default",
     enabled: true,
     created_at: "2026-11-04T13:07:46Z",
     updated_at: "2026-11-04T13:07:46Z",
@@ -24,7 +23,7 @@ function rule(overrides: Partial<TableDiscoveryRuleApiResponse>): TableDiscovery
 }
 
 const RULES = [
-  rule({ id: "r-late", priority: 50, effect: "exclude", namespace_pattern: "*", table_pattern: "tmp_*", preset_id: null, enabled: false }),
+  rule({ id: "r-late", priority: 50, effect: "exclude", namespace_pattern: "*", table_pattern: "tmp_*", enabled: false }),
   rule({ id: "r-early", priority: 10 }),
 ];
 
@@ -48,8 +47,6 @@ function renderPage() {
 const OK = {
   "/v1/table-discovery-rules": () => jsonResponse(RULES),
   "/v1/table-discovery-settings": () => jsonResponse({ enabled: true, updated_at: "2026-11-04T15:42:39Z" }),
-  "/v1/table-maintenance-presets": () =>
-    jsonResponse([{ id: "preset-default", name: "default", settings: {}, created_at: "x", updated_at: "x" }]),
 };
 
 describe("DiscoveryRulesPage", () => {
@@ -64,19 +61,14 @@ describe("DiscoveryRulesPage", () => {
     expect(priorities).toEqual(["10", "50"]);
   });
 
-  it("shows the pattern, effect, preset name and state of each rule", async () => {
+  it("shows the pattern, effect and state of each rule", async () => {
     stubApi(OK);
     renderPage();
     const include = (await screen.findByText("iceberg.e2e.tm_e2e_*")).closest("tr")!;
     expect(within(include as HTMLElement).getByText("Include")).toBeInTheDocument();
-    expect(within(include as HTMLElement).getByRole("link", { name: "default" })).toHaveAttribute(
-      "href",
-      "/presets#preset-preset-default",
-    );
     expect(within(include as HTMLElement).getByText("Enabled")).toBeInTheDocument();
     const exclude = screen.getByText("iceberg.*.tmp_*").closest("tr")!;
     expect(within(exclude as HTMLElement).getByText("Exclude")).toBeInTheDocument();
-    expect(within(exclude as HTMLElement).getByText("—")).toBeInTheDocument();
     expect(within(exclude as HTMLElement).getByText("Disabled")).toBeInTheDocument();
   });
 
@@ -84,12 +76,6 @@ describe("DiscoveryRulesPage", () => {
     stubApi(OK);
     renderPage();
     expect(await screen.findByText("Discovery is on")).toBeInTheDocument();
-  });
-
-  it("falls back to the preset id when the preset is unknown", async () => {
-    stubApi({ ...OK, "/v1/table-maintenance-presets": () => jsonResponse([]) });
-    renderPage();
-    expect(await screen.findByRole("link", { name: "preset-default" })).toBeInTheDocument();
   });
 
   it("shows an error when the rules cannot be loaded", async () => {

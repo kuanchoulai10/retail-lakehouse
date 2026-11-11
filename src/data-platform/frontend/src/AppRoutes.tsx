@@ -5,7 +5,6 @@ import { CatalogsPage } from "./pages/CatalogsPage";
 import { DiscoveryRulesPage } from "./pages/DiscoveryRulesPage";
 import { GenericTablePage } from "./pages/GenericTablePage";
 import { NamespacePage } from "./pages/NamespacePage";
-import { PresetsPage } from "./pages/PresetsPage";
 import { TableListPage } from "./pages/TableListPage";
 import { TablePage } from "./pages/TablePage";
 import { ViewPage } from "./pages/ViewPage";
@@ -30,7 +29,6 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<TableListPage />} />
-      <Route path="/presets" element={<PresetsPage />} />
       <Route path="/discovery-rules" element={<DiscoveryRulesPage />} />
       <Route path="/catalogs" element={<CatalogsPage />} />
       <Route path="/catalogs/:catalog" element={<CatalogPage />} />

@@ -13,7 +13,6 @@ export interface CreateTableDiscoveryRuleApiRequest {
   effect: string;
   enabled?: boolean;
   namespace_pattern?: string;
-  preset_id?: string | null;
   priority: number;
   table_pattern?: string;
 }
