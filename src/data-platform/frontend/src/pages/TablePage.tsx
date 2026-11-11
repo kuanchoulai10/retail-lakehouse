@@ -125,7 +125,7 @@ function TableView({ catalog, parts, name, segment }: TableViewProps) {
   const table = useGetCatalogTable(catalog, ns, name, { query: { enabled: !leaving } });
   const covered = useListCoveredCatalogs({ query: { select: (response) => response.catalogs } });
   const uuid = table.data?.uuid;
-  // The same query the maintenance tabs use, so invalidateTableState refetches it too.
+  // Table maintenance's record of this table, the same query the maintenance tabs read.
   const maintenanceTable = useGetTable(uuid ?? "", { query: { enabled: uuid !== undefined && !leaving } });
   const recordUuid = maintenanceTable.data?.uuid;
   // The Policy tab's query, so the header's dry-run badge follows an attach or detach there.
