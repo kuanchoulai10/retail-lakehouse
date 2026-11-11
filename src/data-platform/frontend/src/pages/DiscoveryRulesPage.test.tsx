@@ -259,4 +259,58 @@ describe("DiscoveryRulesPage", () => {
       ["r-late", true],
     ]);
   });
+
+  it("labels the preview by the rules that were sent with it, not the newer draft", async () => {
+    // The table goes to the first include rule of the sent list. The answer for a list that
+    // starts with an exclude rule is held back until the test releases it.
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    stubApi({
+      "GET /v1/discovery-rules": () => jsonResponse({ version: 0, rules: [] }),
+      "POST /v1/discovery-rules/preview": async (body) => {
+        const { rules } = body as { rules: { action: string }[] };
+        if (rules[0]?.action === "exclude") await held;
+        const index = rules.findIndex((r) => r.action === "include");
+        return jsonResponse({
+          tables: [
+            { catalog: "iceberg", namespace: "retail", table: "orders", rule_id: index < 0 ? null : `#${index}`, managed: index >= 0 },
+          ],
+          managed: index < 0 ? 0 : 1,
+          unmanaged: index < 0 ? 1 : 0,
+        });
+      },
+    });
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("No discovery rules. No table is managed.");
+
+    await user.click(screen.getByRole("button", { name: "Add rule" }));
+    let dialog = await screen.findByRole("dialog", { name: "Add rule" });
+    await user.click(within(dialog).getByRole("button", { name: "Add rule" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: "Add rule" }));
+    dialog = await screen.findByRole("dialog", { name: "Add rule" });
+    await user.click(within(dialog).getByRole("combobox", { name: "Action" }));
+    await user.click(await screen.findByRole("option", { name: "Exclude" }));
+    await user.click(within(dialog).getByRole("button", { name: "Add rule" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+
+    const preview = screen.getByRole("region", { name: "Preview" });
+    const before = "Priority 10, include (unsaved): 1 table, managed";
+    expect(await within(preview).findByRole("group", { name: before })).toBeInTheDocument();
+
+    await user.click(within(ruleRow("20")).getByRole("button", { name: "Move rule 20 up" }));
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    // The held answer is not in yet: the tables shown still belong to the list sent before.
+    expect(preview).toHaveAttribute("aria-busy", "true");
+    expect(within(preview).getByRole("group", { name: before })).toBeInTheDocument();
+
+    release();
+    expect(
+      await within(preview).findByRole("group", { name: "Priority 20, include (unsaved): 1 table, managed" }),
+    ).toBeInTheDocument();
+    expect(preview).toHaveAttribute("aria-busy", "false");
+  });
 });

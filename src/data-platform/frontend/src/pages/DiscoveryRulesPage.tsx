@@ -201,11 +201,18 @@ export function DiscoveryRulesPage() {
   const dirty =
     draft !== null && base !== null && JSON.stringify(request) !== JSON.stringify(rulesRequest(base.rules));
 
-  const settledRequest = useDebouncedValue(request, PREVIEW_DELAY_MS);
-  const previewSettled = settledRequest === request;
+  // The preview answers the list as it was when the user paused, and keeps that list with the
+  // answer: an unsaved rule is named by its index in the sent list, so the groups must be
+  // labelled from the same list, not from a draft edited since.
+  const settledRules = useDebouncedValue(ordered, PREVIEW_DELAY_MS);
+  const settledRequest = useMemo(() => rulesRequest(settledRules), [settledRules]);
+  const previewSettled = settledRules === ordered;
   const preview = useQuery({
     queryKey: [getPreviewTableDiscoveryRulesUrl(), { rules: settledRequest }],
-    queryFn: ({ signal }) => previewTableDiscoveryRules({ rules: settledRequest }, { signal }),
+    queryFn: async ({ signal }) => ({
+      rules: settledRules,
+      response: await previewTableDiscoveryRules({ rules: settledRequest }, { signal }),
+    }),
     enabled: current !== null && previewSettled,
     placeholderData: keepPreviousData,
     retry: false,
@@ -320,8 +327,8 @@ export function DiscoveryRulesPage() {
               />
             </Panel>
             <DiscoveryRulesPreview
-              rules={ordered}
-              preview={preview.data}
+              rules={preview.data?.rules ?? []}
+              preview={preview.data?.response}
               isFetching={current === null || !previewSettled || preview.isFetching}
               error={preview.error}
             />

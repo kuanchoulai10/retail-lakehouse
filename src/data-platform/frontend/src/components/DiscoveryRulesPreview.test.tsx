@@ -52,4 +52,11 @@ describe("DiscoveryRulesPreview", () => {
     render(<DiscoveryRulesPreview rules={RULES} preview={undefined} isFetching error={null} />);
     expect(screen.getByRole("region", { name: "Preview" })).toHaveAttribute("aria-busy", "true");
   });
+
+  it("dims the tables it shows while a newer preview loads", () => {
+    const { rerender } = render(<DiscoveryRulesPreview rules={RULES} preview={PREVIEW} isFetching={false} error={null} />);
+    expect(screen.getByTestId("preview-results")).not.toHaveClass("opacity-60");
+    rerender(<DiscoveryRulesPreview rules={RULES} preview={PREVIEW} isFetching error={null} />);
+    expect(screen.getByTestId("preview-results")).toHaveClass("opacity-60");
+  });
 });

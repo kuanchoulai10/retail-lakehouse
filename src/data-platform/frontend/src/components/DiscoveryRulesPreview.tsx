@@ -1,4 +1,4 @@
-import { Banner, Panel, Skeleton } from "@retail-lakehouse/design-system";
+import { Banner, cn, Panel, Skeleton } from "@retail-lakehouse/design-system";
 import type {
   DiscoveryPreviewTableApiResponse,
   PreviewTableDiscoveryRulesApiResponse,
@@ -89,7 +89,11 @@ export function DiscoveryRulesPreview({ rules, preview, isFetching, error }: Pro
         </div>
       )}
       {preview !== undefined && (
-        <>
+        // Dimmed while a newer preview loads, so stale tables do not read as the current answer.
+        <div
+          data-testid="preview-results"
+          className={cn("flex flex-col gap-3 transition-opacity motion-reduce:transition-none", isFetching && "opacity-60")}
+        >
           <p className="type-body-medium tabular-nums">
             {`${preview.managed} managed, ${preview.unmanaged} unmanaged`}
           </p>
@@ -99,7 +103,7 @@ export function DiscoveryRulesPreview({ rules, preview, isFetching, error }: Pro
           {groupsOf(rules, preview.tables).map((group) => (
             <PreviewGroup key={group.key} group={group} showCatalog={showCatalog} />
           ))}
-        </>
+        </div>
       )}
     </Panel>
   );
