@@ -159,6 +159,26 @@ describe("PolicyEditor", () => {
     expect(calls).toEqual([]);
   });
 
+  it("refuses a reconcile interval of zero, without sending it", async () => {
+    const calls = stubCatalogApi({});
+    const user = userEvent.setup();
+    renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={vi.fn()} />);
+    await replace(user, screen.getByRole("textbox", { name: "Reconcile interval (seconds)" }), "0");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(screen.getByText("Reconcile interval must be greater than zero.")).toBeInTheDocument();
+    expect(calls).toEqual([]);
+  });
+
+  it("refuses a negative cooldown, without sending it", async () => {
+    const calls = stubCatalogApi({});
+    const user = userEvent.setup();
+    renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={vi.fn()} />);
+    await replace(user, within(section("Expire snapshots")).getByRole("textbox", { name: "Cooldown (seconds)" }), "-60");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(screen.getByText("Expire snapshots: Cooldown must be a whole number.")).toBeInTheDocument();
+    expect(calls).toEqual([]);
+  });
+
   it("refuses a half-typed optional threshold instead of sending it as not checked", async () => {
     const calls = stubCatalogApi({});
     const user = userEvent.setup();

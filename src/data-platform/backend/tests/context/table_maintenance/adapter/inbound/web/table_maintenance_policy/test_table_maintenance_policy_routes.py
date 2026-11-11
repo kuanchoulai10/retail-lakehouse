@@ -62,12 +62,25 @@ def _with_orphan_older_than(seconds: int) -> dict[str, object]:
     return content
 
 
+def _with_reconcile_interval(seconds: int) -> dict[str, object]:
+    return {**policy_body(), "reconcile_interval_seconds": seconds}
+
+
+def _with_cooldown(seconds: int) -> dict[str, object]:
+    content = policy_body()
+    content["operations"]["expire_snapshots"]["trigger_policy"]["cooldown_seconds"] = seconds
+    return content
+
+
 @pytest.mark.parametrize(
     "body",
     [
         {"name": "bad name", **policy_body()},
         {"name": "gold", **_with_orphan_older_than(3600)},
         {"name": "gold", **policy_body(unknown=1)},
+        {"name": "gold", **_with_reconcile_interval(0)},
+        {"name": "gold", **_with_reconcile_interval(-60)},
+        {"name": "gold", **_with_cooldown(-1)},
     ],
 )
 def test_create_broken_invariant_is_422(world: PolicyWebWorld, body: dict[str, object]) -> None:

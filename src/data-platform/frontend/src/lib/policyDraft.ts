@@ -97,6 +97,12 @@ function whole(value: string, label: string, where?: string): number {
   return Number(trimmed);
 }
 
+function positive(value: string, label: string): number {
+  const number = whole(value, label);
+  if (number === 0) throw new InvalidDraft(`${label} must be greater than zero.`);
+  return number;
+}
+
 function optionalWhole(value: string, label: string, where: string): number | null {
   return value.trim() === "" ? null : whole(value, label, where);
 }
@@ -121,7 +127,7 @@ function buildContent(draft: PolicyDraft): PolicyContent {
     draft;
   return {
     description: draft.description.trim(),
-    reconcile_interval_seconds: whole(draft.reconcileInterval, "Reconcile interval"),
+    reconcile_interval_seconds: positive(draft.reconcileInterval, "Reconcile interval"),
     dry_run: draft.dryRun,
     operations: {
       rewrite_data_files: {

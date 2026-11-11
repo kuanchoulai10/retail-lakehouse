@@ -7,7 +7,8 @@ from typing import Self
 
 from pydantic import Field
 
-from base import ValueObject, WholeSeconds
+from base import ValueObject
+from context.table_maintenance.application.domain.model.shared import PositiveDuration
 from context.table_maintenance.application.domain.model.table_maintenance_policy.at_least import AtLeast
 from context.table_maintenance.application.domain.model.table_maintenance_policy.compaction_scope import CompactionScope
 from context.table_maintenance.application.domain.model.table_maintenance_policy.compaction_unit import CompactionUnit
@@ -72,7 +73,7 @@ class MaintenancePolicyContent(ValueObject):
     """Hold what a maintenance policy says: reconcile interval, dry run and each operation's policy."""
 
     description: str
-    reconcile_interval: WholeSeconds = Field(
+    reconcile_interval: PositiveDuration = Field(
         validation_alias="reconcile_interval_seconds",
         serialization_alias="reconcile_interval_seconds",
     )

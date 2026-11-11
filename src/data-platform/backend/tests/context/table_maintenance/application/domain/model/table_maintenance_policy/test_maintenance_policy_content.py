@@ -68,3 +68,28 @@ def test_for_operation_returns_each_operation_policy() -> None:
     assert operations.for_operation(MaintenanceOperation.REWRITE_MANIFESTS) is operations.rewrite_manifests
     assert operations.for_operation(MaintenanceOperation.EXPIRE_SNAPSHOTS) is operations.expire_snapshots
     assert operations.for_operation(MaintenanceOperation.REMOVE_ORPHAN_FILES) is operations.remove_orphan_files
+
+
+@pytest.mark.parametrize("seconds", [0, -60])
+def test_reconcile_interval_not_positive_is_rejected(seconds: int) -> None:
+    """A zero or negative reconcile interval would plan without pause."""
+    wire = MaintenancePolicyContent.platform_default().to_primitives()
+    wire["reconcile_interval_seconds"] = seconds
+    with pytest.raises(ValidationError, match="must be positive"):
+        MaintenancePolicyContent.from_primitives(wire)
+
+
+def test_negative_cooldown_is_rejected() -> None:
+    """A cooldown cannot be shorter than no cooldown."""
+    wire = MaintenancePolicyContent.platform_default().to_primitives()
+    wire["operations"]["expire_snapshots"]["trigger_policy"]["cooldown_seconds"] = -1
+    with pytest.raises(ValidationError, match="must not be negative"):
+        MaintenancePolicyContent.from_primitives(wire)
+
+
+def test_zero_cooldown_means_no_cooldown() -> None:
+    """A zero cooldown is allowed."""
+    wire = MaintenancePolicyContent.platform_default().to_primitives()
+    wire["operations"]["expire_snapshots"]["trigger_policy"]["cooldown_seconds"] = 0
+    content = MaintenancePolicyContent.from_primitives(wire)
+    assert content.operations.expire_snapshots.trigger_policy.cooldown.total_seconds() == 0

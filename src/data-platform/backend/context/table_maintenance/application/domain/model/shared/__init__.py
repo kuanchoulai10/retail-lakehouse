@@ -23,6 +23,9 @@ from context.table_maintenance.application.domain.model.shared.measurement_compa
 from context.table_maintenance.application.domain.model.shared.measurement_unit import (
     MeasurementUnit,
 )
+from context.table_maintenance.application.domain.model.shared.non_negative_duration import (
+    NonNegativeDuration,
+)
 from context.table_maintenance.application.domain.model.shared.operation_assessment import (
     OperationAssessment,
 )
@@ -65,6 +68,7 @@ __all__ = [
     "Measurement",
     "MeasurementComparison",
     "MeasurementUnit",
+    "NonNegativeDuration",
     "OperationAssessment",
     "OperationVerdict",
     "PartitionFieldInfo",
