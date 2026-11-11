@@ -22,6 +22,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
     ListTableMaintenancePolicyAttachmentsUseCaseInput,
     ResolveApplicableTableMaintenancePolicyUseCaseInput,
 )
+from context.table_maintenance.application.port.outbound.table import CatalogNotFoundError
 from context.table_maintenance.application.service.table_maintenance_policy import (
     CreateTableMaintenancePolicyService,
     DeleteTableMaintenancePolicyService,
@@ -227,3 +228,16 @@ def test_delete_attached_policy_conflicts(world):
         service.execute(DeleteTableMaintenancePolicyUseCaseInput(name="gold"))
     world.detach("catalog", ("prod",))
     service.execute(DeleteTableMaintenancePolicyUseCaseInput(name="gold"))
+
+
+def test_attach_to_catalog_the_gateway_cannot_open_is_404(world, monkeypatch):
+    """A catalog unknown to the gateway answers NotFoundError for catalog, namespace and table targets."""
+
+    def unknown(_input):
+        raise CatalogNotFoundError("nope")
+
+    monkeypatch.setattr(world.gateway, "list_tables", unknown)
+    monkeypatch.setattr(world.gateway, "load_table", lambda _ref: (_ for _ in ()).throw(CatalogNotFoundError("nope")))
+    for type_, path in [("catalog", ("nope",)), ("namespace", ("nope", "a")), ("table", ("nope", "a", "t"))]:
+        with pytest.raises(NotFoundError):
+            world.attach(type_, path, "gold")

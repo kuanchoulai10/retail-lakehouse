@@ -20,6 +20,9 @@ from context.table_maintenance.application.domain.model.table_discovery_rule imp
 from context.table_maintenance.application.domain.model.table_maintenance_preset import (
     TableMaintenancePresetId,
 )
+from context.table_maintenance.application.port.outbound.table.read_table_metadata.catalog_not_found_error import (
+    CatalogNotFoundError,
+)
 from context.table_maintenance.application.port.outbound.table.read_table_metadata.gateway import (
     ReadTableMetadataGateway,
 )
@@ -61,6 +64,7 @@ from context.table_maintenance.application.port.outbound.table.tables_repo impor
 )
 
 __all__ = [
+    "CatalogNotFoundError",
     "MaintenanceOperation",
     "MaintenanceSettings",
     "OperationState",

@@ -35,6 +35,7 @@ from context.table_maintenance.application.port.inbound.table import (
     SyncDiscoveredTablesUseCaseInput,
 )
 from context.table_maintenance.application.port.outbound.table import (
+    CatalogNotFoundError,
     TableMetadataObservation,
 )
 from context.table_maintenance.application.service.table import (
@@ -115,6 +116,20 @@ def _calls(signals):
 
 
 # --- sync ---
+
+
+def test_sync_of_unknown_catalog_fails_and_drops_nothing(sync, tables_repo, catalog, signals, now, monkeypatch):
+    """A catalog the gateway cannot open fails the run; it does not read as every table vanishing."""
+    _row(tables_repo, now, "u-1", TableName(catalog="iceberg", namespace="sales", table="kept"))
+
+    def unknown(_input):
+        raise CatalogNotFoundError("iceberg")
+
+    monkeypatch.setattr(catalog, "list_tables", unknown)
+    with pytest.raises(CatalogNotFoundError):
+        sync.execute(SyncDiscoveredTablesUseCaseInput(catalog="iceberg"))
+    assert tables_repo.get(TableId("u-1")).status == TableStatus.ACTIVE
+    assert signals.calls == []
 
 
 def test_sync_registers_include_match_with_preset_copy(sync, tables_repo, rules_repo, preset, catalog, signals, now):

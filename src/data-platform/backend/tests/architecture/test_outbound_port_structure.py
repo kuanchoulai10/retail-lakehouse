@@ -48,6 +48,7 @@ GATEWAY_EXTRA_FILES = {
     "table_commit_page.py",
     "table_commit_selection.py",
     "table_storage_measure.py",
+    "catalog_not_found_error.py",
 }
 GATEWAY_ALLOWED_FILES = GATEWAY_STANDARD_FILES | GATEWAY_EXTRA_FILES
 

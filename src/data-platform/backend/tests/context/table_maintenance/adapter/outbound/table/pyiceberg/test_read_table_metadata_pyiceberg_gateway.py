@@ -21,6 +21,7 @@ from context.table_maintenance.adapter.outbound.table.pyiceberg import (
     ReadTableMetadataPyIcebergGateway,
 )
 from context.table_maintenance.application.port.outbound.table import (
+    CatalogNotFoundError,
     ReadTableMetadataGatewayListInput,
     TableCommitSelection,
     TableMetadataRef,
@@ -427,17 +428,20 @@ def test_reads_return_none_for_missing_table(catalog: SqlCatalog, gateway: ReadT
     assert gateway.measure_storage(ref) is None
 
 
-def test_unknown_catalog_reads_as_empty() -> None:
-    """A catalog the server rejects by name has no tables and no table."""
+def test_unknown_catalog_raises_catalog_not_found() -> None:
+    """A catalog the server rejects by name is an error, never an empty listing."""
 
     def factory(name: str) -> Catalog:
         raise RESTError("RESTError: unknown warehouse")
 
     gateway = ReadTableMetadataPyIcebergGateway(factory)
 
-    assert gateway.list_tables(ReadTableMetadataGatewayListInput("nope")) == []
-    assert gateway.list_tables(ReadTableMetadataGatewayListInput("nope", "db")) == []
-    assert gateway.load_table(_ref()) is None
+    with pytest.raises(CatalogNotFoundError):
+        gateway.list_tables(ReadTableMetadataGatewayListInput("nope"))
+    with pytest.raises(CatalogNotFoundError):
+        gateway.list_tables(ReadTableMetadataGatewayListInput("nope", "db"))
+    with pytest.raises(CatalogNotFoundError):
+        gateway.load_table(_ref())
 
 
 def test_catalog_open_server_errors_still_propagate() -> None:

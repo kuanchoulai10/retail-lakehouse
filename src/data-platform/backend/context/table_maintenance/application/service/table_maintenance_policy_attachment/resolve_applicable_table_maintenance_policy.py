@@ -19,7 +19,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
     ResolveApplicableTableMaintenancePolicyUseCaseInput,
     ResolveApplicableTableMaintenancePolicyUseCaseOutput,
 )
-from context.table_maintenance.application.port.outbound.table import TableMetadataRef
+from context.table_maintenance.application.port.outbound.table import CatalogNotFoundError, TableMetadataRef
 from context.table_maintenance.application.service.shared import translate_domain_errors
 
 if TYPE_CHECKING:
@@ -76,9 +76,12 @@ class ResolveApplicableTableMaintenancePolicyService(ResolveApplicableTableMaint
             raise ValidationError("a table needs its namespace")
         table_uuid = request.table_uuid
         if table_uuid is None:
-            loaded = self._gateway.load_table(
-                TableMetadataRef(catalog=request.catalog, namespace=request.namespace, table=request.table)
-            )
+            try:
+                loaded = self._gateway.load_table(
+                    TableMetadataRef(catalog=request.catalog, namespace=request.namespace, table=request.table)
+                )
+            except CatalogNotFoundError as exc:
+                raise NotFoundError(str(exc)) from exc
             if loaded is None:
                 raise NotFoundError(f"table {request.catalog}.{request.namespace}.{request.table} not found")
             table_uuid = loaded.table_uuid

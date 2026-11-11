@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.outbound.table import (
+    CatalogNotFoundError,
     ReadTableMetadataGatewayListInput,
     TableMetadataRef,
 )
@@ -43,14 +44,22 @@ def policy_target_from_request(
     if kind == PolicyTargetType.TABLE:
         ref = TableMetadataRef(catalog=path[0], namespace=".".join(path[1:-1]), table=path[-1])
         if table_uuid is None:
-            table = gateway.load_table(ref)
+            try:
+                table = gateway.load_table(ref)
+            except CatalogNotFoundError as exc:
+                raise NotFoundError(str(exc)) from exc
             if table is None:
                 raise NotFoundError(f"table {'.'.join(path)} not found")
             table_uuid = table.table_uuid
         with translate_domain_errors():
             return PolicyTarget(type=kind, path=path, table_uuid=table_uuid)
-    if must_exist and not _exists(gateway, kind, path):
-        raise NotFoundError(f"{kind} {'.'.join(path)} not found")
+    if must_exist:
+        try:
+            exists = _exists(gateway, kind, path)
+        except CatalogNotFoundError as exc:
+            raise NotFoundError(str(exc)) from exc
+        if not exists:
+            raise NotFoundError(f"{kind} {'.'.join(path)} not found")
     return target
 
 
