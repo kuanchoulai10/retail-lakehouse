@@ -57,15 +57,16 @@ api_get() {
 }
 
 api_get /healthz
-api_get /v1/table-discovery-settings
+api_get /v1/discovery-rules
+api_get /v1/maintenance-policies/default
 api_get /v1/tables
 api_get /v1/catalogs
 
-PRESETS="$(kubectl exec deployment/table-maintenance-api \
+DEFAULT_POLICY="$(kubectl exec deployment/table-maintenance-api \
   --namespace "${NAMESPACE}" \
   --context "${KUBE_CONTEXT}" \
-  -- python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/v1/table-maintenance-presets', timeout=10).read().decode())")"
-grep -q '"name":"default"' <<<"${PRESETS}" || { echo "preset default is not listed" >&2; exit 1; }
+  -- python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/v1/maintenance-policies/default', timeout=10).read().decode())")"
+grep -q '"name":"default"' <<<"${DEFAULT_POLICY}" || { echo "policy default is missing" >&2; exit 1; }
 
 OLD_ROUTE_STATUS="$(kubectl exec deployment/table-maintenance-api \
   --namespace "${NAMESPACE}" \

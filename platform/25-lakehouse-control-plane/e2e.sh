@@ -457,15 +457,33 @@ table_uuid() {
   api GET "/v1/tables" \
     | jq -r --arg ns "${SCHEMA}" --arg t "$1" \
       '.[] | select(.catalog == "iceberg" and .namespace == $ns and .table == $t
-        and (.status == "active" or .status == "paused")) | .uuid'
+        and .status == "managed") | .uuid'
 }
 
-pause_table() {
-  api POST "/v1/tables/$1/pause" >/dev/null
+ensure_policy() {
+  local name="$1" description="$2" overrides="$3" base body existing version
+  base="$(api GET /v1/maintenance-policies/default)"
+  body="$(jq -c --arg d "${description}" "del(.name, .version, .created_at, .updated_at)
+    | .description = \$d | ${overrides}" <<<"${base}")"
+  existing="$(api_call GET "/v1/maintenance-policies/${name}")"
+  if jq -e '.status == 200' <<<"${existing}" >/dev/null; then
+    version="$(jq -r '.body.version' <<<"${existing}")"
+    api PUT "/v1/maintenance-policies/${name}" "$(jq -c --argjson v "${version}" '. + {version: $v}' <<<"${body}")" >/dev/null
+  else
+    api POST /v1/maintenance-policies "$(jq -c --arg n "${name}" '. + {name: $n}' <<<"${body}")" >/dev/null
+  fi
 }
 
-resume_table() {
-  api POST "/v1/tables/$1/resume" >/dev/null
+attach_policy() {
+  api PUT "/v1/maintenance-policies/$1/mappings" "$(jq -cn --arg c "${CATALOG}" --arg s "${SCHEMA}" --arg t "$2" \
+    '{target: {type: "table", path: [$c, $s, $t]}}')" >/dev/null
+}
+
+assert_applicable_policy() {
+  local uuid="$1" name="$2"
+  api GET "/v1/tables/${uuid}/applicable-policy" \
+    | jq -e --arg n "${name}" '.name == $n and .target.type == "table"' >/dev/null \
+    || { echo "table ${uuid} does not resolve to the policy ${name} attached to it" >&2; return 1; }
 }
 
 wait_for_table() {
@@ -615,15 +633,19 @@ task --dir "${ROOT}" trino:issue-cert \
   TRINO_USER="${TRINO_USER}" PRINT_USAGE=false KUBE_CONTEXT="${KUBE_CONTEXT}"
 
 progress "ensuring the discovery rule ${CATALOG} / ${SCHEMA} / tm_e2e_*"
-PRESET_ID="$(api GET /v1/table-maintenance-presets | jq -r '.[] | select(.name == "default") | .id')"
-[[ -n "${PRESET_ID}" ]] || { echo "table maintenance preset default is missing" >&2; exit 1; }
-RULE_ID="$(api GET /v1/table-discovery-rules | jq -r --arg ns "${SCHEMA}" \
-  '.[] | select(.effect == "include" and .catalog_pattern == "iceberg"
-    and .namespace_pattern == $ns and .table_pattern == "tm_e2e_*") | .id' | head -n 1)"
+RULES="$(api GET /v1/discovery-rules)"
+RULE_ID="$(jq -r --arg ns "${SCHEMA}" \
+  '.rules[] | select(.action == "include" and .catalogs == ["iceberg"]
+    and .namespaces == [$ns] and .tables == ["tm_e2e_*"]) | .id' <<<"${RULES}" | head -n 1)"
 if [[ -z "${RULE_ID}" ]]; then
-  RULE_ID="$(api POST /v1/table-discovery-rules "$(jq -cn --arg t "${PRESET_ID}" --arg ns "${SCHEMA}" \
-    '{priority: 10, effect: "include", catalog_pattern: "iceberg", namespace_pattern: $ns,
-      table_pattern: "tm_e2e_*", preset_id: $t, enabled: true}')" | jq -r '.id')"
+  api PUT /v1/discovery-rules "$(jq -c --arg ns "${SCHEMA}" '{
+    version: .version,
+    rules: ([.rules[] | {id, priority, action, enabled, catalogs, namespaces, tables}]
+      + [{priority: (([.rules[].priority] | max // 9) + 1), action: "include", enabled: true,
+          catalogs: ["iceberg"], namespaces: [$ns], tables: ["tm_e2e_*"]}])}' <<<"${RULES}")" >/dev/null
+  RULE_ID="$(api GET /v1/discovery-rules | jq -r --arg ns "${SCHEMA}" \
+    '.rules[] | select(.action == "include" and .catalogs == ["iceberg"]
+      and .namespaces == [$ns] and .tables == ["tm_e2e_*"]) | .id' | head -n 1)"
 fi
 progress "discovery rule ${RULE_ID}"
 
@@ -635,14 +657,6 @@ CREATE TABLE IF NOT EXISTS ${CATALOG}.${SCHEMA}.${ORDERS} (
 CREATE TABLE IF NOT EXISTS ${CATALOG}.${SCHEMA}.${REGIONS} (
   id BIGINT, region VARCHAR, note VARCHAR
 ) WITH (partitioning = ARRAY['region'])"
-
-for table in "${ORDERS}" "${REGIONS}"; do
-  uuid="$(table_uuid "${table}")"
-  if [[ -n "${uuid}" ]]; then
-    progress "pausing the registered ${table} ${uuid} while the e2e writes to it"
-    pause_table "${uuid}"
-  fi
-done
 
 progress "inserting 20 single-row orders, 8 single-row regions, and deleting one order"
 STATEMENTS=""
@@ -672,21 +686,24 @@ progress "discovery schedule recent runs: $(temporal_cli schedule describe \
   | jq -c '[.info.recentActions[]?.scheduleTime] | .[-3:]')"
 progress "on a first run, a reconcile start before the next scheduled run means the event path found the table (describe shows the current run, which changes on continue-as-new)"
 
-progress "pausing both tables and waiting for event-driven runs to settle"
-pause_table "${ORDERS_UUID}"
-pause_table "${REGIONS_UUID}"
+progress "waiting for event-driven runs to settle"
 wait_for_quiet_table "${ORDERS_UUID}"
 wait_for_quiet_table "${REGIONS_UUID}"
 
-progress "lowering ${ORDERS} thresholds while paused"
-api PUT "/v1/tables/${ORDERS_UUID}/settings" "$(jq -cn --argjson age "${EXPIRE_AGE_SECONDS}" '{
-  rewrite_data_files: {min_reducible_files: 2},
-  rewrite_manifests: {min_small_manifests: 1},
-  expire_snapshots: {older_than_seconds: $age, retain_last: 1},
-  remove_orphan_files: {older_than_seconds: 86400}}')" >/dev/null
-progress "setting ${REGIONS} to per-partition compaction while paused"
-api PUT "/v1/tables/${REGIONS_UUID}/settings" '{"rewrite_data_files":
-  {"scope": "partition", "min_reducible_files": 2, "min_interval_seconds": 60}}' >/dev/null
+progress "creating the policies tm-e2e-orders and tm-e2e-regions from the default policy"
+ensure_policy tm-e2e-orders "e2e: lowered thresholds" "$(cat <<JQ
+.operations.rewrite_data_files.trigger_policy.conditions.reducible_files = {at_least: 2}
+| .operations.rewrite_manifests.trigger_policy.conditions.small_manifests.at_least = 1
+| .operations.expire_snapshots.execution_policy = {older_than_seconds: ${EXPIRE_AGE_SECONDS}, retain_last: 1}
+| .operations.remove_orphan_files.execution_policy.older_than_seconds = 86400
+JQ
+)"
+ensure_policy tm-e2e-regions "e2e: per-partition compaction" "$(cat <<JQ
+.operations.rewrite_data_files.scope.unit = "partition"
+| .operations.rewrite_data_files.trigger_policy.conditions.reducible_files = {at_least: 2}
+| .operations.rewrite_data_files.trigger_policy.cooldown_seconds = 60
+JQ
+)"
 
 WAIT_SECONDS=$(( LAST_WRITE_AT + EXPIRE_AGE_SECONDS + 5 - $(date +%s) ))
 if (( WAIT_SECONDS > 0 )); then
@@ -707,13 +724,15 @@ progress "before: ${REGIONS} files=${REGIONS_FILES_BEFORE} snapshots=${REGIONS_S
 ORDERS_BEFORE_RUNS="$(run_ids "${ORDERS_UUID}")"
 REGIONS_BEFORE_RUNS="$(run_ids "${REGIONS_UUID}")"
 
-progress "resuming ${ORDERS} and triggering all four operations"
-resume_table "${ORDERS_UUID}"
+progress "attaching tm-e2e-orders to ${ORDERS} and triggering all four operations"
+attach_policy tm-e2e-orders "${ORDERS}"
+assert_applicable_policy "${ORDERS_UUID}" tm-e2e-orders
 api POST "/v1/tables/${ORDERS_UUID}/maintenance" '{"operations": ["rewrite_data_files",
   "rewrite_manifests", "expire_snapshots", "remove_orphan_files"]}' >/dev/null
 
-progress "resuming ${REGIONS} so the scheduled plan compacts through where filters"
-resume_table "${REGIONS_UUID}"
+progress "attaching tm-e2e-regions to ${REGIONS} so the scheduled plan compacts through where filters"
+attach_policy tm-e2e-regions "${REGIONS}"
+assert_applicable_policy "${REGIONS_UUID}" tm-e2e-regions
 
 progress "waiting for the ${ORDERS} manual run (up to ${RUN_TIMEOUT_SECONDS}s)"
 ORDERS_RUNS="$(wait_for_new_run "${ORDERS_UUID}" "${ORDERS_BEFORE_RUNS}" '.trigger == "manual"')"
