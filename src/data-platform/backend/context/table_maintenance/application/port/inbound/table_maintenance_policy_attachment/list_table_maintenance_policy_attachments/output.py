@@ -11,13 +11,14 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class ListTableMaintenancePolicyAttachmentsUseCaseOutputItem:
-    """One attachment of the listing."""
+    """One attachment of the listing; ``orphaned`` when its target is no longer in the catalog."""
 
     type: str
     path: tuple[str, ...]
     table_uuid: str | None
     policy_name: str
     attached_at: datetime
+    orphaned: bool
 
 
 @dataclass(frozen=True)

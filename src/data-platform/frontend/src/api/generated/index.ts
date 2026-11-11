@@ -2,6 +2,7 @@ export * from './catalogs/catalogs';
 export * from './default/default';
 export * from './discovery-rules/discovery-rules';
 export * from './generic-tables/generic-tables';
+export * from './maintenance-policies/maintenance-policies';
 export * from './namespaces/namespaces';
 export * from './table-maintenance-runs/table-maintenance-runs';
 export * from './table-reconciliations/table-reconciliations';

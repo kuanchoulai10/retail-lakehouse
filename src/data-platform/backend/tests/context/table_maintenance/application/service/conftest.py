@@ -165,6 +165,7 @@ def resolve_applicable_policy(
     policies_repo: InMemoryTableMaintenancePoliciesRepo,
     attachments_repo: InMemoryTableMaintenancePolicyAttachmentsRepo,
     catalog: FakeReadTableMetadataGateway,
+    tables_repo: InMemoryTablesRepo,
 ) -> ResolveApplicableTableMaintenancePolicyService:
     """Provide the applicable policy resolution on the fakes."""
-    return ResolveApplicableTableMaintenancePolicyService(policies_repo, attachments_repo, catalog)
+    return ResolveApplicableTableMaintenancePolicyService(policies_repo, attachments_repo, catalog, tables_repo)

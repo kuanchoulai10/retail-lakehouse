@@ -59,10 +59,17 @@ from context.table_maintenance.application.service.table_maintenance_policy_atta
 from context.table_maintenance.application.service.table_reconciliation import (
     RecordTableReconciliationService,
 )
+from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policy_attachments_repo import (
+    InMemoryTableMaintenancePolicyAttachmentsRepo,
+)
 from tests.context.table_maintenance.fakes.in_memory_table_reconciliations_repo import (
     InMemoryTableReconciliationsRepo,
 )
+from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
 from tests.context.table_maintenance.fakes.policy_with_operation import policy_with_operation
+from tests.context.table_maintenance.fakes.recording_send_table_change_gateway import (
+    RecordingSendTableChangeGateway,
+)
 
 NAME = TableName(catalog="iceberg", namespace="sales", table="orders")
 KEY = ("iceberg", "sales", "orders")
@@ -140,7 +147,13 @@ def planner(tables_repo, catalog, resolve_applicable_policy):
 
 def _use_policy(policies, now, content):
     """Replace the default policy's content, so it applies to every table."""
-    UpdateTableMaintenancePolicyService(policies, clock=lambda: now).execute(
+    UpdateTableMaintenancePolicyService(
+        policies,
+        InMemoryTableMaintenancePolicyAttachmentsRepo(),
+        InMemoryTablesRepo(),
+        RecordingSendTableChangeGateway(),
+        clock=lambda: now,
+    ).execute(
         UpdateTableMaintenancePolicyUseCaseInput(name=DEFAULT_POLICY_NAME, content=content.to_primitives(), version=1)
     )
 
@@ -362,7 +375,9 @@ def test_plan_output_names_resolved_policy(planner, tables_repo, catalog, polici
     CreateTableMaintenancePolicyService(policies, clock=lambda: now).execute(
         CreateTableMaintenancePolicyUseCaseInput(name="gold", content=gold.to_primitives())
     )
-    AttachTableMaintenancePolicyService(policies, attachments, catalog, clock=lambda: now).execute(
+    AttachTableMaintenancePolicyService(
+        policies, attachments, catalog, tables_repo, RecordingSendTableChangeGateway(), clock=lambda: now
+    ).execute(
         AttachTableMaintenancePolicyUseCaseInput(target_type="namespace", path=("iceberg", "sales"), policy_name="gold")
     )
     plan = _plan(planner, now)

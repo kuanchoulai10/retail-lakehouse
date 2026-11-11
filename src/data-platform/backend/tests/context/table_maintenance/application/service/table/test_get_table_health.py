@@ -35,7 +35,14 @@ from context.table_maintenance.application.service.table import GetTableHealthSe
 from context.table_maintenance.application.service.table_maintenance_policy import (
     UpdateTableMaintenancePolicyService,
 )
+from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policy_attachments_repo import (
+    InMemoryTableMaintenancePolicyAttachmentsRepo,
+)
+from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
 from tests.context.table_maintenance.fakes.policy_with_operation import policy_with_operation
+from tests.context.table_maintenance.fakes.recording_send_table_change_gateway import (
+    RecordingSendTableChangeGateway,
+)
 
 KEY = ("iceberg", "sales", "orders")
 NAME = TableName(catalog=KEY[0], namespace=KEY[1], table=KEY[2])
@@ -108,7 +115,13 @@ def test_health_assesses_with_the_applicable_policy(service, tables_repo, catalo
     content = policy_with_operation(
         MaintenancePolicyContent.platform_default(), MaintenanceOperation.REWRITE_DATA_FILES, enabled=False
     )
-    UpdateTableMaintenancePolicyService(policies_repo, clock=lambda: now).execute(
+    UpdateTableMaintenancePolicyService(
+        policies_repo,
+        InMemoryTableMaintenancePolicyAttachmentsRepo(),
+        InMemoryTablesRepo(),
+        RecordingSendTableChangeGateway(),
+        clock=lambda: now,
+    ).execute(
         UpdateTableMaintenancePolicyUseCaseInput(name=DEFAULT_POLICY_NAME, content=content.to_primitives(), version=1)
     )
     _register(tables_repo, now)

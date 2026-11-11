@@ -10,34 +10,55 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
     ListTableMaintenancePolicyAttachmentsUseCaseOutput,
     ListTableMaintenancePolicyAttachmentsUseCaseOutputItem,
 )
+from context.table_maintenance.application.port.outbound.table import (
+    CatalogNotFoundError,
+    ReadTableMetadataGatewayListInput,
+    TableId,
+    TableMetadataRef,
+    TableStatus,
+)
 from context.table_maintenance.application.port.outbound.table_maintenance_policy_attachment import (
+    PolicyTargetType,
     TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.service.shared import translate_domain_errors
+from context.table_maintenance.application.service.table_maintenance_policy_attachment.scope_target_in_listing import (  # noqa: E501
+    scope_target_in_listing,
+)
 
 if TYPE_CHECKING:
+    from context.table_maintenance.application.port.outbound.table import ReadTableMetadataGateway, TablesRepo
     from context.table_maintenance.application.port.outbound.table_maintenance_policy_attachment import (
+        PolicyTarget,
         TableMaintenancePolicyAttachmentsRepo,
     )
 
 
 class ListTableMaintenancePolicyAttachmentsService(ListTableMaintenancePolicyAttachmentsUseCase):
-    """List policy attachments, optionally only those of one policy."""
+    """List policy attachments, optionally only those of one policy, marking those left behind."""
 
-    def __init__(self, attachments_repo: TableMaintenancePolicyAttachmentsRepo) -> None:
-        """Bind the repo."""
+    def __init__(
+        self,
+        attachments_repo: TableMaintenancePolicyAttachmentsRepo,
+        gateway: ReadTableMetadataGateway,
+        tables_repo: TablesRepo,
+    ) -> None:
+        """Bind the repos and the catalog gateway."""
         self._attachments_repo = attachments_repo
+        self._gateway = gateway
+        self._tables_repo = tables_repo
 
     def execute(
         self, request: ListTableMaintenancePolicyAttachmentsUseCaseInput
     ) -> ListTableMaintenancePolicyAttachmentsUseCaseOutput:
-        """Return the attachments."""
+        """Return the attachments, each orphaned when its target is no longer in the catalog."""
         if request.policy_name is None:
             attachments = self._attachments_repo.list_all()
         else:
             with translate_domain_errors():
                 name = TableMaintenancePolicyName(request.policy_name)
             attachments = self._attachments_repo.list_for_policy(name)
+        listings: dict[str, list[TableMetadataRef] | None] = {}
         return ListTableMaintenancePolicyAttachmentsUseCaseOutput(
             items=[
                 ListTableMaintenancePolicyAttachmentsUseCaseOutputItem(
@@ -46,7 +67,38 @@ class ListTableMaintenancePolicyAttachmentsService(ListTableMaintenancePolicyAtt
                     table_uuid=a.target.table_uuid,
                     policy_name=a.policy_name.value,
                     attached_at=a.attached_at,
+                    orphaned=not self._in_catalog(a.target, listings),
                 )
                 for a in attachments
             ]
         )
+
+    def _in_catalog(self, target: PolicyTarget, listings: dict[str, list[TableMetadataRef] | None]) -> bool:
+        if target.type == PolicyTargetType.TABLE:
+            return self._table_in_catalog(target)
+        catalog = target.path[0]
+        if catalog not in listings:
+            listings[catalog] = self._list_tables(catalog)
+        tables = listings[catalog]
+        return tables is not None and scope_target_in_listing(target.type, target.path, tables)
+
+    def _list_tables(self, catalog: str) -> list[TableMetadataRef] | None:
+        try:
+            return self._gateway.list_tables(ReadTableMetadataGatewayListInput(catalog=catalog))
+        except CatalogNotFoundError:
+            return None
+
+    def _table_in_catalog(self, target: PolicyTarget) -> bool:
+        """A table is in the catalog under its attached path, or under any name table maintenance knows it by."""
+        table_uuid = target.table_uuid
+        known = None if table_uuid is None else self._tables_repo.get(TableId(table_uuid))
+        if known is not None and known.status != TableStatus.DROPPED:
+            return True
+        path = target.path
+        try:
+            loaded = self._gateway.load_table(
+                TableMetadataRef(catalog=path[0], namespace=".".join(path[1:-1]), table=path[-1])
+            )
+        except CatalogNotFoundError:
+            return False
+        return loaded is not None and loaded.table_uuid == table_uuid

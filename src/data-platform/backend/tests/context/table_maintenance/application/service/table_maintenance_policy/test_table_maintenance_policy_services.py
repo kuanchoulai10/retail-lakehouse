@@ -39,9 +39,17 @@ from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policy_attachments_repo import (
     InMemoryTableMaintenancePolicyAttachmentsRepo,
 )
+from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
+from tests.context.table_maintenance.fakes.recording_send_table_change_gateway import (
+    RecordingSendTableChangeGateway,
+)
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
 CONTENT = MaintenancePolicyContent.platform_default().to_primitives()
+
+
+def _no_tables():
+    return InMemoryTableMaintenancePolicyAttachmentsRepo(), InMemoryTablesRepo(), RecordingSendTableChangeGateway()
 
 
 def _create(repo, name="gold", content=None):
@@ -57,7 +65,9 @@ def test_create_then_get_and_list():
     assert out.version == 1
     got = GetTableMaintenancePolicyService(repo).execute(GetTableMaintenancePolicyUseCaseInput(name="gold"))
     assert got.content == CONTENT
-    listed = ListTableMaintenancePoliciesService(repo).execute(ListTableMaintenancePoliciesUseCaseInput())
+    listed = ListTableMaintenancePoliciesService(repo, InMemoryTableMaintenancePolicyAttachmentsRepo()).execute(
+        ListTableMaintenancePoliciesUseCaseInput()
+    )
     assert [i.name for i in listed.items] == ["gold"]
 
 
@@ -74,7 +84,7 @@ def test_replace_increments_version_and_keeps_old_version_readable():
     repo = InMemoryTableMaintenancePoliciesRepo()
     _create(repo)
     new_content = {**CONTENT, "dry_run": True}
-    out = UpdateTableMaintenancePolicyService(repo, clock=lambda: NOW + timedelta(hours=1)).execute(
+    out = UpdateTableMaintenancePolicyService(repo, *_no_tables(), clock=lambda: NOW + timedelta(hours=1)).execute(
         UpdateTableMaintenancePolicyUseCaseInput(name="gold", content=new_content, version=1)
     )
     assert out.version == 2
@@ -91,7 +101,7 @@ def test_replace_with_stale_version_conflicts():
     """A stale version is ConflictError and the repo is unchanged."""
     repo = InMemoryTableMaintenancePoliciesRepo()
     _create(repo)
-    service = UpdateTableMaintenancePolicyService(repo, clock=lambda: NOW)
+    service = UpdateTableMaintenancePolicyService(repo, *_no_tables(), clock=lambda: NOW)
     service.execute(
         UpdateTableMaintenancePolicyUseCaseInput(name="gold", content={**CONTENT, "dry_run": True}, version=1)
     )
@@ -106,7 +116,7 @@ def test_replace_with_stale_version_conflicts():
 def test_update_missing_is_not_found():
     """Updating an unknown policy is NotFoundError."""
     with pytest.raises(NotFoundError):
-        UpdateTableMaintenancePolicyService(InMemoryTableMaintenancePoliciesRepo()).execute(
+        UpdateTableMaintenancePolicyService(InMemoryTableMaintenancePoliciesRepo(), *_no_tables()).execute(
             UpdateTableMaintenancePolicyUseCaseInput(name="nope", content=CONTENT, version=1)
         )
 

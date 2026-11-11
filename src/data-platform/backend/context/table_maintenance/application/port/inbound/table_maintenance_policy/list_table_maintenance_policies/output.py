@@ -19,6 +19,7 @@ class ListTableMaintenancePoliciesUseCaseOutputItem:
     version: int
     created_at: datetime
     updated_at: datetime
+    attachment_count: int
 
 
 @dataclass(frozen=True)

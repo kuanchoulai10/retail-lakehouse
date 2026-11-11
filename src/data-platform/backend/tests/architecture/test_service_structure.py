@@ -31,6 +31,8 @@ UTILITY_FILES = {
     "translate_domain_errors.py",
     "table_maintenance_policy_output_fields.py",
     "policy_target_from_request.py",
+    "notify_policy_change.py",
+    "scope_target_in_listing.py",
     "table_discovery_rule_output_fields.py",
     "table_discovery_rule_from_request.py",
     "table_output_fields.py",

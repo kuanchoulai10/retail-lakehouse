@@ -21,6 +21,20 @@ if TYPE_CHECKING:
         PreviewTableDiscoveryRulesUseCase,
         ReplaceTableDiscoveryRulesUseCase,
     )
+    from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
+        CreateTableMaintenancePolicyUseCase,
+        DeleteTableMaintenancePolicyUseCase,
+        GetTableMaintenancePolicyUseCase,
+        GetTableMaintenancePolicyVersionUseCase,
+        ListTableMaintenancePoliciesUseCase,
+        UpdateTableMaintenancePolicyUseCase,
+    )
+    from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
+        AttachTableMaintenancePolicyUseCase,
+        DetachTableMaintenancePolicyUseCase,
+        ListTableMaintenancePolicyAttachmentsUseCase,
+        ResolveApplicableTableMaintenancePolicyUseCase,
+    )
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
         GetTableMaintenanceRunUseCase,
         ListTableMaintenanceRunsUseCase,
@@ -39,6 +53,16 @@ class WebUseCases:
     replace_table_discovery_rules: ReplaceTableDiscoveryRulesUseCase
     preview_table_discovery_rules: PreviewTableDiscoveryRulesUseCase
     list_covered_catalogs: ListCoveredCatalogsUseCase
+    list_table_maintenance_policies: ListTableMaintenancePoliciesUseCase
+    create_table_maintenance_policy: CreateTableMaintenancePolicyUseCase
+    get_table_maintenance_policy: GetTableMaintenancePolicyUseCase
+    get_table_maintenance_policy_version: GetTableMaintenancePolicyVersionUseCase
+    update_table_maintenance_policy: UpdateTableMaintenancePolicyUseCase
+    delete_table_maintenance_policy: DeleteTableMaintenancePolicyUseCase
+    attach_table_maintenance_policy: AttachTableMaintenancePolicyUseCase
+    detach_table_maintenance_policy: DetachTableMaintenancePolicyUseCase
+    list_table_maintenance_policy_attachments: ListTableMaintenancePolicyAttachmentsUseCase
+    resolve_applicable_table_maintenance_policy: ResolveApplicableTableMaintenancePolicyUseCase
     list_tables: ListTablesUseCase
     get_table: GetTableUseCase
     get_table_health: GetTableHealthUseCase

@@ -7,9 +7,13 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class ResolveApplicableTableMaintenancePolicyUseCaseInput:
-    """Carry the request to resolve the maintenance policy that applies to a catalog, namespace or table."""
+    """Carry the request to resolve the maintenance policy that applies to a catalog, namespace or table.
 
-    catalog: str
+    A ``table_uuid`` without ``catalog`` names a table known to table maintenance; its name is read
+    from there.
+    """
+
+    catalog: str | None = None
     table_uuid: str | None = None
     namespace: str | None = None
     table: str | None = None

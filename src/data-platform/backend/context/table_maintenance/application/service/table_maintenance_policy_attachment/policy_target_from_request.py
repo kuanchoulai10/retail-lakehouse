@@ -15,6 +15,9 @@ from context.table_maintenance.application.port.outbound.table_maintenance_polic
     PolicyTargetType,
 )
 from context.table_maintenance.application.service.shared import translate_domain_errors
+from context.table_maintenance.application.service.table_maintenance_policy_attachment.scope_target_in_listing import (  # noqa: E501
+    scope_target_in_listing,
+)
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table import ReadTableMetadataGateway
@@ -64,8 +67,4 @@ def policy_target_from_request(
 
 
 def _exists(gateway: ReadTableMetadataGateway, kind: PolicyTargetType, path: tuple[str, ...]) -> bool:
-    tables = gateway.list_tables(ReadTableMetadataGatewayListInput(catalog=path[0]))
-    if kind == PolicyTargetType.CATALOG:
-        return bool(tables)
-    namespace = ".".join(path[1:])
-    return any(t.namespace == namespace or t.namespace.startswith(f"{namespace}.") for t in tables)
+    return scope_target_in_listing(kind, path, gateway.list_tables(ReadTableMetadataGatewayListInput(catalog=path[0])))

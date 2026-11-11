@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.domain.model.table import TableName
+from context.table_maintenance.application.domain.model.table import TableId, TableName
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     DEFAULT_POLICY_NAME,
     TableMaintenancePolicyName,
@@ -24,7 +24,7 @@ from context.table_maintenance.application.service.shared import translate_domai
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import PolicyTarget
-    from context.table_maintenance.application.port.outbound.table import ReadTableMetadataGateway
+    from context.table_maintenance.application.port.outbound.table import ReadTableMetadataGateway, TablesRepo
     from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
         TableMaintenancePoliciesRepo,
     )
@@ -41,11 +41,13 @@ class ResolveApplicableTableMaintenancePolicyService(ResolveApplicableTableMaint
         policies_repo: TableMaintenancePoliciesRepo,
         attachments_repo: TableMaintenancePolicyAttachmentsRepo,
         gateway: ReadTableMetadataGateway,
+        tables_repo: TablesRepo,
     ) -> None:
         """Bind the repos and the catalog gateway."""
         self._policies_repo = policies_repo
         self._attachments_repo = attachments_repo
         self._gateway = gateway
+        self._tables_repo = tables_repo
 
     def execute(
         self, request: ResolveApplicableTableMaintenancePolicyUseCaseInput
@@ -70,6 +72,8 @@ class ResolveApplicableTableMaintenancePolicyService(ResolveApplicableTableMaint
         )
 
     def _candidates(self, request: ResolveApplicableTableMaintenancePolicyUseCaseInput) -> tuple[PolicyTarget, ...]:
+        if request.catalog is None:
+            return self._registered_table_candidates(request.table_uuid)
         if request.table is None:
             return enclosing_policy_targets(request.catalog, request.namespace)
         if request.namespace is None:
@@ -88,6 +92,14 @@ class ResolveApplicableTableMaintenancePolicyService(ResolveApplicableTableMaint
         with translate_domain_errors():
             name = TableName(catalog=request.catalog, namespace=request.namespace, table=request.table)
             return candidate_policy_targets(name, table_uuid)
+
+    def _registered_table_candidates(self, table_uuid: str | None) -> tuple[PolicyTarget, ...]:
+        if table_uuid is None:
+            raise ValidationError("name a catalog or a table uuid")
+        table = self._tables_repo.get(TableId(table_uuid))
+        if table is None:
+            raise NotFoundError(f"table {table_uuid} not found")
+        return candidate_policy_targets(table.name, table.id.value)
 
 
 def _target_fields(target: PolicyTarget) -> dict[str, object]:

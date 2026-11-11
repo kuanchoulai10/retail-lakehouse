@@ -1,6 +1,84 @@
 {
   "components": {
     "schemas": {
+      "ApplicableTableMaintenancePolicyApiResponse": {
+        "description": "Describe the policy that applies after inheritance and the target it is attached to, null for the default.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "operations": {
+            "$ref": "#/components/schemas/OperationPoliciesApiRequest"
+          },
+          "reconcile_interval_seconds": {
+            "title": "Reconcile Interval Seconds",
+            "type": "integer"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PolicyTargetApiResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "version",
+          "description",
+          "reconcile_interval_seconds",
+          "dry_run",
+          "operations",
+          "target"
+        ],
+        "title": "ApplicableTableMaintenancePolicyApiResponse",
+        "type": "object"
+      },
+      "AtLeastApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry a count condition: due when at least this many are found.",
+        "properties": {
+          "at_least": {
+            "title": "At Least",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "at_least"
+        ],
+        "title": "AtLeastApiRequest",
+        "type": "object"
+      },
+      "AttachTableMaintenancePolicyApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the target to attach the policy to; it replaces whatever is attached there.",
+        "properties": {
+          "target": {
+            "$ref": "#/components/schemas/PolicyTargetApiRequest"
+          }
+        },
+        "required": [
+          "target"
+        ],
+        "title": "AttachTableMaintenancePolicyApiRequest",
+        "type": "object"
+      },
       "AuthenticationParametersApiRequest": {
         "additionalProperties": false,
         "description": "Carry how an external catalog's connection authenticates; each field belongs to one type.\n\nOAUTH uses ``token_uri``, ``client_id``, ``client_secret`` and ``scopes``; BEARER uses\n``bearer_token``; SIGV4 uses the ``role_*``, ``external_id`` and ``signing_*`` fields;\nIMPLICIT uses none. The secrets are sent to the catalog, never returned, and left out of ``repr``.",
@@ -421,6 +499,25 @@
         "title": "CatalogTableApiResponse",
         "type": "object"
       },
+      "CompactionScopeApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry whether compaction measures and rewrites per partition or across the table.",
+        "properties": {
+          "unit": {
+            "enum": [
+              "partition",
+              "table"
+            ],
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit"
+        ],
+        "title": "CompactionScopeApiRequest",
+        "type": "object"
+      },
       "ConnectionConfigApiRequest": {
         "additionalProperties": false,
         "description": "Carry the remote catalog service an EXTERNAL catalog connects to.\n\n``connection_type`` REST is a catalog that speaks the Iceberg REST protocol.",
@@ -685,6 +782,40 @@
         "title": "CreateTableApiRequest",
         "type": "object"
       },
+      "CreateTableMaintenancePolicyApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry a new policy's name and its whole content.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "operations": {
+            "$ref": "#/components/schemas/OperationPoliciesApiRequest"
+          },
+          "reconcile_interval_seconds": {
+            "title": "Reconcile Interval Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "reconcile_interval_seconds",
+          "dry_run",
+          "operations"
+        ],
+        "title": "CreateTableMaintenancePolicyApiRequest",
+        "type": "object"
+      },
       "CreateViewApiRequest": {
         "additionalProperties": false,
         "description": "Carry the create view form: name, sql and the sql dialect.",
@@ -708,6 +839,59 @@
           "dialect"
         ],
         "title": "CreateViewApiRequest",
+        "type": "object"
+      },
+      "DetachPolicyTargetApiRequest": {
+        "additionalProperties": false,
+        "description": "Name the target to detach from; a table no longer in the catalog is named by its ``table_uuid``.",
+        "properties": {
+          "path": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Path",
+            "type": "array"
+          },
+          "table_uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Uuid"
+          },
+          "type": {
+            "enum": [
+              "catalog",
+              "namespace",
+              "table"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "path"
+        ],
+        "title": "DetachPolicyTargetApiRequest",
+        "type": "object"
+      },
+      "DetachTableMaintenancePolicyApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the target to detach the policy from.",
+        "properties": {
+          "target": {
+            "$ref": "#/components/schemas/DetachPolicyTargetApiRequest"
+          }
+        },
+        "required": [
+          "target"
+        ],
+        "title": "DetachTableMaintenancePolicyApiRequest",
         "type": "object"
       },
       "DiscoveryPreviewTableApiResponse": {
@@ -749,6 +933,86 @@
           "managed"
         ],
         "title": "DiscoveryPreviewTableApiResponse",
+        "type": "object"
+      },
+      "ExpireSnapshotsConditionsApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the snapshot expiry conditions; a missing one is not checked.",
+        "properties": {
+          "expirable_snapshots": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AtLeastApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "ExpireSnapshotsConditionsApiRequest",
+        "type": "object"
+      },
+      "ExpireSnapshotsExecutionPolicyApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the values snapshot expiry is run with.",
+        "properties": {
+          "older_than_seconds": {
+            "title": "Older Than Seconds",
+            "type": "integer"
+          },
+          "retain_last": {
+            "title": "Retain Last",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "older_than_seconds",
+          "retain_last"
+        ],
+        "title": "ExpireSnapshotsExecutionPolicyApiRequest",
+        "type": "object"
+      },
+      "ExpireSnapshotsPolicyApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the snapshot expiry policy.",
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "execution_policy": {
+            "$ref": "#/components/schemas/ExpireSnapshotsExecutionPolicyApiRequest"
+          },
+          "trigger_policy": {
+            "$ref": "#/components/schemas/ExpireSnapshotsTriggerPolicyApiRequest"
+          }
+        },
+        "required": [
+          "enabled",
+          "trigger_policy",
+          "execution_policy"
+        ],
+        "title": "ExpireSnapshotsPolicyApiRequest",
+        "type": "object"
+      },
+      "ExpireSnapshotsTriggerPolicyApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry when snapshot expiry is due.",
+        "properties": {
+          "conditions": {
+            "$ref": "#/components/schemas/ExpireSnapshotsConditionsApiRequest"
+          },
+          "cooldown_seconds": {
+            "title": "Cooldown Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cooldown_seconds",
+          "conditions"
+        ],
+        "title": "ExpireSnapshotsTriggerPolicyApiRequest",
         "type": "object"
       },
       "GenericTableApiResponse": {
@@ -855,6 +1119,90 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "ListedTableMaintenancePolicyApiResponse": {
+        "description": "Describe a listed policy at its current version with how many targets it is attached to.",
+        "properties": {
+          "attachment_count": {
+            "title": "Attachment Count",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "operations": {
+            "$ref": "#/components/schemas/OperationPoliciesApiRequest"
+          },
+          "reconcile_interval_seconds": {
+            "title": "Reconcile Interval Seconds",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "version",
+          "description",
+          "reconcile_interval_seconds",
+          "dry_run",
+          "operations",
+          "created_at",
+          "updated_at",
+          "attachment_count"
+        ],
+        "title": "ListedTableMaintenancePolicyApiResponse",
+        "type": "object"
+      },
+      "ListedTableMaintenancePolicyMappingApiResponse": {
+        "description": "Describe a listed mapping; ``orphaned`` when its target is no longer in the catalog.",
+        "properties": {
+          "attached_at": {
+            "format": "date-time",
+            "title": "Attached At",
+            "type": "string"
+          },
+          "orphaned": {
+            "title": "Orphaned",
+            "type": "boolean"
+          },
+          "policy_name": {
+            "title": "Policy Name",
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/components/schemas/PolicyTargetApiResponse"
+          }
+        },
+        "required": [
+          "target",
+          "policy_name",
+          "attached_at",
+          "orphaned"
+        ],
+        "title": "ListedTableMaintenancePolicyMappingApiResponse",
+        "type": "object"
+      },
       "NamespaceApiResponse": {
         "description": "Describe a namespace: its catalog, its parts and its properties.",
         "properties": {
@@ -905,6 +1253,58 @@
           "namespace"
         ],
         "title": "NamespaceSummaryApiResponse",
+        "type": "object"
+      },
+      "OperationPoliciesApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry one policy per maintenance operation.",
+        "properties": {
+          "expire_snapshots": {
+            "$ref": "#/components/schemas/ExpireSnapshotsPolicyApiRequest"
+          },
+          "remove_orphan_files": {
+            "$ref": "#/components/schemas/RemoveOrphanFilesPolicyApiRequest"
+          },
+          "rewrite_data_files": {
+            "$ref": "#/components/schemas/RewriteDataFilesPolicyApiRequest"
+          },
+          "rewrite_manifests": {
+            "$ref": "#/components/schemas/RewriteManifestsPolicyApiRequest"
+          }
+        },
+        "required": [
+          "rewrite_data_files",
+          "rewrite_manifests",
+          "expire_snapshots",
+          "remove_orphan_files"
+        ],
+        "title": "OperationPoliciesApiRequest",
+        "type": "object"
+      },
+      "PartialProgressApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry whether compaction commits in parts, and at most how many.",
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "max_commits": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Commits"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "PartialProgressApiRequest",
         "type": "object"
       },
       "PartitionFieldApiRequest": {
@@ -976,6 +1376,68 @@
           "fields"
         ],
         "title": "PartitionSpecApiResponse",
+        "type": "object"
+      },
+      "PolicyTargetApiRequest": {
+        "additionalProperties": false,
+        "description": "Name a catalog, namespace or table to attach a policy to.",
+        "properties": {
+          "path": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Path",
+            "type": "array"
+          },
+          "type": {
+            "enum": [
+              "catalog",
+              "namespace",
+              "table"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "path"
+        ],
+        "title": "PolicyTargetApiRequest",
+        "type": "object"
+      },
+      "PolicyTargetApiResponse": {
+        "description": "Describe a target; a table target carries the uuid it is keyed by.",
+        "properties": {
+          "path": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Path",
+            "type": "array"
+          },
+          "table_uuid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Uuid"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "path",
+          "table_uuid"
+        ],
+        "title": "PolicyTargetApiResponse",
         "type": "object"
       },
       "PreviewTableDiscoveryRulesApiRequest": {
@@ -1218,6 +1680,70 @@
         "title": "ReconciliationPolicyTargetApiResponse",
         "type": "object"
       },
+      "RemoveOrphanFilesConditionsApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the orphan file removal conditions; there are none, so it is due once its cooldown passed.",
+        "properties": {},
+        "title": "RemoveOrphanFilesConditionsApiRequest",
+        "type": "object"
+      },
+      "RemoveOrphanFilesExecutionPolicyApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the values orphan file removal is run with.",
+        "properties": {
+          "older_than_seconds": {
+            "title": "Older Than Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "older_than_seconds"
+        ],
+        "title": "RemoveOrphanFilesExecutionPolicyApiRequest",
+        "type": "object"
+      },
+      "RemoveOrphanFilesPolicyApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the orphan file removal policy.",
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "execution_policy": {
+            "$ref": "#/components/schemas/RemoveOrphanFilesExecutionPolicyApiRequest"
+          },
+          "trigger_policy": {
+            "$ref": "#/components/schemas/RemoveOrphanFilesTriggerPolicyApiRequest"
+          }
+        },
+        "required": [
+          "enabled",
+          "trigger_policy",
+          "execution_policy"
+        ],
+        "title": "RemoveOrphanFilesPolicyApiRequest",
+        "type": "object"
+      },
+      "RemoveOrphanFilesTriggerPolicyApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry when orphan file removal is due.",
+        "properties": {
+          "conditions": {
+            "$ref": "#/components/schemas/RemoveOrphanFilesConditionsApiRequest"
+          },
+          "cooldown_seconds": {
+            "title": "Cooldown Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cooldown_seconds",
+          "conditions"
+        ],
+        "title": "RemoveOrphanFilesTriggerPolicyApiRequest",
+        "type": "object"
+      },
       "RenameTableApiRequest": {
         "additionalProperties": false,
         "description": "Name where the table goes: a namespace of the same catalog, by parts, and a name.",
@@ -1262,6 +1788,167 @@
           "rules"
         ],
         "title": "ReplaceTableDiscoveryRulesApiRequest",
+        "type": "object"
+      },
+      "RewriteDataFilesConditionsApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the compaction conditions; a missing one is not checked, the others combine with OR.",
+        "properties": {
+          "reducible_files": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AtLeastApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "RewriteDataFilesConditionsApiRequest",
+        "type": "object"
+      },
+      "RewriteDataFilesExecutionPolicyApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the values compaction is run with; a null target size falls back to the table property.",
+        "properties": {
+          "min_input_files": {
+            "title": "Min Input Files",
+            "type": "integer"
+          },
+          "partial_progress": {
+            "$ref": "#/components/schemas/PartialProgressApiRequest"
+          },
+          "target_file_size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target File Size Bytes"
+          }
+        },
+        "required": [
+          "min_input_files",
+          "partial_progress"
+        ],
+        "title": "RewriteDataFilesExecutionPolicyApiRequest",
+        "type": "object"
+      },
+      "RewriteDataFilesPolicyApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the compaction policy: its switch, scope, trigger and execution.",
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "execution_policy": {
+            "$ref": "#/components/schemas/RewriteDataFilesExecutionPolicyApiRequest"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/CompactionScopeApiRequest"
+          },
+          "trigger_policy": {
+            "$ref": "#/components/schemas/RewriteDataFilesTriggerPolicyApiRequest"
+          }
+        },
+        "required": [
+          "enabled",
+          "scope",
+          "trigger_policy",
+          "execution_policy"
+        ],
+        "title": "RewriteDataFilesPolicyApiRequest",
+        "type": "object"
+      },
+      "RewriteDataFilesTriggerPolicyApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry when compaction is due.",
+        "properties": {
+          "conditions": {
+            "$ref": "#/components/schemas/RewriteDataFilesConditionsApiRequest"
+          },
+          "cooldown_seconds": {
+            "title": "Cooldown Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cooldown_seconds",
+          "conditions"
+        ],
+        "title": "RewriteDataFilesTriggerPolicyApiRequest",
+        "type": "object"
+      },
+      "RewriteManifestsConditionsApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the manifest rewrite conditions; a missing one is not checked.",
+        "properties": {
+          "small_manifests": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SmallManifestsConditionApiRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "RewriteManifestsConditionsApiRequest",
+        "type": "object"
+      },
+      "RewriteManifestsExecutionPolicyApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the values a manifest rewrite is run with; there are none.",
+        "properties": {},
+        "title": "RewriteManifestsExecutionPolicyApiRequest",
+        "type": "object"
+      },
+      "RewriteManifestsPolicyApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the manifest rewrite policy.",
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "execution_policy": {
+            "$ref": "#/components/schemas/RewriteManifestsExecutionPolicyApiRequest"
+          },
+          "trigger_policy": {
+            "$ref": "#/components/schemas/RewriteManifestsTriggerPolicyApiRequest"
+          }
+        },
+        "required": [
+          "enabled",
+          "trigger_policy",
+          "execution_policy"
+        ],
+        "title": "RewriteManifestsPolicyApiRequest",
+        "type": "object"
+      },
+      "RewriteManifestsTriggerPolicyApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry when a manifest rewrite is due.",
+        "properties": {
+          "conditions": {
+            "$ref": "#/components/schemas/RewriteManifestsConditionsApiRequest"
+          },
+          "cooldown_seconds": {
+            "title": "Cooldown Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cooldown_seconds",
+          "conditions"
+        ],
+        "title": "RewriteManifestsTriggerPolicyApiRequest",
         "type": "object"
       },
       "SchemaApiResponse": {
@@ -1361,6 +2048,32 @@
           "doc"
         ],
         "title": "SchemaFieldApiResponse",
+        "type": "object"
+      },
+      "SmallManifestsConditionApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry the small-manifests condition; a null size falls back to the table's manifest target size.",
+        "properties": {
+          "at_least": {
+            "title": "At Least",
+            "type": "integer"
+          },
+          "smaller_than_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Smaller Than Bytes"
+          }
+        },
+        "required": [
+          "at_least"
+        ],
+        "title": "SmallManifestsConditionApiRequest",
         "type": "object"
       },
       "SnapshotApiResponse": {
@@ -2331,6 +3044,158 @@
         "title": "TableIdentifierApiResponse",
         "type": "object"
       },
+      "TableMaintenancePoliciesApiResponse": {
+        "description": "List every policy.",
+        "properties": {
+          "policies": {
+            "items": {
+              "$ref": "#/components/schemas/ListedTableMaintenancePolicyApiResponse"
+            },
+            "title": "Policies",
+            "type": "array"
+          }
+        },
+        "required": [
+          "policies"
+        ],
+        "title": "TableMaintenancePoliciesApiResponse",
+        "type": "object"
+      },
+      "TableMaintenancePolicyApiResponse": {
+        "description": "Describe a policy at its current version.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "operations": {
+            "$ref": "#/components/schemas/OperationPoliciesApiRequest"
+          },
+          "reconcile_interval_seconds": {
+            "title": "Reconcile Interval Seconds",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "version",
+          "description",
+          "reconcile_interval_seconds",
+          "dry_run",
+          "operations",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "TableMaintenancePolicyApiResponse",
+        "type": "object"
+      },
+      "TableMaintenancePolicyMappingApiResponse": {
+        "description": "Describe a policy attached to a target.",
+        "properties": {
+          "attached_at": {
+            "format": "date-time",
+            "title": "Attached At",
+            "type": "string"
+          },
+          "policy_name": {
+            "title": "Policy Name",
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/components/schemas/PolicyTargetApiResponse"
+          }
+        },
+        "required": [
+          "target",
+          "policy_name",
+          "attached_at"
+        ],
+        "title": "TableMaintenancePolicyMappingApiResponse",
+        "type": "object"
+      },
+      "TableMaintenancePolicyMappingsApiResponse": {
+        "description": "List a policy's mappings.",
+        "properties": {
+          "mappings": {
+            "items": {
+              "$ref": "#/components/schemas/ListedTableMaintenancePolicyMappingApiResponse"
+            },
+            "title": "Mappings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mappings"
+        ],
+        "title": "TableMaintenancePolicyMappingsApiResponse",
+        "type": "object"
+      },
+      "TableMaintenancePolicyVersionApiResponse": {
+        "description": "Describe one stored version of a policy; ``created_at`` is when that version was written.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "operations": {
+            "$ref": "#/components/schemas/OperationPoliciesApiRequest"
+          },
+          "reconcile_interval_seconds": {
+            "title": "Reconcile Interval Seconds",
+            "type": "integer"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "version",
+          "description",
+          "reconcile_interval_seconds",
+          "dry_run",
+          "operations",
+          "created_at"
+        ],
+        "title": "TableMaintenancePolicyVersionApiResponse",
+        "type": "object"
+      },
       "TableMaintenanceRunApiResponse": {
         "description": "Describe a maintenance run.",
         "properties": {
@@ -2681,6 +3546,40 @@
         "title": "UpdateNamespacePropertiesApiRequest",
         "type": "object"
       },
+      "UpdateTableMaintenancePolicyApiRequest": {
+        "additionalProperties": false,
+        "description": "Carry a policy's whole new content and the version it was edited from.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "operations": {
+            "$ref": "#/components/schemas/OperationPoliciesApiRequest"
+          },
+          "reconcile_interval_seconds": {
+            "title": "Reconcile Interval Seconds",
+            "type": "integer"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "description",
+          "reconcile_interval_seconds",
+          "dry_run",
+          "operations"
+        ],
+        "title": "UpdateTableMaintenancePolicyApiRequest",
+        "type": "object"
+      },
       "UpdateTablePropertiesApiRequest": {
         "additionalProperties": false,
         "description": "Carry the loaded table's uuid, the properties to set and the property keys to remove.",
@@ -2909,6 +3808,65 @@
           }
         },
         "summary": "Healthz"
+      }
+    },
+    "/v1/applicable-policy": {
+      "get": {
+        "description": "Return the policy that applies to a catalog, or to a dot-joined namespace in it.",
+        "operationId": "get_applicable_maintenance_policy",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "catalog",
+            "required": true,
+            "schema": {
+              "title": "Catalog",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "namespace",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Namespace"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicableTableMaintenancePolicyApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Applicable Maintenance Policy",
+        "tags": [
+          "maintenance-policies"
+        ]
       }
     },
     "/v1/catalogs": {
@@ -4327,6 +5285,386 @@
         ]
       }
     },
+    "/v1/maintenance-policies": {
+      "get": {
+        "description": "List every policy at its current version with its attachment count.",
+        "operationId": "list_table_maintenance_policies",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableMaintenancePoliciesApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Table Maintenance Policies",
+        "tags": [
+          "maintenance-policies"
+        ]
+      },
+      "post": {
+        "description": "Create a policy at version 1.",
+        "operationId": "create_table_maintenance_policy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTableMaintenancePolicyApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableMaintenancePolicyApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Table Maintenance Policy",
+        "tags": [
+          "maintenance-policies"
+        ]
+      }
+    },
+    "/v1/maintenance-policies/{name}": {
+      "delete": {
+        "description": "Delete a policy and its versions; 409 while it is attached or when it is the default.",
+        "operationId": "delete_table_maintenance_policy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Table Maintenance Policy",
+        "tags": [
+          "maintenance-policies"
+        ]
+      },
+      "get": {
+        "description": "Return a policy at its current version.",
+        "operationId": "get_table_maintenance_policy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableMaintenancePolicyApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Table Maintenance Policy",
+        "tags": [
+          "maintenance-policies"
+        ]
+      },
+      "put": {
+        "description": "Replace a policy's content from the version read (409 if stale); the version increments.",
+        "operationId": "update_table_maintenance_policy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTableMaintenancePolicyApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableMaintenancePolicyApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Table Maintenance Policy",
+        "tags": [
+          "maintenance-policies"
+        ]
+      }
+    },
+    "/v1/maintenance-policies/{name}/mappings": {
+      "delete": {
+        "description": "Detach a policy from a target; 404 when that policy is not the one attached there.",
+        "operationId": "detach_table_maintenance_policy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DetachTableMaintenancePolicyApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Detach Table Maintenance Policy",
+        "tags": [
+          "maintenance-policies"
+        ]
+      },
+      "get": {
+        "description": "List the targets a policy is attached to, marking those no longer in the catalog as orphaned.",
+        "operationId": "list_table_maintenance_policy_mappings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableMaintenancePolicyMappingsApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Table Maintenance Policy Mappings",
+        "tags": [
+          "maintenance-policies"
+        ]
+      },
+      "put": {
+        "description": "Attach a policy to a target that exists in the catalog, replacing the target's attachment.",
+        "operationId": "attach_table_maintenance_policy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttachTableMaintenancePolicyApiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableMaintenancePolicyMappingApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Attach Table Maintenance Policy",
+        "tags": [
+          "maintenance-policies"
+        ]
+      }
+    },
+    "/v1/maintenance-policies/{name}/versions/{version}": {
+      "get": {
+        "description": "Return one stored version of a policy.",
+        "operationId": "get_table_maintenance_policy_version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableMaintenancePolicyVersionApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Table Maintenance Policy Version",
+        "tags": [
+          "maintenance-policies"
+        ]
+      }
+    },
     "/v1/table-maintenance-runs/{run_id}": {
       "get": {
         "description": "Return one maintenance run.",
@@ -4526,6 +5864,49 @@
         "summary": "Get Table",
         "tags": [
           "tables"
+        ]
+      }
+    },
+    "/v1/tables/{table_uuid}/applicable-policy": {
+      "get": {
+        "description": "Return the policy that applies to a table, its version and the target it is inherited from.",
+        "operationId": "get_table_applicable_maintenance_policy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_uuid",
+            "required": true,
+            "schema": {
+              "title": "Table Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicableTableMaintenancePolicyApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Table Applicable Maintenance Policy",
+        "tags": [
+          "maintenance-policies"
         ]
       }
     },

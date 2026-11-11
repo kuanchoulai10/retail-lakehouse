@@ -81,7 +81,7 @@ def build_use_cases(
     reconciliations = repos.table_reconciliations
     catalog = gateways.read_table_metadata
     table_changes = gateways.send_table_change
-    resolve_applicable_policy = ResolveApplicableTableMaintenancePolicyService(policies, attachments, catalog)
+    resolve_applicable_policy = ResolveApplicableTableMaintenancePolicyService(policies, attachments, catalog, tables)
     return UseCases(
         list_covered_catalogs=ListCoveredCatalogsService(catalog_names),
         process_table_hint=ProcessTableHintService(
@@ -99,18 +99,24 @@ def build_use_cases(
         ),
         preview_table_discovery_rules=PreviewTableDiscoveryRulesService(catalog, catalog_names, clock=clock),
         attach_table_maintenance_policy=AttachTableMaintenancePolicyService(
-            policies, attachments, catalog, clock=clock
+            policies, attachments, catalog, tables, table_changes, clock=clock
         ),
-        detach_table_maintenance_policy=DetachTableMaintenancePolicyService(attachments, catalog),
-        list_table_maintenance_policy_attachments=ListTableMaintenancePolicyAttachmentsService(attachments),
+        detach_table_maintenance_policy=DetachTableMaintenancePolicyService(
+            policies, attachments, catalog, tables, table_changes
+        ),
+        list_table_maintenance_policy_attachments=ListTableMaintenancePolicyAttachmentsService(
+            attachments, catalog, tables
+        ),
         resolve_applicable_table_maintenance_policy=resolve_applicable_policy,
         create_table_maintenance_policy=CreateTableMaintenancePolicyService(policies, clock=clock),
         delete_table_maintenance_policy=DeleteTableMaintenancePolicyService(policies, attachments),
         ensure_default_table_maintenance_policy=EnsureDefaultTableMaintenancePolicyService(policies, clock=clock),
         get_table_maintenance_policy=GetTableMaintenancePolicyService(policies),
         get_table_maintenance_policy_version=GetTableMaintenancePolicyVersionService(policies),
-        list_table_maintenance_policies=ListTableMaintenancePoliciesService(policies),
-        update_table_maintenance_policy=UpdateTableMaintenancePolicyService(policies, clock=clock),
+        list_table_maintenance_policies=ListTableMaintenancePoliciesService(policies, attachments),
+        update_table_maintenance_policy=UpdateTableMaintenancePolicyService(
+            policies, attachments, tables, table_changes, clock=clock
+        ),
         get_table=GetTableService(tables),
         get_table_health=GetTableHealthService(tables, catalog, resolve_applicable_policy, clock=clock),
         get_table_storage=GetTableStorageService(tables, catalog, runs, clock=clock),
