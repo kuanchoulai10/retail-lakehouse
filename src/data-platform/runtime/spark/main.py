@@ -12,7 +12,7 @@ import sys
 
 from job_request import JobRequest
 from maintenance_runner import run_maintenance
-from peak_heap_percent import peak_heap_percent
+from peak_heap_bytes import peak_heap_bytes
 
 
 def _session(catalog: str):
@@ -30,7 +30,7 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO)
     request = JobRequest.from_json(os.environ["GLAC_REQUEST"])
     spark = _session(request.catalog)
-    return run_maintenance(request, spark.sql, measure=lambda: peak_heap_percent(spark), stop=spark.stop)
+    return run_maintenance(request, spark.sql, measure=lambda: peak_heap_bytes(spark), stop=spark.stop)
 
 
 if __name__ == "__main__":

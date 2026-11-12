@@ -188,18 +188,23 @@ def test_stop_raising_still_posts_the_result(make_request):
     assert posted[0]["succeeded"] is True
 
 
-def test_success_reports_peak_heap_percent_before_stop(make_request):
+def test_success_reports_peak_heap_use_before_stop(make_request):
     calls = []
     posted = []
+    peaks = {"peak_driver_heap_bytes": 100, "peak_executor_heap_bytes": 200}
     run_maintenance(
         make_request(),
         lambda _sql: _Result([_Row(rewritten_data_files_count=1)]),
-        measure=lambda: calls.append("measure") or 62,
+        measure=lambda: calls.append("measure") or peaks,
         stop=lambda: calls.append("stop"),
         post=lambda url, body: calls.append("post") or posted.append(body) or True,
     )
     assert calls == ["measure", "stop", "post"]
-    assert posted[0]["metrics"] == {"rewritten_data_files_count": 1, "peak_heap_percent": 62}
+    assert posted[0]["metrics"] == {
+        "rewritten_data_files_count": 1,
+        "peak_driver_heap_bytes": 100,
+        "peak_executor_heap_bytes": 200,
+    }
 
 
 def test_failure_reports_no_peak(make_request):
@@ -212,7 +217,7 @@ def test_failure_reports_no_peak(make_request):
     run_maintenance(
         make_request(),
         boom,
-        measure=lambda: measured.append(1) or 99,
+        measure=lambda: measured.append(1) or {"peak_driver_heap_bytes": 1},
         post=lambda url, body: posted.append(body) or True,
     )
     assert measured == []
@@ -224,10 +229,10 @@ def test_unmeasured_success_reports_no_peak_key(make_request):
     run_maintenance(
         make_request(),
         lambda _sql: _Result([]),
-        measure=lambda: None,
+        measure=dict,
         post=lambda url, body: posted.append(body) or True,
     )
-    assert "peak_heap_percent" not in posted[0]["metrics"]
+    assert posted[0]["metrics"] == {}
 
 
 def test_measure_raising_still_succeeds_without_a_peak(make_request):
@@ -241,7 +246,7 @@ def test_measure_raising_still_succeeds_without_a_peak(make_request):
     )
     assert code == 0
     assert posted[0]["succeeded"] is True
-    assert "peak_heap_percent" not in posted[0]["metrics"]
+    assert posted[0]["metrics"] == {}
 
 
 def test_failure_keeps_the_out_of_memory_line(make_request):

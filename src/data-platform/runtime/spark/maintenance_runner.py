@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-PEAK_HEAP_PERCENT = "peak_heap_percent"
 
 REWRITE_DATA_FILES = "rewrite_data_files"
 
@@ -49,21 +48,20 @@ def _check_rewrite_progress(statement: str, totals: dict[str, int]) -> None:
     )
 
 
-def _add_peak(metrics: dict[str, int], measure: Callable[[], int | None]) -> None:
+def _add_peaks(metrics: dict[str, int], measure: Callable[[], dict[str, int]]) -> None:
     try:
-        peak = measure()
+        peaks = measure()
     except Exception:
         logger.exception("Measuring the peak heap use failed")
         return
-    if peak is not None:
-        metrics[PEAK_HEAP_PERCENT] = peak
+    metrics.update(peaks)
 
 
 def run_maintenance(
     request: JobRequest,
     sql: Callable[[str], Any],
     *,
-    measure: Callable[[], int | None] | None = None,
+    measure: Callable[[], dict[str, int]] | None = None,
     stop: Callable[[], None] | None = None,
     post: Callable[[str, dict[str, Any]], bool] = post_result,
 ) -> int:
@@ -72,8 +70,8 @@ def run_maintenance(
     ``stop`` runs before the callback because the control plane deletes the
     SparkApplication once the callback of its last operation arrives; stopping first
     lets Spark finish its event log before the driver can be killed. ``measure``
-    runs on success, before ``stop`` while the session can still be read, and its
-    peak heap percent joins the metrics when it has one.
+    runs on success, before ``stop`` while the session can still be read, and the
+    peak heap use it returns joins the metrics.
     """
     metrics: dict[str, int] = {}
     error: str | None = None
@@ -90,7 +88,7 @@ def run_maintenance(
         error = error_text(exc)
     succeeded = error is None
     if succeeded and measure is not None:
-        _add_peak(metrics, measure)
+        _add_peaks(metrics, measure)
     body = {
         "run_id": request.run_id,
         "operation": request.operation,
