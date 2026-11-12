@@ -49,6 +49,8 @@ _REASON_MANUAL_RUN = "manual_run"
 _REASON_RECONCILE_NOW = "reconcile_now"
 _REASON_PREVIOUS_RUN_FINISHED = "previous_run_finished"
 _SEARCH_ATTRIBUTES_PATCH = "table-search-attributes"
+_FENCED_BOUND_PATCH = "fencing-in-flight-bound"
+_AWAIT_CLOSE_PATCH = "await-cancelled-run-close"
 
 
 @workflow.defn(name=TABLE_RECONCILIATION_WORKFLOW)
@@ -66,13 +68,14 @@ class TableReconciliationWorkflow:
     nothing is planned; a ``trigger_now`` is kept and planned once it finishes. A
     run that never reports back is given up once the child's worst case has passed
     (per planned operation: every attempt timing out after the attempt deadline the
-    plan carried, six hours for a plan without one, plus the backoffs, plus 1 h):
-    the child is cancelled first (by the workflow ID recorded when it started, as
-    the ID carries the table name of that time), so its cleanup records the
-    result, releases its admission slot and deletes its Spark job, and its report
-    is awaited for up to 15 minutes (less if the cancel fails because the child
-    is gone or no workflow ID was recorded), so a new
-    run does not overlap the old one's Spark job. A skip
+    plan carried, six hours for a plan without one, and being fenced for 15
+    minutes, plus the backoffs, plus 1 h): the child is cancelled first (by the
+    workflow ID recorded when it started, as the ID carries the table name of
+    that time), so its cleanup fences its live attempt, records the result,
+    releases its admission slot and deletes its Spark job, and its report is
+    awaited for as long as the child still runs (less if the cancel fails
+    because the child is gone or no workflow ID was recorded), so a new run does
+    not overlap the old one's Spark job. A skip
     because the table was dropped or unmanaged, or a
     ``stop`` signal, ends the workflow once no run is in flight, but never on a
     stale decision (R31): any other signal after ``stop`` cancels the stop, and a
@@ -289,36 +292,71 @@ class TableReconciliationWorkflow:
         return started_at + self._in_flight_per_operation() * max(self._in_flight_operations, 1)
 
     def _in_flight_per_operation(self) -> timedelta:
-        """Return how long one operation of the run in flight may take: its worst case plus 1 h."""
+        """Return how long one operation of the run in flight may take: its worst case plus 1 h.
+
+        The worst case counts the fencing of every attempt; a history from before
+        fencing (patch ``fencing-in-flight-bound``) keeps the unfenced bound it gave
+        runs up on.
+        """
         attempt_deadline = timedelta(seconds=self._in_flight_attempt_deadline_seconds)
-        return (
-            TableMaintenanceAttemptPolicy(attempt_deadline=attempt_deadline).operation_worst_case() + _IN_FLIGHT_MARGIN
-        )
+        policy = TableMaintenanceAttemptPolicy(attempt_deadline=attempt_deadline)
+        if workflow.patched(_FENCED_BOUND_PATCH):
+            return policy.operation_worst_case() + _IN_FLIGHT_MARGIN
+        return policy.unfenced_operation_worst_case() + _IN_FLIGHT_MARGIN
 
     async def _give_up_stuck_run(self) -> None:
-        """Cancel a run past its budget, await its report briefly, then forget it.
+        """Cancel a run past its budget, await its report, then forget it.
 
         The cancel request runs as its own task: a request the server never
         resolves must not block the loop, and a failed one (the child is missing
-        or closed, so nothing can report back) ends the wait at once.
+        or closed, so nothing can report back) ends the wait at once. The
+        cancelled child fences its live attempt before it reports, which can
+        take as long as its pods do, so no new run starts until it reported or
+        closed: every 15 minutes without a report the child is looked up, and
+        only a child that is no longer running is forgotten. A history from
+        before this (patch ``await-cancelled-run-close``) forgets the run after
+        one 15 minute grace.
         """
         deadline = self._in_flight_deadline()
         run_id = self._in_flight_run_id
         if run_id is None or deadline is None or workflow.now() < deadline:
             return
         workflow.logger.warning("maintenance run %s never reported back; cancelling it", run_id)
+        workflow_id = self._in_flight_workflow_id
         self._cancel_failed = False
-        self._cancel_task = asyncio.create_task(self._cancel_child(run_id, self._in_flight_workflow_id))
-        try:
-            await workflow.wait_condition(
-                lambda: self._in_flight_run_id != run_id or self._cancel_failed,
-                timeout=_CANCEL_GRACE,
-            )
-        except TimeoutError:
-            workflow.logger.warning("cancelled run %s did not report back; no longer waiting", run_id)
+        self._cancel_task = asyncio.create_task(self._cancel_child(run_id, workflow_id))
+        awaits_close = workflow.patched(_AWAIT_CLOSE_PATCH)
+        while True:
+            try:
+                await workflow.wait_condition(
+                    lambda: self._in_flight_run_id != run_id or self._cancel_failed,
+                    timeout=_CANCEL_GRACE,
+                )
+                break
+            except TimeoutError:
+                if not awaits_close or workflow_id is None or not await self._still_running(workflow_id):
+                    workflow.logger.warning("cancelled run %s did not report back; no longer waiting", run_id)
+                    break
+                workflow.logger.warning("cancelled run %s is still running; waiting for it", run_id)
         if self._in_flight_run_id == run_id:
             self._clear_in_flight()
             self._count(_REASON_PREVIOUS_RUN_FINISHED)
+
+    async def _still_running(self, workflow_id: str) -> bool:
+        """Tell whether a cancelled child still runs; a failed lookup counts as running."""
+        try:
+            looked_up = await workflow.execute_activity(
+                TableReconciliationActivity.GET_WORKFLOW_RUNNING,
+                {"workflow_id": workflow_id},
+                start_to_close_timeout=_ACTIVITY_TIMEOUT,
+                retry_policy=_ACTIVITY_RETRY,
+            )
+        except ActivityError as error:
+            if is_cancelled_exception(error):
+                raise asyncio.CancelledError from error
+            workflow.logger.warning("looking up workflow %s failed: %s", workflow_id, error)
+            return True
+        return bool(looked_up["running"])
 
     async def _cancel_child(self, run_id: str, workflow_id: str | None) -> None:
         if workflow_id is None:

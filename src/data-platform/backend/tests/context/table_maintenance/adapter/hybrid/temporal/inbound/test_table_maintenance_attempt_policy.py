@@ -38,3 +38,8 @@ def test_default_fencing_polls_renews_and_bounds_the_wait():
     assert fencing.confirm_bound == timedelta(minutes=15)
     assert fencing.slow_poll_interval == timedelta(minutes=5)
     assert TableMaintenanceAttemptPolicy().fencing == fencing
+
+
+def test_unfenced_worst_case_is_the_bound_from_before_fencing():
+    """The unfenced worst case is every attempt hitting its deadline plus the backoffs, as before fencing existed."""
+    assert TableMaintenanceAttemptPolicy().unfenced_operation_worst_case() == timedelta(seconds=3 * 21600 + 180)

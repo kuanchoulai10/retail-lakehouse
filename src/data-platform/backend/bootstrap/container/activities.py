@@ -41,4 +41,5 @@ class Activities:
             self.discovery.sync_discovered_tables,
             signal.signal_admission_acquire,
             signal.signal_parent,
+            signal.get_workflow_running,
         ]

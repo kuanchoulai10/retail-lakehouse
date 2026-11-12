@@ -41,3 +41,10 @@ class TableMaintenanceAttemptPolicy:
         """
         per_attempt = self.attempt_deadline + self.fencing.confirm_bound
         return per_attempt * self.max_attempts + sum(self.backoffs, timedelta())
+
+    def unfenced_operation_worst_case(self) -> timedelta:
+        """Return the worst case of an operation whose attempts are not fenced, as before fencing existed.
+
+        A reconciliation history from before fencing gave runs up on this bound, so it replays with it.
+        """
+        return self.attempt_deadline * self.max_attempts + sum(self.backoffs, timedelta())

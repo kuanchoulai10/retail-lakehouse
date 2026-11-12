@@ -129,6 +129,12 @@ async def _scenario() -> None:
             )
             assert missing == {"delivered": False}
 
+            assert await act_env.run(activities.get_workflow_running, {"workflow_id": "parent-1"}) == {"running": True}
+            await parent.terminate()
+            assert await act_env.run(activities.get_workflow_running, {"workflow_id": "parent-1"}) == {"running": False}
+            nowhere = {"workflow_id": "no-such-workflow"}
+            assert await act_env.run(activities.get_workflow_running, nowhere) == {"running": False}
+
 
 def test_signal_with_start_admission_once_and_signal_parent():
     """The admission acquire is signalled with start and the parent is signalled when maintenance finishes."""

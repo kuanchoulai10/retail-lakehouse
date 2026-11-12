@@ -28,6 +28,9 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
     TableReconciliationWorkflowInput,
     table_reconciliation_workflow_id,
 )
+from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
+    WorkflowSignalActivities,
+)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
     TableMaintenanceAttemptPolicy,
     TableReconciliationWorkflow,
@@ -253,11 +256,16 @@ def _run(
             await register_table_search_attributes(env.client)
             plans = ScriptedPlanActivity(script)
             recorder = ScriptedRecordActivity()
+            lookups = WorkflowSignalActivities(env.client, admission_limit=1, admission_lease_seconds=22500)
             async with Worker(
                 env.client,
                 task_queue=TASK_QUEUE,
                 workflows=[TableReconciliationWorkflow, TableMaintenanceStubWorkflow],
-                activities=[plans.plan_table_maintenance, recorder.record_table_reconciliation],
+                activities=[
+                    plans.plan_table_maintenance,
+                    recorder.record_table_reconciliation,
+                    lookups.get_workflow_running,
+                ],
                 workflow_runner=runner or SandboxedWorkflowRunner(),
             ):
                 await scenario(Harness(env, env.client, plans, recorder))
@@ -630,26 +638,52 @@ def test_give_up_cancels_the_stale_child_before_starting_a_new_run():
     _run(scenario, script=lambda _: _planned(COMPACTION, interval=10**6))
 
 
-def test_give_up_waits_a_grace_for_a_child_that_ignores_its_cancel():
-    """Giving up waits a grace period for a child that ignores its cancel."""
+def test_give_up_waits_for_a_cancelled_child_that_is_still_running():
+    """A given-up run whose child keeps running after its cancel blocks every new run until the child is done."""
     plan = {**_planned(COMPACTION, interval=10**6), "stub_ignores_cancel": True}
 
     async def scenario(h: Harness) -> None:
         await h.start()
         first = await h.in_flight()
-        await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=14))
+        await h.env.sleep(OPERATION_BUDGET + timedelta(hours=3))
         state = await h.settle()
         assert state["in_flight_run_id"] == first
         assert len(h.plans.requests) == 1
-        await h.env.sleep(timedelta(minutes=2))
+        assert await h.child_status(first) == WorkflowExecutionStatus.RUNNING
+        await h.complete_child(first)
         await h.plan_count(2)
         await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first) and not s["planning"])
-        await h.complete_child(first)
-        await h.settle()
-        assert len(h.plans.requests) == 2
         assert [r["wake_reasons"] for r in h.recorder.records] == [{"discovery_scan": 1}, {"previous_run_finished": 1}]
 
     _run(scenario, script=lambda _: plan)
+
+
+def test_give_up_forgets_a_cancelled_child_that_closed_without_reporting():
+    """A cancelled child that closed without reporting is noticed within the grace, and the next run starts."""
+    plan = {**_planned(COMPACTION, interval=10**6), "stub_ignores_cancel": True}
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = await h.in_flight()
+        await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=5))
+        assert (await h.settle())["in_flight_run_id"] == first
+        await h.client.get_workflow_handle(_child_id(first)).terminate()
+        await h.env.sleep(timedelta(minutes=12))
+        await h.plan_count(2)
+        await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first) and not s["planning"])
+
+    _run(scenario, script=lambda _: plan)
+
+
+def test_history_that_gave_a_run_up_before_this_milestone_replays():
+    """A reconciliation that gave a run up under the bound and grace from before fencing replays on the new code."""
+
+    async def go() -> None:
+        fixture = Path(__file__).parent / "fixtures" / "reconciliation_give_up_before_fencing.json"
+        history = WorkflowHistory.from_json(WORKFLOW_ID, fixture.read_text())
+        await Replayer(workflows=[TableReconciliationWorkflow]).replay_workflow(history)
+
+    asyncio.run(go())
 
 
 def test_managed_again_while_in_flight_keeps_workflow():

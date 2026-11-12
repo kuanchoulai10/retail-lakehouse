@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from temporalio import activity
-from temporalio.client import RPCError
+from temporalio.client import RPCError, WorkflowExecutionStatus
 from temporalio.common import WorkflowIDConflictPolicy
 from temporalio.service import RPCStatusCode
 
@@ -23,13 +23,16 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
     TableMaintenanceAdmissionWorkflowInput,
     table_maintenance_admission_summary,
 )
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (
+    TableReconciliationActivity,
+)
 
 if TYPE_CHECKING:
     from temporalio.client import Client
 
 
 class WorkflowSignalActivities:
-    """Signal other workflows on behalf of a workflow, through the Temporal client.
+    """Signal other workflows on behalf of a workflow, or look one up, through the Temporal client.
 
     The admission limit and lease only apply when this call starts the admission
     workflow; a running admission workflow keeps the values it was started with.
@@ -71,6 +74,18 @@ class WorkflowSignalActivities:
                 )
             ],
         )
+
+    @activity.defn(name=TableReconciliationActivity.GET_WORKFLOW_RUNNING)
+    async def get_workflow_running(self, request: dict[str, Any]) -> dict[str, bool]:
+        """Tell whether a workflow by id is still running; a missing or closed one is not."""
+        handle = self._client.get_workflow_handle(request["workflow_id"])
+        try:
+            description = await handle.describe()
+        except RPCError as error:
+            if error.status == RPCStatusCode.NOT_FOUND:
+                return {"running": False}
+            raise
+        return {"running": description.status == WorkflowExecutionStatus.RUNNING}
 
     @activity.defn(name=TableMaintenanceActivity.SIGNAL_PARENT)
     async def signal_parent(self, request: dict[str, Any]) -> dict[str, bool]:
