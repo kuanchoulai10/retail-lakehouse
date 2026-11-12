@@ -10,9 +10,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from temporalio import activity
 from temporalio.client import WorkflowFailureError, WorkflowHistory
 from temporalio.common import WorkflowIDConflictPolicy
-from temporalio.exceptions import CancelledError
+from temporalio.exceptions import ApplicationError, CancelledError
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Replayer, UnsandboxedWorkflowRunner, Worker
 
@@ -22,6 +23,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
     TABLE_MAINTENANCE_WORKFLOW,
     OperationResultSignal,
+    TableMaintenanceActivity,
     TableMaintenanceSignal,
     TableMaintenanceWorkflowInput,
     table_maintenance_workflow_id,
@@ -160,7 +162,14 @@ def _run(
     scenario: Callable[[Harness], Awaitable[None]],
     admission_limit: int = 1,
     lease_seconds: int = 30 * 24 * 3600,
+    failing_acquires: frozenset[str] = frozenset(),
 ) -> None:
+    """Run ``scenario`` against the workflows on a time-skipping server.
+
+    The admission acquire is the real signal activity, except that an acquire for a request id in
+    ``failing_acquires`` fails non-retryably, as when the admission workflow cannot be reached.
+    """
+
     async def go() -> None:
         async with await WorkflowEnvironment.start_time_skipping() as env:
             queue = TASK_QUEUE
@@ -170,6 +179,13 @@ def _run(
                 admission_limit=admission_limit,
                 admission_lease_seconds=lease_seconds,
             )
+
+            @activity.defn(name=TableMaintenanceActivity.SIGNAL_ADMISSION_ACQUIRE)
+            async def signal_admission_acquire(request: dict) -> None:
+                if request["request_id"] in failing_acquires:
+                    raise ApplicationError("admission workflow unavailable", type="RuntimeError", non_retryable=True)
+                await signals.signal_admission_acquire(request)
+
             async with (
                 Worker(
                     env.client,
@@ -180,7 +196,7 @@ def _run(
                     ],
                     activities=[
                         *fakes.all(),
-                        signals.signal_admission_acquire,
+                        signal_admission_acquire,
                         signals.signal_parent,
                     ],
                 ),
@@ -1168,3 +1184,20 @@ def test_failed_attempt_is_recorded_before_its_job_is_deleted():
         assert names.index("record_maintenance_operation_result") < names.index("delete_maintenance_job")
 
     _run(scenario)
+
+
+def test_failed_admission_is_recorded_as_admission_failed():
+    """An attempt whose admission request could not be sent is recorded as ended by the failed admission."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
+        await h.run_maintenance(COMPACTION)
+
+        assert [(r["attempt"], r["succeeded"], r["ended_by"]) for r in h.fakes.records] == [
+            (1, False, "admission_failed"),
+            (2, True, "result"),
+        ]
+        assert h.fakes.records[0]["error"] == "admission acquire failed: admission workflow unavailable"
+        assert [s["attempt"] for s in h.fakes.submits] == [2]
+
+    _run(scenario, failing_acquires=frozenset({f"{RUN_ID}-{COMPACTION}-1"}))
