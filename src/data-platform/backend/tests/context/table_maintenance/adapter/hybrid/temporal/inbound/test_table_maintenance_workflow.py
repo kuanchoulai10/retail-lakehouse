@@ -737,18 +737,41 @@ def test_missing_job_whose_pods_stay_fails_the_operation_and_keeps_the_slot():
     _run(scenario)
 
 
+async def _cancel_requested_for_an_activity(h: Harness) -> bool:
+    history = await h.client.get_workflow_handle(WORKFLOW_ID).fetch_history()
+    return any(event.HasField("activity_task_cancel_requested_event_attributes") for event in history.events)
+
+
+async def _cancel_inside_the_activity(h: Harness, cancelled: list[bool]) -> None:
+    """Cancel the run from inside an in-flight scripted activity and hold it until the cancel reaches it.
+
+    The workflow answers a cancel by asking the server to cancel its in-flight activity. A fake
+    activity that returns at once can complete in between, and the time-skipping test server then
+    rejects the workflow's whole task completion and stalls the run. Holding the activity until the
+    history shows the cancel request closes that window; the real server accepts the race.
+    """
+    cancelled.append(True)
+    await h.client.get_workflow_handle(WORKFLOW_ID).cancel()
+    await eventually(lambda: _cancel_requested_for_an_activity(h), bool, timeout=REAL_TIMEOUT_SECONDS)
+
+
 def test_cancelled_run_fences_its_live_attempt_before_it_releases_the_slot():
     """A cancel during an attempt deletes its job and waits, renewing, for its pods to go before the slot is freed."""
 
     async def scenario(h: Harness) -> None:
         h.fakes.pods_live_for[FIRST] = timedelta(minutes=10)
+        cancelled: list[bool] = []
+
+        async def cancel_two_minutes_in(app_name: str, scheduled: datetime) -> None:
+            if app_name == FIRST and not cancelled and scheduled - h.submit_times()[0] >= timedelta(minutes=2):
+                await _cancel_inside_the_activity(h, cancelled)
+
+        h.fakes.status_hook = cancel_two_minutes_in
         handle = await h.start_maintenance(COMPACTION, EXPIRE)
-        await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n == 1)
-        await h.env.sleep(timedelta(minutes=2))
-        await handle.cancel()
         with pytest.raises(WorkflowFailureError) as caught:
             await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
         assert isinstance(caught.value.cause, CancelledError)
+        assert cancelled == [True]
 
         commands = await h.commands()
         names = _names(commands)
@@ -771,14 +794,18 @@ def test_cancel_during_fencing_keeps_fencing_until_the_pods_are_gone():
 
     async def scenario(h: Harness) -> None:
         h.fakes.pods_live_for[FIRST] = timedelta(minutes=30)
+        cancelled: list[bool] = []
+
+        async def cancel_while_fencing(app_name: str) -> None:
+            if app_name == FIRST and not cancelled:
+                await _cancel_inside_the_activity(h, cancelled)
+
+        h.fakes.pods_hook = cancel_while_fencing
         handle = await h.start_maintenance(COMPACTION, attempt_deadline_seconds=FENCE_DEADLINE_SECONDS)
-        await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n == 1)
-        await h.env.sleep(timedelta(seconds=FENCE_DEADLINE_SECONDS + 60))
-        await eventually(lambda: _value(len(h.fakes.pods_calls)), lambda n: n >= 1)
-        await handle.cancel()
         with pytest.raises(WorkflowFailureError):
             await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
 
+        assert cancelled == [True]
         commands = await h.commands()
         release = _first_after(commands, "signal:release", _names(commands).index("delete_maintenance_job"))
         assert commands[release][1] - h.fakes.delete_times[FIRST] >= timedelta(minutes=30)
