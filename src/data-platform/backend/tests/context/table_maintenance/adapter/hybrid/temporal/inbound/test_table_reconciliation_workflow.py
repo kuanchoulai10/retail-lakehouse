@@ -26,6 +26,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
     table_reconciliation_workflow_id,
 )
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
+    TableMaintenanceAttemptPolicy,
     TableReconciliationWorkflow,
 )
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.eventually import (
@@ -1009,3 +1010,65 @@ def test_discovery_scan_after_stop_cancels_the_stop():
         assert await h.status() == WorkflowExecutionStatus.RUNNING
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+def test_reconciliation_passes_the_plan_deadline_to_the_run():
+    """The run gets the attempt deadline the plan carries from the worker setting."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        run_id = await h.in_flight()
+        assert (await h.child(run_id))["attempt_deadline_seconds"] == 120
+
+    _run(scenario, script=lambda _: {**_planned(COMPACTION), "attempt_deadline_seconds": 120})
+
+
+def test_reconciliation_defaults_the_deadline_for_old_plans():
+    """A plan without a deadline, recorded before the setting existed, gives the run six hours per attempt."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        run_id = await h.in_flight()
+        assert (await h.child(run_id))["attempt_deadline_seconds"] == 21600
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+SHORT_DEADLINE_BUDGET = TableMaintenanceAttemptPolicy(
+    attempt_deadline=timedelta(seconds=120)
+).operation_worst_case() + (timedelta(hours=1))
+
+
+def test_in_flight_bound_follows_the_plan_deadline():
+    """A run planned with a short attempt deadline is given up after that deadline's worst case, not six hours'."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = await h.in_flight()
+        await h.env.sleep(SHORT_DEADLINE_BUDGET - timedelta(minutes=1))
+        assert (await h.settle())["in_flight_run_id"] == first
+        await h.env.sleep(timedelta(minutes=2))
+        await h.plan_count(2)
+        assert await h.child_status(first) == WorkflowExecutionStatus.CANCELED
+
+    _run(scenario, script=lambda _: {**_planned(COMPACTION, interval=10**6), "attempt_deadline_seconds": 120})
+
+
+def test_carried_in_flight_run_keeps_its_attempt_deadline():
+    """Continue-as-new carries the in-flight run's attempt deadline, so its bound does not change."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start(
+            start_signal=None,
+            in_flight_run_id="ghost",
+            in_flight_operation_count=1,
+            in_flight_attempt_deadline_seconds=120,
+        )
+        state = await eventually(h.state, lambda s: s["in_flight_started_at"])
+        await h.env.sleep(SHORT_DEADLINE_BUDGET - timedelta(minutes=1))
+        assert (await h.settle())["in_flight_run_id"] == "ghost"
+        await h.env.sleep(timedelta(minutes=2))
+        await h.plan_count(1)
+        await h.idle_after(state)
+
+    _run(scenario, script=lambda _: _planned())

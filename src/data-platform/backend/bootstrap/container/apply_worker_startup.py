@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
-from bootstrap.container.admission_lease_seconds import ADMISSION_LEASE_SECONDS
+from bootstrap.container.admission_lease_seconds import admission_lease_seconds
 from context.table_maintenance.adapter.hybrid.temporal.inbound import (
     ensure_table_discovery_schedule,
     ensure_table_maintenance_admission,
@@ -39,5 +39,5 @@ async def apply_worker_startup(
     await ensure_admission(
         client,
         limit=settings.admission_limit,
-        lease_seconds=ADMISSION_LEASE_SECONDS,
+        lease_seconds=admission_lease_seconds(settings),
     )

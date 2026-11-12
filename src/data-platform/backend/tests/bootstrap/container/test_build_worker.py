@@ -9,7 +9,6 @@ from unittest.mock import MagicMock
 from temporalio import activity
 
 from bootstrap.container import (
-    ADMISSION_LEASE_SECONDS,
     build_activities,
     build_repositories,
     build_use_cases,
@@ -81,8 +80,10 @@ def test_activities_cover_every_activity_name_once():
 
 
 def test_activities_carry_the_callback_url_and_admission_settings():
-    """The activity groups are built with the callback URL and admission settings."""
-    activities = _activities(callback_base_url="http://api:8000", admission_limit=5)
+    """The activity groups are built with the callback URL, the admission settings and the attempt deadline."""
+    activities = _activities(
+        callback_base_url="http://api:8000", admission_limit=5, maintenance_attempt_deadline_seconds=120
+    )
 
     assert isinstance(activities.reconciliation, TableReconciliationActivities)
     assert isinstance(activities.maintenance, TableMaintenanceActivities)
@@ -90,11 +91,8 @@ def test_activities_carry_the_callback_url_and_admission_settings():
     assert isinstance(activities.workflow_signal, WorkflowSignalActivities)
     assert activities.reconciliation._callback_base_url == "http://api:8000"  # noqa: SLF001
     assert activities.workflow_signal._admission_limit == 5  # noqa: SLF001
-    assert (
-        activities.workflow_signal._admission_lease_seconds  # noqa: SLF001
-        == ADMISSION_LEASE_SECONDS
-        == 22500
-    )
+    assert activities.workflow_signal._admission_lease_seconds == 1020  # noqa: SLF001
+    assert activities.reconciliation._attempt_deadline_seconds == 120  # noqa: SLF001
 
 
 class RecordingWorkerFactory:

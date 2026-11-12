@@ -63,4 +63,5 @@ class TableMaintenanceStubWorkflow:
             "parent_workflow_id": self._input.parent_workflow_id,
             "trigger": self._input.trigger,
             "plan": self._input.plan,
+            "attempt_deadline_seconds": self._input.attempt_deadline_seconds,
         }

@@ -43,6 +43,7 @@ NOW_DT = datetime(2026, 10, 24, 1, 2, 3, tzinfo=UTC)
 
 def _reconcile(
     submit: FakeSubmit | None = None,
+    attempt_deadline_seconds: int = 21600,
 ) -> tuple[TableReconciliationActivities, dict]:
     fakes = {
         "plan": FakePlan(),
@@ -60,6 +61,7 @@ def _reconcile(
         delete=fakes["delete"],
         pods=GetMaintenanceJobPodsService(fakes["pods_gateway"]),
         callback_base_url="http://cp:8000",
+        attempt_deadline_seconds=attempt_deadline_seconds,
     )
     return activities, fakes
 
@@ -92,7 +94,17 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
         "policy_name": "gold",
         "policy_version": 3,
         "policy_target": {"type": "namespace", "path": ["iceberg", "sales"]},
+        "attempt_deadline_seconds": 21600,
     }
+
+
+def test_plan_carries_the_attempt_deadline():
+    """The plan tells the run how long each attempt may take, from the worker setting."""
+    activities, _ = _reconcile(attempt_deadline_seconds=120)
+
+    result = activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW})
+
+    assert result["attempt_deadline_seconds"] == 120
 
 
 def test_plan_without_manual_operations_defaults_to_none():

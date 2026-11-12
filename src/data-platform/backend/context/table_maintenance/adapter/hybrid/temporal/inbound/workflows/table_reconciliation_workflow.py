@@ -15,6 +15,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
+    DEFAULT_ATTEMPT_DEADLINE_SECONDS,
     TABLE_MAINTENANCE_WORKFLOW,
     TableMaintenanceWorkflowInput,
     table_maintenance_summary,
@@ -32,7 +33,7 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_m
 
 _ACTIVITY_TIMEOUT = timedelta(minutes=2)
 _ACTIVITY_RETRY = RetryPolicy(maximum_attempts=5, initial_interval=timedelta(seconds=2), backoff_coefficient=2.0)
-_IN_FLIGHT_PER_OPERATION = TableMaintenanceAttemptPolicy().operation_worst_case() + timedelta(hours=1)
+_IN_FLIGHT_MARGIN = timedelta(hours=1)
 _CANCEL_GRACE = timedelta(minutes=15)
 _ENDING_REASONS = frozenset({"dropped", "unmanaged"})
 _TRIGGER_SCHEDULED = "scheduled"
@@ -60,7 +61,8 @@ class TableReconciliationWorkflow:
     why the run in flight survives continue-as-new. While a run is in flight
     nothing is planned; a ``trigger_now`` is kept and planned once it finishes. A
     run that never reports back is given up once the child's worst case has passed
-    (per planned operation: every attempt timing out, plus the backoffs, plus 1 h):
+    (per planned operation: every attempt timing out after the attempt deadline the
+    plan carried, six hours for a plan without one, plus the backoffs, plus 1 h):
     the child is cancelled first (by the workflow ID recorded when it started, as
     the ID carries the table name of that time), so its cleanup records the
     result, releases its admission slot and deletes its Spark job, and its report
@@ -103,6 +105,7 @@ class TableReconciliationWorkflow:
         elif input.in_flight_run_id is not None:
             self._in_flight_started_at = workflow.now()
         self._in_flight_operations = input.in_flight_operation_count
+        self._in_flight_attempt_deadline_seconds = input.in_flight_attempt_deadline_seconds
         self._pending_manual = None if input.pending_manual is None else list(input.pending_manual)
         self._next_plan_at = datetime.fromisoformat(input.next_plan_at) if input.next_plan_at else None
         self._continue_as_new_after = input.continue_as_new_after
@@ -241,6 +244,7 @@ class TableReconciliationWorkflow:
             reconcile_interval_seconds=int(self._interval.total_seconds()),
             continue_as_new_after=self._continue_as_new_after,
             wake_reasons=dict(self._wake_reasons),
+            in_flight_attempt_deadline_seconds=self._in_flight_attempt_deadline_seconds,
         )
 
     async def _wait(self) -> None:
@@ -257,7 +261,14 @@ class TableReconciliationWorkflow:
         if self._in_flight_run_id is None or self._in_flight_started_at is None:
             return None
         started_at = self._in_flight_started_at
-        return started_at + _IN_FLIGHT_PER_OPERATION * max(self._in_flight_operations, 1)
+        return started_at + self._in_flight_per_operation() * max(self._in_flight_operations, 1)
+
+    def _in_flight_per_operation(self) -> timedelta:
+        """Return how long one operation of the run in flight may take: its worst case plus 1 h."""
+        attempt_deadline = timedelta(seconds=self._in_flight_attempt_deadline_seconds)
+        return (
+            TableMaintenanceAttemptPolicy(attempt_deadline=attempt_deadline).operation_worst_case() + _IN_FLIGHT_MARGIN
+        )
 
     async def _give_up_stuck_run(self) -> None:
         """Cancel a run past its budget, await its report briefly, then forget it.
@@ -302,6 +313,7 @@ class TableReconciliationWorkflow:
         self._in_flight_workflow_id = None
         self._in_flight_started_at = None
         self._in_flight_operations = 0
+        self._in_flight_attempt_deadline_seconds = DEFAULT_ATTEMPT_DEADLINE_SECONDS
 
     async def _plan_and_start(self) -> bool:
         """Plan once and start a run if anything is planned; True ends the workflow."""
@@ -399,10 +411,12 @@ class TableReconciliationWorkflow:
     async def _start_run(self, plan: dict[str, Any], manual: bool, run_id: str) -> bool:
         """Start the child run under ``run_id``; False when it could not be started."""
         child_id = table_maintenance_workflow_id(plan["table_name"], run_id)
+        attempt_deadline_seconds = plan.get("attempt_deadline_seconds", DEFAULT_ATTEMPT_DEADLINE_SECONDS)
         self._in_flight_run_id = run_id
         self._in_flight_workflow_id = child_id
         self._in_flight_started_at = workflow.now()
         self._in_flight_operations = len(plan["operations"])
+        self._in_flight_attempt_deadline_seconds = attempt_deadline_seconds
         try:
             child = await workflow.start_child_workflow(
                 TABLE_MAINTENANCE_WORKFLOW,
@@ -412,6 +426,7 @@ class TableReconciliationWorkflow:
                     parent_workflow_id=workflow.info().workflow_id,
                     trigger=_TRIGGER_MANUAL if manual else _TRIGGER_SCHEDULED,
                     plan=plan,
+                    attempt_deadline_seconds=attempt_deadline_seconds,
                 ),
                 id=child_id,
                 task_queue=TASK_QUEUE,

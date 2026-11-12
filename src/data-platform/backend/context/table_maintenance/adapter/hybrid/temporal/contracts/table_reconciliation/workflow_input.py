@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
+    DEFAULT_ATTEMPT_DEADLINE_SECONDS,
+)
+
 
 @dataclass(frozen=True)
 class TableReconciliationWorkflowInput:
@@ -13,7 +17,8 @@ class TableReconciliationWorkflowInput:
     ``in_flight_run_id`` is the maintenance run still awaiting its
     ``maintenance_finished`` signal, run by the workflow ``in_flight_workflow_id``
     and started at ``in_flight_started_at`` (ISO-8601) with
-    ``in_flight_operation_count`` planned operations. ``pending_manual`` is a
+    ``in_flight_operation_count`` planned operations, each attempt bounded by
+    ``in_flight_attempt_deadline_seconds``. ``pending_manual`` is a
     manual trigger not yet planned: ``None`` means none, ``[]`` means a manual run
     of every due operation, a non-empty list names the requested operations.
     ``next_plan_at`` (ISO-8601) is when the timer plans next; ``None`` means one
@@ -34,3 +39,4 @@ class TableReconciliationWorkflowInput:
     reconcile_interval_seconds: int = 3600
     continue_as_new_after: int = 200
     wake_reasons: dict[str, int] | None = None
+    in_flight_attempt_deadline_seconds: int = DEFAULT_ATTEMPT_DEADLINE_SECONDS

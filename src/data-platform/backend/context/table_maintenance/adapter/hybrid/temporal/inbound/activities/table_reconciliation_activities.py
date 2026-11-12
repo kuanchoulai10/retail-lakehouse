@@ -65,8 +65,13 @@ class TableReconciliationActivities:
         delete: DeleteMaintenanceJobUseCase,
         pods: GetMaintenanceJobPodsUseCase,
         callback_base_url: str,
+        attempt_deadline_seconds: int,
     ) -> None:
-        """Bind the use cases and the base URL Spark jobs call back to."""
+        """Bind the use cases and the base URL Spark jobs call back to.
+
+        ``attempt_deadline_seconds`` is the worker setting every plan carries, so
+        the run it starts bounds each attempt by it.
+        """
         self._plan = plan
         self._record = record
         self._submit = submit
@@ -74,10 +79,11 @@ class TableReconciliationActivities:
         self._delete = delete
         self._pods = pods
         self._callback_base_url = callback_base_url
+        self._attempt_deadline_seconds = attempt_deadline_seconds
 
     @activity.defn(name=TableReconciliationActivity.PLAN_TABLE_MAINTENANCE)
     def plan_table_maintenance(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Plan the maintenance operations of a table."""
+        """Plan the maintenance operations of a table, with the attempt deadline its run uses."""
         with translate_application_errors():
             output = self._plan.execute(
                 PlanTableMaintenanceUseCaseInput(
@@ -86,7 +92,7 @@ class TableReconciliationActivities:
                     manual_operations=request.get("manual_operations"),
                 )
             )
-        return activity_payload(output)
+        return {**activity_payload(output), "attempt_deadline_seconds": self._attempt_deadline_seconds}
 
     @activity.defn(name=TableReconciliationActivity.RECORD_TABLE_RECONCILIATION)
     def record_table_reconciliation(self, request: dict[str, Any]) -> dict[str, Any]:

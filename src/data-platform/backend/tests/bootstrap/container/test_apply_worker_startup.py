@@ -8,7 +8,7 @@ from datetime import timedelta
 from typing import TYPE_CHECKING, Any, cast
 
 from bootstrap.configs import CatalogSettings
-from bootstrap.container import ADMISSION_LEASE_SECONDS, apply_worker_startup
+from bootstrap.container import apply_worker_startup
 from context.table_maintenance.adapter.hybrid.temporal.inbound import (
     ensure_table_discovery_schedule,
     ensure_table_maintenance_admission,
@@ -37,6 +37,7 @@ def _run() -> tuple[Recorder, Recorder, object]:
         catalog=CatalogSettings(names=["a", "b"]),
         admission_limit=3,
         discovery_interval_seconds=120,
+        maintenance_attempt_deadline_seconds=600,
     )
     asyncio.run(
         apply_worker_startup(
@@ -58,7 +59,7 @@ def test_worker_startup_never_pauses_schedule():
 
 
 def test_admission_is_ensured_with_the_configured_limit():
-    """The admission workflow is ensured with the configured concurrency limit."""
+    """The admission workflow is ensured with the configured limit and a lease 15 minutes past the deadline."""
     _, admission, client = _run()
 
     assert admission.calls == [
@@ -66,7 +67,7 @@ def test_admission_is_ensured_with_the_configured_limit():
             (client,),
             {
                 "limit": 3,
-                "lease_seconds": ADMISSION_LEASE_SECONDS,
+                "lease_seconds": 1500,
             },
         )
     ]

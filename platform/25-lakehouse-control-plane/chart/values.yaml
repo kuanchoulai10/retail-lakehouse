@@ -65,6 +65,7 @@ api:
 worker:
   admissionLimit: 2
   discoveryIntervalSeconds: 600
+  attemptDeadlineSeconds: 21600
   terminationGracePeriodSeconds: 90
   resources:
     requests:

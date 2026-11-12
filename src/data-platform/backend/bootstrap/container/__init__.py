@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from bootstrap.container.activities import Activities
-from bootstrap.container.admission_lease_seconds import ADMISSION_LEASE_SECONDS
+from bootstrap.container.admission_lease_seconds import admission_lease_seconds
 from bootstrap.container.apply_worker_startup import apply_worker_startup
 from bootstrap.container.build_activities import build_activities
 from bootstrap.container.build_api_app import build_api_app
@@ -34,12 +34,12 @@ from bootstrap.container.use_cases import UseCases
 
 __all__ = [
     "WORKFLOWS",
-    "ADMISSION_LEASE_SECONDS",
     "Activities",
     "Gateways",
     "LazyK8sApi",
     "Repositories",
     "UseCases",
+    "admission_lease_seconds",
     "apply_worker_startup",
     "build_activities",
     "build_api_app",

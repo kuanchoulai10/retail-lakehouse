@@ -30,3 +30,4 @@ data:
   GLAC_CALLBACK_BASE_URL: http://table-maintenance-api.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.api.port }}
   GLAC_ADMISSION_LIMIT: {{ .Values.worker.admissionLimit | quote }}
   GLAC_DISCOVERY_INTERVAL_SECONDS: {{ .Values.worker.discoveryIntervalSeconds | quote }}
+  GLAC_MAINTENANCE_ATTEMPT_DEADLINE_SECONDS: {{ .Values.worker.attemptDeadlineSeconds | quote }}

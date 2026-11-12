@@ -113,3 +113,15 @@ def test_task_queue_is_not_configurable(monkeypatch: pytest.MonkeyPatch):
 
     assert "task_queue" not in TemporalSettings.model_fields
     assert not hasattr(settings.temporal, "task_queue")
+
+
+def test_attempt_deadline_defaults_to_six_hours():
+    """Without an environment each maintenance attempt may run six hours."""
+    assert AppSettings().maintenance_attempt_deadline_seconds == 21600
+
+
+def test_attempt_deadline_reads_env(monkeypatch: pytest.MonkeyPatch):
+    """The attempt deadline is read from GLAC_MAINTENANCE_ATTEMPT_DEADLINE_SECONDS."""
+    monkeypatch.setenv("GLAC_MAINTENANCE_ATTEMPT_DEADLINE_SECONDS", "120")
+
+    assert AppSettings().maintenance_attempt_deadline_seconds == 120

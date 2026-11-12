@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from bootstrap.container.activities import Activities
-from bootstrap.container.admission_lease_seconds import ADMISSION_LEASE_SECONDS
+from bootstrap.container.admission_lease_seconds import admission_lease_seconds
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
     TableDiscoveryActivities,
     TableMaintenanceActivities,
@@ -31,6 +31,7 @@ def build_activities(use_cases: UseCases, client: Client, settings: AppSettings)
             delete=use_cases.delete_maintenance_job,
             pods=use_cases.get_maintenance_job_pods,
             callback_base_url=settings.callback_base_url,
+            attempt_deadline_seconds=settings.maintenance_attempt_deadline_seconds,
         ),
         maintenance=TableMaintenanceActivities(
             create_run=use_cases.create_table_maintenance_run,
@@ -40,6 +41,6 @@ def build_activities(use_cases: UseCases, client: Client, settings: AppSettings)
         workflow_signal=WorkflowSignalActivities(
             client,
             admission_limit=settings.admission_limit,
-            admission_lease_seconds=ADMISSION_LEASE_SECONDS,
+            admission_lease_seconds=admission_lease_seconds(settings),
         ),
     )
