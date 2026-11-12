@@ -187,6 +187,39 @@ def test_submit_injects_callback_base_url_and_converts_filters():
     assert result == {"job_name": "app-1"}
 
 
+def test_submit_activity_passes_the_size():
+    """The submit activity passes the attempt's size to the use case."""
+    activities, fakes = _reconcile()
+    activities.submit_maintenance_operation(
+        {
+            "run_id": "r1",
+            "operation": "rewrite_data_files",
+            "attempt": 2,
+            "filters": [],
+            "procedure_args": {},
+            "now": NOW,
+            "size": "M",
+        }
+    )
+    assert fakes["submit"].requests[0].size == "M"
+
+
+def test_submit_activity_defaults_the_size_for_old_requests():
+    """A submit request recorded before sizes existed runs at S."""
+    activities, fakes = _reconcile()
+    activities.submit_maintenance_operation(
+        {
+            "run_id": "r1",
+            "operation": "rewrite_data_files",
+            "attempt": 1,
+            "filters": [],
+            "procedure_args": {},
+            "now": NOW,
+        }
+    )
+    assert fakes["submit"].requests[0].size == "S"
+
+
 def test_submit_translates_not_found_to_non_retryable():
     """A not found error from submit becomes a non-retryable application error."""
     activities, _ = _reconcile(FakeSubmit(NotFoundError("no run")))

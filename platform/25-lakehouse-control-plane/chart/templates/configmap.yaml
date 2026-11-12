@@ -27,6 +27,15 @@ data:
   GLAC_SPARK__NAMESPACE: {{ .Values.namespaces.maintenanceOperations | quote }}
   GLAC_SPARK__SPARK_VERSION: {{ .Values.spark.sparkVersion | quote }}
   GLAC_SPARK__ICEBERG_VERSION: {{ .Values.spark.icebergVersion | quote }}
+  GLAC_SPARK__SIZE_S__DRIVER_MEMORY: {{ .Values.spark.sizes.S.driverMemory | quote }}
+  GLAC_SPARK__SIZE_S__EXECUTOR_MEMORY: {{ .Values.spark.sizes.S.executorMemory | quote }}
+  GLAC_SPARK__SIZE_S__EXECUTOR_INSTANCES: {{ .Values.spark.sizes.S.executorInstances | quote }}
+  GLAC_SPARK__SIZE_M__DRIVER_MEMORY: {{ .Values.spark.sizes.M.driverMemory | quote }}
+  GLAC_SPARK__SIZE_M__EXECUTOR_MEMORY: {{ .Values.spark.sizes.M.executorMemory | quote }}
+  GLAC_SPARK__SIZE_M__EXECUTOR_INSTANCES: {{ .Values.spark.sizes.M.executorInstances | quote }}
+  GLAC_SPARK__SIZE_L__DRIVER_MEMORY: {{ .Values.spark.sizes.L.driverMemory | quote }}
+  GLAC_SPARK__SIZE_L__EXECUTOR_MEMORY: {{ .Values.spark.sizes.L.executorMemory | quote }}
+  GLAC_SPARK__SIZE_L__EXECUTOR_INSTANCES: {{ .Values.spark.sizes.L.executorInstances | quote }}
   GLAC_CALLBACK_BASE_URL: http://table-maintenance-api.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.api.port }}
   GLAC_ADMISSION_LIMIT: {{ .Values.worker.admissionLimit | quote }}
   GLAC_DISCOVERY_INTERVAL_SECONDS: {{ .Values.worker.discoveryIntervalSeconds | quote }}

@@ -11,6 +11,7 @@ from bootstrap.configs.get_settings import get_settings
 from bootstrap.configs.kafka_settings import KafkaSettings
 from bootstrap.configs.postgres_settings import PostgresSettings
 from bootstrap.configs.spark_settings import SparkSettings
+from bootstrap.configs.spark_size_settings import SparkSizeSettings
 from bootstrap.configs.sqlite_settings import SqliteSettings
 from bootstrap.configs.temporal_settings import TemporalSettings
 
@@ -23,6 +24,7 @@ __all__ = [
     "KafkaSettings",
     "PostgresSettings",
     "SparkSettings",
+    "SparkSizeSettings",
     "SqliteSettings",
     "TemporalSettings",
     "get_settings",

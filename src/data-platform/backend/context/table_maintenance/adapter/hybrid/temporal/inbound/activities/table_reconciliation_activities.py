@@ -133,6 +133,7 @@ class TableReconciliationActivities:
                     procedure_args=dict(request["procedure_args"]),
                     callback_base_url=self._callback_base_url,
                     now=datetime.fromisoformat(request["now"]),
+                    size=request.get("size", "S"),
                 )
             )
         return activity_payload(output)

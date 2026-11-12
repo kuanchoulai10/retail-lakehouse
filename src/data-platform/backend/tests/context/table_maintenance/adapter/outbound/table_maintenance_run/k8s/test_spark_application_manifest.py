@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import replace
+
+import pytest
 
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import (
     SparkK8sConfig,
+    SparkSizeResources,
     build_spark_application,
 )
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
@@ -133,3 +137,61 @@ def test_spark_application_labels_driver_and_executor_pods_with_the_attempt():
     }
     assert spec["driver"]["labels"] == attempt_labels
     assert spec["executor"]["labels"] == attempt_labels
+
+
+@pytest.mark.parametrize(
+    ("size", "driver", "executor"),
+    [("S", "768m", "768m"), ("M", "1g", "1536m"), ("L", "1536m", "2g")],
+)
+def test_manifest_uses_the_memory_of_the_attempt_size(size: str, driver: str, executor: str):
+    """The driver and executor memory and the executor count come from the attempt's size."""
+    spec = build_spark_application(CONFIG, replace(INPUT, size=size), "app")["spec"]
+
+    assert spec["driver"]["memory"] == driver
+    assert spec["executor"]["memory"] == executor
+    assert spec["executor"]["instances"] == 1
+
+
+def test_manifest_keeps_one_core():
+    """Every size keeps one core and a one-core limit for the driver and executor."""
+    for size in ("S", "M", "L"):
+        spec = build_spark_application(CONFIG, replace(INPUT, size=size), "app")["spec"]
+        assert (spec["driver"]["cores"], spec["driver"]["coreLimit"]) == (1, "1")
+        assert (spec["executor"]["cores"], spec["executor"]["coreLimit"]) == (1, "1")
+
+
+def test_configured_size_resources_are_used():
+    """A size configured with other resources renders them."""
+    config = replace(
+        CONFIG, sizes={"S": SparkSizeResources(driver_memory="1g", executor_memory="3g", executor_instances=2)}
+    )
+    spec = build_spark_application(config, INPUT, "app")["spec"]
+    assert (spec["driver"]["memory"], spec["executor"]["memory"], spec["executor"]["instances"]) == ("1g", "3g", 2)
+
+
+def test_unknown_size_is_refused():
+    """A size the config does not define is refused, naming it."""
+    with pytest.raises(ValueError, match="XL"):
+        build_spark_application(CONFIG, replace(INPUT, size="XL"), "app")
+
+
+def test_executor_pods_are_kept_after_they_end():
+    """Ended executor pods stay, with their exit status, until the application is deleted."""
+    assert _spec()["sparkConf"]["spark.kubernetes.executor.deleteOnTermination"] == "false"
+
+
+def test_driver_falls_back_to_its_log_for_the_termination_message():
+    """A driver that dies with an error carries the tail of its log as its termination message."""
+    assert _spec()["driver"]["template"] == {
+        "spec": {
+            "containers": [
+                {"name": "spark-kubernetes-driver", "terminationMessagePolicy": "FallbackToLogsOnError"},
+            ]
+        }
+    }
+
+
+def test_the_job_request_carries_the_size():
+    """The runtime's request names the attempt's size."""
+    env = {e["name"]: e.get("value") for e in _spec()["driver"]["env"]}
+    assert json.loads(env["GLAC_REQUEST"])["size"] == "S"

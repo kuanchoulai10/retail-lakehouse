@@ -48,6 +48,19 @@ spark:
   serviceAccount: table-maintenance-spark
   sparkVersion: 4.0.0
   icebergVersion: 1.10.1
+  sizes:
+    S:
+      driverMemory: 768m
+      executorMemory: 768m
+      executorInstances: 1
+    M:
+      driverMemory: 1g
+      executorMemory: 1536m
+      executorInstances: 1
+    L:
+      driverMemory: 1536m
+      executorMemory: 2g
+      executorInstances: 1
 
 api:
   port: 8000

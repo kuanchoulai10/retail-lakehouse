@@ -59,7 +59,7 @@ def test_nested_env_vars_are_parsed(monkeypatch: pytest.MonkeyPatch):
         "GLAC_CATALOG__S3_SECRET_ACCESS_KEY": "SK",
         "GLAC_KAFKA__BOOTSTRAP_SERVERS": "broker:9092",
         "GLAC_SPARK__IMAGE": "spark:1",
-        "GLAC_SPARK__EXECUTOR_INSTANCES": "3",
+        "GLAC_SPARK__SIZE_S__EXECUTOR_INSTANCES": "3",
         "GLAC_CALLBACK_BASE_URL": "http://api:8000",
         "GLAC_ADMISSION_LIMIT": "4",
         "GLAC_DISCOVERY_INTERVAL_SECONDS": "60",
@@ -87,7 +87,7 @@ def test_nested_env_vars_are_parsed(monkeypatch: pytest.MonkeyPatch):
     assert settings.catalog.s3_secret_access_key.get_secret_value() == "SK"
     assert settings.kafka.bootstrap_servers == "broker:9092"
     assert settings.spark.image == "spark:1"
-    assert settings.spark.executor_instances == 3
+    assert settings.spark.size_s.executor_instances == 3
     assert settings.callback_base_url == "http://api:8000"
     assert settings.admission_limit == 4
     assert settings.discovery_interval_seconds == 60
@@ -125,3 +125,33 @@ def test_attempt_deadline_reads_env(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("GLAC_MAINTENANCE_ATTEMPT_DEADLINE_SECONDS", "120")
 
     assert AppSettings().maintenance_attempt_deadline_seconds == 120
+
+
+def test_sizes_default_to_s_m_l():
+    """The S, M and L sizes default to their driver and executor memory and one executor."""
+    spark = AppSettings().spark
+    assert (spark.size_s.driver_memory, spark.size_s.executor_memory, spark.size_s.executor_instances) == (
+        "768m",
+        "768m",
+        1,
+    )
+    assert (spark.size_m.driver_memory, spark.size_m.executor_memory, spark.size_m.executor_instances) == (
+        "1g",
+        "1536m",
+        1,
+    )
+    assert (spark.size_l.driver_memory, spark.size_l.executor_memory, spark.size_l.executor_instances) == (
+        "1536m",
+        "2g",
+        1,
+    )
+
+
+def test_size_reads_env(monkeypatch: pytest.MonkeyPatch):
+    """Each size's memory and executor count are read from the environment."""
+    monkeypatch.setenv("GLAC_SPARK__SIZE_L__EXECUTOR_MEMORY", "3g")
+    monkeypatch.setenv("GLAC_SPARK__SIZE_M__EXECUTOR_INSTANCES", "2")
+    spark = AppSettings().spark
+    assert spark.size_l.executor_memory == "3g"
+    assert spark.size_l.driver_memory == "1536m"
+    assert spark.size_m.executor_instances == 2

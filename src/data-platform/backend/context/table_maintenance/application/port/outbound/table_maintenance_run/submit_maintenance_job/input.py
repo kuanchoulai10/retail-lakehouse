@@ -22,3 +22,4 @@ class SubmitMaintenanceJobGatewayInput:
     where: list[str]
     procedure_args: dict[str, Any]
     callback_url: str
+    size: str = "S"

@@ -29,3 +29,4 @@ class SubmitMaintenanceOperationUseCaseInput:
     procedure_args: dict[str, Any]
     callback_base_url: str
     now: datetime
+    size: str = "S"

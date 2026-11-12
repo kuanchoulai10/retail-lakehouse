@@ -6,10 +6,19 @@ from typing import TYPE_CHECKING
 
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import (
     SparkK8sConfig,
+    SparkSizeResources,
 )
 
 if TYPE_CHECKING:
-    from bootstrap.configs import AppSettings
+    from bootstrap.configs import AppSettings, SparkSizeSettings
+
+
+def _resources(size: SparkSizeSettings) -> SparkSizeResources:
+    return SparkSizeResources(
+        driver_memory=size.driver_memory,
+        executor_memory=size.executor_memory,
+        executor_instances=size.executor_instances,
+    )
 
 
 def build_spark_config(settings: AppSettings) -> SparkK8sConfig:
@@ -36,9 +45,7 @@ def build_spark_config(settings: AppSettings) -> SparkK8sConfig:
         main_application_file=spark.main_application_file,
         driver_cores=spark.driver_cores,
         driver_core_limit=spark.driver_core_limit,
-        driver_memory=spark.driver_memory,
-        executor_instances=spark.executor_instances,
         executor_cores=spark.executor_cores,
         executor_core_limit=spark.executor_core_limit,
-        executor_memory=spark.executor_memory,
+        sizes={"S": _resources(spark.size_s), "M": _resources(spark.size_m), "L": _resources(spark.size_l)},
     )

@@ -6,6 +6,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.shared import (
+    ComputeSize,
     MaintenanceOperation,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
@@ -64,6 +65,7 @@ class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
         """
         try:
             operation = MaintenanceOperation(request.operation)
+            size = ComputeSize(request.size)
         except ValueError as exc:
             raise ValidationError(str(exc)) from exc
         run = self._runs_repo.get(TableMaintenanceRunId(request.run_id))
@@ -73,7 +75,7 @@ class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
         if table is None:
             raise NotFoundError(f"table {run.table_uuid.value} not found")
         with translate_domain_errors():
-            run.start_attempt(operation, request.attempt, None, request.now)
+            run.start_attempt(operation, request.attempt, None, request.now, size=size)
             self._runs_repo.update(run)
         wheres = [f.where for f in request.filters]
         submitted = self._submit_gateway.submit(
@@ -91,6 +93,7 @@ class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
                     f"/v1/table-maintenance-runs/{request.run_id}"
                     f"/operations/{operation.value}/result"
                 ),
+                size=size.value,
             )
         )
         output = SubmitMaintenanceOperationUseCaseOutput(job_name=submitted.job_name)

@@ -28,6 +28,7 @@ AWS_SDK_MAVEN = "https://repo1.maven.org/maven2/software/amazon/awssdk"
 ENV_CREDENTIALS_PROVIDER = "software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider"
 REDACTION_REGEX = "(?i)secret|password|token|credential"
 IVY_OPTIONS = "-Divy.cache.dir=/tmp/.ivy2 -Divy.home=/tmp/.ivy"
+_DRIVER_CONTAINER = "spark-kubernetes-driver"
 
 
 def _jars(config: SparkK8sConfig) -> list[str]:
@@ -83,7 +84,13 @@ def _spark_conf(
         f"{prefix}.s3.path-style-access": str(config.s3_path_style_access).lower(),
         **_event_log_conf(config),
         **_s3a_conf(config),
+        **_executor_conf(),
     }
+
+
+def _executor_conf() -> dict[str, str]:
+    """Keep ended executor pods, with their exit status, until their application is deleted."""
+    return {"spark.kubernetes.executor.deleteOnTermination": "false"}
 
 
 def build_spark_application(
@@ -95,7 +102,13 @@ def build_spark_application(
 
     The driver and executor pods carry the same run, operation and attempt labels
     as the application, so the pods of one attempt can be found after it is deleted.
+    Their memory and the executor count come from the attempt's size; a driver that
+    dies with an error carries the tail of its log as its termination message.
     """
+    resources = config.sizes.get(input.size)
+    if resources is None:
+        msg = f"unknown Spark size {input.size!r}; known sizes: {', '.join(config.sizes)}"
+        raise ValueError(msg)
     s3_env_from = [{"secretRef": {"name": config.s3_secret_name}}]
     attempt_labels = maintenance_job_pod_labels(input.run_id, input.operation, input.attempt)
     region_env = {"name": "AWS_REGION", "value": config.s3_region}
@@ -124,8 +137,15 @@ def build_spark_application(
                 "labels": dict(attempt_labels),
                 "cores": config.driver_cores,
                 "coreLimit": config.driver_core_limit,
-                "memory": config.driver_memory,
+                "memory": resources.driver_memory,
                 "serviceAccount": config.service_account,
+                "template": {
+                    "spec": {
+                        "containers": [
+                            {"name": _DRIVER_CONTAINER, "terminationMessagePolicy": "FallbackToLogsOnError"},
+                        ]
+                    }
+                },
                 "javaOptions": IVY_OPTIONS,
                 "envFrom": s3_env_from,
                 "env": [
@@ -147,10 +167,10 @@ def build_spark_application(
             },
             "executor": {
                 "labels": dict(attempt_labels),
-                "instances": config.executor_instances,
+                "instances": resources.executor_instances,
                 "cores": config.executor_cores,
                 "coreLimit": config.executor_core_limit,
-                "memory": config.executor_memory,
+                "memory": resources.executor_memory,
                 "javaOptions": IVY_OPTIONS,
                 "envFrom": s3_env_from,
                 "env": [region_env],

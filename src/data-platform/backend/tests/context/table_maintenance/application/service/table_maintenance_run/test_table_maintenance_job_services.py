@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import copy
+from typing import Any
 
 import pytest
 
 from context.table_maintenance.application.domain.model.shared import (
+    ComputeSize,
     MaintenanceOperation,
 )
 from context.table_maintenance.application.domain.model.table import (
@@ -89,7 +91,7 @@ def _filter(spec_id, where):
 
 
 def _submit(submitter, now, **overrides):
-    fields = {
+    fields: dict[str, Any] = {
         "run_id": "run-1",
         "operation": "rewrite_data_files",
         "attempt": 1,
@@ -364,3 +366,26 @@ def test_submit_does_not_overwrite_a_run_cancelled_during_the_submit(tables_repo
     assert out.job_name == "job-cancelled"
     op = runs_repo.get(TableMaintenanceRunId("run-1")).operations[0]
     assert (op.status.value, op.attempts, op.job_name) == ("failed", 1, None)
+
+
+def test_submit_records_the_attempt_size(submitter, run, runs_repo, submit_job, now):
+    """The attempt is recorded at its size and the job is submitted at it."""
+    out = _submit(submitter, now, size="M")
+    assert submit_job.jobs[out.job_name].size == "M"
+    record = runs_repo.get(TableMaintenanceRunId("run-1")).attempt_record(MaintenanceOperation.REWRITE_DATA_FILES, 1)
+    assert record is not None
+    assert record.size is ComputeSize.M
+
+
+def test_submit_without_a_size_runs_at_s(submitter, run, submit_job, now):
+    """A request without a size runs at S."""
+    out = _submit(submitter, now)
+    assert submit_job.jobs[out.job_name].size == "S"
+
+
+def test_submit_refuses_an_unknown_size(submitter, run, runs_repo, submit_job, now):
+    """A size outside S, M and L is refused before anything is recorded or submitted."""
+    with pytest.raises(ValidationError, match="XL"):
+        _submit(submitter, now, size="XL")
+    assert submit_job.jobs == {}
+    assert runs_repo.get(TableMaintenanceRunId("run-1")).operations[0].attempts == 0

@@ -33,6 +33,9 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.spark_
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.spark_k8s_config import (
     SparkK8sConfig,
 )
+from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.spark_size_resources import (
+    SparkSizeResources,
+)
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.submit_maintenance_job_k8s_gateway import (
     SubmitMaintenanceJobK8sGateway,
 )
@@ -51,6 +54,7 @@ __all__ = [
     "ReadMaintenanceJobK8sGateway",
     "ReadMaintenanceJobPodsK8sGateway",
     "SparkK8sConfig",
+    "SparkSizeResources",
     "SubmitMaintenanceJobK8sGateway",
     "VERSION",
     "build_spark_application",

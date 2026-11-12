@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -40,7 +41,7 @@ ATTEMPT = ("run1", "rewrite_data_files", 1)
 
 
 def _input(**overrides) -> SubmitMaintenanceJobGatewayInput:
-    data = {
+    data: dict[str, Any] = {
         "run_id": "run1",
         "operation": "rewrite_data_files",
         "attempt": 1,
