@@ -49,7 +49,8 @@ export default defineConfig({
           globals: true,
           include: ["src/**/*.test.{ts,tsx}"],
           setupFiles: ["./src/test/setup.ts"],
-          testTimeout: 15000,
+          testTimeout: 30000,
+          maxWorkers: "50%",
         },
       },
       {

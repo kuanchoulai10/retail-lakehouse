@@ -61,9 +61,6 @@ function renderPage() {
   );
 }
 
-// Opening a dialog renders the whole rule editor; when the host also runs the cluster this can take several seconds.
-const DIALOG_WAIT = { timeout: 10000 };
-
 function rulesTable(): HTMLElement {
   return screen.getByRole("table", { name: "Discovery rules in evaluation order" });
 }
@@ -78,7 +75,7 @@ function ruleRow(priority: string): HTMLElement {
 
 async function editPriority(user: ReturnType<typeof userEvent.setup>, from: string, to: string) {
   await user.click(within(ruleRow(from)).getByRole("button", { name: `Edit rule ${from}` }));
-  const dialog = await screen.findByRole("dialog", { name: "Edit rule" }, DIALOG_WAIT);
+  const dialog = await screen.findByRole("dialog", { name: "Edit rule" });
   const priority = within(dialog).getByRole("spinbutton", { name: "Priority" });
   await user.clear(priority);
   await user.type(priority, to);
@@ -183,7 +180,7 @@ describe("DiscoveryRulesPage", () => {
     renderPage();
     await screen.findByText("tm_e2e_*");
     await user.click(screen.getByRole("button", { name: "Add rule" }));
-    const dialog = await screen.findByRole("dialog", { name: "Add rule" }, DIALOG_WAIT);
+    const dialog = await screen.findByRole("dialog", { name: "Add rule" });
     await fillGlobs(user, dialog, { catalogs: "iceberg", namespaces: "e2e", tables: "new_*" });
     await user.click(within(dialog).getByRole("button", { name: "Add rule" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -208,7 +205,7 @@ describe("DiscoveryRulesPage", () => {
     renderPage();
     await screen.findByText("tm_e2e_*");
     await user.click(screen.getByRole("button", { name: "Add rule" }));
-    const dialog = await screen.findByRole("dialog", { name: "Add rule" }, DIALOG_WAIT);
+    const dialog = await screen.findByRole("dialog", { name: "Add rule" });
     expect(within(dialog).queryByText("*")).not.toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Add rule" }));
     expect(await within(dialog).findByText("Add at least one catalog glob.")).toBeInTheDocument();
@@ -323,12 +320,12 @@ describe("DiscoveryRulesPage", () => {
     await screen.findByText("No discovery rules. No table is managed.");
 
     await user.click(screen.getByRole("button", { name: "Add rule" }));
-    let dialog = await screen.findByRole("dialog", { name: "Add rule" }, DIALOG_WAIT);
+    let dialog = await screen.findByRole("dialog", { name: "Add rule" });
     await fillGlobs(user, dialog, { catalogs: "*", namespaces: "*", tables: "*" });
     await user.click(within(dialog).getByRole("button", { name: "Add rule" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: "Add rule" }));
-    dialog = await screen.findByRole("dialog", { name: "Add rule" }, DIALOG_WAIT);
+    dialog = await screen.findByRole("dialog", { name: "Add rule" });
     await fillGlobs(user, dialog, { catalogs: "*", namespaces: "*", tables: "*" });
     await user.click(within(dialog).getByRole("combobox", { name: "Action" }));
     await user.click(await screen.findByRole("option", { name: "Exclude" }));
