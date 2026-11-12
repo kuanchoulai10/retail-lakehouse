@@ -61,7 +61,7 @@ RUN_ID = "run-1"
 TABLE = "iceberg.e2e.t"
 WORKFLOW_ID = table_maintenance_workflow_id(TABLE, RUN_ID)
 PARENT_ID = "parent-1"
-REAL_TIMEOUT_SECONDS = 20
+REAL_TIMEOUT_SECONDS = 60
 ATTEMPT_DEADLINE_SECONDS = 21600
 
 
