@@ -19,7 +19,9 @@ Open issues and deferred work. Not loaded automatically; read the entries for th
 - No auth on the API or the Spark result callback, and no NetworkPolicy.
 - Table maintenance uses the Polaris root principal; switch to a scoped principal.
 - The SparkApplications the backend submits (`spark_application_manifest.py`) carry no `app.kubernetes.io/*` labels; the label standard covers only `platform/` manifests and the wave-25 chart.
-- The running `table-maintenance-admission` workflow keeps the limit and lease it was started with; a changed `GLAC_ADMISSION_LIMIT` or lease applies only after it is restarted while idle.
+- The running `table-maintenance-admission` workflow keeps the limit it was started with; a changed `GLAC_ADMISSION_LIMIT` applies only after it is restarted while idle (the lease follows each acquire since 2026-11-13).
+- Timeout fencing (2026-11-13): the paths where pods never disappear (an unconfirmed timeout fence, and a cancelled run's fence, which blocks its table with no time limit and only logs a warning every 15 minutes) are covered by workflow tests only; nothing on the console surfaces a stuck fence yet. `fence-missing-job` and `fence-cancelled-attempt` have no pre-milestone replay fixture.
+- Changing a wave-25 setting with `kubectl patch configmap table-maintenance-config` takes field ownership, and the next `bootstrap.sh` fails with a server-side-apply conflict; patch the value back to the chart's value first, or change `values.yaml`.
 - Deploy note: a deploy that changes `TableReconciliationWorkflow` state (the reconciliation records change did) needs the running reconciliation workflows terminated first; discovery sync restarts them. Deploy only when no run is in flight.
 - The Maintenance tab loads only the latest 50 runs, so a run linked from a reconciliation older than that shows "This run is no longer available". Fetch one run by id, or page the runs.
 - Header banners can stack (several failed actions), and the success banner stays until the next click.
