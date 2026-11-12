@@ -31,6 +31,7 @@ from context.table_maintenance.adapter.outbound.table.pyiceberg import (
 )
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import (
     DeleteMaintenanceJobK8sGateway,
+    ReadMaintenanceJobEvidenceK8sGateway,
     ReadMaintenanceJobK8sGateway,
     ReadMaintenanceJobPodsK8sGateway,
     SubmitMaintenanceJobK8sGateway,
@@ -108,6 +109,7 @@ def test_gateways_are_built_without_connecting():
     assert isinstance(gateways.read_maintenance_job, ReadMaintenanceJobK8sGateway)
     assert isinstance(gateways.delete_maintenance_job, DeleteMaintenanceJobK8sGateway)
     assert isinstance(gateways.read_maintenance_job_pods, ReadMaintenanceJobPodsK8sGateway)
+    assert isinstance(gateways.read_maintenance_job_evidence, ReadMaintenanceJobEvidenceK8sGateway)
     assert loaded == []
     assert client.mock_calls == []
     assert k8s_api.mock_calls == []

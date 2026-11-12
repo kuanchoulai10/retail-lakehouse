@@ -4,11 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.maintenance_job_pod_labels import (
-    maintenance_job_pod_labels,
-)
-from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.spark_application_name import (
-    spark_application_name,
+from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.list_maintenance_job_pods import (
+    list_maintenance_job_pods,
 )
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
     ReadMaintenanceJobPodsGateway,
@@ -26,7 +23,6 @@ if TYPE_CHECKING:
     )
 
 STOPPED_PHASES = frozenset({"Succeeded", "Failed"})
-SPARK_OPERATOR_APP_LABEL = "sparkoperator.k8s.io/app-name"
 
 
 class ReadMaintenanceJobPodsK8sGateway(ReadMaintenanceJobPodsGateway):
@@ -54,16 +50,11 @@ class ReadMaintenanceJobPodsK8sGateway(ReadMaintenanceJobPodsGateway):
         that is being deleted, since it can still write until it is gone. An API
         error propagates, so the caller retries.
         """
-        labels = maintenance_job_pod_labels(input.run_id, input.operation, input.attempt)
-        application = spark_application_name(input.run_id, input.operation, input.attempt)
-        selectors = (
-            ",".join(f"{key}={value}" for key, value in labels.items()),
-            f"{SPARK_OPERATOR_APP_LABEL}={application}",
+        pods = list_maintenance_job_pods(
+            self._api, self._config.namespace, input.run_id, input.operation, input.attempt
         )
-        live: dict[str, None] = {}
-        for selector in selectors:
-            pods = self._api.list_namespaced_pod(namespace=self._config.namespace, label_selector=selector)
-            for pod in pods.items:
-                if pod.status is None or pod.status.phase not in STOPPED_PHASES:
-                    live[pod.metadata.name] = None
-        return ReadMaintenanceJobPodsGatewayOutput(live_pods=tuple(live))
+        return ReadMaintenanceJobPodsGatewayOutput(
+            live_pods=tuple(
+                pod.metadata.name for pod in pods if pod.status is None or pod.status.phase not in STOPPED_PHASES
+            )
+        )

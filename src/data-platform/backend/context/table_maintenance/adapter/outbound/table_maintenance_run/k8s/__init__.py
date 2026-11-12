@@ -5,8 +5,14 @@ from __future__ import annotations
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.delete_maintenance_job_k8s_gateway import (
     DeleteMaintenanceJobK8sGateway,
 )
+from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.list_maintenance_job_pods import (
+    list_maintenance_job_pods,
+)
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.maintenance_job_pod_labels import (
     maintenance_job_pod_labels,
+)
+from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.read_maintenance_job_evidence_k8s_gateway import (  # noqa: E501
+    ReadMaintenanceJobEvidenceK8sGateway,
 )
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.read_maintenance_job_k8s_gateway import (
     ReadMaintenanceJobK8sGateway,
@@ -51,6 +57,7 @@ __all__ = [
     "MAVEN",
     "PLURAL",
     "REDACTION_REGEX",
+    "ReadMaintenanceJobEvidenceK8sGateway",
     "ReadMaintenanceJobK8sGateway",
     "ReadMaintenanceJobPodsK8sGateway",
     "SparkK8sConfig",
@@ -58,6 +65,7 @@ __all__ = [
     "SubmitMaintenanceJobK8sGateway",
     "VERSION",
     "build_spark_application",
+    "list_maintenance_job_pods",
     "maintenance_job_pod_labels",
     "spark_application_name",
 ]

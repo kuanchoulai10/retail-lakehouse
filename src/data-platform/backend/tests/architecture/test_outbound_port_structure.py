@@ -49,6 +49,7 @@ GATEWAY_EXTRA_FILES = {
     "table_commit_selection.py",
     "table_storage_measure.py",
     "catalog_not_found_error.py",
+    "job_container_exit.py",
 }
 GATEWAY_ALLOWED_FILES = GATEWAY_STANDARD_FILES | GATEWAY_EXTRA_FILES
 
@@ -235,15 +236,22 @@ def test_input_primitive_only(gw_entry: tuple[str, str, Path]):
 
 @pytest.mark.parametrize("gw_entry", _gateway_dirs(), ids=_gateway_id)
 def test_output_primitive_only(gw_entry: tuple[str, str, Path]):
-    """Verify that output.py does not import domain or base types (except ValueObject)."""
-    _context, _group, gw_dir = gw_entry
+    """Verify that output.py imports only primitives and the extra files of its own gateway.
+
+    An extra file is primitive-only itself, so an output made of extra files stays primitive.
+    """
+    context, group, gw_dir = gw_entry
     output_file = gw_dir / "output.py"
     if not output_file.exists():
         pytest.skip("No output.py")
     imports = _parse_imports(output_file)
-    violations = [
-        imp for imp in imports if not any(imp.startswith(prefix) for prefix in ALLOWED_INPUT_OUTPUT_IMPORT_PREFIXES)
-    ]
+    own_extra_files = tuple(
+        f"from {_outbound_port_module(context)}.{group}.{gw_dir.name}.{f.stem}"
+        for f in gw_dir.iterdir()
+        if f.name in GATEWAY_EXTRA_FILES
+    )
+    allowed = ALLOWED_INPUT_OUTPUT_IMPORT_PREFIXES + own_extra_files
+    violations = [imp for imp in imports if not any(imp == prefix or imp.startswith(prefix) for prefix in allowed)]
     assert violations == [], f"{gw_dir.name}/output.py has non-primitive imports: {violations}"
 
 

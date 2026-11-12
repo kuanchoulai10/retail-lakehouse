@@ -32,6 +32,18 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run.r
 from context.table_maintenance.application.port.outbound.table_maintenance_run.read_maintenance_job.output import (
     ReadMaintenanceJobGatewayOutput,
 )
+from context.table_maintenance.application.port.outbound.table_maintenance_run.read_maintenance_job_evidence.gateway import (  # noqa: E501
+    ReadMaintenanceJobEvidenceGateway,
+)
+from context.table_maintenance.application.port.outbound.table_maintenance_run.read_maintenance_job_evidence.input import (  # noqa: E501
+    ReadMaintenanceJobEvidenceGatewayInput,
+)
+from context.table_maintenance.application.port.outbound.table_maintenance_run.read_maintenance_job_evidence.job_container_exit import (  # noqa: E501
+    JobContainerExit,
+)
+from context.table_maintenance.application.port.outbound.table_maintenance_run.read_maintenance_job_evidence.output import (  # noqa: E501
+    ReadMaintenanceJobEvidenceGatewayOutput,
+)
 from context.table_maintenance.application.port.outbound.table_maintenance_run.read_maintenance_job_pods.gateway import (  # noqa: E501
     ReadMaintenanceJobPodsGateway,
 )
@@ -61,6 +73,10 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run.t
 )
 
 __all__ = [
+    "JobContainerExit",
+    "ReadMaintenanceJobEvidenceGateway",
+    "ReadMaintenanceJobEvidenceGatewayInput",
+    "ReadMaintenanceJobEvidenceGatewayOutput",
     "ComputeSize",
     "FailureClass",
     "NextStep",

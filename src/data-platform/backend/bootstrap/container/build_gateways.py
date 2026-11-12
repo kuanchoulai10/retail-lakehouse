@@ -18,6 +18,7 @@ from context.table_maintenance.adapter.outbound.table.pyiceberg import (
 )
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import (
     DeleteMaintenanceJobK8sGateway,
+    ReadMaintenanceJobEvidenceK8sGateway,
     ReadMaintenanceJobK8sGateway,
     ReadMaintenanceJobPodsK8sGateway,
     SubmitMaintenanceJobK8sGateway,
@@ -60,4 +61,5 @@ def build_gateways(
         read_maintenance_job=ReadMaintenanceJobK8sGateway(k8s_api, spark_config),
         delete_maintenance_job=DeleteMaintenanceJobK8sGateway(k8s_api, spark_config),
         read_maintenance_job_pods=ReadMaintenanceJobPodsK8sGateway(k8s_core_api, spark_config),
+        read_maintenance_job_evidence=ReadMaintenanceJobEvidenceK8sGateway(k8s_api, k8s_core_api, spark_config),
     )
