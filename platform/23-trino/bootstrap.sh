@@ -43,10 +43,10 @@ kubectl apply \
   -f "$SCRIPT_DIR/secrets.yaml" \
   --context "${KUBE_CONTEXT}"
 
-# Apply Prometheus RBAC so kube-prometheus can scrape Trino targets
-kubectl apply \
-  -f "$SCRIPT_DIR/prometheus-rolebinding.yaml" \
-  --context "${KUBE_CONTEXT}"
+# # Apply Prometheus RBAC so kube-prometheus can scrape Trino targets
+# kubectl apply \
+#   -f "$SCRIPT_DIR/prometheus-rolebinding.yaml" \
+#   --context "${KUBE_CONTEXT}"
 
 # Wait for cert-manager to issue the CA + TLS certificates
 kubectl wait \

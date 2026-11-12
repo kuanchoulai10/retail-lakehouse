@@ -12,44 +12,44 @@ server:
       maxMemory: "3GB"
   autoscaling:
     enabled: false
-  keda:
-    enabled: true
-    minReplicaCount: 1
-    maxReplicaCount: 2
-    pollingInterval: 15
-    initialCooldownPeriod: 0 # default 0s
-    cooldownPeriod: 300 # default 300s, only applies when scaling to 0
-    fallback:
-      failureThreshold: 3
-      replicas: 1
-      behavior: "static"
-    advanced:
-      horizontalPodAutoscalerConfig:
-        behavior:
-          scaleUp:
-            stabilizationWindowSeconds: 0
-            selectPolicy: Max
-            policies:
-              - type: Percent
-                value: 100
-                periodSeconds: 120
-              - type: Pods
-                value: 5
-                periodSeconds: 60
-          scaleDown:
-            stabilizationWindowSeconds: 300
-            selectPolicy: Min
-            policies:
-              - type: Pods
-                value: 1
-                periodSeconds: 60
-    triggers:
-      - type: prometheus
-        metadata:
-          serverAddress: http://prometheus-k8s.monitoring.svc.cluster.local:9090
-          query: sum(trino_execution_QueryManager_RunningQueries{namespace="lakehouse-query-engine",job="trino"})
-          threshold: "2"
-    annotations: {}
+#  keda:
+#    enabled: true
+#    minReplicaCount: 1
+#    maxReplicaCount: 2
+#    pollingInterval: 15
+#    initialCooldownPeriod: 0 # default 0s
+#    cooldownPeriod: 300 # default 300s, only applies when scaling to 0
+#    fallback:
+#      failureThreshold: 3
+#      replicas: 1
+#      behavior: "static"
+#    advanced:
+#      horizontalPodAutoscalerConfig:
+#        behavior:
+#          scaleUp:
+#            stabilizationWindowSeconds: 0
+#            selectPolicy: Max
+#            policies:
+#              - type: Percent
+#                value: 100
+#                periodSeconds: 120
+#              - type: Pods
+#                value: 5
+#                periodSeconds: 60
+#          scaleDown:
+#            stabilizationWindowSeconds: 300
+#            selectPolicy: Min
+#            policies:
+#              - type: Pods
+#                value: 1
+#                periodSeconds: 60
+#    triggers:
+#      - type: prometheus
+#        metadata:
+#          serverAddress: http://prometheus-k8s.monitoring.svc.cluster.local:9090
+#          query: sum(trino_execution_QueryManager_RunningQueries{namespace="lakehouse-query-engine",job="trino"})
+#          threshold: "2"
+#    annotations: {}
   coordinatorExtraConfig: |-
     http-server.https.enabled=true
     http-server.https.port=8443
@@ -80,8 +80,8 @@ server:
 additionalConfigProperties:
   - internal-communication.shared-secret=${ENV:TRINO_SHARED_SECRET}
   - retry-policy=TASK
-  - tracing.enabled=true
-  - tracing.exporter.endpoint=http://jaeger-collector.lakehouse-query-engine.svc.cluster.local:4317
+  # - tracing.enabled=true
+  # - tracing.exporter.endpoint=http://jaeger-collector.lakehouse-query-engine.svc.cluster.local:4317
 
 additionalExchangeManagerProperties:
   - exchange.s3.region=dummy-region
@@ -295,11 +295,11 @@ jmx:
 # --8<-- [end:jmx]
 
 # --8<-- [start:serviceMonitor]
-serviceMonitor:
-  enabled: true
-  labels:
-    prometheus: kube-prometheus
-  interval: "30s"
+# serviceMonitor:
+#   enabled: true
+#   labels:
+#     prometheus: kube-prometheus
+#   interval: "30s"
 # --8<-- [end:serviceMonitor]
 
 # --8<-- [start:catalogs]

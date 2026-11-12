@@ -133,11 +133,13 @@ spec:
               path: /keycloak/health/ready
               port: management
             periodSeconds: 10
+            timeoutSeconds: 10
           livenessProbe:
             httpGet:
               path: /keycloak/health/live
               port: management
             periodSeconds: 15
+            timeoutSeconds: 10
             failureThreshold: 4
       volumes:
         - name: realm

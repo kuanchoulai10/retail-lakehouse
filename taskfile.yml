@@ -91,8 +91,8 @@ tasks:
         - name: DEPLOY_METHOD
           enum: ["scripts", "argocd"]
     vars:
-      CPU: '{{.CPU | default 9}}'
-      MEMORY: '{{.MEMORY | default 28}}'
+      CPU: '{{.CPU | default 8}}'
+      MEMORY: '{{.MEMORY | default 26}}'
       DISK_SIZE: '{{.DISK_SIZE | default 120}}'
     cmds:
       - task: cluster:bootstrap

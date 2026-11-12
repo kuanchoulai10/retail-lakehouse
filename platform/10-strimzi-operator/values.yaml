@@ -162,9 +162,11 @@ resources:
 livenessProbe:
   initialDelaySeconds: 10
   periodSeconds: 30
+  timeoutSeconds: 10
 readinessProbe:
   initialDelaySeconds: 10
   periodSeconds: 30
+  timeoutSeconds: 10
 
 createGlobalResources: true
 # Create clusterroles that extend existing clusterroles to interact with strimzi crds

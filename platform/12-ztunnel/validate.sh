@@ -14,10 +14,10 @@ kubectl rollout status daemonset/ztunnel \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
 
-kubectl get podmonitor/ztunnel \
-  --namespace istio-system \
-  --context "${KUBE_CONTEXT}"
+# kubectl get podmonitor/ztunnel \
+#   --namespace istio-system \
+#   --context "${KUBE_CONTEXT}"
 
-kubectl get rolebinding/prometheus-k8s \
-  --namespace istio-system \
-  --context "${KUBE_CONTEXT}"
+# kubectl get rolebinding/prometheus-k8s \
+#   --namespace istio-system \
+#   --context "${KUBE_CONTEXT}"

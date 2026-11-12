@@ -17,6 +17,12 @@ spec:
   kafka:
     version: 4.0.0
     metadataVersion: 4.0-IV3
+    livenessProbe:
+      timeoutSeconds: 10
+      failureThreshold: 6
+    readinessProbe:
+      timeoutSeconds: 10
+      failureThreshold: 6
     listeners:
       - name: plain
         port: 9092

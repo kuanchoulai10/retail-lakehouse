@@ -43,11 +43,11 @@ tasks:
       KUBE_CONTEXT: '{{.KUBE_CONTEXT}}'
     status:
       - TIMEOUT=10s bash platform/10-cert-manager/validate.sh
-      - TIMEOUT=10s bash platform/10-kube-prometheus/validate.sh
+      # - TIMEOUT=10s bash platform/10-kube-prometheus/validate.sh
       - TIMEOUT=10s bash platform/10-strimzi-operator/validate.sh
       - TIMEOUT=10s bash platform/11-keda/validate.sh
       - TIMEOUT=10s bash platform/11-spark-operator/validate.sh
-      - TIMEOUT=10s bash platform/11-otel-operator/validate.sh
+      # - TIMEOUT=10s bash platform/11-otel-operator/validate.sh
       - TIMEOUT=10s bash platform/11-istio-base/validate.sh
       - TIMEOUT=10s bash platform/11-gateway-api-crds/validate.sh
       - TIMEOUT=10s bash platform/12-istiod/validate.sh
@@ -58,8 +58,8 @@ tasks:
       - TIMEOUT=10s bash platform/20-kafka-cluster/validate.sh
       - TIMEOUT=10s bash platform/20-rustfs/validate.sh
       - TIMEOUT=10s bash platform/20-mysql/validate.sh
-      - TIMEOUT=10s bash platform/20-jaeger-thanos/validate.sh
-      - TIMEOUT=10s bash platform/20-jaeger-trino/validate.sh
+      # - TIMEOUT=10s bash platform/20-jaeger-thanos/validate.sh
+      # - TIMEOUT=10s bash platform/20-jaeger-trino/validate.sh
       - TIMEOUT=10s bash platform/20-polaris-db/validate.sh
       - TIMEOUT=10s bash platform/20-temporal-db/validate.sh
       - TIMEOUT=10s bash platform/21-polaris/validate.sh
@@ -68,21 +68,21 @@ tasks:
       - TIMEOUT=10s bash platform/22-kafka-iceberg-connector/validate.sh
       - TIMEOUT=10s bash platform/23-kafka-ui/validate.sh
       - TIMEOUT=10s bash platform/23-trino/validate.sh
-      - TIMEOUT=10s bash platform/23-kiali/validate.sh
+      # - TIMEOUT=10s bash platform/23-kiali/validate.sh
       - TIMEOUT=10s bash platform/25-lakehouse-control-plane/validate.sh
     cmds:
       - bash platform/10-cert-manager/bootstrap.sh
-      - bash platform/10-kube-prometheus/bootstrap.sh
+      # - bash platform/10-kube-prometheus/bootstrap.sh
       - bash platform/10-strimzi-operator/bootstrap.sh
       - bash platform/10-cert-manager/validate.sh
-      - bash platform/10-kube-prometheus/validate.sh
+      # - bash platform/10-kube-prometheus/validate.sh
       - bash platform/10-strimzi-operator/validate.sh
       - bash platform/11-keda/bootstrap.sh
       - bash platform/11-spark-operator/bootstrap.sh
-      - bash platform/11-otel-operator/bootstrap.sh
+      # - bash platform/11-otel-operator/bootstrap.sh
       - bash platform/11-keda/validate.sh
       - bash platform/11-spark-operator/validate.sh
-      - bash platform/11-otel-operator/validate.sh
+      # - bash platform/11-otel-operator/validate.sh
       - bash platform/11-istio-base/bootstrap.sh
       - bash platform/11-gateway-api-crds/bootstrap.sh
       - bash platform/11-istio-base/validate.sh
@@ -100,15 +100,15 @@ tasks:
       - bash platform/20-kafka-cluster/bootstrap.sh
       - bash platform/20-rustfs/bootstrap.sh
       - bash platform/20-mysql/bootstrap.sh
-      - bash platform/20-jaeger-thanos/bootstrap.sh
-      - bash platform/20-jaeger-trino/bootstrap.sh
+      # - bash platform/20-jaeger-thanos/bootstrap.sh
+      # - bash platform/20-jaeger-trino/bootstrap.sh
       - bash platform/20-polaris-db/bootstrap.sh
       - bash platform/20-temporal-db/bootstrap.sh
       - bash platform/20-kafka-cluster/validate.sh
       - bash platform/20-rustfs/validate.sh
       - bash platform/20-mysql/validate.sh
-      - bash platform/20-jaeger-thanos/validate.sh
-      - bash platform/20-jaeger-trino/validate.sh
+      # - bash platform/20-jaeger-thanos/validate.sh
+      # - bash platform/20-jaeger-trino/validate.sh
       - bash platform/20-polaris-db/validate.sh
       - bash platform/20-temporal-db/validate.sh
       - bash platform/21-polaris/bootstrap.sh
@@ -123,8 +123,8 @@ tasks:
       - bash platform/23-kafka-ui/validate.sh
       - bash platform/23-trino/bootstrap.sh
       - bash platform/23-trino/validate.sh
-      - bash platform/23-kiali/bootstrap.sh
-      - bash platform/23-kiali/validate.sh
+      # - bash platform/23-kiali/bootstrap.sh
+      # - bash platform/23-kiali/validate.sh
       - bash platform/25-lakehouse-control-plane/bootstrap.sh
       - bash platform/25-lakehouse-control-plane/validate.sh
 
@@ -151,9 +151,9 @@ tasks:
       - task: validate-cert-manager
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
-      - task: validate-kube-prometheus
-        vars:
-          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      # - task: validate-kube-prometheus
+      #   vars:
+      #     KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       - task: validate-strimzi-operator
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
@@ -163,9 +163,9 @@ tasks:
       - task: validate-spark-operator
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
-      - task: validate-otel-operator
-        vars:
-          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      # - task: validate-otel-operator
+      #   vars:
+      #     KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       - task: validate-istiod
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
@@ -190,12 +190,12 @@ tasks:
       - task: validate-mysql
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
-      - task: validate-jaeger-thanos
-        vars:
-          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
-      - task: validate-jaeger-trino
-        vars:
-          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      # - task: validate-jaeger-thanos
+      #   vars:
+      #     KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      # - task: validate-jaeger-trino
+      #   vars:
+      #     KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       - task: validate-kafka-debezium-mysql-connector
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
@@ -208,9 +208,9 @@ tasks:
       - task: validate-trino
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
-      - task: validate-kiali
-        vars:
-          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      # - task: validate-kiali
+      #   vars:
+      #     KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       - task: validate-polaris-db
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"

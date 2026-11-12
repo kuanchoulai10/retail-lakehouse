@@ -123,15 +123,15 @@ operator:
   livenessProbe:
     initialDelaySeconds: 25
     periodSeconds: 10
-    timeoutSeconds: 1
-    failureThreshold: 3
+    timeoutSeconds: 10
+    failureThreshold: 6
     successThreshold: 1
   # -- Readiness probes for operator ([docs](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#define-readiness-probes))
   readinessProbe:
     initialDelaySeconds: 20
     periodSeconds: 3
-    timeoutSeconds: 1
-    failureThreshold: 3
+    timeoutSeconds: 10
+    failureThreshold: 6
     successThreshold: 1
 
 metricsServer:
@@ -167,15 +167,15 @@ metricsServer:
   livenessProbe:
     initialDelaySeconds: 5
     periodSeconds: 10
-    timeoutSeconds: 1
-    failureThreshold: 3
+    timeoutSeconds: 10
+    failureThreshold: 6
     successThreshold: 1
   # -- Readiness probes for Metrics API Server ([docs](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#define-readiness-probes))
   readinessProbe:
     initialDelaySeconds: 5
     periodSeconds: 3
-    timeoutSeconds: 1
-    failureThreshold: 3
+    timeoutSeconds: 10
+    failureThreshold: 6
     successThreshold: 1
 
 webhooks:
@@ -191,15 +191,15 @@ webhooks:
   livenessProbe:
     initialDelaySeconds: 25
     periodSeconds: 10
-    timeoutSeconds: 1
-    failureThreshold: 3
+    timeoutSeconds: 10
+    failureThreshold: 6
     successThreshold: 1
   # -- Readiness probes for admission webhooks ([docs](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#define-readiness-probes))
   readinessProbe:
     initialDelaySeconds: 20
     periodSeconds: 3
-    timeoutSeconds: 1
-    failureThreshold: 3
+    timeoutSeconds: 10
+    failureThreshold: 6
     successThreshold: 1
   # -- Timeout in seconds for KEDA admission webhooks
   timeoutSeconds: 10

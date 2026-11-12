@@ -819,11 +819,11 @@ webhook:
   #
   # +docs:property
   livenessProbe:
-    failureThreshold: 3
+    failureThreshold: 6
     initialDelaySeconds: 60
     periodSeconds: 10
     successThreshold: 1
-    timeoutSeconds: 1
+    timeoutSeconds: 10
 
   # Readiness probe values.
   # For more information, see [Container probes](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#container-probes).
@@ -834,7 +834,7 @@ webhook:
     initialDelaySeconds: 5
     periodSeconds: 5
     successThreshold: 1
-    timeoutSeconds: 1
+    timeoutSeconds: 10
 
   # The nodeSelector on Pods tells Kubernetes to schedule Pods on the nodes with
   # matching labels.
