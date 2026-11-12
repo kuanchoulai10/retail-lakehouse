@@ -39,7 +39,9 @@ SLOW_POLL_INTERVAL = timedelta(minutes=5)
 _CALLBACK_GRACE = timedelta(seconds=120)
 _ACQUIRE_RESEND_INTERVAL = timedelta(minutes=5)
 _TIMED_OUT = "spark job timed out"
+_MISSING = "spark job missing"
 _FENCE_PATCH = "fence-timed-out-attempt"
+_FENCE_MISSING_PATCH = "fence-missing-job"
 
 
 @workflow.defn(name=TABLE_MAINTENANCE_WORKFLOW)
@@ -57,8 +59,9 @@ class TableMaintenanceWorkflow:
     polled until none is live, while the attempt renews its admission lease (see
     ``TableMaintenanceFencingPolicy``); pods still live after the confirm bound fail
     the operation without a further attempt, and the slot is held until they are
-    gone. Histories that timed out before fencing existed replay unfenced
-    (patch ``fence-timed-out-attempt``). A failed operation
+    gone. An attempt whose job went missing is fenced the same way, since its
+    pods can outlive the SparkApplication. Histories from before fencing replay
+    unfenced (patches ``fence-timed-out-attempt`` and ``fence-missing-job``). A failed operation
     never fails the run: the next operation still runs. At the end, also after a
     cancellation, the Spark job of every started attempt is deleted and the parent
     reconciliation workflow is told the run finished and how many results could not be
@@ -219,7 +222,7 @@ class TableMaintenanceWorkflow:
             if state == "FAILED":
                 return self._failure(name, attempt, status["error"] or "spark job failed")
             if state == "NOT_FOUND":
-                return self._failure(name, attempt, "spark job missing")
+                return await self._missing(name, attempt, request_id)
             if state != "COMPLETED":
                 completed_since = None
                 continue
@@ -238,19 +241,31 @@ class TableMaintenanceWorkflow:
     async def _timed_out(self, name: str, attempt: int, request_id: str) -> OperationResultSignal:
         """Fence the timed-out attempt; a history from before fencing replays its immediate failure."""
         if workflow.patched(_FENCE_PATCH):
-            return await self._fence(name, attempt, request_id)
+            return await self._fence(name, attempt, request_id, _TIMED_OUT, since="the timeout")
         return self._failure(name, attempt, _TIMED_OUT)
 
-    async def _fence(self, name: str, attempt: int, request_id: str) -> OperationResultSignal:
-        """Delete a timed-out attempt's job and wait until its pods are gone; the slot stays held meanwhile.
+    async def _missing(self, name: str, attempt: int, request_id: str) -> OperationResultSignal:
+        """Fence an attempt whose job went missing, as its pods may outlive it; older histories fail it at once."""
+        if workflow.patched(_FENCE_MISSING_PATCH):
+            return await self._fence(name, attempt, request_id, _MISSING, since="the job went missing")
+        return self._failure(name, attempt, _MISSING)
+
+    async def _fence(
+        self, name: str, attempt: int, request_id: str, reason: str, *, since: str
+    ) -> OperationResultSignal:
+        """Delete an ended attempt's job and wait until its pods are gone; the slot stays held meanwhile.
+
+        ``reason`` is why the attempt ended (it timed out, or its job went
+        missing) and ``since`` names that moment in the error of an unconfirmed
+        fence.
 
         Each poll first renews the lease when it is due (the first poll always
         does, before anything else), then tries the delete again until one has
         succeeded, and only then reads the pods. A result that arrives now is
-        ignored: the attempt timed out, and the next reconcile reads the table
+        ignored: the attempt has ended, and the next reconcile reads the table
         to see what it did. Pods gone within the confirm bound (counted from
-        the timeout) fail the attempt as timed out, so the caller releases the
-        slot and retries. Pods still live at the bound, or a job that could not
+        when the attempt ended) fail the attempt with ``reason``, so the caller
+        releases the slot and retries. Pods still live at the bound, or a job that could not
         be deleted by then, fail the operation for good: the failure is
         recorded at once, then polling goes on, slower, until the pods are
         gone, and only then does the caller release the slot.
@@ -260,7 +275,7 @@ class TableMaintenanceWorkflow:
         confirm_by = workflow.now() + fencing.confirm_bound
         renew_at = workflow.now()
         deleted = False
-        outcome = self._failure(name, attempt, _TIMED_OUT)
+        outcome = self._failure(name, attempt, reason)
         while True:
             if workflow.now() >= renew_at:
                 await self._renew(request_id)
@@ -271,7 +286,7 @@ class TableMaintenanceWorkflow:
             if key not in self._settled_attempts and workflow.now() >= confirm_by:
                 minutes = int(fencing.confirm_bound.total_seconds() // 60)
                 still = "its pods were still running" if deleted else "its job could still not be deleted"
-                error = f"{_TIMED_OUT}; {still} {minutes} minutes after the timeout"
+                error = f"{reason}; {still} {minutes} minutes after {since}"
                 outcome = self._failure(name, attempt, error)
                 await self._record(outcome)
                 self._settled_attempts.add(key)

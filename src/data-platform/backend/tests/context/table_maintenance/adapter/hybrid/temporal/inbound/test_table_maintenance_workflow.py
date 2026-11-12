@@ -691,6 +691,47 @@ def test_job_that_cannot_be_deleted_fails_the_operation_and_keeps_the_slot():
     _run(scenario)
 
 
+def test_missing_job_is_fenced_before_its_slot_is_released():
+    """A job that went missing has its pods waited for, with the lease renewed, before the slot is released."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.states[FIRST] = {"state": "NOT_FOUND", "error": None}
+        h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
+        h.fakes.pods_live_polls[FIRST] = 3
+        await h.run_maintenance(COMPACTION)
+
+        commands = await h.commands()
+        names = _names(commands)
+        status = names.index("get_maintenance_job_status")
+        renew = _first_after(commands, "signal:renew", status)
+        delete = _first_after(commands, "delete_maintenance_job", renew)
+        release = _first_after(commands, "signal:release", delete)
+        assert h.fakes.pods_calls == [FIRST] * 4
+        assert commands[release][1] >= h.fakes.pods_times[-1]
+        assert h.submit_times()[1] > h.fakes.pods_times[-1]
+        assert h.recorded() == [(COMPACTION, 1, False, "spark job missing"), (COMPACTION, 2, True, None)]
+
+    _run(scenario)
+
+
+def test_missing_job_whose_pods_stay_fails_the_operation_and_keeps_the_slot():
+    """Pods of a missing job still live 15 minutes later fail the operation; the slot waits for them."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.states[FIRST] = {"state": "NOT_FOUND", "error": None}
+        h.fakes.callbacks = {(EXPIRE, 1): [(1, True, None)]}
+        h.fakes.pods_live_for[FIRST] = timedelta(minutes=20)
+        await h.run_maintenance(COMPACTION, EXPIRE)
+
+        stuck = "spark job missing; its pods were still running 15 minutes after the job went missing"
+        assert h.recorded() == [(COMPACTION, 1, False, stuck), (EXPIRE, 1, True, None)]
+        commands = await h.commands()
+        release = _first_after(commands, "signal:release", _names(commands).index("delete_maintenance_job"))
+        assert commands[release][1] - h.fakes.delete_times[FIRST] >= timedelta(minutes=20)
+
+    _run(scenario)
+
+
 def test_renew_is_what_keeps_the_slot_of_an_attempt_past_its_lease():
     """An attempt whose pods outlive its lease keeps its slot only because it renews it."""
 
