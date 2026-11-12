@@ -10,6 +10,7 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
 )
 from context.table_maintenance.application.domain.model.table import (
+    AppliedPolicyRef,
     AttentionMark,
     PeakHeapUse,
     RecordedAttempt,
@@ -253,6 +254,19 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         operation: MaintenanceOperation,
         request: RecordTableMaintenanceOperationResultUseCaseInput,
     ) -> None:
+        mark = AttentionMark(
+            since=request.now, reason=_NEEDS_ATTENTION_REASON, policy=self._planned_policy(table, request)
+        )
+        table.mark_needs_attention(operation, mark, request.now)
+
+    def _planned_policy(
+        self, table: Table, request: RecordTableMaintenanceOperationResultUseCaseInput
+    ) -> AppliedPolicyRef:
+        """Return the policy the run was planned under, or, when the request does not say, the one applying now."""
+        if request.policy_name is not None and request.policy_version is not None:
+            return AppliedPolicyRef(
+                name=request.policy_name, version=request.policy_version, target=request.policy_target
+            )
         applied = self._resolve_applicable_policy.execute(
             ResolveApplicableTableMaintenancePolicyUseCaseInput(
                 catalog=table.name.catalog,
@@ -261,8 +275,7 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
                 table=table.name.table,
             )
         )
-        mark = AttentionMark(since=request.now, reason=_NEEDS_ATTENTION_REASON, policy=applied_policy_ref_of(applied))
-        table.mark_needs_attention(operation, mark, request.now)
+        return applied_policy_ref_of(applied)
 
 
 def _measured(value: int | None) -> int | None:

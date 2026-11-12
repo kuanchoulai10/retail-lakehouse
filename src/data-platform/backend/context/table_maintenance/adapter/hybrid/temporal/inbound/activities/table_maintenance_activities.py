@@ -73,6 +73,9 @@ class TableMaintenanceActivities:
                     ended_by=request.get("ended_by", "result"),
                     still_running=request.get("still_running", False),
                     max_attempts=request.get("max_attempts", 3),
+                    policy_name=request.get("policy_name"),
+                    policy_version=request.get("policy_version"),
+                    policy_target=request.get("policy_target"),
                 )
             )
         return activity_payload(output)

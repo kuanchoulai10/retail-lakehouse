@@ -397,6 +397,30 @@ def test_record_activity_defaults_keys_of_old_requests():
     )
     request = record.requests[0]
     assert (request.ended_by, request.still_running, request.max_attempts) == ("result", False, 3)
+    assert (request.policy_name, request.policy_version, request.policy_target) == (None, None, None)
+
+
+def test_record_activity_passes_the_planned_policy():
+    """The record activity passes the policy the run was planned under."""
+    create, record = FakeCreateRun(), FakeRecordResult()
+    activities = TableMaintenanceActivities(create_run=create, record_result=record)
+    target = {"type": "namespace", "path": ["iceberg", "sales"]}
+    activities.record_table_maintenance_operation_result(
+        {
+            "run_id": "r1",
+            "operation": "rewrite_data_files",
+            "attempt": 1,
+            "succeeded": False,
+            "metrics": {},
+            "error": "boom",
+            "now": NOW,
+            "policy_name": "nightly",
+            "policy_version": 4,
+            "policy_target": target,
+        }
+    )
+    request = record.requests[0]
+    assert (request.policy_name, request.policy_version, request.policy_target) == ("nightly", 4, target)
 
 
 def test_sync_passes_catalog_and_namespace():

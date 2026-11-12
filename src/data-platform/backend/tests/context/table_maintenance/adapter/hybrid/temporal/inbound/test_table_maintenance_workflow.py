@@ -65,6 +65,7 @@ WORKFLOW_ID = table_maintenance_workflow_id(TABLE, RUN_ID)
 PARENT_ID = "parent-1"
 REAL_TIMEOUT_SECONDS = 60
 ATTEMPT_DEADLINE_SECONDS = 21600
+PLANNED_POLICY = ("nightly", 2, {"type": "namespace", "path": ["iceberg", "sales"]})
 
 
 def _plan(*operations: str, start_size: str | None = None) -> dict:
@@ -74,6 +75,9 @@ def _plan(*operations: str, start_size: str | None = None) -> dict:
         "reason": None,
         "reconcile_interval_seconds": 3600,
         "table_name": TABLE,
+        "policy_name": PLANNED_POLICY[0],
+        "policy_version": PLANNED_POLICY[1],
+        "policy_target": PLANNED_POLICY[2],
         "operations": [
             {
                 "operation": op,
@@ -1141,6 +1145,21 @@ def test_record_reaches_the_ending_of_each_failure(script, deadline, ending):
             (2, True, "result"),
         ]
         assert all(r["max_attempts"] == 3 and r["still_running"] is False for r in h.fakes.records)
+
+    _run(scenario)
+
+
+def test_records_carry_the_policy_the_run_was_planned_under():
+    """Every record names the policy of the plan, so a needs-attention mark is set under it."""
+
+    async def scenario(h: Harness) -> None:
+        _ending_by_failed_state(h)
+        await h.run_maintenance(COMPACTION)
+
+        assert [(r["policy_name"], r["policy_version"], r["policy_target"]) for r in h.fakes.records] == [
+            PLANNED_POLICY,
+            PLANNED_POLICY,
+        ]
 
     _run(scenario)
 

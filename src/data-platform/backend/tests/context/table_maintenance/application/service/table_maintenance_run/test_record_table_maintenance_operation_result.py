@@ -392,3 +392,16 @@ def test_a_retried_success_after_the_run_was_saved_remembers_its_size_once(
     state = tables_repo.get(TableId("u-1")).operation_state(RDF)
     assert state.start_size() is ComputeSize.S
     assert state.low_use_successes == 0
+
+
+def test_needs_attention_is_marked_under_the_policy_the_run_was_planned_under(
+    recorder, runs_repo, tables_repo, table, resolve_calls, now
+):
+    """An OOM at L marks the operation under the policy its run was planned under, not the one applying now."""
+    _run(runs_repo, table, now, ComputeSize.M, ComputeSize.L)
+    target = {"type": "table", "path": ["iceberg", "sales"], "table_uuid": "u-1"}
+    _record(recorder, now, attempt=2, policy_name="nightly", policy_version=2, policy_target=target)
+    mark = tables_repo.get(TableId("u-1")).operation_state(RDF).attention
+    assert mark is not None
+    assert mark.policy == AppliedPolicyRef(name="nightly", version=2, target=target)
+    assert resolve_calls == []

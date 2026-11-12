@@ -51,6 +51,7 @@ _FENCE_MISSING_PATCH = "fence-missing-job"
 _FENCE_CANCELLED_PATCH = "fence-cancelled-attempt"
 _CANCELLED = "cancelled"
 _DECISION_PATCH = "classify-attempt-failure"
+_PLANNED_POLICY_KEYS = ("policy_name", "policy_version", "policy_target")
 
 
 @workflow.defn(name=TABLE_MAINTENANCE_WORKFLOW)
@@ -79,7 +80,9 @@ class TableMaintenanceWorkflow:
     out-of-memory failure is retried at the next size, other failures at the same size, and a
     failure that needs a person, is not retried or may still be running ends the operation at once
     (patch ``classify-attempt-failure``; a record reply without a decision, as before failure
-    classes, retries at the same size). A failed operation
+    classes, retries at the same size). Every record names the policy the run was planned under,
+    from the plan, so a needs-attention mark is set under it; this changes only the record
+    activity's input, not the workflow's commands, so it needs no patch. A failed operation
     never fails the run: the next operation still runs. At the end, also after a
     cancellation, the Spark job of every started attempt is deleted and the parent
     reconciliation workflow is told the run finished and how many results could not be
@@ -91,6 +94,7 @@ class TableMaintenanceWorkflow:
         """Prepare the result and grant mailboxes and the attempt log."""
         self._run_id = input.run_id
         self._policy = TableMaintenanceAttemptPolicy(attempt_deadline=timedelta(seconds=input.attempt_deadline_seconds))
+        self._planned_policy = {key: input.plan.get(key) for key in _PLANNED_POLICY_KEYS}
         self._results: dict[tuple[str, int], OperationResultSignal] = {}
         self._granted: set[str] = set()
         self._current_request: str | None = None
@@ -413,6 +417,7 @@ class TableMaintenanceWorkflow:
                     "ended_by": outcome.ended_by,
                     "still_running": outcome.still_running,
                     "max_attempts": self._policy.max_attempts,
+                    **self._planned_policy,
                     "now": _now(),
                 },
             )
