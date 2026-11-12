@@ -4,7 +4,17 @@ import type {
   ReconciliationOperationApiResponse,
   TableReconciliationApiResponse,
 } from "../../api/generated/model";
-import { foldKey, foldText, headline, policyLabel, policyOrigin, reasonSentence, wakeText } from "./reconciliationText";
+import {
+  foldKey,
+  foldText,
+  headline,
+  policyLabel,
+  policyOrigin,
+  reasonSentence,
+  resultLabel,
+  resultOrder,
+  wakeText,
+} from "./reconciliationText";
 
 function measurement(overrides: Partial<ReconciliationMeasurementApiResponse>): ReconciliationMeasurementApiResponse {
   return { key: "small_manifests", observed: 12, unit: "count", threshold: 20, comparison: ">=", met: false, ...overrides };
@@ -279,5 +289,22 @@ describe("policyOrigin", () => {
 describe("foldKey", () => {
   it("keeps quiet records under different policy versions apart", () => {
     expect(foldKey(record({ policy_version: 1 }))).not.toBe(foldKey(record({ policy_version: 2 })));
+  });
+});
+
+describe("needs attention", () => {
+  it("labels the result", () => {
+    expect(resultLabel("needs_attention")).toBe("Needs attention");
+  });
+
+  it("says why it was not started", () => {
+    expect(reasonSentence(op({ operation: "rewrite_data_files", result: "needs_attention" }))).toBe(
+      "Not started: it ran out of memory at the largest size and waits for a manual run or a policy change.",
+    );
+  });
+
+  it("is listed after what could not start and before what was not needed", () => {
+    expect(resultOrder("start_failed")).toBeLessThan(resultOrder("needs_attention"));
+    expect(resultOrder("needs_attention")).toBeLessThan(resultOrder("not_needed"));
   });
 });

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useNavigate } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -68,6 +68,61 @@ const RUN: TableMaintenanceRunApiResponse = {
   ],
 };
 
+const ESCALATED_RUN: TableMaintenanceRunApiResponse = {
+  ...RUN,
+  run_id: "run-3",
+  execution_ref: "table-maintenance:table=uuid-orders:run=run-3",
+  trigger: "scheduled",
+  status: "succeeded",
+  operations: [
+    {
+      operation: "rewrite_data_files",
+      status: "succeeded",
+      attempts: 2,
+      started_at: "2026-10-31T10:03:00Z",
+      finished_at: "2026-10-31T10:09:00Z",
+      job_name: "job-c",
+      metrics: { rewritten_data_files_count: 24 },
+      error: null,
+      expected_files: null,
+      attempt_history: [
+        {
+          attempt: 1,
+          size: "S",
+          status: "failed",
+          started_at: "2026-10-31T10:00:00Z",
+          finished_at: "2026-10-31T10:02:00Z",
+          failure_class: "oom",
+          error: "java.lang.OutOfMemoryError: Java heap space",
+          event_log_finished: false,
+          next_step: "retry_larger",
+          next_size: "M",
+        },
+        {
+          attempt: 2,
+          size: "M",
+          status: "succeeded",
+          started_at: "2026-10-31T10:03:00Z",
+          finished_at: "2026-10-31T10:09:00Z",
+          failure_class: null,
+          error: null,
+          event_log_finished: true,
+          next_step: "done",
+          next_size: null,
+        },
+      ],
+    },
+  ],
+};
+
+const LEGACY_RUN: TableMaintenanceRunApiResponse = {
+  ...RUN,
+  run_id: "run-4",
+  execution_ref: "table-maintenance:table=uuid-orders:run=run-4",
+  trigger: "event",
+  operations: [{ ...RUN.operations[1]!, attempts: 2, error: "spark job failed", attempt_history: [] }],
+};
+
 const OLDER_RUN: TableMaintenanceRunApiResponse = {
   ...RUN,
   run_id: "run-2",
@@ -125,6 +180,42 @@ describe("MaintenanceTab", () => {
     expect(screen.getByText("rewritten_data_files_count: 12")).toBeInTheDocument();
     expect(screen.getByText("3 attempts")).toBeInTheDocument();
     expect(screen.getByText("snapshot store unreachable")).toBeInTheDocument();
+  });
+
+  it("lists every attempt with size, result, reason, event log and next step", async () => {
+    stubCatalogApi({
+      "GET /v1/tables/uuid-orders/table-maintenance-runs": () => jsonResponse([ESCALATED_RUN]),
+    });
+    const user = userEvent.setup();
+    renderTab();
+    await user.click(await screen.findByText("scheduled"));
+    const attempts = screen.getByRole("table", { name: "Attempts of rewrite_data_files" });
+    const rows = within(attempts).getAllByRole("row").slice(1);
+    expect(rows.map((row) => within(row).getAllByRole("cell").map((cell) => cell.textContent))).toEqual([
+      ["1", "S", "Failed", "Out of memory", "Did not finish", "Retrying at size M"],
+      ["2", "M", "Succeeded", "", "Finished", "Done"],
+    ]);
+    expect(within(rows[0]!).getByText("Failed")).toHaveClass("bg-negative-container");
+    expect(within(attempts).getAllByRole("columnheader").map((h) => h.textContent)).toEqual([
+      "Attempt",
+      "Size",
+      "Result",
+      "Reason",
+      "Event log",
+      "Next",
+    ]);
+  });
+
+  it("keeps the attempt count for runs from before attempt history", async () => {
+    stubCatalogApi({
+      "GET /v1/tables/uuid-orders/table-maintenance-runs": () => jsonResponse([LEGACY_RUN]),
+    });
+    const user = userEvent.setup();
+    renderTab();
+    await user.click(await screen.findByText("event"));
+    expect(screen.getByText("2 attempts")).toBeInTheDocument();
+    expect(screen.getByText("spark job failed")).toHaveClass("text-negative-text");
+    expect(screen.queryByRole("table", { name: /^Attempts of/ })).not.toBeInTheDocument();
   });
 
   it("expands and collapses a run from the keyboard", async () => {

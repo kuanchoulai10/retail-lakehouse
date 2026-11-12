@@ -119,6 +119,19 @@ describe("HealthPanel", () => {
     expect(screen.getByText("6 reducible files in 1 partition, threshold 5")).toBeInTheDocument();
   });
 
+  it("shows needs attention in the health panel as an error", () => {
+    renderPanel(health({ operations: [line({ verdict: "needs_attention" })] }));
+    const text = screen.getByText(
+      "Needs attention: out of memory at the largest size. A manual run or a policy change retries it.",
+    );
+    expect(text).toHaveClass("text-negative-text");
+  });
+
+  it("offers Run now for an operation that needs attention, since a manual run retries it", () => {
+    renderPanel(health({ operations: [line({ verdict: "needs_attention" })] }));
+    expect(screen.getByRole("button", { name: "Run now" })).toBeInTheDocument();
+  });
+
   it("shows the delete file counts", () => {
     renderPanel(health());
     expect(screen.getByText("3 position, 1 equality")).toBeInTheDocument();

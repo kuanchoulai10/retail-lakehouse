@@ -2,14 +2,54 @@ import { Banner, createDataTableColumnHelper, DataTable, Panel, TextLink } from 
 import { useSearchParams } from "react-router";
 import type {
   TableMaintenanceRunApiResponse,
+  TableMaintenanceRunAttemptApiResponse,
   TableMaintenanceRunOperationApiResponse,
 } from "@/api/generated/model";
 import { useListTableMaintenanceRuns } from "@/api/generated/table-maintenance-runs/table-maintenance-runs";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { RunStatusBadge } from "@/components/RunStatusBadge";
 import { errorMessage, formatDuration, formatTimestamp } from "@/format";
+import { eventLogText, failureClassText, nextStepText } from "@/lib/attemptText";
 import { temporalWorkflowsUrl } from "@/lib/temporalWorkflowsUrl";
 
+const attemptColumn = createDataTableColumnHelper<TableMaintenanceRunAttemptApiResponse>();
+
+const attemptColumns = attemptColumn.columns([
+  attemptColumn.accessor("attempt", {
+    header: "Attempt",
+    enableSorting: false,
+    cell: (info) => <span className="tabular-nums">{info.getValue()}</span>,
+  }),
+  attemptColumn.accessor((attempt) => attempt.size ?? "", {
+    id: "size",
+    header: "Size",
+    enableSorting: false,
+    cell: (info) => <span className="font-mono">{info.getValue()}</span>,
+  }),
+  attemptColumn.accessor("status", {
+    header: "Result",
+    enableSorting: false,
+    cell: (info) => <RunStatusBadge status={info.getValue()} />,
+  }),
+  attemptColumn.accessor((attempt) => failureClassText(attempt.failure_class), {
+    id: "reason",
+    header: "Reason",
+    enableSorting: false,
+  }),
+  attemptColumn.accessor((attempt) => eventLogText(attempt.event_log_finished), {
+    id: "event_log",
+    header: "Event log",
+    enableSorting: false,
+  }),
+  attemptColumn.accessor((attempt) => nextStepText(attempt.next_step, attempt.next_size), {
+    id: "next",
+    header: "Next",
+    enableSorting: false,
+  }),
+]);
+
+// Each attempt of the operation: the size it ran at, why it failed, whether its Spark event log
+// finished and what the platform did next. A run from before attempt history keeps only the count.
 function OperationDetail({ operation }: { operation: TableMaintenanceRunOperationApiResponse }) {
   const attempts = operation.attempts;
   const metrics = Object.entries(operation.metrics);
@@ -21,6 +61,14 @@ function OperationDetail({ operation }: { operation: TableMaintenanceRunOperatio
         <RunStatusBadge status={operation.status} />
         <span className="type-body-small text-on-surface-variant">{`${attempts} ${attempts === 1 ? "attempt" : "attempts"}`}</span>
       </div>
+      {operation.attempt_history.length > 0 && (
+        <DataTable
+          caption={`Attempts of ${operation.operation}`}
+          columns={attemptColumns}
+          data={operation.attempt_history}
+          getRowId={(attempt) => String(attempt.attempt)}
+        />
+      )}
       {metrics.length > 0 && (
         <ul className="type-code text-on-surface-variant">
           {metrics.map(([name, value]) => (

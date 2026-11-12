@@ -23,8 +23,23 @@ function measurement(line: TableHealthOperationApiResponse): string {
   }
 }
 
+const NEEDS_ATTENTION_TEXT =
+  "Needs attention: out of memory at the largest size. A manual run or a policy change retries it.";
+
+// Run now is offered where a manual run helps: a due operation, and one a manual run lifts out of
+// needs attention.
+const RUNNABLE_VERDICTS = new Set(["due", "needs_attention"]);
+
+function lineTone(verdict: string): string {
+  if (verdict === "due") return "text-notice-text";
+  if (verdict === "needs_attention") return "text-negative-text";
+  return "text-on-surface-variant";
+}
+
 function lineText(line: TableHealthOperationApiResponse, scheduled: boolean): string {
   switch (line.verdict) {
+    case "needs_attention":
+      return NEEDS_ATTENTION_TEXT;
     case "disabled":
       return "disabled";
     case "cooldown":
@@ -62,15 +77,10 @@ export function HealthPanel({ tableUuid, health }: Props) {
         {health.operations.map((line) => (
           <li key={line.operation} className="flex min-h-row flex-wrap items-center gap-x-3 gap-y-1 py-1">
             <span className="type-code min-w-44">{line.operation}</span>
-            <span
-              className={cn(
-                "flex-1 tabular-nums",
-                line.verdict === "due" ? "text-notice-text" : "text-on-surface-variant",
-              )}
-            >
+            <span className={cn("flex-1 tabular-nums", lineTone(line.verdict))}>
               {lineText(line, health.scheduled)}
             </span>
-            {health.scheduled && line.verdict === "due" && (
+            {health.scheduled && RUNNABLE_VERDICTS.has(line.verdict) && (
               <Button
                 type="button"
                 styleType="outlined"

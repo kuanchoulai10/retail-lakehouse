@@ -2,7 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
 import { getListCoveredCatalogsMockHandler } from "@/api/generated/discovery-rules/discovery-rules.msw";
 import { getGetTableApplicableMaintenancePolicyMockHandler } from "@/api/generated/maintenance-policies/maintenance-policies.msw";
-import { getGetTableMockHandler } from "@/api/generated/tables/tables.msw";
+import { getListTableMaintenanceRunsMockHandler } from "@/api/generated/table-maintenance-runs/table-maintenance-runs.msw";
+import { getGetTableHealthMockHandler, getGetTableMockHandler } from "@/api/generated/tables/tables.msw";
 import { getListTableReconciliationsMockHandler } from "@/api/generated/table-reconciliations/table-reconciliations.msw";
 import { temporalWorkflowsUrl } from "@/lib/temporalWorkflowsUrl";
 import { apiError } from "@/stories/apiError";
@@ -10,7 +11,7 @@ import { ConsolePage } from "@/stories/ConsolePage";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
 import { lakehouseHandlers } from "@/stories/lakehouseHandlers";
 import { PHONE } from "@/stories/phone";
-import { MAINTAINED_ORDERS, POLICIES } from "@/stories/storyData";
+import { ESCALATED_RUN, HEALTH, MAINTAINED_ORDERS, POLICIES } from "@/stories/storyData";
 
 const ORDERS = "/catalogs/iceberg/namespaces/retail/tables/orders";
 
@@ -65,6 +66,56 @@ export const Maintenance: Story = {
   play: async ({ canvasElement }) => {
     const link = await within(canvasElement).findByRole("link", { name: "Running workflows in Temporal" });
     await expect(link).toHaveAttribute("href", temporalWorkflowsUrl(MAINTAINED_ORDERS.uuid));
+  },
+};
+
+async function openEscalatedRun(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  await userEvent.click(await canvas.findByRole("button", { name: "Expand run run-escalated" }));
+  return within(canvas.getByRole("table", { name: "Attempts of rewrite_data_files" }));
+}
+
+export const MaintenanceAttemptsEscalated: Story = {
+  args: { route: `${ORDERS}/maintenance` },
+  beforeEach({ msw }) {
+    msw.use(getListTableMaintenanceRunsMockHandler([ESCALATED_RUN]));
+  },
+  play: async ({ canvasElement }) => {
+    const attempts = await openEscalatedRun(canvasElement);
+    await expect(attempts.getByText("Out of memory")).toBeVisible();
+    await expect(attempts.getByText("Did not finish")).toBeVisible();
+    await expect(attempts.getByText("Retrying at size M")).toBeVisible();
+    await expect(attempts.getByText("Done")).toBeVisible();
+  },
+};
+
+export const MaintenanceAttemptsEscalatedPhone: Story = {
+  args: { route: `${ORDERS}/maintenance` },
+  globals: PHONE,
+  beforeEach({ msw }) {
+    msw.use(getListTableMaintenanceRunsMockHandler([ESCALATED_RUN]));
+  },
+  play: async ({ canvasElement }) => {
+    await openEscalatedRun(canvasElement);
+    await expectNoHorizontalPageScroll(canvasElement);
+  },
+};
+
+export const HealthNeedsAttention: Story = {
+  beforeEach({ msw }) {
+    msw.use(
+      getGetTableHealthMockHandler({
+        ...HEALTH,
+        operations: HEALTH.operations.map((line) =>
+          line.operation === "rewrite_data_files" ? { ...line, verdict: "needs_attention" } : line,
+        ),
+      }),
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const line = await within(canvasElement).findByText(/^Needs attention: out of memory at the largest size/);
+    await expect(line).toBeVisible();
+    await expect(line).toHaveClass("text-negative-text");
   },
 };
 

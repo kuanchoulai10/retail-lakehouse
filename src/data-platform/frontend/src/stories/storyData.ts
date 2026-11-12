@@ -311,6 +311,56 @@ export const RUNS: TableMaintenanceRunApiResponse[] = [
   },
 ];
 
+// A compaction that ran out of memory at S and succeeded at M.
+export const ESCALATED_RUN: TableMaintenanceRunApiResponse = {
+  run_id: "run-escalated",
+  table_uuid: ORDERS_UUID,
+  execution_ref: `table-maintenance:table=${ORDERS_UUID}:run=run-escalated`,
+  trigger: "manual",
+  status: "succeeded",
+  created_at: "2026-11-09T02:00:00Z",
+  finished_at: "2026-11-09T02:09:40Z",
+  operations: [
+    {
+      operation: "rewrite_data_files",
+      status: "succeeded",
+      attempts: 2,
+      started_at: "2026-11-09T02:03:20Z",
+      finished_at: "2026-11-09T02:09:40Z",
+      job_name: "tm-orders-rewrite-2",
+      metrics: { rewritten_data_files_count: 24, peak_heap_percent: 71 },
+      error: null,
+      expected_files: null,
+      attempt_history: [
+        {
+          attempt: 1,
+          size: "S",
+          status: "failed",
+          started_at: "2026-11-09T02:00:00Z",
+          finished_at: "2026-11-09T02:02:10Z",
+          failure_class: "oom",
+          error: "Py4JJavaError: An error occurred while calling o61.sql. java.lang.OutOfMemoryError: Java heap space",
+          event_log_finished: false,
+          next_step: "retry_larger",
+          next_size: "M",
+        },
+        {
+          attempt: 2,
+          size: "M",
+          status: "succeeded",
+          started_at: "2026-11-09T02:03:20Z",
+          finished_at: "2026-11-09T02:09:40Z",
+          failure_class: null,
+          error: null,
+          event_log_finished: true,
+          next_step: "done",
+          next_size: null,
+        },
+      ],
+    },
+  ],
+};
+
 export const RULES: TableDiscoveryRuleApiResponse[] = [
   {
     id: "rule-retail",

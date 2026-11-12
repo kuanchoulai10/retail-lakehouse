@@ -15,6 +15,7 @@ export const RESULT_ORDER = [
   "started",
   "would_start",
   "start_failed",
+  "needs_attention",
   "not_needed",
   "cooling_down",
   "off",
@@ -25,6 +26,7 @@ const RESULT_LABELS: Record<string, string> = {
   started: "Started",
   would_start: "Would start",
   start_failed: "Could not start",
+  needs_attention: "Needs attention",
   not_needed: "Not needed",
   cooling_down: "Cooling down",
   off: "Off",
@@ -247,6 +249,8 @@ export function reasonSentence(op: ReconciliationOperationApiResponse, { manualR
       if (met.length > 0) return `Due: ${citeAll(met, op)}, but it ran recently${when ? `; ${when}` : ""}.`;
       return when ? `Ran recently; ${when}.` : "Ran recently.";
     }
+    case "needs_attention":
+      return "Not started: it ran out of memory at the largest size and waits for a manual run or a policy change.";
     case "off":
       return "Turned off in the policy.";
     case "not_checked":
