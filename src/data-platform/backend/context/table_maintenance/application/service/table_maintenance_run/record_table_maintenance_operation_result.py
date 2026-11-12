@@ -64,6 +64,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _UNKNOWN_ERROR = "unknown error"
+_PEAK_HEAP_PERCENT = "peak_heap_percent"
 _ENDINGS_WITH_EVIDENCE = frozenset({AttemptEnding.RESULT, AttemptEnding.JOB_FAILED})
 _NEEDS_ATTENTION_REASON = "out of memory at size L"
 
@@ -206,7 +207,13 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         if table is None or table.status == TableStatus.DROPPED:
             return
         if request.succeeded:
-            table.record_operation_result(operation, True, request.now, size=size or ComputeSize.S)
+            table.record_operation_result(
+                operation,
+                True,
+                request.now,
+                size=size or ComputeSize.S,
+                peak_heap_percent=request.metrics.get(_PEAK_HEAP_PERCENT),
+            )
         else:
             table.record_operation_result(operation, False, request.now)
             if next_attempt is not None and next_attempt.step is NextStep.NEEDS_ATTENTION:

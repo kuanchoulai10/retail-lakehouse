@@ -130,11 +130,16 @@ class Table(AggregateRoot[TableId]):
         at: datetime,
         *,
         size: ComputeSize | None = None,
+        peak_heap_percent: int | None = None,
     ) -> None:
-        """Record an operation outcome, and the size a success ran at; allowed in any non-dropped status."""
+        """Record an operation outcome, and the size and measured peak heap use of a success.
+
+        Allowed in any non-dropped status.
+        """
         self._ensure_not_dropped()
         state = self.operation_state(op)
-        self._set_operation_state(op, state.after_success(at, size) if succeeded else state.after_failure(at), at)
+        updated = state.after_success(at, size, peak_heap_percent) if succeeded else state.after_failure(at)
+        self._set_operation_state(op, updated, at)
 
     def mark_needs_attention(self, op: MaintenanceOperation, mark: AttentionMark, at: datetime) -> None:
         """Mark an operation as needing a person; reconcile stops planning it under the mark's policy."""

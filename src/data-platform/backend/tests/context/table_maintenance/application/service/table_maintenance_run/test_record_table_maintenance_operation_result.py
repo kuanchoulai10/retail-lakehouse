@@ -299,3 +299,16 @@ def test_unknown_ending_is_refused(recorder, runs_repo, table, now):
     _run(runs_repo, table, now, ComputeSize.S)
     with pytest.raises(ValidationError):
         _record(recorder, now, ended_by="exploded")
+
+
+def test_record_passes_the_measured_peak_to_the_table(recorder, runs_repo, tables_repo, table, now):
+    """A success's measured peak heap use counts toward stepping the table down."""
+    stored = tables_repo.get(TableId("u-1"))
+    stored.record_operation_result(RDF, True, now, size=ComputeSize.M, peak_heap_percent=30)
+    stored.record_operation_result(RDF, True, now, size=ComputeSize.M, peak_heap_percent=30)
+    tables_repo.update(stored)
+    _run(runs_repo, table, now, ComputeSize.M)
+    _record(
+        recorder, now, succeeded=True, error=None, metrics={"rewritten_data_files_count": 1, "peak_heap_percent": 20}
+    )
+    assert tables_repo.get(TableId("u-1")).operation_state(RDF).start_size() is ComputeSize.S

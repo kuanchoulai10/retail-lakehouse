@@ -55,6 +55,7 @@ def _encode_state(state: OperationState) -> dict[str, Any]:
         "consecutive_failures": state.consecutive_failures,
         "last_successful_size": None if state.last_successful_size is None else state.last_successful_size.value,
         "attention": _encode_attention(state.attention),
+        "low_use_successes": state.low_use_successes,
     }
 
 
@@ -65,6 +66,7 @@ def _decode_state(data: dict[str, Any]) -> OperationState:
         consecutive_failures=data["consecutive_failures"],
         last_successful_size=None if size is None else ComputeSize(size),
         attention=_decode_attention(data.get("attention")),
+        low_use_successes=data.get("low_use_successes", 0),
     )
 
 

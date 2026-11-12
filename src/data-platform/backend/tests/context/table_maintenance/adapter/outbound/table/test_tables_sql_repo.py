@@ -230,7 +230,7 @@ def test_operation_state_round_trips_size_and_attention(repo: TablesSqlRepo):
         MaintenanceOperation.REWRITE_DATA_FILES: OperationState(
             last_attempt_at=NOW, last_successful_size=ComputeSize.L, attention=mark
         ),
-        MaintenanceOperation.EXPIRE_SNAPSHOTS: OperationState(last_successful_size=ComputeSize.M),
+        MaintenanceOperation.EXPIRE_SNAPSHOTS: OperationState(last_successful_size=ComputeSize.M, low_use_successes=2),
     }
     repo.create(table)
     loaded = repo.get(TableId("u1"))
@@ -254,3 +254,4 @@ def test_operation_state_without_new_keys_decodes_with_defaults(repo: TablesSqlR
     state = loaded.operation_state(MaintenanceOperation.REWRITE_DATA_FILES)
     assert state == OperationState(last_attempt_at=NOW, consecutive_failures=1)
     assert state.start_size() is ComputeSize.S
+    assert state.low_use_successes == 0
