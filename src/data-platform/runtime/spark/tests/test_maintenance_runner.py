@@ -186,3 +186,70 @@ def test_stop_raising_still_posts_the_result(make_request):
     )
     assert code == 0
     assert posted[0]["succeeded"] is True
+
+
+def test_success_reports_peak_heap_percent_before_stop(make_request):
+    calls = []
+    posted = []
+    run_maintenance(
+        make_request(),
+        lambda _sql: _Result([_Row(rewritten_data_files_count=1)]),
+        measure=lambda: calls.append("measure") or 62,
+        stop=lambda: calls.append("stop"),
+        post=lambda url, body: calls.append("post") or posted.append(body) or True,
+    )
+    assert calls == ["measure", "stop", "post"]
+    assert posted[0]["metrics"] == {"rewritten_data_files_count": 1, "peak_heap_percent": 62}
+
+
+def test_failure_reports_no_peak(make_request):
+    posted = []
+    measured = []
+
+    def boom(_sql):
+        raise RuntimeError("x")
+
+    run_maintenance(
+        make_request(),
+        boom,
+        measure=lambda: measured.append(1) or 99,
+        post=lambda url, body: posted.append(body) or True,
+    )
+    assert measured == []
+    assert posted[0]["metrics"] == {}
+
+
+def test_unmeasured_success_reports_no_peak_key(make_request):
+    posted = []
+    run_maintenance(
+        make_request(),
+        lambda _sql: _Result([]),
+        measure=lambda: None,
+        post=lambda url, body: posted.append(body) or True,
+    )
+    assert "peak_heap_percent" not in posted[0]["metrics"]
+
+
+def test_measure_raising_still_succeeds_without_a_peak(make_request):
+    posted = []
+
+    def measure():
+        raise RuntimeError("ui gone")
+
+    code = run_maintenance(
+        make_request(), lambda _sql: _Result([]), measure=measure, post=lambda url, body: posted.append(body) or True
+    )
+    assert code == 0
+    assert posted[0]["succeeded"] is True
+    assert "peak_heap_percent" not in posted[0]["metrics"]
+
+
+def test_failure_keeps_the_out_of_memory_line(make_request):
+    posted = []
+
+    def boom(_sql):
+        raise RuntimeError("frame\n" * 2000 + "java.lang.OutOfMemoryError: Java heap space")
+
+    run_maintenance(make_request(), boom, post=lambda u, b: posted.append(b) or True)
+    assert "java.lang.OutOfMemoryError" in posted[0]["error"]
+    assert len(posted[0]["error"]) <= 4096

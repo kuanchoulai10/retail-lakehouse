@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from error_text import error_text
 from result_callback import post_result
 from sql_builder import build_call_statements
 
@@ -16,8 +17,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-MAX_ERROR_LENGTH = 4096
-
+PEAK_HEAP_PERCENT = "peak_heap_percent"
 
 REWRITE_DATA_FILES = "rewrite_data_files"
 
@@ -49,10 +49,21 @@ def _check_rewrite_progress(statement: str, totals: dict[str, int]) -> None:
     )
 
 
+def _add_peak(metrics: dict[str, int], measure: Callable[[], int | None]) -> None:
+    try:
+        peak = measure()
+    except Exception:
+        logger.exception("Measuring the peak heap use failed")
+        return
+    if peak is not None:
+        metrics[PEAK_HEAP_PERCENT] = peak
+
+
 def run_maintenance(
     request: JobRequest,
     sql: Callable[[str], Any],
     *,
+    measure: Callable[[], int | None] | None = None,
     stop: Callable[[], None] | None = None,
     post: Callable[[str, dict[str, Any]], bool] = post_result,
 ) -> int:
@@ -60,7 +71,9 @@ def run_maintenance(
 
     ``stop`` runs before the callback because the control plane deletes the
     SparkApplication once the callback of its last operation arrives; stopping first
-    lets Spark finish its event log before the driver can be killed.
+    lets Spark finish its event log before the driver can be killed. ``measure``
+    runs on success, before ``stop`` while the session can still be read, and its
+    peak heap percent joins the metrics when it has one.
     """
     metrics: dict[str, int] = {}
     error: str | None = None
@@ -74,8 +87,10 @@ def run_maintenance(
                 metrics[name] = metrics.get(name, 0) + value
     except Exception as exc:
         logger.exception("Maintenance failed")
-        error = f"{type(exc).__name__}: {exc}"[:MAX_ERROR_LENGTH]
+        error = error_text(exc)
     succeeded = error is None
+    if succeeded and measure is not None:
+        _add_peak(metrics, measure)
     body = {
         "run_id": request.run_id,
         "operation": request.operation,

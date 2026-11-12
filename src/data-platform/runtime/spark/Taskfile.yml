@@ -6,7 +6,7 @@ tasks:
   unit-test:
     desc: "Run the Spark runtime unit tests"
     cmds:
-      - cmd: echo "TODO:// uv run pytest -v"
+      - cmd: uv run pytest -v
 
   security-test:
     desc: "Scan the Spark runtime's dependencies and image"
