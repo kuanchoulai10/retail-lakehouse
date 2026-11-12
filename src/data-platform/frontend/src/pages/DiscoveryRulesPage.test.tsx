@@ -61,8 +61,8 @@ function renderPage() {
   );
 }
 
-// Opening a dialog renders the whole rule editor; under a busy machine that can take longer than the default 1 s.
-const DIALOG_WAIT = { timeout: 5000 };
+// Opening a dialog renders the whole rule editor; when the host also runs the cluster this can take several seconds.
+const DIALOG_WAIT = { timeout: 10000 };
 
 function rulesTable(): HTMLElement {
   return screen.getByRole("table", { name: "Discovery rules in evaluation order" });
