@@ -39,6 +39,10 @@ build_and_load() {
     --tag "${name}:${tag}" \
     "$@" \
     "${source_dir}" >&2
+  if minikube image ls --profile "${KUBE_CONTEXT}" | grep -qxF "docker.io/library/${name}:${tag}"; then
+    echo "${name}:${tag} is already on the node" >&2
+    return 0
+  fi
   minikube image load "${name}:${tag}" \
     --profile "${KUBE_CONTEXT}" >&2
 }
