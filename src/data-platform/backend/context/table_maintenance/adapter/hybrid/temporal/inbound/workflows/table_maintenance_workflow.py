@@ -244,35 +244,39 @@ class TableMaintenanceWorkflow:
     async def _fence(self, name: str, attempt: int, request_id: str) -> OperationResultSignal:
         """Delete a timed-out attempt's job and wait until its pods are gone; the slot stays held meanwhile.
 
-        A result that arrives now is ignored: the attempt timed out, and the next
-        reconcile reads the table to see what it did. Pods gone within the
-        confirm bound fail the attempt as timed out, so the caller releases the
-        slot and retries. Pods still live at the bound fail the operation for
-        good: the failure is recorded at once, then polling goes on, slower,
-        until the pods are gone, and only then does the caller release the slot.
+        Each poll first renews the lease when it is due (the first poll always
+        does, before anything else), then tries the delete again until one has
+        succeeded, and only then reads the pods. A result that arrives now is
+        ignored: the attempt timed out, and the next reconcile reads the table
+        to see what it did. Pods gone within the confirm bound (counted from
+        the timeout) fail the attempt as timed out, so the caller releases the
+        slot and retries. Pods still live at the bound, or a job that could not
+        be deleted by then, fail the operation for good: the failure is
+        recorded at once, then polling goes on, slower, until the pods are
+        gone, and only then does the caller release the slot.
         """
         fencing = self._policy.fencing
+        key = (name, attempt)
         confirm_by = workflow.now() + fencing.confirm_bound
-        deleted = await self._delete_job(name, attempt)
         renew_at = workflow.now()
+        deleted = False
         outcome = self._failure(name, attempt, _TIMED_OUT)
         while True:
             if workflow.now() >= renew_at:
                 await self._renew(request_id)
                 renew_at = workflow.now() + fencing.renew_interval
-            if await self._pods_gone(name, attempt):
+            deleted = deleted or await self._delete_job(name, attempt)
+            if deleted and await self._pods_gone(name, attempt):
                 return outcome
-            if (name, attempt) not in self._settled_attempts and workflow.now() >= confirm_by:
+            if key not in self._settled_attempts and workflow.now() >= confirm_by:
                 minutes = int(fencing.confirm_bound.total_seconds() // 60)
-                error = f"{_TIMED_OUT}; its pods were still running {minutes} minutes after deletion"
+                still = "its pods were still running" if deleted else "its job could still not be deleted"
+                error = f"{_TIMED_OUT}; {still} {minutes} minutes after the timeout"
                 outcome = self._failure(name, attempt, error)
                 await self._record(outcome)
-                self._settled_attempts.add((name, attempt))
-            if (name, attempt) in self._settled_attempts:
-                deleted = deleted or await self._delete_job(name, attempt)
-                await workflow.sleep(fencing.slow_poll_interval)
-            else:
-                await workflow.sleep(fencing.poll_interval)
+                self._settled_attempts.add(key)
+            slow = key in self._settled_attempts
+            await workflow.sleep(fencing.slow_poll_interval if slow else fencing.poll_interval)
 
     async def _delete_job(self, name: str, attempt: int) -> bool:
         try:

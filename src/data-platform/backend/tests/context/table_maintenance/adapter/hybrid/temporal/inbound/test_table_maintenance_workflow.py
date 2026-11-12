@@ -567,7 +567,7 @@ def test_result_arriving_during_last_poll_before_deadline_wins():
 
 
 FENCE_DEADLINE_SECONDS = 300
-UNCONFIRMED_ERROR = "spark job timed out; its pods were still running 15 minutes after deletion"
+UNCONFIRMED_ERROR = "spark job timed out; its pods were still running 15 minutes after the timeout"
 FIRST = f"{RUN_ID}-{COMPACTION}-1"
 
 
@@ -639,6 +639,84 @@ def test_fencing_renews_the_admission_lease_while_waiting():
     _run(scenario, lease_seconds=FENCE_DEADLINE_SECONDS + 15 * 60)
 
 
+def test_fencing_renews_the_lease_before_it_deletes_the_job():
+    """The first thing a timed-out attempt does is renew its lease, then it deletes its job."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
+        handle = await h.start_maintenance(COMPACTION, attempt_deadline_seconds=FENCE_DEADLINE_SECONDS)
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        names = _names(await h.commands())
+        assert names.index("signal:renew") < names.index("delete_maintenance_job")
+
+    _run(scenario)
+
+
+def test_failed_delete_is_retried_on_every_fencing_poll():
+    """A delete that fails is tried again on the next poll, and the pods are checked only once it succeeded."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
+        h.fakes.delete_failures[FIRST] = 3
+        handle = await h.start_maintenance(COMPACTION, attempt_deadline_seconds=FENCE_DEADLINE_SECONDS)
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        commands = await h.commands()
+        deletes = [at for name, at in commands if name == "delete_maintenance_job"][:4]
+        assert len(deletes) == 4
+        assert all(timedelta(seconds=30) <= b - a < timedelta(seconds=60) for a, b in itertools.pairwise(deletes))
+        assert h.fakes.pods_times[0] >= deletes[3]
+        assert h.recorded() == [(COMPACTION, 1, False, "spark job timed out"), (COMPACTION, 2, True, None)]
+
+    _run(scenario)
+
+
+def test_job_that_cannot_be_deleted_fails_the_operation_and_keeps_the_slot():
+    """A job still not deleted 15 minutes after the timeout fails the operation; the slot waits for the delete."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(EXPIRE, 1): [(1, True, None)]}
+        h.fakes.delete_failures[FIRST] = 40
+        handle = await h.start_maintenance(COMPACTION, EXPIRE, attempt_deadline_seconds=FENCE_DEADLINE_SECONDS)
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        undeletable = "spark job timed out; its job could still not be deleted 15 minutes after the timeout"
+        assert h.recorded() == [(COMPACTION, 1, False, undeletable), (EXPIRE, 1, True, None)]
+        assert h.fakes.pods_times[0] >= h.fakes.delete_times[FIRST]
+        commands = await h.commands()
+        release = _first_after(commands, "signal:release", _names(commands).index("delete_maintenance_job"))
+        assert commands[release][1] >= h.fakes.delete_times[FIRST]
+
+    _run(scenario)
+
+
+def test_renew_is_what_keeps_the_slot_of_an_attempt_past_its_lease():
+    """An attempt whose pods outlive its lease keeps its slot only because it renews it."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(EXPIRE, 1): [(1, True, None)]}
+        h.fakes.pods_live_for[FIRST] = timedelta(minutes=40)
+        holders_late: list[dict] = []
+
+        async def look_late(app_name: str) -> None:
+            deleted_at = h.fakes.delete_times.get(FIRST)
+            late = deleted_at is not None and h.fakes.pods_times[-1] - deleted_at >= timedelta(minutes=30)
+            if app_name == FIRST and late and not holders_late:
+                holders_late.append(await h.admission_holders())
+
+        h.fakes.pods_hook = look_late
+        handle = await h.start_maintenance(COMPACTION, EXPIRE, attempt_deadline_seconds=FENCE_DEADLINE_SECONDS)
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        lease = timedelta(seconds=FENCE_DEADLINE_SECONDS + 15 * 60)
+        assert h.fakes.delete_times[FIRST] - h.submit_times()[0] + timedelta(minutes=30) > lease
+        assert len(holders_late) == 1
+        assert list(holders_late[0]) == [FIRST]
+
+    _run(scenario)
+
+
 def test_unconfirmed_deletion_fails_the_operation_and_keeps_the_slot():
     """Pods still live 15 minutes after the delete fail the operation, and the slot is held until they are gone."""
 
@@ -651,8 +729,9 @@ def test_unconfirmed_deletion_fails_the_operation_and_keeps_the_slot():
         assert h.recorded() == [(COMPACTION, 1, False, UNCONFIRMED_ERROR), (EXPIRE, 1, True, None)]
         assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1), (EXPIRE, 1)]
         deleted_at = h.fakes.delete_times[FIRST]
+        timed_out_at = h.submit_times()[0] + timedelta(seconds=FENCE_DEADLINE_SECONDS)
         recorded_at = datetime.fromisoformat(h.fakes.records[0]["now"])
-        assert timedelta(minutes=15) <= recorded_at - deleted_at < timedelta(minutes=16)
+        assert timedelta(minutes=15) <= recorded_at - timed_out_at < timedelta(minutes=16)
 
         commands = await h.commands()
         names = _names(commands)

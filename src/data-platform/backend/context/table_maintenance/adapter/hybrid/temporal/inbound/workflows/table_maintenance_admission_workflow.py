@@ -95,9 +95,10 @@ class TableMaintenanceAdmissionWorkflow:
 
     @workflow.signal(name=TableMaintenanceAdmissionSignal.RENEW)
     def renew(self, signal: AdmissionRenewSignal) -> None:
-        """Restart the lease of a held slot from now; an id that holds no slot is ignored."""
+        """Restart the lease of a held slot from now; an id that holds no slot is logged and ignored."""
         holder = self._holders.get(signal.request_id)
         if holder is None:
+            workflow.logger.warning("renew of %s ignored: it holds no slot (unknown or evicted)", signal.request_id)
             return
         holder["granted_at"] = workflow.now().isoformat()
         self._changed = True

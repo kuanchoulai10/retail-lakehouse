@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import uuid
 from datetime import timedelta
 from typing import TYPE_CHECKING
@@ -33,6 +34,7 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.requester_s
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
+    import pytest
     from temporalio.client import Client, WorkflowHandle
 
 
@@ -257,8 +259,8 @@ def test_holder_keeps_the_lease_its_acquire_asked_for():
     _run(scenario, limit=1, lease=600)
 
 
-def test_renew_of_an_unknown_request_is_ignored():
-    """Renewing a request that holds no slot neither grants nor queues it."""
+def test_renew_of_an_unknown_request_is_ignored(caplog: pytest.LogCaptureFixture):
+    """Renewing a request that holds no slot neither grants nor queues it, and is logged as a warning."""
 
     async def scenario(h: AdmissionHarness) -> None:
         a = await h.requester("a")
@@ -271,4 +273,6 @@ def test_renew_of_an_unknown_request_is_ignored():
         assert list(state["holders"]) == ["r-a"]
         assert state["queue"] == []
 
-    _run(scenario, limit=1)
+    with caplog.at_level(logging.WARNING):
+        _run(scenario, limit=1)
+    assert any("unknown" in r.getMessage() and r.levelno == logging.WARNING for r in caplog.records)
