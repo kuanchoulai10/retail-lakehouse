@@ -46,6 +46,7 @@ _RESULT_BY_VERDICT = {
     "cooling_down": OperationResult.COOLING_DOWN,
     "off": OperationResult.OFF,
     "not_checked": OperationResult.NOT_CHECKED,
+    "needs_attention": OperationResult.NEEDS_ATTENTION,
 }
 
 

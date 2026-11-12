@@ -25,6 +25,7 @@ class PlanTableMaintenanceUseCaseOutputItem:
     operation: str
     filters: list[PlanTableMaintenanceUseCaseOutputFilterItem]
     procedure_args: dict[str, Any]
+    start_size: str = "S"
 
 
 @dataclass(frozen=True)

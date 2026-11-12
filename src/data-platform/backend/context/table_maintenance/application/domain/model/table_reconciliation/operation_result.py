@@ -15,3 +15,4 @@ class OperationResult(StrEnum):
     COOLING_DOWN = "cooling_down"
     OFF = "off"
     NOT_CHECKED = "not_checked"
+    NEEDS_ATTENTION = "needs_attention"

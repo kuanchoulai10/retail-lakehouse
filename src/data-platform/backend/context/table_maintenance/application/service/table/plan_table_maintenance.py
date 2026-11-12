@@ -39,7 +39,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
     ResolveApplicableTableMaintenancePolicyUseCaseOutput,
 )
 from context.table_maintenance.application.port.outbound.table import TableMetadataRef
-from context.table_maintenance.application.service.shared import translate_domain_errors
+from context.table_maintenance.application.service.shared import applied_policy_ref_of, translate_domain_errors
 from context.table_maintenance.application.service.table.table_observation_from_gateway import (
     table_observation_from_gateway,
 )
@@ -108,7 +108,9 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
                 plan = plan_manual_maintenance(manual)
                 checks = _manual_checks(manual)
             else:
-                assessment = assess_maintenance(table, policy, observation, request.now)
+                assessment = assess_maintenance(
+                    table, policy, observation, request.now, applied=applied_policy_ref_of(applied)
+                )
                 plan, checks = assessment.plan(), _scheduled_checks(assessment)
                 if policy.dry_run:
                     plan = MaintenancePlan()
@@ -145,6 +147,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
                     operation=planned.operation.value,
                     filters=filters,
                     procedure_args=maintenance_procedure_args(planned.operation, policy, properties, request.now),
+                    start_size=table.operation_state(planned.operation).start_size().value,
                 )
             )
         return PlanTableMaintenanceUseCaseOutput(
@@ -202,6 +205,7 @@ _VERDICTS = {
     OperationVerdict.NOT_DUE: "not_needed",
     OperationVerdict.COOLDOWN: "cooling_down",
     OperationVerdict.DISABLED: "off",
+    OperationVerdict.NEEDS_ATTENTION: "needs_attention",
 }
 
 

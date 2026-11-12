@@ -41,7 +41,7 @@ from context.table_maintenance.application.domain.service.table.compute_reducibl
 if TYPE_CHECKING:
     from datetime import datetime
 
-    from context.table_maintenance.application.domain.model.table import Table
+    from context.table_maintenance.application.domain.model.table import AppliedPolicyRef, Table
 
 DEFAULT_SMALL_MANIFEST_BYTES = 8 * 1024 * 1024
 MANIFEST_TARGET_SIZE_PROPERTY = "commit.manifest.target-size-bytes"
@@ -52,14 +52,18 @@ def assess_maintenance(
     policy: MaintenancePolicyContent,
     observation: TableObservation,
     now: datetime,
+    *,
+    applied: AppliedPolicyRef | None = None,
 ) -> MaintenanceAssessment:
     """Evaluate every operation of a table against a policy, regardless of the table's status.
 
     An operation is due when it is enabled, its cooldown (with the failure backoff)
-    has passed, and its conditions are empty or any of them holds.
+    has passed, and its conditions are empty or any of them holds. An enabled operation
+    marked as needing attention under ``applied`` (the policy that applies now) is never
+    due, whatever its cooldown; with no ``applied`` the marks are ignored.
     """
     return MaintenanceAssessment(
-        operations=tuple(_assess(op, table, policy, observation, now) for op in MaintenanceOperation.ordered())
+        operations=tuple(_assess(op, table, policy, observation, now, applied) for op in MaintenanceOperation.ordered())
     )
 
 
@@ -69,6 +73,7 @@ def _assess(
     policy: MaintenancePolicyContent,
     observation: TableObservation,
     now: datetime,
+    applied: AppliedPolicyRef | None,
 ) -> OperationAssessment:
     operation_policy = policy.operations.for_operation(op)
     if not operation_policy.enabled:
@@ -84,6 +89,8 @@ def _assess(
     else:
         assessment = measured
     state = table.operation_state(op)
+    if applied is not None and state.needs_attention_under(applied):
+        return validated_copy(assessment, verdict=OperationVerdict.NEEDS_ATTENTION, planned=None)
     if state.last_attempt_at is None:
         return assessment
     next_eligible_at = state.last_attempt_at + state.effective_cooldown(operation_policy.trigger_policy.cooldown)

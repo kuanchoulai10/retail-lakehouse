@@ -86,6 +86,7 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
                 "operation": "rewrite_data_files",
                 "filters": [{"spec_id": 0, "where": "x = 1"}],
                 "procedure_args": {"strategy": "binpack"},
+                "start_size": "S",
             }
         ],
         "dry_run": False,

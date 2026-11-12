@@ -10,6 +10,8 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
 )
 from context.table_maintenance.application.domain.model.table import (
+    AppliedPolicyRef,
+    AttentionMark,
     Table,
     TableId,
     TableName,
@@ -27,6 +29,9 @@ from context.table_maintenance.application.port.inbound.table import (
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
     UpdateTableMaintenancePolicyUseCaseInput,
+)
+from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
+    ResolveApplicableTableMaintenancePolicyUseCaseInput,
 )
 from context.table_maintenance.application.port.outbound.table import (
     TableMetadataObservation,
@@ -175,3 +180,24 @@ def test_health_404_when_not_in_catalog(service, tables_repo, now):
 
     with pytest.raises(NotFoundError, match="is not in the catalog$"):
         _health(service)
+
+
+def test_health_shows_needs_attention(service, tables_repo, catalog, resolve_applicable_policy, now):
+    """An operation marked under the applicable policy reports needs attention."""
+    table = _register(tables_repo, now)
+    _observe(catalog)
+    applied = resolve_applicable_policy.execute(
+        ResolveApplicableTableMaintenancePolicyUseCaseInput(
+            catalog=KEY[0], table_uuid="u-1", namespace=KEY[1], table=KEY[2]
+        )
+    )
+    mark = AttentionMark(
+        since=now,
+        reason="out of memory at size L",
+        policy=AppliedPolicyRef(name=applied.policy_name, version=applied.version, target=applied.target),
+    )
+    table.mark_needs_attention(MaintenanceOperation.REWRITE_DATA_FILES, mark, now)
+    tables_repo.update(table)
+    output = _health(service)
+    assert output.operations[0].verdict == "needs_attention"
+    assert output.operations[1].verdict != "needs_attention"

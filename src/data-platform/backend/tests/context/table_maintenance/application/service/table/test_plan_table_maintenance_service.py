@@ -10,9 +10,12 @@ import pytest
 
 from base import validated_copy
 from context.table_maintenance.application.domain.model.shared import (
+    ComputeSize,
     MaintenanceOperation,
 )
 from context.table_maintenance.application.domain.model.table import (
+    AppliedPolicyRef,
+    AttentionMark,
     Table,
     TableId,
     TableName,
@@ -535,3 +538,63 @@ def test_manual_plan_checks_can_be_recorded(planner, tables_repo, catalog, now):
     results = {op.operation.value: op.result.value for op in record.operations}
     assert results["rewrite_data_files"] == "would_start"
     assert results["expire_snapshots"] == "not_checked"
+
+
+# --- needs attention and start size ---
+
+
+def _mark_under_current_policy(planner, table, tables_repo, now, op=OPS.REWRITE_DATA_FILES):
+    """Mark ``op`` as needing attention under the policy that applies now."""
+    first = _plan(planner, now)
+    applied = AppliedPolicyRef(name=first.policy_name, version=first.policy_version, target=first.policy_target)
+    table.mark_needs_attention(op, AttentionMark(since=now, reason="out of memory at size L", policy=applied), now)
+    tables_repo.update(table)
+
+
+def test_plan_reports_needs_attention_in_its_checks(planner, tables_repo, catalog, now):
+    """An operation that needs attention under the applicable policy is reported and not planned."""
+    table = _table(tables_repo, now)
+    _observe(catalog, now)
+    _mark_under_current_policy(planner, table, tables_repo, now)
+    plan = _plan(planner, now)
+    assert _checks(plan)["rewrite_data_files"].verdict == "needs_attention"
+    assert "rewrite_data_files" not in [o.operation for o in plan.operations]
+    assert "expire_snapshots" in [o.operation for o in plan.operations]
+
+
+def test_plan_after_a_policy_change_plans_the_marked_operation(planner, tables_repo, catalog, policies, now):
+    """Once another policy version applies, the marked operation is planned again."""
+    table = _table(tables_repo, now)
+    _observe(catalog, now)
+    _mark_under_current_policy(planner, table, tables_repo, now)
+    _use_policy(policies, now, DEFAULT)
+    assert _checks(_plan(planner, now))["rewrite_data_files"].verdict == "due"
+
+
+def test_plan_starts_each_operation_at_its_remembered_size(planner, tables_repo, catalog, now):
+    """A planned operation starts at the size of its last success, or S."""
+    table = _table(tables_repo, now)
+    table.record_operation_result(OPS.REWRITE_DATA_FILES, True, now - timedelta(days=30), size=ComputeSize.M)
+    _observe(catalog, now)
+    sizes = {o.operation: o.start_size for o in _plan(planner, now).operations}
+    assert sizes["rewrite_data_files"] == "M"
+    assert sizes["expire_snapshots"] == "S"
+
+
+def test_manual_plan_starts_at_the_remembered_size(planner, tables_repo, catalog, now):
+    """A manual plan also starts each operation at its remembered size."""
+    table = _table(tables_repo, now)
+    table.record_operation_result(OPS.REWRITE_DATA_FILES, True, now, size=ComputeSize.L)
+    _observe(catalog, now)
+    plan = _plan(planner, now, ["rewrite_data_files"])
+    assert [(o.operation, o.start_size) for o in plan.operations] == [("rewrite_data_files", "L")]
+
+
+def test_reconciliation_records_needs_attention(planner, tables_repo, catalog, now):
+    """The needs-attention check of a plan is recorded as needs attention."""
+    table = _table(tables_repo, now)
+    _observe(catalog, now)
+    _mark_under_current_policy(planner, table, tables_repo, now)
+    record = _record(_plan(planner, now), now)
+    results = {op.operation.value: op.result.value for op in record.operations}
+    assert results["rewrite_data_files"] == "needs_attention"

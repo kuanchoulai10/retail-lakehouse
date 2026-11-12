@@ -24,6 +24,8 @@ from context.table_maintenance.application.domain.model.shared import (
     TableObservation,
 )
 from context.table_maintenance.application.domain.model.table import (
+    AppliedPolicyRef,
+    AttentionMark,
     OperationState,
     Table,
     TableId,
@@ -443,3 +445,71 @@ def test_cooldown_keeps_the_measurements():
     a = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES)
     assert a.verdict == OperationVerdict.COOLDOWN
     assert a.measurements[0] == _condition("reducible_files", 10, 5)
+
+
+POLICY_V1 = AppliedPolicyRef(name="default", version=1, target=None)
+OOM_AT_L = AttentionMark(since=NOW, reason="out of memory at size L", policy=POLICY_V1)
+
+
+def _needing_attention(op: Op) -> Table:
+    t = table()
+    t.mark_needs_attention(op, OOM_AT_L, NOW - timedelta(days=2))
+    return t
+
+
+def test_needs_attention_blocks_only_its_operation_under_the_same_policy():
+    """An operation marked under the applicable policy is not planned; the others still are."""
+    t = _needing_attention(Op.REWRITE_DATA_FILES)
+    o = obs(partitions=(part(10),), snapshots=snaps(12, 11))
+    assessment = assess_maintenance(t, DEFAULT, o, NOW, applied=POLICY_V1)
+    rdf = next(a for a in assessment.operations if a.operation == Op.REWRITE_DATA_FILES)
+    assert rdf.verdict == OperationVerdict.NEEDS_ATTENTION
+    assert rdf.planned is None
+    assert rdf.measured == 10
+    assert rdf.measurements
+    expire = next(a for a in assessment.operations if a.operation == Op.EXPIRE_SNAPSHOTS)
+    assert expire.verdict == OperationVerdict.DUE
+    assert Op.REWRITE_DATA_FILES not in [p.operation for p in assessment.plan().operations]
+
+
+def test_needs_attention_wins_over_cooldown():
+    """An operation in cooldown that needs attention says it needs attention."""
+    t = _needing_attention(Op.REWRITE_DATA_FILES)
+    t.record_operation_result(Op.REWRITE_DATA_FILES, False, NOW - timedelta(minutes=1))
+    a = next(
+        a
+        for a in assess_maintenance(t, DEFAULT, obs(partitions=(part(10),)), NOW, applied=POLICY_V1).operations
+        if a.operation == Op.REWRITE_DATA_FILES
+    )
+    assert a.verdict == OperationVerdict.NEEDS_ATTENTION
+    assert a.next_eligible_at is None
+
+
+def test_a_changed_applicable_policy_lifts_needs_attention():
+    """Under another version of the policy the operation is assessed as usual."""
+    t = _needing_attention(Op.REWRITE_DATA_FILES)
+    applied = AppliedPolicyRef(name="default", version=2, target=None)
+    a = next(
+        a
+        for a in assess_maintenance(t, DEFAULT, obs(partitions=(part(10),)), NOW, applied=applied).operations
+        if a.operation == Op.REWRITE_DATA_FILES
+    )
+    assert a.verdict == OperationVerdict.DUE
+
+
+def test_without_an_applied_policy_the_mark_is_ignored():
+    """An assessment that names no applicable policy ignores needs-attention marks."""
+    t = _needing_attention(Op.REWRITE_DATA_FILES)
+    assert assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES).verdict == OperationVerdict.DUE
+
+
+def test_disabled_wins_over_needs_attention():
+    """A disabled operation stays disabled even when it needs attention."""
+    t = _needing_attention(Op.REWRITE_DATA_FILES)
+    policy = compaction(enabled=False)
+    a = next(
+        a
+        for a in assess_maintenance(t, policy, obs(partitions=(part(10),)), NOW, applied=POLICY_V1).operations
+        if a.operation == Op.REWRITE_DATA_FILES
+    )
+    assert a.verdict == OperationVerdict.DISABLED
