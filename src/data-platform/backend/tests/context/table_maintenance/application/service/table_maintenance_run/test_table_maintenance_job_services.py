@@ -175,6 +175,7 @@ def test_failed_submit_can_be_recorded_and_the_next_attempt_goes_through(
         ScriptedReadMaintenanceJobEvidenceGateway(),
         ScriptedReadMaintenanceEventLogGateway(),
         resolve_applicable_policy,
+        size_memory={},
     )
     recorder.execute(
         RecordTableMaintenanceOperationResultUseCaseInput(
@@ -380,6 +381,7 @@ def test_submit_does_not_overwrite_a_run_cancelled_during_the_submit(tables_repo
         ScriptedReadMaintenanceJobEvidenceGateway(),
         ScriptedReadMaintenanceEventLogGateway(),
         resolve_applicable_policy,
+        size_memory={},
     )
     submitter = SubmitMaintenanceOperationService(runs_repo, tables_repo, _CancelDuringSubmitGateway(recorder, now))
     out = _submit(submitter, now)

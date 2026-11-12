@@ -55,10 +55,11 @@ from context.table_maintenance.application.service.table_reconciliation import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Sequence
+    from collections.abc import Callable, Mapping, Sequence
 
     from bootstrap.container.gateways import Gateways
     from bootstrap.container.repositories import Repositories
+    from context.table_maintenance.application.domain.model.shared import ComputeSize, SizeMemory
 
 
 def _utc_now() -> datetime:
@@ -71,8 +72,13 @@ def build_use_cases(
     *,
     clock: Callable[[], datetime] = _utc_now,
     catalog_names: Sequence[str] = (),
+    size_memory: Mapping[ComputeSize, SizeMemory] | None = None,
 ) -> UseCases:
-    """Build every application service on the given repositories and gateways."""
+    """Build every application service on the given repositories and gateways.
+
+    ``size_memory`` is the memory each compute size runs with; without it no
+    operation is ever stepped down to a smaller size.
+    """
     tables = repos.tables
     rules = repos.table_discovery_rules
     policies = repos.table_maintenance_policies
@@ -135,6 +141,7 @@ def build_use_cases(
             gateways.read_maintenance_job_evidence,
             gateways.read_maintenance_event_log,
             resolve_applicable_policy,
+            size_memory=size_memory or {},
         ),
         delete_maintenance_job=DeleteMaintenanceJobService(gateways.delete_maintenance_job),
         get_maintenance_job_status=GetMaintenanceJobStatusService(gateways.read_maintenance_job),

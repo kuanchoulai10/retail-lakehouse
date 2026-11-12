@@ -9,6 +9,7 @@ import pytest
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
+    SizeMemory,
 )
 from context.table_maintenance.application.domain.model.table import (
     AppliedPolicyRef,
@@ -47,6 +48,12 @@ from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_evidenc
 from tests.context.table_maintenance.fakes.track_calls import track_calls
 
 RDF = MaintenanceOperation.REWRITE_DATA_FILES
+MIB = 1024 * 1024
+SIZE_MEMORY = {
+    ComputeSize.S: SizeMemory(driver_bytes=768 * MIB, executor_bytes=768 * MIB),
+    ComputeSize.M: SizeMemory(driver_bytes=1024 * MIB, executor_bytes=1536 * MIB),
+    ComputeSize.L: SizeMemory(driver_bytes=1536 * MIB, executor_bytes=2048 * MIB),
+}
 APP_ID = "spark-0001"
 OOM = "Py4JJavaError: An error occurred. java.lang.OutOfMemoryError: Java heap space"
 
@@ -91,7 +98,7 @@ def resolve_calls(resolve_applicable_policy) -> list[Any]:
 def recorder(runs_repo, tables_repo, evidence, event_log, resolve_applicable_policy, resolve_calls):
     """Provide the record service on the fakes."""
     return RecordTableMaintenanceOperationResultService(
-        runs_repo, tables_repo, evidence, event_log, resolve_applicable_policy
+        runs_repo, tables_repo, evidence, event_log, resolve_applicable_policy, size_memory=SIZE_MEMORY
     )
 
 
@@ -301,14 +308,34 @@ def test_unknown_ending_is_refused(recorder, runs_repo, table, now):
         _record(recorder, now, ended_by="exploded")
 
 
-def test_record_passes_the_measured_peak_to_the_table(recorder, runs_repo, tables_repo, table, now):
-    """A success's measured peak heap use counts toward stepping the table down."""
+def _fitting_successes(tables_repo, now, count: int) -> None:
     stored = tables_repo.get(TableId("u-1"))
-    stored.record_operation_result(RDF, True, now, size=ComputeSize.M, peak_heap_percent=30)
-    stored.record_operation_result(RDF, True, now, size=ComputeSize.M, peak_heap_percent=30)
+    for _ in range(count):
+        stored.record_operation_result(RDF, True, now, size=ComputeSize.M, fits_smaller=True)
     tables_repo.update(stored)
+
+
+def _peaks(driver_mib: int, executor_mib: int) -> dict[str, int]:
+    return {
+        "rewritten_data_files_count": 1,
+        "peak_driver_heap_bytes": driver_mib * MIB,
+        "peak_executor_heap_bytes": executor_mib * MIB,
+    }
+
+
+def test_record_passes_the_measured_peak_to_the_table(recorder, runs_repo, tables_repo, table, now):
+    """A success at M whose peaks fit well inside S counts toward stepping the table down to S."""
+    _fitting_successes(tables_repo, now, 2)
     _run(runs_repo, table, now, ComputeSize.M)
-    _record(
-        recorder, now, succeeded=True, error=None, metrics={"rewritten_data_files_count": 1, "peak_heap_percent": 20}
-    )
+    _record(recorder, now, succeeded=True, error=None, metrics=_peaks(300, 400))
     assert tables_repo.get(TableId("u-1")).operation_state(RDF).start_size() is ComputeSize.S
+
+
+def test_a_job_that_needs_most_of_s_does_not_step_down_from_m(recorder, runs_repo, tables_repo, table, now):
+    """A job peaking at about 700 MiB of executor heap at M stays at M: S gives it only 768 MiB."""
+    _fitting_successes(tables_repo, now, 2)
+    _run(runs_repo, table, now, ComputeSize.M)
+    _record(recorder, now, succeeded=True, error=None, metrics=_peaks(300, 700))
+    state = tables_repo.get(TableId("u-1")).operation_state(RDF)
+    assert state.start_size() is ComputeSize.M
+    assert state.low_use_successes == 0

@@ -6,12 +6,15 @@ import threading
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
-from bootstrap.container import build_connected_use_cases, build_engine, run_migrations
+from bootstrap.container import build_connected_use_cases, build_engine, build_size_memory, run_migrations
 from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
     AsyncLoopBridge,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
     ListTableMaintenancePoliciesUseCaseInput,
+)
+from context.table_maintenance.application.service.table_maintenance_run import (
+    RecordTableMaintenanceOperationResultService,
 )
 from tests.bootstrap.container.container_support import sqlite_settings
 
@@ -45,3 +48,22 @@ def test_connects_the_gateway_client_on_the_bridge_loop(tmp_path):
 
     assert connected == [(settings.temporal.address, "async-loop-bridge")]
     assert [item.name for item in listing.items] == ["default"]
+
+
+def test_the_recorder_knows_each_size_s_memory(tmp_path):
+    """The operation result recorder is given each size's memory, so it can step a table down."""
+    settings = sqlite_settings()
+    settings.sqlite.path = str(tmp_path / "tm.db")
+
+    async def connect(_temporal: TemporalSettings):
+        return MagicMock(name="client")
+
+    bridge = AsyncLoopBridge()
+    try:
+        use_cases = build_connected_use_cases(settings, bridge, connect=connect, k8s_api_factory=MagicMock)
+    finally:
+        bridge.close()
+
+    recorder = use_cases.record_table_maintenance_operation_result
+    assert isinstance(recorder, RecordTableMaintenanceOperationResultService)
+    assert recorder._size_memory == build_size_memory(settings.spark)  # noqa: SLF001

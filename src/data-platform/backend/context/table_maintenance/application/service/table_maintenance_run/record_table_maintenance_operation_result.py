@@ -9,7 +9,7 @@ from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
 )
-from context.table_maintenance.application.domain.model.table import AttentionMark, TableStatus
+from context.table_maintenance.application.domain.model.table import AttentionMark, PeakHeapUse, TableStatus
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     AttemptEnding,
     ContainerExit,
@@ -17,6 +17,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
     NextStep,
     TableMaintenanceRunId,
 )
+from context.table_maintenance.application.domain.service.table import fits_smaller_size
 from context.table_maintenance.application.domain.service.table_maintenance_run import (
     classify_attempt_failure,
     decide_next_attempt,
@@ -41,8 +42,10 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
 from context.table_maintenance.application.service.shared import applied_policy_ref_of, translate_domain_errors
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from enum import StrEnum
 
+    from context.table_maintenance.application.domain.model.shared import SizeMemory
     from context.table_maintenance.application.domain.model.table import Table
     from context.table_maintenance.application.domain.model.table_maintenance_run import (
         NextAttempt,
@@ -64,7 +67,8 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _UNKNOWN_ERROR = "unknown error"
-_PEAK_HEAP_PERCENT = "peak_heap_percent"
+_PEAK_DRIVER_HEAP_BYTES = "peak_driver_heap_bytes"
+_PEAK_EXECUTOR_HEAP_BYTES = "peak_executor_heap_bytes"
 _ENDINGS_WITH_EVIDENCE = frozenset({AttemptEnding.RESULT, AttemptEnding.JOB_FAILED})
 _NEEDS_ATTENTION_REASON = "out of memory at size L"
 
@@ -79,13 +83,19 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         evidence_gateway: ReadMaintenanceJobEvidenceGateway,
         event_log_gateway: ReadMaintenanceEventLogGateway,
         resolve_applicable_policy: ResolveApplicableTableMaintenancePolicyUseCase,
+        *,
+        size_memory: Mapping[ComputeSize, SizeMemory],
     ) -> None:
-        """Bind the repos, the evidence readers and the applicable policy resolution."""
+        """Bind the repos, the evidence readers, the applicable policy resolution and each size's memory.
+
+        A size missing from ``size_memory`` is never stepped down to.
+        """
         self._runs_repo = runs_repo
         self._tables_repo = tables_repo
         self._evidence_gateway = evidence_gateway
         self._event_log_gateway = event_log_gateway
         self._resolve_applicable_policy = resolve_applicable_policy
+        self._size_memory = dict(size_memory)
 
     def execute(
         self, request: RecordTableMaintenanceOperationResultUseCaseInput
@@ -207,12 +217,17 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         if table is None or table.status == TableStatus.DROPPED:
             return
         if request.succeeded:
+            ran_at = size or ComputeSize.S
+            peak = PeakHeapUse(
+                driver_bytes=_measured(request.metrics.get(_PEAK_DRIVER_HEAP_BYTES)),
+                executor_bytes=_measured(request.metrics.get(_PEAK_EXECUTOR_HEAP_BYTES)),
+            )
             table.record_operation_result(
                 operation,
                 True,
                 request.now,
-                size=size or ComputeSize.S,
-                peak_heap_percent=request.metrics.get(_PEAK_HEAP_PERCENT),
+                size=ran_at,
+                fits_smaller=fits_smaller_size(ran_at, peak, self._size_memory),
             )
         else:
             table.record_operation_result(operation, False, request.now)
@@ -236,6 +251,11 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         )
         mark = AttentionMark(since=request.now, reason=_NEEDS_ATTENTION_REASON, policy=applied_policy_ref_of(applied))
         table.mark_needs_attention(operation, mark, request.now)
+
+
+def _measured(value: int | None) -> int | None:
+    """Return a measured byte count, or None when the job did not measure it or reported nonsense."""
+    return value if value is not None and value >= 0 else None
 
 
 def _already_recorded(current: OperationRun, request: RecordTableMaintenanceOperationResultUseCaseInput) -> bool:

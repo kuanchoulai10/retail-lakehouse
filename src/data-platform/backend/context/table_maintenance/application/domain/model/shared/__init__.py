@@ -50,6 +50,9 @@ from context.table_maintenance.application.domain.model.shared.planned_operation
 from context.table_maintenance.application.domain.model.shared.positive_duration import (
     PositiveDuration,
 )
+from context.table_maintenance.application.domain.model.shared.size_memory import (
+    SizeMemory,
+)
 from context.table_maintenance.application.domain.model.shared.size_source import (
     SizeSource,
 )
@@ -80,6 +83,7 @@ __all__ = [
     "PartitionStats",
     "PlannedOperation",
     "PositiveDuration",
+    "SizeMemory",
     "SizeSource",
     "SnapshotInfo",
     "SpecFilter",

@@ -17,6 +17,9 @@ from context.table_maintenance.application.domain.service.table.compute_reducibl
 from context.table_maintenance.application.domain.service.table.decide_table_management import (
     decide_table_management,
 )
+from context.table_maintenance.application.domain.service.table.fits_smaller_size import (
+    fits_smaller_size,
+)
 from context.table_maintenance.application.domain.service.table.plan_manual_maintenance import (
     plan_manual_maintenance,
 )
@@ -27,5 +30,6 @@ __all__ = [
     "build_partition_filters",
     "compute_reducible_files",
     "decide_table_management",
+    "fits_smaller_size",
     "plan_manual_maintenance",
 ]

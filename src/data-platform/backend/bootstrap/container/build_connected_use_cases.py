@@ -10,6 +10,7 @@ from bootstrap.container.build_gateways import build_gateways
 from bootstrap.container.build_k8s_api import build_k8s_api
 from bootstrap.container.build_k8s_core_api import build_k8s_core_api
 from bootstrap.container.build_repositories import build_repositories
+from bootstrap.container.build_size_memory import build_size_memory
 from bootstrap.container.build_use_cases import build_use_cases
 from bootstrap.container.connect_temporal import connect_temporal
 from bootstrap.container.lazy_client import LazyClient
@@ -50,4 +51,9 @@ def build_connected_use_cases(
         k8s_core_api=cast("CoreV1Api", LazyClient(k8s_core_api_factory)),
         catalog_factory=build_catalog_factory(settings.catalog),
     )
-    return build_use_cases(build_repositories(build_engine(settings)), gateways, catalog_names=settings.catalog.names)
+    return build_use_cases(
+        build_repositories(build_engine(settings)),
+        gateways,
+        catalog_names=settings.catalog.names,
+        size_memory=build_size_memory(settings.spark),
+    )

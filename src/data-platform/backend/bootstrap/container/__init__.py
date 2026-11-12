@@ -20,6 +20,7 @@ from bootstrap.container.build_k8s_core_api import build_k8s_core_api
 from bootstrap.container.build_openapi_document import build_openapi_document
 from bootstrap.container.build_polaris_http_client import build_polaris_http_client
 from bootstrap.container.build_repositories import build_repositories
+from bootstrap.container.build_size_memory import build_size_memory
 from bootstrap.container.build_spark_config import build_spark_config
 from bootstrap.container.build_use_cases import build_use_cases
 from bootstrap.container.build_web_use_cases import build_web_use_cases
@@ -36,6 +37,7 @@ from bootstrap.container.load_k8s_config import load_k8s_config
 from bootstrap.container.repositories import Repositories
 from bootstrap.container.run_event_consumer import run_event_consumer
 from bootstrap.container.run_migrations import run_migrations
+from bootstrap.container.spark_memory_bytes import spark_memory_bytes
 from bootstrap.container.use_cases import UseCases
 
 __all__ = [
@@ -60,6 +62,7 @@ __all__ = [
     "build_openapi_document",
     "build_polaris_http_client",
     "build_repositories",
+    "build_size_memory",
     "build_spark_config",
     "build_use_cases",
     "build_web_use_cases",
@@ -71,4 +74,5 @@ __all__ = [
     "load_k8s_config",
     "run_event_consumer",
     "run_migrations",
+    "spark_memory_bytes",
 ]

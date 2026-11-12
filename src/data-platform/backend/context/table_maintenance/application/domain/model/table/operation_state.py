@@ -20,11 +20,10 @@ if TYPE_CHECKING:
 class OperationState(ValueObject):
     """Track the last attempt, failure streak, remembered size and attention mark of one maintenance operation.
 
-    ``low_use_successes`` counts the successes in a row at the remembered size that used less than
-    ``LOW_USE_PERCENT`` of their heap; at ``LOW_USE_RUNS`` the remembered size steps down one size.
+    ``low_use_successes`` counts the successes in a row at the remembered size whose measured use
+    would have fit the next smaller size; at ``LOW_USE_RUNS`` the remembered size steps down one size.
     """
 
-    LOW_USE_PERCENT: ClassVar[int] = 50
     LOW_USE_RUNS: ClassVar[int] = 3
 
     last_attempt_at: datetime | None = None
@@ -42,17 +41,17 @@ class OperationState(ValueObject):
         return self.last_successful_size or ComputeSize.S
 
     def after_success(
-        self, at: datetime, size: ComputeSize | None = None, peak_heap_percent: int | None = None
+        self, at: datetime, size: ComputeSize | None = None, *, fits_smaller: bool = False
     ) -> OperationState:
         """Return the state after a successful attempt, remembering its size when known and lifting attention.
 
-        A success measured under ``LOW_USE_PERCENT`` of its heap adds to the low-use count when it ran
-        at the remembered size, and starts a new count at another size; any other success resets it.
-        The ``LOW_USE_RUNS``-th low-use success in a row steps the remembered size down one (never
-        below S) and resets the count.
+        A success whose measured use would have fit the next smaller size (``fits_smaller``) adds to
+        the low-use count when it ran at the remembered size, and starts a new count at another
+        size; any other success resets it. The ``LOW_USE_RUNS``-th such success in a row steps the
+        remembered size down one (never below S) and resets the count.
         """
         ran_at = size or self.last_successful_size
-        low_use = peak_heap_percent is not None and peak_heap_percent < self.LOW_USE_PERCENT
+        low_use = fits_smaller
         same_size = ran_at == self.last_successful_size
         streak = (self.low_use_successes + 1 if same_size else 1) if low_use else 0
         remembered = ran_at

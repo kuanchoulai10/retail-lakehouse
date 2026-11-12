@@ -71,60 +71,53 @@ def test_needs_attention_only_under_the_policy_it_was_marked_under():
     assert not OperationState().needs_attention_under(POLICY)
 
 
-def _successes(state: OperationState, size: ComputeSize, *peaks: int | None) -> OperationState:
-    for peak in peaks:
-        state = state.after_success(T0, size, peak_heap_percent=peak)
+def _successes(state: OperationState, size: ComputeSize, *fits: bool) -> OperationState:
+    for fit in fits:
+        state = state.after_success(T0, size, fits_smaller=fit)
     return state
 
 
-def test_three_low_use_successes_step_down_one_size():
-    """Three successes in a row at the remembered size using under half the heap start the next run one size down."""
-    state = _successes(OperationState().after_success(T0, ComputeSize.M), ComputeSize.M, 40, 40)
+def test_three_successes_that_fit_the_smaller_size_step_down_one_size():
+    """Three successes in a row at the remembered size that would fit the smaller size start the next run there."""
+    state = _successes(OperationState().after_success(T0, ComputeSize.M), ComputeSize.M, True, True)
     assert state.start_size() is ComputeSize.M
-    stepped = _successes(state, ComputeSize.M, 40)
+    stepped = _successes(state, ComputeSize.M, True)
     assert stepped.start_size() is ComputeSize.S
     assert stepped.low_use_successes == 0
 
 
-def test_a_high_use_success_resets_the_low_use_streak():
-    """A success using half the heap or more starts the count again."""
-    state = _successes(OperationState().after_success(T0, ComputeSize.M), ComputeSize.M, 40, 60, 40, 40)
+def test_a_success_that_would_not_fit_resets_the_streak():
+    """A success too large for the smaller size, or unmeasured, starts the count again."""
+    state = _successes(OperationState().after_success(T0, ComputeSize.M), ComputeSize.M, True, False, True, True)
     assert state.start_size() is ComputeSize.M
     assert state.low_use_successes == 2
 
 
-def test_exactly_half_the_heap_is_not_low_use():
-    """Low use is strictly under the threshold."""
-    state = _successes(OperationState().after_success(T0, ComputeSize.M), ComputeSize.M, 50, 50, 50)
-    assert state.start_size() is ComputeSize.M
+def test_a_success_without_a_verdict_resets_the_streak():
+    """A success recorded without saying it fits the smaller size counts as not fitting."""
+    state = _successes(OperationState().after_success(T0, ComputeSize.M), ComputeSize.M, True, True)
+    state = state.after_success(T0, ComputeSize.M)
     assert state.low_use_successes == 0
-
-
-def test_an_unmeasured_success_resets_the_low_use_streak():
-    """A success without a measurement says nothing about its use, so the count starts again."""
-    state = _successes(OperationState().after_success(T0, ComputeSize.M), ComputeSize.M, 40, 40, None, 40)
-    assert state.start_size() is ComputeSize.M
-    assert state.low_use_successes == 1
 
 
 def test_a_failure_keeps_the_low_use_streak():
     """A failure is no success at the remembered size; it neither adds to nor resets the count."""
-    state = _successes(OperationState().after_success(T0, ComputeSize.M), ComputeSize.M, 40, 40)
+    state = _successes(OperationState().after_success(T0, ComputeSize.M), ComputeSize.M, True, True)
     state = state.after_failure(T1)
-    assert _successes(state, ComputeSize.M, 40).start_size() is ComputeSize.S
+    assert _successes(state, ComputeSize.M, True).start_size() is ComputeSize.S
 
 
 def test_size_s_never_steps_below_s():
     """At S there is no smaller size; the count resets and S stays."""
-    state = _successes(OperationState(), ComputeSize.S, 10, 10, 10)
+    state = _successes(OperationState(), ComputeSize.S, True, True, True)
     assert state.start_size() is ComputeSize.S
     assert state.low_use_successes == 0
 
 
 def test_success_at_a_new_size_starts_a_new_streak():
-    """A low-use success at another size than the remembered one counts as the first of a new streak."""
-    state = _successes(OperationState().after_success(T0, ComputeSize.M), ComputeSize.M, 40, 40)
-    state = _successes(state, ComputeSize.L, 30)
+    """A fitting success at another size than the remembered one counts as the first of a new streak."""
+    state = _successes(OperationState().after_success(T0, ComputeSize.M), ComputeSize.M, True, True)
+    state = _successes(state, ComputeSize.L, True)
     assert state.start_size() is ComputeSize.L
     assert state.low_use_successes == 1
-    assert _successes(state, ComputeSize.L, 30, 30).start_size() is ComputeSize.M
+    assert _successes(state, ComputeSize.L, True, True).start_size() is ComputeSize.M

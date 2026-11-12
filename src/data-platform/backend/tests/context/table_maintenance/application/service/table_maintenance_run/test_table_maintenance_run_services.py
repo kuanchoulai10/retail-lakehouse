@@ -169,6 +169,7 @@ def recorder(runs_repo, tables_repo, resolve_applicable_policy):
         ScriptedReadMaintenanceJobEvidenceGateway(),
         ScriptedReadMaintenanceEventLogGateway(),
         resolve_applicable_policy,
+        size_memory={},
     )
 
 
