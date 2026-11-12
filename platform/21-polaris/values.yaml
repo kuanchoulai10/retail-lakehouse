@@ -9,6 +9,13 @@ polaris:
 
   replicaCount: 1
 
+  livenessProbe:
+    timeoutSeconds: 30
+    failureThreshold: 6
+
+  readinessProbe:
+    timeoutSeconds: 30
+
   # ---------------------------------------------------------------------------
   # Persistence
   # ---------------------------------------------------------------------------

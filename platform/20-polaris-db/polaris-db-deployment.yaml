@@ -61,11 +61,14 @@ spec:
               command: ["pg_isready", "-U", "polaris", "-d", "polaris"]
             initialDelaySeconds: 5
             periodSeconds: 5
+            timeoutSeconds: 10
           livenessProbe:
             exec:
               command: ["pg_isready", "-U", "polaris", "-d", "polaris"]
             initialDelaySeconds: 15
             periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 6
       volumes:
         - name: data
           persistentVolumeClaim:
