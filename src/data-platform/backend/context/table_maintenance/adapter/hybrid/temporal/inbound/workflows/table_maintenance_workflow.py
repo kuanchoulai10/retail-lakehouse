@@ -269,7 +269,8 @@ class TableMaintenanceWorkflow:
         ``reason`` is why the attempt ended (it timed out, or its job went
         missing) and ``since`` names that moment in the error of an unconfirmed
         fence. An unbounded fence (after a cancel) records nothing and waits for
-        the pods however long they take.
+        the pods however long they take, polling slowly once past the bound so
+        its history stays small.
 
         Each poll first renews the lease when it is due (the first poll always
         does, before anything else), then tries the delete again until one has
@@ -284,7 +285,7 @@ class TableMaintenanceWorkflow:
         """
         fencing = self._policy.fencing
         key = (name, attempt)
-        confirm_by = workflow.now() + fencing.confirm_bound if bounded else None
+        confirm_by = workflow.now() + fencing.confirm_bound
         renew_at = workflow.now()
         deleted = False
         outcome = self._failure(name, attempt, reason)
@@ -295,14 +296,14 @@ class TableMaintenanceWorkflow:
             deleted = deleted or await self._delete_job(name, attempt)
             if deleted and await self._pods_gone(name, attempt):
                 return outcome
-            if confirm_by is not None and key not in self._settled_attempts and workflow.now() >= confirm_by:
+            if bounded and key not in self._settled_attempts and workflow.now() >= confirm_by:
                 minutes = int(fencing.confirm_bound.total_seconds() // 60)
                 still = "its pods were still running" if deleted else "its job could still not be deleted"
                 error = f"{reason}; {still} {minutes} minutes after {since}"
                 outcome = self._failure(name, attempt, error)
                 await self._record(outcome)
                 self._settled_attempts.add(key)
-            slow = key in self._settled_attempts
+            slow = key in self._settled_attempts or workflow.now() >= confirm_by
             await workflow.sleep(fencing.slow_poll_interval if slow else fencing.poll_interval)
 
     async def _delete_job(self, name: str, attempt: int) -> bool:

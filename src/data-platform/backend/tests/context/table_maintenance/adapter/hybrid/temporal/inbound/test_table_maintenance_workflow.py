@@ -782,6 +782,32 @@ def test_cancel_during_fencing_keeps_fencing_until_the_pods_are_gone():
     _run(scenario)
 
 
+def test_cancelled_fence_polls_slowly_once_past_its_bound():
+    """A cancelled attempt whose pods stay polls every 30 s for 15 minutes, then every 5 minutes, still renewing."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.pods_live_for[FIRST] = timedelta(hours=2)
+        handle = await h.start_maintenance(COMPACTION)
+        await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n == 1)
+        await handle.cancel()
+        with pytest.raises(WorkflowFailureError):
+            await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        deleted_at = h.fakes.delete_times[FIRST]
+        late = [t for t in h.fakes.pods_times if timedelta(minutes=16) <= t - deleted_at < timedelta(hours=2)]
+        assert late
+        assert all(b - a >= timedelta(minutes=5) for a, b in itertools.pairwise(late))
+        assert len(late) <= 21
+        early = [t for t in h.fakes.pods_times if t - deleted_at < timedelta(minutes=14)]
+        assert all(b - a < timedelta(minutes=1) for a, b in itertools.pairwise(early))
+        commands = await h.commands()
+        renews = [at for name, at in commands if name == "signal:renew" and at - deleted_at >= timedelta(minutes=16)]
+        assert all(b - a <= timedelta(minutes=10) for a, b in itertools.pairwise(renews))
+        assert len(renews) >= 10
+
+    _run(scenario)
+
+
 def test_renew_is_what_keeps_the_slot_of_an_attempt_past_its_lease():
     """An attempt whose pods outlive its lease keeps its slot only because it renews it."""
 
