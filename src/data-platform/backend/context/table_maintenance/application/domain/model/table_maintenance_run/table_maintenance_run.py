@@ -7,11 +7,21 @@ from typing import TYPE_CHECKING
 
 from base import AggregateRoot, validated_copy
 from context.table_maintenance.application.domain.model.shared import (
+    ComputeSize,
     MaintenanceOperation,
 )
 from context.table_maintenance.application.domain.model.table import TableId
+from context.table_maintenance.application.domain.model.table_maintenance_run.failure_class import (
+    FailureClass,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_run.invalid_run_transition import (
     InvalidRunTransition,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_run.next_step import (
+    NextStep,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_run.operation_attempt import (
+    OperationAttempt,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run.operation_run import (
     OperationRun,
@@ -31,6 +41,10 @@ from context.table_maintenance.application.domain.model.table_maintenance_run.tr
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+    from context.table_maintenance.application.domain.model.table_maintenance_run.next_attempt import (
+        NextAttempt,
+    )
 
 _TERMINAL = frozenset(
     {
@@ -105,8 +119,10 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         attempt: int,
         job_name: str | None,
         now: datetime,
+        *,
+        size: ComputeSize | None = None,
     ) -> None:
-        """Mark an attempt of an operation as running.
+        """Mark an attempt of an operation as running at ``size`` and add it to the attempt history.
 
         Starting the attempt that is already running is a no-op, except that a
         given ``job_name`` is attached when none is recorded yet.
@@ -127,9 +143,17 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
                 finished_at=None,
                 error=None,
                 metrics={},
+                attempt_history=(
+                    *current.attempt_history,
+                    OperationAttempt(attempt=attempt, size=size, status=OperationRunStatus.RUNNING, started_at=now),
+                ),
             ),
             now,
         )
+
+    def attempt_record(self, operation: MaintenanceOperation, attempt: int) -> OperationAttempt | None:
+        """Return the history entry of one attempt of an operation, or None when it has none."""
+        return next((a for a in self._get(operation).attempt_history if a.attempt == attempt), None)
 
     def attach_job_name(self, operation: MaintenanceOperation, attempt: int, job_name: str) -> None:
         """Record the job of the running attempt; repeating the same name is a no-op."""
@@ -155,8 +179,10 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         attempt: int,
         metrics: dict[str, int],
         now: datetime,
+        *,
+        event_log_finished: bool | None = None,
     ) -> None:
-        """Record that an attempt succeeded."""
+        """Record that an attempt succeeded; nothing follows it."""
         self._finish(
             operation,
             attempt,
@@ -164,6 +190,10 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             now,
             metrics=dict(metrics),
             error=None,
+            failure_class=None,
+            event_log_finished=event_log_finished,
+            next_step=NextStep.DONE,
+            next_size=None,
         )
 
     def fail(
@@ -172,9 +202,24 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         attempt: int,
         error: str,
         now: datetime,
+        *,
+        failure_class: FailureClass = FailureClass.OTHER,
+        event_log_finished: bool | None = None,
+        next_attempt: NextAttempt | None = None,
     ) -> None:
-        """Record that an attempt failed."""
-        self._finish(operation, attempt, OperationRunStatus.FAILED, now, metrics={}, error=error)
+        """Record that an attempt failed, why, and what follows it when that is decided."""
+        self._finish(
+            operation,
+            attempt,
+            OperationRunStatus.FAILED,
+            now,
+            metrics={},
+            error=error,
+            failure_class=failure_class,
+            event_log_finished=event_log_finished,
+            next_step=next_attempt.step if next_attempt else None,
+            next_size=next_attempt.size if next_attempt else None,
+        )
 
     def skip(self, operation: MaintenanceOperation, reason: str, now: datetime) -> None:
         """Skip a pending operation."""
@@ -196,11 +241,15 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         self,
         operation: MaintenanceOperation,
         attempt: int,
-        outcome: OperationRunStatus,
+        status: OperationRunStatus,
         now: datetime,
         *,
         metrics: dict[str, int],
         error: str | None,
+        failure_class: FailureClass | None,
+        event_log_finished: bool | None,
+        next_step: NextStep | None,
+        next_size: ComputeSize | None,
     ) -> None:
         current = self._get(operation)
         if attempt < current.attempts:
@@ -208,20 +257,60 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         if attempt > current.attempts or current.attempts == 0:
             msg = f"attempt {attempt} of {operation} was never started"
             raise InvalidRunTransition(msg)
-        if current.status is outcome:
+        if current.status is status:
             return
         if current.status is not OperationRunStatus.RUNNING:
-            msg = f"cannot mark {operation} {outcome} from status {current.status}"
+            msg = f"cannot mark {operation} {status} from status {current.status}"
             raise InvalidRunTransition(msg)
         self._replace(
             validated_copy(
                 current,
-                status=outcome,
+                status=status,
                 finished_at=now,
                 metrics=metrics,
                 error=error,
+                attempt_history=self._finished_history(
+                    current,
+                    attempt,
+                    status,
+                    now,
+                    failure_class=failure_class,
+                    error=error,
+                    event_log_finished=event_log_finished,
+                    next_step=next_step,
+                    next_size=next_size,
+                ),
             ),
             now,
+        )
+
+    @staticmethod
+    def _finished_history(
+        current: OperationRun,
+        attempt: int,
+        status: OperationRunStatus,
+        now: datetime,
+        **outcome: object,
+    ) -> tuple[OperationAttempt, ...]:
+        """Return the history with the finished attempt's outcome, adding an entry it lacks.
+
+        An attempt started before attempt history existed has no entry; it gets one with no size,
+        started when its operation's latest attempt started.
+        """
+        history = current.attempt_history
+        if not any(a.attempt == attempt for a in history):
+            started_at = current.started_at or now
+            history = (*history, OperationAttempt(attempt=attempt, size=None, status=status, started_at=started_at))
+        return tuple(
+            validated_copy(
+                entry,
+                status=status,
+                finished_at=now,
+                **outcome,
+            )
+            if entry.attempt == attempt
+            else entry
+            for entry in history
         )
 
     @staticmethod

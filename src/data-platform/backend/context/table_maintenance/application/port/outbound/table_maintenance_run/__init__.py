@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from context.table_maintenance.application.domain.model.shared import (
+    ComputeSize,
     MaintenanceOperation,
 )
 from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
+    FailureClass,
+    NextStep,
+    OperationAttempt,
     OperationRun,
     OperationRunStatus,
     TableMaintenanceRun,
@@ -57,6 +61,10 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run.t
 )
 
 __all__ = [
+    "ComputeSize",
+    "FailureClass",
+    "NextStep",
+    "OperationAttempt",
     "MaintenanceOperation",
     "OperationRun",
     "OperationRunStatus",

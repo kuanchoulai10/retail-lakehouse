@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from context.table_maintenance.application.domain.model.shared import (
+    ComputeSize,
     MaintenanceOperation,
 )
 from context.table_maintenance.application.domain.model.table import (
@@ -23,6 +24,9 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     RewriteDataFilesExecutionPolicy,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
+    FailureClass,
+    NextAttempt,
+    NextStep,
     TableMaintenanceRun,
     TableMaintenanceRunId,
     TriggerType,
@@ -376,3 +380,46 @@ def test_procedure_args_need_an_aware_time():
     """A naive time is rejected."""
     with pytest.raises(ValueError, match="timezone-aware"):
         maintenance_procedure_args(RDF, POLICY, {}, datetime(2026, 1, 1))  # noqa: DTZ001
+
+
+def test_run_output_lists_every_attempt(runs_repo, started_run, now):
+    """A run's output lists each attempt of an operation with its size and outcome as plain values."""
+    started_run.fail(
+        RDF,
+        1,
+        "java.lang.OutOfMemoryError",
+        now,
+        failure_class=FailureClass.OOM,
+        event_log_finished=False,
+        next_attempt=NextAttempt(step=NextStep.RETRY_LARGER, size=ComputeSize.M),
+    )
+    started_run.start_attempt(RDF, 2, "tm-rdf-run1-a2", now, size=ComputeSize.M)
+    runs_repo.update(started_run)
+    out = GetTableMaintenanceRunService(runs_repo).execute(GetTableMaintenanceRunUseCaseInput("run-1"))
+    rdf = next(op for op in out.operations if op["operation"] == "rewrite_data_files")
+    assert rdf["attempt_history"] == [
+        {
+            "attempt": 1,
+            "size": None,
+            "status": "failed",
+            "started_at": now,
+            "finished_at": now,
+            "failure_class": "oom",
+            "error": "java.lang.OutOfMemoryError",
+            "event_log_finished": False,
+            "next_step": "retry_larger",
+            "next_size": "M",
+        },
+        {
+            "attempt": 2,
+            "size": "M",
+            "status": "running",
+            "started_at": now,
+            "finished_at": None,
+            "failure_class": None,
+            "error": None,
+            "event_log_finished": None,
+            "next_step": None,
+            "next_size": None,
+        },
+    ]

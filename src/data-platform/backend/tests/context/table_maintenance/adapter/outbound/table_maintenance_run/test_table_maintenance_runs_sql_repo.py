@@ -3,19 +3,24 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
 from base import validated_copy
 from context.table_maintenance.adapter.outbound.table_maintenance_run.sql import (
+    TableMaintenanceRunRowMapper,
     TableMaintenanceRunsSqlRepo,
 )
 from context.table_maintenance.application.domain.model.shared import (
+    ComputeSize,
     MaintenanceOperation,
 )
 from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
+    FailureClass,
+    NextAttempt,
+    NextStep,
     OperationRunStatus,
     TableMaintenanceRun,
     TableMaintenanceRunId,
@@ -24,7 +29,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
 from context.table_maintenance.application.exceptions import ConflictError
 
 if TYPE_CHECKING:
-    from sqlalchemy import Engine
+    from sqlalchemy import Engine, RowMapping
 
 NOW = datetime(2026, 10, 24, 12, tzinfo=UTC)
 
@@ -154,3 +159,53 @@ def test_list_by_table_since_filters_by_created_at(repo: TableMaintenanceRunsSql
     repo.create(_run("other", "u2", NOW))
     got = repo.list_by_table_since(TableId("u1"), since)
     assert [r.id.value for r in got] == ["new", "edge"]
+
+
+def test_attempt_history_round_trips(repo: TableMaintenanceRunsSqlRepo):
+    """Every attempt of an operation, with its size, class, event log state and next step, loads back."""
+    run = _run("r-attempts")
+    rdf = MaintenanceOperation.REWRITE_DATA_FILES
+    run.start_attempt(rdf, 1, "job-1", NOW, size=ComputeSize.S)
+    run.fail(
+        rdf,
+        1,
+        "java.lang.OutOfMemoryError",
+        NOW + timedelta(minutes=1),
+        failure_class=FailureClass.OOM,
+        event_log_finished=False,
+        next_attempt=NextAttempt(step=NextStep.RETRY_LARGER, size=ComputeSize.M),
+    )
+    run.start_attempt(rdf, 2, "job-2", NOW + timedelta(minutes=2), size=ComputeSize.M)
+    run.succeed(rdf, 2, {"rewritten_data_files_count": 3}, NOW + timedelta(minutes=3), event_log_finished=True)
+    repo.create(run)
+    loaded = repo.get(TableMaintenanceRunId("r-attempts"))
+    assert loaded is not None
+    assert loaded.operations == run.operations
+
+
+def test_row_without_attempt_history_decodes_to_none_recorded():
+    """A row written before attempt history existed decodes with an empty history."""
+    row = {
+        "id": "r-old",
+        "table_uuid": "u1",
+        "execution_ref": "wf-r-old",
+        "trigger": "scheduled",
+        "operations_json": [
+            {
+                "operation": "rewrite_data_files",
+                "status": "failed",
+                "attempts": 3,
+                "started_at": NOW.isoformat(),
+                "finished_at": NOW.isoformat(),
+                "job_name": "job-3",
+                "metrics": {},
+                "error": "boom",
+                "expected_files": None,
+            }
+        ],
+        "created_at": NOW,
+        "finished_at": NOW,
+    }
+    run = TableMaintenanceRunRowMapper.to_aggregate(cast("RowMapping", row))
+    assert run.operations[0].attempt_history == ()
+    assert run.operations[0].attempts == 3

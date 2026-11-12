@@ -10,13 +10,19 @@ from base import ValueObject
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_run.operation_attempt import (
+    OperationAttempt,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_run.operation_run_status import (
     OperationRunStatus,
 )
 
 
 class OperationRun(ValueObject):
-    """Record the progress of one maintenance operation inside a run."""
+    """Record the progress of one maintenance operation inside a run.
+
+    The flat fields describe the latest attempt; ``attempt_history`` keeps every attempt, oldest first.
+    """
 
     operation: MaintenanceOperation
     status: OperationRunStatus = OperationRunStatus.PENDING
@@ -27,3 +33,4 @@ class OperationRun(ValueObject):
     metrics: dict[str, int] = Field(default_factory=dict)
     error: str | None = None
     expected_files: int | None = None
+    attempt_history: tuple[OperationAttempt, ...] = ()

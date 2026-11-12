@@ -9,11 +9,18 @@ from pydantic import ValidationError
 
 from base import validated_copy
 from context.table_maintenance.application.domain.model.shared import (
+    ComputeSize,
+)
+from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation as Op,
 )
 from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
+    FailureClass,
     InvalidRunTransition,
+    NextAttempt,
+    NextStep,
+    OperationAttempt,
     OperationRun,
     OperationRunStatus,
     RunStatus,
@@ -294,3 +301,148 @@ def test_failed_state_change_leaves_the_run_unchanged():
     with pytest.raises(InvalidRunTransition):
         run.start_attempt(Op.EXPIRE_SNAPSHOTS, 5, None, _now(1))
     assert run.model_dump() == before
+
+
+def _attempts(run: TableMaintenanceRun, op: Op = Op.REWRITE_DATA_FILES) -> tuple[OperationAttempt, ...]:
+    return _op(run, op).attempt_history
+
+
+def test_start_attempt_appends_a_running_attempt_with_its_size():
+    """Starting an attempt records it as running at its size."""
+    run = _run()
+    run.start_attempt(Op.REWRITE_DATA_FILES, 1, "job-1", _now(1), size=ComputeSize.M)
+    assert _attempts(run) == (
+        OperationAttempt(attempt=1, size=ComputeSize.M, status=OperationRunStatus.RUNNING, started_at=_now(1)),
+    )
+
+
+def test_restarting_the_running_attempt_adds_no_entry():
+    """Starting the running attempt again leaves its one entry."""
+    run = _run()
+    run.start_attempt(Op.REWRITE_DATA_FILES, 1, None, _now(1), size=ComputeSize.S)
+    run.start_attempt(Op.REWRITE_DATA_FILES, 1, "job-1", _now(2), size=ComputeSize.S)
+    assert len(_attempts(run)) == 1
+    assert _attempts(run)[0].started_at == _now(1)
+
+
+def test_fail_records_class_error_event_log_and_next_step_on_the_attempt():
+    """A failure records its class, raw error, event log state and next step on its attempt."""
+    run = _run()
+    run.start_attempt(Op.REWRITE_DATA_FILES, 1, "job-1", _now(1), size=ComputeSize.S)
+    run.fail(
+        Op.REWRITE_DATA_FILES,
+        1,
+        "java.lang.OutOfMemoryError: Java heap space",
+        _now(5),
+        failure_class=FailureClass.OOM,
+        event_log_finished=False,
+        next_attempt=NextAttempt(step=NextStep.RETRY_LARGER, size=ComputeSize.M),
+    )
+    assert run.attempt_record(Op.REWRITE_DATA_FILES, 1) == OperationAttempt(
+        attempt=1,
+        size=ComputeSize.S,
+        status=OperationRunStatus.FAILED,
+        started_at=_now(1),
+        finished_at=_now(5),
+        failure_class=FailureClass.OOM,
+        error="java.lang.OutOfMemoryError: Java heap space",
+        event_log_finished=False,
+        next_step=NextStep.RETRY_LARGER,
+        next_size=ComputeSize.M,
+    )
+    assert _op(run, Op.REWRITE_DATA_FILES).error == "java.lang.OutOfMemoryError: Java heap space"
+
+
+def test_fail_without_a_class_records_other():
+    """A failure recorded without a class is other, with no next step."""
+    run = _run()
+    run.start_attempt(Op.REWRITE_DATA_FILES, 1, "job-1", _now(1))
+    run.fail(Op.REWRITE_DATA_FILES, 1, "boom", _now(2))
+    record = run.attempt_record(Op.REWRITE_DATA_FILES, 1)
+    assert record is not None
+    assert record.failure_class is FailureClass.OTHER
+    assert record.next_step is None
+
+
+def test_succeed_marks_the_attempt_done():
+    """A success marks its attempt succeeded with next step done."""
+    run = _run()
+    run.start_attempt(Op.REWRITE_DATA_FILES, 1, "job-1", _now(1), size=ComputeSize.M)
+    run.succeed(Op.REWRITE_DATA_FILES, 1, {"rewritten_data_files_count": 3}, _now(4), event_log_finished=True)
+    record = run.attempt_record(Op.REWRITE_DATA_FILES, 1)
+    assert record is not None
+    assert record.status is OperationRunStatus.SUCCEEDED
+    assert record.finished_at == _now(4)
+    assert record.event_log_finished is True
+    assert record.next_step is NextStep.DONE
+    assert record.next_size is None
+    assert record.failure_class is None
+
+
+def test_three_attempts_keep_three_entries():
+    """S fails, M fails, L succeeds: three entries, oldest first."""
+    run = _run([Op.REWRITE_DATA_FILES])
+    run.start_attempt(Op.REWRITE_DATA_FILES, 1, "job-1", _now(1), size=ComputeSize.S)
+    run.fail(
+        Op.REWRITE_DATA_FILES,
+        1,
+        "oom",
+        _now(2),
+        failure_class=FailureClass.OOM,
+        next_attempt=NextAttempt(step=NextStep.RETRY_LARGER, size=ComputeSize.M),
+    )
+    run.start_attempt(Op.REWRITE_DATA_FILES, 2, "job-2", _now(3), size=ComputeSize.M)
+    run.fail(
+        Op.REWRITE_DATA_FILES,
+        2,
+        "oom",
+        _now(4),
+        failure_class=FailureClass.OOM,
+        next_attempt=NextAttempt(step=NextStep.RETRY_LARGER, size=ComputeSize.L),
+    )
+    run.start_attempt(Op.REWRITE_DATA_FILES, 3, "job-3", _now(5), size=ComputeSize.L)
+    run.succeed(Op.REWRITE_DATA_FILES, 3, {}, _now(6))
+    history = _attempts(run)
+    assert [(a.attempt, a.size, a.status, a.next_step, a.next_size) for a in history] == [
+        (1, ComputeSize.S, OperationRunStatus.FAILED, NextStep.RETRY_LARGER, ComputeSize.M),
+        (2, ComputeSize.M, OperationRunStatus.FAILED, NextStep.RETRY_LARGER, ComputeSize.L),
+        (3, ComputeSize.L, OperationRunStatus.SUCCEEDED, NextStep.DONE, None),
+    ]
+    assert _op(run, Op.REWRITE_DATA_FILES).attempts == 3
+    assert _op(run, Op.REWRITE_DATA_FILES).error is None
+
+
+def test_finishing_an_attempt_started_before_attempt_history_adds_its_entry():
+    """An attempt started before attempt history existed gets its entry when it finishes."""
+    run = _run([Op.REWRITE_DATA_FILES])
+    run.start_attempt(Op.REWRITE_DATA_FILES, 1, "job-1", _now(1))
+    legacy = validated_copy(_op(run, Op.REWRITE_DATA_FILES), attempt_history=())
+    run.operations = (legacy,)
+    run.fail(Op.REWRITE_DATA_FILES, 1, "boom", _now(3), failure_class=FailureClass.TIMEOUT)
+    assert _attempts(run) == (
+        OperationAttempt(
+            attempt=1,
+            size=None,
+            status=OperationRunStatus.FAILED,
+            started_at=_now(1),
+            finished_at=_now(3),
+            failure_class=FailureClass.TIMEOUT,
+            error="boom",
+        ),
+    )
+
+
+def test_replayed_outcome_leaves_the_attempt_unchanged():
+    """Recording the same outcome again, even with another class, changes nothing."""
+    run = _run([Op.REWRITE_DATA_FILES])
+    run.start_attempt(Op.REWRITE_DATA_FILES, 1, "job-1", _now(1), size=ComputeSize.S)
+    run.fail(Op.REWRITE_DATA_FILES, 1, "oom", _now(2), failure_class=FailureClass.OOM)
+    before = _attempts(run)
+    run.fail(Op.REWRITE_DATA_FILES, 1, "other", _now(3), failure_class=FailureClass.OTHER)
+    assert _attempts(run) == before
+
+
+def test_attempt_record_is_none_for_an_unknown_attempt():
+    """An attempt that has no entry reads as None."""
+    run = _run()
+    assert run.attempt_record(Op.REWRITE_DATA_FILES, 1) is None
