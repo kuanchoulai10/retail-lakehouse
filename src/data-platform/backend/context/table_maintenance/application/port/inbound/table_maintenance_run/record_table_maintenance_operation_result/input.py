@@ -11,7 +11,11 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class RecordTableMaintenanceOperationResultUseCaseInput:
-    """Carry the request to record the result of a maintenance operation attempt."""
+    """Carry the request to record the result of a maintenance operation attempt.
+
+    ``ended_by`` names what ended the attempt (an ``AttemptEnding`` value), ``still_running`` says
+    its job may still be running, and ``max_attempts`` is how many attempts the operation is allowed.
+    """
 
     run_id: str
     operation: str
@@ -20,3 +24,6 @@ class RecordTableMaintenanceOperationResultUseCaseInput:
     metrics: dict[str, int]
     error: str | None
     now: datetime
+    ended_by: str = "result"
+    still_running: bool = False
+    max_attempts: int = 3

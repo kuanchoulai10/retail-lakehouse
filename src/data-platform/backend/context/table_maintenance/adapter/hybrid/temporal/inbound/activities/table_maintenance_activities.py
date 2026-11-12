@@ -59,7 +59,7 @@ class TableMaintenanceActivities:
 
     @activity.defn(name=TableMaintenanceActivity.RECORD_MAINTENANCE_OPERATION_RESULT)
     def record_table_maintenance_operation_result(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Record the outcome of one operation attempt."""
+        """Record the outcome of one operation attempt; an older request reads as a reported result."""
         with translate_application_errors():
             output = self._record_result.execute(
                 RecordTableMaintenanceOperationResultUseCaseInput(
@@ -70,6 +70,9 @@ class TableMaintenanceActivities:
                     metrics=dict(request["metrics"]),
                     error=request["error"],
                     now=datetime.fromisoformat(request["now"]),
+                    ended_by=request.get("ended_by", "result"),
+                    still_running=request.get("still_running", False),
+                    max_attempts=request.get("max_attempts", 3),
                 )
             )
         return activity_payload(output)

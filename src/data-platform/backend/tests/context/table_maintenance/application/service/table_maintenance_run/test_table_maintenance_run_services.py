@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
 
@@ -54,6 +55,12 @@ from context.table_maintenance.application.service.table_maintenance_run import 
     maintenance_procedure_args,
 )
 from tests.context.table_maintenance.fakes.policy_with_operation import policy_with_operation
+from tests.context.table_maintenance.fakes.scripted_read_maintenance_event_log_gateway import (
+    ScriptedReadMaintenanceEventLogGateway,
+)
+from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_evidence_gateway import (
+    ScriptedReadMaintenanceJobEvidenceGateway,
+)
 from tests.context.table_maintenance.fakes.track_calls import track_calls
 
 OPS = MaintenanceOperation
@@ -154,13 +161,19 @@ def started_run(runs_repo, table, now):
 
 
 @pytest.fixture
-def recorder(runs_repo, tables_repo):
+def recorder(runs_repo, tables_repo, resolve_applicable_policy):
     """Provide the record operation result service on the fakes."""
-    return RecordTableMaintenanceOperationResultService(runs_repo, tables_repo)
+    return RecordTableMaintenanceOperationResultService(
+        runs_repo,
+        tables_repo,
+        ScriptedReadMaintenanceJobEvidenceGateway(),
+        ScriptedReadMaintenanceEventLogGateway(),
+        resolve_applicable_policy,
+    )
 
 
 def _record(recorder, now, **overrides):
-    fields = {
+    fields: dict[str, Any] = {
         "run_id": "run-1",
         "operation": "rewrite_data_files",
         "attempt": 1,

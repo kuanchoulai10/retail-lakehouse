@@ -129,7 +129,13 @@ def build_use_cases(
         process_table_maintenance_callback=ProcessTableMaintenanceCallbackService(
             runs, gateways.send_maintenance_result
         ),
-        record_table_maintenance_operation_result=RecordTableMaintenanceOperationResultService(runs, tables),
+        record_table_maintenance_operation_result=RecordTableMaintenanceOperationResultService(
+            runs,
+            tables,
+            gateways.read_maintenance_job_evidence,
+            gateways.read_maintenance_event_log,
+            resolve_applicable_policy,
+        ),
         delete_maintenance_job=DeleteMaintenanceJobService(gateways.delete_maintenance_job),
         get_maintenance_job_status=GetMaintenanceJobStatusService(gateways.read_maintenance_job),
         get_maintenance_job_pods=GetMaintenanceJobPodsService(gateways.read_maintenance_job_pods),

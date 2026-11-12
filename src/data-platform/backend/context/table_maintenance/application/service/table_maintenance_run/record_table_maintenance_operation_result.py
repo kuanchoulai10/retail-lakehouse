@@ -2,60 +2,103 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.shared import (
+    ComputeSize,
     MaintenanceOperation,
 )
-from context.table_maintenance.application.domain.model.table import TableStatus
+from context.table_maintenance.application.domain.model.table import AttentionMark, TableStatus
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
+    AttemptEnding,
+    ContainerExit,
+    FailureEvidence,
+    NextStep,
     TableMaintenanceRunId,
+)
+from context.table_maintenance.application.domain.service.table_maintenance_run import (
+    classify_attempt_failure,
+    decide_next_attempt,
 )
 from context.table_maintenance.application.exceptions import (
     ConflictError,
     NotFoundError,
     ValidationError,
 )
+from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
+    ResolveApplicableTableMaintenancePolicyUseCaseInput,
+)
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     RecordTableMaintenanceOperationResultUseCase,
     RecordTableMaintenanceOperationResultUseCaseInput,
     RecordTableMaintenanceOperationResultUseCaseOutput,
 )
-from context.table_maintenance.application.service.shared import translate_domain_errors
+from context.table_maintenance.application.port.outbound.table_maintenance_run import (
+    ReadMaintenanceEventLogGatewayInput,
+    ReadMaintenanceJobEvidenceGatewayInput,
+)
+from context.table_maintenance.application.service.shared import applied_policy_ref_of, translate_domain_errors
 
 if TYPE_CHECKING:
-    from context.table_maintenance.application.domain.model.table import TableId
+    from enum import StrEnum
+
+    from context.table_maintenance.application.domain.model.table import Table
     from context.table_maintenance.application.domain.model.table_maintenance_run import (
+        NextAttempt,
+        OperationAttempt,
         OperationRun,
+        TableMaintenanceRun,
+    )
+    from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
+        ResolveApplicableTableMaintenancePolicyUseCase,
     )
     from context.table_maintenance.application.port.outbound.table import TablesRepo
     from context.table_maintenance.application.port.outbound.table_maintenance_run import (
+        ReadMaintenanceEventLogGateway,
+        ReadMaintenanceJobEvidenceGateway,
+        ReadMaintenanceJobEvidenceGatewayOutput,
         TableMaintenanceRunsRepo,
     )
 
+logger = logging.getLogger(__name__)
+
 _UNKNOWN_ERROR = "unknown error"
+_ENDINGS_WITH_EVIDENCE = frozenset({AttemptEnding.RESULT, AttemptEnding.JOB_FAILED})
+_NEEDS_ATTENTION_REASON = "out of memory at size L"
 
 
 class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperationResultUseCase):
-    """Record the outcome of an operation attempt on the run and the table."""
+    """Record the outcome of an operation attempt, why it failed and what follows it, on the run and the table."""
 
-    def __init__(self, runs_repo: TableMaintenanceRunsRepo, tables_repo: TablesRepo) -> None:
-        """Bind the repos."""
+    def __init__(
+        self,
+        runs_repo: TableMaintenanceRunsRepo,
+        tables_repo: TablesRepo,
+        evidence_gateway: ReadMaintenanceJobEvidenceGateway,
+        event_log_gateway: ReadMaintenanceEventLogGateway,
+        resolve_applicable_policy: ResolveApplicableTableMaintenancePolicyUseCase,
+    ) -> None:
+        """Bind the repos, the evidence readers and the applicable policy resolution."""
         self._runs_repo = runs_repo
         self._tables_repo = tables_repo
+        self._evidence_gateway = evidence_gateway
+        self._event_log_gateway = event_log_gateway
+        self._resolve_applicable_policy = resolve_applicable_policy
 
     def execute(
         self, request: RecordTableMaintenanceOperationResultUseCaseInput
     ) -> RecordTableMaintenanceOperationResultUseCaseOutput:
-        """Update the run, then the table's backoff state.
+        """Classify and decide the attempt, update the run, then the table.
 
         Two aggregates are updated in sequence, not atomically: the run is saved
-        first, so a crash in between at worst loses one backoff update. A stale
-        lower attempt, or a replay of an outcome already recorded, changes neither
-        aggregate beyond what the run already holds.
+        first, so a crash in between at worst loses one table update. A stale
+        lower attempt, or a replay of an outcome already recorded, reads nothing
+        and returns what the run already holds for that attempt.
         """
         try:
             operation = MaintenanceOperation(request.operation)
+            ending = AttemptEnding(request.ended_by)
         except ValueError as exc:
             raise ValidationError(str(exc)) from exc
         run = self._runs_repo.get(TableMaintenanceRunId(request.run_id))
@@ -65,33 +108,145 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
             current = next((op for op in run.operations if op.operation == operation), None)
             if current is None:
                 raise ConflictError(f"operation {operation} is not part of run {request.run_id}")
-            if request.attempt >= current.attempts and not _already_recorded(current, request):
-                if request.succeeded:
-                    run.succeed(operation, request.attempt, request.metrics, request.now)
-                else:
-                    run.fail(
-                        operation,
-                        request.attempt,
-                        request.error or _UNKNOWN_ERROR,
-                        request.now,
-                    )
-                self._runs_repo.update(run)
-                self._record_on_table(run.table_uuid, operation, request)
-        return RecordTableMaintenanceOperationResultUseCaseOutput(run_id=run.id.value, status=run.status.value)
+            if request.attempt < current.attempts or _already_recorded(current, request):
+                return _output(run, run.attempt_record(operation, request.attempt))
+            record = run.attempt_record(operation, request.attempt)
+            size = record.size if record else None
+            evidence = self._read_evidence(request, ending)
+            event_log_finished = self._read_event_log(evidence)
+            if request.succeeded:
+                run.succeed(
+                    operation, request.attempt, request.metrics, request.now, event_log_finished=event_log_finished
+                )
+                next_attempt = None
+            else:
+                next_attempt = self._fail(run, operation, ending, size, request, evidence, event_log_finished)
+            self._runs_repo.update(run)
+            self._record_on_table(run, operation, size, next_attempt, request)
+        return _output(run, run.attempt_record(operation, request.attempt))
+
+    def _fail(  # noqa: PLR0913
+        self,
+        run: TableMaintenanceRun,
+        operation: MaintenanceOperation,
+        ending: AttemptEnding,
+        size: ComputeSize | None,
+        request: RecordTableMaintenanceOperationResultUseCaseInput,
+        evidence: ReadMaintenanceJobEvidenceGatewayOutput | None,
+        event_log_finished: bool | None,
+    ) -> NextAttempt:
+        error = request.error or _UNKNOWN_ERROR
+        texts = tuple(t for t in (error, evidence.error if evidence else None) if t)
+        containers = tuple(
+            ContainerExit(role=c.role, reason=c.reason, exit_code=c.exit_code, message=c.message)
+            for c in (evidence.containers if evidence else ())
+        )
+        failure_class = classify_attempt_failure(FailureEvidence(ended_by=ending, texts=texts, containers=containers))
+        next_attempt = decide_next_attempt(
+            failure_class, size, request.attempt, request.max_attempts, still_running=request.still_running
+        )
+        run.fail(
+            operation,
+            request.attempt,
+            error,
+            request.now,
+            failure_class=failure_class,
+            event_log_finished=event_log_finished,
+            next_attempt=next_attempt,
+        )
+        return next_attempt
+
+    def _read_evidence(
+        self, request: RecordTableMaintenanceOperationResultUseCaseInput, ending: AttemptEnding
+    ) -> ReadMaintenanceJobEvidenceGatewayOutput | None:
+        """Return what the attempt's job left behind, or None when Spark did not end it or it cannot be read.
+
+        The platform's own endings (a timeout, a cancel, a vanished job, a failed submit or admission)
+        leave nothing of Spark's worth reading.
+        """
+        if ending not in _ENDINGS_WITH_EVIDENCE:
+            return None
+        try:
+            return self._evidence_gateway.read(
+                ReadMaintenanceJobEvidenceGatewayInput(
+                    run_id=request.run_id, operation=request.operation, attempt=request.attempt
+                )
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "cannot read the job evidence of attempt %s of %s in run %s: %s",
+                request.attempt,
+                request.operation,
+                request.run_id,
+                exc,
+            )
+            return None
+
+    def _read_event_log(self, evidence: ReadMaintenanceJobEvidenceGatewayOutput | None) -> bool | None:
+        """Return whether the attempt's event log finished, or None when that is unknown."""
+        if evidence is None or evidence.execution_id is None:
+            return None
+        try:
+            return self._event_log_gateway.read(
+                ReadMaintenanceEventLogGatewayInput(execution_id=evidence.execution_id)
+            ).finished
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("cannot read the event log of %s: %s", evidence.execution_id, exc)
+            return None
 
     def _record_on_table(
         self,
-        table_uuid: TableId,
+        run: TableMaintenanceRun,
+        operation: MaintenanceOperation,
+        size: ComputeSize | None,
+        next_attempt: NextAttempt | None,
+        request: RecordTableMaintenanceOperationResultUseCaseInput,
+    ) -> None:
+        table = self._tables_repo.get(run.table_uuid)
+        if table is None or table.status == TableStatus.DROPPED:
+            return
+        if request.succeeded:
+            table.record_operation_result(operation, True, request.now, size=size or ComputeSize.S)
+        else:
+            table.record_operation_result(operation, False, request.now)
+            if next_attempt is not None and next_attempt.step is NextStep.NEEDS_ATTENTION:
+                self._mark_needs_attention(table, operation, request)
+        self._tables_repo.update(table)
+
+    def _mark_needs_attention(
+        self,
+        table: Table,
         operation: MaintenanceOperation,
         request: RecordTableMaintenanceOperationResultUseCaseInput,
     ) -> None:
-        table = self._tables_repo.get(table_uuid)
-        if table is None or table.status == TableStatus.DROPPED:
-            return
-        table.record_operation_result(operation, request.succeeded, request.now)
-        self._tables_repo.update(table)
+        applied = self._resolve_applicable_policy.execute(
+            ResolveApplicableTableMaintenancePolicyUseCaseInput(
+                catalog=table.name.catalog,
+                table_uuid=table.id.value,
+                namespace=table.name.namespace,
+                table=table.name.table,
+            )
+        )
+        mark = AttentionMark(since=request.now, reason=_NEEDS_ATTENTION_REASON, policy=applied_policy_ref_of(applied))
+        table.mark_needs_attention(operation, mark, request.now)
 
 
 def _already_recorded(current: OperationRun, request: RecordTableMaintenanceOperationResultUseCaseInput) -> bool:
     outcome = "succeeded" if request.succeeded else "failed"
     return current.attempts == request.attempt and current.status.value == outcome
+
+
+def _output(
+    run: TableMaintenanceRun, record: OperationAttempt | None
+) -> RecordTableMaintenanceOperationResultUseCaseOutput:
+    return RecordTableMaintenanceOperationResultUseCaseOutput(
+        run_id=run.id.value,
+        status=run.status.value,
+        failure_class=_value(record.failure_class) if record else None,
+        next_step=_value(record.next_step) if record else None,
+        next_size=_value(record.next_size) if record else None,
+    )
+
+
+def _value(member: StrEnum | None) -> str | None:
+    return None if member is None else member.value

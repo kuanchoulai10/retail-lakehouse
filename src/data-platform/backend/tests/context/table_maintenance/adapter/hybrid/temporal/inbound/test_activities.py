@@ -355,7 +355,48 @@ def test_record_result_passes_fields():
     assert request.metrics == {}
     assert request.error == "spark job failed"
     assert request.now == NOW_DT
-    assert result == {"run_id": "r1", "status": "running"}
+    assert result == {"run_id": "r1", "status": "running", "failure_class": None, "next_step": None, "next_size": None}
+
+
+def test_record_activity_passes_ending_and_attempt_limit():
+    """The record activity passes what ended the attempt, whether its job may still run and the attempt limit."""
+    create, record = FakeCreateRun(), FakeRecordResult()
+    activities = TableMaintenanceActivities(create_run=create, record_result=record)
+    activities.record_table_maintenance_operation_result(
+        {
+            "run_id": "r1",
+            "operation": "rewrite_data_files",
+            "attempt": 2,
+            "succeeded": False,
+            "metrics": {},
+            "error": "spark job timed out",
+            "now": NOW,
+            "ended_by": "timed_out",
+            "still_running": True,
+            "max_attempts": 5,
+        }
+    )
+    request = record.requests[0]
+    assert (request.ended_by, request.still_running, request.max_attempts) == ("timed_out", True, 5)
+
+
+def test_record_activity_defaults_keys_of_old_requests():
+    """A record request from before failure classes reads as a reported result of a finished job, of three attempts."""
+    create, record = FakeCreateRun(), FakeRecordResult()
+    activities = TableMaintenanceActivities(create_run=create, record_result=record)
+    activities.record_table_maintenance_operation_result(
+        {
+            "run_id": "r1",
+            "operation": "rewrite_data_files",
+            "attempt": 1,
+            "succeeded": False,
+            "metrics": {},
+            "error": "boom",
+            "now": NOW,
+        }
+    )
+    request = record.requests[0]
+    assert (request.ended_by, request.still_running, request.max_attempts) == ("result", False, 3)
 
 
 def test_sync_passes_catalog_and_namespace():
