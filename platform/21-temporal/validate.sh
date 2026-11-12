@@ -32,6 +32,19 @@ kubectl exec deployment/temporal-admintools \
   --context "${KUBE_CONTEXT}" \
   -- temporal operator namespace describe -n default
 
+SEARCH_ATTRIBUTES="$(kubectl exec deployment/temporal-admintools \
+  --namespace temporal \
+  --context "${KUBE_CONTEXT}" \
+  -- temporal operator search-attribute list --namespace default)"
+for attribute in TableUuid:Keyword TableName:Keyword MaintenanceOperations:KeywordList MaintenanceTrigger:Keyword; do
+  name="${attribute%%:*}"
+  type="${attribute##*:}"
+  if ! awk -v name="${name}" -v type="${type}" '$1 == name && $2 == type { found = 1 } END { exit !found }' <<<"${SEARCH_ATTRIBUTES}"; then
+    echo "Search attribute ${name} of type ${type} is missing from Temporal namespace default" >&2
+    exit 1
+  fi
+done
+
 gateway::assert_routes_allowed temporal
 gateway::assert_route_accepted temporal temporal-web
 gateway::curl /temporal/ -fsS -o /dev/null
