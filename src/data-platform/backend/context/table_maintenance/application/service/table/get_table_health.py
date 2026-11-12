@@ -22,7 +22,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
     ResolveApplicableTableMaintenancePolicyUseCase,
     ResolveApplicableTableMaintenancePolicyUseCaseInput,
 )
-from context.table_maintenance.application.service.shared import applied_policy_ref_of, translate_domain_errors
+from context.table_maintenance.application.service.shared import translate_domain_errors
 from context.table_maintenance.application.service.table.load_catalog_table import (
     load_catalog_table,
 )
@@ -98,9 +98,7 @@ class GetTableHealthService(GetTableHealthUseCase):
             )
         )
         policy = MaintenancePolicyContent.from_primitives(applied.content)
-        assessment = assess_maintenance(
-            table, policy, observation, self._clock(), applied=applied_policy_ref_of(applied)
-        )
+        assessment = assess_maintenance(table, policy, observation, self._clock())
         items = [_to_item(a) for a in assessment.operations]
         return GetTableHealthUseCaseOutput(
             scheduled=reason is None,

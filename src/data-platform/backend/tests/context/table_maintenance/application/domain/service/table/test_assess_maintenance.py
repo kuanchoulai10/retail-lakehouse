@@ -457,11 +457,11 @@ def _needing_attention(op: Op) -> Table:
     return t
 
 
-def test_needs_attention_blocks_only_its_operation_under_the_same_policy():
-    """An operation marked under the applicable policy is not planned; the others still are."""
+def test_needs_attention_blocks_only_its_operation():
+    """A marked operation is not planned, whatever policy applies (reconcile lifts stale marks); the others are."""
     t = _needing_attention(Op.REWRITE_DATA_FILES)
     o = obs(partitions=(part(10),), snapshots=snaps(12, 11))
-    assessment = assess_maintenance(t, DEFAULT, o, NOW, applied=POLICY_V1)
+    assessment = assess_maintenance(t, DEFAULT, o, NOW)
     rdf = next(a for a in assessment.operations if a.operation == Op.REWRITE_DATA_FILES)
     assert rdf.verdict == OperationVerdict.NEEDS_ATTENTION
     assert rdf.planned is None
@@ -476,31 +476,9 @@ def test_needs_attention_wins_over_cooldown():
     """An operation in cooldown that needs attention says it needs attention."""
     t = _needing_attention(Op.REWRITE_DATA_FILES)
     t.record_operation_result(Op.REWRITE_DATA_FILES, False, NOW - timedelta(minutes=1))
-    a = next(
-        a
-        for a in assess_maintenance(t, DEFAULT, obs(partitions=(part(10),)), NOW, applied=POLICY_V1).operations
-        if a.operation == Op.REWRITE_DATA_FILES
-    )
+    a = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES)
     assert a.verdict == OperationVerdict.NEEDS_ATTENTION
     assert a.next_eligible_at is None
-
-
-def test_a_changed_applicable_policy_lifts_needs_attention():
-    """Under another version of the policy the operation is assessed as usual."""
-    t = _needing_attention(Op.REWRITE_DATA_FILES)
-    applied = AppliedPolicyRef(name="default", version=2, target=None)
-    a = next(
-        a
-        for a in assess_maintenance(t, DEFAULT, obs(partitions=(part(10),)), NOW, applied=applied).operations
-        if a.operation == Op.REWRITE_DATA_FILES
-    )
-    assert a.verdict == OperationVerdict.DUE
-
-
-def test_without_an_applied_policy_the_mark_is_ignored():
-    """An assessment that names no applicable policy ignores needs-attention marks."""
-    t = _needing_attention(Op.REWRITE_DATA_FILES)
-    assert assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES).verdict == OperationVerdict.DUE
 
 
 def test_disabled_wins_over_needs_attention():
@@ -509,7 +487,7 @@ def test_disabled_wins_over_needs_attention():
     policy = compaction(enabled=False)
     a = next(
         a
-        for a in assess_maintenance(t, policy, obs(partitions=(part(10),)), NOW, applied=POLICY_V1).operations
+        for a in assess_maintenance(t, policy, obs(partitions=(part(10),)), NOW).operations
         if a.operation == Op.REWRITE_DATA_FILES
     )
     assert a.verdict == OperationVerdict.DISABLED

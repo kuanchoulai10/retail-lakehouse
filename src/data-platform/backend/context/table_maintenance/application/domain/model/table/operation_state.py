@@ -94,9 +94,9 @@ class OperationState(ValueObject):
         return validated_copy(self, attention=None)
 
     def needs_attention_under(self, policy: AppliedPolicyRef) -> bool:
-        """Return whether the operation needs attention under ``policy``.
+        """Return whether the operation was marked as needing attention under ``policy``.
 
         A mark holds only under the applicable policy it was set under; once another policy (or
-        another version, or the same policy attached elsewhere) applies, the operation is tried again.
+        another version, or the same policy attached elsewhere) applies, the next plan lifts it.
         """
         return self.attention is not None and self.attention.policy == policy

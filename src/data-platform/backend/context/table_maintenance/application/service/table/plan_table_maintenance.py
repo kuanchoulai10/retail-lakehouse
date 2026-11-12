@@ -87,7 +87,9 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         time. The result is a skip with a reason when the table is dropped, unmanaged
         or gone from the catalog; otherwise it is planned, possibly empty.
         Every plan of a known table resolves the policy that applies to it, whose
-        reconcile interval, dry run and operation policies it follows.
+        reconcile interval, dry run and operation policies it follows. A plan of a
+        managed table first lifts the needs-attention marks set under an earlier
+        applicable policy and saves the table when it lifted any.
         """
         manual = self._parse_manual(request.manual_operations)
         table = self._tables_repo.get(TableId(request.table_uuid))
@@ -104,13 +106,13 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             observation = None if gateway_observation is None else table_observation_from_gateway(gateway_observation)
             if observation is None or observation.table_uuid != table.id.value:
                 return _skip("not_found", applied, policy, table)
+            if table.lift_attention_set_under_another_policy(applied_policy_ref_of(applied), request.now):
+                self._tables_repo.update(table)
             if manual is not None:
                 plan = plan_manual_maintenance(manual)
                 checks = _manual_checks(manual)
             else:
-                assessment = assess_maintenance(
-                    table, policy, observation, request.now, applied=applied_policy_ref_of(applied)
-                )
+                assessment = assess_maintenance(table, policy, observation, request.now)
                 plan, checks = assessment.plan(), _scheduled_checks(assessment)
                 if policy.dry_run:
                     plan = MaintenancePlan()

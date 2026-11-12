@@ -248,3 +248,25 @@ def test_a_recorded_attempt_names_a_run_and_a_positive_attempt(run_id, attempt):
     """A recorded attempt needs its run and a positive attempt number."""
     with pytest.raises(ValidationError):
         RecordedAttempt(run_id=run_id, attempt=attempt)
+
+
+def test_marks_set_under_another_policy_are_lifted():
+    """Only the marks set under a policy other than the one that applies now are lifted."""
+    v1 = AppliedPolicyRef(name="default", version=1, target=None)
+    v2 = AppliedPolicyRef(name="default", version=2, target=None)
+    t = managed()
+    t.mark_needs_attention(OP, AttentionMark(since=T0, reason="oom", policy=v1), T0)
+    t.mark_needs_attention(MaintenanceOperation.EXPIRE_SNAPSHOTS, AttentionMark(since=T0, reason="oom", policy=v2), T0)
+    assert t.lift_attention_set_under_another_policy(v2, T1) == [OP]
+    assert t.operation_state(OP).attention is None
+    assert t.operation_state(MaintenanceOperation.EXPIRE_SNAPSHOTS).attention is not None
+    assert t.updated_at == T1
+
+
+def test_lifting_nothing_leaves_the_table_unchanged():
+    """With every mark set under the applicable policy, nothing is lifted and the table is untouched."""
+    v1 = AppliedPolicyRef(name="default", version=1, target=None)
+    t = managed()
+    t.mark_needs_attention(OP, AttentionMark(since=T0, reason="oom", policy=v1), T0)
+    assert t.lift_attention_set_under_another_policy(v1, T1) == []
+    assert t.updated_at == T0

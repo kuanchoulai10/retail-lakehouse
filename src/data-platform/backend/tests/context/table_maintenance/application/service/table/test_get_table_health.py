@@ -26,6 +26,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.table import (
     GetTableHealthUseCaseInput,
+    GetTableUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
     UpdateTableMaintenancePolicyUseCaseInput,
@@ -36,7 +37,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
 from context.table_maintenance.application.port.outbound.table import (
     TableMetadataObservation,
 )
-from context.table_maintenance.application.service.table import GetTableHealthService
+from context.table_maintenance.application.service.table import GetTableHealthService, GetTableService
 from context.table_maintenance.application.service.table_maintenance_policy import (
     UpdateTableMaintenancePolicyService,
 )
@@ -201,3 +202,16 @@ def test_health_shows_needs_attention(service, tables_repo, catalog, resolve_app
     output = _health(service)
     assert output.operations[0].verdict == "needs_attention"
     assert output.operations[1].verdict != "needs_attention"
+
+
+def test_health_and_the_table_agree_on_a_mark_under_another_policy(service, tables_repo, catalog, now):
+    """A mark the next reconcile will lift still shows in health, as it does on the table, until it is lifted."""
+    table = _register(tables_repo, now)
+    _observe(catalog)
+    other = AppliedPolicyRef(name="gold", version=3, target={"type": "namespace", "path": ["iceberg", "sales"]})
+    mark = AttentionMark(since=now, reason="out of memory at size L", policy=other)
+    table.mark_needs_attention(MaintenanceOperation.REWRITE_DATA_FILES, mark, now)
+    tables_repo.update(table)
+    shown = GetTableService(tables_repo).execute(GetTableUseCaseInput(uuid="u-1"))
+    assert shown.operation_states["rewrite_data_files"]["needs_attention"] is not None
+    assert _health(service).operations[0].verdict == "needs_attention"

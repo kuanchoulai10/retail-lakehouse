@@ -42,6 +42,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
     AttachTableMaintenancePolicyUseCaseInput,
+    DetachTableMaintenancePolicyUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_reconciliation import (
     RecordTableReconciliationUseCaseInput,
@@ -58,6 +59,7 @@ from context.table_maintenance.application.service.table_maintenance_policy impo
 )
 from context.table_maintenance.application.service.table_maintenance_policy_attachment import (
     AttachTableMaintenancePolicyService,
+    DetachTableMaintenancePolicyService,
 )
 from context.table_maintenance.application.service.table_reconciliation import (
     RecordTableReconciliationService,
@@ -73,6 +75,7 @@ from tests.context.table_maintenance.fakes.policy_with_operation import policy_w
 from tests.context.table_maintenance.fakes.recording_send_table_change_gateway import (
     RecordingSendTableChangeGateway,
 )
+from tests.context.table_maintenance.fakes.track_calls import track_calls
 
 NAME = TableName(catalog="iceberg", namespace="sales", table="orders")
 KEY = ("iceberg", "sales", "orders")
@@ -563,12 +566,47 @@ def test_plan_reports_needs_attention_in_its_checks(planner, tables_repo, catalo
 
 
 def test_plan_after_a_policy_change_plans_the_marked_operation(planner, tables_repo, catalog, policies, now):
-    """Once another policy version applies, the marked operation is planned again."""
+    """Once another policy version applies, the plan lifts the mark for good and plans the operation again."""
     table = _table(tables_repo, now)
     _observe(catalog, now)
     _mark_under_current_policy(planner, table, tables_repo, now)
     _use_policy(policies, now, DEFAULT)
     assert _checks(_plan(planner, now))["rewrite_data_files"].verdict == "due"
+    assert tables_repo.get(TableId("u-1")).operation_state(OPS.REWRITE_DATA_FILES).attention is None
+
+
+def test_a_plan_under_the_marking_policy_saves_nothing(planner, tables_repo, catalog, log, now):
+    """A plan that finds every mark under the policy that applies leaves the table as it is."""
+    table = _table(tables_repo, now)
+    _observe(catalog, now)
+    _mark_under_current_policy(planner, table, tables_repo, now)
+    track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
+    _plan(planner, now)
+    assert log == []
+
+
+def test_detaching_the_new_policy_does_not_bring_the_block_back(
+    planner, tables_repo, catalog, policies, attachments, now
+):
+    """A mark lifted because another policy applied stays lifted when the earlier policy applies again."""
+    table = _table(tables_repo, now)
+    _observe(catalog, now)
+    _mark_under_current_policy(planner, table, tables_repo, now)
+    CreateTableMaintenancePolicyService(policies, clock=lambda: now).execute(
+        CreateTableMaintenancePolicyUseCaseInput(name="gold", content=DEFAULT.to_primitives())
+    )
+    AttachTableMaintenancePolicyService(
+        policies, attachments, catalog, tables_repo, RecordingSendTableChangeGateway(), clock=lambda: now
+    ).execute(
+        AttachTableMaintenancePolicyUseCaseInput(target_type="namespace", path=("iceberg", "sales"), policy_name="gold")
+    )
+    assert _checks(_plan(planner, now))["rewrite_data_files"].verdict == "due"
+    DetachTableMaintenancePolicyService(
+        policies, attachments, catalog, tables_repo, RecordingSendTableChangeGateway()
+    ).execute(DetachTableMaintenancePolicyUseCaseInput(target_type="namespace", path=("iceberg", "sales")))
+    plan = _plan(planner, now)
+    assert plan.policy_name == DEFAULT_POLICY_NAME
+    assert _checks(plan)["rewrite_data_files"].verdict == "due"
 
 
 def test_plan_starts_each_operation_at_its_remembered_size(planner, tables_repo, catalog, now):

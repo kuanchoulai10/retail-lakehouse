@@ -27,6 +27,9 @@ from context.table_maintenance.application.domain.model.table_discovery_rules im
 )
 
 if TYPE_CHECKING:
+    from context.table_maintenance.application.domain.model.table.applied_policy_ref import (
+        AppliedPolicyRef,
+    )
     from context.table_maintenance.application.domain.model.table.attention_mark import (
         AttentionMark,
     )
@@ -166,6 +169,24 @@ class Table(AggregateRoot[TableId]):
         if state.attention is None:
             return
         self._set_operation_state(op, state.without_attention(), at)
+
+    def lift_attention_set_under_another_policy(
+        self, applied: AppliedPolicyRef, at: datetime
+    ) -> list[MaintenanceOperation]:
+        """Lift every needs-attention mark set under a policy other than ``applied``; return the operations lifted.
+
+        A change of the table's applicable policy (another policy, version or target) clears the
+        marks set before it, for good: the earlier policy applying again does not bring them back.
+        """
+        self._ensure_not_dropped()
+        lifted = [
+            op
+            for op, state in self.operation_states.items()
+            if state.attention is not None and not state.needs_attention_under(applied)
+        ]
+        for op in lifted:
+            self._set_operation_state(op, self.operation_state(op).without_attention(), at)
+        return lifted
 
     def _set_operation_state(self, op: MaintenanceOperation, state: OperationState, at: datetime) -> None:
         self.operation_states = {**self.operation_states, op: state}
