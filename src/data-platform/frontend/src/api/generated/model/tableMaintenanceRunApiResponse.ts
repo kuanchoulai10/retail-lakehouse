@@ -4,7 +4,7 @@
  * Data Platform API
  * OpenAPI spec version: 0.1.0
  */
-import type { TableMaintenanceRunApiResponseOperationsItem } from './tableMaintenanceRunApiResponseOperationsItem';
+import type { TableMaintenanceRunOperationApiResponse } from './tableMaintenanceRunOperationApiResponse';
 
 /**
  * Describe a maintenance run.
@@ -13,7 +13,7 @@ export interface TableMaintenanceRunApiResponse {
   created_at: string;
   execution_ref: string;
   finished_at: string | null;
-  operations: TableMaintenanceRunApiResponseOperationsItem[];
+  operations: TableMaintenanceRunOperationApiResponse[];
   run_id: string;
   status: string;
   table_uuid: string;

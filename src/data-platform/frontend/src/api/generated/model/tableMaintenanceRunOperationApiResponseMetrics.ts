@@ -5,4 +5,4 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type TableMaintenanceRunApiResponseOperationsItem = { [key: string]: unknown };
+export type TableMaintenanceRunOperationApiResponseMetrics = {[key: string]: number};

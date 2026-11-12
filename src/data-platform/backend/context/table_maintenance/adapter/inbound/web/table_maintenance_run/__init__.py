@@ -6,6 +6,8 @@ from context.table_maintenance.adapter.inbound.web.table_maintenance_run.dto imp
     ProcessTableMaintenanceCallbackApiRequest,
     ProcessTableMaintenanceCallbackApiResponse,
     TableMaintenanceRunApiResponse,
+    TableMaintenanceRunAttemptApiResponse,
+    TableMaintenanceRunOperationApiResponse,
 )
 from context.table_maintenance.adapter.inbound.web.table_maintenance_run.router import (
     router,
@@ -15,5 +17,7 @@ __all__ = [
     "ProcessTableMaintenanceCallbackApiRequest",
     "ProcessTableMaintenanceCallbackApiResponse",
     "TableMaintenanceRunApiResponse",
+    "TableMaintenanceRunAttemptApiResponse",
+    "TableMaintenanceRunOperationApiResponse",
     "router",
 ]

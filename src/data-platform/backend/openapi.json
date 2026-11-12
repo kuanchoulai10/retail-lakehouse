@@ -3222,8 +3222,7 @@
           },
           "operations": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/TableMaintenanceRunOperationApiResponse"
             },
             "title": "Operations",
             "type": "array"
@@ -3256,6 +3255,218 @@
           "finished_at"
         ],
         "title": "TableMaintenanceRunApiResponse",
+        "type": "object"
+      },
+      "TableMaintenanceRunAttemptApiResponse": {
+        "description": "Describe one attempt of a maintenance operation: its size, how it ended and what followed it.",
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "event_log_finished": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Log Finished"
+          },
+          "failure_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Class"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "next_size": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Size"
+          },
+          "next_step": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Step"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "attempt",
+          "size",
+          "status",
+          "started_at",
+          "finished_at",
+          "failure_class",
+          "error",
+          "event_log_finished",
+          "next_step",
+          "next_size"
+        ],
+        "title": "TableMaintenanceRunAttemptApiResponse",
+        "type": "object"
+      },
+      "TableMaintenanceRunOperationApiResponse": {
+        "description": "Describe one operation of a maintenance run, its latest attempt and every attempt it made.",
+        "properties": {
+          "attempt_history": {
+            "items": {
+              "$ref": "#/components/schemas/TableMaintenanceRunAttemptApiResponse"
+            },
+            "title": "Attempt History",
+            "type": "array"
+          },
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "expected_files": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Files"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "job_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Name"
+          },
+          "metrics": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Metrics",
+            "type": "object"
+          },
+          "operation": {
+            "title": "Operation",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation",
+          "status",
+          "attempts",
+          "started_at",
+          "finished_at",
+          "job_name",
+          "metrics",
+          "error",
+          "expected_files",
+          "attempt_history"
+        ],
+        "title": "TableMaintenanceRunOperationApiResponse",
         "type": "object"
       },
       "TableReconciliationApiResponse": {

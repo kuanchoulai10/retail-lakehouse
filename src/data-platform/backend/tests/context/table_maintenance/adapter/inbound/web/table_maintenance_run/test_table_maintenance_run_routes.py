@@ -36,7 +36,45 @@ FIELDS: dict[str, Any] = {
     "execution_ref": "wf-run-1",
     "trigger": "scheduled",
     "status": "running",
-    "operations": [{"operation": "rewrite_data_files", "status": "running"}],
+    "operations": [
+        {
+            "operation": "rewrite_data_files",
+            "status": "running",
+            "attempts": 2,
+            "started_at": NOW,
+            "finished_at": None,
+            "job_name": "run-1-rewrite_data_files-2",
+            "metrics": {},
+            "error": None,
+            "expected_files": None,
+            "attempt_history": [
+                {
+                    "attempt": 1,
+                    "size": "S",
+                    "status": "failed",
+                    "started_at": NOW,
+                    "finished_at": NOW,
+                    "failure_class": "oom",
+                    "error": "java.lang.OutOfMemoryError: Java heap space",
+                    "event_log_finished": False,
+                    "next_step": "retry_larger",
+                    "next_size": "M",
+                },
+                {
+                    "attempt": 2,
+                    "size": "M",
+                    "status": "running",
+                    "started_at": NOW,
+                    "finished_at": None,
+                    "failure_class": None,
+                    "error": None,
+                    "event_log_finished": None,
+                    "next_step": None,
+                    "next_size": None,
+                },
+            ],
+        }
+    ],
     "created_at": NOW,
     "finished_at": None,
 }
@@ -78,6 +116,37 @@ def test_get_run() -> None:
     assert response.json()["operations"][0]["operation"] == "rewrite_data_files"
     assert response.json()["execution_ref"] == "wf-run-1"
     assert stub.requests == [GetTableMaintenanceRunUseCaseInput(run_id="run-1")]
+
+
+def test_run_response_lists_each_attempt() -> None:
+    """A run's operation lists every attempt with its size, failure class and what followed it."""
+    client = build_client(get_table_maintenance_run=StubUseCase(GetTableMaintenanceRunUseCaseOutput(**FIELDS)))
+
+    operation = client.get("/v1/table-maintenance-runs/run-1").json()["operations"][0]
+
+    assert operation["attempt_history"][1]["size"] == "M"
+    assert operation["attempt_history"][0] == {
+        "attempt": 1,
+        "size": "S",
+        "status": "failed",
+        "started_at": NOW.isoformat().replace("+00:00", "Z"),
+        "finished_at": NOW.isoformat().replace("+00:00", "Z"),
+        "failure_class": "oom",
+        "error": "java.lang.OutOfMemoryError: Java heap space",
+        "event_log_finished": False,
+        "next_step": "retry_larger",
+        "next_size": "M",
+    }
+
+
+def test_run_schema_types_its_operations_and_attempts() -> None:
+    """The OpenAPI schema names the operation and attempt shapes instead of a free-form object."""
+    schemas = build_client().get("/openapi.json").json()["components"]["schemas"]
+
+    operations = schemas["TableMaintenanceRunApiResponse"]["properties"]["operations"]
+    assert operations["items"] == {"$ref": "#/components/schemas/TableMaintenanceRunOperationApiResponse"}
+    history = schemas["TableMaintenanceRunOperationApiResponse"]["properties"]["attempt_history"]
+    assert history["items"] == {"$ref": "#/components/schemas/TableMaintenanceRunAttemptApiResponse"}
 
 
 def test_callback_returns_202_and_maps_the_body() -> None:

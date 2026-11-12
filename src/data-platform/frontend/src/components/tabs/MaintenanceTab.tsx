@@ -1,21 +1,24 @@
 import { Banner, createDataTableColumnHelper, DataTable, Panel, TextLink } from "@retail-lakehouse/design-system";
 import { useSearchParams } from "react-router";
-import type { TableMaintenanceRunApiResponse } from "@/api/generated/model";
+import type {
+  TableMaintenanceRunApiResponse,
+  TableMaintenanceRunOperationApiResponse,
+} from "@/api/generated/model";
 import { useListTableMaintenanceRuns } from "@/api/generated/table-maintenance-runs/table-maintenance-runs";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { RunStatusBadge } from "@/components/RunStatusBadge";
 import { errorMessage, formatDuration, formatTimestamp } from "@/format";
 import { temporalWorkflowsUrl } from "@/lib/temporalWorkflowsUrl";
 
-function OperationDetail({ operation }: { operation: Record<string, unknown> }) {
-  const attempts = Number(operation.attempts ?? 0);
-  const metrics = Object.entries((operation.metrics as Record<string, number> | undefined) ?? {});
-  const error = operation.error as string | null | undefined;
+function OperationDetail({ operation }: { operation: TableMaintenanceRunOperationApiResponse }) {
+  const attempts = operation.attempts;
+  const metrics = Object.entries(operation.metrics);
+  const error = operation.error;
   return (
     <li className="flex flex-col gap-1">
       <div className="flex flex-wrap items-center gap-2">
-        <strong className="type-code font-medium">{String(operation.operation)}</strong>
-        <RunStatusBadge status={String(operation.status)} />
+        <strong className="type-code font-medium">{operation.operation}</strong>
+        <RunStatusBadge status={operation.status} />
         <span className="type-body-small text-on-surface-variant">{`${attempts} ${attempts === 1 ? "attempt" : "attempts"}`}</span>
       </div>
       {metrics.length > 0 && (
@@ -38,7 +41,7 @@ function RunDetail({ run }: { run: TableMaintenanceRunApiResponse }) {
       </p>
       <ul className="flex flex-col gap-3">
         {run.operations.map((op) => (
-          <OperationDetail key={String(op.operation)} operation={op} />
+          <OperationDetail key={op.operation} operation={op} />
         ))}
       </ul>
     </>
