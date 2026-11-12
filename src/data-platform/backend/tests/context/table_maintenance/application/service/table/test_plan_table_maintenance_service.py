@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from dataclasses import asdict
 from datetime import timedelta
 from typing import Any
@@ -19,6 +20,7 @@ from context.table_maintenance.application.domain.model.table import (
     Table,
     TableId,
     TableName,
+    TableStatus,
 )
 from context.table_maintenance.application.domain.model.table_discovery_rules import (
     TableDiscoveryRuleId,
@@ -583,6 +585,53 @@ def test_a_plan_under_the_marking_policy_saves_nothing(planner, tables_repo, cat
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
     _plan(planner, now)
     assert log == []
+
+
+def test_lifting_a_mark_keeps_a_change_made_while_the_catalog_was_read(planner, tables_repo, catalog, policies, now):
+    """A rename and unmanage that land while the plan reads the catalog survive the save that lifts a mark."""
+    table = _table(tables_repo, now)
+    _observe(catalog, now)
+    _mark_under_current_policy(planner, table, tables_repo, now)
+    _use_policy(policies, now, DEFAULT)
+    stored_get = tables_repo.get
+    tables_repo.get = lambda table_id: copy.deepcopy(stored_get(table_id))
+    renamed = TableName(catalog="iceberg", namespace="sales", table="orders_v2")
+    observe = catalog.observe_table
+
+    def observe_while_the_table_changes(ref):
+        concurrent = tables_repo.get(TableId("u-1"))
+        concurrent.rename(renamed, now)
+        concurrent.unmanage(now)
+        tables_repo.update(concurrent)
+        return observe(ref)
+
+    catalog.observe_table = observe_while_the_table_changes
+    _plan(planner, now)
+    stored = stored_get(TableId("u-1"))
+    assert stored.name == renamed
+    assert not stored.is_managed
+    assert stored.operation_state(OPS.REWRITE_DATA_FILES).attention is None
+
+
+def test_a_table_dropped_while_the_catalog_was_read_stays_dropped(planner, tables_repo, catalog, policies, now):
+    """A drop that lands while the plan reads the catalog is not undone by lifting a mark."""
+    table = _table(tables_repo, now)
+    _observe(catalog, now)
+    _mark_under_current_policy(planner, table, tables_repo, now)
+    _use_policy(policies, now, DEFAULT)
+    stored_get = tables_repo.get
+    tables_repo.get = lambda table_id: copy.deepcopy(stored_get(table_id))
+    observe = catalog.observe_table
+
+    def observe_while_the_table_is_dropped(ref):
+        concurrent = tables_repo.get(TableId("u-1"))
+        concurrent.mark_dropped(now)
+        tables_repo.update(concurrent)
+        return observe(ref)
+
+    catalog.observe_table = observe_while_the_table_is_dropped
+    _plan(planner, now)
+    assert stored_get(TableId("u-1")).status == TableStatus.DROPPED
 
 
 def test_detaching_the_new_policy_does_not_bring_the_block_back(

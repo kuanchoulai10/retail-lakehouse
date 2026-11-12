@@ -48,6 +48,8 @@ from context.table_maintenance.application.service.table_maintenance_run import 
 )
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from context.table_maintenance.application.domain.model.shared import (
         PlannedOperation,
         TableObservation,
@@ -106,8 +108,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             observation = None if gateway_observation is None else table_observation_from_gateway(gateway_observation)
             if observation is None or observation.table_uuid != table.id.value:
                 return _skip("not_found", applied, policy, table)
-            if table.lift_attention_set_under_another_policy(applied_policy_ref_of(applied), request.now):
-                self._tables_repo.update(table)
+            self._lift_stale_marks(table, applied, request.now)
             if manual is not None:
                 plan = plan_manual_maintenance(manual)
                 checks = _manual_checks(manual)
@@ -117,6 +118,23 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
                 if policy.dry_run:
                     plan = MaintenancePlan()
             return self._render(table, applied, policy, plan, checks, observation, request)
+
+    def _lift_stale_marks(
+        self, table: Table, applied: ResolveApplicableTableMaintenancePolicyUseCaseOutput, now: datetime
+    ) -> None:
+        """Lift the marks set under another policy than ``applied``, on ``table`` and on the stored table.
+
+        The stored table is read again right before it is saved, since the catalog read in between
+        is slow and a rename, unmanage or drop may land meanwhile; a table dropped by then is left.
+        """
+        ref = applied_policy_ref_of(applied)
+        if not table.lift_attention_set_under_another_policy(ref, now):
+            return
+        stored = self._tables_repo.get(table.id)
+        if stored is None or stored.status == TableStatus.DROPPED:
+            return
+        if stored.lift_attention_set_under_another_policy(ref, now):
+            self._tables_repo.update(stored)
 
     def _resolve(self, table: Table) -> ResolveApplicableTableMaintenancePolicyUseCaseOutput:
         return self._resolve_applicable_policy.execute(
