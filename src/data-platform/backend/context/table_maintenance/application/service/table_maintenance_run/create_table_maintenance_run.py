@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
 )
-from context.table_maintenance.application.domain.model.table import TableId
+from context.table_maintenance.application.domain.model.table import TableId, TableStatus
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRun,
     TableMaintenanceRunId,
@@ -28,6 +28,9 @@ from context.table_maintenance.application.service.table_maintenance_run.table_m
 )
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
+    from context.table_maintenance.application.domain.model.table import Table
     from context.table_maintenance.application.port.outbound.table import TablesRepo
     from context.table_maintenance.application.port.outbound.table_maintenance_run import (
         TableMaintenanceRunsRepo,
@@ -56,7 +59,8 @@ class CreateTableMaintenanceRunService(CreateTableMaintenanceRunUseCase):
             run = self._runs_repo.get(TableMaintenanceRunId(request.run_id))
             if run is None:
                 table_uuid = TableId(request.table_uuid)
-                if self._tables_repo.get(table_uuid) is None:
+                table = self._tables_repo.get(table_uuid)
+                if table is None:
                     raise NotFoundError(f"table {request.table_uuid} not found")
                 run = self._runs_repo.create(
                     TableMaintenanceRun.create(
@@ -68,4 +72,18 @@ class CreateTableMaintenanceRunService(CreateTableMaintenanceRunUseCase):
                         execution_ref=request.execution_ref,
                     )
                 )
+                if trigger is TriggerType.MANUAL:
+                    self._clear_needs_attention(table, operations, request.now)
         return CreateTableMaintenanceRunUseCaseOutput(**table_maintenance_run_output_fields(run))
+
+    def _clear_needs_attention(self, table: Table, operations: list[MaintenanceOperation], now: datetime) -> None:
+        """Lift the needs-attention mark of the run's operations: a person asked for this run.
+
+        A dropped table keeps its state, as every other change to it is refused.
+        """
+        marked = [op for op in operations if table.operation_state(op).attention is not None]
+        if not marked or table.status is TableStatus.DROPPED:
+            return
+        for op in marked:
+            table.clear_needs_attention(op, now)
+        self._tables_repo.update(table)

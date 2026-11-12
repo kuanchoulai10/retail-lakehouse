@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from context.table_maintenance.application.domain.model.shared import MaintenanceOperation
+from context.table_maintenance.application.domain.model.shared import ComputeSize, MaintenanceOperation
 from context.table_maintenance.application.domain.model.table import (
+    AppliedPolicyRef,
+    AttentionMark,
     Table,
     TableId,
     TableName,
@@ -88,6 +90,8 @@ def test_get_table_includes_status_rule_and_operation_states(tables_repo, now):
     assert out.operation_states["expire_snapshots"] == {
         "last_attempt_at": now,
         "consecutive_failures": 1,
+        "last_successful_size": None,
+        "needs_attention": None,
     }
 
 
@@ -189,3 +193,22 @@ def test_reconcile_now_unknown_table(tables_repo, signals):
             TriggerTableReconciliationUseCaseInput(uuid="nope")
         )
     assert signals.calls == []
+
+
+def test_get_table_shows_the_remembered_size_and_needs_attention(tables_repo, now):
+    """A table's operation state shows its remembered size and its needs-attention mark."""
+    table = _managed(tables_repo, now)
+    table.record_operation_result(MaintenanceOperation.REWRITE_DATA_FILES, True, now, size=ComputeSize.M)
+    mark = AttentionMark(
+        since=now, reason="out of memory at size L", policy=AppliedPolicyRef(name="nightly", version=2, target=None)
+    )
+    table.mark_needs_attention(MaintenanceOperation.REWRITE_DATA_FILES, mark, now)
+    out = GetTableService(tables_repo).execute(GetTableUseCaseInput(uuid="u-1"))
+    state = out.operation_states["rewrite_data_files"]
+    assert state["last_successful_size"] == "M"
+    assert state["needs_attention"] == {
+        "since": now,
+        "reason": "out of memory at size L",
+        "policy_name": "nightly",
+        "policy_version": 2,
+    }

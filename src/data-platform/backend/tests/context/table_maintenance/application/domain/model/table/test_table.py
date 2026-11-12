@@ -7,8 +7,10 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pydantic import ValidationError
 
-from context.table_maintenance.application.domain.model.shared import MaintenanceOperation
+from context.table_maintenance.application.domain.model.shared import ComputeSize, MaintenanceOperation
 from context.table_maintenance.application.domain.model.table import (
+    AppliedPolicyRef,
+    AttentionMark,
     InvalidTableTransition,
     OperationState,
     Table,
@@ -179,3 +181,39 @@ def test_table_equality_follows_identity():
     a, b = managed(), managed()
     b.unmanage(T1)
     assert a == b and hash(a) == hash(b)
+
+
+def test_record_operation_result_remembers_the_size_of_a_success():
+    """A success records its size; a later failure keeps it."""
+    t = managed()
+    t.record_operation_result(OP, True, T1, size=ComputeSize.M)
+    t.record_operation_result(OP, False, T1)
+    assert t.operation_state(OP).start_size() is ComputeSize.M
+
+
+def test_mark_and_clear_needs_attention():
+    """An operation can be marked as needing attention and cleared again; clearing twice is a no-op."""
+    t = managed()
+    mark = AttentionMark(
+        since=T1,
+        reason="out of memory at size L",
+        policy=AppliedPolicyRef(name="default", version=1, target=None),
+    )
+    t.mark_needs_attention(OP, mark, T1)
+    assert t.operation_state(OP).attention == mark
+    assert t.updated_at == T1
+    t.clear_needs_attention(OP, T1 + timedelta(hours=1))
+    assert t.operation_state(OP).attention is None
+    t.clear_needs_attention(OP, T1 + timedelta(hours=2))
+    assert t.updated_at == T1 + timedelta(hours=1)
+
+
+def test_a_dropped_table_refuses_attention_changes():
+    """A dropped table records no operation state change."""
+    t = managed()
+    t.mark_dropped(T1)
+    mark = AttentionMark(since=T1, reason="r", policy=AppliedPolicyRef(name="default", version=1, target=None))
+    with pytest.raises(InvalidTableTransition):
+        t.mark_needs_attention(OP, mark, T1)
+    with pytest.raises(InvalidTableTransition):
+        t.clear_needs_attention(OP, T1)

@@ -8,11 +8,14 @@ from typing import TYPE_CHECKING
 import pytest
 from sqlalchemy import inspect
 
-from context.table_maintenance.adapter.outbound.table.sql import TablesSqlRepo
+from context.table_maintenance.adapter.outbound.table.sql import TablesSqlRepo, tables_table
 from context.table_maintenance.application.domain.model.shared import (
+    ComputeSize,
     MaintenanceOperation,
 )
 from context.table_maintenance.application.domain.model.table import (
+    AppliedPolicyRef,
+    AttentionMark,
     OperationState,
     Table,
     TableId,
@@ -211,3 +214,43 @@ def test_tables_sql_table_name_is_tables():
     from context.table_maintenance.adapter.outbound.table.sql import tables_table
 
     assert tables_table.name == "tables"
+
+
+def test_operation_state_round_trips_size_and_attention(repo: TablesSqlRepo):
+    """The remembered size and a needs-attention mark load back unchanged."""
+    table = _table()
+    mark = AttentionMark(
+        since=NOW,
+        reason="out of memory at size L",
+        policy=AppliedPolicyRef(
+            name="nightly", version=3, target={"type": "table", "path": ["iceberg", "inventory"], "table_uuid": "u1"}
+        ),
+    )
+    table.operation_states = {
+        MaintenanceOperation.REWRITE_DATA_FILES: OperationState(
+            last_attempt_at=NOW, last_successful_size=ComputeSize.L, attention=mark
+        ),
+        MaintenanceOperation.EXPIRE_SNAPSHOTS: OperationState(last_successful_size=ComputeSize.M),
+    }
+    repo.create(table)
+    loaded = repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.operation_states == table.operation_states
+
+
+def test_operation_state_without_new_keys_decodes_with_defaults(repo: TablesSqlRepo, engine: Engine):
+    """A row written before sizes and attention existed decodes with no size and no mark."""
+    repo.create(_table())
+    with engine.begin() as conn:
+        conn.execute(
+            tables_table.update().values(
+                operation_states_json={
+                    "rewrite_data_files": {"last_attempt_at": NOW.isoformat(), "consecutive_failures": 1}
+                }
+            )
+        )
+    loaded = repo.get(TableId("u1"))
+    assert loaded is not None
+    state = loaded.operation_state(MaintenanceOperation.REWRITE_DATA_FILES)
+    assert state == OperationState(last_attempt_at=NOW, consecutive_failures=1)
+    assert state.start_size() is ComputeSize.S

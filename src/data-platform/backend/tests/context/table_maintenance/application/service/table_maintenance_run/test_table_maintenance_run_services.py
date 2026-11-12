@@ -11,6 +11,8 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
 )
 from context.table_maintenance.application.domain.model.table import (
+    AppliedPolicyRef,
+    AttentionMark,
     Table,
     TableId,
     TableName,
@@ -423,3 +425,40 @@ def test_run_output_lists_every_attempt(runs_repo, started_run, now):
             "next_size": None,
         },
     ]
+
+
+def _attention_mark(now) -> AttentionMark:
+    return AttentionMark(
+        since=now, reason="out of memory at size L", policy=AppliedPolicyRef(name="default", version=1, target=None)
+    )
+
+
+def test_manual_run_clears_needs_attention_of_its_operations(creator, tables_repo, table, now):
+    """A new manual run lifts the needs-attention mark of its own operations only."""
+    table.mark_needs_attention(RDF, _attention_mark(now), now)
+    table.mark_needs_attention(OPS.REMOVE_ORPHAN_FILES, _attention_mark(now), now)
+    tables_repo.update(table)
+    creator.execute(_create_input(now, trigger="manual"))
+    stored = tables_repo.get(TableId("u-1"))
+    assert stored.operation_state(RDF).attention is None
+    assert stored.operation_state(OPS.REMOVE_ORPHAN_FILES).attention is not None
+
+
+def test_scheduled_run_keeps_needs_attention(creator, tables_repo, table, now):
+    """A scheduled run lifts no needs-attention mark."""
+    table.mark_needs_attention(RDF, _attention_mark(now), now)
+    tables_repo.update(table)
+    creator.execute(_create_input(now))
+    assert tables_repo.get(TableId("u-1")).operation_state(RDF).attention is not None
+
+
+def test_recreating_a_manual_run_saves_no_table(creator, tables_repo, table, now):
+    """Creating an existing manual run again changes no table."""
+    creator.execute(_create_input(now, trigger="manual"))
+    table.mark_needs_attention(RDF, _attention_mark(now), now)
+    tables_repo.update(table)
+    calls: list[tuple[str, str]] = []
+    track_calls(tables_repo, "update", "table", calls, lambda t: t.id.value)
+    creator.execute(_create_input(now, trigger="manual"))
+    assert calls == []
+    assert tables_repo.get(TableId("u-1")).operation_state(RDF).attention is not None

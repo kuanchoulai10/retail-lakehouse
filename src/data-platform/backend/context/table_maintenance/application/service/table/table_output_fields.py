@@ -5,7 +5,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from context.table_maintenance.application.domain.model.table import Table
+    from context.table_maintenance.application.domain.model.table import OperationState, Table
+
+
+def _attention_fields(state: OperationState) -> dict[str, Any] | None:
+    mark = state.attention
+    if mark is None:
+        return None
+    return {
+        "since": mark.since,
+        "reason": mark.reason,
+        "policy_name": mark.policy.name,
+        "policy_version": mark.policy.version,
+    }
 
 
 def table_output_fields(table: Table) -> dict[str, Any]:
@@ -21,6 +33,8 @@ def table_output_fields(table: Table) -> dict[str, Any]:
             op.value: {
                 "last_attempt_at": state.last_attempt_at,
                 "consecutive_failures": state.consecutive_failures,
+                "last_successful_size": state.last_successful_size and state.last_successful_size.value,
+                "needs_attention": _attention_fields(state),
             }
             for op, state in table.operation_states.items()
         },

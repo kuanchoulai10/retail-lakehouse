@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from pydantic import Field
 
 from base import AggregateRoot
-from context.table_maintenance.application.domain.model.shared import MaintenanceOperation
+from context.table_maintenance.application.domain.model.shared import ComputeSize, MaintenanceOperation
 from context.table_maintenance.application.domain.model.table.invalid_table_transition import (
     InvalidTableTransition,
 )
@@ -24,6 +25,11 @@ from context.table_maintenance.application.domain.model.table.table_status impor
 from context.table_maintenance.application.domain.model.table_discovery_rules import (
     TableDiscoveryRuleId,
 )
+
+if TYPE_CHECKING:
+    from context.table_maintenance.application.domain.model.table.attention_mark import (
+        AttentionMark,
+    )
 
 
 class Table(AggregateRoot[TableId]):
@@ -117,10 +123,32 @@ class Table(AggregateRoot[TableId]):
         self.name = name
         self.updated_at = now
 
-    def record_operation_result(self, op: MaintenanceOperation, succeeded: bool, at: datetime) -> None:
-        """Record an operation outcome; allowed in any non-dropped status."""
+    def record_operation_result(
+        self,
+        op: MaintenanceOperation,
+        succeeded: bool,
+        at: datetime,
+        *,
+        size: ComputeSize | None = None,
+    ) -> None:
+        """Record an operation outcome, and the size a success ran at; allowed in any non-dropped status."""
         self._ensure_not_dropped()
         state = self.operation_state(op)
-        new_state = state.after_success(at) if succeeded else state.after_failure(at)
-        self.operation_states = {**self.operation_states, op: new_state}
+        self._set_operation_state(op, state.after_success(at, size) if succeeded else state.after_failure(at), at)
+
+    def mark_needs_attention(self, op: MaintenanceOperation, mark: AttentionMark, at: datetime) -> None:
+        """Mark an operation as needing a person; reconcile stops planning it under the mark's policy."""
+        self._ensure_not_dropped()
+        self._set_operation_state(op, self.operation_state(op).with_attention(mark), at)
+
+    def clear_needs_attention(self, op: MaintenanceOperation, at: datetime) -> None:
+        """Lift an operation's needs-attention mark; a no-op when it has none."""
+        self._ensure_not_dropped()
+        state = self.operation_state(op)
+        if state.attention is None:
+            return
+        self._set_operation_state(op, state.without_attention(), at)
+
+    def _set_operation_state(self, op: MaintenanceOperation, state: OperationState, at: datetime) -> None:
+        self.operation_states = {**self.operation_states, op: state}
         self.updated_at = at

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from context.table_maintenance.application.domain.model.shared import (
+    ComputeSize,
     MaintenanceOperation,
 )
 from context.table_maintenance.application.domain.model.table import (
+    AppliedPolicyRef,
+    AttentionMark,
     OperationState,
     Table,
     TableId,
@@ -59,6 +62,9 @@ from context.table_maintenance.application.port.outbound.table.tables_repo impor
 )
 
 __all__ = [
+    "AppliedPolicyRef",
+    "AttentionMark",
+    "ComputeSize",
     "CatalogNotFoundError",
     "MaintenanceOperation",
     "OperationState",
