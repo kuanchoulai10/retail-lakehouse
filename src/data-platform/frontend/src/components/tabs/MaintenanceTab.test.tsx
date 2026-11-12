@@ -106,6 +106,8 @@ describe("MaintenanceTab", () => {
     renderTab();
     await screen.findByText("manual");
     await user.tab();
+    expect(screen.getByRole("link", { name: "Running workflows in Temporal" })).toHaveFocus();
+    await user.tab();
     await user.tab();
     const toggle = screen.getByRole("button", { name: "Expand run run-1" });
     expect(toggle).toHaveFocus();

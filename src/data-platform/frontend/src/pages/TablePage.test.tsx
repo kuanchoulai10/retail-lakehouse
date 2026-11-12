@@ -15,6 +15,7 @@ import {
 } from "../test/catalogApiStub";
 import { jsonResponse, policyContentFixture, policyFixture, tableFixture } from "../test/fixtures";
 import { settle, SuspendForever } from "../test/SuspendForever";
+import { temporalWorkflowsUrl } from "../lib/temporalWorkflowsUrl";
 import { TablePage } from "./TablePage";
 
 const TABLE = "/v1/catalogs/iceberg/namespaces/retail/tables/orders";
@@ -196,6 +197,13 @@ describe("TablePage", { timeout: 15_000 }, () => {
     expect(within(summary).getByText("s3://warehouse/retail/orders")).toBeInTheDocument();
     expect(within(summary).getByText("9007199254740993")).toBeInTheDocument();
     expect(await screen.findByText("No maintenance runs yet.")).toBeInTheDocument();
+  });
+
+  it("maintenance tab links to the table's running workflows in Temporal", async () => {
+    stubTable();
+    renderAt(`${PAGE}/maintenance`);
+    const link = await screen.findByRole("link", { name: "Running workflows in Temporal" });
+    expect(link).toHaveAttribute("href", temporalWorkflowsUrl("uuid-orders"));
   });
 
   it("shows the not managed marker and the empty state on overview", async () => {

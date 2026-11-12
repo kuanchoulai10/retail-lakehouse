@@ -1,10 +1,11 @@
-import { Banner, createDataTableColumnHelper, DataTable, Panel } from "@retail-lakehouse/design-system";
+import { Banner, createDataTableColumnHelper, DataTable, Panel, TextLink } from "@retail-lakehouse/design-system";
 import { useSearchParams } from "react-router";
 import type { TableMaintenanceRunApiResponse } from "@/api/generated/model";
 import { useListTableMaintenanceRuns } from "@/api/generated/table-maintenance-runs/table-maintenance-runs";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { RunStatusBadge } from "@/components/RunStatusBadge";
 import { errorMessage, formatDuration, formatTimestamp } from "@/format";
+import { temporalWorkflowsUrl } from "@/lib/temporalWorkflowsUrl";
 
 function OperationDetail({ operation }: { operation: Record<string, unknown> }) {
   const attempts = Number(operation.attempts ?? 0);
@@ -70,6 +71,8 @@ const columns = column.columns([
 // it once on mount, so it mounts only after the runs load and is keyed on the id: a new id
 // (back/forward) remounts it with the new run open.
 // The check runs against the latest runs the API returns; an older run counts as gone.
+// The Temporal link is a plain anchor, not a router Link: the Temporal UI is another app on the
+// gateway, outside the console's base path.
 export function MaintenanceTab({ tableUuid }: { tableUuid: string }) {
   const runs = useListTableMaintenanceRuns(tableUuid);
   const [searchParams] = useSearchParams();
@@ -81,7 +84,14 @@ export function MaintenanceTab({ tableUuid }: { tableUuid: string }) {
   }
   const missing = linkedRunId !== null && !runs.data.some((run) => run.run_id === linkedRunId);
   return (
-    <Panel title="Maintenance runs">
+    <Panel
+      title="Maintenance runs"
+      actions={
+        <TextLink href={temporalWorkflowsUrl(tableUuid)} className="type-body-small">
+          Running workflows in Temporal
+        </TextLink>
+      }
+    >
       {missing && <Banner type="information" title="This run is no longer available" className="mb-4" />}
       <DataTable
         key={linkedRunId ?? ""}

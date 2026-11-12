@@ -4,6 +4,7 @@ import { getListCoveredCatalogsMockHandler } from "@/api/generated/discovery-rul
 import { getGetTableApplicableMaintenancePolicyMockHandler } from "@/api/generated/maintenance-policies/maintenance-policies.msw";
 import { getGetTableMockHandler } from "@/api/generated/tables/tables.msw";
 import { getListTableReconciliationsMockHandler } from "@/api/generated/table-reconciliations/table-reconciliations.msw";
+import { temporalWorkflowsUrl } from "@/lib/temporalWorkflowsUrl";
 import { apiError } from "@/stories/apiError";
 import { ConsolePage } from "@/stories/ConsolePage";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
@@ -59,7 +60,13 @@ export const CommitsPhone: Story = {
   },
 };
 
-export const Maintenance: Story = { args: { route: `${ORDERS}/maintenance` } };
+export const Maintenance: Story = {
+  args: { route: `${ORDERS}/maintenance` },
+  play: async ({ canvasElement }) => {
+    const link = await within(canvasElement).findByRole("link", { name: "Running workflows in Temporal" });
+    await expect(link).toHaveAttribute("href", temporalWorkflowsUrl(MAINTAINED_ORDERS.uuid));
+  },
+};
 
 export const Reconciliations: Story = {
   args: { route: `${ORDERS}/reconciliations` },
