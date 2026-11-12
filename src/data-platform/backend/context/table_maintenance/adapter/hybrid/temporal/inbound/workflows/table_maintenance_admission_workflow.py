@@ -14,6 +14,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
     AdmissionAcquireSignal,
     AdmissionReleaseSignal,
+    AdmissionRenewSignal,
     TableMaintenanceAdmissionSignal,
     TableMaintenanceAdmissionWorkflowInput,
 )
@@ -26,7 +27,9 @@ class TableMaintenanceAdmissionWorkflow:
     A requester signals ``acquire``; when a slot is free the workflow records it as
     a holder and signals ``admission_granted(request_id)`` back to the requester. A
     holder frees its slot with ``release``, or loses it once its lease runs out, so
-    a crashed requester cannot hold a slot forever. A requester that no longer
+    a crashed requester cannot hold a slot forever. A holder that must keep its slot
+    past the lease, such as an attempt waiting for its timed-out Spark pods to go,
+    sends ``renew``, which restarts the lease from now. A requester that no longer
     exists when granted is dropped and the next one is granted.
     """
 
@@ -84,6 +87,15 @@ class TableMaintenanceAdmissionWorkflow:
         """Free a held slot or withdraw a queued request; unknown ids are ignored."""
         self._holders.pop(signal.request_id, None)
         self._queue = [e for e in self._queue if e["request_id"] != signal.request_id]
+        self._changed = True
+
+    @workflow.signal(name=TableMaintenanceAdmissionSignal.RENEW)
+    def renew(self, signal: AdmissionRenewSignal) -> None:
+        """Restart the lease of a held slot from now; an id that holds no slot is ignored."""
+        holder = self._holders.get(signal.request_id)
+        if holder is None:
+            return
+        holder["granted_at"] = workflow.now().isoformat()
         self._changed = True
 
     @workflow.query

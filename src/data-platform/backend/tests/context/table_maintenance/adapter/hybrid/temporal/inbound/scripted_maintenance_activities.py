@@ -16,7 +16,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
 if TYPE_CHECKING:
     import asyncio
     from collections.abc import Awaitable, Callable
-    from datetime import datetime
+    from datetime import datetime, timedelta
 
     from temporalio.client import Client
 
@@ -33,6 +33,11 @@ class ScriptedMaintenanceActivities:
     ``create_gate``, ``submit_gate`` and ``status_gate``, when set, hold that
     activity until the test opens them; ``status_hook`` runs inside each status
     call with the app name and the call's scheduled time.
+
+    The pods activity reports the attempt's live pods: none by default; a job in
+    ``pods_live_polls[app_name]`` reports one live pod for that many polls, and a job
+    in ``pods_live_for[app_name]`` reports one while less than that long has passed
+    since its first delete. ``pods_hook``, when set, runs inside each pods call.
     """
 
     def __init__(self, client: Client) -> None:
@@ -52,6 +57,12 @@ class ScriptedMaintenanceActivities:
         self.records: list[dict] = []
         self.deletes: list[str] = []
         self.status_calls: list[str] = []
+        self.pods_live_polls: dict[str, int] = {}
+        self.pods_live_for: dict[str, timedelta] = {}
+        self.pods_hook: Callable[[str], Awaitable[None]] | None = None
+        self.pods_calls: list[str] = []
+        self.pods_times: list[datetime] = []
+        self.delete_times: dict[str, datetime] = {}
 
     @staticmethod
     def app_name(run_id: str, operation: str, attempt: int) -> str:
@@ -125,11 +136,27 @@ class ScriptedMaintenanceActivities:
         """Record the job deletion and echo its attempt."""
         app_name = self.app_name(request["run_id"], request["operation"], request["attempt"])
         self.deletes.append(app_name)
+        self.delete_times.setdefault(app_name, activity.info().scheduled_time)
         return {
             "run_id": request["run_id"],
             "operation": request["operation"],
             "attempt": request["attempt"],
         }
+
+    @activity.defn(name=TableMaintenanceActivity.GET_MAINTENANCE_JOB_PODS)
+    async def get_maintenance_job_pods(self, request: dict) -> dict:
+        """Report the scripted live pods of the attempt and record the poll."""
+        app_name = self.app_name(request["run_id"], request["operation"], request["attempt"])
+        scheduled = activity.info().scheduled_time
+        self.pods_calls.append(app_name)
+        self.pods_times.append(scheduled)
+        if self.pods_hook is not None:
+            await self.pods_hook(app_name)
+        live = self.pods_calls.count(app_name) <= self.pods_live_polls.get(app_name, 0)
+        deleted_at = self.delete_times.get(app_name)
+        if app_name in self.pods_live_for and deleted_at is not None:
+            live = live or scheduled - deleted_at < self.pods_live_for[app_name]
+        return {"live_pods": [f"{app_name}-driver"] if live else []}
 
     def all(self) -> list:
         """Return every scripted activity for worker registration."""
@@ -139,4 +166,5 @@ class ScriptedMaintenanceActivities:
             self.get_maintenance_job_status,
             self.record_table_maintenance_operation_result,
             self.delete_maintenance_job,
+            self.get_maintenance_job_pods,
         ]

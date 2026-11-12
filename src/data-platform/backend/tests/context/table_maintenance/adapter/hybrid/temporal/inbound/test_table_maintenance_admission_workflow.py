@@ -16,6 +16,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
     AdmissionAcquireSignal,
     AdmissionReleaseSignal,
+    AdmissionRenewSignal,
     TableMaintenanceAdmissionSignal,
     TableMaintenanceAdmissionWorkflowInput,
 )
@@ -69,6 +70,11 @@ class AdmissionHarness:
         """Signal the admission workflow to release the slot of a request."""
         handle = self.client.get_workflow_handle(TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID)
         await handle.signal(TableMaintenanceAdmissionSignal.RELEASE, AdmissionReleaseSignal(request_id))
+
+    async def renew(self, request_id: str) -> None:
+        """Signal the admission workflow to restart the lease of a request."""
+        handle = self.client.get_workflow_handle(TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID)
+        await handle.signal(TableMaintenanceAdmissionSignal.RENEW, AdmissionRenewSignal(request_id))
 
     async def granted(self, name: str) -> list[str]:
         """Return the request ids granted to a requester."""
@@ -206,5 +212,45 @@ def test_release_of_unknown_or_queued_request():
         await h.release("r-a")
         await eventually(lambda: h.granted("c"), lambda g: g == ["r-c"])
         assert await h.granted("b") == []
+
+    _run(scenario, limit=1)
+
+
+def test_renew_restarts_the_lease_of_a_holder():
+    """A renewed holder keeps its slot past the lease it was granted with, until a full lease after the renew."""
+
+    async def scenario(h: AdmissionHarness) -> None:
+        a, b = await h.requester("a"), await h.requester("b")
+        await h.acquire("r-a", a)
+        await eventually(lambda: h.granted("a"), lambda g: g == ["r-a"])
+        await h.acquire("r-b", b)
+        await h.env.sleep(timedelta(seconds=h.lease - 60))
+        before = (await h.state())["holders"]["r-a"]["granted_at"]
+        await h.renew("r-a")
+        await eventually(h.state, lambda s: s["holders"]["r-a"]["granted_at"] != before)
+        await h.env.sleep(timedelta(seconds=120))
+        state = await h.state()
+        assert list(state["holders"]) == ["r-a"]
+        assert await h.granted("b") == []
+
+        await h.env.sleep(timedelta(seconds=h.lease))
+        await eventually(lambda: h.granted("b"), lambda g: g == ["r-b"])
+
+    _run(scenario, limit=1, lease=600)
+
+
+def test_renew_of_an_unknown_request_is_ignored():
+    """Renewing a request that holds no slot neither grants nor queues it."""
+
+    async def scenario(h: AdmissionHarness) -> None:
+        a = await h.requester("a")
+        await h.acquire("r-a", a)
+        await eventually(lambda: h.granted("a"), lambda g: g == ["r-a"])
+        before = await h.state()
+        await h.renew("unknown")
+        await h.release("r-none")
+        state = await eventually(h.state, lambda s: s == before)
+        assert list(state["holders"]) == ["r-a"]
+        assert state["queue"] == []
 
     _run(scenario, limit=1)

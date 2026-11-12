@@ -5,12 +5,13 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from temporalio.client import WorkflowExecutionStatus
+from temporalio.client import WorkflowExecutionStatus, WorkflowHistory
 from temporalio.exceptions import WorkflowAlreadyStartedError
 from temporalio.testing import WorkflowEnvironment
-from temporalio.worker import UnsandboxedWorkflowRunner, Worker
+from temporalio.worker import Replayer, UnsandboxedWorkflowRunner, Worker
 from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner
 
 from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
@@ -518,7 +519,7 @@ def test_planned_empty_starts_no_child():
 
 
 # Per planned operation: 3 attempts of 6 h, backoffs of 60 s + 120 s, 1 h margin.
-OPERATION_BUDGET = timedelta(hours=19, minutes=3)
+OPERATION_BUDGET = timedelta(hours=19, minutes=48)
 
 
 def test_in_flight_run_is_given_up_only_after_the_child_worst_case():
@@ -1072,3 +1073,33 @@ def test_carried_in_flight_run_keeps_its_attempt_deadline():
         await h.idle_after(state)
 
     _run(scenario, script=lambda _: _planned())
+
+
+def test_in_flight_bound_includes_the_fencing_bound():
+    """Each attempt's fencing bound is part of the budget: a run is still awaited past the bound without it."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = await h.in_flight()
+        without_fencing = 3 * timedelta(hours=6) + timedelta(minutes=3) + timedelta(hours=1)
+        await h.env.sleep(without_fencing + timedelta(minutes=30))
+        assert (await h.settle())["in_flight_run_id"] == first
+        assert len(h.plans.requests) == 1
+        assert OPERATION_BUDGET == without_fencing + 3 * timedelta(minutes=15)
+
+    _run(scenario, script=lambda _: _planned(COMPACTION, interval=10**6))
+
+
+FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def test_history_from_before_this_milestone_replays():
+    """A reconciliation that started and finished a run under the code before this milestone replays unchanged."""
+
+    async def go() -> None:
+        history = WorkflowHistory.from_json(
+            WORKFLOW_ID, (FIXTURES / "reconciliation_before_search_attributes.json").read_text()
+        )
+        await Replayer(workflows=[TableReconciliationWorkflow]).replay_workflow(history)
+
+    asyncio.run(go())

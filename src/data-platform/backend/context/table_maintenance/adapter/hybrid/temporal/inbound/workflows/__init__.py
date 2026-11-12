@@ -11,6 +11,9 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_m
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_maintenance_attempt_policy import (
     TableMaintenanceAttemptPolicy,
 )
+from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_maintenance_fencing_policy import (
+    TableMaintenanceFencingPolicy,
+)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_maintenance_workflow import (
     TableMaintenanceWorkflow,
 )
@@ -22,6 +25,7 @@ __all__ = [
     "TableDiscoveryWorkflow",
     "TableMaintenanceAdmissionWorkflow",
     "TableMaintenanceAttemptPolicy",
+    "TableMaintenanceFencingPolicy",
     "TableMaintenanceWorkflow",
     "TableReconciliationWorkflow",
 ]

@@ -9,6 +9,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
 )
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
     TableMaintenanceAttemptPolicy,
+    TableMaintenanceFencingPolicy,
 )
 
 
@@ -21,9 +22,19 @@ def test_default_policy_matches_the_maintenance_workflow_defaults():
     assert policy.backoff_after(2) == timedelta(seconds=120)
 
 
-def test_operation_worst_case_is_every_attempt_timing_out_plus_backoffs():
-    """The worst case of an operation is every attempt hitting its deadline plus all the backoffs."""
+def test_operation_worst_case_is_every_attempt_timing_out_and_fenced_plus_backoffs():
+    """The worst case of an operation is every attempt hitting its deadline and fencing bound, plus the backoffs."""
     policy = TableMaintenanceAttemptPolicy()
-    assert policy.operation_worst_case() == timedelta(seconds=3 * 21600 + 180)
+    assert policy.operation_worst_case() == timedelta(seconds=3 * (21600 + 900) + 180)
     short = TableMaintenanceAttemptPolicy(attempt_deadline=timedelta(minutes=10))
-    assert short.operation_worst_case() == timedelta(minutes=33)
+    assert short.operation_worst_case() == timedelta(minutes=3 * 25 + 3)
+
+
+def test_default_fencing_polls_renews_and_bounds_the_wait():
+    """A timed-out attempt is polled every 30 s, renewed every 5 min, bounded at 15 min, then polled every 5 min."""
+    fencing = TableMaintenanceFencingPolicy()
+    assert fencing.poll_interval == timedelta(seconds=30)
+    assert fencing.renew_interval == timedelta(minutes=5)
+    assert fencing.confirm_bound == timedelta(minutes=15)
+    assert fencing.slow_poll_interval == timedelta(minutes=5)
+    assert TableMaintenanceAttemptPolicy().fencing == fencing

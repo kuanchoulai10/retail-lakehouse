@@ -10,3 +10,4 @@ class TableMaintenanceAdmissionSignal(StrEnum):
 
     ACQUIRE = "acquire"
     RELEASE = "release"
+    RENEW = "renew"

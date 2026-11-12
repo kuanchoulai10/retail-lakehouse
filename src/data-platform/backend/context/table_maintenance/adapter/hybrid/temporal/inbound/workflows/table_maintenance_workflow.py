@@ -20,6 +20,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission import (
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
     AdmissionReleaseSignal,
+    AdmissionRenewSignal,
     TableMaintenanceAdmissionSignal,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (
@@ -36,6 +37,8 @@ FAST_POLL_WINDOW = timedelta(minutes=10)
 SLOW_POLL_INTERVAL = timedelta(minutes=5)
 _CALLBACK_GRACE = timedelta(seconds=120)
 _ACQUIRE_RESEND_INTERVAL = timedelta(minutes=5)
+_TIMED_OUT = "spark job timed out"
+_FENCE_PATCH = "fence-timed-out-attempt"
 
 
 @workflow.defn(name=TABLE_MAINTENANCE_WORKFLOW)
@@ -47,7 +50,13 @@ class TableMaintenanceWorkflow:
     ``operation_result`` callback for that exact attempt, with what polling the
     job's state reveals, or with a timeout ``attempt_deadline_seconds`` (input, 6 h by
     default) after the submit. Polling runs every 30 s for the first 10 minutes of an attempt and
-    every 5 minutes after that, which bounds the history. A failed operation
+    every 5 minutes after that, which bounds the history. A timed-out attempt is
+    fenced before its slot is released: its Spark job is deleted and its pods are
+    polled until none is live, while the attempt renews its admission lease (see
+    ``TableMaintenanceFencingPolicy``); pods still live after the confirm bound fail
+    the operation without a further attempt, and the slot is held until they are
+    gone. Histories that timed out before fencing existed replay unfenced
+    (patch ``fence-timed-out-attempt``). A failed operation
     never fails the run: the next operation still runs. At the end, also after a
     cancellation, the Spark job of every started attempt is deleted and the parent
     reconciliation workflow is told the run finished and how many results could not be
@@ -63,6 +72,7 @@ class TableMaintenanceWorkflow:
         self._granted: set[str] = set()
         self._current_request: str | None = None
         self._started_attempts: list[tuple[str, int]] = []
+        self._settled_attempts: set[tuple[str, int]] = set()
         self._record_failures = 0
 
     @workflow.run
@@ -106,6 +116,8 @@ class TableMaintenanceWorkflow:
     async def _run_operation(self, operation: dict[str, Any]) -> None:
         for attempt in range(1, self._policy.max_attempts + 1):
             outcome = await self._run_attempt(operation, attempt)
+            if (outcome.operation, outcome.attempt) in self._settled_attempts:
+                return
             await self._record(outcome)
             if outcome.succeeded:
                 return
@@ -119,7 +131,8 @@ class TableMaintenanceWorkflow:
         try:
             return await self._attempt_outcome(operation, attempt, request_id)
         except asyncio.CancelledError:
-            await self._record(self._failure(name, attempt, "cancelled"))
+            if (name, attempt) not in self._settled_attempts:
+                await self._record(self._failure(name, attempt, "cancelled"))
             raise
         finally:
             self._current_request = None
@@ -148,7 +161,7 @@ class TableMaintenanceWorkflow:
         except ActivityError as error:
             _raise_if_cancelled(error)
             return self._failure(name, attempt, f"submit failed: {_message(error)}")
-        return await self._await_outcome(name, attempt, submitted["job_name"])
+        return await self._await_outcome(name, attempt, submitted["job_name"], request_id)
 
     async def _acquire(self, request_id: str) -> None:
         request = {
@@ -176,7 +189,7 @@ class TableMaintenanceWorkflow:
         except FailureError as error:
             workflow.logger.warning("release of %s failed: %s", request_id, error)
 
-    async def _await_outcome(self, name: str, attempt: int, job_name: str) -> OperationResultSignal:
+    async def _await_outcome(self, name: str, attempt: int, job_name: str, request_id: str) -> OperationResultSignal:
         key = (name, attempt)
         submitted_at = workflow.now()
         deadline = submitted_at + self._policy.attempt_deadline
@@ -186,7 +199,7 @@ class TableMaintenanceWorkflow:
                 return self._results[key]
             now = workflow.now()
             if now >= deadline:
-                return self._failure(name, attempt, "spark job timed out")
+                return await self._timed_out(name, attempt, request_id)
             in_fast_window = now - submitted_at < FAST_POLL_WINDOW
             interval = FAST_POLL_INTERVAL if in_fast_window else SLOW_POLL_INTERVAL
             try:
@@ -218,6 +231,76 @@ class TableMaintenanceWorkflow:
                     metrics={"completed_without_callback": 1},
                     error=None,
                 )
+
+    async def _timed_out(self, name: str, attempt: int, request_id: str) -> OperationResultSignal:
+        """Fence the timed-out attempt; a history from before fencing replays its immediate failure."""
+        if workflow.patched(_FENCE_PATCH):
+            return await self._fence(name, attempt, request_id)
+        return self._failure(name, attempt, _TIMED_OUT)
+
+    async def _fence(self, name: str, attempt: int, request_id: str) -> OperationResultSignal:
+        """Delete a timed-out attempt's job and wait until its pods are gone; the slot stays held meanwhile.
+
+        A result that arrives now is ignored: the attempt timed out, and the next
+        reconcile reads the table to see what it did. Pods gone within the
+        confirm bound fail the attempt as timed out, so the caller releases the
+        slot and retries. Pods still live at the bound fail the operation for
+        good: the failure is recorded at once, then polling goes on, slower,
+        until the pods are gone, and only then does the caller release the slot.
+        """
+        fencing = self._policy.fencing
+        confirm_by = workflow.now() + fencing.confirm_bound
+        deleted = await self._delete_job(name, attempt)
+        renew_at = workflow.now()
+        outcome = self._failure(name, attempt, _TIMED_OUT)
+        while True:
+            if workflow.now() >= renew_at:
+                await self._renew(request_id)
+                renew_at = workflow.now() + fencing.renew_interval
+            if await self._pods_gone(name, attempt):
+                return outcome
+            if (name, attempt) not in self._settled_attempts and workflow.now() >= confirm_by:
+                minutes = int(fencing.confirm_bound.total_seconds() // 60)
+                error = f"{_TIMED_OUT}; its pods were still running {minutes} minutes after deletion"
+                outcome = self._failure(name, attempt, error)
+                await self._record(outcome)
+                self._settled_attempts.add((name, attempt))
+            if (name, attempt) in self._settled_attempts:
+                deleted = deleted or await self._delete_job(name, attempt)
+                await workflow.sleep(fencing.slow_poll_interval)
+            else:
+                await workflow.sleep(fencing.poll_interval)
+
+    async def _delete_job(self, name: str, attempt: int) -> bool:
+        try:
+            await self._activity(
+                TableMaintenanceActivity.DELETE_MAINTENANCE_JOB,
+                {"run_id": self._run_id, "operation": name, "attempt": attempt},
+            )
+        except ActivityError as error:
+            _raise_if_cancelled(error)
+            workflow.logger.warning("deleting the job of %s attempt %s failed: %s", name, attempt, error)
+            return False
+        return True
+
+    async def _pods_gone(self, name: str, attempt: int) -> bool:
+        try:
+            pods = await self._activity(
+                TableMaintenanceActivity.GET_MAINTENANCE_JOB_PODS,
+                {"run_id": self._run_id, "operation": name, "attempt": attempt},
+            )
+        except ActivityError as error:
+            _raise_if_cancelled(error)
+            workflow.logger.warning("pods of %s attempt %s unknown: %s", name, attempt, error)
+            return False
+        return not pods["live_pods"]
+
+    async def _renew(self, request_id: str) -> None:
+        handle = workflow.get_external_workflow_handle(TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID)
+        try:
+            await handle.signal(TableMaintenanceAdmissionSignal.RENEW, AdmissionRenewSignal(request_id))
+        except FailureError as error:
+            workflow.logger.warning("renewing the lease of %s failed: %s", request_id, error)
 
     async def _job_status(self, name: str, attempt: int) -> dict[str, Any] | None:
         try:

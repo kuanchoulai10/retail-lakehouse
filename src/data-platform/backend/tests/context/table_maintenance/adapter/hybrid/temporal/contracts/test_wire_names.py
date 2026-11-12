@@ -82,6 +82,7 @@ def test_table_maintenance_admission_signals():
     assert _values(TableMaintenanceAdmissionSignal) == {
         "ACQUIRE": "acquire",
         "RELEASE": "release",
+        "RENEW": "renew",
     }
 
 

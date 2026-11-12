@@ -11,6 +11,9 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission.release_signal import (
     AdmissionReleaseSignal,
 )
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission.renew_signal import (
+    AdmissionRenewSignal,
+)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission.signal import (
     TableMaintenanceAdmissionSignal,
 )
@@ -30,6 +33,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
 __all__ = [
     "AdmissionAcquireSignal",
     "AdmissionReleaseSignal",
+    "AdmissionRenewSignal",
     "DEFAULT_ADMISSION_LEASE_SECONDS",
     "TABLE_MAINTENANCE_ADMISSION_WORKFLOW",
     "TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID",
