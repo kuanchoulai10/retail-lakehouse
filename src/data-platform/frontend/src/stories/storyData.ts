@@ -328,7 +328,7 @@ export const ESCALATED_RUN: TableMaintenanceRunApiResponse = {
       started_at: "2026-11-09T02:03:20Z",
       finished_at: "2026-11-09T02:09:40Z",
       job_name: "tm-orders-rewrite-2",
-      metrics: { rewritten_data_files_count: 24, peak_heap_percent: 71 },
+      metrics: { rewritten_data_files_count: 24, peak_driver_heap_bytes: 612368384, peak_executor_heap_bytes: 1140850688 },
       error: null,
       expected_files: null,
       attempt_history: [
