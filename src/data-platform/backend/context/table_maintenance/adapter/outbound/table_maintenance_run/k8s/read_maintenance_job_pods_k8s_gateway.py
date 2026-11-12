@@ -7,6 +7,9 @@ from typing import TYPE_CHECKING
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.maintenance_job_pod_labels import (
     maintenance_job_pod_labels,
 )
+from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.spark_application_name import (
+    spark_application_name,
+)
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
     ReadMaintenanceJobPodsGateway,
     ReadMaintenanceJobPodsGatewayOutput,
@@ -23,10 +26,17 @@ if TYPE_CHECKING:
     )
 
 STOPPED_PHASES = frozenset({"Succeeded", "Failed"})
+SPARK_OPERATOR_APP_LABEL = "sparkoperator.k8s.io/app-name"
 
 
 class ReadMaintenanceJobPodsK8sGateway(ReadMaintenanceJobPodsGateway):
-    """List the driver and executor pods of one attempt by its labels."""
+    """List the driver and executor pods of one attempt by its labels and by its SparkApplication.
+
+    The attempt labels are set on the pods by the manifest; the Spark operator
+    also labels every pod it launches with the name of its SparkApplication.
+    Both are listed and joined, so the pods of an attempt submitted before the
+    attempt labels existed are found too.
+    """
 
     def __init__(self, api: CoreV1Api, config: SparkK8sConfig) -> None:
         """Keep the injected Kubernetes core client and configuration."""
@@ -45,12 +55,15 @@ class ReadMaintenanceJobPodsK8sGateway(ReadMaintenanceJobPodsGateway):
         error propagates, so the caller retries.
         """
         labels = maintenance_job_pod_labels(input.run_id, input.operation, input.attempt)
-        pods = self._api.list_namespaced_pod(
-            namespace=self._config.namespace,
-            label_selector=",".join(f"{key}={value}" for key, value in labels.items()),
+        application = spark_application_name(input.run_id, input.operation, input.attempt)
+        selectors = (
+            ",".join(f"{key}={value}" for key, value in labels.items()),
+            f"{SPARK_OPERATOR_APP_LABEL}={application}",
         )
-        return ReadMaintenanceJobPodsGatewayOutput(
-            live_pods=tuple(
-                pod.metadata.name for pod in pods.items if pod.status is None or pod.status.phase not in STOPPED_PHASES
-            )
-        )
+        live: dict[str, None] = {}
+        for selector in selectors:
+            pods = self._api.list_namespaced_pod(namespace=self._config.namespace, label_selector=selector)
+            for pod in pods.items:
+                if pod.status is None or pod.status.phase not in STOPPED_PHASES:
+                    live[pod.metadata.name] = None
+        return ReadMaintenanceJobPodsGatewayOutput(live_pods=tuple(live))

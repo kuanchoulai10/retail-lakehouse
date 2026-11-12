@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 from kubernetes.client import V1ObjectMeta, V1Pod, V1PodList, V1PodStatus
@@ -37,24 +37,37 @@ def _pod(name: str, phase: str | None, *, deleting: bool = False) -> V1Pod:
     )
 
 
-def _gateway(*pods: V1Pod) -> tuple[ReadMaintenanceJobPodsK8sGateway, MagicMock]:
+OUR_SELECTOR = "table-maintenance/run-id=r1,table-maintenance/operation=rewrite_data_files,table-maintenance/attempt=2"
+OPERATOR_SELECTOR = "sparkoperator.k8s.io/app-name=tm-rdf-r1-a2"
+
+
+def _gateway(*pods: V1Pod, by_operator: tuple[V1Pod, ...] = ()) -> tuple[ReadMaintenanceJobPodsK8sGateway, MagicMock]:
     api = MagicMock(name="core-v1-api")
-    api.list_namespaced_pod.return_value = V1PodList(items=list(pods))
+
+    def list_pods(namespace: str, label_selector: str) -> V1PodList:
+        return V1PodList(items=list(by_operator if label_selector == OPERATOR_SELECTOR else pods))
+
+    api.list_namespaced_pod.side_effect = list_pods
     return ReadMaintenanceJobPodsK8sGateway(api, CONFIG), api
 
 
-def test_read_pods_selects_the_attempt_by_label():
-    """The pods are listed in the Spark namespace by the run, operation and attempt labels."""
+def test_read_pods_selects_the_attempt_by_its_labels_and_by_its_application():
+    """The pods are listed in the Spark namespace by the attempt labels and by the operator's application label."""
     gateway, api = _gateway()
 
     gateway.read(INPUT)
 
-    api.list_namespaced_pod.assert_called_once_with(
-        namespace="lakehouse-maintenance-operations",
-        label_selector=(
-            "table-maintenance/run-id=r1,table-maintenance/operation=rewrite_data_files,table-maintenance/attempt=2"
-        ),
-    )
+    assert api.list_namespaced_pod.call_args_list == [
+        call(namespace="lakehouse-maintenance-operations", label_selector=OUR_SELECTOR),
+        call(namespace="lakehouse-maintenance-operations", label_selector=OPERATOR_SELECTOR),
+    ]
+
+
+def test_read_pods_finds_pods_that_carry_only_the_operator_label():
+    """A pod of an attempt submitted before the attempt labels existed is found by its application label."""
+    gateway, _ = _gateway(_pod("driver", "Running"), by_operator=(_pod("driver", "Running"), _pod("exec-1", "Pending")))
+
+    assert gateway.read(INPUT).live_pods == ("driver", "exec-1")
 
 
 def test_read_pods_counts_pending_running_and_unknown_as_live():
