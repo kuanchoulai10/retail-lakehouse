@@ -78,7 +78,7 @@ const UNMANAGED: [string, Options, string][] = [
   [
     "not-found",
     { maintenanceTable: () => jsonResponse({ detail: "table uuid-orders not found" }, 404) },
-    "no discovery rule includes this table",
+    "discovery has not found this table yet",
   ],
   [
     "unmanaged",

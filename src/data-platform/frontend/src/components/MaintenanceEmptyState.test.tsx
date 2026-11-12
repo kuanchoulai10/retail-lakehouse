@@ -20,7 +20,7 @@ describe("MaintenanceEmptyState", () => {
 
   it("links to discovery rules when no rule includes the table", () => {
     renderReason("not-found");
-    expect(screen.getByText("no discovery rule includes this table")).toBeInTheDocument();
+    expect(screen.getByText("discovery has not found this table yet")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Discovery rules" })).toHaveAttribute(
       "href",
       "/discovery-rules",
