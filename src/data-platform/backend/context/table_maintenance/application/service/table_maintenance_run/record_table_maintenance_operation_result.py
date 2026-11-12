@@ -9,7 +9,12 @@ from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
 )
-from context.table_maintenance.application.domain.model.table import AttentionMark, PeakHeapUse, TableStatus
+from context.table_maintenance.application.domain.model.table import (
+    AttentionMark,
+    PeakHeapUse,
+    RecordedAttempt,
+    TableStatus,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     AttemptEnding,
     ContainerExit,
@@ -48,7 +53,6 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.shared import SizeMemory
     from context.table_maintenance.application.domain.model.table import Table
     from context.table_maintenance.application.domain.model.table_maintenance_run import (
-        NextAttempt,
         OperationAttempt,
         OperationRun,
         TableMaintenanceRun,
@@ -103,9 +107,11 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         """Classify and decide the attempt, update the run, then the table.
 
         Two aggregates are updated in sequence, not atomically: the run is saved
-        first, so a crash in between at worst loses one table update. A stale
-        lower attempt, or a replay of an outcome already recorded, reads nothing
-        and returns what the run already holds for that attempt.
+        first, then the table. A replay of an outcome the run already holds reads
+        nothing and returns what the run holds for that attempt, but still brings
+        the table up to date, so a retry after a crash between the two saves
+        loses no table update; the table takes each attempt in once. A stale
+        lower attempt changes nothing.
         """
         try:
             operation = MaintenanceOperation(request.operation)
@@ -119,7 +125,10 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
             current = next((op for op in run.operations if op.operation == operation), None)
             if current is None:
                 raise ConflictError(f"operation {operation} is not part of run {request.run_id}")
-            if request.attempt < current.attempts or _already_recorded(current, request):
+            if request.attempt < current.attempts:
+                return _output(run, run.attempt_record(operation, request.attempt))
+            if _already_recorded(current, request):
+                self._record_on_table(run, operation, run.attempt_record(operation, request.attempt), request)
                 return _output(run, run.attempt_record(operation, request.attempt))
             record = run.attempt_record(operation, request.attempt)
             size = record.size if record else None
@@ -129,11 +138,10 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
                 run.succeed(
                     operation, request.attempt, request.metrics, request.now, event_log_finished=event_log_finished
                 )
-                next_attempt = None
             else:
-                next_attempt = self._fail(run, operation, ending, size, request, evidence, event_log_finished)
+                self._fail(run, operation, ending, size, request, evidence, event_log_finished)
             self._runs_repo.update(run)
-            self._record_on_table(run, operation, size, next_attempt, request)
+            self._record_on_table(run, operation, run.attempt_record(operation, request.attempt), request)
         return _output(run, run.attempt_record(operation, request.attempt))
 
     def _fail(  # noqa: PLR0913
@@ -145,7 +153,7 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         request: RecordTableMaintenanceOperationResultUseCaseInput,
         evidence: ReadMaintenanceJobEvidenceGatewayOutput | None,
         event_log_finished: bool | None,
-    ) -> NextAttempt:
+    ) -> None:
         error = request.error or _UNKNOWN_ERROR
         texts = tuple(t for t in (error, evidence.error if evidence else None) if t)
         containers = tuple(
@@ -165,7 +173,6 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
             event_log_finished=event_log_finished,
             next_attempt=next_attempt,
         )
-        return next_attempt
 
     def _read_evidence(
         self, request: RecordTableMaintenanceOperationResultUseCaseInput, ending: AttemptEnding
@@ -209,13 +216,17 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         self,
         run: TableMaintenanceRun,
         operation: MaintenanceOperation,
-        size: ComputeSize | None,
-        next_attempt: NextAttempt | None,
+        record: OperationAttempt | None,
         request: RecordTableMaintenanceOperationResultUseCaseInput,
     ) -> None:
+        """Take the attempt's outcome, as the run recorded it, into the table, once per attempt."""
         table = self._tables_repo.get(run.table_uuid)
         if table is None or table.status == TableStatus.DROPPED:
             return
+        attempt = RecordedAttempt(run_id=request.run_id, attempt=request.attempt)
+        if table.has_recorded(operation, attempt):
+            return
+        size = record.size if record else None
         if request.succeeded:
             ran_at = size or ComputeSize.S
             peak = PeakHeapUse(
@@ -228,10 +239,11 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
                 request.now,
                 size=ran_at,
                 fits_smaller=fits_smaller_size(ran_at, peak, self._size_memory),
+                attempt=attempt,
             )
         else:
-            table.record_operation_result(operation, False, request.now)
-            if next_attempt is not None and next_attempt.step is NextStep.NEEDS_ATTENTION:
+            table.record_operation_result(operation, False, request.now, attempt=attempt)
+            if record is not None and record.next_step is NextStep.NEEDS_ATTENTION:
                 self._mark_needs_attention(table, operation, request)
         self._tables_repo.update(table)
 

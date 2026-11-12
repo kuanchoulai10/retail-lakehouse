@@ -13,6 +13,7 @@ from context.table_maintenance.application.port.outbound.table import (
     ComputeSize,
     MaintenanceOperation,
     OperationState,
+    RecordedAttempt,
     Table,
     TableDiscoveryRuleId,
     TableId,
@@ -49,6 +50,14 @@ def _decode_attention(data: dict[str, Any] | None) -> AttentionMark | None:
     )
 
 
+def _encode_recorded(attempt: RecordedAttempt | None) -> dict[str, Any] | None:
+    return None if attempt is None else {"run_id": attempt.run_id, "attempt": attempt.attempt}
+
+
+def _decode_recorded(data: dict[str, Any] | None) -> RecordedAttempt | None:
+    return None if data is None else RecordedAttempt(run_id=data["run_id"], attempt=data["attempt"])
+
+
 def _encode_state(state: OperationState) -> dict[str, Any]:
     return {
         "last_attempt_at": IsoDatetimeCodec.encode(state.last_attempt_at),
@@ -56,6 +65,7 @@ def _encode_state(state: OperationState) -> dict[str, Any]:
         "last_successful_size": None if state.last_successful_size is None else state.last_successful_size.value,
         "attention": _encode_attention(state.attention),
         "low_use_successes": state.low_use_successes,
+        "last_recorded": _encode_recorded(state.last_recorded),
     }
 
 
@@ -67,6 +77,7 @@ def _decode_state(data: dict[str, Any]) -> OperationState:
         last_successful_size=None if size is None else ComputeSize(size),
         attention=_decode_attention(data.get("attention")),
         low_use_successes=data.get("low_use_successes", 0),
+        last_recorded=_decode_recorded(data.get("last_recorded")),
     )
 
 

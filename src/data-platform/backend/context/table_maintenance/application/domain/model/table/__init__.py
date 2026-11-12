@@ -17,6 +17,9 @@ from context.table_maintenance.application.domain.model.table.operation_state im
 from context.table_maintenance.application.domain.model.table.peak_heap_use import (
     PeakHeapUse,
 )
+from context.table_maintenance.application.domain.model.table.recorded_attempt import (
+    RecordedAttempt,
+)
 from context.table_maintenance.application.domain.model.table.table import Table
 from context.table_maintenance.application.domain.model.table.table_change import (
     TableChange,
@@ -38,6 +41,7 @@ __all__ = [
     "InvalidTableTransition",
     "OperationState",
     "PeakHeapUse",
+    "RecordedAttempt",
     "Table",
     "TableChange",
     "TableId",

@@ -13,6 +13,7 @@ from context.table_maintenance.application.domain.model.table import (
     AttentionMark,
     InvalidTableTransition,
     OperationState,
+    RecordedAttempt,
     Table,
     TableId,
     TableName,
@@ -217,3 +218,33 @@ def test_a_dropped_table_refuses_attention_changes():
         t.mark_needs_attention(OP, mark, T1)
     with pytest.raises(InvalidTableTransition):
         t.clear_needs_attention(OP, T1)
+
+
+def test_recording_the_same_attempt_twice_counts_it_once():
+    """A result recorded again for the same attempt of the same run changes nothing."""
+    t = managed()
+    attempt = RecordedAttempt(run_id="run-1", attempt=2)
+    t.record_operation_result(OP, False, T0, attempt=attempt)
+    t.record_operation_result(OP, False, T1, attempt=attempt)
+    state = t.operation_state(OP)
+    assert state.consecutive_failures == 1
+    assert state.last_attempt_at == T0
+    assert t.has_recorded(OP, attempt)
+
+
+def test_another_attempt_is_recorded():
+    """A later attempt, or the same attempt number of another run, is a new result."""
+    t = managed()
+    t.record_operation_result(OP, False, T0, attempt=RecordedAttempt(run_id="run-1", attempt=1))
+    t.record_operation_result(OP, False, T0, attempt=RecordedAttempt(run_id="run-1", attempt=2))
+    t.record_operation_result(OP, False, T0, attempt=RecordedAttempt(run_id="run-2", attempt=2))
+    assert t.operation_state(OP).consecutive_failures == 3
+    assert not t.has_recorded(OP, RecordedAttempt(run_id="run-1", attempt=1))
+    assert not t.has_recorded(MaintenanceOperation.EXPIRE_SNAPSHOTS, RecordedAttempt(run_id="run-2", attempt=2))
+
+
+@pytest.mark.parametrize(("run_id", "attempt"), [("", 1), ("run-1", 0)])
+def test_a_recorded_attempt_names_a_run_and_a_positive_attempt(run_id, attempt):
+    """A recorded attempt needs its run and a positive attempt number."""
+    with pytest.raises(ValidationError):
+        RecordedAttempt(run_id=run_id, attempt=attempt)

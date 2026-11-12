@@ -10,6 +10,9 @@ from context.table_maintenance.application.domain.model.shared import ComputeSiz
 from context.table_maintenance.application.domain.model.table.attention_mark import (
     AttentionMark,
 )
+from context.table_maintenance.application.domain.model.table.recorded_attempt import (
+    RecordedAttempt,
+)
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.table.applied_policy_ref import (
@@ -22,6 +25,8 @@ class OperationState(ValueObject):
 
     ``low_use_successes`` counts the successes in a row at the remembered size whose measured use
     would have fit the next smaller size; at ``LOW_USE_RUNS`` the remembered size steps down one size.
+    ``last_recorded`` is the attempt whose result was taken in last, so the same result is never
+    counted twice.
     """
 
     LOW_USE_RUNS: ClassVar[int] = 3
@@ -31,6 +36,7 @@ class OperationState(ValueObject):
     last_successful_size: ComputeSize | None = None
     attention: AttentionMark | None = None
     low_use_successes: int = 0
+    last_recorded: RecordedAttempt | None = None
 
     def effective_cooldown(self, base: timedelta, cap: timedelta = timedelta(hours=24)) -> timedelta:
         """Return ``base`` doubled per consecutive failure, capped, never below base."""
@@ -66,6 +72,10 @@ class OperationState(ValueObject):
             attention=None,
             low_use_successes=streak,
         )
+
+    def recorded(self, attempt: RecordedAttempt) -> OperationState:
+        """Return the state remembering that ``attempt``'s result was taken in."""
+        return validated_copy(self, last_recorded=attempt)
 
     def after_failure(self, at: datetime) -> OperationState:
         """Return the state after a failed attempt."""

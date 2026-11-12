@@ -17,6 +17,7 @@ from context.table_maintenance.application.domain.model.table import (
     AppliedPolicyRef,
     AttentionMark,
     OperationState,
+    RecordedAttempt,
     Table,
     TableId,
     TableName,
@@ -228,7 +229,10 @@ def test_operation_state_round_trips_size_and_attention(repo: TablesSqlRepo):
     )
     table.operation_states = {
         MaintenanceOperation.REWRITE_DATA_FILES: OperationState(
-            last_attempt_at=NOW, last_successful_size=ComputeSize.L, attention=mark
+            last_attempt_at=NOW,
+            last_successful_size=ComputeSize.L,
+            attention=mark,
+            last_recorded=RecordedAttempt(run_id="run-7", attempt=3),
         ),
         MaintenanceOperation.EXPIRE_SNAPSHOTS: OperationState(last_successful_size=ComputeSize.M, low_use_successes=2),
     }

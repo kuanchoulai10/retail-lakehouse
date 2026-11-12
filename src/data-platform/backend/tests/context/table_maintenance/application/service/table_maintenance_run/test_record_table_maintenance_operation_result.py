@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from typing import Any
 
 import pytest
@@ -338,4 +339,56 @@ def test_a_job_that_needs_most_of_s_does_not_step_down_from_m(recorder, runs_rep
     _record(recorder, now, succeeded=True, error=None, metrics=_peaks(300, 700))
     state = tables_repo.get(TableId("u-1")).operation_state(RDF)
     assert state.start_size() is ComputeSize.M
+    assert state.low_use_successes == 0
+
+
+def _fail_first_table_update(tables_repo) -> None:
+    """Make the first table save fail, as a worker crash between the run's save and the table's would.
+
+    Reads hand out copies, as the SQL repository does, so a change that was never saved is lost.
+    """
+    original = tables_repo.update
+    original_get = tables_repo.get
+    failed: list[bool] = []
+    tables_repo.get = lambda table_id: copy.deepcopy(original_get(table_id))
+
+    def update(table: Table) -> None:
+        if not failed:
+            failed.append(True)
+            raise OSError("database went away")
+        original(table)
+
+    tables_repo.update = update
+
+
+def test_a_retried_record_after_the_run_was_saved_marks_needs_attention_once(
+    recorder, runs_repo, tables_repo, table, now
+):
+    """A record retried after the run, but not the table, was saved marks the table and counts the failure once."""
+    _run(runs_repo, table, now, ComputeSize.M, ComputeSize.L)
+    _fail_first_table_update(tables_repo)
+    with pytest.raises(OSError, match="database went away"):
+        _record(recorder, now, attempt=2)
+    out = _record(recorder, now, attempt=2)
+    _record(recorder, now, attempt=2)
+    assert (out.failure_class, out.next_step) == ("oom", "needs_attention")
+    state = tables_repo.get(TableId("u-1")).operation_state(RDF)
+    assert state.attention is not None
+    assert state.attention.since == now
+    assert state.consecutive_failures == 1
+
+
+def test_a_retried_success_after_the_run_was_saved_remembers_its_size_once(
+    recorder, runs_repo, tables_repo, table, now
+):
+    """A success retried after a failed table save steps the table down once, and a further replay changes nothing."""
+    _fitting_successes(tables_repo, now, 2)
+    _run(runs_repo, table, now, ComputeSize.M)
+    _fail_first_table_update(tables_repo)
+    with pytest.raises(OSError, match="database went away"):
+        _record(recorder, now, succeeded=True, error=None, metrics=_peaks(300, 400))
+    _record(recorder, now, succeeded=True, error=None, metrics=_peaks(300, 400))
+    _record(recorder, now, succeeded=True, error=None, metrics=_peaks(300, 400))
+    state = tables_repo.get(TableId("u-1")).operation_state(RDF)
+    assert state.start_size() is ComputeSize.S
     assert state.low_use_successes == 0

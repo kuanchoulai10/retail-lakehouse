@@ -30,6 +30,9 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.table.attention_mark import (
         AttentionMark,
     )
+    from context.table_maintenance.application.domain.model.table.recorded_attempt import (
+        RecordedAttempt,
+    )
 
 
 class Table(AggregateRoot[TableId]):
@@ -131,15 +134,25 @@ class Table(AggregateRoot[TableId]):
         *,
         size: ComputeSize | None = None,
         fits_smaller: bool = False,
+        attempt: RecordedAttempt | None = None,
     ) -> None:
         """Record an operation outcome, the size a success ran at and whether it would have fit a smaller one.
 
-        Allowed in any non-dropped status.
+        Allowed in any non-dropped status. Given the ``attempt`` the outcome belongs to, the outcome of
+        the attempt taken in last changes nothing again, so a retried record counts once.
         """
         self._ensure_not_dropped()
+        if attempt is not None and self.has_recorded(op, attempt):
+            return
         state = self.operation_state(op)
         updated = state.after_success(at, size, fits_smaller=fits_smaller) if succeeded else state.after_failure(at)
+        if attempt is not None:
+            updated = updated.recorded(attempt)
         self._set_operation_state(op, updated, at)
+
+    def has_recorded(self, op: MaintenanceOperation, attempt: RecordedAttempt) -> bool:
+        """Return whether the outcome of ``attempt`` was the last one taken in for ``op``."""
+        return self.operation_state(op).last_recorded == attempt
 
     def mark_needs_attention(self, op: MaintenanceOperation, mark: AttentionMark, at: datetime) -> None:
         """Mark an operation as needing a person; reconcile stops planning it under the mark's policy."""
