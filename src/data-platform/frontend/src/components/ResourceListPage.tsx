@@ -10,7 +10,7 @@ export type { ResourceColumn } from "@/components/ResourceSection";
 interface Props<Row extends RowData> extends Omit<ResourceSectionProps<Row>, "title"> {
   title: string;
   breadcrumbs?: Crumb[];
-  // Title of the list panel; the page title when left out.
+  // Title of the list; when left out the list is named by the page title, shown only to screen readers.
   listTitle?: string;
   // The Actions menu of the object the page shows; on phones it joins the title bar's overflow menu.
   menuItems?: ActionItem[];
@@ -32,7 +32,7 @@ export function ResourceListPage<Row extends RowData>({
     <section>
       <PageHeader title={title} breadcrumbs={breadcrumbs} menuItems={menuItems} />
       <div className="flex flex-col gap-6">
-        <ResourceSection title={listTitle ?? title} {...section} />
+        <ResourceSection title={listTitle ?? title} hideTitle={listTitle === undefined} {...section} />
         {children}
       </div>
     </section>

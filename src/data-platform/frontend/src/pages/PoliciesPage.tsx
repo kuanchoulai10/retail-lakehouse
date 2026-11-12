@@ -73,8 +73,7 @@ export function PoliciesPage() {
   return (
     <>
       <ResourceListPage
-        title="Policies"
-        listTitle="Maintenance policies"
+        title="Maintenance policies"
         columns={[
           {
             header: "Name",

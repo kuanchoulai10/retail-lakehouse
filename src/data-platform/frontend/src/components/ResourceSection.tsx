@@ -3,8 +3,8 @@ import {
   Button,
   createDataTableColumnHelper,
   DataTable,
+  cn,
   IconButton,
-  Panel,
   IconTrash,
 } from "@retail-lakehouse/design-system";
 import { useId, useState, type ReactNode } from "react";
@@ -18,6 +18,8 @@ export interface ResourceColumn<Row> {
 
 export interface ResourceSectionProps<Row extends RowData> {
   title: string;
+  // Keeps the heading for screen readers only, when the page title already says it.
+  hideTitle?: boolean;
   columns: ResourceColumn<Row>[];
   rows: Row[];
   rowKey: (row: Row) => string;
@@ -46,6 +48,7 @@ export interface ResourceSectionProps<Row extends RowData> {
 // dialog, a rejected one keeps it open with the error.
 export function ResourceSection<Row extends RowData>({
   title,
+  hideTitle = false,
   columns,
   rows,
   rowKey,
@@ -63,6 +66,7 @@ export function ResourceSection<Row extends RowData>({
   deleteConsequence,
 }: ResourceSectionProps<Row>) {
   const reasonId = useId();
+  const headingId = useId();
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<Row | null>(null);
   const [pending, setPending] = useState(false);
@@ -126,19 +130,26 @@ export function ResourceSection<Row extends RowData>({
 
   return (
     <>
-      <Panel
-        title={title}
-        actions={
-          <Button type="button" size="small" disabled={newDisabled} onClick={() => setCreating(true)}>
+      {/* Unframed, like the Tables page: the table's own header row separates it from the page. */}
+      <section aria-labelledby={headingId} className="flex min-w-0 flex-col gap-3">
+        <header className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id={headingId} className={cn("type-title-small", hideTitle && "sr-only")}>
+            {title}
+          </h2>
+          <Button
+            type="button"
+            size="small"
+            className="ml-auto"
+            disabled={newDisabled}
+            onClick={() => setCreating(true)}
+          >
             {newLabel}
           </Button>
-        }
-      >
+        </header>
         {errors.length > 0 && (
           <Banner
             type="negative"
             title={errors.length === 1 ? errors[0] : "Parts of this list could not be loaded"}
-            className="mb-3"
           >
             {errors.length > 1 && errors.map((message) => <p key={message}>{message}</p>)}
           </Banner>
@@ -150,7 +161,7 @@ export function ResourceSection<Row extends RowData>({
           getRowId={(row) => rowKey(row)}
           emptyState={emptyText}
         />
-      </Panel>
+      </section>
       {creating && renderForm({ onClose: () => setCreating(false) })}
       {deleting !== null && (
         <ConfirmDeleteDialog

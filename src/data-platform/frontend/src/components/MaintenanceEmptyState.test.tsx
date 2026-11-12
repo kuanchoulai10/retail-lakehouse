@@ -27,9 +27,9 @@ describe("MaintenanceEmptyState", () => {
     );
   });
 
-  it("explains a table the discovery rules no longer include and links to them", () => {
+  it("explains a table the discovery rules do not include and links to them", () => {
     renderReason("unmanaged");
-    expect(screen.getByText("the discovery rules no longer include this table")).toBeInTheDocument();
+    expect(screen.getByText("the discovery rules do not include this table")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Discovery rules" })).toHaveAttribute("href", "/discovery-rules");
   });
 

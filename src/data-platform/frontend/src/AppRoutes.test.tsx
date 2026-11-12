@@ -31,6 +31,6 @@ describe("AppRoutes", () => {
   it("renders the policies page at /policies", async () => {
     stubCatalogApi({ "GET /v1/maintenance-policies": () => jsonResponse({ policies: [] }) });
     renderAt("/policies");
-    expect(await screen.findByRole("heading", { name: "Policies" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Maintenance policies", level: 1 })).toBeInTheDocument();
   });
 });

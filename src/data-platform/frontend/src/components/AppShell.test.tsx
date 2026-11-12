@@ -36,14 +36,14 @@ describe("AppShell", () => {
       "Tables",
       "Catalog",
       "Discovery rules",
-      "Policies",
+      "Maintenance policies",
     ]);
   });
 
   it("links the policies page and marks it current there", () => {
     renderShell("/policies");
     const nav = screen.getByRole("navigation", { name: "Main" });
-    const link = within(nav).getByRole("link", { name: "Policies" });
+    const link = within(nav).getByRole("link", { name: "Maintenance policies" });
     expect(link).toHaveAttribute("href", "/policies");
     expect(link).toHaveAttribute("aria-current", "page");
   });
@@ -71,6 +71,15 @@ describe("AppShell", () => {
     const nav = screen.getByRole("navigation", { name: "Main" });
     expect(within(nav).getByRole("link", { name: "Discovery rules" })).toHaveAttribute("aria-current", "page");
     expect(within(nav).getByRole("link", { name: "Tables" })).not.toHaveAttribute("aria-current");
+  });
+
+  it("puts the theme picker beside the product name, not at the end of the top app bar", () => {
+    renderShell();
+    const banner = within(screen.getByRole("banner"));
+    const product = banner.getByRole("link", { name: "Lakehouse" });
+    const picker = banner.getByRole("button", { name: /Colour theme/ });
+    expect(product.compareDocumentPosition(picker) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(picker.parentElement?.nextElementSibling?.className).toContain("flex-1");
   });
 
   it("shows the product name in the top app bar", () => {

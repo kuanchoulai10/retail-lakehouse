@@ -8,12 +8,11 @@ import {
   IconArrowUp,
   IconButton,
   IconTrash,
-  Panel,
   Skeleton,
   Switch,
 } from "@retail-lakehouse/design-system";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import {
   getGetTableDiscoveryRulesQueryKey,
   getPreviewTableDiscoveryRulesUrl,
@@ -194,6 +193,7 @@ export function DiscoveryRulesPage() {
   const [editing, setEditing] = useState<Editing | null>(null);
   const [savedNotice, setSavedNotice] = useState(false);
   const newKeys = useRef(0);
+  const rulesHeadingId = useId();
 
   const current = draft ?? base;
   const ordered = useMemo(() => inPriorityOrder(current?.rules ?? []), [current]);
@@ -307,32 +307,30 @@ export function DiscoveryRulesPage() {
               )}
             </div>
           )}
-          <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-3">
-            <Panel
-              title="Rules"
-              className="min-w-0 xl:col-span-2"
-              aria-busy={saved.isPending}
-              actions={
-                <Button type="button" size="small" disabled={current === null} onClick={addRule}>
-                  Add rule
-                </Button>
-              }
-            >
-              <DataTable
-                caption="Discovery rules in evaluation order"
-                columns={columns}
-                data={ordered}
-                getRowId={(rule) => rule.key}
-                emptyState={saved.isPending ? <LoadingRows /> : "No discovery rules. No table is managed."}
-              />
-            </Panel>
-            <DiscoveryRulesPreview
-              rules={preview.data?.rules ?? []}
-              preview={preview.data?.response}
-              isFetching={current === null || !previewSettled || preview.isFetching}
-              error={preview.error}
+          <DiscoveryRulesPreview
+            rules={preview.data?.rules ?? []}
+            preview={preview.data?.response}
+            isFetching={current === null || !previewSettled || preview.isFetching}
+            error={preview.error}
+          />
+          {/* Unframed, like the Tables page: the table's own header row separates it from the page. */}
+          <section aria-labelledby={rulesHeadingId} aria-busy={saved.isPending} className="flex min-w-0 flex-col gap-3">
+            <header className="flex flex-wrap items-center justify-between gap-2">
+              <h2 id={rulesHeadingId} className="type-title-small">
+                Rules
+              </h2>
+              <Button type="button" size="small" disabled={current === null} onClick={addRule}>
+                Add rule
+              </Button>
+            </header>
+            <DataTable
+              caption="Discovery rules in evaluation order"
+              columns={columns}
+              data={ordered}
+              getRowId={(rule) => rule.key}
+              emptyState={saved.isPending ? <LoadingRows /> : "No discovery rules. No table is managed."}
             />
-          </div>
+          </section>
         </div>
       )}
       {editing !== null && (

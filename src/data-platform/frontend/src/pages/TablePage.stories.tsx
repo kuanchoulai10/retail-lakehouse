@@ -204,7 +204,7 @@ export const Unmanaged: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByText("the discovery rules no longer include this table")).toBeVisible();
+    await expect(await canvas.findByText("the discovery rules do not include this table")).toBeVisible();
     await expect(canvas.queryByRole("button", { name: /Pause|Resume/ })).toBeNull();
   },
 };

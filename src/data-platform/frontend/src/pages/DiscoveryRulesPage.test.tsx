@@ -83,6 +83,16 @@ async function editPriority(user: ReturnType<typeof userEvent.setup>, from: stri
   await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 }
 
+async function fillGlobs(
+  user: ReturnType<typeof userEvent.setup>,
+  dialog: HTMLElement,
+  globs: { catalogs: string; namespaces: string; tables: string },
+) {
+  for (const [field, glob] of Object.entries(globs)) {
+    await user.type(within(dialog).getByRole("textbox", { name: `New ${field} glob` }), `${glob}{Enter}`);
+  }
+}
+
 describe("DiscoveryRulesPage", () => {
   it("lists rules by priority, lowest first", async () => {
     stubApi();
@@ -171,6 +181,7 @@ describe("DiscoveryRulesPage", () => {
     await screen.findByText("tm_e2e_*");
     await user.click(screen.getByRole("button", { name: "Add rule" }));
     const dialog = await screen.findByRole("dialog", { name: "Add rule" });
+    await fillGlobs(user, dialog, { catalogs: "iceberg", namespaces: "e2e", tables: "new_*" });
     await user.click(within(dialog).getByRole("button", { name: "Add rule" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: "Save" }));
@@ -179,7 +190,25 @@ describe("DiscoveryRulesPage", () => {
     const body = callsTo(calls, "PUT", "/v1/discovery-rules")[0]?.body as { rules: Record<string, unknown>[] };
     expect(body.rules.map((r) => r.priority)).toEqual([10, 50, 60]);
     expect(body.rules[2]).not.toHaveProperty("id");
-    expect(body.rules[2]).toMatchObject({ action: "include", enabled: true, catalogs: ["*"], namespaces: ["*"], tables: ["*"] });
+    expect(body.rules[2]).toMatchObject({
+      action: "include",
+      enabled: true,
+      catalogs: ["iceberg"],
+      namespaces: ["e2e"],
+      tables: ["new_*"],
+    });
+  });
+
+  it("opens a new rule with every glob list empty", async () => {
+    stubApi();
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText("tm_e2e_*");
+    await user.click(screen.getByRole("button", { name: "Add rule" }));
+    const dialog = await screen.findByRole("dialog", { name: "Add rule" });
+    expect(within(dialog).queryByText("*")).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Add rule" }));
+    expect(await within(dialog).findByText("Add at least one catalog glob.")).toBeInTheDocument();
   });
 
   it("shows the API's message inline when a priority is taken twice", async () => {
@@ -292,10 +321,12 @@ describe("DiscoveryRulesPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Add rule" }));
     let dialog = await screen.findByRole("dialog", { name: "Add rule" });
+    await fillGlobs(user, dialog, { catalogs: "*", namespaces: "*", tables: "*" });
     await user.click(within(dialog).getByRole("button", { name: "Add rule" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: "Add rule" }));
     dialog = await screen.findByRole("dialog", { name: "Add rule" });
+    await fillGlobs(user, dialog, { catalogs: "*", namespaces: "*", tables: "*" });
     await user.click(within(dialog).getByRole("combobox", { name: "Action" }));
     await user.click(await screen.findByRole("option", { name: "Exclude" }));
     await user.click(within(dialog).getByRole("button", { name: "Add rule" }));

@@ -51,7 +51,7 @@ export function previewRuleId(rule: DiscoveryRuleDraft, index: number): string {
   return rule.id ?? `#${index}`;
 }
 
-// A new rule after the others, matching every table until it is narrowed.
+// A new rule after the others, with no globs: the user names what it matches.
 export function newRuleDraft(rules: DiscoveryRuleDraft[], key: string): DiscoveryRuleDraft {
   const last = Math.max(0, ...rules.map((rule) => rule.priority));
   return {
@@ -60,8 +60,8 @@ export function newRuleDraft(rules: DiscoveryRuleDraft[], key: string): Discover
     priority: last + 10,
     action: "include",
     enabled: true,
-    catalogs: ["*"],
-    namespaces: ["*"],
-    tables: ["*"],
+    catalogs: [],
+    namespaces: [],
+    tables: [],
   };
 }

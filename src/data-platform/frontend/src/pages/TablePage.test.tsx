@@ -83,7 +83,7 @@ const UNMANAGED: [string, Options, string][] = [
   [
     "unmanaged",
     { maintenanceTable: () => jsonResponse(maintenance({ status: "unmanaged" })) },
-    "the discovery rules no longer include this table",
+    "the discovery rules do not include this table",
   ],
   [
     "dropped",
@@ -203,7 +203,7 @@ describe("TablePage", { timeout: 15_000 }, () => {
     renderAt(PAGE);
     const summary = await screen.findByRole("region", { name: "Table" });
     expect(await within(summary).findByText("Maintenance: not managed")).toBeInTheDocument();
-    expect(screen.getByText("the discovery rules no longer include this table")).toBeInTheDocument();
+    expect(screen.getByText("the discovery rules do not include this table")).toBeInTheDocument();
   });
 
   it("shows the header numbers from the catalog summary", async () => {

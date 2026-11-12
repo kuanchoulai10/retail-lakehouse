@@ -34,15 +34,35 @@ const TABLES: TableApiResponse[] = [
   }),
 ];
 
+const RULES = {
+  version: 1,
+  rules: [
+    {
+      id: "rule-1",
+      priority: 10,
+      action: "include",
+      enabled: true,
+      catalogs: ["iceberg"],
+      namespaces: ["*"],
+      tables: ["*"],
+      created_at: "2026-10-30T10:00:00Z",
+      updated_at: "2026-10-30T10:00:00Z",
+    },
+  ],
+};
+
 function stubTables(tables: TableApiResponse[]) {
-  return stubCatalogApi({ "GET /v1/tables": () => jsonResponse(tables) });
+  return stubCatalogApi({
+    "GET /v1/tables": () => jsonResponse(tables),
+    "GET /v1/discovery-rules": () => jsonResponse(RULES),
+  });
 }
 
 function rowNames(): string[] {
   return screen
     .getAllByRole("row")
     .slice(1)
-    .map((row) => within(row).getByRole("link").textContent ?? "");
+    .map((row) => within(row).getAllByRole("link")[0]?.textContent ?? "");
 }
 
 const SORTABLE: TableApiResponse[] = [
@@ -74,7 +94,7 @@ describe("TableListPage", () => {
 
     expect(await screen.findByText("iceberg.inventory.orders")).toBeInTheDocument();
     expect(screen.getByText("iceberg.e2e.tm_e2e_regions")).toBeInTheDocument();
-    expect(calls[0]?.path).toBe("/v1/tables");
+    expect(calls.map((call) => call.path)).toContain("/v1/tables");
   });
 
   it("shows the status and the managing rule per row, with no selection or preset", async () => {
@@ -82,7 +102,8 @@ describe("TableListPage", () => {
 
     const managed = within((await screen.findByText("iceberg.inventory.orders")).closest("tr") as HTMLElement);
     expect(managed.getByText("Managed")).toBeInTheDocument();
-    expect(managed.getByText("rule-1")).toBeInTheDocument();
+    expect(await managed.findByRole("link", { name: "Priority 10" })).toHaveAttribute("href", "/discovery-rules");
+    expect(managed.queryByText("rule-1")).not.toBeInTheDocument();
     const unmanaged = within(screen.getByText("iceberg.e2e.tm_e2e_regions").closest("tr") as HTMLElement);
     expect(unmanaged.getByText("Unmanaged")).toBeInTheDocument();
     expect(unmanaged.getByText("—")).toBeInTheDocument();

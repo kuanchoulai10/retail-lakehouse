@@ -1,4 +1,5 @@
-import { Banner, cn, Panel, Skeleton } from "@retail-lakehouse/design-system";
+import { Banner, cn, Skeleton } from "@retail-lakehouse/design-system";
+import { useId } from "react";
 import type {
   DiscoveryPreviewTableApiResponse,
   PreviewTableDiscoveryRulesApiResponse,
@@ -75,9 +76,13 @@ function PreviewGroup({ group, showCatalog }: { group: Group; showCatalog: boole
 
 // Which tables the unsaved list would manage, grouped by the rule that decides each one.
 export function DiscoveryRulesPreview({ rules, preview, isFetching, error }: Props) {
+  const headingId = useId();
   const showCatalog = new Set(preview?.tables.map((table) => table.catalog)).size > 1;
   return (
-    <Panel title="Preview" aria-busy={isFetching} className="flex min-w-0 flex-col gap-3">
+    <section aria-labelledby={headingId} aria-busy={isFetching} className="flex min-w-0 flex-col gap-3">
+      <h2 id={headingId} className="type-title-small">
+        Preview
+      </h2>
       {error !== null && error !== undefined && (
         <Banner type="negative" title={`Could not preview these rules: ${errorMessage(error)}`} />
       )}
@@ -100,11 +105,13 @@ export function DiscoveryRulesPreview({ rules, preview, isFetching, error }: Pro
           {preview.tables.length === 0 && (
             <p className="type-body-small text-on-surface-variant">No tables in the covered catalogs.</p>
           )}
-          {groupsOf(rules, preview.tables).map((group) => (
-            <PreviewGroup key={group.key} group={group} showCatalog={showCatalog} />
-          ))}
+          <div className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+            {groupsOf(rules, preview.tables).map((group) => (
+              <PreviewGroup key={group.key} group={group} showCatalog={showCatalog} />
+            ))}
+          </div>
         </div>
       )}
-    </Panel>
+    </section>
   );
 }

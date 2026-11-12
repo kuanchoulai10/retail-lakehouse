@@ -6,7 +6,7 @@ export type MaintenanceEmptyReason = "catalog-not-covered" | "not-found" | "unma
 const MESSAGES: Record<MaintenanceEmptyReason, string> = {
   "catalog-not-covered": "this catalog is not covered by maintenance",
   "not-found": "no discovery rule includes this table",
-  unmanaged: "the discovery rules no longer include this table",
+  unmanaged: "the discovery rules do not include this table",
   dropped: "maintenance recorded this table as dropped",
 };
 

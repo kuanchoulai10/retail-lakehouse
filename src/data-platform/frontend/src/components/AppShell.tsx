@@ -42,7 +42,7 @@ const NAV_ENTRIES: NavEntry[] = [
   },
   {
     href: "/policies",
-    label: "Policies",
+    label: "Maintenance policies",
     icon: IconAdjustmentsHorizontal,
     matches: (pathname) => pathname.startsWith("/policies"),
   },
@@ -71,7 +71,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       productName={PRODUCT_NAME}
       navigation={navigation}
       renderProductLink={renderProductLink}
-      trailingItems={<ThemePicker />}
+      leadingItems={<ThemePicker />}
     >
       <div className="max-w-[1200px]">{children}</div>
     </AppLayout>
