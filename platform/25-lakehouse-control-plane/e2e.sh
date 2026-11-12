@@ -557,6 +557,16 @@ assert_runs_succeeded() {
     echo "${label}: operations did not succeed: ${failed}" >&2
     return 1
   fi
+  failed="$(jq -c '[.[] | .operations[]
+    | select((.attempt_history | length) == 0
+      or any(.attempt_history[]; .size == null)
+      or ((.metrics.completed_without_callback // false | not)
+        and any(.attempt_history[]; .status == "succeeded" and .event_log_finished != true)))
+    | {operation, attempt_history}]' <<<"${runs}")"
+  if [[ "${failed}" != "[]" ]]; then
+    echo "${label}: attempts lack a size or a finished event log: ${failed}" >&2
+    return 1
+  fi
   rewritten="$(jq '[.[] | .operations[] | select(.operation == "rewrite_data_files")
     | .metrics.rewritten_data_files_count // 0] | add // 0' <<<"${runs}")"
   if (( rewritten <= 0 )) && jq -e '[.[] | .operations[]
