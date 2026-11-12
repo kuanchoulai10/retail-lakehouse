@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
-import { expectFocusRing } from "../../stories/assertions";
+import { expectFocusRing, portalQueries } from "../../stories/assertions";
 import { IconBook, IconTable } from "../../icons";
 import { SideNavigation } from "./SideNavigation";
 
@@ -60,6 +60,25 @@ export const Default: Story = {
     await expectFocusRing(links[2]);
     await userEvent.keyboard("{Enter}");
     await expect(args.onNavigate).toHaveBeenCalledTimes(1);
+  },
+};
+
+export const Collapsed: Story = {
+  args: { isCollapsed: true },
+  render: (args) => (
+    <div className="w-14">
+      <SideNavigation {...args} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const portal = portalQueries(canvasElement);
+    const links = within(canvasElement).getAllByRole("link") as [HTMLElement, HTMLElement, HTMLElement];
+    await expect(links[0]).toHaveAccessibleName("Tables");
+    await expect(within(links[0]).getByText("Tables").getBoundingClientRect().width).toBeLessThanOrEqual(1);
+    await expect(links[0].getBoundingClientRect().width).toBeLessThanOrEqual(40);
+    await userEvent.tab();
+    await expectFocusRing(links[0]);
+    await expect(await portal.findByRole("tooltip")).toHaveTextContent("Tables");
   },
 };
 

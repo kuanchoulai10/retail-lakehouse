@@ -18,8 +18,10 @@ const meta = {
     docs: {
       description: {
         component:
-          "Expanded departs from Serendie: the whole row is 36px high around a 56 x 32px track; " +
-          "the row stays 44px below 768px and under a coarse pointer.",
+          "Departs from Serendie's 52 x 32px track: the track is 36 x 20px from 768px and " +
+          "44 x 24px below it, with a medium label, so a switch sits in a table row without " +
+          "dominating it. The row stays 36px high expanded and 44px below 768px and under a " +
+          "coarse pointer.",
       },
     },
   },
@@ -63,11 +65,21 @@ export const Disabled: Story = {
   },
 };
 
+export const Dense: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const box = within(canvasElement).getByRole("switch").getBoundingClientRect();
+    await expect([box.width, box.height]).toEqual([36, 20]);
+  },
+};
+
 export const Touch: Story = {
   globals: { viewport: { value: "phone", isRotated: false } },
   play: async ({ canvasElement }) => {
-    const row = within(canvasElement).getByRole("switch").parentElement as HTMLElement;
+    const box = within(canvasElement).getByRole("switch");
+    const row = box.parentElement as HTMLElement;
     await expect(row.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    await expect([box.getBoundingClientRect().width, box.getBoundingClientRect().height]).toEqual([44, 24]);
     await expectNoHorizontalPageScroll(canvasElement);
   },
 };

@@ -18,6 +18,8 @@ import {
   IconDots as TablerIconDots,
   IconGitCommit as TablerIconGitCommit,
   IconInfoCircle as TablerIconInfoCircle,
+  IconLayoutSidebarLeftCollapse as TablerIconLayoutSidebarLeftCollapse,
+  IconLayoutSidebarLeftExpand as TablerIconLayoutSidebarLeftExpand,
   IconMenu2 as TablerIconMenu2,
   IconPalette as TablerIconPalette,
   IconRadar as TablerIconRadar,
@@ -47,6 +49,8 @@ export const IconCopy = withDefaultStroke(TablerIconCopy);
 export const IconDots = withDefaultStroke(TablerIconDots);
 export const IconGitCommit = withDefaultStroke(TablerIconGitCommit);
 export const IconInfoCircle = withDefaultStroke(TablerIconInfoCircle);
+export const IconLayoutSidebarLeftCollapse = withDefaultStroke(TablerIconLayoutSidebarLeftCollapse);
+export const IconLayoutSidebarLeftExpand = withDefaultStroke(TablerIconLayoutSidebarLeftExpand);
 export const IconMenu2 = withDefaultStroke(TablerIconMenu2);
 export const IconPalette = withDefaultStroke(TablerIconPalette);
 export const IconRadar = withDefaultStroke(TablerIconRadar);
