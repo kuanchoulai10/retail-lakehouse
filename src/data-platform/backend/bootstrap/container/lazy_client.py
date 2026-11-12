@@ -1,4 +1,4 @@
-"""Provide the LazyK8sApi proxy."""
+"""Provide the LazyClient proxy."""
 
 from __future__ import annotations
 
@@ -9,12 +9,12 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-class LazyK8sApi:
-    """Proxy a client that is built on first use, at most once: a Kubernetes API (custom objects, core, ...).
+class LazyClient:
+    """Proxy a client that is built on first use, at most once.
 
-    Loading a kubeconfig at construction would stop the API and the event consumer
-    from starting where no cluster config exists; only Spark calls need one. The
-    Spark event log file system is deferred the same way.
+    The Kubernetes APIs (custom objects, core) are built this way: loading a kubeconfig at
+    construction would stop the API and the event consumer from starting where no cluster
+    config exists; only Spark calls need one.
     """
 
     def __init__(self, factory: Callable[[], object]) -> None:

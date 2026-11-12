@@ -1,4 +1,4 @@
-"""Test the lazily created Kubernetes API client."""
+"""Test the client proxy that is built on first use."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from bootstrap.container import LazyK8sApi
+from bootstrap.container import LazyClient
 
 
 def test_factory_is_not_called_until_first_use_then_once():
@@ -18,7 +18,7 @@ def test_factory_is_not_called_until_first_use_then_once():
         calls.append(1)
         return api
 
-    lazy = LazyK8sApi(factory)
+    lazy = LazyClient(factory)
     assert calls == []
 
     lazy.get_namespaced_custom_object(group="g")
@@ -35,7 +35,7 @@ def test_a_failing_factory_only_fails_at_first_use():
     def factory() -> MagicMock:
         raise RuntimeError("no kubeconfig")
 
-    lazy = LazyK8sApi(factory)
+    lazy = LazyClient(factory)
 
     with pytest.raises(RuntimeError, match="no kubeconfig"):
         lazy.create_namespaced_custom_object()
@@ -45,6 +45,6 @@ def test_proxies_any_kubernetes_api_object():
     """The proxy delegates to whatever API object the factory builds, such as the core API."""
     core_api = MagicMock(name="core-v1-api")
 
-    LazyK8sApi(lambda: core_api).list_namespaced_pod(namespace="ns")
+    LazyClient(lambda: core_api).list_namespaced_pod(namespace="ns")
 
     core_api.list_namespaced_pod.assert_called_once_with(namespace="ns")

@@ -13,6 +13,8 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from pyarrow.fs import FileSystem
 
     from context.table_maintenance.application.port.outbound.table_maintenance_run import (
@@ -30,12 +32,14 @@ class ReadMaintenanceEventLogS3Gateway(ReadMaintenanceEventLogGateway):
     runs and renames it to ``appstatus_<id>`` when its context stops cleanly. Our runtime stops
     the context before it reports its result, and a job polled as failed has a driver that has
     exited, so when a result is recorded the marker is final. Only the marker is read, never
-    the log itself.
+    the log itself. The file system is opened on the first read, so a component that never
+    reads an event log never opens one.
     """
 
-    def __init__(self, filesystem: FileSystem, base: str) -> None:
-        """Keep the file system and the event log directory (``bucket/prefix``, no scheme)."""
-        self._filesystem = filesystem
+    def __init__(self, open_filesystem: Callable[[], FileSystem], base: str) -> None:
+        """Keep the file system opener and the event log directory (``bucket/prefix``, no scheme)."""
+        self._open_filesystem = open_filesystem
+        self._filesystem: FileSystem | None = None
         self._base = base.rstrip("/")
 
     def read(
@@ -51,6 +55,8 @@ class ReadMaintenanceEventLogS3Gateway(ReadMaintenanceEventLogGateway):
         if not EXECUTION_ID.fullmatch(execution_id):
             return ReadMaintenanceEventLogGatewayOutput(finished=None)
         marker = f"{self._base}/eventlog_v2_{execution_id}/appstatus_{execution_id}"
+        if self._filesystem is None:
+            self._filesystem = self._open_filesystem()
         finished, in_progress = self._filesystem.get_file_info([marker, marker + IN_PROGRESS_SUFFIX])
         if finished.type == FileType.File:
             return ReadMaintenanceEventLogGatewayOutput(finished=True)

@@ -12,7 +12,7 @@ from bootstrap.container.build_k8s_core_api import build_k8s_core_api
 from bootstrap.container.build_repositories import build_repositories
 from bootstrap.container.build_use_cases import build_use_cases
 from bootstrap.container.connect_temporal import connect_temporal
-from bootstrap.container.lazy_k8s_api import LazyK8sApi
+from bootstrap.container.lazy_client import LazyClient
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -46,8 +46,8 @@ def build_connected_use_cases(
         settings,
         client=client,
         bridge=bridge,
-        k8s_api=cast("CustomObjectsApi", LazyK8sApi(k8s_api_factory)),
-        k8s_core_api=cast("CoreV1Api", LazyK8sApi(k8s_core_api_factory)),
+        k8s_api=cast("CustomObjectsApi", LazyClient(k8s_api_factory)),
+        k8s_core_api=cast("CoreV1Api", LazyClient(k8s_core_api_factory)),
         catalog_factory=build_catalog_factory(settings.catalog),
     )
     return build_use_cases(build_repositories(build_engine(settings)), gateways, catalog_names=settings.catalog.names)

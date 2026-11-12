@@ -31,7 +31,7 @@ from bootstrap.container.event_log_base import (
     event_log_base,
 )
 from bootstrap.container.gateways import Gateways
-from bootstrap.container.lazy_k8s_api import LazyK8sApi
+from bootstrap.container.lazy_client import LazyClient
 from bootstrap.container.load_k8s_config import load_k8s_config
 from bootstrap.container.repositories import Repositories
 from bootstrap.container.run_event_consumer import run_event_consumer
@@ -41,7 +41,7 @@ from bootstrap.container.use_cases import UseCases
 __all__ = [
     "Activities",
     "Gateways",
-    "LazyK8sApi",
+    "LazyClient",
     "Repositories",
     "UseCases",
     "WORKFLOWS",

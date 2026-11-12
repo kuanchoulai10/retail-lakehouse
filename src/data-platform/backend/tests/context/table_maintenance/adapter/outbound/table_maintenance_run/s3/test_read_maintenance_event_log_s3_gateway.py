@@ -28,7 +28,7 @@ def _log_dir(tmp_path: Path) -> Path:
 
 
 def _read(tmp_path: Path, execution_id: str = APP_ID) -> bool | None:
-    gateway = ReadMaintenanceEventLogS3Gateway(LocalFileSystem(), f"{tmp_path}/spark-event-logs")
+    gateway = ReadMaintenanceEventLogS3Gateway(LocalFileSystem, f"{tmp_path}/spark-event-logs")
     return gateway.read(ReadMaintenanceEventLogGatewayInput(execution_id=execution_id)).finished
 
 
@@ -54,7 +54,22 @@ def test_no_marker_reads_none(tmp_path: Path):
 def test_odd_execution_id_reads_none():
     """An execution id with characters outside letters, digits and dashes reads as unknown without a lookup."""
     filesystem = MagicMock(name="filesystem")
-    gateway = ReadMaintenanceEventLogS3Gateway(filesystem, "spark-event-logs")
+    gateway = ReadMaintenanceEventLogS3Gateway(lambda: filesystem, "spark-event-logs")
     for odd in ("../etc", "a/b", "", "spark 1"):
         assert gateway.read(ReadMaintenanceEventLogGatewayInput(execution_id=odd)).finished is None
     assert filesystem.mock_calls == []
+
+
+def test_file_system_is_opened_on_first_read_and_once(tmp_path: Path):
+    """The file system is opened only when an event log is first read, then reused."""
+    opened: list[LocalFileSystem] = []
+
+    def open_filesystem() -> LocalFileSystem:
+        opened.append(LocalFileSystem())
+        return opened[-1]
+
+    gateway = ReadMaintenanceEventLogS3Gateway(open_filesystem, f"{tmp_path}/spark-event-logs")
+    assert opened == []
+    for _ in range(2):
+        gateway.read(ReadMaintenanceEventLogGatewayInput(execution_id=APP_ID))
+    assert len(opened) == 1
