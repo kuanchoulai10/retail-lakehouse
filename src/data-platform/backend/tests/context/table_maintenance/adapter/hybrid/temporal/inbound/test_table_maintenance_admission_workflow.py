@@ -54,8 +54,8 @@ class AdmissionHarness:
         self.requesters[name] = handle
         return handle.id
 
-    async def acquire(self, request_id: str, requester_workflow_id: str) -> None:
-        """Signal the admission workflow to acquire a slot for a request."""
+    async def acquire(self, request_id: str, requester_workflow_id: str, lease_seconds: int | None = None) -> None:
+        """Signal the admission workflow to acquire a slot for a request, with its own lease when given."""
         await self.client.start_workflow(
             TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
             TableMaintenanceAdmissionWorkflowInput(limit=self.limit, lease_seconds=self.lease),
@@ -63,7 +63,7 @@ class AdmissionHarness:
             task_queue=self.queue,
             id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
             start_signal=TableMaintenanceAdmissionSignal.ACQUIRE,
-            start_signal_args=[AdmissionAcquireSignal(request_id, requester_workflow_id)],
+            start_signal_args=[AdmissionAcquireSignal(request_id, requester_workflow_id, lease_seconds)],
         )
 
     async def release(self, request_id: str) -> None:
@@ -234,6 +234,24 @@ def test_renew_restarts_the_lease_of_a_holder():
         assert await h.granted("b") == []
 
         await h.env.sleep(timedelta(seconds=h.lease))
+        await eventually(lambda: h.granted("b"), lambda g: g == ["r-b"])
+
+    _run(scenario, limit=1, lease=600)
+
+
+def test_holder_keeps_the_lease_its_acquire_asked_for():
+    """A request that brings its own lease keeps its slot for that lease, not the one the workflow started with."""
+
+    async def scenario(h: AdmissionHarness) -> None:
+        a, b = await h.requester("a"), await h.requester("b")
+        await h.acquire("r-a", a, lease_seconds=3600)
+        await eventually(lambda: h.granted("a"), lambda g: g == ["r-a"])
+        await h.acquire("r-b", b)
+        await h.env.sleep(timedelta(seconds=1200))
+        assert list((await h.state())["holders"]) == ["r-a"]
+        assert await h.granted("b") == []
+
+        await h.env.sleep(timedelta(seconds=2500))
         await eventually(lambda: h.granted("b"), lambda g: g == ["r-b"])
 
     _run(scenario, limit=1, lease=600)

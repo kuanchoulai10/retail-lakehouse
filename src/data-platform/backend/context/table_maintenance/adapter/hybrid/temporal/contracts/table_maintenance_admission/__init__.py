@@ -8,6 +8,9 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission.default_lease_seconds import (  # noqa: E501
     DEFAULT_ADMISSION_LEASE_SECONDS,
 )
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission.lease_margin_seconds import (  # noqa: E501
+    ADMISSION_LEASE_MARGIN_SECONDS,
+)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission.release_signal import (
     AdmissionReleaseSignal,
 )
@@ -31,6 +34,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
 )
 
 __all__ = [
+    "ADMISSION_LEASE_MARGIN_SECONDS",
     "AdmissionAcquireSignal",
     "AdmissionReleaseSignal",
     "AdmissionRenewSignal",

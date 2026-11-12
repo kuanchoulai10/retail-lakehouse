@@ -33,6 +33,8 @@ class WorkflowSignalActivities:
 
     The admission limit and lease only apply when this call starts the admission
     workflow; a running admission workflow keeps the values it was started with.
+    An acquire request that names its own ``lease_seconds`` is held for that lease
+    whatever the workflow was started with.
     """
 
     def __init__(
@@ -65,6 +67,7 @@ class WorkflowSignalActivities:
                 AdmissionAcquireSignal(
                     request_id=request["request_id"],
                     requester_workflow_id=request["requester_workflow_id"],
+                    lease_seconds=request.get("lease_seconds"),
                 )
             ],
         )

@@ -674,6 +674,25 @@ def test_unconfirmed_deletion_fails_the_operation_and_keeps_the_slot():
     _run(scenario)
 
 
+def test_attempt_keeps_its_slot_for_its_own_deadline_under_an_older_lease():
+    """An admission workflow started with a shorter lease still lets an attempt hold its slot for its own deadline."""
+
+    async def scenario(h: Harness) -> None:
+        handle = await h.start_maintenance(COMPACTION, attempt_deadline_seconds=3600)
+        await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n == 1)
+        await h.env.sleep(timedelta(minutes=20))
+        assert list(await h.admission_holders()) == [FIRST]
+
+        await handle.signal(
+            TableMaintenanceSignal.OPERATION_RESULT,
+            OperationResultSignal(RUN_ID, COMPACTION, 1, True, {"files": 1}, None),
+        )
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+        assert h.recorded() == [(COMPACTION, 1, True, None)]
+
+    _run(scenario, lease_seconds=600)
+
+
 def test_job_completing_during_fencing_still_counts_as_timed_out():
     """A result that arrives after the deadline, while the attempt is being fenced, does not turn it into a success."""
 

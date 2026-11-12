@@ -53,7 +53,7 @@ class StubAdmission:
         return {
             "limit": self.input.limit,
             "lease": self.input.lease_seconds,
-            "acquires": [a.request_id for a in self.acquires],
+            "acquires": [[a.request_id, a.lease_seconds] for a in self.acquires],
         }
 
 
@@ -93,14 +93,17 @@ async def _scenario() -> None:
             workflow_runner=UnsandboxedWorkflowRunner(),
         ):
             act_env = ActivityEnvironment()
-            for request_id in ("a", "b"):
-                await act_env.run(
-                    activities.signal_admission_acquire,
-                    {"request_id": request_id, "requester_workflow_id": "w"},
-                )
+            await act_env.run(
+                activities.signal_admission_acquire,
+                {"request_id": "a", "requester_workflow_id": "w", "lease_seconds": 900},
+            )
+            await act_env.run(
+                activities.signal_admission_acquire,
+                {"request_id": "b", "requester_workflow_id": "w"},
+            )
             admission = env.client.get_workflow_handle(TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID)
             state = await admission.query("state")
-            assert state == {"limit": 2, "lease": 60, "acquires": ["a", "b"]}
+            assert state == {"limit": 2, "lease": 60, "acquires": [["a", 900], ["b", None]]}
             description = await admission.describe()
             assert await description.static_summary() == ("global Spark maintenance admission (limit=2)")
 

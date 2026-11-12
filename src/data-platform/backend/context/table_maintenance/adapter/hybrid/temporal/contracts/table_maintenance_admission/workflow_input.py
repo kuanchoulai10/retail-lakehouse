@@ -16,9 +16,12 @@ class TableMaintenanceAdmissionWorkflowInput:
     The lease defaults to the attempt deadline plus 15 minutes, so a slot is never
     taken from an attempt that is still within its deadline.
 
-    ``holders`` maps a request id to ``{"requester_workflow_id", "granted_at"}`` with
-    ``granted_at`` an ISO-8601 string; ``queue`` holds FIFO entries
-    ``{"request_id", "requester_workflow_id"}``.
+    ``lease_seconds`` applies to requests that bring no lease of their own.
+    ``holders`` maps a request id to ``{"requester_workflow_id", "granted_at",
+    "lease_seconds"}`` with ``granted_at`` an ISO-8601 string; ``queue`` holds FIFO
+    entries ``{"request_id", "requester_workflow_id", "lease_seconds"}``. A
+    ``lease_seconds`` of ``None`` (or missing, in state carried from before
+    requests brought their own lease) means the workflow's lease.
     """
 
     limit: int

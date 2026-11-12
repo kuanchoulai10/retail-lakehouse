@@ -18,6 +18,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
     TableMaintenanceWorkflowInput,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission import (
+    ADMISSION_LEASE_MARGIN_SECONDS,
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
     AdmissionReleaseSignal,
     AdmissionRenewSignal,
@@ -46,7 +47,8 @@ class TableMaintenanceWorkflow:
     """Run the planned operations of one maintenance run, in order, on Spark.
 
     Each operation gets up to three attempts. An attempt holds one admission slot
-    from the admission workflow while its Spark job runs, and ends with the job's
+    from the admission workflow while its Spark job runs, leased for its attempt
+    deadline plus 15 minutes, and ends with the job's
     ``operation_result`` callback for that exact attempt, with what polling the
     job's state reveals, or with a timeout ``attempt_deadline_seconds`` (input, 6 h by
     default) after the submit. Polling runs every 30 s for the first 10 minutes of an attempt and
@@ -167,6 +169,7 @@ class TableMaintenanceWorkflow:
         request = {
             "request_id": request_id,
             "requester_workflow_id": workflow.info().workflow_id,
+            "lease_seconds": int(self._policy.attempt_deadline.total_seconds()) + ADMISSION_LEASE_MARGIN_SECONDS,
         }
         await self._activity(TableMaintenanceActivity.SIGNAL_ADMISSION_ACQUIRE, request)
         while True:

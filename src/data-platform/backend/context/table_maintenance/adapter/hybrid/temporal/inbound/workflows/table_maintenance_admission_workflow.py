@@ -27,7 +27,10 @@ class TableMaintenanceAdmissionWorkflow:
     A requester signals ``acquire``; when a slot is free the workflow records it as
     a holder and signals ``admission_granted(request_id)`` back to the requester. A
     holder frees its slot with ``release``, or loses it once its lease runs out, so
-    a crashed requester cannot hold a slot forever. A holder that must keep its slot
+    a crashed requester cannot hold a slot forever. Each request brings its lease
+    (its attempt deadline plus a margin), so a lease follows the deadline a
+    requester runs with; a request without one gets the lease the workflow was
+    started with. A holder that must keep its slot
     past the lease, such as an attempt waiting for its timed-out Spark pods to go,
     sends ``renew``, which restarts the lease from now. A requester that no longer
     exists when granted is dropped and the next one is granted.
@@ -78,6 +81,7 @@ class TableMaintenanceAdmissionWorkflow:
                 {
                     "request_id": signal.request_id,
                     "requester_workflow_id": signal.requester_workflow_id,
+                    "lease_seconds": signal.lease_seconds,
                 }
             )
         self._changed = True
@@ -131,6 +135,7 @@ class TableMaintenanceAdmissionWorkflow:
             self._holders[request_id] = {
                 "requester_workflow_id": requester,
                 "granted_at": workflow.now().isoformat(),
+                "lease_seconds": entry.get("lease_seconds"),
             }
             if not await self._notify(requester, request_id):
                 self._holders.pop(request_id, None)
@@ -157,4 +162,5 @@ class TableMaintenanceAdmissionWorkflow:
 
     def _expires_at(self, holder: dict) -> datetime:
         granted_at = datetime.fromisoformat(holder["granted_at"])
-        return granted_at + timedelta(seconds=self._lease_seconds)
+        lease_seconds = holder.get("lease_seconds") or self._lease_seconds
+        return granted_at + timedelta(seconds=lease_seconds)
