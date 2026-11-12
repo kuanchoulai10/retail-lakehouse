@@ -11,7 +11,10 @@ from temporalio.common import RetryPolicy
 from temporalio.exceptions import ActivityError, FailureError, is_cancelled_exception
 
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
+    DEFAULT_START_SIZE,
     TABLE_MAINTENANCE_WORKFLOW,
+    MaintenanceAttemptEnding,
+    MaintenanceNextStep,
     OperationResultSignal,
     TableMaintenanceActivity,
     TableMaintenanceSignal,
@@ -47,6 +50,7 @@ _FENCE_PATCH = "fence-timed-out-attempt"
 _FENCE_MISSING_PATCH = "fence-missing-job"
 _FENCE_CANCELLED_PATCH = "fence-cancelled-attempt"
 _CANCELLED = "cancelled"
+_DECISION_PATCH = "classify-attempt-failure"
 
 
 @workflow.defn(name=TABLE_MAINTENANCE_WORKFLOW)
@@ -70,7 +74,12 @@ class TableMaintenanceWorkflow:
     cancellation (a manual cancel, or the reconciliation giving the run up) fences
     the attempt it interrupts the same way, without a bound and even if another
     cancel arrives meanwhile, before the slot is released (patch
-    ``fence-cancelled-attempt``). A failed operation
+    ``fence-cancelled-attempt``). The first attempt runs at the plan's start size (S when the plan
+    names none). Recording a failed attempt names how it ended and returns what follows it: an
+    out-of-memory failure is retried at the next size, other failures at the same size, and a
+    failure that needs a person, is not retried or may still be running ends the operation at once
+    (patch ``classify-attempt-failure``; a record reply without a decision, as before failure
+    classes, retries at the same size). A failed operation
     never fails the run: the next operation still runs. At the end, also after a
     cancellation, the Spark job of every started attempt is deleted and the parent
     reconciliation workflow is told the run finished and how many results could not be
@@ -128,39 +137,62 @@ class TableMaintenanceWorkflow:
         await self._release(request_id)
 
     async def _run_operation(self, operation: dict[str, Any]) -> None:
+        size: str = operation.get("start_size") or DEFAULT_START_SIZE
         for attempt in range(1, self._policy.max_attempts + 1):
-            outcome = await self._run_attempt(operation, attempt)
+            outcome = await self._run_attempt(operation, attempt, size)
             if (outcome.operation, outcome.attempt) in self._settled_attempts:
                 return
-            await self._record(outcome)
+            decision = await self._record(outcome) or {}
             if outcome.succeeded:
                 return
+            step = decision.get("next_step")
+            if step not in (None, MaintenanceNextStep.RETRY_SAME) and workflow.patched(_DECISION_PATCH):
+                if step != MaintenanceNextStep.RETRY_LARGER:
+                    return
+                size = decision.get("next_size") or size
             if attempt < self._policy.max_attempts:
                 await workflow.sleep(self._policy.backoff_after(attempt))
 
-    async def _run_attempt(self, operation: dict[str, Any], attempt: int) -> OperationResultSignal:
+    async def _run_attempt(self, operation: dict[str, Any], attempt: int, size: str) -> OperationResultSignal:
         name = operation["operation"]
         request_id = f"{self._run_id}-{name}-{attempt}"
         self._current_request = request_id
         try:
-            return await self._attempt_outcome(operation, attempt, request_id)
+            return await self._attempt_outcome(operation, attempt, size, request_id)
         except asyncio.CancelledError:
             if (name, attempt) not in self._settled_attempts:
-                await self._record(self._failure(name, attempt, _CANCELLED))
+                await self._record(self._failure(name, attempt, _CANCELLED, MaintenanceAttemptEnding.CANCELLED))
             if (name, attempt) in self._started_attempts and workflow.patched(_FENCE_CANCELLED_PATCH):
-                await _to_the_end(self._fence(name, attempt, request_id, _CANCELLED, since="the cancel", bounded=False))
+                await _to_the_end(
+                    self._fence(
+                        name,
+                        attempt,
+                        request_id,
+                        _CANCELLED,
+                        MaintenanceAttemptEnding.CANCELLED,
+                        since="the cancel",
+                        bounded=False,
+                    )
+                )
             raise
         finally:
             self._current_request = None
             await self._release(request_id)
 
-    async def _attempt_outcome(self, operation: dict[str, Any], attempt: int, request_id: str) -> OperationResultSignal:
+    async def _attempt_outcome(
+        self, operation: dict[str, Any], attempt: int, size: str, request_id: str
+    ) -> OperationResultSignal:
         name = operation["operation"]
         try:
             await self._acquire(request_id)
         except ActivityError as error:
             _raise_if_cancelled(error)
-            return self._failure(name, attempt, f"admission acquire failed: {_message(error)}")
+            return self._failure(
+                name,
+                attempt,
+                f"admission acquire failed: {_message(error)}",
+                MaintenanceAttemptEnding.ADMISSION_FAILED,
+            )
         self._started_attempts.append((name, attempt))
         try:
             submitted = await self._activity(
@@ -171,12 +203,15 @@ class TableMaintenanceWorkflow:
                     "attempt": attempt,
                     "filters": operation["filters"],
                     "procedure_args": operation["procedure_args"],
+                    "size": size,
                     "now": _now(),
                 },
             )
         except ActivityError as error:
             _raise_if_cancelled(error)
-            return self._failure(name, attempt, f"submit failed: {_message(error)}")
+            return self._failure(
+                name, attempt, f"submit failed: {_message(error)}", MaintenanceAttemptEnding.SUBMIT_FAILED
+            )
         return await self._await_outcome(name, attempt, submitted["job_name"], request_id)
 
     async def _acquire(self, request_id: str) -> None:
@@ -231,7 +266,9 @@ class TableMaintenanceWorkflow:
                 continue
             state = status["state"]
             if state == "FAILED":
-                return self._failure(name, attempt, status["error"] or "spark job failed")
+                return self._failure(
+                    name, attempt, status["error"] or "spark job failed", MaintenanceAttemptEnding.JOB_FAILED
+                )
             if state == "NOT_FOUND":
                 return await self._missing(name, attempt, request_id)
             if state != "COMPLETED":
@@ -252,25 +289,38 @@ class TableMaintenanceWorkflow:
     async def _timed_out(self, name: str, attempt: int, request_id: str) -> OperationResultSignal:
         """Fence the timed-out attempt; a history from before fencing replays its immediate failure."""
         if workflow.patched(_FENCE_PATCH):
-            return await self._fence(name, attempt, request_id, _TIMED_OUT, since="the timeout")
-        return self._failure(name, attempt, _TIMED_OUT)
+            return await self._fence(
+                name, attempt, request_id, _TIMED_OUT, MaintenanceAttemptEnding.TIMED_OUT, since="the timeout"
+            )
+        return self._failure(name, attempt, _TIMED_OUT, MaintenanceAttemptEnding.TIMED_OUT)
 
     async def _missing(self, name: str, attempt: int, request_id: str) -> OperationResultSignal:
         """Fence an attempt whose job went missing, as its pods may outlive it; older histories fail it at once."""
         if workflow.patched(_FENCE_MISSING_PATCH):
-            return await self._fence(name, attempt, request_id, _MISSING, since="the job went missing")
-        return self._failure(name, attempt, _MISSING)
+            return await self._fence(
+                name, attempt, request_id, _MISSING, MaintenanceAttemptEnding.MISSING, since="the job went missing"
+            )
+        return self._failure(name, attempt, _MISSING, MaintenanceAttemptEnding.MISSING)
 
-    async def _fence(
-        self, name: str, attempt: int, request_id: str, reason: str, *, since: str, bounded: bool = True
+    async def _fence(  # noqa: PLR0913
+        self,
+        name: str,
+        attempt: int,
+        request_id: str,
+        reason: str,
+        ending: MaintenanceAttemptEnding,
+        *,
+        since: str,
+        bounded: bool = True,
     ) -> OperationResultSignal:
         """Delete an ended attempt's job and wait until its pods are gone; the slot stays held meanwhile.
 
         ``reason`` is why the attempt ended (it timed out, or its job went
-        missing) and ``since`` names that moment in the error of an unconfirmed
-        fence. An unbounded fence (after a cancel) records nothing and waits for
-        the pods however long they take, polling slowly once past the bound so
-        its history stays small.
+        missing), ``ending`` names that ending for the record, and ``since``
+        names that moment in the error of an unconfirmed fence. An unbounded
+        fence (after a cancel) records nothing and waits for the pods however
+        long they take, polling slowly once past the bound so its history stays
+        small.
 
         Each poll first renews the lease when it is due (the first poll always
         does, before anything else), then tries the delete again until one has
@@ -288,7 +338,7 @@ class TableMaintenanceWorkflow:
         confirm_by = workflow.now() + fencing.confirm_bound
         renew_at = workflow.now()
         deleted = False
-        outcome = self._failure(name, attempt, reason)
+        outcome = self._failure(name, attempt, reason, ending)
         while True:
             if workflow.now() >= renew_at:
                 await self._renew(request_id)
@@ -300,7 +350,7 @@ class TableMaintenanceWorkflow:
                 minutes = int(fencing.confirm_bound.total_seconds() // 60)
                 still = "its pods were still running" if deleted else "its job could still not be deleted"
                 error = f"{reason}; {still} {minutes} minutes after {since}"
-                outcome = self._failure(name, attempt, error)
+                outcome = self._failure(name, attempt, error, ending, still_running=True)
                 await self._record(outcome)
                 self._settled_attempts.add(key)
             slow = key in self._settled_attempts or workflow.now() >= confirm_by
@@ -348,9 +398,10 @@ class TableMaintenanceWorkflow:
             workflow.logger.warning("status of %s attempt %s unknown: %s", name, attempt, error)
             return None
 
-    async def _record(self, outcome: OperationResultSignal) -> None:
+    async def _record(self, outcome: OperationResultSignal) -> dict[str, Any] | None:
+        """Record the attempt and return the record's reply, with what follows it; None when it was not recorded."""
         try:
-            await self._activity(
+            return await self._activity(
                 TableMaintenanceActivity.RECORD_MAINTENANCE_OPERATION_RESULT,
                 {
                     "run_id": outcome.run_id,
@@ -359,6 +410,9 @@ class TableMaintenanceWorkflow:
                     "succeeded": outcome.succeeded,
                     "metrics": outcome.metrics,
                     "error": outcome.error,
+                    "ended_by": outcome.ended_by,
+                    "still_running": outcome.still_running,
+                    "max_attempts": self._policy.max_attempts,
                     "now": _now(),
                 },
             )
@@ -371,6 +425,7 @@ class TableMaintenanceWorkflow:
                 outcome.attempt,
                 error,
             )
+            return None
 
     async def _finish(self, parent_workflow_id: str) -> None:
         for name, attempt in self._started_attempts:
@@ -397,7 +452,15 @@ class TableMaintenanceWorkflow:
             workflow.logger.warning("signalling the parent failed: %s", error)
         await workflow.wait_condition(workflow.all_handlers_finished)
 
-    def _failure(self, name: str, attempt: int, error: str) -> OperationResultSignal:
+    def _failure(
+        self,
+        name: str,
+        attempt: int,
+        error: str,
+        ending: MaintenanceAttemptEnding,
+        *,
+        still_running: bool = False,
+    ) -> OperationResultSignal:
         return OperationResultSignal(
             run_id=self._run_id,
             operation=name,
@@ -405,6 +468,8 @@ class TableMaintenanceWorkflow:
             succeeded=False,
             metrics={},
             error=error,
+            ended_by=ending,
+            still_running=still_running,
         )
 
     async def _activity(self, name: str, request: dict[str, Any]) -> Any:  # noqa: ANN401

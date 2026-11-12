@@ -5,8 +5,17 @@ from __future__ import annotations
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.activity import (
     TableMaintenanceActivity,
 )
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.attempt_ending import (
+    MaintenanceAttemptEnding,
+)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.default_attempt_deadline_seconds import (  # noqa: E501
     DEFAULT_ATTEMPT_DEADLINE_SECONDS,
+)
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.default_start_size import (
+    DEFAULT_START_SIZE,
+)
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.next_step import (
+    MaintenanceNextStep,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.operation_result_signal import (
     OperationResultSignal,
@@ -28,6 +37,9 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
 )
 
 __all__ = [
+    "DEFAULT_START_SIZE",
+    "MaintenanceNextStep",
+    "MaintenanceAttemptEnding",
     "DEFAULT_ATTEMPT_DEADLINE_SECONDS",
     "OperationResultSignal",
     "TABLE_MAINTENANCE_WORKFLOW",

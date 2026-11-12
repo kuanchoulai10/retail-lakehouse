@@ -29,7 +29,9 @@ class ScriptedMaintenanceActivities:
     script can also send a stale result for another attempt. ``states[app_name]``
     is the job state the status activity reports (RUNNING by default); a list plays
     its states in order and then repeats the last one. ``record_errors`` lists the
-    ``(operation, attempt)`` outcomes whose recording fails non-retryably, and
+    ``(operation, attempt)`` outcomes whose recording fails non-retryably,
+    ``record_replies[(operation, attempt)]`` is merged into that record's reply
+    (the decision the record use case would return), and
     ``create_gate``, ``submit_gate`` and ``status_gate``, when set, hold that
     activity until the test opens them; ``status_hook`` runs inside each status
     call with the app name and the call's scheduled time.
@@ -50,6 +52,7 @@ class ScriptedMaintenanceActivities:
         self.submit_errors: dict[tuple[str, int], str] = {}
         self.states: dict[str, dict[str, Any] | list[dict[str, Any]]] = {}
         self.record_errors: set[tuple[str, int]] = set()
+        self.record_replies: dict[tuple[str, int], dict[str, Any]] = {}
         self.create_gate: asyncio.Event | None = None
         self.submit_gate: asyncio.Event | None = None
         self.status_gate: asyncio.Event | None = None
@@ -131,9 +134,10 @@ class ScriptedMaintenanceActivities:
     async def record_table_maintenance_operation_result(self, request: dict) -> dict:
         """Record the operation result, or fail when the script says the database is down."""
         self.records.append(request)
-        if (request["operation"], request["attempt"]) in self.record_errors:
+        key = (request["operation"], request["attempt"])
+        if key in self.record_errors:
             raise ApplicationError("db down", type="ConflictError", non_retryable=True)
-        return {"run_id": request["run_id"], "status": "running"}
+        return {"run_id": request["run_id"], "status": "running", **self.record_replies.get(key, {})}
 
     @activity.defn(name=TableMaintenanceActivity.DELETE_MAINTENANCE_JOB)
     async def delete_maintenance_job(self, request: dict) -> dict:

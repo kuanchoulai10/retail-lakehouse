@@ -64,6 +64,8 @@ def test_result_reaches_maintenance_workflow(harness):
             "succeeded": True,
             "metrics": {"rewritten": 3},
             "error": None,
+            "ended_by": "result",
+            "still_running": False,
         }
     ]
 

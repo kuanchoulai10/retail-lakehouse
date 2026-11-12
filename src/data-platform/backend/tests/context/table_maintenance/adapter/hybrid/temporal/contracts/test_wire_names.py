@@ -19,7 +19,10 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery
     TableDiscoveryActivity,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
+    DEFAULT_START_SIZE,
     TABLE_MAINTENANCE_WORKFLOW,
+    MaintenanceAttemptEnding,
+    MaintenanceNextStep,
     TableMaintenanceActivity,
     TableMaintenanceSignal,
 )
@@ -32,6 +35,11 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
     TABLE_RECONCILIATION_WORKFLOW,
     TableReconciliationActivity,
     TableReconciliationSignal,
+)
+from context.table_maintenance.application.domain.model.shared import ComputeSize
+from context.table_maintenance.application.domain.model.table_maintenance_run import (
+    AttemptEnding,
+    NextStep,
 )
 
 if TYPE_CHECKING:
@@ -125,3 +133,42 @@ def test_table_search_attribute_names():
         "MAINTENANCE_OPERATIONS": "MaintenanceOperations",
         "MAINTENANCE_TRIGGER": "MaintenanceTrigger",
     }
+
+
+def test_maintenance_attempt_endings():
+    """The attempt endings sent to the record activity are the stable wire values."""
+    assert _values(MaintenanceAttemptEnding) == {
+        "RESULT": "result",
+        "JOB_FAILED": "job_failed",
+        "TIMED_OUT": "timed_out",
+        "MISSING": "missing",
+        "CANCELLED": "cancelled",
+        "SUBMIT_FAILED": "submit_failed",
+        "ADMISSION_FAILED": "admission_failed",
+    }
+
+
+def test_maintenance_next_steps():
+    """The next steps the record activity replies with are the stable wire values."""
+    assert _values(MaintenanceNextStep) == {
+        "DONE": "done",
+        "RETRY_LARGER": "retry_larger",
+        "RETRY_SAME": "retry_same",
+        "NEEDS_ATTENTION": "needs_attention",
+        "ATTEMPTS_USED": "attempts_used",
+        "NOT_RETRIED": "not_retried",
+        "CANCELLED": "cancelled",
+        "STILL_RUNNING": "still_running",
+    }
+
+
+def test_default_start_size():
+    """A plan without a start size starts at S."""
+    assert DEFAULT_START_SIZE == "S"
+
+
+def test_domain_and_contract_values_agree():
+    """The contract enums carry exactly the domain's values, so the record activity understands both sides."""
+    assert {e.value for e in AttemptEnding} == {e.value for e in MaintenanceAttemptEnding}
+    assert {e.value for e in NextStep} == {e.value for e in MaintenanceNextStep}
+    assert DEFAULT_START_SIZE in {s.value for s in ComputeSize}

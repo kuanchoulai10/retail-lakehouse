@@ -65,7 +65,8 @@ REAL_TIMEOUT_SECONDS = 60
 ATTEMPT_DEADLINE_SECONDS = 21600
 
 
-def _plan(*operations: str) -> dict:
+def _plan(*operations: str, start_size: str | None = None) -> dict:
+    sized = {} if start_size is None else {"start_size": start_size}
     return {
         "status": "planned",
         "reason": None,
@@ -76,6 +77,7 @@ def _plan(*operations: str) -> dict:
                 "operation": op,
                 "filters": [{"spec_id": 0, "where": f"{op} = 1"}],
                 "procedure_args": {"op": op},
+                **sized,
             }
             for op in operations
         ],
@@ -91,9 +93,11 @@ class Harness:
     queue: str
     fakes: ScriptedMaintenanceActivities
 
-    async def run_maintenance(self, *operations: str, parent_id: str = PARENT_ID) -> None:
+    async def run_maintenance(
+        self, *operations: str, parent_id: str = PARENT_ID, start_size: str | None = None
+    ) -> None:
         """Start the workflow for the operations and wait for it to finish."""
-        handle = await self.start_maintenance(*operations, parent_id=parent_id)
+        handle = await self.start_maintenance(*operations, parent_id=parent_id, start_size=start_size)
         await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
 
     async def start_maintenance(
@@ -101,6 +105,7 @@ class Harness:
         *operations: str,
         parent_id: str = PARENT_ID,
         attempt_deadline_seconds: int = ATTEMPT_DEADLINE_SECONDS,
+        start_size: str | None = None,
     ) -> WorkflowHandle:
         """Start the maintenance workflow for the operations and return its handle."""
         return await self.client.start_workflow(
@@ -110,7 +115,7 @@ class Harness:
                 table_uuid="u1",
                 parent_workflow_id=parent_id,
                 trigger="scheduled",
-                plan=_plan(*operations),
+                plan=_plan(*operations, start_size=start_size),
                 attempt_deadline_seconds=attempt_deadline_seconds,
             ),
             id=WORKFLOW_ID,
@@ -930,3 +935,209 @@ def test_history_from_before_fencing_replays():
         await Replayer(workflows=[TableMaintenanceWorkflow]).replay_workflow(history)
 
     asyncio.run(go())
+
+
+def test_history_from_before_failure_classes_replays():
+    """A run whose attempts all failed under the code before failure classes replays without non-determinism."""
+
+    async def go() -> None:
+        history = WorkflowHistory.from_json(
+            WORKFLOW_ID, (FIXTURES / "maintenance_failures_before_failure_classes.json").read_text()
+        )
+        await Replayer(workflows=[TableMaintenanceWorkflow]).replay_workflow(history)
+
+    asyncio.run(go())
+
+
+OOM_ERROR = "java.lang.OutOfMemoryError: Java heap space"
+
+
+def _sizes(h: Harness, operation: str = COMPACTION) -> list[str]:
+    return [s["size"] for s in h.fakes.submits if s["operation"] == operation]
+
+
+def test_first_attempt_uses_the_plan_start_size():
+    """The first attempt of an operation runs at the size its plan starts it at."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)]}
+        await h.run_maintenance(COMPACTION, start_size="M")
+        assert _sizes(h) == ["M"]
+
+    _run(scenario)
+
+
+def test_plan_without_start_size_submits_size_s():
+    """A plan from before sizes existed starts its operations at S."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)]}
+        await h.run_maintenance(COMPACTION)
+        assert _sizes(h) == ["S"]
+
+    _run(scenario)
+
+
+def test_attempts_follow_the_recorded_size_decision():
+    """Each retry runs at the size the record of the failed attempt decided."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {
+            (COMPACTION, 1): [(1, False, OOM_ERROR)],
+            (COMPACTION, 2): [(2, False, OOM_ERROR)],
+            (COMPACTION, 3): [(3, True, None)],
+        }
+        h.fakes.record_replies = {
+            (COMPACTION, 1): {"failure_class": "oom", "next_step": "retry_larger", "next_size": "M"},
+            (COMPACTION, 2): {"failure_class": "oom", "next_step": "retry_larger", "next_size": "L"},
+        }
+        await h.run_maintenance(COMPACTION)
+        assert _sizes(h) == ["S", "M", "L"]
+
+    _run(scenario)
+
+
+def test_needs_attention_stops_the_operation_without_another_attempt():
+    """An attempt that needs a person ends its operation at once, and the next operation still runs."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {
+            (COMPACTION, 1): [(1, False, OOM_ERROR)],
+            (COMPACTION, 2): [(2, False, OOM_ERROR)],
+            (EXPIRE, 1): [(1, True, None)],
+        }
+        h.fakes.record_replies = {
+            (COMPACTION, 1): {"failure_class": "oom", "next_step": "retry_larger", "next_size": "L"},
+            (COMPACTION, 2): {"failure_class": "oom", "next_step": "needs_attention", "next_size": None},
+        }
+        await h.run_maintenance(COMPACTION, EXPIRE, start_size="M")
+
+        assert _sizes(h) == ["M", "L"]
+        assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [
+            (COMPACTION, 1),
+            (COMPACTION, 2),
+            (EXPIRE, 1),
+        ]
+        times = h.submit_times()
+        assert times[2] - times[1] < timedelta(seconds=60)
+        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
+
+    _run(scenario)
+
+
+def test_record_result_without_a_decision_keeps_retrying_at_the_same_size():
+    """A record reply without a next step, as before failure classes, retries three times at the same size."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {
+            (COMPACTION, 1): [(1, False, OOM_ERROR)],
+            (COMPACTION, 2): [(2, False, OOM_ERROR)],
+            (COMPACTION, 3): [(3, False, OOM_ERROR)],
+        }
+        await h.run_maintenance(COMPACTION)
+        assert _sizes(h) == ["S", "S", "S"]
+
+    _run(scenario)
+
+
+def test_failed_record_keeps_retrying_at_the_same_size():
+    """A record that could not be stored has no decision, so the next attempt runs at the same size."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(COMPACTION, 1): [(1, False, OOM_ERROR)], (COMPACTION, 2): [(2, True, None)]}
+        h.fakes.record_errors = {(COMPACTION, 1)}
+        await h.run_maintenance(COMPACTION, start_size="M")
+        assert _sizes(h) == ["M", "M"]
+
+    _run(scenario)
+
+
+def _ending_by_callback(h: Harness) -> None:
+    h.fakes.callbacks = {(COMPACTION, 1): [(1, False, "boom")], (COMPACTION, 2): [(2, True, None)]}
+
+
+def _ending_by_failed_state(h: Harness) -> None:
+    h.fakes.states[FIRST] = {"state": "FAILED", "error": "driver died"}
+    h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
+
+
+def _ending_by_missing_job(h: Harness) -> None:
+    h.fakes.states[FIRST] = {"state": "NOT_FOUND", "error": None}
+    h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
+
+
+def _ending_by_submit_error(h: Harness) -> None:
+    h.fakes.submit_errors = {(COMPACTION, 1): "attempt already started"}
+    h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
+
+
+def _ending_by_timeout(h: Harness) -> None:
+    h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
+
+
+@pytest.mark.parametrize(
+    ("script", "deadline", "ending"),
+    [
+        (_ending_by_callback, ATTEMPT_DEADLINE_SECONDS, "result"),
+        (_ending_by_failed_state, ATTEMPT_DEADLINE_SECONDS, "job_failed"),
+        (_ending_by_timeout, FENCE_DEADLINE_SECONDS, "timed_out"),
+        (_ending_by_missing_job, ATTEMPT_DEADLINE_SECONDS, "missing"),
+        (_ending_by_submit_error, ATTEMPT_DEADLINE_SECONDS, "submit_failed"),
+    ],
+)
+def test_record_reaches_the_ending_of_each_failure(script, deadline, ending):
+    """Each failed attempt is recorded with how it ended, every record with the attempt limit."""
+
+    async def scenario(h: Harness) -> None:
+        script(h)
+        handle = await h.start_maintenance(COMPACTION, attempt_deadline_seconds=deadline)
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert [(r["attempt"], r["succeeded"], r["ended_by"]) for r in h.fakes.records] == [
+            (1, False, ending),
+            (2, True, "result"),
+        ]
+        assert all(r["max_attempts"] == 3 and r["still_running"] is False for r in h.fakes.records)
+
+    _run(scenario)
+
+
+def test_cancelled_attempt_is_recorded_as_cancelled():
+    """An attempt interrupted by a cancel is recorded as ended by the cancel."""
+
+    async def scenario(h: Harness) -> None:
+        handle = await h.start_maintenance(COMPACTION)
+        await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n == 1)
+        await handle.cancel()
+        with pytest.raises(WorkflowFailureError):
+            await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert [(r["attempt"], r["ended_by"], r["max_attempts"]) for r in h.fakes.records] == [(1, "cancelled", 3)]
+
+    _run(scenario)
+
+
+def test_unconfirmed_fence_records_still_running():
+    """An attempt whose pods outlived the confirm bound is recorded as possibly still running."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.pods_live_for[FIRST] = timedelta(minutes=20)
+        handle = await h.start_maintenance(COMPACTION, attempt_deadline_seconds=FENCE_DEADLINE_SECONDS)
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert [(r["attempt"], r["ended_by"], r["still_running"]) for r in h.fakes.records] == [(1, "timed_out", True)]
+
+    _run(scenario)
+
+
+def test_failed_attempt_is_recorded_before_its_job_is_deleted():
+    """A failure Spark reported is recorded while its job and pods still exist, so their evidence can be read."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(COMPACTION, 1): [(1, False, OOM_ERROR)], (COMPACTION, 2): [(2, True, None)]}
+        await h.run_maintenance(COMPACTION)
+
+        names = _names(await h.commands())
+        assert names.index("record_maintenance_operation_result") < names.index("delete_maintenance_job")
+
+    _run(scenario)
