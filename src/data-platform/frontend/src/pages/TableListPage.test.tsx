@@ -110,6 +110,26 @@ describe("TableListPage", () => {
     expect(screen.queryByRole("columnheader", { name: /Selection|Source preset/ })).not.toBeInTheDocument();
   });
 
+  it("names the rule once the rules arrive after the tables", async () => {
+    let releaseRules: () => void = () => {};
+    const rulesHeld = new Promise<void>((resolve) => {
+      releaseRules = resolve;
+    });
+    stubCatalogApi({
+      "GET /v1/tables": () => jsonResponse(TABLES),
+      "GET /v1/discovery-rules": async () => {
+        await rulesHeld;
+        return jsonResponse(RULES);
+      },
+    });
+    renderPage();
+    const managed = within((await screen.findByText("iceberg.inventory.orders")).closest("tr") as HTMLElement);
+    expect(managed.getByText("—")).toBeInTheDocument();
+
+    releaseRules();
+    expect(await screen.findByRole("link", { name: "Priority 10" })).toBeInTheDocument();
+  });
+
   it("filters the rows by status", async () => {
     const user = userEvent.setup();
     renderPage();

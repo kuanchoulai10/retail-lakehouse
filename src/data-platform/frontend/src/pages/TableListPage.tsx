@@ -22,7 +22,14 @@ const STATUSES = ["managed", "unmanaged", "dropped"] as const;
 const SKELETON_ROWS = 5;
 const NO_ROWS: TableApiResponse[] = [];
 
-const column = createDataTableColumnHelper<TableApiResponse>();
+// A table with the priority of the rule that manages it. The priority is part of the row, not
+// looked up by a column: the data table caches column values until its data changes, and the
+// rules can arrive after the tables.
+interface TableRow extends TableApiResponse {
+  rule_priority: number | undefined;
+}
+
+const column = createDataTableColumnHelper<TableRow>();
 
 function fullName(table: TableApiResponse): string {
   return `${table.catalog}.${table.namespace}.${table.table}`;
@@ -37,63 +44,61 @@ const STATUS_ITEMS = [
   ...STATUSES.map((s) => ({ value: s, label: capitalise(s) })),
 ];
 
-// The rule column names a rule by its priority; rules have no names, and their globs are too long for a cell.
-function tableColumns(priorities: Map<string, number>) {
-  return column.columns([
-    column.accessor((t) => fullName(t), {
-      id: "name",
-      header: "Name",
-      sortFn: "text",
-      // Maintenance stores the namespace levels joined with "."; a dropped table has no page.
-      cell: (info) => {
-        const row = info.row.original;
-        if (row.status.toLowerCase() === "dropped") {
-          return <span className="font-mono font-medium">{info.getValue()}</span>;
-        }
-        return (
-          <TextLink asChild className="font-mono font-medium">
-            <Link to={tablePath(row.catalog, row.namespace.split("."), row.table)}>
-              {info.getValue()}
-            </Link>
-          </TextLink>
-        );
-      },
-    }),
-    column.accessor((t) => t.status, {
-      id: "status",
-      header: "Status",
-      sortFn: "text",
-      cell: (info) => <StatusBadge status={info.getValue()} />,
-    }),
-    // The discovery rule that manages the table; an unmanaged or dropped table has none.
-    column.accessor((t) => (t.matched_rule_id === null ? undefined : priorities.get(t.matched_rule_id)), {
-      id: "matched_rule",
-      header: "Rule",
-      sortFn: "basic",
-      sortUndefined: "last",
-      cell: (info) => {
-        const priority = info.getValue();
-        if (priority === undefined) return "—";
-        return (
-          <TextLink asChild className="tabular-nums">
-            <Link to="/discovery-rules">{`Priority ${priority}`}</Link>
-          </TextLink>
-        );
-      },
-    }),
-    column.accessor((t) => t.updated_at, {
-      id: "updated_at",
-      header: "Updated",
-      sortFn: "datetime",
-      sortDescFirst: true,
-      cell: (info) => (
-        <time dateTime={info.getValue()} className="tabular-nums whitespace-nowrap">
-          {formatTimestamp(info.getValue())}
-        </time>
-      ),
-    }),
-  ]);
-}
+const columns = column.columns([
+  column.accessor((t) => fullName(t), {
+    id: "name",
+    header: "Name",
+    sortFn: "text",
+    // Maintenance stores the namespace levels joined with "."; a dropped table has no page.
+    cell: (info) => {
+      const row = info.row.original;
+      if (row.status.toLowerCase() === "dropped") {
+        return <span className="font-mono font-medium">{info.getValue()}</span>;
+      }
+      return (
+        <TextLink asChild className="font-mono font-medium">
+          <Link to={tablePath(row.catalog, row.namespace.split("."), row.table)}>
+            {info.getValue()}
+          </Link>
+        </TextLink>
+      );
+    },
+  }),
+  column.accessor((t) => t.status, {
+    id: "status",
+    header: "Status",
+    sortFn: "text",
+    cell: (info) => <StatusBadge status={info.getValue()} />,
+  }),
+  // The discovery rule that manages the table, named by its priority: rules have no names, and
+  // their globs are too long for a cell. An unmanaged or dropped table has none.
+  column.accessor((t) => t.rule_priority, {
+    id: "matched_rule",
+    header: "Rule",
+    sortFn: "basic",
+    sortUndefined: "last",
+    cell: (info) => {
+      const priority = info.getValue();
+      if (priority === undefined) return "—";
+      return (
+        <TextLink asChild className="tabular-nums">
+          <Link to="/discovery-rules">{`Priority ${priority}`}</Link>
+        </TextLink>
+      );
+    },
+  }),
+  column.accessor((t) => t.updated_at, {
+    id: "updated_at",
+    header: "Updated",
+    sortFn: "datetime",
+    sortDescFirst: true,
+    cell: (info) => (
+      <time dateTime={info.getValue()} className="tabular-nums whitespace-nowrap">
+        {formatTimestamp(info.getValue())}
+      </time>
+    ),
+  }),
+]);
 
 function LoadingRows() {
   return (
@@ -110,17 +115,18 @@ export function TableListPage() {
   const [search, setSearch] = useState("");
   const tables = useListTables();
   const rules = useGetTableDiscoveryRules();
-  const columns = useMemo(
-    () => tableColumns(new Map((rules.data?.rules ?? []).map((rule) => [rule.id, rule.priority]))),
-    [rules.data],
-  );
 
-  const rows = useMemo(() => {
+  const rows = useMemo((): TableRow[] => {
     const needle = search.trim().toLowerCase();
+    const priorities = new Map((rules.data?.rules ?? []).map((rule) => [rule.id, rule.priority]));
     return (tables.data ?? NO_ROWS)
       .filter((t) => status === ALL_STATUSES || t.status.toLowerCase() === status)
-      .filter((t) => needle === "" || fullName(t).toLowerCase().includes(needle));
-  }, [tables.data, status, search]);
+      .filter((t) => needle === "" || fullName(t).toLowerCase().includes(needle))
+      .map((t) => ({
+        ...t,
+        rule_priority: t.matched_rule_id === null ? undefined : priorities.get(t.matched_rule_id),
+      }));
+  }, [tables.data, rules.data, status, search]);
 
   return (
     <section>
