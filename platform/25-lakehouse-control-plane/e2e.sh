@@ -763,6 +763,7 @@ ORDERS_OBJECTS_BEFORE="$(object_count "${ORDERS_PREFIX}")"
 progress "before: ${ORDERS} files=${ORDERS_FILES_BEFORE} snapshots=${ORDERS_SNAPSHOTS_BEFORE} objects=${ORDERS_OBJECTS_BEFORE}"
 
 ORDERS_BEFORE_RUNS="$(run_ids "${ORDERS_UUID}")"
+RECLAIMED_BEFORE="$(api GET "/v1/tables/${ORDERS_UUID}/storage" | jq '.reclaimed.rewritten_data_files // 0')"
 
 progress "checking the applicable policies of both tables"
 assert_applicable_policy "${ORDERS_UUID}" tm-e2e-orders
@@ -827,15 +828,15 @@ jq -e '[.items[].committed_at | sub("\\.[0-9]+"; "") | sub("\\+00:00$"; "Z") | f
   || { echo "${ORDERS} commits are not newest first" >&2; exit 1; }
 jq -e '.operations | length == 4' <<<"${ORDERS_HEALTH}" >/dev/null \
   || { echo "${ORDERS} health does not report four operations" >&2; exit 1; }
-RECLAIMED_REWRITTEN="$(jq '.reclaimed.rewritten_data_files // 0' <<<"${ORDERS_STORAGE}")"
-progress "storage: ${ORDERS} reclaimed rewritten_data_files=${RECLAIMED_REWRITTEN}"
+RECLAIMED_REWRITTEN=$(( $(jq '.reclaimed.rewritten_data_files // 0' <<<"${ORDERS_STORAGE}") - RECLAIMED_BEFORE ))
+progress "storage: ${ORDERS} reclaimed ${RECLAIMED_REWRITTEN} more rewritten data files (${RECLAIMED_BEFORE} before the run)"
 REPORTED_REWRITTEN="$(jq '[.[] | .operations[] | select(.operation == "rewrite_data_files")
   | .metrics.rewritten_data_files_count // 0] | add // 0' <<<"${ORDERS_RUNS}")"
 if jq -e '[.[] | .operations[] | select(.operation == "rewrite_data_files")
     | .metrics.completed_without_callback] | any' <<<"${ORDERS_RUNS}" >/dev/null; then
   progress "${ORDERS}: the compaction callback was lost; skipping the reclaimed check"
 elif (( RECLAIMED_REWRITTEN <= 0 || RECLAIMED_REWRITTEN != REPORTED_REWRITTEN )); then
-  echo "${ORDERS} storage reclaimed ${RECLAIMED_REWRITTEN} rewritten data files, the compaction reported ${REPORTED_REWRITTEN}" >&2
+  echo "${ORDERS} storage reclaimed ${RECLAIMED_REWRITTEN} more rewritten data files, the compaction reported ${REPORTED_REWRITTEN}" >&2
   exit 1
 fi
 
