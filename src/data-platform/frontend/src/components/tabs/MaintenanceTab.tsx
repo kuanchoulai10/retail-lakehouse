@@ -87,8 +87,8 @@ export function MaintenanceTab({ tableUuid }: { tableUuid: string }) {
     <Panel
       title="Maintenance runs"
       actions={
-        <TextLink href={temporalWorkflowsUrl(tableUuid)} className="type-body-small">
-          Running workflows in Temporal
+        <TextLink asChild className="type-body-small">
+          <a href={temporalWorkflowsUrl(tableUuid)}>Running workflows in Temporal</a>
         </TextLink>
       }
     >
