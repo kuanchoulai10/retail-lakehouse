@@ -24,6 +24,7 @@ from context.table_maintenance.application.port.inbound.table import (
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     DeleteMaintenanceJobUseCaseInput,
+    GetMaintenanceJobPodsUseCaseInput,
     GetMaintenanceJobStatusUseCaseInput,
     SubmitMaintenanceOperationUseCaseInput,
     SubmitMaintenanceOperationUseCaseInputFilterItem,
@@ -38,6 +39,7 @@ if TYPE_CHECKING:
     )
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
         DeleteMaintenanceJobUseCase,
+        GetMaintenanceJobPodsUseCase,
         GetMaintenanceJobStatusUseCase,
         SubmitMaintenanceOperationUseCase,
     )
@@ -47,7 +49,7 @@ if TYPE_CHECKING:
 
 
 class TableReconciliationActivities:
-    """Plan and record reconciliations, and submit, poll and delete the Spark jobs of maintenance runs.
+    """Plan and record reconciliations; submit, poll and delete maintenance Spark jobs and read their pods.
 
     Each method wraps exactly one use case. Inputs and outputs are primitive dicts;
     ``now`` travels as an ISO-8601 string taken from ``workflow.now()``.
@@ -61,6 +63,7 @@ class TableReconciliationActivities:
         submit: SubmitMaintenanceOperationUseCase,
         status: GetMaintenanceJobStatusUseCase,
         delete: DeleteMaintenanceJobUseCase,
+        pods: GetMaintenanceJobPodsUseCase,
         callback_base_url: str,
     ) -> None:
         """Bind the use cases and the base URL Spark jobs call back to."""
@@ -69,6 +72,7 @@ class TableReconciliationActivities:
         self._submit = submit
         self._status = status
         self._delete = delete
+        self._pods = pods
         self._callback_base_url = callback_base_url
 
     @activity.defn(name=TableReconciliationActivity.PLAN_TABLE_MAINTENANCE)
@@ -146,6 +150,19 @@ class TableReconciliationActivities:
         with translate_application_errors():
             output = self._delete.execute(
                 DeleteMaintenanceJobUseCaseInput(
+                    run_id=request["run_id"],
+                    operation=request["operation"],
+                    attempt=request["attempt"],
+                )
+            )
+        return activity_payload(output)
+
+    @activity.defn(name=TableMaintenanceActivity.GET_MAINTENANCE_JOB_PODS)
+    def get_maintenance_job_pods(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Report the live pods of the Spark job of one ``(run_id, operation, attempt)``."""
+        with translate_application_errors():
+            output = self._pods.execute(
+                GetMaintenanceJobPodsUseCaseInput(
                     run_id=request["run_id"],
                     operation=request["operation"],
                     attempt=request["attempt"],

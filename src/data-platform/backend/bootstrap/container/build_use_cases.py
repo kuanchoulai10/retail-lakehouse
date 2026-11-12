@@ -41,6 +41,7 @@ from context.table_maintenance.application.service.table_maintenance_policy_atta
 from context.table_maintenance.application.service.table_maintenance_run import (
     CreateTableMaintenanceRunService,
     DeleteMaintenanceJobService,
+    GetMaintenanceJobPodsService,
     GetMaintenanceJobStatusService,
     GetTableMaintenanceRunService,
     ListTableMaintenanceRunsService,
@@ -131,6 +132,7 @@ def build_use_cases(
         record_table_maintenance_operation_result=RecordTableMaintenanceOperationResultService(runs, tables),
         delete_maintenance_job=DeleteMaintenanceJobService(gateways.delete_maintenance_job),
         get_maintenance_job_status=GetMaintenanceJobStatusService(gateways.read_maintenance_job),
+        get_maintenance_job_pods=GetMaintenanceJobPodsService(gateways.read_maintenance_job_pods),
         plan_table_maintenance=PlanTableMaintenanceService(tables, catalog, resolve_applicable_policy),
         list_table_reconciliations=ListTableReconciliationsService(reconciliations),
         record_table_reconciliation=RecordTableReconciliationService(reconciliations),

@@ -13,5 +13,6 @@ class TableMaintenanceActivity(StrEnum):
     GET_MAINTENANCE_JOB_STATUS = "get_maintenance_job_status"
     RECORD_MAINTENANCE_OPERATION_RESULT = "record_maintenance_operation_result"
     DELETE_MAINTENANCE_JOB = "delete_maintenance_job"
+    GET_MAINTENANCE_JOB_PODS = "get_maintenance_job_pods"
     SIGNAL_ADMISSION_ACQUIRE = "signal_admission_acquire"
     SIGNAL_PARENT = "signal_parent"

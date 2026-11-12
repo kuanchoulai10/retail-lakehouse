@@ -19,6 +19,9 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
 from context.table_maintenance.application.port.inbound.table_reconciliation import (
     RecordTableReconciliationUseCaseInput,
 )
+from context.table_maintenance.application.service.table_maintenance_run import (
+    GetMaintenanceJobPodsService,
+)
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fakes import (
     CREATED_AT,
     FakeCreateRun,
@@ -29,6 +32,9 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fa
     FakeStatus,
     FakeSubmit,
     FakeSync,
+)
+from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_pods_gateway import (
+    ScriptedReadMaintenanceJobPodsGateway,
 )
 
 NOW = "2026-10-24T01:02:03+00:00"
@@ -44,6 +50,7 @@ def _reconcile(
         "submit": submit or FakeSubmit(),
         "status": FakeStatus(),
         "delete": FakeDelete(),
+        "pods_gateway": ScriptedReadMaintenanceJobPodsGateway(),
     }
     activities = TableReconciliationActivities(
         plan=fakes["plan"],
@@ -51,6 +58,7 @@ def _reconcile(
         submit=fakes["submit"],
         status=fakes["status"],
         delete=fakes["delete"],
+        pods=GetMaintenanceJobPodsService(fakes["pods_gateway"]),
         callback_base_url="http://cp:8000",
     )
     return activities, fakes
@@ -235,6 +243,19 @@ def test_delete_passes_the_attempt_triple():
         "operation": "expire_snapshots",
         "attempt": 2,
     }
+
+
+def test_get_maintenance_job_pods_activity_returns_live_pod_names():
+    """The pods activity passes the attempt triple through and returns the names of its live pods."""
+    activities, fakes = _reconcile()
+    fakes["pods_gateway"].set_live_pods("r1", "rewrite_data_files", 2, "driver", "exec-1")
+
+    result = activities.get_maintenance_job_pods({"run_id": "r1", "operation": "rewrite_data_files", "attempt": 2})
+
+    assert result == {"live_pods": ["driver", "exec-1"]}
+    assert [(c.run_id, c.operation, c.attempt) for c in fakes["pods_gateway"].calls] == [
+        ("r1", "rewrite_data_files", 2)
+    ]
 
 
 def test_create_run_passes_fields_and_returns_iso_dict():

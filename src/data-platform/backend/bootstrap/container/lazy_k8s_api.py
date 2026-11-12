@@ -8,20 +8,18 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from kubernetes.client import CustomObjectsApi
-
 
 class LazyK8sApi:
-    """Proxy a CustomObjectsApi that is built on first use, at most once.
+    """Proxy a Kubernetes API client (custom objects, core, ...) that is built on first use, at most once.
 
     Loading a kubeconfig at construction would stop the API and the event consumer
     from starting where no cluster config exists; only Spark calls need one.
     """
 
-    def __init__(self, factory: Callable[[], CustomObjectsApi]) -> None:
+    def __init__(self, factory: Callable[[], object]) -> None:
         """Store the factory without calling it."""
         self._factory = factory
-        self._api: CustomObjectsApi | None = None
+        self._api: object | None = None
         self._lock = threading.Lock()
 
     def __getattr__(self, name: str) -> Any:  # noqa: ANN401

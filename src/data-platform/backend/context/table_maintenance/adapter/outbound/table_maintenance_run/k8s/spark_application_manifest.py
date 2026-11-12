@@ -6,6 +6,10 @@ import json
 from dataclasses import asdict
 from typing import TYPE_CHECKING, Any
 
+from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.maintenance_job_pod_labels import (
+    maintenance_job_pod_labels,
+)
+
 if TYPE_CHECKING:
     from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.spark_k8s_config import (
         SparkK8sConfig,
@@ -87,8 +91,13 @@ def build_spark_application(
     input: SubmitMaintenanceJobGatewayInput,  # noqa: A002
     name: str,
 ) -> dict[str, Any]:
-    """Render the SparkApplication custom resource named ``name`` of one job."""
+    """Render the SparkApplication custom resource named ``name`` of one job.
+
+    The driver and executor pods carry the same run, operation and attempt labels
+    as the application, so the pods of one attempt can be found after it is deleted.
+    """
     s3_env_from = [{"secretRef": {"name": config.s3_secret_name}}]
+    attempt_labels = maintenance_job_pod_labels(input.run_id, input.operation, input.attempt)
     region_env = {"name": "AWS_REGION", "value": config.s3_region}
     return {
         "apiVersion": f"{GROUP}/{VERSION}",
@@ -98,9 +107,7 @@ def build_spark_application(
             "namespace": config.namespace,
             "labels": {
                 "app.kubernetes.io/part-of": "table-maintenance",
-                "table-maintenance/run-id": input.run_id,
-                "table-maintenance/operation": input.operation,
-                "table-maintenance/attempt": str(input.attempt),
+                **attempt_labels,
             },
         },
         "spec": {
@@ -114,6 +121,7 @@ def build_spark_application(
             "deps": {"jars": _jars(config)},
             "sparkConf": _spark_conf(config, input),
             "driver": {
+                "labels": dict(attempt_labels),
                 "cores": config.driver_cores,
                 "coreLimit": config.driver_core_limit,
                 "memory": config.driver_memory,
@@ -138,6 +146,7 @@ def build_spark_application(
                 ],
             },
             "executor": {
+                "labels": dict(attempt_labels),
                 "instances": config.executor_instances,
                 "cores": config.executor_cores,
                 "coreLimit": config.executor_core_limit,

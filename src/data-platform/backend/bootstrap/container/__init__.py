@@ -13,6 +13,7 @@ from bootstrap.container.build_connected_use_cases import build_connected_use_ca
 from bootstrap.container.build_engine import build_engine
 from bootstrap.container.build_gateways import build_gateways
 from bootstrap.container.build_k8s_api import build_k8s_api
+from bootstrap.container.build_k8s_core_api import build_k8s_core_api
 from bootstrap.container.build_openapi_document import build_openapi_document
 from bootstrap.container.build_polaris_http_client import build_polaris_http_client
 from bootstrap.container.build_repositories import build_repositories
@@ -25,6 +26,7 @@ from bootstrap.container.connect_temporal import connect_temporal
 from bootstrap.container.create_api_app import create_api_app
 from bootstrap.container.gateways import Gateways
 from bootstrap.container.lazy_k8s_api import LazyK8sApi
+from bootstrap.container.load_k8s_config import load_k8s_config
 from bootstrap.container.repositories import Repositories
 from bootstrap.container.run_event_consumer import run_event_consumer
 from bootstrap.container.run_migrations import run_migrations
@@ -47,6 +49,7 @@ __all__ = [
     "build_engine",
     "build_gateways",
     "build_k8s_api",
+    "build_k8s_core_api",
     "build_openapi_document",
     "build_polaris_http_client",
     "build_repositories",
@@ -57,6 +60,7 @@ __all__ = [
     "configure_logging",
     "connect_temporal",
     "create_api_app",
+    "load_k8s_config",
     "run_event_consumer",
     "run_migrations",
 ]

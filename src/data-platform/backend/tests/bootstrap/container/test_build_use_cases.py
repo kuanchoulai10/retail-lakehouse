@@ -32,6 +32,7 @@ from context.table_maintenance.adapter.outbound.table.pyiceberg import (
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import (
     DeleteMaintenanceJobK8sGateway,
     ReadMaintenanceJobK8sGateway,
+    ReadMaintenanceJobPodsK8sGateway,
     SubmitMaintenanceJobK8sGateway,
 )
 from context.table_maintenance.application.port.inbound.table_discovery_rules import (
@@ -81,6 +82,7 @@ def test_gateways_are_built_without_connecting():
     try:
         client = MagicMock(name="temporal-client")
         k8s_api = MagicMock(name="custom-objects-api")
+        core_api = MagicMock(name="core-v1-api")
         loaded: list[str] = []
 
         def catalog_factory(name: str) -> Catalog:
@@ -92,6 +94,7 @@ def test_gateways_are_built_without_connecting():
             client=client,
             bridge=bridge,
             k8s_api=k8s_api,
+            k8s_core_api=core_api,
             catalog_factory=catalog_factory,
         )
     finally:
@@ -104,9 +107,11 @@ def test_gateways_are_built_without_connecting():
     assert isinstance(gateways.submit_maintenance_job, SubmitMaintenanceJobK8sGateway)
     assert isinstance(gateways.read_maintenance_job, ReadMaintenanceJobK8sGateway)
     assert isinstance(gateways.delete_maintenance_job, DeleteMaintenanceJobK8sGateway)
+    assert isinstance(gateways.read_maintenance_job_pods, ReadMaintenanceJobPodsK8sGateway)
     assert loaded == []
     assert client.mock_calls == []
     assert k8s_api.mock_calls == []
+    assert core_api.mock_calls == []
 
 
 def test_use_cases_hold_one_instance_of_every_service():

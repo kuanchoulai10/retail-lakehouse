@@ -120,3 +120,16 @@ def test_spark_application_core_limits_are_configurable():
 
     assert spec["driver"]["coreLimit"] == "1500m"
     assert spec["executor"]["coreLimit"] == "2"
+
+
+def test_spark_application_labels_driver_and_executor_pods_with_the_attempt():
+    """The driver and executor pods carry the run, operation and attempt, so one attempt's pods can be found."""
+    spec = _spec()
+
+    attempt_labels = {
+        "table-maintenance/run-id": "run1",
+        "table-maintenance/operation": "rewrite_data_files",
+        "table-maintenance/attempt": "1",
+    }
+    assert spec["driver"]["labels"] == attempt_labels
+    assert spec["executor"]["labels"] == attempt_labels

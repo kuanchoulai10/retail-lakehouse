@@ -35,6 +35,7 @@ class Activities:
             reconciliation.submit_maintenance_operation,
             reconciliation.get_maintenance_job_status,
             reconciliation.delete_maintenance_job,
+            reconciliation.get_maintenance_job_pods,
             maintenance.create_table_maintenance_run,
             maintenance.record_table_maintenance_operation_result,
             self.discovery.sync_discovered_tables,

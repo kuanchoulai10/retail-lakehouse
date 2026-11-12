@@ -14,6 +14,7 @@ from bootstrap.container import (
     build_activities,
     build_connected_use_cases,
     build_k8s_api,
+    build_k8s_core_api,
     build_worker,
     configure_logging,
     connect_temporal,
@@ -28,7 +29,7 @@ from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
-    from kubernetes.client import CustomObjectsApi
+    from kubernetes.client import CoreV1Api, CustomObjectsApi
     from temporalio.client import Client
     from temporalio.worker import Worker
 
@@ -53,6 +54,7 @@ async def run_worker(  # noqa: PLR0913
     bridge_factory: Callable[[], AsyncLoopBridge] = AsyncLoopBridge,
     use_cases_builder: Callable[..., UseCases] = build_connected_use_cases,
     k8s_api_factory: Callable[[], CustomObjectsApi] = build_k8s_api,
+    k8s_core_api_factory: Callable[[], CoreV1Api] = build_k8s_core_api,
     connect: Callable[[TemporalSettings], Awaitable[Client]] = connect_temporal,
     startup: Callable[..., Awaitable[None]] = apply_worker_startup,
     worker_builder: Callable[..., Worker] = build_worker,
@@ -62,7 +64,7 @@ async def run_worker(  # noqa: PLR0913
 
     Two Temporal clients exist: the gateways' client lives on the bridge loop, the
     worker's own client (worker, schedules, signal activities) on this loop. The
-    Kubernetes client is built up front so a worker without cluster access fails
+    Kubernetes clients are built up front so a worker without cluster access fails
     at start rather than on its first Spark submit.
     """
     stop = asyncio.Event()
@@ -70,7 +72,14 @@ async def run_worker(  # noqa: PLR0913
     bridge = bridge_factory()
     try:
         k8s_api = await asyncio.to_thread(k8s_api_factory)
-        use_cases = await asyncio.to_thread(use_cases_builder, settings, bridge, k8s_api_factory=lambda: k8s_api)
+        k8s_core_api = await asyncio.to_thread(k8s_core_api_factory)
+        use_cases = await asyncio.to_thread(
+            use_cases_builder,
+            settings,
+            bridge,
+            k8s_api_factory=lambda: k8s_api,
+            k8s_core_api_factory=lambda: k8s_core_api,
+        )
         client = await connect(settings.temporal)
         await startup(client, settings)
         activities = build_activities(use_cases, client, settings)

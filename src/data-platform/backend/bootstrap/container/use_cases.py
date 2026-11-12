@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
         CreateTableMaintenanceRunUseCase,
         DeleteMaintenanceJobUseCase,
+        GetMaintenanceJobPodsUseCase,
         GetMaintenanceJobStatusUseCase,
         GetTableMaintenanceRunUseCase,
         ListTableMaintenanceRunsUseCase,
@@ -88,6 +89,7 @@ class UseCases:
     record_table_maintenance_operation_result: RecordTableMaintenanceOperationResultUseCase
     delete_maintenance_job: DeleteMaintenanceJobUseCase
     get_maintenance_job_status: GetMaintenanceJobStatusUseCase
+    get_maintenance_job_pods: GetMaintenanceJobPodsUseCase
     plan_table_maintenance: PlanTableMaintenanceUseCase
     submit_maintenance_operation: SubmitMaintenanceOperationUseCase
     list_table_reconciliations: ListTableReconciliationsUseCase

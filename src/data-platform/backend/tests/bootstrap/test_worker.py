@@ -63,6 +63,7 @@ class Harness:
         self.bridge = FakeBridge()
         self.stop_callbacks: list[Callable[[], None]] = []
         self.k8s_built = 0
+        self.k8s_core_built = 0
         self.startups: list[Any] = []
         self.worker = FakeWorker(on_enter or self._stop)
         self.worker_kwargs: dict[str, Any] = {}
@@ -80,10 +81,16 @@ class Harness:
         self.k8s_built += 1
         return MagicMock(name="k8s")
 
+    def k8s_core_api_factory(self) -> MagicMock:
+        """Count the Kubernetes core API builds and return a mock."""
+        self.k8s_core_built += 1
+        return MagicMock(name="k8s-core")
+
     def use_cases_builder(self, settings: Any, bridge: Any, **kwargs: Any) -> Any:  # noqa: ANN401
         """Build use cases on SQLite with fake gateways, checking it gets the harness bridge."""
         assert bridge is self.bridge
         kwargs["k8s_api_factory"]()
+        kwargs["k8s_core_api_factory"]()
         return build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
 
     async def connect(self, _: Any) -> MagicMock:  # noqa: ANN401
@@ -105,6 +112,7 @@ class Harness:
             "bridge_factory": lambda: self.bridge,
             "use_cases_builder": self.use_cases_builder,
             "k8s_api_factory": self.k8s_api_factory,
+            "k8s_core_api_factory": self.k8s_core_api_factory,
             "connect": self.connect,
             "startup": self.startup,
             "worker_builder": self.worker_builder,
@@ -122,6 +130,7 @@ def test_stop_request_shuts_the_worker_down_and_closes_the_bridge():
     harness.run()
 
     assert harness.k8s_built == 1
+    assert harness.k8s_core_built == 1
     assert len(harness.startups) == 1
     assert harness.worker.entered is True
     assert harness.worker.shut_down is True

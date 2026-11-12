@@ -19,13 +19,14 @@ from context.table_maintenance.adapter.outbound.table.pyiceberg import (
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import (
     DeleteMaintenanceJobK8sGateway,
     ReadMaintenanceJobK8sGateway,
+    ReadMaintenanceJobPodsK8sGateway,
     SubmitMaintenanceJobK8sGateway,
 )
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from kubernetes.client import CustomObjectsApi
+    from kubernetes.client import CoreV1Api, CustomObjectsApi
     from pyiceberg.catalog import Catalog
     from temporalio.client import Client
 
@@ -41,6 +42,7 @@ def build_gateways(
     client: Client,
     bridge: AsyncLoopBridge,
     k8s_api: CustomObjectsApi,
+    k8s_core_api: CoreV1Api,
     catalog_factory: Callable[[str], Catalog],
 ) -> Gateways:
     """Build the production gateways; nothing connects here.
@@ -57,4 +59,5 @@ def build_gateways(
         submit_maintenance_job=SubmitMaintenanceJobK8sGateway(k8s_api, spark_config),
         read_maintenance_job=ReadMaintenanceJobK8sGateway(k8s_api, spark_config),
         delete_maintenance_job=DeleteMaintenanceJobK8sGateway(k8s_api, spark_config),
+        read_maintenance_job_pods=ReadMaintenanceJobPodsK8sGateway(k8s_core_api, spark_config),
     )

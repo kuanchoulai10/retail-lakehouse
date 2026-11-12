@@ -8,6 +8,9 @@ from context.table_maintenance.application.service.table_maintenance_run.create_
 from context.table_maintenance.application.service.table_maintenance_run.delete_maintenance_job import (
     DeleteMaintenanceJobService,
 )
+from context.table_maintenance.application.service.table_maintenance_run.get_maintenance_job_pods import (
+    GetMaintenanceJobPodsService,
+)
 from context.table_maintenance.application.service.table_maintenance_run.get_maintenance_job_status import (
     GetMaintenanceJobStatusService,
 )
@@ -36,6 +39,7 @@ from context.table_maintenance.application.service.table_maintenance_run.table_m
 __all__ = [
     "CreateTableMaintenanceRunService",
     "DeleteMaintenanceJobService",
+    "GetMaintenanceJobPodsService",
     "GetMaintenanceJobStatusService",
     "GetTableMaintenanceRunService",
     "ListTableMaintenanceRunsService",

@@ -39,3 +39,12 @@ def test_a_failing_factory_only_fails_at_first_use():
 
     with pytest.raises(RuntimeError, match="no kubeconfig"):
         lazy.create_namespaced_custom_object()
+
+
+def test_proxies_any_kubernetes_api_object():
+    """The proxy delegates to whatever API object the factory builds, such as the core API."""
+    core_api = MagicMock(name="core-v1-api")
+
+    LazyK8sApi(lambda: core_api).list_namespaced_pod(namespace="ns")
+
+    core_api.list_namespaced_pod.assert_called_once_with(namespace="ns")
