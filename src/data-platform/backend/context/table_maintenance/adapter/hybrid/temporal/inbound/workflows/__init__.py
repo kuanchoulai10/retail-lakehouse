@@ -20,6 +20,9 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_m
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_reconciliation_workflow import (
     TableReconciliationWorkflow,
 )
+from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_search_attribute_keys import (
+    TableSearchAttributeKeys,
+)
 
 __all__ = [
     "TableDiscoveryWorkflow",
@@ -28,4 +31,5 @@ __all__ = [
     "TableMaintenanceFencingPolicy",
     "TableMaintenanceWorkflow",
     "TableReconciliationWorkflow",
+    "TableSearchAttributeKeys",
 ]

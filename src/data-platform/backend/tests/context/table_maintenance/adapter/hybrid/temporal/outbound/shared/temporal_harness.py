@@ -23,6 +23,9 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (
     TABLE_RECONCILIATION_WORKFLOW,
 )
+from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
+    TableSearchAttributeKeys,
+)
 from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
     AsyncLoopBridge,
 )
@@ -128,7 +131,10 @@ class TemporalHarness:
 def harness() -> Iterator[TemporalHarness]:
     """Provide a session-wide local Temporal environment with the stub workflows registered."""
     bridge = AsyncLoopBridge()
-    env = bridge.run(WorkflowEnvironment.start_local, timeout=300)
+    env = bridge.run(
+        lambda: WorkflowEnvironment.start_local(search_attributes=TableSearchAttributeKeys.all()),
+        timeout=300,
+    )
     worker = Worker(
         env.client,
         task_queue=TASK_QUEUE,

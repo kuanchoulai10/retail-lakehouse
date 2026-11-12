@@ -8,7 +8,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import pytest
 from temporalio.client import WorkflowExecutionStatus, WorkflowHistory
+from temporalio.common import SearchAttributeKey
 from temporalio.exceptions import WorkflowAlreadyStartedError
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Replayer, UnsandboxedWorkflowRunner, Worker
@@ -33,6 +35,9 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import 
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.eventually import (
     eventually,
 )
+from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.register_table_search_attributes import (
+    register_table_search_attributes,
+)
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_plan_activity import (
     ScriptedPlanActivity,
 )
@@ -46,8 +51,8 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_maint
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
 
-    import pytest
     from temporalio.client import Client, WorkflowHandle
+    from temporalio.common import TypedSearchAttributes
     from temporalio.worker import WorkflowRunner
 
 UUID = "u1"
@@ -56,6 +61,10 @@ WORKFLOW_ID = table_reconciliation_workflow_id(UUID)
 COMPACTION = "rewrite_data_files"
 EXPIRE = "expire_snapshots"
 REAL_TIMEOUT_SECONDS = 20
+TABLE_UUID_KEY = SearchAttributeKey.for_keyword("TableUuid")
+TABLE_NAME_KEY = SearchAttributeKey.for_keyword("TableName")
+OPERATIONS_KEY = SearchAttributeKey.for_keyword_list("MaintenanceOperations")
+TRIGGER_KEY = SearchAttributeKey.for_keyword("MaintenanceTrigger")
 
 
 def _check(operation: str, verdict: str = "due") -> dict[str, Any]:
@@ -191,6 +200,15 @@ class Harness:
         handle = self.client.get_workflow_handle(_child_id(run_id))
         return await (await handle.describe()).static_summary()
 
+    async def child_search_attributes(self, run_id: str) -> TypedSearchAttributes:
+        """Return the search attributes the child workflow of a run started with."""
+        handle = self.client.get_workflow_handle(_child_id(run_id))
+        return (await handle.describe()).typed_search_attributes
+
+    async def search_attributes(self) -> TypedSearchAttributes:
+        """Return the search attributes of the reconciliation workflow."""
+        return (await self.client.get_workflow_handle(WORKFLOW_ID).describe()).typed_search_attributes
+
     async def child_status(self, run_id: str) -> WorkflowExecutionStatus | None:
         """Return the execution status of the child workflow of a run."""
         handle = self.client.get_workflow_handle(_child_id(run_id))
@@ -232,6 +250,7 @@ def _run(
 ) -> None:
     async def go() -> None:
         async with await WorkflowEnvironment.start_time_skipping() as env:
+            await register_table_search_attributes(env.client)
             plans = ScriptedPlanActivity(script)
             recorder = ScriptedRecordActivity()
             async with Worker(
@@ -299,6 +318,58 @@ def test_child_summary_names_the_table_and_the_planned_operations():
         assert await h.child_summary(run_id) == (f"{TABLE} · {COMPACTION}, {EXPIRE}")
 
     _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE))
+
+
+@pytest.mark.parametrize(
+    ("start_signal", "trigger"),
+    [
+        (TableReconciliationSignal.TABLE_SEEN, "scheduled"),
+        (TableReconciliationSignal.TRIGGER_NOW, "manual"),
+    ],
+)
+def test_maintenance_run_carries_table_search_attributes(start_signal: str, trigger: str):
+    """The run is tagged with its table, its planned operations and what triggered it."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start(start_signal=start_signal)
+        run_id = await h.in_flight()
+        attributes = await h.child_search_attributes(run_id)
+        assert attributes.get(TABLE_UUID_KEY) == UUID
+        assert attributes.get(TABLE_NAME_KEY) == TABLE
+        assert list(attributes.get(OPERATIONS_KEY) or []) == [COMPACTION, EXPIRE]
+        assert attributes.get(TRIGGER_KEY) == trigger
+
+    _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE))
+
+
+def test_reconciliation_upserts_its_table_uuid():
+    """A reconciliation started without search attributes tags itself with its table and its name."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        await h.in_flight()
+        attributes = await eventually(h.search_attributes, lambda a: a.get(TABLE_NAME_KEY) is not None)
+        assert attributes.get(TABLE_UUID_KEY) == UUID
+        assert attributes.get(TABLE_NAME_KEY) == TABLE
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+def test_reconciliation_follows_a_renamed_table():
+    """When a later plan names the table differently, the reconciliation's table name follows it."""
+    renamed = "iceberg.e2e.renamed"
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        await h.plan_count(1)
+        await eventually(h.search_attributes, lambda a: a.get(TABLE_NAME_KEY) == TABLE)
+        await h.signal(TableReconciliationSignal.RECONCILE_NOW)
+        await h.plan_count(2)
+        attributes = await eventually(h.search_attributes, lambda a: a.get(TABLE_NAME_KEY) == renamed)
+        assert attributes.get(TABLE_UUID_KEY) == UUID
+
+    names = iter([TABLE, renamed])
+    _run(scenario, script=lambda _: {**_planned(), "table_name": next(names, renamed)})
 
 
 def test_trigger_now_while_in_flight_runs_after_finish():

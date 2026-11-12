@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
+    TableSearchAttribute,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery import (
     TABLE_DISCOVERY_SCHEDULE_ID_PREFIX,
@@ -112,4 +113,14 @@ def test_table_discovery_activities():
     """The table discovery activity names are the stable wire names."""
     assert _values(TableDiscoveryActivity) == {
         "SYNC_DISCOVERED_TABLES": "sync_discovered_tables",
+    }
+
+
+def test_table_search_attribute_names():
+    """The table search attribute names are the names registered on the Temporal namespace."""
+    assert _values(TableSearchAttribute) == {
+        "TABLE_UUID": "TableUuid",
+        "TABLE_NAME": "TableName",
+        "MAINTENANCE_OPERATIONS": "MaintenanceOperations",
+        "MAINTENANCE_TRIGGER": "MaintenanceTrigger",
     }

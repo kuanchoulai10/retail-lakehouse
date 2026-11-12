@@ -5,11 +5,17 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from temporalio.client import RPCError
-from temporalio.common import WorkflowIDConflictPolicy
+from temporalio.common import (
+    SearchAttributeKey,
+    SearchAttributePair,
+    TypedSearchAttributes,
+    WorkflowIDConflictPolicy,
+)
 from temporalio.service import RPCStatusCode
 
 from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
+    TableSearchAttribute,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (
     TABLE_RECONCILIATION_WORKFLOW,
@@ -32,6 +38,8 @@ if TYPE_CHECKING:
     )
 
 _MAINTENANCE_REQUESTED = "maintenance_requested"
+_TABLE_UUID_KEY = SearchAttributeKey.for_keyword(TableSearchAttribute.TABLE_UUID)
+_TABLE_NAME_KEY = SearchAttributeKey.for_keyword(TableSearchAttribute.TABLE_NAME)
 
 _SIGNAL_BY_CHANGE = {
     "updated": TableReconciliationSignal.TABLE_UPDATED,
@@ -48,7 +56,9 @@ class SendTableChangeTemporalGateway(SendTableChangeGateway):
 
     Each change maps to one workflow signal. A managed table uses
     signal-with-start, so its workflow is started when it is missing; for a
-    table that is not managed the signal only reaches a running workflow.
+    table that is not managed the signal only reaches a running workflow. A
+    workflow it starts is tagged with the table's UUID and name; one already
+    running keeps its own tags.
     """
 
     def __init__(self, client: Client, bridge: AsyncLoopBridge) -> None:
@@ -85,6 +95,12 @@ class SendTableChangeTemporalGateway(SendTableChangeGateway):
                 start_signal_args=[payload],
                 id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
                 static_summary=input.table_name,
+                search_attributes=TypedSearchAttributes(
+                    [
+                        SearchAttributePair(_TABLE_UUID_KEY, input.table_uuid),
+                        SearchAttributePair(_TABLE_NAME_KEY, input.table_name),
+                    ]
+                ),
             )
             return
         try:

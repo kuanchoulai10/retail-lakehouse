@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 from temporalio.client import RPCError
+from temporalio.common import SearchAttributeKey
 from temporalio.service import RPCStatusCode
 
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (
@@ -199,3 +200,17 @@ def test_unknown_change_is_rejected(harness):
     gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
     with pytest.raises(ValueError, match="unknown table change"):
         gateway.send(_change("unknown", "renamed", is_managed=True))
+
+
+def test_send_table_change_starts_reconciliation_with_table_search_attributes(harness):
+    """A reconciliation started for a managed table is tagged with the table's UUID and name."""
+    gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
+    gateway.send(_change("tagged", "seen", is_managed=True, table_name="iceberg.sales.tagged"))
+    handle = harness.client.get_workflow_handle(table_reconciliation_workflow_id("tagged"))
+
+    async def describe():
+        return (await handle.describe()).typed_search_attributes
+
+    attributes = harness.bridge.run(describe)
+    assert attributes.get(SearchAttributeKey.for_keyword("TableUuid")) == "tagged"
+    assert attributes.get(SearchAttributeKey.for_keyword("TableName")) == "iceberg.sales.tagged"

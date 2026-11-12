@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from temporalio import workflow
-from temporalio.common import RetryPolicy
+from temporalio.common import RetryPolicy, SearchAttributePair, TypedSearchAttributes
 from temporalio.exceptions import ActivityError, FailureError, is_cancelled_exception
 from temporalio.workflow import ParentClosePolicy
 
@@ -30,6 +30,9 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_maintenance_attempt_policy import (
     TableMaintenanceAttemptPolicy,
 )
+from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_search_attribute_keys import (
+    TableSearchAttributeKeys,
+)
 
 _ACTIVITY_TIMEOUT = timedelta(minutes=2)
 _ACTIVITY_RETRY = RetryPolicy(maximum_attempts=5, initial_interval=timedelta(seconds=2), backoff_coefficient=2.0)
@@ -45,6 +48,7 @@ _REASON_POLICY_CHANGED = "policy_changed"
 _REASON_MANUAL_RUN = "manual_run"
 _REASON_RECONCILE_NOW = "reconcile_now"
 _REASON_PREVIOUS_RUN_FINISHED = "previous_run_finished"
+_SEARCH_ATTRIBUTES_PATCH = "table-search-attributes"
 
 
 @workflow.defn(name=TABLE_RECONCILIATION_WORKFLOW)
@@ -91,6 +95,13 @@ class TableReconciliationWorkflow:
     goes back to waiting. A plan with operations that is not started because the workflow is stopping
     is not recorded either, since its due operations neither started nor
     failed to start.
+
+    The workflow tags itself with its table UUID when it starts, and with the
+    table name each plan reports when that name changed, and starts each run
+    tagged with the table, its planned operations and its trigger, so a table's
+    workflows can be found by search attribute. A run that started before these
+    tags existed (patch ``table-search-attributes``) carries none until its next
+    continue-as-new.
     """
 
     @workflow.init
@@ -123,6 +134,8 @@ class TableReconciliationWorkflow:
         """Wait, plan and start runs until the table leaves maintenance."""
         if self._next_plan_at is None:
             self._next_plan_at = workflow.now() + self._interval
+        if self._tags_table():
+            workflow.upsert_search_attributes([TableSearchAttributeKeys.TABLE_UUID.value_set(self._table_uuid)])
         iterations = 0
         while True:
             if self._stopping and self._in_flight_run_id is None:
@@ -202,6 +215,18 @@ class TableReconciliationWorkflow:
             "planning": self._planning,
             "signals_handled": self._signals_handled,
         }
+
+    def _tags_table(self) -> bool:
+        """Tell whether this run tags its workflows with the table search attributes."""
+        return workflow.patched(_SEARCH_ATTRIBUTES_PATCH)
+
+    def _tag_table_name(self, table_name: str | None) -> None:
+        """Upsert the table name a plan reports when it differs from the one the workflow carries."""
+        if not table_name or not self._tags_table():
+            return
+        if workflow.info().typed_search_attributes.get(TableSearchAttributeKeys.TABLE_NAME) == table_name:
+            return
+        workflow.upsert_search_attributes([TableSearchAttributeKeys.TABLE_NAME.value_set(table_name)])
 
     def _wake(self, reason: str | None, *, cancels_stop: bool) -> None:
         """Wake the loop and count the reason; a decision signal after ``stop`` supersedes it (R31)."""
@@ -350,6 +375,7 @@ class TableReconciliationWorkflow:
             return False
         self._interval = timedelta(seconds=plan["reconcile_interval_seconds"])
         self._next_plan_at = workflow.now() + self._interval
+        self._tag_table_name(plan["table_name"])
         record = {"reconciliation_id": reconciliation_id, "reconciled_at": now.isoformat(), "wake_reasons": reasons}
         if self._stopping:
             self._consume_manual(manual, "the workflow is stopping")
@@ -417,6 +443,8 @@ class TableReconciliationWorkflow:
         self._in_flight_started_at = workflow.now()
         self._in_flight_operations = len(plan["operations"])
         self._in_flight_attempt_deadline_seconds = attempt_deadline_seconds
+        trigger = _TRIGGER_MANUAL if manual else _TRIGGER_SCHEDULED
+        operations = [op["operation"] for op in plan["operations"]]
         try:
             child = await workflow.start_child_workflow(
                 TABLE_MAINTENANCE_WORKFLOW,
@@ -424,16 +452,15 @@ class TableReconciliationWorkflow:
                     run_id=run_id,
                     table_uuid=self._table_uuid,
                     parent_workflow_id=workflow.info().workflow_id,
-                    trigger=_TRIGGER_MANUAL if manual else _TRIGGER_SCHEDULED,
+                    trigger=trigger,
                     plan=plan,
                     attempt_deadline_seconds=attempt_deadline_seconds,
                 ),
                 id=child_id,
                 task_queue=TASK_QUEUE,
                 parent_close_policy=ParentClosePolicy.ABANDON,
-                static_summary=table_maintenance_summary(
-                    plan["table_name"], [op["operation"] for op in plan["operations"]]
-                ),
+                static_summary=table_maintenance_summary(plan["table_name"], operations),
+                search_attributes=self._run_search_attributes(plan["table_name"], operations, trigger),
             )
             child.add_done_callback(_discard_outcome)
         except FailureError as error:
@@ -448,6 +475,22 @@ class TableReconciliationWorkflow:
             self._clear_in_flight()
             return False
         return True
+
+    def _run_search_attributes(
+        self, table_name: str, operations: list[str], trigger: str
+    ) -> TypedSearchAttributes | None:
+        """Return the tags a new run starts with; none in a run from before the tags existed."""
+        if not self._tags_table():
+            return None
+        keys = TableSearchAttributeKeys
+        return TypedSearchAttributes(
+            [
+                SearchAttributePair(keys.TABLE_UUID, self._table_uuid),
+                SearchAttributePair(keys.TABLE_NAME, table_name),
+                SearchAttributePair(keys.MAINTENANCE_OPERATIONS, operations),
+                SearchAttributePair(keys.MAINTENANCE_TRIGGER, trigger),
+            ]
+        )
 
 
 def _iso(value: datetime | None) -> str | None:
