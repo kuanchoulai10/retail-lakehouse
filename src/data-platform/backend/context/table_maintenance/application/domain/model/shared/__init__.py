@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.application.domain.model.shared.compute_size import (
+    ComputeSize,
+)
 from context.table_maintenance.application.domain.model.shared.maintenance_assessment import (
     MaintenanceAssessment,
 )
@@ -61,6 +64,7 @@ from context.table_maintenance.application.domain.model.shared.table_observation
 )
 
 __all__ = [
+    "ComputeSize",
     "MaintenanceAssessment",
     "MaintenanceOperation",
     "MaintenancePlan",

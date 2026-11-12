@@ -2,6 +2,18 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.application.domain.model.table_maintenance_run.attempt_ending import (
+    AttemptEnding,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_run.container_exit import (
+    ContainerExit,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_run.failure_class import (
+    FailureClass,
+)
+from context.table_maintenance.application.domain.model.table_maintenance_run.failure_evidence import (
+    FailureEvidence,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_run.invalid_run_transition import (
     InvalidRunTransition,
 )
@@ -25,6 +37,10 @@ from context.table_maintenance.application.domain.model.table_maintenance_run.tr
 )
 
 __all__ = [
+    "AttemptEnding",
+    "ContainerExit",
+    "FailureClass",
+    "FailureEvidence",
     "InvalidRunTransition",
     "OperationRun",
     "OperationRunStatus",
