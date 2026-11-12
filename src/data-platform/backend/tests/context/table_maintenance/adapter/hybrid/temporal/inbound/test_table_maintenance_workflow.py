@@ -441,12 +441,13 @@ def test_cancelled_workflow_records_releases_deletes_and_notifies():
     """A cancelled workflow records the cancellation, releases its slot, deletes the job and notifies the parent."""
 
     async def scenario(h: Harness) -> None:
+        cancelled: list[bool] = []
+        _cancel_on_the_first_status_poll(h, cancelled)
         handle = await h.start_maintenance(COMPACTION, EXPIRE)
-        await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n == 1)
-        await handle.cancel()
         with pytest.raises(WorkflowFailureError) as caught:
             await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
         assert isinstance(caught.value.cause, CancelledError)
+        assert cancelled == [True]
 
         assert h.recorded() == [(COMPACTION, 1, False, "cancelled")]
         assert set(h.fakes.deletes) == {f"{RUN_ID}-{COMPACTION}-1"}
@@ -775,6 +776,16 @@ async def _cancel_inside_the_activity(h: Harness, cancelled: list[bool]) -> None
     await eventually(lambda: _cancel_requested_for_an_activity(h), bool, timeout=REAL_TIMEOUT_SECONDS)
 
 
+def _cancel_on_the_first_status_poll(h: Harness, cancelled: list[bool]) -> None:
+    """Make the first status poll of the first attempt cancel the run from inside that poll."""
+
+    async def cancel(app_name: str, _scheduled: datetime) -> None:
+        if app_name == FIRST and not cancelled:
+            await _cancel_inside_the_activity(h, cancelled)
+
+    h.fakes.status_hook = cancel
+
+
 def test_cancelled_run_fences_its_live_attempt_before_it_releases_the_slot():
     """A cancel during an attempt deletes its job and waits, renewing, for its pods to go before the slot is freed."""
 
@@ -839,11 +850,12 @@ def test_cancelled_fence_polls_slowly_once_past_its_bound():
 
     async def scenario(h: Harness) -> None:
         h.fakes.pods_live_for[FIRST] = timedelta(hours=2)
+        cancelled: list[bool] = []
+        _cancel_on_the_first_status_poll(h, cancelled)
         handle = await h.start_maintenance(COMPACTION)
-        await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n == 1)
-        await handle.cancel()
         with pytest.raises(WorkflowFailureError):
             await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+        assert cancelled == [True]
 
         deleted_at = h.fakes.delete_times[FIRST]
         late = [t for t in h.fakes.pods_times if timedelta(minutes=16) <= t - deleted_at < timedelta(hours=2)]
@@ -1168,12 +1180,13 @@ def test_cancelled_attempt_is_recorded_as_cancelled():
     """An attempt interrupted by a cancel is recorded as ended by the cancel."""
 
     async def scenario(h: Harness) -> None:
+        cancelled: list[bool] = []
+        _cancel_on_the_first_status_poll(h, cancelled)
         handle = await h.start_maintenance(COMPACTION)
-        await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n == 1)
-        await handle.cancel()
         with pytest.raises(WorkflowFailureError):
             await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
 
+        assert cancelled == [True]
         assert [(r["attempt"], r["ended_by"], r["max_attempts"]) for r in h.fakes.records] == [(1, "cancelled", 3)]
 
     _run(scenario)
