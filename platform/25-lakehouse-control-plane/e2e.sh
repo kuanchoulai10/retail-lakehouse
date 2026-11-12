@@ -589,6 +589,22 @@ assert_reconcile_running() {
   progress "table-reconciliation:table-uuid=${uuid} is RUNNING"
 }
 
+assert_workflows_found_by_table() {
+  local uuid="$1" run_id="$2" ids="" deadline=$((SECONDS + 60))
+  while ((SECONDS < deadline)); do
+    ids="$(temporal_cli workflow list --namespace default \
+      --query "TableUuid = \"${uuid}\"" --output json | jq -r '.[].execution.workflowId')"
+    if grep -qxF "table-reconciliation:table-uuid=${uuid}" <<<"${ids}" \
+      && grep -q ":run=${run_id}\$" <<<"${ids}"; then
+      progress "TableUuid = \"${uuid}\" finds its reconciliation and the run ${run_id}"
+      return 0
+    fi
+    sleep 5
+  done
+  echo "TableUuid = \"${uuid}\" does not find its reconciliation and run ${run_id}: ${ids}" >&2
+  return 1
+}
+
 assert_manual_run_recorded() {
   local uuid="$1" run_id="$2" records
   records="$(api GET "/v1/tables/${uuid}/reconciliations")"
@@ -865,3 +881,4 @@ fi
 
 assert_reconcile_running "${ORDERS_UUID}"
 assert_reconcile_running "${REGIONS_UUID}"
+assert_workflows_found_by_table "${ORDERS_UUID}" "${ORDERS_MANUAL_RUN_ID}"
