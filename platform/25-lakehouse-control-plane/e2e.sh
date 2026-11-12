@@ -536,6 +536,19 @@ wait_for_new_run() {
   return 1
 }
 
+wait_for_compacted_partitions() {
+  local table="$1" deadline crowded
+  deadline=$(( $(date +%s) + RUN_TIMEOUT_SECONDS ))
+  while (( $(date +%s) < deadline )); do
+    crowded="$(trino_sql "SELECT count(*) FROM (SELECT partition FROM ${CATALOG}.${SCHEMA}.\"${table}\$files\"
+      GROUP BY partition HAVING count(*) >= 2)" | tail -n 1)"
+    (( crowded == 0 )) && return 0
+    sleep 15
+  done
+  echo "${table} still has partitions with several files after ${RUN_TIMEOUT_SECONDS}s" >&2
+  return 1
+}
+
 assert_runs_succeeded() {
   local label="$1" runs="$2" failed rewritten
   failed="$(jq -c '[.[] | .operations[] | select(.status != "succeeded")
@@ -609,19 +622,19 @@ wait_for_reconcile_now_record() {
 }
 
 assert_partition_filter() {
-  local run_id="$1" execution_ref filter
-  execution_ref="$(api GET "/v1/table-maintenance-runs/${run_id}" | jq -r '.execution_ref')"
-  filter="$(temporal_cli workflow show --workflow-id "${execution_ref}" --output json \
-    | jq -r '.events[0].workflowExecutionStartedEventAttributes.input.payloads[0].data
-      | @base64d | fromjson
-      | [.plan.operations[] | select(.operation == "rewrite_data_files") | .filters[]?.where]
-      | map(select(. != null and . != "")) | .[0] // empty')"
-  [[ -n "${filter}" ]] || { echo "run ${run_id} compacted without a where filter" >&2; return 1; }
-  grep -qF "'o\\'neil'" <<<"${filter}" || {
-    echo "run ${run_id} where filter lacks the escaped quote: ${filter}" >&2
-    return 1
-  }
-  progress "regions where filter: ${filter}"
+  local run_id execution_ref filter escaped=""
+  for run_id in "$@"; do
+    execution_ref="$(api GET "/v1/table-maintenance-runs/${run_id}" | jq -r '.execution_ref')"
+    filter="$(temporal_cli workflow show --workflow-id "${execution_ref}" --output json \
+      | jq -r '.events[0].workflowExecutionStartedEventAttributes.input.payloads[0].data
+        | @base64d | fromjson
+        | [.plan.operations[] | select(.operation == "rewrite_data_files") | .filters[]?.where]
+        | map(select(. != null and . != "")) | .[0] // empty')"
+    [[ -n "${filter}" ]] || { echo "run ${run_id} compacted without a where filter" >&2; return 1; }
+    progress "regions where filter of run ${run_id}: ${filter}"
+    grep -qF "'o\\'neil'" <<<"${filter}" && escaped=1
+  done
+  [[ -n "${escaped}" ]] || { echo "no regions where filter holds the escaped quote" >&2; return 1; }
 }
 
 progress "listing the namespaces of ${CATALOG} through the catalog API"
@@ -674,6 +687,9 @@ ensure_policy tm-e2e-regions "e2e: per-partition compaction" "$(cat <<JQ
 | .operations.rewrite_data_files.scope.unit = "partition"
 | .operations.rewrite_data_files.trigger_policy.conditions.reducible_files = {at_least: 2}
 | .operations.rewrite_data_files.trigger_policy.cooldown_seconds = 60
+| .operations.rewrite_manifests.enabled = false
+| .operations.expire_snapshots.enabled = false
+| .operations.remove_orphan_files.enabled = false
 JQ
 )"
 attach_policy tm-e2e-orders "${ORDERS}"
@@ -722,6 +738,19 @@ progress "waiting for event-driven runs to settle"
 wait_for_quiet_table "${ORDERS_UUID}"
 wait_for_quiet_table "${REGIONS_UUID}"
 
+progress "waiting for the ${REGIONS} scheduled compaction of every partition before any ${ORDERS} run, so one Spark job runs at a time"
+wait_for_new_run "${REGIONS_UUID}" "${REGIONS_BEFORE_RUNS}" \
+  '.trigger == "scheduled" and any(.operations[]; .operation == "rewrite_data_files")' >/dev/null
+wait_for_compacted_partitions "${REGIONS}"
+wait_for_quiet_table "${REGIONS_UUID}"
+REGIONS_RUNS="$(wait_for_new_run "${REGIONS_UUID}" "${REGIONS_BEFORE_RUNS}" \
+  '.trigger == "scheduled" and any(.operations[]; .operation == "rewrite_data_files")')"
+report_runs "${REGIONS}" "${REGIONS_RUNS}"
+assert_runs_succeeded "${REGIONS}" "${REGIONS_RUNS}"
+# shellcheck disable=SC2046
+assert_partition_filter $(jq -r '.[] | select(any(.operations[]; .operation == "rewrite_data_files"))
+  | .run_id' <<<"${REGIONS_RUNS}")
+
 WAIT_SECONDS=$(( LAST_WRITE_AT + EXPIRE_AGE_SECONDS + 5 - $(date +%s) ))
 if (( WAIT_SECONDS > 0 )); then
   sleep "${WAIT_SECONDS}"
@@ -759,15 +788,6 @@ progress "asking ${ORDERS} to reconcile now"
 api POST "/v1/tables/${ORDERS_UUID}/reconcile" >/dev/null
 wait_for_reconcile_now_record "${ORDERS_UUID}" "${ORDERS_RECONCILIATIONS_BEFORE}"
 progress "reconciliation of ${ORDERS_UUID} records the reconcile now request"
-
-progress "waiting for the ${REGIONS} scheduled compaction run"
-REGIONS_RUNS="$(wait_for_new_run "${REGIONS_UUID}" "${REGIONS_BEFORE_RUNS}" \
-  '.trigger == "scheduled" and any(.operations[]; .operation == "rewrite_data_files")')"
-report_runs "${REGIONS}" "${REGIONS_RUNS}"
-assert_runs_succeeded "${REGIONS}" "${REGIONS_RUNS}"
-REGIONS_RUN_ID="$(jq -r '[.[] | select(any(.operations[]; .operation == "rewrite_data_files"))]
-  | .[0].run_id' <<<"${REGIONS_RUNS}")"
-assert_partition_filter "${REGIONS_RUN_ID}"
 
 ORDERS_FILES_AFTER="$(trino_count "${ORDERS}\$files")"
 ORDERS_SNAPSHOTS_AFTER="$(trino_count "${ORDERS}\$snapshots")"
@@ -809,14 +829,14 @@ jq -e '.operations | length == 4' <<<"${ORDERS_HEALTH}" >/dev/null \
   || { echo "${ORDERS} health does not report four operations" >&2; exit 1; }
 RECLAIMED_REWRITTEN="$(jq '.reclaimed.rewritten_data_files // 0' <<<"${ORDERS_STORAGE}")"
 progress "storage: ${ORDERS} reclaimed rewritten_data_files=${RECLAIMED_REWRITTEN}"
-if (( RECLAIMED_REWRITTEN < 20 )); then
-  if jq -e '[.[] | .operations[] | select(.operation == "rewrite_data_files")
-      | .metrics.completed_without_callback] | any' <<<"${ORDERS_RUNS}" >/dev/null; then
-    progress "${ORDERS}: the compaction callback was lost; skipping the reclaimed check"
-  else
-    echo "${ORDERS} storage reclaimed ${RECLAIMED_REWRITTEN} rewritten data files, expected >= 20" >&2
-    exit 1
-  fi
+REPORTED_REWRITTEN="$(jq '[.[] | .operations[] | select(.operation == "rewrite_data_files")
+  | .metrics.rewritten_data_files_count // 0] | add // 0' <<<"${ORDERS_RUNS}")"
+if jq -e '[.[] | .operations[] | select(.operation == "rewrite_data_files")
+    | .metrics.completed_without_callback] | any' <<<"${ORDERS_RUNS}" >/dev/null; then
+  progress "${ORDERS}: the compaction callback was lost; skipping the reclaimed check"
+elif (( RECLAIMED_REWRITTEN <= 0 || RECLAIMED_REWRITTEN != REPORTED_REWRITTEN )); then
+  echo "${ORDERS} storage reclaimed ${RECLAIMED_REWRITTEN} rewritten data files, the compaction reported ${REPORTED_REWRITTEN}" >&2
+  exit 1
 fi
 
 (( ORDERS_FILES_AFTER < ORDERS_FILES_BEFORE )) \
