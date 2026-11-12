@@ -35,8 +35,10 @@ def build_spark_config(settings: AppSettings) -> SparkK8sConfig:
         s3_region=catalog.s3_region,
         main_application_file=spark.main_application_file,
         driver_cores=spark.driver_cores,
+        driver_core_limit=spark.driver_core_limit,
         driver_memory=spark.driver_memory,
         executor_instances=spark.executor_instances,
         executor_cores=spark.executor_cores,
+        executor_core_limit=spark.executor_core_limit,
         executor_memory=spark.executor_memory,
     )

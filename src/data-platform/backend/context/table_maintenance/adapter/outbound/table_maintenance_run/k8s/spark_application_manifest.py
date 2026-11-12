@@ -115,6 +115,7 @@ def build_spark_application(
             "sparkConf": _spark_conf(config, input),
             "driver": {
                 "cores": config.driver_cores,
+                "coreLimit": config.driver_core_limit,
                 "memory": config.driver_memory,
                 "serviceAccount": config.service_account,
                 "javaOptions": IVY_OPTIONS,
@@ -139,6 +140,7 @@ def build_spark_application(
             "executor": {
                 "instances": config.executor_instances,
                 "cores": config.executor_cores,
+                "coreLimit": config.executor_core_limit,
                 "memory": config.executor_memory,
                 "javaOptions": IVY_OPTIONS,
                 "envFrom": s3_env_from,

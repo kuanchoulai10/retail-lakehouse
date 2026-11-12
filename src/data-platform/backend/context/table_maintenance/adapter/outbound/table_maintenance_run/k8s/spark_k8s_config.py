@@ -27,7 +27,9 @@ class SparkK8sConfig:
     s3_region: str = "dummy-region"
     main_application_file: str = "local:///opt/spark/work-dir/main.py"
     driver_cores: int = 1
+    driver_core_limit: str = "1"
     driver_memory: str = "1g"
     executor_instances: int = 1
     executor_cores: int = 1
+    executor_core_limit: str = "1"
     executor_memory: str = "1g"

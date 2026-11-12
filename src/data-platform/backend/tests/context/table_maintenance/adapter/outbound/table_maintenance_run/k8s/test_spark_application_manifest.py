@@ -104,3 +104,19 @@ def test_spark_application_pins_hadoop_and_sdk_versions_from_the_config():
 
     assert f"{HADOOP_MAVEN}/hadoop-aws/3.4.2/hadoop-aws-3.4.2.jar" in jars
     assert f"{AWS_SDK_MAVEN}/s3-transfer-manager/2.34.0/s3-transfer-manager-2.34.0.jar" in jars
+
+
+def test_spark_application_caps_driver_and_executor_cpu_at_one_core():
+    """By default the driver and executor pods may use at most one core each."""
+    spec = _spec()
+
+    assert spec["driver"]["coreLimit"] == "1"
+    assert spec["executor"]["coreLimit"] == "1"
+
+
+def test_spark_application_core_limits_are_configurable():
+    """The driver and executor CPU limits come from the config."""
+    spec = _spec(replace(CONFIG, driver_core_limit="1500m", executor_core_limit="2"))
+
+    assert spec["driver"]["coreLimit"] == "1500m"
+    assert spec["executor"]["coreLimit"] == "2"

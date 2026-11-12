@@ -33,9 +33,11 @@ def test_spark_config_combines_spark_and_catalog_settings():
             event_log_dir="s3a://other-logs/",
             main_application_file="local:///main.py",
             driver_cores=2,
+            driver_core_limit="2500m",
             driver_memory="2g",
             executor_instances=3,
             executor_cores=4,
+            executor_core_limit="5",
             executor_memory="4g",
         ),
     )
@@ -59,9 +61,11 @@ def test_spark_config_combines_spark_and_catalog_settings():
         s3_region="eu-1",
         main_application_file="local:///main.py",
         driver_cores=2,
+        driver_core_limit="2500m",
         driver_memory="2g",
         executor_instances=3,
         executor_cores=4,
+        executor_core_limit="5",
         executor_memory="4g",
     )
 
