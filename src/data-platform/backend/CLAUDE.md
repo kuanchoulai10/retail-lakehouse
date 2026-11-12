@@ -140,7 +140,7 @@ Three base classes define all outbound ports (in `base/`):
 
 A gateway directory may also hold extra single-class files (for example `list_input.py`). Except `list_input.py`, which defines `{Verb}{Noun}GatewayListInput`, each defines one class named after its file stem in CamelCase (`{CamelCaseStem}`), primitive-only like `input.py`. The extra file names are the fixed allowlist `GATEWAY_EXTRA_FILES` in `test_outbound_port_structure.py`, which enforces this.
 
-Input/output files must only use primitive types (`str`, `int`, `float`, `bool`, `dict`, `list`, `None`). They may import `base.value_object.ValueObject` but nothing from `application.domain` or other `base.*` modules. This is enforced by `test_outbound_port_structure.py`.
+Input/output files must only use primitive types (`str`, `int`, `float`, `bool`, `dict`, `list`, `None`). They may import `base.value_object.ValueObject` but nothing from `application.domain` or other `base.*` modules. One exception: `output.py` may import the extra files of its own gateway directory (for example `job_container_exit.py`, a list item of the output), since those are held to the same primitive-only rule. This is enforced by `test_outbound_port_structure.py`.
 
 Choosing between the three is decided by whether the thing is one of our aggregates, not by where its data lives (`docs/adr/0006-choosing-an-outbound-port.md`). An operation whose external system returns a secret only once is a `Create`/`Update` Gateway, not a Repository method (`docs/adr/0007-one-time-secrets.md`). The contexts and how they relate: `docs/adr/0005-bounded-contexts-and-context-map.md`.
 
