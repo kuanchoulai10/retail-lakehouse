@@ -36,6 +36,9 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import
     ReadMaintenanceJobPodsK8sGateway,
     SubmitMaintenanceJobK8sGateway,
 )
+from context.table_maintenance.adapter.outbound.table_maintenance_run.s3 import (
+    ReadMaintenanceEventLogS3Gateway,
+)
 from context.table_maintenance.application.port.inbound.table_discovery_rules import (
     GetTableDiscoveryRulesUseCaseInput,
 )
@@ -110,6 +113,7 @@ def test_gateways_are_built_without_connecting():
     assert isinstance(gateways.delete_maintenance_job, DeleteMaintenanceJobK8sGateway)
     assert isinstance(gateways.read_maintenance_job_pods, ReadMaintenanceJobPodsK8sGateway)
     assert isinstance(gateways.read_maintenance_job_evidence, ReadMaintenanceJobEvidenceK8sGateway)
+    assert isinstance(gateways.read_maintenance_event_log, ReadMaintenanceEventLogS3Gateway)
     assert loaded == []
     assert client.mock_calls == []
     assert k8s_api.mock_calls == []

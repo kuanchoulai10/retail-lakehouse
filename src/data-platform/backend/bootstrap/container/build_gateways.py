@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
+from bootstrap.container.build_event_log_filesystem import build_event_log_filesystem
 from bootstrap.container.build_spark_config import build_spark_config
+from bootstrap.container.event_log_base import event_log_base
 from bootstrap.container.gateways import Gateways
+from bootstrap.container.lazy_k8s_api import LazyK8sApi
 from context.table_maintenance.adapter.hybrid.temporal.outbound.table import (
     SendDiscoveryRequestTemporalGateway,
     SendTableChangeTemporalGateway,
@@ -23,11 +26,15 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import
     ReadMaintenanceJobPodsK8sGateway,
     SubmitMaintenanceJobK8sGateway,
 )
+from context.table_maintenance.adapter.outbound.table_maintenance_run.s3 import (
+    ReadMaintenanceEventLogS3Gateway,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from kubernetes.client import CoreV1Api, CustomObjectsApi
+    from pyarrow.fs import FileSystem
     from pyiceberg.catalog import Catalog
     from temporalio.client import Client
 
@@ -49,7 +56,8 @@ def build_gateways(
     """Build the production gateways; nothing connects here.
 
     ``client`` must have been connected on ``bridge``'s loop, because the Temporal
-    gateways run every call on that loop.
+    gateways run every call on that loop. The event log file system is built on first use,
+    so a component that never reads an event log never builds it.
     """
     spark_config = build_spark_config(settings)
     return Gateways(
@@ -62,4 +70,7 @@ def build_gateways(
         delete_maintenance_job=DeleteMaintenanceJobK8sGateway(k8s_api, spark_config),
         read_maintenance_job_pods=ReadMaintenanceJobPodsK8sGateway(k8s_core_api, spark_config),
         read_maintenance_job_evidence=ReadMaintenanceJobEvidenceK8sGateway(k8s_api, k8s_core_api, spark_config),
+        read_maintenance_event_log=ReadMaintenanceEventLogS3Gateway(
+            cast("FileSystem", LazyK8sApi(lambda: build_event_log_filesystem(settings))), event_log_base(settings)
+        ),
     )

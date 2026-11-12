@@ -11,6 +11,9 @@ from bootstrap.container.build_catalog_factory import build_catalog_factory
 from bootstrap.container.build_catalog_web_use_cases import build_catalog_web_use_cases
 from bootstrap.container.build_connected_use_cases import build_connected_use_cases
 from bootstrap.container.build_engine import build_engine
+from bootstrap.container.build_event_log_filesystem import (
+    build_event_log_filesystem,
+)
 from bootstrap.container.build_gateways import build_gateways
 from bootstrap.container.build_k8s_api import build_k8s_api
 from bootstrap.container.build_k8s_core_api import build_k8s_core_api
@@ -24,6 +27,9 @@ from bootstrap.container.build_worker import WORKFLOWS, build_worker
 from bootstrap.container.configure_logging import configure_logging
 from bootstrap.container.connect_temporal import connect_temporal
 from bootstrap.container.create_api_app import create_api_app
+from bootstrap.container.event_log_base import (
+    event_log_base,
+)
 from bootstrap.container.gateways import Gateways
 from bootstrap.container.lazy_k8s_api import LazyK8sApi
 from bootstrap.container.load_k8s_config import load_k8s_config
@@ -33,12 +39,12 @@ from bootstrap.container.run_migrations import run_migrations
 from bootstrap.container.use_cases import UseCases
 
 __all__ = [
-    "WORKFLOWS",
     "Activities",
     "Gateways",
     "LazyK8sApi",
     "Repositories",
     "UseCases",
+    "WORKFLOWS",
     "admission_lease_seconds",
     "apply_worker_startup",
     "build_activities",
@@ -47,6 +53,7 @@ __all__ = [
     "build_catalog_web_use_cases",
     "build_connected_use_cases",
     "build_engine",
+    "build_event_log_filesystem",
     "build_gateways",
     "build_k8s_api",
     "build_k8s_core_api",
@@ -60,6 +67,7 @@ __all__ = [
     "configure_logging",
     "connect_temporal",
     "create_api_app",
+    "event_log_base",
     "load_k8s_config",
     "run_event_consumer",
     "run_migrations",

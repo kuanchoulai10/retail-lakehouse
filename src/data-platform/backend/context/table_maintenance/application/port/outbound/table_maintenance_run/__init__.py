@@ -23,6 +23,15 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run.d
 from context.table_maintenance.application.port.outbound.table_maintenance_run.delete_maintenance_job.input import (
     DeleteMaintenanceJobGatewayInput,
 )
+from context.table_maintenance.application.port.outbound.table_maintenance_run.read_maintenance_event_log.gateway import (  # noqa: E501
+    ReadMaintenanceEventLogGateway,
+)
+from context.table_maintenance.application.port.outbound.table_maintenance_run.read_maintenance_event_log.input import (  # noqa: E501
+    ReadMaintenanceEventLogGatewayInput,
+)
+from context.table_maintenance.application.port.outbound.table_maintenance_run.read_maintenance_event_log.output import (  # noqa: E501
+    ReadMaintenanceEventLogGatewayOutput,
+)
 from context.table_maintenance.application.port.outbound.table_maintenance_run.read_maintenance_job.gateway import (
     ReadMaintenanceJobGateway,
 )
@@ -73,6 +82,9 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run.t
 )
 
 __all__ = [
+    "ReadMaintenanceEventLogGateway",
+    "ReadMaintenanceEventLogGatewayInput",
+    "ReadMaintenanceEventLogGatewayOutput",
     "JobContainerExit",
     "ReadMaintenanceJobEvidenceGateway",
     "ReadMaintenanceJobEvidenceGatewayInput",

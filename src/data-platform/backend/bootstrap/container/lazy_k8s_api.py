@@ -10,10 +10,11 @@ if TYPE_CHECKING:
 
 
 class LazyK8sApi:
-    """Proxy a Kubernetes API client (custom objects, core, ...) that is built on first use, at most once.
+    """Proxy a client that is built on first use, at most once: a Kubernetes API (custom objects, core, ...).
 
     Loading a kubeconfig at construction would stop the API and the event consumer
-    from starting where no cluster config exists; only Spark calls need one.
+    from starting where no cluster config exists; only Spark calls need one. The
+    Spark event log file system is deferred the same way.
     """
 
     def __init__(self, factory: Callable[[], object]) -> None:

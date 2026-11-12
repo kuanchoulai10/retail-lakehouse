@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     )
     from context.table_maintenance.application.port.outbound.table_maintenance_run import (
         DeleteMaintenanceJobGateway,
+        ReadMaintenanceEventLogGateway,
         ReadMaintenanceJobEvidenceGateway,
         ReadMaintenanceJobGateway,
         ReadMaintenanceJobPodsGateway,
@@ -34,3 +35,4 @@ class Gateways:
     delete_maintenance_job: DeleteMaintenanceJobGateway
     read_maintenance_job_pods: ReadMaintenanceJobPodsGateway
     read_maintenance_job_evidence: ReadMaintenanceJobEvidenceGateway
+    read_maintenance_event_log: ReadMaintenanceEventLogGateway
