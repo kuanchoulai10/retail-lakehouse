@@ -424,7 +424,7 @@ def test_cancelled_workflow_records_releases_deletes_and_notifies():
         assert isinstance(caught.value.cause, CancelledError)
 
         assert h.recorded() == [(COMPACTION, 1, False, "cancelled")]
-        assert h.fakes.deletes == [f"{RUN_ID}-{COMPACTION}-1"]
+        assert set(h.fakes.deletes) == {f"{RUN_ID}-{COMPACTION}-1"}
         assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
         assert await h.admission_holders() == {}
 
@@ -500,7 +500,7 @@ async def _cancel_while_blocked(
     assert isinstance(caught.value.cause, CancelledError)
     assert h.recorded() == [(COMPACTION, 1, False, "cancelled")]
     assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1)]
-    assert h.fakes.deletes == [f"{RUN_ID}-{COMPACTION}-1"]
+    assert set(h.fakes.deletes) == {f"{RUN_ID}-{COMPACTION}-1"}
     assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
     assert await h.admission_holders() == {}
 
@@ -728,6 +728,56 @@ def test_missing_job_whose_pods_stay_fails_the_operation_and_keeps_the_slot():
         commands = await h.commands()
         release = _first_after(commands, "signal:release", _names(commands).index("delete_maintenance_job"))
         assert commands[release][1] - h.fakes.delete_times[FIRST] >= timedelta(minutes=20)
+
+    _run(scenario)
+
+
+def test_cancelled_run_fences_its_live_attempt_before_it_releases_the_slot():
+    """A cancel during an attempt deletes its job and waits, renewing, for its pods to go before the slot is freed."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.pods_live_for[FIRST] = timedelta(minutes=10)
+        handle = await h.start_maintenance(COMPACTION, EXPIRE)
+        await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n == 1)
+        await h.env.sleep(timedelta(minutes=2))
+        await handle.cancel()
+        with pytest.raises(WorkflowFailureError) as caught:
+            await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+        assert isinstance(caught.value.cause, CancelledError)
+
+        commands = await h.commands()
+        names = _names(commands)
+        renew = names.index("signal:renew")
+        delete = _first_after(commands, "delete_maintenance_job", renew)
+        release = _first_after(commands, "signal:release", delete)
+        assert "signal:release" not in names[:release]
+        assert commands[release][1] - h.fakes.delete_times[FIRST] >= timedelta(minutes=10)
+        assert h.fakes.pods_times[-1] - h.fakes.delete_times[FIRST] >= timedelta(minutes=10)
+        assert h.recorded() == [(COMPACTION, 1, False, "cancelled")]
+        assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1)]
+        assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
+        assert await h.admission_holders() == {}
+
+    _run(scenario)
+
+
+def test_cancel_during_fencing_keeps_fencing_until_the_pods_are_gone():
+    """A cancel that arrives while a timed-out attempt is fenced still waits for its pods before the slot is freed."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.pods_live_for[FIRST] = timedelta(minutes=30)
+        handle = await h.start_maintenance(COMPACTION, attempt_deadline_seconds=FENCE_DEADLINE_SECONDS)
+        await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n == 1)
+        await h.env.sleep(timedelta(seconds=FENCE_DEADLINE_SECONDS + 60))
+        await eventually(lambda: _value(len(h.fakes.pods_calls)), lambda n: n >= 1)
+        await handle.cancel()
+        with pytest.raises(WorkflowFailureError):
+            await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        commands = await h.commands()
+        release = _first_after(commands, "signal:release", _names(commands).index("delete_maintenance_job"))
+        assert commands[release][1] - h.fakes.delete_times[FIRST] >= timedelta(minutes=30)
+        assert await h.admission_holders() == {}
 
     _run(scenario)
 

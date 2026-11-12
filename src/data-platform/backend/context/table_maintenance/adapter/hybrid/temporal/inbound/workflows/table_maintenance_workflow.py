@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
@@ -31,6 +31,9 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_m
     TableMaintenanceAttemptPolicy,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Coroutine
+
 _ACTIVITY_TIMEOUT = timedelta(minutes=2)
 _ACTIVITY_RETRY = RetryPolicy(maximum_attempts=5, initial_interval=timedelta(seconds=2), backoff_coefficient=2.0)
 FAST_POLL_INTERVAL = timedelta(seconds=30)
@@ -42,6 +45,8 @@ _TIMED_OUT = "spark job timed out"
 _MISSING = "spark job missing"
 _FENCE_PATCH = "fence-timed-out-attempt"
 _FENCE_MISSING_PATCH = "fence-missing-job"
+_FENCE_CANCELLED_PATCH = "fence-cancelled-attempt"
+_CANCELLED = "cancelled"
 
 
 @workflow.defn(name=TABLE_MAINTENANCE_WORKFLOW)
@@ -61,7 +66,11 @@ class TableMaintenanceWorkflow:
     the operation without a further attempt, and the slot is held until they are
     gone. An attempt whose job went missing is fenced the same way, since its
     pods can outlive the SparkApplication. Histories from before fencing replay
-    unfenced (patches ``fence-timed-out-attempt`` and ``fence-missing-job``). A failed operation
+    unfenced (patches ``fence-timed-out-attempt`` and ``fence-missing-job``). A
+    cancellation (a manual cancel, or the reconciliation giving the run up) fences
+    the attempt it interrupts the same way, without a bound and even if another
+    cancel arrives meanwhile, before the slot is released (patch
+    ``fence-cancelled-attempt``). A failed operation
     never fails the run: the next operation still runs. At the end, also after a
     cancellation, the Spark job of every started attempt is deleted and the parent
     reconciliation workflow is told the run finished and how many results could not be
@@ -137,7 +146,9 @@ class TableMaintenanceWorkflow:
             return await self._attempt_outcome(operation, attempt, request_id)
         except asyncio.CancelledError:
             if (name, attempt) not in self._settled_attempts:
-                await self._record(self._failure(name, attempt, "cancelled"))
+                await self._record(self._failure(name, attempt, _CANCELLED))
+            if (name, attempt) in self._started_attempts and workflow.patched(_FENCE_CANCELLED_PATCH):
+                await _to_the_end(self._fence(name, attempt, request_id, _CANCELLED, since="the cancel", bounded=False))
             raise
         finally:
             self._current_request = None
@@ -251,13 +262,14 @@ class TableMaintenanceWorkflow:
         return self._failure(name, attempt, _MISSING)
 
     async def _fence(
-        self, name: str, attempt: int, request_id: str, reason: str, *, since: str
+        self, name: str, attempt: int, request_id: str, reason: str, *, since: str, bounded: bool = True
     ) -> OperationResultSignal:
         """Delete an ended attempt's job and wait until its pods are gone; the slot stays held meanwhile.
 
         ``reason`` is why the attempt ended (it timed out, or its job went
         missing) and ``since`` names that moment in the error of an unconfirmed
-        fence.
+        fence. An unbounded fence (after a cancel) records nothing and waits for
+        the pods however long they take.
 
         Each poll first renews the lease when it is due (the first poll always
         does, before anything else), then tries the delete again until one has
@@ -272,7 +284,7 @@ class TableMaintenanceWorkflow:
         """
         fencing = self._policy.fencing
         key = (name, attempt)
-        confirm_by = workflow.now() + fencing.confirm_bound
+        confirm_by = workflow.now() + fencing.confirm_bound if bounded else None
         renew_at = workflow.now()
         deleted = False
         outcome = self._failure(name, attempt, reason)
@@ -283,7 +295,7 @@ class TableMaintenanceWorkflow:
             deleted = deleted or await self._delete_job(name, attempt)
             if deleted and await self._pods_gone(name, attempt):
                 return outcome
-            if key not in self._settled_attempts and workflow.now() >= confirm_by:
+            if confirm_by is not None and key not in self._settled_attempts and workflow.now() >= confirm_by:
                 minutes = int(fencing.confirm_bound.total_seconds() // 60)
                 still = "its pods were still running" if deleted else "its job could still not be deleted"
                 error = f"{reason}; {still} {minutes} minutes after {since}"
@@ -410,6 +422,17 @@ def _now() -> str:
 def _message(error: ActivityError) -> str:
     cause = error.cause
     return cause.message if isinstance(cause, FailureError) else error.message
+
+
+async def _to_the_end[T](work: Coroutine[Any, Any, T]) -> T:
+    """Run ``work`` to its end even when the workflow is cancelled again while it runs."""
+    task = asyncio.ensure_future(work)
+    while True:
+        try:
+            return await asyncio.shield(task)
+        except asyncio.CancelledError:
+            if task.cancelled():
+                raise
 
 
 def _raise_if_cancelled(error: ActivityError) -> None:
