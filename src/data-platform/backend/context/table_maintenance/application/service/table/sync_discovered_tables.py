@@ -81,8 +81,8 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
     def execute(self, request: SyncDiscoveredTablesUseCaseInput) -> SyncDiscoveredTablesUseCaseOutput:
         """Register, rename, decide and drop tables within the catalog or namespace scope.
 
-        Every table listed is decided by the discovery rules: an unknown one the
-        rules manage is registered as managed, a known one is managed or unmanaged
+        Every table listed is decided by the discovery rules: an unknown one is
+        registered, as managed when the rules include it and unmanaged otherwise, a known one is managed or unmanaged
         as the rules now say (counted in ``managed`` / ``unmanaged``); with no
         rules nothing is managed. Only a catalog-wide sync (no namespace) marks missing tables
         dropped, since a namespace scan cannot tell a drop from a move, and a
@@ -111,7 +111,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
                 skipped += 1
                 continue
             if isinstance(outcome, RegistrationOutcome):
-                registered += outcome == RegistrationOutcome.REGISTERED
+                registered += 1
             elif outcome is not None:
                 known.append(outcome)
         dropped = 0

@@ -41,6 +41,15 @@ def test_register_makes_a_managed_table_linked_to_its_rule():
     assert t.registered_at == t.updated_at == T0
 
 
+def test_register_unmanaged_makes_an_unmanaged_table_without_a_rule():
+    """A table no rule includes is registered as unmanaged, with no managing rule."""
+    t = Table.register_unmanaged(TableId("u1"), NAME, T0)
+    assert t.status == TableStatus.UNMANAGED
+    assert not t.is_managed
+    assert t.matched_rule_id is None
+    assert t.registered_at == t.updated_at == T0
+
+
 def test_table_statuses_are_managed_unmanaged_and_dropped():
     """A table is managed, unmanaged or dropped; nothing else."""
     assert [s.value for s in TableStatus] == ["managed", "unmanaged", "dropped"]

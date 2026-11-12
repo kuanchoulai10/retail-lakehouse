@@ -28,9 +28,6 @@ from context.table_maintenance.application.service.table.apply_discovery_to_know
 from context.table_maintenance.application.service.table.register_discovered_table import (
     register_discovered_table,
 )
-from context.table_maintenance.application.service.table.registration_outcome import (
-    RegistrationOutcome,
-)
 from context.table_maintenance.application.service.table.table_hint_action import (
     TableHintAction,
 )
@@ -75,7 +72,7 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         """Handle the hint; ``event_type`` does not change the behaviour.
 
         A hint naming one table applies the same steps as a discovery pass to that
-        table: an unknown one the rules manage is registered, a known one is
+        table: an unknown one is registered (managed or unmanaged), a known one is
         renamed and decided again, and a managed one is signalled ``updated``.
         """
         if request.table is None:
@@ -127,7 +124,7 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         rules = self._rules_repo.get_rules()
         name = TableName(catalog=found.catalog, namespace=found.namespace, table=found.table)
         stale = self._tables_repo.find_by_name(name)
-        outcome = register_discovered_table(
+        register_discovered_table(
             found,
             rules,
             self._tables_repo,
@@ -135,8 +132,6 @@ class ProcessTableHintService(ProcessTableHintUseCase):
             TableChange.UPDATED,
             now,
         )
-        if outcome == RegistrationOutcome.REGISTERED:
-            if stale is not None:
-                self._discovery_request_gateway.send(SendDiscoveryRequestGatewayInput(found.catalog, None))
-            return TableHintAction.REGISTERED
-        return TableHintAction.IGNORED
+        if stale is not None:
+            self._discovery_request_gateway.send(SendDiscoveryRequestGatewayInput(found.catalog, None))
+        return TableHintAction.REGISTERED

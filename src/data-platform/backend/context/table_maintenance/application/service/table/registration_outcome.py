@@ -8,5 +8,5 @@ from enum import StrEnum
 class RegistrationOutcome(StrEnum):
     """Enumerate what registering one discovered table amounted to."""
 
-    REGISTERED = "registered"
-    NOT_SELECTED = "not_selected"
+    MANAGED = "managed"
+    UNMANAGED = "unmanaged"

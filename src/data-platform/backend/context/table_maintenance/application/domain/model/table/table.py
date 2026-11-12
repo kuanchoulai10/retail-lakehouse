@@ -60,6 +60,23 @@ class Table(AggregateRoot[TableId]):
             updated_at=now,
         )
 
+    @classmethod
+    def register_unmanaged(
+        cls,
+        id: TableId,  # noqa: A002
+        name: TableName,
+        now: datetime,
+    ) -> Table:
+        """Register a table no discovery rule includes, as unmanaged."""
+        return cls(
+            id=id,
+            name=name,
+            status=TableStatus.UNMANAGED,
+            matched_rule_id=None,
+            registered_at=now,
+            updated_at=now,
+        )
+
     @property
     def is_managed(self) -> bool:
         """Return whether the table is managed, so it has a reconciliation workflow."""

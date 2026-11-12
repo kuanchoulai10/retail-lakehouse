@@ -41,16 +41,18 @@ def register_discovered_table(  # noqa: PLR0913
     change: TableChange,
     now: datetime,
 ) -> RegistrationOutcome:
-    """Decide an unknown table by the discovery rules and register it if they manage it.
+    """Decide an unknown table by the discovery rules and register it.
 
     An include match registers the table as managed and sends ``change`` for it,
     which starts its reconciliation workflow. An exclude match, or no match,
-    registers nothing.
+    registers it as unmanaged and sends nothing, so the registry lists every
+    table discovery has seen.
     """
     name = TableName(catalog=found.catalog, namespace=found.namespace, table=found.table)
     rule = rules.decide(name)
     if rule is None or rule.action != RuleAction.INCLUDE:
-        return RegistrationOutcome.NOT_SELECTED
+        tables_repo.create(Table.register_unmanaged(TableId(found.table_uuid), name, now))
+        return RegistrationOutcome.UNMANAGED
     table = Table.register(TableId(found.table_uuid), name, rule.id, now)
     tables_repo.create(table)
     table_change_gateway.send(
@@ -61,4 +63,4 @@ def register_discovered_table(  # noqa: PLR0913
             is_managed=table.is_managed,
         )
     )
-    return RegistrationOutcome.REGISTERED
+    return RegistrationOutcome.MANAGED

@@ -129,14 +129,50 @@ def test_sync_registers_include_match_as_managed(sync, tables_repo, rules_repo, 
     assert [c.table_name for c in signals.calls] == ["iceberg.sales.orders"]
 
 
-def test_sync_exclude_match_and_no_match_register_nothing(sync, tables_repo, rules_repo, catalog, signals, now):
-    """Sync registers nothing for tables that match an exclude rule or no rule."""
+def test_sync_registers_exclude_match_and_no_match_as_unmanaged(sync, tables_repo, rules_repo, catalog, signals, now):
+    """Sync records tables an exclude rule or no rule decides as unmanaged, and starts no workflow."""
     _rule(rules_repo, now, RuleAction.EXCLUDE, ("tmp_*",))
     catalog.add_table("iceberg", "sales", "tmp_x", "u-1")
     catalog.add_table("iceberg", "sales", "orders", "u-2")
     out = sync.execute(_catalog_wide())
-    assert out.registered == 0
-    assert tables_repo.list_all() == []
+    assert out.registered == 2
+    for uuid in ("u-1", "u-2"):
+        table = tables_repo.get(TableId(uuid))
+        assert table.status == TableStatus.UNMANAGED
+        assert table.matched_rule_id is None
+    assert signals.calls == []
+
+
+def test_sync_leaves_a_registered_unmanaged_table_alone(sync, tables_repo, catalog, signals, log, now):
+    """A second sync of a table no rule decides neither stores it again nor signals it."""
+    catalog.add_table("iceberg", "sales", "orders", "u-1")
+    sync.execute(_catalog_wide())
+    out = sync.execute(_catalog_wide())
+    assert (out.registered, out.unmanaged, out.ensured) == (0, 0, 0)
+    assert tables_repo.get(TableId("u-1")).status == TableStatus.UNMANAGED
+    assert signals.calls == []
+
+
+def test_sync_manages_a_registered_unmanaged_table_once_a_rule_includes_it(
+    sync, tables_repo, rules_repo, catalog, signals, now
+):
+    """A table first recorded as unmanaged is managed, and its workflow started, when a rule includes it."""
+    catalog.add_table("iceberg", "sales", "orders", "u-1")
+    sync.execute(_catalog_wide())
+    _include_all(rules_repo, now)
+    out = sync.execute(_catalog_wide())
+    assert out.managed == 1
+    assert tables_repo.get(TableId("u-1")).status == TableStatus.MANAGED
+    assert _calls(signals)[0] == ("u-1", "seen", True)
+
+
+def test_namespace_sync_of_a_managed_table_does_not_reensure(sync, tables_repo, rules_repo, catalog, signals, now):
+    """A namespace pass over a managed table it already knows does not signal the workflow."""
+    _include_all(rules_repo, now)
+    _row(tables_repo, now, "u-1", _name("orders"))
+    catalog.add_table("iceberg", "sales", "orders", "u-1")
+    out = sync.execute(_namespace())
+    assert out.ensured == 0
     assert signals.calls == []
 
 
@@ -513,6 +549,14 @@ def test_table_hint_manages_an_unmanaged_table_the_rules_include(hint, tables_re
     assert _calls(signals) == [("u-1", "updated", True)]
 
 
+def test_table_hint_registers_a_new_table_no_rule_includes_as_unmanaged(hint, tables_repo, catalog, signals, now):
+    """A hint for a new table no rule includes records it as unmanaged and starts no workflow."""
+    catalog.add_table("iceberg", "sales", "orders", "u-1")
+    assert hint.execute(_hint()).action == "registered"
+    assert tables_repo.get(TableId("u-1")).status == TableStatus.UNMANAGED
+    assert signals.calls == []
+
+
 def _busy_observation(uuid):
     return TableMetadataObservation(
         table_uuid=uuid,
@@ -569,13 +613,6 @@ def test_table_hint_registers_unregistered_table_by_rules(hint, tables_repo, rul
     assert hint.execute(_hint()).action == "registered"
     assert tables_repo.get(TableId("u-1")).status == TableStatus.MANAGED
     assert _calls(signals) == [("u-1", "updated", True)]
-
-
-def test_table_hint_ignores_unregistered_table_without_match(hint, tables_repo, catalog):
-    """A hint for an unregistered table is ignored when no rule matches, as with no rules at all."""
-    catalog.add_table("iceberg", "sales", "orders", "u-1")
-    assert hint.execute(_hint()).action == "ignored"
-    assert tables_repo.list_all() == []
 
 
 def test_table_hint_for_missing_table_with_row_requests_discovery(hint, tables_repo, discovery_requests, now):
