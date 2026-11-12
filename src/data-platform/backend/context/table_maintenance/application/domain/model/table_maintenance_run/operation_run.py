@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from base import ValueObject
 from context.table_maintenance.application.domain.model.shared import (
@@ -22,6 +22,8 @@ class OperationRun(ValueObject):
     """Record the progress of one maintenance operation inside a run.
 
     The flat fields describe the latest attempt; ``attempt_history`` keeps every attempt, oldest first.
+    Its attempt numbers increase and its last one is ``attempts``; it may lack the earlier attempts
+    of a run started before attempt history existed, or be empty for such a run.
     """
 
     operation: MaintenanceOperation
@@ -34,3 +36,17 @@ class OperationRun(ValueObject):
     error: str | None = None
     expected_files: int | None = None
     attempt_history: tuple[OperationAttempt, ...] = ()
+
+    @model_validator(mode="after")
+    def _history_matches_the_attempts(self) -> OperationRun:
+        numbers = [entry.attempt for entry in self.attempt_history]
+        if any(later <= earlier for earlier, later in zip(numbers, numbers[1:], strict=False)):
+            msg = f"attempt numbers of {self.operation} must increase: {numbers}"
+            raise ValueError(msg)
+        if numbers and numbers[-1] != self.attempts:
+            msg = (
+                f"the last attempt in the history of {self.operation} is {numbers[-1]}, "
+                f"not its latest attempt {self.attempts}"
+            )
+            raise ValueError(msg)
+        return self
