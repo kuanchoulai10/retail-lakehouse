@@ -10,6 +10,7 @@ from context.table_maintenance.application.port.outbound.compaction_candidate im
     CompactionCandidate,
     CompactionCandidateId,
     HoldReason,
+    MaintenancePriority,
     PartitionKey,
     TableId,
     TableMaintenanceRunId,
@@ -23,7 +24,8 @@ class CompactionCandidateRowMapper:
     """Map a CompactionCandidate to the columns of its row and back.
 
     The partition is stored in its canonical form (the unique key with the table);
-    the spec id is repeated in its own column for queries.
+    the spec id is repeated in its own column for queries. ``version`` is left
+    to the repository, which owns the version check.
     """
 
     @staticmethod
@@ -47,6 +49,9 @@ class CompactionCandidateRowMapper:
             "claimed_by_run_id": None if candidate.claimed_by_run_id is None else candidate.claimed_by_run_id.value,
             "lease_expires_at": candidate.lease_expires_at,
             "updated_at": candidate.updated_at,
+            "priority": candidate.priority.value,
+            "granted_round_id": candidate.granted_round_id,
+            "pending_since": candidate.pending_since,
         }
 
     @staticmethod
@@ -73,4 +78,8 @@ class CompactionCandidateRowMapper:
             claimed_by_run_id=None if run_id is None else TableMaintenanceRunId(run_id),
             lease_expires_at=row["lease_expires_at"],
             updated_at=row["updated_at"],
+            priority=MaintenancePriority(row["priority"]),
+            granted_round_id=row["granted_round_id"],
+            pending_since=row["pending_since"],
+            version=row["version"],
         )

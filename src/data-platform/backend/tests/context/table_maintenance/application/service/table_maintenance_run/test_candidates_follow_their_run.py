@@ -53,6 +53,7 @@ def _candidate(value: str, run: TableMaintenanceRunId | None, now):  # noqa: ANN
         now=now,
     )
     if run is not None:
+        candidate.grant("round-1", now + timedelta(minutes=10), now)
         candidate.claim(run, now + timedelta(hours=20), now)
     return candidate
 

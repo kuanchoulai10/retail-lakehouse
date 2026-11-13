@@ -7,9 +7,7 @@ from typing import TYPE_CHECKING
 from context.table_maintenance.application.domain.model.compaction_candidate import (
     CandidatePick,
     CandidateShortfall,
-)
-from context.table_maintenance.application.domain.service.compaction_candidate.select_top_candidates import (
-    select_top_candidates,
+    CandidateState,
 )
 from context.table_maintenance.application.domain.service.compaction_candidate.sync_compaction_candidates import (
     sync_compaction_candidates,
@@ -25,6 +23,7 @@ if TYPE_CHECKING:
         ObservedPartition,
     )
     from context.table_maintenance.application.domain.model.table import TableId
+    from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePriority
     from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRunId
 
 
@@ -38,6 +37,7 @@ def pick_compaction_candidates(  # noqa: PLR0913
     throughput_bytes_per_hour: float,
     released_runs: frozenset[TableMaintenanceRunId],
     pick: bool,
+    priority: MaintenancePriority,
     claim_for: TableMaintenanceRunId | None,
     lease_until: datetime,
     now: datetime,
@@ -45,13 +45,16 @@ def pick_compaction_candidates(  # noqa: PLR0913
     """Sync a table's candidates with one observation and, when compaction is due, pick the run's share.
 
     Claims still held by a run in ``released_runs`` (one that has finished, or
-    one that never started) are handed back first, so they do not wait out their
-    lease. With ``pick``, a run that already holds claims (a retried plan)
-    gets those again; otherwise the ``partitions_per_run`` best pending
-    candidates are picked and, when ``claim_for`` names the run, claimed for it
-    until ``lease_until``. Without any, the shortfall says whether other runs
-    hold candidates (and when the first lease ends) or filters hold them all
-    (and when the first recently-written hold ends).
+    one that never started) are handed back as pending first, so they do not
+    wait out their lease. Every candidate takes ``priority``. Without ``pick``
+    (compaction not due) the candidates the filters let through are held as not
+    due. With ``pick``, a run that already holds claims (a retried plan) gets
+    those again; otherwise the ``partitions_per_run`` best candidates a
+    compaction round granted are picked and, when ``claim_for`` names the run,
+    claimed for it until ``lease_until``. Without any, the shortfall says
+    whether candidates wait for a round (pending), other runs hold them (and
+    when the first lease ends) or filters hold them all (and when the first
+    recently-written hold ends).
     """
     current = [_released(c, released_runs, now) for c in existing]
     sync = sync_compaction_candidates(
@@ -63,6 +66,8 @@ def pick_compaction_candidates(  # noqa: PLR0913
         memory_gb=memory_gb,
         throughput_bytes_per_hour=throughput_bytes_per_hour,
         now=now,
+        due=pick,
+        priority=priority,
     )
     if not pick:
         return CandidatePick(saved=sync.saved, removed=sync.removed)
@@ -71,12 +76,15 @@ def pick_compaction_candidates(  # noqa: PLR0913
     ]
     selected = tuple(sorted(own, key=lambda c: c.rank))
     if not selected:
-        selected = select_top_candidates(sync.saved, selection.partitions_per_run)
+        granted = sorted((c for c in sync.saved if c.state is CandidateState.GRANTED), key=lambda c: c.rank)
+        selected = tuple(granted[: selection.partitions_per_run])
         if claim_for is not None:
             for candidate in selected:
                 candidate.claim(claim_for, lease_until, now)
     if selected:
         return CandidatePick(saved=sync.saved, removed=sync.removed, selected=selected)
+    if any(c.state is CandidateState.PENDING for c in sync.saved):
+        return CandidatePick(saved=sync.saved, removed=sync.removed, shortfall=CandidateShortfall.AWAITING_SCHEDULE)
     leases = [c.lease_expires_at for c in sync.saved if c.state.holds_a_claim and c.lease_expires_at is not None]
     if leases:
         return CandidatePick(

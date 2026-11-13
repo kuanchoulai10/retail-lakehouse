@@ -136,10 +136,13 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         applicable policy and saves the table when it lifted any.
 
         A scheduled plan also brings the table's compaction candidates in line with
-        the observation, whatever is due, and a due compaction takes only the best
-        candidates, claimed for ``run_id``; when it can take none it is not
-        planned and its check says why. A manual plan leaves the candidates alone,
-        and a skipped table loses them.
+        the observation, whatever is due, with the policy's priority; when
+        compaction is not due (or the policy is a dry run) they are held as not
+        due. A due compaction takes only the best candidates a compaction round
+        granted the table, claimed for ``run_id``; when it can take none (none
+        granted yet, all held or claimed) it is not planned and its check says
+        why. A manual plan leaves the candidates alone, and a skipped table loses
+        them.
         """
         manual = self._parse_manual(request.manual_operations)
         table = self._tables_repo.get(TableId(request.table_uuid))
@@ -181,7 +184,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         checks: list[PlanTableMaintenanceUseCaseOutputCheckItem],
         request: PlanTableMaintenanceUseCaseInput,
     ) -> tuple[MaintenancePlan, list[PlanTableMaintenanceUseCaseOutputCheckItem], CompactionShare]:
-        """Sync the candidates, and narrow a due compaction to the candidates it takes or drop it."""
+        """Sync the candidates, and narrow a due compaction to the granted candidates it takes or drop it."""
         due = next((p for p in plan.operations if p.operation is _COMPACTION), None)
         runs = self._runs_repo.list_by_table(table.id, limit=_RUNS_FOR_THROUGHPUT)
         remembered = table.operation_state(_COMPACTION).start_size()
@@ -200,6 +203,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             ),
             released_runs=self._released_runs(existing, claim_for),
             pick=due is not None and not policy.dry_run,
+            priority=policy.priority,
             claim_for=claim_for,
             lease_until=request.now + self._claim_lease,
             now=request.now,

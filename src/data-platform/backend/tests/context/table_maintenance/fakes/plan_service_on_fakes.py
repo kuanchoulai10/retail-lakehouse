@@ -14,8 +14,10 @@ from tests.context.table_maintenance.fakes.in_memory_compaction_candidates_repo 
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_runs_repo import (
     InMemoryTableMaintenanceRunsRepo,
 )
+from tests.context.table_maintenance.fakes.plan_after_a_round import PlanAfterARound
 
 if TYPE_CHECKING:
+    from context.table_maintenance.application.port.inbound.table import PlanTableMaintenanceUseCase
     from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
         ResolveApplicableTableMaintenancePolicyUseCase,
     )
@@ -40,15 +42,21 @@ def plan_service_on_fakes(  # noqa: PLR0913
     candidates_repo: CompactionCandidatesRepo | None = None,
     runs_repo: TableMaintenanceRunsRepo | None = None,
     selection: CandidateSelection | None = None,
-) -> PlanTableMaintenanceService:
-    """Return the plan service on the given fakes, with empty candidate and run repos unless given."""
-    return PlanTableMaintenanceService(
+) -> PlanTableMaintenanceUseCase:
+    """Return the plan service on the given fakes, with empty candidate and run repos unless given.
+
+    A compaction round grants every pending candidate before each scheduled plan
+    (``PlanAfterARound``), so a due compaction is planned at once.
+    """
+    candidates = InMemoryCompactionCandidatesRepo() if candidates_repo is None else candidates_repo
+    service = PlanTableMaintenanceService(
         tables_repo,
         catalog,
         resolve_applicable_policy,
-        InMemoryCompactionCandidatesRepo() if candidates_repo is None else candidates_repo,
+        candidates,
         InMemoryTableMaintenanceRunsRepo() if runs_repo is None else runs_repo,
         selection=CandidateSelection() if selection is None else selection,
         size_memory=SIZE_MEMORY,
         claim_lease=CLAIM_LEASE,
     )
+    return PlanAfterARound(service, candidates)

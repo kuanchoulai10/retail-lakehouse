@@ -46,6 +46,7 @@ def service(candidates_repo, tables_repo, now):  # noqa: ANN001, ANN201
         )
     )
     claimed = _candidate("2026-11-04", 0.9, now)
+    claimed.grant("round-1", now + timedelta(minutes=10), now)
     claimed.claim(RUN, now + timedelta(hours=1), now)
     candidates_repo.save_all(
         [

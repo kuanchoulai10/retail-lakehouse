@@ -17,9 +17,6 @@ from context.table_maintenance.application.domain.service.compaction_candidate.p
 from context.table_maintenance.application.domain.service.compaction_candidate.score_candidate import (
     score_candidate,
 )
-from context.table_maintenance.application.domain.service.compaction_candidate.select_top_candidates import (
-    select_top_candidates,
-)
 from context.table_maintenance.application.domain.service.compaction_candidate.sync_compaction_candidates import (
     sync_compaction_candidates,
 )
@@ -30,6 +27,5 @@ __all__ = [
     "partition_label",
     "pick_compaction_candidates",
     "score_candidate",
-    "select_top_candidates",
     "sync_compaction_candidates",
 ]

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import delete, insert, select
+from sqlalchemy import delete, insert, select, update
+from sqlalchemy.exc import IntegrityError
 
 from context.table_maintenance.adapter.outbound.compaction_candidate.sql.compaction_candidate_row_mapper import (
     CompactionCandidateRowMapper,
@@ -13,7 +14,9 @@ from context.table_maintenance.adapter.outbound.compaction_candidate.sql.compact
     compaction_candidates_table as t,
 )
 from context.table_maintenance.application.port.outbound.compaction_candidate import (
+    CandidateState,
     CompactionCandidatesRepo,
+    StaleCompactionCandidate,
 )
 
 if TYPE_CHECKING:
@@ -37,7 +40,9 @@ class CompactionCandidatesSqlRepo(CompactionCandidatesRepo):
     """Store CompactionCandidate aggregates in a SQL database, one row per table and partition.
 
     A candidate's id is derived from its table and partition, so replacing the
-    row by id is replacing it by that key.
+    row by id is replacing it by that key. Each row carries a version: a save
+    inserts a candidate never stored and updates any other only where the row
+    is still at the version it was read at, all in one transaction.
     """
 
     def __init__(self, engine: Engine) -> None:
@@ -75,16 +80,43 @@ class CompactionCandidatesSqlRepo(CompactionCandidatesRepo):
             rows = conn.execute(stmt).all()
         return [CompactionCandidateRowMapper.to_aggregate(r._mapping) for r in rows]
 
+    def list_pending(self) -> list[CompactionCandidate]:
+        """Return every pending candidate of every table."""
+        stmt = select(t).where(t.c.state == CandidateState.PENDING.value).order_by(t.c.table_uuid, t.c.partition_key)
+        with self._engine.connect() as conn:
+            rows = conn.execute(stmt).all()
+        return [CompactionCandidateRowMapper.to_aggregate(r._mapping) for r in rows]
+
     def save_all(self, candidates: Sequence[CompactionCandidate]) -> None:
-        """Replace the rows of the candidates in one transaction, in chunks that keep each statement small."""
+        """Store the candidates in one transaction, checking each row's version; a stale one rolls all back.
+
+        New candidates are inserted in chunks that keep each statement small; a
+        row that exists already means another writer created it first.
+        """
         if not candidates:
             return
-        values = [CompactionCandidateRowMapper.to_values(c) for c in candidates]
-        with self._engine.begin() as conn:
-            for start in range(0, len(values), _CHUNK):
-                chunk = values[start : start + _CHUNK]
-                conn.execute(delete(t).where(t.c.id.in_([v["id"] for v in chunk])))
-                conn.execute(insert(t), chunk)
+        new = [CompactionCandidateRowMapper.to_values(c) | {"version": 1} for c in candidates if c.version == 0]
+        stored = [c for c in candidates if c.version > 0]
+        try:
+            with self._engine.begin() as conn:
+                for candidate in stored:
+                    values = CompactionCandidateRowMapper.to_values(candidate)
+                    result = conn.execute(
+                        update(t)
+                        .where(t.c.id == candidate.id.value, t.c.version == candidate.version)
+                        .values(**values, version=candidate.version + 1)
+                    )
+                    if result.rowcount != 1:
+                        raise StaleCompactionCandidate(
+                            f"candidate {candidate.label} of table {candidate.table_uuid.value} changed since "
+                            f"version {candidate.version} was read"
+                        )
+                for start in range(0, len(new), _CHUNK):
+                    conn.execute(insert(t), new[start : start + _CHUNK])
+        except IntegrityError as error:
+            raise StaleCompactionCandidate(f"a candidate was created by another writer first: {error}") from error
+        for candidate in candidates:
+            candidate.mark_saved()
 
     def delete(self, ids: Sequence[CompactionCandidateId]) -> None:
         """Delete the candidates with these ids, in chunks."""

@@ -44,6 +44,9 @@ from context.table_maintenance.application.domain.model.compaction_candidate.obs
 from context.table_maintenance.application.domain.model.compaction_candidate.partition_key import (
     PartitionKey,
 )
+from context.table_maintenance.application.domain.model.compaction_candidate.stale_compaction_candidate import (
+    StaleCompactionCandidate,
+)
 
 __all__ = [
     "ObservedPartition",
@@ -60,4 +63,5 @@ __all__ = [
     "HoldReason",
     "InvalidCandidateTransition",
     "PartitionKey",
+    "StaleCompactionCandidate",
 ]

@@ -24,6 +24,7 @@ if TYPE_CHECKING:
         ObservedPartition,
     )
     from context.table_maintenance.application.domain.model.table import TableId
+    from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePriority
 
 
 def sync_compaction_candidates(  # noqa: PLR0913
@@ -36,6 +37,8 @@ def sync_compaction_candidates(  # noqa: PLR0913
     memory_gb: float,
     throughput_bytes_per_hour: float,
     now: datetime,
+    due: bool = True,
+    priority: MaintenancePriority | None = None,
 ) -> CandidateSync:
     """Bring a table's candidates in line with one observation; the table decides, not a run's report.
 
@@ -45,7 +48,10 @@ def sync_compaction_candidates(  # noqa: PLR0913
     existing candidate not observed is healthy and is removed. A partition with
     less data than the minimum is held as too small; one written within the
     quiet period is held as recently written, until its writes pause or it has
-    waited the longest wait in a row.
+    waited the longest wait in a row. When compaction is not ``due`` every other
+    one is held as not due, so no compaction round spends budget on it. Every
+    candidate takes ``priority``, the applicable policy's (None keeps what each
+    has, P2 for a new one).
     """
     by_key = {c.partition.canonical(): c for c in existing}
     saved: list[CompactionCandidate] = []
@@ -66,7 +72,7 @@ def sync_compaction_candidates(  # noqa: PLR0913
         waiting_since = None
         if recent:
             waiting_since = previous.waiting_since if previous and previous.waiting_since else now
-        hold = _hold_reason(partition, filters, waiting_since, now)
+        hold = _hold_reason(partition, filters, waiting_since, now, due=due)
         if previous is None:
             candidate = CompactionCandidate.create(
                 table_uuid=table_uuid,
@@ -77,11 +83,18 @@ def sync_compaction_candidates(  # noqa: PLR0913
                 hold_reason=hold,
                 now=now,
                 waiting_since=waiting_since,
+                **({} if priority is None else {"priority": priority}),
             )
         else:
             candidate = previous
             candidate.observe(
-                score, partition.last_written_at, hold, now, waiting_since=waiting_since, label=partition.label
+                score,
+                partition.last_written_at,
+                hold,
+                now,
+                waiting_since=waiting_since,
+                label=partition.label,
+                priority=priority,
             )
         saved.append(candidate)
         hold_ends = _recent_hold_ends(candidate, partition, filters)
@@ -92,12 +105,19 @@ def sync_compaction_candidates(  # noqa: PLR0913
 
 
 def _hold_reason(
-    partition: ObservedPartition, filters: CandidateFilters, waiting_since: datetime | None, now: datetime
+    partition: ObservedPartition,
+    filters: CandidateFilters,
+    waiting_since: datetime | None,
+    now: datetime,
+    *,
+    due: bool,
 ) -> HoldReason | None:
     if partition.data_bytes < filters.min_partition_bytes:
         return HoldReason.TOO_SMALL
     if waiting_since is not None and now - waiting_since < filters.max_quiet_wait:
         return HoldReason.RECENTLY_WRITTEN
+    if not due:
+        return HoldReason.NOT_DUE
     return None
 
 

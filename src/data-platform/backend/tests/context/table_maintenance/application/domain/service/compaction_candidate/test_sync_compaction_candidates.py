@@ -89,6 +89,7 @@ def test_partition_no_longer_qualifying_is_removed():
 def test_done_candidate_still_qualifying_is_pending_again():
     """Spark said done, but the table still needs compaction there: the candidate is pending with a fresh score."""
     (candidate,) = _sync([], [_observed("eu")]).saved
+    candidate.grant("round-1", NOW + timedelta(minutes=10), NOW)
     candidate.claim(RUN, NOW + timedelta(hours=1), NOW)
     candidate.start(RUN, NOW)
     candidate.finish(RUN, succeeded=True, now=NOW + timedelta(minutes=10))
@@ -167,6 +168,7 @@ def test_unknown_last_write_is_not_recent():
 def test_claimed_candidate_with_live_lease_keeps_its_claim():
     """A candidate a run holds under a live lease keeps its claim, even when a filter would now hold it."""
     (candidate,) = _sync([], [_observed("eu")]).saved
+    candidate.grant("round-1", NOW + timedelta(minutes=10), NOW)
     candidate.claim(RUN, NOW + timedelta(hours=1), NOW)
 
     result = _sync([candidate], [_observed("eu", written=NOW, reducible=12)], now=NOW + timedelta(minutes=1))
@@ -181,6 +183,7 @@ def test_claimed_candidate_with_live_lease_keeps_its_claim():
 def test_claimed_candidate_with_expired_lease_is_pending_again():
     """A claim past its lease is given up at the next observation."""
     (candidate,) = _sync([], [_observed("eu")]).saved
+    candidate.grant("round-1", NOW + timedelta(minutes=10), NOW)
     candidate.claim(RUN, NOW + timedelta(hours=1), NOW)
 
     result = _sync([candidate], [_observed("eu")], now=NOW + timedelta(hours=1))

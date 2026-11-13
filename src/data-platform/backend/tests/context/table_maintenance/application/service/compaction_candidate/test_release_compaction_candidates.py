@@ -35,6 +35,7 @@ def _candidate(value: str, run: TableMaintenanceRunId | None) -> CompactionCandi
         now=NOW,
     )
     if run is not None:
+        candidate.grant("round-1", NOW + timedelta(minutes=10), NOW)
         candidate.claim(run, NOW + timedelta(hours=1), NOW)
     return candidate
 

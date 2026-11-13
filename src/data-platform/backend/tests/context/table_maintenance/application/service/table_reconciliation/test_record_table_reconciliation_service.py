@@ -136,7 +136,11 @@ def test_other_verdicts_map_by_name_and_next_eligible_is_parsed(
 
 @pytest.mark.parametrize(
     ("verdict", "result"),
-    [("all_held", OperationResult.ALL_HELD), ("all_claimed", OperationResult.ALL_CLAIMED)],
+    [
+        ("all_held", OperationResult.ALL_HELD),
+        ("all_claimed", OperationResult.ALL_CLAIMED),
+        ("awaiting_schedule", OperationResult.AWAITING_SCHEDULE),
+    ],
 )
 def test_compaction_without_a_free_candidate_records_why(
     service: RecordTableReconciliationService,

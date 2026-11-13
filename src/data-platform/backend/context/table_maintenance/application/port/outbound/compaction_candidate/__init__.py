@@ -9,8 +9,10 @@ from context.table_maintenance.application.domain.model.compaction_candidate imp
     CompactionCandidateId,
     HoldReason,
     PartitionKey,
+    StaleCompactionCandidate,
 )
 from context.table_maintenance.application.domain.model.table import TableId
+from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePriority
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRunId,
 )
@@ -25,7 +27,9 @@ __all__ = [
     "CompactionCandidateId",
     "CompactionCandidatesRepo",
     "HoldReason",
+    "MaintenancePriority",
     "PartitionKey",
+    "StaleCompactionCandidate",
     "TableId",
     "TableMaintenanceRunId",
 ]

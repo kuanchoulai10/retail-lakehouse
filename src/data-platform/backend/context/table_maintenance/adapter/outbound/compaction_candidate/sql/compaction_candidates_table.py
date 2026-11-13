@@ -26,7 +26,12 @@ compaction_candidates_table = Table(
     Column("claimed_by_run_id", String, nullable=True),
     Column("lease_expires_at", UtcDateTime, nullable=True),
     Column("updated_at", UtcDateTime, nullable=False),
+    Column("version", Integer, nullable=False, server_default="1"),
+    Column("priority", String, nullable=False, server_default="P2"),
+    Column("granted_round_id", String, nullable=True),
+    Column("pending_since", UtcDateTime, nullable=True),
     UniqueConstraint("table_uuid", "partition_key", name="uq_compaction_candidates_table_partition"),
     Index("ix_compaction_candidates_table_state", "table_uuid", "state"),
     Index("ix_compaction_candidates_claimed_by_run", "claimed_by_run_id"),
+    Index("ix_compaction_candidates_state", "state"),
 )

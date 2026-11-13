@@ -14,6 +14,7 @@ from context.table_maintenance.application.domain.model.compaction_candidate imp
     CandidateState,
     HoldReason,
     PartitionKey,
+    StaleCompactionCandidate,
 )
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
@@ -27,6 +28,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     CompactionScope,
     CompactionUnit,
     MaintenancePolicyContent,
+    MaintenancePriority,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRun,
@@ -62,6 +64,7 @@ RUN = "run-1"
 GIB = 1024**3
 MIB = 1024**2
 LEASE = timedelta(hours=19)
+GRANT_LEASE = timedelta(minutes=10)
 SIZE_MEMORY = {
     ComputeSize.S: SizeMemory(driver_bytes=768 * MIB, executor_bytes=768 * MIB),
     ComputeSize.M: SizeMemory(driver_bytes=GIB, executor_bytes=1536 * MIB),
@@ -102,6 +105,18 @@ def _observe(catalog, partitions, specs=None) -> None:  # noqa: ANN001
         current_snapshot_id=1,
         specs=[REGION_SPEC] if specs is None else specs,
         partitions=partitions,
+    )
+
+
+def _observe_with_manifests(catalog, partitions) -> None:  # noqa: ANN001
+    """Observe the partitions on a table whose five small manifests make rewrite_manifests due as well."""
+    catalog.add_table(*KEY, "u-1")
+    catalog.observations[KEY] = TableMetadataObservation(
+        table_uuid="u-1",
+        current_snapshot_id=1,
+        specs=[REGION_SPEC],
+        partitions=partitions,
+        manifests=[{"length_bytes": 100}] * 5,
     )
 
 
@@ -164,15 +179,30 @@ def _check(plan):  # noqa: ANN001, ANN202
 
 
 def _states(candidates_repo) -> dict[str, CandidateState]:  # noqa: ANN001
-    return {str(c.partition.values[0]): c.state for c in candidates_repo.list_all()}
+    return {str(c.partition.values[0]) if c.partition.values else "": c.state for c in candidates_repo.list_all()}
 
 
-def test_plan_takes_only_the_top_n_candidates(planner, tables_repo, catalog, now):
-    """Five partitions qualify and two are taken: the plan's filters cover exactly the two best."""
+def _grant(candidates_repo, now, only: str | None = None) -> None:  # noqa: ANN001
+    """Grant the table's pending candidates (or the one of partition ``only``) as a compaction round would."""
+    pending = [c for c in candidates_repo.list_pending() if only is None or c.partition.values == (only,)]
+    for candidate in pending:
+        candidate.grant("round-1", now + GRANT_LEASE, now)
+    candidates_repo.save_all(pending)
+
+
+def _plan_granted(planner, candidates_repo, now, *, run_id: str | None = RUN):  # noqa: ANN001, ANN202
+    """Sync the candidates, let a round grant every pending one, then plan for the run."""
+    _plan(planner, now - timedelta(seconds=30), run_id=None)
+    _grant(candidates_repo, now - timedelta(seconds=20))
+    return _plan(planner, now, run_id=run_id)
+
+
+def test_plan_takes_only_the_top_n_candidates(planner, tables_repo, catalog, candidates_repo, now):
+    """Five partitions are granted and two are taken: the plan's filters cover exactly the two best."""
     _table(tables_repo, now)
     _five(catalog)
 
-    compaction = _compaction(_plan(planner, now))
+    compaction = _compaction(_plan_granted(planner, candidates_repo, now))
 
     assert compaction is not None
     (only,) = compaction.filters
@@ -183,16 +213,16 @@ def test_plan_takes_only_the_top_n_candidates(planner, tables_repo, catalog, now
 
 
 def test_plan_claims_the_selected_candidates_for_the_run(planner, tables_repo, catalog, candidates_repo, now):
-    """The two picked candidates are claimed by the run under a lease; the other three stay pending."""
+    """The two picked candidates are claimed by the run under a lease; the other three stay granted."""
     _table(tables_repo, now)
     _five(catalog)
 
-    _plan(planner, now)
+    _plan_granted(planner, candidates_repo, now)
 
     assert _states(candidates_repo) == {
-        "a": CandidateState.PENDING,
-        "b": CandidateState.PENDING,
-        "c": CandidateState.PENDING,
+        "a": CandidateState.GRANTED,
+        "b": CandidateState.GRANTED,
+        "c": CandidateState.GRANTED,
         "d": CandidateState.CLAIMED,
         "e": CandidateState.CLAIMED,
     }
@@ -206,7 +236,7 @@ def test_a_retried_plan_keeps_its_own_claims(planner, tables_repo, catalog, cand
     _table(tables_repo, now)
     _five(catalog)
 
-    first = _compaction(_plan(planner, now))
+    first = _compaction(_plan_granted(planner, candidates_repo, now))
     again = _compaction(_plan(planner, now + timedelta(seconds=5)))
 
     assert again is not None
@@ -214,26 +244,26 @@ def test_a_retried_plan_keeps_its_own_claims(planner, tables_repo, catalog, cand
     assert sorted(_states(candidates_repo).values()).count(CandidateState.CLAIMED) == 2
 
 
-def test_start_size_covers_the_selected_bytes(planner, tables_repo, catalog, now):
+def test_start_size_covers_the_selected_bytes(planner, tables_repo, catalog, candidates_repo, now):
     """A table remembered at S that picked 2 GiB of data starts at L."""
     table = _table(tables_repo, now)
     table.record_operation_result(COMPACTION, True, now - timedelta(days=1), size=ComputeSize.S)
     _observe(catalog, [_partition("a", 10, size=GIB), _partition("b", 10, size=GIB)])
 
-    assert _compaction(_plan(planner, now)).start_size == "L"
+    assert _compaction(_plan_granted(planner, candidates_repo, now)).start_size == "L"
 
 
-def test_start_size_keeps_a_larger_remembered_size(planner, tables_repo, catalog, now):
+def test_start_size_keeps_a_larger_remembered_size(planner, tables_repo, catalog, candidates_repo, now):
     """A table remembered at M keeps M for a small selection."""
     table = _table(tables_repo, now)
     table.record_operation_result(COMPACTION, True, now - timedelta(days=1), size=ComputeSize.M)
     _five(catalog)
 
-    assert _compaction(_plan(planner, now)).start_size == "M"
+    assert _compaction(_plan_granted(planner, candidates_repo, now)).start_size == "M"
 
 
 def test_dry_run_plan_claims_nothing(planner, tables_repo, catalog, candidates_repo, policies_repo, now):
-    """A dry run syncs and scores the candidates but claims none."""
+    """A dry run syncs and scores the candidates but holds them all not due, so no round grants them."""
     _use_policy(policies_repo, now, validated_copy(DEFAULT, dry_run=True))
     _table(tables_repo, now)
     _five(catalog)
@@ -241,7 +271,8 @@ def test_dry_run_plan_claims_nothing(planner, tables_repo, catalog, candidates_r
     plan = _plan(planner, now)
 
     assert plan.operations == []
-    assert set(_states(candidates_repo).values()) == {CandidateState.PENDING}
+    assert set(_states(candidates_repo).values()) == {CandidateState.HELD}
+    assert {c.hold_reason for c in candidates_repo.list_all()} == {HoldReason.NOT_DUE}
     assert len(candidates_repo.list_all()) == 5
 
 
@@ -250,7 +281,7 @@ def test_unpartitioned_table_has_one_whole_table_candidate(planner, tables_repo,
     _table(tables_repo, now)
     _observe(catalog, [{**_partition("x", 20), "values": []}], specs=[{"spec_id": 0, "fields": []}])
 
-    compaction = _compaction(_plan(planner, now))
+    compaction = _compaction(_plan_granted(planner, candidates_repo, now))
 
     (candidate,) = candidates_repo.list_all()
     assert candidate.partition == PartitionKey.whole_table()
@@ -271,7 +302,7 @@ def test_whole_table_policy_has_one_whole_table_candidate(
     _five(catalog)
     assert rdf.scope.unit is CompactionUnit.PARTITION
 
-    compaction = _compaction(_plan(planner, now))
+    compaction = _compaction(_plan_granted(planner, candidates_repo, now))
 
     (candidate,) = candidates_repo.list_all()
     assert candidate.partition.is_whole_table
@@ -288,6 +319,120 @@ def test_manual_run_leaves_candidates_alone(planner, tables_repo, catalog, candi
 
     assert candidates_repo.list_all() == []
     assert _compaction(plan).candidate_partitions == []
+
+
+def test_manual_run_leaves_grants_alone(planner, tables_repo, catalog, candidates_repo, now):
+    """A manual run compacts the whole table and leaves granted candidates granted for the next scheduled plan."""
+    _table(tables_repo, now)
+    _five(catalog)
+    _plan(planner, now - timedelta(seconds=30), run_id=None)
+    _grant(candidates_repo, now - timedelta(seconds=20))
+
+    plan = _plan(planner, now, manual=[COMPACTION.value], run_id="manual-run")
+
+    assert _compaction(plan).candidate_partitions == []
+    assert set(_states(candidates_repo).values()) == {CandidateState.GRANTED}
+
+
+def test_due_compaction_without_a_grant_starts_nothing_and_says_awaiting_schedule(
+    planner, tables_repo, catalog, candidates_repo, now
+):
+    """A due compaction waits for a compaction round; the other due operations are still planned."""
+    _table(tables_repo, now)
+    _observe_with_manifests(catalog, [_partition(r, files) for r, files in zip("abcde", (6, 7, 8, 9, 10), strict=True)])
+
+    plan = _plan(planner, now)
+
+    assert _compaction(plan) is None
+    assert "rewrite_manifests" in [o.operation for o in plan.operations]
+    check = _check(plan)
+    assert check.verdict == "awaiting_schedule"
+    assert check.next_eligible_at is None
+    assert plan.next_check_at is None
+    assert set(_states(candidates_repo).values()) == {CandidateState.PENDING}
+
+
+def test_due_compaction_claims_its_granted_candidates_only(planner, tables_repo, catalog, candidates_repo, now):
+    """Granted d and e are claimed and named in the run's filter; pending c is left for a later round."""
+    _table(tables_repo, now)
+    _five(catalog)
+    _plan(planner, now - timedelta(seconds=30), run_id=None)
+    _grant(candidates_repo, now - timedelta(seconds=20), only="e")
+    _grant(candidates_repo, now - timedelta(seconds=20), only="c")
+
+    compaction = _compaction(_plan(planner, now))
+
+    assert compaction is not None
+    (only,) = compaction.filters
+    assert "'e'" in only.where
+    assert "'c'" in only.where
+    assert "'d'" not in only.where
+    states = _states(candidates_repo)
+    assert (states["c"], states["e"], states["d"]) == (
+        CandidateState.CLAIMED,
+        CandidateState.CLAIMED,
+        CandidateState.PENDING,
+    )
+    claimed = [c for c in candidates_repo.list_all() if c.state is CandidateState.CLAIMED]
+    assert {c.granted_round_id for c in claimed} == {"round-1"}
+
+
+def test_not_due_compaction_holds_candidates_not_due(
+    tables_repo, catalog, resolve_applicable_policy, candidates_repo, runs_repo, now
+):
+    """While compaction cools down its candidates are held not due; a too-small one still says too small."""
+    planner = PlanTableMaintenanceService(
+        tables_repo,
+        catalog,
+        resolve_applicable_policy,
+        candidates_repo,
+        runs_repo,
+        selection=CandidateSelection(filters=CandidateFilters(min_partition_bytes=1000)),
+        size_memory=SIZE_MEMORY,
+        claim_lease=LEASE,
+    )
+    table = _table(tables_repo, now)
+    table.record_operation_result(COMPACTION, True, now - timedelta(minutes=1))
+    _observe(catalog, [_partition("a", 10, size=10_000), _partition("b", 10, size=10)])
+
+    plan = _plan(planner, now)
+
+    assert _check(plan).verdict == "cooling_down"
+    reasons = {str(c.partition.values[0]): c.hold_reason for c in candidates_repo.list_all()}
+    assert reasons == {"a": HoldReason.NOT_DUE, "b": HoldReason.TOO_SMALL}
+
+
+def test_candidates_take_the_policy_priority(planner, tables_repo, catalog, candidates_repo, policies_repo, now):
+    """The candidates carry the priority of the policy that applies to the table."""
+    _use_policy(policies_repo, now, validated_copy(DEFAULT, priority=MaintenancePriority.P0))
+    _table(tables_repo, now)
+    _five(catalog)
+
+    _plan(planner, now)
+
+    assert {c.priority for c in candidates_repo.list_all()} == {MaintenancePriority.P0}
+
+
+def test_a_stale_save_raises_for_the_activity_to_retry(planner, tables_repo, catalog, candidates_repo, now):
+    """When a round grants a candidate between the plan's read and its save, the plan raises and saves nothing."""
+    _table(tables_repo, now)
+    _five(catalog)
+    _plan(planner, now - timedelta(minutes=1), run_id=None)
+    read = candidates_repo.list_by_table
+
+    def read_then_a_round_grants(table_uuid):  # noqa: ANN001, ANN202
+        candidates = read(table_uuid)
+        _grant(candidates_repo, now - timedelta(seconds=1), only="e")
+        return candidates
+
+    candidates_repo.list_by_table = read_then_a_round_grants
+
+    with pytest.raises(StaleCompactionCandidate):
+        _plan(planner, now)
+
+    candidates_repo.list_by_table = read
+    assert _states(candidates_repo)["e"] is CandidateState.GRANTED
+    assert {s for v, s in _states(candidates_repo).items() if v != "e"} == {CandidateState.PENDING}
 
 
 def test_all_held_plans_no_compaction_and_says_why(
@@ -333,7 +478,7 @@ def test_all_claimed_plans_no_compaction_and_says_why(planner, tables_repo, cata
     """When another run still holds every candidate under its lease, compaction is not planned."""
     _table(tables_repo, now)
     _observe(catalog, [_partition("a", 10)])
-    _plan(planner, now, run_id="other-run")
+    _plan_granted(planner, candidates_repo, now, run_id="other-run")
     _run_record(runs_repo, "other-run", now, finished=False)
 
     plan = _plan(planner, now + timedelta(minutes=1))
@@ -346,10 +491,10 @@ def test_all_claimed_plans_no_compaction_and_says_why(planner, tables_repo, cata
 
 
 def test_candidates_of_a_finished_run_are_released(planner, tables_repo, catalog, candidates_repo, runs_repo, now):
-    """A claim left by a run that has finished is handed back, so its partitions can be picked again."""
+    """A claim left by a run that has finished is handed back to the next round, then can be taken again."""
     _table(tables_repo, now)
     _observe(catalog, [_partition("a", 10)])
-    _plan(planner, now, run_id="old-run")
+    _plan_granted(planner, candidates_repo, now, run_id="old-run")
     run = TableMaintenanceRun.create(
         TableMaintenanceRunId("old-run"), TableId("u-1"), TriggerType.SCHEDULED, [COMPACTION], now, execution_ref="wf"
     )
@@ -357,7 +502,11 @@ def test_candidates_of_a_finished_run_are_released(planner, tables_repo, catalog
     run.fail(COMPACTION, 1, "boom", now + timedelta(minutes=1))
     runs_repo.create(run)
 
-    plan = _plan(planner, now + timedelta(minutes=2))
+    released = _plan(planner, now + timedelta(minutes=2))
+    assert _check(released).verdict == "awaiting_schedule"
+    assert _states(candidates_repo) == {"a": CandidateState.PENDING}
+    _grant(candidates_repo, now + timedelta(minutes=3))
+    plan = _plan(planner, now + timedelta(minutes=4))
 
     assert _compaction(plan) is not None
     (candidate,) = candidates_repo.list_all()
@@ -372,9 +521,15 @@ def test_plan_releases_claims_of_a_run_that_never_started(planner, tables_repo, 
     """
     _table(tables_repo, now)
     _five(catalog)
+    _plan(planner, now - timedelta(seconds=30), run_id=None)
+    _grant(candidates_repo, now - timedelta(seconds=20), only="d")
+    _grant(candidates_repo, now - timedelta(seconds=20), only="e")
     _plan(planner, now, run_id="never-started")
 
-    plan = _plan(planner, now + timedelta(minutes=5), run_id="next-run")
+    released = _plan(planner, now + timedelta(minutes=5), run_id="next-run")
+    assert _check(released).verdict == "awaiting_schedule"
+    _grant(candidates_repo, now + timedelta(minutes=6))
+    plan = _plan(planner, now + timedelta(minutes=7), run_id="next-run")
 
     compaction = _compaction(plan)
     assert compaction is not None
@@ -389,12 +544,14 @@ def test_claims_of_a_finished_run_older_than_the_recent_runs_are_released(
     """The release looks each holder up, so a finished run past the newest runs read for throughput still counts."""
     _table(tables_repo, now)
     _observe(catalog, [_partition("a", 10)])
-    _plan(planner, now, run_id="old-run")
+    _plan_granted(planner, candidates_repo, now, run_id="old-run")
     _run_record(runs_repo, "old-run", now, finished=True)
     for i in range(60):
         _run_record(runs_repo, f"later-{i:02d}", now + timedelta(minutes=2 + i), finished=True)
 
-    plan = _plan(planner, now + timedelta(hours=2))
+    _plan(planner, now + timedelta(hours=2), run_id=None)
+    _grant(candidates_repo, now + timedelta(hours=2, minutes=1))
+    plan = _plan(planner, now + timedelta(hours=2, minutes=2))
 
     assert _compaction(plan) is not None
     (candidate,) = candidates_repo.list_all()
@@ -437,7 +594,7 @@ def test_a_dropped_table_loses_its_candidates(planner, tables_repo, catalog, can
 
 
 def test_cooling_down_compaction_still_syncs_candidates(planner, tables_repo, catalog, candidates_repo, now):
-    """While compaction cools down, candidates are still observed and scored but nothing is claimed."""
+    """While compaction cools down, candidates are still observed and scored, held not due, and nothing is claimed."""
     table = _table(tables_repo, now)
     table.record_operation_result(COMPACTION, True, now - timedelta(minutes=1))
     _five(catalog)
@@ -446,7 +603,7 @@ def test_cooling_down_compaction_still_syncs_candidates(planner, tables_repo, ca
 
     assert _compaction(plan) is None
     assert _check(plan).verdict == "cooling_down"
-    assert set(_states(candidates_repo).values()) == {CandidateState.PENDING}
+    assert set(_states(candidates_repo).values()) == {CandidateState.HELD}
 
 
 def test_cost_uses_the_remembered_size_and_the_measured_throughput(
@@ -515,7 +672,7 @@ def test_plan_offers_fewer_partitions_for_an_out_of_memory_retry(
     _table(tables_repo, now)
     _five(catalog)
 
-    compaction = _compaction(_plan(planner, now))
+    compaction = _compaction(_plan_granted(planner, candidates_repo, now))
 
     assert compaction.filter_sets[0] == compaction.filters
     wheres = [" ".join(f.where for f in filters) for filters in compaction.filter_sets]
@@ -524,19 +681,19 @@ def test_plan_offers_fewer_partitions_for_an_out_of_memory_retry(
     assert all(f"'{r}'" in wheres[2] for r in "ed")
 
 
-def test_a_single_partition_offers_one_filter_set(planner, tables_repo, catalog, now):
+def test_a_single_partition_offers_one_filter_set(planner, tables_repo, catalog, candidates_repo, now):
     """With one partition there is nothing fewer to fall back to."""
     _table(tables_repo, now)
     _observe(catalog, [_partition("a", 10)])
 
-    compaction = _compaction(_plan(planner, now))
+    compaction = _compaction(_plan_granted(planner, candidates_repo, now))
 
     assert compaction.filter_sets == [compaction.filters]
 
 
-def test_whole_table_compaction_offers_no_filter_sets(planner, tables_repo, catalog, now):
+def test_whole_table_compaction_offers_no_filter_sets(planner, tables_repo, catalog, candidates_repo, now):
     """A whole-table compaction cannot be split, so it carries no filter sets."""
     _table(tables_repo, now)
     _observe(catalog, [{**_partition("x", 20), "values": []}], specs=[{"spec_id": 0, "fields": []}])
 
-    assert _compaction(_plan(planner, now)).filter_sets == []
+    assert _compaction(_plan_granted(planner, candidates_repo, now)).filter_sets == []

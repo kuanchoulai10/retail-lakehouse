@@ -5,7 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.port.outbound.compaction_candidate import (
+    CandidateState,
     CompactionCandidatesRepo,
+    StaleCompactionCandidate,
 )
 
 if TYPE_CHECKING:
@@ -23,7 +25,8 @@ if TYPE_CHECKING:
 class InMemoryCompactionCandidatesRepo(CompactionCandidatesRepo):
     """Keep compaction candidates in a dict keyed by table and partition, as copies.
 
-    Copies keep a caller's later changes out of the store, as a database would.
+    Copies keep a caller's later changes out of the store, as a database would,
+    and saves check versions as the SQL repository does.
     """
 
     def __init__(self) -> None:
@@ -53,11 +56,24 @@ class InMemoryCompactionCandidatesRepo(CompactionCandidatesRepo):
         """Return copies of the candidates the run holds or last held."""
         return [c.model_copy(deep=True) for c in self.items.values() if c.claimed_by_run_id == run_id]
 
+    def list_pending(self) -> list[CompactionCandidate]:
+        """Return copies of every pending candidate."""
+        return [c.model_copy(deep=True) for c in self.items.values() if c.state is CandidateState.PENDING]
+
     def save_all(self, candidates: Sequence[CompactionCandidate]) -> None:
-        """Insert or replace copies of the candidates."""
+        """Store copies of the candidates, all or none: a version another save moved past is refused."""
         self.saves += 1
         for candidate in candidates:
-            self.items[(candidate.table_uuid.value, candidate.partition.canonical())] = candidate.model_copy(deep=True)
+            stored = self.items.get(self._key(candidate))
+            if (stored.version if stored is not None else 0) != candidate.version:
+                raise StaleCompactionCandidate(f"candidate {candidate.label} changed since it was read")
+        for candidate in candidates:
+            candidate.mark_saved()
+            self.items[self._key(candidate)] = candidate.model_copy(deep=True)
+
+    @staticmethod
+    def _key(candidate: CompactionCandidate) -> tuple[str, str]:
+        return (candidate.table_uuid.value, candidate.partition.canonical())
 
     def delete(self, ids: Sequence[CompactionCandidateId]) -> None:
         """Delete the candidates with these ids."""

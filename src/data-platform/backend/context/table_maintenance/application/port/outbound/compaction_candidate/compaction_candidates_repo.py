@@ -34,8 +34,19 @@ class CompactionCandidatesRepo(Repository[CompactionCandidate]):
         """Return the candidates the run holds or last held."""
 
     @abstractmethod
+    def list_pending(self) -> list[CompactionCandidate]:
+        """Return every pending candidate of every table, in no particular order."""
+
+    @abstractmethod
     def save_all(self, candidates: Sequence[CompactionCandidate]) -> None:
-        """Insert or replace each candidate, keyed by its table and partition."""
+        """Store each candidate, all or none, keyed by its table and partition.
+
+        A candidate never stored (version 0) is inserted; any other replaces its
+        row only if the row is still at the version it was read at. If one row
+        was stored meanwhile (by another writer), nothing is stored and
+        ``StaleCompactionCandidate`` is raised; the caller reads again and
+        retries. Each candidate saved takes its new version (``mark_saved``).
+        """
 
     @abstractmethod
     def delete(self, ids: Sequence[CompactionCandidateId]) -> None:

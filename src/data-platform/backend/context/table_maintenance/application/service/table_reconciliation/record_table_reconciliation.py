@@ -49,6 +49,7 @@ _RESULT_BY_VERDICT = {
     "needs_attention": OperationResult.NEEDS_ATTENTION,
     "all_held": OperationResult.ALL_HELD,
     "all_claimed": OperationResult.ALL_CLAIMED,
+    "awaiting_schedule": OperationResult.AWAITING_SCHEDULE,
 }
 
 
