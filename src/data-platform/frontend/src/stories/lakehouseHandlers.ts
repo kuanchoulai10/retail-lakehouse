@@ -32,8 +32,10 @@ import {
   getGetTableMockHandler,
   getGetTableStorageMockHandler,
   getListCatalogTablesMockHandler,
+  getListCatalogTablePropertiesMockHandler,
   getListTableCommitsMockHandler,
   getListTablesMockHandler,
+  getResetCatalogTablePropertiesMockHandler,
 } from "@/api/generated/tables/tables.msw";
 import { getListTableMaintenanceRunsMockHandler } from "@/api/generated/table-maintenance-runs/table-maintenance-runs.msw";
 import { getListTableReconciliationsMockHandler } from "@/api/generated/table-reconciliations/table-reconciliations.msw";
@@ -48,6 +50,7 @@ import {
   MAINTAINED_TABLES,
   NAMESPACES,
   ORDERS,
+  ORDERS_PROPERTIES,
   PLATFORM_SETTINGS,
   POLICIES,
   POLICY_MAPPINGS,
@@ -75,6 +78,8 @@ export function lakehouseHandlers() {
     getListViewsMockHandler([{ catalog: "iceberg", namespace: ["retail"], name: "daily_revenue" }]),
     getListGenericTablesMockHandler([]),
     getGetCatalogTableMockHandler(ORDERS),
+    getListCatalogTablePropertiesMockHandler(ORDERS_PROPERTIES),
+    getResetCatalogTablePropertiesMockHandler(ORDERS_PROPERTIES),
     getListCoveredCatalogsMockHandler({ catalogs: ["iceberg"] }),
     getListTablesMockHandler(MAINTAINED_TABLES),
     getGetTableMockHandler(MAINTAINED_ORDERS),

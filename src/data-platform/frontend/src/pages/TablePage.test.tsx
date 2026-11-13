@@ -10,6 +10,7 @@ import {
   bodyOf,
   callsTo,
   catalogTableFixture,
+  catalogTablePropertiesFixture,
   stubCatalogApi,
   type StubHandler,
 } from "../test/catalogApiStub";
@@ -57,6 +58,7 @@ interface Options {
 function stubTable({ table = catalogTableFixture(), covered = ["iceberg"], maintenanceTable, extra = {} }: Options = {}) {
   return stubCatalogApi({
     [`GET ${TABLE}`]: () => jsonResponse(table),
+    [`GET ${TABLE}/properties`]: () => jsonResponse(catalogTablePropertiesFixture()),
     "GET /v1/discovery-rules/catalogs": () => jsonResponse({ catalogs: covered }),
     "GET /v1/discovery-rules": () => jsonResponse({ version: 1, rules: [RULE] }),
     "GET /v1/tables/uuid-orders": maintenanceTable ?? (() => jsonResponse(maintenance())),

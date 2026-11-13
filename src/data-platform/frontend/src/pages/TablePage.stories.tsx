@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, screen, userEvent, within } from "storybook/test";
 import { getListCompactionCandidatesMockHandler } from "@/api/generated/compaction-candidates/compaction-candidates.msw";
 import { getListCoveredCatalogsMockHandler } from "@/api/generated/discovery-rules/discovery-rules.msw";
 import { getGetTableApplicableMaintenancePolicyMockHandler } from "@/api/generated/maintenance-policies/maintenance-policies.msw";
@@ -303,7 +303,65 @@ export const PolicyPhone: Story = {
   },
 };
 
-export const Properties: Story = { args: { route: `${ORDERS}/properties` } };
+export const Properties: Story = {
+  args: { route: `${ORDERS}/properties` },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const row = within((await canvas.findByText("write.target-file-size-bytes")).closest("tr") as HTMLElement);
+    await expect(row.getByText("Modified")).toBeVisible();
+    await expect(row.getByRole("button", { name: "Reset write.target-file-size-bytes" })).toBeEnabled();
+    const forced = within(canvas.getByText("gc.enabled").closest("tr") as HTMLElement);
+    await expect(forced.getByText("Forced by catalog")).toBeVisible();
+    await expect(forced.queryByRole("button")).toBeNull();
+    await expect(canvas.getByRole("button", { name: "Delete owner" })).toBeEnabled();
+    await expect(canvas.getByText(/Defaults of Iceberg 1\.10\.1/)).toBeVisible();
+  },
+};
+
+export const PropertiesModifiedOnly: Story = {
+  args: { route: `${ORDERS}/properties` },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText("commit.retry.num-retries");
+    await userEvent.click(canvas.getByRole("switch", { name: "Show modified only" }));
+    await expect(canvas.queryByText("commit.retry.num-retries")).toBeNull();
+    await expect(canvas.getByText("owner")).toBeVisible();
+  },
+};
+
+export const PropertiesResetAll: Story = {
+  args: { route: `${ORDERS}/properties` },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole("button", { name: "Reset all to default" }));
+    const dialog = within(await screen.findByRole("alertdialog", { name: "Reset all to default" }));
+    await expect(dialog.getByText("write.target-file-size-bytes")).toBeVisible();
+    await expect(dialog.getByText("owner")).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Reset all" })).toBeEnabled();
+  },
+};
+
+export const PropertiesUnavailable: Story = {
+  args: { route: `${ORDERS}/properties` },
+  beforeEach({ msw }) {
+    msw.use(
+      apiError("get", "/v1/catalogs/:catalog/namespaces/:namespace/tables/:table/properties", "Polaris is unreachable"),
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText(/Could not load properties: Polaris is unreachable/)).toBeVisible();
+  },
+};
+
+export const PropertiesPhone: Story = {
+  args: { route: `${ORDERS}/properties` },
+  globals: PHONE,
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByText("write.target-file-size-bytes");
+    await expectNoHorizontalPageScroll(canvasElement);
+  },
+};
 
 export const Unmanaged: Story = {
   beforeEach({ msw }) {

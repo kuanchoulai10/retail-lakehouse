@@ -1,5 +1,10 @@
 import { http } from "msw";
-import type { CatalogApiResponse, CatalogTableApiResponse } from "../api/generated/model";
+import type {
+  CatalogApiResponse,
+  CatalogTableApiResponse,
+  CatalogTablePropertiesApiResponse,
+  CatalogTablePropertyApiResponse,
+} from "../api/generated/model";
 import { jsonResponse } from "./fixtures";
 import { server } from "./mswServer";
 
@@ -135,6 +140,74 @@ export function catalogTableFixture(
     ],
     properties: { "write.format.default": "parquet", owner: "kc" },
     summary: { total_records: 1204331, total_data_files: 100, total_files_size: 335544320 },
+    ...overrides,
+  };
+}
+
+export function catalogTablePropertyFixture(
+  overrides: Partial<CatalogTablePropertyApiResponse> & { key: string },
+): CatalogTablePropertyApiResponse {
+  return {
+    current_value: null,
+    default_value: null,
+    default_source: "iceberg",
+    modified: false,
+    custom: false,
+    resettable: true,
+    description: `What ${overrides.key} does.`,
+    ...overrides,
+  };
+}
+
+// The properties of catalogTableFixture next to their defaults: one at its default, one changed,
+// one Iceberg writes back on reset, one not resettable, one the catalog forces and a custom one.
+export function catalogTablePropertiesFixture(
+  overrides: Partial<CatalogTablePropertiesApiResponse> = {},
+): CatalogTablePropertiesApiResponse {
+  return {
+    uuid: "uuid-orders",
+    iceberg_version: "1.10.1",
+    properties: [
+      catalogTablePropertyFixture({
+        key: "commit.retry.num-retries",
+        default_value: "4",
+      }),
+      catalogTablePropertyFixture({
+        key: "format-version",
+        current_value: "2",
+        default_value: "2",
+        resettable: false,
+      }),
+      catalogTablePropertyFixture({
+        key: "gc.enabled",
+        current_value: "false",
+        default_value: "true",
+        modified: true,
+        resettable: false,
+      }),
+      catalogTablePropertyFixture({
+        key: "owner",
+        current_value: "kc",
+        default_source: null,
+        modified: true,
+        custom: true,
+        description: null,
+      }),
+      catalogTablePropertyFixture({
+        key: "write.format.default",
+        current_value: "orc",
+        default_value: "parquet",
+        modified: true,
+      }),
+      catalogTablePropertyFixture({
+        key: "write.target-file-size-bytes",
+        current_value: "134217728",
+        default_value: "268435456",
+        default_source: "catalog_override",
+        modified: true,
+        resettable: false,
+      }),
+    ],
     ...overrides,
   };
 }

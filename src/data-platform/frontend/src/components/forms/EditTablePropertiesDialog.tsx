@@ -1,7 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { CatalogTableApiResponse, UpdateTablePropertiesApiRequest } from "@/api/generated/model";
-import { getGetCatalogTableQueryKey, updateTableProperties } from "@/api/generated/tables/tables";
+import {
+  getGetCatalogTableQueryKey,
+  getListCatalogTablePropertiesQueryKey,
+  updateTableProperties,
+} from "@/api/generated/tables/tables";
 import { Button } from "@retail-lakehouse/design-system";
 import { apiNamespace } from "@/lib/catalogPaths";
 import { isConflict, updateErrorMessage } from "@/lib/updateErrorMessage";
@@ -23,21 +27,26 @@ export function EditTablePropertiesDialog({ table, onClose }: Props) {
   const [loaded] = useState(table.properties);
   const [expectedUuid] = useState(table.uuid);
   const [rows, setRows] = useState(() => rowsFromProperties(loaded));
-  const queryKey = getGetCatalogTableQueryKey(table.catalog, apiNamespace(table.namespace), table.name);
+  const ns = apiNamespace(table.namespace);
+  // The table and the Properties tab's listing of its properties next to their defaults.
+  const queryKeys = [
+    getGetCatalogTableQueryKey(table.catalog, ns, table.name),
+    getListCatalogTablePropertiesQueryKey(table.catalog, ns, table.name),
+  ];
+  const refetch = () => Promise.all(queryKeys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
 
   const update = useMutation({
-    mutationFn: (body: UpdateTablePropertiesApiRequest) =>
-      updateTableProperties(table.catalog, apiNamespace(table.namespace), table.name, body),
+    mutationFn: (body: UpdateTablePropertiesApiRequest) => updateTableProperties(table.catalog, ns, table.name, body),
     // A write can fail after part of it landed, so the page refetches either way; the dialog
     // closes only on success and otherwise shows the API's message, which says what landed.
     onSettled: async (_data, error) => {
-      await queryClient.invalidateQueries({ queryKey });
+      await refetch();
       if (error === null) onClose();
     },
   });
 
   function reload() {
-    void queryClient.invalidateQueries({ queryKey });
+    void refetch();
     onClose();
   }
 
