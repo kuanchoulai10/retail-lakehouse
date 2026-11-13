@@ -124,6 +124,18 @@ export const CandidatesEmpty: Story = {
   },
 };
 
+export const CandidatesError: Story = {
+  args: { route: `${ORDERS}/candidates` },
+  beforeEach({ msw }) {
+    msw.use(apiError("get", "/v1/tables/:tableUuid/compaction-candidates", "database down", 500));
+  },
+  play: async ({ canvasElement }) => {
+    await expect(
+      await within(canvasElement).findByText("Could not load compaction candidates: database down"),
+    ).toBeVisible();
+  },
+};
+
 export const CandidatesPhone: Story = {
   args: { route: `${ORDERS}/candidates` },
   globals: PHONE,
