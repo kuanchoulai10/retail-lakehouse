@@ -5,6 +5,9 @@ from __future__ import annotations
 from context.table_maintenance.application.service.table.apply_discovery_to_known_table import (
     apply_discovery_to_known_table,
 )
+from context.table_maintenance.application.service.table.compaction_share import (
+    CompactionShare,
+)
 from context.table_maintenance.application.service.table.get_table import (
     GetTableService,
 )
@@ -62,6 +65,7 @@ from context.table_maintenance.application.service.table.trigger_table_reconcili
 )
 
 __all__ = [
+    "CompactionShare",
     "KnownTableOutcome",
     "apply_discovery_to_known_table",
     "GetTableService",

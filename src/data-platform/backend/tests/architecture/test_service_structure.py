@@ -38,6 +38,7 @@ UTILITY_FILES = {
     "table_output_fields.py",
     "table_maintenance_run_output_fields.py",
     "maintenance_procedure_args.py",
+    "compaction_share.py",
     "table_observation_from_gateway.py",
     "register_discovered_table.py",
     "registration_outcome.py",

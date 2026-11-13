@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import math
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.compaction_candidate import (
@@ -56,6 +56,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
 )
 from context.table_maintenance.application.port.outbound.table import TableMetadataRef
 from context.table_maintenance.application.service.shared import applied_policy_ref_of, translate_domain_errors
+from context.table_maintenance.application.service.table.compaction_share import CompactionShare
 from context.table_maintenance.application.service.table.table_observation_from_gateway import (
     table_observation_from_gateway,
 )
@@ -162,7 +163,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             if manual is not None:
                 plan = plan_manual_maintenance(manual)
                 checks = _manual_checks(manual)
-                compaction = _CompactionShare()
+                compaction = CompactionShare()
             else:
                 assessment = assess_maintenance(table, policy, observation, request.now)
                 plan, checks = assessment.plan(), _scheduled_checks(assessment)
@@ -179,7 +180,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         plan: MaintenancePlan,
         checks: list[PlanTableMaintenanceUseCaseOutputCheckItem],
         request: PlanTableMaintenanceUseCaseInput,
-    ) -> tuple[MaintenancePlan, list[PlanTableMaintenanceUseCaseOutputCheckItem], _CompactionShare]:
+    ) -> tuple[MaintenancePlan, list[PlanTableMaintenanceUseCaseOutputCheckItem], CompactionShare]:
         """Sync the candidates, and narrow a due compaction to the candidates it takes or drop it."""
         due = next((p for p in plan.operations if p.operation is _COMPACTION), None)
         runs = self._runs_repo.list_by_table(table.id, limit=_RUNS_FOR_THROUGHPUT)
@@ -208,7 +209,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         if pick.saved:
             self._candidates_repo.save_all(pick.saved)
         if due is None or policy.dry_run:
-            return plan, checks, _CompactionShare()
+            return plan, checks, CompactionShare()
         if pick.shortfall is not None:
             kept = tuple(p for p in plan.operations if p.operation is not _COMPACTION)
             checks = [
@@ -218,7 +219,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
                 for c in checks
             ]
             next_check_at = pick.next_eligible_at if pick.shortfall is CandidateShortfall.ALL_HELD else None
-            return MaintenancePlan(operations=kept), checks, _CompactionShare(next_check_at=next_check_at)
+            return MaintenancePlan(operations=kept), checks, CompactionShare(next_check_at=next_check_at)
         narrowed = PlannedOperation(operation=_COMPACTION, partitions=_partitions_of(pick.selected, observation))
         plan = MaintenancePlan(operations=tuple(narrowed if p is due else p for p in plan.operations))
         picked_size = size_for_bytes(
@@ -226,7 +227,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             s_max_bytes=self._selection.size_s_max_bytes,
             m_max_bytes=self._selection.size_m_max_bytes,
         )
-        return plan, checks, _CompactionShare(candidates=pick.selected, start_size=remembered.at_least(picked_size))
+        return plan, checks, CompactionShare(candidates=pick.selected, start_size=remembered.at_least(picked_size))
 
     def _released_runs(
         self, existing: Sequence[CompactionCandidate], claim_for: TableMaintenanceRunId | None
@@ -294,7 +295,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         checks: list[PlanTableMaintenanceUseCaseOutputCheckItem],
         observation: TableObservation,
         request: PlanTableMaintenanceUseCaseInput,
-        compaction: _CompactionShare,
+        compaction: CompactionShare,
     ) -> PlanTableMaintenanceUseCaseOutput:
         properties = observation.properties
         operations = []
@@ -349,15 +350,6 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             return [MaintenanceOperation(op) for op in raw]
         except ValueError as exc:
             raise ValidationError(str(exc)) from exc
-
-
-@dataclass(frozen=True)
-class _CompactionShare:
-    """What a scheduled plan's compaction takes: its candidates and start size, or when to look again."""
-
-    candidates: tuple[CompactionCandidate, ...] = ()
-    start_size: ComputeSize | None = None
-    next_check_at: datetime | None = None
 
 
 def _partitions_of(

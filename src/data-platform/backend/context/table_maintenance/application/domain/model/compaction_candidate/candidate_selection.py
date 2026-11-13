@@ -12,8 +12,8 @@ from context.table_maintenance.application.domain.model.compaction_candidate.can
     CandidateScoring,
 )
 
-GIB = 1024**3
-MIB = 1024**2
+_GIB = 1024**3
+_MIB = 1024**2
 
 
 class CandidateSelection(ValueObject):
@@ -31,10 +31,10 @@ class CandidateSelection(ValueObject):
     partitions_per_run: PositiveInt = 10
     scoring: CandidateScoring = Field(default_factory=CandidateScoring)
     filters: CandidateFilters = Field(default_factory=CandidateFilters)
-    default_throughput_bytes_per_hour: PositiveFloat = 2.0 * GIB
-    min_throughput_sample_bytes: NonNegativeInt = 64 * MIB
-    size_s_max_bytes: PositiveInt = 256 * MIB
-    size_m_max_bytes: PositiveInt = GIB
+    default_throughput_bytes_per_hour: PositiveFloat = 2.0 * _GIB
+    min_throughput_sample_bytes: NonNegativeInt = 64 * _MIB
+    size_s_max_bytes: PositiveInt = 256 * _MIB
+    size_m_max_bytes: PositiveInt = _GIB
 
     @model_validator(mode="after")
     def _sizes_grow(self) -> CandidateSelection:
