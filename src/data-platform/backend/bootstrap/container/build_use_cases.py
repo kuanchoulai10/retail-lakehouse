@@ -188,6 +188,7 @@ def build_use_cases(
         schedule_compaction_round=ScheduleCompactionRoundService(
             candidates,
             repos.compaction_rounds,
+            tables,
             weights=build_priority_weights(rounds),
             budget_gb_hours=rounds.budget_gb_hours,
             partitions_per_run=selection.partitions_per_run,

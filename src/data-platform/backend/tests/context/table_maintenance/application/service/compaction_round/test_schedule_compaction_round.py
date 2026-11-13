@@ -10,6 +10,7 @@ from context.table_maintenance.application.domain.model.compaction_candidate imp
     CandidateScore,
     CandidateState,
     CompactionCandidate,
+    HoldReason,
     PartitionKey,
     StaleCompactionCandidate,
 )
@@ -18,7 +19,8 @@ from context.table_maintenance.application.domain.model.compaction_round import 
     PriorityWeights,
     SkipReason,
 )
-from context.table_maintenance.application.domain.model.table import TableId
+from context.table_maintenance.application.domain.model.table import Table, TableId, TableName
+from context.table_maintenance.application.domain.model.table_discovery_rules import TableDiscoveryRuleId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePriority
 from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRunId
 from context.table_maintenance.application.port.inbound.compaction_round import (
@@ -29,6 +31,7 @@ from tests.context.table_maintenance.fakes.in_memory_compaction_candidates_repo 
     InMemoryCompactionCandidatesRepo,
 )
 from tests.context.table_maintenance.fakes.in_memory_compaction_rounds_repo import InMemoryCompactionRoundsRepo
+from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
 
 NOW = datetime(2026, 11, 13, 12, tzinfo=UTC)
 SLA = {
@@ -37,6 +40,20 @@ SLA = {
     MaintenancePriority.P2: timedelta(hours=8),
 }
 GRANT_LEASE = timedelta(minutes=10)
+MANAGED = ("t-1", "t-2", "t-3", "t-busy", "t-idle")
+
+
+def _table(uuid: str) -> Table:
+    return Table.register(
+        TableId(uuid), TableName(catalog="iceberg", namespace="retail", table=uuid), TableDiscoveryRuleId("r-1"), NOW
+    )
+
+
+def _tables(*managed: str) -> InMemoryTablesRepo:
+    repo = InMemoryTablesRepo()
+    for uuid in managed:
+        repo.create(_table(uuid))
+    return repo
 
 
 def _candidate(table: str, value: str, *, score: float, gb_hours: float = 0.02) -> CompactionCandidate:
@@ -51,10 +68,11 @@ def _candidate(table: str, value: str, *, score: float, gb_hours: float = 0.02) 
     )
 
 
-def _service(candidates, rounds, *, rounds_kept: int = 500):  # noqa: ANN001, ANN202
+def _service(candidates, rounds, *, tables=None, rounds_kept: int = 500):  # noqa: ANN001, ANN202
     return ScheduleCompactionRoundService(
         candidates,
         rounds,
+        _tables(*MANAGED) if tables is None else tables,
         weights=PriorityWeights(),
         budget_gb_hours=0.05,
         partitions_per_run=10,
@@ -243,3 +261,79 @@ def test_a_rebuilt_round_counts_grants_its_tables_already_claimed(candidates, mo
     again = _run(service, now=NOW + timedelta(seconds=5))
 
     assert again.picked == 2
+
+
+def _held(table: str, value: str) -> CompactionCandidate:
+    return CompactionCandidate.create(
+        table_uuid=TableId(table),
+        partition=PartitionKey(spec_id=0, values=(value,)),
+        label=f"day={value}",
+        score=CandidateScore(reducible_files=5, data_bytes=1000, estimated_gb_hours=0.02, score=0.4),
+        last_written_at=None,
+        hold_reason=HoldReason.TOO_SMALL,
+        now=NOW - timedelta(minutes=5),
+    )
+
+
+def _finished(table: str, value: str, *, succeeded: bool) -> CompactionCandidate:
+    candidate = _candidate(table, value, score=0.95)
+    run = TableMaintenanceRunId(f"run-{value}")
+    at = NOW - timedelta(minutes=3)
+    candidate.grant("round-0", NOW + GRANT_LEASE, at)
+    candidate.claim(run, NOW + timedelta(hours=1), at)
+    candidate.start(run, at)
+    candidate.finish(run, succeeded=succeeded, now=at)
+    return candidate
+
+
+def _left(table: str, how: str) -> InMemoryTablesRepo:
+    """Managed tables t-1 and t-2, and ``table`` gone from maintenance the way ``how`` says."""
+    tables = _tables("t-1", "t-2")
+    if how == "unmanaged":
+        tables.create(Table.register_unmanaged(TableId(table), _table(table).name, NOW))
+    elif how == "dropped":
+        dropped = _table(table)
+        dropped.mark_dropped(NOW)
+        tables.create(dropped)
+    return tables
+
+
+@pytest.mark.parametrize("how", ["dropped", "unmanaged", "unknown"])
+def test_a_round_removes_the_candidates_of_a_table_maintenance_no_longer_manages(candidates, how):  # noqa: ANN001
+    """A table dropped, unmanaged or no longer known loses its candidates, and the round grants it nothing."""
+    candidates.save_all(
+        [_candidate("t-gone", "x", score=0.99), _candidate("t-gone", "y", score=0.98), _held("t-gone", "z")]
+    )
+    rounds = InMemoryCompactionRoundsRepo()
+
+    output = _run(_service(candidates, rounds, tables=_left("t-gone", how)))
+
+    assert output.granted_table_uuids == ["t-1", "t-2"]
+    assert candidates.list_by_table(TableId("t-gone")) == []
+    stored = rounds.get(CompactionRoundId("round-1"))
+    assert stored is not None
+    assert all(s.table_uuid.value != "t-gone" for s in stored.skips)
+
+
+@pytest.mark.parametrize("succeeded", [True, False])
+def test_a_table_that_left_with_a_finished_run_does_not_stay_busy(candidates, succeeded):  # noqa: ANN001
+    """The done or failed candidate of a table that left maintenance is removed, with its pending ones."""
+    candidates.save_all([_finished("t-gone", "x", succeeded=succeeded), _candidate("t-gone", "y", score=0.99)])
+    rounds = InMemoryCompactionRoundsRepo()
+
+    _run(_service(candidates, rounds, tables=_left("t-gone", "unmanaged")))
+
+    assert candidates.list_by_table(TableId("t-gone")) == []
+    stored = rounds.get(CompactionRoundId("round-1"))
+    assert stored is not None
+    assert all(s.reason is not SkipReason.TABLE_BUSY for s in stored.skips)
+
+
+def test_a_managed_table_keeps_every_candidate(candidates):  # noqa: ANN001
+    """A managed table's candidates are kept, held and finished ones too."""
+    candidates.save_all([_held("t-3", "h"), _finished("t-3", "f", succeeded=True)])
+
+    _run(_service(candidates, InMemoryCompactionRoundsRepo(), tables=_tables("t-1", "t-2", "t-3")))
+
+    assert sorted(str(c.partition.values[0]) for c in candidates.list_by_table(TableId("t-3"))) == ["f", "h"]
+    assert len(candidates.list_all()) == 5

@@ -42,6 +42,14 @@ class CompactionCandidatesRepo(Repository[CompactionCandidate]):
         """
 
     @abstractmethod
+    def list_table_uuids(self) -> list[TableId]:
+        """Return the uuid of every table with a candidate, held or not, each once.
+
+        A compaction round removes the candidates of the tables maintenance no
+        longer manages.
+        """
+
+    @abstractmethod
     def save_all(self, candidates: Sequence[CompactionCandidate]) -> None:
         """Store each candidate, all or none, keyed by its table and partition.
 

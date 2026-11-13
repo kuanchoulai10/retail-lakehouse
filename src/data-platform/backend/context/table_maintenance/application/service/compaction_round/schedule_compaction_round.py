@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.compaction_round import CompactionRoundId
+from context.table_maintenance.application.domain.model.table import TableStatus
 from context.table_maintenance.application.domain.service.compaction_round import (
     plan_compaction_round,
     recover_compaction_round,
@@ -26,12 +27,15 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePriority
     from context.table_maintenance.application.port.outbound.compaction_candidate import CompactionCandidatesRepo
     from context.table_maintenance.application.port.outbound.compaction_round import CompactionRoundsRepo
+    from context.table_maintenance.application.port.outbound.table import TablesRepo
 
 
 class ScheduleCompactionRoundService(ScheduleCompactionRoundUseCase):
     """Run one round of the compaction scheduler across every table.
 
-    It ranks every pending candidate of the tables that are not busy, grants the picks to their tables for
+    It first removes the candidates of every table maintenance no longer
+    manages (unmanaged, dropped or gone), then ranks every pending candidate of
+    the tables that are not busy, grants the picks to their tables for
     ``grant_lease`` (the tables' reconciliations claim them for runs), records
     the round and keeps only the newest ``rounds_kept`` rounds.
     """
@@ -40,6 +44,7 @@ class ScheduleCompactionRoundService(ScheduleCompactionRoundUseCase):
         self,
         candidates_repo: CompactionCandidatesRepo,
         rounds_repo: CompactionRoundsRepo,
+        tables_repo: TablesRepo,
         *,
         weights: PriorityWeights,
         budget_gb_hours: float,
@@ -52,6 +57,7 @@ class ScheduleCompactionRoundService(ScheduleCompactionRoundUseCase):
         """Bind the repos and the round's rules: weights, budget, per-table share, SLA, lease and retention."""
         self._candidates_repo = candidates_repo
         self._rounds_repo = rounds_repo
+        self._tables_repo = tables_repo
         self._weights = weights
         self._budget_gb_hours = budget_gb_hours
         self._partitions_per_run = partitions_per_run
@@ -76,6 +82,7 @@ class ScheduleCompactionRoundService(ScheduleCompactionRoundUseCase):
         recorded = self._rounds_repo.get(round_id)
         if recorded is not None:
             return _output(recorded)
+        self._remove_candidates_of_tables_left()
         unheld = self._candidates_repo.list_unheld()
         already = [c for c in unheld if c.granted_round_id == round_id.value]
         if already:
@@ -108,6 +115,22 @@ class ScheduleCompactionRoundService(ScheduleCompactionRoundUseCase):
         self._rounds_repo.save(round_)
         self._rounds_repo.purge(keep=self._rounds_kept)
         return _output(round_)
+
+    def _remove_candidates_of_tables_left(self) -> None:
+        """Delete the candidates of every table that is not managed, so none takes budget or keeps a table busy.
+
+        A table leaves maintenance in several ways (the rules unmanage it, it
+        is dropped, its row is gone), and its reconciliation stops without
+        planning again, so its candidates would stay: a finished one would keep
+        the table busy forever and pending ones would still be granted. The
+        tables with candidates are read before the managed tables, so a table
+        managed meanwhile keeps the candidates its first plan writes.
+        """
+        with_candidates = self._candidates_repo.list_table_uuids()
+        managed = {t.id for t in self._tables_repo.list_by_statuses([TableStatus.MANAGED])}
+        for table_uuid in with_candidates:
+            if table_uuid not in managed:
+                self._candidates_repo.delete_by_table(table_uuid)
 
 
 def _output(round_: CompactionRound) -> ScheduleCompactionRoundUseCaseOutput:

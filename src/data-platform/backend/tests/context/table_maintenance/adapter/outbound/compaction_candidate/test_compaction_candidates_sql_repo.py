@@ -221,6 +221,19 @@ def test_delete_removes_only_the_named_candidates(repo: CompactionCandidatesRepo
     assert [c.id for c in repo.list_by_table(TABLE)] == [us.id]
 
 
+def test_list_table_uuids_names_each_table_with_a_candidate_once(repo: CompactionCandidatesRepo):
+    """Every table with a candidate, held or not, is listed once."""
+    repo.save_all(
+        [
+            _candidate(("eu",)),
+            _candidate(("us",)),
+            _candidate(("eu",), table=TableId("t-2"), hold=HoldReason.NOT_DUE),
+        ]
+    )
+
+    assert sorted(t.value for t in repo.list_table_uuids()) == ["t-1", "t-2"]
+
+
 def test_delete_by_table_removes_every_candidate_of_the_table(repo: CompactionCandidatesRepo):
     """Deleting by table leaves other tables' candidates."""
     kept = _candidate(table=TableId("t-2"))

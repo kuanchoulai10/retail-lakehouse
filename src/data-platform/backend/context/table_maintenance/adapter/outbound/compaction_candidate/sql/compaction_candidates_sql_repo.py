@@ -17,6 +17,7 @@ from context.table_maintenance.application.port.outbound.compaction_candidate im
     CandidateState,
     CompactionCandidatesRepo,
     StaleCompactionCandidate,
+    TableId,
 )
 
 if TYPE_CHECKING:
@@ -28,7 +29,6 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.compaction_candidate import (
         CompactionCandidate,
         CompactionCandidateId,
-        TableId,
         TableMaintenanceRunId,
     )
 
@@ -91,6 +91,12 @@ class CompactionCandidatesSqlRepo(CompactionCandidatesRepo):
         with self._engine.connect() as conn:
             rows = conn.execute(stmt).all()
         return [CompactionCandidateRowMapper.to_aggregate(r._mapping) for r in rows]
+
+    def list_table_uuids(self) -> list[TableId]:
+        """Return the uuid of every table with a candidate, each once."""
+        stmt = select(t.c.table_uuid).distinct().order_by(t.c.table_uuid)
+        with self._engine.connect() as conn:
+            return [TableId(uuid) for uuid in conn.execute(stmt).scalars()]
 
     def save_all(self, candidates: Sequence[CompactionCandidate]) -> None:
         """Store the candidates in one transaction, checking each row's version; a stale one rolls all back.

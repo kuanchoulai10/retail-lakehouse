@@ -60,6 +60,10 @@ class InMemoryCompactionCandidatesRepo(CompactionCandidatesRepo):
         """Return copies of every candidate that is not held."""
         return [c.model_copy(deep=True) for c in self.items.values() if c.state is not CandidateState.HELD]
 
+    def list_table_uuids(self) -> list[TableId]:
+        """Return the uuid of every table with a candidate, each once."""
+        return list(dict.fromkeys(c.table_uuid for c in self.items.values()))
+
     def save_all(self, candidates: Sequence[CompactionCandidate]) -> None:
         """Store copies of the candidates, all or none: a version another save moved past is refused."""
         self.saves += 1
