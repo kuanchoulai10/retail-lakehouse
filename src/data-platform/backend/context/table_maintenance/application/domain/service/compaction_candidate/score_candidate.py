@@ -23,7 +23,14 @@ def score_candidate(
     The benefit is the files a compaction could remove; the cost is the estimated
     GB-hours, ``memory_gb * data_bytes / throughput_bytes_per_hour``. Both are
     normalised against the fixed reference bounds of ``scoring``; a higher cost
-    lowers the score through the cost term ``1 - normalised cost``.
+    lowers the score through the cost term ``1 - normalised cost``. The weights
+    are relative: the weighted sum is divided by their sum, so the score stays
+    in [0, 1] whatever they add up to.
+
+    ``memory_gb`` is the memory of the size the table's compaction last
+    succeeded at, not of the size the run will start at: the start size depends
+    on which partitions are picked, and the pick depends on the scores, so
+    scoring with the start size would go round in a loop.
     """
     if throughput_bytes_per_hour <= 0:
         raise ValueError(f"throughput must be positive, got {throughput_bytes_per_hour}")

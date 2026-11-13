@@ -183,7 +183,12 @@ class CompactionCandidate(AggregateRoot[CompactionCandidateId]):
         )
 
     def release(self, run_id: TableMaintenanceRunId, now: datetime) -> None:
-        """Hand the candidate ``run_id`` holds back as pending; one its run finished stays finished."""
+        """Hand the candidate ``run_id`` holds back as pending; one its run finished stays finished.
+
+        Both a ``claimed`` and a ``running`` candidate are handed back: a run that
+        never started holds only claimed ones, but a run that ended without
+        finishing its candidates (or never reported) can leave them running.
+        """
         self._require_held_by(run_id, "release")
         if self.state.finished:
             return

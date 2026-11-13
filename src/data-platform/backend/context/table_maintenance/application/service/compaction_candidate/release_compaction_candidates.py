@@ -19,7 +19,12 @@ if TYPE_CHECKING:
 
 
 class ReleaseCompactionCandidatesService(ReleaseCompactionCandidatesUseCase):
-    """Hand back the candidates a run claimed when the run never started, so the next plan can pick them."""
+    """Hand back the candidates a run holds, so the next plan can pick them.
+
+    The reconciliation calls it when the run it planned never started (the
+    start failed, or the workflow stopped before starting it); it then holds
+    only claimed candidates, but a running one is handed back as well.
+    """
 
     def __init__(self, candidates_repo: CompactionCandidatesRepo) -> None:
         """Bind the candidates repo."""
