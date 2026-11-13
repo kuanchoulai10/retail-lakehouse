@@ -149,6 +149,13 @@ export const MAINTAINED_TABLES: TableApiResponse[] = [
     namespace: "inventory",
     table: "stock_levels",
   },
+  {
+    ...MAINTAINED_ORDERS,
+    uuid: "5e7a9c1b-3d5f-4b7c-9e1a-b3d5f7a9c1e3",
+    table: "legacy_orders",
+    status: "dropped",
+    matched_rule_id: null,
+  },
 ];
 
 export const HEALTH: TableHealthApiResponse = {

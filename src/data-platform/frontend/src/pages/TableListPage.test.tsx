@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { createMemoryRouter, RouterProvider } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { TableApiResponse } from "../api/generated/model";
 import { stubCatalogApi, type StubbedCall } from "../test/catalogApiStub";
@@ -53,15 +53,33 @@ const SORTABLE: TableApiResponse[] = [
   table({ uuid: "u-c", table: "c_table", updated_at: "2026-10-31T08:00:00Z" }),
 ];
 
-function renderPage() {
+function renderPage(route = "/") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const router = createMemoryRouter([{ path: "/", element: <TableListPage /> }], { initialEntries: [route] });
+  render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
-        <TableListPage />
-      </MemoryRouter>
+      <RouterProvider router={router} />
     </QueryClientProvider>,
   );
+  return router;
+}
+
+const WITH_DROPPED: TableApiResponse[] = [
+  ...TABLES,
+  table({ uuid: "uuid-gone", table: "gone", status: "dropped" }),
+];
+
+// The Status column header is a sort button too, so pick the filter by its id.
+function statusFilter(): HTMLElement {
+  const filter = screen.getAllByRole("button", { name: /Status/ }).find((button) => button.id === "status-filter");
+  if (!filter) throw new Error("status filter not found");
+  return filter;
+}
+
+async function toggleStatus(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(statusFilter());
+  await user.click(await screen.findByRole("menuitemcheckbox", { name }));
+  await user.keyboard("{Escape}");
 }
 
 describe("TableListPage", () => {
@@ -98,16 +116,127 @@ describe("TableListPage", () => {
     expect(calls.map((call) => call.path)).not.toContain("/v1/discovery-rules");
   });
 
-  it("filters the rows by status", async () => {
+  it("hides dropped tables until Dropped is checked", async () => {
     const user = userEvent.setup();
+    stubTables(WITH_DROPPED);
     renderPage();
     await screen.findByText("iceberg.inventory.orders");
 
-    await user.click(screen.getByRole("combobox", { name: "Status" }));
-    await user.click(await screen.findByRole("option", { name: "Unmanaged" }));
+    expect(screen.getByText("iceberg.e2e.tm_e2e_regions")).toBeInTheDocument();
+    expect(screen.queryByText("iceberg.inventory.gone")).not.toBeInTheDocument();
+    expect(statusFilter()).toHaveTextContent("Managed, Unmanaged");
 
+    await toggleStatus(user, "Dropped");
+
+    expect(screen.getByText("iceberg.inventory.gone")).toBeInTheDocument();
+    expect(screen.getByText("iceberg.inventory.orders")).toBeInTheDocument();
+  });
+
+  it("combines any statuses, so each unchecked status hides its rows", async () => {
+    const user = userEvent.setup();
+    stubTables(WITH_DROPPED);
+    renderPage();
+    await screen.findByText("iceberg.inventory.orders");
+
+    await toggleStatus(user, "Managed");
     expect(screen.queryByText("iceberg.inventory.orders")).not.toBeInTheDocument();
     expect(screen.getByText("iceberg.e2e.tm_e2e_regions")).toBeInTheDocument();
+
+    await toggleStatus(user, "Dropped");
+    expect(screen.getByText("iceberg.inventory.gone")).toBeInTheDocument();
+    expect(screen.getByText("iceberg.e2e.tm_e2e_regions")).toBeInTheDocument();
+    expect(screen.queryByText("iceberg.inventory.orders")).not.toBeInTheDocument();
+
+    await toggleStatus(user, "Unmanaged");
+    expect(screen.getByText("iceberg.inventory.gone")).toBeInTheDocument();
+    expect(screen.queryByText("iceberg.e2e.tm_e2e_regions")).not.toBeInTheDocument();
+  });
+
+  it("keeps the url clean at the default and writes the selection back with replace", async () => {
+    const user = userEvent.setup();
+    stubTables(WITH_DROPPED);
+    const router = renderPage();
+    await screen.findByText("iceberg.inventory.orders");
+    expect(router.state.location.search).toBe("");
+
+    await toggleStatus(user, "Dropped");
+    expect(router.state.location.search).toBe("?status=managed%2Cunmanaged%2Cdropped");
+    expect(router.state.historyAction).toBe("REPLACE");
+
+    await toggleStatus(user, "Managed");
+    expect(router.state.location.search).toBe("?status=unmanaged%2Cdropped");
+
+    await toggleStatus(user, "Dropped");
+    await toggleStatus(user, "Managed");
+    expect(router.state.location.search).toBe("");
+    expect(router.state.historyAction).toBe("REPLACE");
+  });
+
+  it("keeps the other query parameters when it writes the selection", async () => {
+    const user = userEvent.setup();
+    const router = renderPage("/?foo=bar");
+    await screen.findByText("iceberg.inventory.orders");
+
+    await toggleStatus(user, "Dropped");
+
+    expect(new URLSearchParams(router.state.location.search).get("foo")).toBe("bar");
+  });
+
+  it("reads the selection from the url", async () => {
+    stubTables(WITH_DROPPED);
+    renderPage("/?status=dropped");
+
+    expect(await screen.findByText("iceberg.inventory.gone")).toBeInTheDocument();
+    expect(screen.queryByText("iceberg.inventory.orders")).not.toBeInTheDocument();
+    expect(screen.queryByText("iceberg.e2e.tm_e2e_regions")).not.toBeInTheDocument();
+    expect(statusFilter()).toHaveTextContent("Dropped");
+  });
+
+  it("reads a comma separated selection from the url", async () => {
+    stubTables(WITH_DROPPED);
+    renderPage("/?status=managed,dropped");
+
+    expect(await screen.findByText("iceberg.inventory.gone")).toBeInTheDocument();
+    expect(screen.getByText("iceberg.inventory.orders")).toBeInTheDocument();
+    expect(screen.queryByText("iceberg.e2e.tm_e2e_regions")).not.toBeInTheDocument();
+  });
+
+  it("ignores unknown statuses in the url", async () => {
+    stubTables(WITH_DROPPED);
+    renderPage("/?status=bogus,dropped");
+
+    expect(await screen.findByText("iceberg.inventory.gone")).toBeInTheDocument();
+    expect(screen.queryByText("iceberg.inventory.orders")).not.toBeInTheDocument();
+  });
+
+  it("falls back to the default when the url names no known status", async () => {
+    stubTables(WITH_DROPPED);
+    renderPage("/?status=bogus");
+
+    expect(await screen.findByText("iceberg.inventory.orders")).toBeInTheDocument();
+    expect(screen.queryByText("iceberg.inventory.gone")).not.toBeInTheDocument();
+  });
+
+  it("shows an explicit empty state, not every row, when no status is selected", async () => {
+    stubTables(WITH_DROPPED);
+    renderPage("/?status=");
+
+    expect(await screen.findByText("No status selected.")).toBeInTheDocument();
+    expect(screen.queryByText("iceberg.inventory.orders")).not.toBeInTheDocument();
+    expect(screen.queryByText("iceberg.inventory.gone")).not.toBeInTheDocument();
+    expect(statusFilter()).toHaveTextContent("None selected");
+  });
+
+  it("writes an empty status parameter when the last status is unchecked", async () => {
+    const user = userEvent.setup();
+    const router = renderPage();
+    await screen.findByText("iceberg.inventory.orders");
+
+    await toggleStatus(user, "Managed");
+    await toggleStatus(user, "Unmanaged");
+
+    expect(router.state.location.search).toBe("?status=");
+    expect(screen.getByText("No status selected.")).toBeInTheDocument();
   });
 
   it("filters the rows by a substring of the full name", async () => {
@@ -127,7 +256,7 @@ describe("TableListPage", () => {
       table({ uuid: "uuid-nested", namespace: "retail.eu", table: "sales" }),
       table({ uuid: "uuid-gone", table: "gone", status: "dropped" }),
     ]);
-    renderPage();
+    renderPage("/?status=managed,unmanaged,dropped");
 
     const orders = await screen.findByRole("link", { name: "iceberg.inventory.orders" });
     const regions = screen.getByRole("link", { name: "iceberg.e2e.tm_e2e_regions" });
@@ -181,10 +310,10 @@ describe("TableListPage", () => {
 
   it("shows skeleton rows in a busy container while loading", () => {
     stubCatalogApi({ "GET /v1/tables": () => new Promise<Response>(() => {}) });
-    const { container } = renderPage();
+    renderPage();
 
-    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
-    expect(container.querySelectorAll('[aria-busy="true"] .animate-pulse').length).toBeGreaterThan(0);
+    expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(document.querySelectorAll('[aria-busy="true"] .animate-pulse').length).toBeGreaterThan(0);
   });
 
   it("shows an empty state when no table matches", async () => {

@@ -2,7 +2,7 @@ import {
   Banner,
   createDataTableColumnHelper,
   DataTable,
-  Select,
+  MultiSelect,
   Skeleton,
   TextField,
   TextLink,
@@ -15,9 +15,8 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { errorMessage, formatTimestamp } from "@/format";
 import { tablePath } from "@/lib/catalogPaths";
+import { TABLE_STATUSES, useTableStatusFilter } from "@/lib/useTableStatusFilter";
 
-const ALL_STATUSES = "all";
-const STATUSES = ["managed", "unmanaged", "dropped"] as const;
 const SKELETON_ROWS = 5;
 const NO_ROWS: TableApiResponse[] = [];
 
@@ -31,10 +30,7 @@ function capitalise(word: string): string {
   return word.charAt(0).toUpperCase() + word.slice(1);
 }
 
-const STATUS_ITEMS = [
-  { value: ALL_STATUSES, label: "All" },
-  ...STATUSES.map((s) => ({ value: s, label: capitalise(s) })),
-];
+const STATUS_ITEMS = TABLE_STATUSES.map((s) => ({ value: s, label: capitalise(s) }));
 
 const columns = column.columns([
   column.accessor((t) => fullName(t), {
@@ -86,28 +82,28 @@ function LoadingRows() {
 }
 
 export function TableListPage() {
-  const [status, setStatus] = useState(ALL_STATUSES);
+  const { statuses, setStatuses } = useTableStatusFilter();
   const [search, setSearch] = useState("");
   const tables = useListTables();
 
   const rows = useMemo((): TableApiResponse[] => {
     const needle = search.trim().toLowerCase();
     return (tables.data ?? NO_ROWS)
-      .filter((t) => status === ALL_STATUSES || t.status.toLowerCase() === status)
+      .filter((t) => statuses.some((status) => status === t.status.toLowerCase()))
       .filter((t) => needle === "" || fullName(t).toLowerCase().includes(needle));
-  }, [tables.data, status, search]);
+  }, [tables.data, statuses, search]);
 
   return (
     <section>
       <PageHeader title="Tables" />
       <div className="mb-4 grid grid-cols-1 gap-4 sm:flex sm:flex-wrap sm:items-end">
-        <Select
+        <MultiSelect
           id="status-filter"
           label="Status"
           items={STATUS_ITEMS}
-          value={status}
-          onValueChange={setStatus}
-          className="sm:w-40"
+          value={[...statuses]}
+          onValueChange={setStatuses}
+          className="sm:w-64"
         />
         <TextField
           id="table-search"
@@ -130,7 +126,7 @@ export function TableListPage() {
             data={rows}
             getRowId={(row) => row.uuid}
             initialSorting={[{ id: "name", desc: false }]}
-            emptyState={tables.isPending ? <LoadingRows /> : "No tables match."}
+            emptyState={tables.isPending ? <LoadingRows /> : statuses.length === 0 ? "No status selected." : "No tables match."}
           />
         </div>
       )}
