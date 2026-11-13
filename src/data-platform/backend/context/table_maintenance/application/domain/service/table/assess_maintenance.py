@@ -17,6 +17,7 @@ from context.table_maintenance.application.domain.model.shared import (
     SizeSource,
     TableObservation,
 )
+from context.table_maintenance.application.domain.model.table import DEFAULT_FAILURE_BACKOFF_CAP
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     AtLeast,
     CompactionUnit,
@@ -39,7 +40,7 @@ from context.table_maintenance.application.domain.service.table.compute_reducibl
 )
 
 if TYPE_CHECKING:
-    from datetime import datetime
+    from datetime import datetime, timedelta
 
     from context.table_maintenance.application.domain.model.table import Table
 
@@ -52,16 +53,21 @@ def assess_maintenance(
     policy: MaintenancePolicyContent,
     observation: TableObservation,
     now: datetime,
+    *,
+    failure_backoff_cap: timedelta = DEFAULT_FAILURE_BACKOFF_CAP,
 ) -> MaintenanceAssessment:
     """Evaluate every operation of a table against a policy, regardless of the table's status.
 
     An operation is due when it is enabled, its cooldown (with the failure backoff)
     has passed, and its conditions are empty or any of them holds. An enabled operation
     marked as needing attention is never due, whatever its cooldown; a mark set under an
-    earlier applicable policy is lifted by the plan, not ignored here.
+    earlier applicable policy is lifted by the plan, not ignored here. The failure backoff
+    doubles the cooldown per consecutive failure up to ``failure_backoff_cap``.
     """
     return MaintenanceAssessment(
-        operations=tuple(_assess(op, table, policy, observation, now) for op in MaintenanceOperation.ordered())
+        operations=tuple(
+            _assess(op, table, policy, observation, now, failure_backoff_cap) for op in MaintenanceOperation.ordered()
+        )
     )
 
 
@@ -71,6 +77,7 @@ def _assess(
     policy: MaintenancePolicyContent,
     observation: TableObservation,
     now: datetime,
+    failure_backoff_cap: timedelta,
 ) -> OperationAssessment:
     operation_policy = policy.operations.for_operation(op)
     if not operation_policy.enabled:
@@ -90,7 +97,9 @@ def _assess(
         return validated_copy(assessment, verdict=OperationVerdict.NEEDS_ATTENTION, planned=None)
     if state.last_attempt_at is None:
         return assessment
-    next_eligible_at = state.last_attempt_at + state.effective_cooldown(operation_policy.trigger_policy.cooldown)
+    next_eligible_at = state.last_attempt_at + state.effective_cooldown(
+        operation_policy.trigger_policy.cooldown, failure_backoff_cap
+    )
     if now >= next_eligible_at:
         return assessment
     return validated_copy(

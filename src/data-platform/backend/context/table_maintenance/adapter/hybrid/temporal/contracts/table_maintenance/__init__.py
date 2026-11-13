@@ -11,6 +11,9 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.default_attempt_deadline_seconds import (  # noqa: E501
     DEFAULT_ATTEMPT_DEADLINE_SECONDS,
 )
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.default_max_attempts import (
+    DEFAULT_MAX_ATTEMPTS,
+)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.default_start_size import (
     DEFAULT_START_SIZE,
 )
@@ -45,6 +48,7 @@ __all__ = [
     "MaintenanceNextStep",
     "MaintenanceAttemptEnding",
     "DEFAULT_ATTEMPT_DEADLINE_SECONDS",
+    "DEFAULT_MAX_ATTEMPTS",
     "OperationResultSignal",
     "TABLE_MAINTENANCE_WORKFLOW",
     "TableMaintenanceActivity",

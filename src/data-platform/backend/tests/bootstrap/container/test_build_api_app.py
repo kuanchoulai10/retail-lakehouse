@@ -80,3 +80,26 @@ def test_api_serves_its_docs_under_the_configured_root_path(tmp_path):
 
     assert servers == [{"url": "/api"}]
     assert status == 200
+
+
+def test_api_serves_the_platform_settings_it_was_started_with_and_no_secret(tmp_path):
+    """GET /v1/platform-settings reports the running values and nothing of the deployment's secrets."""
+    settings = sqlite_settings(
+        admission_limit=7,
+        maintenance_max_attempts=4,
+        catalog={"credential": "root:cat4log", "s3_secret_access_key": "SKSECRET"},
+        postgres={"db_url": "postgresql+psycopg://tm:s3cr3t-pass@db:5432/tm"},
+    )
+    settings.sqlite.path = str(tmp_path / "tm.db")
+    run_migrations(build_engine(settings))
+    bridge = AsyncLoopBridge()
+    try:
+        app = build_api_app(settings, bridge, connect=_connect, k8s_api_factory=_no_kubeconfig)
+        response = TestClient(app).get("/v1/platform-settings")
+    finally:
+        bridge.close()
+
+    assert response.status_code == 200
+    items = {item["key"]: item["value"] for group in response.json()["groups"] for item in group["items"]}
+    assert (items["admission_limit"], items["maintenance_max_attempts"]) == (7, 4)
+    assert not [secret for secret in ("cat4log", "SKSECRET", "s3cr3t-pass") if secret in response.text]

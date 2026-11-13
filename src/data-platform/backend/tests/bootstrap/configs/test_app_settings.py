@@ -127,6 +127,46 @@ def test_attempt_deadline_reads_env(monkeypatch: pytest.MonkeyPatch):
     assert AppSettings().maintenance_attempt_deadline_seconds == 120
 
 
+def test_max_attempts_defaults_to_three():
+    """Without an environment each maintenance operation gets three attempts, as the workflow always did."""
+    assert AppSettings().maintenance_max_attempts == 3
+
+
+def test_max_attempts_reads_env(monkeypatch: pytest.MonkeyPatch):
+    """The attempts per operation are read from GLAC_MAINTENANCE_MAX_ATTEMPTS."""
+    monkeypatch.setenv("GLAC_MAINTENANCE_MAX_ATTEMPTS", "5")
+
+    assert AppSettings().maintenance_max_attempts == 5
+
+
+def test_max_attempts_must_be_at_least_one(monkeypatch: pytest.MonkeyPatch):
+    """An operation always gets at least one attempt, so zero is refused at start-up."""
+    monkeypatch.setenv("GLAC_MAINTENANCE_MAX_ATTEMPTS", "0")
+
+    with pytest.raises(ValueError, match="maintenance_max_attempts"):
+        AppSettings()
+
+
+def test_failure_backoff_cap_defaults_to_24_hours():
+    """Without an environment the doubling of a failing operation's cooldown stops at 24 hours."""
+    assert AppSettings().maintenance_failure_backoff_cap_seconds == 86400
+
+
+def test_failure_backoff_cap_reads_env(monkeypatch: pytest.MonkeyPatch):
+    """The failure backoff cap is read from GLAC_MAINTENANCE_FAILURE_BACKOFF_CAP_SECONDS."""
+    monkeypatch.setenv("GLAC_MAINTENANCE_FAILURE_BACKOFF_CAP_SECONDS", "3600")
+
+    assert AppSettings().maintenance_failure_backoff_cap_seconds == 3600
+
+
+def test_failure_backoff_cap_must_be_positive(monkeypatch: pytest.MonkeyPatch):
+    """A cap of zero would erase every cooldown, so it is refused at start-up."""
+    monkeypatch.setenv("GLAC_MAINTENANCE_FAILURE_BACKOFF_CAP_SECONDS", "0")
+
+    with pytest.raises(ValueError, match="maintenance_failure_backoff_cap_seconds"):
+        AppSettings()
+
+
 def test_sizes_default_to_s_m_l():
     """The S, M and L sizes default to their driver and executor memory and one executor."""
     spark = AppSettings().spark

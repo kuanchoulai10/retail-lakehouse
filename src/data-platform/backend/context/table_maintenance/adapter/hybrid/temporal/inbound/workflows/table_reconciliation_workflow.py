@@ -16,6 +16,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
     DEFAULT_ATTEMPT_DEADLINE_SECONDS,
+    DEFAULT_MAX_ATTEMPTS,
     TABLE_MAINTENANCE_WORKFLOW,
     TableMaintenanceWorkflowInput,
     table_maintenance_summary,
@@ -135,6 +136,7 @@ class TableReconciliationWorkflow:
             self._in_flight_started_at = workflow.now()
         self._in_flight_operations = input.in_flight_operation_count
         self._in_flight_attempt_deadline_seconds = input.in_flight_attempt_deadline_seconds
+        self._in_flight_max_attempts = input.in_flight_max_attempts
         self._pending_manual = None if input.pending_manual is None else list(input.pending_manual)
         self._next_plan_at = datetime.fromisoformat(input.next_plan_at) if input.next_plan_at else None
         self._continue_as_new_after = input.continue_as_new_after
@@ -302,6 +304,7 @@ class TableReconciliationWorkflow:
             continue_as_new_after=self._continue_as_new_after,
             wake_reasons=dict(self._wake_reasons),
             in_flight_attempt_deadline_seconds=self._in_flight_attempt_deadline_seconds,
+            in_flight_max_attempts=self._in_flight_max_attempts,
         )
 
     async def _wait(self) -> None:
@@ -328,7 +331,9 @@ class TableReconciliationWorkflow:
         runs up on.
         """
         attempt_deadline = timedelta(seconds=self._in_flight_attempt_deadline_seconds)
-        policy = TableMaintenanceAttemptPolicy(attempt_deadline=attempt_deadline)
+        policy = TableMaintenanceAttemptPolicy(
+            max_attempts=self._in_flight_max_attempts, attempt_deadline=attempt_deadline
+        )
         if workflow.patched(_FENCED_BOUND_PATCH):
             return policy.operation_worst_case() + _IN_FLIGHT_MARGIN
         return policy.unfenced_operation_worst_case() + _IN_FLIGHT_MARGIN
@@ -406,6 +411,7 @@ class TableReconciliationWorkflow:
         self._in_flight_started_at = None
         self._in_flight_operations = 0
         self._in_flight_attempt_deadline_seconds = DEFAULT_ATTEMPT_DEADLINE_SECONDS
+        self._in_flight_max_attempts = DEFAULT_MAX_ATTEMPTS
 
     async def _plan_and_start(self) -> bool:
         """Plan once and start a run if anything is planned; True ends the workflow."""
@@ -540,11 +546,13 @@ class TableReconciliationWorkflow:
         """Start the child run under ``run_id``; False when it could not be started."""
         child_id = table_maintenance_workflow_id(plan["table_name"], run_id)
         attempt_deadline_seconds = plan.get("attempt_deadline_seconds", DEFAULT_ATTEMPT_DEADLINE_SECONDS)
+        max_attempts = plan.get("max_attempts", DEFAULT_MAX_ATTEMPTS)
         self._in_flight_run_id = run_id
         self._in_flight_workflow_id = child_id
         self._in_flight_started_at = workflow.now()
         self._in_flight_operations = len(plan["operations"])
         self._in_flight_attempt_deadline_seconds = attempt_deadline_seconds
+        self._in_flight_max_attempts = max_attempts
         trigger = _TRIGGER_MANUAL if manual else _TRIGGER_SCHEDULED
         operations = [op["operation"] for op in plan["operations"]]
         try:
@@ -557,6 +565,7 @@ class TableReconciliationWorkflow:
                     trigger=trigger,
                     plan=plan,
                     attempt_deadline_seconds=attempt_deadline_seconds,
+                    max_attempts=max_attempts,
                 ),
                 id=child_id,
                 task_queue=TASK_QUEUE,

@@ -46,3 +46,5 @@ class AppSettings(BaseSettings):
     admission_limit: int = 2
     discovery_interval_seconds: int = 600
     maintenance_attempt_deadline_seconds: int = 21600
+    maintenance_max_attempts: int = Field(default=3, ge=1)
+    maintenance_failure_backoff_cap_seconds: int = Field(default=86400, ge=1)

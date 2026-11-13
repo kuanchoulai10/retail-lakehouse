@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
 
 import pytest
@@ -215,3 +216,20 @@ def test_health_and_the_table_agree_on_a_mark_under_another_policy(service, tabl
     shown = GetTableService(tables_repo).execute(GetTableUseCaseInput(uuid="u-1"))
     assert shown.operation_states["rewrite_data_files"]["needs_attention"] is not None
     assert _health(service).operations[0].verdict == "needs_attention"
+
+
+def test_health_backs_a_failing_operation_off_only_up_to_the_cap(tables_repo, catalog, resolve_applicable_policy, now):
+    """The next eligible time of a failing operation doubles its cooldown only up to the configured cap."""
+    table = _register(tables_repo, now)
+    for _ in range(10):
+        table.record_operation_result(MaintenanceOperation.REWRITE_DATA_FILES, False, now)
+    tables_repo.update(table)
+    _observe(catalog)
+    capped = GetTableHealthService(
+        tables_repo, catalog, resolve_applicable_policy, failure_backoff_cap=timedelta(hours=2), clock=lambda: now
+    )
+
+    compaction = _health(capped).operations[0]
+
+    assert compaction.verdict == "cooldown"
+    assert compaction.next_eligible_at == now + timedelta(hours=2)

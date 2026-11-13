@@ -73,11 +73,13 @@ class TableReconciliationActivities:
         pods: GetMaintenanceJobPodsUseCase,
         callback_base_url: str,
         attempt_deadline_seconds: int,
+        max_attempts: int,
     ) -> None:
         """Bind the use cases and the base URL Spark jobs call back to.
 
-        ``attempt_deadline_seconds`` is the worker setting every plan carries, so
-        the run it starts bounds each attempt by it.
+        ``attempt_deadline_seconds`` and ``max_attempts`` are the worker settings
+        every plan carries, so the run it starts bounds each attempt by the first
+        and gives each operation that many attempts.
         """
         self._plan = plan
         self._record = record
@@ -88,10 +90,11 @@ class TableReconciliationActivities:
         self._pods = pods
         self._callback_base_url = callback_base_url
         self._attempt_deadline_seconds = attempt_deadline_seconds
+        self._max_attempts = max_attempts
 
     @activity.defn(name=TableReconciliationActivity.PLAN_TABLE_MAINTENANCE)
     def plan_table_maintenance(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Plan the maintenance operations of a table, with the attempt deadline its run uses."""
+        """Plan the maintenance operations of a table, with the attempt deadline and attempts its run uses."""
         with translate_application_errors():
             output = self._plan.execute(
                 PlanTableMaintenanceUseCaseInput(
@@ -101,7 +104,11 @@ class TableReconciliationActivities:
                     run_id=request.get("run_id"),
                 )
             )
-        return {**activity_payload(output), "attempt_deadline_seconds": self._attempt_deadline_seconds}
+        return {
+            **activity_payload(output),
+            "attempt_deadline_seconds": self._attempt_deadline_seconds,
+            "max_attempts": self._max_attempts,
+        }
 
     @activity.defn(name=TableReconciliationActivity.RECORD_TABLE_RECONCILIATION)
     def record_table_reconciliation(self, request: dict[str, Any]) -> dict[str, Any]:

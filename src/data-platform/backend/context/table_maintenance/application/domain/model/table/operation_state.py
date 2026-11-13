@@ -10,6 +10,9 @@ from context.table_maintenance.application.domain.model.shared import ComputeSiz
 from context.table_maintenance.application.domain.model.table.attention_mark import (
     AttentionMark,
 )
+from context.table_maintenance.application.domain.model.table.default_failure_backoff_cap import (
+    DEFAULT_FAILURE_BACKOFF_CAP,
+)
 from context.table_maintenance.application.domain.model.table.recorded_attempt import (
     RecordedAttempt,
 )
@@ -38,7 +41,7 @@ class OperationState(ValueObject):
     low_use_successes: int = 0
     last_recorded: RecordedAttempt | None = None
 
-    def effective_cooldown(self, base: timedelta, cap: timedelta = timedelta(hours=24)) -> timedelta:
+    def effective_cooldown(self, base: timedelta, cap: timedelta = DEFAULT_FAILURE_BACKOFF_CAP) -> timedelta:
         """Return ``base`` doubled per consecutive failure, capped, never below base."""
         return max(base, min(base * 2**self.consecutive_failures, cap))
 

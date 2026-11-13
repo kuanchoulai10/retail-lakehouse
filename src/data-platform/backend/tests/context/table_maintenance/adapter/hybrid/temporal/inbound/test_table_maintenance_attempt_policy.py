@@ -43,3 +43,21 @@ def test_default_fencing_polls_renews_and_bounds_the_wait():
 def test_unfenced_worst_case_is_the_bound_from_before_fencing():
     """The unfenced worst case is every attempt hitting its deadline plus the backoffs, as before fencing existed."""
     assert TableMaintenanceAttemptPolicy().unfenced_operation_worst_case() == timedelta(seconds=3 * 21600 + 180)
+
+
+def test_backoff_beyond_the_listed_ones_repeats_the_last():
+    """With more attempts than listed backoffs, every later failed attempt sleeps the last backoff."""
+    policy = TableMaintenanceAttemptPolicy(max_attempts=5)
+    assert [policy.backoff_after(n) for n in range(1, 5)] == [timedelta(seconds=s) for s in (60, 120, 120, 120)]
+
+
+def test_worst_case_counts_one_backoff_between_each_pair_of_attempts():
+    """The worst case sleeps after every attempt but the last, so it follows the number of attempts."""
+    per_attempt = timedelta(seconds=21600 + 900)
+    assert TableMaintenanceAttemptPolicy(max_attempts=5).operation_worst_case() == per_attempt * 5 + timedelta(
+        seconds=60 + 120 + 120 + 120
+    )
+    assert TableMaintenanceAttemptPolicy(max_attempts=1).operation_worst_case() == per_attempt
+    assert TableMaintenanceAttemptPolicy(max_attempts=5).unfenced_operation_worst_case() == timedelta(
+        seconds=5 * 21600 + 60 + 120 + 120 + 120
+    )

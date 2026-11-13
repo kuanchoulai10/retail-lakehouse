@@ -14,6 +14,7 @@ from base import UseCase
 from bootstrap.configs import SchedulerSettings
 from bootstrap.container import (
     build_gateways,
+    build_platform_settings,
     build_repositories,
     build_use_cases,
 )
@@ -41,6 +42,7 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.s3 import 
     ReadMaintenanceEventLogS3Gateway,
 )
 from context.table_maintenance.application.port.inbound.compaction_round import (
+    GetPlatformSettingsUseCaseInput,
     GetSchedulerSettingsUseCaseInput,
     ScheduleCompactionRoundUseCaseInput,
 )
@@ -172,3 +174,29 @@ def test_the_scheduler_settings_report_what_the_rounds_run_under():
 
     assert (output.round_seconds, output.budget_gb_hours) == (60, 0.3)
     assert [(p.priority, p.sla_seconds) for p in output.priorities] == [("P0", 3600), ("P1", 14400), ("P2", 28800)]
+
+
+def test_the_platform_settings_report_the_values_they_are_given():
+    """The platform settings use case lists the settings the composition root hands it."""
+    use_cases = build_use_cases(
+        build_repositories(sqlite_engine()),
+        fake_gateways(),
+        clock=lambda: NOW,
+        platform_settings=build_platform_settings(sqlite_settings(admission_limit=9, maintenance_max_attempts=6)),
+    )
+
+    output = use_cases.get_platform_settings.execute(GetPlatformSettingsUseCaseInput())
+
+    values = {item.key: item.value for group in output.groups for item in group.items}
+    assert (values["admission_limit"], values["maintenance_max_attempts"]) == (9, 6)
+
+
+def test_the_platform_settings_default_to_the_application_defaults():
+    """Without platform settings the use case lists the application defaults, as the other defaults here do."""
+    use_cases = build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
+
+    output = use_cases.get_platform_settings.execute(GetPlatformSettingsUseCaseInput())
+
+    values = {item.key: item.value for group in output.groups for item in group.items}
+    assert (values["admission_limit"], values["maintenance_max_attempts"]) == (2, 3)
+    assert values["maintenance_failure_backoff_cap_seconds"] == 86400

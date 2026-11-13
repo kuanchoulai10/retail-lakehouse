@@ -1233,6 +1233,55 @@ def test_in_flight_bound_follows_the_plan_deadline():
     _run(scenario, script=lambda _: {**_planned(COMPACTION, interval=10**6), "attempt_deadline_seconds": 120})
 
 
+def test_reconciliation_passes_the_plan_max_attempts_to_the_run():
+    """The run gets the attempts per operation the plan carries from the worker setting."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        run_id = await h.in_flight()
+        assert (await h.child(run_id))["max_attempts"] == 5
+
+    _run(scenario, script=lambda _: {**_planned(COMPACTION), "max_attempts": 5})
+
+
+def test_reconciliation_defaults_the_max_attempts_for_old_plans():
+    """A plan without max attempts, recorded before the setting existed, gives the run three attempts."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        run_id = await h.in_flight()
+        assert (await h.child(run_id))["max_attempts"] == 3
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+LONG_RETRY_BUDGET = TableMaintenanceAttemptPolicy(
+    max_attempts=5, attempt_deadline=timedelta(seconds=120)
+).operation_worst_case() + (timedelta(hours=1))
+
+
+def test_in_flight_bound_follows_the_plan_max_attempts():
+    """A run planned with more attempts is given up after their worst case, not after three attempts'."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = await h.in_flight()
+        await h.env.sleep(LONG_RETRY_BUDGET - timedelta(minutes=1))
+        assert (await h.settle())["in_flight_run_id"] == first
+        await h.env.sleep(timedelta(minutes=2))
+        await h.plan_count(2)
+        assert await h.child_status(first) == WorkflowExecutionStatus.CANCELED
+
+    _run(
+        scenario,
+        script=lambda _: {
+            **_planned(COMPACTION, interval=10**6),
+            "attempt_deadline_seconds": 120,
+            "max_attempts": 5,
+        },
+    )
+
+
 def test_carried_in_flight_run_keeps_its_attempt_deadline():
     """Continue-as-new carries the in-flight run's attempt deadline, so its bound does not change."""
 

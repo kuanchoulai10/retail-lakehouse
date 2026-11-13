@@ -115,6 +115,7 @@ class Harness:
         *operations: str,
         parent_id: str = PARENT_ID,
         attempt_deadline_seconds: int = ATTEMPT_DEADLINE_SECONDS,
+        max_attempts: int = 3,
         start_size: str | None = None,
         plan: dict | None = None,
     ) -> WorkflowHandle:
@@ -128,6 +129,7 @@ class Harness:
                 trigger="scheduled",
                 plan=plan or _plan(*operations, start_size=start_size),
                 attempt_deadline_seconds=attempt_deadline_seconds,
+                max_attempts=max_attempts,
             ),
             id=WORKFLOW_ID,
             task_queue=self.queue,
@@ -281,6 +283,45 @@ def test_failed_operation_retried_three_attempts_total_then_next_operation_runs(
         assert times[2] - times[1] < timedelta(seconds=180)
         assert len(h.fakes.deletes) == 4
         assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
+
+    _run(scenario)
+
+
+def test_the_input_sets_how_many_attempts_an_operation_gets():
+    """An operation is attempted as often as the run's max attempts say, then the next operation runs."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {
+            (COMPACTION, 1): [(1, False, "boom-1")],
+            (COMPACTION, 2): [(2, False, "boom-2")],
+            (COMPACTION, 3): [(3, False, "boom-3")],
+            (COMPACTION, 4): [(4, False, "boom-4")],
+            (EXPIRE, 1): [(1, True, None)],
+        }
+        handle = await h.start_maintenance(COMPACTION, EXPIRE, max_attempts=2)
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert h.recorded() == [
+            (COMPACTION, 1, False, "boom-1"),
+            (COMPACTION, 2, False, "boom-2"),
+            (EXPIRE, 1, True, None),
+        ]
+        assert all(r["max_attempts"] == 2 for r in h.fakes.records)
+
+    _run(scenario)
+
+
+def test_more_attempts_than_backoffs_sleep_the_last_backoff_again():
+    """With four attempts the third and fourth failures sleep the last listed backoff, 120 s."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(COMPACTION, n): [(n, False, f"boom-{n}")] for n in (1, 2, 3, 4)}
+        handle = await h.start_maintenance(COMPACTION, max_attempts=4)
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert [r[1] for r in h.recorded()] == [1, 2, 3, 4]
+        times = h.submit_times()
+        assert timedelta(seconds=120) <= times[3] - times[2] < timedelta(seconds=180)
 
     _run(scenario)
 

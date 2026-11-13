@@ -79,6 +79,8 @@ worker:
   admissionLimit: 2
   discoveryIntervalSeconds: 600
   attemptDeadlineSeconds: 21600
+  maxAttempts: 3
+  failureBackoffCapSeconds: 86400
   terminationGracePeriodSeconds: 90
   resources:
     requests:

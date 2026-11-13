@@ -47,6 +47,15 @@ from context.table_maintenance.application.domain.model.shared.partition_stats i
 from context.table_maintenance.application.domain.model.shared.planned_operation import (
     PlannedOperation,
 )
+from context.table_maintenance.application.domain.model.shared.platform_compute_size import (
+    PlatformComputeSize,
+)
+from context.table_maintenance.application.domain.model.shared.platform_priority import (
+    PlatformPriority,
+)
+from context.table_maintenance.application.domain.model.shared.platform_settings import (
+    PlatformSettings,
+)
 from context.table_maintenance.application.domain.model.shared.positive_duration import (
     PositiveDuration,
 )
@@ -82,6 +91,9 @@ __all__ = [
     "PartitionSpecInfo",
     "PartitionStats",
     "PlannedOperation",
+    "PlatformPriority",
+    "PlatformSettings",
+    "PlatformComputeSize",
     "PositiveDuration",
     "SizeMemory",
     "SizeSource",

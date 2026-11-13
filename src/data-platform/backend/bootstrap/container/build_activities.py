@@ -34,6 +34,7 @@ def build_activities(use_cases: UseCases, client: Client, settings: AppSettings)
             pods=use_cases.get_maintenance_job_pods,
             callback_base_url=settings.callback_base_url,
             attempt_deadline_seconds=settings.maintenance_attempt_deadline_seconds,
+            max_attempts=settings.maintenance_max_attempts,
         ),
         maintenance=TableMaintenanceActivities(
             create_run=use_cases.create_table_maintenance_run,

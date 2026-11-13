@@ -60,7 +60,7 @@ _PLANNED_POLICY_KEYS = ("policy_name", "policy_version", "policy_target")
 class TableMaintenanceWorkflow:
     """Run the planned operations of one maintenance run, in order, on Spark.
 
-    Each operation gets up to three attempts. An attempt holds one admission slot
+    Each operation gets up to ``max_attempts`` attempts (input, 3 by default). An attempt holds one admission slot
     from the admission workflow while its Spark job runs, leased for its attempt
     deadline plus 15 minutes, and ends with the job's
     ``operation_result`` callback for that exact attempt, with what polling the
@@ -98,7 +98,9 @@ class TableMaintenanceWorkflow:
     def __init__(self, input: TableMaintenanceWorkflowInput) -> None:  # noqa: A002
         """Prepare the result and grant mailboxes and the attempt log."""
         self._run_id = input.run_id
-        self._policy = TableMaintenanceAttemptPolicy(attempt_deadline=timedelta(seconds=input.attempt_deadline_seconds))
+        self._policy = TableMaintenanceAttemptPolicy(
+            max_attempts=input.max_attempts, attempt_deadline=timedelta(seconds=input.attempt_deadline_seconds)
+        )
         self._planned_policy = {key: input.plan.get(key) for key in _PLANNED_POLICY_KEYS}
         self._results: dict[tuple[str, int], OperationResultSignal] = {}
         self._granted: set[str] = set()

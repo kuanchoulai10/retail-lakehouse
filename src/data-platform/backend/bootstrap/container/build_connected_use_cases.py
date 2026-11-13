@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import TYPE_CHECKING, cast
 
 from bootstrap.container.build_candidate_selection import build_candidate_selection
@@ -10,6 +11,7 @@ from bootstrap.container.build_engine import build_engine
 from bootstrap.container.build_gateways import build_gateways
 from bootstrap.container.build_k8s_api import build_k8s_api
 from bootstrap.container.build_k8s_core_api import build_k8s_core_api
+from bootstrap.container.build_platform_settings import build_platform_settings
 from bootstrap.container.build_repositories import build_repositories
 from bootstrap.container.build_size_memory import build_size_memory
 from bootstrap.container.build_use_cases import build_use_cases
@@ -61,4 +63,6 @@ def build_connected_use_cases(
         candidate_selection=build_candidate_selection(settings.compaction),
         claim_lease=compaction_claim_lease(settings),
         scheduler=settings.scheduler,
+        failure_backoff_cap=timedelta(seconds=settings.maintenance_failure_backoff_cap_seconds),
+        platform_settings=build_platform_settings(settings),
     )

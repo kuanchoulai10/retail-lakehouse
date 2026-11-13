@@ -1844,6 +1844,101 @@
         "title": "PartitionSpecApiResponse",
         "type": "object"
       },
+      "PlatformSettingApiResponse": {
+        "description": "Describe one platform setting: a stable key, a label, its value and unit, and a one-sentence description.\n\n``unit`` is null for a value that carries its own, such as ``768m``.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "value",
+          "unit",
+          "description"
+        ],
+        "title": "PlatformSettingApiResponse",
+        "type": "object"
+      },
+      "PlatformSettingsApiResponse": {
+        "description": "Describe the platform-level settings the running component was started with, grouped by theme.",
+        "properties": {
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformSettingsGroupApiResponse"
+            },
+            "title": "Groups",
+            "type": "array"
+          }
+        },
+        "required": [
+          "groups"
+        ],
+        "title": "PlatformSettingsApiResponse",
+        "type": "object"
+      },
+      "PlatformSettingsGroupApiResponse": {
+        "description": "Describe one theme of platform settings: a stable key, a title and its settings in reading order.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformSettingApiResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "items"
+        ],
+        "title": "PlatformSettingsGroupApiResponse",
+        "type": "object"
+      },
       "PolicyTargetApiRequest": {
         "additionalProperties": false,
         "description": "Name a catalog, namespace or table to attach a policy to.",
@@ -6461,6 +6556,28 @@
         "summary": "Get Table Maintenance Policy Version",
         "tags": [
           "maintenance-policies"
+        ]
+      }
+    },
+    "/v1/platform-settings": {
+      "get": {
+        "description": "Read the platform-level settings the running component was started with, grouped by theme.\n\nRead-only: the values are set by the platform deployment. Each setting carries a stable\nkey, a label, its value and unit, and a one-sentence description.",
+        "operationId": "get_platform_settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformSettingsApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Platform Settings",
+        "tags": [
+          "compaction-rounds"
         ]
       }
     },

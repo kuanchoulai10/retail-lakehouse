@@ -8,6 +8,9 @@ from context.table_maintenance.application.domain.model.table.applied_policy_ref
 from context.table_maintenance.application.domain.model.table.attention_mark import (
     AttentionMark,
 )
+from context.table_maintenance.application.domain.model.table.default_failure_backoff_cap import (
+    DEFAULT_FAILURE_BACKOFF_CAP,
+)
 from context.table_maintenance.application.domain.model.table.invalid_table_transition import (
     InvalidTableTransition,
 )
@@ -36,6 +39,7 @@ from context.table_maintenance.application.domain.model.table.table_status impor
 )
 
 __all__ = [
+    "DEFAULT_FAILURE_BACKOFF_CAP",
     "AppliedPolicyRef",
     "AttentionMark",
     "InvalidTableTransition",

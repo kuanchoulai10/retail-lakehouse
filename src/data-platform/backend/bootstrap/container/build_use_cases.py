@@ -5,17 +5,20 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
-from bootstrap.configs import SchedulerSettings
+from bootstrap.configs import AppSettings, SchedulerSettings
+from bootstrap.container.build_platform_settings import build_platform_settings
 from bootstrap.container.build_priority_sla import build_priority_sla
 from bootstrap.container.build_priority_weights import build_priority_weights
 from bootstrap.container.use_cases import UseCases
 from context.table_maintenance.application.domain.model.compaction_candidate import CandidateSelection
+from context.table_maintenance.application.domain.model.table import DEFAULT_FAILURE_BACKOFF_CAP
 from context.table_maintenance.application.service.compaction_candidate import (
     ListCompactionCandidatesService,
     ReleaseCompactionCandidatesService,
 )
 from context.table_maintenance.application.service.compaction_round import (
     GetCompactionRoundService,
+    GetPlatformSettingsService,
     GetSchedulerSettingsService,
     ListCompactionRoundsService,
     ScheduleCompactionRoundService,
@@ -72,7 +75,7 @@ if TYPE_CHECKING:
 
     from bootstrap.container.gateways import Gateways
     from bootstrap.container.repositories import Repositories
-    from context.table_maintenance.application.domain.model.shared import ComputeSize, SizeMemory
+    from context.table_maintenance.application.domain.model.shared import ComputeSize, PlatformSettings, SizeMemory
 
 
 _DEFAULT_CLAIM_LEASE = timedelta(hours=20)
@@ -92,6 +95,8 @@ def build_use_cases(
     candidate_selection: CandidateSelection | None = None,
     claim_lease: timedelta = _DEFAULT_CLAIM_LEASE,
     scheduler: SchedulerSettings | None = None,
+    failure_backoff_cap: timedelta = DEFAULT_FAILURE_BACKOFF_CAP,
+    platform_settings: PlatformSettings | None = None,
 ) -> UseCases:
     """Build every application service on the given repositories and gateways.
 
@@ -101,6 +106,9 @@ def build_use_cases(
     candidates are picked (the defaults without it) and ``claim_lease`` how long
     a run holds the candidates it claims. ``scheduler`` says how compaction
     rounds share compaction across tables (the defaults without it).
+    ``failure_backoff_cap`` is where the doubling of a failing operation's
+    cooldown stops, and ``platform_settings`` the values the platform settings
+    page lists (the application defaults without it).
     """
     tables = repos.tables
     rules = repos.table_discovery_rules
@@ -148,7 +156,9 @@ def build_use_cases(
             policies, attachments, tables, table_changes, clock=clock
         ),
         get_table=GetTableService(tables),
-        get_table_health=GetTableHealthService(tables, catalog, resolve_applicable_policy, clock=clock),
+        get_table_health=GetTableHealthService(
+            tables, catalog, resolve_applicable_policy, failure_backoff_cap=failure_backoff_cap, clock=clock
+        ),
         get_table_storage=GetTableStorageService(tables, catalog, runs, clock=clock),
         list_table_commits=ListTableCommitsService(tables, catalog),
         list_tables=ListTablesService(tables),
@@ -181,6 +191,7 @@ def build_use_cases(
             selection=selection,
             size_memory=size_memory or {},
             claim_lease=claim_lease,
+            failure_backoff_cap=failure_backoff_cap,
         ),
         release_compaction_candidates=ReleaseCompactionCandidatesService(candidates),
         schedule_compaction_round=ScheduleCompactionRoundService(
@@ -202,6 +213,9 @@ def build_use_cases(
             round_seconds=rounds.round_seconds,
             budget_gb_hours=rounds.budget_gb_hours,
             grant_lease=timedelta(seconds=rounds.grant_lease_seconds),
+        ),
+        get_platform_settings=GetPlatformSettingsService(
+            platform_settings or build_platform_settings(AppSettings.model_construct())
         ),
         list_compaction_candidates=ListCompactionCandidatesService(
             candidates,

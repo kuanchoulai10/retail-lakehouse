@@ -15,6 +15,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
     DEFAULT_ATTEMPT_DEADLINE_SECONDS,
+    DEFAULT_MAX_ATTEMPTS,
     TABLE_MAINTENANCE_WORKFLOW,
     OperationResultSignal,
     TableMaintenanceActivity,
@@ -84,6 +85,17 @@ def test_maintenance_workflow_input_default_attempt_deadline():
     """The maintenance workflow input defaults its attempt deadline to six hours."""
     value = TableMaintenanceWorkflowInput("r1", "u1", "p", "scheduled", {})
     assert value.attempt_deadline_seconds == 21600 == DEFAULT_ATTEMPT_DEADLINE_SECONDS
+
+
+def test_maintenance_workflow_input_default_max_attempts():
+    """The maintenance workflow input defaults to three attempts per operation, as the workflow always allowed."""
+    value = TableMaintenanceWorkflowInput("r1", "u1", "p", "scheduled", {})
+    assert value.max_attempts == 3 == DEFAULT_MAX_ATTEMPTS
+
+
+def test_reconciliation_input_defaults_the_in_flight_max_attempts():
+    """A reconciliation input from before the setting carries three attempts for its run in flight."""
+    assert TableReconciliationWorkflowInput(table_uuid="u1").in_flight_max_attempts == DEFAULT_MAX_ATTEMPTS
 
 
 def test_admission_lease_outlives_the_attempt_deadline_by_15_minutes():

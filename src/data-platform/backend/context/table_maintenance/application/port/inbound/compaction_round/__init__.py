@@ -9,6 +9,13 @@ from context.table_maintenance.application.port.inbound.compaction_round.get_com
     GetCompactionRoundUseCaseOutputPick,
     GetCompactionRoundUseCaseOutputSkip,
 )
+from context.table_maintenance.application.port.inbound.compaction_round.get_platform_settings import (
+    GetPlatformSettingsUseCase,
+    GetPlatformSettingsUseCaseInput,
+    GetPlatformSettingsUseCaseOutput,
+    GetPlatformSettingsUseCaseOutputGroup,
+    GetPlatformSettingsUseCaseOutputItem,
+)
 from context.table_maintenance.application.port.inbound.compaction_round.get_scheduler_settings import (
     GetSchedulerSettingsUseCase,
     GetSchedulerSettingsUseCaseInput,
@@ -35,6 +42,11 @@ __all__ = [
     "GetCompactionRoundUseCaseOutput",
     "GetCompactionRoundUseCaseOutputPick",
     "GetCompactionRoundUseCaseOutputSkip",
+    "GetPlatformSettingsUseCase",
+    "GetPlatformSettingsUseCaseInput",
+    "GetPlatformSettingsUseCaseOutput",
+    "GetPlatformSettingsUseCaseOutputGroup",
+    "GetPlatformSettingsUseCaseOutputItem",
     "GetSchedulerSettingsUseCase",
     "GetSchedulerSettingsUseCaseInput",
     "GetSchedulerSettingsUseCaseOutput",

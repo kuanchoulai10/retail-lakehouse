@@ -20,6 +20,7 @@ from context.table_maintenance.application.domain.model.shared import (
     PlannedOperation,
 )
 from context.table_maintenance.application.domain.model.table import (
+    DEFAULT_FAILURE_BACKOFF_CAP,
     TableId,
     TableStatus,
 )
@@ -109,11 +110,13 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         selection: CandidateSelection,
         size_memory: Mapping[ComputeSize, SizeMemory],
         claim_lease: timedelta,
+        failure_backoff_cap: timedelta = DEFAULT_FAILURE_BACKOFF_CAP,
     ) -> None:
         """Bind the repos, the catalog gateway, the applicable policy resolution and how candidates are picked.
 
         ``size_memory`` gives the memory each compute size runs with, for the cost
-        estimate; ``claim_lease`` is how long a run holds the candidates it claims.
+        estimate; ``claim_lease`` is how long a run holds the candidates it claims;
+        ``failure_backoff_cap`` is where the doubling of a failing operation's cooldown stops.
         """
         self._tables_repo = tables_repo
         self._catalog_gateway = catalog_gateway
@@ -123,6 +126,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         self._selection = selection
         self._size_memory = dict(size_memory)
         self._claim_lease = claim_lease
+        self._failure_backoff_cap = failure_backoff_cap
 
     def execute(self, request: PlanTableMaintenanceUseCaseInput) -> PlanTableMaintenanceUseCaseOutput:
         """Plan the due operations, or the requested ones for a manual trigger.
@@ -168,7 +172,9 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
                 checks = _manual_checks(manual)
                 compaction = CompactionShare()
             else:
-                assessment = assess_maintenance(table, policy, observation, request.now)
+                assessment = assess_maintenance(
+                    table, policy, observation, request.now, failure_backoff_cap=self._failure_backoff_cap
+                )
                 plan, checks = assessment.plan(), _scheduled_checks(assessment)
                 cooling_down = any(
                     a.operation is _COMPACTION and a.verdict is OperationVerdict.COOLDOWN for a in assessment.operations

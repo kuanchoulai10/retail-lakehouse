@@ -40,6 +40,8 @@ data:
   GLAC_ADMISSION_LIMIT: {{ .Values.worker.admissionLimit | quote }}
   GLAC_DISCOVERY_INTERVAL_SECONDS: {{ .Values.worker.discoveryIntervalSeconds | quote }}
   GLAC_MAINTENANCE_ATTEMPT_DEADLINE_SECONDS: {{ .Values.worker.attemptDeadlineSeconds | quote }}
+  GLAC_MAINTENANCE_MAX_ATTEMPTS: {{ .Values.worker.maxAttempts | quote }}
+  GLAC_MAINTENANCE_FAILURE_BACKOFF_CAP_SECONDS: {{ .Values.worker.failureBackoffCapSeconds | quote }}
   GLAC_COMPACTION__PARTITIONS_PER_RUN: {{ .Values.compaction.partitionsPerRun | quote }}
   GLAC_COMPACTION__MIN_PARTITION_BYTES: {{ .Values.compaction.minPartitionBytes | int64 | quote }}
   GLAC_COMPACTION__QUIET_SECONDS: {{ .Values.compaction.quietSeconds | quote }}

@@ -64,4 +64,5 @@ class TableMaintenanceStubWorkflow:
             "trigger": self._input.trigger,
             "plan": self._input.plan,
             "attempt_deadline_seconds": self._input.attempt_deadline_seconds,
+            "max_attempts": self._input.max_attempts,
         }

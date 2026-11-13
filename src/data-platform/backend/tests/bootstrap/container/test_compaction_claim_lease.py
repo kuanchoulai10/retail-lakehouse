@@ -13,3 +13,12 @@ def test_claim_lease_outlives_the_worst_case_of_one_operation_by_an_hour():
     lease = compaction_claim_lease(sqlite_settings(maintenance_attempt_deadline_seconds=600))
 
     assert lease == 3 * timedelta(minutes=25) + timedelta(minutes=3) + timedelta(hours=1)
+
+
+def test_claim_lease_follows_the_configured_attempts():
+    """With five attempts the worst case counts five deadlines, five fencing bounds and four backoffs."""
+    lease = compaction_claim_lease(
+        sqlite_settings(maintenance_attempt_deadline_seconds=600, maintenance_max_attempts=5)
+    )
+
+    assert lease == 5 * timedelta(minutes=25) + timedelta(seconds=60 + 120 + 120 + 120) + timedelta(hours=1)

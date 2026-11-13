@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.domain.model.table import TableStatus
+from context.table_maintenance.application.domain.model.table import DEFAULT_FAILURE_BACKOFF_CAP, TableStatus
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     MaintenancePolicyContent,
 )
@@ -72,12 +72,14 @@ class GetTableHealthService(GetTableHealthUseCase):
         catalog_gateway: ReadTableMetadataGateway,
         resolve_applicable_policy: ResolveApplicableTableMaintenancePolicyUseCase,
         *,
+        failure_backoff_cap: timedelta = DEFAULT_FAILURE_BACKOFF_CAP,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
-        """Bind the repo, the catalog gateway, the applicable policy resolution and the clock."""
+        """Bind the repo, the catalog gateway, the policy resolution, the failure backoff cap and the clock."""
         self._tables_repo = tables_repo
         self._catalog_gateway = catalog_gateway
         self._resolve_applicable_policy = resolve_applicable_policy
+        self._failure_backoff_cap = failure_backoff_cap
         self._clock = clock
 
     def execute(self, request: GetTableHealthUseCaseInput) -> GetTableHealthUseCaseOutput:
@@ -98,7 +100,9 @@ class GetTableHealthService(GetTableHealthUseCase):
             )
         )
         policy = MaintenancePolicyContent.from_primitives(applied.content)
-        assessment = assess_maintenance(table, policy, observation, self._clock())
+        assessment = assess_maintenance(
+            table, policy, observation, self._clock(), failure_backoff_cap=self._failure_backoff_cap
+        )
         items = [_to_item(a) for a in assessment.operations]
         return GetTableHealthUseCaseOutput(
             scheduled=reason is None,

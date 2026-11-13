@@ -342,6 +342,24 @@ def test_cooldown_backs_off_after_failures():
     assert assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES).verdict == OperationVerdict.DUE
 
 
+def test_failure_backoff_stops_at_the_given_cap():
+    """The doubling of the cooldown stops at the cap the caller passes, 24 hours by default."""
+    t = table()
+    t.operation_states[Op.REWRITE_DATA_FILES] = OperationState(
+        last_attempt_at=NOW - timedelta(hours=1), consecutive_failures=10
+    )
+    default = assess(t, obs(partitions=(part(10),)), Op.REWRITE_DATA_FILES)
+    capped = next(
+        a
+        for a in assess_maintenance(
+            t, DEFAULT, obs(partitions=(part(10),)), NOW, failure_backoff_cap=timedelta(hours=3)
+        ).operations
+        if a.operation == Op.REWRITE_DATA_FILES
+    )
+    assert default.next_eligible_at == NOW - timedelta(hours=1) + timedelta(hours=24)
+    assert capped.next_eligible_at == NOW - timedelta(hours=1) + timedelta(hours=3)
+
+
 def test_disabled_operation_has_no_measures():
     """A disabled operation reports no measure and no eligibility time."""
     policy = policy_with_operation(compaction(enabled=False), Op.REMOVE_ORPHAN_FILES, enabled=False)

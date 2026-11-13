@@ -412,6 +412,31 @@ def test_cooling_down_compaction_holds_candidates_in_cooldown(
     assert reasons == {"a": HoldReason.COOLDOWN, "b": HoldReason.TOO_SMALL}
 
 
+def test_failure_backoff_cap_bounds_how_long_compaction_cools_down(
+    tables_repo, catalog, resolve_applicable_policy, candidates_repo, runs_repo, now
+):
+    """A compaction that keeps failing cools down only up to the configured cap, then is planned again."""
+    planner = PlanTableMaintenanceService(
+        tables_repo,
+        catalog,
+        resolve_applicable_policy,
+        candidates_repo,
+        runs_repo,
+        selection=CandidateSelection(),
+        size_memory=SIZE_MEMORY,
+        claim_lease=LEASE,
+        failure_backoff_cap=timedelta(hours=3),
+    )
+    table = _table(tables_repo, now)
+    for _ in range(10):
+        table.record_operation_result(COMPACTION, False, now - timedelta(hours=4))
+    _observe(catalog, [_partition("a", 10)])
+
+    plan = _plan(planner, now)
+
+    assert _check(plan).verdict != "cooling_down"
+
+
 def test_candidates_take_the_policy_priority(planner, tables_repo, catalog, candidates_repo, policies_repo, now):
     """The candidates carry the priority of the policy that applies to the table."""
     _use_policy(policies_repo, now, validated_copy(DEFAULT, priority=MaintenancePriority.P0))

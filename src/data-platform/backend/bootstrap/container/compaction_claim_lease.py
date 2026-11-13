@@ -18,11 +18,12 @@ def compaction_claim_lease(settings: AppSettings) -> timedelta:
 
     Compaction runs first in a run, so its candidates are done once compaction
     is: the lease outlives the worst case of one operation at the configured
-    attempt deadline (every attempt timing out and being fenced, plus the
+    attempt deadline and attempts (every attempt timing out and being fenced, plus the
     backoffs) by one hour. A run that ends earlier hands its candidates back
     itself; the lease only frees the candidates of a run that never reported.
     """
     policy = TableMaintenanceAttemptPolicy(
-        attempt_deadline=timedelta(seconds=settings.maintenance_attempt_deadline_seconds)
+        max_attempts=settings.maintenance_max_attempts,
+        attempt_deadline=timedelta(seconds=settings.maintenance_attempt_deadline_seconds),
     )
     return policy.operation_worst_case() + _MARGIN

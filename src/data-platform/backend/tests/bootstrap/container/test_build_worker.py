@@ -88,7 +88,10 @@ def test_activities_cover_every_activity_name_once():
 def test_activities_carry_the_callback_url_and_admission_settings():
     """The activity groups are built with the callback URL, the admission settings and the attempt deadline."""
     activities = _activities(
-        callback_base_url="http://api:8000", admission_limit=5, maintenance_attempt_deadline_seconds=120
+        callback_base_url="http://api:8000",
+        admission_limit=5,
+        maintenance_attempt_deadline_seconds=120,
+        maintenance_max_attempts=4,
     )
 
     assert isinstance(activities.reconciliation, TableReconciliationActivities)
@@ -100,6 +103,7 @@ def test_activities_carry_the_callback_url_and_admission_settings():
     assert activities.workflow_signal._admission_limit == 5  # noqa: SLF001
     assert activities.workflow_signal._admission_lease_seconds == 1020  # noqa: SLF001
     assert activities.reconciliation._attempt_deadline_seconds == 120  # noqa: SLF001
+    assert activities.reconciliation._max_attempts == 4  # noqa: SLF001
 
 
 class RecordingWorkerFactory:
