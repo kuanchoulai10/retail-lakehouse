@@ -170,8 +170,8 @@ def test_save_of_a_new_candidate_for_a_stored_partition_is_stale(repo: Compactio
         repo.save_all([_candidate()])
 
 
-def test_list_pending_reads_every_table(repo: CompactionCandidatesRepo):
-    """Pending candidates of every table are listed; held, granted and claimed ones are not."""
+def test_list_unheld_reads_every_table(repo: CompactionCandidatesRepo):
+    """Every candidate of every table but the held ones is listed."""
     held = _candidate(("held",), hold=HoldReason.NOT_DUE)
     granted = _candidate(("granted",))
     granted.grant("round-1", NOW + timedelta(minutes=10), NOW)
@@ -181,7 +181,9 @@ def test_list_pending_reads_every_table(repo: CompactionCandidatesRepo):
     mine, theirs = _candidate(("eu",)), _candidate(("eu",), table=TableId("t-2"))
     repo.save_all([held, granted, claimed, mine, theirs])
 
-    assert sorted(c.id.value for c in repo.list_pending()) == sorted([mine.id.value, theirs.id.value])
+    assert sorted(c.id.value for c in repo.list_unheld()) == sorted(
+        c.id.value for c in (granted, claimed, mine, theirs)
+    )
 
 
 def test_two_spec_ids_with_equal_values_are_two_rows(repo: CompactionCandidatesRepo):

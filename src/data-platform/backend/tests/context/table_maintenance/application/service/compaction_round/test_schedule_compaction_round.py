@@ -20,6 +20,7 @@ from context.table_maintenance.application.domain.model.compaction_round import 
 )
 from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePriority
+from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRunId
 from context.table_maintenance.application.port.inbound.compaction_round import (
     ScheduleCompactionRoundUseCaseInput,
 )
@@ -122,7 +123,7 @@ def test_a_round_with_no_pending_candidate_is_recorded_empty():
 def test_a_stale_candidate_saves_neither_grants_nor_round(candidates):  # noqa: ANN001
     """When a plan saved a candidate after the round read it, the round raises and stores nothing."""
     rounds = InMemoryCompactionRoundsRepo()
-    read = candidates.list_pending
+    read = candidates.list_unheld
 
     def read_then_a_plan_saves():  # noqa: ANN202
         pending = read()
@@ -131,7 +132,7 @@ def test_a_stale_candidate_saves_neither_grants_nor_round(candidates):  # noqa: 
         candidates.save_all([b])
         return pending
 
-    candidates.list_pending = read_then_a_plan_saves
+    candidates.list_unheld = read_then_a_plan_saves
 
     with pytest.raises(StaleCompactionCandidate):
         _run(_service(candidates, rounds))
@@ -162,3 +163,27 @@ def test_purges_old_rounds(candidates):  # noqa: ANN001
         _run(service, round_id=f"round-{i}", now=NOW + timedelta(minutes=i))
 
     assert sorted(r.id.value for r in rounds.list_all()) == ["round-2", "round-3"]
+
+
+def test_a_table_busy_with_a_run_gets_no_grant():
+    """A table whose run holds a candidate is skipped table_busy; the budget goes to an idle table."""
+    repo = InMemoryCompactionCandidatesRepo()
+    running = _candidate("t-busy", "running", score=0.99)
+    running.grant("round-0", NOW + GRANT_LEASE, NOW - timedelta(minutes=1))
+    run = TableMaintenanceRunId("run-1")
+    running.claim(run, NOW + timedelta(hours=1), NOW - timedelta(minutes=1))
+    running.start(run, NOW - timedelta(minutes=1))
+    repo.save_all([running, _candidate("t-busy", "more", score=0.9), _candidate("t-idle", "a", score=0.5)])
+    rounds = InMemoryCompactionRoundsRepo()
+
+    output = _run(_service(repo, rounds))
+
+    assert output.granted_table_uuids == ["t-idle"]
+    assert _states(repo) == {
+        "running": CandidateState.RUNNING,
+        "more": CandidateState.PENDING,
+        "a": CandidateState.GRANTED,
+    }
+    stored = rounds.get(CompactionRoundId("round-1"))
+    assert stored is not None
+    assert [(s.label, s.reason) for s in stored.skips] == [("day=more", SkipReason.TABLE_BUSY)]

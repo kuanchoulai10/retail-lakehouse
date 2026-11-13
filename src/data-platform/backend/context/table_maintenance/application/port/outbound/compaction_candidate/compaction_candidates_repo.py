@@ -34,8 +34,12 @@ class CompactionCandidatesRepo(Repository[CompactionCandidate]):
         """Return the candidates the run holds or last held."""
 
     @abstractmethod
-    def list_pending(self) -> list[CompactionCandidate]:
-        """Return every pending candidate of every table, in no particular order."""
+    def list_unheld(self) -> list[CompactionCandidate]:
+        """Return every candidate of every table that is not held, in no particular order.
+
+        A compaction round ranks the pending ones and reads the others to tell
+        which tables are busy.
+        """
 
     @abstractmethod
     def save_all(self, candidates: Sequence[CompactionCandidate]) -> None:

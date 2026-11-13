@@ -2402,7 +2402,8 @@
       "RoundSkipReasonApi": {
         "enum": [
           "budget_used",
-          "table_share_used"
+          "table_share_used",
+          "table_busy"
         ],
         "type": "string"
       },

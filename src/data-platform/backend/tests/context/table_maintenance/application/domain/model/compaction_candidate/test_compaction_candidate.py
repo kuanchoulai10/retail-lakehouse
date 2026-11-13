@@ -381,6 +381,38 @@ def test_a_candidate_created_not_due_starts_its_wait_when_pending():
     assert candidate.pending_since == LATER
 
 
+@pytest.mark.parametrize(
+    ("make", "at", "busy"),
+    [
+        (_candidate, NOW, False),
+        (lambda: _candidate(HoldReason.NOT_DUE), NOW, False),
+        (_granted, NOW, True),
+        (_granted, GRANT_LEASE, False),
+        (_claimed, NOW, True),
+        (_running, NOW, True),
+        (_running, LEASE, False),
+    ],
+)
+def test_keeps_its_table_busy(make, at, busy):
+    """A live grant, claim or run occupies the table; pending, held and expired ones do not."""
+    assert make().keeps_its_table_busy(at) is busy
+
+
+@pytest.mark.parametrize("succeeded", [True, False])
+def test_a_finished_candidate_keeps_its_table_busy_until_observed(succeeded):
+    """A run that just ended leaves its table busy until the next observation decides what is left."""
+    candidate = _running()
+    candidate.finish(RUN, succeeded=succeeded, now=LATER)
+    assert candidate.keeps_its_table_busy(LATER + timedelta(days=1))
+    candidate.observe(NEW_SCORE, NOW, None, LATER + timedelta(days=1))
+    assert not candidate.keeps_its_table_busy(LATER + timedelta(days=1))
+
+
+def test_a_new_held_candidate_has_no_pending_since():
+    """A candidate created held is not waiting for a round."""
+    assert _candidate(HoldReason.TOO_SMALL).pending_since is None
+
+
 def test_release_hands_a_claim_back_as_pending_not_granted():
     """A run that never started gives its candidates back to the next round, not to its old grant."""
     candidate = _claimed()

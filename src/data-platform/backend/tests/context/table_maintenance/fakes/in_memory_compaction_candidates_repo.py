@@ -56,9 +56,9 @@ class InMemoryCompactionCandidatesRepo(CompactionCandidatesRepo):
         """Return copies of the candidates the run holds or last held."""
         return [c.model_copy(deep=True) for c in self.items.values() if c.claimed_by_run_id == run_id]
 
-    def list_pending(self) -> list[CompactionCandidate]:
-        """Return copies of every pending candidate."""
-        return [c.model_copy(deep=True) for c in self.items.values() if c.state is CandidateState.PENDING]
+    def list_unheld(self) -> list[CompactionCandidate]:
+        """Return copies of every candidate that is not held."""
+        return [c.model_copy(deep=True) for c in self.items.values() if c.state is not CandidateState.HELD]
 
     def save_all(self, candidates: Sequence[CompactionCandidate]) -> None:
         """Store copies of the candidates, all or none: a version another save moved past is refused."""

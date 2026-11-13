@@ -11,4 +11,5 @@ export type RoundSkipReasonApi = typeof RoundSkipReasonApi[keyof typeof RoundSki
 export const RoundSkipReasonApi = {
   budget_used: 'budget_used',
   table_share_used: 'table_share_used',
+  table_busy: 'table_busy',
 } as const;

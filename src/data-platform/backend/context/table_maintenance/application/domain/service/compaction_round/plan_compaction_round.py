@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import Counter
 from typing import TYPE_CHECKING
 
+from context.table_maintenance.application.domain.model.compaction_candidate import CandidateState
 from context.table_maintenance.application.domain.model.compaction_round import (
     CompactionRound,
     RoundPick,
@@ -39,17 +40,22 @@ def plan_compaction_round(  # noqa: PLR0913
 ) -> CompactionRound:
     """Decide which pending candidates, across every table, one compaction round grants.
 
-    Candidates are ranked by score times the weight of their priority, ties by
-    the candidate rank (then the table). The round walks the ranking in strict
-    order: it takes each candidate while the GB·hour budget lasts and stops at
-    the first one that does not fit, so everything after it is skipped
-    ``budget_used`` even if smaller; the first candidate is always taken, so a
-    partition larger than the budget is not starved. A table's candidates past
+    ``candidates`` are the unheld candidates of every table: the pending ones
+    are ranked, the others only tell which tables are busy (a live grant or
+    run, or a run not observed since it finished); a busy table's pending
+    candidates are skipped ``table_busy``. The rest are ranked by score times
+    the weight of their priority, ties by the candidate rank (then the table).
+    The round walks the ranking in strict order: a table's candidates past
     ``partitions_per_run`` are skipped ``table_share_used`` and the walk goes
-    on. The SLA does not change the order: it only marks a candidate overdue.
+    on; otherwise it takes each candidate while the GB·hour budget lasts and
+    stops at the first one that does not fit, so everything after it is
+    skipped ``budget_used`` even if smaller; the first candidate is always
+    taken, so a partition larger than the budget is not starved. The SLA does
+    not change the order: it only marks a candidate overdue.
     """
+    busy = {c.table_uuid.value for c in candidates if c.keeps_its_table_busy(now)}
     ranked = sorted(
-        candidates,
+        (c for c in candidates if c.state is CandidateState.PENDING),
         key=lambda c: (-c.score.score * weights.weight(c.priority), *c.rank, c.table_uuid.value),
     )
     picks: list[RoundPick] = []
@@ -60,10 +66,12 @@ def plan_compaction_round(  # noqa: PLR0913
     for candidate in ranked:
         cost = candidate.score.estimated_gb_hours
         reason: SkipReason | None = None
-        if stopped:
-            reason = SkipReason.BUDGET_USED
+        if candidate.table_uuid.value in busy:
+            reason = SkipReason.TABLE_BUSY
         elif per_table[candidate.table_uuid.value] >= partitions_per_run:
             reason = SkipReason.TABLE_SHARE_USED
+        elif stopped:
+            reason = SkipReason.BUDGET_USED
         elif picks and used + cost > budget_gb_hours + _TOLERANCE:
             stopped = True
             reason = SkipReason.BUDGET_USED

@@ -5,6 +5,7 @@ describe("skipReasonText", () => {
   it("says why a candidate was skipped", () => {
     expect(skipReasonText("budget_used")).toBe("Budget used");
     expect(skipReasonText("table_share_used")).toBe("Table's share used");
+    expect(skipReasonText("table_busy")).toBe("Table busy");
   });
 
   it("reads an unknown reason in words", () => {

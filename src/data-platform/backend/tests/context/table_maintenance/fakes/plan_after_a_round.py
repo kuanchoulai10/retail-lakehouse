@@ -7,6 +7,7 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.port.inbound.table import PlanTableMaintenanceUseCase
+from context.table_maintenance.application.port.outbound.compaction_candidate import CandidateState
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.inbound.table import (
@@ -36,7 +37,7 @@ class PlanAfterARound(PlanTableMaintenanceUseCase):
         """Sync, grant every pending candidate, then plan."""
         if request.manual_operations is None:
             self._planner.execute(replace(request, run_id=None))
-            pending = self._candidates_repo.list_pending()
+            pending = [c for c in self._candidates_repo.list_unheld() if c.state is CandidateState.PENDING]
             for candidate in pending:
                 candidate.grant("round-before-plan", request.now + GRANT_LEASE, request.now)
             self._candidates_repo.save_all(pending)

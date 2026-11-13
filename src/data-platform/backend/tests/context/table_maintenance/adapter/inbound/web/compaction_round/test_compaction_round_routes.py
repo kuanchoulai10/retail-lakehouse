@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
 
 from context.table_maintenance.application.exceptions import NotFoundError
@@ -149,3 +150,15 @@ def test_an_unknown_round_is_404():
     client = build_client(get_compaction_round=StubUseCase(error=NotFoundError("compaction round nope not found")))
 
     assert client.get("/v1/compaction-rounds/nope").status_code == 404
+
+
+def test_a_busy_table_skip_is_served():
+    """A skip because the table is busy reaches the client with its reason."""
+    listed = _listed()
+    listed = replace(listed, skips=[replace(listed.skips[0], reason="table_busy")])
+    stub = StubUseCase(ListCompactionRoundsUseCaseOutput(items=[listed]))
+
+    response = build_client(list_compaction_rounds=stub).get("/v1/compaction-rounds")
+
+    assert response.status_code == 200
+    assert response.json()[0]["skips"][0]["reason"] == "table_busy"

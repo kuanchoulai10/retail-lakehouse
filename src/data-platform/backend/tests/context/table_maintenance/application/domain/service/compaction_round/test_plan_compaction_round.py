@@ -18,6 +18,7 @@ from context.table_maintenance.application.domain.model.compaction_round import 
 )
 from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePriority
+from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRunId
 from context.table_maintenance.application.domain.service.compaction_round import plan_compaction_round
 
 NOW = datetime(2026, 11, 13, 12, tzinfo=UTC)
@@ -181,3 +182,67 @@ def test_granted_tables_are_unique_in_pick_order():
     )
 
     assert [t.value for t in round_.granted_tables()] == ["t-2", "t-1"]
+
+
+def _busy(table: str, value: str, state: str) -> CompactionCandidate:
+    """A candidate of ``table`` that a round granted (``granted``), a run holds (``running``) or finished (``done``)."""
+    candidate = _candidate(table, value, score=0.99)
+    candidate.grant("round-0", NOW + timedelta(minutes=10), NOW - timedelta(minutes=1))
+    if state != "granted":
+        run = TableMaintenanceRunId("run-1")
+        candidate.claim(run, NOW + timedelta(hours=1), NOW - timedelta(minutes=1))
+        candidate.start(run, NOW - timedelta(minutes=1))
+        if state == "done":
+            candidate.finish(run, succeeded=True, now=NOW - timedelta(seconds=10))
+    return candidate
+
+
+@pytest.mark.parametrize("state", ["granted", "running", "done"])
+def test_a_busy_table_gets_nothing_and_an_idle_one_gets_the_budget(state):
+    """A table with a live grant or run, or one not observed since its run ended, is skipped table_busy."""
+    round_ = _plan(
+        [
+            _busy("t-busy", "taken", state),
+            _candidate("t-busy", "more", score=0.9, gb_hours=0.02),
+            _candidate("t-idle", "a", score=0.5, gb_hours=0.02),
+            _candidate("t-idle", "b", score=0.4, gb_hours=0.02),
+        ]
+    )
+
+    assert _picked(round_) == ["t-idle/a", "t-idle/b"]
+    assert [(s.table_uuid.value, s.reason) for s in round_.skips] == [("t-busy", SkipReason.TABLE_BUSY)]
+    assert round_.skipped_total == 1
+
+
+def test_only_pending_candidates_are_picked_or_skipped():
+    """Granted, running and finished candidates only mark their table busy; they are neither picks nor skips."""
+    round_ = _plan([_busy("t-1", "a", "granted"), _busy("t-2", "b", "running")])
+
+    assert round_.picks == ()
+    assert round_.skips == ()
+
+
+def test_an_expired_grant_does_not_keep_its_table_busy():
+    """A grant whose lease ended no longer holds the table."""
+    stale = _candidate("t-1", "old")
+    stale.grant("round-0", NOW - timedelta(seconds=1), NOW - timedelta(minutes=11))
+
+    assert _picked(_plan([stale, _candidate("t-1", "new")])) == ["t-1/new"]
+
+
+def test_a_table_over_its_share_reads_table_share_used_even_after_the_budget_ran_out():
+    """The share is checked first: after the walk stopped, a full table's candidates still say why."""
+    round_ = _plan(
+        [
+            _candidate("t-1", "a", score=0.9, gb_hours=0.04),
+            _candidate("t-2", "big", score=0.8, gb_hours=0.04),
+            _candidate("t-1", "b", score=0.7, gb_hours=0.001),
+        ],
+        per_run=1,
+    )
+
+    assert _picked(round_) == ["t-1/a"]
+    assert [(s.partition.values[0], s.reason) for s in round_.skips] == [
+        ("big", SkipReason.BUDGET_USED),
+        ("b", SkipReason.TABLE_SHARE_USED),
+    ]

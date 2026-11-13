@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 class ScheduleCompactionRoundService(ScheduleCompactionRoundUseCase):
     """Run one round of the compaction scheduler across every table.
 
-    It ranks every pending candidate, grants the picks to their tables for
+    It ranks every pending candidate of the tables that are not busy, grants the picks to their tables for
     ``grant_lease`` (the tables' reconciliations claim them for runs), records
     the round and keeps only the newest ``rounds_kept`` rounds.
     """
@@ -70,9 +70,9 @@ class ScheduleCompactionRoundService(ScheduleCompactionRoundUseCase):
         recorded = self._rounds_repo.get(round_id)
         if recorded is not None:
             return _output(recorded)
-        pending = self._candidates_repo.list_pending()
+        unheld = self._candidates_repo.list_unheld()
         round_ = plan_compaction_round(
-            pending,
+            unheld,
             round_id=round_id,
             weights=self._weights,
             budget_gb_hours=self._budget_gb_hours,
@@ -82,7 +82,7 @@ class ScheduleCompactionRoundService(ScheduleCompactionRoundUseCase):
             skipped_kept=self._skipped_kept,
         )
         picked = {(p.table_uuid, p.partition.canonical()) for p in round_.picks}
-        granted = [c for c in pending if (c.table_uuid, c.partition.canonical()) in picked]
+        granted = [c for c in unheld if (c.table_uuid, c.partition.canonical()) in picked]
         for candidate in granted:
             candidate.grant(round_id.value, request.now + self._grant_lease, request.now)
         self._candidates_repo.save_all(granted)

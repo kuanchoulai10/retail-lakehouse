@@ -80,9 +80,10 @@ class CompactionCandidatesSqlRepo(CompactionCandidatesRepo):
             rows = conn.execute(stmt).all()
         return [CompactionCandidateRowMapper.to_aggregate(r._mapping) for r in rows]
 
-    def list_pending(self) -> list[CompactionCandidate]:
-        """Return every pending candidate of every table."""
-        stmt = select(t).where(t.c.state == CandidateState.PENDING.value).order_by(t.c.table_uuid, t.c.partition_key)
+    def list_unheld(self) -> list[CompactionCandidate]:
+        """Return every candidate of every table that is not held."""
+        unheld = [s.value for s in CandidateState if s is not CandidateState.HELD]
+        stmt = select(t).where(t.c.state.in_(unheld)).order_by(t.c.table_uuid, t.c.partition_key)
         with self._engine.connect() as conn:
             rows = conn.execute(stmt).all()
         return [CompactionCandidateRowMapper.to_aggregate(r._mapping) for r in rows]

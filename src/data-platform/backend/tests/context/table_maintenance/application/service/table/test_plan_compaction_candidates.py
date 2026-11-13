@@ -184,7 +184,11 @@ def _states(candidates_repo) -> dict[str, CandidateState]:  # noqa: ANN001
 
 def _grant(candidates_repo, now, only: str | None = None) -> None:  # noqa: ANN001
     """Grant the table's pending candidates (or the one of partition ``only``) as a compaction round would."""
-    pending = [c for c in candidates_repo.list_pending() if only is None or c.partition.values == (only,)]
+    pending = [
+        c
+        for c in candidates_repo.list_unheld()
+        if c.state is CandidateState.PENDING and (only is None or c.partition.values == (only,))
+    ]
     for candidate in pending:
         candidate.grant("round-1", now + GRANT_LEASE, now)
     candidates_repo.save_all(pending)

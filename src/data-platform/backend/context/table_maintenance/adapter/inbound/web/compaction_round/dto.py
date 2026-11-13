@@ -8,7 +8,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 type RoundPriorityApi = Literal["P0", "P1", "P2"]
-type RoundSkipReasonApi = Literal["budget_used", "table_share_used"]
+type RoundSkipReasonApi = Literal["budget_used", "table_share_used", "table_busy"]
 
 
 class CompactionRoundPartitionApiResponse(BaseModel):

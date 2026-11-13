@@ -7,6 +7,7 @@ import { tablePath } from "@/lib/catalogPaths";
 const SKIP_REASON_TEXT: Record<string, string> = {
   budget_used: "Budget used",
   table_share_used: "Table's share used",
+  table_busy: "Table busy",
 };
 
 export function skipReasonText(reason: string): string {

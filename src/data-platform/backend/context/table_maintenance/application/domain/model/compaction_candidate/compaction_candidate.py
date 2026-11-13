@@ -274,6 +274,18 @@ class CompactionCandidate(AggregateRoot[CompactionCandidateId]):
             return False
         return now - self.pending_since > sla[self.priority]
 
+    def keeps_its_table_busy(self, now: datetime) -> bool:
+        """Return whether this candidate holds its table's compaction, so a round should grant the table nothing.
+
+        A live grant, claim or run holds it: the table's next run is already
+        decided. So does a finished candidate until the next observation, which
+        comes after the run and decides what is left; until then the table's
+        other candidates still show the state from before the run.
+        """
+        if self.state.finished:
+            return True
+        return self.state.holds_a_lease and self.lease_expires_at is not None and now < self.lease_expires_at
+
     def mark_saved(self) -> None:
         """Take the version the store gave the candidate's row: one past the version it was read at."""
         self.version = self.version + 1
