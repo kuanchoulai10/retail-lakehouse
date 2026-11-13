@@ -361,6 +361,14 @@
         "title": "CandidatePartitionApiResponse",
         "type": "object"
       },
+      "CandidatePriorityApi": {
+        "enum": [
+          "P0",
+          "P1",
+          "P2"
+        ],
+        "type": "string"
+      },
       "CatalogApiResponse": {
         "description": "Describe a catalog.",
         "properties": {
@@ -538,7 +546,7 @@
         "type": "object"
       },
       "CompactionCandidateApiResponse": {
-        "description": "Describe one partition that needs compaction: what it is worth, its state and the run that holds it.\n\n``rank`` is its place (1 is best) among the pending candidates, null for the others.",
+        "description": "Describe one partition that needs compaction: what it is worth, its state and who holds it.\n\n``rank`` is its place (1 is best) among the pending candidates, null for the\nothers. ``granted_round_id`` names the compaction round that granted it;\n``pending_since`` is when it started to wait for a run, and ``overdue`` says\nit has waited longer than its priority's SLA.",
         "properties": {
           "claimed_by_run_id": {
             "anyOf": [
@@ -558,6 +566,17 @@
           "estimated_gb_hours": {
             "title": "Estimated Gb Hours",
             "type": "number"
+          },
+          "granted_round_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Granted Round Id"
           },
           "hold_reason": {
             "anyOf": [
@@ -599,12 +618,31 @@
             "title": "Observed At",
             "type": "string"
           },
+          "overdue": {
+            "title": "Overdue",
+            "type": "boolean"
+          },
           "partition": {
             "$ref": "#/components/schemas/CandidatePartitionApiResponse"
           },
           "partition_label": {
             "title": "Partition Label",
             "type": "string"
+          },
+          "pending_since": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Since"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/CandidatePriorityApi"
           },
           "rank": {
             "anyOf": [
@@ -643,7 +681,11 @@
           "claimed_by_run_id",
           "lease_expires_at",
           "last_written_at",
-          "observed_at"
+          "observed_at",
+          "priority",
+          "granted_round_id",
+          "pending_since",
+          "overdue"
         ],
         "title": "CompactionCandidateApiResponse",
         "type": "object"
@@ -668,6 +710,217 @@
           "candidates"
         ],
         "title": "CompactionCandidatesApiResponse",
+        "type": "object"
+      },
+      "CompactionRoundApiResponse": {
+        "description": "Describe one compaction round: when it ran, its budget and use, its picks and the first of its skips.\n\n``skips`` keeps the first skipped candidates; ``skipped_total`` counts them all.",
+        "properties": {
+          "budget_gb_hours": {
+            "title": "Budget Gb Hours",
+            "type": "number"
+          },
+          "picks": {
+            "items": {
+              "$ref": "#/components/schemas/CompactionRoundPickApiResponse"
+            },
+            "title": "Picks",
+            "type": "array"
+          },
+          "round_id": {
+            "title": "Round Id",
+            "type": "string"
+          },
+          "skipped_total": {
+            "title": "Skipped Total",
+            "type": "integer"
+          },
+          "skips": {
+            "items": {
+              "$ref": "#/components/schemas/CompactionRoundSkipApiResponse"
+            },
+            "title": "Skips",
+            "type": "array"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "used_gb_hours": {
+            "title": "Used Gb Hours",
+            "type": "number"
+          }
+        },
+        "required": [
+          "round_id",
+          "started_at",
+          "budget_gb_hours",
+          "used_gb_hours",
+          "picks",
+          "skips",
+          "skipped_total"
+        ],
+        "title": "CompactionRoundApiResponse",
+        "type": "object"
+      },
+      "CompactionRoundPartitionApiResponse": {
+        "description": "Name a partition by spec id and values; spec id -1 with no values is the whole table.",
+        "properties": {
+          "spec_id": {
+            "title": "Spec Id",
+            "type": "integer"
+          },
+          "values": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "spec_id",
+          "values"
+        ],
+        "title": "CompactionRoundPartitionApiResponse",
+        "type": "object"
+      },
+      "CompactionRoundPickApiResponse": {
+        "description": "Describe one partition a compaction round granted to its table, and what it weighed.\n\n``weighted_score`` is ``score`` times the weight of ``priority``, the key the\nround ranked by. ``table_name`` is the table's current name, null when the\ntable is no longer known.",
+        "properties": {
+          "estimated_gb_hours": {
+            "title": "Estimated Gb Hours",
+            "type": "number"
+          },
+          "overdue": {
+            "title": "Overdue",
+            "type": "boolean"
+          },
+          "partition": {
+            "$ref": "#/components/schemas/CompactionRoundPartitionApiResponse"
+          },
+          "partition_label": {
+            "title": "Partition Label",
+            "type": "string"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/RoundPriorityApi"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "table_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Name"
+          },
+          "table_uuid": {
+            "title": "Table Uuid",
+            "type": "string"
+          },
+          "weighted_score": {
+            "title": "Weighted Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "table_uuid",
+          "table_name",
+          "partition",
+          "partition_label",
+          "priority",
+          "score",
+          "weighted_score",
+          "estimated_gb_hours",
+          "overdue"
+        ],
+        "title": "CompactionRoundPickApiResponse",
+        "type": "object"
+      },
+      "CompactionRoundSkipApiResponse": {
+        "description": "Describe one partition a compaction round left for a later round, and why.",
+        "properties": {
+          "estimated_gb_hours": {
+            "title": "Estimated Gb Hours",
+            "type": "number"
+          },
+          "overdue": {
+            "title": "Overdue",
+            "type": "boolean"
+          },
+          "partition": {
+            "$ref": "#/components/schemas/CompactionRoundPartitionApiResponse"
+          },
+          "partition_label": {
+            "title": "Partition Label",
+            "type": "string"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/RoundPriorityApi"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/RoundSkipReasonApi"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "table_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table Name"
+          },
+          "table_uuid": {
+            "title": "Table Uuid",
+            "type": "string"
+          },
+          "weighted_score": {
+            "title": "Weighted Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "table_uuid",
+          "table_name",
+          "partition",
+          "partition_label",
+          "priority",
+          "score",
+          "weighted_score",
+          "estimated_gb_hours",
+          "overdue",
+          "reason"
+        ],
+        "title": "CompactionRoundSkipApiResponse",
         "type": "object"
       },
       "CompactionScopeApiRequest": {
@@ -2137,6 +2390,21 @@
         ],
         "title": "RewriteManifestsTriggerPolicyApiRequest",
         "type": "object"
+      },
+      "RoundPriorityApi": {
+        "enum": [
+          "P0",
+          "P1",
+          "P2"
+        ],
+        "type": "string"
+      },
+      "RoundSkipReasonApi": {
+        "enum": [
+          "budget_used",
+          "table_share_used"
+        ],
+        "type": "string"
       },
       "SchemaApiResponse": {
         "description": "A schema: its id and its top-level fields, as a table or a view carries it.",
@@ -5582,6 +5850,116 @@
         "summary": "Get View",
         "tags": [
           "views"
+        ]
+      }
+    },
+    "/v1/compaction-rounds": {
+      "get": {
+        "description": "List the recorded compaction rounds, newest first; ``before`` (a round's start) pages to older ones.",
+        "operationId": "list_compaction_rounds",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Before"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CompactionRoundApiResponse"
+                  },
+                  "title": "Response List Compaction Rounds",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Compaction Rounds",
+        "tags": [
+          "compaction-rounds"
+        ]
+      }
+    },
+    "/v1/compaction-rounds/{round_id}": {
+      "get": {
+        "description": "Read one recorded compaction round.",
+        "operationId": "get_compaction_round",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "round_id",
+            "required": true,
+            "schema": {
+              "title": "Round Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompactionRoundApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Compaction Round",
+        "tags": [
+          "compaction-rounds"
         ]
       }
     },

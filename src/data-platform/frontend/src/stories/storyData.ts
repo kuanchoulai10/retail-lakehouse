@@ -378,6 +378,10 @@ function orderDay(day: string, overrides: Partial<CompactionCandidateApiResponse
     lease_expires_at: null,
     last_written_at: "2026-11-12T23:40:00Z",
     observed_at: "2026-11-13T02:00:00Z",
+    priority: "P2",
+    granted_round_id: null,
+    pending_since: null,
+    overdue: false,
     ...overrides,
   };
 }

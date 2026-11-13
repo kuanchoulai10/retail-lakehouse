@@ -9,6 +9,10 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.inbound.compaction_candidate import (
         ListCompactionCandidatesUseCase,
     )
+    from context.table_maintenance.application.port.inbound.compaction_round import (
+        GetCompactionRoundUseCase,
+        ListCompactionRoundsUseCase,
+    )
     from context.table_maintenance.application.port.inbound.table import (
         GetTableHealthUseCase,
         GetTableStorageUseCase,
@@ -78,3 +82,5 @@ class WebUseCases:
     process_table_maintenance_callback: ProcessTableMaintenanceCallbackUseCase
     list_table_reconciliations: ListTableReconciliationsUseCase
     list_compaction_candidates: ListCompactionCandidatesUseCase
+    list_compaction_rounds: ListCompactionRoundsUseCase
+    get_compaction_round: GetCompactionRoundUseCase

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.compaction_candidate import CandidateState
@@ -15,21 +16,37 @@ from context.table_maintenance.application.port.inbound.compaction_candidate imp
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping
+    from datetime import timedelta
+
     from context.table_maintenance.application.domain.model.compaction_candidate import CompactionCandidate
+    from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePriority
     from context.table_maintenance.application.port.outbound.compaction_candidate import CompactionCandidatesRepo
     from context.table_maintenance.application.port.outbound.table import TablesRepo
 
 
 class ListCompactionCandidatesService(ListCompactionCandidatesUseCase):
-    """List a table's compaction candidates, best first, with the rank of each pending one."""
+    """List a table's compaction candidates, best first, with the rank of each pending one.
+
+    Each candidate is marked overdue when it has waited for a run longer than
+    ``sla`` gives its priority, as of ``clock``.
+    """
 
     def __init__(
-        self, candidates_repo: CompactionCandidatesRepo, tables_repo: TablesRepo, *, partitions_per_run: int
+        self,
+        candidates_repo: CompactionCandidatesRepo,
+        tables_repo: TablesRepo,
+        *,
+        partitions_per_run: int,
+        sla: Mapping[MaintenancePriority, timedelta],
+        clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
-        """Bind the repos and how many candidates one run takes."""
+        """Bind the repos, how many candidates one run takes, the SLA per priority and the clock."""
         self._candidates_repo = candidates_repo
         self._tables_repo = tables_repo
         self._partitions_per_run = partitions_per_run
+        self._sla = dict(sla)
+        self._clock = clock
 
     def execute(self, request: ListCompactionCandidatesUseCaseInput) -> ListCompactionCandidatesUseCaseOutput:
         """Return the table's candidates sorted as a run picks them; a table maintenance does not know is not found."""
@@ -39,13 +56,16 @@ class ListCompactionCandidatesService(ListCompactionCandidatesUseCase):
         ranked = sorted(self._candidates_repo.list_by_table(table_uuid), key=lambda c: c.rank)
         pending = [c.id for c in ranked if c.state is CandidateState.PENDING]
         ranks = {candidate_id: place for place, candidate_id in enumerate(pending, start=1)}
+        now = self._clock()
         return ListCompactionCandidatesUseCaseOutput(
             partitions_per_run=self._partitions_per_run,
-            items=[_item(c, ranks.get(c.id)) for c in ranked],
+            items=[_item(c, ranks.get(c.id), overdue=c.overdue(self._sla, now)) for c in ranked],
         )
 
 
-def _item(candidate: CompactionCandidate, rank: int | None) -> ListCompactionCandidatesUseCaseOutputItem:
+def _item(
+    candidate: CompactionCandidate, rank: int | None, *, overdue: bool
+) -> ListCompactionCandidatesUseCaseOutputItem:
     return ListCompactionCandidatesUseCaseOutputItem(
         spec_id=candidate.partition.spec_id,
         values=list(candidate.partition.values),
@@ -61,4 +81,8 @@ def _item(candidate: CompactionCandidate, rank: int | None) -> ListCompactionCan
         lease_expires_at=candidate.lease_expires_at,
         last_written_at=candidate.last_written_at,
         observed_at=candidate.observed_at,
+        priority=candidate.priority.value,
+        granted_round_id=candidate.granted_round_id,
+        pending_since=candidate.pending_since,
+        overdue=overdue,
     )

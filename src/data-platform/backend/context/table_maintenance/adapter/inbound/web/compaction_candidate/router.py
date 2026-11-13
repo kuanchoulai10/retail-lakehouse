@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, cast
 
 from fastapi import APIRouter, Depends
 
@@ -20,6 +20,7 @@ from context.table_maintenance.application.port.inbound.compaction_candidate imp
 )
 
 if TYPE_CHECKING:
+    from context.table_maintenance.adapter.inbound.web.compaction_candidate.dto import CandidatePriorityApi
     from context.table_maintenance.application.port.inbound.compaction_candidate import (
         ListCompactionCandidatesUseCaseOutputItem,
     )
@@ -54,4 +55,8 @@ def _candidate(item: ListCompactionCandidatesUseCaseOutputItem) -> CompactionCan
         lease_expires_at=item.lease_expires_at,
         last_written_at=item.last_written_at,
         observed_at=item.observed_at,
+        priority=cast("CandidatePriorityApi", item.priority),
+        granted_round_id=item.granted_round_id,
+        pending_since=item.pending_since,
+        overdue=item.overdue,
     )

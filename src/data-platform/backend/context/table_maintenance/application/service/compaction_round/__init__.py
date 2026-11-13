@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.application.service.compaction_round.get_compaction_round import (
+    GetCompactionRoundService,
+)
+from context.table_maintenance.application.service.compaction_round.list_compaction_rounds import (
+    ListCompactionRoundsService,
+)
 from context.table_maintenance.application.service.compaction_round.schedule_compaction_round import (
     ScheduleCompactionRoundService,
 )
 
-__all__ = ["ScheduleCompactionRoundService"]
+__all__ = ["GetCompactionRoundService", "ListCompactionRoundsService", "ScheduleCompactionRoundService"]

@@ -14,6 +14,7 @@ from context.table_maintenance.application.domain.model.compaction_candidate imp
 )
 from context.table_maintenance.application.domain.model.table import Table, TableId, TableName
 from context.table_maintenance.application.domain.model.table_discovery_rules import TableDiscoveryRuleId
+from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePriority
 from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRunId
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.compaction_candidate import (
@@ -23,9 +24,22 @@ from context.table_maintenance.application.service.compaction_candidate import L
 
 TABLE = TableId("u-1")
 RUN = TableMaintenanceRunId("run-1")
+SLA = {
+    MaintenancePriority.P0: timedelta(hours=1),
+    MaintenancePriority.P1: timedelta(hours=4),
+    MaintenancePriority.P2: timedelta(hours=8),
+}
 
 
-def _candidate(value: str, score: float, now, *, hold: HoldReason | None = None, files: int = 10):  # noqa: ANN001, ANN202
+def _candidate(  # noqa: ANN202
+    value: str,
+    score: float,
+    now,  # noqa: ANN001
+    *,
+    hold: HoldReason | None = None,
+    files: int = 10,
+    priority: MaintenancePriority = MaintenancePriority.P2,
+):
     return CompactionCandidate.create(
         table_uuid=TABLE,
         partition=PartitionKey(spec_id=0, values=(value,)),
@@ -34,6 +48,7 @@ def _candidate(value: str, score: float, now, *, hold: HoldReason | None = None,
         last_written_at=now - timedelta(hours=1),
         hold_reason=hold,
         now=now,
+        priority=priority,
     )
 
 
@@ -52,11 +67,13 @@ def service(candidates_repo, tables_repo, now):  # noqa: ANN001, ANN201
         [
             _candidate("2026-11-01", 0.4, now),
             _candidate("2026-11-02", 0.8, now, hold=HoldReason.RECENTLY_WRITTEN),
-            _candidate("2026-11-03", 0.6, now),
+            _candidate("2026-11-03", 0.6, now, priority=MaintenancePriority.P0),
             claimed,
         ]
     )
-    return ListCompactionCandidatesService(candidates_repo, tables_repo, partitions_per_run=2)
+    return ListCompactionCandidatesService(
+        candidates_repo, tables_repo, partitions_per_run=2, sla=SLA, clock=lambda: now + timedelta(hours=2)
+    )
 
 
 def test_candidates_come_best_first_and_only_pending_ones_are_ranked(service):
@@ -90,6 +107,21 @@ def test_each_candidate_says_what_it_is_worth_and_who_holds_it(service, now):
     assert held.observed_at == now
 
 
+def test_each_candidate_says_its_priority_grant_and_whether_it_is_overdue(service, candidates_repo, now):
+    """An item carries the priority, the round that granted it, its wait start and the overdue mark of its SLA."""
+    granted = next(c for c in candidates_repo.list_by_table(TABLE) if c.partition.values == ("2026-11-01",))
+    granted.grant("round-7", now + timedelta(minutes=10), now)
+    candidates_repo.save_all([granted])
+
+    items = {i.values[0]: i for i in service.execute(ListCompactionCandidatesUseCaseInput(table_uuid="u-1")).items}
+
+    p0, p2 = items["2026-11-03"], items["2026-11-01"]
+    assert (p0.priority, p0.granted_round_id, p0.pending_since, p0.overdue) == ("P0", None, now, True)
+    assert (p2.priority, p2.state, p2.granted_round_id, p2.overdue) == ("P2", "granted", "round-7", False)
+    assert (items["2026-11-04"].pending_since, items["2026-11-04"].overdue) == (None, False)
+    assert (items["2026-11-02"].granted_round_id, items["2026-11-02"].overdue) == (None, False)
+
+
 def test_a_table_without_candidates_lists_none(candidates_repo, tables_repo, now):
     """A known table with nothing to compact has an empty list."""
     tables_repo.create(
@@ -97,14 +129,14 @@ def test_a_table_without_candidates_lists_none(candidates_repo, tables_repo, now
             TABLE, TableName(catalog="iceberg", namespace="sales", table="orders"), TableDiscoveryRuleId("r"), now
         )
     )
-    service = ListCompactionCandidatesService(candidates_repo, tables_repo, partitions_per_run=10)
+    service = ListCompactionCandidatesService(candidates_repo, tables_repo, partitions_per_run=10, sla=SLA)
 
     assert service.execute(ListCompactionCandidatesUseCaseInput(table_uuid="u-1")).items == []
 
 
 def test_an_unknown_table_is_not_found(candidates_repo, tables_repo):
     """Listing the candidates of a table maintenance does not know is a not-found error."""
-    service = ListCompactionCandidatesService(candidates_repo, tables_repo, partitions_per_run=10)
+    service = ListCompactionCandidatesService(candidates_repo, tables_repo, partitions_per_run=10, sla=SLA)
 
     with pytest.raises(NotFoundError):
         service.execute(ListCompactionCandidatesUseCaseInput(table_uuid="nope"))

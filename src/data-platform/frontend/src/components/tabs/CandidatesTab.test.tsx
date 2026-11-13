@@ -24,6 +24,10 @@ function candidate(day: string, overrides: Partial<CompactionCandidateApiRespons
     lease_expires_at: null,
     last_written_at: null,
     observed_at: "2026-11-13T09:00:00Z",
+    priority: "P2",
+    granted_round_id: null,
+    pending_since: null,
+    overdue: false,
     ...overrides,
   };
 }

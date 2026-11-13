@@ -5,22 +5,30 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CandidatePartitionApiResponse } from './candidatePartitionApiResponse';
+import type { CandidatePriorityApi } from './candidatePriorityApi';
 
 /**
- * Describe one partition that needs compaction: what it is worth, its state and the run that holds it.
+ * Describe one partition that needs compaction: what it is worth, its state and who holds it.
  *
- * ``rank`` is its place (1 is best) among the pending candidates, null for the others.
+ * ``rank`` is its place (1 is best) among the pending candidates, null for the
+ * others. ``granted_round_id`` names the compaction round that granted it;
+ * ``pending_since`` is when it started to wait for a run, and ``overdue`` says
+ * it has waited longer than its priority's SLA.
  */
 export interface CompactionCandidateApiResponse {
   claimed_by_run_id: string | null;
   data_bytes: number;
   estimated_gb_hours: number;
+  granted_round_id: string | null;
   hold_reason: string | null;
   last_written_at: string | null;
   lease_expires_at: string | null;
   observed_at: string;
+  overdue: boolean;
   partition: CandidatePartitionApiResponse;
   partition_label: string;
+  pending_since: string | null;
+  priority: CandidatePriorityApi;
   rank: number | null;
   reducible_files: number;
   score: number;

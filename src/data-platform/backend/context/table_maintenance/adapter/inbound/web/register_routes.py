@@ -7,6 +7,9 @@ from typing import TYPE_CHECKING
 from context.table_maintenance.adapter.inbound.web.compaction_candidate import (
     router as compaction_candidate_router,
 )
+from context.table_maintenance.adapter.inbound.web.compaction_round import (
+    router as compaction_round_router,
+)
 from context.table_maintenance.adapter.inbound.web.error_handlers import (
     register_error_handlers,
 )
@@ -47,5 +50,6 @@ def register_routes(app: FastAPI, use_cases: WebUseCases) -> None:
         table_maintenance_run_router,
         table_reconciliation_router,
         compaction_candidate_router,
+        compaction_round_router,
     ):
         app.include_router(router, prefix=_API_PREFIX)

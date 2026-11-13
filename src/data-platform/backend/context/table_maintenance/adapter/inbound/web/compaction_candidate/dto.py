@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel
+
+type CandidatePriorityApi = Literal["P0", "P1", "P2"]
 
 
 class CandidatePartitionApiResponse(BaseModel):
@@ -15,9 +18,12 @@ class CandidatePartitionApiResponse(BaseModel):
 
 
 class CompactionCandidateApiResponse(BaseModel):
-    """Describe one partition that needs compaction: what it is worth, its state and the run that holds it.
+    """Describe one partition that needs compaction: what it is worth, its state and who holds it.
 
-    ``rank`` is its place (1 is best) among the pending candidates, null for the others.
+    ``rank`` is its place (1 is best) among the pending candidates, null for the
+    others. ``granted_round_id`` names the compaction round that granted it;
+    ``pending_since`` is when it started to wait for a run, and ``overdue`` says
+    it has waited longer than its priority's SLA.
     """
 
     partition: CandidatePartitionApiResponse
@@ -33,6 +39,10 @@ class CompactionCandidateApiResponse(BaseModel):
     lease_expires_at: datetime | None
     last_written_at: datetime | None
     observed_at: datetime
+    priority: CandidatePriorityApi
+    granted_round_id: str | None
+    pending_since: datetime | None
+    overdue: bool
 
 
 class CompactionCandidatesApiResponse(BaseModel):

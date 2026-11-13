@@ -2,6 +2,21 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.application.port.inbound.compaction_round.get_compaction_round import (
+    GetCompactionRoundUseCase,
+    GetCompactionRoundUseCaseInput,
+    GetCompactionRoundUseCaseOutput,
+    GetCompactionRoundUseCaseOutputPick,
+    GetCompactionRoundUseCaseOutputSkip,
+)
+from context.table_maintenance.application.port.inbound.compaction_round.list_compaction_rounds import (
+    ListCompactionRoundsUseCase,
+    ListCompactionRoundsUseCaseInput,
+    ListCompactionRoundsUseCaseOutput,
+    ListCompactionRoundsUseCaseOutputItem,
+    ListCompactionRoundsUseCaseOutputPick,
+    ListCompactionRoundsUseCaseOutputSkip,
+)
 from context.table_maintenance.application.port.inbound.compaction_round.schedule_compaction_round import (
     ScheduleCompactionRoundUseCase,
     ScheduleCompactionRoundUseCaseInput,
@@ -9,6 +24,17 @@ from context.table_maintenance.application.port.inbound.compaction_round.schedul
 )
 
 __all__ = [
+    "GetCompactionRoundUseCase",
+    "GetCompactionRoundUseCaseInput",
+    "GetCompactionRoundUseCaseOutput",
+    "GetCompactionRoundUseCaseOutputPick",
+    "GetCompactionRoundUseCaseOutputSkip",
+    "ListCompactionRoundsUseCase",
+    "ListCompactionRoundsUseCaseInput",
+    "ListCompactionRoundsUseCaseOutput",
+    "ListCompactionRoundsUseCaseOutputItem",
+    "ListCompactionRoundsUseCaseOutputPick",
+    "ListCompactionRoundsUseCaseOutputSkip",
     "ScheduleCompactionRoundUseCase",
     "ScheduleCompactionRoundUseCaseInput",
     "ScheduleCompactionRoundUseCaseOutput",

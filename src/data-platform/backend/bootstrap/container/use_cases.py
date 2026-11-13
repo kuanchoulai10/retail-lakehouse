@@ -11,6 +11,8 @@ if TYPE_CHECKING:
         ReleaseCompactionCandidatesUseCase,
     )
     from context.table_maintenance.application.port.inbound.compaction_round import (
+        GetCompactionRoundUseCase,
+        ListCompactionRoundsUseCase,
         ScheduleCompactionRoundUseCase,
     )
     from context.table_maintenance.application.port.inbound.table import (
@@ -104,3 +106,5 @@ class UseCases:
     release_compaction_candidates: ReleaseCompactionCandidatesUseCase
     list_compaction_candidates: ListCompactionCandidatesUseCase
     schedule_compaction_round: ScheduleCompactionRoundUseCase
+    list_compaction_rounds: ListCompactionRoundsUseCase
+    get_compaction_round: GetCompactionRoundUseCase

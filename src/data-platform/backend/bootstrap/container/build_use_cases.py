@@ -14,7 +14,11 @@ from context.table_maintenance.application.service.compaction_candidate import (
     ListCompactionCandidatesService,
     ReleaseCompactionCandidatesService,
 )
-from context.table_maintenance.application.service.compaction_round import ScheduleCompactionRoundService
+from context.table_maintenance.application.service.compaction_round import (
+    GetCompactionRoundService,
+    ListCompactionRoundsService,
+    ScheduleCompactionRoundService,
+)
 from context.table_maintenance.application.service.table import (
     GetTableHealthService,
     GetTableService,
@@ -190,8 +194,14 @@ def build_use_cases(
             grant_lease=timedelta(seconds=rounds.grant_lease_seconds),
             rounds_kept=rounds.rounds_kept,
         ),
+        list_compaction_rounds=ListCompactionRoundsService(repos.compaction_rounds, tables),
+        get_compaction_round=GetCompactionRoundService(repos.compaction_rounds, tables),
         list_compaction_candidates=ListCompactionCandidatesService(
-            candidates, tables, partitions_per_run=selection.partitions_per_run
+            candidates,
+            tables,
+            partitions_per_run=selection.partitions_per_run,
+            sla=build_priority_sla(rounds),
+            clock=clock,
         ),
         list_table_reconciliations=ListTableReconciliationsService(reconciliations),
         record_table_reconciliation=RecordTableReconciliationService(reconciliations),

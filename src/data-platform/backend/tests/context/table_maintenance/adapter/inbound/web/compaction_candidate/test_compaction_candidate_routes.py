@@ -30,6 +30,10 @@ def _item(rank: int | None, state: str = "pending") -> ListCompactionCandidatesU
         lease_expires_at=None,
         last_written_at=NOW - timedelta(hours=1),
         observed_at=NOW,
+        priority="P1",
+        granted_round_id="compaction-rounds-1" if state == "granted" else None,
+        pending_since=NOW - timedelta(hours=5),
+        overdue=True,
     )
 
 
@@ -59,9 +63,25 @@ def test_lists_a_tables_candidates_with_how_many_one_run_takes():
                 "lease_expires_at": None,
                 "last_written_at": "2026-11-13T11:00:00Z",
                 "observed_at": "2026-11-13T12:00:00Z",
+                "priority": "P1",
+                "granted_round_id": None,
+                "pending_since": "2026-11-13T07:00:00Z",
+                "overdue": True,
             }
         ],
     }
+
+
+def test_a_granted_candidate_names_its_round():
+    """A granted candidate carries the round that granted it."""
+    stub = StubUseCase(ListCompactionCandidatesUseCaseOutput(partitions_per_run=10, items=[_item(None, "granted")]))
+
+    candidate = build_client(list_compaction_candidates=stub).get("/v1/tables/u-1/compaction-candidates").json()
+
+    assert (candidate["candidates"][0]["state"], candidate["candidates"][0]["granted_round_id"]) == (
+        "granted",
+        "compaction-rounds-1",
+    )
 
 
 def test_unknown_table_is_404():
