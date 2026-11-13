@@ -51,7 +51,7 @@ function maintenance(overrides: Partial<TableApiResponse> = {}): TableApiRespons
 interface Options {
   table?: CatalogTableApiResponse;
   covered?: string[];
-  maintenanceTable?: () => Response;
+  maintenanceTable?: () => Response | Promise<Response>;
   extra?: Record<string, StubHandler>;
 }
 
@@ -230,6 +230,16 @@ describe("TablePage", { timeout: 15_000 }, () => {
     expect(await within(summary).findByText("Maintenance: managed")).toBeInTheDocument();
     expect(within(summary).getByText("s3://warehouse/retail/orders")).toBeInTheDocument();
     expect(within(summary).getByText("9007199254740993")).toBeInTheDocument();
+  });
+
+  it("overview shows one loading state while maintenance's answer is pending", async () => {
+    stubTable({ maintenanceTable: () => new Promise<Response>(() => {}) });
+    renderAt(PAGE);
+    const summary = await screen.findByRole("region", { name: "Table" });
+    expect(await within(summary).findByText("Maintenance: checking…")).toBeInTheDocument();
+    await settle();
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+    expect(screen.queryByText("Loading maintenance…")).not.toBeInTheDocument();
   });
 
   it("overview holds only the Table panel: no health, storage, freshness, commits or runs", async () => {

@@ -35,7 +35,8 @@ function Fact({ label, children, mono }: { label: string; children: ReactNode; m
 // What the catalog holds, plus whether maintenance manages the table; then the policy that applies,
 // for every table: one maintenance has a record of is read by that record's uuid, any other by its
 // name in the catalog, so a policy can be attached before maintenance manages it. When maintenance
-// does not manage the table, the shared empty state says why.
+// does not manage the table, the shared empty state says why; while maintenance's answer is pending
+// the policy's skeleton and the panel marker are the only loading signs.
 export function OverviewTab({ table, maintenance, record }: Props) {
   const managed = maintenance.kind === "managed" ? maintenance.table : null;
   // The rule that selected the table is asked for only when maintenance manages it.
@@ -89,7 +90,7 @@ export function OverviewTab({ table, maintenance, record }: Props) {
           }}
         />
       )}
-      <MaintenanceGate state={maintenance}>{() => null}</MaintenanceGate>
+      {maintenance.kind !== "loading" && <MaintenanceGate state={maintenance}>{() => null}</MaintenanceGate>}
     </div>
   );
 }
