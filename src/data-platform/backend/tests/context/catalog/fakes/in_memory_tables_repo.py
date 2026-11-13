@@ -30,6 +30,7 @@ class InMemoryTablesRepo(TablesRepo):
     def __init__(self) -> None:
         """Start empty."""
         self.items: dict[str, Table] = {}
+        self.property_commits: list[tuple[dict[str, str], list[str]]] = []
         self._uuids_issued = 0
 
     def create(self, entity: Table) -> Table:
@@ -78,7 +79,10 @@ class InMemoryTablesRepo(TablesRepo):
     def update_properties(
         self, entity_id: TableId, expected_uuid: str, updates: dict[str, str], removals: list[str]
     ) -> Table:
-        """Apply removals then updates when the uuid matches; otherwise ConflictError, like a failed requirement."""
+        """Apply removals then updates when the uuid matches; otherwise ConflictError, like a failed requirement.
+
+        Each commit that lands is recorded in ``property_commits`` as its updates and removals.
+        """
         stored = self.items.get(entity_id.value)
         if stored is None:
             raise NotFoundError(f"Table does not exist: {entity_id.name}")
@@ -86,6 +90,7 @@ class InMemoryTablesRepo(TablesRepo):
             raise ConflictError(f"Requirement failed: UUID does not match: expected {expected_uuid} != {stored.uuid}")
         properties = {key: value for key, value in stored.properties.items() if key not in removals}
         properties.update(updates)
+        self.property_commits.append((dict(updates), list(removals)))
         self.items[entity_id.value] = _copy(stored, properties=properties)
         return _copy(self.items[entity_id.value])
 

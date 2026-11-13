@@ -30,8 +30,10 @@ if TYPE_CHECKING:
         CreateTableUseCase,
         DeleteTableUseCase,
         GetTableUseCase,
+        ListTablePropertiesUseCase,
         ListTablesUseCase,
         RenameTableUseCase,
+        ResetTablePropertiesUseCase,
         UpdateTablePropertiesUseCase,
     )
     from context.catalog.application.port.inbound.view import (
@@ -62,6 +64,8 @@ class WebUseCases:
     delete_table: DeleteTableUseCase
     rename_table: RenameTableUseCase
     update_table_properties: UpdateTablePropertiesUseCase
+    list_table_properties: ListTablePropertiesUseCase
+    reset_table_properties: ResetTablePropertiesUseCase
     list_generic_tables: ListGenericTablesUseCase
     get_generic_table: GetGenericTableUseCase
     create_generic_table: CreateGenericTableUseCase

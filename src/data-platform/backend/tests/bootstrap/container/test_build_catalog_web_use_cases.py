@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import copy
+import json
 from dataclasses import fields
+from pathlib import Path
 
 import httpx
 from fastapi.testclient import TestClient
@@ -14,6 +17,12 @@ from tests.context.catalog.adapter.outbound.shared.polaris.polaris_stub import (
 )
 
 CATALOGS = "/api/management/v1/catalogs"
+TABLE_PATH = "/api/catalog/v1/sales/namespaces/retail/tables/orders"
+LOAD_TABLE = json.loads(
+    (Path(__file__).parents[2] / "context" / "catalog" / "adapter" / "outbound" / "table" / "polaris" / "fixtures")
+    .joinpath("load_table_result_v2.json")
+    .read_text()
+)
 SALES: dict[str, object] = {
     "type": "INTERNAL",
     "name": "sales",
@@ -228,3 +237,43 @@ def test_catalog_name_with_the_unit_separator_is_a_422_and_never_reaches_polaris
     assert response.status_code == 422
     assert "catalog name must not contain the unit separator" in response.json()["detail"]
     assert stub.requests == []
+
+
+def test_table_properties_reset_is_served_end_to_end_against_polaris():
+    """A reset reads the table and its catalog, then commits through the uuid-guarded property update.
+
+    The catalog's ``table-default.write.format.default`` is written back; the custom ``owner`` is removed.
+    """
+    stub = PolarisStub()
+    catalog = {
+        **SALES,
+        "properties": {"default-base-location": "s3://bucket/sales", "table-default.write.format.default": "orc"},
+    }
+    saved = copy.deepcopy(LOAD_TABLE)
+    saved["metadata"]["properties"] = {"write.format.default": "orc", "write.parquet.compression-codec": "zstd"}
+    stub.on("GET", TABLE_PATH, httpx.Response(200, json=LOAD_TABLE))
+    stub.on("GET", f"{CATALOGS}/sales", httpx.Response(200, json=catalog))
+    stub.on("POST", TABLE_PATH, httpx.Response(200, json=saved))
+    client = TestClient(create_api_app(lambda app: register_routes(app, build_catalog_web_use_cases(stub.client()))))
+    uuid = LOAD_TABLE["metadata"]["table-uuid"]
+
+    response = client.post(
+        "/v1/catalogs/sales/namespaces/retail/tables/orders/properties/reset",
+        json={"expected_uuid": uuid, "keys": ["owner", "write.format.default"]},
+    )
+
+    assert response.status_code == 200
+    rows = {row["key"]: row for row in response.json()["properties"]}
+    assert "owner" not in rows
+    assert (rows["write.format.default"]["default_source"], rows["write.format.default"]["modified"]) == (
+        "catalog",
+        False,
+    )
+    commit = json.loads(stub.requests[-1].content)
+    assert commit == {
+        "requirements": [{"type": "assert-table-uuid", "uuid": uuid}],
+        "updates": [
+            {"action": "set-properties", "updates": {"write.format.default": "orc"}},
+            {"action": "remove-properties", "removals": ["owner"]},
+        ],
+    }

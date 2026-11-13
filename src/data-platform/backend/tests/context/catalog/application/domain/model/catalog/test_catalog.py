@@ -97,3 +97,22 @@ def test_catalogs_are_equal_by_id():
     later.updated_at = datetime(2026, 11, 7, tzinfo=UTC)
 
     assert later == _catalog()
+
+
+def test_table_property_defaults_and_overrides_come_from_prefixed_properties():
+    """``table-default.<key>`` and ``table-override.<key>`` name what the catalog applies to new tables."""
+    catalog = _catalog()
+    catalog.reconfigure(
+        default_base_location="s3://bucket/sales",
+        properties={
+            "table-default.write.format.default": "orc",
+            "table-override.gc.enabled": "false",
+            "table-default.": "ignored, no key",
+            "other": "x",
+        },
+        storage_config=S3,
+        loaded_version=0,
+    )
+
+    assert catalog.table_property_defaults == {"write.format.default": "orc"}
+    assert catalog.table_property_overrides == {"gc.enabled": "false"}

@@ -31,6 +31,16 @@ from context.catalog.application.port.inbound.table.get_table.output import (
 from context.catalog.application.port.inbound.table.get_table.use_case import (
     GetTableUseCase,
 )
+from context.catalog.application.port.inbound.table.list_table_properties.input import (
+    ListTablePropertiesUseCaseInput,
+)
+from context.catalog.application.port.inbound.table.list_table_properties.output import (
+    ListTablePropertiesUseCaseOutput,
+    ListTablePropertiesUseCaseOutputItem,
+)
+from context.catalog.application.port.inbound.table.list_table_properties.use_case import (
+    ListTablePropertiesUseCase,
+)
 from context.catalog.application.port.inbound.table.list_tables.input import (
     ListTablesUseCaseInput,
 )
@@ -49,6 +59,16 @@ from context.catalog.application.port.inbound.table.rename_table.output import (
 )
 from context.catalog.application.port.inbound.table.rename_table.use_case import (
     RenameTableUseCase,
+)
+from context.catalog.application.port.inbound.table.reset_table_properties.input import (
+    ResetTablePropertiesUseCaseInput,
+)
+from context.catalog.application.port.inbound.table.reset_table_properties.output import (
+    ResetTablePropertiesUseCaseOutput,
+    ResetTablePropertiesUseCaseOutputItem,
+)
+from context.catalog.application.port.inbound.table.reset_table_properties.use_case import (
+    ResetTablePropertiesUseCase,
 )
 from context.catalog.application.port.inbound.table.update_table_properties.input import (
     UpdateTablePropertiesUseCaseInput,
@@ -72,6 +92,10 @@ __all__ = [
     "GetTableUseCase",
     "GetTableUseCaseInput",
     "GetTableUseCaseOutput",
+    "ListTablePropertiesUseCase",
+    "ListTablePropertiesUseCaseInput",
+    "ListTablePropertiesUseCaseOutput",
+    "ListTablePropertiesUseCaseOutputItem",
     "ListTablesUseCase",
     "ListTablesUseCaseInput",
     "ListTablesUseCaseOutput",
@@ -79,6 +103,10 @@ __all__ = [
     "RenameTableUseCase",
     "RenameTableUseCaseInput",
     "RenameTableUseCaseOutput",
+    "ResetTablePropertiesUseCase",
+    "ResetTablePropertiesUseCaseInput",
+    "ResetTablePropertiesUseCaseOutput",
+    "ResetTablePropertiesUseCaseOutputItem",
     "UpdateTablePropertiesUseCase",
     "UpdateTablePropertiesUseCaseInput",
     "UpdateTablePropertiesUseCaseOutput",

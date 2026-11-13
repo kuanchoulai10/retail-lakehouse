@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from context.catalog.application.exceptions import ConflictError, NotFoundError
+from context.catalog.application.exceptions import ConflictError, NotFoundError, ValidationError
 from context.catalog.application.port.inbound.table import (
     CreateTableUseCaseInput,
     CreateTableUseCaseInputPartitionField,
@@ -14,11 +14,17 @@ from context.catalog.application.port.inbound.table import (
     DeleteTableUseCaseOutput,
     GetTableUseCaseInput,
     GetTableUseCaseOutput,
+    ListTablePropertiesUseCaseInput,
+    ListTablePropertiesUseCaseOutput,
+    ListTablePropertiesUseCaseOutputItem,
     ListTablesUseCaseInput,
     ListTablesUseCaseOutput,
     ListTablesUseCaseOutputItem,
     RenameTableUseCaseInput,
     RenameTableUseCaseOutput,
+    ResetTablePropertiesUseCaseInput,
+    ResetTablePropertiesUseCaseOutput,
+    ResetTablePropertiesUseCaseOutputItem,
     UpdateTablePropertiesUseCaseInput,
     UpdateTablePropertiesUseCaseOutput,
 )
@@ -222,3 +228,89 @@ def test_update_table_properties_conflict_is_409_with_reload_message():
         409,
         {"detail": "table orders changed since you loaded it, reload"},
     )
+
+
+_PROPERTY: dict[str, Any] = {
+    "key": "write.format.default",
+    "current_value": "orc",
+    "default_value": "parquet",
+    "default_source": "iceberg",
+    "modified": True,
+    "custom": False,
+    "resettable": True,
+    "description": "File format of new data files.",
+}
+_CUSTOM: dict[str, Any] = {
+    "key": "owner",
+    "current_value": "data-eng",
+    "default_value": None,
+    "default_source": None,
+    "modified": True,
+    "custom": True,
+    "resettable": True,
+    "description": None,
+}
+
+
+def test_list_table_properties_returns_every_row_with_its_default():
+    """GET /properties answers the uuid, the Iceberg version and each property next to its default."""
+    stub = StubUseCase(
+        ListTablePropertiesUseCaseOutput(
+            uuid="u-1",
+            iceberg_version="1.10.1",
+            items=[ListTablePropertiesUseCaseOutputItem(**_PROPERTY), ListTablePropertiesUseCaseOutputItem(**_CUSTOM)],
+        )
+    )
+
+    response = build_client(list_table_properties=stub).get(f"{BASE}/orders/properties")
+
+    assert response.status_code == 200
+    assert response.json() == {"uuid": "u-1", "iceberg_version": "1.10.1", "properties": [_PROPERTY, _CUSTOM]}
+    assert stub.requests == [ListTablePropertiesUseCaseInput("sales", ["retail"], "orders")]
+
+
+def test_list_table_properties_of_unknown_table_is_404():
+    """A missing table is a 404 with the message."""
+    client = build_client(list_table_properties=StubUseCase(error=NotFoundError("table orders not found")))
+
+    response = client.get(f"{BASE}/orders/properties")
+
+    assert (response.status_code, response.json()) == (404, {"detail": "table orders not found"})
+
+
+def test_reset_table_properties_passes_the_keys_and_the_loaded_uuid():
+    """POST /properties/reset passes the expected uuid and keys, and answers the rows as saved."""
+    stub = StubUseCase(
+        ResetTablePropertiesUseCaseOutput(
+            uuid="u-1", iceberg_version="1.10.1", items=[ResetTablePropertiesUseCaseOutputItem(**_CUSTOM)]
+        )
+    )
+
+    response = build_client(reset_table_properties=stub).post(
+        f"{BASE}/orders/properties/reset", json={"expected_uuid": "u-1", "keys": ["write.format.default"]}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"uuid": "u-1", "iceberg_version": "1.10.1", "properties": [_CUSTOM]}
+    assert stub.requests == [
+        ResetTablePropertiesUseCaseInput("sales", ["retail"], "orders", "u-1", ["write.format.default"])
+    ]
+
+
+def test_reset_of_a_property_that_is_not_resettable_is_422():
+    """A refused reset answers 422 with the reason."""
+    error = ValidationError("format-version cannot be reset: removing it would change the table unsafely")
+    client = build_client(reset_table_properties=StubUseCase(error=error))
+
+    response = client.post(f"{BASE}/orders/properties/reset", json={"expected_uuid": "u-1", "keys": ["format-version"]})
+
+    assert (response.status_code, response.json()) == (422, {"detail": str(error)})
+
+
+def test_reset_table_properties_rejects_unknown_fields():
+    """The reset body takes only the expected uuid and the keys."""
+    response = build_client().post(
+        f"{BASE}/orders/properties/reset", json={"expected_uuid": "u-1", "keys": [], "all": True}
+    )
+
+    assert response.status_code == 422

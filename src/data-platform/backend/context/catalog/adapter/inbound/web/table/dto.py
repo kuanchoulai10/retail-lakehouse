@@ -20,7 +20,7 @@ cannot round (Ruling R9).
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
@@ -84,6 +84,15 @@ class UpdateTablePropertiesApiRequest(BaseModel):
     expected_uuid: str
     updates: dict[str, str] = Field(default_factory=dict)
     removals: list[str] = Field(default_factory=list)
+
+
+class ResetTablePropertiesApiRequest(BaseModel):
+    """Carry the loaded table's uuid and the property keys to reset to default; a custom key is deleted."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    expected_uuid: str
+    keys: list[str]
 
 
 class PartitionFieldApiResponse(BaseModel):
@@ -177,3 +186,34 @@ class TableIdentifierApiResponse(BaseModel):
     catalog: str
     namespace: list[str]
     name: str
+
+
+class CatalogTablePropertyApiResponse(BaseModel):
+    """One table property next to its default.
+
+    ``current_value`` is null when the table does not set the key. ``default_source`` is
+    ``iceberg`` (Iceberg's own default, null when Iceberg has none), ``catalog`` (the catalog's
+    ``table-default.<key>``), ``catalog_override`` (its ``table-override.<key>``: forced by the
+    catalog, never resettable) or null for a custom key the catalog does not default.
+    ``modified`` is a key set to something other than its default, or a custom key that is set;
+    ``custom`` is a key the platform's catalogue of Iceberg properties does not know.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    key: str
+    current_value: str | None
+    default_value: str | None
+    default_source: Literal["iceberg", "catalog", "catalog_override"] | None
+    modified: bool
+    custom: bool
+    resettable: bool
+    description: str | None
+
+
+class CatalogTablePropertiesApiResponse(BaseModel):
+    """Every property of a table next to its default, ordered by key, and the Iceberg version of the defaults."""
+
+    uuid: str
+    iceberg_version: str
+    properties: list[CatalogTablePropertyApiResponse]

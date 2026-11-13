@@ -37,8 +37,10 @@ from context.catalog.application.service.table import (
     CreateTableService,
     DeleteTableService,
     GetTableService,
+    ListTablePropertiesService,
     ListTablesService,
     RenameTableService,
+    ResetTablePropertiesService,
     UpdateTablePropertiesService,
 )
 from context.catalog.application.service.view import (
@@ -76,6 +78,8 @@ def build_catalog_web_use_cases(polaris: PolarisHttpClient) -> WebUseCases:
         delete_table=DeleteTableService(tables_repo),
         rename_table=RenameTableService(tables_repo),
         update_table_properties=UpdateTablePropertiesService(tables_repo),
+        list_table_properties=ListTablePropertiesService(tables_repo, catalogs_repo),
+        reset_table_properties=ResetTablePropertiesService(tables_repo, catalogs_repo),
         list_generic_tables=ListGenericTablesService(generic_tables_repo),
         get_generic_table=GetGenericTableService(generic_tables_repo),
         create_generic_table=CreateGenericTableService(generic_tables_repo),

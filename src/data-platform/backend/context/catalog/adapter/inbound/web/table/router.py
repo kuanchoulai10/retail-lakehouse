@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends, Response, status
 
@@ -12,8 +12,11 @@ from context.catalog.adapter.inbound.web.shared import (
 )
 from context.catalog.adapter.inbound.web.table.dto import (
     CatalogTableApiResponse,
+    CatalogTablePropertiesApiResponse,
+    CatalogTablePropertyApiResponse,
     CreateTableApiRequest,
     RenameTableApiRequest,
+    ResetTablePropertiesApiRequest,
     TableIdentifierApiResponse,
     UpdateTablePropertiesApiRequest,
 )
@@ -23,10 +26,18 @@ from context.catalog.application.port.inbound.table import (
     CreateTableUseCaseInputSchemaField,
     DeleteTableUseCaseInput,
     GetTableUseCaseInput,
+    ListTablePropertiesUseCaseInput,
     ListTablesUseCaseInput,
     RenameTableUseCaseInput,
+    ResetTablePropertiesUseCaseInput,
     UpdateTablePropertiesUseCaseInput,
 )
+
+if TYPE_CHECKING:
+    from context.catalog.application.port.inbound.table import (
+        ListTablePropertiesUseCaseOutput,
+        ResetTablePropertiesUseCaseOutput,
+    )
 
 router = APIRouter(prefix="/catalogs/{catalog}/namespaces/{namespace}/tables", tags=["tables"])
 
@@ -38,6 +49,16 @@ _SEPARATOR = "\x1f"
 def _parts(namespace: str) -> list[str]:
     """Split a path namespace, its parts joined by U+001F (%1F), into its parts."""
     return namespace.split(_SEPARATOR) if namespace else []
+
+
+def _properties_response(
+    output: ListTablePropertiesUseCaseOutput | ResetTablePropertiesUseCaseOutput,
+) -> CatalogTablePropertiesApiResponse:
+    return CatalogTablePropertiesApiResponse(
+        uuid=output.uuid,
+        iceberg_version=output.iceberg_version,
+        properties=[CatalogTablePropertyApiResponse.model_validate(item) for item in output.items],
+    )
 
 
 @router.get("", name="list_catalog_tables")
@@ -119,3 +140,31 @@ def update_table_properties(
         )
     )
     return CatalogTableApiResponse.model_validate(output)
+
+
+@router.get("/{table}/properties", name="list_catalog_table_properties")
+def list_table_properties(
+    catalog: str, namespace: str, table: str, use_cases: UseCases
+) -> CatalogTablePropertiesApiResponse:
+    """Return every property of the table next to its default (Iceberg's or the catalog's), ordered by key."""
+    output = use_cases.list_table_properties.execute(
+        ListTablePropertiesUseCaseInput(catalog=catalog, namespace=_parts(namespace), name=table)
+    )
+    return _properties_response(output)
+
+
+@router.post("/{table}/properties/reset", name="reset_catalog_table_properties")
+def reset_table_properties(
+    catalog: str, namespace: str, table: str, body: ResetTablePropertiesApiRequest, use_cases: UseCases
+) -> CatalogTablePropertiesApiResponse:
+    """Reset properties of the loaded table to default; 422 for one not resettable, 409 when the table changed."""
+    output = use_cases.reset_table_properties.execute(
+        ResetTablePropertiesUseCaseInput(
+            catalog=catalog,
+            namespace=_parts(namespace),
+            name=table,
+            expected_uuid=body.expected_uuid,
+            keys=body.keys,
+        )
+    )
+    return _properties_response(output)

@@ -11,6 +11,14 @@ from context.catalog.application.domain.model.catalog.connection_config import C
 from context.catalog.application.domain.model.catalog.storage_config import StorageConfig
 
 _DEFAULT_BASE_LOCATION = "default-base-location"
+_TABLE_DEFAULT_PREFIX = "table-default."
+_TABLE_OVERRIDE_PREFIX = "table-override."
+
+
+def _with_prefix(properties: dict[str, str], prefix: str) -> dict[str, str]:
+    return {
+        key.removeprefix(prefix): value for key, value in properties.items() if key.startswith(prefix) and key != prefix
+    }
 
 
 class Catalog(AggregateRoot[CatalogId]):
@@ -19,6 +27,8 @@ class Catalog(AggregateRoot[CatalogId]):
     ``entity_version`` is the version this copy was loaded at; a save is rejected when the
     stored catalog has moved past it. A catalog not yet saved has version 0 and no timestamps.
     The ``default-base-location`` property is where new tables go when they name no location.
+    ``table-default.<key>`` and ``table-override.<key>`` properties are applied to a table
+    when it is created (the override wins over what the create asks for); never afterwards.
     ``connection_config`` is the remote catalog service an EXTERNAL catalog mirrors, if any;
     an INTERNAL catalog has none.
     """
@@ -59,6 +69,16 @@ class Catalog(AggregateRoot[CatalogId]):
     def default_base_location(self) -> str | None:
         """Return the default base location, or None when the property is missing."""
         return self.properties.get(_DEFAULT_BASE_LOCATION)
+
+    @property
+    def table_property_defaults(self) -> dict[str, str]:
+        """Return the table properties the catalog gives a new table unless it sets them (``table-default.<key>``)."""
+        return _with_prefix(self.properties, _TABLE_DEFAULT_PREFIX)
+
+    @property
+    def table_property_overrides(self) -> dict[str, str]:
+        """Return the table properties the catalog forces on a new table (``table-override.<key>``)."""
+        return _with_prefix(self.properties, _TABLE_OVERRIDE_PREFIX)
 
     def reconfigure(
         self,

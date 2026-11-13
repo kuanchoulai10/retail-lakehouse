@@ -25,11 +25,13 @@ import type {
 
 import type {
   CatalogTableApiResponse,
+  CatalogTablePropertiesApiResponse,
   CreateTableApiRequest,
   HTTPValidationError,
   ListTableCommitsParams,
   ListTablesParams,
   RenameTableApiRequest,
+  ResetTablePropertiesApiRequest,
   TableApiResponse,
   TableCommitsApiResponse,
   TableHealthApiResponse,
@@ -458,6 +460,123 @@ export function useGetCatalogTable<TData = Awaited<ReturnType<typeof getCatalogT
 
 
 
+export const getListCatalogTablePropertiesUrl = (catalog: string,
+    namespace: string,
+    table: string,) => {
+
+
+
+
+  return `/v1/catalogs/${encodeURIComponent(String(catalog))}/namespaces/${encodeURIComponent(String(namespace))}/tables/${encodeURIComponent(String(table))}/properties`
+}
+
+/**
+ * Return every property of the table next to its default (Iceberg's or the catalog's), ordered by key.
+ * @summary List Catalog Table Properties
+ */
+export const listCatalogTableProperties = async (catalog: string,
+    namespace: string,
+    table: string, options?: Parameters<typeof apiFetch>[1]): Promise<CatalogTablePropertiesApiResponse> => {
+
+  return apiFetch<CatalogTablePropertiesApiResponse>(getListCatalogTablePropertiesUrl(catalog,namespace,table),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCatalogTablePropertiesQueryKey = (catalog: string,
+    namespace: string,
+    table: string,) => {
+    return [
+    `/v1/catalogs/${catalog}/namespaces/${namespace}/tables/${table}/properties`
+    ] as const;
+    }
+
+
+export const getListCatalogTablePropertiesQueryOptions = <TData = Awaited<ReturnType<typeof listCatalogTableProperties>>, TError = HTTPValidationError>(catalog: string,
+    namespace: string,
+    table: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCatalogTableProperties>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCatalogTablePropertiesQueryKey(catalog,namespace,table);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCatalogTableProperties>>> = ({ signal }) => listCatalogTableProperties(catalog,namespace,table, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: catalog !== null && catalog !== undefined && namespace !== null && namespace !== undefined && table !== null && table !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCatalogTableProperties>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListCatalogTablePropertiesQueryResult = NonNullable<Awaited<ReturnType<typeof listCatalogTableProperties>>>
+export type ListCatalogTablePropertiesQueryError = HTTPValidationError
+
+
+export function useListCatalogTableProperties<TData = Awaited<ReturnType<typeof listCatalogTableProperties>>, TError = HTTPValidationError>(
+ catalog: string,
+    namespace: string,
+    table: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCatalogTableProperties>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCatalogTableProperties>>,
+          TError,
+          Awaited<ReturnType<typeof listCatalogTableProperties>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCatalogTableProperties<TData = Awaited<ReturnType<typeof listCatalogTableProperties>>, TError = HTTPValidationError>(
+ catalog: string,
+    namespace: string,
+    table: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCatalogTableProperties>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listCatalogTableProperties>>,
+          TError,
+          Awaited<ReturnType<typeof listCatalogTableProperties>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListCatalogTableProperties<TData = Awaited<ReturnType<typeof listCatalogTableProperties>>, TError = HTTPValidationError>(
+ catalog: string,
+    namespace: string,
+    table: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCatalogTableProperties>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary List Catalog Table Properties
+ */
+
+export function useListCatalogTableProperties<TData = Awaited<ReturnType<typeof listCatalogTableProperties>>, TError = HTTPValidationError>(
+ catalog: string,
+    namespace: string,
+    table: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listCatalogTableProperties>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListCatalogTablePropertiesQueryOptions(catalog,namespace,table,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 export const getUpdateTablePropertiesUrl = (catalog: string,
     namespace: string,
     table: string,) => {
@@ -550,6 +669,99 @@ export const useUpdateTableProperties = <TError = HTTPValidationError,
         TContext
       > => {
       return useMutation(getUpdateTablePropertiesMutationOptions(options), queryClient);
+    }
+    export const getResetCatalogTablePropertiesUrl = (catalog: string,
+    namespace: string,
+    table: string,) => {
+
+
+
+
+  return `/v1/catalogs/${encodeURIComponent(String(catalog))}/namespaces/${encodeURIComponent(String(namespace))}/tables/${encodeURIComponent(String(table))}/properties/reset`
+}
+
+/**
+ * Reset properties of the loaded table to default; 422 for one not resettable, 409 when the table changed.
+ * @summary Reset Catalog Table Properties
+ */
+export const resetCatalogTableProperties = async (catalog: string,
+    namespace: string,
+    table: string,
+    resetTablePropertiesApiRequest: ResetTablePropertiesApiRequest, options?: Parameters<typeof apiFetch>[1]): Promise<CatalogTablePropertiesApiResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<CatalogTablePropertiesApiResponse>(getResetCatalogTablePropertiesUrl(catalog,namespace,table),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(resetTablePropertiesApiRequest)
+  }
+);}
+
+
+
+
+
+export const getResetCatalogTablePropertiesMutationKey = () => ['resetCatalogTableProperties'] as const;
+
+export const getResetCatalogTablePropertiesMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetCatalogTableProperties>>, TError,ResetCatalogTablePropertiesMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resetCatalogTableProperties>>, TError,ResetCatalogTablePropertiesMutationVariables, TContext> => {
+
+const mutationKey = getResetCatalogTablePropertiesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resetCatalogTableProperties>>, ResetCatalogTablePropertiesMutationVariables> = (props) => {
+          const {catalog,namespace,table,data} = props ?? {};
+
+          return  resetCatalogTableProperties(catalog,namespace,table,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResetCatalogTablePropertiesMutationResult = NonNullable<Awaited<ReturnType<typeof resetCatalogTableProperties>>>
+    export type ResetCatalogTablePropertiesMutationBody = ResetTablePropertiesApiRequest
+    export type ResetCatalogTablePropertiesMutationError = HTTPValidationError
+    export type ResetCatalogTablePropertiesMutationVariables = {catalog: string;namespace: string;table: string;data: ResetTablePropertiesApiRequest}
+
+    /**
+ * @summary Reset Catalog Table Properties
+ */
+export const useResetCatalogTableProperties = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetCatalogTableProperties>>, TError,ResetCatalogTablePropertiesMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof resetCatalogTableProperties>>,
+        TError,
+        ResetCatalogTablePropertiesMutationVariables,
+        TContext
+      > => {
+      return useMutation(getResetCatalogTablePropertiesMutationOptions(options), queryClient);
     }
     export const getRenameTableUrl = (catalog: string,
     namespace: string,
