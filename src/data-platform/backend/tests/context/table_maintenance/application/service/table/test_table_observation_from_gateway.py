@@ -119,3 +119,25 @@ def test_malformed_items_raise_value_error(overrides):
     """A malformed item in the observation raises ValueError."""
     with pytest.raises(ValueError):
         table_observation_from_gateway(_gateway_observation(**overrides))
+
+
+def test_partition_last_written_at_becomes_aware_utc():
+    """A partition's last write time becomes timezone aware in UTC; an unknown one stays None."""
+    partition = {
+        "spec_id": 0,
+        "values": ["eu"],
+        "data_file_count": 1,
+        "position_delete_file_count": 0,
+        "equality_delete_file_count": 0,
+        "total_data_file_size_bytes": 10,
+    }
+    result = table_observation_from_gateway(
+        _gateway_observation(
+            partitions=[
+                {**partition, "last_written_at": "2026-10-01T10:00:00+02:00"},
+                {**partition, "values": ["us"], "last_written_at": None},
+                {**partition, "values": ["ap"]},
+            ]
+        )
+    )
+    assert [p.last_written_at for p in result.partitions] == [datetime(2026, 10, 1, 8, tzinfo=UTC), None, None]

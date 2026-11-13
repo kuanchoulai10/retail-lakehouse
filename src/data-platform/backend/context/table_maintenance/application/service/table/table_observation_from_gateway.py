@@ -27,12 +27,16 @@ def _utc(text: str) -> datetime:
     return moment.astimezone(UTC)
 
 
+def _optional_utc(text: str | None) -> datetime | None:
+    return None if text is None else _utc(text)
+
+
 def table_observation_from_gateway(
     observation: TableMetadataObservation,
 ) -> TableObservation:
     """Convert the gateway's primitive observation into the domain observation.
 
-    ``committed_at`` is parsed to an aware UTC datetime. Raise ``ValueError`` when
+    ``committed_at`` and ``last_written_at`` are parsed to aware UTC datetimes. Raise ``ValueError`` when
     an item is missing a key or carries a malformed value.
     """
     try:
@@ -64,6 +68,7 @@ def table_observation_from_gateway(
                     position_delete_file_count=p["position_delete_file_count"],
                     equality_delete_file_count=p["equality_delete_file_count"],
                     total_data_file_size_bytes=p["total_data_file_size_bytes"],
+                    last_written_at=_optional_utc(p.get("last_written_at")),
                 )
                 for p in observation.partitions
             ),

@@ -13,7 +13,8 @@ class TableMetadataObservation:
     ``specs`` items are ``{"spec_id", "fields": [{"field_id", "name",
     "source_column", "source_type", "transform"}]}``. ``partitions`` items are
     ``{"spec_id", "values", "data_file_count", "position_delete_file_count",
-    "equality_delete_file_count", "total_data_file_size_bytes"}``. ``manifests``
+    "equality_delete_file_count", "total_data_file_size_bytes", "last_written_at"}``,
+    ``last_written_at`` an ISO-8601 timestamp or None when unknown. ``manifests``
     items are ``{"length_bytes"}``. ``snapshots`` items are ``{"snapshot_id",
     "committed_at"}`` with an ISO-8601 timestamp.
     """

@@ -138,6 +138,29 @@ def test_observe_partitioned_table_groups_by_day_and_bucket(
     ]
 
 
+def test_observe_records_when_each_partition_was_last_written(
+    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
+) -> None:
+    """Each partition's last write is the commit time of the newest snapshot that added a file to it."""
+    catalog.create_namespace("db")
+    spec = PartitionSpec(PartitionField(2, 1000, DayTransform(), "ts_day"))
+    table = catalog.create_table("db.events", SCHEMA, partition_spec=spec)
+    table.append(_rows([1], day=1))
+    table.append(_rows([2], day=2))
+    table.append(_rows([3], day=1))
+    snapshots = table.refresh().metadata.snapshots
+
+    observation = gateway.observe_table(_ref())
+
+    assert observation is not None
+    day1 = (datetime(2024, 1, 1) - datetime(1970, 1, 1)).days
+    committed = [datetime.fromtimestamp(s.timestamp_ms / 1000, tz=UTC).isoformat() for s in snapshots]
+    assert {p["values"][0]: p["last_written_at"] for p in observation.partitions} == {
+        day1: committed[2],
+        day1 + 1: committed[1],
+    }
+
+
 def test_observe_unpartitioned_table_has_one_row_with_empty_values(
     catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
 ) -> None:

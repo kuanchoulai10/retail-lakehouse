@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from pyiceberg.manifest import DataFileContent
+from pyiceberg.table.snapshots import Operation
 
 from context.table_maintenance.adapter.outbound.table.pyiceberg.partition_value_to_primitive import (
     partition_value_to_primitive,
@@ -89,8 +90,17 @@ def _source_field_type(table: Table, source_id: int) -> IcebergType:
 
 
 def _partition_stats(table: Table, manifest_files: list[ManifestFile]) -> list[dict[str, Any]]:
+    """Count and size each partition's live files and say when a writer last added one.
+
+    A partition's last write is the newest commit time of the snapshots that added
+    one of its live data or delete files, leaving out compaction's own (``replace``)
+    snapshots, which rewrite files but write nothing new; it is None when no such
+    snapshot is still in the metadata.
+    """
     files: Counter[tuple[int, tuple[Any, ...], str]] = Counter()
     sizes: Counter[tuple[int, tuple[Any, ...]]] = Counter()
+    written: dict[tuple[int, tuple[Any, ...]], int] = {}
+    commit_ms: dict[int | None, int | None] = {}
     seen: set[tuple[int, tuple[Any, ...]]] = set()
     for manifest in manifest_files:
         for entry in manifest.fetch_manifest_entry(table.io, discard_deleted=True):
@@ -104,6 +114,11 @@ def _partition_stats(table: Table, manifest_files: list[ManifestFile]) -> list[d
             files[(*key, content.name)] += 1
             if content == DataFileContent.DATA:
                 sizes[key] += data_file.file_size_in_bytes
+            if entry.snapshot_id not in commit_ms:
+                commit_ms[entry.snapshot_id] = _written_at_ms(table, entry.snapshot_id)
+            written_ms = commit_ms[entry.snapshot_id]
+            if written_ms is not None and written_ms > written.get(key, -1):
+                written[key] = written_ms
     return [
         {
             "spec_id": spec_id,
@@ -112,6 +127,24 @@ def _partition_stats(table: Table, manifest_files: list[ManifestFile]) -> list[d
             "position_delete_file_count": files[(spec_id, values, DataFileContent.POSITION_DELETES.name)],
             "equality_delete_file_count": files[(spec_id, values, DataFileContent.EQUALITY_DELETES.name)],
             "total_data_file_size_bytes": sizes[(spec_id, values)],
+            "last_written_at": _iso_ms(written.get((spec_id, values))),
         }
         for spec_id, values in sorted(seen, key=lambda k: (k[0], repr(k[1])))
     ]
+
+
+def _written_at_ms(table: Table, snapshot_id: int | None) -> int | None:
+    """Return when the snapshot that added a file was committed, or None if it is gone or is a compaction."""
+    if snapshot_id is None:
+        return None
+    snapshot = table.metadata.snapshot_by_id(snapshot_id)
+    if snapshot is None:
+        return None
+    summary = snapshot.summary
+    if summary is not None and summary.operation == Operation.REPLACE:
+        return None
+    return snapshot.timestamp_ms
+
+
+def _iso_ms(timestamp_ms: int | None) -> str | None:
+    return None if timestamp_ms is None else datetime.fromtimestamp(timestamp_ms / 1000, tz=UTC).isoformat()

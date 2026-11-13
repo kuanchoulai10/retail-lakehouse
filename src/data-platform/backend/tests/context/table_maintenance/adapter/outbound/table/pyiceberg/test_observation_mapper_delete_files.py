@@ -46,6 +46,7 @@ def _table(entries: list[ManifestEntry]) -> SimpleNamespace:
             properties={},
             partition_specs=[],
             snapshots=[snapshot],
+            snapshot_by_id=lambda snapshot_id: None,
         ),
         current_snapshot=lambda: snapshot,
     )
@@ -74,6 +75,7 @@ def test_counts_each_content_type_and_sums_only_data_file_sizes() -> None:
             "position_delete_file_count": 1,
             "equality_delete_file_count": 2,
             "total_data_file_size_bytes": 150,
+            "last_written_at": None,
         },
         {
             "spec_id": 0,
@@ -82,5 +84,6 @@ def test_counts_each_content_type_and_sums_only_data_file_sizes() -> None:
             "position_delete_file_count": 1,
             "equality_delete_file_count": 0,
             "total_data_file_size_bytes": 0,
+            "last_written_at": None,
         },
     ]
