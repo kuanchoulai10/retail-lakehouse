@@ -1,6 +1,6 @@
 import { Panel } from "@retail-lakehouse/design-system";
 import type { ReactNode } from "react";
-import type { OperationPoliciesApiRequest } from "@/api/generated/model";
+import type { MaintenancePriorityApi, OperationPoliciesApiRequest } from "@/api/generated/model";
 import { formatBytes, formatCount, formatSeconds } from "@/format";
 
 interface Fact {
@@ -47,12 +47,13 @@ interface Props {
   description: string;
   reconcileIntervalSeconds: number;
   dryRun: boolean;
+  priority: MaintenancePriorityApi;
   operations: OperationPoliciesApiRequest;
 }
 
 // A policy's content to read, not edit: the editor's fields as plain facts, one panel per
 // operation. An operation that is off shows only that.
-export function PolicySummary({ description, reconcileIntervalSeconds, dryRun, operations }: Props) {
+export function PolicySummary({ description, reconcileIntervalSeconds, dryRun, priority, operations }: Props) {
   const { rewrite_data_files: data, rewrite_manifests: manifests, expire_snapshots: snapshots, remove_orphan_files: orphans } =
     operations;
   const smallManifests = manifests.trigger_policy.conditions.small_manifests;
@@ -66,6 +67,7 @@ export function PolicySummary({ description, reconcileIntervalSeconds, dryRun, o
             { label: "Description", value: description === "" ? "—" : description },
             { label: "Reconcile interval", value: seconds(reconcileIntervalSeconds) },
             { label: "Dry run", value: dryRun ? "On: nothing is started" : "Off" },
+            { label: "Priority", value: priority },
           ]}
         />
       </Panel>

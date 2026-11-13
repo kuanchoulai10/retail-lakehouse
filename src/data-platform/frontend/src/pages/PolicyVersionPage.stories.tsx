@@ -25,6 +25,7 @@ export const Default: Story = {
     const data = within(canvas.getByRole("region", { name: "Rewrite data files" }));
     await expect(data.getByText("Whole table")).toBeVisible();
     await expect(data.getByText("Reducible files at least 20")).toBeVisible();
+    await expect(within(canvas.getByRole("region", { name: "Policy" })).getByText("P0")).toBeVisible();
     await expect(canvas.queryByRole("textbox")).toBeNull();
   },
 };

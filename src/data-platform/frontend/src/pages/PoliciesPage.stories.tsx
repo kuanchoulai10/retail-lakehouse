@@ -86,6 +86,7 @@ export const Editor: Story = {
     const rewrite = within(dialog).getByRole("group", { name: "Rewrite data files" });
     await expect(within(rewrite).getByRole("combobox", { name: "Scope" })).toHaveTextContent("Whole table");
     await expect(within(rewrite).getByRole("textbox", { name: "Reducible files at least" })).toHaveValue("20");
+    await expect(within(dialog).getByRole("combobox", { name: "Priority" })).toHaveTextContent("P0");
   },
 };
 

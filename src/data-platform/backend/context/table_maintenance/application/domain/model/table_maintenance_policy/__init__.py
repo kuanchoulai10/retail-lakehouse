@@ -29,6 +29,9 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 from context.table_maintenance.application.domain.model.table_maintenance_policy.maintenance_policy_content import (  # noqa: E501
     MaintenancePolicyContent,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy.maintenance_priority import (  # noqa: E501
+    MaintenancePriority,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_policy.operation_policies import (  # noqa: E501
     OperationPolicies,
 )
@@ -103,6 +106,7 @@ __all__ = [
     "ExpireSnapshotsPolicy",
     "ExpireSnapshotsTriggerPolicy",
     "MaintenancePolicyContent",
+    "MaintenancePriority",
     "OperationPolicies",
     "OperationPolicy",
     "PartialProgress",

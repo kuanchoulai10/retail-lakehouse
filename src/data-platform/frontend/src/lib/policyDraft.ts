@@ -1,6 +1,7 @@
 import type {
   CompactionScopeApiRequestUnit,
   CreateTableMaintenancePolicyApiRequest,
+  MaintenancePriorityApi,
 } from "@/api/generated/model";
 
 // Everything a policy write carries except its name: the API takes it whole, always.
@@ -12,6 +13,7 @@ export interface PolicyDraft {
   description: string;
   reconcileInterval: string;
   dryRun: boolean;
+  priority: MaintenancePriorityApi;
   rewriteDataFiles: {
     enabled: boolean;
     scope: CompactionScopeApiRequestUnit;
@@ -55,6 +57,8 @@ export function draftFromContent(content: PolicyContent): PolicyDraft {
     description: content.description,
     reconcileInterval: text(content.reconcile_interval_seconds),
     dryRun: content.dry_run,
+    // A policy saved before priorities existed has none; the API reads it as P2.
+    priority: content.priority ?? "P2",
     rewriteDataFiles: {
       enabled: data.enabled,
       scope: data.scope.unit,
@@ -129,6 +133,7 @@ function buildContent(draft: PolicyDraft): PolicyContent {
     description: draft.description.trim(),
     reconcile_interval_seconds: positive(draft.reconcileInterval, "Reconcile interval"),
     dry_run: draft.dryRun,
+    priority: draft.priority,
     operations: {
       rewrite_data_files: {
         enabled: data.enabled,

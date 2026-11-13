@@ -24,6 +24,9 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 from context.table_maintenance.application.domain.model.table_maintenance_policy.expire_snapshots_trigger_policy import (  # noqa: E501
     ExpireSnapshotsTriggerPolicy,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy.maintenance_priority import (
+    MaintenancePriority,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_policy.operation_policies import (
     OperationPolicies,
 )
@@ -70,7 +73,12 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 
 
 class MaintenancePolicyContent(ValueObject):
-    """Hold what a maintenance policy says: reconcile interval, dry run and each operation's policy."""
+    """Hold what a maintenance policy says: reconcile interval, dry run, priority and each operation's policy.
+
+    ``priority`` ranks the policy's compaction candidates against other tables'
+    in a compaction round; a version stored before priorities existed has no
+    field and reads as ``P2``, the default.
+    """
 
     description: str
     reconcile_interval: PositiveDuration = Field(
@@ -78,6 +86,7 @@ class MaintenancePolicyContent(ValueObject):
         serialization_alias="reconcile_interval_seconds",
     )
     dry_run: bool
+    priority: MaintenancePriority = MaintenancePriority.P2
     operations: OperationPolicies
 
     @classmethod

@@ -4,6 +4,7 @@
  * Data Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { MaintenancePriorityApi } from './maintenancePriorityApi';
 import type { OperationPoliciesApiRequest } from './operationPoliciesApiRequest';
 
 /**
@@ -15,6 +16,7 @@ export interface TableMaintenancePolicyVersionApiResponse {
   dry_run: boolean;
   name: string;
   operations: OperationPoliciesApiRequest;
+  priority: MaintenancePriorityApi;
   reconcile_interval_seconds: number;
   version: number;
 }

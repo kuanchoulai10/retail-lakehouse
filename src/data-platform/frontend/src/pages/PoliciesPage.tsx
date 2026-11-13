@@ -29,6 +29,7 @@ function contentOf(policy: Policy): PolicyContent {
     description: policy.description,
     reconcile_interval_seconds: policy.reconcile_interval_seconds,
     dry_run: policy.dry_run,
+    priority: policy.priority,
     operations: policy.operations,
   };
 }

@@ -56,6 +56,7 @@ export function PolicyVersionPage() {
         description={policy.description}
         reconcileIntervalSeconds={policy.reconcile_interval_seconds}
         dryRun={policy.dry_run}
+        priority={policy.priority}
         operations={policy.operations}
       />
     </section>

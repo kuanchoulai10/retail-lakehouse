@@ -14,6 +14,8 @@ from pydantic import BaseModel, ConfigDict
 
 _CONTENT_CONFIG = ConfigDict(extra="forbid", json_schema_mode_override="validation")
 
+type MaintenancePriorityApi = Literal["P0", "P1", "P2"]
+
 
 class AtLeastApiRequest(BaseModel):
     """Carry a count condition: due when at least this many are found."""
@@ -209,6 +211,7 @@ class CreateTableMaintenancePolicyApiRequest(BaseModel):
     description: str
     reconcile_interval_seconds: int
     dry_run: bool
+    priority: MaintenancePriorityApi = "P2"
     operations: OperationPoliciesApiRequest
 
 
@@ -221,6 +224,7 @@ class UpdateTableMaintenancePolicyApiRequest(BaseModel):
     description: str
     reconcile_interval_seconds: int
     dry_run: bool
+    priority: MaintenancePriorityApi = "P2"
     operations: OperationPoliciesApiRequest
 
 
@@ -232,6 +236,7 @@ class TableMaintenancePolicyApiResponse(BaseModel):
     description: str
     reconcile_interval_seconds: int
     dry_run: bool
+    priority: MaintenancePriorityApi
     operations: OperationPoliciesApiRequest
     created_at: datetime
     updated_at: datetime
@@ -245,6 +250,7 @@ class ListedTableMaintenancePolicyApiResponse(BaseModel):
     description: str
     reconcile_interval_seconds: int
     dry_run: bool
+    priority: MaintenancePriorityApi
     operations: OperationPoliciesApiRequest
     created_at: datetime
     updated_at: datetime
@@ -265,5 +271,6 @@ class TableMaintenancePolicyVersionApiResponse(BaseModel):
     description: str
     reconcile_interval_seconds: int
     dry_run: bool
+    priority: MaintenancePriorityApi
     operations: OperationPoliciesApiRequest
     created_at: datetime

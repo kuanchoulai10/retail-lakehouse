@@ -202,4 +202,27 @@ describe("PolicyEditor", () => {
     expect(within(section("Rewrite data files")).getByRole("combobox", { name: "Scope" })).toBeInTheDocument();
     expect(within(section("Expire snapshots")).queryByRole("combobox", { name: "Scope" })).not.toBeInTheDocument();
   });
+
+  it("sends the priority chosen", async () => {
+    const calls = stubCatalogApi({
+      "PUT /v1/maintenance-policies/nightly": () => jsonResponse({ ...NIGHTLY, version: 5, priority: "P0" }),
+    });
+    const user = userEvent.setup();
+    renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={vi.fn()} />);
+    const dialog = await screen.findByRole("dialog", { name: "Edit policy" });
+    await user.click(within(dialog).getByRole("combobox", { name: "Priority" }));
+    await user.click(await screen.findByRole("option", { name: "P0" }));
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(callsTo(calls, "PUT", "/v1/maintenance-policies/nightly")).toHaveLength(1));
+    expect(bodyOf(calls, "PUT", "/v1/maintenance-policies/nightly")).toMatchObject({ priority: "P0", version: 4 });
+  });
+
+  it("starts a policy without a priority at P2", () => {
+    stubCatalogApi({});
+    const content = policyContentFixture();
+    delete content.priority;
+    renderEditor(<PolicyEditor content={content} onClose={vi.fn()} />);
+    expect(screen.getByRole("combobox", { name: "Priority" })).toHaveTextContent("P2");
+  });
 });

@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from context.table_maintenance.application.domain.model.shared import MaintenanceOperation
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     MaintenancePolicyContent,
+    MaintenancePriority,
 )
 
 
@@ -93,3 +94,32 @@ def test_zero_cooldown_means_no_cooldown() -> None:
     wire["operations"]["expire_snapshots"]["trigger_policy"]["cooldown_seconds"] = 0
     content = MaintenancePolicyContent.from_primitives(wire)
     assert content.operations.expire_snapshots.trigger_policy.cooldown.total_seconds() == 0
+
+
+def test_policy_content_without_priority_reads_as_p2() -> None:
+    """A policy version stored before priorities existed has no field and reads as P2."""
+    wire = MaintenancePolicyContent.platform_default().to_primitives()
+    wire.pop("priority", None)
+    assert MaintenancePolicyContent.from_primitives(wire).priority is MaintenancePriority.P2
+
+
+def test_policy_content_round_trips_priority() -> None:
+    """A P0 policy is written as "P0" and read back as P0."""
+    wire = MaintenancePolicyContent.platform_default().to_primitives()
+    wire["priority"] = "P0"
+    content = MaintenancePolicyContent.from_primitives(wire)
+    assert content.priority is MaintenancePriority.P0
+    assert content.to_primitives()["priority"] == "P0"
+
+
+def test_platform_default_priority_is_p2() -> None:
+    """The platform default is the lowest priority."""
+    assert MaintenancePolicyContent.platform_default().priority is MaintenancePriority.P2
+
+
+def test_unknown_priority_is_rejected() -> None:
+    """Only P0, P1 and P2 exist."""
+    wire = MaintenancePolicyContent.platform_default().to_primitives()
+    wire["priority"] = "P3"
+    with pytest.raises(ValidationError):
+        MaintenancePolicyContent.from_primitives(wire)

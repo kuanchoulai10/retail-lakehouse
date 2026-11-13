@@ -29,6 +29,7 @@ describe("PolicyVersionPage", () => {
           name: "nightly",
           version: 2,
           dry_run: true,
+          priority: "P1",
           created_at: "2026-11-05T09:00:00Z",
           operations: { ...content.operations, remove_orphan_files: { ...content.operations.remove_orphan_files, enabled: false } },
         }),
@@ -40,6 +41,9 @@ describe("PolicyVersionPage", () => {
     const data = screen.getByRole("region", { name: "Rewrite data files" });
     expect(within(data).getByText("Reducible files at least 5")).toBeInTheDocument();
     expect(screen.getByText("On: nothing is started")).toBeInTheDocument();
+    const facts = screen.getByRole("region", { name: "Policy" });
+    expect(within(facts).getByText("Priority")).toBeInTheDocument();
+    expect(within(facts).getByText("P1")).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Save|Edit/ })).not.toBeInTheDocument();
   });

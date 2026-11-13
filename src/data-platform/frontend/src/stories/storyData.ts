@@ -562,6 +562,7 @@ export const DEFAULT_POLICY_CONTENT: PolicyContent = {
   description: "",
   reconcile_interval_seconds: 3600,
   dry_run: false,
+  priority: "P2",
   operations: {
     rewrite_data_files: {
       enabled: true,
@@ -595,6 +596,7 @@ function policy(overrides: Partial<ListedTableMaintenancePolicyApiResponse>): Li
     created_at: "2026-11-01T09:00:00Z",
     updated_at: "2026-11-01T09:00:00Z",
     ...DEFAULT_POLICY_CONTENT,
+    priority: DEFAULT_POLICY_CONTENT.priority ?? "P2",
     ...overrides,
   };
 }
@@ -609,6 +611,7 @@ export const POLICIES: ListedTableMaintenancePolicyApiResponse[] = [
     version: 4,
     attachment_count: 2,
     reconcile_interval_seconds: 86400,
+    priority: "P0",
     operations: {
       ...DEFAULT_POLICY_CONTENT.operations,
       rewrite_data_files: {

@@ -153,3 +153,35 @@ def test_delete_default_is_409(world: PolicyWebWorld) -> None:
 def test_delete_missing_is_404(world: PolicyWebWorld) -> None:
     """DELETE of an unknown policy answers 404."""
     assert world.client.delete("/v1/maintenance-policies/nope").status_code == 404
+
+
+def test_create_with_a_priority_answers_it(world: PolicyWebWorld) -> None:
+    """A policy created as P1 reads back as P1, on the policy and on its version."""
+    world.create("gold", priority="P1")
+    assert world.client.get("/v1/maintenance-policies/gold").json()["priority"] == "P1"
+    assert world.client.get("/v1/maintenance-policies/gold/versions/1").json()["priority"] == "P1"
+
+
+def test_create_without_a_priority_answers_p2(world: PolicyWebWorld) -> None:
+    """A body without a priority creates a P2 policy."""
+    content = policy_body()
+    content.pop("priority", None)
+    response = world.client.post("/v1/maintenance-policies", json={"name": "plain", **content})
+    assert response.status_code == 201, response.text
+    assert response.json()["priority"] == "P2"
+    listed = {p["name"]: p["priority"] for p in world.client.get("/v1/maintenance-policies").json()["policies"]}
+    assert listed["plain"] == "P2"
+
+
+def test_create_with_an_unknown_priority_is_422(world: PolicyWebWorld) -> None:
+    """Only P0, P1 and P2 exist."""
+    response = world.client.post("/v1/maintenance-policies", json={"name": "gold", **policy_body(priority="P3")})
+    assert response.status_code == 422
+
+
+def test_put_changes_the_priority(world: PolicyWebWorld) -> None:
+    """PUT carries the priority into the new version."""
+    world.create("gold")
+    response = world.client.put("/v1/maintenance-policies/gold", json={"version": 1, **policy_body(priority="P0")})
+    assert response.status_code == 200, response.text
+    assert response.json()["priority"] == "P0"

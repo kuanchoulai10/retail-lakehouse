@@ -8,7 +8,7 @@ import {
   getTableMaintenancePolicy,
   updateTableMaintenancePolicy,
 } from "@/api/generated/maintenance-policies/maintenance-policies";
-import type { TableMaintenancePolicyApiResponse } from "@/api/generated/model";
+import type { MaintenancePriorityApi, TableMaintenancePolicyApiResponse } from "@/api/generated/model";
 import { errorMessage } from "@/format";
 import {
   contentFromDraft,
@@ -20,11 +20,17 @@ import {
 import { isConflict } from "@/lib/updateErrorMessage";
 import { CheckboxField } from "./forms/CheckboxField";
 import { FormDialog } from "./forms/FormDialog";
+import { SelectField, type SelectOption } from "./forms/SelectField";
 import { OperationPolicySection } from "./OperationPolicySection";
 import { WholeNumberField } from "./forms/WholeNumberField";
 
 const CONFLICT_MESSAGE = "Someone else changed this policy. Reload to see their version.";
 const NAME_MESSAGE = "A name uses letters, digits, - and _ only, at most 64 characters.";
+const PRIORITIES: SelectOption<MaintenancePriorityApi>[] = [
+  { value: "P0", label: "P0" },
+  { value: "P1", label: "P1" },
+  { value: "P2", label: "P2" },
+];
 
 interface Props {
   // The policy being edited, at the version `content` was read at; without one the editor
@@ -166,6 +172,17 @@ export function PolicyEditor({ policy, content, onClose }: Props) {
         <Switch label="Dry run" checked={draft.dryRun} onCheckedChange={(dryRun) => update("dryRun", dryRun)} />
         <p className="type-body-small text-on-surface-variant">
           Reconcile and record what would run, but run nothing.
+        </p>
+      </div>
+      <div className="flex flex-col gap-1">
+        <SelectField
+          label="Priority"
+          value={draft.priority}
+          options={PRIORITIES}
+          onChange={(priority) => update("priority", priority)}
+        />
+        <p className="type-body-small text-on-surface-variant">
+          When a compaction round cannot afford every table, P0 goes first and P2 last. P2 is the default.
         </p>
       </div>
 

@@ -56,6 +56,7 @@ export * from './listTableCommitsWriter';
 export * from './listTableMaintenanceRunsParams';
 export * from './listTableReconciliationsParams';
 export * from './listTablesParams';
+export * from './maintenancePriorityApi';
 export * from './namespaceApiResponse';
 export * from './namespaceApiResponseProperties';
 export * from './namespaceSummaryApiResponse';

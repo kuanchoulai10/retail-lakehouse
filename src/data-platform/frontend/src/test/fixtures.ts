@@ -32,6 +32,7 @@ export function policyContentFixture(): Omit<CreateTableMaintenancePolicyApiRequ
     description: "Platform default",
     reconcile_interval_seconds: 3600,
     dry_run: false,
+    priority: "P2",
     operations: {
       rewrite_data_files: {
         enabled: true,
@@ -68,6 +69,7 @@ export function policyFixture(
     created_at: "2026-11-01T09:00:00Z",
     updated_at: "2026-11-02T09:00:00Z",
     ...policyContentFixture(),
+    priority: "P2",
     ...overrides,
   };
 }
