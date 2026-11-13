@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getListTableMaintenanceRunsQueryKey } from "../api/generated/table-maintenance-runs/table-maintenance-runs";
 import { getListTableReconciliationsQueryKey } from "../api/generated/table-reconciliations/table-reconciliations";
 import type { TableApiResponse } from "../api/generated/model";
-import { getGetTableHealthQueryKey } from "../api/generated/tables/tables";
 import { bodyOf, catalogTableFixture, stubCatalogApi, type StubbedCall } from "../test/catalogApiStub";
 import { jsonResponse, tableFixture } from "../test/fixtures";
 import { TableHeader } from "./TableHeader";
@@ -137,17 +136,15 @@ describe("TableHeader", () => {
     await vi.waitFor(() => expect(trigger).toHaveFocus());
   });
 
-  it("marks runs and health stale after a maintenance trigger", async () => {
+  it("marks runs stale after a maintenance trigger", async () => {
     const user = userEvent.setup();
     const client = newClient();
     client.setQueryData(getListTableMaintenanceRunsQueryKey("uuid-orders"), []);
-    client.setQueryData(getGetTableHealthQueryKey("uuid-orders"), {});
     renderHeader("managed", client);
     await user.click(screen.getByRole("button", { name: "Run maintenance" }));
     await user.click(screen.getByRole("button", { name: "Run" }));
     await vi.waitFor(() => {
       expect(client.getQueryState(getListTableMaintenanceRunsQueryKey("uuid-orders"))?.isInvalidated).toBe(true);
-      expect(client.getQueryState(getGetTableHealthQueryKey("uuid-orders"))?.isInvalidated).toBe(true);
     });
   });
 

@@ -18,11 +18,9 @@ import type {
   TableApiResponse,
   TableCommitsApiResponse,
   TableDiscoveryRuleApiResponse,
-  TableHealthApiResponse,
   TableIdentifierApiResponse,
   TableMaintenanceRunApiResponse,
   TableReconciliationApiResponse,
-  TableStorageApiResponse,
 } from "@/api/generated/model";
 import type { PolicyContent } from "@/lib/policyDraft";
 
@@ -263,54 +261,6 @@ export const MAINTAINED_TABLES: TableApiResponse[] = [
     last_discovered_at: "2026-11-06T09:00:00Z",
   },
 ];
-
-export const HEALTH: TableHealthApiResponse = {
-  scheduled: true,
-  not_scheduled_reason: null,
-  operations: [
-    {
-      operation: "rewrite_data_files",
-      verdict: "due",
-      measured: 12,
-      threshold: 5,
-      next_eligible_at: null,
-      qualifying_partitions: 3,
-      size_bytes: null,
-      size_source: null,
-    },
-    {
-      operation: "expire_snapshots",
-      verdict: "not_due",
-      measured: 2,
-      threshold: 20,
-      next_eligible_at: null,
-      qualifying_partitions: null,
-      size_bytes: null,
-      size_source: null,
-    },
-  ],
-  position_delete_files: 0,
-  equality_delete_files: 0,
-};
-
-export const STORAGE: TableStorageApiResponse = {
-  current_bytes: 1_824_310,
-  current_files: 7,
-  old_snapshot_bytes: 512_000,
-  old_snapshot_files: 2,
-  window_days: 30,
-  attempts_without_metrics: 0,
-  reclaimed: {
-    rewritten_data_files: 14,
-    added_data_files: 2,
-    rewritten_bytes: 3_400_000,
-    rewritten_manifests: 0,
-    added_manifests: 0,
-    expired_snapshots: 6,
-    deleted_data_files: 9,
-    deleted_manifest_files: 3,
-  },
-};
 
 export const COMMITS: TableCommitsApiResponse = {
   truncated: false,

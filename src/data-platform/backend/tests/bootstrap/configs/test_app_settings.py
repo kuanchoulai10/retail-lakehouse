@@ -7,6 +7,8 @@ import os
 import pytest
 
 from bootstrap.configs import AppSettings, Component, DatabaseBackend, TemporalSettings
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import DEFAULT_MAX_ATTEMPTS
+from context.table_maintenance.application.domain.model.table import DEFAULT_FAILURE_BACKOFF_CAP
 
 
 @pytest.fixture(autouse=True)
@@ -255,3 +257,11 @@ def test_scheduler_reads_env(monkeypatch: pytest.MonkeyPatch):
     assert (scheduler.priority_weights.p0, scheduler.priority_weights.p1) == (8.0, 2.0)
     assert (scheduler.sla_seconds.p0, scheduler.sla_seconds.p2) == (3600, 120)
     assert (scheduler.grant_lease_seconds, scheduler.rounds_kept) == (900, 10)
+
+
+def test_attempt_and_backoff_defaults_match_the_domain_defaults():
+    """The settings repeat the contexts' named defaults (configs may not import a context), so they must agree."""
+    settings = AppSettings()
+
+    assert settings.maintenance_max_attempts == DEFAULT_MAX_ATTEMPTS
+    assert settings.maintenance_failure_backoff_cap_seconds == DEFAULT_FAILURE_BACKOFF_CAP.total_seconds()

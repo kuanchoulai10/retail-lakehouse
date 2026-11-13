@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Banner, Button, CheckBox, ModalDialog } from "@retail-lakehouse/design-system";
 import { useState } from "react";
 import { getListTableMaintenanceRunsQueryKey } from "@/api/generated/table-maintenance-runs/table-maintenance-runs";
-import { getGetTableHealthQueryKey, triggerTableMaintenance } from "@/api/generated/tables/tables";
+import { triggerTableMaintenance } from "@/api/generated/tables/tables";
 import { errorMessage } from "@/format";
 
 export const ALL_OPERATIONS = [
@@ -33,11 +33,7 @@ export function RunMaintenanceDialog({
         operations: ALL_OPERATIONS.filter((op) => selected.includes(op)),
       }),
     onSuccess: async () => {
-      await Promise.all(
-        [getListTableMaintenanceRunsQueryKey(tableUuid), getGetTableHealthQueryKey(tableUuid)].map((queryKey) =>
-          queryClient.invalidateQueries({ queryKey }),
-        ),
-      );
+      await queryClient.invalidateQueries({ queryKey: getListTableMaintenanceRunsQueryKey(tableUuid) });
       onClose();
     },
   });

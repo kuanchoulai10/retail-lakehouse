@@ -28,9 +28,7 @@ import {
 } from "@/api/generated/maintenance-policies/maintenance-policies.msw";
 import {
   getGetCatalogTableMockHandler,
-  getGetTableHealthMockHandler,
   getGetTableMockHandler,
-  getGetTableStorageMockHandler,
   getListCatalogTablesMockHandler,
   getListCatalogTablePropertiesMockHandler,
   getListTableCommitsMockHandler,
@@ -45,7 +43,6 @@ import {
   CANDIDATES,
   CATALOGS,
   COMMITS,
-  HEALTH,
   MAINTAINED_ORDERS,
   MAINTAINED_TABLES,
   NAMESPACES,
@@ -61,7 +58,6 @@ import {
   RULES,
   RUNS,
   SCHEDULER_SETTINGS,
-  STORAGE,
 } from "./storyData";
 
 // Every read the console makes, answered from storyData through the generated MSW handlers.
@@ -83,8 +79,6 @@ export function lakehouseHandlers() {
     getListCoveredCatalogsMockHandler({ catalogs: ["iceberg"] }),
     getListTablesMockHandler(MAINTAINED_TABLES),
     getGetTableMockHandler(MAINTAINED_ORDERS),
-    getGetTableHealthMockHandler(HEALTH),
-    getGetTableStorageMockHandler(STORAGE),
     getListTableCommitsMockHandler(({ request }) => {
       const query = new URL(request.url).searchParams;
       const since = query.get("since");
