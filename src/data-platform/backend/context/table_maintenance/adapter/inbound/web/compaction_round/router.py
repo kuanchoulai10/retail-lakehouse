@@ -13,9 +13,6 @@ from context.table_maintenance.adapter.inbound.web.compaction_round.dto import (
     CompactionRoundPickApiResponse,
     CompactionRoundSkipApiResponse,
     CompactionRoundTableApiResponse,
-    PlatformSettingApiResponse,
-    PlatformSettingsApiResponse,
-    PlatformSettingsGroupApiResponse,
     SchedulerPriorityApiResponse,
     SchedulerSettingsApiResponse,
 )
@@ -25,7 +22,6 @@ from context.table_maintenance.adapter.inbound.web.shared import (
 )
 from context.table_maintenance.application.port.inbound.compaction_round import (
     GetCompactionRoundUseCaseInput,
-    GetPlatformSettingsUseCaseInput,
     GetSchedulerSettingsUseCaseInput,
     ListCompactionRoundsUseCaseInput,
 )
@@ -49,7 +45,6 @@ if TYPE_CHECKING:
     type _Skip = ListCompactionRoundsUseCaseOutputSkip | GetCompactionRoundUseCaseOutputSkip
 
 router = APIRouter(tags=["compaction-rounds"])
-platform_settings_router = APIRouter(tags=["platform-settings"])
 
 UseCases = Annotated[WebUseCases, Depends(use_cases_dependency)]
 
@@ -88,35 +83,6 @@ def get_scheduler_settings(use_cases: UseCases) -> SchedulerSettingsApiResponse:
             )
             for p in output.priorities
         ],
-    )
-
-
-@platform_settings_router.get("/platform-settings")
-def get_platform_settings(use_cases: UseCases) -> PlatformSettingsApiResponse:
-    """Read the platform-level settings the running component was started with, grouped by theme.
-
-    Read-only: the values are set by the platform deployment. Each setting carries a stable
-    key, a label, its value and unit, and a one-sentence description.
-    """
-    output = use_cases.get_platform_settings.execute(GetPlatformSettingsUseCaseInput())
-    return PlatformSettingsApiResponse(
-        groups=[
-            PlatformSettingsGroupApiResponse(
-                key=group.key,
-                title=group.title,
-                items=[
-                    PlatformSettingApiResponse(
-                        key=item.key,
-                        label=item.label,
-                        value=item.value,
-                        unit=item.unit,
-                        description=item.description,
-                    )
-                    for item in group.items
-                ],
-            )
-            for group in output.groups
-        ]
     )
 
 
