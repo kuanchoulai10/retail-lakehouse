@@ -244,18 +244,17 @@ export const ReconciliationPolicyLink: Story = {
 };
 
 export const Policy: Story = {
-  args: { route: `${ORDERS}/policy` },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const panel = within(await canvas.findByRole("region", { name: "Maintenance policy" }));
     await expect(await panel.findByRole("link", { name: "iceberg.retail" })).toBeVisible();
     await expect(panel.getByRole("link", { name: "retail-nightly v4" })).toBeVisible();
     await expect(panel.queryByRole("button", { name: "Detach" })).toBeNull();
+    await expect(canvas.getByRole("region", { name: "Table" })).toBeVisible();
   },
 };
 
 export const PolicyDryRun: Story = {
-  args: { route: `${ORDERS}/policy` },
   beforeEach({ msw }) {
     msw.use(getGetTableApplicableMaintenancePolicyMockHandler({ ...POLICIES[2]!, target: null }));
   },
@@ -269,9 +268,19 @@ export const PolicyDryRun: Story = {
   },
 };
 
+// The old Policy tab's URL lands on the Overview.
+export const PolicyOldUrl: Story = {
+  args: { route: `${ORDERS}/policy` },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole("region", { name: "Maintenance policy" })).toBeVisible();
+    await expect(canvas.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
+    await expect(canvas.queryByRole("tab", { name: "Policy" })).toBeNull();
+  },
+};
+
 // A table maintenance has no record of still shows the policy that applies, asked by its name.
 export const PolicyNotRecorded: Story = {
-  args: { route: `${ORDERS}/policy` },
   beforeEach({ msw }) {
     msw.use(
       getListCoveredCatalogsMockHandler({ catalogs: [] }),
@@ -282,12 +291,11 @@ export const PolicyNotRecorded: Story = {
     const panel = within(await within(canvasElement).findByRole("region", { name: "Maintenance policy" }));
     await expect(await panel.findByRole("link", { name: "retail-nightly v4" })).toBeVisible();
     await expect(panel.getByRole("button", { name: "Attach policy" })).toBeVisible();
-    await expect(within(canvasElement).queryByText("this catalog is not covered by maintenance")).toBeNull();
+    await expect(within(canvasElement).getByText("this catalog is not covered by maintenance")).toBeVisible();
   },
 };
 
 export const PolicyPhone: Story = {
-  args: { route: `${ORDERS}/policy` },
   globals: PHONE,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByRole("region", { name: "Maintenance policy" });

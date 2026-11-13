@@ -2,14 +2,18 @@ import { Panel, TextLink } from "@retail-lakehouse/design-system";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { useGetTableDiscoveryRules } from "@/api/generated/discovery-rules/discovery-rules";
-import type { CatalogTableApiResponse } from "@/api/generated/model";
+import type { CatalogTableApiResponse, TableApiResponse } from "@/api/generated/model";
+import { ApplicablePolicyPanel } from "@/components/ApplicablePolicyPanel";
 import { MaintenanceGate } from "@/components/MaintenanceGate";
+import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { formatBytes, formatCount, formatRelativeTime } from "@/format";
 import type { TableMaintenanceState } from "@/lib/tableMaintenanceState";
 
 interface Props {
   table: CatalogTableApiResponse;
   maintenance: TableMaintenanceState;
+  // Maintenance's record of the table, as the page read it; the policy waits for its answer.
+  record: { data: TableApiResponse | undefined; isPending: boolean };
 }
 
 const MARKER: Record<TableMaintenanceState["kind"], string> = {
@@ -28,9 +32,11 @@ function Fact({ label, children, mono }: { label: string; children: ReactNode; m
   );
 }
 
-// What the catalog holds, plus whether maintenance manages the table; when it does not, the shared
-// empty state says why.
-export function OverviewTab({ table, maintenance }: Props) {
+// What the catalog holds, plus whether maintenance manages the table; then the policy that applies,
+// for every table: one maintenance has a record of is read by that record's uuid, any other by its
+// name in the catalog, so a policy can be attached before maintenance manages it. When maintenance
+// does not manage the table, the shared empty state says why.
+export function OverviewTab({ table, maintenance, record }: Props) {
   const managed = maintenance.kind === "managed" ? maintenance.table : null;
   // The rule that selected the table is asked for only when maintenance manages it.
   const rules = useGetTableDiscoveryRules({ query: { enabled: managed !== null } });
@@ -69,6 +75,20 @@ export function OverviewTab({ table, maintenance }: Props) {
           <Fact label="Last updated">{formatRelativeTime(new Date(table.last_updated_ms).toISOString())}</Fact>
         </dl>
       </Panel>
+      {record.isPending ? (
+        <PanelSkeleton label="Loading policy…" />
+      ) : (
+        <ApplicablePolicyPanel
+          scope={{
+            type: "table",
+            catalog: table.catalog,
+            namespace: table.namespace,
+            table: table.name,
+            tableUuid: record.data?.uuid ?? table.uuid,
+            recorded: record.data !== undefined,
+          }}
+        />
+      )}
       <MaintenanceGate state={maintenance}>{() => null}</MaintenanceGate>
     </div>
   );

@@ -20,7 +20,7 @@ import { TablePage } from "./TablePage";
 
 const TABLE = "/v1/catalogs/iceberg/namespaces/retail/tables/orders";
 const PAGE = "/catalogs/iceberg/namespaces/retail/tables/orders";
-const TABS = ["Overview", "Schema", "Properties", "Commits", "Maintenance", "Candidates", "Reconciliations", "Policy"];
+const TABS = ["Overview", "Schema", "Properties", "Commits", "Maintenance", "Candidates", "Reconciliations"];
 
 function Location() {
   const location = useLocation();
@@ -152,13 +152,18 @@ describe("TablePage", { timeout: 15_000 }, () => {
     );
   });
 
-  it("policy tab shows the policy that applies and its dry run, and the header shows neither", async () => {
+  it("overview shows the policy that applies and its dry run below the Table panel, and the header shows neither", async () => {
     const applicable = { ...policyContentFixture(), name: "scratch", version: 2, dry_run: true, target: null };
     const calls = stubTable({ extra: { "GET /v1/tables/uuid-orders/applicable-policy": () => jsonResponse(applicable) } });
-    renderAt(`${PAGE}/policy`);
+    renderAt(PAGE);
     const panel = within(await screen.findByRole("region", { name: "Maintenance policy" }));
     expect(await panel.findByText("Platform default")).toBeInTheDocument();
+    expect(panel.getByRole("link", { name: "scratch v2" })).toBeInTheDocument();
     expect(panel.getByText("Dry run")).toBeInTheDocument();
+    const table = screen.getByRole("region", { name: "Table" });
+    expect(table.compareDocumentPosition(screen.getByRole("region", { name: "Maintenance policy" }))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
     const heading = screen.getByRole("heading", { level: 1, name: "orders" });
     const header = within(heading.closest("header") as HTMLElement);
     expect(header.queryByText("Dry run")).not.toBeInTheDocument();
@@ -168,14 +173,16 @@ describe("TablePage", { timeout: 15_000 }, () => {
     expect(callsTo(calls, "GET", "/v1/tables/uuid-orders/applicable-policy")).toHaveLength(1);
   });
 
-  it("asks for the applicable policy only on the policy tab", async () => {
-    const calls = stubTable();
-    renderAt(PAGE);
-    await screen.findByText("Maintenance: managed");
-    expect(callsTo(calls, "GET", "/v1/tables/uuid-orders/applicable-policy")).toHaveLength(0);
+  it("the old policy path lands on the overview url, with the policy block and no 404", async () => {
+    stubTable();
+    renderAt(`${PAGE}/policy`);
+    expect(await screen.findByRole("region", { name: "Maintenance policy" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByTestId("location")).toHaveTextContent(`${PAGE}/overview`);
+    expect(screen.queryByText(/not found/i)).not.toBeInTheDocument();
   });
 
-  it("policy tab asks by name for a table maintenance has no record of, and attaches to it", async () => {
+  it("overview asks by name for a table maintenance has no record of, and attaches to it", async () => {
     const byName = "/v1/applicable-policy?catalog=iceberg&namespace=retail&table=orders";
     const calls = stubTable({
       covered: ["other"],
@@ -192,9 +199,9 @@ describe("TablePage", { timeout: 15_000 }, () => {
           }),
       },
     });
-    renderAt(`${PAGE}/policy`);
+    renderAt(PAGE);
     expect(await screen.findByText("Platform default")).toBeInTheDocument();
-    expect(screen.queryByText("this catalog is not covered by maintenance")).not.toBeInTheDocument();
+    expect(screen.getByText("this catalog is not covered by maintenance")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Attach policy" }));
     const dialog = await screen.findByRole("dialog");
     await userEvent.click(within(dialog).getByRole("combobox", { name: "Policy" }));

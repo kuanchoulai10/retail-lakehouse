@@ -1,7 +1,7 @@
 import { Banner, TabItem, TabList, TabPanel, Tabs } from "@retail-lakehouse/design-system";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, type MouseEvent } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, Navigate, useNavigate, useParams } from "react-router";
 import { ApiError } from "@/api/apiError";
 import type { CatalogTableApiResponse, TableApiResponse } from "@/api/generated/model";
 import { useListCoveredCatalogs } from "@/api/generated/discovery-rules/discovery-rules";
@@ -12,7 +12,6 @@ import {
   useGetCatalogTable,
   useGetTable,
 } from "@/api/generated/tables/tables";
-import { ApplicablePolicyPanel } from "@/components/ApplicablePolicyPanel";
 import { CatalogObjectNotFound } from "@/components/CatalogObjectNotFound";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { EditTablePropertiesDialog } from "@/components/forms/EditTablePropertiesDialog";
@@ -42,7 +41,6 @@ const TABS = [
   { key: "maintenance", label: "Maintenance" },
   { key: "candidates", label: "Candidates" },
   { key: "reconciliations", label: "Reconciliations" },
-  { key: "policy", label: "Policy" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -61,23 +59,6 @@ function isNotFound(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404;
 }
 
-// Every table has a policy: one maintenance has a record of is read by that record's uuid, any
-// other by its name in the catalog, so it can be attached before maintenance manages it.
-function PolicyTab({ table, record }: { table: CatalogTableApiResponse; record: TableApiResponse | undefined }) {
-  return (
-    <ApplicablePolicyPanel
-      scope={{
-        type: "table",
-        catalog: table.catalog,
-        namespace: table.namespace,
-        table: table.name,
-        tableUuid: record?.uuid ?? table.uuid,
-        recorded: record !== undefined,
-      }}
-    />
-  );
-}
-
 function tabBody(
   tab: TabKey,
   table: CatalogTableApiResponse,
@@ -86,7 +67,7 @@ function tabBody(
 ) {
   switch (tab) {
     case "overview":
-      return <OverviewTab table={table} maintenance={maintenance} />;
+      return <OverviewTab table={table} maintenance={maintenance} record={record} />;
     case "schema":
       return <SchemaTab table={table} />;
     case "properties":
@@ -101,9 +82,6 @@ function tabBody(
       return (
         <MaintenanceGate state={maintenance}>{(managed) => <ReconciliationsTab tableUuid={managed.uuid} />}</MaintenanceGate>
       );
-    case "policy":
-      // Wait for maintenance's answer, so the panel asks once and the right way.
-      return record.isPending ? <PanelSkeleton label="Loading policy…" /> : <PolicyTab table={table} record={record.data} />;
   }
 }
 
@@ -112,6 +90,10 @@ function tabBody(
 // table's path, so a rename or delete always unmounts it and the next table gets a fresh page.
 export function TablePage() {
   const { catalog = "", namespace: param = "", table: name = "", tab } = useParams();
+  // The Policy tab is gone: its block is on the Overview, where an old link now lands.
+  if (tab === "policy") {
+    return <Navigate replace to={tablePath(catalog, namespaceFromParam(param), name, "overview")} />;
+  }
   return <TableView key={JSON.stringify([catalog, param, name])} catalog={catalog} parts={namespaceFromParam(param)} name={name} segment={tab} />;
 }
 
