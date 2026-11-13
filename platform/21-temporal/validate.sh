@@ -36,7 +36,7 @@ SEARCH_ATTRIBUTES="$(kubectl exec deployment/temporal-admintools \
   --namespace temporal \
   --context "${KUBE_CONTEXT}" \
   -- temporal operator search-attribute list --namespace default)"
-for attribute in TableUuid:Keyword TableName:Keyword MaintenanceOperations:KeywordList MaintenanceTrigger:Keyword; do
+for attribute in TableUuid:Keyword TableName:Keyword MaintenanceOperations:KeywordList MaintenanceTrigger:Keyword GrantedTableUuids:KeywordList; do
   name="${attribute%%:*}"
   type="${attribute##*:}"
   if ! awk -v name="${name}" -v type="${type}" '$1 == name && $2 == type { found = 1 } END { exit !found }' <<<"${SEARCH_ATTRIBUTES}"; then

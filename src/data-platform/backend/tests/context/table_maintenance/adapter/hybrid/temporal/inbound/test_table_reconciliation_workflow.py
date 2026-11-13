@@ -1091,6 +1091,50 @@ def test_give_up_before_the_plan_timer_plans_once_as_previous_run_finished():
     _run(scenario, script=lambda _: _planned(COMPACTION, interval=10**6))
 
 
+def test_reconciliation_plans_on_compaction_granted():
+    """A grant from a compaction round wakes the loop, which plans by the normal rules and records the grant."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start(start_signal=None)
+        await h.signal(TableReconciliationSignal.COMPACTION_GRANTED, {"round_id": "round-1"})
+        assert (await h.plan_count(1))[0]["manual_operations"] is None
+        record = (await h.records(1))[0]
+        assert record["wake_reasons"] == {"compaction_granted": 1}
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+def test_compaction_granted_during_a_run_plans_after_it_finishes():
+    """A grant that arrives while a run is in flight is planned once the run ends."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        run_id = await h.in_flight()
+        await h.signal(TableReconciliationSignal.COMPACTION_GRANTED, {"round_id": "round-1"})
+        await h.settle()
+        assert len(h.plans.requests) == 1
+        await h.complete_child(run_id)
+        second = (await h.records(2))[1]
+        assert second["wake_reasons"] == {"compaction_granted": 1, "previous_run_finished": 1}
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+def test_compaction_granted_after_stop_cancels_the_stop():
+    """A grant is a decision signal: like a discovery scan it supersedes a pending stop."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        run_id = await h.in_flight()
+        await h.signal(TableReconciliationSignal.STOP)
+        await h.signal(TableReconciliationSignal.COMPACTION_GRANTED, {"round_id": "round-1"})
+        assert (await h.settle())["stopping"] is False
+        await h.complete_child(run_id)
+        await h.plan_count(2)
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
 def test_discovery_scan_is_recorded_as_its_own_wake_reason():
     """A discovery scan that sees the table wakes the loop and is recorded as a discovery scan."""
 

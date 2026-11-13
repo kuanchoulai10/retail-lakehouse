@@ -48,6 +48,7 @@ _REASON_POLICY_CHANGED = "policy_changed"
 _REASON_MANUAL_RUN = "manual_run"
 _REASON_RECONCILE_NOW = "reconcile_now"
 _REASON_PREVIOUS_RUN_FINISHED = "previous_run_finished"
+_REASON_COMPACTION_GRANTED = "compaction_granted"
 _SEARCH_ATTRIBUTES_PATCH = "table-search-attributes"
 _FENCED_BOUND_PATCH = "fencing-in-flight-bound"
 _AWAIT_CLOSE_PATCH = "await-cancelled-run-close"
@@ -184,6 +185,11 @@ class TableReconciliationWorkflow:
     def table_seen(self, payload: dict | None = None) -> None:
         """Wake the loop because a discovery scan saw the table."""
         self._wake(_REASON_DISCOVERY_SCAN, cancels_stop=True)
+
+    @workflow.signal(name=TableReconciliationSignal.COMPACTION_GRANTED)
+    def compaction_granted(self, payload: dict | None = None) -> None:
+        """Wake the loop because a compaction round granted some of the table's candidates, after any run in flight."""
+        self._wake(_REASON_COMPACTION_GRANTED, cancels_stop=True)
 
     @workflow.signal(name=TableReconciliationSignal.TRIGGER_NOW)
     def trigger_now(self, payload: dict | None = None) -> None:

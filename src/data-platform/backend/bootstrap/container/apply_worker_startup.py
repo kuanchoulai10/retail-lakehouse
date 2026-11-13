@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from bootstrap.container.admission_lease_seconds import admission_lease_seconds
 from context.table_maintenance.adapter.hybrid.temporal.inbound import (
+    ensure_compaction_round_schedule,
     ensure_table_discovery_schedule,
     ensure_table_maintenance_admission,
 )
@@ -25,8 +26,9 @@ async def apply_worker_startup(
     *,
     ensure_schedule: Callable[..., Awaitable[None]] = ensure_table_discovery_schedule,
     ensure_admission: Callable[..., Awaitable[None]] = ensure_table_maintenance_admission,
+    ensure_rounds: Callable[..., Awaitable[None]] = ensure_compaction_round_schedule,
 ) -> None:
-    """Ensure the per-catalog discovery schedules and the admission workflow.
+    """Ensure the per-catalog discovery schedules, the admission workflow and the compaction round schedule.
 
     The discovery schedules always run: the discovery rules alone decide which
     tables are managed, so there is no switch to pause them.
@@ -40,4 +42,9 @@ async def apply_worker_startup(
         client,
         limit=settings.admission_limit,
         lease_seconds=admission_lease_seconds(settings),
+    )
+    await ensure_rounds(
+        client,
+        interval=timedelta(seconds=settings.scheduler.round_seconds),
+        budget_gb_hours=settings.scheduler.budget_gb_hours,
     )

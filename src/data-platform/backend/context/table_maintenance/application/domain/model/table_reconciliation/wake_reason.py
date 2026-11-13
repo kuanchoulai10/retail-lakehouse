@@ -15,3 +15,4 @@ class WakeReason(StrEnum):
     MANUAL_RUN = "manual_run"
     RECONCILE_NOW = "reconcile_now"
     PREVIOUS_RUN_FINISHED = "previous_run_finished"
+    COMPACTION_GRANTED = "compaction_granted"

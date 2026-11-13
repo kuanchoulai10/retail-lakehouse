@@ -57,7 +57,7 @@ for attempt in $(seq 1 30); do
   sleep 5
 done
 
-for attribute in TableUuid:Keyword TableName:Keyword MaintenanceOperations:KeywordList MaintenanceTrigger:Keyword; do
+for attribute in TableUuid:Keyword TableName:Keyword MaintenanceOperations:KeywordList MaintenanceTrigger:Keyword GrantedTableUuids:KeywordList; do
   name="${attribute%%:*}"
   type="${attribute##*:}"
   if awk -v name="${name}" '$1 == name { found = 1 } END { exit !found }' <<<"${SEARCH_ATTRIBUTES}"; then

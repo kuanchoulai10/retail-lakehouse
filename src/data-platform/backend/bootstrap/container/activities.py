@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
+        CompactionRoundActivities,
         TableDiscoveryActivities,
         TableMaintenanceActivities,
         TableReconciliationActivities,
@@ -18,12 +19,13 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class Activities:
-    """Hold the four activity classes the worker registers."""
+    """Hold the activity classes the worker registers."""
 
     reconciliation: TableReconciliationActivities
     maintenance: TableMaintenanceActivities
     discovery: TableDiscoveryActivities
     workflow_signal: WorkflowSignalActivities
+    compaction_round: CompactionRoundActivities
 
     def callables(self) -> list[Callable[..., object]]:
         """Return every activity method, bound to its instance."""
@@ -43,4 +45,5 @@ class Activities:
             signal.signal_admission_acquire,
             signal.signal_parent,
             signal.get_workflow_running,
+            self.compaction_round.schedule_compaction_round,
         ]

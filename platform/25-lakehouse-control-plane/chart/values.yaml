@@ -101,6 +101,20 @@ compaction:
   sizeSMaxBytes: 268435456
   sizeMMaxBytes: 1073741824
 
+scheduler:
+  roundSeconds: 120
+  budgetGbHours: 0.05
+  priorityWeights:
+    P0: 4.0
+    P1: 2.0
+    P2: 1.0
+  slaSeconds:
+    P0: 3600
+    P1: 14400
+    P2: 28800
+  grantLeaseSeconds: 600
+  roundsKept: 500
+
 eventConsumer:
   resources:
     requests:

@@ -15,3 +15,4 @@ class TableReconciliationSignal(StrEnum):
     MAINTENANCE_FINISHED = "maintenance_finished"
     RECONCILE_NOW = "reconcile_now"
     TABLE_SEEN = "table_seen"
+    COMPACTION_GRANTED = "compaction_granted"

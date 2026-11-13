@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from bootstrap.container.activities import Activities
 from bootstrap.container.admission_lease_seconds import admission_lease_seconds
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
+    CompactionRoundActivities,
     TableDiscoveryActivities,
     TableMaintenanceActivities,
     TableReconciliationActivities,
@@ -44,4 +45,5 @@ def build_activities(use_cases: UseCases, client: Client, settings: AppSettings)
             admission_limit=settings.admission_limit,
             admission_lease_seconds=admission_lease_seconds(settings),
         ),
+        compaction_round=CompactionRoundActivities(schedule=use_cases.schedule_compaction_round),
     )

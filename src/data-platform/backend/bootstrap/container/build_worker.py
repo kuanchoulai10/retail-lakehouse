@@ -11,6 +11,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
 )
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
+    CompactionRoundWorkflow,
     TableDiscoveryWorkflow,
     TableMaintenanceAdmissionWorkflow,
     TableMaintenanceWorkflow,
@@ -30,6 +31,7 @@ WORKFLOWS = (
     TableDiscoveryWorkflow,
     TableMaintenanceWorkflow,
     TableMaintenanceAdmissionWorkflow,
+    CompactionRoundWorkflow,
 )
 GRACEFUL_SHUTDOWN = timedelta(seconds=30)
 
@@ -42,7 +44,7 @@ def build_worker(
     max_concurrent_activities: int,
     worker_factory: Callable[..., Worker] = Worker,
 ) -> Worker:
-    """Build the worker that runs all four workflows and every activity.
+    """Build the worker that runs every workflow and every activity.
 
     Sync activities run on ``executor``; ``max_concurrent_activities`` should match
     its thread count so an accepted task never waits for a free thread.

@@ -52,3 +52,13 @@ data:
   GLAC_COMPACTION__MIN_THROUGHPUT_SAMPLE_BYTES: {{ .Values.compaction.minThroughputSampleBytes | int64 | quote }}
   GLAC_COMPACTION__SIZE_S_MAX_BYTES: {{ .Values.compaction.sizeSMaxBytes | int64 | quote }}
   GLAC_COMPACTION__SIZE_M_MAX_BYTES: {{ .Values.compaction.sizeMMaxBytes | int64 | quote }}
+  GLAC_SCHEDULER__ROUND_SECONDS: {{ .Values.scheduler.roundSeconds | quote }}
+  GLAC_SCHEDULER__BUDGET_GB_HOURS: {{ .Values.scheduler.budgetGbHours | quote }}
+  GLAC_SCHEDULER__PRIORITY_WEIGHTS__P0: {{ .Values.scheduler.priorityWeights.P0 | quote }}
+  GLAC_SCHEDULER__PRIORITY_WEIGHTS__P1: {{ .Values.scheduler.priorityWeights.P1 | quote }}
+  GLAC_SCHEDULER__PRIORITY_WEIGHTS__P2: {{ .Values.scheduler.priorityWeights.P2 | quote }}
+  GLAC_SCHEDULER__SLA_SECONDS__P0: {{ .Values.scheduler.slaSeconds.P0 | int64 | quote }}
+  GLAC_SCHEDULER__SLA_SECONDS__P1: {{ .Values.scheduler.slaSeconds.P1 | int64 | quote }}
+  GLAC_SCHEDULER__SLA_SECONDS__P2: {{ .Values.scheduler.slaSeconds.P2 | int64 | quote }}
+  GLAC_SCHEDULER__GRANT_LEASE_SECONDS: {{ .Values.scheduler.grantLeaseSeconds | quote }}
+  GLAC_SCHEDULER__ROUNDS_KEPT: {{ .Values.scheduler.roundsKept | quote }}

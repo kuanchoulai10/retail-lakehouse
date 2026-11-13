@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.adapter.hybrid.temporal.contracts.compaction_round import (
+    compaction_round_details,
+    compaction_round_summary,
+)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery import (
     table_discovery_summary,
 )
@@ -35,3 +39,15 @@ def test_table_discovery_summary_names_the_namespace_and_an_adhoc_trigger():
 def test_table_maintenance_admission_summary_names_the_limit():
     """The admission summary states the concurrency limit."""
     assert table_maintenance_admission_summary(2) == "global Spark maintenance admission (limit=2)"
+
+
+def test_compaction_round_summary_names_the_budget():
+    """A scheduled round's summary says what it may grant."""
+    assert compaction_round_summary(0.05) == "compaction round · budget 0.05 GB·h"
+
+
+def test_compaction_round_details_count_partitions_and_tables():
+    """A round's details say how many partitions of how many tables it granted."""
+    assert compaction_round_details(3, 2) == "granted 3 partitions of 2 tables"
+    assert compaction_round_details(1, 1) == "granted 1 partition of 1 table"
+    assert compaction_round_details(0, 0) == "granted 0 partitions of 0 tables"

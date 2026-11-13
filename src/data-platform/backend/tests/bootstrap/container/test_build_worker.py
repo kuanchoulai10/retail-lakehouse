@@ -14,6 +14,9 @@ from bootstrap.container import (
     build_use_cases,
     build_worker,
 )
+from context.table_maintenance.adapter.hybrid.temporal.contracts.compaction_round import (
+    CompactionRoundActivity,
+)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
 )
@@ -27,12 +30,14 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
     TableReconciliationActivity,
 )
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
+    CompactionRoundActivities,
     TableDiscoveryActivities,
     TableMaintenanceActivities,
     TableReconciliationActivities,
     WorkflowSignalActivities,
 )
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
+    CompactionRoundWorkflow,
     TableDiscoveryWorkflow,
     TableMaintenanceAdmissionWorkflow,
     TableMaintenanceWorkflow,
@@ -52,6 +57,7 @@ if TYPE_CHECKING:
 ALL_ACTIVITY_NAMES = {
     str(member)
     for enum in (
+        CompactionRoundActivity,
         TableDiscoveryActivity,
         TableMaintenanceActivity,
         TableReconciliationActivity,
@@ -89,6 +95,7 @@ def test_activities_carry_the_callback_url_and_admission_settings():
     assert isinstance(activities.maintenance, TableMaintenanceActivities)
     assert isinstance(activities.discovery, TableDiscoveryActivities)
     assert isinstance(activities.workflow_signal, WorkflowSignalActivities)
+    assert isinstance(activities.compaction_round, CompactionRoundActivities)
     assert activities.reconciliation._callback_base_url == "http://api:8000"  # noqa: SLF001
     assert activities.workflow_signal._admission_limit == 5  # noqa: SLF001
     assert activities.workflow_signal._admission_lease_seconds == 1020  # noqa: SLF001
@@ -130,6 +137,7 @@ def test_worker_registers_all_workflows_and_activities():
         TableDiscoveryWorkflow,
         TableMaintenanceWorkflow,
         TableMaintenanceAdmissionWorkflow,
+        CompactionRoundWorkflow,
     }
     names = {_activity_name(fn) for fn in factory.kwargs["activities"]}
     assert names == ALL_ACTIVITY_NAMES

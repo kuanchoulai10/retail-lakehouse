@@ -7,9 +7,10 @@ import inspect
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, cast
 
-from bootstrap.configs import CatalogSettings
+from bootstrap.configs import CatalogSettings, SchedulerSettings
 from bootstrap.container import apply_worker_startup
 from context.table_maintenance.adapter.hybrid.temporal.inbound import (
+    ensure_compaction_round_schedule,
     ensure_table_discovery_schedule,
     ensure_table_maintenance_admission,
 )
@@ -31,13 +32,14 @@ class Recorder:
         self.calls.append((args, kwargs))
 
 
-def _run() -> tuple[Recorder, Recorder, object]:
-    schedule, admission, client = Recorder(), Recorder(), object()
+def _run() -> tuple[Recorder, Recorder, object, Recorder]:
+    schedule, admission, client, rounds = Recorder(), Recorder(), object(), Recorder()
     settings = sqlite_settings(
         catalog=CatalogSettings(names=["a", "b"]),
         admission_limit=3,
         discovery_interval_seconds=120,
         maintenance_attempt_deadline_seconds=600,
+        scheduler=SchedulerSettings(round_seconds=60, budget_gb_hours=0.2),
     )
     asyncio.run(
         apply_worker_startup(
@@ -45,14 +47,15 @@ def _run() -> tuple[Recorder, Recorder, object]:
             settings,
             ensure_schedule=schedule,
             ensure_admission=admission,
+            ensure_rounds=rounds,
         )
     )
-    return schedule, admission, client
+    return schedule, admission, client, rounds
 
 
 def test_worker_startup_never_pauses_schedule():
     """The discovery schedules are ensured for every covered catalog with no paused flag: they always run."""
-    schedule, _, client = _run()
+    schedule, _, client, _ = _run()
 
     assert schedule.calls == [((client, ["a", "b"]), {"interval": timedelta(seconds=120)})]
     assert "paused" not in inspect.signature(ensure_table_discovery_schedule).parameters
@@ -60,7 +63,7 @@ def test_worker_startup_never_pauses_schedule():
 
 def test_admission_is_ensured_with_the_configured_limit():
     """The admission workflow is ensured with the configured limit and a lease 15 minutes past the deadline."""
-    _, admission, client = _run()
+    _, admission, client, _ = _run()
 
     assert admission.calls == [
         (
@@ -73,17 +76,26 @@ def test_admission_is_ensured_with_the_configured_limit():
     ]
 
 
+def test_the_compaction_round_schedule_is_ensured_with_the_scheduler_settings():
+    """One round schedule is ensured, every round_seconds, with the budget for its summary."""
+    _, _, client, rounds = _run()
+
+    assert rounds.calls == [((client,), {"interval": timedelta(seconds=60), "budget_gb_hours": 0.2})]
+
+
 def test_defaults_are_the_real_functions_and_the_kwargs_bind_to_them():
     """The default ensure functions are the real ones and the keyword arguments bind to their signatures."""
     parameters = inspect.signature(apply_worker_startup).parameters
     assert parameters["ensure_schedule"].default is ensure_table_discovery_schedule
     assert parameters["ensure_admission"].default is ensure_table_maintenance_admission
+    assert parameters["ensure_rounds"].default is ensure_compaction_round_schedule
 
-    schedule, admission, _ = _run()
+    schedule, admission, _, rounds = _run()
 
     for real, recorder in (
         (ensure_table_discovery_schedule, schedule),
         (ensure_table_maintenance_admission, admission),
+        (ensure_compaction_round_schedule, rounds),
     ):
         ((args, kwargs),) = recorder.calls
         inspect.signature(real).bind(*args, **kwargs)
