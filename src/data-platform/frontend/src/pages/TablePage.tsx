@@ -33,16 +33,17 @@ import { apiNamespace, namespaceFromParam, namespacePath, tablePath } from "@/li
 import { tableMaintenanceState, type TableMaintenanceState } from "@/lib/tableMaintenanceState";
 import { useLeavingPage } from "@/lib/useLeavingPage";
 
-// The same tabs on every Iceberg table, managed or not (spec anti-goal).
+// The same tabs on every Iceberg table, managed or not (spec anti-goal). The table's own facts come
+// first, then what maintenance does to it.
 const TABS = [
   { key: "overview", label: "Overview" },
   { key: "schema", label: "Schema" },
+  { key: "properties", label: "Properties" },
   { key: "commits", label: "Commits" },
   { key: "maintenance", label: "Maintenance" },
   { key: "candidates", label: "Candidates" },
   { key: "reconciliations", label: "Reconciliations" },
   { key: "policy", label: "Policy" },
-  { key: "properties", label: "Properties" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];

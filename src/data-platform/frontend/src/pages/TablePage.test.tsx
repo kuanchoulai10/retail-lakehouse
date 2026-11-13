@@ -20,7 +20,7 @@ import { TablePage } from "./TablePage";
 
 const TABLE = "/v1/catalogs/iceberg/namespaces/retail/tables/orders";
 const PAGE = "/catalogs/iceberg/namespaces/retail/tables/orders";
-const TABS = ["Overview", "Schema", "Commits", "Maintenance", "Candidates", "Reconciliations", "Policy", "Properties"];
+const TABS = ["Overview", "Schema", "Properties", "Commits", "Maintenance", "Candidates", "Reconciliations", "Policy"];
 
 function Location() {
   const location = useLocation();
@@ -406,7 +406,7 @@ describe("TablePage", { timeout: 15_000 }, () => {
     renderAt(`${PAGE}/properties`);
     await screen.findByText("write.format.default");
     screen.getByRole("tab", { name: "Properties" }).focus();
-    await user.keyboard("{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}");
+    await user.keyboard("{ArrowRight}{ArrowRight}");
     expect(await screen.findByText("No maintenance runs yet.")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Maintenance" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByTestId("location")).toHaveTextContent(`${PAGE}/maintenance`);
