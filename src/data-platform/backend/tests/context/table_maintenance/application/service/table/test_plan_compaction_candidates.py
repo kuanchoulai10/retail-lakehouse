@@ -319,11 +319,22 @@ def test_all_held_plans_no_compaction_and_says_why(
     assert held.hold_reason is HoldReason.RECENTLY_WRITTEN
 
 
-def test_all_claimed_plans_no_compaction_and_says_why(planner, tables_repo, catalog, candidates_repo, now):
+def _run_record(runs_repo, run_id: str, now, *, finished: bool) -> None:  # noqa: ANN001
+    run = TableMaintenanceRun.create(
+        TableMaintenanceRunId(run_id), TableId("u-1"), TriggerType.SCHEDULED, [COMPACTION], now, execution_ref="wf"
+    )
+    run.start_attempt(COMPACTION, 1, None, now)
+    if finished:
+        run.fail(COMPACTION, 1, "boom", now + timedelta(minutes=1))
+    runs_repo.create(run)
+
+
+def test_all_claimed_plans_no_compaction_and_says_why(planner, tables_repo, catalog, candidates_repo, runs_repo, now):
     """When another run still holds every candidate under its lease, compaction is not planned."""
     _table(tables_repo, now)
     _observe(catalog, [_partition("a", 10)])
     _plan(planner, now, run_id="other-run")
+    _run_record(runs_repo, "other-run", now, finished=False)
 
     plan = _plan(planner, now + timedelta(minutes=1))
 
@@ -347,6 +358,43 @@ def test_candidates_of_a_finished_run_are_released(planner, tables_repo, catalog
     runs_repo.create(run)
 
     plan = _plan(planner, now + timedelta(minutes=2))
+
+    assert _compaction(plan) is not None
+    (candidate,) = candidates_repo.list_all()
+    assert candidate.claimed_by_run_id == TableMaintenanceRunId(RUN)
+
+
+def test_plan_releases_claims_of_a_run_that_never_started(planner, tables_repo, catalog, candidates_repo, now):
+    """A plan that saved its claims and then failed leaves a run id with no run record: its claims are freed.
+
+    The reconciliation plans only when no run of the table is in flight, so a
+    claim of a run that has no record belongs to a plan whose run never started.
+    """
+    _table(tables_repo, now)
+    _five(catalog)
+    _plan(planner, now, run_id="never-started")
+
+    plan = _plan(planner, now + timedelta(minutes=5), run_id="next-run")
+
+    compaction = _compaction(plan)
+    assert compaction is not None
+    assert [(p.spec_id, p.values) for p in compaction.candidate_partitions] == [(0, ["e"]), (0, ["d"])]
+    claimed = [c for c in candidates_repo.list_all() if c.state is CandidateState.CLAIMED]
+    assert {c.claimed_by_run_id for c in claimed} == {TableMaintenanceRunId("next-run")}
+
+
+def test_claims_of_a_finished_run_older_than_the_recent_runs_are_released(
+    planner, tables_repo, catalog, candidates_repo, runs_repo, now
+):
+    """The release looks each holder up, so a finished run past the newest runs read for throughput still counts."""
+    _table(tables_repo, now)
+    _observe(catalog, [_partition("a", 10)])
+    _plan(planner, now, run_id="old-run")
+    _run_record(runs_repo, "old-run", now, finished=True)
+    for i in range(60):
+        _run_record(runs_repo, f"later-{i:02d}", now + timedelta(minutes=2 + i), finished=True)
+
+    plan = _plan(planner, now + timedelta(hours=2))
 
     assert _compaction(plan) is not None
     (candidate,) = candidates_repo.list_all()

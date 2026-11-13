@@ -42,7 +42,7 @@ def _pick(existing, observed, **overrides: Any):  # noqa: ANN001, ANN202
         "selection": SELECTION,
         "memory_gb": 1.5,
         "throughput_bytes_per_hour": 1e9,
-        "finished_runs": frozenset(),
+        "released_runs": frozenset(),
         "pick": True,
         "claim_for": RUN,
         "lease_until": LEASE,
@@ -117,7 +117,7 @@ def test_claims_of_finished_runs_are_released_first():
     """A claim of a run that has finished is handed back and can be picked again."""
     first = _pick([], [_observed("a")], claim_for=OTHER)
 
-    pick = _pick(list(first.saved), [_observed("a")], finished_runs=frozenset({OTHER}))
+    pick = _pick(list(first.saved), [_observed("a")], released_runs=frozenset({OTHER}))
 
     assert [c.claimed_by_run_id for c in pick.selected] == [RUN]
 

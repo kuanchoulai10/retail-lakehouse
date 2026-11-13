@@ -64,7 +64,7 @@ from context.table_maintenance.application.service.table_maintenance_run import 
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
     from datetime import datetime, timedelta
 
     from context.table_maintenance.application.domain.model.compaction_candidate import CompactionCandidate
@@ -184,18 +184,20 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         due = next((p for p in plan.operations if p.operation is _COMPACTION), None)
         runs = self._runs_repo.list_by_table(table.id, limit=_RUNS_FOR_THROUGHPUT)
         remembered = table.operation_state(_COMPACTION).start_size()
+        claim_for = None if request.run_id is None else TableMaintenanceRunId(request.run_id)
+        existing = self._candidates_repo.list_by_table(table.id)
         pick = pick_compaction_candidates(
             table.id,
-            self._candidates_repo.list_by_table(table.id),
+            existing,
             observe_compaction_partitions(policy, observation),
             selection=self._selection,
             memory_gb=self._memory_gb(remembered),
             throughput_bytes_per_hour=estimate_throughput(
                 runs, default_bytes_per_hour=self._selection.default_throughput_bytes_per_hour
             ),
-            finished_runs=frozenset(r.id for r in runs if r.finished_at is not None),
+            released_runs=self._released_runs(existing, claim_for),
             pick=due is not None and not policy.dry_run,
-            claim_for=None if request.run_id is None else TableMaintenanceRunId(request.run_id),
+            claim_for=claim_for,
             lease_until=request.now + self._claim_lease,
             now=request.now,
         )
@@ -223,6 +225,29 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             m_max_bytes=self._selection.size_m_max_bytes,
         )
         return plan, checks, _CompactionShare(candidates=pick.selected, start_size=remembered.at_least(picked_size))
+
+    def _released_runs(
+        self, existing: Sequence[CompactionCandidate], claim_for: TableMaintenanceRunId | None
+    ) -> frozenset[TableMaintenanceRunId]:
+        """Return the runs, other than the one planned for, whose claims are handed back.
+
+        A run that has finished keeps no claim. Neither does a run with no run
+        record: the reconciliation plans only when no run of the table is in
+        flight, so such a claim comes from a plan that saved it and then failed,
+        and its run never started. Each holder is looked up, so the release does
+        not depend on how many recent runs are read for the throughput.
+        """
+        holders = {
+            c.claimed_by_run_id
+            for c in existing
+            if c.state.holds_a_claim and c.claimed_by_run_id is not None and c.claimed_by_run_id != claim_for
+        }
+        released: set[TableMaintenanceRunId] = set()
+        for run_id in holders:
+            run = self._runs_repo.get(run_id)
+            if run is None or run.finished_at is not None:
+                released.add(run_id)
+        return frozenset(released)
 
     def _memory_gb(self, size: ComputeSize) -> float:
         """Return the GiB of memory a compaction at ``size`` holds: its driver's and one executor's heap."""

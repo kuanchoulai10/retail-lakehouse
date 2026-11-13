@@ -36,7 +36,7 @@ def pick_compaction_candidates(  # noqa: PLR0913
     selection: CandidateSelection,
     memory_gb: float,
     throughput_bytes_per_hour: float,
-    finished_runs: frozenset[TableMaintenanceRunId],
+    released_runs: frozenset[TableMaintenanceRunId],
     pick: bool,
     claim_for: TableMaintenanceRunId | None,
     lease_until: datetime,
@@ -44,16 +44,16 @@ def pick_compaction_candidates(  # noqa: PLR0913
 ) -> CandidatePick:
     """Sync a table's candidates with one observation and, when compaction is due, pick the run's share.
 
-    Claims still held by a run in ``finished_runs`` are handed back first, so a
-    run that ended without finishing its candidates does not keep them until its
-    lease ends. With ``pick``, a run that already holds claims (a retried plan)
+    Claims still held by a run in ``released_runs`` (one that has finished, or
+    one that never started) are handed back first, so they do not wait out their
+    lease. With ``pick``, a run that already holds claims (a retried plan)
     gets those again; otherwise the ``partitions_per_run`` best pending
     candidates are picked and, when ``claim_for`` names the run, claimed for it
     until ``lease_until``. Without any, the shortfall says whether other runs
     hold candidates (and when the first lease ends) or filters hold them all
     (and when the first recently-written hold ends).
     """
-    current = [_released(c, finished_runs, now) for c in existing]
+    current = [_released(c, released_runs, now) for c in existing]
     sync = sync_compaction_candidates(
         table_uuid,
         current,
@@ -94,9 +94,9 @@ def pick_compaction_candidates(  # noqa: PLR0913
 
 
 def _released(
-    candidate: CompactionCandidate, finished_runs: frozenset[TableMaintenanceRunId], now: datetime
+    candidate: CompactionCandidate, released_runs: frozenset[TableMaintenanceRunId], now: datetime
 ) -> CompactionCandidate:
     run_id = candidate.claimed_by_run_id
-    if candidate.state.holds_a_claim and run_id is not None and run_id in finished_runs:
+    if candidate.state.holds_a_claim and run_id is not None and run_id in released_runs:
         candidate.release(run_id, now)
     return candidate
