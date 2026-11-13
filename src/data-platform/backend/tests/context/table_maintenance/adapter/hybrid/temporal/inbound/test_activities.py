@@ -92,6 +92,7 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
                 "procedure_args": {"strategy": "binpack"},
                 "start_size": "S",
                 "candidate_partitions": [],
+                "filter_sets": [],
             }
         ],
         "dry_run": False,

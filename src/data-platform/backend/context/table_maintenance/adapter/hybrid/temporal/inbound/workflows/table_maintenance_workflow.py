@@ -14,6 +14,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
     DEFAULT_START_SIZE,
     TABLE_MAINTENANCE_WORKFLOW,
     MaintenanceAttemptEnding,
+    MaintenanceFailureClass,
     MaintenanceNextStep,
     OperationResultSignal,
     TableMaintenanceActivity,
@@ -51,6 +52,7 @@ _FENCE_MISSING_PATCH = "fence-missing-job"
 _FENCE_CANCELLED_PATCH = "fence-cancelled-attempt"
 _CANCELLED = "cancelled"
 _DECISION_PATCH = "classify-attempt-failure"
+_FEWER_PARTITIONS_PATCH = "fewer-partitions-after-oom"
 _PLANNED_POLICY_KEYS = ("policy_name", "policy_version", "policy_target")
 
 
@@ -82,7 +84,10 @@ class TableMaintenanceWorkflow:
     (patch ``classify-attempt-failure``; a record reply without a decision, as before failure
     classes, retries at the same size). Every record names the policy the run was planned under,
     from the plan, so a needs-attention mark is set under it; this changes only the record
-    activity's input, not the workflow's commands, so it needs no patch. A failed operation
+    activity's input, not the workflow's commands, so it needs no patch. A compaction whose plan
+    carries ``filter_sets`` (ever fewer of its partitions) submits the next set after each attempt
+    that ran out of memory, and keeps the smallest once it was tried (patch
+    ``fewer-partitions-after-oom``); a plan without them submits its ``filters`` every time. A failed operation
     never fails the run: the next operation still runs. At the end, also after a
     cancellation, the Spark job of every started attempt is deleted and the parent
     reconciliation workflow is told the run finished and how many results could not be
@@ -142,13 +147,16 @@ class TableMaintenanceWorkflow:
 
     async def _run_operation(self, operation: dict[str, Any]) -> None:
         size: str = operation.get("start_size") or DEFAULT_START_SIZE
+        out_of_memory = 0
         for attempt in range(1, self._policy.max_attempts + 1):
-            outcome = await self._run_attempt(operation, attempt, size)
+            outcome = await self._run_attempt(self._narrowed(operation, out_of_memory), attempt, size)
             if (outcome.operation, outcome.attempt) in self._settled_attempts:
                 return
             decision = await self._record(outcome) or {}
             if outcome.succeeded:
                 return
+            if decision.get("failure_class") == MaintenanceFailureClass.OOM:
+                out_of_memory += 1
             step = decision.get("next_step")
             if step not in (None, MaintenanceNextStep.RETRY_SAME) and workflow.patched(_DECISION_PATCH):
                 if step != MaintenanceNextStep.RETRY_LARGER:
@@ -156,6 +164,14 @@ class TableMaintenanceWorkflow:
                 size = decision.get("next_size") or size
             if attempt < self._policy.max_attempts:
                 await workflow.sleep(self._policy.backoff_after(attempt))
+
+    @staticmethod
+    def _narrowed(operation: dict[str, Any], out_of_memory: int) -> dict[str, Any]:
+        """Return the operation with the filters of its attempt: fewer partitions after each out-of-memory one."""
+        filter_sets = operation.get("filter_sets") or []
+        if out_of_memory == 0 or len(filter_sets) < 2 or not workflow.patched(_FEWER_PARTITIONS_PATCH):
+            return operation
+        return {**operation, "filters": filter_sets[min(out_of_memory, len(filter_sets) - 1)]}
 
     async def _run_attempt(self, operation: dict[str, Any], attempt: int, size: str) -> OperationResultSignal:
         name = operation["operation"]

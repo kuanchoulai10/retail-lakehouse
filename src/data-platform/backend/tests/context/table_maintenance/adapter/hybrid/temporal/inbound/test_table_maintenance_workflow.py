@@ -100,10 +100,14 @@ class Harness:
     fakes: ScriptedMaintenanceActivities
 
     async def run_maintenance(
-        self, *operations: str, parent_id: str = PARENT_ID, start_size: str | None = None
+        self,
+        *operations: str,
+        parent_id: str = PARENT_ID,
+        start_size: str | None = None,
+        plan: dict | None = None,
     ) -> None:
-        """Start the workflow for the operations and wait for it to finish."""
-        handle = await self.start_maintenance(*operations, parent_id=parent_id, start_size=start_size)
+        """Start the workflow for the operations (or ``plan``) and wait for it to finish."""
+        handle = await self.start_maintenance(*operations, parent_id=parent_id, start_size=start_size, plan=plan)
         await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
 
     async def start_maintenance(
@@ -112,8 +116,9 @@ class Harness:
         parent_id: str = PARENT_ID,
         attempt_deadline_seconds: int = ATTEMPT_DEADLINE_SECONDS,
         start_size: str | None = None,
+        plan: dict | None = None,
     ) -> WorkflowHandle:
-        """Start the maintenance workflow for the operations and return its handle."""
+        """Start the maintenance workflow for the operations, or for ``plan``, and return its handle."""
         return await self.client.start_workflow(
             TABLE_MAINTENANCE_WORKFLOW,
             TableMaintenanceWorkflowInput(
@@ -121,7 +126,7 @@ class Harness:
                 table_uuid="u1",
                 parent_workflow_id=parent_id,
                 trigger="scheduled",
-                plan=_plan(*operations, start_size=start_size),
+                plan=plan or _plan(*operations, start_size=start_size),
                 attempt_deadline_seconds=attempt_deadline_seconds,
             ),
             id=WORKFLOW_ID,
@@ -1233,3 +1238,83 @@ def test_failed_admission_is_recorded_as_admission_failed():
         assert [s["attempt"] for s in h.fakes.submits] == [2]
 
     _run(scenario, failing_acquires=frozenset({f"{RUN_ID}-{COMPACTION}-1"}))
+
+
+ALL_PARTITIONS = [{"spec_id": 0, "where": "region IN ('eu', 'us', 'ap', 'sa')"}]
+TOP_HALF = [{"spec_id": 0, "where": "region IN ('eu', 'us')"}]
+TOP_QUARTER = [{"spec_id": 0, "where": "region IN ('eu')"}]
+
+
+def _narrowable_plan(*filter_sets: list[dict]) -> dict:
+    plan = _plan(COMPACTION)
+    plan["operations"][0] = {**plan["operations"][0], "filters": filter_sets[0], "filter_sets": list(filter_sets)}
+    return plan
+
+
+def _filters(h: Harness) -> list[list[dict]]:
+    return [s["filters"] for s in h.fakes.submits if s["operation"] == COMPACTION]
+
+
+def _failing(h: Harness, failure_class: str, step: str, attempts: int = 2) -> None:
+    h.fakes.callbacks = {(COMPACTION, a): [(a, False, OOM_ERROR)] for a in range(1, attempts + 1)}
+    h.fakes.callbacks[(COMPACTION, attempts + 1)] = [(attempts + 1, True, None)]
+    h.fakes.record_replies = {
+        (COMPACTION, a): {"failure_class": failure_class, "next_step": step, "next_size": "M"}
+        for a in range(1, attempts + 1)
+    }
+
+
+def test_oom_retry_submits_the_top_half_of_the_partitions():
+    """Each out-of-memory retry submits fewer partitions: all of them, the best half, the best quarter."""
+
+    async def scenario(h: Harness) -> None:
+        _failing(h, "oom", "retry_larger")
+        await h.run_maintenance(plan=_narrowable_plan(ALL_PARTITIONS, TOP_HALF, TOP_QUARTER))
+        assert _filters(h) == [ALL_PARTITIONS, TOP_HALF, TOP_QUARTER]
+
+    _run(scenario)
+
+
+def test_oom_retry_past_the_smallest_set_keeps_it():
+    """Once the smallest set was tried, further out-of-memory retries keep it."""
+
+    async def scenario(h: Harness) -> None:
+        _failing(h, "oom", "retry_larger")
+        await h.run_maintenance(plan=_narrowable_plan(ALL_PARTITIONS, TOP_HALF))
+        assert _filters(h) == [ALL_PARTITIONS, TOP_HALF, TOP_HALF]
+
+    _run(scenario)
+
+
+def test_other_failures_retry_the_same_partitions():
+    """A retry after a failure that is not out of memory submits the same partitions."""
+
+    async def scenario(h: Harness) -> None:
+        _failing(h, "other", "retry_same")
+        await h.run_maintenance(plan=_narrowable_plan(ALL_PARTITIONS, TOP_HALF, TOP_QUARTER))
+        assert _filters(h) == [ALL_PARTITIONS, ALL_PARTITIONS, ALL_PARTITIONS]
+
+    _run(scenario)
+
+
+def test_plan_without_filter_sets_retries_its_filters():
+    """A plan from before filter sets submits its filters on every attempt."""
+
+    async def scenario(h: Harness) -> None:
+        _failing(h, "oom", "retry_larger")
+        await h.run_maintenance(COMPACTION)
+        assert _filters(h) == [[{"spec_id": 0, "where": f"{COMPACTION} = 1"}]] * 3
+
+    _run(scenario)
+
+
+def test_history_from_before_fewer_partitions_replays():
+    """A run retried after running out of memory under the code before, with a plan carrying filter sets, replays."""
+
+    async def go() -> None:
+        history = WorkflowHistory.from_json(
+            WORKFLOW_ID, (FIXTURES / "maintenance_oom_before_fewer_partitions.json").read_text()
+        )
+        await Replayer(workflows=[TableMaintenanceWorkflow]).replay_workflow(history)
+
+    asyncio.run(go())

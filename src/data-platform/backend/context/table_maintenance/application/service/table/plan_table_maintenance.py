@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
@@ -276,9 +277,12 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
                 filters = _partition_filters(table, observation, planned)
             start_size = table.operation_state(planned.operation).start_size()
             candidates: tuple[CompactionCandidate, ...] = ()
+            filter_sets: list[list[PlanTableMaintenanceUseCaseOutputFilterItem]] = []
             if planned.operation is _COMPACTION:
                 start_size = compaction.start_size or start_size
                 candidates = compaction.candidates
+                if filters:
+                    filter_sets = _filter_sets(table, observation, candidates)
             operations.append(
                 PlanTableMaintenanceUseCaseOutputItem(
                     operation=planned.operation.value,
@@ -291,6 +295,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
                         )
                         for c in candidates
                     ],
+                    filter_sets=filter_sets,
                 )
             )
         return PlanTableMaintenanceUseCaseOutput(
@@ -337,6 +342,21 @@ def _partitions_of(
     observed = {(p.spec_id, p.values): p for p in observation.partitions}
     keys = [(c.partition.spec_id, c.partition.values) for c in candidates]
     return tuple(observed[k] for k in keys if k in observed)
+
+
+def _filter_sets(
+    table: Table, observation: TableObservation, candidates: tuple[CompactionCandidate, ...]
+) -> list[list[PlanTableMaintenanceUseCaseOutputFilterItem]]:
+    """Return the filters of all candidates, the best half and the best quarter (rounded up), each count once."""
+    counts = dict.fromkeys(math.ceil(len(candidates) / d) for d in (1, 2, 4))
+    return [
+        _partition_filters(
+            table,
+            observation,
+            PlannedOperation(operation=_COMPACTION, partitions=_partitions_of(candidates[:count], observation)),
+        )
+        for count in counts
+    ]
 
 
 def _partition_filters(

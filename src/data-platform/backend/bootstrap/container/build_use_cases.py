@@ -155,6 +155,7 @@ def build_use_cases(
             gateways.read_maintenance_event_log,
             resolve_applicable_policy,
             size_memory=size_memory or {},
+            candidates_repo=candidates,
         ),
         delete_maintenance_job=DeleteMaintenanceJobService(gateways.delete_maintenance_job),
         get_maintenance_job_status=GetMaintenanceJobStatusService(gateways.read_maintenance_job),
@@ -172,5 +173,7 @@ def build_use_cases(
         release_compaction_candidates=ReleaseCompactionCandidatesService(candidates),
         list_table_reconciliations=ListTableReconciliationsService(reconciliations),
         record_table_reconciliation=RecordTableReconciliationService(reconciliations),
-        submit_maintenance_operation=SubmitMaintenanceOperationService(runs, tables, gateways.submit_maintenance_job),
+        submit_maintenance_operation=SubmitMaintenanceOperationService(
+            runs, tables, gateways.submit_maintenance_job, candidates_repo=candidates
+        ),
     )

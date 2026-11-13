@@ -424,3 +424,47 @@ def test_cost_uses_the_remembered_size_and_the_measured_throughput(
 
     (candidate,) = candidates_repo.list_all()
     assert candidate.score.estimated_gb_hours == pytest.approx(2.5)
+
+
+def test_plan_offers_fewer_partitions_for_an_out_of_memory_retry(
+    tables_repo, catalog, resolve_applicable_policy, candidates_repo, runs_repo, now
+):
+    """The compaction carries filter sets: all its partitions, the best half, the best quarter, each once."""
+    planner = PlanTableMaintenanceService(
+        tables_repo,
+        catalog,
+        resolve_applicable_policy,
+        candidates_repo,
+        runs_repo,
+        selection=CandidateSelection(partitions_per_run=5),
+        size_memory=SIZE_MEMORY,
+        claim_lease=LEASE,
+    )
+    _table(tables_repo, now)
+    _five(catalog)
+
+    compaction = _compaction(_plan(planner, now))
+
+    assert compaction.filter_sets[0] == compaction.filters
+    wheres = [" ".join(f.where for f in filters) for filters in compaction.filter_sets]
+    assert [sum(f"'{r}'" in w for r in "abcde") for w in wheres] == [5, 3, 2]
+    assert all(f"'{r}'" in wheres[1] for r in "edc")
+    assert all(f"'{r}'" in wheres[2] for r in "ed")
+
+
+def test_a_single_partition_offers_one_filter_set(planner, tables_repo, catalog, now):
+    """With one partition there is nothing fewer to fall back to."""
+    _table(tables_repo, now)
+    _observe(catalog, [_partition("a", 10)])
+
+    compaction = _compaction(_plan(planner, now))
+
+    assert compaction.filter_sets == [compaction.filters]
+
+
+def test_whole_table_compaction_offers_no_filter_sets(planner, tables_repo, catalog, now):
+    """A whole-table compaction cannot be split, so it carries no filter sets."""
+    _table(tables_repo, now)
+    _observe(catalog, [{**_partition("x", 20), "values": []}], specs=[{"spec_id": 0, "fields": []}])
+
+    assert _compaction(_plan(planner, now)).filter_sets == []

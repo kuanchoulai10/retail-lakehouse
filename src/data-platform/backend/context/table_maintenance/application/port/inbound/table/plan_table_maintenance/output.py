@@ -33,9 +33,12 @@ class PlanTableMaintenanceUseCaseOutputCandidatePartitionItem:
 class PlanTableMaintenanceUseCaseOutputItem:
     """One planned operation with its filters and procedure arguments.
 
-    candidate_partitions are the compaction candidates a scheduled
+    ``candidate_partitions`` are the compaction candidates a scheduled
     compaction takes, best first (empty for any other operation and for a
-    manual run).
+    manual run). ``filter_sets`` are the filters of ever fewer of them, for
+    retries after running out of memory: all of them (equal to ``filters``),
+    the best half, the best quarter (rounded up, each set once); empty when
+    the compaction cannot be narrowed (a whole table, or no candidates).
     """
 
     operation: str
@@ -43,6 +46,7 @@ class PlanTableMaintenanceUseCaseOutputItem:
     procedure_args: dict[str, Any]
     start_size: str = "S"
     candidate_partitions: list[PlanTableMaintenanceUseCaseOutputCandidatePartitionItem] = field(default_factory=list)
+    filter_sets: list[list[PlanTableMaintenanceUseCaseOutputFilterItem]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

@@ -14,6 +14,9 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.default_start_size import (
     DEFAULT_START_SIZE,
 )
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.failure_class import (
+    MaintenanceFailureClass,
+)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance.next_step import (
     MaintenanceNextStep,
 )
@@ -38,6 +41,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
 
 __all__ = [
     "DEFAULT_START_SIZE",
+    "MaintenanceFailureClass",
     "MaintenanceNextStep",
     "MaintenanceAttemptEnding",
     "DEFAULT_ATTEMPT_DEADLINE_SECONDS",

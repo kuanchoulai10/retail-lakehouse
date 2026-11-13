@@ -48,6 +48,9 @@ from context.table_maintenance.application.service.table_maintenance_run import 
     RecordTableMaintenanceOperationResultService,
     SubmitMaintenanceOperationService,
 )
+from tests.context.table_maintenance.fakes.in_memory_compaction_candidates_repo import (
+    InMemoryCompactionCandidatesRepo,
+)
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_runs_repo import (
     InMemoryTableMaintenanceRunsRepo,
 )
@@ -87,9 +90,9 @@ def run(runs_repo, tables_repo, now):
 
 
 @pytest.fixture
-def submitter(runs_repo, tables_repo, submit_job):
+def submitter(runs_repo, tables_repo, submit_job, candidates_repo):
     """Provide the submit maintenance operation service on the fakes."""
-    return SubmitMaintenanceOperationService(runs_repo, tables_repo, submit_job)
+    return SubmitMaintenanceOperationService(runs_repo, tables_repo, submit_job, candidates_repo=candidates_repo)
 
 
 def _filter(spec_id, where):
@@ -166,7 +169,9 @@ def test_failed_submit_can_be_recorded_and_the_next_attempt_goes_through(
     runs_repo, tables_repo, resolve_applicable_policy, run, submit_job, now
 ):
     """A failed submit can be recorded as failed and the next attempt is submitted."""
-    failing = SubmitMaintenanceOperationService(runs_repo, tables_repo, _FailingSubmitGateway())
+    failing = SubmitMaintenanceOperationService(
+        runs_repo, tables_repo, _FailingSubmitGateway(), candidates_repo=InMemoryCompactionCandidatesRepo()
+    )
     with pytest.raises(RuntimeError, match="k8s down"):
         _submit(failing, now)
     recorder = RecordTableMaintenanceOperationResultService(
@@ -176,6 +181,7 @@ def test_failed_submit_can_be_recorded_and_the_next_attempt_goes_through(
         ScriptedReadMaintenanceEventLogGateway(),
         resolve_applicable_policy,
         size_memory={},
+        candidates_repo=InMemoryCompactionCandidatesRepo(),
     )
     recorder.execute(
         RecordTableMaintenanceOperationResultUseCaseInput(
@@ -184,7 +190,9 @@ def test_failed_submit_can_be_recorded_and_the_next_attempt_goes_through(
     )
     op = runs_repo.get(TableMaintenanceRunId("run-1")).operations[0]
     assert (op.status.value, op.attempts) == ("failed", 1)
-    working = SubmitMaintenanceOperationService(runs_repo, tables_repo, submit_job)
+    working = SubmitMaintenanceOperationService(
+        runs_repo, tables_repo, submit_job, candidates_repo=InMemoryCompactionCandidatesRepo()
+    )
     out = _submit(working, now, attempt=2)
     assert out.job_name == "job-run-1-rewrite_data_files-2"
 
@@ -382,8 +390,14 @@ def test_submit_does_not_overwrite_a_run_cancelled_during_the_submit(tables_repo
         ScriptedReadMaintenanceEventLogGateway(),
         resolve_applicable_policy,
         size_memory={},
+        candidates_repo=InMemoryCompactionCandidatesRepo(),
     )
-    submitter = SubmitMaintenanceOperationService(runs_repo, tables_repo, _CancelDuringSubmitGateway(recorder, now))
+    submitter = SubmitMaintenanceOperationService(
+        runs_repo,
+        tables_repo,
+        _CancelDuringSubmitGateway(recorder, now),
+        candidates_repo=InMemoryCompactionCandidatesRepo(),
+    )
     out = _submit(submitter, now)
     assert out.job_name == "job-cancelled"
     op = runs_repo.get(TableMaintenanceRunId("run-1")).operations[0]

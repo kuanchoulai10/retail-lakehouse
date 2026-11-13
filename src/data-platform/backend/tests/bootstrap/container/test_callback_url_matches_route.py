@@ -32,6 +32,9 @@ from tests.context.table_maintenance.adapter.inbound.web.web_test_support import
     StubUseCase,
     build_client,
 )
+from tests.context.table_maintenance.fakes.in_memory_compaction_candidates_repo import (
+    InMemoryCompactionCandidatesRepo,
+)
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_runs_repo import (
     InMemoryTableMaintenanceRunsRepo,
 )
@@ -65,7 +68,9 @@ def _submitted_callback_url() -> str:
         )
     )
     gateway = RecordingSubmitMaintenanceJobGateway()
-    SubmitMaintenanceOperationService(runs, tables, gateway).execute(
+    SubmitMaintenanceOperationService(
+        runs, tables, gateway, candidates_repo=InMemoryCompactionCandidatesRepo()
+    ).execute(
         SubmitMaintenanceOperationUseCaseInput(
             run_id="run-1",
             operation="expire_snapshots",

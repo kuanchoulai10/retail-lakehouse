@@ -96,10 +96,16 @@ def resolve_calls(resolve_applicable_policy) -> list[Any]:
 
 
 @pytest.fixture
-def recorder(runs_repo, tables_repo, evidence, event_log, resolve_applicable_policy, resolve_calls):
+def recorder(runs_repo, tables_repo, evidence, event_log, resolve_applicable_policy, resolve_calls, candidates_repo):
     """Provide the record service on the fakes."""
     return RecordTableMaintenanceOperationResultService(
-        runs_repo, tables_repo, evidence, event_log, resolve_applicable_policy, size_memory=SIZE_MEMORY
+        runs_repo,
+        tables_repo,
+        evidence,
+        event_log,
+        resolve_applicable_policy,
+        size_memory=SIZE_MEMORY,
+        candidates_repo=candidates_repo,
     )
 
 

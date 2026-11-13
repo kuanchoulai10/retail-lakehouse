@@ -22,6 +22,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
     DEFAULT_START_SIZE,
     TABLE_MAINTENANCE_WORKFLOW,
     MaintenanceAttemptEnding,
+    MaintenanceFailureClass,
     MaintenanceNextStep,
     TableMaintenanceActivity,
     TableMaintenanceSignal,
@@ -160,6 +161,18 @@ def test_maintenance_next_steps():
         "NOT_RETRIED": "not_retried",
         "CANCELLED": "cancelled",
         "STILL_RUNNING": "still_running",
+    }
+
+
+def test_maintenance_failure_classes():
+    """The failure classes the record activity replies with are the stable wire values."""
+    assert _values(MaintenanceFailureClass) == {
+        "OOM": "oom",
+        "TIMEOUT": "timeout",
+        "COMMIT_CONFLICT": "commit_conflict",
+        "PERMANENT": "permanent",
+        "CANCELLED": "cancelled",
+        "OTHER": "other",
     }
 
 

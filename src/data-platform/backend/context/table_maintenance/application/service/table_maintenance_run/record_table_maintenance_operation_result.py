@@ -61,6 +61,7 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
         ResolveApplicableTableMaintenancePolicyUseCase,
     )
+    from context.table_maintenance.application.port.outbound.compaction_candidate import CompactionCandidatesRepo
     from context.table_maintenance.application.port.outbound.table import TablesRepo
     from context.table_maintenance.application.port.outbound.table_maintenance_run import (
         ReadMaintenanceEventLogGateway,
@@ -90,6 +91,7 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         resolve_applicable_policy: ResolveApplicableTableMaintenancePolicyUseCase,
         *,
         size_memory: Mapping[ComputeSize, SizeMemory],
+        candidates_repo: CompactionCandidatesRepo,
     ) -> None:
         """Bind the repos, the evidence readers, the applicable policy resolution and each size's memory.
 
@@ -101,6 +103,7 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         self._event_log_gateway = event_log_gateway
         self._resolve_applicable_policy = resolve_applicable_policy
         self._size_memory = dict(size_memory)
+        self._candidates_repo = candidates_repo
 
     def execute(
         self, request: RecordTableMaintenanceOperationResultUseCaseInput
@@ -112,7 +115,10 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         nothing and returns what the run holds for that attempt, but still brings
         the table up to date, so a retry after a crash between the two saves
         loses no table update; the table takes each attempt in once. A stale
-        lower attempt changes nothing.
+        lower attempt changes nothing. A compaction that ended (it succeeded, or
+        failed with no attempt to follow) ends the candidates its run holds as
+        done or failed; a replay ends them too, and an attempt that is retried
+        leaves them running.
         """
         try:
             operation = MaintenanceOperation(request.operation)
@@ -130,6 +136,7 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
                 return _output(run, run.attempt_record(operation, request.attempt))
             if _already_recorded(current, request):
                 self._record_on_table(run, operation, run.attempt_record(operation, request.attempt), request)
+                self._finish_candidates(run, operation, run.attempt_record(operation, request.attempt), request)
                 return _output(run, run.attempt_record(operation, request.attempt))
             record = run.attempt_record(operation, request.attempt)
             size = record.size if record else None
@@ -143,7 +150,26 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
                 self._fail(run, operation, ending, size, request, evidence, event_log_finished)
             self._runs_repo.update(run)
             self._record_on_table(run, operation, run.attempt_record(operation, request.attempt), request)
+            self._finish_candidates(run, operation, run.attempt_record(operation, request.attempt), request)
         return _output(run, run.attempt_record(operation, request.attempt))
+
+    def _finish_candidates(
+        self,
+        run: TableMaintenanceRun,
+        operation: MaintenanceOperation,
+        record: OperationAttempt | None,
+        request: RecordTableMaintenanceOperationResultUseCaseInput,
+    ) -> None:
+        """End the candidates the run holds once its compaction has ended, as done or failed."""
+        if operation is not MaintenanceOperation.REWRITE_DATA_FILES:
+            return
+        if not request.succeeded and record is not None and record.next_step is not None and record.next_step.retries:
+            return
+        held = [c for c in self._candidates_repo.list_by_run(run.id) if c.state.holds_a_claim]
+        for candidate in held:
+            candidate.finish(run.id, succeeded=request.succeeded, now=request.now)
+        if held:
+            self._candidates_repo.save_all(held)
 
     def _fail(  # noqa: PLR0913
         self,
