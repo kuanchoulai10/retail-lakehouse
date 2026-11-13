@@ -38,6 +38,9 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import 
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.eventually import (
     eventually,
 )
+from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.insert_signal_into_history import (
+    insert_signal_into_history,
+)
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.register_table_search_attributes import (
     register_table_search_attributes,
 )
@@ -1411,3 +1414,42 @@ def test_history_from_before_compaction_candidates_replays():
         await Replayer(workflows=[TableReconciliationWorkflow]).replay_workflow(history)
 
     asyncio.run(go())
+
+
+def test_a_compaction_grant_an_older_worker_ignored_replays():
+    """A grant signalled while an older worker ran the table (no handler, so ignored) replays without waking.
+
+    During a rollout the first rounds can signal tables whose workflow task is
+    still taken by the old worker; when the new worker replays that history the
+    signal must stay ignored, or the timer it cut short would not match.
+    """
+
+    async def go() -> None:
+        recorded = (FIXTURES / "reconciliation_before_compaction_candidates.json").read_text()
+        history = WorkflowHistory.from_json(
+            WORKFLOW_ID,
+            insert_signal_into_history(
+                recorded,
+                after_event_id=22,
+                signal=TableReconciliationSignal.COMPACTION_GRANTED.value,
+                arg={"round_id": "compaction-rounds-old"},
+            ),
+        )
+        await Replayer(workflows=[TableReconciliationWorkflow]).replay_workflow(history)
+
+    asyncio.run(go())
+
+
+def test_a_compaction_grant_records_its_patch_marker_and_its_history_replays():
+    """A grant on the new code records the compaction-granted-signal marker, wakes the loop, and replays."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start(start_signal=None)
+        await h.signal(TableReconciliationSignal.COMPACTION_GRANTED, {"round_id": "round-1"})
+        await h.records(1)
+        history = await h.client.get_workflow_handle(WORKFLOW_ID).fetch_history()
+        markers = [e.SerializeToString() for e in history.events if e.HasField("marker_recorded_event_attributes")]
+        assert any(b"compaction-granted-signal" in m for m in markers)
+        await Replayer(workflows=[TableReconciliationWorkflow]).replay_workflow(history)
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))

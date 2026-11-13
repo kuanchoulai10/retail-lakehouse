@@ -54,6 +54,7 @@ _FENCED_BOUND_PATCH = "fencing-in-flight-bound"
 _AWAIT_CLOSE_PATCH = "await-cancelled-run-close"
 _RELEASE_PATCH = "release-unstarted-candidates"
 _RECHECK_PATCH = "recheck-held-candidates"
+_COMPACTION_GRANTED_PATCH = "compaction-granted-signal"
 _MIN_RECHECK = timedelta(seconds=10)
 
 
@@ -188,7 +189,16 @@ class TableReconciliationWorkflow:
 
     @workflow.signal(name=TableReconciliationSignal.COMPACTION_GRANTED)
     def compaction_granted(self, payload: dict | None = None) -> None:
-        """Wake the loop because a compaction round granted some of the table's candidates, after any run in flight."""
+        """Wake the loop because a compaction round granted some of the table's candidates, after any run in flight.
+
+        A history recorded before this handler existed may hold the signal (a
+        round signalled the table while an older worker ran it, and that worker
+        ignored it); its replay has no ``compaction-granted-signal`` marker, so
+        the signal stays ignored and the replay matches.
+        """
+        if not workflow.patched(_COMPACTION_GRANTED_PATCH):
+            workflow.logger.info("ignoring compaction_granted recorded before the handler existed")
+            return
         self._wake(_REASON_COMPACTION_GRANTED, cancels_stop=True)
 
     @workflow.signal(name=TableReconciliationSignal.TRIGGER_NOW)
