@@ -5,10 +5,11 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 
-from sqlalchemy import Table
+from sqlalchemy import Table, create_engine, inspect, text
 
 from context.table_maintenance.adapter.outbound.shared.sql import (
     AGGREGATE_SQL_PACKAGES,
+    create_schema,
     metadata,
 )
 
@@ -49,3 +50,13 @@ def test_create_schema_includes_the_reconciliations_package():
 def test_create_schema_includes_the_compaction_candidates_package():
     """The compaction candidates table is created with the control-plane schema."""
     assert "context.table_maintenance.adapter.outbound.compaction_candidate.sql" in AGGREGATE_SQL_PACKAGES
+
+
+def test_create_schema_adds_columns_an_older_release_did_not_create(tmp_path: Path) -> None:
+    """A table stored by an older release gets the columns added since, when the schema is created again."""
+    engine = create_engine(f"sqlite:///{tmp_path / 'db.sqlite'}")
+    create_schema(engine)
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE compaction_candidates DROP COLUMN waiting_since"))
+    create_schema(engine)
+    assert "waiting_since" in {c["name"] for c in inspect(engine).get_columns("compaction_candidates")}

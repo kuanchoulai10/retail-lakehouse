@@ -1,11 +1,14 @@
 """Shared SQL infrastructure for the outbound adapters.
 
 Provides the shared ``metadata``, the engine factory, the UTC datetime column
-type, the datetime JSON codec and ``create_schema``.
+type, the datetime JSON codec, ``create_schema`` and ``add_missing_columns``.
 """
 
 from __future__ import annotations
 
+from context.table_maintenance.adapter.outbound.shared.sql.add_missing_columns import (
+    add_missing_columns,
+)
 from context.table_maintenance.adapter.outbound.shared.sql.create_schema import (
     AGGREGATE_SQL_PACKAGES,
     create_schema,
@@ -22,6 +25,7 @@ __all__ = [
     "AGGREGATE_SQL_PACKAGES",
     "IsoDatetimeCodec",
     "UtcDateTime",
+    "add_missing_columns",
     "create_schema",
     "metadata",
 ]

@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib
 from typing import TYPE_CHECKING
 
+from context.table_maintenance.adapter.outbound.shared.sql.add_missing_columns import add_missing_columns
 from context.table_maintenance.adapter.outbound.shared.sql.metadata import metadata
 
 if TYPE_CHECKING:
@@ -22,12 +23,15 @@ AGGREGATE_SQL_PACKAGES = (
 
 
 def create_schema(engine: Engine) -> None:
-    """Create every control-plane table that does not exist yet.
+    """Create every control-plane table that does not exist yet, and add the columns a stored one lacks.
 
     The aggregate SQL packages register their tables on ``metadata`` when they
     are imported, and they import this package for ``metadata``. They are
     therefore imported here, on call, so the package import stays acyclic.
+    ``create_all`` leaves an existing table as it is, so ``add_missing_columns``
+    then adds the columns introduced since that table was created.
     """
     for package in AGGREGATE_SQL_PACKAGES:
         importlib.import_module(package)
     metadata.create_all(engine)
+    add_missing_columns(engine)
