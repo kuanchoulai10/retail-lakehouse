@@ -674,6 +674,30 @@ assert_partition_filter() {
   [[ -n "${escaped}" ]] || { echo "no regions where filter holds the escaped quote" >&2; return 1; }
 }
 
+assert_compaction_granted_by_round() {
+  local uuid="$1" run_id records rounds
+  shift
+  records="$(api GET "/v1/tables/${uuid}/reconciliations")"
+  for run_id in "$@"; do
+    jq -e --arg run "${run_id}" '[.[] | select((.wake_reasons.compaction_granted // 0) >= 1
+        and .run_id == $run)] | length >= 1' <<<"${records}" >/dev/null || {
+      echo "no compaction_granted reconciliation of ${uuid} started run ${run_id}: $(jq -c '[.[]
+        | {wake_reasons, run_id}]' <<<"${records}")" >&2
+      return 1
+    }
+  done
+  rounds="$(api GET "/v1/compaction-rounds?limit=50" \
+    | jq -c --arg uuid "${uuid}" '[.[] | select(any(.picks[]; .table_uuid == $uuid)) | .round_id]')"
+  [[ "${rounds}" != "[]" ]] || { echo "no compaction round picked ${uuid}" >&2; return 1; }
+  temporal_cli workflow list --namespace default \
+    --query "GrantedTableUuids = \"${uuid}\"" --output json \
+    | jq -e '[.[] | select(.type.name == "CompactionRoundWorkflow")] | length >= 1' >/dev/null || {
+    echo "GrantedTableUuids = \"${uuid}\" finds no compaction round" >&2
+    return 1
+  }
+  progress "compaction rounds ${rounds} granted ${uuid}; its runs started on compaction_granted"
+}
+
 progress "listing the namespaces of ${CATALOG} through the catalog API"
 api GET "/v1/catalogs/${CATALOG}/namespaces" >/dev/null
 catalog_round_trip
@@ -787,6 +811,9 @@ assert_runs_succeeded "${REGIONS}" "${REGIONS_RUNS}"
 # shellcheck disable=SC2046
 assert_partition_filter $(jq -r '.[] | select(any(.operations[]; .operation == "rewrite_data_files"))
   | .run_id' <<<"${REGIONS_RUNS}")
+# shellcheck disable=SC2046
+assert_compaction_granted_by_round "${REGIONS_UUID}" $(jq -r '.[]
+  | select(any(.operations[]; .operation == "rewrite_data_files")) | .run_id' <<<"${REGIONS_RUNS}")
 assert_no_failed_candidates "${REGIONS_UUID}"
 assert_no_failed_candidates "${ORDERS_UUID}"
 
