@@ -9,6 +9,9 @@ import type {
   ListedTableMaintenancePolicyMappingApiResponse,
   NamespaceApiResponse,
   NamespaceSummaryApiResponse,
+  PlatformSettingApiResponse,
+  PlatformSettingsApiResponse,
+  PlatformSettingsGroupApiResponse,
   ReconciliationOperationApiResponse,
   SchedulerSettingsApiResponse,
   TableApiResponse,
@@ -674,6 +677,91 @@ export const SCHEDULER_SETTINGS: SchedulerSettingsApiResponse = {
     { priority: "P0", weight: 4, sla_seconds: 3600 },
     { priority: "P1", weight: 2, sla_seconds: 14_400 },
     { priority: "P2", weight: 1, sla_seconds: 28_800 },
+  ],
+};
+
+function setting(
+  key: string,
+  label: string,
+  value: number | string,
+  unit: string | null,
+  description: string,
+): PlatformSettingApiResponse {
+  return { key, label, value, unit, description };
+}
+
+function group(key: string, title: string, items: PlatformSettingApiResponse[]): PlatformSettingsGroupApiResponse {
+  return { key, title, items };
+}
+
+// The platform's settings as the API words them: five groups of facts the deployment sets, with the
+// values the chart defaults to.
+export const PLATFORM_SETTINGS: PlatformSettingsApiResponse = {
+  groups: [
+    group("execution_capacity", "Execution capacity", [
+      setting("admission_limit", "Concurrent operations", 2, "operations",
+        "How many maintenance operations may run at the same time across the whole platform."),
+      setting("maintenance_attempt_deadline_seconds", "Attempt time limit", 21600, "seconds",
+        "How long one attempt of an operation may run before it is stopped and counted as failed."),
+      setting("maintenance_max_attempts", "Attempts per operation", 3, "attempts",
+        "How many times one run tries an operation before it gives the operation up as failed."),
+    ]),
+    group("compute_sizes", "Spark sizes", [
+      setting("compute_size_s_driver_memory", "S driver memory", "768m", null,
+        "The memory of the Spark driver when an operation runs at size S."),
+      setting("compute_size_s_executor_memory", "S executor memory", "768m", null,
+        "The memory of each Spark executor when an operation runs at size S."),
+      setting("compute_size_s_executor_instances", "S executors", 1, "executors",
+        "How many Spark executors an operation gets when it runs at size S."),
+      setting("compute_size_m_driver_memory", "M driver memory", "1g", null,
+        "The memory of the Spark driver when an operation runs at size M."),
+      setting("compute_size_m_executor_memory", "M executor memory", "1536m", null,
+        "The memory of each Spark executor when an operation runs at size M."),
+      setting("compute_size_m_executor_instances", "M executors", 1, "executors",
+        "How many Spark executors an operation gets when it runs at size M."),
+      setting("compute_size_l_driver_memory", "L driver memory", "1536m", null,
+        "The memory of the Spark driver when an operation runs at size L."),
+      setting("compute_size_l_executor_memory", "L executor memory", "2g", null,
+        "The memory of each Spark executor when an operation runs at size L."),
+      setting("compute_size_l_executor_instances", "L executors", 1, "executors",
+        "How many Spark executors an operation gets when it runs at size L."),
+    ]),
+    group("compaction_scheduling", "Compaction scheduling", [
+      setting("scheduler_round_seconds", "Round interval", 120, "seconds",
+        "How often a compaction round decides which partitions to compact next."),
+      setting("scheduler_budget_gb_hours", "Round budget", 0.05, "GB·hours",
+        "The most estimated compute a single round may grant, in GB·hours."),
+      setting("scheduler_priority_weight_p0", "P0 weight", 4, "times",
+        "How many times a P0 partition's score is multiplied when a round ranks partitions."),
+      setting("scheduler_priority_weight_p1", "P1 weight", 2, "times",
+        "How many times a P1 partition's score is multiplied when a round ranks partitions."),
+      setting("scheduler_priority_weight_p2", "P2 weight", 1, "times",
+        "How many times a P2 partition's score is multiplied when a round ranks partitions."),
+      setting("scheduler_sla_seconds_p0", "P0 SLA", 3600, "seconds",
+        "How long a P0 partition may wait for compaction before it is shown as overdue."),
+      setting("scheduler_sla_seconds_p1", "P1 SLA", 14400, "seconds",
+        "How long a P1 partition may wait for compaction before it is shown as overdue."),
+      setting("scheduler_sla_seconds_p2", "P2 SLA", 28800, "seconds",
+        "How long a P2 partition may wait for compaction before it is shown as overdue."),
+      setting("scheduler_grant_lease_seconds", "Grant retention", 600, "seconds",
+        "How long a granted partition stays reserved for its table to claim before the grant lapses."),
+      setting("compaction_partitions_per_run", "Partitions per run", 10, "partitions",
+        "The most partitions one compaction run rewrites."),
+      setting("compaction_quiet_seconds", "Quiet period", 120, "seconds",
+        "How long a partition must go without a new write before it is compacted."),
+      setting("compaction_max_quiet_wait_seconds", "Longest quiet wait", 3600, "seconds",
+        "The longest a partition that keeps receiving writes is held back before it is compacted anyway."),
+      setting("compaction_min_partition_bytes", "Minimum partition size", 0, "bytes",
+        "A partition with less data than this is left alone as too small to compact."),
+    ]),
+    group("cooldown_and_backoff", "Cooldown and backoff", [
+      setting("maintenance_failure_backoff_cap_seconds", "Failure backoff cap", 86400, "seconds",
+        "Each failure of an operation doubles its cooldown, up to this limit."),
+    ]),
+    group("discovery", "Discovery", [
+      setting("discovery_interval_seconds", "Scan interval", 600, "seconds",
+        "How often discovery scans the catalogs for tables to manage."),
+    ]),
   ],
 };
 

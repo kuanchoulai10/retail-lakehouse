@@ -2,6 +2,7 @@ import { getListCatalogsMockHandler, getGetCatalogMockHandler } from "@/api/gene
 import { getListCompactionCandidatesMockHandler } from "@/api/generated/compaction-candidates/compaction-candidates.msw";
 import {
   getGetCompactionRoundMockHandler,
+  getGetPlatformSettingsMockHandler,
   getGetSchedulerSettingsMockHandler,
   getListCompactionRoundsMockHandler,
 } from "@/api/generated/compaction-rounds/compaction-rounds.msw";
@@ -47,6 +48,7 @@ import {
   MAINTAINED_TABLES,
   NAMESPACES,
   ORDERS,
+  PLATFORM_SETTINGS,
   POLICIES,
   POLICY_MAPPINGS,
   RECONCILIATIONS,
@@ -97,6 +99,7 @@ export function lakehouseHandlers() {
     getListCompactionCandidatesMockHandler(CANDIDATES),
     getListCompactionRoundsMockHandler(ROUNDS),
     getGetSchedulerSettingsMockHandler(SCHEDULER_SETTINGS),
+    getGetPlatformSettingsMockHandler(PLATFORM_SETTINGS),
     getGetCompactionRoundMockHandler(({ params }) => ROUNDS.find((r) => r.round_id === params.roundId) ?? ROUNDS[0]!),
     getListTableReconciliationsMockHandler(({ request }) => {
       const query = new URL(request.url).searchParams;

@@ -6,6 +6,7 @@ import { CompactionRoundsPage } from "./pages/CompactionRoundsPage";
 import { DiscoveryRulesPage } from "./pages/DiscoveryRulesPage";
 import { GenericTablePage } from "./pages/GenericTablePage";
 import { NamespacePage } from "./pages/NamespacePage";
+import { PlatformSettingsPage } from "./pages/PlatformSettingsPage";
 import { PoliciesPage } from "./pages/PoliciesPage";
 import { PolicyVersionPage } from "./pages/PolicyVersionPage";
 import { TableListPage } from "./pages/TableListPage";
@@ -36,6 +37,7 @@ export function AppRoutes() {
       <Route path="/policies" element={<PoliciesPage />} />
       <Route path="/policies/:name/versions/:version" element={<PolicyVersionPage />} />
       <Route path="/compaction-rounds" element={<CompactionRoundsPage />} />
+      <Route path="/platform-settings" element={<PlatformSettingsPage />} />
       <Route path="/catalogs" element={<CatalogsPage />} />
       <Route path="/catalogs/:catalog" element={<CatalogPage />} />
       <Route path="/catalogs/:catalog/namespaces/:namespace" element={<NamespacePage />} />

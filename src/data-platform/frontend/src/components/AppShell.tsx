@@ -3,6 +3,7 @@ import {
   IconAdjustmentsHorizontal,
   IconBook,
   IconCalendar,
+  IconInfoCircle,
   IconTable,
   IconRadar,
   ThemePicker,
@@ -52,6 +53,12 @@ const NAV_ENTRIES: NavEntry[] = [
     label: "Compaction rounds",
     icon: IconCalendar,
     matches: (pathname) => pathname.startsWith("/compaction-rounds"),
+  },
+  {
+    href: "/platform-settings",
+    label: "Platform settings",
+    icon: IconInfoCircle,
+    matches: (pathname) => pathname.startsWith("/platform-settings"),
   },
 ];
 

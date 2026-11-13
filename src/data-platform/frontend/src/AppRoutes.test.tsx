@@ -34,6 +34,12 @@ describe("AppRoutes", () => {
     expect(await screen.findByRole("heading", { name: "Maintenance policies", level: 1 })).toBeInTheDocument();
   });
 
+  it("renders the platform settings page at /platform-settings", async () => {
+    stubCatalogApi({ "GET /v1/platform-settings": () => jsonResponse({ groups: [] }) });
+    renderAt("/platform-settings");
+    expect(await screen.findByRole("heading", { name: "Platform settings", level: 1 })).toBeInTheDocument();
+  });
+
   it("renders the compaction rounds page at /compaction-rounds", async () => {
     stubCatalogApi({ "GET /v1/compaction-rounds?limit=50": () => jsonResponse([]) });
     renderAt("/compaction-rounds");

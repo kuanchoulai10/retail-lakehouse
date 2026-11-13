@@ -23,6 +23,15 @@ afterEach(() => {
 });
 
 describe("AppShell", () => {
+  it("links the platform settings page, last, and marks it current there", () => {
+    renderShell("/platform-settings");
+    const nav = screen.getByRole("navigation", { name: "Main" });
+    const links = within(nav).getAllByRole("link");
+    expect(links.at(-1)).toHaveTextContent("Platform settings");
+    expect(links.at(-1)).toHaveAttribute("href", "/platform-settings");
+    expect(links.at(-1)).toHaveAttribute("aria-current", "page");
+  });
+
   it("renders a navigation landmark with a Tables link to the list", () => {
     renderShell();
     const nav = screen.getByRole("navigation", { name: "Main" });
@@ -38,6 +47,7 @@ describe("AppShell", () => {
       "Discovery rules",
       "Maintenance policies",
       "Compaction rounds",
+      "Platform settings",
     ]);
   });
 
