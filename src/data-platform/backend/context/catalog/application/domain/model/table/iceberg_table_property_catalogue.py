@@ -11,7 +11,8 @@ from context.catalog.application.domain.model.table.table_property_definition im
 
 # The Iceberg of the maintenance Spark runtime (``GLAC_SPARK__ICEBERG_VERSION``, wave 25) and of
 # Polaris 1.8.0. The defaults are the ``*_DEFAULT`` constants of ``org.apache.iceberg.TableProperties``
-# and ``TableMetadata.DEFAULT_TABLE_FORMAT_VERSION`` at tag ``apache-iceberg-1.10.1``.
+# and ``TableMetadata.DEFAULT_TABLE_FORMAT_VERSION`` at tag ``apache-iceberg-1.10.1``. ``created-at`` is not
+# Iceberg's: Polaris 1.8.0 writes it on every create (``IcebergCatalogHandler``) and nothing reads it.
 _ICEBERG_VERSION = "1.10.1"
 
 _CATALOGUE = TablePropertyCatalogue(
@@ -240,8 +241,18 @@ _CATALOGUE = TablePropertyCatalogue(
         Known(
             key="gc.enabled",
             iceberg_default="true",
-            description="Allow snapshot expiry and orphan file removal to delete files; never reset by the console.",
+            description=(
+                "Allow snapshot expiry and orphan file removal to delete files; "
+                "not reset by Reset to default, edit it deliberately."
+            ),
             resettable=False,
+        ),
+        Known(
+            key="created-at",
+            iceberg_default=None,
+            description="When Polaris created the table; written by Polaris.",
+            resettable=False,
+            set_by_catalog=True,
         ),
     ),
 )

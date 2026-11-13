@@ -127,13 +127,14 @@ export const ORDERS: CatalogTableApiResponse = {
     "commit.retry.num-retries": "4",
     "write.target-file-size-bytes": "134217728",
     "gc.enabled": "false",
+    "created-at": "2026-11-09T07:00:00Z",
     owner: "data-eng",
   },
   summary: { total_records: 2180, total_data_files: 7, total_files_size: 1_824_310 },
 };
 
 // The Properties tab of orders: every known property next to its default. The table sets two at their
-// default, one away from it, a custom owner, and the catalog forces gc off.
+// default, one away from it, a custom owner, and the catalog forces gc off. Polaris wrote created-at.
 export const ORDERS_PROPERTIES: CatalogTablePropertiesApiResponse = {
   uuid: ORDERS_UUID,
   iceberg_version: "1.10.1",
@@ -147,6 +148,16 @@ export const ORDERS_PROPERTIES: CatalogTablePropertiesApiResponse = {
       custom: false,
       resettable: true,
       description: "How many times a failed commit is retried.",
+    },
+    {
+      key: "created-at",
+      current_value: "2026-11-09T07:00:00Z",
+      default_value: null,
+      default_source: null,
+      modified: false,
+      custom: false,
+      resettable: false,
+      description: "When Polaris created the table; written by Polaris.",
     },
     {
       key: "format-version",
@@ -166,7 +177,8 @@ export const ORDERS_PROPERTIES: CatalogTablePropertiesApiResponse = {
       modified: false,
       custom: false,
       resettable: false,
-      description: "Allow snapshot expiry and orphan file removal to delete files; never reset by the console.",
+      description:
+        "Allow snapshot expiry and orphan file removal to delete files; not reset by Reset to default, edit it deliberately.",
     },
     {
       key: "history.expire.max-snapshot-age-ms",

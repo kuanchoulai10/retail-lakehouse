@@ -277,3 +277,22 @@ def test_table_properties_reset_is_served_end_to_end_against_polaris():
             {"action": "remove-properties", "removals": ["owner"]},
         ],
     }
+
+
+def test_reset_of_created_at_is_a_422_end_to_end_and_commits_nothing():
+    """Polaris's created-at is set by the catalog service: the API refuses its reset and sends no commit."""
+    stub = PolarisStub()
+    stub.on("GET", TABLE_PATH, httpx.Response(200, json=LOAD_TABLE))
+    stub.on("GET", f"{CATALOGS}/sales", httpx.Response(200, json=SALES))
+    client = TestClient(create_api_app(lambda app: register_routes(app, build_catalog_web_use_cases(stub.client()))))
+
+    response = client.post(
+        "/v1/catalogs/sales/namespaces/retail/tables/orders/properties/reset",
+        json={"expected_uuid": LOAD_TABLE["metadata"]["table-uuid"], "keys": ["created-at"]},
+    )
+
+    assert (response.status_code, response.json()) == (
+        422,
+        {"detail": "created-at cannot be reset: it is set by the catalog service"},
+    )
+    assert [request.method for request in stub.requests] == ["GET", "GET"]

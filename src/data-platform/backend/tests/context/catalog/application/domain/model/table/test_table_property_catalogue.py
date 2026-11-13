@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from pydantic import ValidationError
 
@@ -14,8 +16,8 @@ from context.catalog.application.domain.model.table import (
 CATALOGUE = iceberg_table_property_catalogue()
 
 
-def _definition(key: str = "write.format.default", **changes: object) -> TablePropertyDefinition:
-    fields: dict[str, object] = {
+def _definition(key: str = "write.format.default", **changes: Any) -> TablePropertyDefinition:
+    fields: dict[str, Any] = {
         "key": key,
         "iceberg_default": "parquet",
         "description": "File format of new data files.",
@@ -138,3 +140,28 @@ def test_catalogue_refuses_a_blank_version():
     """The Iceberg version the defaults belong to is required."""
     with pytest.raises(ValidationError):
         TablePropertyCatalogue(iceberg_version=" ", definitions=(_definition(),))
+
+
+def test_created_at_is_set_by_the_catalog_service_and_never_reset():
+    """Polaris writes created-at on every create; it has no default and a reset never touches it."""
+    definition = CATALOGUE.definition_of("created-at")
+    assert definition is not None
+    assert (definition.iceberg_default, definition.resettable, definition.set_by_catalog) == (None, False, True)
+    assert [d.key for d in CATALOGUE.definitions if d.set_by_catalog] == ["created-at"]
+
+
+def test_gc_enabled_description_says_it_can_still_be_edited():
+    """gc.enabled is left out of resets, not frozen: Edit properties can still change it."""
+    definition = CATALOGUE.definition_of("gc.enabled")
+    assert definition is not None
+    assert "edit it deliberately" in definition.description
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [{"iceberg_default": None, "resettable": True}, {"iceberg_default": "x", "resettable": False}],
+)
+def test_set_by_catalog_definition_has_no_default_and_is_not_resettable(changes: dict[str, Any]):
+    """A key the catalog service writes has no default to reset to and refuses a reset."""
+    with pytest.raises(ValidationError):
+        _definition(set_by_catalog=True, **changes)

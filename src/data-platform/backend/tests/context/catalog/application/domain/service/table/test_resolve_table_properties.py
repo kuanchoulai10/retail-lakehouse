@@ -39,6 +39,13 @@ CATALOGUE = TablePropertyCatalogue(
         ),
         TablePropertyDefinition(key="write.data.path", iceberg_default=None, description="Data path."),
         TablePropertyDefinition(key="gc.enabled", iceberg_default="true", description="GC.", resettable=False),
+        TablePropertyDefinition(
+            key="created-at",
+            iceberg_default=None,
+            description="Created.",
+            resettable=False,
+            set_by_catalog=True,
+        ),
     ),
 )
 
@@ -152,12 +159,15 @@ def test_a_custom_key_is_listed_modified_without_a_default():
 
 
 def test_a_key_only_the_catalog_names_is_listed_as_custom_with_the_catalog_default():
-    """A custom key the catalog defaults is listed even when unset, with the catalog's value as its default."""
+    """A custom key the catalog defaults is listed even when unset.
+
+    Unset, the catalog default does not apply, so the row is modified.
+    """
     rows = _by_key(resolve_table_properties(_table({}), _catalog({"table-default.owner": "data-eng"}), CATALOGUE))
 
     row = rows["owner"]
     assert (row.current_value, row.default_value, row.default_source) == (None, "data-eng", "catalog")
-    assert (row.custom, row.modified) == (True, False)
+    assert (row.custom, row.modified, row.reset_value()) == (True, True, "data-eng")
 
 
 @pytest.mark.parametrize(
@@ -181,3 +191,47 @@ def test_reset_value_removes_the_key_or_writes_what_a_new_table_gets(
     rows = _by_key(resolve_table_properties(_table(properties), _catalog(catalog_properties), CATALOGUE))
 
     assert rows[key].reset_value() == expected
+
+
+def test_a_custom_key_at_its_catalog_default_is_not_modified():
+    """A custom key set to the catalog's table-default is at its default, so a reset has nothing to do."""
+    catalog = _catalog({"table-default.owner": "data-eng"})
+    rows = _by_key(resolve_table_properties(_table({"owner": "data-eng"}), catalog, CATALOGUE))
+
+    row = rows["owner"]
+    assert (row.custom, row.default_source, row.modified) == (True, "catalog", False)
+
+
+def test_a_custom_key_off_its_catalog_default_is_modified_and_reset_writes_the_default():
+    """A custom key away from the catalog's default is modified; its reset writes the catalog value back."""
+    catalog = _catalog({"table-default.owner": "data-eng"})
+    rows = _by_key(resolve_table_properties(_table({"owner": "kc"}), catalog, CATALOGUE))
+
+    assert (rows["owner"].modified, rows["owner"].reset_value()) == (True, "data-eng")
+
+
+@pytest.mark.parametrize(
+    ("key", "catalog_properties", "written"),
+    [
+        ("write.parquet.compression-codec", {}, "zstd"),
+        ("write.format.default", {"table-default.write.format.default": "orc"}, "orc"),
+    ],
+)
+def test_an_unset_key_whose_default_does_not_apply_is_modified(
+    key: str, catalog_properties: dict[str, str], written: str
+):
+    """Unset, a key a new table would hold falls back to Iceberg's own value, so it is modified; reset writes it."""
+    rows = _by_key(resolve_table_properties(_table({}), _catalog(catalog_properties), CATALOGUE))
+
+    row = rows[key]
+    assert (row.current_value, row.modified, row.reset_value()) == (None, True, written)
+
+
+def test_created_at_is_never_modified_and_has_no_default():
+    """The catalog service's created-at is listed without a default or source, never modified, never resettable."""
+    catalog = _catalog({"table-default.created-at": "ignored"})
+    rows = _by_key(resolve_table_properties(_table({"created-at": "2026-11-14T00:00:00Z"}), catalog, CATALOGUE))
+
+    row = rows["created-at"]
+    assert (row.default_value, row.default_source, row.custom) == (None, None, False)
+    assert (row.modified, row.resettable, row.set_by_catalog) == (False, False, True)

@@ -24,6 +24,7 @@ import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { ResetAllPropertiesDialog } from "@/components/ResetAllPropertiesDialog";
 import { errorMessage } from "@/format";
 import { apiNamespace } from "@/lib/catalogPaths";
+import { resetDeletesProperty } from "@/lib/resetDeletesProperty";
 import { updateErrorMessage } from "@/lib/updateErrorMessage";
 
 const SOURCE_TEXT: Record<NonNullable<CatalogTablePropertyApiResponse["default_source"]>, string> = {
@@ -38,8 +39,22 @@ function canReset(property: CatalogTablePropertyApiResponse): boolean {
   return property.modified && property.resettable;
 }
 
+function CurrentValueCell({ property }: { property: CatalogTablePropertyApiResponse }) {
+  if (property.current_value !== null) {
+    return <span className="type-code block min-w-32 break-all">{property.current_value}</span>;
+  }
+  // Unset but modified: the default shown is not what the table runs with (the catalog default was
+  // never applied, or Iceberg's own value differs from the one it writes on create).
+  return (
+    <div className="flex min-w-32 flex-col">
+      {muted("Not set")}
+      {property.modified && muted("Iceberg's own value applies")}
+    </div>
+  );
+}
+
 function DefaultCell({ property }: { property: CatalogTablePropertyApiResponse }) {
-  if (property.custom && property.default_source === null) return muted("No default");
+  if (property.default_source === null) return muted("No default");
   return (
     <div className="flex min-w-32 flex-col">
       {property.default_value === null ? (
@@ -63,7 +78,7 @@ function RowAction({ property }: { property: CatalogTablePropertyApiResponse }) 
   const { pending, onReset } = useContext(ResetContext);
   if (!property.modified) return null;
   if (!property.resettable) return muted("Not resettable");
-  const verb = property.custom ? "Delete" : "Reset";
+  const verb = resetDeletesProperty(property) ? "Delete" : "Reset";
   return (
     <Button
       type="button"
@@ -97,10 +112,7 @@ const columns = column.columns([
   column.accessor("current_value", {
     header: "Current value",
     enableSorting: false,
-    cell: (info) => {
-      const value = info.getValue();
-      return value === null ? muted("Not set") : <span className="type-code block min-w-32 break-all">{value}</span>;
-    },
+    cell: (info) => <CurrentValueCell property={info.row.original} />,
   }),
   column.display({
     id: "default",
@@ -165,6 +177,12 @@ function PropertiesView({ table, properties }: PropertiesViewProps) {
     setDialog("reset-all");
   }
 
+  // A failure the dialog showed goes with it, so it is not shown again on the page.
+  function closeResetAll() {
+    reset.reset();
+    setDialog(null);
+  }
+
   return (
     <section aria-label="Properties" className="flex min-w-0 flex-col gap-3">
       <header className="flex flex-wrap items-center gap-2">
@@ -205,7 +223,7 @@ function PropertiesView({ table, properties }: PropertiesViewProps) {
           isPending={reset.isPending}
           error={error}
           onConfirm={() => reset.mutate(resettable.map((p) => p.key))}
-          onClose={() => setDialog(null)}
+          onClose={closeResetAll}
         />
       )}
     </section>

@@ -161,6 +161,7 @@ export function catalogTablePropertyFixture(
 
 // The properties of catalogTableFixture next to their defaults: one at its default, one changed,
 // one Iceberg writes back on reset, one not resettable, one the catalog forces and a custom one.
+// created-at is written by Polaris and never modified.
 export function catalogTablePropertiesFixture(
   overrides: Partial<CatalogTablePropertiesApiResponse> = {},
 ): CatalogTablePropertiesApiResponse {
@@ -171,6 +172,13 @@ export function catalogTablePropertiesFixture(
       catalogTablePropertyFixture({
         key: "commit.retry.num-retries",
         default_value: "4",
+      }),
+      catalogTablePropertyFixture({
+        key: "created-at",
+        current_value: "2026-11-14T00:00:00Z",
+        default_source: null,
+        resettable: false,
+        description: "When Polaris created the table; written by Polaris.",
       }),
       catalogTablePropertyFixture({
         key: "format-version",

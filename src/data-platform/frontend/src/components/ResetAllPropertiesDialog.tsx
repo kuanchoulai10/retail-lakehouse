@@ -1,9 +1,10 @@
 import { AlertDialog, AlertDialogCancel, Banner, Button } from "@retail-lakehouse/design-system";
 import type { CatalogTablePropertyApiResponse } from "@/api/generated/model";
+import { resetDeletesProperty } from "@/lib/resetDeletesProperty";
 
 interface Props {
   fullPath: string;
-  // The modified, resettable properties the reset covers; custom ones are deleted.
+  // The modified, resettable properties the reset covers; custom ones with no default are deleted.
   properties: CatalogTablePropertyApiResponse[];
   isPending: boolean;
   error: string | null;
@@ -18,7 +19,7 @@ function count(n: number, one: string, many: string): string {
 // Reset all changes every modified property at once, so it names each key and asks first. It asks
 // for no typed name like a delete of a catalog object: every key it changes is listed here.
 export function ResetAllPropertiesDialog({ fullPath, properties, isPending, error, onConfirm, onClose }: Props) {
-  const custom = properties.filter((p) => p.custom).length;
+  const custom = properties.filter(resetDeletesProperty).length;
   const known = properties.length - custom;
   const what = [
     known > 0 && `resets ${count(known, "property", "properties")} to default`,

@@ -11,6 +11,7 @@ import {
   callsTo,
   catalogTableFixture,
   catalogTablePropertiesFixture,
+  catalogTablePropertyFixture,
   stubCatalogApi,
   type StubHandler,
 } from "../../test/catalogApiStub";
@@ -158,6 +159,94 @@ describe("PropertiesTab", { timeout: 15_000 }, () => {
       expected_uuid: "uuid-orders",
       keys: ["owner", "write.format.default"],
     });
+  });
+
+  it("shows the created-at time Polaris writes with no default, no badge and no reset", async () => {
+    const user = userEvent.setup();
+    stub();
+    renderTab();
+    await screen.findByText("created-at");
+
+    const createdAt = within(rowOf("created-at"));
+    expect(createdAt.getByText("2026-11-14T00:00:00Z")).toBeInTheDocument();
+    expect(createdAt.getByText("No default")).toBeInTheDocument();
+    expect(createdAt.queryByText("Modified")).not.toBeInTheDocument();
+    expect(createdAt.queryByText("Custom")).not.toBeInTheDocument();
+    expect(createdAt.queryByRole("button")).not.toBeInTheDocument();
+    expect(createdAt.queryByText("Not resettable")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Reset all to default" }));
+    const dialog = await screen.findByRole("alertdialog", { name: "Reset all to default" });
+    expect(within(dialog).queryByText("created-at")).not.toBeInTheDocument();
+  });
+
+  it("resets, rather than deletes, a custom property the catalog gives a default", async () => {
+    const user = userEvent.setup();
+    const team = catalogTablePropertyFixture({
+      key: "team",
+      current_value: "ml",
+      default_value: "data-eng",
+      default_source: "catalog",
+      modified: true,
+      custom: true,
+      description: null,
+    });
+    const calls = stub({
+      [`GET ${TABLE}/properties`]: () => jsonResponse(catalogTablePropertiesFixture({ properties: [team] })),
+    });
+    renderTab();
+    await screen.findByText("team");
+
+    expect(within(rowOf("team")).queryByRole("button", { name: "Delete team" })).not.toBeInTheDocument();
+    await user.click(within(rowOf("team")).getByRole("button", { name: "Reset team" }));
+    await vi.waitFor(() => expect(callsTo(calls, "POST", `${TABLE}/properties/reset`)).toHaveLength(1));
+
+    await user.click(screen.getByRole("button", { name: "Reset all to default" }));
+    const dialog = await screen.findByRole("alertdialog", { name: "Reset all to default" });
+    expect(dialog).toHaveTextContent("resets 1 property to default of");
+    expect(dialog).not.toHaveTextContent("deletes");
+  });
+
+  it("says Iceberg's own value applies to an unset property whose shown default does not", async () => {
+    const codec = catalogTablePropertyFixture({
+      key: "write.parquet.compression-codec",
+      default_value: "zstd",
+      modified: true,
+    });
+    stub({
+      [`GET ${TABLE}/properties`]: () => jsonResponse(catalogTablePropertiesFixture({
+          properties: [catalogTablePropertyFixture({ key: "commit.retry.num-retries", default_value: "4" }), codec],
+        })),
+    });
+    renderTab();
+    await screen.findByText("write.parquet.compression-codec");
+
+    const row = within(rowOf("write.parquet.compression-codec"));
+    expect(row.getByText("Not set")).toBeInTheDocument();
+    expect(row.getByText("Iceberg's own value applies")).toBeInTheDocument();
+    expect(row.getByText("Modified")).toBeInTheDocument();
+    expect(row.getByRole("button", { name: "Reset write.parquet.compression-codec" })).toBeInTheDocument();
+    expect(within(rowOf("commit.retry.num-retries")).queryByText("Iceberg's own value applies")).toBeNull();
+  });
+
+  it("shows a failed reset all once, in the dialog, and not again after it closes", async () => {
+    const user = userEvent.setup();
+    stub({
+      [`POST ${TABLE}/properties/reset`]: () => jsonResponse({ detail: "table changed underneath" }, 409),
+    });
+    renderTab();
+    await screen.findByText("write.format.default");
+
+    await user.click(screen.getByRole("button", { name: "Reset all to default" }));
+    const dialog = await screen.findByRole("alertdialog", { name: "Reset all to default" });
+    await user.click(within(dialog).getByRole("button", { name: "Reset all" }));
+    await vi.waitFor(() => expect(within(dialog).getByRole("alert")).toBeInTheDocument());
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("cancelling reset all sends nothing", async () => {

@@ -31,7 +31,12 @@ def _current_values(table: Table) -> dict[str, str]:
 def _default_of(
     key: str, catalog: Catalog, definition: TablePropertyDefinition | None
 ) -> tuple[str | None, TablePropertyDefaultSource | None]:
-    """Return the default of ``key`` and where it comes from: catalog override, catalog default, then Iceberg."""
+    """Return the default of ``key`` and where it comes from: catalog override, catalog default, then Iceberg.
+
+    A key the catalog service sets itself has neither.
+    """
+    if definition is not None and definition.set_by_catalog:
+        return None, None
     overrides = catalog.table_property_overrides
     if key in overrides:
         return overrides[key], TablePropertyDefaultSource.CATALOG_OVERRIDE
@@ -62,6 +67,7 @@ def _resolve(
         custom=definition is None,
         resettable=safe_to_reset and not forced,
         reset_writes_default=new_table_holds_it,
+        set_by_catalog=definition is not None and definition.set_by_catalog,
     )
 
 

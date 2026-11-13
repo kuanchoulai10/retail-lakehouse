@@ -15,6 +15,8 @@ if TYPE_CHECKING:
 
 
 def _refusal(row: TableProperty) -> str:
+    if row.set_by_catalog:
+        return f"{row.key} cannot be reset: it is set by the catalog service"
     if row.default_source is TablePropertyDefaultSource.CATALOG_OVERRIDE:
         return f"{row.key} cannot be reset: the catalog forces its value"
     return f"{row.key} cannot be reset: removing it would change the table unsafely"

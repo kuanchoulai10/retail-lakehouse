@@ -24,6 +24,7 @@ def _row(
     custom: bool = False,
     resettable: bool = True,
     writes_default: bool = False,
+    set_by_catalog: bool = False,
 ) -> TableProperty:
     return TableProperty(
         key=key,
@@ -34,6 +35,7 @@ def _row(
         custom=custom,
         resettable=resettable,
         reset_writes_default=writes_default,
+        set_by_catalog=set_by_catalog,
     )
 
 
@@ -45,6 +47,8 @@ ROWS = [
     _row("owner", "x", None, source=None, custom=True),
     _row("format-version", "2", "2", resettable=False),
     _row("forced", "x", "y", source=TablePropertyDefaultSource.CATALOG_OVERRIDE, resettable=False),
+    _row("created-at", "2026-11-14", None, source=None, resettable=False, set_by_catalog=True),
+    _row("unset-codec", None, "zstd", writes_default=True),
 ]
 
 
@@ -69,9 +73,20 @@ def test_reset_lists_each_key_once():
 
 @pytest.mark.parametrize(
     ("key", "reason"),
-    [("format-version", "would change the table unsafely"), ("forced", "the catalog forces its value")],
+    [
+        ("format-version", "would change the table unsafely"),
+        ("forced", "the catalog forces its value"),
+        ("created-at", "set by the catalog service"),
+    ],
 )
 def test_reset_refuses_a_key_that_is_not_resettable(key: str, reason: str):
     """A non-resettable key refuses the whole reset and says why."""
     with pytest.raises(TablePropertyNotResettable, match=reason):
         plan_table_property_reset(ROWS, ["a", key])
+
+
+def test_reset_writes_the_default_of_an_unset_key_whose_default_does_not_apply():
+    """An unset key a new table would hold is written with its default."""
+    assert plan_table_property_reset(ROWS, ["unset-codec"]) == TablePropertyReset(
+        updates={"unset-codec": "zstd"}, removals=()
+    )

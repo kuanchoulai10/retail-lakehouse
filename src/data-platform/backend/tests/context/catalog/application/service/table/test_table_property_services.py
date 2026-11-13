@@ -56,6 +56,7 @@ def tables() -> InMemoryTablesRepo:
             "write.parquet.compression-codec": "gzip",
             "commit.retry.num-retries": "4",
             "owner": "data-eng",
+            "created-at": "2026-11-14T00:00:00Z",
         },
     )
     return repo
@@ -207,3 +208,45 @@ def test_reset_unknown_table_is_not_found(tables: InMemoryTablesRepo):
         ResetTablePropertiesService(tables, _catalogs()).execute(
             ResetTablePropertiesUseCaseInput("sales", ["retail"], "missing", expected_uuid="u-1", keys=["owner"])
         )
+
+
+def test_list_shows_created_at_unmodified_and_not_resettable(tables: InMemoryTablesRepo):
+    """Polaris's created-at is known, has no default, is never modified and is not resettable."""
+    row = _row(_list(tables, _catalogs()).items, "created-at")
+
+    assert (row.custom, row.modified, row.resettable, row.default_value, row.default_source) == (
+        False,
+        False,
+        False,
+        None,
+        None,
+    )
+
+
+def test_reset_refuses_created_at_as_set_by_the_catalog_service(tables: InMemoryTablesRepo):
+    """An explicit reset of created-at is refused with its own reason, and nothing is written."""
+    with pytest.raises(ValidationError, match="created-at cannot be reset: it is set by the catalog service"):
+        _reset(tables, _catalogs(), ["created-at"])
+
+    assert tables.property_commits == []
+
+
+def test_reset_writes_a_catalog_default_the_table_never_got(tables: InMemoryTablesRepo):
+    """A catalog default added after the table was created does not apply until a reset writes it."""
+    catalogs = _catalogs({"table-default.write.object-storage.enabled": "true"})
+    assert _row(_list(tables, catalogs).items, "write.object-storage.enabled").modified is True
+
+    output = _reset(tables, catalogs, ["write.object-storage.enabled"])
+
+    assert tables.property_commits == [({"write.object-storage.enabled": "true"}, [])]
+    assert _row(output.items, "write.object-storage.enabled").modified is False
+
+
+def test_reset_of_a_custom_key_at_its_catalog_default_commits_nothing(tables: InMemoryTablesRepo):
+    """A custom key equal to the catalog's default is not modified, so resetting it changes nothing."""
+    catalogs = _catalogs({"table-default.owner": "data-eng"})
+
+    output = _reset(tables, catalogs, ["owner"])
+
+    assert tables.property_commits == []
+    assert _row(output.items, "owner").modified is False
