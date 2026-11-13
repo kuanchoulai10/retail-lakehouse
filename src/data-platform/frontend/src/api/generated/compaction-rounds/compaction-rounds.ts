@@ -64,6 +64,8 @@ export const getListCompactionRoundsUrl = (params?: ListCompactionRoundsParams,)
 
 /**
  * List the recorded compaction rounds, newest first; ``before`` (a round's start) pages to older ones.
+ *
+ * ``before`` must carry a time zone (``Z`` or an offset); one without is 422.
  * @summary List Compaction Rounds
  */
 export const listCompactionRounds = async (params?: ListCompactionRoundsParams, options?: Parameters<typeof apiFetch>[1]): Promise<CompactionRoundApiResponse[]> => {

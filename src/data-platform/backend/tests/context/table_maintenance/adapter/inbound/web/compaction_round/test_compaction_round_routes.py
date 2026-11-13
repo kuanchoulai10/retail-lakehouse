@@ -162,3 +162,15 @@ def test_a_busy_table_skip_is_served():
 
     assert response.status_code == 200
     assert response.json()[0]["skips"][0]["reason"] == "table_busy"
+
+
+def test_a_before_without_a_time_zone_is_422():
+    """A cursor with no offset is refused instead of failing inside the store."""
+    stub = StubUseCase(ListCompactionRoundsUseCaseOutput(items=[]))
+
+    response = build_client(list_compaction_rounds=stub).get(
+        "/v1/compaction-rounds", params={"before": "2026-11-13T12:00:00"}
+    )
+
+    assert response.status_code == 422
+    assert stub.requests == []

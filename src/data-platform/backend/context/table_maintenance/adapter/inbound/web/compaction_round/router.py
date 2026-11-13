@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime  # noqa: TC003 - FastAPI resolves the annotation at runtime
 from typing import TYPE_CHECKING, Annotated, cast
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import AwareDatetime  # noqa: TC002 - FastAPI resolves the annotation at runtime
 
 from context.table_maintenance.adapter.inbound.web.compaction_round.dto import (
     CompactionRoundApiResponse,
@@ -49,9 +49,12 @@ UseCases = Annotated[WebUseCases, Depends(use_cases_dependency)]
 def list_compaction_rounds(
     use_cases: UseCases,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
-    before: datetime | None = None,
+    before: AwareDatetime | None = None,
 ) -> list[CompactionRoundApiResponse]:
-    """List the recorded compaction rounds, newest first; ``before`` (a round's start) pages to older ones."""
+    """List the recorded compaction rounds, newest first; ``before`` (a round's start) pages to older ones.
+
+    ``before`` must carry a time zone (``Z`` or an offset); one without is 422.
+    """
     output = use_cases.list_compaction_rounds.execute(ListCompactionRoundsUseCaseInput(limit=limit, before=before))
     return [_round(item) for item in output.items]
 

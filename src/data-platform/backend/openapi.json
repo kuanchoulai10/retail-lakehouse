@@ -5856,7 +5856,7 @@
     },
     "/v1/compaction-rounds": {
       "get": {
-        "description": "List the recorded compaction rounds, newest first; ``before`` (a round's start) pages to older ones.",
+        "description": "List the recorded compaction rounds, newest first; ``before`` (a round's start) pages to older ones.\n\n``before`` must carry a time zone (``Z`` or an offset); one without is 422.",
         "operationId": "list_compaction_rounds",
         "parameters": [
           {
