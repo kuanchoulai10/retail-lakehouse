@@ -274,6 +274,12 @@ class CompactionCandidate(AggregateRoot[CompactionCandidateId]):
             return False
         return now - self.pending_since > sla[self.priority]
 
+    def grant_expired(self, now: datetime) -> bool:
+        """Return whether this is a grant whose lease ended unclaimed; the next observation makes it pending."""
+        return (
+            self.state is CandidateState.GRANTED and self.lease_expires_at is not None and now >= self.lease_expires_at
+        )
+
     def keeps_its_table_busy(self, now: datetime) -> bool:
         """Return whether this candidate holds its table's compaction, so a round should grant the table nothing.
 

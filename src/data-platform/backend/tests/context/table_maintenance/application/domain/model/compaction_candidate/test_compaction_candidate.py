@@ -519,3 +519,11 @@ def test_combinations_that_cannot_happen_are_refused(fields):
     }
     with pytest.raises(ValidationError):
         CompactionCandidate(**{**base, **fields})
+
+
+def test_grant_expired_once_the_lease_ends():
+    """A grant whose lease is over is expired; a live grant and any other state are not."""
+    assert not _granted().grant_expired(GRANT_LEASE - timedelta(seconds=1))
+    assert _granted().grant_expired(GRANT_LEASE)
+    assert not _candidate().grant_expired(GRANT_LEASE)
+    assert not _claimed().grant_expired(LEASE)

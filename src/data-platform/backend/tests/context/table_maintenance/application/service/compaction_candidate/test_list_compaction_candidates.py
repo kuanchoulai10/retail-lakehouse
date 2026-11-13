@@ -110,7 +110,7 @@ def test_each_candidate_says_what_it_is_worth_and_who_holds_it(service, now):
 def test_each_candidate_says_its_priority_grant_and_whether_it_is_overdue(service, candidates_repo, now):
     """An item carries the priority, the round that granted it, its wait start and the overdue mark of its SLA."""
     granted = next(c for c in candidates_repo.list_by_table(TABLE) if c.partition.values == ("2026-11-01",))
-    granted.grant("round-7", now + timedelta(minutes=10), now)
+    granted.grant("round-7", now + timedelta(hours=3), now)
     candidates_repo.save_all([granted])
 
     items = {i.values[0]: i for i in service.execute(ListCompactionCandidatesUseCaseInput(table_uuid="u-1")).items}
@@ -140,3 +140,27 @@ def test_an_unknown_table_is_not_found(candidates_repo, tables_repo):
 
     with pytest.raises(NotFoundError):
         service.execute(ListCompactionCandidatesUseCaseInput(table_uuid="nope"))
+
+
+def test_a_grant_whose_lease_ended_reads_as_pending(candidates_repo, tables_repo, now):  # noqa: ANN001
+    """A grant nobody claimed in time is shown as pending again, ranked, without its round, until it is observed."""
+    tables_repo.create(
+        Table.register(
+            TABLE, TableName(catalog="iceberg", namespace="sales", table="orders"), TableDiscoveryRuleId("r"), now
+        )
+    )
+    expired, live = _candidate("2026-11-01", 0.9, now), _candidate("2026-11-02", 0.5, now)
+    expired.grant("round-1", now + timedelta(minutes=10), now)
+    live.grant("round-2", now + timedelta(hours=1), now)
+    candidates_repo.save_all([expired, live, _candidate("2026-11-03", 0.4, now)])
+    service = ListCompactionCandidatesService(
+        candidates_repo, tables_repo, partitions_per_run=2, sla=SLA, clock=lambda: now + timedelta(minutes=30)
+    )
+
+    items = service.execute(ListCompactionCandidatesUseCaseInput(table_uuid=TABLE.value)).items
+
+    assert [(i.state, i.granted_round_id, i.lease_expires_at is None, i.rank) for i in items] == [
+        ("pending", None, True, 1),
+        ("granted", "round-2", False, None),
+        ("pending", None, True, 2),
+    ]

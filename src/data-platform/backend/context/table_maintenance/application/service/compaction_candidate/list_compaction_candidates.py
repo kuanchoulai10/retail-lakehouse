@@ -29,7 +29,9 @@ class ListCompactionCandidatesService(ListCompactionCandidatesUseCase):
     """List a table's compaction candidates, best first, with the rank of each pending one.
 
     Each candidate is marked overdue when it has waited for a run longer than
-    ``sla`` gives its priority, as of ``clock``.
+    ``sla`` gives its priority, as of ``clock``. A grant whose lease ended
+    unclaimed is listed as the pending candidate the next observation makes
+    it: ranked, without its round or lease.
     """
 
     def __init__(
@@ -54,23 +56,26 @@ class ListCompactionCandidatesService(ListCompactionCandidatesUseCase):
         if self._tables_repo.get(table_uuid) is None:
             raise NotFoundError(f"table {request.table_uuid} not found")
         ranked = sorted(self._candidates_repo.list_by_table(table_uuid), key=lambda c: c.rank)
-        pending = [c.id for c in ranked if c.state is CandidateState.PENDING]
-        ranks = {candidate_id: place for place, candidate_id in enumerate(pending, start=1)}
         now = self._clock()
+        expired = {c.id for c in ranked if c.grant_expired(now)}
+        pending = [c.id for c in ranked if c.state is CandidateState.PENDING or c.id in expired]
+        ranks = {candidate_id: place for place, candidate_id in enumerate(pending, start=1)}
         return ListCompactionCandidatesUseCaseOutput(
             partitions_per_run=self._partitions_per_run,
-            items=[_item(c, ranks.get(c.id), overdue=c.overdue(self._sla, now)) for c in ranked],
+            items=[
+                _item(c, ranks.get(c.id), overdue=c.overdue(self._sla, now), expired=c.id in expired) for c in ranked
+            ],
         )
 
 
 def _item(
-    candidate: CompactionCandidate, rank: int | None, *, overdue: bool
+    candidate: CompactionCandidate, rank: int | None, *, overdue: bool, expired: bool
 ) -> ListCompactionCandidatesUseCaseOutputItem:
     return ListCompactionCandidatesUseCaseOutputItem(
         spec_id=candidate.partition.spec_id,
         values=list(candidate.partition.values),
         partition_label=candidate.label,
-        state=candidate.state.value,
+        state=CandidateState.PENDING.value if expired else candidate.state.value,
         hold_reason=None if candidate.hold_reason is None else candidate.hold_reason.value,
         reducible_files=candidate.score.reducible_files,
         data_bytes=candidate.score.data_bytes,
@@ -78,11 +83,11 @@ def _item(
         score=candidate.score.score,
         rank=rank,
         claimed_by_run_id=None if candidate.claimed_by_run_id is None else candidate.claimed_by_run_id.value,
-        lease_expires_at=candidate.lease_expires_at,
+        lease_expires_at=None if expired else candidate.lease_expires_at,
         last_written_at=candidate.last_written_at,
         observed_at=candidate.observed_at,
         priority=candidate.priority.value,
-        granted_round_id=candidate.granted_round_id,
+        granted_round_id=None if expired else candidate.granted_round_id,
         pending_since=candidate.pending_since,
         overdue=overdue,
     )
