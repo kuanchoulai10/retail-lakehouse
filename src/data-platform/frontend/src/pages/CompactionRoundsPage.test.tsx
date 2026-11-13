@@ -127,7 +127,7 @@ describe("CompactionRoundsPage", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Budget used: the round's GB·h budget ran out. Table's share used: the table already has its most partitions in this round. Table busy: the table is still compacting what an earlier round granted.",
+        "Budget used: the round's GB·h budget ran out. Table's share used: the table already has as many partitions as one round gives a table. Table busy: the table is still compacting what an earlier round granted.",
       ),
     ).toBeInTheDocument();
   });

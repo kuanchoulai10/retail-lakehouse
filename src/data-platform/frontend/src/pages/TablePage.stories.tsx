@@ -109,7 +109,7 @@ export const Candidates: Story = {
     const table = within(await within(canvasElement).findByRole("table", { name: "Compaction candidates, best first" }));
     await expect(table.getByText("In run run-1")).toBeVisible();
     await expect(table.getByText("Still being written; checked again after a quiet period")).toBeVisible();
-    await expect(table.getByText("Waiting for a later round: below the top 2 (2 per run)")).toBeVisible();
+    await expect(table.getByText("Waiting for a later round: below the top 2 (2 per table per round)")).toBeVisible();
     await expect(table.getByRole("link", { name: formatTimestamp("2026-11-13T02:00:00Z") })).toHaveAttribute(
       "href",
       "/compaction-rounds?round=compaction-rounds-2026-11-13T02%3A00%3A00Z",

@@ -30,7 +30,7 @@ export function whyNotPicked(candidate: CompactionCandidateApiResponse, partitio
     }
     case "pending":
       return candidate.rank !== null && candidate.rank > partitionsPerRun
-        ? `Waiting for a later round: below the top ${partitionsPerRun} (${partitionsPerRun} per run)`
+        ? `Waiting for a later round: below the top ${partitionsPerRun} (${partitionsPerRun} per table per round)`
         : "Waiting for the next round";
     case "granted":
       // A round is named by when it started, as the rounds list shows it.

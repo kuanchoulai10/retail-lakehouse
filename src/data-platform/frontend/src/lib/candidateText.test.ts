@@ -41,7 +41,7 @@ describe("whyNotPicked", () => {
   });
 
   it("says a pending partition below the top N waits for a later round", () => {
-    expect(whyNotPicked(candidate({ rank: 11 }), 10)).toBe("Waiting for a later round: below the top 10 (10 per run)");
+    expect(whyNotPicked(candidate({ rank: 11 }), 10)).toBe("Waiting for a later round: below the top 10 (10 per table per round)");
   });
 
   it("says a pending partition in the top N waits for the next round", () => {

@@ -121,7 +121,7 @@ describe("CandidatesTab", () => {
         "4.0 KB",
         "1.50",
         "Pending",
-        "Waiting for a later round: below the top 1 (1 per run)",
+        "Waiting for a later round: below the top 1 (1 per table per round)",
       ],
     ]);
   });

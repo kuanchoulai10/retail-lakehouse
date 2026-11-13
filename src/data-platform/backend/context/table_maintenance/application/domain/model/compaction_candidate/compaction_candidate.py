@@ -58,7 +58,7 @@ class CompactionCandidate(AggregateRoot[CompactionCandidateId]):
     stop or the candidate is claimed, so a partition written without pause is
     not held forever. ``claimed_by_run_id`` names the run that holds the
     candidate (claimed, running) or last held it (done, failed);
-    ``granted_round_id`` names the round that granted it (granted) or the run
+    ``granted_round_id`` names the round that granted it (granted) or the round
     its claim came from (claimed, running, done, failed). ``pending_since`` is
     when it last became pending; it is kept while it stays pending or granted,
     and through a ``cooldown`` hold (the table's own wait does not restart it),
