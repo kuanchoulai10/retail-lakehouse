@@ -101,6 +101,7 @@ export const CONTRAST_PAIRS: readonly ContrastPair[] = [
   { foreground: "on-surface", background: "selected-surface", minimum: 4.5 },
   { foreground: "primary", background: "selected-surface", minimum: 3 },
   { foreground: "on-surface", background: "inverse-primary", minimum: 4.5 },
+  { foreground: "on-surface", background: "surface-container-dim", minimum: 4.5 },
   { foreground: "inverse-on-surface", background: "inverse-surface", minimum: 4.5 },
   { foreground: "on-positive-container", background: "positive-container", minimum: 4.5 },
   { foreground: "on-notice-container", background: "notice-container", minimum: 4.5 },
