@@ -187,3 +187,59 @@ def test_a_table_busy_with_a_run_gets_no_grant():
     stored = rounds.get(CompactionRoundId("round-1"))
     assert stored is not None
     assert [(s.label, s.reason) for s in stored.skips] == [("day=more", SkipReason.TABLE_BUSY)]
+
+
+def _rounds_repo_that_fails_once(monkeypatch: pytest.MonkeyPatch) -> InMemoryCompactionRoundsRepo:
+    """Fail the first save, as a database error or a crash between the grants and the record would."""
+    rounds = InMemoryCompactionRoundsRepo()
+    save = rounds.save
+    calls = []
+
+    def fail_first(entity):  # noqa: ANN001, ANN202
+        calls.append(entity)
+        if len(calls) == 1:
+            raise RuntimeError("the database went away")
+        save(entity)
+
+    monkeypatch.setattr(rounds, "save", fail_first)
+    return rounds
+
+
+def test_a_round_retried_after_its_grants_were_saved_records_them_and_grants_no_second_batch(
+    candidates, monkeypatch: pytest.MonkeyPatch
+):  # noqa: ANN001
+    """The retry finds the grants made under its id, records exactly them and grants nothing more."""
+    rounds = _rounds_repo_that_fails_once(monkeypatch)
+    service = _service(candidates, rounds)
+    with pytest.raises(RuntimeError):
+        _run(service)
+    candidates.save_all([_candidate("t-3", "d", score=0.99)])
+
+    again = _run(service, now=NOW + timedelta(seconds=5))
+
+    assert (again.picked, again.granted_table_uuids) == (2, ["t-1", "t-2"])
+    assert again.used_gb_hours == pytest.approx(0.04)
+    assert _states(candidates) == {
+        "a": CandidateState.GRANTED,
+        "b": CandidateState.GRANTED,
+        "c": CandidateState.PENDING,
+        "d": CandidateState.PENDING,
+    }
+    stored = rounds.get(CompactionRoundId("round-1"))
+    assert stored is not None
+    assert [p.label for p in stored.picks] == ["day=a", "day=b"]
+
+
+def test_a_rebuilt_round_counts_grants_its_tables_already_claimed(candidates, monkeypatch: pytest.MonkeyPatch):  # noqa: ANN001
+    """A grant claimed by its table before the retry still belongs to the round."""
+    rounds = _rounds_repo_that_fails_once(monkeypatch)
+    service = _service(candidates, rounds)
+    with pytest.raises(RuntimeError):
+        _run(service)
+    (a,) = [c for c in candidates.list_all() if c.partition.values == ("a",)]
+    a.claim(TableMaintenanceRunId("run-1"), NOW + timedelta(hours=1), NOW + timedelta(seconds=1))
+    candidates.save_all([a])
+
+    again = _run(service, now=NOW + timedelta(seconds=5))
+
+    assert again.picked == 2

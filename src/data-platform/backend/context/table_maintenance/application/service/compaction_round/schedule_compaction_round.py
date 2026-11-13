@@ -5,7 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.compaction_round import CompactionRoundId
-from context.table_maintenance.application.domain.service.compaction_round import plan_compaction_round
+from context.table_maintenance.application.domain.service.compaction_round import (
+    plan_compaction_round,
+    recover_compaction_round,
+)
 from context.table_maintenance.application.port.inbound.compaction_round import (
     ScheduleCompactionRoundUseCase,
     ScheduleCompactionRoundUseCaseInput,
@@ -64,13 +67,29 @@ class ScheduleCompactionRoundService(ScheduleCompactionRoundUseCase):
         answered as recorded and grants nothing more. The grants are saved before
         the round, all or none: when a candidate changed since it was read,
         ``StaleCompactionCandidate`` propagates with nothing stored, and the
-        caller runs the round again.
+        caller runs the round again. A retry that finds grants under its
+        ``round_id`` but no record (it failed between the two saves) records
+        those grants as the round and grants nothing more, so one round never
+        hands out two batches.
         """
         round_id = CompactionRoundId(request.round_id)
         recorded = self._rounds_repo.get(round_id)
         if recorded is not None:
             return _output(recorded)
         unheld = self._candidates_repo.list_unheld()
+        already = [c for c in unheld if c.granted_round_id == round_id.value]
+        if already:
+            round_ = recover_compaction_round(
+                already,
+                round_id=round_id,
+                weights=self._weights,
+                budget_gb_hours=self._budget_gb_hours,
+                sla=self._sla,
+                now=request.now,
+            )
+            self._rounds_repo.save(round_)
+            self._rounds_repo.purge(keep=self._rounds_kept)
+            return _output(round_)
         round_ = plan_compaction_round(
             unheld,
             round_id=round_id,
