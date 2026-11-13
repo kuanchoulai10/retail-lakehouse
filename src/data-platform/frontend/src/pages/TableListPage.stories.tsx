@@ -71,6 +71,21 @@ export const NothingSelected: Story = {
   },
 };
 
+export const TimeColumns: Story = {
+  args: { route: "/?status=managed,unmanaged,dropped" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const customers = (await canvas.findByText("iceberg.retail.customers")).closest("tr") as HTMLElement;
+    await expect(canvas.getByRole("columnheader", { name: /Last commit/ })).toBeVisible();
+    await expect(canvas.getByRole("columnheader", { name: /Last discovered/ })).toBeVisible();
+    await expect(canvas.queryByRole("columnheader", { name: /Updated/ })).toBeNull();
+    await expect(within(customers).getByText("—")).toBeVisible();
+    const dropped = canvas.getByText("iceberg.retail.legacy_orders").closest("tr") as HTMLElement;
+    const times = [...dropped.querySelectorAll("time")].map((time) => time.getAttribute("datetime"));
+    await expect(times).toEqual(["2026-11-05T16:20:00Z", "2026-11-06T09:00:00Z"]);
+  },
+};
+
 export const Empty: Story = {
   beforeEach({ msw }) {
     msw.use(getListTablesMockHandler([]));

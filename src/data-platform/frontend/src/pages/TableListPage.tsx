@@ -32,6 +32,26 @@ function capitalise(word: string): string {
 
 const STATUS_ITEMS = TABLE_STATUSES.map((s) => ({ value: s, label: capitalise(s) }));
 
+// A time the backend does not know yet is null: it reads "—" and sorts last in either direction.
+function timeColumn(id: string, header: string, time: (table: TableApiResponse) => string | null) {
+  return column.accessor((t) => time(t) ?? undefined, {
+    id,
+    header,
+    sortFn: "datetime",
+    sortDescFirst: true,
+    sortUndefined: "last",
+    cell: (info) => {
+      const value = info.getValue();
+      if (value === undefined) return "—";
+      return (
+        <time dateTime={value} className="tabular-nums whitespace-nowrap">
+          {formatTimestamp(value)}
+        </time>
+      );
+    },
+  });
+}
+
 const columns = column.columns([
   column.accessor((t) => fullName(t), {
     id: "name",
@@ -58,17 +78,8 @@ const columns = column.columns([
     sortFn: "text",
     cell: (info) => <TableStatusBadge status={info.getValue()} />,
   }),
-  column.accessor((t) => t.updated_at, {
-    id: "updated_at",
-    header: "Updated",
-    sortFn: "datetime",
-    sortDescFirst: true,
-    cell: (info) => (
-      <time dateTime={info.getValue()} className="tabular-nums whitespace-nowrap">
-        {formatTimestamp(info.getValue())}
-      </time>
-    ),
-  }),
+  timeColumn("last_committed_at", "Last commit", (t) => t.last_committed_at),
+  timeColumn("last_discovered_at", "Last discovered", (t) => t.last_discovered_at),
 ]);
 
 function LoadingRows() {

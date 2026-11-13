@@ -147,6 +147,7 @@ export const MAINTAINED_TABLES: TableApiResponse[] = [
     table: "customers",
     status: "unmanaged",
     matched_rule_id: null,
+    last_committed_at: null,
   },
   {
     ...MAINTAINED_ORDERS,
@@ -160,6 +161,8 @@ export const MAINTAINED_TABLES: TableApiResponse[] = [
     table: "legacy_orders",
     status: "dropped",
     matched_rule_id: null,
+    last_committed_at: "2026-11-05T16:20:00Z",
+    last_discovered_at: "2026-11-06T09:00:00Z",
   },
 ];
 

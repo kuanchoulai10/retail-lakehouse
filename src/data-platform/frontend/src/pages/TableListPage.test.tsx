@@ -49,10 +49,33 @@ function rowNames(): string[] {
     .map((row) => within(row).getAllByRole("link")[0]?.textContent ?? "");
 }
 
+// Each time column orders the rows differently, and one row's time is unknown in each, so a sort
+// that ignored the column or misplaced the unknown time would show.
 const SORTABLE: TableApiResponse[] = [
-  table({ uuid: "u-b", table: "b_table", updated_at: "2026-10-31T09:00:00Z" }),
-  table({ uuid: "u-a", table: "a_table", updated_at: "2026-10-31T07:00:00Z" }),
-  table({ uuid: "u-c", table: "c_table", updated_at: "2026-10-31T08:00:00Z" }),
+  table({
+    uuid: "u-b",
+    table: "b_table",
+    last_committed_at: "2026-10-31T09:00:00Z",
+    last_discovered_at: null,
+  }),
+  table({
+    uuid: "u-a",
+    table: "a_table",
+    last_committed_at: "2026-10-31T07:00:00Z",
+    last_discovered_at: "2026-10-31T10:00:00Z",
+  }),
+  table({
+    uuid: "u-c",
+    table: "c_table",
+    last_committed_at: null,
+    last_discovered_at: "2026-10-31T11:00:00Z",
+  }),
+  table({
+    uuid: "u-d",
+    table: "d_table",
+    last_committed_at: "2026-10-31T08:00:00Z",
+    last_discovered_at: "2026-10-31T09:30:00Z",
+  }),
 ];
 
 function renderPage(route = "/") {
@@ -286,24 +309,77 @@ describe("TableListPage", () => {
       "iceberg.inventory.a_table",
       "iceberg.inventory.b_table",
       "iceberg.inventory.c_table",
+      "iceberg.inventory.d_table",
     ]);
   });
 
-  it("clicking the Updated header sorts by updated_at descending then ascending", async () => {
+  it("has Last commit and Last discovered columns and no Updated column", async () => {
+    renderPage();
+    await screen.findByText("iceberg.inventory.orders");
+
+    const headers = screen.getAllByRole("columnheader").map((header) => header.textContent);
+    expect(headers).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^Last commit/), expect.stringMatching(/^Last discovered/)]),
+    );
+    expect(screen.queryByRole("columnheader", { name: /Updated/ })).not.toBeInTheDocument();
+  });
+
+  it("shows both times as machine-readable timestamps", async () => {
+    renderPage();
+    const row = (await screen.findByText("iceberg.inventory.orders")).closest("tr") as HTMLElement;
+
+    const times = [...row.querySelectorAll("time")].map((time) => time.getAttribute("dateTime"));
+    expect(times).toEqual(["2026-10-31T07:45:00Z", "2026-10-31T08:10:00Z"]);
+  });
+
+  it("shows a dash for a time that is not known", async () => {
+    stubTables([table({ uuid: "u-new", table: "fresh", last_committed_at: null, last_discovered_at: null })]);
+    renderPage();
+    const row = within((await screen.findByText("iceberg.inventory.fresh")).closest("tr") as HTMLElement);
+
+    expect(row.getAllByText("—")).toHaveLength(2);
+  });
+
+  it("clicking Last commit sorts newest first then oldest first, unknown times last", async () => {
     const user = userEvent.setup();
     stubTables(SORTABLE);
     renderPage();
     await screen.findByText("iceberg.inventory.a_table");
 
-    await user.click(screen.getByRole("button", { name: /Updated/ }));
+    await user.click(screen.getByRole("button", { name: /Last commit/ }));
     expect(rowNames()).toEqual([
       "iceberg.inventory.b_table",
-      "iceberg.inventory.c_table",
+      "iceberg.inventory.d_table",
       "iceberg.inventory.a_table",
+      "iceberg.inventory.c_table",
     ]);
 
-    await user.click(screen.getByRole("button", { name: /Updated/ }));
+    await user.click(screen.getByRole("button", { name: /Last commit/ }));
     expect(rowNames()).toEqual([
+      "iceberg.inventory.a_table",
+      "iceberg.inventory.d_table",
+      "iceberg.inventory.b_table",
+      "iceberg.inventory.c_table",
+    ]);
+  });
+
+  it("clicking Last discovered sorts newest first then oldest first, unknown times last", async () => {
+    const user = userEvent.setup();
+    stubTables(SORTABLE);
+    renderPage();
+    await screen.findByText("iceberg.inventory.a_table");
+
+    await user.click(screen.getByRole("button", { name: /Last discovered/ }));
+    expect(rowNames()).toEqual([
+      "iceberg.inventory.c_table",
+      "iceberg.inventory.a_table",
+      "iceberg.inventory.d_table",
+      "iceberg.inventory.b_table",
+    ]);
+
+    await user.click(screen.getByRole("button", { name: /Last discovered/ }));
+    expect(rowNames()).toEqual([
+      "iceberg.inventory.d_table",
       "iceberg.inventory.a_table",
       "iceberg.inventory.c_table",
       "iceberg.inventory.b_table",
