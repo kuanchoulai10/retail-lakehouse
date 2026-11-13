@@ -1,4 +1,4 @@
-"""Test the discovery rules services: read, replace whole and discover, preview, covered catalogs."""
+"""Test the discovery rules services: read, replace whole and discover, covered catalogs."""
 
 from __future__ import annotations
 
@@ -10,9 +10,6 @@ from context.table_maintenance.application.exceptions import ConflictError, Vali
 from context.table_maintenance.application.port.inbound.table_discovery_rules import (
     GetTableDiscoveryRulesUseCaseInput,
     ListCoveredCatalogsUseCaseInput,
-    PreviewTableDiscoveryRulesUseCaseInput,
-    PreviewTableDiscoveryRulesUseCaseInputItem,
-    PreviewTableDiscoveryRulesUseCaseOutputItem,
     ReplaceTableDiscoveryRulesUseCaseInput,
     ReplaceTableDiscoveryRulesUseCaseInputItem,
 )
@@ -20,7 +17,6 @@ from context.table_maintenance.application.port.outbound.table import SendDiscov
 from context.table_maintenance.application.service.table_discovery_rules import (
     GetTableDiscoveryRulesService,
     ListCoveredCatalogsService,
-    PreviewTableDiscoveryRulesService,
     ReplaceTableDiscoveryRulesService,
 )
 
@@ -50,18 +46,6 @@ def _item(rid=None, priority=10, action="include", *, enabled=True, catalogs=("*
         action=action,
         enabled=enabled,
         catalogs=list(catalogs),
-        namespaces=list(namespaces),
-        tables=list(tables),
-    )
-
-
-def _preview_item(rid=None, priority=10, action="include", *, tables=("*",), namespaces=("*",)):
-    return PreviewTableDiscoveryRulesUseCaseInputItem(
-        id=rid,
-        priority=priority,
-        action=action,
-        enabled=True,
-        catalogs=["*"],
         namespaces=list(namespaces),
         tables=list(tables),
     )
@@ -182,40 +166,6 @@ def test_save_with_no_rules_empties_the_list(replace, get):
     out = replace.execute(ReplaceTableDiscoveryRulesUseCaseInput(version=1, rules=[]))
     assert (out.version, out.rules) == (2, [])
     assert get.execute(GetTableDiscoveryRulesUseCaseInput()).rules == []
-
-
-def test_preview_reports_deciding_rule_and_writes_nothing(rules_repo, catalog, tables_repo, discovery_requests):
-    """Preview decides every table of every covered catalog by the candidate rules and stores nothing."""
-    catalog.add_table("iceberg", "sales", "orders", "u-1")
-    catalog.add_table("iceberg", "sales", "tmp_x", "u-2")
-    catalog.add_table("lake", "prod.eu", "events", "u-3")
-    catalog.add_table("other", "sales", "uncovered", "u-4")
-    preview = PreviewTableDiscoveryRulesService(catalog, COVERED)
-    out = preview.execute(
-        PreviewTableDiscoveryRulesUseCaseInput(
-            rules=[
-                _preview_item(priority=20, namespaces=("sales",)),
-                _preview_item("saved-ex", priority=10, action="exclude", tables=("tmp_*",)),
-            ]
-        )
-    )
-    assert out.tables == [
-        PreviewTableDiscoveryRulesUseCaseOutputItem("iceberg", "sales", "orders", "#0", True),
-        PreviewTableDiscoveryRulesUseCaseOutputItem("iceberg", "sales", "tmp_x", "saved-ex", False),
-        PreviewTableDiscoveryRulesUseCaseOutputItem("lake", "prod.eu", "events", None, False),
-    ]
-    assert (out.managed, out.unmanaged) == (1, 2)
-    assert rules_repo.get_rules().version == 0
-    assert tables_repo.list_all() == []
-    assert discovery_requests.calls == []
-    assert {name for name, _ in catalog.calls} == {"list_tables"}
-
-
-def test_preview_rejects_equal_priorities(catalog):
-    """A candidate list with two equal priorities is a validation error."""
-    preview = PreviewTableDiscoveryRulesService(catalog, COVERED)
-    with pytest.raises(ValidationError, match="priority 10"):
-        preview.execute(PreviewTableDiscoveryRulesUseCaseInput(rules=[_preview_item(), _preview_item()]))
 
 
 def test_list_covered_catalogs_returns_configured_names():

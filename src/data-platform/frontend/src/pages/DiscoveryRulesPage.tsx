@@ -11,18 +11,15 @@ import {
   Skeleton,
   Switch,
 } from "@retail-lakehouse/design-system";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useId, useMemo, useRef, useState } from "react";
 import {
   getGetTableDiscoveryRulesQueryKey,
-  getPreviewTableDiscoveryRulesUrl,
-  previewTableDiscoveryRules,
   replaceTableDiscoveryRules,
   useGetTableDiscoveryRules,
 } from "@/api/generated/discovery-rules/discovery-rules";
 import type { ReplaceTableDiscoveryRulesApiRequest } from "@/api/generated/model";
 import { DiscoveryRuleEditor } from "@/components/DiscoveryRuleEditor";
-import { DiscoveryRulesPreview } from "@/components/DiscoveryRulesPreview";
 import { PageHeader } from "@/components/PageHeader";
 import { errorMessage } from "@/format";
 import {
@@ -33,10 +30,8 @@ import {
   type DiscoveryRuleDraft,
 } from "@/lib/discoveryRuleDraft";
 import { isConflict } from "@/lib/updateErrorMessage";
-import { useDebouncedValue } from "@/lib/useDebouncedValue";
 
 const SKELETON_ROWS = 3;
-const PREVIEW_DELAY_MS = 300;
 const CONFLICT_MESSAGE = "Someone else changed these rules. Reload to see their version.";
 
 // The list the page edits, with the version it was read at: a refetch while the user edits
@@ -201,23 +196,6 @@ export function DiscoveryRulesPage() {
   const dirty =
     draft !== null && base !== null && JSON.stringify(request) !== JSON.stringify(rulesRequest(base.rules));
 
-  // The preview answers the list as it was when the user paused, and keeps that list with the
-  // answer: an unsaved rule is named by its index in the sent list, so the groups must be
-  // labelled from the same list, not from a draft edited since.
-  const settledRules = useDebouncedValue(ordered, PREVIEW_DELAY_MS);
-  const settledRequest = useMemo(() => rulesRequest(settledRules), [settledRules]);
-  const previewSettled = settledRules === ordered;
-  const preview = useQuery({
-    queryKey: [getPreviewTableDiscoveryRulesUrl(), { rules: settledRequest }],
-    queryFn: async ({ signal }) => ({
-      rules: settledRules,
-      response: await previewTableDiscoveryRules({ rules: settledRequest }, { signal }),
-    }),
-    enabled: current !== null && previewSettled,
-    placeholderData: keepPreviousData,
-    retry: false,
-  });
-
   const save = useMutation({
     mutationFn: (body: ReplaceTableDiscoveryRulesApiRequest) => replaceTableDiscoveryRules(body),
     // A write can fail after part of it landed, so the page refetches either way; the draft is
@@ -307,12 +285,6 @@ export function DiscoveryRulesPage() {
               )}
             </div>
           )}
-          <DiscoveryRulesPreview
-            rules={preview.data?.rules ?? []}
-            preview={preview.data?.response}
-            isFetching={current === null || !previewSettled || preview.isFetching}
-            error={preview.error}
-          />
           {/* Unframed, like the Tables page: the table's own header row separates it from the page. */}
           <section aria-labelledby={rulesHeadingId} aria-busy={saved.isPending} className="flex min-w-0 flex-col gap-3">
             <header className="flex flex-wrap items-center justify-between gap-2">

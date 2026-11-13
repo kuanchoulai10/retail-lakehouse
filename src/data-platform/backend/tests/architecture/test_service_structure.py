@@ -76,7 +76,6 @@ KNOWN_VERBS = {
     "Detach",
     "Resolve",
     "Replace",
-    "Preview",
     # Lifecycle
     "Complete",
     "Fail",

@@ -3,10 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
-import type {
-  PreviewTableDiscoveryRulesApiResponse,
-  TableDiscoveryRuleApiResponse,
-} from "../api/generated/model";
+import type { TableDiscoveryRuleApiResponse } from "../api/generated/model";
 import { callsTo, stubCatalogApi, type StubHandler } from "../test/catalogApiStub";
 import { jsonResponse } from "../test/fixtures";
 import { DiscoveryRulesPage } from "./DiscoveryRulesPage";
@@ -31,20 +28,10 @@ const RULES = [
   rule({ id: "r-early", priority: 10 }),
 ];
 
-const PREVIEW: PreviewTableDiscoveryRulesApiResponse = {
-  tables: [
-    { catalog: "iceberg", namespace: "e2e", table: "tm_e2e_orders", rule_id: "r-early", managed: true },
-    { catalog: "iceberg", namespace: "retail", table: "customers", rule_id: null, managed: false },
-  ],
-  managed: 1,
-  unmanaged: 1,
-};
-
 // Answers requests keyed "METHOD /path"; any other request is a 404.
 function stubApi(responses: Record<string, StubHandler> = {}) {
   return stubCatalogApi({
     "GET /v1/discovery-rules": () => jsonResponse({ version: 2, rules: RULES }),
-    "POST /v1/discovery-rules/preview": () => jsonResponse(PREVIEW),
     ...responses,
     "GET *": () => jsonResponse({ detail: "not found" }, 404),
   });
@@ -269,83 +256,13 @@ describe("DiscoveryRulesPage", () => {
     ]);
   });
 
-  it("previews the draft and names the rule that decides each table", async () => {
+  it("shows no Preview and sends no preview request", async () => {
     const calls = stubApi();
-    const user = userEvent.setup();
     renderPage();
-    const preview = await screen.findByRole("region", { name: "Preview" });
-    expect(await within(preview).findByText("1 managed, 1 unmanaged")).toBeInTheDocument();
-    const decided = within(preview).getByRole("group", { name: /Priority 10, include/ });
-    expect(within(decided).getByText("e2e.tm_e2e_orders")).toBeInTheDocument();
-    const undecided = within(preview).getByRole("group", { name: /No rule matches/ });
-    expect(within(undecided).getByText("retail.customers")).toBeInTheDocument();
+    await screen.findByText("tm_e2e_*");
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
-    await user.click(within(ruleRow("50")).getByRole("switch", { name: "Rule 50 enabled" }));
-    await waitFor(() => expect(callsTo(calls, "POST", "/v1/discovery-rules/preview")).toHaveLength(2));
-    const body = callsTo(calls, "POST", "/v1/discovery-rules/preview")[1]?.body as { rules: Record<string, unknown>[] };
-    expect(body.rules.map((r) => [r.id, r.enabled])).toEqual([
-      ["r-early", true],
-      ["r-late", true],
-    ]);
-  });
-
-  it("labels the preview by the rules that were sent with it, not the newer draft", async () => {
-    // The table goes to the first include rule of the sent list. The answer for a list that
-    // starts with an exclude rule is held back until the test releases it.
-    let release = () => {};
-    const held = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    let heldArrived = false;
-    stubApi({
-      "GET /v1/discovery-rules": () => jsonResponse({ version: 0, rules: [] }),
-      "POST /v1/discovery-rules/preview": async (body) => {
-        const { rules } = body as { rules: { action: string }[] };
-        if (rules[0]?.action === "exclude") {
-          heldArrived = true;
-          await held;
-        }
-        const index = rules.findIndex((r) => r.action === "include");
-        return jsonResponse({
-          tables: [
-            { catalog: "iceberg", namespace: "retail", table: "orders", rule_id: index < 0 ? null : `#${index}`, managed: index >= 0 },
-          ],
-          managed: index < 0 ? 0 : 1,
-          unmanaged: index < 0 ? 1 : 0,
-        });
-      },
-    });
-    const user = userEvent.setup();
-    renderPage();
-    await screen.findByText("No discovery rules. No table is managed.");
-
-    await user.click(screen.getByRole("button", { name: "Add rule" }));
-    let dialog = await screen.findByRole("dialog", { name: "Add rule" });
-    await fillGlobs(user, dialog, { catalogs: "*", namespaces: "*", tables: "*" });
-    await user.click(within(dialog).getByRole("button", { name: "Add rule" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    await user.click(screen.getByRole("button", { name: "Add rule" }));
-    dialog = await screen.findByRole("dialog", { name: "Add rule" });
-    await fillGlobs(user, dialog, { catalogs: "*", namespaces: "*", tables: "*" });
-    await user.click(within(dialog).getByRole("combobox", { name: "Action" }));
-    await user.click(await screen.findByRole("option", { name: "Exclude" }));
-    await user.click(within(dialog).getByRole("button", { name: "Add rule" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-
-    const preview = screen.getByRole("region", { name: "Preview" });
-    const before = "Priority 10, include (unsaved): 1 table, managed";
-    expect(await within(preview).findByRole("group", { name: before })).toBeInTheDocument();
-
-    await user.click(within(ruleRow("20")).getByRole("button", { name: "Move rule 20 up" }));
-    await waitFor(() => expect(heldArrived).toBe(true), { timeout: 5000 });
-    // The held answer is not in yet: the tables shown still belong to the list sent before.
-    expect(preview).toHaveAttribute("aria-busy", "true");
-    expect(within(preview).getByRole("group", { name: before })).toBeInTheDocument();
-
-    release();
-    expect(
-      await within(preview).findByRole("group", { name: "Priority 20, include (unsaved): 1 table, managed" }),
-    ).toBeInTheDocument();
-    expect(preview).toHaveAttribute("aria-busy", "false");
+    expect(screen.queryByRole("region", { name: "Preview" })).not.toBeInTheDocument();
+    expect(callsTo(calls, "POST", "/v1/discovery-rules/preview")).toHaveLength(0);
   });
 });

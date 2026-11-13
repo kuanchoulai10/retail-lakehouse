@@ -13,7 +13,6 @@ import type {
   SchedulerSettingsApiResponse,
   TableApiResponse,
   TableCommitsApiResponse,
-  PreviewTableDiscoveryRulesApiResponse,
   TableDiscoveryRuleApiResponse,
   TableHealthApiResponse,
   TableIdentifierApiResponse,
@@ -454,17 +453,6 @@ export const RULES: TableDiscoveryRuleApiResponse[] = [
     updated_at: "2026-11-01T09:00:00Z",
   },
 ];
-
-// What the rules above decide: the retail rule manages both retail tables; nothing matches staging.
-export const RULES_PREVIEW: PreviewTableDiscoveryRulesApiResponse = {
-  tables: [
-    { catalog: "iceberg", namespace: "retail", table: "orders", rule_id: "rule-retail", managed: true },
-    { catalog: "iceberg", namespace: "retail", table: "customers", rule_id: "rule-retail", managed: true },
-    { catalog: "iceberg", namespace: "staging", table: "tmp_events", rule_id: null, managed: false },
-  ],
-  managed: 2,
-  unmanaged: 1,
-};
 
 const QUIET_OPERATIONS: ReconciliationOperationApiResponse[] = [
   {

@@ -1,4 +1,4 @@
-"""Test the discovery rules routes: read, replace whole, preview, covered catalogs."""
+"""Test the discovery rules routes: read, replace whole, covered catalogs."""
 
 from __future__ import annotations
 
@@ -11,10 +11,6 @@ from context.table_maintenance.application.port.inbound.table_discovery_rules im
     GetTableDiscoveryRulesUseCaseOutput,
     GetTableDiscoveryRulesUseCaseOutputItem,
     ListCoveredCatalogsUseCaseOutput,
-    PreviewTableDiscoveryRulesUseCaseInput,
-    PreviewTableDiscoveryRulesUseCaseInputItem,
-    PreviewTableDiscoveryRulesUseCaseOutput,
-    PreviewTableDiscoveryRulesUseCaseOutputItem,
     ReplaceTableDiscoveryRulesUseCaseInput,
     ReplaceTableDiscoveryRulesUseCaseInputItem,
     ReplaceTableDiscoveryRulesUseCaseOutput,
@@ -99,29 +95,6 @@ def test_put_discovery_rules_rejects_unknown_key() -> None:
     assert response.status_code == 422
 
 
-def test_preview_discovery_rules() -> None:
-    """POST /preview hands the candidate list to the use case and answers each table with the counts."""
-    stub = StubUseCase(
-        PreviewTableDiscoveryRulesUseCaseOutput(
-            tables=[PreviewTableDiscoveryRulesUseCaseOutputItem("iceberg", "sales", "orders", "#0", True)],
-            managed=1,
-            unmanaged=0,
-        )
-    )
-    response = build_client(preview_table_discovery_rules=stub).post(
-        "/v1/discovery-rules/preview", json={"rules": [BODY_RULE]}
-    )
-    assert response.status_code == 200
-    assert response.json() == {
-        "tables": [{"catalog": "iceberg", "namespace": "sales", "table": "orders", "rule_id": "#0", "managed": True}],
-        "managed": 1,
-        "unmanaged": 0,
-    }
-    assert stub.requests == [
-        PreviewTableDiscoveryRulesUseCaseInput(rules=[PreviewTableDiscoveryRulesUseCaseInputItem(id=None, **BODY_RULE)])
-    ]
-
-
 def test_list_covered_catalogs() -> None:
     """GET /catalogs answers the catalogs maintenance covers."""
     stub = StubUseCase(ListCoveredCatalogsUseCaseOutput(catalogs=["iceberg"]))
@@ -140,9 +113,10 @@ def test_list_covered_catalogs() -> None:
         ("PUT", "/v1/table-discovery-settings"),
         ("GET", "/v1/table-discovery-settings/catalogs"),
         ("POST", "/v1/table-discovery-settings/scan"),
+        ("POST", "/v1/discovery-rules/preview"),
     ],
 )
 def test_old_discovery_endpoints_are_gone(method: str, path: str) -> None:
-    """The per-rule, switch, scan and old covered-catalog endpoints no longer exist."""
+    """The per-rule, switch, scan, old covered-catalog and preview endpoints no longer exist."""
     response = build_client().request(method, path, json={})
     assert response.status_code == 404

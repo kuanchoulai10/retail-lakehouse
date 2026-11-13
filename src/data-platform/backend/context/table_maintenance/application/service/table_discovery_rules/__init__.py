@@ -8,9 +8,6 @@ from context.table_maintenance.application.service.table_discovery_rules.get_tab
 from context.table_maintenance.application.service.table_discovery_rules.list_covered_catalogs import (
     ListCoveredCatalogsService,
 )
-from context.table_maintenance.application.service.table_discovery_rules.preview_table_discovery_rules import (
-    PreviewTableDiscoveryRulesService,
-)
 from context.table_maintenance.application.service.table_discovery_rules.replace_table_discovery_rules import (
     ReplaceTableDiscoveryRulesService,
 )
@@ -24,7 +21,6 @@ from context.table_maintenance.application.service.table_discovery_rules.table_d
 __all__ = [
     "GetTableDiscoveryRulesService",
     "ListCoveredCatalogsService",
-    "PreviewTableDiscoveryRulesService",
     "ReplaceTableDiscoveryRulesService",
     "table_discovery_rule_from_request",
     "table_discovery_rule_output_fields",

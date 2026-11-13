@@ -1389,47 +1389,6 @@
         "title": "DetachTableMaintenancePolicyApiRequest",
         "type": "object"
       },
-      "DiscoveryPreviewTableApiResponse": {
-        "description": "Describe one table of a preview: the rule that would decide it, or null, and whether it would be managed.",
-        "properties": {
-          "catalog": {
-            "title": "Catalog",
-            "type": "string"
-          },
-          "managed": {
-            "title": "Managed",
-            "type": "boolean"
-          },
-          "namespace": {
-            "title": "Namespace",
-            "type": "string"
-          },
-          "rule_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Rule Id"
-          },
-          "table": {
-            "title": "Table",
-            "type": "string"
-          }
-        },
-        "required": [
-          "catalog",
-          "namespace",
-          "table",
-          "rule_id",
-          "managed"
-        ],
-        "title": "DiscoveryPreviewTableApiResponse",
-        "type": "object"
-      },
       "ExpireSnapshotsConditionsApiRequest": {
         "additionalProperties": false,
         "description": "Carry the snapshot expiry conditions; a missing one is not checked.",
@@ -1945,51 +1904,6 @@
           "table_uuid"
         ],
         "title": "PolicyTargetApiResponse",
-        "type": "object"
-      },
-      "PreviewTableDiscoveryRulesApiRequest": {
-        "additionalProperties": false,
-        "description": "Carry a whole candidate rule list, unsaved.",
-        "properties": {
-          "rules": {
-            "items": {
-              "$ref": "#/components/schemas/TableDiscoveryRuleApiRequest"
-            },
-            "title": "Rules",
-            "type": "array"
-          }
-        },
-        "required": [
-          "rules"
-        ],
-        "title": "PreviewTableDiscoveryRulesApiRequest",
-        "type": "object"
-      },
-      "PreviewTableDiscoveryRulesApiResponse": {
-        "description": "Describe every table of the covered catalogs under a candidate rule list, with counts.",
-        "properties": {
-          "managed": {
-            "title": "Managed",
-            "type": "integer"
-          },
-          "tables": {
-            "items": {
-              "$ref": "#/components/schemas/DiscoveryPreviewTableApiResponse"
-            },
-            "title": "Tables",
-            "type": "array"
-          },
-          "unmanaged": {
-            "title": "Unmanaged",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "tables",
-          "managed",
-          "unmanaged"
-        ],
-        "title": "PreviewTableDiscoveryRulesApiResponse",
         "type": "object"
       },
       "ProcessTableMaintenanceCallbackApiRequest": {
@@ -6165,48 +6079,6 @@
           }
         },
         "summary": "List Covered Catalogs",
-        "tags": [
-          "discovery-rules"
-        ]
-      }
-    },
-    "/v1/discovery-rules/preview": {
-      "post": {
-        "description": "Show which tables of the covered catalogs a candidate rule list would manage; saves nothing.",
-        "operationId": "preview_table_discovery_rules",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PreviewTableDiscoveryRulesApiRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PreviewTableDiscoveryRulesApiResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Preview Table Discovery Rules",
         "tags": [
           "discovery-rules"
         ]

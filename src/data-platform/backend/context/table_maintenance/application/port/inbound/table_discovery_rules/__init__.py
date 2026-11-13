@@ -21,17 +21,6 @@ from context.table_maintenance.application.port.inbound.table_discovery_rules.li
 from context.table_maintenance.application.port.inbound.table_discovery_rules.list_covered_catalogs.use_case import (
     ListCoveredCatalogsUseCase,
 )
-from context.table_maintenance.application.port.inbound.table_discovery_rules.preview_table_discovery_rules.input import (  # noqa: E501
-    PreviewTableDiscoveryRulesUseCaseInput,
-    PreviewTableDiscoveryRulesUseCaseInputItem,
-)
-from context.table_maintenance.application.port.inbound.table_discovery_rules.preview_table_discovery_rules.output import (  # noqa: E501
-    PreviewTableDiscoveryRulesUseCaseOutput,
-    PreviewTableDiscoveryRulesUseCaseOutputItem,
-)
-from context.table_maintenance.application.port.inbound.table_discovery_rules.preview_table_discovery_rules.use_case import (  # noqa: E501
-    PreviewTableDiscoveryRulesUseCase,
-)
 from context.table_maintenance.application.port.inbound.table_discovery_rules.replace_table_discovery_rules.input import (  # noqa: E501
     ReplaceTableDiscoveryRulesUseCaseInput,
     ReplaceTableDiscoveryRulesUseCaseInputItem,
@@ -52,11 +41,6 @@ __all__ = [
     "ListCoveredCatalogsUseCase",
     "ListCoveredCatalogsUseCaseInput",
     "ListCoveredCatalogsUseCaseOutput",
-    "PreviewTableDiscoveryRulesUseCase",
-    "PreviewTableDiscoveryRulesUseCaseInput",
-    "PreviewTableDiscoveryRulesUseCaseInputItem",
-    "PreviewTableDiscoveryRulesUseCaseOutput",
-    "PreviewTableDiscoveryRulesUseCaseOutputItem",
     "ReplaceTableDiscoveryRulesUseCase",
     "ReplaceTableDiscoveryRulesUseCaseInput",
     "ReplaceTableDiscoveryRulesUseCaseInputItem",

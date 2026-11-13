@@ -1,11 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, userEvent, waitFor, within } from "storybook/test";
-import {
-  getGetTableDiscoveryRulesMockHandler,
-  getPreviewTableDiscoveryRulesMockHandler,
-} from "@/api/generated/discovery-rules/discovery-rules.msw";
+import { expect, userEvent, within } from "storybook/test";
+import { getGetTableDiscoveryRulesMockHandler } from "@/api/generated/discovery-rules/discovery-rules.msw";
 import { apiError } from "@/stories/apiError";
-import { apiPending } from "@/stories/apiPending";
 import { ConsolePage } from "@/stories/ConsolePage";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
 import { lakehouseHandlers } from "@/stories/lakehouseHandlers";
@@ -23,51 +19,20 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// The preview dims while a newer answer loads; wait for it, so axe checks the settled page.
-async function previewSettles(canvasElement: HTMLElement) {
-  const preview = within(canvasElement).getByRole("region", { name: "Preview" });
-  await waitFor(() => expect(preview).toHaveAttribute("aria-busy", "false"));
-}
-
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText("retail")).toBeVisible();
-    const preview = canvas.getByRole("region", { name: "Preview" });
-    await expect(await within(preview).findByText("2 managed, 1 unmanaged")).toBeVisible();
-    await expect(within(preview).getByRole("group", { name: /Priority 10, include/ })).toBeVisible();
   },
 };
 
 export const NoRules: Story = {
   beforeEach({ msw }) {
-    msw.use(
-      getGetTableDiscoveryRulesMockHandler({ version: 0, rules: [] }),
-      getPreviewTableDiscoveryRulesMockHandler({
-        tables: [
-          { catalog: "iceberg", namespace: "retail", table: "orders", rule_id: null, managed: false },
-          { catalog: "iceberg", namespace: "retail", table: "customers", rule_id: null, managed: false },
-        ],
-        managed: 0,
-        unmanaged: 2,
-      }),
-    );
+    msw.use(getGetTableDiscoveryRulesMockHandler({ version: 0, rules: [] }));
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText("No discovery rules. No table is managed.")).toBeVisible();
-    await expect(await canvas.findByText("0 managed, 2 unmanaged")).toBeVisible();
-  },
-};
-
-export const PreviewLoading: Story = {
-  beforeEach({ msw }) {
-    msw.use(apiPending("/v1/discovery-rules/preview", "post"));
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await canvas.findByText("retail");
-    await expect(canvas.getByRole("region", { name: "Preview" })).toHaveAttribute("aria-busy", "true");
   },
 };
 
@@ -83,7 +48,6 @@ export const Conflict: Story = {
       await canvas.findByText("Someone else changed these rules. Reload to see their version."),
     ).toBeVisible();
     await expect(canvas.getByRole("switch", { name: "Rule 50 enabled" })).toBeChecked();
-    await previewSettles(canvasElement);
   },
 };
 
@@ -93,7 +57,6 @@ export const Saved: Story = {
     await userEvent.click(await canvas.findByRole("switch", { name: "Rule 50 enabled" }));
     await userEvent.click(canvas.getByRole("button", { name: "Save" }));
     await expect(await canvas.findByText("Saved. Discovering tables…")).toBeVisible();
-    await previewSettles(canvasElement);
   },
 };
 

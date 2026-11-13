@@ -15,13 +15,12 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from context.table_maintenance.application.port.inbound.table_discovery_rules import (
-        PreviewTableDiscoveryRulesUseCaseInputItem,
         ReplaceTableDiscoveryRulesUseCaseInputItem,
     )
 
 
 def table_discovery_rule_from_request(
-    item: ReplaceTableDiscoveryRulesUseCaseInputItem | PreviewTableDiscoveryRulesUseCaseInputItem,
+    item: ReplaceTableDiscoveryRulesUseCaseInputItem,
     rule_id: str,
     now: datetime,
 ) -> TableDiscoveryRule:

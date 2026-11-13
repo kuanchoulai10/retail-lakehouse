@@ -141,7 +141,7 @@ No route needs authentication. The main routes, all under `/v1`:
 
 | Route | Use |
 |---|---|
-| `GET, PUT /discovery-rules`, `POST /discovery-rules/preview`, `GET /discovery-rules/catalogs` | the discovery rules, saved whole; first enabled match by `priority` wins, `action` is `include` or `exclude`; `PUT` carries the `version` it was edited from (409 when stale, 422 for equal priorities) and applies at once; `preview` lists what a rule list would include |
+| `GET, PUT /discovery-rules`, `GET /discovery-rules/catalogs` | the discovery rules, saved whole; first enabled match by `priority` wins, `action` is `include` or `exclude`; `PUT` carries the `version` it was edited from (409 when stale, 422 for equal priorities) and applies at once |
 | `GET, POST /maintenance-policies`, `GET, PUT, DELETE /maintenance-policies/{name}`, `GET /maintenance-policies/{name}/versions/{version}` | versioned maintenance policies; the migration seeds `default`; `PUT` carries the `version`, and deleting `default` or an attached policy returns 409 |
 | `GET, PUT, DELETE /maintenance-policies/{name}/mappings` | list where a policy is attached, attach it to a catalog, namespace or table (`{"target": {"type": "table", "path": ["iceberg", "e2e", "tm_e2e_orders"]}}`, replacing what is attached there) or detach it; a mapping whose target left the catalog is listed as orphaned |
 | `GET /tables/{uuid}/applicable-policy`, `GET /applicable-policy?catalog=&namespace=` | the policy that applies after inheritance (table, then namespace, then catalog, then `default`) and the target it is attached to |

@@ -12,16 +12,12 @@ from context.table_maintenance.adapter.inbound.web.shared import (
 )
 from context.table_maintenance.adapter.inbound.web.table_discovery_rules.dto import (
     CoveredCatalogsApiResponse,
-    PreviewTableDiscoveryRulesApiRequest,
-    PreviewTableDiscoveryRulesApiResponse,
     ReplaceTableDiscoveryRulesApiRequest,
     TableDiscoveryRulesApiResponse,
 )
 from context.table_maintenance.application.port.inbound.table_discovery_rules import (
     GetTableDiscoveryRulesUseCaseInput,
     ListCoveredCatalogsUseCaseInput,
-    PreviewTableDiscoveryRulesUseCaseInput,
-    PreviewTableDiscoveryRulesUseCaseInputItem,
     ReplaceTableDiscoveryRulesUseCaseInput,
     ReplaceTableDiscoveryRulesUseCaseInputItem,
 )
@@ -50,19 +46,6 @@ def replace_table_discovery_rules(
         )
     )
     return TableDiscoveryRulesApiResponse.model_validate(output)
-
-
-@router.post("/preview")
-def preview_table_discovery_rules(
-    body: PreviewTableDiscoveryRulesApiRequest, use_cases: UseCases
-) -> PreviewTableDiscoveryRulesApiResponse:
-    """Show which tables of the covered catalogs a candidate rule list would manage; saves nothing."""
-    output = use_cases.preview_table_discovery_rules.execute(
-        PreviewTableDiscoveryRulesUseCaseInput(
-            rules=[PreviewTableDiscoveryRulesUseCaseInputItem(**rule.model_dump()) for rule in body.rules]
-        )
-    )
-    return PreviewTableDiscoveryRulesApiResponse.model_validate(output)
 
 
 @router.get("/catalogs")

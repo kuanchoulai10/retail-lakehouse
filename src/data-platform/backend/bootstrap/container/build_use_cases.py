@@ -35,7 +35,6 @@ from context.table_maintenance.application.service.table import (
 from context.table_maintenance.application.service.table_discovery_rules import (
     GetTableDiscoveryRulesService,
     ListCoveredCatalogsService,
-    PreviewTableDiscoveryRulesService,
     ReplaceTableDiscoveryRulesService,
 )
 from context.table_maintenance.application.service.table_maintenance_policy import (
@@ -130,7 +129,6 @@ def build_use_cases(
         replace_table_discovery_rules=ReplaceTableDiscoveryRulesService(
             rules, gateways.send_discovery_request, catalog_names, clock=clock
         ),
-        preview_table_discovery_rules=PreviewTableDiscoveryRulesService(catalog, catalog_names, clock=clock),
         attach_table_maintenance_policy=AttachTableMaintenancePolicyService(
             policies, attachments, catalog, tables, table_changes, clock=clock
         ),

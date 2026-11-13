@@ -30,14 +30,6 @@ class ReplaceTableDiscoveryRulesApiRequest(BaseModel):
     rules: list[TableDiscoveryRuleApiRequest]
 
 
-class PreviewTableDiscoveryRulesApiRequest(BaseModel):
-    """Carry a whole candidate rule list, unsaved."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    rules: list[TableDiscoveryRuleApiRequest]
-
-
 class TableDiscoveryRuleApiResponse(BaseModel):
     """Describe one discovery rule."""
 
@@ -61,28 +53,6 @@ class TableDiscoveryRulesApiResponse(BaseModel):
 
     version: int
     rules: list[TableDiscoveryRuleApiResponse]
-
-
-class DiscoveryPreviewTableApiResponse(BaseModel):
-    """Describe one table of a preview: the rule that would decide it, or null, and whether it would be managed."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    catalog: str
-    namespace: str
-    table: str
-    rule_id: str | None
-    managed: bool
-
-
-class PreviewTableDiscoveryRulesApiResponse(BaseModel):
-    """Describe every table of the covered catalogs under a candidate rule list, with counts."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    tables: list[DiscoveryPreviewTableApiResponse]
-    managed: int
-    unmanaged: int
 
 
 class CoveredCatalogsApiResponse(BaseModel):

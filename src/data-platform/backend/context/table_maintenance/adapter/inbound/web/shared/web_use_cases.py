@@ -26,7 +26,6 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.inbound.table_discovery_rules import (
         GetTableDiscoveryRulesUseCase,
         ListCoveredCatalogsUseCase,
-        PreviewTableDiscoveryRulesUseCase,
         ReplaceTableDiscoveryRulesUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
@@ -59,7 +58,6 @@ class WebUseCases:
 
     get_table_discovery_rules: GetTableDiscoveryRulesUseCase
     replace_table_discovery_rules: ReplaceTableDiscoveryRulesUseCase
-    preview_table_discovery_rules: PreviewTableDiscoveryRulesUseCase
     list_covered_catalogs: ListCoveredCatalogsUseCase
     list_table_maintenance_policies: ListTableMaintenancePoliciesUseCase
     create_table_maintenance_policy: CreateTableMaintenancePolicyUseCase

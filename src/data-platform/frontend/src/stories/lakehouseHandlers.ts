@@ -10,7 +10,6 @@ import { getGetNamespaceMockHandler, getListNamespacesMockHandler } from "@/api/
 import {
   getGetTableDiscoveryRulesMockHandler,
   getListCoveredCatalogsMockHandler,
-  getPreviewTableDiscoveryRulesMockHandler,
   getReplaceTableDiscoveryRulesMockHandler,
 } from "@/api/generated/discovery-rules/discovery-rules.msw";
 import {
@@ -55,7 +54,6 @@ import {
   RETAIL_TABLES,
   ROUNDS,
   RULES,
-  RULES_PREVIEW,
   RUNS,
   SCHEDULER_SETTINGS,
   STORAGE,
@@ -109,7 +107,6 @@ export function lakehouseHandlers() {
       ).slice(0, limit);
     }),
     getGetTableDiscoveryRulesMockHandler({ version: 1, rules: RULES }),
-    getPreviewTableDiscoveryRulesMockHandler(RULES_PREVIEW),
     getReplaceTableDiscoveryRulesMockHandler({ version: 2, rules: RULES }),
     getListTableMaintenancePoliciesMockHandler({ policies: POLICIES }),
     getListTableMaintenancePolicyMappingsMockHandler(({ params }) => ({

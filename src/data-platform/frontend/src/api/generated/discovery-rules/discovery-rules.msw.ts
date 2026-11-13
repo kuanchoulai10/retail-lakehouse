@@ -20,8 +20,6 @@ import type {
 
 import type {
   CoveredCatalogsApiResponse,
-  PreviewTableDiscoveryRulesApiRequest,
-  PreviewTableDiscoveryRulesApiResponse,
   ReplaceTableDiscoveryRulesApiRequest,
   TableDiscoveryRulesApiResponse
 } from '../model';
@@ -32,8 +30,6 @@ export const getGetTableDiscoveryRulesResponseMock = (overrideResponse: Partial<
 export const getReplaceTableDiscoveryRulesResponseMock = (overrideResponse: Partial<Extract<TableDiscoveryRulesApiResponse, object>> = {}): TableDiscoveryRulesApiResponse => ({rules: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({action: faker.string.alpha({length: {min: 10, max: 20}}), catalogs: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), created_at: faker.date.past().toISOString().slice(0, 19) + 'Z', enabled: faker.datatype.boolean(), id: faker.string.alpha({length: {min: 10, max: 20}}), namespaces: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), priority: faker.number.int(), tables: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z'})), version: faker.number.int(), ...overrideResponse})
 
 export const getListCoveredCatalogsResponseMock = (overrideResponse: Partial<Extract<CoveredCatalogsApiResponse, object>> = {}): CoveredCatalogsApiResponse => ({catalogs: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), ...overrideResponse})
-
-export const getPreviewTableDiscoveryRulesResponseMock = (overrideResponse: Partial<Extract<PreviewTableDiscoveryRulesApiResponse, object>> = {}): PreviewTableDiscoveryRulesApiResponse => ({managed: faker.number.int(), tables: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), managed: faker.datatype.boolean(), namespace: faker.string.alpha({length: {min: 10, max: 20}}), rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), table: faker.string.alpha({length: {min: 10, max: 20}})})), unmanaged: faker.number.int(), ...overrideResponse})
 
 
 export const getGetTableDiscoveryRulesMockHandler = (overrideResponse?: TableDiscoveryRulesApiResponse | ((info: Parameters<HttpResponseResolver>[0]) => Promise<TableDiscoveryRulesApiResponse> | TableDiscoveryRulesApiResponse), options?: RequestHandlerOptions) => {
@@ -71,21 +67,8 @@ export const getListCoveredCatalogsMockHandler = (overrideResponse?: CoveredCata
       })
   }, options)
 }
-
-export const getPreviewTableDiscoveryRulesMockHandler = (overrideResponse?: PreviewTableDiscoveryRulesApiResponse | ((info: Parameters<HttpResponseResolver<PathParams, PreviewTableDiscoveryRulesApiRequest>>[0]) => Promise<PreviewTableDiscoveryRulesApiResponse> | PreviewTableDiscoveryRulesApiResponse), options?: RequestHandlerOptions) => {
-  return http.post<PathParams, PreviewTableDiscoveryRulesApiRequest>('*/v1/discovery-rules/preview', async (info: Parameters<HttpResponseResolver<PathParams, PreviewTableDiscoveryRulesApiRequest>>[0]) => {
-
-
-    return HttpResponse.json(overrideResponse !== undefined
-    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getPreviewTableDiscoveryRulesResponseMock(),
-      { status: 200
-      })
-  }, options)
-}
 export const getDiscoveryRulesMock = () => [
   getGetTableDiscoveryRulesMockHandler(),
   getReplaceTableDiscoveryRulesMockHandler(),
-  getListCoveredCatalogsMockHandler(),
-  getPreviewTableDiscoveryRulesMockHandler()
+  getListCoveredCatalogsMockHandler()
 ]
