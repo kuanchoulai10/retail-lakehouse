@@ -438,6 +438,11 @@ class TableReconciliationWorkflow:
             if is_cancelled_exception(error):
                 raise asyncio.CancelledError from error
             workflow.logger.error("planning table %s failed: %s", self._table_uuid, error)
+            if _REASON_COMPACTION_GRANTED in reasons:
+                workflow.logger.warning(
+                    "table %s did not claim its compaction grant: the plan failed; the grant runs out unused",
+                    self._table_uuid,
+                )
             self._consume_manual(manual, "the plan failed")
             self._next_plan_at = workflow.now() + self._interval
             return False
