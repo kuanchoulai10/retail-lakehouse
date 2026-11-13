@@ -54,6 +54,7 @@ tasks:
 
   contract-test-console-api:
     summary: "Check that the committed openapi.json and the console's generated client match the backend"
+    dir: '{{.ROOT_DIR}}'
     cmds:
       - task: dev:generate-api
       - git diff --exit-code -- src/data-platform/backend/openapi.json src/data-platform/frontend/src/api/generated
