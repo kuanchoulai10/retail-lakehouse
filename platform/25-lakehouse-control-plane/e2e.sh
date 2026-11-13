@@ -628,6 +628,17 @@ assert_manual_run_recorded() {
   progress "reconciliation of ${uuid} records the manual run ${run_id}"
 }
 
+assert_no_failed_candidates() {
+  local uuid="$1" candidates failed
+  candidates="$(api GET "/v1/tables/${uuid}/compaction-candidates")"
+  failed="$(jq -c '[.candidates[] | select(.state == "failed") | .partition_label]' <<<"${candidates}")"
+  if [[ "${failed}" != "[]" ]]; then
+    echo "${uuid}: compaction candidates failed: ${failed}" >&2
+    return 1
+  fi
+  progress "compaction candidates of ${uuid}: $(jq -c '[.candidates[] | "\(.partition_label) \(.state)"]' <<<"${candidates}")"
+}
+
 reconciliation_ids() {
   api GET "/v1/tables/$1/reconciliations" | jq -c '[.[].reconciliation_id]'
 }
@@ -776,6 +787,8 @@ assert_runs_succeeded "${REGIONS}" "${REGIONS_RUNS}"
 # shellcheck disable=SC2046
 assert_partition_filter $(jq -r '.[] | select(any(.operations[]; .operation == "rewrite_data_files"))
   | .run_id' <<<"${REGIONS_RUNS}")
+assert_no_failed_candidates "${REGIONS_UUID}"
+assert_no_failed_candidates "${ORDERS_UUID}"
 
 WAIT_SECONDS=$(( LAST_WRITE_AT + EXPIRE_AGE_SECONDS + 5 - $(date +%s) ))
 if (( WAIT_SECONDS > 0 )); then
