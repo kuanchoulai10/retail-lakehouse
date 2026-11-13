@@ -23,6 +23,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
 from context.table_maintenance.adapter.hybrid.temporal.inbound import (
     ensure_compaction_round_schedule,
 )
+from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import CompactionRoundActivityPolicy
 from tests.context.table_maintenance.adapter.hybrid.temporal.outbound.shared.temporal_harness import (
     harness,  # noqa: F401
 )
@@ -99,14 +100,25 @@ def test_ensure_schedule_is_idempotent(h):
     assert desc.schedule.spec.intervals[0].every == timedelta(seconds=60)
 
 
-@pytest.mark.parametrize(
-    ("interval", "timeout"),
-    [(timedelta(seconds=120), timedelta(seconds=360)), (timedelta(seconds=60), timedelta(seconds=300))],
-)
-def test_a_round_has_an_execution_timeout(h, interval, timeout):
-    """A wedged round ends after three intervals (at least 5 minutes), so the next firing is not skipped forever."""
-    _ensure(h, interval=interval)
-
+def _execution_timeout(h: TemporalHarness) -> timedelta | None:
     action = _describe(h).schedule.action
     assert isinstance(action, ScheduleActionStartWorkflow)
-    assert action.execution_timeout == timeout
+    return action.execution_timeout
+
+
+@pytest.mark.parametrize("interval", [timedelta(seconds=60), timedelta(seconds=120), timedelta(minutes=4)])
+def test_a_round_outlasts_every_retry_of_its_activities(h, interval):
+    """A round is never ended while an activity attempt it may still retry could save grants nobody signals."""
+    _ensure(h, interval=interval)
+
+    timeout = _execution_timeout(h)
+    assert timeout is not None
+    assert timeout > CompactionRoundActivityPolicy().worst_case()
+    assert timeout == CompactionRoundActivityPolicy().worst_case() + timedelta(minutes=1)
+
+
+def test_a_round_on_a_long_interval_runs_for_at_most_three_intervals(h):
+    """A wedged round ends after three intervals once that is longer than the retries, so firings resume."""
+    _ensure(h, interval=timedelta(minutes=30))
+
+    assert _execution_timeout(h) == timedelta(minutes=90)

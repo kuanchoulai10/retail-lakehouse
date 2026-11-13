@@ -26,12 +26,14 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.compaction_roun
 from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
 )
+from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import CompactionRoundActivityPolicy
 
 if TYPE_CHECKING:
     from temporalio.client import Client, ScheduleUpdateInput
 
 _NOTE = "set by table-maintenance worker start"
-_MIN_EXECUTION_TIMEOUT = timedelta(minutes=5)
+# Room for the round's workflow tasks on top of its activities' worst case.
+_WORKFLOW_TASK_SLACK = timedelta(minutes=1)
 
 
 async def ensure_compaction_round_schedule(client: Client, *, interval: timedelta, budget_gb_hours: float) -> None:
@@ -39,9 +41,12 @@ async def ensure_compaction_round_schedule(client: Client, *, interval: timedelt
 
     The schedule ``compaction-rounds`` starts ``CompactionRoundWorkflow`` every
     ``interval``, skipping a firing while the previous round still runs, so
-    there is one scheduler. A round runs for at most three intervals (at least
-    five minutes): a round wedged on a failing workflow task then ends, and the
-    next firing is no longer skipped. Calling it again is idempotent: it rewrites the
+    there is one scheduler. A round runs for at most three intervals, or for
+    its activities' worst case (``CompactionRoundActivityPolicy``) plus a
+    minute when that is longer: a round wedged on a failing workflow task then
+    ends and the next firing is no longer skipped, yet a round is never ended
+    while an activity attempt could still save grants it would not signal.
+    Calling it again is idempotent: it rewrites the
     action, the interval and the summary (which shows ``budget_gb_hours``) and
     unpauses a schedule paused by hand.
     """
@@ -68,7 +73,7 @@ def _schedule(*, interval: timedelta, budget_gb_hours: float) -> Schedule:
             id=COMPACTION_ROUND_SCHEDULE_ID,
             task_queue=TASK_QUEUE,
             static_summary=compaction_round_summary(budget_gb_hours),
-            execution_timeout=max(3 * interval, _MIN_EXECUTION_TIMEOUT),
+            execution_timeout=max(3 * interval, CompactionRoundActivityPolicy().worst_case() + _WORKFLOW_TASK_SLACK),
         ),
         spec=ScheduleSpec(intervals=[ScheduleIntervalSpec(every=interval)]),
         policy=SchedulePolicy(overlap=ScheduleOverlapPolicy.SKIP),

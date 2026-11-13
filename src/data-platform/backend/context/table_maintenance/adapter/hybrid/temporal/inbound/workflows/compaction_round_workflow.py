@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import timedelta
 from typing import Any
 
 from temporalio import workflow
-from temporalio.common import RetryPolicy
 
 from context.table_maintenance.adapter.hybrid.temporal.contracts.compaction_round import (
     COMPACTION_ROUND_WORKFLOW,
@@ -22,13 +20,14 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
     TableReconciliationSignal,
     table_reconciliation_workflow_id,
 )
+from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.compaction_round_activity_policy import (
+    CompactionRoundActivityPolicy,
+)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_search_attribute_keys import (
     TableSearchAttributeKeys,
 )
 
-_ROUND_TIMEOUT = timedelta(minutes=2)
-_SIGNAL_TIMEOUT = timedelta(seconds=30)
-_ACTIVITY_RETRY = RetryPolicy(maximum_attempts=5, initial_interval=timedelta(seconds=2), backoff_coefficient=2.0)
+_POLICY = CompactionRoundActivityPolicy()
 
 
 @workflow.defn(name=COMPACTION_ROUND_WORKFLOW)
@@ -56,8 +55,8 @@ class CompactionRoundWorkflow:
         result = await workflow.execute_activity(
             CompactionRoundActivity.SCHEDULE_COMPACTION_ROUND,
             {"round_id": round_id, "now": workflow.now().isoformat()},
-            start_to_close_timeout=_ROUND_TIMEOUT,
-            retry_policy=_ACTIVITY_RETRY,
+            start_to_close_timeout=_POLICY.round_timeout,
+            retry_policy=_POLICY.retry_policy(),
         )
         granted = [str(table) for table in result["granted_table_uuids"]]
         workflow.set_current_details(compaction_round_details(int(result["picked"]), len(granted)))
@@ -74,6 +73,6 @@ class CompactionRoundWorkflow:
                 "signal": TableReconciliationSignal.COMPACTION_GRANTED.value,
                 "arg": {"round_id": round_id},
             },
-            start_to_close_timeout=_SIGNAL_TIMEOUT,
-            retry_policy=_ACTIVITY_RETRY,
+            start_to_close_timeout=_POLICY.signal_timeout,
+            retry_policy=_POLICY.retry_policy(),
         )
