@@ -2,11 +2,20 @@
 
 from __future__ import annotations
 
+from context.table_maintenance.application.domain.model.compaction_candidate.candidate_filters import (
+    CandidateFilters,
+)
 from context.table_maintenance.application.domain.model.compaction_candidate.candidate_score import (
     CandidateScore,
 )
+from context.table_maintenance.application.domain.model.compaction_candidate.candidate_scoring import (
+    CandidateScoring,
+)
 from context.table_maintenance.application.domain.model.compaction_candidate.candidate_state import (
     CandidateState,
+)
+from context.table_maintenance.application.domain.model.compaction_candidate.candidate_sync import (
+    CandidateSync,
 )
 from context.table_maintenance.application.domain.model.compaction_candidate.compaction_candidate import (
     CompactionCandidate,
@@ -20,11 +29,18 @@ from context.table_maintenance.application.domain.model.compaction_candidate.hol
 from context.table_maintenance.application.domain.model.compaction_candidate.invalid_candidate_transition import (
     InvalidCandidateTransition,
 )
+from context.table_maintenance.application.domain.model.compaction_candidate.observed_partition import (
+    ObservedPartition,
+)
 from context.table_maintenance.application.domain.model.compaction_candidate.partition_key import (
     PartitionKey,
 )
 
 __all__ = [
+    "ObservedPartition",
+    "CandidateSync",
+    "CandidateScoring",
+    "CandidateFilters",
     "CandidateScore",
     "CandidateState",
     "CompactionCandidate",
