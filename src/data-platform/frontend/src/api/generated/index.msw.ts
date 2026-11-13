@@ -1,4 +1,5 @@
 export { getCatalogsMock } from './catalogs/catalogs.msw'
+export { getCompactionCandidatesMock } from './compaction-candidates/compaction-candidates.msw'
 export { getDefaultMock } from './default/default.msw'
 export { getDiscoveryRulesMock } from './discovery-rules/discovery-rules.msw'
 export { getGenericTablesMock } from './generic-tables/generic-tables.msw'

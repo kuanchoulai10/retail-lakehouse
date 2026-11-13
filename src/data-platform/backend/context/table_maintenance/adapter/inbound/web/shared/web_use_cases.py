@@ -6,6 +6,9 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from context.table_maintenance.application.port.inbound.compaction_candidate import (
+        ListCompactionCandidatesUseCase,
+    )
     from context.table_maintenance.application.port.inbound.table import (
         GetTableHealthUseCase,
         GetTableStorageUseCase,
@@ -74,3 +77,4 @@ class WebUseCases:
     get_table_maintenance_run: GetTableMaintenanceRunUseCase
     process_table_maintenance_callback: ProcessTableMaintenanceCallbackUseCase
     list_table_reconciliations: ListTableReconciliationsUseCase
+    list_compaction_candidates: ListCompactionCandidatesUseCase

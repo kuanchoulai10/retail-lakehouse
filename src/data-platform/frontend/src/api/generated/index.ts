@@ -1,4 +1,5 @@
 export * from './catalogs/catalogs';
+export * from './compaction-candidates/compaction-candidates';
 export * from './default/default';
 export * from './discovery-rules/discovery-rules';
 export * from './generic-tables/generic-tables';

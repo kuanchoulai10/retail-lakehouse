@@ -323,6 +323,44 @@
         "title": "AuthenticationParametersApiResponse",
         "type": "object"
       },
+      "CandidatePartitionApiResponse": {
+        "description": "Name a candidate's partition by spec id and values; spec id -1 with no values is the whole table.",
+        "properties": {
+          "spec_id": {
+            "title": "Spec Id",
+            "type": "integer"
+          },
+          "values": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "spec_id",
+          "values"
+        ],
+        "title": "CandidatePartitionApiResponse",
+        "type": "object"
+      },
       "CatalogApiResponse": {
         "description": "Describe a catalog.",
         "properties": {
@@ -497,6 +535,139 @@
           "summary"
         ],
         "title": "CatalogTableApiResponse",
+        "type": "object"
+      },
+      "CompactionCandidateApiResponse": {
+        "description": "Describe one partition that needs compaction: what it is worth, its state and the run that holds it.\n\n``rank`` is its place (1 is best) among the pending candidates, null for the others.",
+        "properties": {
+          "claimed_by_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claimed By Run Id"
+          },
+          "data_bytes": {
+            "title": "Data Bytes",
+            "type": "integer"
+          },
+          "estimated_gb_hours": {
+            "title": "Estimated Gb Hours",
+            "type": "number"
+          },
+          "hold_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hold Reason"
+          },
+          "last_written_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Written At"
+          },
+          "lease_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lease Expires At"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "partition": {
+            "$ref": "#/components/schemas/CandidatePartitionApiResponse"
+          },
+          "partition_label": {
+            "title": "Partition Label",
+            "type": "string"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "reducible_files": {
+            "title": "Reducible Files",
+            "type": "integer"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "partition",
+          "partition_label",
+          "state",
+          "hold_reason",
+          "reducible_files",
+          "data_bytes",
+          "estimated_gb_hours",
+          "score",
+          "rank",
+          "claimed_by_run_id",
+          "lease_expires_at",
+          "last_written_at",
+          "observed_at"
+        ],
+        "title": "CompactionCandidateApiResponse",
+        "type": "object"
+      },
+      "CompactionCandidatesApiResponse": {
+        "description": "List a table's compaction candidates, best first, and how many partitions one run compacts.",
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/CompactionCandidateApiResponse"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "partitions_per_run": {
+            "title": "Partitions Per Run",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "partitions_per_run",
+          "candidates"
+        ],
+        "title": "CompactionCandidatesApiResponse",
         "type": "object"
       },
       "CompactionScopeApiRequest": {
@@ -6244,6 +6415,49 @@
         "summary": "List Table Commits",
         "tags": [
           "tables"
+        ]
+      }
+    },
+    "/v1/tables/{table_uuid}/compaction-candidates": {
+      "get": {
+        "description": "List the table's compaction candidates, best first, and how many partitions one run compacts.",
+        "operationId": "list_compaction_candidates",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_uuid",
+            "required": true,
+            "schema": {
+              "title": "Table Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompactionCandidatesApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Compaction Candidates",
+        "tags": [
+          "compaction-candidates"
         ]
       }
     },

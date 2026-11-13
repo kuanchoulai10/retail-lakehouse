@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from bootstrap.container.use_cases import UseCases
 from context.table_maintenance.application.domain.model.compaction_candidate import CandidateSelection
 from context.table_maintenance.application.service.compaction_candidate import (
+    ListCompactionCandidatesService,
     ReleaseCompactionCandidatesService,
 )
 from context.table_maintenance.application.service.table import (
@@ -98,6 +99,7 @@ def build_use_cases(
     runs = repos.table_maintenance_runs
     reconciliations = repos.table_reconciliations
     candidates = repos.compaction_candidates
+    selection = candidate_selection or CandidateSelection()
     catalog = gateways.read_table_metadata
     table_changes = gateways.send_table_change
     resolve_applicable_policy = ResolveApplicableTableMaintenancePolicyService(policies, attachments, catalog, tables)
@@ -166,11 +168,14 @@ def build_use_cases(
             resolve_applicable_policy,
             candidates,
             runs,
-            selection=candidate_selection or CandidateSelection(),
+            selection=selection,
             size_memory=size_memory or {},
             claim_lease=claim_lease,
         ),
         release_compaction_candidates=ReleaseCompactionCandidatesService(candidates),
+        list_compaction_candidates=ListCompactionCandidatesService(
+            candidates, tables, partitions_per_run=selection.partitions_per_run
+        ),
         list_table_reconciliations=ListTableReconciliationsService(reconciliations),
         record_table_reconciliation=RecordTableReconciliationService(reconciliations),
         submit_maintenance_operation=SubmitMaintenanceOperationService(

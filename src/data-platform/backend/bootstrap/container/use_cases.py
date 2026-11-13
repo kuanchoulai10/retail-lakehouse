@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.inbound.compaction_candidate import (
+        ListCompactionCandidatesUseCase,
         ReleaseCompactionCandidatesUseCase,
     )
     from context.table_maintenance.application.port.inbound.table import (
@@ -98,3 +99,4 @@ class UseCases:
     list_table_reconciliations: ListTableReconciliationsUseCase
     record_table_reconciliation: RecordTableReconciliationUseCase
     release_compaction_candidates: ReleaseCompactionCandidatesUseCase
+    list_compaction_candidates: ListCompactionCandidatesUseCase
