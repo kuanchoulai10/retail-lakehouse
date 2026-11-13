@@ -31,7 +31,12 @@ type Story = StoryObj<typeof meta>;
 
 export const Overview: Story = {
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByRole("heading", { name: "orders" })).toBeVisible();
+    const canvas = within(canvasElement);
+    const header = within((await canvas.findByRole("heading", { name: "orders" })).closest("header") as HTMLElement);
+    await expect(header.queryByText("Managed")).toBeNull();
+    await expect(header.queryByText(/Policy:|Rule:/)).toBeNull();
+    const table = within(await canvas.findByRole("region", { name: "Table" }));
+    await expect(await table.findByRole("link", { name: "Priority 10" })).toHaveAttribute("href", "/discovery-rules");
   },
 };
 
@@ -276,7 +281,9 @@ export const PolicyDryRun: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText("Platform default")).toBeVisible();
     const header = within(canvas.getByRole("heading", { level: 1, name: "orders" }).closest("header") as HTMLElement);
-    await expect(header.getByText("Dry run")).toBeVisible();
+    await expect(header.queryByText("Dry run")).toBeNull();
+    const panel = within(canvas.getByRole("region", { name: "Maintenance policy" }));
+    await expect(panel.getByText("Dry run")).toBeVisible();
   },
 };
 

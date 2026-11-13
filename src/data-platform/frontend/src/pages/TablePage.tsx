@@ -4,7 +4,6 @@ import { useState, type MouseEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { ApiError } from "@/api/apiError";
 import type { CatalogTableApiResponse, TableApiResponse } from "@/api/generated/model";
-import { useGetTableApplicableMaintenancePolicy } from "@/api/generated/maintenance-policies/maintenance-policies";
 import { useListCoveredCatalogs } from "@/api/generated/discovery-rules/discovery-rules";
 import {
   deleteTable,
@@ -136,11 +135,6 @@ function TableView({ catalog, parts, name, segment }: TableViewProps) {
   const uuid = table.data?.uuid;
   // Table maintenance's record of this table, the same query the maintenance tabs read.
   const maintenanceTable = useGetTable(uuid ?? "", { query: { enabled: uuid !== undefined && !leaving } });
-  const recordUuid = maintenanceTable.data?.uuid;
-  // The Policy tab's query, so the header's dry-run badge follows an attach or detach there.
-  const policy = useGetTableApplicableMaintenancePolicy(recordUuid ?? "", {
-    query: { enabled: recordUuid !== undefined && !leaving },
-  });
 
   const remove = useMutation({
     mutationFn: () => deleteTable(catalog, ns, name),
@@ -180,7 +174,6 @@ function TableView({ catalog, parts, name, segment }: TableViewProps) {
       <TableHeader
         table={table.data}
         managed={maintenance.kind === "managed" ? maintenance.table : null}
-        policy={policy.data ?? null}
         menuItems={menuItems}
       />
       <Tabs value={tab} onValueChange={(next) => navigate(tablePath(catalog, parts, name, next))}>

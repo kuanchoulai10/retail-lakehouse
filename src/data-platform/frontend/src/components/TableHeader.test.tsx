@@ -24,7 +24,7 @@ function renderHeader(
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <TableHeader table={catalogTableFixture()} managed={tableFixture({ status, ...managed })} policy={null} menuItems={[]} />
+        <TableHeader table={catalogTableFixture()} managed={tableFixture({ status, ...managed })} menuItems={[]} />
         {extra}
       </MemoryRouter>
     </QueryClientProvider>,
@@ -82,12 +82,21 @@ describe("TableHeader", () => {
     expect(await screen.findByText("Could not reconcile the table: table is unmanaged")).toBeInTheDocument();
   });
 
-  it("shows the name, status and deciding rule, and no preset", () => {
+  it("shows the name and no maintenance status, dry run, policy or rule", () => {
     renderHeader();
     expect(screen.getByRole("heading", { level: 1, name: "orders" })).toBeInTheDocument();
-    expect(screen.getByText("Managed")).toBeInTheDocument();
-    expect(screen.getByText(/Rule: rule-1/)).toBeInTheDocument();
-    expect(screen.queryByText(/Preset:/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Managed")).not.toBeInTheDocument();
+    expect(screen.queryByText("Dry run")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Policy:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Rule:/)).not.toBeInTheDocument();
+    expect(screen.queryByText("rule-1")).not.toBeInTheDocument();
+  });
+
+  it.each(["managed", "unmanaged"])("shows the same six numbers for a %s table", (status) => {
+    renderHeader(status);
+    for (const fact of ["1,204,331 rows", "100 data files", "320.0 MB", "avg 3.2 MB / file", "2 snapshots", "last commit 3 h ago"]) {
+      expect(screen.getByText(fact)).toBeInTheDocument();
+    }
   });
 
   it("shows the summary numbers from the catalog", () => {
@@ -213,7 +222,7 @@ describe("TableHeader of an unmanaged table", () => {
     render(
       <QueryClientProvider client={newClient()}>
         <MemoryRouter>
-          <TableHeader table={catalogTableFixture()} managed={null} policy={null} menuItems={[]} />
+          <TableHeader table={catalogTableFixture()} managed={null} menuItems={[]} />
         </MemoryRouter>
       </QueryClientProvider>,
     );
@@ -227,7 +236,6 @@ describe("TableHeader of an unmanaged table", () => {
           <TableHeader
             table={catalogTableFixture()}
             managed={null}
-            policy={null}
             menuItems={[{ label: "Rename", onSelect: () => {} }]}
           />
         </MemoryRouter>

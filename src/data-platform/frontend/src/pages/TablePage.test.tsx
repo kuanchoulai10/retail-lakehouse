@@ -58,6 +58,7 @@ function stubTable({ table = catalogTableFixture(), covered = ["iceberg"], maint
   return stubCatalogApi({
     [`GET ${TABLE}`]: () => jsonResponse(table),
     "GET /v1/discovery-rules/catalogs": () => jsonResponse({ catalogs: covered }),
+    "GET /v1/discovery-rules": () => jsonResponse({ version: 1, rules: [RULE] }),
     "GET /v1/tables/uuid-orders": maintenanceTable ?? (() => jsonResponse(maintenance())),
     "GET /v1/tables/uuid-orders/commits*": () => jsonResponse({ items: [], truncated: false }),
     "GET /v1/tables/uuid-orders/health": () =>
@@ -73,6 +74,18 @@ function stubTable({ table = catalogTableFixture(), covered = ["iceberg"], maint
     ...extra,
   });
 }
+
+const RULE = {
+  id: "rule-1",
+  priority: 10,
+  action: "include",
+  enabled: true,
+  catalogs: ["iceberg"],
+  namespaces: ["*"],
+  tables: ["*"],
+  created_at: "2026-10-30T10:00:00Z",
+  updated_at: "2026-10-30T10:00:00Z",
+};
 
 const UNMANAGED: [string, Options, string][] = [
   ["catalog-not-covered", { covered: ["other"] }, "this catalog is not covered by maintenance"],
@@ -139,15 +152,27 @@ describe("TablePage", { timeout: 15_000 }, () => {
     );
   });
 
-  it("policy tab shows the policy that applies, and the header says when it is a dry run", async () => {
+  it("policy tab shows the policy that applies and its dry run, and the header shows neither", async () => {
     const applicable = { ...policyContentFixture(), name: "scratch", version: 2, dry_run: true, target: null };
-    stubTable({ extra: { "GET /v1/tables/uuid-orders/applicable-policy": () => jsonResponse(applicable) } });
+    const calls = stubTable({ extra: { "GET /v1/tables/uuid-orders/applicable-policy": () => jsonResponse(applicable) } });
     renderAt(`${PAGE}/policy`);
-    expect(await screen.findByText("Platform default")).toBeInTheDocument();
+    const panel = within(await screen.findByRole("region", { name: "Maintenance policy" }));
+    expect(await panel.findByText("Platform default")).toBeInTheDocument();
+    expect(panel.getByText("Dry run")).toBeInTheDocument();
     const heading = screen.getByRole("heading", { level: 1, name: "orders" });
     const header = within(heading.closest("header") as HTMLElement);
-    expect(header.getByText("Dry run")).toBeInTheDocument();
-    expect(header.getByText((_, el) => el?.tagName === "SPAN" && el.textContent === "Policy: scratch v2")).toBeInTheDocument();
+    expect(header.queryByText("Dry run")).not.toBeInTheDocument();
+    expect(header.queryByText(/Policy:/)).not.toBeInTheDocument();
+    expect(header.queryByText(/Rule:/)).not.toBeInTheDocument();
+    expect(header.queryByText("Managed")).not.toBeInTheDocument();
+    expect(callsTo(calls, "GET", "/v1/tables/uuid-orders/applicable-policy")).toHaveLength(1);
+  });
+
+  it("asks for the applicable policy only on the policy tab", async () => {
+    const calls = stubTable();
+    renderAt(PAGE);
+    await screen.findByText("Maintenance: managed");
+    expect(callsTo(calls, "GET", "/v1/tables/uuid-orders/applicable-policy")).toHaveLength(0);
   });
 
   it("policy tab asks by name for a table maintenance has no record of, and attaches to it", async () => {
@@ -197,6 +222,33 @@ describe("TablePage", { timeout: 15_000 }, () => {
     expect(within(summary).getByText("s3://warehouse/retail/orders")).toBeInTheDocument();
     expect(within(summary).getByText("9007199254740993")).toBeInTheDocument();
     expect(await screen.findByText("No maintenance runs yet.")).toBeInTheDocument();
+  });
+
+  it("overview names the discovery rule that selected a managed table, by priority", async () => {
+    stubTable();
+    renderAt(PAGE);
+    const summary = await screen.findByRole("region", { name: "Table" });
+    const link = await within(summary).findByRole("link", { name: "Priority 10" });
+    expect(link).toHaveAttribute("href", "/discovery-rules");
+    expect(within(summary).getByText("Maintenance: managed")).toBeInTheDocument();
+    expect(within(summary).queryByText("rule-1")).not.toBeInTheDocument();
+  });
+
+  it("overview shows no rule when the rule is not in the rule list", async () => {
+    stubTable({ extra: { "GET /v1/discovery-rules": () => jsonResponse({ version: 1, rules: [] }) } });
+    renderAt(PAGE);
+    const summary = await screen.findByRole("region", { name: "Table" });
+    await within(summary).findByText("Maintenance: managed");
+    await settle();
+    expect(within(summary).queryByRole("link", { name: /Priority/ })).not.toBeInTheDocument();
+  });
+
+  it("overview does not ask for the discovery rules when the table is not managed", async () => {
+    const calls = stubTable({ maintenanceTable: () => jsonResponse(maintenance({ status: "unmanaged" })) });
+    renderAt(PAGE);
+    await screen.findByText("Maintenance: not managed");
+    await settle();
+    expect(callsTo(calls, "GET", "/v1/discovery-rules")).toHaveLength(0);
   });
 
   it("maintenance tab links to the table's running workflows in Temporal", async () => {
