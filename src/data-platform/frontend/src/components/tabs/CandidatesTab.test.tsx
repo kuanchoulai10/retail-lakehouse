@@ -78,6 +78,20 @@ describe("CandidatesTab", () => {
     ]);
   });
 
+  it("shows a cost too small to round as below one hundredth, and none as zero", async () => {
+    const list: CompactionCandidatesApiResponse = {
+      partitions_per_run: 10,
+      candidates: [
+        candidate("2026-11-02", { rank: 1, estimated_gb_hours: 0.0000023 }),
+        candidate("2026-11-01", { rank: 2, estimated_gb_hours: 0 }),
+      ],
+    };
+    stubCatalogApi({ [PATH]: () => jsonResponse(list) });
+    renderTab();
+    const table = await screen.findByRole("table", { name: "Compaction candidates, best first" });
+    expect(rowsOf(table).map((row) => row[4])).toEqual(["< 0.01", "0.00"]);
+  });
+
   it("keeps held and pending candidates neutral", async () => {
     stubCatalogApi({ [PATH]: () => jsonResponse(LIST) });
     renderTab();

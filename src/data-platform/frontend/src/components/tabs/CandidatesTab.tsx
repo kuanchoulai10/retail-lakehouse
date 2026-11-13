@@ -10,6 +10,11 @@ function twoDecimals(value: number): string {
   return value.toFixed(2);
 }
 
+// A small partition's cost rounds to 0.00, which reads as free; say it is below one hundredth.
+function gbHours(value: number): string {
+  return value > 0 && value < 0.005 ? "< 0.01" : twoDecimals(value);
+}
+
 function candidateColumns(partitionsPerRun: number) {
   const column = createDataTableColumnHelper<CompactionCandidateApiResponse>();
   return column.columns([
@@ -36,7 +41,7 @@ function candidateColumns(partitionsPerRun: number) {
     column.accessor("estimated_gb_hours", {
       header: "Est. GB·h",
       enableSorting: false,
-      cell: (info) => <span className="tabular-nums">{twoDecimals(info.getValue())}</span>,
+      cell: (info) => <span className="tabular-nums">{gbHours(info.getValue())}</span>,
     }),
     column.accessor("state", {
       header: "State",
