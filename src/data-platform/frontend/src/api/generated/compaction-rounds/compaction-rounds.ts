@@ -22,7 +22,8 @@ import type {
 import type {
   CompactionRoundApiResponse,
   HTTPValidationError,
-  ListCompactionRoundsParams
+  ListCompactionRoundsParams,
+  SchedulerSettingsApiResponse
 } from '../model';
 
 import { apiFetch } from '../../apiFetch';
@@ -247,6 +248,107 @@ export function useGetCompactionRound<TData = Awaited<ReturnType<typeof getCompa
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetCompactionRoundQueryOptions(roundId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getGetSchedulerSettingsUrl = () => {
+
+
+
+
+  return `/v1/scheduler-settings`
+}
+
+/**
+ * Read the settings compaction rounds run under: interval, budget, grant lease, and each priority's SLA.
+ * @summary Get Scheduler Settings
+ */
+export const getSchedulerSettings = async ( options?: Parameters<typeof apiFetch>[1]): Promise<SchedulerSettingsApiResponse> => {
+
+  return apiFetch<SchedulerSettingsApiResponse>(getGetSchedulerSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSchedulerSettingsQueryKey = () => {
+    return [
+    `/v1/scheduler-settings`
+    ] as const;
+    }
+
+
+export const getGetSchedulerSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getSchedulerSettings>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulerSettings>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSchedulerSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchedulerSettings>>> = ({ signal }) => getSchedulerSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSchedulerSettings>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetSchedulerSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getSchedulerSettings>>>
+export type GetSchedulerSettingsQueryError = unknown
+
+
+export function useGetSchedulerSettings<TData = Awaited<ReturnType<typeof getSchedulerSettings>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulerSettings>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSchedulerSettings>>,
+          TError,
+          Awaited<ReturnType<typeof getSchedulerSettings>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSchedulerSettings<TData = Awaited<ReturnType<typeof getSchedulerSettings>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulerSettings>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getSchedulerSettings>>,
+          TError,
+          Awaited<ReturnType<typeof getSchedulerSettings>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetSchedulerSettings<TData = Awaited<ReturnType<typeof getSchedulerSettings>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulerSettings>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Scheduler Settings
+ */
+
+export function useGetSchedulerSettings<TData = Awaited<ReturnType<typeof getSchedulerSettings>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getSchedulerSettings>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetSchedulerSettingsQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

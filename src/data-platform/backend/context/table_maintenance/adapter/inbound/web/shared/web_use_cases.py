@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     )
     from context.table_maintenance.application.port.inbound.compaction_round import (
         GetCompactionRoundUseCase,
+        GetSchedulerSettingsUseCase,
         ListCompactionRoundsUseCase,
     )
     from context.table_maintenance.application.port.inbound.table import (
@@ -84,3 +85,4 @@ class WebUseCases:
     list_compaction_candidates: ListCompactionCandidatesUseCase
     list_compaction_rounds: ListCompactionRoundsUseCase
     get_compaction_round: GetCompactionRoundUseCase
+    get_scheduler_settings: GetSchedulerSettingsUseCase

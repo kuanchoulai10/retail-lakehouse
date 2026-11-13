@@ -52,6 +52,23 @@ class CompactionRoundSkipApiResponse(BaseModel):
     reason: RoundSkipReasonApi
 
 
+class SchedulerPriorityApiResponse(BaseModel):
+    """Describe one priority: the weight its scores are multiplied by and how long its candidates may wait."""
+
+    priority: RoundPriorityApi
+    weight: float
+    sla_seconds: int
+
+
+class SchedulerSettingsApiResponse(BaseModel):
+    """Describe the settings compaction rounds run under, each priority from P0 to P2."""
+
+    round_seconds: int
+    budget_gb_hours: float
+    grant_lease_seconds: int
+    priorities: list[SchedulerPriorityApiResponse]
+
+
 class CompactionRoundApiResponse(BaseModel):
     """Describe one compaction round: when it ran, its budget and use, its picks and the first of its skips.
 

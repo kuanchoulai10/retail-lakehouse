@@ -2407,6 +2407,61 @@
         ],
         "type": "string"
       },
+      "SchedulerPriorityApiResponse": {
+        "description": "Describe one priority: the weight its scores are multiplied by and how long its candidates may wait.",
+        "properties": {
+          "priority": {
+            "$ref": "#/components/schemas/RoundPriorityApi"
+          },
+          "sla_seconds": {
+            "title": "Sla Seconds",
+            "type": "integer"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "priority",
+          "weight",
+          "sla_seconds"
+        ],
+        "title": "SchedulerPriorityApiResponse",
+        "type": "object"
+      },
+      "SchedulerSettingsApiResponse": {
+        "description": "Describe the settings compaction rounds run under, each priority from P0 to P2.",
+        "properties": {
+          "budget_gb_hours": {
+            "title": "Budget Gb Hours",
+            "type": "number"
+          },
+          "grant_lease_seconds": {
+            "title": "Grant Lease Seconds",
+            "type": "integer"
+          },
+          "priorities": {
+            "items": {
+              "$ref": "#/components/schemas/SchedulerPriorityApiResponse"
+            },
+            "title": "Priorities",
+            "type": "array"
+          },
+          "round_seconds": {
+            "title": "Round Seconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "round_seconds",
+          "budget_gb_hours",
+          "grant_lease_seconds",
+          "priorities"
+        ],
+        "title": "SchedulerSettingsApiResponse",
+        "type": "object"
+      },
       "SchemaApiResponse": {
         "description": "A schema: its id and its top-level fields, as a table or a view carries it.",
         "properties": {
@@ -6467,6 +6522,28 @@
         "summary": "Get Table Maintenance Policy Version",
         "tags": [
           "maintenance-policies"
+        ]
+      }
+    },
+    "/v1/scheduler-settings": {
+      "get": {
+        "description": "Read the settings compaction rounds run under: interval, budget, grant lease, and each priority's SLA.",
+        "operationId": "get_scheduler_settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchedulerSettingsApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Scheduler Settings",
+        "tags": [
+          "compaction-rounds"
         ]
       }
     },

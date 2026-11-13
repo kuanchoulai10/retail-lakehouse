@@ -16,6 +16,7 @@ from context.table_maintenance.application.service.compaction_candidate import (
 )
 from context.table_maintenance.application.service.compaction_round import (
     GetCompactionRoundService,
+    GetSchedulerSettingsService,
     ListCompactionRoundsService,
     ScheduleCompactionRoundService,
 )
@@ -196,6 +197,13 @@ def build_use_cases(
         ),
         list_compaction_rounds=ListCompactionRoundsService(repos.compaction_rounds, tables),
         get_compaction_round=GetCompactionRoundService(repos.compaction_rounds, tables),
+        get_scheduler_settings=GetSchedulerSettingsService(
+            weights=build_priority_weights(rounds),
+            sla=build_priority_sla(rounds),
+            round_seconds=rounds.round_seconds,
+            budget_gb_hours=rounds.budget_gb_hours,
+            grant_lease=timedelta(seconds=rounds.grant_lease_seconds),
+        ),
         list_compaction_candidates=ListCompactionCandidatesService(
             candidates,
             tables,

@@ -12,6 +12,8 @@ from context.table_maintenance.adapter.inbound.web.compaction_round.dto import (
     CompactionRoundPartitionApiResponse,
     CompactionRoundPickApiResponse,
     CompactionRoundSkipApiResponse,
+    SchedulerPriorityApiResponse,
+    SchedulerSettingsApiResponse,
 )
 from context.table_maintenance.adapter.inbound.web.shared import (
     WebUseCases,
@@ -19,6 +21,7 @@ from context.table_maintenance.adapter.inbound.web.shared import (
 )
 from context.table_maintenance.application.port.inbound.compaction_round import (
     GetCompactionRoundUseCaseInput,
+    GetSchedulerSettingsUseCaseInput,
     ListCompactionRoundsUseCaseInput,
 )
 
@@ -63,6 +66,23 @@ def list_compaction_rounds(
 def get_compaction_round(round_id: str, use_cases: UseCases) -> CompactionRoundApiResponse:
     """Read one recorded compaction round."""
     return _round(use_cases.get_compaction_round.execute(GetCompactionRoundUseCaseInput(round_id=round_id)))
+
+
+@router.get("/scheduler-settings")
+def get_scheduler_settings(use_cases: UseCases) -> SchedulerSettingsApiResponse:
+    """Read the settings compaction rounds run under: interval, budget, grant lease, and each priority's SLA."""
+    output = use_cases.get_scheduler_settings.execute(GetSchedulerSettingsUseCaseInput())
+    return SchedulerSettingsApiResponse(
+        round_seconds=output.round_seconds,
+        budget_gb_hours=output.budget_gb_hours,
+        grant_lease_seconds=output.grant_lease_seconds,
+        priorities=[
+            SchedulerPriorityApiResponse(
+                priority=cast("RoundPriorityApi", p.priority), weight=p.weight, sla_seconds=p.sla_seconds
+            )
+            for p in output.priorities
+        ],
+    )
 
 
 def _round(round_: _Round) -> CompactionRoundApiResponse:

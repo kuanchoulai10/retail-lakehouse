@@ -41,6 +41,7 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.s3 import 
     ReadMaintenanceEventLogS3Gateway,
 )
 from context.table_maintenance.application.port.inbound.compaction_round import (
+    GetSchedulerSettingsUseCaseInput,
     ScheduleCompactionRoundUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_discovery_rules import (
@@ -156,3 +157,18 @@ def test_the_compaction_round_takes_the_scheduler_budget():
     result = use_cases.schedule_compaction_round.execute(ScheduleCompactionRoundUseCaseInput(round_id="r-1", now=NOW))
 
     assert (result.round_id, result.budget_gb_hours, result.picked) == ("r-1", 0.3, 0)
+
+
+def test_the_scheduler_settings_report_what_the_rounds_run_under():
+    """The settings use case reads the same scheduler settings the round is built with."""
+    use_cases = build_use_cases(
+        build_repositories(sqlite_engine()),
+        fake_gateways(),
+        clock=lambda: NOW,
+        scheduler=SchedulerSettings(round_seconds=60, budget_gb_hours=0.3),
+    )
+
+    output = use_cases.get_scheduler_settings.execute(GetSchedulerSettingsUseCaseInput())
+
+    assert (output.round_seconds, output.budget_gb_hours) == (60, 0.3)
+    assert [(p.priority, p.sla_seconds) for p in output.priorities] == [("P0", 3600), ("P1", 14400), ("P2", 28800)]

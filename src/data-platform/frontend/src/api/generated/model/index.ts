@@ -98,6 +98,8 @@ export * from './rewriteManifestsPolicyApiRequest';
 export * from './rewriteManifestsTriggerPolicyApiRequest';
 export * from './roundPriorityApi';
 export * from './roundSkipReasonApi';
+export * from './schedulerPriorityApiResponse';
+export * from './schedulerSettingsApiResponse';
 export * from './schemaApiResponse';
 export * from './schemaFieldApiRequest';
 export * from './schemaFieldApiResponse';
