@@ -12,7 +12,7 @@ import { Link } from "react-router";
 import type { TableApiResponse } from "@/api/generated/model";
 import { useListTables } from "@/api/generated/tables/tables";
 import { PageHeader } from "@/components/PageHeader";
-import { StatusBadge } from "@/components/StatusBadge";
+import { TableStatusBadge } from "@/components/TableStatusBadge";
 import { errorMessage, formatTimestamp } from "@/format";
 import { tablePath } from "@/lib/catalogPaths";
 import { TABLE_STATUSES, useTableStatusFilter } from "@/lib/useTableStatusFilter";
@@ -56,7 +56,7 @@ const columns = column.columns([
     id: "status",
     header: "Status",
     sortFn: "text",
-    cell: (info) => <StatusBadge status={info.getValue()} />,
+    cell: (info) => <TableStatusBadge status={info.getValue()} />,
   }),
   column.accessor((t) => t.updated_at, {
     id: "updated_at",

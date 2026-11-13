@@ -101,10 +101,10 @@ describe("TableListPage", () => {
     renderPage();
 
     const managed = within((await screen.findByText("iceberg.inventory.orders")).closest("tr") as HTMLElement);
-    expect(managed.getByText("Managed")).toBeInTheDocument();
+    expect(managed.getByText("Managed")).toHaveClass("bg-inverse-primary");
     expect(managed.queryByText(/Priority/)).not.toBeInTheDocument();
     const unmanaged = within(screen.getByText("iceberg.e2e.tm_e2e_regions").closest("tr") as HTMLElement);
-    expect(unmanaged.getByText("Unmanaged")).toBeInTheDocument();
+    expect(unmanaged.getByText("Unmanaged")).toHaveClass("bg-surface-container-dim");
     expect(screen.queryByRole("columnheader", { name: /Rule/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: /Selection|Source preset/ })).not.toBeInTheDocument();
   });
