@@ -50,7 +50,7 @@ KUBE_CONTEXT=retail-lakehouse bash platform/21-temporal/bootstrap.sh
 KUBE_CONTEXT=retail-lakehouse bash platform/21-temporal/validate.sh
 ```
 
-Checks that every Deployment is rolled out, `temporal operator cluster health` reports `SERVING`, `temporal operator namespace describe default` succeeds, and the four table search attributes exist with their types.
+Checks that every Deployment is rolled out, `temporal operator cluster health` reports `SERVING`, `temporal operator namespace describe default` succeeds, and the five search attributes exist with their types.
 
 ## Smoke Test
 

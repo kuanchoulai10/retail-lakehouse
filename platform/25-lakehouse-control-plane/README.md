@@ -52,7 +52,7 @@ The `migrate` Job is a regular Job named with the Helm release revision, so each
 
 ## Configuration
 
-All settings are `GLAC_*` environment variables rendered from `chart/values.yaml` into the ConfigMap `table-maintenance-config` (temporal address, catalog URI and names, S3 endpoint, Kafka, Spark, `GLAC_ADMISSION_LIMIT`, `GLAC_DISCOVERY_INTERVAL_SECONDS`, `GLAC_COMPACTION__*`). Secrets come from `table-maintenance-db`, `table-maintenance-polaris-credential` and `table-maintenance-s3`.
+All settings are `GLAC_*` environment variables rendered from `chart/values.yaml` into the ConfigMap `table-maintenance-config` (temporal address, catalog URI and names, S3 endpoint, Kafka, Spark, `GLAC_ADMISSION_LIMIT`, `GLAC_DISCOVERY_INTERVAL_SECONDS`, `GLAC_COMPACTION__*`, `GLAC_SCHEDULER__*`). Secrets come from `table-maintenance-db`, `table-maintenance-polaris-credential` and `table-maintenance-s3`.
 
 ### Spark sizes
 
@@ -75,16 +75,19 @@ A scheduled compaction picks partitions, not the whole table. Each scheduled rec
 | State | Meaning |
 |---|---|
 | `pending` | Waiting to be picked. Its `rank` is its place among the pending candidates, best first. |
-| `held` | Kept out for now. `too_small` means it has less data than `minPartitionBytes`. `recently_written` means a writer added a file within `quietSeconds`; it is released once the writes pause, and after `maxQuietWaitSeconds` in a row at the latest. |
-| `claimed` | Picked by a run (named by `claimed_by_run_id`) that has not started compacting yet. The claim has a lease of one operation's worst case plus one hour, so a run that never reports cannot keep it. |
+| `granted` | Picked by a compaction round (named by `granted_round_id`) for the table's next run. The grant has a lease of `grantLeaseSeconds`; one the table did not claim by then is pending again at the next observation. |
+| `held` | Kept out for now. `too_small` means it has less data than `minPartitionBytes`. `recently_written` means a writer added a file within `quietSeconds`; it is released once the writes pause, and after `maxQuietWaitSeconds` in a row at the latest. `not_due` means the table's compaction cannot run now (cooldown, trigger not met, needs attention, disabled or dry run), so no round grants it. |
+| `claimed` | Taken by a run (named by `claimed_by_run_id`) from its grant that has not started compacting yet. The claim has a lease of one operation's worst case plus one hour, so a run that never reports cannot keep it. |
 | `running` | Its run is compacting it. |
 | `done` / `failed` | Its run finished. The next observation removes it, or makes it `pending` again if it still has small files to merge. |
 
 **Score.** The benefit is `min(1, files removed / benefitReferenceFiles)` and the cost is `min(1, GB-hours / costReferenceGbHours)`. The score is `(benefitWeight × benefit + costWeight × (1 − cost)) / (benefitWeight + costWeight)`, from 0 to 1. It uses fixed reference values, never the spread within one table, so the same score means the same on every table. The GB-hours come from the partition's bytes, the throughput measured from the table's past compactions of at least `minThroughputSampleBytes` (`defaultThroughputBytesPerHour` before it has any) and the memory of the size the table's compaction last succeeded at (S before it has succeeded). That is not always the size the run starts at: the start size depends on which partitions are picked, and the pick depends on the scores, so the remembered size is used to avoid a loop. Ties go to more files removed, then to the partition key.
 
-**Top N.** A scheduled run claims the `partitionsPerRun` best pending candidates and compacts only those. Its `rewrite_data_files` gets a where filter naming them, and it starts at least at the size that fits their bytes. A run that is retried keeps the candidates it claimed. When every partition is held, the reconciliation record reads `all_held` and the workflow looks again when the first hold ends. When every partition is claimed by another run, it reads `all_claimed`. A run that stops before it starts gives its candidates back. If an attempt runs out of memory, the next attempt compacts the best half of the picked partitions, then the best quarter, before the size goes up. A manual run compacts the whole table and leaves the candidates alone.
+**Compaction rounds.** One global round every `roundSeconds` decides which pending candidates, across every table, may be compacted. Each candidate carries the priority of its table's maintenance policy (`P0`, `P1` or `P2`, default `P2`). The round ranks the pending candidates by score × the weight of their priority and walks the ranking in order: it grants each one while the round's GB-hour budget lasts, and stops at the first one that does not fit, so every candidate after it waits (`budget_used`) even a smaller one. The first candidate is always granted, so a partition larger than the budget still gets its turn. A table's candidates past `partitionsPerRun` in one round wait too (`table_share_used`). The round then signals each granted table, whose reconciliation plans at once. A candidate that has waited (pending or granted) longer than its priority's SLA is marked overdue; the SLA does not change the order. A round is recorded with its budget, the GB-hours it used, its picks and the first 20 skipped candidates with their reason; the newest `roundsKept` are kept.
 
-`GET /v1/tables/{uuid}/compaction-candidates` lists the candidates best first, with `partitions_per_run`. The console's Candidates tab shows them, and says for each one why it is not in the next run.
+**Top N.** A scheduled run claims the `partitionsPerRun` best granted candidates and compacts only those. Pending candidates without a grant make the reconciliation record read `awaiting_schedule`. Its `rewrite_data_files` gets a where filter naming them, and it starts at least at the size that fits their bytes. A run that is retried keeps the candidates it claimed. When every partition is held, the reconciliation record reads `all_held` and the workflow looks again when the first hold ends. When every partition is claimed by another run, it reads `all_claimed`. A run that stops before it starts gives its candidates back. If an attempt runs out of memory, the next attempt compacts the best half of the picked partitions, then the best quarter, before the size goes up. A manual run compacts the whole table and leaves the candidates alone.
+
+`GET /v1/tables/{uuid}/compaction-candidates` lists the candidates best first, with `partitions_per_run`, each with its priority, the round that granted it, when it started to wait and whether it is overdue. The console's Candidates tab shows them, and says for each one why it is not in the next run. `GET /v1/compaction-rounds` (newest first, `limit`, `before`) and `GET /v1/compaction-rounds/{round_id}` return the rounds; the console's Compaction rounds page lists the newest 50 and expands each into its picks and skips.
 
 The `compaction` block in `chart/values.yaml` sets these values. Each value is rendered as `GLAC_COMPACTION__<NAME>`, for example `GLAC_COMPACTION__PARTITIONS_PER_RUN`.
 
@@ -103,6 +106,17 @@ The `compaction` block in `chart/values.yaml` sets these values. Each value is r
 
 The api and worker read the same values: the worker picks with them, and the api shows the same top N in the console's Candidates tab. A value the selection refuses (an S bound above the M bound, both weights 0) stops the component at startup.
 
+The `scheduler` block in `chart/values.yaml` sets the rounds. Each value is rendered as `GLAC_SCHEDULER__<NAME>`, for example `GLAC_SCHEDULER__BUDGET_GB_HOURS` and `GLAC_SCHEDULER__PRIORITY_WEIGHTS__P0`.
+
+| Value | Default | Meaning |
+|---|---|---|
+| `roundSeconds` | `120` | A round runs this often (schedule `compaction-rounds`; a round still running when the next is due skips it). |
+| `budgetGbHours` | `0.05` | The estimated GB-hours one round may grant. |
+| `priorityWeights` | `P0: 4.0`, `P1: 2.0`, `P2: 1.0` | A candidate's score is multiplied by its priority's weight to rank it. |
+| `slaSeconds` | `P0: 3600`, `P1: 14400`, `P2: 28800` | A candidate waiting longer than its priority's value is overdue. |
+| `grantLeaseSeconds` | `600` | How long a grant waits for its table to claim it. |
+| `roundsKept` | `500` | How many of the newest rounds are kept; older ones are deleted when a round is recorded. |
+
 ## Temporal workflows
 
 All run on task queue `table-maintenance` in Temporal namespace `default`. IDs are a name followed by `key=value` segments joined by `:`.
@@ -113,6 +127,7 @@ All run on task queue `table-maintenance` in Temporal namespace `default`. IDs a
 | `TableReconciliationWorkflow` | `table-reconciliation:table-uuid={uuid}` | `{catalog}.{namespace}.{table}` at first start |
 | `TableMaintenanceWorkflow` | `table-maintenance:table={catalog}.{namespace}.{table}:run={run_id}` (table name as of the run start; stored on the run as `execution_ref`) | `{catalog}.{namespace}.{table} · {operations}` |
 | `TableMaintenanceAdmissionWorkflow` | `table-maintenance-admission` | `global Spark maintenance admission (limit={limit})` |
+| `CompactionRoundWorkflow` | schedule `compaction-rounds` (Temporal appends the firing time; the workflow ID is the round ID) | `compaction round · budget {budget} GB·h`; its current details read `granted {n} partitions of {m} tables`, and the search attribute `GrantedTableUuids` lists the tables it granted |
 
 ## Call the API
 
