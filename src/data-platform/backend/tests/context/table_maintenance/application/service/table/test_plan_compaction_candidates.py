@@ -697,3 +697,34 @@ def test_whole_table_compaction_offers_no_filter_sets(planner, tables_repo, cata
     _observe(catalog, [{**_partition("x", 20), "values": []}], specs=[{"spec_id": 0, "fields": []}])
 
     assert _compaction(_plan_granted(planner, candidates_repo, now)).filter_sets == []
+
+
+def test_a_granted_partition_written_since_is_held_not_claimed(
+    tables_repo, catalog, resolve_applicable_policy, candidates_repo, runs_repo, now
+):
+    """A write after the grant holds the partition as recently written; the plan does not compact it."""
+    planner = PlanTableMaintenanceService(
+        tables_repo,
+        catalog,
+        resolve_applicable_policy,
+        candidates_repo,
+        runs_repo,
+        selection=CandidateSelection(filters=CandidateFilters(quiet_seconds=120)),
+        size_memory=SIZE_MEMORY,
+        claim_lease=LEASE,
+    )
+    _table(tables_repo, now)
+    _observe(catalog, [_partition("a", 10, written=now - timedelta(hours=1))])
+    _plan(planner, now - timedelta(seconds=30), run_id=None)
+    _grant(candidates_repo, now - timedelta(seconds=20))
+    _observe(catalog, [_partition("a", 11, written=now - timedelta(seconds=5))])
+
+    plan = _plan(planner, now)
+
+    assert _compaction(plan) is None
+    (held,) = candidates_repo.list_all()
+    assert (held.state, held.hold_reason, held.granted_round_id) == (
+        CandidateState.HELD,
+        HoldReason.RECENTLY_WRITTEN,
+        None,
+    )

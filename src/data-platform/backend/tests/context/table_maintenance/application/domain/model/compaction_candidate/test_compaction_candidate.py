@@ -294,7 +294,7 @@ def test_grant_lease_must_end_after_the_grant():
 
 
 def test_observation_keeps_a_live_grant():
-    """A granted candidate under a live lease keeps its grant through an observation, even one that would hold it."""
+    """A granted candidate under a live lease keeps its grant through an observation, even a not-due one."""
     candidate = _granted()
     candidate.observe(NEW_SCORE, NOW, HoldReason.NOT_DUE, LATER, priority=MaintenancePriority.P0)
     assert candidate.state is CandidateState.GRANTED
@@ -302,6 +302,27 @@ def test_observation_keeps_a_live_grant():
     assert candidate.lease_expires_at == GRANT_LEASE
     assert candidate.score == NEW_SCORE
     assert candidate.priority is MaintenancePriority.P0
+
+
+@pytest.mark.parametrize("hold", [HoldReason.TOO_SMALL, HoldReason.RECENTLY_WRITTEN])
+def test_a_filter_ends_a_live_grant(hold):
+    """A granted partition found too small or still being written is held: no run may compact it now."""
+    candidate = _granted()
+    candidate.observe(NEW_SCORE, LATER, hold, LATER)
+    assert candidate.state is CandidateState.HELD
+    assert candidate.hold_reason is hold
+    assert candidate.granted_round_id is None
+    assert candidate.lease_expires_at is None
+    assert candidate.pending_since is None
+
+
+@pytest.mark.parametrize("hold", [HoldReason.TOO_SMALL, HoldReason.RECENTLY_WRITTEN, HoldReason.NOT_DUE])
+def test_a_filter_does_not_end_a_live_claim(hold):
+    """A claimed candidate keeps its claim whatever the observation finds: its run may be writing."""
+    candidate = _claimed()
+    candidate.observe(NEW_SCORE, LATER, hold, LATER)
+    assert candidate.state is CandidateState.CLAIMED
+    assert candidate.claimed_by_run_id == RUN
 
 
 def test_observation_returns_an_expired_grant_to_pending():
@@ -329,18 +350,35 @@ def test_pending_since_survives_a_grant_and_clears_on_claim():
     assert candidate.pending_since is None
 
 
-def test_pending_since_clears_when_held_and_restarts_when_pending_again():
-    """A held candidate is not waiting for a round; the wait restarts once it is pending again."""
+def test_a_not_due_hold_keeps_the_wait_going():
+    """A cooldown does not restart the SLA clock: the wait goes on from when the candidate first became pending."""
     candidate = _candidate()
     candidate.observe(NEW_SCORE, NOW, HoldReason.NOT_DUE, LATER)
+    assert candidate.state is CandidateState.HELD
+    assert candidate.pending_since == NOW
+    much_later = NOW + timedelta(hours=9)
+    assert not candidate.overdue(SLA, much_later)
+    candidate.observe(NEW_SCORE, NOW, None, much_later)
+    assert candidate.pending_since == NOW
+    assert candidate.overdue(SLA, much_later)
+
+
+@pytest.mark.parametrize("hold", [HoldReason.TOO_SMALL, HoldReason.RECENTLY_WRITTEN])
+def test_a_filter_hold_ends_the_wait_and_it_restarts_when_pending_again(hold):
+    """A partition a filter keeps out is not waiting for a round; the wait restarts once it is pending again."""
+    candidate = _candidate()
+    candidate.observe(NEW_SCORE, NOW, hold, LATER)
     assert candidate.pending_since is None
     candidate.observe(NEW_SCORE, NOW, None, LATER + timedelta(minutes=1))
     assert candidate.pending_since == LATER + timedelta(minutes=1)
 
 
-def test_a_new_held_candidate_has_no_pending_since():
-    """A candidate created held is not waiting for a round."""
-    assert _candidate(HoldReason.TOO_SMALL).pending_since is None
+def test_a_candidate_created_not_due_starts_its_wait_when_pending():
+    """The clock starts when a candidate first becomes pending, not while its table's compaction is not due."""
+    candidate = _candidate(HoldReason.NOT_DUE)
+    assert candidate.pending_since is None
+    candidate.observe(NEW_SCORE, NOW, None, LATER)
+    assert candidate.pending_since == LATER
 
 
 def test_release_hands_a_claim_back_as_pending_not_granted():
@@ -430,7 +468,8 @@ def test_a_new_candidate_has_never_been_saved():
             "claimed_by_run_id": RUN,
         },
         {"state": CandidateState.PENDING, "granted_round_id": ROUND},
-        {"state": CandidateState.HELD, "hold_reason": HoldReason.NOT_DUE, "pending_since": NOW},
+        {"state": CandidateState.HELD, "hold_reason": HoldReason.TOO_SMALL, "pending_since": NOW},
+        {"state": CandidateState.HELD, "hold_reason": HoldReason.RECENTLY_WRITTEN, "pending_since": NOW},
         {"state": CandidateState.PENDING, "version": -1},
     ],
 )
