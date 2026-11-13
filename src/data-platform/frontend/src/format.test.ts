@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatBytes, formatCount, formatRelativeTime, formatSeconds } from "./format";
+import { formatBytes, formatCount, formatGbHours, formatRelativeTime, formatSeconds } from "./format";
 
 describe("formatBytes", () => {
   it("formats bytes in binary units", () => {
@@ -7,6 +7,18 @@ describe("formatBytes", () => {
     expect(formatBytes(0)).toBe("0 B");
     expect(formatBytes(512)).toBe("512 B");
     expect(formatBytes(2048)).toBe("2.0 KB");
+  });
+});
+
+describe("formatGbHours", () => {
+  it("shows two decimals", () => {
+    expect(formatGbHours(1.5)).toBe("1.50");
+    expect(formatGbHours(0.05)).toBe("0.05");
+  });
+
+  it("shows an amount too small to round as below one hundredth, and none as zero", () => {
+    expect(formatGbHours(0.0005)).toBe("< 0.01");
+    expect(formatGbHours(0)).toBe("0.00");
   });
 });
 

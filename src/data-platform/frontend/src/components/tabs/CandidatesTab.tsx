@@ -6,16 +6,11 @@ import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { OverdueNote } from "@/components/OverdueNote";
 import { PriorityText } from "@/components/PriorityText";
 import { StatusBadge } from "@/components/StatusBadge";
-import { errorMessage, formatBytes, formatCount, formatTimestamp } from "@/format";
+import { errorMessage, formatBytes, formatCount, formatGbHours, formatTimestamp } from "@/format";
 import { roundPath, whyNotPicked } from "@/lib/candidateText";
 
 function twoDecimals(value: number): string {
   return value.toFixed(2);
-}
-
-// A small partition's cost rounds to 0.00, which reads as free; say it is below one hundredth.
-function gbHours(value: number): string {
-  return value > 0 && value < 0.005 ? "< 0.01" : twoDecimals(value);
 }
 
 function candidateColumns(partitionsPerRun: number) {
@@ -49,7 +44,7 @@ function candidateColumns(partitionsPerRun: number) {
     column.accessor("estimated_gb_hours", {
       header: "Est. GB·h",
       enableSorting: false,
-      cell: (info) => <span className="tabular-nums">{gbHours(info.getValue())}</span>,
+      cell: (info) => <span className="tabular-nums">{formatGbHours(info.getValue())}</span>,
     }),
     column.accessor("state", {
       header: "State",

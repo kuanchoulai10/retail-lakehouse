@@ -22,6 +22,10 @@ describe("usedText", () => {
     expect(usedText({ used_gb_hours: 0.12, budget_gb_hours: 0.05 })).toBe("0.12 (240%)");
   });
 
+  it("shows a use too small to round as below one hundredth", () => {
+    expect(usedText({ used_gb_hours: 0.00044, budget_gb_hours: 0.0005 })).toBe("< 0.01 (88%)");
+  });
+
   it("shows only the use for a round without a budget", () => {
     expect(usedText({ used_gb_hours: 0, budget_gb_hours: 0 })).toBe("0.00");
   });

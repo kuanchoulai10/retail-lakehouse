@@ -9,7 +9,7 @@ import type {
 import { PageHeader } from "@/components/PageHeader";
 import { PriorityText } from "@/components/PriorityText";
 import { StatusBadge } from "@/components/StatusBadge";
-import { errorMessage, formatCount, formatTimestamp } from "@/format";
+import { errorMessage, formatCount, formatGbHours, formatTimestamp } from "@/format";
 import { priorityWeightsText } from "@/lib/priorityText";
 import { candidatesPathOf, skipReasonText, usedText } from "@/lib/roundText";
 import { useSchedulerPriorities } from "@/lib/useSchedulerPriorities";
@@ -23,10 +23,6 @@ type Entry = CompactionRoundPickApiResponse | CompactionRoundSkipApiResponse;
 
 function twoDecimals(value: number): string {
   return value.toFixed(2);
-}
-
-function gbHours(value: number): string {
-  return value > 0 && value < 0.005 ? "< 0.01" : twoDecimals(value);
 }
 
 function entryKey(entry: Entry): string {
@@ -94,7 +90,7 @@ function entryColumns<T extends Entry>() {
       id: "gb_hours",
       header: "Est. GB·h",
       enableSorting: false,
-      cell: (info) => <span className="tabular-nums">{gbHours(info.getValue())}</span>,
+      cell: (info) => <span className="tabular-nums">{formatGbHours(info.getValue())}</span>,
     }),
     column.accessor((e) => e.overdue, {
       id: "overdue",
@@ -186,7 +182,7 @@ const roundColumns = column.columns([
   column.accessor("budget_gb_hours", {
     header: "Budget GB·h",
     enableSorting: false,
-    cell: (info) => <span className="tabular-nums">{twoDecimals(info.getValue())}</span>,
+    cell: (info) => <span className="tabular-nums whitespace-nowrap">{formatGbHours(info.getValue())}</span>,
   }),
   column.accessor((r) => usedText(r), {
     id: "used",

@@ -11,6 +11,12 @@ export function formatBytes(bytes: number): string {
   return `${value.toFixed(1)} ${UNITS[unit]}`;
 }
 
+// A GB·hour amount to two decimals; a small one that would round to 0.00, and so read as free, says
+// it is below one hundredth.
+export function formatGbHours(value: number): string {
+  return value > 0 && value < 0.005 ? "< 0.01" : value.toFixed(2);
+}
+
 export function formatCount(value: number | null | undefined): string {
   return value === null || value === undefined ? "—" : value.toLocaleString("en-US");
 }
