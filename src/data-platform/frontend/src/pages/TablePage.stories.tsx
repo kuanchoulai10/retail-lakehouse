@@ -108,7 +108,9 @@ export const Candidates: Story = {
     const table = within(await within(canvasElement).findByRole("table", { name: "Compaction candidates, best first" }));
     await expect(table.getByText("In run run-1")).toBeVisible();
     await expect(table.getByText("Still being written; checked again after a quiet period")).toBeVisible();
-    await expect(table.getByText("Score below the top 2 (2 per run)")).toBeVisible();
+    await expect(table.getByText("Waiting for a later round: below the top 2 (2 per run)")).toBeVisible();
+    await expect(table.getByText("Granted in round 2026-11-13T02:00:00Z")).toBeVisible();
+    await expect(table.getAllByText("Overdue")).toHaveLength(1);
     await expect(table.getByText("Too small to be worth compacting")).toBeVisible();
     await expect(table.getAllByText("Held")[0]).toHaveClass("bg-surface-container-dim");
   },

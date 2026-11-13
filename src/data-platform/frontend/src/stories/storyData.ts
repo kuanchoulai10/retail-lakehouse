@@ -4,6 +4,7 @@ import type {
   CatalogTableApiResponse,
   CompactionCandidateApiResponse,
   CompactionCandidatesApiResponse,
+  CompactionRoundApiResponse,
   ListedTableMaintenancePolicyApiResponse,
   ListedTableMaintenancePolicyMappingApiResponse,
   NamespaceApiResponse,
@@ -363,6 +364,8 @@ export const ESCALATED_RUN: TableMaintenanceRunApiResponse = {
   ],
 };
 
+const ROUND_ID = "compaction-rounds-2026-11-13T02:00:00Z";
+
 function orderDay(day: string, overrides: Partial<CompactionCandidateApiResponse>): CompactionCandidateApiResponse {
   return {
     partition: { spec_id: 0, values: [day] },
@@ -378,7 +381,7 @@ function orderDay(day: string, overrides: Partial<CompactionCandidateApiResponse
     lease_expires_at: null,
     last_written_at: "2026-11-12T23:40:00Z",
     observed_at: "2026-11-13T02:00:00Z",
-    priority: "P2",
+    priority: "P0",
     granted_round_id: null,
     pending_since: null,
     overdue: false,
@@ -386,8 +389,8 @@ function orderDay(day: string, overrides: Partial<CompactionCandidateApiResponse
   };
 }
 
-// The order days that need compaction, best first: one in a run, one still being written, the
-// top two pending (two per run), one below them and one too small to be worth it.
+// The order days that need compaction, best first: one in a run, one still being written, one a
+// round granted, the top two pending (two per run, one overdue), one below them and one too small.
 export const CANDIDATES: CompactionCandidatesApiResponse = {
   partitions_per_run: 2,
   candidates: [
@@ -407,9 +410,19 @@ export const CANDIDATES: CompactionCandidatesApiResponse = {
       reducible_files: 240,
       last_written_at: "2026-11-13T01:59:00Z",
     }),
-    orderDay("2026-11-09", { rank: 1, score: 0.74, reducible_files: 160, data_bytes: 640 * 1024 * 1024, estimated_gb_hours: 0.35 }),
-    orderDay("2026-11-08", { rank: 2, score: 0.55, reducible_files: 96 }),
-    orderDay("2026-11-07", { rank: 3, score: 0.31, reducible_files: 40 }),
+    orderDay("2026-11-09", {
+      state: "granted",
+      score: 0.74,
+      reducible_files: 160,
+      data_bytes: 640 * 1024 * 1024,
+      estimated_gb_hours: 0.35,
+      granted_round_id: ROUND_ID,
+      lease_expires_at: "2026-11-13T02:10:00Z",
+      pending_since: "2026-11-13T01:00:00Z",
+    }),
+    orderDay("2026-11-08", { rank: 1, score: 0.55, reducible_files: 96, pending_since: "2026-11-12T22:00:00Z", overdue: true }),
+    orderDay("2026-11-07", { rank: 2, score: 0.31, reducible_files: 40, pending_since: "2026-11-13T01:00:00Z" }),
+    orderDay("2026-11-05", { rank: 3, score: 0.22, reducible_files: 24, pending_since: "2026-11-13T01:00:00Z" }),
     orderDay("2026-11-06", { state: "held", hold_reason: "too_small", score: 0.08, reducible_files: 6, data_bytes: 2 * 1024 * 1024, estimated_gb_hours: 0.01 }),
   ],
 };
@@ -652,3 +665,62 @@ export function applicablePolicy(catalog: string, namespace: string[] = []): App
   const inRetail = catalog === "iceberg" && namespace[0] === "retail";
   return { ...POLICIES[inRetail ? 1 : 0]!, target: inRetail ? RETAIL_TARGET : null };
 }
+
+// Two rounds of the compaction scheduler: the newest granted an order day (P0, weight 4) and a
+// stock-levels partition, then ran out of budget; the one before had nothing pending.
+export const ROUNDS: CompactionRoundApiResponse[] = [
+  {
+    round_id: ROUND_ID,
+    started_at: "2026-11-13T02:00:00Z",
+    budget_gb_hours: 0.5,
+    used_gb_hours: 0.47,
+    picks: [
+      {
+        table_uuid: ORDERS_UUID,
+        table_name: "iceberg.retail.orders",
+        partition: { spec_id: 0, values: ["2026-11-09"] },
+        partition_label: "ordered_at_day=2026-11-09",
+        priority: "P0",
+        score: 0.74,
+        weighted_score: 2.96,
+        estimated_gb_hours: 0.35,
+        overdue: false,
+      },
+      {
+        table_uuid: "1d3f5b7a-2c4e-4a6b-8c0d-e2f4a6b8c0d1",
+        table_name: "iceberg.inventory.stock_levels",
+        partition: { spec_id: 0, values: ["2026-11-12"] },
+        partition_label: "updated_at_day=2026-11-12",
+        priority: "P2",
+        score: 0.81,
+        weighted_score: 0.81,
+        estimated_gb_hours: 0.12,
+        overdue: false,
+      },
+    ],
+    skips: [
+      {
+        table_uuid: ORDERS_UUID,
+        table_name: "iceberg.retail.orders",
+        partition: { spec_id: 0, values: ["2026-11-08"] },
+        partition_label: "ordered_at_day=2026-11-08",
+        priority: "P0",
+        score: 0.55,
+        weighted_score: 2.2,
+        estimated_gb_hours: 0.12,
+        overdue: true,
+        reason: "budget_used",
+      },
+    ],
+    skipped_total: 4,
+  },
+  {
+    round_id: "compaction-rounds-2026-11-13T01:58:00Z",
+    started_at: "2026-11-13T01:58:00Z",
+    budget_gb_hours: 0.5,
+    used_gb_hours: 0,
+    picks: [],
+    skips: [],
+    skipped_total: 0,
+  },
+];

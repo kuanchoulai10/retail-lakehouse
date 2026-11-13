@@ -1,0 +1,203 @@
+import { Banner, createDataTableColumnHelper, DataTable, Skeleton, TextLink } from "@retail-lakehouse/design-system";
+import { Link } from "react-router";
+import { useListCompactionRounds } from "@/api/generated/compaction-rounds/compaction-rounds";
+import type {
+  CompactionRoundApiResponse,
+  CompactionRoundPickApiResponse,
+  CompactionRoundSkipApiResponse,
+} from "@/api/generated/model";
+import { PageHeader } from "@/components/PageHeader";
+import { StatusBadge } from "@/components/StatusBadge";
+import { errorMessage, formatCount, formatTimestamp } from "@/format";
+import { shortRoundId } from "@/lib/candidateText";
+import { candidatesPathOf, skipReasonText, usedText } from "@/lib/roundText";
+
+const ROUNDS_SHOWN = 50;
+const REFRESH_MS = 30_000;
+const SKELETON_ROWS = 5;
+const NO_ROUNDS: CompactionRoundApiResponse[] = [];
+
+type Entry = CompactionRoundPickApiResponse | CompactionRoundSkipApiResponse;
+
+function twoDecimals(value: number): string {
+  return value.toFixed(2);
+}
+
+function gbHours(value: number): string {
+  return value > 0 && value < 0.005 ? "< 0.01" : twoDecimals(value);
+}
+
+function entryKey(entry: Entry): string {
+  return JSON.stringify([entry.table_uuid, entry.partition.spec_id, entry.partition.values]);
+}
+
+function TableCell({ entry }: { entry: Entry }) {
+  const path = candidatesPathOf(entry.table_name);
+  if (entry.table_name === null || path === null) {
+    return <span className="font-mono">{entry.table_name ?? entry.table_uuid}</span>;
+  }
+  return (
+    <TextLink asChild className="font-mono">
+      <Link to={path}>{entry.table_name}</Link>
+    </TextLink>
+  );
+}
+
+// The columns a pick and a skip share; a skip adds its reason.
+function entryColumns<T extends Entry>() {
+  const column = createDataTableColumnHelper<T>();
+  return column.columns([
+    column.accessor((e) => e.table_name ?? e.table_uuid, {
+      id: "table",
+      header: "Table",
+      enableSorting: false,
+      cell: (info) => <TableCell entry={info.row.original} />,
+    }),
+    column.accessor((e) => e.partition_label, {
+      id: "partition",
+      header: "Partition",
+      enableSorting: false,
+      cell: (info) => <span className="font-mono">{info.getValue()}</span>,
+    }),
+    column.accessor((e) => e.priority, { id: "priority", header: "Priority", enableSorting: false }),
+    column.accessor((e) => e.score, {
+      id: "score",
+      header: "Score",
+      enableSorting: false,
+      cell: (info) => <span className="tabular-nums">{twoDecimals(info.getValue())}</span>,
+    }),
+    column.accessor((e) => e.weighted_score, {
+      id: "weighted_score",
+      header: "Weighted",
+      enableSorting: false,
+      cell: (info) => <span className="tabular-nums">{twoDecimals(info.getValue())}</span>,
+    }),
+    column.accessor((e) => e.estimated_gb_hours, {
+      id: "gb_hours",
+      header: "Est. GB·h",
+      enableSorting: false,
+      cell: (info) => <span className="tabular-nums">{gbHours(info.getValue())}</span>,
+    }),
+    column.accessor((e) => e.overdue, {
+      id: "overdue",
+      header: "Overdue",
+      enableSorting: false,
+      cell: (info) => (info.getValue() ? <StatusBadge status="overdue" /> : "—"),
+    }),
+  ]);
+}
+
+const pickColumns = entryColumns<CompactionRoundPickApiResponse>();
+
+const skipColumn = createDataTableColumnHelper<CompactionRoundSkipApiResponse>();
+const skipColumns = skipColumn.columns([
+  ...entryColumns<CompactionRoundSkipApiResponse>(),
+  skipColumn.accessor((s) => skipReasonText(s.reason), { id: "reason", header: "Reason", enableSorting: false }),
+]);
+
+function RoundDetail({ round }: { round: CompactionRoundApiResponse }) {
+  const shown = round.skips.length;
+  return (
+    <div className="flex flex-col gap-4 py-2">
+      <p className="type-body-small text-on-surface-variant">
+        Round <span className="font-mono">{round.round_id}</span>
+      </p>
+      <DataTable
+        caption={`Partitions round ${shortRoundId(round.round_id)} granted`}
+        columns={pickColumns}
+        data={round.picks}
+        getRowId={entryKey}
+        emptyState="Nothing was pending, so nothing was granted."
+      />
+      {round.skipped_total > 0 && (
+        <>
+          <p className="type-body-small text-on-surface-variant">
+            {shown < round.skipped_total
+              ? `The first ${formatCount(shown)} of ${formatCount(round.skipped_total)} skipped partitions, in rank order.`
+              : "The skipped partitions, in rank order."}
+          </p>
+          <DataTable
+            caption={`Partitions round ${shortRoundId(round.round_id)} skipped`}
+            columns={skipColumns}
+            data={round.skips}
+            getRowId={entryKey}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+const column = createDataTableColumnHelper<CompactionRoundApiResponse>();
+const roundColumns = column.columns([
+  column.accessor("started_at", {
+    header: "Started",
+    enableSorting: false,
+    cell: (info) => (
+      <time dateTime={info.getValue()} className="tabular-nums whitespace-nowrap">
+        {formatTimestamp(info.getValue())}
+      </time>
+    ),
+  }),
+  column.accessor((r) => usedText(r), {
+    id: "used",
+    header: "Used GB·h",
+    enableSorting: false,
+    cell: (info) => <span className="tabular-nums whitespace-nowrap">{info.getValue()}</span>,
+  }),
+  column.accessor((r) => r.picks.length, {
+    id: "picked",
+    header: "Picked",
+    enableSorting: false,
+    cell: (info) => <span className="tabular-nums">{formatCount(info.getValue())}</span>,
+  }),
+  column.accessor("skipped_total", {
+    header: "Skipped",
+    enableSorting: false,
+    cell: (info) => <span className="tabular-nums">{formatCount(info.getValue())}</span>,
+  }),
+]);
+
+function LoadingRows() {
+  return (
+    <div className="grid gap-3 py-1">
+      {Array.from({ length: SKELETON_ROWS }, (_, i) => (
+        <Skeleton key={i} className="h-4 w-full" />
+      ))}
+    </div>
+  );
+}
+
+// The rounds of the compaction scheduler, newest first: each grants the best pending partitions of
+// every table (score times the priority's weight) while its GB·hour budget lasts, and a row opens
+// to what it granted and the first candidates it left, with why.
+export function CompactionRoundsPage() {
+  const rounds = useListCompactionRounds({ limit: ROUNDS_SHOWN }, { query: { refetchInterval: REFRESH_MS } });
+
+  return (
+    <section>
+      <PageHeader title="Compaction rounds">
+        <span>
+          Each round grants the best pending partitions of every table, by score times priority weight, while its
+          budget lasts. The newest {ROUNDS_SHOWN} are shown.
+        </span>
+      </PageHeader>
+      {rounds.isError && (
+        <Banner type="negative" title={`Could not load compaction rounds: ${errorMessage(rounds.error)}`} />
+      )}
+      {!rounds.isError && (
+        <div aria-busy={rounds.isPending}>
+          <DataTable
+            caption="Compaction rounds, newest first"
+            columns={roundColumns}
+            data={rounds.data ?? NO_ROUNDS}
+            getRowId={(round) => round.round_id}
+            getRowLabel={(round) => `round ${shortRoundId(round.round_id)}`}
+            renderDetail={(round) => <RoundDetail round={round} />}
+            emptyState={rounds.isPending ? <LoadingRows /> : "No compaction round has run yet."}
+          />
+        </div>
+      )}
+    </section>
+  );
+}

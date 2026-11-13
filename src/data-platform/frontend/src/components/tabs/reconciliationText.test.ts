@@ -109,6 +109,12 @@ describe("wakeText", () => {
       "Catalog commit, Discovery scan, Policy changed",
     );
   });
+
+  it("names a compaction grant", () => {
+    expect(wakeText(record({ wake_reasons: { compaction_granted: 1, previous_run_finished: 1 } }))).toBe(
+      "Previous run finished, Compaction granted",
+    );
+  });
 });
 
 describe("reasonSentence", () => {
@@ -331,8 +337,16 @@ describe("compaction without a free candidate", () => {
     );
   });
 
+  it("says the partitions wait for a compaction round", () => {
+    expect(resultLabel("awaiting_schedule")).toBe("Awaiting a compaction round");
+    expect(
+      reasonSentence(op({ operation: "rewrite_data_files", result: "awaiting_schedule", measurements: [due] })),
+    ).toBe("Due: reducible files 40 (needs ≥ 5), but its partitions wait for a compaction round to grant them.");
+  });
+
   it("is listed with the other operations that did not start", () => {
     expect(resultOrder("needs_attention")).toBeLessThan(resultOrder("all_held"));
     expect(resultOrder("all_claimed")).toBeLessThan(resultOrder("not_needed"));
+    expect(resultOrder("awaiting_schedule")).toBeLessThan(resultOrder("not_needed"));
   });
 });

@@ -18,6 +18,7 @@ export const RESULT_ORDER = [
   "needs_attention",
   "all_held",
   "all_claimed",
+  "awaiting_schedule",
   "not_needed",
   "cooling_down",
   "off",
@@ -31,6 +32,7 @@ const RESULT_LABELS: Record<string, string> = {
   needs_attention: "Needs attention",
   all_held: "All partitions held",
   all_claimed: "All partitions claimed",
+  awaiting_schedule: "Awaiting a compaction round",
   not_needed: "Not needed",
   cooling_down: "Cooling down",
   off: "Off",
@@ -46,6 +48,7 @@ const WAKE_REASONS: [string, string][] = [
   ["manual_run", "Manual run"],
   ["reconcile_now", "Reconcile now"],
   ["previous_run_finished", "Previous run finished"],
+  ["compaction_granted", "Compaction granted"],
 ];
 
 const OPERATION_LABELS: Record<string, string> = {
@@ -262,6 +265,8 @@ export function reasonSentence(op: ReconciliationOperationApiResponse, { manualR
     }
     case "all_claimed":
       return `${met.length > 0 ? `Due: ${citeAll(met, op)}, but` : "Due, but"} another run is still compacting every partition.`;
+    case "awaiting_schedule":
+      return `${met.length > 0 ? `Due: ${citeAll(met, op)}, but` : "Due, but"} its partitions wait for a compaction round to grant them.`;
     case "off":
       return "Turned off in the policy.";
     case "not_checked":

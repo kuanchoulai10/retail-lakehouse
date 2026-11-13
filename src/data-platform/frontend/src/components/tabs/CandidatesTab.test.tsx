@@ -37,7 +37,7 @@ const LIST: CompactionCandidatesApiResponse = {
   candidates: [
     candidate("2026-11-04", { state: "claimed", claimed_by_run_id: "run-7", score: 0.91, reducible_files: 1250 }),
     candidate("2026-11-03", { state: "held", hold_reason: "recently_written", score: 0.8 }),
-    candidate("2026-11-02", { rank: 1, score: 0.6, data_bytes: 3 * 1024 * 1024 }),
+    candidate("2026-11-02", { rank: 1, score: 0.6, data_bytes: 3 * 1024 * 1024, priority: "P0", overdue: true }),
     candidate("2026-11-01", { rank: 2, score: 0.4, estimated_gb_hours: 1.5 }),
   ],
 };
@@ -67,6 +67,7 @@ describe("CandidatesTab", () => {
     const table = await screen.findByRole("table", { name: "Compaction candidates, best first" });
     expect(within(table).getAllByRole("columnheader").map((h) => h.textContent)).toEqual([
       "Partition",
+      "Priority",
       "Score",
       "Removable files",
       "Data",
@@ -75,10 +76,10 @@ describe("CandidatesTab", () => {
       "Why not picked",
     ]);
     expect(rowsOf(table)).toEqual([
-      ["day=2026-11-04", "0.91", "1,250", "4.0 KB", "0.25", "Claimed", "In run run-7"],
-      ["day=2026-11-03", "0.80", "12", "4.0 KB", "0.25", "Held", "Still being written; checked again after a quiet period"],
-      ["day=2026-11-02", "0.60", "12", "3.0 MB", "0.25", "Pending", ""],
-      ["day=2026-11-01", "0.40", "12", "4.0 KB", "1.50", "Pending", "Score below the top 1 (1 per run)"],
+      ["day=2026-11-04", "P2", "0.91", "1,250", "4.0 KB", "0.25", "Claimed", "In run run-7"],
+      ["day=2026-11-03", "P2", "0.80", "12", "4.0 KB", "0.25", "Held", "Still being written; checked again after a quiet period"],
+      ["day=2026-11-02", "P0", "0.60", "12", "3.0 MB", "0.25", "PendingOverdue", "Waiting for the next round"],
+      ["day=2026-11-01", "P2", "0.40", "12", "4.0 KB", "1.50", "Pending", "Waiting for a later round: below the top 1 (1 per run)"],
     ]);
   });
 
@@ -93,7 +94,7 @@ describe("CandidatesTab", () => {
     stubCatalogApi({ [PATH]: () => jsonResponse(list) });
     renderTab();
     const table = await screen.findByRole("table", { name: "Compaction candidates, best first" });
-    expect(rowsOf(table).map((row) => row[4])).toEqual(["< 0.01", "0.00"]);
+    expect(rowsOf(table).map((row) => row[5])).toEqual(["< 0.01", "0.00"]);
   });
 
   it("keeps held and pending candidates neutral", async () => {
@@ -104,10 +105,34 @@ describe("CandidatesTab", () => {
     expect(within(table).getAllByText("Pending")[0]).toHaveClass("bg-surface-container-dim");
   });
 
+  it("marks an overdue candidate with a notice, the only colour on the tab", async () => {
+    stubCatalogApi({ [PATH]: () => jsonResponse(LIST) });
+    renderTab();
+    const table = await screen.findByRole("table", { name: "Compaction candidates, best first" });
+    expect(within(table).getAllByText("Overdue")).toHaveLength(1);
+    expect(within(table).getByText("Overdue")).not.toHaveClass("bg-surface-container-dim");
+  });
+
+  it("names the round that granted a candidate", async () => {
+    const list: CompactionCandidatesApiResponse = {
+      partitions_per_run: 10,
+      candidates: [
+        candidate("2026-11-02", { state: "granted", granted_round_id: "compaction-rounds-2026-11-13T12:00:00Z" }),
+      ],
+    };
+    stubCatalogApi({ [PATH]: () => jsonResponse(list) });
+    renderTab();
+    const table = await screen.findByRole("table", { name: "Compaction candidates, best first" });
+    expect(rowsOf(table)[0]!.slice(-2)).toEqual(["Granted", "Granted in round 2026-11-13T12:00:00Z"]);
+  });
+
   it("says how many partitions a run takes", async () => {
     stubCatalogApi({ [PATH]: () => jsonResponse(LIST) });
     renderTab();
-    expect(await screen.findByText("Each scheduled run compacts the top 1 pending partition.")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/^Compaction rounds grant the best pending partitions of every table within a budget, at most 1 partition per run of a table\./),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "See the compaction rounds" })).toHaveAttribute("href", "/compaction-rounds");
   });
 
   it("says when no partition needs compaction", async () => {

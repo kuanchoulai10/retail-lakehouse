@@ -1,4 +1,5 @@
-import { Banner, createDataTableColumnHelper, DataTable, Panel } from "@retail-lakehouse/design-system";
+import { Banner, createDataTableColumnHelper, DataTable, Panel, TextLink } from "@retail-lakehouse/design-system";
+import { Link } from "react-router";
 import { useListCompactionCandidates } from "@/api/generated/compaction-candidates/compaction-candidates";
 import type { CompactionCandidateApiResponse } from "@/api/generated/model";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
@@ -23,6 +24,10 @@ function candidateColumns(partitionsPerRun: number) {
       enableSorting: false,
       cell: (info) => <span className="font-mono">{info.getValue()}</span>,
     }),
+    column.accessor("priority", {
+      header: "Priority",
+      enableSorting: false,
+    }),
     column.accessor("score", {
       header: "Score",
       enableSorting: false,
@@ -46,7 +51,14 @@ function candidateColumns(partitionsPerRun: number) {
     column.accessor("state", {
       header: "State",
       enableSorting: false,
-      cell: (info) => <StatusBadge status={info.getValue()} />,
+      // Overdue is the one mark that calls for attention: the candidate has waited longer than
+      // its priority's SLA, a sign the round budget is too small.
+      cell: (info) => (
+        <span className="flex flex-wrap items-center gap-1">
+          <StatusBadge status={info.getValue()} />
+          {info.row.original.overdue && <StatusBadge status="overdue" />}
+        </span>
+      ),
     }),
     column.accessor((candidate) => whyNotPicked(candidate, partitionsPerRun), {
       id: "why",
@@ -61,7 +73,8 @@ function partitionKey(candidate: CompactionCandidateApiResponse): string {
 }
 
 // The partitions of a table that need compaction, best first, with what each is worth and why it
-// is not in the next run: held by a filter, below the top N, or already in a run.
+// is not in a run yet: held by a filter or because compaction is not due, waiting for a round,
+// granted by one, or already in a run.
 export function CandidatesTab({ tableUuid }: { tableUuid: string }) {
   const candidates = useListCompactionCandidates(tableUuid);
 
@@ -75,7 +88,10 @@ export function CandidatesTab({ tableUuid }: { tableUuid: string }) {
   return (
     <Panel title="Compaction candidates">
       <p className="type-body-small text-on-surface-variant mb-3">
-        {`Each scheduled run compacts the top ${n} pending ${n === 1 ? "partition" : "partitions"}.`}
+        {`Compaction rounds grant the best pending partitions of every table within a budget, at most ${n} ${n === 1 ? "partition" : "partitions"} per run of a table. `}
+        <TextLink asChild inline>
+          <Link to="/compaction-rounds">See the compaction rounds</Link>
+        </TextLink>
       </p>
       <DataTable
         caption="Compaction candidates, best first"

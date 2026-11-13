@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CompactionCandidateApiResponse } from "@/api/generated/model";
-import { whyNotPicked } from "./candidateText";
+import { shortRoundId, whyNotPicked } from "./candidateText";
 
 function candidate(overrides: Partial<CompactionCandidateApiResponse>): CompactionCandidateApiResponse {
   return {
@@ -38,12 +38,27 @@ describe("whyNotPicked", () => {
     );
   });
 
-  it("says a pending partition below the top N lost on score", () => {
-    expect(whyNotPicked(candidate({ rank: 11 }), 10)).toBe("Score below the top 10 (10 per run)");
+  it("says a pending partition below the top N waits for a later round", () => {
+    expect(whyNotPicked(candidate({ rank: 11 }), 10)).toBe("Waiting for a later round: below the top 10 (10 per run)");
   });
 
-  it("says nothing against a pending partition in the top N", () => {
-    expect(whyNotPicked(candidate({ rank: 10 }), 10)).toBe("");
+  it("says a pending partition in the top N waits for the next round", () => {
+    expect(whyNotPicked(candidate({ rank: 10 }), 10)).toBe("Waiting for the next round");
+  });
+
+  it("names the round that granted a partition", () => {
+    expect(
+      whyNotPicked(
+        candidate({ state: "granted", rank: null, granted_round_id: "compaction-rounds-2026-11-13T12:00:00Z" }),
+        10,
+      ),
+    ).toBe("Granted in round 2026-11-13T12:00:00Z");
+  });
+
+  it("says a partition held as not due waits for the table's compaction to be due", () => {
+    expect(whyNotPicked(candidate({ state: "held", hold_reason: "not_due", rank: null }), 10)).toBe(
+      "Compaction is not due on this table",
+    );
   });
 
   it.each(["claimed", "running"])("names the run that holds a %s partition", (state) => {
@@ -58,5 +73,15 @@ describe("whyNotPicked", () => {
     expect(whyNotPicked(candidate({ state: "held", hold_reason: "frozen_by_owner", rank: null }), 10)).toBe(
       "Held: frozen by owner",
     );
+  });
+});
+
+describe("shortRoundId", () => {
+  it("drops the schedule's prefix from a scheduled round", () => {
+    expect(shortRoundId("compaction-rounds-2026-11-13T12:00:00Z")).toBe("2026-11-13T12:00:00Z");
+  });
+
+  it("keeps any other round id", () => {
+    expect(shortRoundId("round-7")).toBe("round-7");
   });
 });

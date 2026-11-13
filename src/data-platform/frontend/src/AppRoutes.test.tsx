@@ -33,4 +33,10 @@ describe("AppRoutes", () => {
     renderAt("/policies");
     expect(await screen.findByRole("heading", { name: "Maintenance policies", level: 1 })).toBeInTheDocument();
   });
+
+  it("renders the compaction rounds page at /compaction-rounds", async () => {
+    stubCatalogApi({ "GET /v1/compaction-rounds?limit=50": () => jsonResponse([]) });
+    renderAt("/compaction-rounds");
+    expect(await screen.findByRole("heading", { name: "Compaction rounds", level: 1 })).toBeInTheDocument();
+  });
 });
