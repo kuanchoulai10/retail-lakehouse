@@ -23,7 +23,6 @@ import type {
   CompactionRoundApiResponse,
   HTTPValidationError,
   ListCompactionRoundsParams,
-  PlatformSettingsApiResponse,
   SchedulerSettingsApiResponse
 } from '../model';
 
@@ -249,110 +248,6 @@ export function useGetCompactionRound<TData = Awaited<ReturnType<typeof getCompa
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getGetCompactionRoundQueryOptions(roundId,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-export const getGetPlatformSettingsUrl = () => {
-
-
-
-
-  return `/v1/platform-settings`
-}
-
-/**
- * Read the platform-level settings the running component was started with, grouped by theme.
- *
- * Read-only: the values are set by the platform deployment. Each setting carries a stable
- * key, a label, its value and unit, and a one-sentence description.
- * @summary Get Platform Settings
- */
-export const getPlatformSettings = async ( options?: Parameters<typeof apiFetch>[1]): Promise<PlatformSettingsApiResponse> => {
-
-  return apiFetch<PlatformSettingsApiResponse>(getGetPlatformSettingsUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetPlatformSettingsQueryKey = () => {
-    return [
-    `/v1/platform-settings`
-    ] as const;
-    }
-
-
-export const getGetPlatformSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getPlatformSettings>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPlatformSettings>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetPlatformSettingsQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPlatformSettings>>> = ({ signal }) => getPlatformSettings({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPlatformSettings>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetPlatformSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getPlatformSettings>>>
-export type GetPlatformSettingsQueryError = unknown
-
-
-export function useGetPlatformSettings<TData = Awaited<ReturnType<typeof getPlatformSettings>>, TError = unknown>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPlatformSettings>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getPlatformSettings>>,
-          TError,
-          Awaited<ReturnType<typeof getPlatformSettings>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetPlatformSettings<TData = Awaited<ReturnType<typeof getPlatformSettings>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPlatformSettings>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getPlatformSettings>>,
-          TError,
-          Awaited<ReturnType<typeof getPlatformSettings>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetPlatformSettings<TData = Awaited<ReturnType<typeof getPlatformSettings>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPlatformSettings>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Get Platform Settings
- */
-
-export function useGetPlatformSettings<TData = Awaited<ReturnType<typeof getPlatformSettings>>, TError = unknown>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPlatformSettings>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getGetPlatformSettingsQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

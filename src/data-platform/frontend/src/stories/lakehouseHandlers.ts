@@ -2,10 +2,10 @@ import { getListCatalogsMockHandler, getGetCatalogMockHandler } from "@/api/gene
 import { getListCompactionCandidatesMockHandler } from "@/api/generated/compaction-candidates/compaction-candidates.msw";
 import {
   getGetCompactionRoundMockHandler,
-  getGetPlatformSettingsMockHandler,
   getGetSchedulerSettingsMockHandler,
   getListCompactionRoundsMockHandler,
 } from "@/api/generated/compaction-rounds/compaction-rounds.msw";
+import { getGetPlatformSettingsMockHandler } from "@/api/generated/platform-settings/platform-settings.msw";
 import { getListGenericTablesMockHandler } from "@/api/generated/generic-tables/generic-tables.msw";
 import { getGetNamespaceMockHandler, getListNamespacesMockHandler } from "@/api/generated/namespaces/namespaces.msw";
 import {

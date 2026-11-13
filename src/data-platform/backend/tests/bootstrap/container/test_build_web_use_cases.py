@@ -12,6 +12,7 @@ from context.table_maintenance.adapter.inbound.web import register_routes
 from tests.bootstrap.container.container_support import (
     NOW,
     fake_gateways,
+    platform_settings,
     sqlite_engine,
 )
 
@@ -20,7 +21,9 @@ if TYPE_CHECKING:
 
 
 def _web_use_cases() -> WebUseCases:
-    use_cases = build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
+    use_cases = build_use_cases(
+        build_repositories(sqlite_engine()), fake_gateways(), platform_settings=platform_settings(), clock=lambda: NOW
+    )
     return build_web_use_cases(use_cases)
 
 
@@ -34,7 +37,9 @@ def test_every_web_use_case_is_populated():
 
 def test_web_use_cases_reuse_the_application_services():
     """Each web use case is the same object as the application service."""
-    use_cases = build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
+    use_cases = build_use_cases(
+        build_repositories(sqlite_engine()), fake_gateways(), platform_settings=platform_settings(), clock=lambda: NOW
+    )
 
     web = build_web_use_cases(use_cases)
 

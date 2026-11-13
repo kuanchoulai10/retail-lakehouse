@@ -115,3 +115,10 @@ def test_the_response_schema_has_no_secret_looking_field():
 
     assert names
     assert not [name for name in names if any(word in name.lower() for word in SECRET_WORDS)]
+
+
+def test_the_route_has_its_own_openapi_tag():
+    """The route is tagged platform-settings alone, so the generated client files it apart from the rounds."""
+    operation = _app().openapi()["paths"]["/v1/platform-settings"]["get"]
+
+    assert operation["tags"] == ["platform-settings"]

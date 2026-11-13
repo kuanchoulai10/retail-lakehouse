@@ -12,6 +12,7 @@ from context.table_maintenance.adapter.inbound.event_consumer import (
 from tests.bootstrap.container.container_support import (
     NOW,
     fake_gateways,
+    platform_settings,
     sqlite_engine,
 )
 
@@ -52,7 +53,9 @@ def test_consumer_runs_until_stopped_and_closes_the_source():
         ],
         stop,
     )
-    use_cases = build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
+    use_cases = build_use_cases(
+        build_repositories(sqlite_engine()), fake_gateways(), platform_settings=platform_settings(), clock=lambda: NOW
+    )
 
     run_event_consumer(use_cases, source, stop)
 

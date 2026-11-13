@@ -49,6 +49,7 @@ if TYPE_CHECKING:
     type _Skip = ListCompactionRoundsUseCaseOutputSkip | GetCompactionRoundUseCaseOutputSkip
 
 router = APIRouter(tags=["compaction-rounds"])
+platform_settings_router = APIRouter(tags=["platform-settings"])
 
 UseCases = Annotated[WebUseCases, Depends(use_cases_dependency)]
 
@@ -90,7 +91,7 @@ def get_scheduler_settings(use_cases: UseCases) -> SchedulerSettingsApiResponse:
     )
 
 
-@router.get("/platform-settings")
+@platform_settings_router.get("/platform-settings")
 def get_platform_settings(use_cases: UseCases) -> PlatformSettingsApiResponse:
     """Read the platform-level settings the running component was started with, grouped by theme.
 

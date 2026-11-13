@@ -1,5 +1,5 @@
 import { Banner, Panel } from "@retail-lakehouse/design-system";
-import { useGetPlatformSettings } from "@/api/generated/compaction-rounds/compaction-rounds";
+import { useGetPlatformSettings } from "@/api/generated/platform-settings/platform-settings";
 import type { PlatformSettingApiResponse, PlatformSettingsGroupApiResponse } from "@/api/generated/model";
 import { PageHeader } from "@/components/PageHeader";
 import { PanelSkeleton } from "@/components/PanelSkeleton";

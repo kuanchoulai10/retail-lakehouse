@@ -18,6 +18,7 @@ from context.table_maintenance.adapter.inbound.event_consumer import (
 from tests.bootstrap.container.container_support import (
     NOW,
     fake_gateways,
+    platform_settings,
     sqlite_engine,
     sqlite_settings,
 )
@@ -76,7 +77,9 @@ class OnFirstPollSource(EventSource):
 
 
 def _use_cases(settings: Any, bridge: Any) -> Any:  # noqa: ANN401
-    return build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
+    return build_use_cases(
+        build_repositories(sqlite_engine()), fake_gateways(), platform_settings=platform_settings(), clock=lambda: NOW
+    )
 
 
 def test_sigterm_sets_the_stop_event_and_closes_source_and_bridge():

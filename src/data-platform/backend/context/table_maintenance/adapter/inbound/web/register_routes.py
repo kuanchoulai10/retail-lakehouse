@@ -8,6 +8,9 @@ from context.table_maintenance.adapter.inbound.web.compaction_candidate import (
     router as compaction_candidate_router,
 )
 from context.table_maintenance.adapter.inbound.web.compaction_round import (
+    platform_settings_router,
+)
+from context.table_maintenance.adapter.inbound.web.compaction_round import (
     router as compaction_round_router,
 )
 from context.table_maintenance.adapter.inbound.web.error_handlers import (
@@ -51,5 +54,6 @@ def register_routes(app: FastAPI, use_cases: WebUseCases) -> None:
         table_reconciliation_router,
         compaction_candidate_router,
         compaction_round_router,
+        platform_settings_router,
     ):
         app.include_router(router, prefix=_API_PREFIX)

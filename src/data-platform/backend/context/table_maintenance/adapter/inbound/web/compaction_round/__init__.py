@@ -15,6 +15,7 @@ from context.table_maintenance.adapter.inbound.web.compaction_round.dto import (
     SchedulerSettingsApiResponse,
 )
 from context.table_maintenance.adapter.inbound.web.compaction_round.router import (
+    platform_settings_router,
     router,
 )
 
@@ -29,5 +30,6 @@ __all__ = [
     "PlatformSettingsGroupApiResponse",
     "SchedulerPriorityApiResponse",
     "SchedulerSettingsApiResponse",
+    "platform_settings_router",
     "router",
 ]

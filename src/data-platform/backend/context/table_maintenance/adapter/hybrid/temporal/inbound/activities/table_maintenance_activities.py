@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 from temporalio import activity
 
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
+    DEFAULT_MAX_ATTEMPTS,
     TableMaintenanceActivity,
 )
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.activity_payload import (
@@ -72,7 +73,7 @@ class TableMaintenanceActivities:
                     now=datetime.fromisoformat(request["now"]),
                     ended_by=request.get("ended_by", "result"),
                     still_running=request.get("still_running", False),
-                    max_attempts=request.get("max_attempts", 3),
+                    max_attempts=request.get("max_attempts", DEFAULT_MAX_ATTEMPTS),
                     policy_name=request.get("policy_name"),
                     policy_version=request.get("policy_version"),
                     policy_target=request.get("policy_target"),

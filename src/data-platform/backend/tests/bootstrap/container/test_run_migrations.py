@@ -19,12 +19,15 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
 from tests.bootstrap.container.container_support import (
     NOW,
     fake_gateways,
+    platform_settings,
     sqlite_settings,
 )
 
 
 def _use_cases(engine):
-    return build_use_cases(build_repositories(engine), fake_gateways(), clock=lambda: NOW)
+    return build_use_cases(
+        build_repositories(engine), fake_gateways(), platform_settings=platform_settings(), clock=lambda: NOW
+    )
 
 
 def test_schema_has_no_preset_table():

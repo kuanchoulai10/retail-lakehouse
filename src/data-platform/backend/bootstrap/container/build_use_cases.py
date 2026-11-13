@@ -5,8 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
-from bootstrap.configs import AppSettings, SchedulerSettings
-from bootstrap.container.build_platform_settings import build_platform_settings
+from bootstrap.configs import SchedulerSettings
 from bootstrap.container.build_priority_sla import build_priority_sla
 from bootstrap.container.build_priority_weights import build_priority_weights
 from bootstrap.container.use_cases import UseCases
@@ -89,6 +88,7 @@ def build_use_cases(
     repos: Repositories,
     gateways: Gateways,
     *,
+    platform_settings: PlatformSettings,
     clock: Callable[[], datetime] = _utc_now,
     catalog_names: Sequence[str] = (),
     size_memory: Mapping[ComputeSize, SizeMemory] | None = None,
@@ -96,7 +96,6 @@ def build_use_cases(
     claim_lease: timedelta = _DEFAULT_CLAIM_LEASE,
     scheduler: SchedulerSettings | None = None,
     failure_backoff_cap: timedelta = DEFAULT_FAILURE_BACKOFF_CAP,
-    platform_settings: PlatformSettings | None = None,
 ) -> UseCases:
     """Build every application service on the given repositories and gateways.
 
@@ -107,8 +106,8 @@ def build_use_cases(
     a run holds the candidates it claims. ``scheduler`` says how compaction
     rounds share compaction across tables (the defaults without it).
     ``failure_backoff_cap`` is where the doubling of a failing operation's
-    cooldown stops, and ``platform_settings`` the values the platform settings
-    page lists (the application defaults without it).
+    cooldown stops. ``platform_settings`` are the values the platform settings
+    page lists; every caller gives them, so none shows defaults by accident.
     """
     tables = repos.tables
     rules = repos.table_discovery_rules
@@ -214,9 +213,7 @@ def build_use_cases(
             budget_gb_hours=rounds.budget_gb_hours,
             grant_lease=timedelta(seconds=rounds.grant_lease_seconds),
         ),
-        get_platform_settings=GetPlatformSettingsService(
-            platform_settings or build_platform_settings(AppSettings.model_construct())
-        ),
+        get_platform_settings=GetPlatformSettingsService(platform_settings),
         list_compaction_candidates=ListCompactionCandidatesService(
             candidates,
             tables,

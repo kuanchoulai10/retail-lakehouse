@@ -46,6 +46,7 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import 
 from tests.bootstrap.container.container_support import (
     NOW,
     fake_gateways,
+    platform_settings,
     sqlite_engine,
     sqlite_settings,
 )
@@ -73,7 +74,9 @@ def _activity_name(fn: Any) -> str:  # noqa: ANN401
 
 
 def _activities(**overrides: object):
-    use_cases = build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
+    use_cases = build_use_cases(
+        build_repositories(sqlite_engine()), fake_gateways(), platform_settings=platform_settings(), clock=lambda: NOW
+    )
     return build_activities(use_cases, MagicMock(), sqlite_settings(**overrides))
 
 

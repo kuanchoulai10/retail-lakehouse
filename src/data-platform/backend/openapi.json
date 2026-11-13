@@ -6577,7 +6577,7 @@
         },
         "summary": "Get Platform Settings",
         "tags": [
-          "compaction-rounds"
+          "platform-settings"
         ]
       }
     },

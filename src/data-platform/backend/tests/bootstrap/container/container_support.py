@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from bootstrap.configs import AppSettings, DatabaseBackend, SqliteSettings
-from bootstrap.container import Gateways, build_engine
+from bootstrap.container import Gateways, build_engine, build_platform_settings
 from context.table_maintenance.adapter.outbound.shared.sql import create_schema
 from tests.context.table_maintenance.fakes.fake_read_maintenance_job_gateway import (
     FakeReadMaintenanceJobGateway,
@@ -42,6 +42,8 @@ from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_pods_ga
 if TYPE_CHECKING:
     from sqlalchemy import Engine
 
+    from context.table_maintenance.application.domain.model.shared import PlatformSettings
+
 NOW = datetime(2026, 10, 24, 12, 0, tzinfo=UTC)
 
 
@@ -76,3 +78,8 @@ def fake_gateways() -> Gateways:
         read_maintenance_job_evidence=ScriptedReadMaintenanceJobEvidenceGateway(),
         read_maintenance_event_log=ScriptedReadMaintenanceEventLogGateway(),
     )
+
+
+def platform_settings() -> PlatformSettings:
+    """Return the platform settings a composition test hands to ``build_use_cases``."""
+    return build_platform_settings(sqlite_settings())

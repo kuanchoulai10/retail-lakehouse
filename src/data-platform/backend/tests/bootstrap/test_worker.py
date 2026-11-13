@@ -15,6 +15,7 @@ from bootstrap.worker import run_worker
 from tests.bootstrap.container.container_support import (
     NOW,
     fake_gateways,
+    platform_settings,
     sqlite_engine,
     sqlite_settings,
 )
@@ -91,7 +92,12 @@ class Harness:
         assert bridge is self.bridge
         kwargs["k8s_api_factory"]()
         kwargs["k8s_core_api_factory"]()
-        return build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
+        return build_use_cases(
+            build_repositories(sqlite_engine()),
+            fake_gateways(),
+            platform_settings=platform_settings(),
+            clock=lambda: NOW,
+        )
 
     async def connect(self, _: Any) -> MagicMock:  # noqa: ANN401
         """Return a mock Temporal client without connecting."""

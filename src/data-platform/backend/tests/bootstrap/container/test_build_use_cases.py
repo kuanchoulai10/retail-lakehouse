@@ -6,8 +6,10 @@ import importlib
 import inspect
 import pkgutil
 from dataclasses import fields
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import MagicMock
+
+import pytest
 
 import context.table_maintenance.application.service
 from base import UseCase
@@ -55,6 +57,7 @@ from context.table_maintenance.application.service.table_maintenance_policy impo
 from tests.bootstrap.container.container_support import (
     NOW,
     fake_gateways,
+    platform_settings,
     sqlite_engine,
     sqlite_settings,
 )
@@ -129,7 +132,9 @@ def test_gateways_are_built_without_connecting():
 
 def test_use_cases_hold_one_instance_of_every_service():
     """The use cases hold exactly one instance of every application service the migrate component does not own."""
-    use_cases = build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
+    use_cases = build_use_cases(
+        build_repositories(sqlite_engine()), fake_gateways(), platform_settings=platform_settings(), clock=lambda: NOW
+    )
 
     values = [getattr(use_cases, f.name) for f in fields(use_cases)]
     assert all(isinstance(value, UseCase) for value in values)
@@ -140,7 +145,9 @@ def test_use_cases_hold_one_instance_of_every_service():
 
 def test_use_cases_work_against_the_sql_repos():
     """A built use case runs against the SQL repositories."""
-    use_cases = build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
+    use_cases = build_use_cases(
+        build_repositories(sqlite_engine()), fake_gateways(), platform_settings=platform_settings(), clock=lambda: NOW
+    )
 
     rules = use_cases.get_table_discovery_rules.execute(GetTableDiscoveryRulesUseCaseInput())
 
@@ -152,6 +159,7 @@ def test_the_compaction_round_takes_the_scheduler_budget():
     use_cases = build_use_cases(
         build_repositories(sqlite_engine()),
         fake_gateways(),
+        platform_settings=platform_settings(),
         clock=lambda: NOW,
         scheduler=SchedulerSettings(budget_gb_hours=0.3),
     )
@@ -166,6 +174,7 @@ def test_the_scheduler_settings_report_what_the_rounds_run_under():
     use_cases = build_use_cases(
         build_repositories(sqlite_engine()),
         fake_gateways(),
+        platform_settings=platform_settings(),
         clock=lambda: NOW,
         scheduler=SchedulerSettings(round_seconds=60, budget_gb_hours=0.3),
     )
@@ -191,12 +200,8 @@ def test_the_platform_settings_report_the_values_they_are_given():
     assert (values["admission_limit"], values["maintenance_max_attempts"]) == (9, 6)
 
 
-def test_the_platform_settings_default_to_the_application_defaults():
-    """Without platform settings the use case lists the application defaults, as the other defaults here do."""
-    use_cases = build_use_cases(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
-
-    output = use_cases.get_platform_settings.execute(GetPlatformSettingsUseCaseInput())
-
-    values = {item.key: item.value for group in output.groups for item in group.items}
-    assert (values["admission_limit"], values["maintenance_max_attempts"]) == (2, 3)
-    assert values["maintenance_failure_backoff_cap_seconds"] == 86400
+def test_the_platform_settings_are_required():
+    """No caller can build the use cases without saying which values the platform settings show."""
+    build = cast("Any", build_use_cases)
+    with pytest.raises(TypeError, match="platform_settings"):
+        build(build_repositories(sqlite_engine()), fake_gateways(), clock=lambda: NOW)
