@@ -70,7 +70,23 @@ An operation starts at the size its table last succeeded at (S for a table that 
 
 ### Compaction candidates
 
-A scheduled compaction picks partitions, not the whole table, and the `compaction` block in `chart/values.yaml` says how. Each value is rendered as `GLAC_COMPACTION__<NAME>`, for example `GLAC_COMPACTION__PARTITIONS_PER_RUN`.
+A scheduled compaction picks partitions, not the whole table. Each scheduled reconcile observes the table and keeps one **compaction candidate** for each partition that has enough small files to merge. A candidate records its partition, its label (for example `ordered_at_day=2026-11-09`), what compacting it is worth (the files it removes), what it costs (the estimated GB-hours), its score and its state:
+
+| State | Meaning |
+|---|---|
+| `pending` | Waiting to be picked. Its `rank` is its place among the pending candidates, best first. |
+| `held` | Kept out for now. `too_small` means it has less data than `minPartitionBytes`. `recently_written` means a writer added a file within `quietSeconds`; it is released once the writes pause, and after `maxQuietWaitSeconds` in a row at the latest. |
+| `claimed` | Picked by a run (named by `claimed_by_run_id`) that has not started compacting yet. The claim has a lease of one operation's worst case plus one hour, so a run that never reports cannot keep it. |
+| `running` | Its run is compacting it. |
+| `done` / `failed` | Its run finished. The next observation removes it, or makes it `pending` again if it still has small files to merge. |
+
+**Score.** The benefit is `min(1, files removed / benefitReferenceFiles)` and the cost is `min(1, GB-hours / costReferenceGbHours)`. The score is `(benefitWeight × benefit + costWeight × (1 − cost)) / (benefitWeight + costWeight)`, from 0 to 1. It uses fixed reference values, never the spread within one table, so the same score means the same on every table. The GB-hours come from the partition's bytes, the throughput measured from the table's past compactions (`defaultThroughputBytesPerHour` before it has any) and the memory of the table's size. Ties go to more files removed, then to the partition key.
+
+**Top N.** A scheduled run claims the `partitionsPerRun` best pending candidates and compacts only those. Its `rewrite_data_files` gets a where filter naming them, and it starts at least at the size that fits their bytes. A run that is retried keeps the candidates it claimed. When every partition is held, the reconciliation record reads `all_held` and the workflow looks again when the first hold ends. When every partition is claimed by another run, it reads `all_claimed`. A run that stops before it starts gives its candidates back. If an attempt runs out of memory, the next attempt compacts the best half of the picked partitions, then the best quarter, before the size goes up. A manual run compacts the whole table and leaves the candidates alone.
+
+`GET /v1/tables/{uuid}/compaction-candidates` lists the candidates best first, with `partitions_per_run`. The console's Candidates tab shows them, and says for each one why it is not in the next run.
+
+The `compaction` block in `chart/values.yaml` sets these values. Each value is rendered as `GLAC_COMPACTION__<NAME>`, for example `GLAC_COMPACTION__PARTITIONS_PER_RUN`.
 
 | Value | Default | Meaning |
 |---|---|---|
