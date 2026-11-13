@@ -135,6 +135,8 @@ export const MAINTAINED_ORDERS: TableApiResponse = {
   operation_states: {},
   registered_at: "2026-11-02T10:00:00Z",
   updated_at: "2026-11-09T08:00:00Z",
+  last_committed_at: "2026-11-09T07:30:00Z",
+  last_discovered_at: "2026-11-09T08:10:00Z",
 };
 
 export const MAINTAINED_TABLES: TableApiResponse[] = [

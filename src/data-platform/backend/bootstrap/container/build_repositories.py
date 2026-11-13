@@ -5,6 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from bootstrap.container.repositories import Repositories
+from context.table_maintenance.adapter.outbound.catalog_discovery.sql import (
+    CatalogDiscoveriesSqlRepo,
+)
 from context.table_maintenance.adapter.outbound.compaction_candidate.sql import (
     CompactionCandidatesSqlRepo,
 )
@@ -43,4 +46,5 @@ def build_repositories(engine: Engine) -> Repositories:
         table_reconciliations=TableReconciliationsSqlRepo(engine),
         compaction_candidates=CompactionCandidatesSqlRepo(engine),
         compaction_rounds=CompactionRoundsSqlRepo(engine),
+        catalog_discoveries=CatalogDiscoveriesSqlRepo(engine),
     )

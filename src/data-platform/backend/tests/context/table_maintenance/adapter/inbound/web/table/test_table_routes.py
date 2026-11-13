@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+from datetime import datetime, timedelta
 from typing import Any
 
 import pytest
@@ -34,6 +36,8 @@ FIELDS: dict[str, Any] = {
     "operation_states": {"rewrite_data_files": {"last_attempt_at": NOW, "consecutive_failures": 0}},
     "registered_at": NOW,
     "updated_at": NOW,
+    "last_committed_at": NOW - timedelta(minutes=5),
+    "last_discovered_at": NOW - timedelta(minutes=10),
 }
 
 
@@ -48,6 +52,24 @@ def test_list_tables_passes_the_status_filter() -> None:
     assert response.status_code == 200
     assert response.json()[0]["uuid"] == "u-1"
     assert stub.requests == [ListTablesUseCaseInput(status="managed")]
+
+
+def test_list_tables_answers_the_last_commit_and_the_last_discovery() -> None:
+    """Each listed table carries when it was last committed to and last discovered, null when unknown."""
+    known = ListTablesUseCaseOutputItem(**FIELDS)
+    unknown = replace(known, uuid="u-2", last_committed_at=None, last_discovered_at=None)
+    client = build_client(list_tables=StubUseCase(ListTablesUseCaseOutput(items=[known, unknown])))
+
+    body = client.get("/v1/tables").json()
+
+    assert [(_at(t["last_committed_at"]), _at(t["last_discovered_at"])) for t in body] == [
+        (NOW - timedelta(minutes=5), NOW - timedelta(minutes=10)),
+        (None, None),
+    ]
+
+
+def _at(text: str | None) -> datetime | None:
+    return None if text is None else datetime.fromisoformat(text)
 
 
 def test_list_tables_without_filter() -> None:

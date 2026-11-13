@@ -60,6 +60,7 @@ UTILITY_FILES = {
     "view_id_from_parts.py",
     "view_output_fields.py",
     "applied_policy_ref_of.py",
+    "last_commit_of.py",
 }
 
 # Known verbs for service naming. This is a pre-defined allowlist, not an

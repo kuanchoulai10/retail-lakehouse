@@ -15,6 +15,9 @@ from context.table_maintenance.adapter.outbound.table.pyiceberg.observation_mapp
 from context.table_maintenance.adapter.outbound.table.pyiceberg.storage_measure_mapper import (
     storage_measure_from_table,
 )
+from context.table_maintenance.adapter.outbound.table.pyiceberg.table_metadata_mapper import (
+    table_metadata_from_table,
+)
 from context.table_maintenance.application.port.outbound.table import (
     CatalogNotFoundError,
     ReadTableMetadataGateway,
@@ -69,16 +72,11 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
         return sorted(refs, key=lambda r: (r.namespace, r.table))
 
     def load_table(self, ref: TableMetadataRef) -> TableMetadata | None:
-        """Return the table with its uuid, or None when the table or namespace does not exist."""
+        """Return the table with its uuid and newest commit, or None when the table or namespace does not exist."""
         table = self._load(ref)
         if table is None:
             return None
-        return TableMetadata(
-            catalog=ref.catalog,
-            namespace=ref.namespace,
-            table=ref.table,
-            table_uuid=str(table.metadata.table_uuid),
-        )
+        return table_metadata_from_table(ref, table)
 
     def observe_table(self, ref: TableMetadataRef) -> TableMetadataObservation | None:
         """Return the table's statistics, or None when the table or namespace does not exist."""

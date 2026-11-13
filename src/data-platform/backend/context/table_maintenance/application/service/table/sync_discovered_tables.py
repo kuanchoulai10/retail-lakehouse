@@ -5,6 +5,10 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from context.table_maintenance.application.domain.model.catalog_discovery import (
+    CatalogDiscovery,
+    CatalogDiscoveryId,
+)
 from context.table_maintenance.application.domain.model.table import (
     TableChange,
     TableId,
@@ -30,6 +34,7 @@ from context.table_maintenance.application.service.shared import translate_domai
 from context.table_maintenance.application.service.table.apply_discovery_to_known_table import (
     apply_discovery_to_known_table,
 )
+from context.table_maintenance.application.service.table.last_commit_of import last_commit_of
 from context.table_maintenance.application.service.table.register_discovered_table import (
     register_discovered_table,
 )
@@ -42,6 +47,9 @@ if TYPE_CHECKING:
 
     from context.table_maintenance.application.domain.model.table_discovery_rules import (
         TableDiscoveryRules,
+    )
+    from context.table_maintenance.application.port.outbound.catalog_discovery import (
+        CatalogDiscoveriesRepo,
     )
     from context.table_maintenance.application.port.outbound.table import (
         ReadTableMetadataGateway,
@@ -66,6 +74,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         self,
         tables_repo: TablesRepo,
         rules_repo: TableDiscoveryRulesRepo,
+        discoveries_repo: CatalogDiscoveriesRepo,
         catalog_gateway: ReadTableMetadataGateway,
         table_change_gateway: SendTableChangeGateway,
         *,
@@ -74,6 +83,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         """Bind the repos, the gateways and the clock."""
         self._tables_repo = tables_repo
         self._rules_repo = rules_repo
+        self._discoveries_repo = discoveries_repo
         self._catalog_gateway = catalog_gateway
         self._table_change_gateway = table_change_gateway
         self._clock = clock
@@ -91,6 +101,13 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         reconciliation workflow of every known managed table (counted in
         ``ensured``), so a table whose workflow was never started, or was lost,
         is picked up again.
+
+        Every table read from the catalog has its last commit moved to its newest
+        commit. A catalog-wide sync that completes records the catalog's
+        discovery at the time it started, which stands for the last time each live
+        table was discovered, so a table is saved only when something about it
+        changed; a table it drops keeps the catalog's previous discovery as the
+        last time it was seen.
         """
         now = self._clock()
         rules = self._rules_repo.get_rules()
@@ -118,6 +135,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         if request.namespace is None:
             with translate_domain_errors():
                 dropped = self._drop_missing(request, seen, now)
+                self._record_discovery(request.catalog, now)
         return SyncDiscoveredTablesUseCaseOutput(
             registered=registered,
             renamed=sum(o.renamed for o in known),
@@ -145,8 +163,23 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
             return None
         name = TableName(catalog=found.catalog, namespace=found.namespace, table=found.table)
         return apply_discovery_to_known_table(
-            existing, name, rules, self._tables_repo, self._table_change_gateway, seen_change, now
+            existing,
+            name,
+            rules,
+            self._tables_repo,
+            self._table_change_gateway,
+            seen_change,
+            now,
+            last_committed_at=last_commit_of(found),
         )
+
+    def _record_discovery(self, catalog: str, now: datetime) -> None:
+        discovery = self._discoveries_repo.get(CatalogDiscoveryId(catalog))
+        if discovery is None:
+            discovery = CatalogDiscovery.first(catalog, now)
+        else:
+            discovery.record(now)
+        self._discoveries_repo.save(discovery)
 
     def _drop_missing(
         self,
@@ -155,11 +188,13 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         now: datetime,
     ) -> int:
         dropped = 0
+        previous = self._discoveries_repo.get(CatalogDiscoveryId(request.catalog))
+        last_seen = None if previous is None else previous.last_discovered_at
         for table in self._tables_repo.list_by_statuses(_DROP_SCAN_STATUSES):
             if table.id.value in seen or not _in_scope(table.name, request):
                 continue
             was_managed = table.is_managed
-            table.mark_dropped(now)
+            table.mark_dropped(now, catalog_discovered_at=last_seen)
             self._tables_repo.update(table)
             dropped += 1
             if was_managed:

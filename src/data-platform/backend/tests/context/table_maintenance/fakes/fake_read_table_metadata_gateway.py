@@ -26,14 +26,27 @@ class FakeReadTableMetadataGateway(ReadTableMetadataGateway):
     def __init__(self) -> None:
         """Start with an empty catalog."""
         self.tables: dict[tuple[str, str, str], str] = {}
+        self.last_commits: dict[tuple[str, str, str], str] = {}
         self.observations: dict[tuple[str, str, str], TableMetadataObservation] = {}
         self.commit_pages: dict[tuple[str, str, str], TableCommitPage] = {}
         self.storage_measures: dict[tuple[str, str, str], TableStorageMeasure] = {}
         self.calls: list[tuple[str, object]] = []
 
-    def add_table(self, catalog: str, namespace: str, table: str, table_uuid: str) -> None:
-        """Register a table."""
+    def add_table(
+        self,
+        catalog: str,
+        namespace: str,
+        table: str,
+        table_uuid: str,
+        *,
+        last_committed_at: str | None = None,
+    ) -> None:
+        """Register a table, with the ISO time of its newest commit when it has one."""
         self.tables[(catalog, namespace, table)] = table_uuid
+        if last_committed_at is None:
+            self.last_commits.pop((catalog, namespace, table), None)
+        else:
+            self.last_commits[(catalog, namespace, table)] = last_committed_at
 
     def drop_table(self, catalog: str, namespace: str, table: str) -> None:
         """Remove a registered table."""
@@ -57,7 +70,8 @@ class FakeReadTableMetadataGateway(ReadTableMetadataGateway):
         uuid = self.tables.get((ref.catalog, ref.namespace, ref.table))
         if uuid is None:
             return None
-        return TableMetadata(ref.catalog, ref.namespace, ref.table, uuid)
+        last_commit = self.last_commits.get((ref.catalog, ref.namespace, ref.table))
+        return TableMetadata(ref.catalog, ref.namespace, ref.table, uuid, last_committed_at=last_commit)
 
     def observe_table(self, ref: TableMetadataRef) -> TableMetadataObservation | None:
         """Return the registered observation or None."""

@@ -25,6 +25,7 @@ from context.table_maintenance.application.service.shared import translate_domai
 from context.table_maintenance.application.service.table.apply_discovery_to_known_table import (
     apply_discovery_to_known_table,
 )
+from context.table_maintenance.application.service.table.last_commit_of import last_commit_of
 from context.table_maintenance.application.service.table.register_discovered_table import (
     register_discovered_table,
 )
@@ -74,6 +75,8 @@ class ProcessTableHintService(ProcessTableHintUseCase):
         A hint naming one table applies the same steps as a discovery pass to that
         table: an unknown one is registered (managed or unmanaged), a known one is
         renamed and decided again, and a managed one is signalled ``updated``.
+        Either way the table's newest commit is read from the catalog, so a
+        commit event moves its last commit.
         """
         if request.table is None:
             return self._request_discovery(request)
@@ -111,6 +114,7 @@ class ProcessTableHintService(ProcessTableHintUseCase):
             self._table_change_gateway,
             TableChange.UPDATED,
             now,
+            last_committed_at=last_commit_of(found),
         )
         if outcome.change == TableManagementChange.MANAGED:
             return TableHintAction.MANAGED

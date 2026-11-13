@@ -16,7 +16,7 @@ Everything below, except `base/`, `bootstrap/` and `entrypoint.py`, lives inside
 
 ### Backend Structure
 
-Backend code is grouped by **bounded context** first. Inside a context, one **aggregate axis** runs through every layer: each layer directory is split into the same aggregate directories plus `shared` for what spans aggregates. For `table_maintenance` the aggregates are `compaction_candidate`, `compaction_round`, `table`, `table_discovery_rules`, `table_maintenance_policy`, `table_maintenance_policy_attachment`, `table_maintenance_run`, `table_reconciliation`; for `catalog` they are `catalog`, `namespace`, `table`, `generic_table`, `view`.
+Backend code is grouped by **bounded context** first. Inside a context, one **aggregate axis** runs through every layer: each layer directory is split into the same aggregate directories plus `shared` for what spans aggregates. For `table_maintenance` the aggregates are `catalog_discovery`, `compaction_candidate`, `compaction_round`, `table`, `table_discovery_rules`, `table_maintenance_policy`, `table_maintenance_policy_attachment`, `table_maintenance_run`, `table_reconciliation`; for `catalog` they are `catalog`, `namespace`, `table`, `generic_table`, `view`.
 
 ```
 backend/
@@ -65,6 +65,8 @@ Today there are two contexts. `table_maintenance` schedules Iceberg maintenance 
 - **No `context/shared`.** Contexts share code only through `base/`. Each keeps its own types (its own table-UUID value object) and links to other contexts by identifier values, not by shared classes.
 
 **Compaction candidates move grant, then claim.** A `CompactionCandidate` is written by two dispatchers: the global `CompactionRoundWorkflow` (schedule `compaction-rounds`, one `CompactionRound` per firing, the round id being the workflow id so a retried round returns the one it recorded) grants pending candidates of every table (`pending` → `granted`, short lease), and the table's reconcile claims only its granted ones for a run (`granted` → `claimed`). Both save through `CompactionCandidatesRepo.save_all`, which compares each row's `version` and raises `StaleCompactionCandidate` (a plain exception, so Temporal retries the activity) when another writer moved it first; the whole save is then refused. A table with pending but no granted candidates records `awaiting_schedule`; the round signals each table it granted (`compaction_granted`) so it plans at once.
+
+**A table's last commit and last discovery are observations, not maintenance state** (neither moves `updated_at`). `Table.last_committed_at` is the newest snapshot's commit time, moved only forward wherever the backend reads the table from the catalog: discovery, a catalog event (`ProcessTableHint`) and a reconcile's observation. Discovery saves a table only when something about it changed, so instead of a per-table "seen" time a completed catalog-wide scan records one `CatalogDiscovery` per catalog; a live table's last discovery is that time (or its registration, if later), and a table the scan drops keeps the previous scan's time in `Table.last_discovered_at`.
 
 ### Adding a context
 

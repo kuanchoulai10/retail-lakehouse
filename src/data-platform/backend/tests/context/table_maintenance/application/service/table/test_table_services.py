@@ -32,6 +32,9 @@ from context.table_maintenance.application.service.table import (
     TriggerTableMaintenanceService,
     TriggerTableReconciliationService,
 )
+from tests.context.table_maintenance.fakes.in_memory_catalog_discoveries_repo import (
+    InMemoryCatalogDiscoveriesRepo,
+)
 
 NAME = TableName(catalog="iceberg", namespace="sales", table="orders")
 
@@ -65,7 +68,7 @@ def test_list_tables_all_and_by_status(tables_repo, now):
     """Listing returns all tables, or only those of the requested status."""
     _managed(tables_repo, now, "u-1")
     _unmanaged(tables_repo, now, "u-2", TableName(catalog="iceberg", namespace="sales", table="items"))
-    service = ListTablesService(tables_repo)
+    service = ListTablesService(tables_repo, InMemoryCatalogDiscoveriesRepo())
     assert len(service.execute(ListTablesUseCaseInput()).items) == 2
     out = service.execute(ListTablesUseCaseInput(status="unmanaged"))
     assert [i.uuid for i in out.items] == ["u-2"]
@@ -76,14 +79,16 @@ def test_list_tables_unknown_status_is_invalid(tables_repo):
     """Listing with an unknown status raises a ValidationError; the old statuses are unknown."""
     for status in ("sleeping", "active", "paused", "excluded"):
         with pytest.raises(ValidationError):
-            ListTablesService(tables_repo).execute(ListTablesUseCaseInput(status=status))
+            ListTablesService(tables_repo, InMemoryCatalogDiscoveriesRepo()).execute(
+                ListTablesUseCaseInput(status=status)
+            )
 
 
 def test_get_table_includes_status_rule_and_operation_states(tables_repo, now):
     """Getting a table returns its name, status, deciding rule and operation states."""
     table = _managed(tables_repo, now)
     table.record_operation_result(MaintenanceOperation.EXPIRE_SNAPSHOTS, False, now)
-    out = GetTableService(tables_repo).execute(GetTableUseCaseInput(uuid="u-1"))
+    out = GetTableService(tables_repo, InMemoryCatalogDiscoveriesRepo()).execute(GetTableUseCaseInput(uuid="u-1"))
     assert (out.catalog, out.namespace, out.table) == ("iceberg", "sales", "orders")
     assert out.status == "managed"
     assert out.matched_rule_id == "r-1"
@@ -98,7 +103,7 @@ def test_get_table_includes_status_rule_and_operation_states(tables_repo, now):
 def test_get_unknown_table_not_found(tables_repo):
     """Getting an unknown table raises NotFoundError."""
     with pytest.raises(NotFoundError):
-        GetTableService(tables_repo).execute(GetTableUseCaseInput(uuid="nope"))
+        GetTableService(tables_repo, InMemoryCatalogDiscoveriesRepo()).execute(GetTableUseCaseInput(uuid="nope"))
 
 
 # --- trigger ---
@@ -203,7 +208,7 @@ def test_get_table_shows_the_remembered_size_and_needs_attention(tables_repo, no
         since=now, reason="out of memory at size L", policy=AppliedPolicyRef(name="nightly", version=2, target=None)
     )
     table.mark_needs_attention(MaintenanceOperation.REWRITE_DATA_FILES, mark, now)
-    out = GetTableService(tables_repo).execute(GetTableUseCaseInput(uuid="u-1"))
+    out = GetTableService(tables_repo, InMemoryCatalogDiscoveriesRepo()).execute(GetTableUseCaseInput(uuid="u-1"))
     state = out.operation_states["rewrite_data_files"]
     assert state["last_successful_size"] == "M"
     assert state["needs_attention"] == {

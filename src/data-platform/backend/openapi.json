@@ -3110,6 +3110,32 @@
             "title": "Catalog",
             "type": "string"
           },
+          "last_committed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the table's newest commit landed in the catalog; null until one is seen.",
+            "title": "Last Committed At"
+          },
+          "last_discovered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When discovery last saw the table: for a live table its catalog's last full scan, or its registration if that came later; for a dropped table the last time before it was dropped. Null when unknown.",
+            "title": "Last Discovered At"
+          },
           "matched_rule_id": {
             "anyOf": [
               {
@@ -3165,7 +3191,9 @@
           "matched_rule_id",
           "operation_states",
           "registered_at",
-          "updated_at"
+          "updated_at",
+          "last_committed_at",
+          "last_discovered_at"
         ],
         "title": "TableApiResponse",
         "type": "object"

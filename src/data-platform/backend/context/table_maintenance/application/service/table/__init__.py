@@ -20,6 +20,9 @@ from context.table_maintenance.application.service.table.get_table_storage impor
 from context.table_maintenance.application.service.table.known_table_outcome import (
     KnownTableOutcome,
 )
+from context.table_maintenance.application.service.table.last_commit_of import (
+    last_commit_of,
+)
 from context.table_maintenance.application.service.table.list_table_commits import (
     ListTableCommitsService,
 )
@@ -80,6 +83,7 @@ __all__ = [
     "TableHintAction",
     "TriggerTableMaintenanceService",
     "TriggerTableReconciliationService",
+    "last_commit_of",
     "load_catalog_table",
     "raise_not_in_catalog",
     "register_discovered_table",

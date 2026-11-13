@@ -11,6 +11,10 @@ import type { TableApiResponseOperationStates } from './tableApiResponseOperatio
  */
 export interface TableApiResponse {
   catalog: string;
+  /** When the table's newest commit landed in the catalog; null until one is seen. */
+  last_committed_at: string | null;
+  /** When discovery last saw the table: for a live table its catalog's last full scan, or its registration if that came later; for a dropped table the last time before it was dropped. Null when unknown. */
+  last_discovered_at: string | null;
   matched_rule_id: string | null;
   namespace: string;
   operation_states: TableApiResponseOperationStates;

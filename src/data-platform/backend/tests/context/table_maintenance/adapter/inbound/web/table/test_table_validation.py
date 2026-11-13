@@ -21,6 +21,9 @@ from context.table_maintenance.application.service.table import (
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import (
     build_client,
 )
+from tests.context.table_maintenance.fakes.in_memory_catalog_discoveries_repo import (
+    InMemoryCatalogDiscoveriesRepo,
+)
 from tests.context.table_maintenance.fakes.in_memory_tables_repo import (
     InMemoryTablesRepo,
 )
@@ -57,7 +60,7 @@ def client(repo, signals):
     """Provide a test client wired to the repository and the signal gateway."""
     return build_client(
         trigger_table_maintenance=TriggerTableMaintenanceService(repo, signals),
-        list_tables=ListTablesService(repo),
+        list_tables=ListTablesService(repo, InMemoryCatalogDiscoveriesRepo()),
     )
 
 

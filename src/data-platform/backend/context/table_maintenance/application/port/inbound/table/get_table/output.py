@@ -23,3 +23,5 @@ class GetTableUseCaseOutput:
     operation_states: dict[str, dict[str, Any]]
     registered_at: datetime
     updated_at: datetime
+    last_committed_at: datetime | None
+    last_discovered_at: datetime | None

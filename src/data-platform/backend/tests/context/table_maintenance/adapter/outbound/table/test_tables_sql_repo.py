@@ -6,8 +6,9 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
-from sqlalchemy import inspect
+from sqlalchemy import create_engine, inspect, text
 
+from context.table_maintenance.adapter.outbound.shared.sql import create_schema
 from context.table_maintenance.adapter.outbound.table.sql import TablesSqlRepo, tables_table
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
@@ -29,6 +30,8 @@ from context.table_maintenance.application.domain.model.table_discovery_rules im
 from context.table_maintenance.application.exceptions import ConflictError
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from sqlalchemy import Engine
 
 NOW = datetime(2026, 10, 24, 12, 0, tzinfo=UTC)
@@ -259,3 +262,38 @@ def test_operation_state_without_new_keys_decodes_with_defaults(repo: TablesSqlR
     assert state == OperationState(last_attempt_at=NOW, consecutive_failures=1)
     assert state.start_size() is ComputeSize.S
     assert state.low_use_successes == 0
+
+
+def test_last_commit_and_last_discovery_round_trip(repo: TablesSqlRepo):
+    """A table's last commit and the last discovery stamped when it was dropped are stored and read back."""
+    table = _table()
+    table.record_last_commit(NOW + timedelta(minutes=5))
+    table.mark_dropped(NOW + timedelta(minutes=20), catalog_discovered_at=NOW + timedelta(minutes=10))
+    repo.create(table)
+    loaded = repo.get(table.id)
+    assert loaded is not None
+    assert loaded.last_committed_at == NOW + timedelta(minutes=5)
+    assert loaded.last_discovered_at == NOW + timedelta(minutes=10)
+    assert loaded.last_committed_at is not None
+    assert loaded.last_committed_at.tzinfo is not None
+
+
+def test_a_table_stored_before_the_two_times_reads_them_as_unknown(tmp_path: Path):
+    """A row stored by an older release gains the two columns, empty, and reads as unknown."""
+    engine = create_engine(f"sqlite:///{tmp_path / 'tables.db'}")
+    create_schema(engine)
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE tables DROP COLUMN last_committed_at"))
+        connection.execute(text("ALTER TABLE tables DROP COLUMN last_discovered_at"))
+        connection.execute(
+            text(
+                "INSERT INTO tables (uuid, catalog, namespace, table_name, status, matched_rule_id,"
+                " registered_at, updated_at, operation_states_json)"
+                " VALUES ('u-old', 'iceberg', 'sales', 'orders', 'managed', NULL,"
+                " '2026-10-24 12:00:00.000000', '2026-10-24 12:00:00.000000', '{}')"
+            )
+        )
+    create_schema(engine)
+    loaded = TablesSqlRepo(engine).get(TableId("u-old"))
+    assert loaded is not None
+    assert (loaded.last_committed_at, loaded.last_discovered_at) == (None, None)

@@ -97,6 +97,8 @@ class TableRowMapper:
             "registered_at": table.registered_at,
             "updated_at": table.updated_at,
             "operation_states_json": {op.value: _encode_state(state) for op, state in table.operation_states.items()},
+            "last_committed_at": table.last_committed_at,
+            "last_discovered_at": table.last_discovered_at,
         }
 
     @staticmethod
@@ -117,4 +119,6 @@ class TableRowMapper:
             operation_states={
                 MaintenanceOperation(op): _decode_state(data) for op, data in row["operation_states_json"].items()
             },
+            last_committed_at=row["last_committed_at"],
+            last_discovered_at=row["last_discovered_at"],
         )

@@ -19,6 +19,8 @@ function table(overrides: Partial<TableApiResponse>): TableApiResponse {
     operation_states: {},
     registered_at: "2026-10-30T10:00:00Z",
     updated_at: "2026-10-31T08:00:00Z",
+    last_committed_at: "2026-10-31T07:45:00Z",
+    last_discovered_at: "2026-10-31T08:10:00Z",
     ...overrides,
   };
 }

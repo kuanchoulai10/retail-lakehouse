@@ -5,6 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from context.table_maintenance.application.domain.model.table import OperationState, Table
 
 
@@ -20,8 +22,12 @@ def _attention_fields(state: OperationState) -> dict[str, Any] | None:
     }
 
 
-def table_output_fields(table: Table) -> dict[str, Any]:
-    """Return the primitive fields shared by every table output."""
+def table_output_fields(table: Table, catalog_discovered_at: datetime | None) -> dict[str, Any]:
+    """Return the primitive fields shared by every table output.
+
+    ``catalog_discovered_at`` is the last discovery of the table's catalog, None
+    when it was never discovered; the table's last discovery is derived from it.
+    """
     return {
         "uuid": table.id.value,
         "catalog": table.name.catalog,
@@ -40,4 +46,6 @@ def table_output_fields(table: Table) -> dict[str, Any]:
         },
         "registered_at": table.registered_at,
         "updated_at": table.updated_at,
+        "last_committed_at": table.last_committed_at,
+        "last_discovered_at": table.last_discovered(catalog_discovered_at),
     }

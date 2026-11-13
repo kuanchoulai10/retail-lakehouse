@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class TableApiResponse(BaseModel):
@@ -22,6 +22,16 @@ class TableApiResponse(BaseModel):
     operation_states: dict[str, dict[str, Any]]
     registered_at: datetime
     updated_at: datetime
+    last_committed_at: datetime | None = Field(
+        description="When the table's newest commit landed in the catalog; null until one is seen."
+    )
+    last_discovered_at: datetime | None = Field(
+        description=(
+            "When discovery last saw the table: for a live table its catalog's last full scan, or its "
+            "registration if that came later; for a dropped table the last time before it was dropped. "
+            "Null when unknown."
+        )
+    )
 
 
 class TableHealthOperationApiResponse(BaseModel):

@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from sqlalchemy import Engine
 
 AGGREGATE_SQL_PACKAGES = (
+    "context.table_maintenance.adapter.outbound.catalog_discovery.sql",
     "context.table_maintenance.adapter.outbound.compaction_candidate.sql",
     "context.table_maintenance.adapter.outbound.compaction_round.sql",
     "context.table_maintenance.adapter.outbound.table_discovery_rules.sql",

@@ -137,7 +137,8 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         Every plan of a known table resolves the policy that applies to it, whose
         reconcile interval, dry run and operation policies it follows. A plan of a
         managed table first lifts the needs-attention marks set under an earlier
-        applicable policy and saves the table when it lifted any.
+        applicable policy and saves the table when it lifted any. A plan that
+        observes the table saves its newest commit when that moves its last commit.
 
         A scheduled plan also brings the table's compaction candidates in line with
         the observation, whatever is due, with the policy's priority; when
@@ -166,6 +167,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             if observation is None or observation.table_uuid != table.id.value:
                 self._candidates_repo.delete_by_table(table.id)
                 return _skip("not_found", applied, policy, table)
+            self._record_last_commit(table, observation.last_committed_at)
             self._lift_stale_marks(table, applied, request.now)
             if manual is not None:
                 plan = plan_manual_maintenance(manual)
@@ -297,6 +299,16 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         if stored is None or stored.status == TableStatus.DROPPED:
             return
         if stored.lift_attention_set_under_another_policy(ref, now):
+            self._tables_repo.update(stored)
+
+    def _record_last_commit(self, table: Table, at: datetime | None) -> None:
+        """Save the newest commit the observation saw on the stored table, when it moves its last commit.
+
+        The stored table is read again, as for the marks, since a rename, unmanage or drop may
+        have landed during the catalog read.
+        """
+        stored = self._tables_repo.get(table.id)
+        if stored is not None and stored.record_last_commit(at):
             self._tables_repo.update(stored)
 
     def _resolve(self, table: Table) -> ResolveApplicableTableMaintenancePolicyUseCaseOutput:

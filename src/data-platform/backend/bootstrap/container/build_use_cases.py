@@ -116,6 +116,7 @@ def build_use_cases(
     runs = repos.table_maintenance_runs
     reconciliations = repos.table_reconciliations
     candidates = repos.compaction_candidates
+    discoveries = repos.catalog_discoveries
     selection = candidate_selection or CandidateSelection()
     rounds = scheduler or SchedulerSettings()
     catalog = gateways.read_table_metadata
@@ -131,7 +132,9 @@ def build_use_cases(
             gateways.send_discovery_request,
             clock=clock,
         ),
-        sync_discovered_tables=SyncDiscoveredTablesService(tables, rules, catalog, table_changes, clock=clock),
+        sync_discovered_tables=SyncDiscoveredTablesService(
+            tables, rules, discoveries, catalog, table_changes, clock=clock
+        ),
         get_table_discovery_rules=GetTableDiscoveryRulesService(rules),
         replace_table_discovery_rules=ReplaceTableDiscoveryRulesService(
             rules, gateways.send_discovery_request, catalog_names, clock=clock
@@ -154,13 +157,13 @@ def build_use_cases(
         update_table_maintenance_policy=UpdateTableMaintenancePolicyService(
             policies, attachments, tables, table_changes, clock=clock
         ),
-        get_table=GetTableService(tables),
+        get_table=GetTableService(tables, discoveries),
         get_table_health=GetTableHealthService(
             tables, catalog, resolve_applicable_policy, failure_backoff_cap=failure_backoff_cap, clock=clock
         ),
         get_table_storage=GetTableStorageService(tables, catalog, runs, clock=clock),
         list_table_commits=ListTableCommitsService(tables, catalog),
-        list_tables=ListTablesService(tables),
+        list_tables=ListTablesService(tables, discoveries),
         trigger_table_maintenance=TriggerTableMaintenanceService(tables, table_changes),
         trigger_table_reconciliation=TriggerTableReconciliationService(tables, table_changes),
         create_table_maintenance_run=CreateTableMaintenanceRunService(runs, tables),

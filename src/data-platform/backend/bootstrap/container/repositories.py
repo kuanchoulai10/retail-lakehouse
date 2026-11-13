@@ -6,6 +6,9 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from context.table_maintenance.application.port.outbound.catalog_discovery import (
+        CatalogDiscoveriesRepo,
+    )
     from context.table_maintenance.application.port.outbound.compaction_candidate import (
         CompactionCandidatesRepo,
     )
@@ -42,3 +45,4 @@ class Repositories:
     table_reconciliations: TableReconciliationsRepo
     compaction_candidates: CompactionCandidatesRepo
     compaction_rounds: CompactionRoundsRepo
+    catalog_discoveries: CatalogDiscoveriesRepo

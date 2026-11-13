@@ -42,6 +42,9 @@ from context.table_maintenance.application.service.table import GetTableHealthSe
 from context.table_maintenance.application.service.table_maintenance_policy import (
     UpdateTableMaintenancePolicyService,
 )
+from tests.context.table_maintenance.fakes.in_memory_catalog_discoveries_repo import (
+    InMemoryCatalogDiscoveriesRepo,
+)
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policy_attachments_repo import (
     InMemoryTableMaintenancePolicyAttachmentsRepo,
 )
@@ -213,7 +216,7 @@ def test_health_and_the_table_agree_on_a_mark_under_another_policy(service, tabl
     mark = AttentionMark(since=now, reason="out of memory at size L", policy=other)
     table.mark_needs_attention(MaintenanceOperation.REWRITE_DATA_FILES, mark, now)
     tables_repo.update(table)
-    shown = GetTableService(tables_repo).execute(GetTableUseCaseInput(uuid="u-1"))
+    shown = GetTableService(tables_repo, InMemoryCatalogDiscoveriesRepo()).execute(GetTableUseCaseInput(uuid="u-1"))
     assert shown.operation_states["rewrite_data_files"]["needs_attention"] is not None
     assert _health(service).operations[0].verdict == "needs_attention"
 

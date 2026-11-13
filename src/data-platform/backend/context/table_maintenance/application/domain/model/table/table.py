@@ -44,6 +44,12 @@ class Table(AggregateRoot[TableId]):
     The discovery rules alone decide whether a table is managed: ``manage`` and
     ``unmanage`` apply their decision, and an unmanaged table keeps its row, so
     its history and per-operation state survive.
+
+    ``last_committed_at`` is the newest commit seen in the catalog, None until one is
+    seen. ``last_discovered_at`` is stamped when the table is dropped: the last time
+    discovery saw it. A live table takes its catalog's last discovery instead (see
+    ``last_discovered``), so a discovery need not save every table it sees. Neither
+    is a change of maintenance state, so neither moves ``updated_at``.
     """
 
     id: TableId
@@ -53,6 +59,8 @@ class Table(AggregateRoot[TableId]):
     registered_at: datetime
     updated_at: datetime
     operation_states: dict[MaintenanceOperation, OperationState] = Field(default_factory=dict)
+    last_committed_at: datetime | None = None
+    last_discovered_at: datetime | None = None
 
     @classmethod
     def register(
@@ -116,12 +124,46 @@ class Table(AggregateRoot[TableId]):
             return
         self._assign_together(status=TableStatus.UNMANAGED, matched_rule_id=None, updated_at=now)
 
-    def mark_dropped(self, now: datetime) -> None:
-        """Mark the table dropped; terminal and idempotent."""
+    def mark_dropped(self, now: datetime, *, catalog_discovered_at: datetime | None = None) -> None:
+        """Mark the table dropped; terminal and idempotent.
+
+        ``catalog_discovered_at`` is the last discovery of its catalog before the one
+        that missed the table; the table keeps the last time discovery saw it.
+        """
         if self.status == TableStatus.DROPPED:
             return
-        self.status = TableStatus.DROPPED
-        self.updated_at = now
+        self._assign_together(
+            status=TableStatus.DROPPED,
+            updated_at=now,
+            last_discovered_at=self.last_discovered(catalog_discovered_at),
+        )
+
+    def last_discovered(self, catalog_discovered_at: datetime | None) -> datetime | None:
+        """Return when discovery last saw the table, given its catalog's last discovery.
+
+        A dropped table answers the time stamped when it was dropped. A live one was
+        seen by its catalog's last discovery, or when it was registered if that came
+        later (a catalog event registers a table between discoveries); with no
+        discovery of its catalog the time is unknown.
+        """
+        if self.status == TableStatus.DROPPED:
+            return self.last_discovered_at
+        if catalog_discovered_at is None:
+            return None
+        return max(catalog_discovered_at, self.registered_at)
+
+    def record_last_commit(self, at: datetime | None) -> bool:
+        """Record a commit seen in the catalog; return whether the last commit moved.
+
+        The last commit only moves forward: an older or equal time, or None (no commit
+        yet), changes nothing, and neither does any time once the table is dropped.
+        """
+        if at is None or self.status == TableStatus.DROPPED:
+            return False
+        if self.last_committed_at is not None and at <= self.last_committed_at:
+            return False
+        self.last_committed_at = at
+        return True
 
     def rename(self, name: TableName, now: datetime) -> None:
         """Change the table's name, keeping its identity."""

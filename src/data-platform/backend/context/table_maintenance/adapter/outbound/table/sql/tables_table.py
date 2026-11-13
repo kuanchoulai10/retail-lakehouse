@@ -18,5 +18,7 @@ tables_table = Table(
     Column("registered_at", UtcDateTime, nullable=False),
     Column("updated_at", UtcDateTime, nullable=False),
     Column("operation_states_json", JSON, nullable=False),
+    Column("last_committed_at", UtcDateTime, nullable=True),
+    Column("last_discovered_at", UtcDateTime, nullable=True),
     Index("ix_tables_name", "catalog", "namespace", "table_name"),
 )

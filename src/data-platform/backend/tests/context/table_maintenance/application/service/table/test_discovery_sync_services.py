@@ -76,11 +76,12 @@ def _name(table, namespace="sales"):
 
 
 @pytest.fixture
-def sync(tables_repo, rules_repo, catalog, signals, clock):
+def sync(tables_repo, rules_repo, discoveries_repo, catalog, signals, clock):
     """Provide the sync discovered tables service on the fakes."""
     return SyncDiscoveredTablesService(
         tables_repo,
         rules_repo,
+        discoveries_repo,
         catalog,
         signals,
         clock=clock,

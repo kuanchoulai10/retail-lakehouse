@@ -15,6 +15,7 @@ from context.table_maintenance.application.domain.model.table_discovery_rules im
 from context.table_maintenance.application.port.outbound.table import (
     SendTableChangeGatewayInput,
 )
+from context.table_maintenance.application.service.table.last_commit_of import last_commit_of
 from context.table_maintenance.application.service.table.registration_outcome import (
     RegistrationOutcome,
 )
@@ -46,14 +47,17 @@ def register_discovered_table(  # noqa: PLR0913
     An include match registers the table as managed and sends ``change`` for it,
     which starts its reconciliation workflow. An exclude match, or no match,
     registers it as unmanaged and sends nothing, so the registry lists every
-    table discovery has seen.
+    table discovery has seen. Either way the table starts with its newest commit.
     """
     name = TableName(catalog=found.catalog, namespace=found.namespace, table=found.table)
     rule = rules.decide(name)
     if rule is None or rule.action != RuleAction.INCLUDE:
-        tables_repo.create(Table.register_unmanaged(TableId(found.table_uuid), name, now))
+        unmanaged = Table.register_unmanaged(TableId(found.table_uuid), name, now)
+        unmanaged.record_last_commit(last_commit_of(found))
+        tables_repo.create(unmanaged)
         return RegistrationOutcome.UNMANAGED
     table = Table.register(TableId(found.table_uuid), name, rule.id, now)
+    table.record_last_commit(last_commit_of(found))
     tables_repo.create(table)
     table_change_gateway.send(
         SendTableChangeGatewayInput(

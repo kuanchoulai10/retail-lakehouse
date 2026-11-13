@@ -255,6 +255,35 @@ def test_load_table_returns_metadata_uuid(catalog: SqlCatalog, gateway: ReadTabl
     )
 
 
+def test_load_table_without_snapshots_has_no_last_commit(
+    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
+) -> None:
+    """A table never committed to has no last commit."""
+    catalog.create_namespace("db")
+    catalog.create_table("db.events", SCHEMA)
+
+    loaded = gateway.load_table(_ref())
+
+    assert loaded is not None
+    assert loaded.last_committed_at is None
+
+
+def test_load_table_carries_the_newest_commit_time(
+    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
+) -> None:
+    """Loading a table carries its newest snapshot's commit time as an aware ISO timestamp."""
+    table = _partitioned(catalog)
+    for day in (1, 2):
+        table.append(_rows([day], day=day))
+    newest_ms = max(s.timestamp_ms for s in catalog.load_table("db.events").metadata.snapshots)
+
+    loaded = gateway.load_table(_ref())
+
+    assert loaded is not None
+    assert loaded.last_committed_at is not None
+    assert datetime.fromisoformat(loaded.last_committed_at) == datetime.fromtimestamp(newest_ms / 1000, tz=UTC)
+
+
 def test_missing_table_returns_none(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
     """Loading or observing a table that does not exist returns None."""
     catalog.create_namespace("db")

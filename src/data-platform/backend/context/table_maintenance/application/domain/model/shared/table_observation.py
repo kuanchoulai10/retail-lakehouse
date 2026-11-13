@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from base import ValueObject
 from context.table_maintenance.application.domain.model.shared.manifest_stats import (
     ManifestStats,
@@ -16,6 +18,9 @@ from context.table_maintenance.application.domain.model.shared.snapshot_info imp
     SnapshotInfo,
 )
 
+if TYPE_CHECKING:
+    from datetime import datetime
+
 
 class TableObservation(ValueObject):
     """Hold a point-in-time view of an Iceberg table's physical layout."""
@@ -27,3 +32,8 @@ class TableObservation(ValueObject):
     partitions: tuple[PartitionStats, ...]
     manifests: tuple[ManifestStats, ...]
     snapshots: tuple[SnapshotInfo, ...]
+
+    @property
+    def last_committed_at(self) -> datetime | None:
+        """Return the newest snapshot's commit time, or None for a table never committed to."""
+        return max((s.committed_at for s in self.snapshots), default=None)
