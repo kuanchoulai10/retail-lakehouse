@@ -40,3 +40,14 @@ data:
   GLAC_ADMISSION_LIMIT: {{ .Values.worker.admissionLimit | quote }}
   GLAC_DISCOVERY_INTERVAL_SECONDS: {{ .Values.worker.discoveryIntervalSeconds | quote }}
   GLAC_MAINTENANCE_ATTEMPT_DEADLINE_SECONDS: {{ .Values.worker.attemptDeadlineSeconds | quote }}
+  GLAC_COMPACTION__PARTITIONS_PER_RUN: {{ .Values.compaction.partitionsPerRun | quote }}
+  GLAC_COMPACTION__MIN_PARTITION_BYTES: {{ .Values.compaction.minPartitionBytes | int64 | quote }}
+  GLAC_COMPACTION__QUIET_SECONDS: {{ .Values.compaction.quietSeconds | quote }}
+  GLAC_COMPACTION__MAX_QUIET_WAIT_SECONDS: {{ .Values.compaction.maxQuietWaitSeconds | quote }}
+  GLAC_COMPACTION__BENEFIT_WEIGHT: {{ .Values.compaction.benefitWeight | quote }}
+  GLAC_COMPACTION__COST_WEIGHT: {{ .Values.compaction.costWeight | quote }}
+  GLAC_COMPACTION__BENEFIT_REFERENCE_FILES: {{ .Values.compaction.benefitReferenceFiles | quote }}
+  GLAC_COMPACTION__COST_REFERENCE_GB_HOURS: {{ .Values.compaction.costReferenceGbHours | quote }}
+  GLAC_COMPACTION__DEFAULT_THROUGHPUT_BYTES_PER_HOUR: {{ .Values.compaction.defaultThroughputBytesPerHour | int64 | quote }}
+  GLAC_COMPACTION__SIZE_S_MAX_BYTES: {{ .Values.compaction.sizeSMaxBytes | int64 | quote }}
+  GLAC_COMPACTION__SIZE_M_MAX_BYTES: {{ .Values.compaction.sizeMMaxBytes | int64 | quote }}

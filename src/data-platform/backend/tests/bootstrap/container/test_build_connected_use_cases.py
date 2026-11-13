@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
 from bootstrap.container import (
+    build_candidate_selection,
     build_connected_use_cases,
     build_engine,
     build_size_memory,
@@ -19,6 +20,7 @@ from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
 from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
     ListTableMaintenancePoliciesUseCaseInput,
 )
+from context.table_maintenance.application.service.compaction_candidate import ListCompactionCandidatesService
 from context.table_maintenance.application.service.table import PlanTableMaintenanceService
 from context.table_maintenance.application.service.table_maintenance_run import (
     RecordTableMaintenanceOperationResultService,
@@ -94,3 +96,27 @@ def test_the_planner_knows_each_size_s_memory_and_the_claim_lease(tmp_path):
     assert isinstance(planner, PlanTableMaintenanceService)
     assert planner._size_memory == build_size_memory(settings.spark)  # noqa: SLF001
     assert planner._claim_lease == compaction_claim_lease(settings)  # noqa: SLF001
+
+
+def test_the_planner_and_the_candidate_list_use_the_compaction_settings(tmp_path):
+    """The planner selects candidates and the list counts partitions per run as the settings say."""
+    settings = sqlite_settings()
+    settings.sqlite.path = str(tmp_path / "tm.db")
+    settings.compaction.partitions_per_run = 3
+    settings.compaction.quiet_seconds = 45
+
+    async def connect(_temporal: TemporalSettings):
+        return MagicMock(name="client")
+
+    bridge = AsyncLoopBridge()
+    try:
+        use_cases = build_connected_use_cases(settings, bridge, connect=connect, k8s_api_factory=MagicMock)
+    finally:
+        bridge.close()
+
+    planner = use_cases.plan_table_maintenance
+    candidates = use_cases.list_compaction_candidates
+    assert isinstance(planner, PlanTableMaintenanceService)
+    assert isinstance(candidates, ListCompactionCandidatesService)
+    assert planner._selection == build_candidate_selection(settings.compaction)  # noqa: SLF001
+    assert candidates._partitions_per_run == 3  # noqa: SLF001

@@ -7,6 +7,7 @@ from bootstrap.container.admission_lease_seconds import admission_lease_seconds
 from bootstrap.container.apply_worker_startup import apply_worker_startup
 from bootstrap.container.build_activities import build_activities
 from bootstrap.container.build_api_app import build_api_app
+from bootstrap.container.build_candidate_selection import build_candidate_selection
 from bootstrap.container.build_catalog_factory import build_catalog_factory
 from bootstrap.container.build_catalog_web_use_cases import build_catalog_web_use_cases
 from bootstrap.container.build_connected_use_cases import build_connected_use_cases
@@ -52,6 +53,7 @@ __all__ = [
     "apply_worker_startup",
     "build_activities",
     "build_api_app",
+    "build_candidate_selection",
     "build_catalog_factory",
     "build_catalog_web_use_cases",
     "build_connected_use_cases",

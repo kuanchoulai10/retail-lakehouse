@@ -52,7 +52,7 @@ The `migrate` Job is a regular Job named with the Helm release revision, so each
 
 ## Configuration
 
-All settings are `GLAC_*` environment variables rendered from `chart/values.yaml` into the ConfigMap `table-maintenance-config` (temporal address, catalog URI and names, S3 endpoint, Kafka, Spark, `GLAC_ADMISSION_LIMIT`, `GLAC_DISCOVERY_INTERVAL_SECONDS`). Secrets come from `table-maintenance-db`, `table-maintenance-polaris-credential` and `table-maintenance-s3`.
+All settings are `GLAC_*` environment variables rendered from `chart/values.yaml` into the ConfigMap `table-maintenance-config` (temporal address, catalog URI and names, S3 endpoint, Kafka, Spark, `GLAC_ADMISSION_LIMIT`, `GLAC_DISCOVERY_INTERVAL_SECONDS`, `GLAC_COMPACTION__*`). Secrets come from `table-maintenance-db`, `table-maintenance-polaris-credential` and `table-maintenance-s3`.
 
 ### Spark sizes
 
@@ -67,6 +67,24 @@ Every maintenance attempt runs at one of three sizes, set under `spark.sizes` in
 An L job fits on the 8-CPU / 26 GB node only alone; next to another Spark job it stays Pending while its attempt clock runs. A partial override (one `GLAC_SPARK__SIZE_L__EXECUTOR_MEMORY`) keeps the other values of that size.
 
 An operation starts at the size its table last succeeded at (S for a table that never did). Each failed attempt is classified when it is recorded: `oom` (a driver or executor container `OOMKilled` or exit 137, an executor exit 52, or `java.lang.OutOfMemoryError` / `OOMKilled` / `exit code 52` in the error or a driver termination message; container exits count only when Spark itself ended the attempt, since the platform's own deletes also exit 137), `timeout`, `commit_conflict`, `permanent` (missing table, forbidden), `cancelled` or `other`. An `oom` retries at the next size; other failures retry at the same size, within the three attempts. An `oom` at L stops the operation and marks it **needs attention** on the table: reconcile stops planning it until a manual run of it, or until another policy (or policy version, or the same policy attached elsewhere) applies to the table than the one its run was planned under. The next reconcile after such a change clears the mark for good, so going back to the earlier policy does not bring the block back; until that reconcile, health and the table API both still show the mark. A success records the attempt's size, and the Spark runtime reports the peak heap the driver and the busiest executor used, in bytes (`peak_driver_heap_bytes`, `peak_executor_heap_bytes`, read from the driver's own Spark UI REST API on localhost before the session stops). A success counts toward stepping down only when both peaks fit within 70% of the next smaller size's driver and executor memory (as set in `spark.sizes`); three such successes in a row at the remembered size step it down one size, and a role with no measured peak never counts. The run API lists every attempt with its size, failure class, event-log state and next step, and the console's Maintenance tab shows them.
+
+### Compaction candidates
+
+A scheduled compaction picks partitions, not the whole table, and the `compaction` block in `chart/values.yaml` says how. Each value is rendered as `GLAC_COMPACTION__<NAME>`, for example `GLAC_COMPACTION__PARTITIONS_PER_RUN`.
+
+| Value | Default | Meaning |
+|---|---|---|
+| `partitionsPerRun` | `10` | A run compacts at most this many partitions, the best pending ones. |
+| `minPartitionBytes` | `0` | A partition with less data is held as too small. With `0`, only "not enough files to merge" keeps a partition out. |
+| `quietSeconds` | `120` | A partition written within this time is held as still being written. 120 s is two Iceberg sink commit intervals. |
+| `maxQuietWaitSeconds` | `3600` | A partition is never held as still being written for longer than this in a row, so one written without pause is still compacted. |
+| `benefitWeight`, `costWeight` | `0.7`, `0.3` | How much the files a compaction removes and its estimated cost count in the score (0 to 1). |
+| `benefitReferenceFiles` | `100` | Removing this many files scores the full benefit. |
+| `costReferenceGbHours` | `1.0` | This many estimated GB-hours score the full cost. |
+| `defaultThroughputBytesPerHour` | `2147483648` | The bytes per hour a compaction is assumed to rewrite before the table has finished runs to measure from. |
+| `sizeSMaxBytes`, `sizeMMaxBytes` | `268435456`, `1073741824` | A run starts at least at S up to this much picked data, M up to the next, and L above. |
+
+The api and worker read the same values: the worker picks with them, and the api shows the same top N in the console's Candidates tab. A value the selection refuses (an S bound above the M bound, both weights 0) stops the component at startup.
 
 ## Temporal workflows
 

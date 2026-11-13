@@ -87,6 +87,19 @@ worker:
     limits:
       memory: 1Gi
 
+compaction:
+  partitionsPerRun: 10
+  minPartitionBytes: 0
+  quietSeconds: 120
+  maxQuietWaitSeconds: 3600
+  benefitWeight: 0.7
+  costWeight: 0.3
+  benefitReferenceFiles: 100
+  costReferenceGbHours: 1.0
+  defaultThroughputBytesPerHour: 2147483648
+  sizeSMaxBytes: 268435456
+  sizeMMaxBytes: 1073741824
+
 eventConsumer:
   resources:
     requests:

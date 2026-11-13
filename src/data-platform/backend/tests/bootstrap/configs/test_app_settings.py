@@ -155,3 +155,29 @@ def test_size_reads_env(monkeypatch: pytest.MonkeyPatch):
     assert spark.size_l.executor_memory == "3g"
     assert spark.size_l.driver_memory == "1536m"
     assert spark.size_m.executor_instances == 2
+
+
+def test_compaction_defaults_pick_ten_partitions_and_hold_none_for_size():
+    """Without an environment a run compacts ten partitions and only the quiet period holds one back."""
+    compaction = AppSettings().compaction
+
+    assert (compaction.partitions_per_run, compaction.min_partition_bytes) == (10, 0)
+    assert (compaction.quiet_seconds, compaction.max_quiet_wait_seconds) == (120, 3600)
+    assert (compaction.benefit_weight, compaction.cost_weight) == (0.7, 0.3)
+    assert (compaction.benefit_reference_files, compaction.cost_reference_gb_hours) == (100, 1.0)
+    assert compaction.default_throughput_bytes_per_hour == 2 * 1024**3
+    assert (compaction.size_s_max_bytes, compaction.size_m_max_bytes) == (256 * 1024**2, 1024**3)
+
+
+def test_compaction_reads_env(monkeypatch: pytest.MonkeyPatch):
+    """Each compaction setting is read from GLAC_COMPACTION__<NAME>."""
+    monkeypatch.setenv("GLAC_COMPACTION__PARTITIONS_PER_RUN", "3")
+    monkeypatch.setenv("GLAC_COMPACTION__MIN_PARTITION_BYTES", "1048576")
+    monkeypatch.setenv("GLAC_COMPACTION__QUIET_SECONDS", "30")
+    monkeypatch.setenv("GLAC_COMPACTION__MAX_QUIET_WAIT_SECONDS", "600")
+    monkeypatch.setenv("GLAC_COMPACTION__COST_WEIGHT", "0.5")
+
+    compaction = AppSettings().compaction
+
+    assert (compaction.partitions_per_run, compaction.min_partition_bytes) == (3, 1048576)
+    assert (compaction.quiet_seconds, compaction.max_quiet_wait_seconds, compaction.cost_weight) == (30, 600, 0.5)

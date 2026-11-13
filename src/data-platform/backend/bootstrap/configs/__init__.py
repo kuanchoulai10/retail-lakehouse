@@ -5,6 +5,7 @@ from __future__ import annotations
 from bootstrap.configs.api_settings import ApiSettings
 from bootstrap.configs.app_settings import AppSettings
 from bootstrap.configs.catalog_settings import CatalogSettings
+from bootstrap.configs.compaction_settings import CompactionSettings
 from bootstrap.configs.component import Component
 from bootstrap.configs.database_backend import DatabaseBackend
 from bootstrap.configs.get_settings import get_settings
@@ -19,6 +20,7 @@ __all__ = [
     "ApiSettings",
     "AppSettings",
     "CatalogSettings",
+    "CompactionSettings",
     "Component",
     "DatabaseBackend",
     "KafkaSettings",

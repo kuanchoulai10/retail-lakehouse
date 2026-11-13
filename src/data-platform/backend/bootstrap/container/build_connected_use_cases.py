@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
+from bootstrap.container.build_candidate_selection import build_candidate_selection
 from bootstrap.container.build_catalog_factory import build_catalog_factory
 from bootstrap.container.build_engine import build_engine
 from bootstrap.container.build_gateways import build_gateways
@@ -57,5 +58,6 @@ def build_connected_use_cases(
         gateways,
         catalog_names=settings.catalog.names,
         size_memory=build_size_memory(settings.spark),
+        candidate_selection=build_candidate_selection(settings.compaction),
         claim_lease=compaction_claim_lease(settings),
     )
