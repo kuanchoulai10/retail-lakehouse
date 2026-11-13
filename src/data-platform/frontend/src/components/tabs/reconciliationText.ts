@@ -16,6 +16,8 @@ export const RESULT_ORDER = [
   "would_start",
   "start_failed",
   "needs_attention",
+  "all_held",
+  "all_claimed",
   "not_needed",
   "cooling_down",
   "off",
@@ -27,6 +29,8 @@ const RESULT_LABELS: Record<string, string> = {
   would_start: "Would start",
   start_failed: "Could not start",
   needs_attention: "Needs attention",
+  all_held: "All partitions held",
+  all_claimed: "All partitions claimed",
   not_needed: "Not needed",
   cooling_down: "Cooling down",
   off: "Off",
@@ -251,6 +255,13 @@ export function reasonSentence(op: ReconciliationOperationApiResponse, { manualR
     }
     case "needs_attention":
       return "Not started: it ran out of memory at the largest size and waits for a manual run or a policy change.";
+    case "all_held": {
+      const due = met.length > 0 ? `Due: ${citeAll(met, op)}, but` : "Due, but";
+      const when = op.next_eligible_at === null ? "" : `; checked again ${NEXT_ALLOWED_FORMAT.format(new Date(op.next_eligible_at))}`;
+      return `${due} every partition is held (too small or still being written)${when}.`;
+    }
+    case "all_claimed":
+      return `${met.length > 0 ? `Due: ${citeAll(met, op)}, but` : "Due, but"} another run is still compacting every partition.`;
     case "off":
       return "Turned off in the policy.";
     case "not_checked":

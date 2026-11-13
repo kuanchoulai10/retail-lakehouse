@@ -20,7 +20,7 @@ import { TablePage } from "./TablePage";
 
 const TABLE = "/v1/catalogs/iceberg/namespaces/retail/tables/orders";
 const PAGE = "/catalogs/iceberg/namespaces/retail/tables/orders";
-const TABS = ["Overview", "Schema", "Commits", "Maintenance", "Reconciliations", "Policy", "Properties"];
+const TABS = ["Overview", "Schema", "Commits", "Maintenance", "Candidates", "Reconciliations", "Policy", "Properties"];
 
 function Location() {
   const location = useLocation();
@@ -126,8 +126,8 @@ describe("TablePage", { timeout: 15_000 }, () => {
   });
 
   describe.each(UNMANAGED)("unmanaged table (%s)", (_reason, options, message) => {
-    it.each(["commits", "maintenance", "reconciliations"])(
-      "unmanaged table shows the empty state on commits maintenance and reconciliations: %s",
+    it.each(["commits", "maintenance", "candidates", "reconciliations"])(
+      "unmanaged table shows the empty state on commits maintenance candidates and reconciliations: %s",
       async (tab) => {
         stubTable(options);
         renderAt(`${PAGE}/${tab}`);
@@ -406,7 +406,7 @@ describe("TablePage", { timeout: 15_000 }, () => {
     renderAt(`${PAGE}/properties`);
     await screen.findByText("write.format.default");
     screen.getByRole("tab", { name: "Properties" }).focus();
-    await user.keyboard("{ArrowLeft}{ArrowLeft}{ArrowLeft}");
+    await user.keyboard("{ArrowLeft}{ArrowLeft}{ArrowLeft}{ArrowLeft}");
     expect(await screen.findByText("No maintenance runs yet.")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Maintenance" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByTestId("location")).toHaveTextContent(`${PAGE}/maintenance`);

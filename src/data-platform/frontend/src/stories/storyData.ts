@@ -2,6 +2,8 @@ import type {
   ApplicableTableMaintenancePolicyApiResponse,
   CatalogApiResponse,
   CatalogTableApiResponse,
+  CompactionCandidateApiResponse,
+  CompactionCandidatesApiResponse,
   ListedTableMaintenancePolicyApiResponse,
   ListedTableMaintenancePolicyMappingApiResponse,
   NamespaceApiResponse,
@@ -358,6 +360,53 @@ export const ESCALATED_RUN: TableMaintenanceRunApiResponse = {
         },
       ],
     },
+  ],
+};
+
+function orderDay(day: string, overrides: Partial<CompactionCandidateApiResponse>): CompactionCandidateApiResponse {
+  return {
+    partition: { spec_id: 0, values: [day] },
+    partition_label: `ordered_at_day=${day}`,
+    state: "pending",
+    hold_reason: null,
+    reducible_files: 18,
+    data_bytes: 96 * 1024 * 1024,
+    estimated_gb_hours: 0.12,
+    score: 0.5,
+    rank: null,
+    claimed_by_run_id: null,
+    lease_expires_at: null,
+    last_written_at: "2026-11-12T23:40:00Z",
+    observed_at: "2026-11-13T02:00:00Z",
+    ...overrides,
+  };
+}
+
+// The order days that need compaction, best first: one in a run, one still being written, the
+// top two pending (two per run), one below them and one too small to be worth it.
+export const CANDIDATES: CompactionCandidatesApiResponse = {
+  partitions_per_run: 2,
+  candidates: [
+    orderDay("2026-11-10", {
+      state: "running",
+      score: 0.92,
+      reducible_files: 412,
+      data_bytes: 1_932_735_283,
+      estimated_gb_hours: 0.9,
+      claimed_by_run_id: "run-1",
+      lease_expires_at: "2026-11-13T21:48:00Z",
+    }),
+    orderDay("2026-11-12", {
+      state: "held",
+      hold_reason: "recently_written",
+      score: 0.81,
+      reducible_files: 240,
+      last_written_at: "2026-11-13T01:59:00Z",
+    }),
+    orderDay("2026-11-09", { rank: 1, score: 0.74, reducible_files: 160, data_bytes: 640 * 1024 * 1024, estimated_gb_hours: 0.35 }),
+    orderDay("2026-11-08", { rank: 2, score: 0.55, reducible_files: 96 }),
+    orderDay("2026-11-07", { rank: 3, score: 0.31, reducible_files: 40 }),
+    orderDay("2026-11-06", { state: "held", hold_reason: "too_small", score: 0.08, reducible_files: 6, data_bytes: 2 * 1024 * 1024, estimated_gb_hours: 0.01 }),
   ],
 };
 

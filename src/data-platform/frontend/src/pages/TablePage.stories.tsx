@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, within } from "storybook/test";
+import { getListCompactionCandidatesMockHandler } from "@/api/generated/compaction-candidates/compaction-candidates.msw";
 import { getListCoveredCatalogsMockHandler } from "@/api/generated/discovery-rules/discovery-rules.msw";
 import { getGetTableApplicableMaintenancePolicyMockHandler } from "@/api/generated/maintenance-policies/maintenance-policies.msw";
 import { getListTableMaintenanceRunsMockHandler } from "@/api/generated/table-maintenance-runs/table-maintenance-runs.msw";
@@ -97,6 +98,37 @@ export const MaintenanceAttemptsEscalatedPhone: Story = {
   },
   play: async ({ canvasElement }) => {
     await openEscalatedRun(canvasElement);
+    await expectNoHorizontalPageScroll(canvasElement);
+  },
+};
+
+export const Candidates: Story = {
+  args: { route: `${ORDERS}/candidates` },
+  play: async ({ canvasElement }) => {
+    const table = within(await within(canvasElement).findByRole("table", { name: "Compaction candidates, best first" }));
+    await expect(table.getByText("In run run-1")).toBeVisible();
+    await expect(table.getByText("Still being written; checked again after a quiet period")).toBeVisible();
+    await expect(table.getByText("Score below the top 2 (2 per run)")).toBeVisible();
+    await expect(table.getByText("Too small to be worth compacting")).toBeVisible();
+    await expect(table.getAllByText("Held")[0]).toHaveClass("bg-surface-container-dim");
+  },
+};
+
+export const CandidatesEmpty: Story = {
+  args: { route: `${ORDERS}/candidates` },
+  beforeEach({ msw }) {
+    msw.use(getListCompactionCandidatesMockHandler({ partitions_per_run: 10, candidates: [] }));
+  },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText("No partition needs compaction.")).toBeVisible();
+  },
+};
+
+export const CandidatesPhone: Story = {
+  args: { route: `${ORDERS}/candidates` },
+  globals: PHONE,
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByRole("table", { name: "Compaction candidates, best first" });
     await expectNoHorizontalPageScroll(canvasElement);
   },
 };

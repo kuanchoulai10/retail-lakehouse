@@ -308,3 +308,31 @@ describe("needs attention", () => {
     expect(resultOrder("needs_attention")).toBeLessThan(resultOrder("not_needed"));
   });
 });
+
+describe("compaction without a free candidate", () => {
+  const due = measurement({ key: "reducible_files", observed: 40, threshold: 5, met: true });
+
+  it("labels the results", () => {
+    expect(resultLabel("all_held")).toBe("All partitions held");
+    expect(resultLabel("all_claimed")).toBe("All partitions claimed");
+  });
+
+  it("says every partition was held, and when it is looked at again", () => {
+    expect(
+      reasonSentence(
+        op({ operation: "rewrite_data_files", result: "all_held", measurements: [due], next_eligible_at: "2026-11-13T12:02:00Z" }),
+      ),
+    ).toMatch(/^Due: reducible files 40 \(needs ≥ 5\), but every partition is held \(too small or still being written\); checked again Nov 13, \d\d:02\.$/);
+  });
+
+  it("says another run holds every partition", () => {
+    expect(reasonSentence(op({ operation: "rewrite_data_files", result: "all_claimed", measurements: [due] }))).toBe(
+      "Due: reducible files 40 (needs ≥ 5), but another run is still compacting every partition.",
+    );
+  });
+
+  it("is listed with the other operations that did not start", () => {
+    expect(resultOrder("needs_attention")).toBeLessThan(resultOrder("all_held"));
+    expect(resultOrder("all_claimed")).toBeLessThan(resultOrder("not_needed"));
+  });
+});

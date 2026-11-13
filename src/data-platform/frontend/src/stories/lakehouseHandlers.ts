@@ -1,4 +1,5 @@
 import { getListCatalogsMockHandler, getGetCatalogMockHandler } from "@/api/generated/catalogs/catalogs.msw";
+import { getListCompactionCandidatesMockHandler } from "@/api/generated/compaction-candidates/compaction-candidates.msw";
 import { getListGenericTablesMockHandler } from "@/api/generated/generic-tables/generic-tables.msw";
 import { getGetNamespaceMockHandler, getListNamespacesMockHandler } from "@/api/generated/namespaces/namespaces.msw";
 import {
@@ -34,6 +35,7 @@ import { getListTableReconciliationsMockHandler } from "@/api/generated/table-re
 import { getListViewsMockHandler } from "@/api/generated/views/views.msw";
 import {
   applicablePolicy,
+  CANDIDATES,
   CATALOGS,
   COMMITS,
   HEALTH,
@@ -87,6 +89,7 @@ export function lakehouseHandlers() {
       };
     }),
     getListTableMaintenanceRunsMockHandler(RUNS),
+    getListCompactionCandidatesMockHandler(CANDIDATES),
     getListTableReconciliationsMockHandler(({ request }) => {
       const query = new URL(request.url).searchParams;
       const before = query.get("before");
