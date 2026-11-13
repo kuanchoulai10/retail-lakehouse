@@ -34,6 +34,7 @@ def build_candidate_selection(settings: CompactionSettings) -> CandidateSelectio
             max_quiet_wait_seconds=settings.max_quiet_wait_seconds,
         ),
         default_throughput_bytes_per_hour=float(settings.default_throughput_bytes_per_hour),
+        min_throughput_sample_bytes=settings.min_throughput_sample_bytes,
         size_s_max_bytes=settings.size_s_max_bytes,
         size_m_max_bytes=settings.size_m_max_bytes,
     )

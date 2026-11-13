@@ -166,6 +166,7 @@ def test_compaction_defaults_pick_ten_partitions_and_hold_none_for_size():
     assert (compaction.benefit_weight, compaction.cost_weight) == (0.7, 0.3)
     assert (compaction.benefit_reference_files, compaction.cost_reference_gb_hours) == (100, 1.0)
     assert compaction.default_throughput_bytes_per_hour == 2 * 1024**3
+    assert compaction.min_throughput_sample_bytes == 64 * 1024**2
     assert (compaction.size_s_max_bytes, compaction.size_m_max_bytes) == (256 * 1024**2, 1024**3)
 
 
@@ -176,8 +177,10 @@ def test_compaction_reads_env(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("GLAC_COMPACTION__QUIET_SECONDS", "30")
     monkeypatch.setenv("GLAC_COMPACTION__MAX_QUIET_WAIT_SECONDS", "600")
     monkeypatch.setenv("GLAC_COMPACTION__COST_WEIGHT", "0.5")
+    monkeypatch.setenv("GLAC_COMPACTION__MIN_THROUGHPUT_SAMPLE_BYTES", "1024")
 
     compaction = AppSettings().compaction
 
     assert (compaction.partitions_per_run, compaction.min_partition_bytes) == (3, 1048576)
     assert (compaction.quiet_seconds, compaction.max_quiet_wait_seconds, compaction.cost_weight) == (30, 600, 0.5)
+    assert compaction.min_throughput_sample_bytes == 1024

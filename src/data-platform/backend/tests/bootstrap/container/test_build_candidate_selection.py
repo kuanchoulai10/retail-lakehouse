@@ -31,6 +31,7 @@ def test_every_setting_reaches_the_selection():
             benefit_reference_files=50,
             cost_reference_gb_hours=2.0,
             default_throughput_bytes_per_hour=1024**3,
+            min_throughput_sample_bytes=32 * 1024**2,
             size_s_max_bytes=128 * 1024**2,
             size_m_max_bytes=512 * 1024**2,
         )
@@ -43,6 +44,7 @@ def test_every_setting_reaches_the_selection():
         ),
         filters=CandidateFilters(min_partition_bytes=1024, quiet_seconds=30, max_quiet_wait_seconds=900),
         default_throughput_bytes_per_hour=float(1024**3),
+        min_throughput_sample_bytes=32 * 1024**2,
         size_s_max_bytes=128 * 1024**2,
         size_m_max_bytes=512 * 1024**2,
     )

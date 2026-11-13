@@ -92,3 +92,22 @@ def test_default_must_be_positive():
     """A default throughput of zero would make every cost infinite."""
     with pytest.raises(ValueError, match="throughput"):
         estimate_throughput([], default_bytes_per_hour=0)
+
+
+def test_throughput_ignores_samples_below_the_floor():
+    """A compaction that rewrote less than the floor is mostly Spark start-up, so it does not count."""
+    runs = [
+        _run("big", rewritten=GIB, minutes=30),
+        _run("small", rewritten=10 * 1024**2, minutes=3, started=NOW + timedelta(hours=1)),
+    ]
+
+    throughput = estimate_throughput(runs, default_bytes_per_hour=DEFAULT, min_sample_bytes=64 * 1024**2)
+
+    assert throughput == pytest.approx(2 * GIB)
+
+
+def test_throughput_falls_back_to_the_default_when_every_sample_is_below_the_floor():
+    """With only small compactions in the history, the default throughput is used."""
+    runs = [_run("small", rewritten=10 * 1024**2, minutes=3)]
+
+    assert estimate_throughput(runs, default_bytes_per_hour=DEFAULT, min_sample_bytes=64 * 1024**2) == DEFAULT

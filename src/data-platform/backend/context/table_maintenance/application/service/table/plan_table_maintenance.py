@@ -193,7 +193,9 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             selection=self._selection,
             memory_gb=self._memory_gb(remembered),
             throughput_bytes_per_hour=estimate_throughput(
-                runs, default_bytes_per_hour=self._selection.default_throughput_bytes_per_hour
+                runs,
+                default_bytes_per_hour=self._selection.default_throughput_bytes_per_hour,
+                min_sample_bytes=self._selection.min_throughput_sample_bytes,
             ),
             released_runs=self._released_runs(existing, claim_for),
             pick=due is not None and not policy.dry_run,

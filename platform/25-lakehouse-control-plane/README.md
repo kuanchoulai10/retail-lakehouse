@@ -80,7 +80,7 @@ A scheduled compaction picks partitions, not the whole table. Each scheduled rec
 | `running` | Its run is compacting it. |
 | `done` / `failed` | Its run finished. The next observation removes it, or makes it `pending` again if it still has small files to merge. |
 
-**Score.** The benefit is `min(1, files removed / benefitReferenceFiles)` and the cost is `min(1, GB-hours / costReferenceGbHours)`. The score is `(benefitWeight × benefit + costWeight × (1 − cost)) / (benefitWeight + costWeight)`, from 0 to 1. It uses fixed reference values, never the spread within one table, so the same score means the same on every table. The GB-hours come from the partition's bytes, the throughput measured from the table's past compactions (`defaultThroughputBytesPerHour` before it has any) and the memory of the table's size. Ties go to more files removed, then to the partition key.
+**Score.** The benefit is `min(1, files removed / benefitReferenceFiles)` and the cost is `min(1, GB-hours / costReferenceGbHours)`. The score is `(benefitWeight × benefit + costWeight × (1 − cost)) / (benefitWeight + costWeight)`, from 0 to 1. It uses fixed reference values, never the spread within one table, so the same score means the same on every table. The GB-hours come from the partition's bytes, the throughput measured from the table's past compactions of at least `minThroughputSampleBytes` (`defaultThroughputBytesPerHour` before it has any) and the memory of the table's size. Ties go to more files removed, then to the partition key.
 
 **Top N.** A scheduled run claims the `partitionsPerRun` best pending candidates and compacts only those. Its `rewrite_data_files` gets a where filter naming them, and it starts at least at the size that fits their bytes. A run that is retried keeps the candidates it claimed. When every partition is held, the reconciliation record reads `all_held` and the workflow looks again when the first hold ends. When every partition is claimed by another run, it reads `all_claimed`. A run that stops before it starts gives its candidates back. If an attempt runs out of memory, the next attempt compacts the best half of the picked partitions, then the best quarter, before the size goes up. A manual run compacts the whole table and leaves the candidates alone.
 
@@ -98,6 +98,7 @@ The `compaction` block in `chart/values.yaml` sets these values. Each value is r
 | `benefitReferenceFiles` | `100` | Removing this many files scores the full benefit. |
 | `costReferenceGbHours` | `1.0` | This many estimated GB-hours score the full cost. |
 | `defaultThroughputBytesPerHour` | `2147483648` | The bytes per hour a compaction is assumed to rewrite before the table has finished runs to measure from. |
+| `minThroughputSampleBytes` | `67108864` | A past compaction that rewrote less than this (64 MiB) does not count toward the measured throughput: its time is mostly Spark start-up and jar downloads. |
 | `sizeSMaxBytes`, `sizeMMaxBytes` | `268435456`, `1073741824` | A run starts at least at S up to this much picked data, M up to the next, and L above. |
 
 The api and worker read the same values: the worker picks with them, and the api shows the same top N in the console's Candidates tab. A value the selection refuses (an S bound above the M bound, both weights 0) stops the component at startup.

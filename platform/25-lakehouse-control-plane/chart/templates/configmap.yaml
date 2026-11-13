@@ -49,5 +49,6 @@ data:
   GLAC_COMPACTION__BENEFIT_REFERENCE_FILES: {{ .Values.compaction.benefitReferenceFiles | quote }}
   GLAC_COMPACTION__COST_REFERENCE_GB_HOURS: {{ .Values.compaction.costReferenceGbHours | quote }}
   GLAC_COMPACTION__DEFAULT_THROUGHPUT_BYTES_PER_HOUR: {{ .Values.compaction.defaultThroughputBytesPerHour | int64 | quote }}
+  GLAC_COMPACTION__MIN_THROUGHPUT_SAMPLE_BYTES: {{ .Values.compaction.minThroughputSampleBytes | int64 | quote }}
   GLAC_COMPACTION__SIZE_S_MAX_BYTES: {{ .Values.compaction.sizeSMaxBytes | int64 | quote }}
   GLAC_COMPACTION__SIZE_M_MAX_BYTES: {{ .Values.compaction.sizeMMaxBytes | int64 | quote }}

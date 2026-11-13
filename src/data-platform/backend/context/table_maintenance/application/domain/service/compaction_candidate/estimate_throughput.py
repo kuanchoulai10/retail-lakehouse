@@ -22,6 +22,7 @@ def estimate_throughput(
     runs: Sequence[TableMaintenanceRun],
     *,
     default_bytes_per_hour: float,
+    min_sample_bytes: int = 0,
     max_samples: int = 10,
 ) -> float:
     """Return how many bytes per hour compaction of a table rewrites, from its past runs.
@@ -29,12 +30,15 @@ def estimate_throughput(
     The newest ``max_samples`` succeeded compactions that rewrote some bytes and
     whose succeeded attempt has a start and an end count: the sum of their bytes
     over the sum of those attempts' hours. A compaction whose result was never
-    reported (no bytes), one that rewrote nothing, and an attempt without a
-    duration are left out. Without any such compaction, ``default_bytes_per_hour``.
+    reported (no bytes), one that rewrote less than ``min_sample_bytes`` (its
+    time is mostly Spark start-up and jar downloads, not rewriting), and an
+    attempt without a duration are left out. Without any such compaction,
+    ``default_bytes_per_hour``.
     """
     if default_bytes_per_hour <= 0:
         raise ValueError(f"the default throughput must be positive, got {default_bytes_per_hour}")
-    samples = sorted(_samples(runs), key=lambda s: s[0], reverse=True)[:max_samples]
+    usable = [s for s in _samples(runs) if s[1] >= min_sample_bytes]
+    samples = sorted(usable, key=lambda s: s[0], reverse=True)[:max_samples]
     total_bytes = sum(b for _, b, _ in samples)
     total_hours = sum(h for _, _, h in samples)
     if total_bytes <= 0 or total_hours <= 0:

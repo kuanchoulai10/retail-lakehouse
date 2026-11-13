@@ -97,6 +97,7 @@ compaction:
   benefitReferenceFiles: 100
   costReferenceGbHours: 1.0
   defaultThroughputBytesPerHour: 2147483648
+  minThroughputSampleBytes: 67108864
   sizeSMaxBytes: 268435456
   sizeMMaxBytes: 1073741824
 

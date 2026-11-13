@@ -474,6 +474,30 @@ def test_cost_uses_the_remembered_size_and_the_measured_throughput(
     assert candidate.score.estimated_gb_hours == pytest.approx(2.5)
 
 
+def test_cost_ignores_past_compactions_below_the_throughput_floor(
+    planner, tables_repo, catalog, candidates_repo, runs_repo, now
+):
+    """A past compaction of a few MiB measures Spark start-up, not throughput: the default is used instead."""
+    _table(tables_repo, now)
+    run = TableMaintenanceRun.create(
+        TableMaintenanceRunId("past"),
+        TableId("u-1"),
+        TriggerType.SCHEDULED,
+        [COMPACTION],
+        now - timedelta(days=1),
+        execution_ref="wf",
+    )
+    run.start_attempt(COMPACTION, 1, None, now - timedelta(days=1))
+    run.succeed(COMPACTION, 1, {"rewritten_bytes_count": MIB}, now - timedelta(days=1) + timedelta(minutes=3))
+    runs_repo.create(run)
+    _observe(catalog, [_partition("a", 10, size=GIB)])
+
+    _plan(planner, now, run_id=None)
+
+    (candidate,) = candidates_repo.list_all()
+    assert candidate.score.estimated_gb_hours == pytest.approx(1.5 * GIB / (2.0 * GIB))
+
+
 def test_plan_offers_fewer_partitions_for_an_out_of_memory_retry(
     tables_repo, catalog, resolve_applicable_policy, candidates_repo, runs_repo, now
 ):

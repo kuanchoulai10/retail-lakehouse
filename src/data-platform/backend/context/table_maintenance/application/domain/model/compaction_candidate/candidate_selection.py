@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import Field, PositiveFloat, PositiveInt, model_validator
+from pydantic import Field, NonNegativeInt, PositiveFloat, PositiveInt, model_validator
 
 from base import ValueObject
 from context.table_maintenance.application.domain.model.compaction_candidate.candidate_filters import (
@@ -21,7 +21,9 @@ class CandidateSelection(ValueObject):
 
     A scheduled run compacts the ``partitions_per_run`` best pending candidates.
     The cost estimate uses the throughput measured from past runs, or
-    ``default_throughput_bytes_per_hour`` before there are any. A run starts at
+    ``default_throughput_bytes_per_hour`` before there are any; a past
+    compaction that rewrote less than ``min_throughput_sample_bytes`` does not
+    count, since its time is mostly Spark start-up. A run starts at
     least at the size that fits the data it picked: S up to ``size_s_max_bytes``,
     M up to ``size_m_max_bytes``, L above.
     """
@@ -30,6 +32,7 @@ class CandidateSelection(ValueObject):
     scoring: CandidateScoring = Field(default_factory=CandidateScoring)
     filters: CandidateFilters = Field(default_factory=CandidateFilters)
     default_throughput_bytes_per_hour: PositiveFloat = 2.0 * GIB
+    min_throughput_sample_bytes: NonNegativeInt = 64 * MIB
     size_s_max_bytes: PositiveInt = 256 * MIB
     size_m_max_bytes: PositiveInt = GIB
 
