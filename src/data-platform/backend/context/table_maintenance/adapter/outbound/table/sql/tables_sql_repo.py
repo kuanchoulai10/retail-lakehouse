@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import insert, select, update
+from sqlalchemy import case, insert, literal, or_, select, update
 from sqlalchemy.exc import IntegrityError
 
+from context.table_maintenance.adapter.outbound.shared.sql import UtcDateTime
 from context.table_maintenance.adapter.outbound.table.sql.table_row_mapper import (
     TableRowMapper,
 )
@@ -21,12 +22,14 @@ from context.table_maintenance.application.port.outbound.table import (
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from datetime import datetime
 
-    from sqlalchemy import Engine
+    from sqlalchemy import ColumnElement, Engine
 
     from base import EntityId
     from context.table_maintenance.application.port.outbound.table import (
         Table,
+        TableId,
         TableName,
     )
 
@@ -62,13 +65,29 @@ class TablesSqlRepo(TablesRepo):
         return [TableRowMapper.to_aggregate(r._mapping) for r in rows]
 
     def update(self, table: Table) -> Table:
-        """Persist the changed table."""
+        """Persist the changed table; the stored last commit is kept when the table's is older or unknown."""
         values = TableRowMapper.to_values(table)
+        committed = values.pop("last_committed_at")
+        if committed is not None:
+            values["last_committed_at"] = case(
+                (_commit_moves(committed), literal(committed, UtcDateTime())),
+                else_=t.c.last_committed_at,
+            )
         with self._engine.begin() as conn:
             result = conn.execute(update(t).where(t.c.uuid == table.id.value).values(**values))
             if result.rowcount == 0:
                 raise LookupError(f"table {table.id.value} does not exist")
         return table
+
+    def record_last_commit(self, table_id: TableId, at: datetime) -> bool:
+        """Write only the last commit, when ``at`` is newer and the table is not dropped."""
+        stmt = (
+            update(t)
+            .where(t.c.uuid == table_id.value, t.c.status != TableStatus.DROPPED.value, _commit_moves(at))
+            .values(last_committed_at=at)
+        )
+        with self._engine.begin() as conn:
+            return conn.execute(stmt).rowcount == 1
 
     def find_by_name(self, name: TableName) -> Table | None:
         """Return the latest-updated non-dropped table with this name."""
@@ -95,3 +114,8 @@ class TablesSqlRepo(TablesRepo):
         with self._engine.connect() as conn:
             rows = conn.execute(stmt).all()
         return [TableRowMapper.to_aggregate(r._mapping) for r in rows]
+
+
+def _commit_moves(at: datetime) -> ColumnElement[bool]:
+    """Say, in SQL, whether ``at`` is newer than the stored last commit (CASE-friendly on SQLite and Postgres)."""
+    return or_(t.c.last_committed_at.is_(None), t.c.last_committed_at < at)

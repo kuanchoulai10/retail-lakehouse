@@ -13,4 +13,4 @@ class CatalogDiscoveriesRepo(Repository[CatalogDiscovery]):
 
     @abstractmethod
     def save(self, entity: CatalogDiscovery) -> None:
-        """Insert the record, or replace the one stored for its catalog."""
+        """Insert the record, or move the stored one's time forward to it; an older time changes nothing."""

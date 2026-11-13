@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from context.table_maintenance.adapter.outbound.catalog_discovery.sql import (
     CatalogDiscoveriesSqlRepo,
@@ -57,6 +58,24 @@ def test_save_again_replaces_the_catalogs_discovery(repo: CatalogDiscoveriesRepo
     assert only.last_discovered_at == NOW + timedelta(minutes=10)
 
 
+def test_an_older_scan_saved_last_does_not_move_the_time_back(repo: CatalogDiscoveriesRepo):
+    """Two scans of one catalog that overlap: the one that started earlier, saved last, does not win."""
+    repo.save(CatalogDiscovery.first("iceberg", NOW + timedelta(minutes=10)))
+    repo.save(CatalogDiscovery.first("iceberg", NOW))
+
+    (only,) = repo.list_all()
+    assert only.last_discovered_at == NOW + timedelta(minutes=10)
+
+
+def test_a_first_scan_saved_after_another_writer_inserted_is_no_error(repo: CatalogDiscoveriesRepo):
+    """A scan that read no record, saved after another scan inserted one, moves the time forward without failing."""
+    repo.save(CatalogDiscovery.first("iceberg", NOW))
+    repo.save(CatalogDiscovery.first("iceberg", NOW + timedelta(minutes=10)))
+
+    (only,) = repo.list_all()
+    assert only.last_discovered_at == NOW + timedelta(minutes=10)
+
+
 def test_unknown_catalog_is_none(repo: CatalogDiscoveriesRepo):
     """A catalog never discovered reads as None."""
     assert repo.get(CatalogDiscoveryId("nope")) is None
@@ -72,3 +91,25 @@ def test_list_all_is_by_catalog_name(repo: CatalogDiscoveriesRepo):
 def test_catalog_discoveries_sql_table_name():
     """The records live in the catalog_discoveries table."""
     assert catalog_discoveries_table.name == "catalog_discoveries"
+
+
+def test_a_scan_that_loses_the_insert_race_moves_the_time_forward(engine: Engine, monkeypatch: pytest.MonkeyPatch):
+    """Both scans found no row; the one whose insert hits the other's row tries again and moves the time forward."""
+    repo = CatalogDiscoveriesSqlRepo(engine)
+    original = repo._save_once
+    calls: list[datetime] = []
+
+    def racing(entity: CatalogDiscovery) -> None:
+        calls.append(entity.last_discovered_at)
+        if len(calls) == 1:
+            original(CatalogDiscovery.first("iceberg", NOW))
+            raise IntegrityError("INSERT", {}, Exception("UNIQUE constraint failed: catalog_discoveries.catalog"))
+        original(entity)
+
+    monkeypatch.setattr(repo, "_save_once", racing)
+    repo.save(CatalogDiscovery.first("iceberg", NOW + timedelta(minutes=10)))
+
+    assert len(calls) == 2
+    loaded = repo.get(CatalogDiscoveryId("iceberg"))
+    assert loaded is not None
+    assert loaded.last_discovered_at == NOW + timedelta(minutes=10)

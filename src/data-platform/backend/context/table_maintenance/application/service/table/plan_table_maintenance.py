@@ -302,14 +302,13 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             self._tables_repo.update(stored)
 
     def _record_last_commit(self, table: Table, at: datetime | None) -> None:
-        """Save the newest commit the observation saw on the stored table, when it moves its last commit.
+        """Write the newest commit the observation saw, when it is newer than the table read.
 
-        The stored table is read again, as for the marks, since a rename, unmanage or drop may
-        have landed during the catalog read.
+        Only the last commit is written, and the store applies the same rule again, so a rename,
+        unmanage, drop or recorded result landed during the catalog read is never put back.
         """
-        stored = self._tables_repo.get(table.id)
-        if stored is not None and stored.record_last_commit(at):
-            self._tables_repo.update(stored)
+        if at is not None and table.record_last_commit(at):
+            self._tables_repo.record_last_commit(table.id, at)
 
     def _resolve(self, table: Table) -> ResolveApplicableTableMaintenancePolicyUseCaseOutput:
         return self._resolve_applicable_policy.execute(

@@ -10,8 +10,10 @@ from context.table_maintenance.application.domain.model.table import Table
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from datetime import datetime
 
     from context.table_maintenance.application.domain.model.table import (
+        TableId,
         TableName,
         TableStatus,
     )
@@ -22,7 +24,19 @@ class TablesRepo(Repository[Table]):
 
     @abstractmethod
     def update(self, table: Table) -> Table:
-        """Persist the changed table and return it."""
+        """Persist the changed table and return it.
+
+        The stored last commit never moves back: an older one, or none, leaves it as stored.
+        """
+
+    @abstractmethod
+    def record_last_commit(self, table_id: TableId, at: datetime) -> bool:
+        """Move the stored table's last commit to ``at``; return whether it moved.
+
+        It moves under the rule of ``Table.record_last_commit``: only forward, and never
+        once the table is dropped. Nothing else of the table is written, so a caller
+        holding an older copy of it cannot put back what another writer stored since.
+        """
 
     @abstractmethod
     def find_by_name(self, name: TableName) -> Table | None:

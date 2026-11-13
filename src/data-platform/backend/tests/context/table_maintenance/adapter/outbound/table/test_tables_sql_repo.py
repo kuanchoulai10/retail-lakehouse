@@ -26,13 +26,21 @@ from context.table_maintenance.application.domain.model.table import (
 )
 from context.table_maintenance.application.domain.model.table_discovery_rules import (
     TableDiscoveryRuleId,
+    TableDiscoveryRules,
 )
 from context.table_maintenance.application.exceptions import ConflictError
+from context.table_maintenance.application.service.table import apply_discovery_to_known_table
+from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
+from tests.context.table_maintenance.fakes.recording_send_table_change_gateway import (
+    RecordingSendTableChangeGateway,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from sqlalchemy import Engine
+
+    from context.table_maintenance.application.port.outbound.table import TablesRepo
 
 NOW = datetime(2026, 10, 24, 12, 0, tzinfo=UTC)
 
@@ -297,3 +305,117 @@ def test_a_table_stored_before_the_two_times_reads_them_as_unknown(tmp_path: Pat
     loaded = TablesSqlRepo(engine).get(TableId("u-old"))
     assert loaded is not None
     assert (loaded.last_committed_at, loaded.last_discovered_at) == (None, None)
+
+
+@pytest.fixture(params=["sql", "memory"])
+def either_repo(request: pytest.FixtureRequest, engine: Engine) -> TablesRepo:
+    """Provide each tables repository implementation."""
+    if request.param == "sql":
+        return TablesSqlRepo(engine)
+    return InMemoryTablesRepo()
+
+
+def test_recording_a_newer_commit_moves_only_forward(either_repo: TablesRepo):
+    """The narrow write sets a first commit, moves to a newer one and refuses an older or equal one."""
+    either_repo.create(_table())
+    later = NOW + timedelta(minutes=5)
+    assert either_repo.record_last_commit(TableId("u1"), NOW) is True
+    assert either_repo.record_last_commit(TableId("u1"), later) is True
+    assert either_repo.record_last_commit(TableId("u1"), NOW) is False
+    assert either_repo.record_last_commit(TableId("u1"), later) is False
+    loaded = either_repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.last_committed_at == later
+
+
+def test_recording_a_commit_of_a_dropped_or_unknown_table_changes_nothing(either_repo: TablesRepo):
+    """A dropped table keeps its last commit, as the aggregate refuses it, and an unknown table is no write."""
+    either_repo.create(_table(status=TableStatus.DROPPED))
+    assert either_repo.record_last_commit(TableId("u1"), NOW) is False
+    assert either_repo.record_last_commit(TableId("nope"), NOW) is False
+    loaded = either_repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.last_committed_at is None
+
+
+def test_recording_a_commit_writes_nothing_else(repo: TablesSqlRepo):
+    """A commit recorded from an older read leaves the operation result recorded since in place."""
+    repo.create(_table())
+    stale = repo.get(TableId("u1"))
+    fresh = repo.get(TableId("u1"))
+    assert stale is not None
+    assert fresh is not None
+    fresh.record_operation_result(MaintenanceOperation.REWRITE_DATA_FILES, True, NOW, size=ComputeSize.M)
+    repo.update(fresh)
+
+    stale.record_last_commit(NOW + timedelta(minutes=5))
+    repo.record_last_commit(stale.id, NOW + timedelta(minutes=5))
+
+    loaded = repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.operation_states == fresh.operation_states
+    assert loaded.last_committed_at == NOW + timedelta(minutes=5)
+
+
+def test_a_commit_only_discovery_from_an_older_read_keeps_the_operation_result(repo: TablesSqlRepo):
+    """Discovery seeing only a newer commit, on a copy read before a result was recorded, keeps that result."""
+    unmanaged = _table(status=TableStatus.UNMANAGED)
+    unmanaged.matched_rule_id = None
+    repo.create(unmanaged)
+    stale = repo.get(TableId("u1"))
+    fresh = repo.get(TableId("u1"))
+    assert stale is not None
+    assert fresh is not None
+    fresh.record_operation_result(MaintenanceOperation.REWRITE_DATA_FILES, False, NOW)
+    repo.update(fresh)
+    rules = TableDiscoveryRules.empty()
+
+    apply_discovery_to_known_table(
+        stale,
+        stale.name,
+        rules,
+        repo,
+        RecordingSendTableChangeGateway(),
+        None,
+        NOW,
+        last_committed_at=NOW + timedelta(minutes=5),
+    )
+
+    loaded = repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.operation_states == fresh.operation_states
+    assert loaded.last_committed_at == NOW + timedelta(minutes=5)
+
+
+def test_a_full_update_from_an_older_copy_never_moves_the_last_commit_back(repo: TablesSqlRepo):
+    """A full update carrying an older, or no, last commit keeps the newer one stored."""
+    repo.create(_table())
+    stale = repo.get(TableId("u1"))
+    assert stale is not None
+    stale.record_last_commit(NOW)
+    repo.record_last_commit(TableId("u1"), NOW + timedelta(minutes=5))
+
+    repo.update(stale)
+    loaded = repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.last_committed_at == NOW + timedelta(minutes=5)
+
+    never_seen = repo.get(TableId("u1"))
+    assert never_seen is not None
+    never_seen.last_committed_at = None
+    repo.update(never_seen)
+    loaded = repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.last_committed_at == NOW + timedelta(minutes=5)
+
+
+def test_a_full_update_with_a_newer_last_commit_moves_it(repo: TablesSqlRepo):
+    """A full update carrying a newer last commit stores it."""
+    repo.create(_table())
+    table = repo.get(TableId("u1"))
+    assert table is not None
+    table.record_last_commit(NOW + timedelta(minutes=5))
+    repo.update(table)
+    loaded = repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.last_committed_at == NOW + timedelta(minutes=5)

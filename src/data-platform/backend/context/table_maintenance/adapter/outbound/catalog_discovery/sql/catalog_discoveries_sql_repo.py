@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import delete, insert, select
+from sqlalchemy import insert, select, update
+from sqlalchemy.exc import IntegrityError
 
 from context.table_maintenance.adapter.outbound.catalog_discovery.sql.catalog_discoveries_table import (
     catalog_discoveries_table as t,
@@ -34,9 +35,25 @@ class CatalogDiscoveriesSqlRepo(CatalogDiscoveriesRepo):
         return entity
 
     def save(self, entity: CatalogDiscovery) -> None:
-        """Replace the catalog's row in one transaction."""
+        """Insert the catalog's row, or move its time forward; an older time never replaces a newer one.
+
+        Two scans of one catalog may save at once. The update only ever moves the time
+        forward, and when both find no row and insert, the one that loses the race on
+        the primary key tries again and takes the update path.
+        """
+        try:
+            self._save_once(entity)
+        except IntegrityError:
+            self._save_once(entity)
+
+    def _save_once(self, entity: CatalogDiscovery) -> None:
+        at = entity.last_discovered_at
+        forward = update(t).where(t.c.catalog == entity.catalog, t.c.last_discovered_at < at)
         with self._engine.begin() as conn:
-            conn.execute(delete(t).where(t.c.catalog == entity.catalog))
+            if conn.execute(forward.values(last_discovered_at=at)).rowcount:
+                return
+            if conn.execute(select(t.c.catalog).where(t.c.catalog == entity.catalog)).first() is not None:
+                return
             conn.execute(insert(t).values(**CatalogDiscoveryRowMapper.to_values(entity)))
 
     def get(self, entity_id: EntityId) -> CatalogDiscovery | None:

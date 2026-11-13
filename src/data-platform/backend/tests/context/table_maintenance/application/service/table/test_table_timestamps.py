@@ -157,13 +157,26 @@ def test_a_sync_registers_a_table_never_committed_to_without_a_last_commit(sync,
 
 
 def test_a_sync_saves_a_newer_commit_of_a_known_table(sync, tables_repo, rules_repo, catalog, log, now):
-    """A known table whose newest commit moved is saved once, with the new time."""
+    """A known table whose only change is a newer commit writes just its last commit, once."""
     _include_all(rules_repo, now)
     _row(tables_repo, EARLIER).record_last_commit(COMMIT)
     catalog.add_table("iceberg", "sales", "orders", "u-1", last_committed_at=NEWER_COMMIT.isoformat())
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
     sync.execute(_catalog_wide())
+    assert log == []
+    assert tables_repo.commit_writes == [("u-1", NEWER_COMMIT)]
+    assert tables_repo.get(TableId("u-1")).last_committed_at == NEWER_COMMIT
+
+
+def test_a_rename_with_a_newer_commit_is_one_full_update(sync, tables_repo, rules_repo, catalog, log, now):
+    """When the table changed too, the newer commit rides along in the one full update."""
+    _include_all(rules_repo, now)
+    _row(tables_repo, EARLIER).record_last_commit(COMMIT)
+    catalog.add_table("iceberg", "sales", "renamed", "u-1", last_committed_at=NEWER_COMMIT.isoformat())
+    track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
+    sync.execute(_catalog_wide())
     assert log == [("tables.update", "u-1")]
+    assert tables_repo.commit_writes == []
     assert tables_repo.get(TableId("u-1")).last_committed_at == NEWER_COMMIT
 
 
@@ -175,6 +188,7 @@ def test_a_sync_never_moves_a_last_commit_back(sync, tables_repo, rules_repo, ca
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
     sync.execute(_catalog_wide())
     assert log == []
+    assert tables_repo.commit_writes == []
     assert tables_repo.get(TableId("u-1")).last_committed_at == NEWER_COMMIT
 
 
@@ -194,7 +208,8 @@ def test_a_catalog_event_saves_the_newer_commit_of_an_unmanaged_table(hint, tabl
     catalog.add_table("iceberg", "sales", "orders", "u-1", last_committed_at=COMMIT.isoformat())
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
     hint.execute(ProcessTableHintUseCaseInput("iceberg", "sales", "orders", "AFTER_UPDATE_TABLE"))
-    assert log == [("tables.update", "u-1")]
+    assert log == []
+    assert tables_repo.commit_writes == [("u-1", COMMIT)]
     assert tables_repo.get(TableId("u-1")).last_committed_at == COMMIT
 
 
@@ -220,7 +235,8 @@ def test_a_reconcile_saves_the_newest_commit_it_observes(tables_repo, catalog, r
     plan_service_on_fakes(tables_repo, catalog, resolve_applicable_policy).execute(
         PlanTableMaintenanceUseCaseInput(table_uuid="u-1", now=now)
     )
-    assert log == [("tables.update", "u-1")]
+    assert log == []
+    assert tables_repo.commit_writes == [("u-1", NEWER_COMMIT)]
     assert tables_repo.get(TableId("u-1")).last_committed_at == NEWER_COMMIT
 
 
@@ -235,6 +251,7 @@ def test_a_reconcile_that_observes_no_newer_commit_saves_nothing(
         PlanTableMaintenanceUseCaseInput(table_uuid="u-1", now=now)
     )
     assert log == []
+    assert tables_repo.commit_writes == []
 
 
 # --- listing ---

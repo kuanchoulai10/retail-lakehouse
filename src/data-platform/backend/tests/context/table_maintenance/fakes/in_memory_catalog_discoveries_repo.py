@@ -12,7 +12,10 @@ if TYPE_CHECKING:
 
 
 class InMemoryCatalogDiscoveriesRepo(CatalogDiscoveriesRepo):
-    """Keep catalog discoveries in a dict keyed by catalog name, storing copies so saves are explicit."""
+    """Keep catalog discoveries in a dict keyed by catalog name, storing copies so saves are explicit.
+
+    A save moves a stored time only forward, as the SQL repository does.
+    """
 
     def __init__(self) -> None:
         """Start empty."""
@@ -24,8 +27,12 @@ class InMemoryCatalogDiscoveriesRepo(CatalogDiscoveriesRepo):
         return entity
 
     def save(self, entity: CatalogDiscovery) -> None:
-        """Insert or replace the record."""
-        self.items[entity.id.value] = entity.model_copy()
+        """Insert the record, or move its time forward; an older time never replaces a newer one."""
+        stored = self.items.get(entity.id.value)
+        if stored is None:
+            self.items[entity.id.value] = entity.model_copy()
+        else:
+            stored.record(entity.last_discovered_at)
 
     def get(self, entity_id: EntityId) -> CatalogDiscovery | None:
         """Return a copy of the record, or None."""

@@ -10,20 +10,23 @@ from context.table_maintenance.application.port.outbound.table import TablesRepo
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from datetime import datetime
 
     from base import EntityId
     from context.table_maintenance.application.domain.model.table import (
         Table,
+        TableId,
         TableName,
     )
 
 
 class InMemoryTablesRepo(TablesRepo):
-    """Keep tables in a dict keyed by uuid."""
+    """Keep tables in a dict keyed by uuid; ``commit_writes`` logs each narrow last-commit write."""
 
     def __init__(self) -> None:
         """Start empty."""
         self.items: dict[str, Table] = {}
+        self.commit_writes: list[tuple[str, datetime]] = []
 
     def create(self, entity: Table) -> Table:
         """Insert a table; a duplicate uuid raises ConflictError."""
@@ -49,6 +52,12 @@ class InMemoryTablesRepo(TablesRepo):
             raise LookupError(f"table {table.id.value} does not exist")
         self.items[table.id.value] = table
         return table
+
+    def record_last_commit(self, table_id: TableId, at: datetime) -> bool:
+        """Move the stored table's last commit by the aggregate's own rule."""
+        self.commit_writes.append((table_id.value, at))
+        stored = self.items.get(table_id.value)
+        return stored is not None and stored.record_last_commit(at)
 
     def find_by_name(self, name: TableName) -> Table | None:
         """Return the latest-updated non-dropped table with this name."""

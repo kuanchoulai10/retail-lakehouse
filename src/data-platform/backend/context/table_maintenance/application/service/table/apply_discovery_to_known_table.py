@@ -48,9 +48,11 @@ def apply_discovery_to_known_table(  # noqa: PLR0913
     """Apply one discovery of a known, live table: rename, decide, note its last commit and tell the runtime.
 
     The table is renamed when its name changed and decided again by the rules,
-    and its last commit moves to ``last_committed_at`` when that is newer; all of
-    it is stored in one update, which also stores a new deciding rule
-    (``rule_changed``), and nothing is stored when nothing changed. A table
+    and its last commit moves to ``last_committed_at`` when that is newer. A
+    rename or a management change is stored in one full update (with the new
+    deciding rule and the last commit); a table whose only change is a newer
+    commit gets just that written, so this copy of the table, read before any
+    other writer's change, never puts the rest of it back. A table
     the rules unmanage is sent ``stopped``; one they manage again is sent
     ``seen_change`` (``seen`` when None) as a managed table, so its workflow starts
     again under the same ID. A table whose management did not change (a rule-only
@@ -62,8 +64,10 @@ def apply_discovery_to_known_table(  # noqa: PLR0913
         table.rename(name, now)
     change = decide_table_management(table, rules, now)
     committed = table.record_last_commit(last_committed_at)
-    if renamed or committed or change != TableManagementChange.UNCHANGED:
+    if renamed or change != TableManagementChange.UNCHANGED:
         tables_repo.update(table)
+    elif committed and last_committed_at is not None:
+        tables_repo.record_last_commit(table.id, last_committed_at)
     signalled = False
     if change == TableManagementChange.UNMANAGED:
         _send(table_change_gateway, table, TableChange.STOPPED)
