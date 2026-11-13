@@ -76,6 +76,15 @@ class CompactionCandidate(AggregateRoot[CompactionCandidateId]):
             raise ValueError("a claimed or running candidate needs a lease, and only such a candidate has one")
         return self
 
+    @property
+    def rank(self) -> tuple[float, int, str]:
+        """Sort key that puts the best candidate first.
+
+        Best means the highest score; ties go to more removable files, then to the
+        partition's canonical key, so the same candidates always sort the same way.
+        """
+        return (-self.score.score, -self.score.reducible_files, self.partition.canonical())
+
     @classmethod
     def create(  # noqa: PLR0913
         cls,

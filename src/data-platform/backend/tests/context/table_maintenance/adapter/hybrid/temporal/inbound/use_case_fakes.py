@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from context.table_maintenance.application.port.inbound.compaction_candidate import (
+    ReleaseCompactionCandidatesUseCase,
+    ReleaseCompactionCandidatesUseCaseInput,
+    ReleaseCompactionCandidatesUseCaseOutput,
+)
 from context.table_maintenance.application.port.inbound.table import (
     PlanTableMaintenanceUseCase,
     PlanTableMaintenanceUseCaseInput,
@@ -149,6 +154,19 @@ class FakeRecordResult(RecordTableMaintenanceOperationResultUseCase):
         """Record the request and return its run as running."""
         self.requests.append(request)
         return RecordTableMaintenanceOperationResultUseCaseOutput(run_id=request.run_id, status="running")
+
+
+class FakeReleaseCandidates(ReleaseCompactionCandidatesUseCase):
+    """Release compaction candidates use case fake that records its requests."""
+
+    def __init__(self) -> None:
+        """Start with no recorded requests."""
+        self.requests: list[ReleaseCompactionCandidatesUseCaseInput] = []
+
+    def execute(self, request: ReleaseCompactionCandidatesUseCaseInput) -> ReleaseCompactionCandidatesUseCaseOutput:
+        """Record the request and report two candidates released."""
+        self.requests.append(request)
+        return ReleaseCompactionCandidatesUseCaseOutput(released=2)
 
 
 class FakeRecordReconciliation(RecordTableReconciliationUseCase):

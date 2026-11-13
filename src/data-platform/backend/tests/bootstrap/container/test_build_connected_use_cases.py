@@ -6,13 +6,20 @@ import threading
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
-from bootstrap.container import build_connected_use_cases, build_engine, build_size_memory, run_migrations
+from bootstrap.container import (
+    build_connected_use_cases,
+    build_engine,
+    build_size_memory,
+    compaction_claim_lease,
+    run_migrations,
+)
 from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
     AsyncLoopBridge,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
     ListTableMaintenancePoliciesUseCaseInput,
 )
+from context.table_maintenance.application.service.table import PlanTableMaintenanceService
 from context.table_maintenance.application.service.table_maintenance_run import (
     RecordTableMaintenanceOperationResultService,
 )
@@ -67,3 +74,23 @@ def test_the_recorder_knows_each_size_s_memory(tmp_path):
     recorder = use_cases.record_table_maintenance_operation_result
     assert isinstance(recorder, RecordTableMaintenanceOperationResultService)
     assert recorder._size_memory == build_size_memory(settings.spark)  # noqa: SLF001
+
+
+def test_the_planner_knows_each_size_s_memory_and_the_claim_lease(tmp_path):
+    """The planner estimates costs with each size's memory and claims candidates for the worker's lease."""
+    settings = sqlite_settings()
+    settings.sqlite.path = str(tmp_path / "tm.db")
+
+    async def connect(_temporal: TemporalSettings):
+        return MagicMock(name="client")
+
+    bridge = AsyncLoopBridge()
+    try:
+        use_cases = build_connected_use_cases(settings, bridge, connect=connect, k8s_api_factory=MagicMock)
+    finally:
+        bridge.close()
+
+    planner = use_cases.plan_table_maintenance
+    assert isinstance(planner, PlanTableMaintenanceService)
+    assert planner._size_memory == build_size_memory(settings.spark)  # noqa: SLF001
+    assert planner._claim_lease == compaction_claim_lease(settings)  # noqa: SLF001

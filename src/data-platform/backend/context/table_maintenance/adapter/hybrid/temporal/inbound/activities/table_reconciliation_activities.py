@@ -19,6 +19,9 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.activi
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.translate_application_errors import (
     translate_application_errors,
 )
+from context.table_maintenance.application.port.inbound.compaction_candidate import (
+    ReleaseCompactionCandidatesUseCaseInput,
+)
 from context.table_maintenance.application.port.inbound.table import (
     PlanTableMaintenanceUseCaseInput,
 )
@@ -34,6 +37,9 @@ from context.table_maintenance.application.port.inbound.table_reconciliation imp
 )
 
 if TYPE_CHECKING:
+    from context.table_maintenance.application.port.inbound.compaction_candidate import (
+        ReleaseCompactionCandidatesUseCase,
+    )
     from context.table_maintenance.application.port.inbound.table import (
         PlanTableMaintenanceUseCase,
     )
@@ -49,7 +55,7 @@ if TYPE_CHECKING:
 
 
 class TableReconciliationActivities:
-    """Plan and record reconciliations; submit, poll and delete maintenance Spark jobs and read their pods.
+    """Plan and record reconciliations, release unstarted candidates, run maintenance Spark jobs and read their pods.
 
     Each method wraps exactly one use case. Inputs and outputs are primitive dicts;
     ``now`` travels as an ISO-8601 string taken from ``workflow.now()``.
@@ -60,6 +66,7 @@ class TableReconciliationActivities:
         *,
         plan: PlanTableMaintenanceUseCase,
         record: RecordTableReconciliationUseCase,
+        release: ReleaseCompactionCandidatesUseCase,
         submit: SubmitMaintenanceOperationUseCase,
         status: GetMaintenanceJobStatusUseCase,
         delete: DeleteMaintenanceJobUseCase,
@@ -74,6 +81,7 @@ class TableReconciliationActivities:
         """
         self._plan = plan
         self._record = record
+        self._release = release
         self._submit = submit
         self._status = status
         self._delete = delete
@@ -90,6 +98,7 @@ class TableReconciliationActivities:
                     table_uuid=request["table_uuid"],
                     now=datetime.fromisoformat(request["now"]),
                     manual_operations=request.get("manual_operations"),
+                    run_id=request.get("run_id"),
                 )
             )
         return {**activity_payload(output), "attempt_deadline_seconds": self._attempt_deadline_seconds}
@@ -113,6 +122,18 @@ class TableReconciliationActivities:
                     policy_name=request["policy_name"],
                     policy_version=request["policy_version"],
                     policy_target=request["policy_target"],
+                )
+            )
+        return activity_payload(output)
+
+    @activity.defn(name=TableReconciliationActivity.RELEASE_COMPACTION_CANDIDATES)
+    def release_compaction_candidates(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Hand back the compaction candidates a run claimed but never started."""
+        with translate_application_errors():
+            output = self._release.execute(
+                ReleaseCompactionCandidatesUseCaseInput(
+                    run_id=request["run_id"],
+                    now=datetime.fromisoformat(request["now"]),
                 )
             )
         return activity_payload(output)

@@ -23,3 +23,8 @@ class ComputeSize(StrEnum):
         sizes = list(ComputeSize)
         index = sizes.index(self)
         return sizes[index - 1] if index > 0 else None
+
+    def at_least(self, other: ComputeSize) -> ComputeSize:
+        """Return the larger of this size and ``other``."""
+        sizes = list(ComputeSize)
+        return max(self, other, key=sizes.index)

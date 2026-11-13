@@ -52,9 +52,6 @@ from context.table_maintenance.application.port.inbound.table_reconciliation imp
 from context.table_maintenance.application.port.outbound.table import (
     TableMetadataObservation,
 )
-from context.table_maintenance.application.service.table import (
-    PlanTableMaintenanceService,
-)
 from context.table_maintenance.application.service.table_maintenance_policy import (
     CreateTableMaintenancePolicyService,
     UpdateTableMaintenancePolicyService,
@@ -73,6 +70,7 @@ from tests.context.table_maintenance.fakes.in_memory_table_reconciliations_repo 
     InMemoryTableReconciliationsRepo,
 )
 from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
+from tests.context.table_maintenance.fakes.plan_service_on_fakes import plan_service_on_fakes
 from tests.context.table_maintenance.fakes.policy_with_operation import policy_with_operation
 from tests.context.table_maintenance.fakes.recording_send_table_change_gateway import (
     RecordingSendTableChangeGateway,
@@ -150,7 +148,7 @@ def attachments(attachments_repo):
 @pytest.fixture
 def planner(tables_repo, catalog, resolve_applicable_policy):
     """Provide the plan table maintenance service on the fakes."""
-    return PlanTableMaintenanceService(tables_repo, catalog, resolve_applicable_policy)
+    return plan_service_on_fakes(tables_repo, catalog, resolve_applicable_policy)
 
 
 def _use_policy(policies, now, content):

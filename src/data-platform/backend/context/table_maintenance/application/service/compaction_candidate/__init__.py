@@ -1,5 +1,11 @@
-"""Services of the compaction_candidate group."""
+"""Services for the compaction_candidate group."""
 
 from __future__ import annotations
 
-__all__ = []
+from context.table_maintenance.application.service.compaction_candidate.release_compaction_candidates import (
+    ReleaseCompactionCandidatesService,
+)
+
+__all__ = [
+    "ReleaseCompactionCandidatesService",
+]

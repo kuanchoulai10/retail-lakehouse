@@ -32,6 +32,7 @@ class Activities:
         return [
             reconciliation.plan_table_maintenance,
             reconciliation.record_table_reconciliation,
+            reconciliation.release_compaction_candidates,
             reconciliation.submit_maintenance_operation,
             reconciliation.get_maintenance_job_status,
             reconciliation.delete_maintenance_job,

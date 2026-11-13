@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from bootstrap.container.use_cases import UseCases
+from context.table_maintenance.application.domain.model.compaction_candidate import CandidateSelection
+from context.table_maintenance.application.service.compaction_candidate import (
+    ReleaseCompactionCandidatesService,
+)
 from context.table_maintenance.application.service.table import (
     GetTableHealthService,
     GetTableService,
@@ -62,6 +66,9 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.shared import ComputeSize, SizeMemory
 
 
+_DEFAULT_CLAIM_LEASE = timedelta(hours=20)
+
+
 def _utc_now() -> datetime:
     return datetime.now(UTC)
 
@@ -73,11 +80,16 @@ def build_use_cases(
     clock: Callable[[], datetime] = _utc_now,
     catalog_names: Sequence[str] = (),
     size_memory: Mapping[ComputeSize, SizeMemory] | None = None,
+    candidate_selection: CandidateSelection | None = None,
+    claim_lease: timedelta = _DEFAULT_CLAIM_LEASE,
 ) -> UseCases:
     """Build every application service on the given repositories and gateways.
 
     ``size_memory`` is the memory each compute size runs with; without it no
-    operation is ever stepped down to a smaller size.
+    operation is ever stepped down to a smaller size, and compaction costs are
+    estimated for a fixed memory. ``candidate_selection`` says how compaction
+    candidates are picked (the defaults without it) and ``claim_lease`` how long
+    a run holds the candidates it claims.
     """
     tables = repos.tables
     rules = repos.table_discovery_rules
@@ -85,6 +97,7 @@ def build_use_cases(
     attachments = repos.table_maintenance_policy_attachments
     runs = repos.table_maintenance_runs
     reconciliations = repos.table_reconciliations
+    candidates = repos.compaction_candidates
     catalog = gateways.read_table_metadata
     table_changes = gateways.send_table_change
     resolve_applicable_policy = ResolveApplicableTableMaintenancePolicyService(policies, attachments, catalog, tables)
@@ -146,7 +159,17 @@ def build_use_cases(
         delete_maintenance_job=DeleteMaintenanceJobService(gateways.delete_maintenance_job),
         get_maintenance_job_status=GetMaintenanceJobStatusService(gateways.read_maintenance_job),
         get_maintenance_job_pods=GetMaintenanceJobPodsService(gateways.read_maintenance_job_pods),
-        plan_table_maintenance=PlanTableMaintenanceService(tables, catalog, resolve_applicable_policy),
+        plan_table_maintenance=PlanTableMaintenanceService(
+            tables,
+            catalog,
+            resolve_applicable_policy,
+            candidates,
+            runs,
+            selection=candidate_selection or CandidateSelection(),
+            size_memory=size_memory or {},
+            claim_lease=claim_lease,
+        ),
+        release_compaction_candidates=ReleaseCompactionCandidatesService(candidates),
         list_table_reconciliations=ListTableReconciliationsService(reconciliations),
         record_table_reconciliation=RecordTableReconciliationService(reconciliations),
         submit_maintenance_operation=SubmitMaintenanceOperationService(runs, tables, gateways.submit_maintenance_job),

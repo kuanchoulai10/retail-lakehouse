@@ -5,11 +5,20 @@ from __future__ import annotations
 from context.table_maintenance.application.domain.model.compaction_candidate.candidate_filters import (
     CandidateFilters,
 )
+from context.table_maintenance.application.domain.model.compaction_candidate.candidate_pick import (
+    CandidatePick,
+)
 from context.table_maintenance.application.domain.model.compaction_candidate.candidate_score import (
     CandidateScore,
 )
 from context.table_maintenance.application.domain.model.compaction_candidate.candidate_scoring import (
     CandidateScoring,
+)
+from context.table_maintenance.application.domain.model.compaction_candidate.candidate_selection import (
+    CandidateSelection,
+)
+from context.table_maintenance.application.domain.model.compaction_candidate.candidate_shortfall import (
+    CandidateShortfall,
 )
 from context.table_maintenance.application.domain.model.compaction_candidate.candidate_state import (
     CandidateState,
@@ -41,7 +50,10 @@ __all__ = [
     "CandidateSync",
     "CandidateScoring",
     "CandidateFilters",
+    "CandidatePick",
     "CandidateScore",
+    "CandidateShortfall",
+    "CandidateSelection",
     "CandidateState",
     "CompactionCandidate",
     "CompactionCandidateId",

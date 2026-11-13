@@ -25,6 +25,7 @@ from bootstrap.container.build_spark_config import build_spark_config
 from bootstrap.container.build_use_cases import build_use_cases
 from bootstrap.container.build_web_use_cases import build_web_use_cases
 from bootstrap.container.build_worker import WORKFLOWS, build_worker
+from bootstrap.container.compaction_claim_lease import compaction_claim_lease
 from bootstrap.container.configure_logging import configure_logging
 from bootstrap.container.connect_temporal import connect_temporal
 from bootstrap.container.create_api_app import create_api_app
@@ -63,6 +64,7 @@ __all__ = [
     "build_polaris_http_client",
     "build_repositories",
     "build_size_memory",
+    "compaction_claim_lease",
     "build_spark_config",
     "build_use_cases",
     "build_web_use_cases",

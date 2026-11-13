@@ -5,6 +5,7 @@ from context.table_maintenance.application.port.inbound.table.plan_table_mainten
 )
 from context.table_maintenance.application.port.inbound.table.plan_table_maintenance.output import (
     PlanTableMaintenanceUseCaseOutput,
+    PlanTableMaintenanceUseCaseOutputCandidatePartitionItem,
     PlanTableMaintenanceUseCaseOutputCheckItem,
     PlanTableMaintenanceUseCaseOutputFilterItem,
     PlanTableMaintenanceUseCaseOutputItem,
@@ -18,6 +19,7 @@ __all__ = [
     "PlanTableMaintenanceUseCase",
     "PlanTableMaintenanceUseCaseInput",
     "PlanTableMaintenanceUseCaseOutput",
+    "PlanTableMaintenanceUseCaseOutputCandidatePartitionItem",
     "PlanTableMaintenanceUseCaseOutputCheckItem",
     "PlanTableMaintenanceUseCaseOutputFilterItem",
     "PlanTableMaintenanceUseCaseOutputItem",

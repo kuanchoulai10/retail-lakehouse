@@ -6,6 +6,9 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 from base import validation_message
+from context.table_maintenance.application.domain.model.compaction_candidate import (
+    InvalidCandidateTransition,
+)
 from context.table_maintenance.application.domain.model.table import (
     InvalidTableTransition,
 )
@@ -32,15 +35,21 @@ if TYPE_CHECKING:
 def translate_domain_errors() -> Iterator[None]:
     """Translate domain and repo errors into application exceptions.
 
-    InvalidTableTransition, InvalidRunTransition, StalePolicyVersion and
-    StaleDiscoveryRulesVersion become ConflictError, any
+    InvalidTableTransition, InvalidRunTransition, InvalidCandidateTransition,
+    StalePolicyVersion and StaleDiscoveryRulesVersion become ConflictError, any
     other ValueError (which covers invalid settings and rules, Pydantic's
     included) becomes ValidationError with a one-line message, and a repo
     LookupError becomes NotFoundError. Application exceptions pass through.
     """
     try:
         yield
-    except (InvalidTableTransition, InvalidRunTransition, StalePolicyVersion, StaleDiscoveryRulesVersion) as exc:
+    except (
+        InvalidTableTransition,
+        InvalidRunTransition,
+        InvalidCandidateTransition,
+        StalePolicyVersion,
+        StaleDiscoveryRulesVersion,
+    ) as exc:
         raise ConflictError(str(exc)) from exc
     except ValueError as exc:
         raise ValidationError(validation_message(exc)) from exc

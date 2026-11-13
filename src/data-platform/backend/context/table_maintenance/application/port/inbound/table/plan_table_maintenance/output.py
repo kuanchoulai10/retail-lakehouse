@@ -19,13 +19,30 @@ class PlanTableMaintenanceUseCaseOutputFilterItem:
 
 
 @dataclass(frozen=True)
+class PlanTableMaintenanceUseCaseOutputCandidatePartitionItem:
+    """One compaction candidate a planned compaction takes, by spec id and partition values.
+
+    Spec id -1 with no values stands for the whole table.
+    """
+
+    spec_id: int
+    values: list[Any]
+
+
+@dataclass(frozen=True)
 class PlanTableMaintenanceUseCaseOutputItem:
-    """One planned operation with its filters and procedure arguments."""
+    """One planned operation with its filters and procedure arguments.
+
+    candidate_partitions are the compaction candidates a scheduled
+    compaction takes, best first (empty for any other operation and for a
+    manual run).
+    """
 
     operation: str
     filters: list[PlanTableMaintenanceUseCaseOutputFilterItem]
     procedure_args: dict[str, Any]
     start_size: str = "S"
+    candidate_partitions: list[PlanTableMaintenanceUseCaseOutputCandidatePartitionItem] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -58,7 +75,9 @@ class PlanTableMaintenanceUseCaseOutput:
     ``None`` when the table is not managed (any more). ``policy_name``,
     ``policy_version`` and ``policy_target`` name the maintenance policy that
     was applied and where it is attached (``None`` for the default with nothing
-    attached); they are ``None`` only when the table is unknown.
+    attached); they are ``None`` only when the table is unknown. ``next_check_at``
+    is when a due compaction whose candidates are all held by a filter may find
+    one free (None otherwise), so the caller can look again then.
     """
 
     status: str
@@ -72,3 +91,4 @@ class PlanTableMaintenanceUseCaseOutput:
     policy_name: str | None = None
     policy_version: int | None = None
     policy_target: dict[str, Any] | None = None
+    next_check_at: datetime | None = None

@@ -12,6 +12,7 @@ from bootstrap.container.build_k8s_core_api import build_k8s_core_api
 from bootstrap.container.build_repositories import build_repositories
 from bootstrap.container.build_size_memory import build_size_memory
 from bootstrap.container.build_use_cases import build_use_cases
+from bootstrap.container.compaction_claim_lease import compaction_claim_lease
 from bootstrap.container.connect_temporal import connect_temporal
 from bootstrap.container.lazy_client import LazyClient
 
@@ -56,4 +57,5 @@ def build_connected_use_cases(
         gateways,
         catalog_names=settings.catalog.names,
         size_memory=build_size_memory(settings.spark),
+        claim_lease=compaction_claim_lease(settings),
     )

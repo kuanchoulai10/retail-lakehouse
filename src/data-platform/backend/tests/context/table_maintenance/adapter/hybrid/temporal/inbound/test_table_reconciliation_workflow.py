@@ -47,6 +47,9 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_pl
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_record_activity import (
     ScriptedRecordActivity,
 )
+from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_release_activity import (
+    ScriptedReleaseActivity,
+)
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_maintenance_stub_workflow import (
     TableMaintenanceStubWorkflow,
 )
@@ -97,6 +100,26 @@ def _planned(*operations: str, interval: int = 3600) -> dict[str, Any]:
     }
 
 
+def _with_candidates(plan: dict[str, Any]) -> dict[str, Any]:
+    """Return ``plan`` with its compaction taking one candidate partition."""
+    operations = [
+        {**op, "candidate_partitions": [{"spec_id": 0, "values": ["eu"]}]} if op["operation"] == COMPACTION else op
+        for op in plan["operations"]
+    ]
+    return {**plan, "operations": operations}
+
+
+def _all_held(next_check_in: int, interval: int = 3600) -> Callable[[dict[str, Any]], dict[str, Any]]:
+    """Return a plan whose due compaction found every candidate held, until ``next_check_in`` seconds pass."""
+
+    def answer(request: dict[str, Any]) -> dict[str, Any]:
+        at = datetime.fromisoformat(request["now"]) + timedelta(seconds=next_check_in)
+        held = {**_check(COMPACTION, "all_held"), "next_eligible_at": at.isoformat()}
+        return {**_planned(interval=interval), "checks": [held], "next_check_at": at.isoformat()}
+
+    return answer
+
+
 def _dry_run(*due: str) -> dict[str, Any]:
     return {**_planned(), "dry_run": True, "checks": [_check(op) for op in due]}
 
@@ -132,6 +155,7 @@ class Harness:
     client: Client
     plans: ScriptedPlanActivity
     recorder: ScriptedRecordActivity
+    releases: ScriptedReleaseActivity
     handle: WorkflowHandle | None = None
     sent: int = 0
 
@@ -256,6 +280,7 @@ def _run(
             await register_table_search_attributes(env.client)
             plans = ScriptedPlanActivity(script)
             recorder = ScriptedRecordActivity()
+            releases = ScriptedReleaseActivity()
             lookups = WorkflowSignalActivities(env.client, admission_limit=1, admission_lease_seconds=22500)
             async with Worker(
                 env.client,
@@ -264,11 +289,12 @@ def _run(
                 activities=[
                     plans.plan_table_maintenance,
                     recorder.record_table_reconciliation,
+                    releases.release_compaction_candidates,
                     lookups.get_workflow_running,
                 ],
                 workflow_runner=runner or SandboxedWorkflowRunner(),
             ):
-                await scenario(Harness(env, env.client, plans, recorder))
+                await scenario(Harness(env, env.client, plans, recorder, releases))
 
     asyncio.run(go())
 
@@ -1204,6 +1230,139 @@ def test_history_from_before_this_milestone_replays():
     async def go() -> None:
         history = WorkflowHistory.from_json(
             WORKFLOW_ID, (FIXTURES / "reconciliation_before_search_attributes.json").read_text()
+        )
+        await Replayer(workflows=[TableReconciliationWorkflow]).replay_workflow(history)
+
+    asyncio.run(go())
+
+
+# --- compaction candidates ---
+
+
+def test_plan_names_the_run_it_starts():
+    """The plan is asked for the run it will start, so the candidates it claims belong to that run."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        run_id = await h.in_flight()
+        assert h.plans.requests[0]["run_id"] == run_id
+        assert h.releases.requests == []
+
+    _run(scenario, script=lambda _: _with_candidates(_planned(COMPACTION)))
+
+
+def test_start_failure_releases_the_claimed_candidates(monkeypatch: pytest.MonkeyPatch):
+    """A run that cannot be started hands back the candidates its plan claimed for it."""
+    import temporalio.workflow
+
+    async def failing_start(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
+        raise WorkflowAlreadyStartedError(kwargs["id"], args[0])
+
+    monkeypatch.setattr(temporalio.workflow, "start_child_workflow", failing_start)
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        record = (await h.records(1))[0]
+        assert record["run_start_failed"] is True
+        (release,) = h.releases.requests
+        assert release["run_id"] == h.plans.requests[0]["run_id"]
+        assert release["now"] is not None
+
+    _run(scenario, script=lambda _: _with_candidates(_planned(COMPACTION)), runner=UnsandboxedWorkflowRunner())
+
+
+def test_start_failure_without_candidates_releases_nothing(monkeypatch: pytest.MonkeyPatch):
+    """A plan that claimed no candidates has nothing to hand back when its run cannot start."""
+    import temporalio.workflow
+
+    async def failing_start(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
+        raise WorkflowAlreadyStartedError(kwargs["id"], args[0])
+
+    monkeypatch.setattr(temporalio.workflow, "start_child_workflow", failing_start)
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        await h.records(1)
+        await h.settle()
+        assert h.releases.requests == []
+
+    _run(scenario, script=lambda _: _planned(EXPIRE), runner=UnsandboxedWorkflowRunner())
+
+
+def test_stop_during_plan_releases_the_claimed_candidates():
+    """A plan not started because the workflow is stopping hands back the candidates it claimed."""
+
+    async def scenario(h: Harness) -> None:
+        h.plans.gate = asyncio.Event()
+        await h.start()
+        await h.plan_count(1)
+        await h.signal(TableReconciliationSignal.STOP)
+        await eventually(h.state, lambda s: s["stopping"])
+        h.plans.gate.set()
+        await h.ended()
+        assert [r["run_id"] for r in h.releases.requests] == [h.plans.requests[0]["run_id"]]
+
+    _run(scenario, script=lambda _: _with_candidates(_planned(COMPACTION)))
+
+
+def test_all_held_plan_looks_again_when_the_first_hold_ends():
+    """A compaction waiting for writes to stop is planned again when the hold ends, not an interval later."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = (await h.plan_count(1))[0]
+        await h.settle()
+        await h.env.sleep(timedelta(seconds=100))
+        second = (await h.plan_count(2))[1]
+        gap = datetime.fromisoformat(second["now"]) - datetime.fromisoformat(first["now"])
+        assert _within_a_second(gap, 90)
+        record = (await h.records(2))[1]
+        assert record["wake_reasons"] == {"schedule": 1}
+
+    _run(scenario, script=_all_held(90))
+
+
+def test_a_hold_ending_at_once_waits_a_little():
+    """A hold that already ended by the time the plan returns is looked at again after a short pause."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = (await h.plan_count(1))[0]
+        await h.settle()
+        await h.env.sleep(timedelta(seconds=30))
+        second = (await h.plan_count(2))[1]
+        gap = datetime.fromisoformat(second["now"]) - datetime.fromisoformat(first["now"])
+        assert _within_a_second(gap, 10)
+
+    _run(scenario, script=_all_held(-5))
+
+
+def test_a_run_in_flight_past_its_candidates_lease_still_blocks_planning():
+    """However long a run takes (past its candidates' lease), nothing is planned until it ends or is given up."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        run_id = await h.in_flight()
+        await h.env.sleep(timedelta(hours=21))
+        await h.signal(TableReconciliationSignal.TABLE_UPDATED)
+        state = await h.settle()
+        assert state["in_flight_run_id"] == run_id
+        assert len(h.plans.requests) == 1
+
+    _run(scenario, script=lambda _: _with_candidates(_planned(COMPACTION, EXPIRE)))
+
+
+def test_history_from_before_compaction_candidates_replays():
+    """A history whose plans already carried candidates and a next check, under the code before, replays unchanged.
+
+    Its first plan held every candidate until a next check, its second started a
+    run that took a candidate, and its third was not started because the
+    workflow was stopping: the new code neither looks again early nor releases.
+    """
+
+    async def go() -> None:
+        history = WorkflowHistory.from_json(
+            WORKFLOW_ID, (FIXTURES / "reconciliation_before_compaction_candidates.json").read_text()
         )
         await Replayer(workflows=[TableReconciliationWorkflow]).replay_workflow(history)
 

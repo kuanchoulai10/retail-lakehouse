@@ -3,13 +3,20 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
+from context.table_maintenance.application.domain.model.compaction_candidate import (
+    CandidateSelection,
+    CandidateShortfall,
+)
 from context.table_maintenance.application.domain.model.shared import (
+    ComputeSize,
     MaintenanceAssessment,
     MaintenanceOperation,
     MaintenancePlan,
     OperationVerdict,
+    PlannedOperation,
 )
 from context.table_maintenance.application.domain.model.table import (
     TableId,
@@ -18,6 +25,13 @@ from context.table_maintenance.application.domain.model.table import (
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     MaintenancePolicyContent,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRunId
+from context.table_maintenance.application.domain.service.compaction_candidate import (
+    estimate_throughput,
+    observe_compaction_partitions,
+    pick_compaction_candidates,
+)
+from context.table_maintenance.application.domain.service.shared import size_for_bytes
 from context.table_maintenance.application.domain.service.table import (
     assess_maintenance,
     build_partition_filters,
@@ -28,6 +42,7 @@ from context.table_maintenance.application.port.inbound.table import (
     PlanTableMaintenanceUseCase,
     PlanTableMaintenanceUseCaseInput,
     PlanTableMaintenanceUseCaseOutput,
+    PlanTableMaintenanceUseCaseOutputCandidatePartitionItem,
     PlanTableMaintenanceUseCaseOutputCheckItem,
     PlanTableMaintenanceUseCaseOutputFilterItem,
     PlanTableMaintenanceUseCaseOutputItem,
@@ -48,19 +63,29 @@ from context.table_maintenance.application.service.table_maintenance_run import 
 )
 
 if TYPE_CHECKING:
-    from datetime import datetime
+    from collections.abc import Mapping
+    from datetime import datetime, timedelta
 
+    from context.table_maintenance.application.domain.model.compaction_candidate import CompactionCandidate
     from context.table_maintenance.application.domain.model.shared import (
-        PlannedOperation,
+        PartitionStats,
+        SizeMemory,
         TableObservation,
     )
     from context.table_maintenance.application.domain.model.table import Table
+    from context.table_maintenance.application.port.outbound.compaction_candidate import CompactionCandidatesRepo
     from context.table_maintenance.application.port.outbound.table import (
         ReadTableMetadataGateway,
         TablesRepo,
     )
+    from context.table_maintenance.application.port.outbound.table_maintenance_run import TableMaintenanceRunsRepo
 
 logger = logging.getLogger(__name__)
+
+_COMPACTION = MaintenanceOperation.REWRITE_DATA_FILES
+_GIB = 1024**3
+_FALLBACK_MEMORY_GB = 1.5
+_RUNS_FOR_THROUGHPUT = 50
 
 _SKIP_REASONS = {
     TableStatus.DROPPED: "dropped",
@@ -71,16 +96,31 @@ _SKIP_REASONS = {
 class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
     """Decide which maintenance operations a table needs right now."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         tables_repo: TablesRepo,
         catalog_gateway: ReadTableMetadataGateway,
         resolve_applicable_policy: ResolveApplicableTableMaintenancePolicyUseCase,
+        candidates_repo: CompactionCandidatesRepo,
+        runs_repo: TableMaintenanceRunsRepo,
+        *,
+        selection: CandidateSelection,
+        size_memory: Mapping[ComputeSize, SizeMemory],
+        claim_lease: timedelta,
     ) -> None:
-        """Bind the repo, the catalog gateway and the applicable policy resolution."""
+        """Bind the repos, the catalog gateway, the applicable policy resolution and how candidates are picked.
+
+        ``size_memory`` gives the memory each compute size runs with, for the cost
+        estimate; ``claim_lease`` is how long a run holds the candidates it claims.
+        """
         self._tables_repo = tables_repo
         self._catalog_gateway = catalog_gateway
         self._resolve_applicable_policy = resolve_applicable_policy
+        self._candidates_repo = candidates_repo
+        self._runs_repo = runs_repo
+        self._selection = selection
+        self._size_memory = dict(size_memory)
+        self._claim_lease = claim_lease
 
     def execute(self, request: PlanTableMaintenanceUseCaseInput) -> PlanTableMaintenanceUseCaseOutput:
         """Plan the due operations, or the requested ones for a manual trigger.
@@ -92,32 +132,103 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         reconcile interval, dry run and operation policies it follows. A plan of a
         managed table first lifts the needs-attention marks set under an earlier
         applicable policy and saves the table when it lifted any.
+
+        A scheduled plan also brings the table's compaction candidates in line with
+        the observation, whatever is due, and a due compaction takes only the best
+        candidates, claimed for ``run_id``; when it can take none it is not
+        planned and its check says why. A manual plan leaves the candidates alone,
+        and a skipped table loses them.
         """
         manual = self._parse_manual(request.manual_operations)
         table = self._tables_repo.get(TableId(request.table_uuid))
         if table is None:
+            self._candidates_repo.delete_by_table(TableId(request.table_uuid))
             return _skip_unknown_table()
         applied = self._resolve(table)
         policy = MaintenancePolicyContent.from_primitives(applied.content)
         reason = _SKIP_REASONS.get(table.status)
         if reason is not None:
+            self._candidates_repo.delete_by_table(table.id)
             return _skip(reason, applied, policy, table)
         ref = TableMetadataRef(table.name.catalog, table.name.namespace, table.name.table)
         gateway_observation = self._catalog_gateway.observe_table(ref)
         with translate_domain_errors():
             observation = None if gateway_observation is None else table_observation_from_gateway(gateway_observation)
             if observation is None or observation.table_uuid != table.id.value:
+                self._candidates_repo.delete_by_table(table.id)
                 return _skip("not_found", applied, policy, table)
             self._lift_stale_marks(table, applied, request.now)
             if manual is not None:
                 plan = plan_manual_maintenance(manual)
                 checks = _manual_checks(manual)
+                compaction = _CompactionShare()
             else:
                 assessment = assess_maintenance(table, policy, observation, request.now)
                 plan, checks = assessment.plan(), _scheduled_checks(assessment)
+                plan, checks, compaction = self._share_compaction(table, policy, observation, plan, checks, request)
                 if policy.dry_run:
                     plan = MaintenancePlan()
-            return self._render(table, applied, policy, plan, checks, observation, request)
+            return self._render(table, applied, policy, plan, checks, observation, request, compaction)
+
+    def _share_compaction(  # noqa: PLR0913
+        self,
+        table: Table,
+        policy: MaintenancePolicyContent,
+        observation: TableObservation,
+        plan: MaintenancePlan,
+        checks: list[PlanTableMaintenanceUseCaseOutputCheckItem],
+        request: PlanTableMaintenanceUseCaseInput,
+    ) -> tuple[MaintenancePlan, list[PlanTableMaintenanceUseCaseOutputCheckItem], _CompactionShare]:
+        """Sync the candidates, and narrow a due compaction to the candidates it takes or drop it."""
+        due = next((p for p in plan.operations if p.operation is _COMPACTION), None)
+        runs = self._runs_repo.list_by_table(table.id, limit=_RUNS_FOR_THROUGHPUT)
+        remembered = table.operation_state(_COMPACTION).start_size()
+        pick = pick_compaction_candidates(
+            table.id,
+            self._candidates_repo.list_by_table(table.id),
+            observe_compaction_partitions(policy, observation),
+            selection=self._selection,
+            memory_gb=self._memory_gb(remembered),
+            throughput_bytes_per_hour=estimate_throughput(
+                runs, default_bytes_per_hour=self._selection.default_throughput_bytes_per_hour
+            ),
+            finished_runs=frozenset(r.id for r in runs if r.finished_at is not None),
+            pick=due is not None and not policy.dry_run,
+            claim_for=None if request.run_id is None else TableMaintenanceRunId(request.run_id),
+            lease_until=request.now + self._claim_lease,
+            now=request.now,
+        )
+        if pick.removed:
+            self._candidates_repo.delete(pick.removed)
+        if pick.saved:
+            self._candidates_repo.save_all(pick.saved)
+        if due is None or policy.dry_run:
+            return plan, checks, _CompactionShare()
+        if pick.shortfall is not None:
+            kept = tuple(p for p in plan.operations if p.operation is not _COMPACTION)
+            checks = [
+                replace(c, verdict=pick.shortfall.value, next_eligible_at=pick.next_eligible_at)
+                if c.operation == _COMPACTION.value
+                else c
+                for c in checks
+            ]
+            next_check_at = pick.next_eligible_at if pick.shortfall is CandidateShortfall.ALL_HELD else None
+            return MaintenancePlan(operations=kept), checks, _CompactionShare(next_check_at=next_check_at)
+        narrowed = PlannedOperation(operation=_COMPACTION, partitions=_partitions_of(pick.selected, observation))
+        plan = MaintenancePlan(operations=tuple(narrowed if p is due else p for p in plan.operations))
+        picked_size = size_for_bytes(
+            sum(c.score.data_bytes for c in pick.selected),
+            s_max_bytes=self._selection.size_s_max_bytes,
+            m_max_bytes=self._selection.size_m_max_bytes,
+        )
+        return plan, checks, _CompactionShare(candidates=pick.selected, start_size=remembered.at_least(picked_size))
+
+    def _memory_gb(self, size: ComputeSize) -> float:
+        """Return the GiB of memory a compaction at ``size`` holds: its driver's and one executor's heap."""
+        memory = self._size_memory.get(size)
+        if memory is None:
+            return _FALLBACK_MEMORY_GB
+        return (memory.driver_bytes + memory.executor_bytes) / _GIB
 
     def _lift_stale_marks(
         self, table: Table, applied: ResolveApplicableTableMaintenancePolicyUseCaseOutput, now: datetime
@@ -155,6 +266,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         checks: list[PlanTableMaintenanceUseCaseOutputCheckItem],
         observation: TableObservation,
         request: PlanTableMaintenanceUseCaseInput,
+        compaction: _CompactionShare,
     ) -> PlanTableMaintenanceUseCaseOutput:
         properties = observation.properties
         operations = []
@@ -162,12 +274,23 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             filters: list[PlanTableMaintenanceUseCaseOutputFilterItem] = []
             if planned.partitions:
                 filters = _partition_filters(table, observation, planned)
+            start_size = table.operation_state(planned.operation).start_size()
+            candidates: tuple[CompactionCandidate, ...] = ()
+            if planned.operation is _COMPACTION:
+                start_size = compaction.start_size or start_size
+                candidates = compaction.candidates
             operations.append(
                 PlanTableMaintenanceUseCaseOutputItem(
                     operation=planned.operation.value,
                     filters=filters,
                     procedure_args=maintenance_procedure_args(planned.operation, policy, properties, request.now),
-                    start_size=table.operation_state(planned.operation).start_size().value,
+                    start_size=start_size.value,
+                    candidate_partitions=[
+                        PlanTableMaintenanceUseCaseOutputCandidatePartitionItem(
+                            c.partition.spec_id, list(c.partition.values)
+                        )
+                        for c in candidates
+                    ],
                 )
             )
         return PlanTableMaintenanceUseCaseOutput(
@@ -181,6 +304,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             policy_name=applied.policy_name,
             policy_version=applied.version,
             policy_target=applied.target,
+            next_check_at=compaction.next_check_at,
         )
 
     @staticmethod
@@ -193,6 +317,26 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             return [MaintenanceOperation(op) for op in raw]
         except ValueError as exc:
             raise ValidationError(str(exc)) from exc
+
+
+@dataclass(frozen=True)
+class _CompactionShare:
+    """What a scheduled plan's compaction takes: its candidates and start size, or when to look again."""
+
+    candidates: tuple[CompactionCandidate, ...] = ()
+    start_size: ComputeSize | None = None
+    next_check_at: datetime | None = None
+
+
+def _partitions_of(
+    candidates: tuple[CompactionCandidate, ...], observation: TableObservation
+) -> tuple[PartitionStats, ...]:
+    """Return the observed partitions the candidates stand for, or none (the whole table) for a whole-table one."""
+    if any(c.partition.is_whole_table for c in candidates):
+        return ()
+    observed = {(p.spec_id, p.values): p for p in observation.partitions}
+    keys = [(c.partition.spec_id, c.partition.values) for c in candidates]
+    return tuple(observed[k] for k in keys if k in observed)
 
 
 def _partition_filters(

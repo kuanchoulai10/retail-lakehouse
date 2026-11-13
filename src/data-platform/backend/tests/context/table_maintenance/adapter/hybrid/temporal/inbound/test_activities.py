@@ -29,6 +29,7 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fa
     FakePlan,
     FakeRecordReconciliation,
     FakeRecordResult,
+    FakeReleaseCandidates,
     FakeStatus,
     FakeSubmit,
     FakeSync,
@@ -48,6 +49,7 @@ def _reconcile(
     fakes = {
         "plan": FakePlan(),
         "record": FakeRecordReconciliation(),
+        "release": FakeReleaseCandidates(),
         "submit": submit or FakeSubmit(),
         "status": FakeStatus(),
         "delete": FakeDelete(),
@@ -56,6 +58,7 @@ def _reconcile(
     activities = TableReconciliationActivities(
         plan=fakes["plan"],
         record=fakes["record"],
+        release=fakes["release"],
         submit=fakes["submit"],
         status=fakes["status"],
         delete=fakes["delete"],
@@ -70,12 +73,13 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
     """The plan activity passes the table, time and manual operations to the use case and returns a dict."""
     activities, fakes = _reconcile()
     result = activities.plan_table_maintenance(
-        {"table_uuid": "u1", "now": NOW, "manual_operations": ["expire_snapshots"]}
+        {"table_uuid": "u1", "now": NOW, "manual_operations": ["expire_snapshots"], "run_id": "run-1"}
     )
     request = fakes["plan"].requests[0]
     assert request.table_uuid == "u1"
     assert request.now == NOW_DT
     assert request.manual_operations == ["expire_snapshots"]
+    assert request.run_id == "run-1"
     assert result == {
         "status": "planned",
         "reason": None,
@@ -87,6 +91,7 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
                 "filters": [{"spec_id": 0, "where": "x = 1"}],
                 "procedure_args": {"strategy": "binpack"},
                 "start_size": "S",
+                "candidate_partitions": [],
             }
         ],
         "dry_run": False,
@@ -95,6 +100,7 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
         "policy_name": "gold",
         "policy_version": 3,
         "policy_target": {"type": "namespace", "path": ["iceberg", "sales"]},
+        "next_check_at": None,
         "attempt_deadline_seconds": 21600,
     }
 
@@ -109,10 +115,22 @@ def test_plan_carries_the_attempt_deadline():
 
 
 def test_plan_without_manual_operations_defaults_to_none():
-    """The plan activity passes no manual operations when the request names none."""
+    """The plan activity passes no manual operations and no run when the request names none."""
     activities, fakes = _reconcile()
     activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW})
     assert fakes["plan"].requests[0].manual_operations is None
+    assert fakes["plan"].requests[0].run_id is None
+
+
+def test_release_compaction_candidates_passes_the_run_and_now():
+    """The release activity hands back the candidates of a run that never started."""
+    activities, fakes = _reconcile()
+
+    result = activities.release_compaction_candidates({"run_id": "run-1", "now": NOW})
+
+    (request,) = fakes["release"].requests
+    assert (request.run_id, request.now) == ("run-1", NOW_DT)
+    assert result == {"released": 2}
 
 
 CHECK = {

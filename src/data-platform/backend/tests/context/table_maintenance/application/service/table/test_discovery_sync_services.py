@@ -30,10 +30,10 @@ from context.table_maintenance.application.port.outbound.table import (
     TableMetadataObservation,
 )
 from context.table_maintenance.application.service.table import (
-    PlanTableMaintenanceService,
     ProcessTableHintService,
     SyncDiscoveredTablesService,
 )
+from tests.context.table_maintenance.fakes.plan_service_on_fakes import plan_service_on_fakes
 from tests.context.table_maintenance.fakes.track_calls import track_calls
 
 
@@ -588,7 +588,7 @@ def test_table_hint_for_managed_table_signals_but_cooldown_blocks_replan(
         catalog.observations[("iceberg", "sales", name)] = _busy_observation(uuid)
     assert hint.execute(_hint()).action == "signalled"
     assert _calls(signals) == [("u-1", "updated", True)]
-    planner = PlanTableMaintenanceService(tables_repo, catalog, resolve_applicable_policy)
+    planner = plan_service_on_fakes(tables_repo, catalog, resolve_applicable_policy)
     blocked = planner.execute(PlanTableMaintenanceUseCaseInput("u-1", now))
     assert (blocked.status, blocked.operations) == ("planned", [])
     control = planner.execute(PlanTableMaintenanceUseCaseInput("u-2", now))

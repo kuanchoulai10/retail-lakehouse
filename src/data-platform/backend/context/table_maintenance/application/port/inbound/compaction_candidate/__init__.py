@@ -2,4 +2,14 @@
 
 from __future__ import annotations
 
-__all__ = []
+from context.table_maintenance.application.port.inbound.compaction_candidate.release_compaction_candidates import (
+    ReleaseCompactionCandidatesUseCase,
+    ReleaseCompactionCandidatesUseCaseInput,
+    ReleaseCompactionCandidatesUseCaseOutput,
+)
+
+__all__ = [
+    "ReleaseCompactionCandidatesUseCase",
+    "ReleaseCompactionCandidatesUseCaseInput",
+    "ReleaseCompactionCandidatesUseCaseOutput",
+]

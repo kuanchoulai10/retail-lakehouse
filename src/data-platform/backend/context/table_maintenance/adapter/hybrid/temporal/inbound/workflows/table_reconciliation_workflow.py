@@ -51,6 +51,9 @@ _REASON_PREVIOUS_RUN_FINISHED = "previous_run_finished"
 _SEARCH_ATTRIBUTES_PATCH = "table-search-attributes"
 _FENCED_BOUND_PATCH = "fencing-in-flight-bound"
 _AWAIT_CLOSE_PATCH = "await-cancelled-run-close"
+_RELEASE_PATCH = "release-unstarted-candidates"
+_RECHECK_PATCH = "recheck-held-candidates"
+_MIN_RECHECK = timedelta(seconds=10)
 
 
 @workflow.defn(name=TABLE_RECONCILIATION_WORKFLOW)
@@ -105,6 +108,16 @@ class TableReconciliationWorkflow:
     workflows can be found by search attribute. A run that started before these
     tags existed (patch ``table-search-attributes``) carries none until its next
     continue-as-new.
+
+    The plan is asked for the run id it will start under, so the compaction
+    candidates it claims belong to that run. A plan whose run is not started
+    (its start failed, or the workflow is stopping) hands those candidates back
+    with ``release_compaction_candidates`` (patch
+    ``release-unstarted-candidates``); a failed release is logged, and the
+    candidates are freed once their lease ends. A plan whose due compaction
+    found every candidate held says when the first hold ends
+    (``next_check_at``), and the next plan comes then, at least 10 seconds
+    later, when that is before the interval (patch ``recheck-held-candidates``).
     """
 
     @workflow.init
@@ -400,6 +413,7 @@ class TableReconciliationWorkflow:
                     "table_uuid": self._table_uuid,
                     "now": now.isoformat(),
                     "manual_operations": manual or None,
+                    "run_id": run_id,
                 },
                 start_to_close_timeout=_ACTIVITY_TIMEOUT,
                 retry_policy=_ACTIVITY_RETRY,
@@ -412,13 +426,14 @@ class TableReconciliationWorkflow:
             self._next_plan_at = workflow.now() + self._interval
             return False
         self._interval = timedelta(seconds=plan["reconcile_interval_seconds"])
-        self._next_plan_at = workflow.now() + self._interval
+        self._next_plan_at = self._next_plan_after(plan)
         self._tag_table_name(plan["table_name"])
         record = {"reconciliation_id": reconciliation_id, "reconciled_at": now.isoformat(), "wake_reasons": reasons}
         if self._stopping:
             self._consume_manual(manual, "the workflow is stopping")
             if plan["status"] != "skip" and plan["operations"]:
                 workflow.logger.info("not recording reconciliation %s: the workflow is stopping", reconciliation_id)
+                await self._release_unstarted(plan, run_id)
             else:
                 await self._record(record, plan, run_id=None, run_start_failed=False)
             return False
@@ -432,8 +447,36 @@ class TableReconciliationWorkflow:
             return False
         self._consume_manual(manual, None)
         started = await self._start_run(plan, manual is not None, run_id)
+        if not started:
+            await self._release_unstarted(plan, run_id)
         await self._record(record, plan, run_id=run_id if started else None, run_start_failed=not started)
         return False
+
+    def _next_plan_after(self, plan: dict[str, Any]) -> datetime:
+        """Return when to plan next: one interval on, or when the first candidate hold ends if that is sooner."""
+        at = workflow.now() + self._interval
+        next_check_at = plan.get("next_check_at")
+        if not next_check_at or not workflow.patched(_RECHECK_PATCH):
+            return at
+        return min(at, max(datetime.fromisoformat(next_check_at), workflow.now() + _MIN_RECHECK))
+
+    async def _release_unstarted(self, plan: dict[str, Any], run_id: str) -> None:
+        """Hand back the candidates the plan claimed for a run that was not started; a failure is logged."""
+        if not any(op.get("candidate_partitions") for op in plan["operations"]):
+            return
+        if not workflow.patched(_RELEASE_PATCH):
+            return
+        try:
+            await workflow.execute_activity(
+                TableReconciliationActivity.RELEASE_COMPACTION_CANDIDATES,
+                {"run_id": run_id, "now": workflow.now().isoformat()},
+                start_to_close_timeout=_ACTIVITY_TIMEOUT,
+                retry_policy=_ACTIVITY_RETRY,
+            )
+        except ActivityError as error:
+            if is_cancelled_exception(error):
+                raise asyncio.CancelledError from error
+            workflow.logger.error("releasing the candidates of run %s failed: %s", run_id, error)
 
     async def _record(
         self, record: dict[str, Any], plan: dict[str, Any], *, run_id: str | None, run_start_failed: bool
