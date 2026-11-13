@@ -58,5 +58,6 @@ def _candidate(item: ListCompactionCandidatesUseCaseOutputItem) -> CompactionCan
         priority=cast("CandidatePriorityApi", item.priority),
         granted_round_id=item.granted_round_id,
         pending_since=item.pending_since,
+        granted_round_started_at=item.granted_round_started_at,
         overdue=item.overdue,
     )

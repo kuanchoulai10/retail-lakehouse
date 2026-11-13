@@ -15,11 +15,11 @@ describe("skipReasonText", () => {
 
 describe("usedText", () => {
   it("says how much of the budget the picks use", () => {
-    expect(usedText({ used_gb_hours: 0.04, budget_gb_hours: 0.05 })).toBe("0.04 of 0.05 (80%)");
+    expect(usedText({ used_gb_hours: 0.04, budget_gb_hours: 0.05 })).toBe("0.04 (80%)");
   });
 
   it("shows a first pick larger than the budget above 100%", () => {
-    expect(usedText({ used_gb_hours: 0.12, budget_gb_hours: 0.05 })).toBe("0.12 of 0.05 (240%)");
+    expect(usedText({ used_gb_hours: 0.12, budget_gb_hours: 0.05 })).toBe("0.12 (240%)");
   });
 
   it("shows only the use for a round without a budget", () => {
@@ -29,7 +29,15 @@ describe("usedText", () => {
 
 describe("candidatesPathOf", () => {
   it("links a pick's table to its Candidates tab", () => {
-    expect(candidatesPathOf("iceberg.retail.orders")).toBe("/catalogs/iceberg/namespaces/retail/tables/orders/candidates");
+    expect(candidatesPathOf({ catalog: "iceberg", namespace: ["retail"], name: "orders" })).toBe(
+      "/catalogs/iceberg/namespaces/retail/tables/orders/candidates",
+    );
+  });
+
+  it("keeps a namespace part with a dot in it one part", () => {
+    expect(candidatesPathOf({ catalog: "ice.berg", namespace: ["sales.eu", "daily"], name: "orders" })).toBe(
+      "/catalogs/ice.berg/namespaces/sales.eu%1Fdaily/tables/orders/candidates",
+    );
   });
 
   it("has no link for a table no longer known", () => {

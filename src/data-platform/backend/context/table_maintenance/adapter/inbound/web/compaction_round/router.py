@@ -12,6 +12,7 @@ from context.table_maintenance.adapter.inbound.web.compaction_round.dto import (
     CompactionRoundPartitionApiResponse,
     CompactionRoundPickApiResponse,
     CompactionRoundSkipApiResponse,
+    CompactionRoundTableApiResponse,
     SchedulerPriorityApiResponse,
     SchedulerSettingsApiResponse,
 )
@@ -101,6 +102,7 @@ def _pick(pick: _Pick) -> CompactionRoundPickApiResponse:
     return CompactionRoundPickApiResponse(
         table_uuid=pick.table_uuid,
         table_name=pick.table_name,
+        table=_table(pick),
         partition=CompactionRoundPartitionApiResponse(spec_id=pick.spec_id, values=pick.values),
         partition_label=pick.partition_label,
         priority=cast("RoundPriorityApi", pick.priority),
@@ -115,6 +117,7 @@ def _skip(skip: _Skip) -> CompactionRoundSkipApiResponse:
     return CompactionRoundSkipApiResponse(
         table_uuid=skip.table_uuid,
         table_name=skip.table_name,
+        table=_table(skip),
         partition=CompactionRoundPartitionApiResponse(spec_id=skip.spec_id, values=skip.values),
         partition_label=skip.partition_label,
         priority=cast("RoundPriorityApi", skip.priority),
@@ -124,3 +127,9 @@ def _skip(skip: _Skip) -> CompactionRoundSkipApiResponse:
         overdue=skip.overdue,
         reason=cast("RoundSkipReasonApi", skip.reason),
     )
+
+
+def _table(entry: _Pick | _Skip) -> CompactionRoundTableApiResponse | None:
+    if entry.catalog is None or entry.namespace is None or entry.table is None:
+        return None
+    return CompactionRoundTableApiResponse(catalog=entry.catalog, namespace=entry.namespace, name=entry.table)

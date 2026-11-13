@@ -5,6 +5,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CompactionRoundPartitionApiResponse } from './compactionRoundPartitionApiResponse';
+import type { CompactionRoundTableApiResponse } from './compactionRoundTableApiResponse';
 import type { RoundPriorityApi } from './roundPriorityApi';
 import type { RoundSkipReasonApi } from './roundSkipReasonApi';
 
@@ -19,6 +20,7 @@ export interface CompactionRoundSkipApiResponse {
   priority: RoundPriorityApi;
   reason: RoundSkipReasonApi;
   score: number;
+  table: CompactionRoundTableApiResponse | null;
   table_name: string | null;
   table_uuid: string;
   weighted_score: number;

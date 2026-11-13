@@ -546,7 +546,7 @@
         "type": "object"
       },
       "CompactionCandidateApiResponse": {
-        "description": "Describe one partition that needs compaction: what it is worth, its state and who holds it.\n\n``rank`` is its place (1 is best) among the pending candidates, null for the\nothers. ``granted_round_id`` names the compaction round that granted it;\n``pending_since`` is when it started to wait for a run, and ``overdue`` says\nit has waited longer than its priority's SLA.",
+        "description": "Describe one partition that needs compaction: what it is worth, its state and who holds it.\n\n``rank`` is its place (1 is best) among the pending candidates, null for the\nothers. ``granted_round_id`` names the compaction round that granted it and\n``granted_round_started_at`` when it started (the round's name in the\nrounds list; null once the round is no longer kept);\n``pending_since`` is when it started to wait for a run, and ``overdue`` says\nit has waited longer than its priority's SLA.",
         "properties": {
           "claimed_by_run_id": {
             "anyOf": [
@@ -577,6 +577,18 @@
               }
             ],
             "title": "Granted Round Id"
+          },
+          "granted_round_started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Granted Round Started At"
           },
           "hold_reason": {
             "anyOf": [
@@ -685,7 +697,8 @@
           "priority",
           "granted_round_id",
           "pending_since",
-          "overdue"
+          "overdue",
+          "granted_round_started_at"
         ],
         "title": "CompactionCandidateApiResponse",
         "type": "object"
@@ -802,7 +815,7 @@
         "type": "object"
       },
       "CompactionRoundPickApiResponse": {
-        "description": "Describe one partition a compaction round granted to its table, and what it weighed.\n\n``weighted_score`` is ``score`` times the weight of ``priority``, the key the\nround ranked by. ``table_name`` is the table's current name, null when the\ntable is no longer known.",
+        "description": "Describe one partition a compaction round granted to its table, and what it weighed.\n\n``weighted_score`` is ``score`` times the weight of ``priority``, the key the\nround ranked by. ``table_name`` is the table's current name and ``table``\nthe same name by its parts, both null when the table is no longer known.",
         "properties": {
           "estimated_gb_hours": {
             "title": "Estimated Gb Hours",
@@ -825,6 +838,16 @@
           "score": {
             "title": "Score",
             "type": "number"
+          },
+          "table": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompactionRoundTableApiResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "table_name": {
             "anyOf": [
@@ -849,6 +872,7 @@
         "required": [
           "table_uuid",
           "table_name",
+          "table",
           "partition",
           "partition_label",
           "priority",
@@ -888,6 +912,16 @@
             "title": "Score",
             "type": "number"
           },
+          "table": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompactionRoundTableApiResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "table_name": {
             "anyOf": [
               {
@@ -911,6 +945,7 @@
         "required": [
           "table_uuid",
           "table_name",
+          "table",
           "partition",
           "partition_label",
           "priority",
@@ -921,6 +956,33 @@
           "reason"
         ],
         "title": "CompactionRoundSkipApiResponse",
+        "type": "object"
+      },
+      "CompactionRoundTableApiResponse": {
+        "description": "Name a table by its parts, for a link: catalog, namespace levels and table name.",
+        "properties": {
+          "catalog": {
+            "title": "Catalog",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "namespace": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Namespace",
+            "type": "array"
+          }
+        },
+        "required": [
+          "catalog",
+          "namespace",
+          "name"
+        ],
+        "title": "CompactionRoundTableApiResponse",
         "type": "object"
       },
       "CompactionScopeApiRequest": {

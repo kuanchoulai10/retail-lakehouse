@@ -23,6 +23,7 @@ NOW = datetime(2026, 11, 13, 12, 0, tzinfo=UTC)
 PICK_JSON = {
     "table_uuid": "t-1",
     "table_name": "iceberg.sales.orders",
+    "table": {"catalog": "iceberg", "namespace": ["sales"], "name": "orders"},
     "partition": {"spec_id": 0, "values": ["2026-11-01"]},
     "partition_label": "day=2026-11-01",
     "priority": "P0",
@@ -34,6 +35,7 @@ PICK_JSON = {
 SKIP_JSON = {
     "table_uuid": "t-2",
     "table_name": None,
+    "table": None,
     "partition": {"spec_id": -1, "values": []},
     "partition_label": "whole table",
     "priority": "P2",
@@ -72,6 +74,9 @@ def _listed() -> ListCompactionRoundsUseCaseOutputItem:
                 weighted_score=2.0,
                 estimated_gb_hours=0.04,
                 overdue=True,
+                catalog="iceberg",
+                namespace=["sales"],
+                table="orders",
             )
         ],
         skips=[

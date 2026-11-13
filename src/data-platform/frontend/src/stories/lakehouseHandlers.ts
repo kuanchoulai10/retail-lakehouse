@@ -2,6 +2,7 @@ import { getListCatalogsMockHandler, getGetCatalogMockHandler } from "@/api/gene
 import { getListCompactionCandidatesMockHandler } from "@/api/generated/compaction-candidates/compaction-candidates.msw";
 import {
   getGetCompactionRoundMockHandler,
+  getGetSchedulerSettingsMockHandler,
   getListCompactionRoundsMockHandler,
 } from "@/api/generated/compaction-rounds/compaction-rounds.msw";
 import { getListGenericTablesMockHandler } from "@/api/generated/generic-tables/generic-tables.msw";
@@ -56,6 +57,7 @@ import {
   RULES,
   RULES_PREVIEW,
   RUNS,
+  SCHEDULER_SETTINGS,
   STORAGE,
 } from "./storyData";
 
@@ -96,6 +98,7 @@ export function lakehouseHandlers() {
     getListTableMaintenanceRunsMockHandler(RUNS),
     getListCompactionCandidatesMockHandler(CANDIDATES),
     getListCompactionRoundsMockHandler(ROUNDS),
+    getGetSchedulerSettingsMockHandler(SCHEDULER_SETTINGS),
     getGetCompactionRoundMockHandler(({ params }) => ROUNDS.find((r) => r.round_id === params.roundId) ?? ROUNDS[0]!),
     getListTableReconciliationsMockHandler(({ request }) => {
       const query = new URL(request.url).searchParams;

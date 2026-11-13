@@ -12,6 +12,7 @@ import type { ListedTableMaintenancePolicyApiResponse } from "@/api/generated/mo
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { PolicyAttachments } from "@/components/PolicyAttachments";
 import { PolicyEditor } from "@/components/PolicyEditor";
+import { PriorityText } from "@/components/PriorityText";
 import { ResourceListPage } from "@/components/ResourceListPage";
 import { errorMessage } from "@/format";
 import type { PolicyContent } from "@/lib/policyDraft";
@@ -90,6 +91,7 @@ export function PoliciesPage() {
             cell: (row) =>
               row.description === "" ? <span className="text-on-surface-variant">—</span> : row.description,
           },
+          { header: "Priority", cell: (row) => <PriorityText priority={row.priority} /> },
           { header: "Version", cell: (row) => <span className="tabular-nums">{row.version}</span> },
           {
             header: "Attached to",

@@ -1,6 +1,7 @@
 import { Panel } from "@retail-lakehouse/design-system";
 import type { ReactNode } from "react";
 import type { MaintenancePriorityApi, OperationPoliciesApiRequest } from "@/api/generated/model";
+import { PriorityText } from "@/components/PriorityText";
 import { formatBytes, formatCount, formatSeconds } from "@/format";
 
 interface Fact {
@@ -67,7 +68,7 @@ export function PolicySummary({ description, reconcileIntervalSeconds, dryRun, p
             { label: "Description", value: description === "" ? "—" : description },
             { label: "Reconcile interval", value: seconds(reconcileIntervalSeconds) },
             { label: "Dry run", value: dryRun ? "On: nothing is started" : "Off" },
-            { label: "Priority", value: priority },
+            { label: "Priority", value: <PriorityText priority={priority} /> },
           ]}
         />
       </Panel>

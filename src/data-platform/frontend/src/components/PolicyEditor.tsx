@@ -10,6 +10,8 @@ import {
 } from "@/api/generated/maintenance-policies/maintenance-policies";
 import type { MaintenancePriorityApi, TableMaintenancePolicyApiResponse } from "@/api/generated/model";
 import { errorMessage } from "@/format";
+import { priorityText } from "@/lib/priorityText";
+import { useSchedulerPriorities } from "@/lib/useSchedulerPriorities";
 import {
   contentFromDraft,
   draftFromContent,
@@ -26,11 +28,7 @@ import { WholeNumberField } from "./forms/WholeNumberField";
 
 const CONFLICT_MESSAGE = "Someone else changed this policy. Reload to see their version.";
 const NAME_MESSAGE = "A name uses letters, digits, - and _ only, at most 64 characters.";
-const PRIORITIES: SelectOption<MaintenancePriorityApi>[] = [
-  { value: "P0", label: "P0" },
-  { value: "P1", label: "P1" },
-  { value: "P2", label: "P2" },
-];
+const PRIORITIES: MaintenancePriorityApi[] = ["P0", "P1", "P2"];
 
 interface Props {
   // The policy being edited, at the version `content` was read at; without one the editor
@@ -54,6 +52,11 @@ export function PolicyEditor({ policy, content, onClose }: Props) {
     policy === undefined ? null : { name: policy.name, version: policy.version },
   );
   const [draft, setDraft] = useState<PolicyDraft>(() => draftFromContent(content));
+  const schedulerPriorities = useSchedulerPriorities();
+  const priorityOptions: SelectOption<MaintenancePriorityApi>[] = PRIORITIES.map((value) => ({
+    value,
+    label: priorityText(value, schedulerPriorities),
+  }));
   const [name, setName] = useState("");
   const [invalid, setInvalid] = useState<string | null>(null);
 
@@ -178,11 +181,12 @@ export function PolicyEditor({ policy, content, onClose }: Props) {
         <SelectField
           label="Priority"
           value={draft.priority}
-          options={PRIORITIES}
+          options={priorityOptions}
           onChange={(priority) => update("priority", priority)}
         />
         <p className="type-body-small text-on-surface-variant">
-          When a compaction round cannot afford every table, P0 goes first and P2 last. P2 is the default.
+          When a compaction round cannot afford every table, P0 goes first and P2 last. A partition waiting longer
+          than its priority allows is marked overdue. P2 is the default.
         </p>
       </div>
 

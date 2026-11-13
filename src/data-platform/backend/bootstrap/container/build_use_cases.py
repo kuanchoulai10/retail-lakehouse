@@ -207,6 +207,7 @@ def build_use_cases(
         list_compaction_candidates=ListCompactionCandidatesService(
             candidates,
             tables,
+            repos.compaction_rounds,
             partitions_per_run=selection.partitions_per_run,
             sla=build_priority_sla(rounds),
             clock=clock,

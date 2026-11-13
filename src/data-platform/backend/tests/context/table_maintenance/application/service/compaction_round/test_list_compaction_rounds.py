@@ -23,7 +23,7 @@ def _service(tables_repo):  # noqa: ANN001, ANN202
     tables_repo.create(
         Table.register(
             TableId("t-1"),
-            TableName(catalog="iceberg", namespace="sales", table="orders"),
+            TableName(catalog="ice.berg", namespace="sales.eu", table="orders"),
             TableDiscoveryRuleId("r"),
             NOW,
         )
@@ -60,7 +60,7 @@ def test_a_round_carries_its_budget_picks_and_skips_with_table_names(tables_repo
         picks=[
             ListCompactionRoundsUseCaseOutputPick(
                 table_uuid="t-1",
-                table_name="iceberg.sales.orders",
+                table_name="ice.berg.sales.eu.orders",
                 spec_id=0,
                 values=["2026-11-01"],
                 partition_label="day=2026-11-01",
@@ -69,6 +69,9 @@ def test_a_round_carries_its_budget_picks_and_skips_with_table_names(tables_repo
                 weighted_score=2.0,
                 estimated_gb_hours=0.04,
                 overdue=True,
+                catalog="ice.berg",
+                namespace=["sales", "eu"],
+                table="orders",
             )
         ],
         skips=[

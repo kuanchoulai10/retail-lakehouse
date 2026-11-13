@@ -18,16 +18,25 @@ class CompactionRoundPartitionApiResponse(BaseModel):
     values: list[str | int | float | bool | None]
 
 
+class CompactionRoundTableApiResponse(BaseModel):
+    """Name a table by its parts, for a link: catalog, namespace levels and table name."""
+
+    catalog: str
+    namespace: list[str]
+    name: str
+
+
 class CompactionRoundPickApiResponse(BaseModel):
     """Describe one partition a compaction round granted to its table, and what it weighed.
 
     ``weighted_score`` is ``score`` times the weight of ``priority``, the key the
-    round ranked by. ``table_name`` is the table's current name, null when the
-    table is no longer known.
+    round ranked by. ``table_name`` is the table's current name and ``table``
+    the same name by its parts, both null when the table is no longer known.
     """
 
     table_uuid: str
     table_name: str | None
+    table: CompactionRoundTableApiResponse | None
     partition: CompactionRoundPartitionApiResponse
     partition_label: str
     priority: RoundPriorityApi
@@ -42,6 +51,7 @@ class CompactionRoundSkipApiResponse(BaseModel):
 
     table_uuid: str
     table_name: str | None
+    table: CompactionRoundTableApiResponse | None
     partition: CompactionRoundPartitionApiResponse
     partition_label: str
     priority: RoundPriorityApi

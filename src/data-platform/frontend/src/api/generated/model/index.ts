@@ -23,6 +23,7 @@ export * from './compactionRoundApiResponse';
 export * from './compactionRoundPartitionApiResponse';
 export * from './compactionRoundPickApiResponse';
 export * from './compactionRoundSkipApiResponse';
+export * from './compactionRoundTableApiResponse';
 export * from './compactionScopeApiRequest';
 export * from './compactionScopeApiRequestUnit';
 export * from './connectionConfigApiRequest';

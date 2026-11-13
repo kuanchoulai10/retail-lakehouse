@@ -10,6 +10,7 @@ import type {
   NamespaceApiResponse,
   NamespaceSummaryApiResponse,
   ReconciliationOperationApiResponse,
+  SchedulerSettingsApiResponse,
   TableApiResponse,
   TableCommitsApiResponse,
   PreviewTableDiscoveryRulesApiResponse,
@@ -383,6 +384,7 @@ function orderDay(day: string, overrides: Partial<CompactionCandidateApiResponse
     observed_at: "2026-11-13T02:00:00Z",
     priority: "P0",
     granted_round_id: null,
+    granted_round_started_at: null,
     pending_since: null,
     overdue: false,
     ...overrides,
@@ -417,6 +419,7 @@ export const CANDIDATES: CompactionCandidatesApiResponse = {
       data_bytes: 640 * 1024 * 1024,
       estimated_gb_hours: 0.35,
       granted_round_id: ROUND_ID,
+      granted_round_started_at: "2026-11-13T02:00:00Z",
       lease_expires_at: "2026-11-13T02:10:00Z",
       pending_since: "2026-11-13T01:00:00Z",
     }),
@@ -666,6 +669,19 @@ export function applicablePolicy(catalog: string, namespace: string[] = []): App
   return { ...POLICIES[inRetail ? 1 : 0]!, target: inRetail ? RETAIL_TARGET : null };
 }
 
+// The scheduler's settings: a round every 2 minutes within 0.5 GB·h, and each priority's weight and
+// the time it allows a pending partition before it is overdue.
+export const SCHEDULER_SETTINGS: SchedulerSettingsApiResponse = {
+  round_seconds: 120,
+  budget_gb_hours: 0.5,
+  grant_lease_seconds: 600,
+  priorities: [
+    { priority: "P0", weight: 4, sla_seconds: 3600 },
+    { priority: "P1", weight: 2, sla_seconds: 14_400 },
+    { priority: "P2", weight: 1, sla_seconds: 28_800 },
+  ],
+};
+
 // Two rounds of the compaction scheduler: the newest granted an order day (P0, weight 4) and a
 // stock-levels partition, then ran out of budget; the one before had nothing pending.
 export const ROUNDS: CompactionRoundApiResponse[] = [
@@ -678,6 +694,7 @@ export const ROUNDS: CompactionRoundApiResponse[] = [
       {
         table_uuid: ORDERS_UUID,
         table_name: "iceberg.retail.orders",
+        table: { catalog: "iceberg", namespace: ["retail"], name: "orders" },
         partition: { spec_id: 0, values: ["2026-11-09"] },
         partition_label: "ordered_at_day=2026-11-09",
         priority: "P0",
@@ -689,6 +706,7 @@ export const ROUNDS: CompactionRoundApiResponse[] = [
       {
         table_uuid: "1d3f5b7a-2c4e-4a6b-8c0d-e2f4a6b8c0d1",
         table_name: "iceberg.inventory.stock_levels",
+        table: { catalog: "iceberg", namespace: ["inventory"], name: "stock_levels" },
         partition: { spec_id: 0, values: ["2026-11-12"] },
         partition_label: "updated_at_day=2026-11-12",
         priority: "P2",
@@ -702,6 +720,7 @@ export const ROUNDS: CompactionRoundApiResponse[] = [
       {
         table_uuid: ORDERS_UUID,
         table_name: "iceberg.retail.orders",
+        table: { catalog: "iceberg", namespace: ["retail"], name: "orders" },
         partition: { spec_id: 0, values: ["2026-11-08"] },
         partition_label: "ordered_at_day=2026-11-08",
         priority: "P0",

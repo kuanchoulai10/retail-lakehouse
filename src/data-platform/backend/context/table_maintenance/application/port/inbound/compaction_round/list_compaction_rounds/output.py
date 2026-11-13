@@ -28,6 +28,9 @@ class ListCompactionRoundsUseCaseOutputPick:
     weighted_score: float
     estimated_gb_hours: float
     overdue: bool
+    catalog: str | None = None
+    namespace: list[str] | None = None
+    table: str | None = None
 
 
 @dataclass(frozen=True)
@@ -45,6 +48,9 @@ class ListCompactionRoundsUseCaseOutputSkip:
     estimated_gb_hours: float
     overdue: bool
     reason: str
+    catalog: str | None = None
+    namespace: list[str] | None = None
+    table: str | None = None
 
 
 @dataclass(frozen=True)

@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, it } from "vitest";
 import { stubCatalogApi } from "../test/catalogApiStub";
-import { jsonResponse, policyContentFixture } from "../test/fixtures";
+import { jsonResponse, policyContentFixture, SCHEDULER_SETTINGS } from "../test/fixtures";
 import { PolicyVersionPage } from "./PolicyVersionPage";
 
 function renderAt(path: string) {
@@ -23,6 +23,7 @@ describe("PolicyVersionPage", () => {
   it("shows one saved version read only", async () => {
     const content = policyContentFixture();
     stubCatalogApi({
+      "GET /v1/scheduler-settings": () => jsonResponse(SCHEDULER_SETTINGS),
       "GET /v1/maintenance-policies/nightly/versions/2": () =>
         jsonResponse({
           ...content,
@@ -43,7 +44,7 @@ describe("PolicyVersionPage", () => {
     expect(screen.getByText("On: nothing is started")).toBeInTheDocument();
     const facts = screen.getByRole("region", { name: "Policy" });
     expect(within(facts).getByText("Priority")).toBeInTheDocument();
-    expect(within(facts).getByText("P1")).toBeInTheDocument();
+    expect(await within(facts).findByText("P1 (within 4 h)")).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Save|Edit/ })).not.toBeInTheDocument();
   });

@@ -21,6 +21,8 @@ from context.table_maintenance.application.port.inbound.compaction_candidate imp
     ListCompactionCandidatesUseCaseInput,
 )
 from context.table_maintenance.application.service.compaction_candidate import ListCompactionCandidatesService
+from tests.context.table_maintenance.application.service.compaction_round.recorded_round import recorded_round
+from tests.context.table_maintenance.fakes.in_memory_compaction_rounds_repo import InMemoryCompactionRoundsRepo
 
 TABLE = TableId("u-1")
 RUN = TableMaintenanceRunId("run-1")
@@ -72,7 +74,12 @@ def service(candidates_repo, tables_repo, now):  # noqa: ANN001, ANN201
         ]
     )
     return ListCompactionCandidatesService(
-        candidates_repo, tables_repo, partitions_per_run=2, sla=SLA, clock=lambda: now + timedelta(hours=2)
+        candidates_repo,
+        tables_repo,
+        InMemoryCompactionRoundsRepo(),
+        partitions_per_run=2,
+        sla=SLA,
+        clock=lambda: now + timedelta(hours=2),
     )
 
 
@@ -129,14 +136,18 @@ def test_a_table_without_candidates_lists_none(candidates_repo, tables_repo, now
             TABLE, TableName(catalog="iceberg", namespace="sales", table="orders"), TableDiscoveryRuleId("r"), now
         )
     )
-    service = ListCompactionCandidatesService(candidates_repo, tables_repo, partitions_per_run=10, sla=SLA)
+    service = ListCompactionCandidatesService(
+        candidates_repo, tables_repo, InMemoryCompactionRoundsRepo(), partitions_per_run=10, sla=SLA
+    )
 
     assert service.execute(ListCompactionCandidatesUseCaseInput(table_uuid="u-1")).items == []
 
 
 def test_an_unknown_table_is_not_found(candidates_repo, tables_repo):
     """Listing the candidates of a table maintenance does not know is a not-found error."""
-    service = ListCompactionCandidatesService(candidates_repo, tables_repo, partitions_per_run=10, sla=SLA)
+    service = ListCompactionCandidatesService(
+        candidates_repo, tables_repo, InMemoryCompactionRoundsRepo(), partitions_per_run=10, sla=SLA
+    )
 
     with pytest.raises(NotFoundError):
         service.execute(ListCompactionCandidatesUseCaseInput(table_uuid="nope"))
@@ -154,7 +165,12 @@ def test_a_grant_whose_lease_ended_reads_as_pending(candidates_repo, tables_repo
     live.grant("round-2", now + timedelta(hours=1), now)
     candidates_repo.save_all([expired, live, _candidate("2026-11-03", 0.4, now)])
     service = ListCompactionCandidatesService(
-        candidates_repo, tables_repo, partitions_per_run=2, sla=SLA, clock=lambda: now + timedelta(minutes=30)
+        candidates_repo,
+        tables_repo,
+        InMemoryCompactionRoundsRepo(),
+        partitions_per_run=2,
+        sla=SLA,
+        clock=lambda: now + timedelta(minutes=30),
     )
 
     items = service.execute(ListCompactionCandidatesUseCaseInput(table_uuid=TABLE.value)).items
@@ -164,3 +180,25 @@ def test_a_grant_whose_lease_ended_reads_as_pending(candidates_repo, tables_repo
         ("granted", "round-2", False, None),
         ("pending", None, True, 2),
     ]
+
+
+def test_a_granted_candidate_says_when_its_round_started(candidates_repo, tables_repo, now):  # noqa: ANN001
+    """A grant names its round by the round's start, so people find it in the rounds list; a purged round has none."""
+    tables_repo.create(
+        Table.register(
+            TABLE, TableName(catalog="iceberg", namespace="sales", table="orders"), TableDiscoveryRuleId("r"), now
+        )
+    )
+    rounds = InMemoryCompactionRoundsRepo()
+    rounds.save(recorded_round("compaction-rounds-1", now - timedelta(seconds=30)))
+    kept, purged = _candidate("2026-11-01", 0.9, now), _candidate("2026-11-02", 0.5, now)
+    kept.grant("compaction-rounds-1", now + timedelta(minutes=10), now)
+    purged.grant("compaction-rounds-0", now + timedelta(minutes=10), now)
+    candidates_repo.save_all([kept, purged, _candidate("2026-11-03", 0.4, now)])
+    service = ListCompactionCandidatesService(
+        candidates_repo, tables_repo, rounds, partitions_per_run=2, sla=SLA, clock=lambda: now
+    )
+
+    items = service.execute(ListCompactionCandidatesUseCaseInput(table_uuid=TABLE.value)).items
+
+    assert [i.granted_round_started_at for i in items] == [now - timedelta(seconds=30), None, None]

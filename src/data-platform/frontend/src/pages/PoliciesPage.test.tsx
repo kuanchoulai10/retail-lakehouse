@@ -5,11 +5,11 @@ import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import type { ListedTableMaintenancePolicyMappingApiResponse } from "../api/generated/model";
 import { bodyOf, callsTo, stubCatalogApi, type StubHandler } from "../test/catalogApiStub";
-import { jsonResponse, policyContentFixture, policyFixture } from "../test/fixtures";
+import { jsonResponse, policyContentFixture, policyFixture, SCHEDULER_SETTINGS } from "../test/fixtures";
 import { PoliciesPage } from "./PoliciesPage";
 
 const POLICIES = [
-  policyFixture({ name: "nightly", description: "Nightly compaction", version: 4, attachment_count: 2 }),
+  policyFixture({ name: "nightly", description: "Nightly compaction", version: 4, attachment_count: 2, priority: "P0" }),
   policyFixture({ name: "default", description: "Platform default", version: 3, attachment_count: 0 }),
   policyFixture({ name: "scratch", description: "", version: 1, attachment_count: 0 }),
 ];
@@ -66,6 +66,15 @@ describe("PoliciesPage", () => {
     expect(within(policyRow("default")).getByText("Default")).toBeInTheDocument();
     expect(within(policyRow("nightly")).queryByText("Default")).not.toBeInTheDocument();
     expect(within(policyRow("nightly")).getByText("4")).toBeInTheDocument();
+  });
+
+  it("shows each policy's priority with the time it allows", async () => {
+    stubApi({ "GET /v1/scheduler-settings": () => jsonResponse(SCHEDULER_SETTINGS) });
+    renderPage();
+    await screen.findByText("Nightly compaction");
+    expect(screen.getAllByRole("columnheader").map((h) => h.textContent)).toContain("Priority");
+    expect(await within(policyRow("nightly")).findByText("P0 (within 1 h)")).toBeInTheDocument();
+    expect(within(policyRow("default")).getByText("P2 (within 8 h)")).toBeInTheDocument();
   });
 
   it("shows where each policy is attached, marking a target no longer in the catalog", async () => {

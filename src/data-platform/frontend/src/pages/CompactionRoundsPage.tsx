@@ -1,5 +1,5 @@
 import { Banner, createDataTableColumnHelper, DataTable, Skeleton, TextLink } from "@retail-lakehouse/design-system";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { useListCompactionRounds } from "@/api/generated/compaction-rounds/compaction-rounds";
 import type {
   CompactionRoundApiResponse,
@@ -7,10 +7,12 @@ import type {
   CompactionRoundSkipApiResponse,
 } from "@/api/generated/model";
 import { PageHeader } from "@/components/PageHeader";
+import { PriorityText } from "@/components/PriorityText";
 import { StatusBadge } from "@/components/StatusBadge";
 import { errorMessage, formatCount, formatTimestamp } from "@/format";
-import { shortRoundId } from "@/lib/candidateText";
+import { priorityWeightsText } from "@/lib/priorityText";
 import { candidatesPathOf, skipReasonText, usedText } from "@/lib/roundText";
+import { useSchedulerPriorities } from "@/lib/useSchedulerPriorities";
 
 const ROUNDS_SHOWN = 50;
 const REFRESH_MS = 30_000;
@@ -31,10 +33,21 @@ function entryKey(entry: Entry): string {
   return JSON.stringify([entry.table_uuid, entry.partition.spec_id, entry.partition.values]);
 }
 
+// A round is named by when it started, as the Started column shows it; its workflow id is
+// secondary detail.
+function roundName(round: CompactionRoundApiResponse): string {
+  return formatTimestamp(round.started_at);
+}
+
 function TableCell({ entry }: { entry: Entry }) {
-  const path = candidatesPathOf(entry.table_name);
+  const path = candidatesPathOf(entry.table);
   if (entry.table_name === null || path === null) {
-    return <span className="font-mono">{entry.table_name ?? entry.table_uuid}</span>;
+    return (
+      <span className="flex flex-col">
+        <span>Dropped table</span>{" "}
+        <span className="font-mono type-body-small text-on-surface-variant">{entry.table_uuid}</span>
+      </span>
+    );
   }
   return (
     <TextLink asChild className="font-mono">
@@ -59,7 +72,12 @@ function entryColumns<T extends Entry>() {
       enableSorting: false,
       cell: (info) => <span className="font-mono">{info.getValue()}</span>,
     }),
-    column.accessor((e) => e.priority, { id: "priority", header: "Priority", enableSorting: false }),
+    column.accessor((e) => e.priority, {
+      id: "priority",
+      header: "Priority",
+      enableSorting: false,
+      cell: (info) => <PriorityText priority={info.getValue()} />,
+    }),
     column.accessor((e) => e.score, {
       id: "score",
       header: "Score",
@@ -95,15 +113,28 @@ const skipColumns = skipColumn.columns([
   skipColumn.accessor((s) => skipReasonText(s.reason), { id: "reason", header: "Reason", enableSorting: false }),
 ]);
 
+const SKIP_REASONS_TEXT =
+  "Budget used: the round's GB·h budget ran out. Table's share used: the table already has its most partitions in " +
+  "this round. Table busy: the table is still compacting what an earlier round granted.";
+
+function WeightedNote() {
+  const priorities = useSchedulerPriorities();
+  const weights = priorities === undefined ? "" : ` (${priorityWeightsText(priorities)})`;
+  return (
+    <p className="type-body-small text-on-surface-variant">
+      {`Weighted is the score times its priority's weight${weights}. Overdue: it waited longer than its priority allows.`}
+    </p>
+  );
+}
+
 function RoundDetail({ round }: { round: CompactionRoundApiResponse }) {
   const shown = round.skips.length;
+  const name = roundName(round);
   return (
     <div className="flex flex-col gap-4 py-2">
-      <p className="type-body-small text-on-surface-variant">
-        Round <span className="font-mono">{round.round_id}</span>
-      </p>
+      <WeightedNote />
       <DataTable
-        caption={`Partitions round ${shortRoundId(round.round_id)} granted`}
+        caption={`Partitions round ${name} granted`}
         columns={pickColumns}
         data={round.picks}
         getRowId={entryKey}
@@ -117,13 +148,17 @@ function RoundDetail({ round }: { round: CompactionRoundApiResponse }) {
               : "The skipped partitions, in rank order."}
           </p>
           <DataTable
-            caption={`Partitions round ${shortRoundId(round.round_id)} skipped`}
+            caption={`Partitions round ${name} skipped`}
             columns={skipColumns}
             data={round.skips}
             getRowId={entryKey}
           />
+          <p className="type-body-small text-on-surface-variant">{SKIP_REASONS_TEXT}</p>
         </>
       )}
+      <p className="type-body-small text-on-surface-variant">
+        Workflow id <span className="font-mono">{round.round_id}</span>
+      </p>
     </div>
   );
 }
@@ -138,6 +173,11 @@ const roundColumns = column.columns([
         {formatTimestamp(info.getValue())}
       </time>
     ),
+  }),
+  column.accessor("budget_gb_hours", {
+    header: "Budget GB·h",
+    enableSorting: false,
+    cell: (info) => <span className="tabular-nums">{twoDecimals(info.getValue())}</span>,
   }),
   column.accessor((r) => usedText(r), {
     id: "used",
@@ -173,6 +213,9 @@ function LoadingRows() {
 // to what it granted and the first candidates it left, with why.
 export function CompactionRoundsPage() {
   const rounds = useListCompactionRounds({ limit: ROUNDS_SHOWN }, { query: { refetchInterval: REFRESH_MS } });
+  // A link from a granted candidate names its round, which starts open.
+  const [searchParams] = useSearchParams();
+  const linked = searchParams.get("round");
 
   return (
     <section>
@@ -192,7 +235,8 @@ export function CompactionRoundsPage() {
             columns={roundColumns}
             data={rounds.data ?? NO_ROUNDS}
             getRowId={(round) => round.round_id}
-            getRowLabel={(round) => `round ${shortRoundId(round.round_id)}`}
+            getRowLabel={(round) => `round ${roundName(round)}`}
+            initialExpandedRowIds={linked === null ? undefined : [linked]}
             renderDetail={(round) => <RoundDetail round={round} />}
             emptyState={rounds.isPending ? <LoadingRows /> : "No compaction round has run yet."}
           />

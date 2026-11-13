@@ -16,7 +16,9 @@ class ListCompactionCandidatesUseCaseOutputItem:
 
     ``spec_id`` -1 with no ``values`` stands for the whole table. ``rank`` is the
     candidate's place (1 is best) among the pending ones, None for the others.
-    ``granted_round_id`` names the compaction round that granted it.
+    ``granted_round_id`` names the compaction round that granted it and
+    ``granted_round_started_at`` when that round started (None once the round
+    is no longer kept).
     ``pending_since`` is when it started to wait for a run (pending or granted
     ones only); ``overdue`` says it has waited longer than its priority's SLA.
     """
@@ -39,6 +41,7 @@ class ListCompactionCandidatesUseCaseOutputItem:
     granted_round_id: str | None
     pending_since: datetime | None
     overdue: bool
+    granted_round_started_at: datetime | None = None
 
 
 @dataclass(frozen=True)

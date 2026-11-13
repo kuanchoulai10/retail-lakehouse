@@ -3,9 +3,11 @@ import { Link } from "react-router";
 import { useListCompactionCandidates } from "@/api/generated/compaction-candidates/compaction-candidates";
 import type { CompactionCandidateApiResponse } from "@/api/generated/model";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
+import { OverdueNote } from "@/components/OverdueNote";
+import { PriorityText } from "@/components/PriorityText";
 import { StatusBadge } from "@/components/StatusBadge";
-import { errorMessage, formatBytes, formatCount } from "@/format";
-import { whyNotPicked } from "@/lib/candidateText";
+import { errorMessage, formatBytes, formatCount, formatTimestamp } from "@/format";
+import { roundPath, whyNotPicked } from "@/lib/candidateText";
 
 function twoDecimals(value: number): string {
   return value.toFixed(2);
@@ -27,6 +29,7 @@ function candidateColumns(partitionsPerRun: number) {
     column.accessor("priority", {
       header: "Priority",
       enableSorting: false,
+      cell: (info) => <PriorityText priority={info.getValue()} />,
     }),
     column.accessor("score", {
       header: "Score",
@@ -51,12 +54,10 @@ function candidateColumns(partitionsPerRun: number) {
     column.accessor("state", {
       header: "State",
       enableSorting: false,
-      // Overdue is the one mark that calls for attention: the candidate has waited longer than
-      // its priority's SLA, a sign the round budget is too small.
       cell: (info) => (
         <span className="flex flex-wrap items-center gap-1">
           <StatusBadge status={info.getValue()} />
-          {info.row.original.overdue && <StatusBadge status="overdue" />}
+          {info.row.original.overdue && <OverdueNote candidate={info.row.original} />}
         </span>
       ),
     }),
@@ -64,8 +65,25 @@ function candidateColumns(partitionsPerRun: number) {
       id: "why",
       header: "Why not picked",
       enableSorting: false,
+      cell: (info) => <WhyNotPicked candidate={info.row.original} text={info.getValue()} />,
     }),
   ]);
+}
+
+// A granted candidate's round is named by its start time and links to the rounds page with that
+// round open.
+function WhyNotPicked({ candidate, text }: { candidate: CompactionCandidateApiResponse; text: string }) {
+  const roundId = candidate.granted_round_id;
+  const started = candidate.granted_round_started_at;
+  if (candidate.state !== "granted" || roundId === null || started === null) return text;
+  return (
+    <>
+      Granted in round{" "}
+      <TextLink asChild inline>
+        <Link to={roundPath(roundId)}>{formatTimestamp(started)}</Link>
+      </TextLink>
+    </>
+  );
 }
 
 function partitionKey(candidate: CompactionCandidateApiResponse): string {
@@ -88,7 +106,8 @@ export function CandidatesTab({ tableUuid }: { tableUuid: string }) {
   return (
     <Panel title="Compaction candidates">
       <p className="type-body-small text-on-surface-variant mb-3">
-        {`Compaction rounds grant the best pending partitions of every table within a budget, at most ${n} ${n === 1 ? "partition" : "partitions"} per run of a table. `}
+        Each compaction round grants the best pending partitions across all tables while its budget lasts, at most{" "}
+        {n} per table.{" "}
         <TextLink asChild inline>
           <Link to="/compaction-rounds">See the compaction rounds</Link>
         </TextLink>

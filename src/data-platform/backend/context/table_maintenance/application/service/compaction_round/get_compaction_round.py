@@ -15,8 +15,10 @@ from context.table_maintenance.application.port.inbound.compaction_round import 
 )
 
 if TYPE_CHECKING:
+    from typing import Any
+
     from context.table_maintenance.application.domain.model.compaction_round import RoundPick, RoundSkip
-    from context.table_maintenance.application.domain.model.table import TableId
+    from context.table_maintenance.application.domain.model.table import TableId, TableName
     from context.table_maintenance.application.port.outbound.compaction_round import CompactionRoundsRepo
     from context.table_maintenance.application.port.outbound.table import TablesRepo
 
@@ -34,7 +36,7 @@ class GetCompactionRoundService(GetCompactionRoundUseCase):
         round_ = self._rounds_repo.get(CompactionRoundId(request.round_id))
         if round_ is None:
             raise NotFoundError(f"compaction round {request.round_id} not found")
-        names: dict[str, str | None] = {}
+        names: dict[str, TableName | None] = {}
         for entry in (*round_.picks, *round_.skips):
             if entry.table_uuid.value not in names:
                 names[entry.table_uuid.value] = self._name(entry.table_uuid)
@@ -48,15 +50,15 @@ class GetCompactionRoundService(GetCompactionRoundUseCase):
             skipped_total=round_.skipped_total,
         )
 
-    def _name(self, table_uuid: TableId) -> str | None:
+    def _name(self, table_uuid: TableId) -> TableName | None:
         table = self._tables_repo.get(table_uuid)
-        return None if table is None else table.name.fully_qualified()
+        return None if table is None else table.name
 
 
-def _pick(pick: RoundPick, names: dict[str, str | None]) -> GetCompactionRoundUseCaseOutputPick:
+def _pick(pick: RoundPick, names: dict[str, TableName | None]) -> GetCompactionRoundUseCaseOutputPick:
     return GetCompactionRoundUseCaseOutputPick(
         table_uuid=pick.table_uuid.value,
-        table_name=names.get(pick.table_uuid.value),
+        **_table_fields(names.get(pick.table_uuid.value)),
         spec_id=pick.partition.spec_id,
         values=list(pick.partition.values),
         partition_label=pick.label,
@@ -68,10 +70,10 @@ def _pick(pick: RoundPick, names: dict[str, str | None]) -> GetCompactionRoundUs
     )
 
 
-def _skip(skip: RoundSkip, names: dict[str, str | None]) -> GetCompactionRoundUseCaseOutputSkip:
+def _skip(skip: RoundSkip, names: dict[str, TableName | None]) -> GetCompactionRoundUseCaseOutputSkip:
     return GetCompactionRoundUseCaseOutputSkip(
         table_uuid=skip.table_uuid.value,
-        table_name=names.get(skip.table_uuid.value),
+        **_table_fields(names.get(skip.table_uuid.value)),
         spec_id=skip.partition.spec_id,
         values=list(skip.partition.values),
         partition_label=skip.label,
@@ -82,3 +84,15 @@ def _skip(skip: RoundSkip, names: dict[str, str | None]) -> GetCompactionRoundUs
         overdue=skip.overdue,
         reason=skip.reason.value,
     )
+
+
+def _table_fields(name: TableName | None) -> dict[str, Any]:
+    """Name the table as one string and by its parts (the namespace split into levels), or all None."""
+    if name is None:
+        return {"table_name": None, "catalog": None, "namespace": None, "table": None}
+    return {
+        "table_name": name.fully_qualified(),
+        "catalog": name.catalog,
+        "namespace": name.namespace.split("."),
+        "table": name.table,
+    }

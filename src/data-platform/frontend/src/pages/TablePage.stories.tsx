@@ -6,6 +6,7 @@ import { getGetTableApplicableMaintenancePolicyMockHandler } from "@/api/generat
 import { getListTableMaintenanceRunsMockHandler } from "@/api/generated/table-maintenance-runs/table-maintenance-runs.msw";
 import { getGetTableHealthMockHandler, getGetTableMockHandler } from "@/api/generated/tables/tables.msw";
 import { getListTableReconciliationsMockHandler } from "@/api/generated/table-reconciliations/table-reconciliations.msw";
+import { formatTimestamp } from "@/format";
 import { temporalWorkflowsUrl } from "@/lib/temporalWorkflowsUrl";
 import { apiError } from "@/stories/apiError";
 import { ConsolePage } from "@/stories/ConsolePage";
@@ -109,8 +110,13 @@ export const Candidates: Story = {
     await expect(table.getByText("In run run-1")).toBeVisible();
     await expect(table.getByText("Still being written; checked again after a quiet period")).toBeVisible();
     await expect(table.getByText("Waiting for a later round: below the top 2 (2 per run)")).toBeVisible();
-    await expect(table.getByText("Granted in round 2026-11-13T02:00:00Z")).toBeVisible();
+    await expect(table.getByRole("link", { name: formatTimestamp("2026-11-13T02:00:00Z") })).toHaveAttribute(
+      "href",
+      "/compaction-rounds?round=compaction-rounds-2026-11-13T02%3A00%3A00Z",
+    );
     await expect(table.getAllByText("Overdue")).toHaveLength(1);
+    await expect(await table.findByText(/^Waited \d+ (min|h|d); P0 allows 1 h$/)).toBeVisible();
+    await expect(table.getAllByText("P0 (within 1 h)")[0]).toBeVisible();
     await expect(table.getByText("Too small to be worth compacting")).toBeVisible();
     await expect(table.getAllByText("Held")[0]).toHaveClass("bg-surface-container-dim");
   },

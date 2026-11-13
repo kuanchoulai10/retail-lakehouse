@@ -3,11 +3,16 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { bodyOf, callsTo, stubCatalogApi } from "../test/catalogApiStub";
-import { jsonResponse, policyContentFixture, policyFixture } from "../test/fixtures";
+import { bodyOf, callsTo, stubCatalogApi, type StubbedCall } from "../test/catalogApiStub";
+import { jsonResponse, policyContentFixture, policyFixture, SCHEDULER_SETTINGS } from "../test/fixtures";
 import { PolicyEditor } from "./PolicyEditor";
 
 const NIGHTLY = policyFixture({ name: "nightly", description: "Nightly compaction", version: 4 });
+
+// What the editor sent; the scheduler settings it reads for the priority labels do not count.
+function writesOf(calls: StubbedCall[]): StubbedCall[] {
+  return calls.filter((call) => call.method !== "GET");
+}
 
 function renderEditor(element: ReactElement) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -146,7 +151,7 @@ describe("PolicyEditor", () => {
     expect(
       screen.getByText("A name uses letters, digits, - and _ only, at most 64 characters."),
     ).toBeInTheDocument();
-    expect(calls).toEqual([]);
+    expect(writesOf(calls)).toEqual([]);
   });
 
   it("refuses a value that is not a whole number, naming the field", async () => {
@@ -156,7 +161,7 @@ describe("PolicyEditor", () => {
     await replace(user, within(section("Expire snapshots")).getByRole("textbox", { name: "Retain last" }), "");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(screen.getByText("Expire snapshots: Retain last must be a whole number.")).toBeInTheDocument();
-    expect(calls).toEqual([]);
+    expect(writesOf(calls)).toEqual([]);
   });
 
   it("refuses a reconcile interval of zero, without sending it", async () => {
@@ -166,7 +171,7 @@ describe("PolicyEditor", () => {
     await replace(user, screen.getByRole("textbox", { name: "Reconcile interval (seconds)" }), "0");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(screen.getByText("Reconcile interval must be greater than zero.")).toBeInTheDocument();
-    expect(calls).toEqual([]);
+    expect(writesOf(calls)).toEqual([]);
   });
 
   it("refuses a negative cooldown, without sending it", async () => {
@@ -176,7 +181,7 @@ describe("PolicyEditor", () => {
     await replace(user, within(section("Expire snapshots")).getByRole("textbox", { name: "Cooldown (seconds)" }), "-60");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(screen.getByText("Expire snapshots: Cooldown must be a whole number.")).toBeInTheDocument();
-    expect(calls).toEqual([]);
+    expect(writesOf(calls)).toEqual([]);
   });
 
   it("refuses a half-typed optional threshold instead of sending it as not checked", async () => {
@@ -189,7 +194,7 @@ describe("PolicyEditor", () => {
     expect(
       screen.getByText("Rewrite data files: Reducible files at least must be a whole number."),
     ).toBeInTheDocument();
-    expect(calls).toEqual([]);
+    expect(writesOf(calls)).toEqual([]);
   });
 
   it("shows each operation with its scope only on rewrite data files", () => {
@@ -216,6 +221,23 @@ describe("PolicyEditor", () => {
 
     await waitFor(() => expect(callsTo(calls, "PUT", "/v1/maintenance-policies/nightly")).toHaveLength(1));
     expect(bodyOf(calls, "PUT", "/v1/maintenance-policies/nightly")).toMatchObject({ priority: "P0", version: 4 });
+  });
+
+  it("offers each priority with the time it allows and says what happens past it", async () => {
+    stubCatalogApi({ "GET /v1/scheduler-settings": () => jsonResponse(SCHEDULER_SETTINGS) });
+    const user = userEvent.setup();
+    renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={vi.fn()} />);
+    const dialog = await screen.findByRole("dialog", { name: "Edit policy" });
+    await waitFor(() =>
+      expect(within(dialog).getByRole("combobox", { name: "Priority" })).toHaveTextContent("P2 (within 8 h)"),
+    );
+    await user.click(within(dialog).getByRole("combobox", { name: "Priority" }));
+    expect(await screen.findByRole("option", { name: "P0 (within 1 h)" })).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        "When a compaction round cannot afford every table, P0 goes first and P2 last. A partition waiting longer than its priority allows is marked overdue. P2 is the default.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("starts a policy without a priority at P2", () => {
