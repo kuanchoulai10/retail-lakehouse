@@ -97,3 +97,16 @@ def test_ensure_schedule_is_idempotent(h):
     desc = _describe(h)
     assert desc.schedule.state.paused is False
     assert desc.schedule.spec.intervals[0].every == timedelta(seconds=60)
+
+
+@pytest.mark.parametrize(
+    ("interval", "timeout"),
+    [(timedelta(seconds=120), timedelta(seconds=360)), (timedelta(seconds=60), timedelta(seconds=300))],
+)
+def test_a_round_has_an_execution_timeout(h, interval, timeout):
+    """A wedged round ends after three intervals (at least 5 minutes), so the next firing is not skipped forever."""
+    _ensure(h, interval=interval)
+
+    action = _describe(h).schedule.action
+    assert isinstance(action, ScheduleActionStartWorkflow)
+    assert action.execution_timeout == timeout

@@ -10,6 +10,7 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound import (
     ensure_compaction_round_schedule,
     ensure_table_discovery_schedule,
     ensure_table_maintenance_admission,
+    require_table_search_attributes,
 )
 
 if TYPE_CHECKING:
@@ -27,12 +28,18 @@ async def apply_worker_startup(
     ensure_schedule: Callable[..., Awaitable[None]] = ensure_table_discovery_schedule,
     ensure_admission: Callable[..., Awaitable[None]] = ensure_table_maintenance_admission,
     ensure_rounds: Callable[..., Awaitable[None]] = ensure_compaction_round_schedule,
+    require_attributes: Callable[..., Awaitable[None]] = require_table_search_attributes,
 ) -> None:
     """Ensure the per-catalog discovery schedules, the admission workflow and the compaction round schedule.
 
-    The discovery schedules always run: the discovery rules alone decide which
-    tables are managed, so there is no switch to pause them.
+    It first checks that the namespace has every search attribute the
+    workflows set, and fails the start otherwise (``MissingTableSearchAttributes``
+    names them and says to run ``platform/21-temporal/bootstrap.sh``): without
+    them every compaction round would fail its workflow task and stop the
+    rounds in silence. The discovery schedules always run: the discovery rules
+    alone decide which tables are managed, so there is no switch to pause them.
     """
+    await require_attributes(client)
     await ensure_schedule(
         client,
         list(settings.catalog.names),

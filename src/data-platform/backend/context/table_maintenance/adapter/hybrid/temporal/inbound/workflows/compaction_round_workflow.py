@@ -47,7 +47,11 @@ class CompactionRoundWorkflow:
 
     @workflow.run
     async def run(self, input: CompactionRoundWorkflowInput) -> dict[str, Any]:  # noqa: A002
-        """Schedule the round, tag the workflow with the granted tables, signal them and return the round."""
+        """Schedule the round, signal the granted tables, then tag the workflow with them and return the round.
+
+        The signals go first: tagging can fail the workflow task (an attribute
+        the namespace lacks), and the grants must reach their tables anyway.
+        """
         round_id = workflow.info().workflow_id
         result = await workflow.execute_activity(
             CompactionRoundActivity.SCHEDULE_COMPACTION_ROUND,
@@ -57,9 +61,9 @@ class CompactionRoundWorkflow:
         )
         granted = [str(table) for table in result["granted_table_uuids"]]
         workflow.set_current_details(compaction_round_details(int(result["picked"]), len(granted)))
+        await asyncio.gather(*(self._grant(table, round_id) for table in granted))
         if granted:
             workflow.upsert_search_attributes([TableSearchAttributeKeys.GRANTED_TABLE_UUIDS.value_set(granted)])
-        await asyncio.gather(*(self._grant(table, round_id) for table in granted))
         return result
 
     async def _grant(self, table_uuid: str, round_id: str) -> None:
