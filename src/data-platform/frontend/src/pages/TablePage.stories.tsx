@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { getListCompactionCandidatesMockHandler } from "@/api/generated/compaction-candidates/compaction-candidates.msw";
 import { getListCoveredCatalogsMockHandler } from "@/api/generated/discovery-rules/discovery-rules.msw";
 import { getGetTableApplicableMaintenancePolicyMockHandler } from "@/api/generated/maintenance-policies/maintenance-policies.msw";
@@ -37,6 +37,18 @@ export const Overview: Story = {
     await expect(header.queryByText(/Policy:|Rule:/)).toBeNull();
     const table = within(await canvas.findByRole("region", { name: "Table" }));
     await expect(await table.findByRole("link", { name: "Priority 10" })).toHaveAttribute("href", "/discovery-rules");
+  },
+};
+
+// Properties are edited in the Properties tab, so the header's menu holds Rename and Delete only.
+export const Actions: Story = {
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await within(canvasElement).findByRole("button", { name: "Actions" }));
+    const items = await screen.findAllByRole("menuitem");
+    await expect(items.map((item) => item.textContent)).toEqual(["Rename", "Delete"]);
+    // Closed again, so the page axe checks is not hidden behind the open menu.
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
   },
 };
 

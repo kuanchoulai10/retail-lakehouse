@@ -14,7 +14,6 @@ import {
 } from "@/api/generated/tables/tables";
 import { CatalogObjectNotFound } from "@/components/CatalogObjectNotFound";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { EditTablePropertiesDialog } from "@/components/forms/EditTablePropertiesDialog";
 import { RenameTableDialog } from "@/components/forms/RenameTableDialog";
 import { MaintenanceGate } from "@/components/MaintenanceGate";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
@@ -45,7 +44,7 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]["key"];
 
-type Dialog = "rename" | "edit" | "delete" | null;
+type Dialog = "rename" | "delete" | null;
 
 function tabOf(segment: string | undefined): TabKey {
   return TABS.find((t) => t.key === segment)?.key ?? "overview";
@@ -140,7 +139,6 @@ function TableView({ catalog, parts, name, segment }: TableViewProps) {
   const maintenance = tableMaintenanceState(catalog, covered, maintenanceTable);
   const menuItems = [
     { label: "Rename", onSelect: () => setDialog("rename") },
-    { label: "Edit properties", onSelect: () => setDialog("edit") },
     {
       label: "Delete",
       destructive: true,
@@ -173,7 +171,6 @@ function TableView({ catalog, parts, name, segment }: TableViewProps) {
         ))}
       </Tabs>
       {dialog === "rename" && <RenameTableDialog table={table.data} tab={tab} onLeave={leave} onClose={() => setDialog(null)} />}
-      {dialog === "edit" && <EditTablePropertiesDialog table={table.data} onClose={() => setDialog(null)} />}
       {dialog === "delete" && (
         <ConfirmDeleteDialog
           open

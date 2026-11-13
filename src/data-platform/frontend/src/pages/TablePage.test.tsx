@@ -379,13 +379,22 @@ describe("TablePage", { timeout: 15_000 }, () => {
     expect(callsTo(calls, "GET", TABLE)).toHaveLength(1);
   });
 
+  it("the actions menu holds rename and delete only; properties are edited in the Properties tab", async () => {
+    const user = userEvent.setup();
+    stubTable();
+    renderAt(PAGE);
+    await user.click(await screen.findByRole("button", { name: "Actions" }));
+    const items = await screen.findAllByRole("menuitem");
+    expect(items.map((item) => item.textContent)).toEqual(["Rename", "Delete"]);
+  });
+
   it("edit properties sends the loaded uuid and only the changes", async () => {
     const user = userEvent.setup();
     const calls = stubTable({
       extra: { [`PUT ${TABLE}/properties`]: () => jsonResponse(catalogTableFixture()) },
     });
     renderAt(`${PAGE}/properties`);
-    await openAction(user, "Edit properties");
+    await user.click(await screen.findByRole("button", { name: "Edit properties" }));
     const dialog = await screen.findByRole("dialog", { name: "Edit properties" });
     await user.click(within(dialog).getByRole("button", { name: "Remove owner" }));
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
@@ -406,7 +415,7 @@ describe("TablePage", { timeout: 15_000 }, () => {
       },
     });
     renderAt(`${PAGE}/properties`);
-    await openAction(user, "Edit properties");
+    await user.click(await screen.findByRole("button", { name: "Edit properties" }));
     const dialog = await screen.findByRole("dialog", { name: "Edit properties" });
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
     expect(await within(dialog).findByRole("alert")).toHaveTextContent(
@@ -512,7 +521,7 @@ describe("TablePage", { timeout: 15_000 }, () => {
       extra: { [`PUT ${TABLE}/properties`]: () => jsonResponse({ detail: "Polaris is unreachable" }, 502) },
     });
     renderAt(`${PAGE}/properties`);
-    await openAction(user, "Edit properties");
+    await user.click(await screen.findByRole("button", { name: "Edit properties" }));
     const dialog = await screen.findByRole("dialog", { name: "Edit properties" });
     await user.click(within(dialog).getByRole("button", { name: "Remove owner" }));
     await user.click(within(dialog).getByRole("button", { name: "Save" }));
