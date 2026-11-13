@@ -184,3 +184,34 @@ def test_compaction_reads_env(monkeypatch: pytest.MonkeyPatch):
     assert (compaction.partitions_per_run, compaction.min_partition_bytes) == (3, 1048576)
     assert (compaction.quiet_seconds, compaction.max_quiet_wait_seconds, compaction.cost_weight) == (30, 600, 0.5)
     assert compaction.min_throughput_sample_bytes == 1024
+
+
+def test_scheduler_defaults_run_a_round_every_two_minutes_within_a_small_budget():
+    """Without an environment a round runs every 120 s, grants up to 0.05 GB·h and keeps 500 rounds."""
+    scheduler = AppSettings().scheduler
+
+    assert (scheduler.round_seconds, scheduler.budget_gb_hours) == (120, 0.05)
+    assert (scheduler.priority_weights.p0, scheduler.priority_weights.p1, scheduler.priority_weights.p2) == (
+        4.0,
+        2.0,
+        1.0,
+    )
+    assert (scheduler.sla_seconds.p0, scheduler.sla_seconds.p1, scheduler.sla_seconds.p2) == (3600, 14400, 28800)
+    assert (scheduler.grant_lease_seconds, scheduler.rounds_kept) == (600, 500)
+
+
+def test_scheduler_reads_env(monkeypatch: pytest.MonkeyPatch):
+    """Each scheduler setting is read from GLAC_SCHEDULER__<NAME>; a priority given alone keeps the others."""
+    monkeypatch.setenv("GLAC_SCHEDULER__ROUND_SECONDS", "60")
+    monkeypatch.setenv("GLAC_SCHEDULER__BUDGET_GB_HOURS", "0.2")
+    monkeypatch.setenv("GLAC_SCHEDULER__PRIORITY_WEIGHTS__P0", "8")
+    monkeypatch.setenv("GLAC_SCHEDULER__SLA_SECONDS__P2", "120")
+    monkeypatch.setenv("GLAC_SCHEDULER__GRANT_LEASE_SECONDS", "900")
+    monkeypatch.setenv("GLAC_SCHEDULER__ROUNDS_KEPT", "10")
+
+    scheduler = AppSettings().scheduler
+
+    assert (scheduler.round_seconds, scheduler.budget_gb_hours) == (60, 0.2)
+    assert (scheduler.priority_weights.p0, scheduler.priority_weights.p1) == (8.0, 2.0)
+    assert (scheduler.sla_seconds.p0, scheduler.sla_seconds.p2) == (3600, 120)
+    assert (scheduler.grant_lease_seconds, scheduler.rounds_kept) == (900, 10)

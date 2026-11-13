@@ -5,12 +5,16 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
+from bootstrap.configs import SchedulerSettings
+from bootstrap.container.build_priority_sla import build_priority_sla
+from bootstrap.container.build_priority_weights import build_priority_weights
 from bootstrap.container.use_cases import UseCases
 from context.table_maintenance.application.domain.model.compaction_candidate import CandidateSelection
 from context.table_maintenance.application.service.compaction_candidate import (
     ListCompactionCandidatesService,
     ReleaseCompactionCandidatesService,
 )
+from context.table_maintenance.application.service.compaction_round import ScheduleCompactionRoundService
 from context.table_maintenance.application.service.table import (
     GetTableHealthService,
     GetTableService,
@@ -83,6 +87,7 @@ def build_use_cases(
     size_memory: Mapping[ComputeSize, SizeMemory] | None = None,
     candidate_selection: CandidateSelection | None = None,
     claim_lease: timedelta = _DEFAULT_CLAIM_LEASE,
+    scheduler: SchedulerSettings | None = None,
 ) -> UseCases:
     """Build every application service on the given repositories and gateways.
 
@@ -90,7 +95,8 @@ def build_use_cases(
     operation is ever stepped down to a smaller size, and compaction costs are
     estimated for a fixed memory. ``candidate_selection`` says how compaction
     candidates are picked (the defaults without it) and ``claim_lease`` how long
-    a run holds the candidates it claims.
+    a run holds the candidates it claims. ``scheduler`` says how compaction
+    rounds share compaction across tables (the defaults without it).
     """
     tables = repos.tables
     rules = repos.table_discovery_rules
@@ -100,6 +106,7 @@ def build_use_cases(
     reconciliations = repos.table_reconciliations
     candidates = repos.compaction_candidates
     selection = candidate_selection or CandidateSelection()
+    rounds = scheduler or SchedulerSettings()
     catalog = gateways.read_table_metadata
     table_changes = gateways.send_table_change
     resolve_applicable_policy = ResolveApplicableTableMaintenancePolicyService(policies, attachments, catalog, tables)
@@ -173,6 +180,16 @@ def build_use_cases(
             claim_lease=claim_lease,
         ),
         release_compaction_candidates=ReleaseCompactionCandidatesService(candidates),
+        schedule_compaction_round=ScheduleCompactionRoundService(
+            candidates,
+            repos.compaction_rounds,
+            weights=build_priority_weights(rounds),
+            budget_gb_hours=rounds.budget_gb_hours,
+            partitions_per_run=selection.partitions_per_run,
+            sla=build_priority_sla(rounds),
+            grant_lease=timedelta(seconds=rounds.grant_lease_seconds),
+            rounds_kept=rounds.rounds_kept,
+        ),
         list_compaction_candidates=ListCompactionCandidatesService(
             candidates, tables, partitions_per_run=selection.partitions_per_run
         ),

@@ -11,6 +11,9 @@ from bootstrap.configs.database_backend import DatabaseBackend
 from bootstrap.configs.get_settings import get_settings
 from bootstrap.configs.kafka_settings import KafkaSettings
 from bootstrap.configs.postgres_settings import PostgresSettings
+from bootstrap.configs.priority_sla_settings import PrioritySlaSettings
+from bootstrap.configs.priority_weight_settings import PriorityWeightSettings
+from bootstrap.configs.scheduler_settings import SchedulerSettings
 from bootstrap.configs.spark_settings import SparkSettings
 from bootstrap.configs.spark_size_settings import SparkSizeSettings
 from bootstrap.configs.sqlite_settings import SqliteSettings
@@ -25,6 +28,9 @@ __all__ = [
     "DatabaseBackend",
     "KafkaSettings",
     "PostgresSettings",
+    "PrioritySlaSettings",
+    "PriorityWeightSettings",
+    "SchedulerSettings",
     "SparkSettings",
     "SparkSizeSettings",
     "SqliteSettings",

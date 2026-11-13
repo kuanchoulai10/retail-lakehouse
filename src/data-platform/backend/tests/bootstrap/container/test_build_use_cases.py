@@ -11,6 +11,7 @@ from unittest.mock import MagicMock
 
 import context.table_maintenance.application.service
 from base import UseCase
+from bootstrap.configs import SchedulerSettings
 from bootstrap.container import (
     build_gateways,
     build_repositories,
@@ -38,6 +39,9 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import
 )
 from context.table_maintenance.adapter.outbound.table_maintenance_run.s3 import (
     ReadMaintenanceEventLogS3Gateway,
+)
+from context.table_maintenance.application.port.inbound.compaction_round import (
+    ScheduleCompactionRoundUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_discovery_rules import (
     GetTableDiscoveryRulesUseCaseInput,
@@ -138,3 +142,17 @@ def test_use_cases_work_against_the_sql_repos():
     rules = use_cases.get_table_discovery_rules.execute(GetTableDiscoveryRulesUseCaseInput())
 
     assert (rules.version, rules.rules) == (0, [])
+
+
+def test_the_compaction_round_takes_the_scheduler_budget():
+    """The round use case is built with the scheduler settings' budget and records its rounds."""
+    use_cases = build_use_cases(
+        build_repositories(sqlite_engine()),
+        fake_gateways(),
+        clock=lambda: NOW,
+        scheduler=SchedulerSettings(budget_gb_hours=0.3),
+    )
+
+    result = use_cases.schedule_compaction_round.execute(ScheduleCompactionRoundUseCaseInput(round_id="r-1", now=NOW))
+
+    assert (result.round_id, result.budget_gb_hours, result.picked) == ("r-1", 0.3, 0)

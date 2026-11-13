@@ -20,6 +20,8 @@ from bootstrap.container.build_k8s_api import build_k8s_api
 from bootstrap.container.build_k8s_core_api import build_k8s_core_api
 from bootstrap.container.build_openapi_document import build_openapi_document
 from bootstrap.container.build_polaris_http_client import build_polaris_http_client
+from bootstrap.container.build_priority_sla import build_priority_sla
+from bootstrap.container.build_priority_weights import build_priority_weights
 from bootstrap.container.build_repositories import build_repositories
 from bootstrap.container.build_size_memory import build_size_memory
 from bootstrap.container.build_spark_config import build_spark_config
@@ -64,6 +66,8 @@ __all__ = [
     "build_k8s_core_api",
     "build_openapi_document",
     "build_polaris_http_client",
+    "build_priority_sla",
+    "build_priority_weights",
     "build_repositories",
     "build_size_memory",
     "compaction_claim_lease",

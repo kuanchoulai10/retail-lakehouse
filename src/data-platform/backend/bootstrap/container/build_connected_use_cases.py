@@ -60,4 +60,5 @@ def build_connected_use_cases(
         size_memory=build_size_memory(settings.spark),
         candidate_selection=build_candidate_selection(settings.compaction),
         claim_lease=compaction_claim_lease(settings),
+        scheduler=settings.scheduler,
     )
