@@ -4,7 +4,7 @@ import { getListCompactionCandidatesMockHandler } from "@/api/generated/compacti
 import { getListCoveredCatalogsMockHandler } from "@/api/generated/discovery-rules/discovery-rules.msw";
 import { getGetTableApplicableMaintenancePolicyMockHandler } from "@/api/generated/maintenance-policies/maintenance-policies.msw";
 import { getListTableMaintenanceRunsMockHandler } from "@/api/generated/table-maintenance-runs/table-maintenance-runs.msw";
-import { getGetTableHealthMockHandler, getGetTableMockHandler } from "@/api/generated/tables/tables.msw";
+import { getGetTableMockHandler } from "@/api/generated/tables/tables.msw";
 import { getListTableReconciliationsMockHandler } from "@/api/generated/table-reconciliations/table-reconciliations.msw";
 import { formatTimestamp } from "@/format";
 import { temporalWorkflowsUrl } from "@/lib/temporalWorkflowsUrl";
@@ -13,7 +13,7 @@ import { ConsolePage } from "@/stories/ConsolePage";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
 import { lakehouseHandlers } from "@/stories/lakehouseHandlers";
 import { PHONE } from "@/stories/phone";
-import { ESCALATED_RUN, HEALTH, MAINTAINED_ORDERS, POLICIES } from "@/stories/storyData";
+import { ESCALATED_RUN, MAINTAINED_ORDERS, POLICIES } from "@/stories/storyData";
 
 const ORDERS = "/catalogs/iceberg/namespaces/retail/tables/orders";
 
@@ -155,24 +155,6 @@ export const CandidatesPhone: Story = {
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByRole("table", { name: "Compaction candidates, best first" });
     await expectNoHorizontalPageScroll(canvasElement);
-  },
-};
-
-export const HealthNeedsAttention: Story = {
-  beforeEach({ msw }) {
-    msw.use(
-      getGetTableHealthMockHandler({
-        ...HEALTH,
-        operations: HEALTH.operations.map((line) =>
-          line.operation === "rewrite_data_files" ? { ...line, verdict: "needs_attention" } : line,
-        ),
-      }),
-    );
-  },
-  play: async ({ canvasElement }) => {
-    const line = await within(canvasElement).findByText(/^Needs attention: out of memory at the largest size/);
-    await expect(line).toBeVisible();
-    await expect(line).toHaveClass("text-negative-text");
   },
 };
 

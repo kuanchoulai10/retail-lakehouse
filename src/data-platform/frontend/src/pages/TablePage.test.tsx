@@ -221,7 +221,22 @@ describe("TablePage", { timeout: 15_000 }, () => {
     expect(await within(summary).findByText("Maintenance: managed")).toBeInTheDocument();
     expect(within(summary).getByText("s3://warehouse/retail/orders")).toBeInTheDocument();
     expect(within(summary).getByText("9007199254740993")).toBeInTheDocument();
-    expect(await screen.findByText("No maintenance runs yet.")).toBeInTheDocument();
+  });
+
+  it("overview holds only the Table panel: no health, storage, freshness, commits or runs", async () => {
+    const calls = stubTable();
+    renderAt(PAGE);
+    const summary = await screen.findByRole("region", { name: "Table" });
+    await within(summary).findByText("Maintenance: managed");
+    await settle();
+    for (const name of ["Health", "Storage", "Freshness & activity", "Recent commits", "Last maintenance run"]) {
+      expect(screen.queryByRole("region", { name })).not.toBeInTheDocument();
+    }
+    expect(screen.queryByText("No maintenance runs yet.")).not.toBeInTheDocument();
+    for (const path of ["health", "storage", "commits*", "table-maintenance-runs"]) {
+      expect(calls.filter((call) => call.path.startsWith(`/v1/tables/uuid-orders/${path.replace("*", "")}`))).toHaveLength(0);
+    }
+    expect(screen.queryByText("Maintenance does not manage this table")).not.toBeInTheDocument();
   });
 
   it("overview names the discovery rule that selected a managed table, by priority", async () => {

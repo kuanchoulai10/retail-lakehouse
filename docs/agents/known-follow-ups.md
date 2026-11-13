@@ -62,8 +62,6 @@ Open issues and deferred work. Not loaded automatically; read the entries for th
 - Keyboard shortcuts, a shortcut registry and a command palette are the next design-system phase; the foundations (full keyboard operation, keyboard tests) are in place.
 - Visual regression testing of the Storybook stories, once the components are stable.
 - A `konjo-dark` theme if dark mode returns; themes already switch by `data-panda-theme`.
-- StoragePanel's "Only in old snapshots" bar (`bg-chart-5`, `outlineDim`, on `surface-container-dim`) passes at 3.13:1 in every theme and is now locked by a `CONTRAST_PAIRS` test; it has no margin, so a token change may break it.
-- Add a design-system `ChartTooltip` to replace FreshnessPanel's hand-styled tooltip.
 - The design system does not re-export `RowData`, so the console keeps a direct `@tanstack/react-table` dependency for types; re-export it and drop the dependency.
 - Select and DropdownMenu have no axe story in their open state (the listbox and menu are only checked closed).
 - CheckBox and Switch have no invalid-state stories.

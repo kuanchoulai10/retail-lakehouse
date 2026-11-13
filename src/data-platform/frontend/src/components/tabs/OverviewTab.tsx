@@ -4,9 +4,7 @@ import { Link } from "react-router";
 import { useGetTableDiscoveryRules } from "@/api/generated/discovery-rules/discovery-rules";
 import type { CatalogTableApiResponse } from "@/api/generated/model";
 import { MaintenanceGate } from "@/components/MaintenanceGate";
-import { MaintenancePanels } from "@/components/MaintenancePanels";
 import { formatBytes, formatCount, formatRelativeTime } from "@/format";
-import { currentSnapshot } from "@/lib/currentSnapshot";
 import type { TableMaintenanceState } from "@/lib/tableMaintenanceState";
 
 interface Props {
@@ -30,15 +28,13 @@ function Fact({ label, children, mono }: { label: string; children: ReactNode; m
   );
 }
 
-// Top: what the catalog holds, plus whether maintenance manages the table. Bottom: the
-// maintenance panels, or the shared empty state.
+// What the catalog holds, plus whether maintenance manages the table; when it does not, the shared
+// empty state says why.
 export function OverviewTab({ table, maintenance }: Props) {
   const managed = maintenance.kind === "managed" ? maintenance.table : null;
   // The rule that selected the table is asked for only when maintenance manages it.
   const rules = useGetTableDiscoveryRules({ query: { enabled: managed !== null } });
   const rule = managed === null ? undefined : rules.data?.rules.find((r) => r.id === managed.matched_rule_id);
-  const snapshot = currentSnapshot(table);
-  const lastCommittedAt = snapshot === undefined ? null : new Date(snapshot.timestamp_ms).toISOString();
   const { total_records: records, total_data_files: files, total_files_size: size } = table.summary;
   return (
     <div className="grid grid-cols-1 gap-4">
@@ -73,9 +69,7 @@ export function OverviewTab({ table, maintenance }: Props) {
           <Fact label="Last updated">{formatRelativeTime(new Date(table.last_updated_ms).toISOString())}</Fact>
         </dl>
       </Panel>
-      <MaintenanceGate state={maintenance}>
-        {(managed) => <MaintenancePanels tableUuid={managed.uuid} lastCommittedAt={lastCommittedAt} />}
-      </MaintenanceGate>
+      <MaintenanceGate state={maintenance}>{() => null}</MaintenanceGate>
     </div>
   );
 }
