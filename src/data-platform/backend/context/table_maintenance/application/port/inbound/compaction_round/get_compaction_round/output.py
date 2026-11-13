@@ -64,3 +64,4 @@ class GetCompactionRoundUseCaseOutput:
     picks: list[GetCompactionRoundUseCaseOutputPick]
     skips: list[GetCompactionRoundUseCaseOutputSkip]
     skipped_total: int
+    busy_skipped: int = 0

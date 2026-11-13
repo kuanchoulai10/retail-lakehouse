@@ -184,7 +184,7 @@ def test_purges_old_rounds(candidates):  # noqa: ANN001
 
 
 def test_a_table_busy_with_a_run_gets_no_grant():
-    """A table whose run holds a candidate is skipped table_busy; the budget goes to an idle table."""
+    """A table whose run holds a candidate gets nothing, counted apart from the skips; an idle table gets the budget."""
     repo = InMemoryCompactionCandidatesRepo()
     running = _candidate("t-busy", "running", score=0.99)
     running.grant("round-0", NOW + GRANT_LEASE, NOW - timedelta(minutes=1))
@@ -204,7 +204,7 @@ def test_a_table_busy_with_a_run_gets_no_grant():
     }
     stored = rounds.get(CompactionRoundId("round-1"))
     assert stored is not None
-    assert [(s.label, s.reason) for s in stored.skips] == [("day=more", SkipReason.TABLE_BUSY)]
+    assert (stored.skips, stored.skipped_total, stored.busy_skipped) == ((), 0, 1)
 
 
 def _rounds_repo_that_fails_once(monkeypatch: pytest.MonkeyPatch) -> InMemoryCompactionRoundsRepo:

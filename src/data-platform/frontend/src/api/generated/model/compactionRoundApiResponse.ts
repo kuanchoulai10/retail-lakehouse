@@ -11,9 +11,12 @@ import type { CompactionRoundSkipApiResponse } from './compactionRoundSkipApiRes
  * Describe one compaction round: when it ran, its budget and use, its picks and the first of its skips.
  *
  * ``skips`` keeps the first skipped candidates; ``skipped_total`` counts them all.
+ * ``busy_skipped`` counts apart the pending candidates of tables still busy
+ * with compaction, which the round left out without ranking them.
  */
 export interface CompactionRoundApiResponse {
   budget_gb_hours: number;
+  busy_skipped: number;
   picks: CompactionRoundPickApiResponse[];
   round_id: string;
   skipped_total: number;

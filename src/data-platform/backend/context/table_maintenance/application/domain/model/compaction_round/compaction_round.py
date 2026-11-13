@@ -29,7 +29,10 @@ class CompactionRound(AggregateRoot[CompactionRoundId]):
     and grants the picks to their tables. ``used_gb_hours`` is what the picks
     are estimated to cost (it can pass the budget only by the first pick, which
     a round always takes). ``skips`` keeps the first skipped candidates and
-    ``skipped_total`` counts all of them.
+    ``skipped_total`` counts all of them. ``busy_skipped`` counts apart the
+    pending candidates of tables busy with compaction, which a round never
+    ranks, so they never crowd the kept skips (a round recorded before they
+    were counted apart has 0, and its busy ones are among its skips).
     """
 
     id: CompactionRoundId
@@ -39,6 +42,7 @@ class CompactionRound(AggregateRoot[CompactionRoundId]):
     picks: tuple[RoundPick, ...]
     skips: tuple[RoundSkip, ...]
     skipped_total: NonNegativeInt
+    busy_skipped: NonNegativeInt = 0
 
     @model_validator(mode="after")
     def _totals_agree(self) -> CompactionRound:

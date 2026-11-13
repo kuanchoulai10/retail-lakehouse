@@ -43,7 +43,8 @@ def plan_compaction_round(  # noqa: PLR0913
     ``candidates`` are the unheld candidates of every table: the pending ones
     are ranked, the others only tell which tables are busy (a live grant or
     run, or a run not observed since it finished); a busy table's pending
-    candidates are skipped ``table_busy``. The rest are ranked by score times
+    candidates are left out and only counted (``busy_skipped``), so they take
+    no place among the kept skips. The rest are ranked by score times
     the weight of their priority, ties by the candidate rank (then the table).
     The round walks the ranking in strict order: a table's candidates past
     ``partitions_per_run`` are skipped ``table_share_used`` and the walk goes
@@ -54,8 +55,9 @@ def plan_compaction_round(  # noqa: PLR0913
     not change the order: it only marks a candidate overdue.
     """
     busy = {c.table_uuid.value for c in candidates if c.keeps_its_table_busy(now)}
+    pending = [c for c in candidates if c.state is CandidateState.PENDING]
     ranked = sorted(
-        (c for c in candidates if c.state is CandidateState.PENDING),
+        (c for c in pending if c.table_uuid.value not in busy),
         key=lambda c: (-c.score.score * weights.weight(c.priority), *c.rank, c.table_uuid.value),
     )
     picks: list[RoundPick] = []
@@ -66,9 +68,7 @@ def plan_compaction_round(  # noqa: PLR0913
     for candidate in ranked:
         cost = candidate.score.estimated_gb_hours
         reason: SkipReason | None = None
-        if candidate.table_uuid.value in busy:
-            reason = SkipReason.TABLE_BUSY
-        elif per_table[candidate.table_uuid.value] >= partitions_per_run:
+        if per_table[candidate.table_uuid.value] >= partitions_per_run:
             reason = SkipReason.TABLE_SHARE_USED
         elif stopped:
             reason = SkipReason.BUDGET_USED
@@ -89,6 +89,7 @@ def plan_compaction_round(  # noqa: PLR0913
         picks=tuple(picks),
         skips=tuple(skips[: max(0, skipped_kept)]),
         skipped_total=len(skips),
+        busy_skipped=len(pending) - len(ranked),
     )
 
 

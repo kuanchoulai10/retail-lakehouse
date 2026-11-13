@@ -16,5 +16,6 @@ compaction_rounds_table = Table(
     Column("picks_json", JSON, nullable=False),
     Column("skips_json", JSON, nullable=False),
     Column("skipped_total", Integer, nullable=False),
+    Column("busy_skipped", Integer, nullable=False, server_default="0"),
     Index("ix_compaction_rounds_started_at", "started_at"),
 )

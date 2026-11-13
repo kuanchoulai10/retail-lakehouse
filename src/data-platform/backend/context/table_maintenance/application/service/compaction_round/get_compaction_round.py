@@ -48,6 +48,7 @@ class GetCompactionRoundService(GetCompactionRoundUseCase):
             picks=[_pick(p, names) for p in round_.picks],
             skips=[_skip(s, names) for s in round_.skips],
             skipped_total=round_.skipped_total,
+            busy_skipped=round_.busy_skipped,
         )
 
     def _name(self, table_uuid: TableId) -> TableName | None:

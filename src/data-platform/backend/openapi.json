@@ -726,11 +726,15 @@
         "type": "object"
       },
       "CompactionRoundApiResponse": {
-        "description": "Describe one compaction round: when it ran, its budget and use, its picks and the first of its skips.\n\n``skips`` keeps the first skipped candidates; ``skipped_total`` counts them all.",
+        "description": "Describe one compaction round: when it ran, its budget and use, its picks and the first of its skips.\n\n``skips`` keeps the first skipped candidates; ``skipped_total`` counts them all.\n``busy_skipped`` counts apart the pending candidates of tables still busy\nwith compaction, which the round left out without ranking them.",
         "properties": {
           "budget_gb_hours": {
             "title": "Budget Gb Hours",
             "type": "number"
+          },
+          "busy_skipped": {
+            "title": "Busy Skipped",
+            "type": "integer"
           },
           "picks": {
             "items": {
@@ -771,7 +775,8 @@
           "used_gb_hours",
           "picks",
           "skips",
-          "skipped_total"
+          "skipped_total",
+          "busy_skipped"
         ],
         "title": "CompactionRoundApiResponse",
         "type": "object"

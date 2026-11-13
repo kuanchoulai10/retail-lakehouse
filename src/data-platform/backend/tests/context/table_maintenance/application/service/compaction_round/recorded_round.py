@@ -52,4 +52,5 @@ def recorded_round(round_id: str, started_at: datetime) -> CompactionRound:
             ),
         ),
         skipped_total=3,
+        busy_skipped=4,
     )

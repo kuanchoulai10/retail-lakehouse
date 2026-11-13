@@ -732,6 +732,7 @@ export const ROUNDS: CompactionRoundApiResponse[] = [
       },
     ],
     skipped_total: 4,
+    busy_skipped: 3,
   },
   {
     round_id: "compaction-rounds-2026-11-13T01:58:00Z",
@@ -741,5 +742,6 @@ export const ROUNDS: CompactionRoundApiResponse[] = [
     picks: [],
     skips: [],
     skipped_total: 0,
+    busy_skipped: 0,
   },
 ];

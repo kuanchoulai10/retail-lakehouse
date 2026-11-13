@@ -95,6 +95,7 @@ def _round(round_: _Round) -> CompactionRoundApiResponse:
         picks=[_pick(p) for p in round_.picks],
         skips=[_skip(s) for s in round_.skips],
         skipped_total=round_.skipped_total,
+        busy_skipped=round_.busy_skipped,
     )
 
 

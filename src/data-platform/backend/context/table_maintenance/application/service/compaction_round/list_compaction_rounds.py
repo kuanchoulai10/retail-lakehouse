@@ -63,6 +63,7 @@ def _item(round_: CompactionRound, names: dict[str, TableName | None]) -> ListCo
         picks=[_pick(p, names) for p in round_.picks],
         skips=[_skip(s, names) for s in round_.skips],
         skipped_total=round_.skipped_total,
+        busy_skipped=round_.busy_skipped,
     )
 
 

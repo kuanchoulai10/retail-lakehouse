@@ -199,7 +199,7 @@ def _busy(table: str, value: str, state: str) -> CompactionCandidate:
 
 @pytest.mark.parametrize("state", ["granted", "running", "done"])
 def test_a_busy_table_gets_nothing_and_an_idle_one_gets_the_budget(state):
-    """A table with a live grant or run, or one not observed since its run ended, is skipped table_busy."""
+    """A table with a live grant or run, or one not observed since its run ended, gets nothing, counted apart."""
     round_ = _plan(
         [
             _busy("t-busy", "taken", state),
@@ -210,8 +210,7 @@ def test_a_busy_table_gets_nothing_and_an_idle_one_gets_the_budget(state):
     )
 
     assert _picked(round_) == ["t-idle/a", "t-idle/b"]
-    assert [(s.table_uuid.value, s.reason) for s in round_.skips] == [("t-busy", SkipReason.TABLE_BUSY)]
-    assert round_.skipped_total == 1
+    assert (round_.skips, round_.skipped_total, round_.busy_skipped) == ((), 0, 1)
 
 
 def test_only_pending_candidates_are_picked_or_skipped():
@@ -246,3 +245,21 @@ def test_a_table_over_its_share_reads_table_share_used_even_after_the_budget_ran
         ("big", SkipReason.BUDGET_USED),
         ("b", SkipReason.TABLE_SHARE_USED),
     ]
+
+
+def test_partitions_of_busy_tables_take_no_place_among_the_kept_skips():
+    """A busy table's many partitions are only counted, so the budget's skips stay in view."""
+    busy = [_candidate("t-busy", f"p{i}", priority=MaintenancePriority.P0, score=0.9) for i in range(25)]
+    round_ = _plan(
+        [
+            _busy("t-busy", "taken", "running"),
+            *busy,
+            _candidate("t-1", "a", score=0.5, gb_hours=0.04),
+            _candidate("t-2", "b", score=0.4, gb_hours=0.04),
+        ],
+        kept=20,
+    )
+
+    assert _picked(round_) == ["t-1/a"]
+    assert [(s.table_uuid.value, s.reason) for s in round_.skips] == [("t-2", SkipReason.BUDGET_USED)]
+    assert (round_.skipped_total, round_.busy_skipped) == (1, 25)

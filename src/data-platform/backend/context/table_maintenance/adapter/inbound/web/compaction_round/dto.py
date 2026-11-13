@@ -83,6 +83,8 @@ class CompactionRoundApiResponse(BaseModel):
     """Describe one compaction round: when it ran, its budget and use, its picks and the first of its skips.
 
     ``skips`` keeps the first skipped candidates; ``skipped_total`` counts them all.
+    ``busy_skipped`` counts apart the pending candidates of tables still busy
+    with compaction, which the round left out without ranking them.
     """
 
     round_id: str
@@ -92,3 +94,4 @@ class CompactionRoundApiResponse(BaseModel):
     picks: list[CompactionRoundPickApiResponse]
     skips: list[CompactionRoundSkipApiResponse]
     skipped_total: int
+    busy_skipped: int

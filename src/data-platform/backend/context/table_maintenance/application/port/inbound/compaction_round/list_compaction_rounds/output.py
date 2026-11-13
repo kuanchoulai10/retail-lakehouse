@@ -64,6 +64,7 @@ class ListCompactionRoundsUseCaseOutputItem:
     picks: list[ListCompactionRoundsUseCaseOutputPick]
     skips: list[ListCompactionRoundsUseCaseOutputSkip]
     skipped_total: int
+    busy_skipped: int = 0
 
 
 @dataclass(frozen=True)

@@ -113,6 +113,12 @@ const skipColumns = skipColumn.columns([
   skipColumn.accessor((s) => skipReasonText(s.reason), { id: "reason", header: "Reason", enableSorting: false }),
 ]);
 
+// A busy table's partitions are only counted, not kept as skips, so they never hide the budget's.
+function busyText(count: number): string {
+  const partitions = count === 1 ? "partition" : "partitions";
+  return `Left for a later round without ranking: ${formatCount(count)} ${partitions} of tables still busy with compaction.`;
+}
+
 const SKIP_REASONS_TEXT =
   "Budget used: the round's GB·h budget ran out. Table's share used: the table already has its most partitions in " +
   "this round. Table busy: the table is still compacting what an earlier round granted.";
@@ -155,6 +161,9 @@ function RoundDetail({ round }: { round: CompactionRoundApiResponse }) {
           />
           <p className="type-body-small text-on-surface-variant">{SKIP_REASONS_TEXT}</p>
         </>
+      )}
+      {round.busy_skipped > 0 && (
+        <p className="type-body-small text-on-surface-variant">{busyText(round.busy_skipped)}</p>
       )}
       <p className="type-body-small text-on-surface-variant">
         Workflow id <span className="font-mono">{round.round_id}</span>

@@ -29,6 +29,7 @@ class CompactionRoundRowMapper:
             "picks_json": [p.to_primitives() for p in round_.picks],
             "skips_json": [s.to_primitives() for s in round_.skips],
             "skipped_total": round_.skipped_total,
+            "busy_skipped": round_.busy_skipped,
         }
 
     @staticmethod
@@ -42,4 +43,5 @@ class CompactionRoundRowMapper:
             picks=tuple(RoundPick.from_primitives(p) for p in row["picks_json"]),
             skips=tuple(RoundSkip.from_primitives(s) for s in row["skips_json"]),
             skipped_total=row["skipped_total"],
+            busy_skipped=row["busy_skipped"],
         )

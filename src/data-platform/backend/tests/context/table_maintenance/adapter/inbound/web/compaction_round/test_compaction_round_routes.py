@@ -53,6 +53,7 @@ ROUND_JSON = {
     "picks": [PICK_JSON],
     "skips": [SKIP_JSON],
     "skipped_total": 3,
+    "busy_skipped": 4,
 }
 
 
@@ -95,6 +96,7 @@ def _listed() -> ListCompactionRoundsUseCaseOutputItem:
             )
         ],
         skipped_total=3,
+        busy_skipped=4,
     )
 
 
@@ -140,6 +142,7 @@ def test_gets_one_round():
             picks=[GetCompactionRoundUseCaseOutputPick(**vars(_listed().picks[0]))],
             skips=[GetCompactionRoundUseCaseOutputSkip(**vars(_listed().skips[0]))],
             skipped_total=3,
+            busy_skipped=4,
         )
     )
 

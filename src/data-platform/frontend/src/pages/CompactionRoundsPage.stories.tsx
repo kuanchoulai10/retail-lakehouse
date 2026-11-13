@@ -49,6 +49,9 @@ export const Expanded: Story = {
     await expect(skips.getByText("Budget used")).toBeVisible();
     await expect(skips.getByText("Overdue", { selector: "span" })).toBeVisible();
     await expect(canvas.getByText("The first 1 of 4 skipped partitions, in rank order.")).toBeVisible();
+    await expect(
+      canvas.getByText("Left for a later round without ranking: 3 partitions of tables still busy with compaction."),
+    ).toBeVisible();
   },
 };
 

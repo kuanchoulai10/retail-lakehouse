@@ -117,3 +117,29 @@ def test_round_round_trips_through_primitives():
     )
     assert RoundPick.from_primitives(round_.picks[0].to_primitives()) == round_.picks[0]
     assert RoundSkip.from_primitives(round_.skips[0].to_primitives()) == round_.skips[0]
+
+
+def test_round_counts_partitions_of_busy_tables_apart_from_its_skips():
+    """Partitions of tables busy with compaction are counted, never kept as skips; none by default."""
+    round_ = CompactionRound(
+        id=CompactionRoundId("r-1"),
+        started_at=NOW,
+        budget_gb_hours=0.05,
+        used_gb_hours=0.0,
+        picks=(),
+        skips=(),
+        skipped_total=0,
+        busy_skipped=4,
+    )
+    assert round_.busy_skipped == 4
+    assert round_.model_copy(update={"busy_skipped": 0}) == CompactionRound(
+        id=CompactionRoundId("r-1"),
+        started_at=NOW,
+        budget_gb_hours=0.05,
+        used_gb_hours=0.0,
+        picks=(),
+        skips=(),
+        skipped_total=0,
+    )
+    with pytest.raises(ValidationError):
+        round_.model_validate({**round_.model_dump(), "busy_skipped": -1})

@@ -90,4 +90,5 @@ def test_a_round_carries_its_budget_picks_and_skips_with_table_names(tables_repo
             )
         ],
         skipped_total=3,
+        busy_skipped=4,
     )

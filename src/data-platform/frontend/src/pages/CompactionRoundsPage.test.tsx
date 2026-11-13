@@ -47,6 +47,7 @@ const ROUND: CompactionRoundApiResponse = {
     },
   ],
   skipped_total: 3,
+  busy_skipped: 0,
 };
 
 const ROUND_NAME = formatTimestamp(ROUND.started_at);
@@ -129,6 +130,22 @@ describe("CompactionRoundsPage", () => {
         "Budget used: the round's GB·h budget ran out. Table's share used: the table already has its most partitions in this round. Table busy: the table is still compacting what an earlier round granted.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("counts the partitions of busy tables apart from the skips, in words", async () => {
+    stubCatalogApi({ [PATH]: () => jsonResponse([{ ...ROUND, busy_skipped: 30 }]) });
+    renderPage();
+    await userEvent.click(await screen.findByRole("button", { name: `Expand round ${ROUND_NAME}` }));
+    expect(
+      screen.getByText("Left for a later round without ranking: 30 partitions of tables still busy with compaction."),
+    ).toBeInTheDocument();
+  });
+
+  it("says nothing of busy tables when the round had none", async () => {
+    stubCatalogApi({ [PATH]: () => jsonResponse([ROUND]) });
+    renderPage();
+    await userEvent.click(await screen.findByRole("button", { name: `Expand round ${ROUND_NAME}` }));
+    expect(screen.queryByText(/still busy with compaction/)).not.toBeInTheDocument();
   });
 
   it("opens the round a link names", async () => {

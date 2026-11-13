@@ -33,7 +33,7 @@ def recover_compaction_round(  # noqa: PLR0913
     ``granted`` are the candidates that name ``round_id`` as their grant
     (still granted, or already claimed by their table). The record lists them
     as the picks, in the order the round ranked them; the skips were not kept,
-    so it has none and ``skipped_total`` is 0.
+    so it has none and ``skipped_total`` and ``busy_skipped`` are 0.
     """
     ranked = sorted(
         granted,

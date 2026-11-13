@@ -6,8 +6,13 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
+from sqlalchemy import create_engine, insert, text
 
-from context.table_maintenance.adapter.outbound.compaction_round.sql import CompactionRoundsSqlRepo
+from context.table_maintenance.adapter.outbound.compaction_round.sql import (
+    CompactionRoundsSqlRepo,
+    compaction_rounds_table,
+)
+from context.table_maintenance.adapter.outbound.shared.sql import create_schema
 from context.table_maintenance.application.domain.model.compaction_candidate import PartitionKey
 from context.table_maintenance.application.domain.model.compaction_round import (
     CompactionRound,
@@ -21,6 +26,8 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 from tests.context.table_maintenance.fakes.in_memory_compaction_rounds_repo import InMemoryCompactionRoundsRepo
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from sqlalchemy import Engine
 
     from context.table_maintenance.application.port.outbound.compaction_round import CompactionRoundsRepo
@@ -58,6 +65,7 @@ def _round(round_id: str, started_at: datetime = NOW) -> CompactionRound:
         picks=(pick,),
         skips=(skip,),
         skipped_total=7,
+        busy_skipped=5,
     )
 
 
@@ -110,3 +118,29 @@ def test_purge_keeps_the_newest(repo: CompactionRoundsRepo):
     assert repo.purge(keep=2) == 3
     assert sorted(r.id.value for r in repo.list_all()) == ["r-3", "r-4"]
     assert repo.purge(keep=2) == 0
+
+
+def test_reads_a_round_recorded_before_busy_tables_were_counted_apart(tmp_path: Path):
+    """A round stored without a busy count reads as none; its busy skips, if any, are among its skips."""
+    engine = create_engine(f"sqlite:///{tmp_path / 'rounds.db'}")
+    create_schema(engine)
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE compaction_rounds DROP COLUMN busy_skipped"))
+    create_schema(engine)
+    with engine.begin() as connection:
+        connection.execute(
+            insert(compaction_rounds_table).values(
+                id="r-old",
+                started_at=NOW,
+                budget_gb_hours=0.05,
+                used_gb_hours=0.0,
+                picks_json=[],
+                skips_json=[],
+                skipped_total=0,
+            )
+        )
+
+    loaded = CompactionRoundsSqlRepo(engine).get(CompactionRoundId("r-old"))
+
+    assert loaded is not None
+    assert loaded.busy_skipped == 0
