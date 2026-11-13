@@ -34,27 +34,9 @@ const TABLES: TableApiResponse[] = [
   }),
 ];
 
-const RULES = {
-  version: 1,
-  rules: [
-    {
-      id: "rule-1",
-      priority: 10,
-      action: "include",
-      enabled: true,
-      catalogs: ["iceberg"],
-      namespaces: ["*"],
-      tables: ["*"],
-      created_at: "2026-10-30T10:00:00Z",
-      updated_at: "2026-10-30T10:00:00Z",
-    },
-  ],
-};
-
 function stubTables(tables: TableApiResponse[]) {
   return stubCatalogApi({
     "GET /v1/tables": () => jsonResponse(tables),
-    "GET /v1/discovery-rules": () => jsonResponse(RULES),
   });
 }
 
@@ -97,37 +79,23 @@ describe("TableListPage", () => {
     expect(calls.map((call) => call.path)).toContain("/v1/tables");
   });
 
-  it("shows the status and the managing rule per row, with no selection or preset", async () => {
+  it("shows the status per row, with no rule column, selection or preset", async () => {
     renderPage();
 
     const managed = within((await screen.findByText("iceberg.inventory.orders")).closest("tr") as HTMLElement);
     expect(managed.getByText("Managed")).toBeInTheDocument();
-    expect(await managed.findByRole("link", { name: "Priority 10" })).toHaveAttribute("href", "/discovery-rules");
-    expect(managed.queryByText("rule-1")).not.toBeInTheDocument();
+    expect(managed.queryByText(/Priority/)).not.toBeInTheDocument();
     const unmanaged = within(screen.getByText("iceberg.e2e.tm_e2e_regions").closest("tr") as HTMLElement);
     expect(unmanaged.getByText("Unmanaged")).toBeInTheDocument();
-    expect(unmanaged.getByText("—")).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: /Rule/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("columnheader", { name: /Selection|Source preset/ })).not.toBeInTheDocument();
   });
 
-  it("names the rule once the rules arrive after the tables", async () => {
-    let releaseRules: () => void = () => {};
-    const rulesHeld = new Promise<void>((resolve) => {
-      releaseRules = resolve;
-    });
-    stubCatalogApi({
-      "GET /v1/tables": () => jsonResponse(TABLES),
-      "GET /v1/discovery-rules": async () => {
-        await rulesHeld;
-        return jsonResponse(RULES);
-      },
-    });
+  it("does not ask for the discovery rules", async () => {
     renderPage();
-    const managed = within((await screen.findByText("iceberg.inventory.orders")).closest("tr") as HTMLElement);
-    expect(managed.getByText("—")).toBeInTheDocument();
+    await screen.findByText("iceberg.inventory.orders");
 
-    releaseRules();
-    expect(await screen.findByRole("link", { name: "Priority 10" })).toBeInTheDocument();
+    expect(calls.map((call) => call.path)).not.toContain("/v1/discovery-rules");
   });
 
   it("filters the rows by status", async () => {
