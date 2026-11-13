@@ -85,6 +85,7 @@
 
 **Interfaces:**
 - Consumes: Task 1 plan fields and queue names, Task 2 activities and endings.
+- Produces: a pool attempt's job name is the pod that ran it: the record step stores `executor_name` (from the result, or the last heartbeat) as the attempt's job name when the attempt has none, so the API and console show it where they show a SparkApplication name today.
 - Produces: on the pool path, `workflow.start_activity(RUN_POOLED_MAINTENANCE_OPERATION, input, task_queue=pool_task_queue(size), schedule_to_start_timeout=pool_start_timeout, start_to_close_timeout=attempt deadline, heartbeat_timeout=pool_heartbeat_timeout, retry_policy=RetryPolicy(maximum_attempts=1))`.
 
 - [ ] Tests: a pool attempt that reports by callback succeeds, its activity's later return is ignored; one that returns without a callback succeeds from the return value; a heartbeat timeout records `heartbeat_lost` with the last heartbeat's pod, deletes that pod, waits until `get_maintenance_executor` says gone, then retries on the next size's queue after an `oom` decision (and the same queue after `other`); a schedule-to-start timeout records `timed_out` with nothing to fence; a cancel cancels the activity and fences the pod from the last heartbeat; the admission slot is held from before the activity starts until the fence ends; with `execution_path` absent the workflow issues exactly the SparkApplication path's commands; replay of the pre-patch fixture passes.
