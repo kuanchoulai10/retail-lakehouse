@@ -44,3 +44,8 @@ def test_shared_sql_defines_no_table():
 def test_create_schema_includes_the_reconciliations_package():
     """The reconciliation records table is created with the control-plane schema."""
     assert "context.table_maintenance.adapter.outbound.table_reconciliation.sql" in AGGREGATE_SQL_PACKAGES
+
+
+def test_create_schema_includes_the_compaction_candidates_package():
+    """The compaction candidates table is created with the control-plane schema."""
+    assert "context.table_maintenance.adapter.outbound.compaction_candidate.sql" in AGGREGATE_SQL_PACKAGES

@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from sqlalchemy import Engine
 
 AGGREGATE_SQL_PACKAGES = (
+    "context.table_maintenance.adapter.outbound.compaction_candidate.sql",
     "context.table_maintenance.adapter.outbound.table_discovery_rules.sql",
     "context.table_maintenance.adapter.outbound.table_maintenance_run.sql",
     "context.table_maintenance.adapter.outbound.table_reconciliation.sql",
