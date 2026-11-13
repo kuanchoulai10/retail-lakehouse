@@ -23,6 +23,7 @@ export { CheckBox, type CheckBoxProps } from "./components/CheckBox/CheckBox";
 export { Drawer, type DrawerProps } from "./components/Drawer/Drawer";
 export {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuRadioGroup,
@@ -31,6 +32,7 @@ export {
   DropdownMenuTrigger,
 } from "./components/DropdownMenu/DropdownMenu";
 export { ModalDialog, type ModalDialogProps } from "./components/ModalDialog/ModalDialog";
+export { MultiSelect, type MultiSelectProps } from "./components/MultiSelect/MultiSelect";
 export { Select, type SelectItem, type SelectProps } from "./components/Select/Select";
 export {
   DatePicker,

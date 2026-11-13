@@ -53,6 +53,19 @@ export const DropdownMenuRadioItem = forwardRef<
 ));
 DropdownMenuRadioItem.displayName = "DropdownMenuRadioItem";
 
+export const DropdownMenuCheckboxItem = forwardRef<
+  HTMLDivElement,
+  ComponentProps<typeof MenuPrimitive.CheckboxItem>
+>(({ className, children, ...rest }, ref) => (
+  <MenuPrimitive.CheckboxItem ref={ref} className={cn(itemStyle, "pl-9", className)} {...rest}>
+    <MenuPrimitive.ItemIndicator className="absolute left-2">
+      <IconCheck aria-hidden="true" className="size-5" />
+    </MenuPrimitive.ItemIndicator>
+    {children}
+  </MenuPrimitive.CheckboxItem>
+));
+DropdownMenuCheckboxItem.displayName = "DropdownMenuCheckboxItem";
+
 export const DropdownMenuSeparator = forwardRef<
   HTMLDivElement,
   ComponentProps<typeof MenuPrimitive.Separator>
