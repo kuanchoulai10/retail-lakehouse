@@ -50,7 +50,11 @@ class CompactionCandidatesSqlRepo(CompactionCandidatesRepo):
         self._engine = engine
 
     def create(self, entity: CompactionCandidate) -> CompactionCandidate:
-        """Insert or replace one candidate."""
+        """Store one candidate as ``save_all`` does: insert a new one, or update one still at its read version.
+
+        Raises ``StaleCompactionCandidate`` when the row exists already (for a
+        new candidate) or moved past the version it was read at.
+        """
         self.save_all([entity])
         return entity
 
@@ -91,13 +95,15 @@ class CompactionCandidatesSqlRepo(CompactionCandidatesRepo):
     def save_all(self, candidates: Sequence[CompactionCandidate]) -> None:
         """Store the candidates in one transaction, checking each row's version; a stale one rolls all back.
 
-        New candidates are inserted in chunks that keep each statement small; a
-        row that exists already means another writer created it first.
+        Stored candidates are updated in id order, so two writers that share
+        rows lock them in the same order and do not deadlock. New candidates are
+        inserted in chunks that keep each statement small; a row that exists
+        already means another writer created it first.
         """
         if not candidates:
             return
         new = [CompactionCandidateRowMapper.to_values(c) | {"version": 1} for c in candidates if c.version == 0]
-        stored = [c for c in candidates if c.version > 0]
+        stored = sorted((c for c in candidates if c.version > 0), key=lambda c: c.id.value)
         try:
             with self._engine.begin() as conn:
                 for candidate in stored:

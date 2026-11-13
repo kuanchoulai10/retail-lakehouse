@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
-from sqlalchemy import create_engine, insert, text
+from sqlalchemy import create_engine, event, insert, text
 
 from context.table_maintenance.adapter.outbound.compaction_candidate.sql import (
     CompactionCandidatesSqlRepo,
@@ -300,3 +300,24 @@ def test_reads_rows_written_before_the_new_columns(file_engine: Engine):
         None,
         None,
     )
+
+
+def test_save_all_updates_rows_in_id_order(file_engine: Engine):
+    """Rows are updated by id, whatever order the caller passes, so two writers lock them in the same order."""
+    repo = CompactionCandidatesSqlRepo(file_engine)
+    repo.save_all([_candidate(("a",)), _candidate(("b",)), _candidate(("c",))])
+    loaded = repo.list_by_table(TABLE)
+    ids = {c.id.value for c in loaded}
+    updated: list[str] = []
+
+    def record(_conn, _cursor, statement, parameters, _context, _many) -> None:  # noqa: ANN001
+        if statement.startswith("UPDATE compaction_candidates"):
+            updated.append(next(p for p in parameters if p in ids))
+
+    event.listen(file_engine, "before_cursor_execute", record)
+    try:
+        repo.save_all(list(reversed(loaded)))
+    finally:
+        event.remove(file_engine, "before_cursor_execute", record)
+
+    assert updated == sorted(c.id.value for c in loaded)
