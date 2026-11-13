@@ -315,6 +315,45 @@ def test_reads_rows_written_before_the_new_columns(file_engine: Engine):
     )
 
 
+def test_reads_a_not_due_row_that_kept_its_wait_under_the_earlier_rule(engine: Engine):
+    """Fix round 1 kept the wait through every not-due hold; such a row now reads with its wait ended."""
+    candidate = _candidate(hold=HoldReason.NOT_DUE)
+    values = {
+        "id": candidate.id.value,
+        "table_uuid": TABLE.value,
+        "partition_key": candidate.partition.canonical(),
+        "spec_id": 0,
+        "label": "region=eu",
+        "state": "held",
+        "hold_reason": "not_due",
+        "reducible_files": 7,
+        "data_bytes": 10,
+        "estimated_gb_hours": 0.1,
+        "score": 0.4,
+        "observed_at": NOW,
+        "updated_at": NOW,
+        "pending_since": NOW - timedelta(hours=2),
+    }
+    with engine.begin() as connection:
+        connection.execute(insert(compaction_candidates_table).values(**values))
+
+    loaded = CompactionCandidatesSqlRepo(engine).get(candidate.id)
+
+    assert loaded is not None
+    assert (loaded.hold_reason, loaded.pending_since) == (HoldReason.NOT_DUE, None)
+
+
+def test_a_cooldown_row_keeps_its_wait(repo: CompactionCandidatesRepo):
+    """A candidate held in cooldown is stored and read with the start of its wait."""
+    candidate = _candidate()
+    candidate.observe(SCORE, None, HoldReason.COOLDOWN, NOW + timedelta(minutes=1))
+    repo.save_all([candidate])
+
+    (loaded,) = repo.list_by_table(TABLE)
+
+    assert (loaded.hold_reason, loaded.pending_since) == (HoldReason.COOLDOWN, NOW)
+
+
 def test_save_all_updates_rows_in_id_order(file_engine: Engine):
     """Rows are updated by id, whatever order the caller passes, so two writers lock them in the same order."""
     repo = CompactionCandidatesSqlRepo(file_engine)

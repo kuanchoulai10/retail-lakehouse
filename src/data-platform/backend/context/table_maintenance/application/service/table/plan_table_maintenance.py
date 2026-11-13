@@ -170,7 +170,12 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             else:
                 assessment = assess_maintenance(table, policy, observation, request.now)
                 plan, checks = assessment.plan(), _scheduled_checks(assessment)
-                plan, checks, compaction = self._share_compaction(table, policy, observation, plan, checks, request)
+                cooling_down = any(
+                    a.operation is _COMPACTION and a.verdict is OperationVerdict.COOLDOWN for a in assessment.operations
+                )
+                plan, checks, compaction = self._share_compaction(
+                    table, policy, observation, plan, checks, request, cooling_down=cooling_down
+                )
                 if policy.dry_run:
                     plan = MaintenancePlan()
             return self._render(table, applied, policy, plan, checks, observation, request, compaction)
@@ -183,8 +188,15 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         plan: MaintenancePlan,
         checks: list[PlanTableMaintenanceUseCaseOutputCheckItem],
         request: PlanTableMaintenanceUseCaseInput,
+        *,
+        cooling_down: bool,
     ) -> tuple[MaintenancePlan, list[PlanTableMaintenanceUseCaseOutputCheckItem], CompactionShare]:
-        """Sync the candidates, and narrow a due compaction to the granted candidates it takes or drop it."""
+        """Sync the candidates, and narrow a due compaction to the granted candidates it takes or drop it.
+
+        A compaction that is only ``cooling_down`` holds its candidates in
+        cooldown, keeping their wait for a round; a dry run, needs attention or
+        an unmet trigger holds them not due, ending it.
+        """
         due = next((p for p in plan.operations if p.operation is _COMPACTION), None)
         runs = self._runs_repo.list_by_table(table.id, limit=_RUNS_FOR_THROUGHPUT)
         remembered = table.operation_state(_COMPACTION).start_size()
@@ -204,6 +216,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             released_runs=self._released_runs(existing, claim_for),
             pick=due is not None and not policy.dry_run,
             priority=policy.priority,
+            cooling_down=cooling_down and not policy.dry_run,
             claim_for=claim_for,
             lease_until=request.now + self._claim_lease,
             now=request.now,

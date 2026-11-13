@@ -56,16 +56,22 @@ class CompactionCandidateRowMapper:
 
     @staticmethod
     def to_aggregate(row: RowMapping) -> CompactionCandidate:
-        """Rebuild the candidate from its row."""
-        hold_reason = row["hold_reason"]
+        """Rebuild the candidate from its row.
+
+        A ``not_due`` row stored while every not-due hold kept the wait (fix
+        round 1 of milestone 4) still carries ``pending_since``; only a
+        cooldown keeps it now, so that wait is read as ended.
+        """
+        hold_reason = None if row["hold_reason"] is None else HoldReason(row["hold_reason"])
         run_id = row["claimed_by_run_id"]
+        pending_since = None if hold_reason is HoldReason.NOT_DUE else row["pending_since"]
         return CompactionCandidate(
             id=CompactionCandidateId(row["id"]),
             table_uuid=TableId(row["table_uuid"]),
             partition=PartitionKey.from_canonical(row["partition_key"]),
             label=row["label"],
             state=CandidateState(row["state"]),
-            hold_reason=None if hold_reason is None else HoldReason(hold_reason),
+            hold_reason=hold_reason,
             score=CandidateScore(
                 reducible_files=row["reducible_files"],
                 data_bytes=row["data_bytes"],
@@ -80,6 +86,6 @@ class CompactionCandidateRowMapper:
             updated_at=row["updated_at"],
             priority=MaintenancePriority(row["priority"]),
             granted_round_id=row["granted_round_id"],
-            pending_since=row["pending_since"],
+            pending_since=pending_since,
             version=row["version"],
         )

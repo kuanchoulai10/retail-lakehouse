@@ -74,6 +74,12 @@ describe("whyNotPicked", () => {
     );
   });
 
+  it("says a partition held in cooldown keeps waiting for a round", () => {
+    expect(whyNotPicked(candidate({ state: "held", hold_reason: "cooldown", rank: null }), 10)).toBe(
+      "Compaction is cooling down on this table; its wait for a round goes on",
+    );
+  });
+
   it.each(["claimed", "running"])("names the run that holds a %s partition", (state) => {
     expect(whyNotPicked(candidate({ state, rank: null, claimed_by_run_id: "run-7" }), 10)).toBe("In run run-7");
   });

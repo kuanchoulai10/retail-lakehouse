@@ -9,6 +9,7 @@ const HOLD_REASON_TEXT: Record<string, string> = {
   too_small: "Too small to be worth compacting",
   recently_written: "Still being written; checked again after a quiet period",
   not_due: "Compaction is not due on this table",
+  cooldown: "Compaction is cooling down on this table; its wait for a round goes on",
 };
 
 function words(key: string): string {

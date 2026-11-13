@@ -293,10 +293,11 @@ def test_grant_lease_must_end_after_the_grant():
         _candidate().grant(ROUND, NOW, NOW)
 
 
-def test_observation_keeps_a_live_grant():
+@pytest.mark.parametrize("hold", [HoldReason.NOT_DUE, HoldReason.COOLDOWN])
+def test_observation_keeps_a_live_grant(hold):
     """A granted candidate under a live lease keeps its grant through an observation, even a not-due one."""
     candidate = _granted()
-    candidate.observe(NEW_SCORE, NOW, HoldReason.NOT_DUE, LATER, priority=MaintenancePriority.P0)
+    candidate.observe(NEW_SCORE, NOW, hold, LATER, priority=MaintenancePriority.P0)
     assert candidate.state is CandidateState.GRANTED
     assert candidate.granted_round_id == ROUND
     assert candidate.lease_expires_at == GRANT_LEASE
@@ -316,7 +317,9 @@ def test_a_filter_ends_a_live_grant(hold):
     assert candidate.pending_since is None
 
 
-@pytest.mark.parametrize("hold", [HoldReason.TOO_SMALL, HoldReason.RECENTLY_WRITTEN, HoldReason.NOT_DUE])
+@pytest.mark.parametrize(
+    "hold", [HoldReason.TOO_SMALL, HoldReason.RECENTLY_WRITTEN, HoldReason.NOT_DUE, HoldReason.COOLDOWN]
+)
 def test_a_filter_does_not_end_a_live_claim(hold):
     """A claimed candidate keeps its claim whatever the observation finds: its run may be writing."""
     candidate = _claimed()
@@ -350,10 +353,10 @@ def test_pending_since_survives_a_grant_and_clears_on_claim():
     assert candidate.pending_since is None
 
 
-def test_a_not_due_hold_keeps_the_wait_going():
+def test_a_cooldown_keeps_the_wait_going():
     """A cooldown does not restart the SLA clock: the wait goes on from when the candidate first became pending."""
     candidate = _candidate()
-    candidate.observe(NEW_SCORE, NOW, HoldReason.NOT_DUE, LATER)
+    candidate.observe(NEW_SCORE, NOW, HoldReason.COOLDOWN, LATER)
     assert candidate.state is CandidateState.HELD
     assert candidate.pending_since == NOW
     much_later = NOW + timedelta(hours=9)
@@ -363,9 +366,12 @@ def test_a_not_due_hold_keeps_the_wait_going():
     assert candidate.overdue(SLA, much_later)
 
 
-@pytest.mark.parametrize("hold", [HoldReason.TOO_SMALL, HoldReason.RECENTLY_WRITTEN])
-def test_a_filter_hold_ends_the_wait_and_it_restarts_when_pending_again(hold):
-    """A partition a filter keeps out is not waiting for a round; the wait restarts once it is pending again."""
+@pytest.mark.parametrize("hold", [HoldReason.TOO_SMALL, HoldReason.RECENTLY_WRITTEN, HoldReason.NOT_DUE])
+def test_a_hold_other_than_a_cooldown_ends_the_wait_and_it_restarts_when_pending_again(hold):
+    """A partition kept out by a filter, a dry run, compaction off or needing attention is not waiting for a round.
+
+    Its wait restarts once it is pending again, so a week of dry run does not read as a week overdue.
+    """
     candidate = _candidate()
     candidate.observe(NEW_SCORE, NOW, hold, LATER)
     assert candidate.pending_since is None
@@ -373,9 +379,10 @@ def test_a_filter_hold_ends_the_wait_and_it_restarts_when_pending_again(hold):
     assert candidate.pending_since == LATER + timedelta(minutes=1)
 
 
-def test_a_candidate_created_not_due_starts_its_wait_when_pending():
+@pytest.mark.parametrize("hold", [HoldReason.NOT_DUE, HoldReason.COOLDOWN])
+def test_a_candidate_created_not_due_starts_its_wait_when_pending(hold):
     """The clock starts when a candidate first becomes pending, not while its table's compaction is not due."""
-    candidate = _candidate(HoldReason.NOT_DUE)
+    candidate = _candidate(hold)
     assert candidate.pending_since is None
     candidate.observe(NEW_SCORE, NOW, None, LATER)
     assert candidate.pending_since == LATER
@@ -502,6 +509,7 @@ def test_a_new_candidate_has_never_been_saved():
         {"state": CandidateState.PENDING, "granted_round_id": ROUND},
         {"state": CandidateState.HELD, "hold_reason": HoldReason.TOO_SMALL, "pending_since": NOW},
         {"state": CandidateState.HELD, "hold_reason": HoldReason.RECENTLY_WRITTEN, "pending_since": NOW},
+        {"state": CandidateState.HELD, "hold_reason": HoldReason.NOT_DUE, "pending_since": NOW},
         {"state": CandidateState.PENDING, "version": -1},
     ],
 )

@@ -35,6 +35,9 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+# The holds that are not candidate filters: they say compaction cannot run now, and keep a live grant.
+_NOT_FILTERS = frozenset({None, HoldReason.NOT_DUE, HoldReason.COOLDOWN})
+
 
 class CompactionCandidate(AggregateRoot[CompactionCandidateId]):
     """Hold one partition of a table that needs compaction, how much it is worth and who works on it.
@@ -58,9 +61,10 @@ class CompactionCandidate(AggregateRoot[CompactionCandidateId]):
     ``granted_round_id`` names the round that granted it (granted) or the run
     its claim came from (claimed, running, done, failed). ``pending_since`` is
     when it last became pending; it is kept while it stays pending or granted,
-    and through a ``not_due`` hold (a cooldown does not restart the wait), so
-    ``overdue`` can tell how long it has waited for a run. A claim or a filter
-    hold (too small, recently written) ends the wait.
+    and through a ``cooldown`` hold (the table's own wait does not restart it),
+    so ``overdue`` can tell how long it has waited for a run. A claim, a filter
+    hold (too small, recently written) or a ``not_due`` hold (a dry run, the
+    operation off, needs attention, trigger not met) ends the wait.
 
     ``version`` is the stored version the candidate was read at, 0 for one
     never stored; the store refuses a save from a version it has moved past
@@ -99,7 +103,7 @@ class CompactionCandidate(AggregateRoot[CompactionCandidateId]):
             raise ValueError("a granted candidate needs the round that granted it")
         if self.state in {CandidateState.PENDING, CandidateState.HELD} and self.granted_round_id is not None:
             raise ValueError(f"a {self.state.value} candidate has no grant")
-        if self.pending_since is not None and not (self.state.awaits_a_run or self._held_not_due):
+        if self.pending_since is not None and not (self.state.awaits_a_run or self._held_in_cooldown):
             raise ValueError(f"a {self.state.value} candidate is not waiting for a run")
         return self
 
@@ -160,9 +164,9 @@ class CompactionCandidate(AggregateRoot[CompactionCandidateId]):
         takes only the new score and priority: its run may still be writing. A
         granted one whose lease is live keeps its grant the same way unless a
         filter holds it (too small, recently written): a partition being written
-        must not be compacted, so the grant ends. A ``not_due`` observation keeps
-        the grant, since nothing claims it while compaction is not due and the
-        lease ends it soon. Any other candidate (including one whose lease
+        must not be compacted, so the grant ends. A ``not_due`` or ``cooldown``
+        observation keeps the grant, since nothing claims it while compaction is
+        not due and the lease ends it soon. Any other candidate (including one whose lease
         expired, or whose run finished) is pending again, or held when
         ``hold_reason`` says so. ``priority`` is the applicable policy's (None
         keeps the one it has).
@@ -177,7 +181,7 @@ class CompactionCandidate(AggregateRoot[CompactionCandidateId]):
             "priority": self.priority if priority is None else priority,
         }
         live = self.state.holds_a_lease and self.lease_expires_at is not None and now < self.lease_expires_at
-        filtered = hold_reason not in {None, HoldReason.NOT_DUE}
+        filtered = hold_reason not in _NOT_FILTERS
         if live and (self.state is not CandidateState.GRANTED or not filtered):
             self._assign_together(**observed)
             return
@@ -188,7 +192,7 @@ class CompactionCandidate(AggregateRoot[CompactionCandidateId]):
             claimed_by_run_id=None,
             granted_round_id=None,
             lease_expires_at=None,
-            pending_since=None if filtered else self._pending_since_kept(now, hold_reason),
+            pending_since=self._pending_since_kept(now, hold_reason),
         )
 
     def grant(self, round_id: str, lease_until: datetime, now: datetime) -> None:
@@ -205,7 +209,7 @@ class CompactionCandidate(AggregateRoot[CompactionCandidateId]):
             state=CandidateState.GRANTED,
             granted_round_id=round_id,
             lease_expires_at=lease_until,
-            pending_since=self._pending_since_from(now),
+            pending_since=self._pending_since_kept(now, None),
             updated_at=now,
         )
 
@@ -297,22 +301,24 @@ class CompactionCandidate(AggregateRoot[CompactionCandidateId]):
         self.version = self.version + 1
 
     @property
-    def _held_not_due(self) -> bool:
-        return self.state is CandidateState.HELD and self.hold_reason is HoldReason.NOT_DUE
+    def _held_in_cooldown(self) -> bool:
+        return self.state is CandidateState.HELD and self.hold_reason is HoldReason.COOLDOWN
 
-    def _pending_since_from(self, now: datetime) -> datetime:
-        """Keep the start of a wait already going on (pending, granted or not due), or start one now."""
-        if (self.state.awaits_a_run or self._held_not_due) and self.pending_since is not None:
-            return self.pending_since
-        return now
+    @property
+    def _waiting(self) -> bool:
+        """Return whether the candidate's wait for a round is going on: pending, granted or in a cooldown."""
+        return self.state.awaits_a_run or self._held_in_cooldown
 
     def _pending_since_kept(self, now: datetime, hold_reason: HoldReason | None) -> datetime | None:
-        """Return the wait to keep for a pending or not-due observation; a not-due one never starts a wait."""
+        """Return the start of the wait after an observation that holds the candidate for ``hold_reason``.
+
+        A pending observation keeps a wait already going on or starts one now;
+        a cooldown keeps it but never starts one; any other hold ends it.
+        """
+        kept = self.pending_since if self._waiting else None
         if hold_reason is None:
-            return self._pending_since_from(now)
-        if self.state.awaits_a_run or self._held_not_due:
-            return self.pending_since
-        return None
+            return now if kept is None else kept
+        return kept if hold_reason is HoldReason.COOLDOWN else None
 
     def _require_held_by(self, run_id: TableMaintenanceRunId, command: str) -> None:
         if self.claimed_by_run_id != run_id:

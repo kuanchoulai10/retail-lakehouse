@@ -38,6 +38,7 @@ def sync_compaction_candidates(  # noqa: PLR0913
     throughput_bytes_per_hour: float,
     now: datetime,
     due: bool = True,
+    cooling_down: bool = False,
     priority: MaintenancePriority | None = None,
 ) -> CandidateSync:
     """Bring a table's candidates in line with one observation; the table decides, not a run's report.
@@ -49,7 +50,9 @@ def sync_compaction_candidates(  # noqa: PLR0913
     less data than the minimum is held as too small; one written within the
     quiet period is held as recently written, until its writes pause or it has
     waited the longest wait in a row. When compaction is not ``due`` every other
-    one is held as not due, so no compaction round spends budget on it. Every
+    one is held, so no compaction round spends budget on it: in ``cooldown``
+    when compaction is ``cooling_down`` (the wait for a round goes on), not due
+    otherwise (the wait ends). Every
     candidate takes ``priority``, the applicable policy's (None keeps what each
     has, P2 for a new one).
     """
@@ -72,7 +75,7 @@ def sync_compaction_candidates(  # noqa: PLR0913
         waiting_since = None
         if recent:
             waiting_since = previous.waiting_since if previous and previous.waiting_since else now
-        hold = _hold_reason(partition, filters, waiting_since, now, due=due)
+        hold = _hold_reason(partition, filters, waiting_since, now, due=due, cooling_down=cooling_down)
         if previous is None:
             candidate = CompactionCandidate.create(
                 table_uuid=table_uuid,
@@ -111,13 +114,14 @@ def _hold_reason(
     now: datetime,
     *,
     due: bool,
+    cooling_down: bool,
 ) -> HoldReason | None:
     if partition.data_bytes < filters.min_partition_bytes:
         return HoldReason.TOO_SMALL
     if waiting_since is not None and now - waiting_since < filters.max_quiet_wait:
         return HoldReason.RECENTLY_WRITTEN
     if not due:
-        return HoldReason.NOT_DUE
+        return HoldReason.COOLDOWN if cooling_down else HoldReason.NOT_DUE
     return None
 
 

@@ -38,6 +38,7 @@ def pick_compaction_candidates(  # noqa: PLR0913
     released_runs: frozenset[TableMaintenanceRunId],
     pick: bool,
     priority: MaintenancePriority,
+    cooling_down: bool = False,
     claim_for: TableMaintenanceRunId | None,
     lease_until: datetime,
     now: datetime,
@@ -47,8 +48,9 @@ def pick_compaction_candidates(  # noqa: PLR0913
     Claims still held by a run in ``released_runs`` (one that has finished, or
     one that never started) are handed back as pending first, so they do not
     wait out their lease. Every candidate takes ``priority``. Without ``pick``
-    (compaction not due) the candidates the filters let through are held as not
-    due. With ``pick``, a run that already holds claims (a retried plan) gets
+    (compaction not due) the candidates the filters let through are held, in
+    ``cooldown`` when compaction is ``cooling_down`` and as not due otherwise.
+    With ``pick``, a run that already holds claims (a retried plan) gets
     those again; otherwise the ``partitions_per_run`` best candidates a
     compaction round granted are picked and, when ``claim_for`` names the run,
     claimed for it until ``lease_until``. Without any, the shortfall says
@@ -67,6 +69,7 @@ def pick_compaction_candidates(  # noqa: PLR0913
         throughput_bytes_per_hour=throughput_bytes_per_hour,
         now=now,
         due=pick,
+        cooling_down=cooling_down,
         priority=priority,
     )
     if not pick:

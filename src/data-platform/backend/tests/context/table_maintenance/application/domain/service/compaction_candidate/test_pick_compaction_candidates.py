@@ -126,6 +126,19 @@ def test_not_due_compaction_holds_candidates_not_due():
     assert {c.state for c in pick.saved} == {CandidateState.HELD}
 
 
+def test_a_cooling_down_compaction_holds_candidates_in_cooldown():
+    """When compaction waits out its cooldown its candidates say so, so their wait for a round goes on."""
+    selection = CandidateSelection(
+        partitions_per_run=2, filters=CandidateFilters(quiet_seconds=120, min_partition_bytes=100)
+    )
+    pick = _pick(
+        [], [_observed("a"), _observed("b", data_bytes=10)], pick=False, cooling_down=True, selection=selection
+    )
+
+    reasons = {_values([c])[0]: c.hold_reason for c in pick.saved}
+    assert reasons == {"a": HoldReason.COOLDOWN, "b": HoldReason.TOO_SMALL}
+
+
 def test_a_not_due_hold_is_lifted_once_compaction_is_due():
     """A candidate held because compaction was not due is pending again at the next due plan."""
     first = _pick([], [_observed("a")], pick=False)

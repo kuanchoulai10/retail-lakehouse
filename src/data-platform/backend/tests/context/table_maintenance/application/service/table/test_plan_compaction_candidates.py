@@ -21,7 +21,13 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
     SizeMemory,
 )
-from context.table_maintenance.application.domain.model.table import Table, TableId, TableName
+from context.table_maintenance.application.domain.model.table import (
+    AppliedPolicyRef,
+    AttentionMark,
+    Table,
+    TableId,
+    TableName,
+)
 from context.table_maintenance.application.domain.model.table_discovery_rules import TableDiscoveryRuleId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     DEFAULT_POLICY_NAME,
@@ -381,10 +387,10 @@ def test_due_compaction_claims_its_granted_candidates_only(planner, tables_repo,
     assert {c.granted_round_id for c in claimed} == {"round-1"}
 
 
-def test_not_due_compaction_holds_candidates_not_due(
+def test_cooling_down_compaction_holds_candidates_in_cooldown(
     tables_repo, catalog, resolve_applicable_policy, candidates_repo, runs_repo, now
 ):
-    """While compaction cools down its candidates are held not due; a too-small one still says too small."""
+    """While compaction cools down its candidates are held in cooldown; a too-small one still says too small."""
     planner = PlanTableMaintenanceService(
         tables_repo,
         catalog,
@@ -403,7 +409,7 @@ def test_not_due_compaction_holds_candidates_not_due(
 
     assert _check(plan).verdict == "cooling_down"
     reasons = {str(c.partition.values[0]): c.hold_reason for c in candidates_repo.list_all()}
-    assert reasons == {"a": HoldReason.NOT_DUE, "b": HoldReason.TOO_SMALL}
+    assert reasons == {"a": HoldReason.COOLDOWN, "b": HoldReason.TOO_SMALL}
 
 
 def test_candidates_take_the_policy_priority(planner, tables_repo, catalog, candidates_repo, policies_repo, now):
@@ -732,3 +738,40 @@ def test_a_granted_partition_written_since_is_held_not_claimed(
         HoldReason.RECENTLY_WRITTEN,
         None,
     )
+
+
+def test_a_cooldown_keeps_the_wait_and_a_dry_run_ends_it(
+    planner, tables_repo, catalog, candidates_repo, policies_repo, now
+):
+    """Only the cooldown keeps a pending candidate's wait for a round; a dry run is not waiting for one."""
+    table = _table(tables_repo, now)
+    _observe(catalog, [_partition("a", 10)])
+    _plan(planner, now, run_id=None)
+    (pending,) = candidates_repo.list_all()
+    assert pending.pending_since == now
+    table.record_operation_result(COMPACTION, True, now + timedelta(minutes=1))
+
+    _plan(planner, now + timedelta(minutes=2), run_id=None)
+    (cooling,) = candidates_repo.list_all()
+    assert (cooling.hold_reason, cooling.pending_since) == (HoldReason.COOLDOWN, now)
+
+    _use_policy(policies_repo, now, validated_copy(DEFAULT, dry_run=True))
+    _plan(planner, now + timedelta(minutes=3), run_id=None)
+    (dry,) = candidates_repo.list_all()
+    assert (dry.hold_reason, dry.pending_since) == (HoldReason.NOT_DUE, None)
+
+
+def test_a_table_needing_attention_ends_the_wait(planner, tables_repo, catalog, candidates_repo, now):
+    """Compaction marked as needing attention is not waiting for a round, even within its cooldown."""
+    table = _table(tables_repo, now)
+    _observe(catalog, [_partition("a", 10)])
+    first = _plan(planner, now, run_id=None)
+    applied = AppliedPolicyRef(name=first.policy_name, version=first.policy_version, target=first.policy_target)
+    table.record_operation_result(COMPACTION, True, now + timedelta(minutes=1))
+    mark = AttentionMark(since=now + timedelta(minutes=1), reason="out of memory at size L", policy=applied)
+    table.mark_needs_attention(COMPACTION, mark, now + timedelta(minutes=1))
+
+    _plan(planner, now + timedelta(minutes=2), run_id=None)
+
+    (held,) = candidates_repo.list_all()
+    assert (held.hold_reason, held.pending_since) == (HoldReason.NOT_DUE, None)
