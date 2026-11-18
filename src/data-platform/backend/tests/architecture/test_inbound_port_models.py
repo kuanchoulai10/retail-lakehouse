@@ -157,10 +157,17 @@ def _domain_imports(tree: ast.Module) -> list[str]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             found.extend(alias.name for alias in node.names if DOMAIN_MARKER in f"{alias.name}.")
-        elif isinstance(node, ast.ImportFrom) and node.module and DOMAIN_MARKER in f"{node.module}.":
-            found.append(node.module)
         elif isinstance(node, ast.ImportFrom) and node.level:
             found.append("." * node.level + (node.module or ""))
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            if DOMAIN_MARKER in f"{node.module}.":
+                found.append(node.module)
+            else:
+                found.extend(
+                    f"{node.module}.{alias.name}"
+                    for alias in node.names
+                    if DOMAIN_MARKER in f"{node.module}.{alias.name}."
+                )
     return found
 
 
@@ -202,6 +209,20 @@ def exported_names(source: str) -> set[str] | None:
     return None
 
 
+def init_export_problems(source: str, prefix: str, *, has_input: bool) -> list[str]:
+    """Return what is wrong with a use case's ``__init__.py``, which exports exactly its three names."""
+    exported = exported_names(source)
+    if exported is None:
+        return ["has no literal __all__"]
+    expected = {f"{prefix}UseCase", f"{prefix}UseCaseOutput"} | ({f"{prefix}UseCaseInput"} if has_input else set())
+    problems: list[str] = []
+    if missing := sorted(expected - exported):
+        problems.append(f"does not export {missing}")
+    if extra := sorted(exported - expected):
+        problems.append(f"exports {extra} beyond the use case, its input and its output")
+    return problems
+
+
 def test_pending_ports_exist() -> None:
     """Every ``PENDING_PORTS`` entry is a real use-case directory, so a stale entry fails."""
     stale = sorted(PENDING_PORTS - set(_all_use_case_dirs()))
@@ -232,11 +253,8 @@ def test_output_is_one_use_case_output_model(key: str) -> None:
 def test_init_exports_exactly_the_three_names(key: str) -> None:
     """``__init__.py`` exports the use case, its input (when it has one) and its output, nothing else."""
     use_case_dir = _all_use_case_dirs()[key]
-    prefix = _prefix(key)
-    expected = {f"{prefix}UseCase", f"{prefix}UseCaseOutput"}
-    if (use_case_dir / "input.py").is_file():
-        expected.add(f"{prefix}UseCaseInput")
-    assert exported_names((use_case_dir / "__init__.py").read_text()) == expected
+    source = (use_case_dir / "__init__.py").read_text()
+    assert init_export_problems(source, _prefix(key), has_input=(use_case_dir / "input.py").is_file()) == []
 
 
 GOOD_OUTPUT = '''"""Define the ListWidgetsUseCaseOutput."""
@@ -332,3 +350,39 @@ def test_exported_names_reads_the_literal_all() -> None:
         "GetWidgetUseCaseOutput",
     }
     assert exported_names("from x import y\n") is None
+
+
+def test_checker_reports_the_domain_package_imported_by_name() -> None:
+    """``from context.x.application import domain`` reaches the domain too, so it is reported."""
+    source = (
+        "from base import UseCaseOutput\nfrom context.widget.application import domain\n\n\n"
+        "class GetWidgetUseCaseOutput(UseCaseOutput):\n    name: str\n"
+    )
+    assert model_file_problems(source, "GetWidgetUseCaseOutput", "UseCaseOutput") == [
+        "imports context.widget.application.domain, a domain or relative module",
+    ]
+
+
+def test_init_checker_accepts_exactly_the_three_names() -> None:
+    """An ``__init__.py`` exporting the use case, its input and its output passes."""
+    source = '__all__ = ["GetWidgetUseCase", "GetWidgetUseCaseInput", "GetWidgetUseCaseOutput"]\n'
+    assert init_export_problems(source, "GetWidget", has_input=True) == []
+
+
+def test_init_checker_reports_an_extra_item_export() -> None:
+    """An ``…Item`` export left beside the three names is reported."""
+    source = (
+        '__all__ = ["ListWidgetsUseCase", "ListWidgetsUseCaseInput", "ListWidgetsUseCaseOutput", '
+        '"ListWidgetsUseCaseOutputItem"]\n'
+    )
+    assert init_export_problems(source, "ListWidgets", has_input=True) == [
+        "exports ['ListWidgetsUseCaseOutputItem'] beyond the use case, its input and its output",
+    ]
+
+
+def test_init_checker_reports_a_missing_name_and_a_missing_all() -> None:
+    """A missing export, or no literal ``__all__``, is reported."""
+    assert init_export_problems('__all__ = ["GetWidgetUseCase"]\n', "GetWidget", has_input=False) == [
+        "does not export ['GetWidgetUseCaseOutput']",
+    ]
+    assert init_export_problems("from x import y\n", "GetWidget", has_input=False) == ["has no literal __all__"]

@@ -1,8 +1,9 @@
 """Internal helper: the Pydantic model every model base extends, raising InvariantViolation.
 
-``ValueObject``, ``Entity``, ``EntityId`` and ``DomainEvent`` extend
-``InvariantGuardedModel`` first, so each way Pydantic validates one of them
-(keyword or positional construction, ``model_validate``, ``model_validate_json``,
+``ValueObject``, ``Entity``, ``EntityId``, ``DomainEvent`` and the inbound port
+models ``UseCaseInput`` and ``UseCaseOutput`` extend ``InvariantGuardedModel``
+first, so each way Pydantic validates one of them (keyword or positional
+construction, ``model_validate``, ``model_validate_json``,
 ``model_validate_strings`` and assignment) turns a ``ValidationError`` into an
 ``InvariantViolation`` chained from it. A violation raised by an inner model
 inside an outer model's validator reaches Pydantic as a ``ValueError``, so it

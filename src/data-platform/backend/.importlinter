@@ -54,7 +54,7 @@ forbidden_modules =
     httpx
 
 [importlinter:contract:application-outer-rings-pydantic-free]
-name = Services, ports and exceptions reach Pydantic only through the domain
+name = Services, ports and exceptions reach Pydantic only through base and the domain, never directly
 type = forbidden
 source_modules =
     context.*.application.service
