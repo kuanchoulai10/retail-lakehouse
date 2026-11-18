@@ -5,7 +5,6 @@ from __future__ import annotations
 from context.table_maintenance.application.port.inbound.table import (
     GetTableHealthUseCaseInput,
     GetTableHealthUseCaseOutput,
-    GetTableHealthUseCaseOutputItem,
 )
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import (
     NOW,
@@ -15,7 +14,7 @@ from tests.context.table_maintenance.adapter.inbound.web.web_test_support import
 
 
 def _item(operation, verdict, next_eligible_at=None):
-    return GetTableHealthUseCaseOutputItem(
+    return GetTableHealthUseCaseOutput.Operation(
         operation=operation,
         verdict=verdict,
         measured=12,
@@ -32,10 +31,7 @@ def test_get_health_returns_verdict_strings() -> None:
     output = GetTableHealthUseCaseOutput(
         scheduled=True,
         not_scheduled_reason=None,
-        operations=[
-            _item("rewrite_data_files", "due"),
-            _item("expire_snapshots", "cooldown", NOW),
-        ],
+        operations=(_item("rewrite_data_files", "due"), _item("expire_snapshots", "cooldown", NOW)),
         position_delete_files=2,
         equality_delete_files=1,
     )

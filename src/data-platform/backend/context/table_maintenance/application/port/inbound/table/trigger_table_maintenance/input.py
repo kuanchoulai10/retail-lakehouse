@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class TriggerTableMaintenanceUseCaseInput:
+class TriggerTableMaintenanceUseCaseInput(UseCaseInput):
     """Carry the request to trigger maintenance operations on a table now."""
 
     uuid: str
-    operations: list[str]
+    operations: tuple[str, ...]

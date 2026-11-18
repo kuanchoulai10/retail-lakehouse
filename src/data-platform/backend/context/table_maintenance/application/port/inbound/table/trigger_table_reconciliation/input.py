@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class TriggerTableReconciliationUseCaseInput:
+class TriggerTableReconciliationUseCaseInput(UseCaseInput):
     """Carry the request to reconcile a table now."""
 
     uuid: str

@@ -9,7 +9,6 @@ from context.table_maintenance.application.port.inbound.table import (
     ListTableCommitsUseCase,
     ListTableCommitsUseCaseInput,
     ListTableCommitsUseCaseOutput,
-    ListTableCommitsUseCaseOutputItem,
 )
 from context.table_maintenance.application.port.outbound.table import (
     TableCommitSelection,
@@ -35,9 +34,9 @@ def _iso(moment: datetime | None) -> str | None:
     return None if moment is None else moment.isoformat()
 
 
-def _to_item(commit: dict[str, Any]) -> ListTableCommitsUseCaseOutputItem:
+def _to_item(commit: dict[str, Any]) -> ListTableCommitsUseCaseOutput.Commit:
     summary = commit["summary"]
-    return ListTableCommitsUseCaseOutputItem(
+    return ListTableCommitsUseCaseOutput.Commit(
         snapshot_id=commit["snapshot_id"],
         parent_id=commit["parent_id"],
         committed_at=datetime.fromisoformat(commit["committed_at"]),
@@ -76,6 +75,6 @@ class ListTableCommitsService(ListTableCommitsUseCase):
         if page is None or page.table_uuid != table.id.value:
             raise_not_in_catalog(table)
         return ListTableCommitsUseCaseOutput(
-            items=[_to_item(commit) for commit in page.commits],
+            items=tuple(_to_item(commit) for commit in page.commits),
             truncated=page.truncated,
         )

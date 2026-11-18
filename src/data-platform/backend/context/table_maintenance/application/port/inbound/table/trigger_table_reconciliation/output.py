@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class TriggerTableReconciliationUseCaseOutput:
+class TriggerTableReconciliationUseCaseOutput(UseCaseOutput):
     """Report whether the reconcile request was accepted."""
 
     accepted: bool

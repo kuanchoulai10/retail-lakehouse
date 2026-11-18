@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class TriggerTableMaintenanceUseCaseOutput:
+class TriggerTableMaintenanceUseCaseOutput(UseCaseOutput):
     """Report whether the trigger request was accepted."""
 
     accepted: bool

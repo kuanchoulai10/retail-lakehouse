@@ -16,7 +16,6 @@ from context.table_maintenance.application.port.inbound.table import (
     GetTableHealthUseCase,
     GetTableHealthUseCaseInput,
     GetTableHealthUseCaseOutput,
-    GetTableHealthUseCaseOutputItem,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
     ResolveApplicableTableMaintenancePolicyUseCase,
@@ -50,8 +49,8 @@ _NOT_SCHEDULED_REASONS = {
 }
 
 
-def _to_item(assessment: OperationAssessment) -> GetTableHealthUseCaseOutputItem:
-    return GetTableHealthUseCaseOutputItem(
+def _to_item(assessment: OperationAssessment) -> GetTableHealthUseCaseOutput.Operation:
+    return GetTableHealthUseCaseOutput.Operation(
         operation=assessment.operation.value,
         verdict=assessment.verdict.value,
         measured=assessment.measured,
@@ -103,7 +102,7 @@ class GetTableHealthService(GetTableHealthUseCase):
         assessment = assess_maintenance(
             table, policy, observation, self._clock(), failure_backoff_cap=self._failure_backoff_cap
         )
-        items = [_to_item(a) for a in assessment.operations]
+        items = tuple(_to_item(a) for a in assessment.operations)
         return GetTableHealthUseCaseOutput(
             scheduled=reason is None,
             not_scheduled_reason=reason,

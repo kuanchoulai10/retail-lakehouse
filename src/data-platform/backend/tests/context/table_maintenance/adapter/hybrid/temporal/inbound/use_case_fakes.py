@@ -13,8 +13,6 @@ from context.table_maintenance.application.port.inbound.table import (
     PlanTableMaintenanceUseCase,
     PlanTableMaintenanceUseCaseInput,
     PlanTableMaintenanceUseCaseOutput,
-    PlanTableMaintenanceUseCaseOutputFilterItem,
-    PlanTableMaintenanceUseCaseOutputItem,
     SyncDiscoveredTablesUseCase,
     SyncDiscoveredTablesUseCaseInput,
     SyncDiscoveredTablesUseCaseOutput,
@@ -48,25 +46,28 @@ CREATED_AT = datetime(2026, 10, 24, tzinfo=UTC)
 class FakePlan(PlanTableMaintenanceUseCase):
     """Plan use case fake that records its requests."""
 
-    def __init__(self) -> None:
-        """Start with no recorded requests."""
+    def __init__(self, output: PlanTableMaintenanceUseCaseOutput | None = None) -> None:
+        """Hold the plan to return, a fixed one by default, and start with no recorded requests."""
         self.requests: list[PlanTableMaintenanceUseCaseInput] = []
+        self._output = output
 
     def execute(self, request: PlanTableMaintenanceUseCaseInput) -> PlanTableMaintenanceUseCaseOutput:
-        """Record the request and return a fixed plan."""
+        """Record the request and return the plan it holds."""
         self.requests.append(request)
+        if self._output is not None:
+            return self._output
         return PlanTableMaintenanceUseCaseOutput(
             status="planned",
             reason=None,
             reconcile_interval_seconds=3600,
             table_name="iceberg.sales.orders",
-            operations=[
-                PlanTableMaintenanceUseCaseOutputItem(
+            operations=(
+                PlanTableMaintenanceUseCaseOutput.Operation(
                     operation="rewrite_data_files",
-                    filters=[PlanTableMaintenanceUseCaseOutputFilterItem(0, "x = 1")],
+                    filters=(PlanTableMaintenanceUseCaseOutput.Filter(spec_id=0, where="x = 1"),),
                     procedure_args={"strategy": "binpack"},
-                )
-            ],
+                ),
+            ),
             policy_name="gold",
             policy_version=3,
             policy_target={"type": "namespace", "path": ["iceberg", "sales"]},

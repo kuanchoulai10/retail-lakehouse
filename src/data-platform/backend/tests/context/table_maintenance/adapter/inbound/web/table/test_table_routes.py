@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -14,7 +13,6 @@ from context.table_maintenance.application.port.inbound.table import (
     GetTableUseCaseOutput,
     ListTablesUseCaseInput,
     ListTablesUseCaseOutput,
-    ListTablesUseCaseOutputItem,
     TriggerTableMaintenanceUseCaseInput,
     TriggerTableMaintenanceUseCaseOutput,
     TriggerTableReconciliationUseCaseInput,
@@ -43,8 +41,8 @@ FIELDS: dict[str, Any] = {
 
 def test_list_tables_passes_the_status_filter() -> None:
     """Listing tables passes the status filter to the use case."""
-    item = ListTablesUseCaseOutputItem(**FIELDS)
-    stub = StubUseCase(ListTablesUseCaseOutput(items=[item]))
+    item = ListTablesUseCaseOutput.Table(**FIELDS)
+    stub = StubUseCase(ListTablesUseCaseOutput(items=(item,)))
     client = build_client(list_tables=stub)
 
     response = client.get("/v1/tables", params={"status": "managed"})
@@ -56,9 +54,11 @@ def test_list_tables_passes_the_status_filter() -> None:
 
 def test_list_tables_answers_the_last_commit_and_the_last_discovery() -> None:
     """Each listed table carries when it was last committed to and last discovered, null when unknown."""
-    known = ListTablesUseCaseOutputItem(**FIELDS)
-    unknown = replace(known, uuid="u-2", last_committed_at=None, last_discovered_at=None)
-    client = build_client(list_tables=StubUseCase(ListTablesUseCaseOutput(items=[known, unknown])))
+    known = ListTablesUseCaseOutput.Table(**FIELDS)
+    unknown = ListTablesUseCaseOutput.Table(
+        **(known.model_dump() | {"uuid": "u-2", "last_committed_at": None, "last_discovered_at": None})
+    )
+    client = build_client(list_tables=StubUseCase(ListTablesUseCaseOutput(items=(known, unknown))))
 
     body = client.get("/v1/tables").json()
 
@@ -74,7 +74,7 @@ def _at(text: str | None) -> datetime | None:
 
 def test_list_tables_without_filter() -> None:
     """Listing tables without a filter passes no status."""
-    stub = StubUseCase(ListTablesUseCaseOutput(items=[]))
+    stub = StubUseCase(ListTablesUseCaseOutput(items=()))
     client = build_client(list_tables=stub)
 
     response = client.get("/v1/tables")
@@ -136,7 +136,7 @@ def test_trigger_table_maintenance_returns_202() -> None:
 
     assert response.status_code == 202
     assert response.json() == {"accepted": True}
-    assert stub.requests == [TriggerTableMaintenanceUseCaseInput(uuid="u-1", operations=["rewrite_data_files"])]
+    assert stub.requests == [TriggerTableMaintenanceUseCaseInput(uuid="u-1", operations=("rewrite_data_files",))]
 
 
 def test_reconcile_table_returns_202() -> None:

@@ -9,7 +9,6 @@ from context.table_maintenance.application.port.inbound.table import (
     ListTablesUseCase,
     ListTablesUseCaseInput,
     ListTablesUseCaseOutput,
-    ListTablesUseCaseOutputItem,
 )
 from context.table_maintenance.application.service.shared import translate_domain_errors
 from context.table_maintenance.application.service.table.table_output_fields import (
@@ -43,7 +42,7 @@ class ListTablesService(ListTablesUseCase):
             tables = self._tables_repo.list_by_statuses([status])
         discovered: dict[str, datetime] = {d.catalog: d.last_discovered_at for d in self._discoveries_repo.list_all()}
         return ListTablesUseCaseOutput(
-            items=[
-                ListTablesUseCaseOutputItem(**table_output_fields(t, discovered.get(t.name.catalog))) for t in tables
-            ]
+            items=tuple(
+                ListTablesUseCaseOutput.Table(**table_output_fields(t, discovered.get(t.name.catalog))) for t in tables
+            )
         )

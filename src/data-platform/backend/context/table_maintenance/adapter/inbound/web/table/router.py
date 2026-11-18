@@ -85,7 +85,7 @@ def trigger_table_maintenance(
 ) -> TriggerTableMaintenanceApiResponse:
     """Run the given operations on a table now."""
     output = use_cases.trigger_table_maintenance.execute(
-        TriggerTableMaintenanceUseCaseInput(uuid=table_uuid, operations=body.operations)
+        TriggerTableMaintenanceUseCaseInput(uuid=table_uuid, operations=tuple(body.operations))
     )
     return TriggerTableMaintenanceApiResponse.model_validate(output)
 

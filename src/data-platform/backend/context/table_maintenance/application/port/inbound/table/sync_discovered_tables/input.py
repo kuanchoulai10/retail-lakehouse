@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class SyncDiscoveredTablesUseCaseInput:
+class SyncDiscoveredTablesUseCaseInput(UseCaseInput):
     """Carry the request to synchronise the registry with the tables found in the catalog."""
 
     catalog: str

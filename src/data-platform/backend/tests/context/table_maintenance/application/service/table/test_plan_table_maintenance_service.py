@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-from dataclasses import asdict
 from datetime import timedelta
 from typing import Any
 
@@ -164,7 +163,8 @@ def _use_policy(policies, now, content):
 
 
 def _plan(planner, now, manual=None, uuid="u-1"):
-    return planner.execute(PlanTableMaintenanceUseCaseInput(table_uuid=uuid, now=now, manual_operations=manual))
+    operations = None if manual is None else tuple(manual)
+    return planner.execute(PlanTableMaintenanceUseCaseInput(table_uuid=uuid, now=now, manual_operations=operations))
 
 
 # --- plan ---
@@ -184,7 +184,7 @@ def test_plan_skip_reasons(planner, tables_repo, catalog, now):
         "u-u": ("skip", "unmanaged"),
         "u-1": ("skip", "not_found"),
     }
-    assert all(v.operations == [] for v in results.values())
+    assert all(v.operations == () for v in results.values())
     assert results["u-1"].reconcile_interval_seconds == 3600
 
 
@@ -234,7 +234,7 @@ def test_plan_orders_operations_and_renders_procedure_args(planner, tables_repo,
     ]
     by_op = {o.operation: o for o in plan.operations}
     assert by_op["rewrite_manifests"].procedure_args == {}
-    assert by_op["rewrite_manifests"].filters == []
+    assert by_op["rewrite_manifests"].filters == ()
     assert by_op["expire_snapshots"].procedure_args == {
         "older_than": "2026-10-23T12:00:00+00:00",
         "retain_last": 10,
@@ -280,7 +280,7 @@ def test_plan_whole_table_compaction_has_no_filters(planner, tables_repo, catalo
     )
     compaction = _plan(planner, now).operations[0]
     assert compaction.operation == "rewrite_data_files"
-    assert compaction.filters == []
+    assert compaction.filters == ()
 
 
 def test_plan_unsupported_partition_field_falls_back_to_whole_table_compaction(
@@ -302,7 +302,7 @@ def test_plan_unsupported_partition_field_falls_back_to_whole_table_compaction(
         "expire_snapshots",
         "remove_orphan_files",
     ]
-    assert plan.operations[0].filters == []
+    assert plan.operations[0].filters == ()
     assert "whole table" in caplog.text
     assert "binary" in caplog.text
 
@@ -314,7 +314,7 @@ def test_scheduled_plan_respects_cooldown(planner, tables_repo, catalog, now):
         table.record_operation_result(op, True, now - timedelta(minutes=1))
     _observe(catalog, now)
     plan = _plan(planner, now)
-    assert (plan.status, plan.operations) == ("planned", [])
+    assert (plan.status, plan.operations) == ("planned", ())
     table.operation_states.clear()
     control = _plan(planner, now)
     assert "rewrite_data_files" in [o.operation for o in control.operations]
@@ -332,7 +332,7 @@ def test_manual_plan_ignores_disabled_and_cooldown(planner, tables_repo, catalog
         "rewrite_data_files",
         "remove_orphan_files",
     ]
-    assert plan.operations[0].filters == []
+    assert plan.operations[0].filters == ()
     assert plan.operations[1].procedure_args == {"older_than": "2026-10-21T12:00:00+00:00"}
 
 
@@ -340,7 +340,7 @@ def test_manual_plan_without_a_catalog_observation_is_skipped_not_found(planner,
     """A manual plan for a table missing from the catalog is skipped as not found."""
     _table(tables_repo, now)
     plan = _plan(planner, now, ["rewrite_manifests"])
-    assert (plan.status, plan.reason, plan.operations) == ("skip", "not_found", [])
+    assert (plan.status, plan.reason, plan.operations) == ("skip", "not_found", ())
 
 
 @pytest.mark.parametrize("manual", [None, ["rewrite_manifests"]])
@@ -349,7 +349,7 @@ def test_plan_skips_when_catalog_table_has_a_different_uuid(planner, tables_repo
     _table(tables_repo, now)
     _observe(catalog, now, table_uuid="u-recreated")
     plan = _plan(planner, now, manual)
-    assert (plan.status, plan.reason, plan.operations) == ("skip", "not_found", [])
+    assert (plan.status, plan.reason, plan.operations) == ("skip", "not_found", ())
 
 
 def test_manual_plan_rejects_unknown_or_empty_operations(planner, tables_repo, now):
@@ -447,7 +447,7 @@ def test_dry_run_plans_no_operations_but_reports_due(planner, tables_repo, catal
     _table(tables_repo, now)
     _observe(catalog, now)
     plan = _plan(planner, now)
-    assert (plan.status, plan.operations, plan.dry_run) == ("planned", [], True)
+    assert (plan.status, plan.operations, plan.dry_run) == ("planned", (), True)
     assert _checks(plan)["rewrite_data_files"].verdict == "due"
 
 
@@ -473,7 +473,7 @@ def test_manual_plan_marks_unrequested_not_checked(planner, tables_repo, catalog
         "expire_snapshots": "not_checked",
         "remove_orphan_files": "not_checked",
     }
-    assert all(c.measurements == [] and c.next_eligible_at is None for c in plan.checks)
+    assert all(c.measurements == () and c.next_eligible_at is None for c in plan.checks)
 
 
 def test_missing_table_is_not_found_in_maintenance(planner, now):
@@ -483,7 +483,7 @@ def test_missing_table_is_not_found_in_maintenance(planner, now):
         "skip",
         "dropped",
         False,
-        [],
+        (),
         False,
     )
 
@@ -492,7 +492,7 @@ def test_unmanaged_table_skips_with_table_found(planner, tables_repo, now):
     """An unmanaged table is skipped but the table is found."""
     _table(tables_repo, now).unmanage(now)
     plan = _plan(planner, now)
-    assert (plan.status, plan.reason, plan.table_found, plan.checks) == ("skip", "unmanaged", True, [])
+    assert (plan.status, plan.reason, plan.table_found, plan.checks) == ("skip", "unmanaged", True, ())
 
 
 def _record(plan, now, **overrides):
@@ -505,7 +505,7 @@ def _record(plan, now, **overrides):
         "dry_run": True,
         "status": plan.status,
         "skip_reason": plan.reason,
-        "checks": [asdict(check) for check in plan.checks],
+        "checks": [check.model_dump() for check in plan.checks],
         "run_id": None,
         "run_start_failed": False,
         "policy_name": plan.policy_name,

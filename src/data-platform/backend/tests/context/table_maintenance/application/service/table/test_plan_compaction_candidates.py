@@ -171,7 +171,9 @@ def planner(tables_repo, catalog, resolve_applicable_policy, candidates_repo, ru
 
 def _plan(planner, now, *, run_id: str | None = RUN, manual=None):  # noqa: ANN001, ANN202
     return planner.execute(
-        PlanTableMaintenanceUseCaseInput(table_uuid="u-1", now=now, manual_operations=manual, run_id=run_id)
+        PlanTableMaintenanceUseCaseInput(
+            table_uuid="u-1", now=now, manual_operations=None if manual is None else tuple(manual), run_id=run_id
+        )
     )
 
 
@@ -218,7 +220,7 @@ def test_plan_takes_only_the_top_n_candidates(planner, tables_repo, catalog, can
     assert "'e'" in only.where
     assert "'d'" in only.where
     assert all(f"'{r}'" not in only.where for r in "abc")
-    assert [(p.spec_id, p.values) for p in compaction.candidate_partitions] == [(0, ["e"]), (0, ["d"])]
+    assert [(p.spec_id, p.values) for p in compaction.candidate_partitions] == [(0, ("e",)), (0, ("d",))]
 
 
 def test_plan_claims_the_selected_candidates_for_the_run(planner, tables_repo, catalog, candidates_repo, now):
@@ -279,7 +281,7 @@ def test_dry_run_plan_claims_nothing(planner, tables_repo, catalog, candidates_r
 
     plan = _plan(planner, now)
 
-    assert plan.operations == []
+    assert plan.operations == ()
     assert set(_states(candidates_repo).values()) == {CandidateState.HELD}
     assert {c.hold_reason for c in candidates_repo.list_all()} == {HoldReason.NOT_DUE}
     assert len(candidates_repo.list_all()) == 5
@@ -295,8 +297,8 @@ def test_unpartitioned_table_has_one_whole_table_candidate(planner, tables_repo,
     (candidate,) = candidates_repo.list_all()
     assert candidate.partition == PartitionKey.whole_table()
     assert candidate.label == "whole table"
-    assert compaction.filters == []
-    assert [(p.spec_id, p.values) for p in compaction.candidate_partitions] == [(-1, [])]
+    assert compaction.filters == ()
+    assert [(p.spec_id, p.values) for p in compaction.candidate_partitions] == [(-1, ())]
 
 
 def test_whole_table_policy_has_one_whole_table_candidate(
@@ -316,7 +318,7 @@ def test_whole_table_policy_has_one_whole_table_candidate(
     (candidate,) = candidates_repo.list_all()
     assert candidate.partition.is_whole_table
     assert candidate.score.reducible_files == 5 + 6 + 7 + 8 + 9
-    assert compaction.filters == []
+    assert compaction.filters == ()
 
 
 def test_manual_run_leaves_candidates_alone(planner, tables_repo, catalog, candidates_repo, now):
@@ -327,7 +329,7 @@ def test_manual_run_leaves_candidates_alone(planner, tables_repo, catalog, candi
     plan = _plan(planner, now, manual=[COMPACTION.value])
 
     assert candidates_repo.list_all() == []
-    assert _compaction(plan).candidate_partitions == []
+    assert _compaction(plan).candidate_partitions == ()
 
 
 def test_manual_run_leaves_grants_alone(planner, tables_repo, catalog, candidates_repo, now):
@@ -339,7 +341,7 @@ def test_manual_run_leaves_grants_alone(planner, tables_repo, catalog, candidate
 
     plan = _plan(planner, now, manual=[COMPACTION.value], run_id="manual-run")
 
-    assert _compaction(plan).candidate_partitions == []
+    assert _compaction(plan).candidate_partitions == ()
     assert set(_states(candidates_repo).values()) == {CandidateState.GRANTED}
 
 
@@ -567,7 +569,7 @@ def test_plan_releases_claims_of_a_run_that_never_started(planner, tables_repo, 
 
     compaction = _compaction(plan)
     assert compaction is not None
-    assert [(p.spec_id, p.values) for p in compaction.candidate_partitions] == [(0, ["e"]), (0, ["d"])]
+    assert [(p.spec_id, p.values) for p in compaction.candidate_partitions] == [(0, ("e",)), (0, ("d",))]
     claimed = [c for c in candidates_repo.list_all() if c.state is CandidateState.CLAIMED]
     assert {c.claimed_by_run_id for c in claimed} == {TableMaintenanceRunId("next-run")}
 
@@ -722,7 +724,7 @@ def test_a_single_partition_offers_one_filter_set(planner, tables_repo, catalog,
 
     compaction = _compaction(_plan_granted(planner, candidates_repo, now))
 
-    assert compaction.filter_sets == [compaction.filters]
+    assert compaction.filter_sets == (compaction.filters,)
 
 
 def test_whole_table_compaction_offers_no_filter_sets(planner, tables_repo, catalog, candidates_repo, now):
@@ -730,7 +732,7 @@ def test_whole_table_compaction_offers_no_filter_sets(planner, tables_repo, cata
     _table(tables_repo, now)
     _observe(catalog, [{**_partition("x", 20), "values": []}], specs=[{"spec_id": 0, "fields": []}])
 
-    assert _compaction(_plan_granted(planner, candidates_repo, now)).filter_sets == []
+    assert _compaction(_plan_granted(planner, candidates_repo, now)).filter_sets == ()
 
 
 def test_a_granted_partition_written_since_is_held_not_claimed(

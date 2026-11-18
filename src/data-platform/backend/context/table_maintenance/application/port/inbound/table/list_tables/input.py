@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class ListTablesUseCaseInput:
+class ListTablesUseCaseInput(UseCaseInput):
     """Carry the request to list tables, optionally by status."""
 
     status: str | None = None

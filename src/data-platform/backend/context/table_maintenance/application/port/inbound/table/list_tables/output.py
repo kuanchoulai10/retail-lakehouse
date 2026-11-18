@@ -2,33 +2,28 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from datetime import datetime
+from typing import Any
 
-if TYPE_CHECKING:
-    from datetime import datetime
-    from typing import Any
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class ListTablesUseCaseOutputItem:
-    """One entry of the listing."""
-
-    uuid: str
-    catalog: str
-    namespace: str
-    table: str
-    status: str
-    matched_rule_id: str | None
-    operation_states: dict[str, dict[str, Any]]
-    registered_at: datetime
-    updated_at: datetime
-    last_committed_at: datetime | None
-    last_discovered_at: datetime | None
-
-
-@dataclass(frozen=True)
-class ListTablesUseCaseOutput:
+class ListTablesUseCaseOutput(UseCaseOutput):
     """Carry the listing."""
 
-    items: list[ListTablesUseCaseOutputItem]
+    class Table(UseCaseOutput):
+        """One entry of the listing."""
+
+        uuid: str
+        catalog: str
+        namespace: str
+        table: str
+        status: str
+        matched_rule_id: str | None
+        operation_states: dict[str, dict[str, Any]]
+        registered_at: datetime
+        updated_at: datetime
+        last_committed_at: datetime | None
+        last_discovered_at: datetime | None
+
+    items: tuple[Table, ...]

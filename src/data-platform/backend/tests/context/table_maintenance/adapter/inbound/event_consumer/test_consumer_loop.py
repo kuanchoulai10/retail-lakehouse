@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import dataclasses
 import importlib
 import json
 import threading
 from typing import TYPE_CHECKING
 
-from base import InvariantViolation, UseCaseInput
+from base import InvariantViolation
 from context.table_maintenance.adapter.inbound.event_consumer import (
     EventRecord,
+    PolarisEvent,
     run_consumer_loop,
 )
 from context.table_maintenance.application.exceptions import (
@@ -230,25 +232,34 @@ def test_a_refused_input_from_the_use_case_is_not_retried() -> None:
     assert sleeps == []
 
 
-class _RefusingHintInput(UseCaseInput):
-    """A stand-in for the hint input that refuses every hint, as a strict input refuses a wrong type."""
+def test_a_hint_input_that_cannot_be_built_is_skipped_without_retry(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """An InvariantViolation while the real hint input is built skips the record without calling the use case.
 
-    catalog: int
-    namespace: str
-    table: str | None
-    event_type: str
-
-
-def test_a_hint_input_that_cannot_be_built_is_skipped_without_retry(monkeypatch: pytest.MonkeyPatch) -> None:
-    """An InvariantViolation while the hint input is built skips the record without calling the use case."""
+    The parser checks every field the input takes, so no Kafka payload reaches the input with a wrong type;
+    the parser is replaced to hand over a non-string catalog, which the strict input refuses.
+    """
     mapper = importlib.import_module("context.table_maintenance.adapter.inbound.event_consumer.map_polaris_event")
-    monkeypatch.setattr(mapper, "ProcessTableHintUseCaseInput", _RefusingHintInput)
+    parse = mapper.parse_polaris_event
+
+    def parse_refused_once(raw: bytes) -> PolarisEvent:
+        event = parse(raw)
+        if event.table_name == "t1":
+            return dataclasses.replace(event, catalog_name=7)
+        return event
+
+    monkeypatch.setattr(mapper, "parse_polaris_event", parse_refused_once)
     refused, good = _record(1), _record(2)
     source = FakeEventSource([refused, good])
     use_case = RecordingUseCase()
 
     sleeps = _run(source, use_case)
 
-    assert use_case.calls == []
+    assert [c.table for c in use_case.calls] == ["t2"]
     assert source.committed == [refused, good]
     assert sleeps == []
+    assert any(
+        r.getMessage().startswith("Skipping malformed Polaris event: catalog: Input should be a valid string")
+        for r in caplog.records
+    )

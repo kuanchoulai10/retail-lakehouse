@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import math
-from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.compaction_candidate import (
@@ -44,11 +43,6 @@ from context.table_maintenance.application.port.inbound.table import (
     PlanTableMaintenanceUseCase,
     PlanTableMaintenanceUseCaseInput,
     PlanTableMaintenanceUseCaseOutput,
-    PlanTableMaintenanceUseCaseOutputCandidatePartitionItem,
-    PlanTableMaintenanceUseCaseOutputCheckItem,
-    PlanTableMaintenanceUseCaseOutputFilterItem,
-    PlanTableMaintenanceUseCaseOutputItem,
-    PlanTableMaintenanceUseCaseOutputMeasurementItem,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment import (
     ResolveApplicableTableMaintenancePolicyUseCase,
@@ -194,11 +188,11 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         policy: MaintenancePolicyContent,
         observation: TableObservation,
         plan: MaintenancePlan,
-        checks: list[PlanTableMaintenanceUseCaseOutputCheckItem],
+        checks: tuple[PlanTableMaintenanceUseCaseOutput.Check, ...],
         request: PlanTableMaintenanceUseCaseInput,
         *,
         cooling_down: bool,
-    ) -> tuple[MaintenancePlan, list[PlanTableMaintenanceUseCaseOutputCheckItem], CompactionShare]:
+    ) -> tuple[MaintenancePlan, tuple[PlanTableMaintenanceUseCaseOutput.Check, ...], CompactionShare]:
         """Sync the candidates, and narrow a due compaction to the granted candidates it takes or drop it.
 
         A compaction that is only ``cooling_down`` holds its candidates in
@@ -237,12 +231,17 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             return plan, checks, CompactionShare()
         if pick.shortfall is not None:
             kept = tuple(p for p in plan.operations if p.operation is not _COMPACTION)
-            checks = [
-                replace(c, verdict=pick.shortfall.value, next_eligible_at=pick.next_eligible_at)
+            checks = tuple(
+                PlanTableMaintenanceUseCaseOutput.Check(
+                    operation=c.operation,
+                    verdict=pick.shortfall.value,
+                    measurements=c.measurements,
+                    next_eligible_at=pick.next_eligible_at,
+                )
                 if c.operation == _COMPACTION.value
                 else c
                 for c in checks
-            ]
+            )
             next_check_at = pick.next_eligible_at if pick.shortfall is CandidateShortfall.ALL_HELD else None
             return MaintenancePlan(operations=kept), checks, CompactionShare(next_check_at=next_check_at)
         narrowed = PlannedOperation(operation=_COMPACTION, partitions=_partitions_of(pick.selected, observation))
@@ -326,37 +325,37 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         applied: ResolveApplicableTableMaintenancePolicyUseCaseOutput,
         policy: MaintenancePolicyContent,
         plan: MaintenancePlan,
-        checks: list[PlanTableMaintenanceUseCaseOutputCheckItem],
+        checks: tuple[PlanTableMaintenanceUseCaseOutput.Check, ...],
         observation: TableObservation,
         request: PlanTableMaintenanceUseCaseInput,
         compaction: CompactionShare,
     ) -> PlanTableMaintenanceUseCaseOutput:
         properties = observation.properties
-        operations = []
+        operations: list[PlanTableMaintenanceUseCaseOutput.Operation] = []
         for planned in plan.operations:
-            filters: list[PlanTableMaintenanceUseCaseOutputFilterItem] = []
+            filters: tuple[PlanTableMaintenanceUseCaseOutput.Filter, ...] = ()
             if planned.partitions:
                 filters = _partition_filters(table, observation, planned)
             start_size = table.operation_state(planned.operation).start_size()
             candidates: tuple[CompactionCandidate, ...] = ()
-            filter_sets: list[list[PlanTableMaintenanceUseCaseOutputFilterItem]] = []
+            filter_sets: tuple[tuple[PlanTableMaintenanceUseCaseOutput.Filter, ...], ...] = ()
             if planned.operation is _COMPACTION:
                 start_size = compaction.start_size or start_size
                 candidates = compaction.candidates
                 if filters:
                     filter_sets = _filter_sets(table, observation, candidates)
             operations.append(
-                PlanTableMaintenanceUseCaseOutputItem(
+                PlanTableMaintenanceUseCaseOutput.Operation(
                     operation=planned.operation.value,
                     filters=filters,
                     procedure_args=maintenance_procedure_args(planned.operation, policy, properties, request.now),
                     start_size=start_size.value,
-                    candidate_partitions=[
-                        PlanTableMaintenanceUseCaseOutputCandidatePartitionItem(
-                            c.partition.spec_id, list(c.partition.values)
+                    candidate_partitions=tuple(
+                        PlanTableMaintenanceUseCaseOutput.CandidatePartition(
+                            spec_id=c.partition.spec_id, values=tuple(c.partition.values)
                         )
                         for c in candidates
-                    ],
+                    ),
                     filter_sets=filter_sets,
                 )
             )
@@ -365,7 +364,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             reason=None,
             reconcile_interval_seconds=_interval(policy),
             table_name=table.name.fully_qualified(),
-            operations=operations,
+            operations=tuple(operations),
             dry_run=policy.dry_run,
             checks=checks,
             policy_name=applied.policy_name,
@@ -375,7 +374,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         )
 
     @staticmethod
-    def _parse_manual(raw: list[str] | None) -> list[MaintenanceOperation] | None:
+    def _parse_manual(raw: Sequence[str] | None) -> list[MaintenanceOperation] | None:
         if raw is None:
             return None
         if not raw:
@@ -399,22 +398,22 @@ def _partitions_of(
 
 def _filter_sets(
     table: Table, observation: TableObservation, candidates: tuple[CompactionCandidate, ...]
-) -> list[list[PlanTableMaintenanceUseCaseOutputFilterItem]]:
+) -> tuple[tuple[PlanTableMaintenanceUseCaseOutput.Filter, ...], ...]:
     """Return the filters of all candidates, the best half and the best quarter (rounded up), each count once."""
     counts = dict.fromkeys(math.ceil(len(candidates) / d) for d in (1, 2, 4))
-    return [
+    return tuple(
         _partition_filters(
             table,
             observation,
             PlannedOperation(operation=_COMPACTION, partitions=_partitions_of(candidates[:count], observation)),
         )
         for count in counts
-    ]
+    )
 
 
 def _partition_filters(
     table: Table, observation: TableObservation, planned: PlannedOperation
-) -> list[PlanTableMaintenanceUseCaseOutputFilterItem]:
+) -> tuple[PlanTableMaintenanceUseCaseOutput.Filter, ...]:
     """Render the partition filters, or none (the whole table) if one cannot be.
 
     A partition field the filter builder does not support must not block the
@@ -429,8 +428,8 @@ def _partition_filters(
             table.name.qualified(),
             error,
         )
-        return []
-    return [PlanTableMaintenanceUseCaseOutputFilterItem(f.spec_id, f.where) for f in built]
+        return ()
+    return tuple(PlanTableMaintenanceUseCaseOutput.Filter(spec_id=f.spec_id, where=f.where) for f in built)
 
 
 def _interval(policy: MaintenancePolicyContent) -> int:
@@ -446,13 +445,13 @@ _VERDICTS = {
 }
 
 
-def _scheduled_checks(assessment: MaintenanceAssessment) -> list[PlanTableMaintenanceUseCaseOutputCheckItem]:
-    return [
-        PlanTableMaintenanceUseCaseOutputCheckItem(
+def _scheduled_checks(assessment: MaintenanceAssessment) -> tuple[PlanTableMaintenanceUseCaseOutput.Check, ...]:
+    return tuple(
+        PlanTableMaintenanceUseCaseOutput.Check(
             operation=a.operation.value,
             verdict=_VERDICTS[a.verdict],
-            measurements=[
-                PlanTableMaintenanceUseCaseOutputMeasurementItem(
+            measurements=tuple(
+                PlanTableMaintenanceUseCaseOutput.Measurement(
                     key=m.key,
                     observed=m.observed,
                     unit=m.unit.value,
@@ -461,23 +460,23 @@ def _scheduled_checks(assessment: MaintenanceAssessment) -> list[PlanTableMainte
                     met=m.met,
                 )
                 for m in a.measurements
-            ],
+            ),
             next_eligible_at=a.next_eligible_at,
         )
         for a in assessment.operations
-    ]
+    )
 
 
-def _manual_checks(requested: list[MaintenanceOperation]) -> list[PlanTableMaintenanceUseCaseOutputCheckItem]:
-    return [
-        PlanTableMaintenanceUseCaseOutputCheckItem(
+def _manual_checks(requested: list[MaintenanceOperation]) -> tuple[PlanTableMaintenanceUseCaseOutput.Check, ...]:
+    return tuple(
+        PlanTableMaintenanceUseCaseOutput.Check(
             operation=op.value,
             verdict="due" if op in requested else "not_checked",
-            measurements=[],
+            measurements=(),
             next_eligible_at=None,
         )
         for op in MaintenanceOperation.ordered()
-    ]
+    )
 
 
 def _skip(
@@ -491,7 +490,7 @@ def _skip(
         reason=reason,
         reconcile_interval_seconds=_interval(policy),
         table_name=table.name.fully_qualified(),
-        operations=[],
+        operations=(),
         policy_name=applied.policy_name,
         policy_version=applied.version,
         policy_target=applied.target,
@@ -505,6 +504,6 @@ def _skip_unknown_table() -> PlanTableMaintenanceUseCaseOutput:
         reason="dropped",
         reconcile_interval_seconds=_interval(MaintenancePolicyContent.platform_default()),
         table_name=None,
-        operations=[],
+        operations=(),
         table_found=False,
     )

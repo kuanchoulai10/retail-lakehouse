@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class GetTableStorageUseCaseOutput:
+class GetTableStorageUseCaseOutput(UseCaseOutput):
     """Describe what a table stores and what maintenance reclaimed lately."""
 
     current_bytes: int

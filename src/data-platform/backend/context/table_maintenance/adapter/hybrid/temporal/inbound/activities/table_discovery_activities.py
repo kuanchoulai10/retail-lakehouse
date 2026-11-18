@@ -36,7 +36,5 @@ class TableDiscoveryActivities:
     def sync_discovered_tables(self, request: dict[str, Any]) -> dict[str, Any]:
         """Synchronise the registry with one catalog or namespace."""
         with translate_application_errors():
-            output = self._sync.execute(
-                SyncDiscoveredTablesUseCaseInput(catalog=request["catalog"], namespace=request.get("namespace"))
-            )
+            output = self._sync.execute(SyncDiscoveredTablesUseCaseInput.from_primitives(request))
         return activity_payload(output)

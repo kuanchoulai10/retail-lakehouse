@@ -114,8 +114,7 @@ def test_trigger_signals_operations_in_canonical_order(tables_repo, signals, now
     _managed(tables_repo, now)
     out = TriggerTableMaintenanceService(tables_repo, signals).execute(
         TriggerTableMaintenanceUseCaseInput(
-            uuid="u-1",
-            operations=["expire_snapshots", "rewrite_data_files", "expire_snapshots"],
+            uuid="u-1", operations=("expire_snapshots", "rewrite_data_files", "expire_snapshots")
         )
     )
     assert out.accepted is True
@@ -134,7 +133,7 @@ def test_trigger_on_dropped_table_conflicts(tables_repo, signals, now):
     _dropped(tables_repo, now)
     with pytest.raises(ConflictError):
         TriggerTableMaintenanceService(tables_repo, signals).execute(
-            TriggerTableMaintenanceUseCaseInput(uuid="u-1", operations=["rewrite_data_files"])
+            TriggerTableMaintenanceUseCaseInput(uuid="u-1", operations=("rewrite_data_files",))
         )
     assert signals.calls == []
 
@@ -144,11 +143,11 @@ def test_trigger_on_unmanaged_table_conflicts(tables_repo, signals, now):
     _unmanaged(tables_repo, now)
     with pytest.raises(ConflictError):
         TriggerTableMaintenanceService(tables_repo, signals).execute(
-            TriggerTableMaintenanceUseCaseInput(uuid="u-1", operations=["rewrite_data_files"])
+            TriggerTableMaintenanceUseCaseInput(uuid="u-1", operations=("rewrite_data_files",))
         )
 
 
-@pytest.mark.parametrize("operations", [[], ["defrag"]])
+@pytest.mark.parametrize("operations", [(), ("defrag",)])
 def test_trigger_invalid_operations(tables_repo, signals, now, operations):
     """Invalid operations are rejected and nothing is signalled."""
     _managed(tables_repo, now)
@@ -163,7 +162,7 @@ def test_trigger_unknown_table(tables_repo, signals):
     """Triggering maintenance on an unknown table raises NotFoundError."""
     with pytest.raises(NotFoundError):
         TriggerTableMaintenanceService(tables_repo, signals).execute(
-            TriggerTableMaintenanceUseCaseInput(uuid="nope", operations=["rewrite_data_files"])
+            TriggerTableMaintenanceUseCaseInput(uuid="nope", operations=("rewrite_data_files",))
         )
 
 

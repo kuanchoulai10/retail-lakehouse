@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import dataclasses
 from datetime import UTC, datetime
 
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.table import (
     ListTableCommitsUseCaseInput,
     ListTableCommitsUseCaseOutput,
-    ListTableCommitsUseCaseOutputItem,
 )
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import (
     NOW,
@@ -19,7 +17,7 @@ from tests.context.table_maintenance.adapter.inbound.web.web_test_support import
 
 
 def _output() -> ListTableCommitsUseCaseOutput:
-    item = ListTableCommitsUseCaseOutputItem(
+    item = ListTableCommitsUseCaseOutput.Commit(
         snapshot_id=7,
         parent_id=None,
         committed_at=NOW,
@@ -33,7 +31,7 @@ def _output() -> ListTableCommitsUseCaseOutput:
         removed_delete_files=None,
         summary={"added-records": "10"},
     )
-    return ListTableCommitsUseCaseOutput(items=[item], truncated=True)
+    return ListTableCommitsUseCaseOutput(items=(item,), truncated=True)
 
 
 def test_commits_returns_200() -> None:
@@ -56,8 +54,10 @@ def test_commits_returns_200() -> None:
 def test_commits_return_large_snapshot_ids_as_exact_strings() -> None:
     """Snapshot ids too large for a JSON number are returned as exact strings."""
     output = _output()
-    item = dataclasses.replace(output.items[0], snapshot_id=3051729675574597004, parent_id=3051729675574597003)
-    stub = StubUseCase(dataclasses.replace(output, items=[item]))
+    item = ListTableCommitsUseCaseOutput.Commit(
+        **(output.items[0].model_dump() | {"snapshot_id": 3051729675574597004, "parent_id": 3051729675574597003})
+    )
+    stub = StubUseCase(ListTableCommitsUseCaseOutput(items=(item,), truncated=output.truncated))
     client = build_client(list_table_commits=stub)
 
     body = client.get("/v1/tables/u-1/commits").json()

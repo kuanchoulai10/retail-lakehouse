@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class ProcessTableHintUseCaseInput:
+class ProcessTableHintUseCaseInput(UseCaseInput):
     """Carry the request to react to a catalog event hint about one table or namespace."""
 
     catalog: str

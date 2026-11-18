@@ -499,7 +499,7 @@ def hint(tables_repo, rules_repo, catalog, signals, discovery_requests, clock):
 
 
 def _hint(table="orders", namespace="sales", event_type="updateTable"):
-    return ProcessTableHintUseCaseInput("iceberg", namespace, table, event_type)
+    return ProcessTableHintUseCaseInput(catalog="iceberg", namespace=namespace, table=table, event_type=event_type)
 
 
 def test_table_hint_without_name_requests_namespace_discovery(hint, discovery_requests, signals):
@@ -590,9 +590,9 @@ def test_table_hint_for_managed_table_signals_but_cooldown_blocks_replan(
     assert hint.execute(_hint()).action == "signalled"
     assert _calls(signals) == [("u-1", "updated", True)]
     planner = plan_service_on_fakes(tables_repo, catalog, resolve_applicable_policy)
-    blocked = planner.execute(PlanTableMaintenanceUseCaseInput("u-1", now))
-    assert (blocked.status, blocked.operations) == ("planned", [])
-    control = planner.execute(PlanTableMaintenanceUseCaseInput("u-2", now))
+    blocked = planner.execute(PlanTableMaintenanceUseCaseInput(table_uuid="u-1", now=now))
+    assert (blocked.status, blocked.operations) == ("planned", ())
+    control = planner.execute(PlanTableMaintenanceUseCaseInput(table_uuid="u-2", now=now))
     assert "rewrite_data_files" in [o.operation for o in control.operations]
 
 

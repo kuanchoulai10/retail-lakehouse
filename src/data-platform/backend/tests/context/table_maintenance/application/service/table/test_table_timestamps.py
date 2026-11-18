@@ -197,7 +197,11 @@ def test_a_catalog_event_saves_the_newer_commit_of_a_known_table(hint, tables_re
     _include_all(rules_repo, now)
     _row(tables_repo, EARLIER).record_last_commit(COMMIT)
     catalog.add_table("iceberg", "sales", "orders", "u-1", last_committed_at=NEWER_COMMIT.isoformat())
-    hint.execute(ProcessTableHintUseCaseInput("iceberg", "sales", "orders", "AFTER_UPDATE_TABLE"))
+    hint.execute(
+        ProcessTableHintUseCaseInput(
+            catalog="iceberg", namespace="sales", table="orders", event_type="AFTER_UPDATE_TABLE"
+        )
+    )
     assert tables_repo.get(TableId("u-1")).last_committed_at == NEWER_COMMIT
 
 
@@ -207,7 +211,11 @@ def test_a_catalog_event_saves_the_newer_commit_of_an_unmanaged_table(hint, tabl
     table.unmanage(EARLIER)
     catalog.add_table("iceberg", "sales", "orders", "u-1", last_committed_at=COMMIT.isoformat())
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
-    hint.execute(ProcessTableHintUseCaseInput("iceberg", "sales", "orders", "AFTER_UPDATE_TABLE"))
+    hint.execute(
+        ProcessTableHintUseCaseInput(
+            catalog="iceberg", namespace="sales", table="orders", event_type="AFTER_UPDATE_TABLE"
+        )
+    )
     assert log == []
     assert tables_repo.commit_writes == [("u-1", COMMIT)]
     assert tables_repo.get(TableId("u-1")).last_committed_at == COMMIT
@@ -216,7 +224,11 @@ def test_a_catalog_event_saves_the_newer_commit_of_an_unmanaged_table(hint, tabl
 def test_a_catalog_event_registers_a_table_with_its_last_commit(hint, tables_repo, catalog):
     """A table first seen through an event starts with its newest commit."""
     catalog.add_table("iceberg", "sales", "orders", "u-1", last_committed_at=COMMIT.isoformat())
-    hint.execute(ProcessTableHintUseCaseInput("iceberg", "sales", "orders", "AFTER_CREATE_TABLE"))
+    hint.execute(
+        ProcessTableHintUseCaseInput(
+            catalog="iceberg", namespace="sales", table="orders", event_type="AFTER_CREATE_TABLE"
+        )
+    )
     assert tables_repo.get(TableId("u-1")).last_committed_at == COMMIT
 
 

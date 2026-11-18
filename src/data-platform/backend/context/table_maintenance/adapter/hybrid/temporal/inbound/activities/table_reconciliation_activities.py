@@ -96,14 +96,7 @@ class TableReconciliationActivities:
     def plan_table_maintenance(self, request: dict[str, Any]) -> dict[str, Any]:
         """Plan the maintenance operations of a table, with the attempt deadline and attempts its run uses."""
         with translate_application_errors():
-            output = self._plan.execute(
-                PlanTableMaintenanceUseCaseInput(
-                    table_uuid=request["table_uuid"],
-                    now=datetime.fromisoformat(request["now"]),
-                    manual_operations=request.get("manual_operations"),
-                    run_id=request.get("run_id"),
-                )
-            )
+            output = self._plan.execute(PlanTableMaintenanceUseCaseInput.from_primitives(request))
         return {
             **activity_payload(output),
             "attempt_deadline_seconds": self._attempt_deadline_seconds,

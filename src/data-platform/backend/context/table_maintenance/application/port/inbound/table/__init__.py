@@ -16,7 +16,6 @@ from context.table_maintenance.application.port.inbound.table.get_table_health.i
 )
 from context.table_maintenance.application.port.inbound.table.get_table_health.output import (
     GetTableHealthUseCaseOutput,
-    GetTableHealthUseCaseOutputItem,
 )
 from context.table_maintenance.application.port.inbound.table.get_table_health.use_case import (
     GetTableHealthUseCase,
@@ -35,7 +34,6 @@ from context.table_maintenance.application.port.inbound.table.list_table_commits
 )
 from context.table_maintenance.application.port.inbound.table.list_table_commits.output import (
     ListTableCommitsUseCaseOutput,
-    ListTableCommitsUseCaseOutputItem,
 )
 from context.table_maintenance.application.port.inbound.table.list_table_commits.use_case import (
     ListTableCommitsUseCase,
@@ -45,7 +43,6 @@ from context.table_maintenance.application.port.inbound.table.list_tables.input 
 )
 from context.table_maintenance.application.port.inbound.table.list_tables.output import (
     ListTablesUseCaseOutput,
-    ListTablesUseCaseOutputItem,
 )
 from context.table_maintenance.application.port.inbound.table.list_tables.use_case import (
     ListTablesUseCase,
@@ -55,11 +52,6 @@ from context.table_maintenance.application.port.inbound.table.plan_table_mainten
 )
 from context.table_maintenance.application.port.inbound.table.plan_table_maintenance.output import (
     PlanTableMaintenanceUseCaseOutput,
-    PlanTableMaintenanceUseCaseOutputCandidatePartitionItem,
-    PlanTableMaintenanceUseCaseOutputCheckItem,
-    PlanTableMaintenanceUseCaseOutputFilterItem,
-    PlanTableMaintenanceUseCaseOutputItem,
-    PlanTableMaintenanceUseCaseOutputMeasurementItem,
 )
 from context.table_maintenance.application.port.inbound.table.plan_table_maintenance.use_case import (
     PlanTableMaintenanceUseCase,
@@ -108,26 +100,18 @@ __all__ = [
     "GetTableHealthUseCase",
     "GetTableHealthUseCaseInput",
     "GetTableHealthUseCaseOutput",
-    "GetTableHealthUseCaseOutputItem",
     "GetTableStorageUseCase",
     "GetTableStorageUseCaseInput",
     "GetTableStorageUseCaseOutput",
     "ListTableCommitsUseCase",
     "ListTableCommitsUseCaseInput",
     "ListTableCommitsUseCaseOutput",
-    "ListTableCommitsUseCaseOutputItem",
     "ListTablesUseCase",
     "ListTablesUseCaseInput",
     "ListTablesUseCaseOutput",
-    "ListTablesUseCaseOutputItem",
     "PlanTableMaintenanceUseCase",
     "PlanTableMaintenanceUseCaseInput",
     "PlanTableMaintenanceUseCaseOutput",
-    "PlanTableMaintenanceUseCaseOutputCandidatePartitionItem",
-    "PlanTableMaintenanceUseCaseOutputCheckItem",
-    "PlanTableMaintenanceUseCaseOutputFilterItem",
-    "PlanTableMaintenanceUseCaseOutputItem",
-    "PlanTableMaintenanceUseCaseOutputMeasurementItem",
     "ProcessTableHintUseCase",
     "ProcessTableHintUseCaseInput",
     "ProcessTableHintUseCaseOutput",

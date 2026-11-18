@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 
 import pytest
@@ -13,6 +14,11 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import
     TableReconciliationActivities,
 )
 from context.table_maintenance.application.exceptions import NotFoundError
+from context.table_maintenance.application.port.inbound.table import (
+    PlanTableMaintenanceUseCaseInput,
+    PlanTableMaintenanceUseCaseOutput,
+    SyncDiscoveredTablesUseCaseInput,
+)
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     SubmitMaintenanceOperationUseCaseInputFilterItem,
 )
@@ -80,7 +86,7 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
     request = fakes["plan"].requests[0]
     assert request.table_uuid == "u1"
     assert request.now == NOW_DT
-    assert request.manual_operations == ["expire_snapshots"]
+    assert request.manual_operations == ("expire_snapshots",)
     assert request.run_id == "run-1"
     assert result == {
         "status": "planned",
@@ -107,6 +113,198 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
         "attempt_deadline_seconds": 21600,
         "max_attempts": 3,
     }
+
+
+def _full_plan() -> PlanTableMaintenanceUseCaseOutput:
+    """Return a plan that sets every field, nested ones included, with datetimes and sequences."""
+    where = PlanTableMaintenanceUseCaseOutput.Filter(spec_id=1, where="region = 'eu'")
+    other = PlanTableMaintenanceUseCaseOutput.Filter(spec_id=1, where="region = 'us'")
+    return PlanTableMaintenanceUseCaseOutput(
+        status="planned",
+        reason=None,
+        reconcile_interval_seconds=900,
+        table_name="iceberg.sales.orders",
+        operations=(
+            PlanTableMaintenanceUseCaseOutput.Operation(
+                operation="rewrite_data_files",
+                filters=(where, other),
+                procedure_args={"strategy": "binpack", "options": {"min-input-files": "5"}},
+                start_size="M",
+                candidate_partitions=(
+                    PlanTableMaintenanceUseCaseOutput.CandidatePartition(spec_id=1, values=("eu", 2026)),
+                    PlanTableMaintenanceUseCaseOutput.CandidatePartition(spec_id=1, values=("us", None)),
+                ),
+                filter_sets=((where, other), (where,)),
+            ),
+            PlanTableMaintenanceUseCaseOutput.Operation(
+                operation="expire_snapshots",
+                filters=(),
+                procedure_args={"older_than": "2026-10-17T01:02:03+00:00", "retain_last": 3},
+            ),
+        ),
+        dry_run=False,
+        table_found=True,
+        checks=(
+            PlanTableMaintenanceUseCaseOutput.Check(
+                operation="rewrite_data_files",
+                verdict="due",
+                measurements=(
+                    PlanTableMaintenanceUseCaseOutput.Measurement(
+                        key="small_files", observed=40, unit="files", threshold=10, comparison="gte", met=True
+                    ),
+                    PlanTableMaintenanceUseCaseOutput.Measurement(
+                        key="data_bytes", observed=1024, unit="bytes", threshold=None, comparison=None, met=None
+                    ),
+                ),
+                next_eligible_at=None,
+            ),
+            PlanTableMaintenanceUseCaseOutput.Check(
+                operation="expire_snapshots",
+                verdict="cooling_down",
+                measurements=(),
+                next_eligible_at=datetime(2026, 10, 24, 7, 0, tzinfo=UTC),
+            ),
+        ),
+        policy_name="gold",
+        policy_version=3,
+        policy_target={"type": "namespace", "path": ["iceberg", "sales"]},
+        next_check_at=datetime(2026, 10, 24, 1, 32, 3, tzinfo=UTC),
+    )
+
+
+def test_plan_payload_keeps_every_field_of_a_full_plan():
+    """The plan activity returns the exact dict the reconciliation workflow reads: lists, nested dicts, ISO times."""
+    plan = FakePlan(_full_plan())
+    activities, _ = _reconcile()
+    activities._plan = plan  # noqa: SLF001
+
+    result = activities.plan_table_maintenance(
+        {"table_uuid": "u1", "now": NOW, "manual_operations": None, "run_id": "run-1"}
+    )
+
+    assert result == {
+        "status": "planned",
+        "reason": None,
+        "reconcile_interval_seconds": 900,
+        "table_name": "iceberg.sales.orders",
+        "operations": [
+            {
+                "operation": "rewrite_data_files",
+                "filters": [
+                    {"spec_id": 1, "where": "region = 'eu'"},
+                    {"spec_id": 1, "where": "region = 'us'"},
+                ],
+                "procedure_args": {"strategy": "binpack", "options": {"min-input-files": "5"}},
+                "start_size": "M",
+                "candidate_partitions": [
+                    {"spec_id": 1, "values": ["eu", 2026]},
+                    {"spec_id": 1, "values": ["us", None]},
+                ],
+                "filter_sets": [
+                    [{"spec_id": 1, "where": "region = 'eu'"}, {"spec_id": 1, "where": "region = 'us'"}],
+                    [{"spec_id": 1, "where": "region = 'eu'"}],
+                ],
+            },
+            {
+                "operation": "expire_snapshots",
+                "filters": [],
+                "procedure_args": {"older_than": "2026-10-17T01:02:03+00:00", "retain_last": 3},
+                "start_size": "S",
+                "candidate_partitions": [],
+                "filter_sets": [],
+            },
+        ],
+        "dry_run": False,
+        "table_found": True,
+        "checks": [
+            {
+                "operation": "rewrite_data_files",
+                "verdict": "due",
+                "measurements": [
+                    {
+                        "key": "small_files",
+                        "observed": 40,
+                        "unit": "files",
+                        "threshold": 10,
+                        "comparison": "gte",
+                        "met": True,
+                    },
+                    {
+                        "key": "data_bytes",
+                        "observed": 1024,
+                        "unit": "bytes",
+                        "threshold": None,
+                        "comparison": None,
+                        "met": None,
+                    },
+                ],
+                "next_eligible_at": None,
+            },
+            {
+                "operation": "expire_snapshots",
+                "verdict": "cooling_down",
+                "measurements": [],
+                "next_eligible_at": "2026-10-24T07:00:00+00:00",
+            },
+        ],
+        "policy_name": "gold",
+        "policy_version": 3,
+        "policy_target": {"type": "namespace", "path": ["iceberg", "sales"]},
+        "next_check_at": "2026-10-24T01:32:03+00:00",
+        "attempt_deadline_seconds": 21600,
+        "max_attempts": 3,
+    }
+    assert json.loads(json.dumps(result)) == result
+
+
+WORKFLOW_PLAN_REQUEST = {
+    "table_uuid": "u1",
+    "now": NOW,
+    "manual_operations": ["expire_snapshots", "rewrite_manifests"],
+    "run_id": "run-1",
+}
+
+
+def test_plan_input_is_built_from_the_payload_the_reconciliation_workflow_sends():
+    """The plan input reads the workflow's payload as sent: an ISO time and a list of operations."""
+    built = PlanTableMaintenanceUseCaseInput.from_primitives(WORKFLOW_PLAN_REQUEST)
+
+    assert built == PlanTableMaintenanceUseCaseInput(
+        table_uuid="u1",
+        now=NOW_DT,
+        manual_operations=("expire_snapshots", "rewrite_manifests"),
+        run_id="run-1",
+    )
+
+
+def test_plan_activity_hands_the_use_case_the_input_built_from_the_payload():
+    """The plan activity builds the use case input from the workflow payload with from_primitives."""
+    activities, fakes = _reconcile()
+
+    activities.plan_table_maintenance(dict(WORKFLOW_PLAN_REQUEST))
+
+    assert fakes["plan"].requests == [PlanTableMaintenanceUseCaseInput.from_primitives(WORKFLOW_PLAN_REQUEST)]
+
+
+def test_plan_input_takes_a_scheduled_payload_without_operations_or_run():
+    """A scheduled plan's payload names no manual operations and may name no run."""
+    built = PlanTableMaintenanceUseCaseInput.from_primitives(
+        {"table_uuid": "u1", "now": NOW, "manual_operations": None, "run_id": None}
+    )
+
+    assert (built.manual_operations, built.run_id) == (None, None)
+
+
+def test_plan_activity_refuses_a_payload_it_cannot_build_without_retry():
+    """A plan payload whose time is not an ISO string fails the activity at once."""
+    activities, fakes = _reconcile()
+
+    with pytest.raises(ApplicationError) as caught:
+        activities.plan_table_maintenance({"table_uuid": "u1", "now": 5})
+
+    assert caught.value.non_retryable
+    assert caught.value.type == "InvariantViolation"
+    assert fakes["plan"].requests == []
 
 
 def test_plan_carries_the_attempt_deadline():
@@ -452,6 +650,28 @@ def test_record_activity_passes_the_planned_policy():
     )
     request = record.requests[0]
     assert (request.policy_name, request.policy_version, request.policy_target) == ("nightly", 4, target)
+
+
+def test_sync_input_is_built_from_the_payload_the_discovery_workflow_sends():
+    """The sync input reads the discovery workflow's payload as sent, a namespace or none."""
+    assert SyncDiscoveredTablesUseCaseInput.from_primitives(
+        {"catalog": "iceberg", "namespace": "sales"}
+    ) == SyncDiscoveredTablesUseCaseInput(catalog="iceberg", namespace="sales")
+    assert SyncDiscoveredTablesUseCaseInput.from_primitives(
+        {"catalog": "iceberg", "namespace": None}
+    ) == SyncDiscoveredTablesUseCaseInput(catalog="iceberg")
+
+
+def test_sync_activity_hands_the_use_case_the_input_built_from_the_payload():
+    """The sync activity builds the use case input from the workflow payload with from_primitives."""
+    sync = FakeSync()
+    activities = TableDiscoveryActivities(sync=sync)
+
+    activities.sync_discovered_tables({"catalog": "iceberg", "namespace": None})
+
+    assert sync.requests == [
+        SyncDiscoveredTablesUseCaseInput.from_primitives({"catalog": "iceberg", "namespace": None})
+    ]
 
 
 def test_sync_passes_catalog_and_namespace():

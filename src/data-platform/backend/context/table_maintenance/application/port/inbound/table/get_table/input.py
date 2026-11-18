@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class GetTableUseCaseInput:
+class GetTableUseCaseInput(UseCaseInput):
     """Carry the request to get one table."""
 
     uuid: str

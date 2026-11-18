@@ -5,11 +5,6 @@ from context.table_maintenance.application.port.inbound.table.plan_table_mainten
 )
 from context.table_maintenance.application.port.inbound.table.plan_table_maintenance.output import (
     PlanTableMaintenanceUseCaseOutput,
-    PlanTableMaintenanceUseCaseOutputCandidatePartitionItem,
-    PlanTableMaintenanceUseCaseOutputCheckItem,
-    PlanTableMaintenanceUseCaseOutputFilterItem,
-    PlanTableMaintenanceUseCaseOutputItem,
-    PlanTableMaintenanceUseCaseOutputMeasurementItem,
 )
 from context.table_maintenance.application.port.inbound.table.plan_table_maintenance.use_case import (
     PlanTableMaintenanceUseCase,
@@ -19,9 +14,4 @@ __all__ = [
     "PlanTableMaintenanceUseCase",
     "PlanTableMaintenanceUseCaseInput",
     "PlanTableMaintenanceUseCaseOutput",
-    "PlanTableMaintenanceUseCaseOutputCandidatePartitionItem",
-    "PlanTableMaintenanceUseCaseOutputCheckItem",
-    "PlanTableMaintenanceUseCaseOutputFilterItem",
-    "PlanTableMaintenanceUseCaseOutputItem",
-    "PlanTableMaintenanceUseCaseOutputMeasurementItem",
 ]
