@@ -5,8 +5,9 @@ from __future__ import annotations
 from datetime import timedelta
 
 import pytest
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from base import ValueObject
 from context.table_maintenance.application.domain.model.shared import WholeSeconds
 
 
@@ -16,6 +17,22 @@ class _Timeout(BaseModel):
     model_config = ConfigDict(strict=True)
 
     duration: WholeSeconds
+
+
+class _Lease(ValueObject):
+    """A value object carrying one WholeSeconds field on a ``*_seconds`` key."""
+
+    timeout: WholeSeconds = Field(validation_alias="timeout_seconds", serialization_alias="timeout_seconds")
+
+
+def test_value_object_writes_int_seconds_on_the_wire() -> None:
+    """A value object's wire form carries the duration as integer seconds under its alias."""
+    assert _Lease(timeout=timedelta(hours=1)).to_primitives() == {"timeout_seconds": 3600}
+
+
+def test_value_object_reads_int_seconds_from_the_wire() -> None:
+    """A value object reads the duration back from integer seconds."""
+    assert _Lease.from_primitives({"timeout_seconds": 3600}) == _Lease(timeout=timedelta(hours=1))
 
 
 def test_accepts_a_timedelta() -> None:

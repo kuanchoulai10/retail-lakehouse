@@ -11,7 +11,6 @@ import pytest
 from pydantic import Field, ValidationError, model_validator
 
 from base import ValueObject
-from context.table_maintenance.application.domain.model.shared import WholeSeconds
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -25,12 +24,10 @@ class _Unit(StrEnum):
 
 
 class _Schedule(ValueObject):
-    """A value object with an enum, a duration on a ``*_seconds`` key and an int."""
+    """A value object with an enum, an int on a ``*_seconds`` key and an int."""
 
     unit: _Unit
-    min_interval: WholeSeconds = Field(
-        validation_alias="min_interval_seconds", serialization_alias="min_interval_seconds"
-    )
+    min_interval: int = Field(validation_alias="min_interval_seconds", serialization_alias="min_interval_seconds")
     retries: int = 0
 
 
@@ -41,7 +38,7 @@ class _Plan(ValueObject):
 
 
 def _schedule() -> _Schedule:
-    return _Schedule(unit=_Unit.HOUR, min_interval=timedelta(hours=1), retries=2)
+    return _Schedule(unit=_Unit.HOUR, min_interval=3600, retries=2)
 
 
 def test_equal_by_value() -> None:
@@ -95,7 +92,7 @@ def test_from_primitives_reads_a_nested_alias() -> None:
 
 def test_constructor_takes_the_field_name() -> None:
     """Code builds a value object by field name."""
-    assert _Schedule(unit=_Unit.HOUR, min_interval=timedelta(hours=1)).min_interval == timedelta(hours=1)
+    assert _Schedule(unit=_Unit.HOUR, min_interval=3600).min_interval == 3600
 
 
 def test_to_primitives_writes_wire_values() -> None:
