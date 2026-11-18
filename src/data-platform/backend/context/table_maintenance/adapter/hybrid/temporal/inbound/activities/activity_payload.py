@@ -2,22 +2,20 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from base import UseCaseOutput
+if TYPE_CHECKING:
+    from base import UseCaseOutput
 
 
-def activity_payload(output: Any) -> dict[str, Any]:  # noqa: ANN401
+def activity_payload(output: UseCaseOutput) -> dict[str, Any]:
     """Turn a use-case output into a primitive dict with ISO datetimes.
 
-    A ``UseCaseOutput`` is dumped with ``model_dump()``; a dataclass output (until every port is migrated)
-    with ``asdict``. Both then go through the same pass, so a datetime is always ``datetime.isoformat()``
-    and the Temporal payload does not change with the migration.
+    The output is dumped with ``model_dump()`` and every datetime is written by ``datetime.isoformat()``, so the
+    Temporal payload holds only JSON primitives.
     """
-    fields = output.model_dump() if isinstance(output, UseCaseOutput) else asdict(output)
-    return _primitive(fields)
+    return _primitive(output.model_dump())
 
 
 def _primitive(value: Any) -> Any:  # noqa: ANN401

@@ -1,7 +1,6 @@
 """Guard test: inbound port input and output are Pydantic models on ``UseCaseInput`` / ``UseCaseOutput``.
 
-For every use-case directory ``context/<context>/application/port/inbound/<aggregate>/<use_case>/`` that is
-not in ``PENDING_PORTS``:
+For every use-case directory ``context/<context>/application/port/inbound/<aggregate>/<use_case>/``:
 
 - ``input.py`` (when present; a no-input use case has none) defines exactly one top-level class,
   ``{Name}UseCaseInput``, which extends ``UseCaseInput``; ``output.py`` likewise ``{Name}UseCaseOutput`` on
@@ -9,50 +8,23 @@ not in ``PENDING_PORTS``:
 - nested classes are at most one level deep, and each extends the same base;
 - neither file imports anything from a context's ``application.domain``;
 - ``__init__.py`` exports exactly ``{Name}UseCase``, ``{Name}UseCaseInput`` and ``{Name}UseCaseOutput``.
-
-``PENDING_PORTS`` lists the use cases not yet migrated, as ``"<context>/<aggregate>/<use_case>"``. It is a
-literal on purpose: each migration deletes its lines, and a stale line fails ``test_pending_ports_exist``.
 """
 
 from __future__ import annotations
 
 import ast
-from typing import TYPE_CHECKING
 
 import pytest
 
-from tests.architecture.contexts import context_dir, context_names
+from tests.architecture.contexts import context_names
+from tests.architecture.inbound_ports import use_case_dirs
 
-if TYPE_CHECKING:
-    from pathlib import Path
-
-INBOUND_PORT = ("application", "port", "inbound")
 DOMAIN_MARKER = ".application.domain"
 
-PENDING_PORTS: frozenset[str] = frozenset()
 
-
-def _all_use_case_dirs() -> dict[str, Path]:
-    """Return every use-case directory of every context, keyed ``"<context>/<aggregate>/<use_case>"``."""
-    found: dict[str, Path] = {}
-    for context in context_names():
-        inbound = context_dir(context).joinpath(*INBOUND_PORT)
-        for aggregate_dir in sorted(inbound.iterdir()):
-            if not aggregate_dir.is_dir() or aggregate_dir.name == "__pycache__":
-                continue
-            for use_case_dir in sorted(aggregate_dir.iterdir()):
-                if use_case_dir.is_dir() and use_case_dir.name != "__pycache__":
-                    found[f"{context}/{aggregate_dir.name}/{use_case_dir.name}"] = use_case_dir
-    return found
-
-
-def _migrated() -> list[str]:
-    return sorted(set(_all_use_case_dirs()) - PENDING_PORTS)
-
-
-def _migrated_with_input() -> list[str]:
-    dirs = _all_use_case_dirs()
-    return [key for key in _migrated() if (dirs[key] / "input.py").is_file()]
+def _use_cases_with_input() -> list[str]:
+    dirs = use_case_dirs()
+    return [key for key in sorted(dirs) if (dirs[key] / "input.py").is_file()]
 
 
 def _prefix(key: str) -> str:
@@ -152,36 +124,30 @@ def init_export_problems(source: str, prefix: str, *, has_input: bool) -> list[s
     return problems
 
 
-def test_pending_ports_exist() -> None:
-    """Every ``PENDING_PORTS`` entry is a real use-case directory, so a stale entry fails."""
-    stale = sorted(PENDING_PORTS - set(_all_use_case_dirs()))
-    assert stale == [], f"PENDING_PORTS lists use cases that do not exist: {stale}"
-
-
 def test_use_case_scan_is_not_vacuous() -> None:
     """The scan finds use-case directories in every context, so a pass means something."""
-    found = _all_use_case_dirs()
+    found = use_case_dirs()
     assert {key.split("/", 1)[0] for key in found} == set(context_names())
 
 
-@pytest.mark.parametrize("key", _migrated_with_input())
+@pytest.mark.parametrize("key", _use_cases_with_input())
 def test_input_is_one_use_case_input_model(key: str) -> None:
     """``input.py`` defines one ``{Name}UseCaseInput`` on ``UseCaseInput``, nested classes one level deep."""
-    source = (_all_use_case_dirs()[key] / "input.py").read_text()
+    source = (use_case_dirs()[key] / "input.py").read_text()
     assert model_file_problems(source, f"{_prefix(key)}UseCaseInput", "UseCaseInput") == []
 
 
-@pytest.mark.parametrize("key", _migrated())
+@pytest.mark.parametrize("key", sorted(use_case_dirs()))
 def test_output_is_one_use_case_output_model(key: str) -> None:
     """``output.py`` defines one ``{Name}UseCaseOutput`` on ``UseCaseOutput``, nested classes one level deep."""
-    source = (_all_use_case_dirs()[key] / "output.py").read_text()
+    source = (use_case_dirs()[key] / "output.py").read_text()
     assert model_file_problems(source, f"{_prefix(key)}UseCaseOutput", "UseCaseOutput") == []
 
 
-@pytest.mark.parametrize("key", _migrated())
+@pytest.mark.parametrize("key", sorted(use_case_dirs()))
 def test_init_exports_exactly_the_three_names(key: str) -> None:
     """``__init__.py`` exports the use case, its input (when it has one) and its output, nothing else."""
-    use_case_dir = _all_use_case_dirs()[key]
+    use_case_dir = use_case_dirs()[key]
     source = (use_case_dir / "__init__.py").read_text()
     assert init_export_problems(source, _prefix(key), has_input=(use_case_dir / "input.py").is_file()) == []
 
@@ -208,7 +174,7 @@ class ListWidgetsUseCaseOutput(UseCaseOutput):
 '''
 
 
-def test_checker_accepts_a_migrated_output() -> None:
+def test_checker_accepts_a_model_output() -> None:
     """One top-level class on the base with one nested class on the same base passes."""
     assert model_file_problems(GOOD_OUTPUT, "ListWidgetsUseCaseOutput", "UseCaseOutput") == []
 

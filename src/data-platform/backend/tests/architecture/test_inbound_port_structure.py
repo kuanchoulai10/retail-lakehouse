@@ -21,11 +21,11 @@ import pytest
 
 from tests.architecture.aggregates import aggregates
 from tests.architecture.contexts import context_dir, context_module, context_names
+from tests.architecture.inbound_ports import INBOUND_PORT_ROOTS
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-INBOUND_PORT = ("application", "port", "inbound")
 REQUIRED_FILES = {"__init__.py", "input.py", "output.py", "use_case.py"}
 REQUIRED_FILES_NO_INPUT = {"__init__.py", "output.py", "use_case.py"}
 ALLOWED_FILES = REQUIRED_FILES  # input.py is optional for no-input use cases
@@ -34,11 +34,11 @@ AGGREGATE_GROUPS_NO_INPUT: set[str] = set()
 
 
 def _inbound_port_dir(context: str) -> Path:
-    return context_dir(context).joinpath(*INBOUND_PORT)
+    return context_dir(context).joinpath(*INBOUND_PORT_ROOTS)
 
 
 def _inbound_port_module(context: str) -> str:
-    return ".".join((context_module(context), *INBOUND_PORT))
+    return ".".join((context_module(context), *INBOUND_PORT_ROOTS))
 
 
 def _aggregate_groups(context: str) -> list[str]:
@@ -127,7 +127,7 @@ def test_use_case_dir_has_no_extra_files(use_case_entry: tuple[str, str, Path]):
 def _exported_classes(module_path: str) -> list[str]:
     """Return the names of the top-level classes a module defines, not the ones it imports.
 
-    A migrated port's ``output.py`` imports ``UseCaseOutput`` (and ``datetime``) at runtime, and its
+    An ``output.py`` imports ``UseCaseOutput`` (and ``datetime``) at runtime, and its
     nested classes are attributes of the output class, not of the module, so neither is listed.
     """
     mod = importlib.import_module(module_path)
@@ -173,21 +173,7 @@ def test_use_case_class_naming(use_case_entry: tuple[str, str, Path]):
     assert expected in classes, f"{use_case_dir.name}/use_case.py must export '{expected}', found: {classes}"
 
 
-# --- Rule 4: One class per file (no extra classes) ---
-
-
-@pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
-def test_output_classes_prefixed(use_case_entry: tuple[str, str, Path]):
-    """Verify that all classes in output.py are prefixed with {PascalCase(dir_name)}."""
-    context, group, use_case_dir = use_case_entry
-    prefix = _pascal_to_words(use_case_dir.name)
-    module = f"{_inbound_port_module(context)}.{group}.{use_case_dir.name}.output"
-    classes = _exported_classes(module)
-    misnamed = [c for c in classes if not c.startswith(prefix)]
-    assert misnamed == [], f"{use_case_dir.name}/output.py has classes not prefixed with '{prefix}': {misnamed}"
-
-
-# --- Rule 5: __init__.py re-exports all three symbols ---
+# --- Rule 4: __init__.py re-exports all three symbols ---
 
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
