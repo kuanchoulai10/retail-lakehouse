@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 import threading
 from typing import TYPE_CHECKING
 
+from base import InvariantViolation, UseCaseInput
 from context.table_maintenance.adapter.inbound.event_consumer import (
     EventRecord,
     run_consumer_loop,
@@ -26,6 +28,8 @@ from tests.context.table_maintenance.adapter.inbound.event_consumer.fake_event_s
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+    import pytest
 
 
 class RecordingUseCase(ProcessTableHintUseCase):
@@ -211,3 +215,40 @@ def test_stop_event_ends_loop_and_closes_source() -> None:
 
     assert use_case.calls == []
     assert source.closed
+
+
+def test_a_refused_input_from_the_use_case_is_not_retried() -> None:
+    """An InvariantViolation while the hint executes is dropped without retry and committed."""
+    record = _record(1)
+    source = FakeEventSource([record])
+    use_case = RecordingUseCase([InvariantViolation("names: Input should be a valid tuple")])
+
+    sleeps = _run(source, use_case)
+
+    assert len(use_case.calls) == 1
+    assert source.committed == [record]
+    assert sleeps == []
+
+
+class _RefusingHintInput(UseCaseInput):
+    """A stand-in for the hint input that refuses every hint, as a strict input refuses a wrong type."""
+
+    catalog: int
+    namespace: str
+    table: str | None
+    event_type: str
+
+
+def test_a_hint_input_that_cannot_be_built_is_skipped_without_retry(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An InvariantViolation while the hint input is built skips the record without calling the use case."""
+    mapper = importlib.import_module("context.table_maintenance.adapter.inbound.event_consumer.map_polaris_event")
+    monkeypatch.setattr(mapper, "ProcessTableHintUseCaseInput", _RefusingHintInput)
+    refused, good = _record(1), _record(2)
+    source = FakeEventSource([refused, good])
+    use_case = RecordingUseCase()
+
+    sleeps = _run(source, use_case)
+
+    assert use_case.calls == []
+    assert source.committed == [refused, good]
+    assert sleeps == []

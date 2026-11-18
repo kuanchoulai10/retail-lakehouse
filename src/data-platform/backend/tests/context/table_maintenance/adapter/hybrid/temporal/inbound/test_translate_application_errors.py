@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from temporalio.exceptions import ApplicationError
 
+from base import InvariantViolation, UseCaseInput
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
     translate_application_errors,
 )
@@ -39,3 +40,20 @@ def test_no_error_passes_through():
     with translate_application_errors():
         value = 1
     assert value == 1
+
+
+class _ProbeUseCaseInput(UseCaseInput):
+    """An input with one int field."""
+
+    limit: int
+
+
+def test_an_input_the_activity_cannot_build_is_non_retryable() -> None:
+    """An InvariantViolation from building an input fails the activity at once, typed by its class name."""
+    with pytest.raises(ApplicationError) as caught:
+        with translate_application_errors():
+            _ProbeUseCaseInput.from_primitives({"limit": "1"})
+    assert caught.value.non_retryable is True
+    assert caught.value.type == "InvariantViolation"
+    assert caught.value.message.startswith("limit: ")
+    assert isinstance(caught.value.__cause__, InvariantViolation)

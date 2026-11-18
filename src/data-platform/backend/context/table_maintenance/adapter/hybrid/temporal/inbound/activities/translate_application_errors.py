@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from temporalio.exceptions import ApplicationError
 
+from base import InvariantViolation
 from context.table_maintenance.application.exceptions import (
     ConflictError,
     NotFoundError,
@@ -16,7 +17,7 @@ from context.table_maintenance.application.exceptions import (
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-_NON_RETRYABLE = (ValidationError, NotFoundError, ConflictError)
+_NON_RETRYABLE = (ValidationError, InvariantViolation, NotFoundError, ConflictError)
 
 
 @contextmanager
@@ -24,8 +25,9 @@ def translate_application_errors() -> Iterator[None]:
     """Turn application errors into non-retryable Temporal application errors.
 
     A validation, not-found or conflict error cannot succeed on retry, so it fails
-    the activity at once with the exception class name as the error type. Any other
-    exception propagates unchanged and stays retryable.
+    the activity at once with the exception class name as the error type. A port
+    input the activity cannot build (``InvariantViolation``) is a validation error
+    too. Any other exception propagates unchanged and stays retryable.
     """
     try:
         yield

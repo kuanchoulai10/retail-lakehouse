@@ -16,6 +16,8 @@ Tom Hombergs ("Get Your Hands Dirty on Clean Architecture", which this backend f
 2. Validate in each service. The service then works with half-trusted data, and every service repeats the type checks the input already declares.
 3. Make the inputs and outputs Pydantic models on two `base` building blocks. One validation path for every entry point.
 
+Option 3 uses `BaseModel` subclasses, not `pydantic.dataclasses` or dataclasses validated through a `TypeAdapter`: the `InvariantViolation` guard, the inheritance-depth rule and `from_primitives` live on a `BaseModel` base, and one model type for the domain and the ports avoids two validation behaviours.
+
 ## Decision
 
 Option 3.
@@ -24,12 +26,13 @@ Option 3.
 - **One validation path.** Code builds an input by keyword. An entry point that holds a dict of JSON primitives (a Temporal activity, the event consumer) builds it with `UseCaseInput.from_primitives(data)`, which validates in strict JSON mode: an ISO string becomes a `datetime`, an array a `tuple`. A web router builds it by keyword from what FastAPI parsed.
 - **Primitives only.** Fields hold `str`, `int`, `float`, `bool`, `None`, `datetime`, `timedelta`, `list`, `tuple`, `dict`, and classes nested one level inside the input or output, named by what they hold (`ListTableCommitsUseCaseOutput.Commit`) and extending the same base. Never a domain type: adapters still never see the domain. Each `input.py` / `output.py` defines exactly one top-level class, and a use case's `__init__.py` exports exactly its use case, input and output.
 - **Services still never import Pydantic.** Ports reach Pydantic only through `base`, and services only through ports and the domain. Contract `application-outer-rings-pydantic-free` is unchanged: `service`, `port` and `exceptions` never import `pydantic` directly, and it allows indirect imports.
-- **External formats do not change.** REST bodies, Temporal payloads and the settings JSON stay the same. `activity_payload` dumps a `UseCaseOutput` with `model_dump()` and writes datetimes with `isoformat()`, exactly as it wrote a dataclass.
+- **External formats do not change.** REST bodies, Temporal payloads and the settings JSON stay the same. `activity_payload` dumps a `UseCaseOutput` with `model_dump()` and writes datetimes with `isoformat()`, exactly as it wrote a dataclass. A `float` field always serialises as a float (`1.0`), even when it was set from an int, where a dataclass passed the int through (`1`).
+- **An input that cannot be built is a client error at every edge.** A web router, a Temporal activity or the event consumer that builds a port input, or runs a use case, and gets `InvariantViolation` treats it exactly like the application `ValidationError`: the web edge answers 422 with `{"detail": <its one line>}` through the same handler, a Temporal activity fails at once with a non-retryable `ApplicationError` of type `InvariantViolation`, and the event consumer drops the hint without retry (a hint input it cannot build is skipped as a malformed event).
 - **Migrated in batches.** `tests/architecture/test_inbound_port_models.py` checks every use case not listed in its `PENDING_PORTS`; each migration deletes its lines from that list, and a stale line fails the test.
 
 ## Consequences
 
 - An invalid request fails where it is built, with the same one-line `InvariantViolation` text for every entry point.
 - Strict mode means callers pass the declared types: a service builds an output with a `tuple` for a `tuple` field, and a router converts a query list to a tuple.
-- A router that builds an input with refused data raises `InvariantViolation` in the web adapter, outside any service's error translation. No web error handler maps it today, so it answers 500; the migration decides how the web edge maps it.
+- A router that builds an input with refused data raises `InvariantViolation` in the web adapter, outside any service's error translation; each context's web error handlers map it to 422 like `ValidationError`, so it never surfaces as a 500. The same holds for Temporal (non-retryable) and the event consumer (dropped without retry).
 - Ports now depend on Pydantic, through `base`. The dependency stays in one place, the two building blocks, which ruff treats as runtime-evaluated bases so field types stay imported at runtime.

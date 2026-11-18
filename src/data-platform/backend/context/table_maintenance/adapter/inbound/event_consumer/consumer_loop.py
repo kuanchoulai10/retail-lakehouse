@@ -6,6 +6,7 @@ import logging
 import time
 from typing import TYPE_CHECKING
 
+from base import InvariantViolation
 from context.table_maintenance.adapter.inbound.event_consumer.map_polaris_event import (
     map_polaris_event,
 )
@@ -46,7 +47,7 @@ def _execute_with_retry(
     for attempt in range(1, max_attempts + 1):
         try:
             use_case.execute(hint)
-        except (ValidationError, NotFoundError, CatalogNotFoundError) as exc:
+        except (ValidationError, InvariantViolation, NotFoundError, CatalogNotFoundError) as exc:
             logger.warning("Dropping table hint %s without retry: %s", hint, exc)
             return
         except Exception:
@@ -103,7 +104,10 @@ def run_consumer_loop(
 ) -> None:
     """Feed every Polaris event to the use case until stop_event is set.
 
-    Every record is committed after handling, including skipped, failed and
+    A hint that is invalid (``ValidationError``, or ``InvariantViolation`` from a
+    port input that cannot be built) or names something unknown is dropped
+    without retry; a hint input the mapper cannot build is skipped as a malformed
+    event. Every record is committed after handling, including skipped, failed and
     exhausted ones, so one poison record cannot wedge the partition. Hints lost this
     way are recovered by the periodic catalog discovery.
     """
