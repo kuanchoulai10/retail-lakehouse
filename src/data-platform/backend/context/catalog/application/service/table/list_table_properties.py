@@ -8,7 +8,6 @@ from context.catalog.application.port.inbound.table import (
     ListTablePropertiesUseCase,
     ListTablePropertiesUseCaseInput,
     ListTablePropertiesUseCaseOutput,
-    ListTablePropertiesUseCaseOutputItem,
 )
 from context.catalog.application.service.table.load_table_and_catalog import load_table_and_catalog
 from context.catalog.application.service.table.table_id_from_parts import table_id_from_parts
@@ -37,5 +36,5 @@ class ListTablePropertiesService(ListTablePropertiesUseCase):
         return ListTablePropertiesUseCaseOutput(
             uuid=fields["uuid"],
             iceberg_version=fields["iceberg_version"],
-            items=[ListTablePropertiesUseCaseOutputItem(**item) for item in fields["items"]],
+            items=tuple(ListTablePropertiesUseCaseOutput.Property(**item) for item in fields["items"]),
         )

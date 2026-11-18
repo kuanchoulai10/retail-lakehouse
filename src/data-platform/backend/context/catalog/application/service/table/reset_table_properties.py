@@ -14,7 +14,6 @@ from context.catalog.application.port.inbound.table import (
     ResetTablePropertiesUseCase,
     ResetTablePropertiesUseCaseInput,
     ResetTablePropertiesUseCaseOutput,
-    ResetTablePropertiesUseCaseOutputItem,
 )
 from context.catalog.application.service.table.load_table_and_catalog import load_table_and_catalog
 from context.catalog.application.service.table.table_id_from_parts import table_id_from_parts
@@ -66,5 +65,5 @@ class ResetTablePropertiesService(ResetTablePropertiesUseCase):
         return ResetTablePropertiesUseCaseOutput(
             uuid=fields["uuid"],
             iceberg_version=fields["iceberg_version"],
-            items=[ResetTablePropertiesUseCaseOutputItem(**item) for item in fields["items"]],
+            items=tuple(ResetTablePropertiesUseCaseOutput.Property(**item) for item in fields["items"]),
         )

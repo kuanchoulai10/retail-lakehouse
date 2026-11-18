@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class DeleteTableUseCaseInput:
+class DeleteTableUseCaseInput(UseCaseInput):
     """Name the table to drop."""
 
     catalog: str
-    namespace: list[str]
+    namespace: tuple[str, ...]
     name: str

@@ -22,8 +22,6 @@ from context.catalog.adapter.inbound.web.table.dto import (
 )
 from context.catalog.application.port.inbound.table import (
     CreateTableUseCaseInput,
-    CreateTableUseCaseInputPartitionField,
-    CreateTableUseCaseInputSchemaField,
     DeleteTableUseCaseInput,
     GetTableUseCaseInput,
     ListTablePropertiesUseCaseInput,
@@ -46,9 +44,9 @@ UseCases = Annotated[WebUseCases, Depends(use_cases_dependency)]
 _SEPARATOR = "\x1f"
 
 
-def _parts(namespace: str) -> list[str]:
+def _parts(namespace: str) -> tuple[str, ...]:
     """Split a path namespace, its parts joined by U+001F (%1F), into its parts."""
-    return namespace.split(_SEPARATOR) if namespace else []
+    return tuple(namespace.split(_SEPARATOR)) if namespace else ()
 
 
 def _properties_response(
@@ -78,14 +76,14 @@ def create_table(
             catalog=catalog,
             namespace=_parts(namespace),
             name=body.name,
-            schema_fields=[
-                CreateTableUseCaseInputSchemaField(name=f.name, type=f.type, required=f.required, doc=f.doc)
+            schema_fields=tuple(
+                CreateTableUseCaseInput.SchemaField(name=f.name, type=f.type, required=f.required, doc=f.doc)
                 for f in body.schema_fields
-            ],
-            partition_fields=[
-                CreateTableUseCaseInputPartitionField(source_column=f.source_column, transform=f.transform)
+            ),
+            partition_fields=tuple(
+                CreateTableUseCaseInput.PartitionField(source_column=f.source_column, transform=f.transform)
                 for f in body.partition_fields
-            ],
+            ),
             location=body.location,
             properties=body.properties,
         )
@@ -117,7 +115,7 @@ def rename_table(
             catalog=catalog,
             namespace=_parts(namespace),
             name=table,
-            target_namespace=body.target_namespace,
+            target_namespace=tuple(body.target_namespace),
             target_name=body.target_name,
         )
     )
@@ -136,7 +134,7 @@ def update_table_properties(
             name=table,
             expected_uuid=body.expected_uuid,
             updates=body.updates,
-            removals=body.removals,
+            removals=tuple(body.removals),
         )
     )
     return CatalogTableApiResponse.model_validate(output)
@@ -164,7 +162,7 @@ def reset_table_properties(
             namespace=_parts(namespace),
             name=table,
             expected_uuid=body.expected_uuid,
-            keys=body.keys,
+            keys=tuple(body.keys),
         )
     )
     return _properties_response(output)

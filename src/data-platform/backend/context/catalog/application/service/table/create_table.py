@@ -18,11 +18,10 @@ from context.catalog.application.service.table.table_id_from_parts import table_
 from context.catalog.application.service.table.table_output_fields import table_output_fields
 
 if TYPE_CHECKING:
-    from context.catalog.application.port.inbound.table import CreateTableUseCaseInputSchemaField
     from context.catalog.application.port.outbound.table import TablesRepo
 
 
-def _schema(requested: list[CreateTableUseCaseInputSchemaField]) -> Schema:
+def _schema(requested: tuple[CreateTableUseCaseInput.SchemaField, ...]) -> Schema:
     """Number the form's columns 1, 2, ... and refuse an empty, blank or duplicate one."""
     if not requested:
         raise ValidationError("a table needs at least one field")

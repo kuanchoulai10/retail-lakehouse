@@ -27,4 +27,4 @@ class RenameTableService(RenameTableUseCase):
         source = table_id_from_parts(request.catalog, request.namespace, request.name)
         target = table_id_from_parts(request.catalog, request.target_namespace, request.target_name)
         self._tables_repo.rename(source, target)
-        return RenameTableUseCaseOutput(catalog=target.catalog, namespace=list(target.namespace), name=target.name)
+        return RenameTableUseCaseOutput(catalog=target.catalog, namespace=tuple(target.namespace), name=target.name)

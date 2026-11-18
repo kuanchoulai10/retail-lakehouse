@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class ResetTablePropertiesUseCaseInput:
+class ResetTablePropertiesUseCaseInput(UseCaseInput):
     """Carry the keys to reset to default and the loaded uuid.
 
     ``expected_uuid`` is the uuid of the table as it was loaded; the reset is refused when the
@@ -14,7 +13,7 @@ class ResetTablePropertiesUseCaseInput:
     """
 
     catalog: str
-    namespace: list[str]
+    namespace: tuple[str, ...]
     name: str
     expected_uuid: str
-    keys: list[str]
+    keys: tuple[str, ...]

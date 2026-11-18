@@ -170,7 +170,7 @@ class CatalogTableApiResponse(BaseModel):
     location: str
     current_snapshot_id: SnapshotIdText | None
     last_updated_ms: int
-    table_schema: SchemaApiResponse = Field(alias="schema")
+    table_schema: SchemaApiResponse = Field(serialization_alias="schema")
     partition_spec: PartitionSpecApiResponse
     sort_order: SortOrderApiResponse
     snapshots: list[SnapshotApiResponse]

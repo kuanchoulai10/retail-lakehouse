@@ -9,7 +9,9 @@ from context.catalog.application.exceptions import ValidationError
 from context.catalog.application.port.outbound.table import PartitionField, PartitionSpec
 
 if TYPE_CHECKING:
-    from context.catalog.application.port.inbound.table import CreateTableUseCaseInputPartitionField
+    from collections.abc import Sequence
+
+    from context.catalog.application.port.inbound.table import CreateTableUseCaseInput
     from context.catalog.application.port.outbound.table import Schema
 
 _FIRST_PARTITION_FIELD_ID = 1000
@@ -26,7 +28,7 @@ def _field_name(source: str, transform: str) -> str:
 
 
 def partition_spec_from_request(
-    schema: Schema, partition_fields: list[CreateTableUseCaseInputPartitionField]
+    schema: Schema, partition_fields: Sequence[CreateTableUseCaseInput.PartitionField]
 ) -> PartitionSpec:
     """Build spec 0 from the form's partition fields, or raise ValidationError.
 

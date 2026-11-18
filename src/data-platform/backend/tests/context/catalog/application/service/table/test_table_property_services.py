@@ -7,7 +7,7 @@ import pytest
 from context.catalog.application.exceptions import ConflictError, NotFoundError, ValidationError
 from context.catalog.application.port.inbound.table import (
     ListTablePropertiesUseCaseInput,
-    ListTablePropertiesUseCaseOutputItem,
+    ListTablePropertiesUseCaseOutput,
     ResetTablePropertiesUseCaseInput,
 )
 from context.catalog.application.port.outbound.catalog import (
@@ -75,17 +75,19 @@ def _catalogs(properties: dict[str, str] | None = None) -> InMemoryCatalogsRepo:
 
 def _list(tables: InMemoryTablesRepo, catalogs: InMemoryCatalogsRepo):
     return ListTablePropertiesService(tables, catalogs).execute(
-        ListTablePropertiesUseCaseInput("sales", ["retail"], "orders")
+        ListTablePropertiesUseCaseInput(catalog="sales", namespace=("retail",), name="orders")
     )
 
 
 def _reset(tables: InMemoryTablesRepo, catalogs: InMemoryCatalogsRepo, keys: list[str], uuid: str = "u-1"):
     return ResetTablePropertiesService(tables, catalogs).execute(
-        ResetTablePropertiesUseCaseInput("sales", ["retail"], "orders", expected_uuid=uuid, keys=keys)
+        ResetTablePropertiesUseCaseInput(
+            catalog="sales", namespace=("retail",), name="orders", expected_uuid=uuid, keys=tuple(keys)
+        )
     )
 
 
-def _row(items: list, key: str):
+def _row(items: tuple, key: str):
     return next(item for item in items if item.key == key)
 
 
@@ -94,7 +96,7 @@ def test_list_returns_every_known_and_custom_property_with_its_default(tables: I
     output = _list(tables, _catalogs())
 
     assert (output.uuid, output.iceberg_version) == ("u-1", "1.10.1")
-    assert _row(output.items, "write.format.default") == ListTablePropertiesUseCaseOutputItem(
+    assert _row(output.items, "write.format.default") == ListTablePropertiesUseCaseOutput.Property(
         key="write.format.default",
         current_value="orc",
         default_value="parquet",
@@ -126,7 +128,7 @@ def test_list_unknown_table_is_not_found(tables: InMemoryTablesRepo):
     """A table that is not there is a NotFoundError."""
     with pytest.raises(NotFoundError):
         ListTablePropertiesService(tables, _catalogs()).execute(
-            ListTablePropertiesUseCaseInput("sales", ["retail"], "missing")
+            ListTablePropertiesUseCaseInput(catalog="sales", namespace=("retail",), name="missing")
         )
 
 
@@ -206,7 +208,9 @@ def test_reset_unknown_table_is_not_found(tables: InMemoryTablesRepo):
     """A table that is not there is a NotFoundError."""
     with pytest.raises(NotFoundError):
         ResetTablePropertiesService(tables, _catalogs()).execute(
-            ResetTablePropertiesUseCaseInput("sales", ["retail"], "missing", expected_uuid="u-1", keys=["owner"])
+            ResetTablePropertiesUseCaseInput(
+                catalog="sales", namespace=("retail",), name="missing", expected_uuid="u-1", keys=("owner",)
+            )
         )
 
 

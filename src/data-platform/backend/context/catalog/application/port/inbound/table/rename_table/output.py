@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class RenameTableUseCaseOutput:
+class RenameTableUseCaseOutput(UseCaseOutput):
     """Name the table where it now is."""
 
     catalog: str
-    namespace: list[str]
+    namespace: tuple[str, ...]
     name: str

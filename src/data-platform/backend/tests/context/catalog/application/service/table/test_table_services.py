@@ -9,12 +9,10 @@ import pytest
 from context.catalog.application.exceptions import ConflictError, NotFoundError, ValidationError
 from context.catalog.application.port.inbound.table import (
     CreateTableUseCaseInput,
-    CreateTableUseCaseInputPartitionField,
-    CreateTableUseCaseInputSchemaField,
     DeleteTableUseCaseInput,
     GetTableUseCaseInput,
     ListTablesUseCaseInput,
-    ListTablesUseCaseOutputItem,
+    ListTablesUseCaseOutput,
     RenameTableUseCaseInput,
     UpdateTablePropertiesUseCaseInput,
 )
@@ -40,25 +38,25 @@ from context.catalog.application.service.table import (
 if TYPE_CHECKING:
     from tests.context.catalog.fakes.in_memory_tables_repo import InMemoryTablesRepo
 
-FIELDS = [
-    CreateTableUseCaseInputSchemaField(name="order_id", type="long", required=True, doc="key"),
-    CreateTableUseCaseInputSchemaField(name="order_ts", type="timestamptz", required=False),
-]
+FIELDS = (
+    CreateTableUseCaseInput.SchemaField(name="order_id", type="long", required=True, doc="key"),
+    CreateTableUseCaseInput.SchemaField(name="order_ts", type="timestamptz", required=False),
+)
 
 
 def _create(
     repo: InMemoryTablesRepo,
     name: str = "orders",
-    fields: list[CreateTableUseCaseInputSchemaField] | None = None,
-    partition_fields: list[CreateTableUseCaseInputPartitionField] | None = None,
+    fields: tuple[CreateTableUseCaseInput.SchemaField, ...] | None = None,
+    partition_fields: tuple[CreateTableUseCaseInput.PartitionField, ...] | None = None,
 ):
     return CreateTableService(repo).execute(
         CreateTableUseCaseInput(
             catalog="sales",
-            namespace=["retail"],
+            namespace=("retail",),
             name=name,
             schema_fields=FIELDS if fields is None else fields,
-            partition_fields=partition_fields or [],
+            partition_fields=partition_fields or (),
             location=None,
             properties={"owner": "data-eng"},
         )
@@ -100,14 +98,14 @@ def test_create_table_assigns_field_ids_and_builds_the_partition_spec(tables_rep
     """Fields get ids 1..n in form order; each partition field points at its source column by id."""
     output = _create(
         tables_repo,
-        partition_fields=[
-            CreateTableUseCaseInputPartitionField(source_column="order_ts", transform="day"),
-            CreateTableUseCaseInputPartitionField(source_column="order_id", transform="bucket[16]"),
-            CreateTableUseCaseInputPartitionField(source_column="order_id", transform="identity"),
-        ],
+        partition_fields=(
+            CreateTableUseCaseInput.PartitionField(source_column="order_ts", transform="day"),
+            CreateTableUseCaseInput.PartitionField(source_column="order_id", transform="bucket[16]"),
+            CreateTableUseCaseInput.PartitionField(source_column="order_id", transform="identity"),
+        ),
     )
 
-    assert output.schema["fields"] == [
+    assert output.table_schema["fields"] == [
         {"id": 1, "name": "order_id", "type": "long", "required": True, "doc": "key"},
         {"id": 2, "name": "order_ts", "type": "timestamptz", "required": False, "doc": None},
     ]
@@ -125,30 +123,36 @@ def test_create_table_assigns_field_ids_and_builds_the_partition_spec(tables_rep
 def test_create_table_needs_a_field(tables_repo: InMemoryTablesRepo):
     """A table without schema fields is refused."""
     with pytest.raises(ValidationError, match="at least one field"):
-        _create(tables_repo, fields=[])
+        _create(tables_repo, fields=())
 
 
 def test_create_table_refuses_duplicate_or_blank_field_names(tables_repo: InMemoryTablesRepo):
     """Field names are unique and not blank, and a field has a type."""
     with pytest.raises(ValidationError, match="duplicate"):
-        _create(tables_repo, fields=[FIELDS[0], FIELDS[0]])
+        _create(tables_repo, fields=(FIELDS[0], FIELDS[0]))
     with pytest.raises(ValidationError, match="blank"):
-        _create(tables_repo, fields=[CreateTableUseCaseInputSchemaField(name=" ", type="long")])
+        _create(tables_repo, fields=(CreateTableUseCaseInput.SchemaField(name=" ", type="long"),))
     with pytest.raises(ValidationError, match="type"):
-        _create(tables_repo, fields=[CreateTableUseCaseInputSchemaField(name="a", type=" ")])
+        _create(tables_repo, fields=(CreateTableUseCaseInput.SchemaField(name="a", type=" "),))
 
 
 def test_create_table_refuses_an_unknown_partition_source(tables_repo: InMemoryTablesRepo):
     """A partition field must name a schema field."""
     with pytest.raises(ValidationError, match="nope"):
-        _create(tables_repo, partition_fields=[CreateTableUseCaseInputPartitionField("nope", "identity")])
+        _create(
+            tables_repo,
+            partition_fields=(CreateTableUseCaseInput.PartitionField(source_column="nope", transform="identity"),),
+        )
 
 
 @pytest.mark.parametrize("transform", ["bucket", "bucket[0]", "truncate[x]", "weekly", ""])
 def test_create_table_refuses_an_unknown_transform(tables_repo: InMemoryTablesRepo, transform: str):
     """Only the Iceberg partition transforms are allowed."""
     with pytest.raises(ValidationError, match="transform"):
-        _create(tables_repo, partition_fields=[CreateTableUseCaseInputPartitionField("order_id", transform)])
+        _create(
+            tables_repo,
+            partition_fields=(CreateTableUseCaseInput.PartitionField(source_column="order_id", transform=transform),),
+        )
 
 
 def test_create_existing_table_is_a_conflict(tables_repo: InMemoryTablesRepo):
@@ -163,9 +167,11 @@ def test_get_table_maps_snapshots_and_summary_of_the_current_snapshot(tables_rep
     """Get returns primitives only: snapshots as dicts and the counts of the current snapshot."""
     _with_snapshots(tables_repo)
 
-    output = GetTableService(tables_repo).execute(GetTableUseCaseInput("sales", ["retail"], "orders"))
+    output = GetTableService(tables_repo).execute(
+        GetTableUseCaseInput(catalog="sales", namespace=("retail",), name="orders")
+    )
 
-    assert (output.catalog, output.namespace, output.name, output.uuid) == ("sales", ["retail"], "orders", "u-1")
+    assert (output.catalog, output.namespace, output.name, output.uuid) == ("sales", ("retail",), "orders", "u-1")
     assert output.current_snapshot_id == 2
     assert output.snapshots[1] == {
         "id": 2,
@@ -176,26 +182,34 @@ def test_get_table_maps_snapshots_and_summary_of_the_current_snapshot(tables_rep
     }
     assert output.summary == {"total_records": 9, "total_data_files": 3, "total_files_size": 300}
     assert output.sort_order == {"order_id": 0, "fields": []}
+    assert output.table_schema == {
+        "schema_id": 0,
+        "fields": [{"id": 1, "name": "order_id", "type": "long", "required": True, "doc": None}],
+    }
 
 
 def test_get_unknown_table_is_not_found(tables_repo: InMemoryTablesRepo):
     """A missing table raises NotFoundError naming it."""
     with pytest.raises(NotFoundError, match="orders"):
-        GetTableService(tables_repo).execute(GetTableUseCaseInput("sales", ["retail"], "orders"))
+        GetTableService(tables_repo).execute(
+            GetTableUseCaseInput(catalog="sales", namespace=("retail",), name="orders")
+        )
 
 
 def test_list_tables_returns_the_tables_of_the_namespace(tables_repo: InMemoryTablesRepo):
     """Listing returns the ids of the namespace's tables, not those of other namespaces."""
     _create(tables_repo, name="orders")
     _create(tables_repo, name="items")
-    CreateTableService(tables_repo).execute(CreateTableUseCaseInput("sales", ["other"], "x", schema_fields=FIELDS))
+    CreateTableService(tables_repo).execute(
+        CreateTableUseCaseInput(catalog="sales", namespace=("other",), name="x", schema_fields=FIELDS)
+    )
 
-    output = ListTablesService(tables_repo).execute(ListTablesUseCaseInput("sales", ["retail"]))
+    output = ListTablesService(tables_repo).execute(ListTablesUseCaseInput(catalog="sales", namespace=("retail",)))
 
-    assert output.items == [
-        ListTablesUseCaseOutputItem("sales", ["retail"], "items"),
-        ListTablesUseCaseOutputItem("sales", ["retail"], "orders"),
-    ]
+    assert output.items == (
+        ListTablesUseCaseOutput.Table(catalog="sales", namespace=("retail",), name="items"),
+        ListTablesUseCaseOutput.Table(catalog="sales", namespace=("retail",), name="orders"),
+    )
 
 
 def test_delete_table_removes_it(tables_repo: InMemoryTablesRepo):
@@ -203,11 +217,11 @@ def test_delete_table_removes_it(tables_repo: InMemoryTablesRepo):
     _create(tables_repo)
     service = DeleteTableService(tables_repo)
 
-    service.execute(DeleteTableUseCaseInput("sales", ["retail"], "orders"))
+    service.execute(DeleteTableUseCaseInput(catalog="sales", namespace=("retail",), name="orders"))
 
     assert tables_repo.items == {}
     with pytest.raises(NotFoundError):
-        service.execute(DeleteTableUseCaseInput("sales", ["retail"], "orders"))
+        service.execute(DeleteTableUseCaseInput(catalog="sales", namespace=("retail",), name="orders"))
 
 
 def test_rename_table_moves_it_to_the_target(tables_repo: InMemoryTablesRepo):
@@ -215,10 +229,16 @@ def test_rename_table_moves_it_to_the_target(tables_repo: InMemoryTablesRepo):
     _create(tables_repo)
 
     output = RenameTableService(tables_repo).execute(
-        RenameTableUseCaseInput("sales", ["retail"], "orders", target_namespace=["archive"], target_name="orders_old")
+        RenameTableUseCaseInput(
+            catalog="sales",
+            namespace=("retail",),
+            name="orders",
+            target_namespace=("archive",),
+            target_name="orders_old",
+        )
     )
 
-    assert (output.catalog, output.namespace, output.name) == ("sales", ["archive"], "orders_old")
+    assert (output.catalog, output.namespace, output.name) == ("sales", ("archive",), "orders_old")
     assert list(tables_repo.items) == [TableId.of("sales", ("archive",), "orders_old").value]
 
 
@@ -228,7 +248,9 @@ def test_rename_table_validates_the_target(tables_repo: InMemoryTablesRepo):
 
     with pytest.raises(ValidationError):
         RenameTableService(tables_repo).execute(
-            RenameTableUseCaseInput("sales", ["retail"], "orders", target_namespace=["retail"], target_name=" ")
+            RenameTableUseCaseInput(
+                catalog="sales", namespace=("retail",), name="orders", target_namespace=("retail",), target_name=" "
+            )
         )
 
 
@@ -238,23 +260,35 @@ def test_update_properties_applies_the_change(tables_repo: InMemoryTablesRepo):
 
     output = UpdateTablePropertiesService(tables_repo).execute(
         UpdateTablePropertiesUseCaseInput(
-            "sales", ["retail"], "orders", expected_uuid=created.uuid, updates={"tier": "gold"}, removals=["owner"]
+            catalog="sales",
+            namespace=("retail",),
+            name="orders",
+            expected_uuid=created.uuid,
+            updates={"tier": "gold"},
+            removals=("owner",),
         )
     )
 
     assert output.properties == {"tier": "gold"}
+    assert output.table_schema["fields"][0]["name"] == "order_id"
 
 
 def test_update_properties_conflict_on_replaced_table(tables_repo: InMemoryTablesRepo):
     """A table dropped and created again under the same name is another table: the save is refused."""
     loaded = _create(tables_repo)
-    DeleteTableService(tables_repo).execute(DeleteTableUseCaseInput("sales", ["retail"], "orders"))
+    DeleteTableService(tables_repo).execute(
+        DeleteTableUseCaseInput(catalog="sales", namespace=("retail",), name="orders")
+    )
     _create(tables_repo)
 
     with pytest.raises(ConflictError) as raised:
         UpdateTablePropertiesService(tables_repo).execute(
             UpdateTablePropertiesUseCaseInput(
-                "sales", ["retail"], "orders", expected_uuid=loaded.uuid, updates={"tier": "gold"}
+                catalog="sales",
+                namespace=("retail",),
+                name="orders",
+                expected_uuid=loaded.uuid,
+                updates={"tier": "gold"},
             )
         )
     assert str(raised.value) == "table orders changed since you loaded it, reload"
@@ -267,7 +301,12 @@ def test_update_properties_refuses_a_key_both_set_and_removed(tables_repo: InMem
     with pytest.raises(ValidationError, match="tier"):
         UpdateTablePropertiesService(tables_repo).execute(
             UpdateTablePropertiesUseCaseInput(
-                "sales", ["retail"], "orders", expected_uuid=created.uuid, updates={"tier": "g"}, removals=["tier"]
+                catalog="sales",
+                namespace=("retail",),
+                name="orders",
+                expected_uuid=created.uuid,
+                updates={"tier": "g"},
+                removals=("tier",),
             )
         )
 
@@ -278,7 +317,7 @@ def test_update_properties_needs_the_loaded_uuid(tables_repo: InMemoryTablesRepo
 
     with pytest.raises(ValidationError, match="expected_uuid"):
         UpdateTablePropertiesService(tables_repo).execute(
-            UpdateTablePropertiesUseCaseInput("sales", ["retail"], "orders", expected_uuid=" ")
+            UpdateTablePropertiesUseCaseInput(catalog="sales", namespace=("retail",), name="orders", expected_uuid=" ")
         )
 
 
@@ -297,3 +336,12 @@ def test_table_id_from_parts_refuses_the_unit_separator_anywhere(catalog: str, n
     """U+001F in the catalog, a part or the name is a validation error, never another table's id."""
     with pytest.raises(ValidationError, match="must not contain the unit separator U\\+001F"):
         table_id_from_parts(catalog, namespace, name)
+
+
+def test_get_unknown_table_names_the_namespace_as_a_list(tables_repo: InMemoryTablesRepo):
+    """The 404 text prints the namespace parts as a list, as the REST detail always did."""
+    with pytest.raises(NotFoundError) as raised:
+        GetTableService(tables_repo).execute(
+            GetTableUseCaseInput(catalog="sales", namespace=("a", "b.c"), name="orders")
+        )
+    assert str(raised.value) == "table orders not found in namespace ['a', 'b.c'] of catalog sales"

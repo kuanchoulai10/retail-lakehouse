@@ -2,20 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class ListTablesUseCaseOutputItem:
-    """One table of the listing, by identity only."""
-
-    catalog: str
-    namespace: list[str]
-    name: str
-
-
-@dataclass(frozen=True)
-class ListTablesUseCaseOutput:
+class ListTablesUseCaseOutput(UseCaseOutput):
     """Carry the listing."""
 
-    items: list[ListTablesUseCaseOutputItem]
+    class Table(UseCaseOutput):
+        """One table of the listing, by identity only."""
+
+        catalog: str
+        namespace: tuple[str, ...]
+        name: str
+
+    items: tuple[Table, ...]

@@ -355,3 +355,4 @@ def test_create_input_repr_leaves_out_the_connection_secrets():
     request = _create_input(type="EXTERNAL", connection_config=OAUTH_CONNECTION)
 
     assert "remote-s3cr3t" not in repr(request)
+    assert "remote-s3cr3t" not in str(request)

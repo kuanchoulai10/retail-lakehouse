@@ -21,7 +21,7 @@ def table_property_output_fields(table: Table, catalog: Catalog) -> dict[str, An
     return {
         "uuid": table.uuid,
         "iceberg_version": catalogue.iceberg_version,
-        "items": [
+        "items": tuple(
             {
                 "key": row.key,
                 "current_value": row.current_value,
@@ -33,5 +33,5 @@ def table_property_output_fields(table: Table, catalog: Catalog) -> dict[str, An
                 "description": row.description,
             }
             for row in resolve_table_properties(table, catalog, catalogue)
-        ],
+        ),
     }

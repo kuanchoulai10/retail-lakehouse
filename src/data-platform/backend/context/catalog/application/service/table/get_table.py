@@ -29,6 +29,6 @@ class GetTableService(GetTableUseCase):
         table = self._tables_repo.get(table_id_from_parts(request.catalog, request.namespace, request.name))
         if table is None:
             raise NotFoundError(
-                f"table {request.name} not found in namespace {request.namespace} of catalog {request.catalog}"
+                f"table {request.name} not found in namespace {list(request.namespace)} of catalog {request.catalog}"
             )
         return GetTableUseCaseOutput(**table_output_fields(table))

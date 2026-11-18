@@ -5,7 +5,6 @@ from context.catalog.application.port.inbound.table.list_table_properties.input 
 )
 from context.catalog.application.port.inbound.table.list_table_properties.output import (
     ListTablePropertiesUseCaseOutput,
-    ListTablePropertiesUseCaseOutputItem,
 )
 from context.catalog.application.port.inbound.table.list_table_properties.use_case import (
     ListTablePropertiesUseCase,
@@ -15,5 +14,4 @@ __all__ = [
     "ListTablePropertiesUseCase",
     "ListTablePropertiesUseCaseInput",
     "ListTablePropertiesUseCaseOutput",
-    "ListTablePropertiesUseCaseOutputItem",
 ]

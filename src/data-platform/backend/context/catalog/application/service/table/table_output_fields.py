@@ -12,14 +12,14 @@ def table_output_fields(table: Table) -> dict[str, Any]:
     """Return the primitive fields shared by the Get, Create and UpdateProperties table outputs."""
     return {
         "catalog": table.id.catalog,
-        "namespace": list(table.id.namespace),
+        "namespace": tuple(table.id.namespace),
         "name": table.id.name,
         "uuid": table.uuid,
         "format_version": table.format_version,
         "location": table.location,
         "current_snapshot_id": table.current_snapshot_id,
         "last_updated_ms": table.last_updated_ms,
-        "schema": {
+        "table_schema": {
             "schema_id": table.current_schema.schema_id,
             "fields": [
                 {"id": f.id, "name": f.name, "type": f.type, "required": f.required, "doc": f.doc}
@@ -45,7 +45,7 @@ def table_output_fields(table: Table) -> dict[str, Any]:
                 for f in table.sort_order.fields
             ],
         },
-        "snapshots": [
+        "snapshots": tuple(
             {
                 "id": s.snapshot_id,
                 "parent_id": s.parent_id,
@@ -54,7 +54,7 @@ def table_output_fields(table: Table) -> dict[str, Any]:
                 "summary": dict(s.summary),
             }
             for s in table.snapshots
-        ],
+        ),
         "properties": dict(table.properties),
         "summary": {
             "total_records": table.summary.total_records,

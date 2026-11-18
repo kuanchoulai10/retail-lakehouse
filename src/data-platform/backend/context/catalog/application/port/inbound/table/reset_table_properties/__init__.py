@@ -5,7 +5,6 @@ from context.catalog.application.port.inbound.table.reset_table_properties.input
 )
 from context.catalog.application.port.inbound.table.reset_table_properties.output import (
     ResetTablePropertiesUseCaseOutput,
-    ResetTablePropertiesUseCaseOutputItem,
 )
 from context.catalog.application.port.inbound.table.reset_table_properties.use_case import (
     ResetTablePropertiesUseCase,
@@ -15,5 +14,4 @@ __all__ = [
     "ResetTablePropertiesUseCase",
     "ResetTablePropertiesUseCaseInput",
     "ResetTablePropertiesUseCaseOutput",
-    "ResetTablePropertiesUseCaseOutputItem",
 ]

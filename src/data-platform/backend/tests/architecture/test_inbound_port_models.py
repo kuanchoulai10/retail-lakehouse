@@ -31,14 +31,6 @@ DOMAIN_MARKER = ".application.domain"
 
 PENDING_PORTS: frozenset[str] = frozenset(
     {
-        "catalog/table/create_table",
-        "catalog/table/delete_table",
-        "catalog/table/get_table",
-        "catalog/table/list_table_properties",
-        "catalog/table/list_tables",
-        "catalog/table/rename_table",
-        "catalog/table/reset_table_properties",
-        "catalog/table/update_table_properties",
         "table_maintenance/compaction_candidate/list_compaction_candidates",
         "table_maintenance/compaction_candidate/release_compaction_candidates",
         "table_maintenance/compaction_round/get_compaction_round",

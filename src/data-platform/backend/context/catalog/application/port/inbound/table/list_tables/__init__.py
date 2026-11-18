@@ -5,7 +5,6 @@ from context.catalog.application.port.inbound.table.list_tables.input import (
 )
 from context.catalog.application.port.inbound.table.list_tables.output import (
     ListTablesUseCaseOutput,
-    ListTablesUseCaseOutputItem,
 )
 from context.catalog.application.port.inbound.table.list_tables.use_case import (
     ListTablesUseCase,
@@ -15,5 +14,4 @@ __all__ = [
     "ListTablesUseCase",
     "ListTablesUseCaseInput",
     "ListTablesUseCaseOutput",
-    "ListTablesUseCaseOutputItem",
 ]

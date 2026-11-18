@@ -7,8 +7,6 @@ from typing import Any
 from context.catalog.application.exceptions import ConflictError, NotFoundError, ValidationError
 from context.catalog.application.port.inbound.table import (
     CreateTableUseCaseInput,
-    CreateTableUseCaseInputPartitionField,
-    CreateTableUseCaseInputSchemaField,
     CreateTableUseCaseOutput,
     DeleteTableUseCaseInput,
     DeleteTableUseCaseOutput,
@@ -16,15 +14,12 @@ from context.catalog.application.port.inbound.table import (
     GetTableUseCaseOutput,
     ListTablePropertiesUseCaseInput,
     ListTablePropertiesUseCaseOutput,
-    ListTablePropertiesUseCaseOutputItem,
     ListTablesUseCaseInput,
     ListTablesUseCaseOutput,
-    ListTablesUseCaseOutputItem,
     RenameTableUseCaseInput,
     RenameTableUseCaseOutput,
     ResetTablePropertiesUseCaseInput,
     ResetTablePropertiesUseCaseOutput,
-    ResetTablePropertiesUseCaseOutputItem,
     UpdateTablePropertiesUseCaseInput,
     UpdateTablePropertiesUseCaseOutput,
 )
@@ -61,9 +56,17 @@ def _fields() -> dict[str, Any]:
     }
 
 
+def _port(body: dict[str, Any]) -> dict[str, Any]:
+    """Turn a REST-shaped table body into the output fields: tuples, and ``table_schema`` for ``schema``."""
+    fields = {("table_schema" if key == "schema" else key): value for key, value in body.items()}
+    fields["namespace"] = tuple(fields["namespace"])
+    fields["snapshots"] = tuple(fields["snapshots"])
+    return fields
+
+
 def test_get_table_returns_every_panel_field():
     """Get returns the table with schema, spec, order, snapshots, properties and summary."""
-    stub = StubUseCase(GetTableUseCaseOutput(**_fields()))
+    stub = StubUseCase(GetTableUseCaseOutput(**_port(_fields())))
 
     response = build_client(get_table=stub).get(f"{BASE}/orders")
 
@@ -72,7 +75,7 @@ def test_get_table_returns_every_panel_field():
     expected["current_snapshot_id"] = "2"
     expected["snapshots"][0]["id"] = "2"
     assert response.json() == expected
-    assert stub.requests == [GetTableUseCaseInput("sales", ["retail"], "orders")]
+    assert stub.requests == [GetTableUseCaseInput(catalog="sales", namespace=("retail",), name="orders")]
 
 
 def test_snapshot_ids_above_two_to_the_53_are_exact_strings():
@@ -90,7 +93,7 @@ def test_snapshot_ids_above_two_to_the_53_are_exact_strings():
         {"id": 8333017788700497002, "parent_id": None, "timestamp_ms": 10, "operation": "append", "summary": {}},
     ]
 
-    response = build_client(get_table=StubUseCase(GetTableUseCaseOutput(**fields))).get(f"{BASE}/orders")
+    response = build_client(get_table=StubUseCase(GetTableUseCaseOutput(**_port(fields)))).get(f"{BASE}/orders")
 
     body = response.json()
     assert body["current_snapshot_id"] == "3051729675574597004"
@@ -105,7 +108,7 @@ def test_table_without_a_current_snapshot_has_a_null_id():
     fields = _fields()
     fields["current_snapshot_id"] = None
 
-    response = build_client(get_table=StubUseCase(GetTableUseCaseOutput(**fields))).get(f"{BASE}/orders")
+    response = build_client(get_table=StubUseCase(GetTableUseCaseOutput(**_port(fields)))).get(f"{BASE}/orders")
 
     assert response.json()["current_snapshot_id"] is None
 
@@ -121,26 +124,30 @@ def test_get_unknown_table_returns_404():
 
 def test_table_route_splits_the_namespace_on_the_unit_separator():
     """``a%1Fb.c`` in the path is the parts a and b.c."""
-    stub = StubUseCase(GetTableUseCaseOutput(**_fields()))
+    stub = StubUseCase(GetTableUseCaseOutput(**_port(_fields())))
 
     build_client(get_table=stub).get("/v1/catalogs/sales/namespaces/a%1Fb.c/tables/orders")
 
-    assert stub.requests == [GetTableUseCaseInput("sales", ["a", "b.c"], "orders")]
+    assert stub.requests == [GetTableUseCaseInput(catalog="sales", namespace=("a", "b.c"), name="orders")]
 
 
 def test_list_tables():
     """Listing returns the identifiers."""
-    stub = StubUseCase(ListTablesUseCaseOutput([ListTablesUseCaseOutputItem("sales", ["retail"], "orders")]))
+    stub = StubUseCase(
+        ListTablesUseCaseOutput(
+            items=(ListTablesUseCaseOutput.Table(catalog="sales", namespace=("retail",), name="orders"),)
+        )
+    )
 
     response = build_client(list_tables=stub).get(BASE)
 
     assert response.json() == [{"catalog": "sales", "namespace": ["retail"], "name": "orders"}]
-    assert stub.requests == [ListTablesUseCaseInput("sales", ["retail"])]
+    assert stub.requests == [ListTablesUseCaseInput(catalog="sales", namespace=("retail",))]
 
 
 def test_create_table_returns_201_and_passes_the_form():
     """Create passes name, schema fields, partition fields, location and properties."""
-    stub = StubUseCase(CreateTableUseCaseOutput(**_fields()))
+    stub = StubUseCase(CreateTableUseCaseOutput(**_port(_fields())))
 
     response = build_client(create_table=stub).post(
         BASE,
@@ -158,10 +165,14 @@ def test_create_table_returns_201_and_passes_the_form():
     assert stub.requests == [
         CreateTableUseCaseInput(
             catalog="sales",
-            namespace=["retail"],
+            namespace=("retail",),
             name="orders",
-            schema_fields=[CreateTableUseCaseInputSchemaField("order_id", "long", True, "key")],
-            partition_fields=[CreateTableUseCaseInputPartitionField("order_id", "bucket[16]")],
+            schema_fields=(
+                CreateTableUseCaseInput.SchemaField(name="order_id", type="long", required=True, doc="key"),
+            ),
+            partition_fields=(
+                CreateTableUseCaseInput.PartitionField(source_column="order_id", transform="bucket[16]"),
+            ),
             location="s3://w/custom",
             properties={"owner": "data-eng"},
         )
@@ -187,12 +198,12 @@ def test_delete_table_returns_204():
     response = build_client(delete_table=stub).delete(f"{BASE}/orders")
 
     assert response.status_code == 204
-    assert stub.requests == [DeleteTableUseCaseInput("sales", ["retail"], "orders")]
+    assert stub.requests == [DeleteTableUseCaseInput(catalog="sales", namespace=("retail",), name="orders")]
 
 
 def test_rename_table_returns_the_new_identity():
     """Rename passes the target and returns where the table now is."""
-    stub = StubUseCase(RenameTableUseCaseOutput("sales", ["archive"], "orders_old"))
+    stub = StubUseCase(RenameTableUseCaseOutput(catalog="sales", namespace=("archive",), name="orders_old"))
 
     response = build_client(rename_table=stub).post(
         f"{BASE}/orders/rename", json={"target_namespace": ["archive"], "target_name": "orders_old"}
@@ -200,12 +211,20 @@ def test_rename_table_returns_the_new_identity():
 
     assert response.status_code == 200
     assert response.json() == {"catalog": "sales", "namespace": ["archive"], "name": "orders_old"}
-    assert stub.requests == [RenameTableUseCaseInput("sales", ["retail"], "orders", ["archive"], "orders_old")]
+    assert stub.requests == [
+        RenameTableUseCaseInput(
+            catalog="sales",
+            namespace=("retail",),
+            name="orders",
+            target_namespace=("archive",),
+            target_name="orders_old",
+        )
+    ]
 
 
 def test_update_table_properties_passes_the_loaded_uuid():
     """PUT /properties passes the expected uuid, updates and removals."""
-    stub = StubUseCase(UpdateTablePropertiesUseCaseOutput(**_fields()))
+    stub = StubUseCase(UpdateTablePropertiesUseCaseOutput(**_port(_fields())))
 
     response = build_client(update_table_properties=stub).put(
         f"{BASE}/orders/properties", json={"expected_uuid": "u-1", "updates": {"tier": "gold"}, "removals": ["x"]}
@@ -213,7 +232,14 @@ def test_update_table_properties_passes_the_loaded_uuid():
 
     assert response.status_code == 200
     assert stub.requests == [
-        UpdateTablePropertiesUseCaseInput("sales", ["retail"], "orders", "u-1", {"tier": "gold"}, ["x"])
+        UpdateTablePropertiesUseCaseInput(
+            catalog="sales",
+            namespace=("retail",),
+            name="orders",
+            expected_uuid="u-1",
+            updates={"tier": "gold"},
+            removals=("x",),
+        )
     ]
 
 
@@ -258,7 +284,10 @@ def test_list_table_properties_returns_every_row_with_its_default():
         ListTablePropertiesUseCaseOutput(
             uuid="u-1",
             iceberg_version="1.10.1",
-            items=[ListTablePropertiesUseCaseOutputItem(**_PROPERTY), ListTablePropertiesUseCaseOutputItem(**_CUSTOM)],
+            items=(
+                ListTablePropertiesUseCaseOutput.Property(**_PROPERTY),
+                ListTablePropertiesUseCaseOutput.Property(**_CUSTOM),
+            ),
         )
     )
 
@@ -266,7 +295,7 @@ def test_list_table_properties_returns_every_row_with_its_default():
 
     assert response.status_code == 200
     assert response.json() == {"uuid": "u-1", "iceberg_version": "1.10.1", "properties": [_PROPERTY, _CUSTOM]}
-    assert stub.requests == [ListTablePropertiesUseCaseInput("sales", ["retail"], "orders")]
+    assert stub.requests == [ListTablePropertiesUseCaseInput(catalog="sales", namespace=("retail",), name="orders")]
 
 
 def test_list_table_properties_of_unknown_table_is_404():
@@ -282,7 +311,7 @@ def test_reset_table_properties_passes_the_keys_and_the_loaded_uuid():
     """POST /properties/reset passes the expected uuid and keys, and answers the rows as saved."""
     stub = StubUseCase(
         ResetTablePropertiesUseCaseOutput(
-            uuid="u-1", iceberg_version="1.10.1", items=[ResetTablePropertiesUseCaseOutputItem(**_CUSTOM)]
+            uuid="u-1", iceberg_version="1.10.1", items=(ResetTablePropertiesUseCaseOutput.Property(**_CUSTOM),)
         )
     )
 
@@ -293,7 +322,9 @@ def test_reset_table_properties_passes_the_keys_and_the_loaded_uuid():
     assert response.status_code == 200
     assert response.json() == {"uuid": "u-1", "iceberg_version": "1.10.1", "properties": [_CUSTOM]}
     assert stub.requests == [
-        ResetTablePropertiesUseCaseInput("sales", ["retail"], "orders", "u-1", ["write.format.default"])
+        ResetTablePropertiesUseCaseInput(
+            catalog="sales", namespace=("retail",), name="orders", expected_uuid="u-1", keys=("write.format.default",)
+        )
     ]
 
 

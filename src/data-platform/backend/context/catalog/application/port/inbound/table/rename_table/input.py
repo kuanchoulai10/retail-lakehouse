@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class RenameTableUseCaseInput:
+class RenameTableUseCaseInput(UseCaseInput):
     """Name the table and where it goes: ``target_namespace`` (parts) and ``target_name`` in the same catalog."""
 
     catalog: str
-    namespace: list[str]
+    namespace: tuple[str, ...]
     name: str
-    target_namespace: list[str]
+    target_namespace: tuple[str, ...]
     target_name: str

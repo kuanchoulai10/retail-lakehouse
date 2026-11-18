@@ -8,7 +8,6 @@ from context.catalog.application.port.inbound.table import (
     ListTablesUseCase,
     ListTablesUseCaseInput,
     ListTablesUseCaseOutput,
-    ListTablesUseCaseOutputItem,
 )
 from context.catalog.application.service.namespace import namespace_id_from_parts
 
@@ -27,7 +26,8 @@ class ListTablesService(ListTablesUseCase):
         """Validate the namespace and return its tables' identities."""
         found = self._tables_repo.list_in(namespace_id_from_parts(request.catalog, request.namespace))
         return ListTablesUseCaseOutput(
-            items=[
-                ListTablesUseCaseOutputItem(catalog=t.catalog, namespace=list(t.namespace), name=t.name) for t in found
-            ]
+            items=tuple(
+                ListTablesUseCaseOutput.Table(catalog=t.catalog, namespace=tuple(t.namespace), name=t.name)
+                for t in found
+            )
         )
