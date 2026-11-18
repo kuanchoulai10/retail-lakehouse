@@ -10,7 +10,7 @@ from base import UseCaseOutput
 class CreateViewUseCaseOutput(UseCaseOutput):
     """Describe the view as the catalog saved it, every field primitive.
 
-    ``query`` (the SQL text), ``dialect`` and ``default_namespace`` are the current version's. ``schema`` is
+    ``query`` (the SQL text), ``dialect`` and ``default_namespace`` are the current version's. ``view_schema`` is
     ``{schema_id, fields: [{id, name, type, required, doc}]}`` with ``type`` as text;
     ``versions`` is ``[{version_id, timestamp_ms, query}]``, oldest first as the catalog lists them.
     """
@@ -24,6 +24,6 @@ class CreateViewUseCaseOutput(UseCaseOutput):
     dialect: str
     default_namespace: tuple[str, ...]
     current_version_id: int
-    schema: dict[str, Any]
+    view_schema: dict[str, Any]
     versions: tuple[dict[str, Any], ...]
     properties: dict[str, str]

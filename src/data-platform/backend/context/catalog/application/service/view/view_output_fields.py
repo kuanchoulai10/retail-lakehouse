@@ -20,7 +20,7 @@ def view_output_fields(view: View) -> dict[str, Any]:
         "dialect": view.dialect,
         "default_namespace": tuple(view.default_namespace),
         "current_version_id": view.current_version_id,
-        "schema": {
+        "view_schema": {
             "schema_id": view.current_schema.schema_id,
             "fields": [
                 {"id": f.id, "name": f.name, "type": f.type, "required": f.required, "doc": f.doc}

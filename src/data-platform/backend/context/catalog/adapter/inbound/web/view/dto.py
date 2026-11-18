@@ -49,7 +49,7 @@ class ViewApiResponse(BaseModel):
     dialect: str
     default_namespace: list[str]
     current_version_id: int
-    view_schema: SchemaApiResponse = Field(alias="schema")
+    view_schema: SchemaApiResponse = Field(serialization_alias="schema")
     versions: list[ViewVersionApiResponse]
     properties: dict[str, str]
 

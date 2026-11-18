@@ -36,7 +36,7 @@ def _fields() -> dict[str, Any]:
         "dialect": "trino",
         "default_namespace": ("retail",),
         "current_version_id": 2,
-        "schema": {
+        "view_schema": {
             "schema_id": 1,
             "fields": [{"id": 1, "name": "order_id", "type": "long", "required": True, "doc": None}],
         },
@@ -56,6 +56,7 @@ def test_get_view_returns_sql_schema_versions_and_properties():
 
     expected = {**_fields(), "namespace": ["retail"], "default_namespace": ["retail"]}
     expected["sql"] = expected.pop("query")
+    expected["schema"] = expected.pop("view_schema")
     expected["versions"] = [
         {"version_id": 1, "timestamp_ms": 10, "sql": "SELECT 1"},
         {"version_id": 2, "timestamp_ms": 20, "sql": "SELECT 2"},

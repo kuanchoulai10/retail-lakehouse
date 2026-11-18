@@ -51,7 +51,7 @@ def test_create_defines_version_one_in_the_namespace_at_the_clock_time(views_rep
     assert (created.query, created.dialect, created.default_namespace) == ("SELECT 1", "spark", ("retail", "a.b"))
     assert created.versions == ({"version_id": 1, "timestamp_ms": NOW_MS, "query": "SELECT 1"},)
     assert created.uuid == "view-uuid-1"
-    assert created.schema == {"schema_id": 0, "fields": []}
+    assert created.view_schema == {"schema_id": 0, "fields": []}
     assert created.properties == {}
 
 
