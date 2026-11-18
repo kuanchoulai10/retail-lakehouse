@@ -44,7 +44,7 @@ def test_comparison_without_threshold_is_rejected():
 def test_measurement_is_immutable():
     """A measurement cannot be changed after construction."""
     measurement = Measurement(key="x", observed=5, unit=MeasurementUnit.COUNT)
-    with pytest.raises(InvariantViolation):
+    with pytest.raises(AttributeError, match="is immutable"):
         measurement.observed = 6
 
 

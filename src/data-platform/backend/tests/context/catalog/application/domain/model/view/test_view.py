@@ -124,7 +124,7 @@ def test_view_version_is_immutable_and_strict():
         version_id=1, timestamp_ms=10, schema_id=0, query="SELECT 1", dialect="spark", default_namespace=("retail",)
     )
 
-    with pytest.raises(InvariantViolation):
+    with pytest.raises(AttributeError, match="is immutable"):
         version.query = "SELECT 2"
     with pytest.raises(InvariantViolation):
         ViewVersion(

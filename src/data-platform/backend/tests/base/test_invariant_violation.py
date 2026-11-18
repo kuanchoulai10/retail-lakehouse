@@ -61,12 +61,6 @@ class _Wrapper(ValueObject):
         return value
 
 
-class _Counter(ValueObject):
-    """A value object of one count."""
-
-    value: int
-
-
 class _ThingId(EntityId):
     """An id for the test entity."""
 
@@ -190,13 +184,6 @@ def test_inner_violation_inside_a_validator_comes_out_once() -> None:
     """An inner value object's violation raised inside an outer validator is one InvariantViolation."""
     violation = _violation(lambda: _Wrapper(raw_count=0))
     assert str(violation) == "raw_count: count: must be positive"
-
-
-def test_frozen_value_object_assignment_raises_invariant_violation() -> None:
-    """Changing a frozen value object in place raises InvariantViolation."""
-    counter = _Counter(value=1)
-    violation = _violation(lambda: setattr(counter, "value", 2))
-    assert str(violation) == "value: Instance is frozen"
 
 
 def test_entity_assignment_raises_invariant_violation() -> None:

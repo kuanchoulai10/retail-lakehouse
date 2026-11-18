@@ -170,7 +170,7 @@ def test_assignment_rechecks_invariants():
 def test_operation_outcome_is_immutable():
     """An operation outcome cannot be changed after creation."""
     outcome = _outcome(Op.EXPIRE_SNAPSHOTS)
-    with pytest.raises(InvariantViolation):
+    with pytest.raises(AttributeError, match="is immutable"):
         outcome.result = OperationResult.OFF
 
 

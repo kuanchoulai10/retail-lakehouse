@@ -282,7 +282,7 @@ def test_operation_update_revalidates():
 def test_operation_run_is_immutable():
     """An operation run cannot be changed in place."""
     operation = OperationRun(operation=Op.EXPIRE_SNAPSHOTS)
-    with pytest.raises(InvariantViolation):
+    with pytest.raises(AttributeError, match="is immutable"):
         operation.attempts = 3
 
 

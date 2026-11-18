@@ -15,8 +15,13 @@ built on Pydantic v2:
 - InvariantViolation: the ValueError every model base raises for refused
   data, its string one line naming the first problem; construction,
   ``from_primitives``, ``model_validate`` / ``model_validate_json``,
-  ``with_changes`` and attribute assignment raise it instead of Pydantic's
-  ValidationError.
+  ``with_changes`` and entity attribute assignment raise it instead of
+  Pydantic's ValidationError. Validating a base through a Pydantic
+  ``TypeAdapter`` raises Pydantic's error; adapters never do this, and the
+  ``adapters-see-only-ports`` import contract keeps the domain out of them.
+  Assigning to a frozen model, or ``del`` of a field of any model, raises
+  Python's builtin ``AttributeError``: a mutation is a programming error,
+  not refused data.
 - Repository: an interface for retrieving and persisting aggregates/entities,
   decoupling the domain from infrastructure concerns.
 - UseCase: a single application-level operation that orchestrates domain

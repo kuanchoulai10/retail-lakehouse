@@ -35,7 +35,7 @@ def test_construction_is_strict(build):
 
 def test_schema_and_field_are_immutable():
     """Neither a schema nor a field changes in place."""
-    with pytest.raises(InvariantViolation):
+    with pytest.raises(AttributeError, match="is immutable"):
         ID.name = "other"
-    with pytest.raises(InvariantViolation):
+    with pytest.raises(AttributeError, match="is immutable"):
         Schema(schema_id=0, fields=()).schema_id = 1

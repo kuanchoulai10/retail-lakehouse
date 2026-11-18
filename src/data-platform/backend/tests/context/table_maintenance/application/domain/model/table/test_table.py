@@ -173,7 +173,7 @@ def test_table_name_rejects_an_empty_table_as_a_validation_error():
 def test_operation_state_is_immutable():
     """An operation state changes only by building a new one."""
     state = OperationState()
-    with pytest.raises(InvariantViolation):
+    with pytest.raises(AttributeError, match="is immutable"):
         state.consecutive_failures = 1
 
 

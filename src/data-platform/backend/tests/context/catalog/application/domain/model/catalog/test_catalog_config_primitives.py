@@ -555,5 +555,5 @@ def test_code_construction_is_strict(build: Any) -> None:  # noqa: ANN401
 )
 def test_config_value_objects_are_immutable(value: Any, field: str, new: str) -> None:  # noqa: ANN401
     """Storage, connection and authentication configs cannot be changed in place."""
-    with pytest.raises(InvariantViolation):
+    with pytest.raises(AttributeError, match="is immutable"):
         setattr(value, field, new)

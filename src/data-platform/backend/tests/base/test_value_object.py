@@ -50,7 +50,7 @@ def test_equal_by_value() -> None:
 def test_is_frozen() -> None:
     """A value object rejects assignment."""
     schedule = _schedule()
-    with pytest.raises(InvariantViolation):
+    with pytest.raises(AttributeError, match="is immutable"):
         schedule.retries = 3
 
 

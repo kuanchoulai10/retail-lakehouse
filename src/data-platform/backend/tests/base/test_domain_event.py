@@ -33,7 +33,7 @@ def test_occurred_at_can_be_given() -> None:
 def test_is_frozen() -> None:
     """An event rejects assignment."""
     event = _OrderPlaced(order_id="1", total=100)
-    with pytest.raises(InvariantViolation):
+    with pytest.raises(AttributeError, match="is immutable"):
         event.total = 5
 
 

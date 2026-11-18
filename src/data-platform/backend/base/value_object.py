@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, ClassVar, Self
 
 from pydantic import ConfigDict
 
@@ -22,8 +22,9 @@ class ValueObject(InvariantGuardedModel):
     Two ValueObjects are equal when all of their fields are equal. They
     are frozen, so they are hashable and freely shareable. Validation is
     strict (no coercion: ``True`` is not an ``int``) and unknown keys are
-    rejected, so an invalid value never gets built: every way of building
-    or changing one raises ``InvariantViolation`` instead.
+    rejected, so an invalid value never gets built: building one, or a
+    changed copy through ``with_changes``, raises ``InvariantViolation``
+    instead. Assigning to a field in place raises ``AttributeError``.
 
     A value read from or written to the outside world goes through
     ``from_primitives`` / ``to_primitives``: JSON-compatible primitives,
@@ -37,6 +38,8 @@ class ValueObject(InvariantGuardedModel):
             amount: int
             currency: str
     """
+
+    _immutable_hint: ClassVar[str] = "; build a changed copy with with_changes()"
 
     model_config = ConfigDict(
         frozen=True,

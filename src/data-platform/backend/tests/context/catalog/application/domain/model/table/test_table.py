@@ -140,7 +140,7 @@ def test_assigning_a_wrong_type_is_rejected_and_changes_nothing(field: str, valu
 )
 def test_table_value_objects_are_immutable(value: object, field: str, change: object):
     """A value object of the table cannot change after it is built."""
-    with pytest.raises(InvariantViolation):
+    with pytest.raises(AttributeError, match="is immutable"):
         setattr(value, field, change)
 
 

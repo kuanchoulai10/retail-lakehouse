@@ -63,7 +63,7 @@ def test_is_hashable() -> None:
 def test_is_frozen() -> None:
     """An id cannot be reassigned."""
     identifier = _Id("a")
-    with pytest.raises(InvariantViolation):
+    with pytest.raises(AttributeError, match="is immutable"):
         identifier.root = "b"
 
 
