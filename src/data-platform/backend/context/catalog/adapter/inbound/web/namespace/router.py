@@ -31,9 +31,9 @@ UseCases = Annotated[WebUseCases, Depends(use_cases_dependency)]
 _SEPARATOR = "\x1f"
 
 
-def _parts(namespace: str) -> list[str]:
+def _parts(namespace: str) -> tuple[str, ...]:
     """Split a path or query namespace into its parts; the empty string is the top level."""
-    return namespace.split(_SEPARATOR) if namespace else []
+    return tuple(namespace.split(_SEPARATOR)) if namespace else ()
 
 
 @router.get("")
@@ -51,7 +51,7 @@ def list_namespaces(
 def create_namespace(catalog: str, body: CreateNamespaceApiRequest, use_cases: UseCases) -> NamespaceApiResponse:
     """Create a namespace with its properties."""
     output = use_cases.create_namespace.execute(
-        CreateNamespaceUseCaseInput(catalog=catalog, namespace=body.namespace, properties=body.properties)
+        CreateNamespaceUseCaseInput(catalog=catalog, namespace=tuple(body.namespace), properties=body.properties)
     )
     return NamespaceApiResponse.model_validate(output)
 
@@ -77,7 +77,7 @@ def update_namespace_properties(
     """Set and remove properties of a namespace."""
     output = use_cases.update_namespace_properties.execute(
         UpdateNamespacePropertiesUseCaseInput(
-            catalog=catalog, namespace=_parts(namespace), updates=body.updates, removals=body.removals
+            catalog=catalog, namespace=_parts(namespace), updates=body.updates, removals=tuple(body.removals)
         )
     )
     return NamespaceApiResponse.model_validate(output)

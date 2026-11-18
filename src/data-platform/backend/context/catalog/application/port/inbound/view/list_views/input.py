@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class ListViewsUseCaseInput:
+class ListViewsUseCaseInput(UseCaseInput):
     """Name the catalog and the namespace whose views to list."""
 
     catalog: str
-    namespace: list[str]
+    namespace: tuple[str, ...]

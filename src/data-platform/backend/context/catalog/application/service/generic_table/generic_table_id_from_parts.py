@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from context.catalog.application.exceptions import ValidationError
 from context.catalog.application.port.outbound.generic_table import GenericTableId
 from context.catalog.application.service.namespace import namespace_id_from_parts
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
-def generic_table_id_from_parts(catalog: str, namespace: list[str], name: str) -> GenericTableId:
+
+def generic_table_id_from_parts(catalog: str, namespace: Sequence[str], name: str) -> GenericTableId:
     """Return the id of the generic table ``name`` in ``namespace`` of ``catalog``, or raise ValidationError.
 
     The catalog and namespace follow ``namespace_id_from_parts``; the name is not blank and

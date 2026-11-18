@@ -14,7 +14,6 @@ from context.catalog.application.port.inbound.generic_table import (
     GetGenericTableUseCaseOutput,
     ListGenericTablesUseCaseInput,
     ListGenericTablesUseCaseOutput,
-    ListGenericTablesUseCaseOutputItem,
 )
 from tests.context.catalog.adapter.inbound.web.web_test_support import StubUseCase, build_client
 
@@ -22,9 +21,10 @@ BASE = "/v1/catalogs/sales/namespaces/retail/generic-tables"
 
 
 def _fields() -> dict[str, Any]:
+    """Return the fields of a generic table output, in the port's types."""
     return {
         "catalog": "sales",
-        "namespace": ["retail"],
+        "namespace": ("retail",),
         "name": "events",
         "format": "delta",
         "base_location": "s3://w/events",
@@ -33,14 +33,19 @@ def _fields() -> dict[str, Any]:
     }
 
 
+def _body() -> dict[str, Any]:
+    """Return the JSON body the routes answer with for ``_fields()``."""
+    return {**_fields(), "namespace": ["retail"]}
+
+
 def test_get_generic_table_returns_its_fields():
     """Get returns format, base location, doc and properties."""
     stub = StubUseCase(GetGenericTableUseCaseOutput(**_fields()))
 
     response = build_client(get_generic_table=stub).get(f"{BASE}/events")
 
-    assert (response.status_code, response.json()) == (200, _fields())
-    assert stub.requests == [GetGenericTableUseCaseInput("sales", ["retail"], "events")]
+    assert (response.status_code, response.json()) == (200, _body())
+    assert stub.requests == [GetGenericTableUseCaseInput(catalog="sales", namespace=("retail",), name="events")]
 
 
 def test_get_generic_table_without_location_and_doc_has_nulls():
@@ -69,19 +74,21 @@ def test_generic_table_route_splits_the_namespace_on_the_unit_separator():
 
     build_client(get_generic_table=stub).get("/v1/catalogs/sales/namespaces/a%1Fb.c/generic-tables/events")
 
-    assert stub.requests == [GetGenericTableUseCaseInput("sales", ["a", "b.c"], "events")]
+    assert stub.requests == [GetGenericTableUseCaseInput(catalog="sales", namespace=("a", "b.c"), name="events")]
 
 
 def test_list_generic_tables():
     """Listing returns the identifiers."""
     stub = StubUseCase(
-        ListGenericTablesUseCaseOutput([ListGenericTablesUseCaseOutputItem("sales", ["retail"], "events")])
+        ListGenericTablesUseCaseOutput(
+            items=(ListGenericTablesUseCaseOutput.GenericTable(catalog="sales", namespace=("retail",), name="events"),)
+        )
     )
 
     response = build_client(list_generic_tables=stub).get(BASE)
 
     assert response.json() == [{"catalog": "sales", "namespace": ["retail"], "name": "events"}]
-    assert stub.requests == [ListGenericTablesUseCaseInput("sales", ["retail"])]
+    assert stub.requests == [ListGenericTablesUseCaseInput(catalog="sales", namespace=("retail",))]
 
 
 def test_create_generic_table_returns_201_and_passes_the_form():
@@ -99,10 +106,16 @@ def test_create_generic_table_returns_201_and_passes_the_form():
         },
     )
 
-    assert (response.status_code, response.json()) == (201, _fields())
+    assert (response.status_code, response.json()) == (201, _body())
     assert stub.requests == [
         CreateGenericTableUseCaseInput(
-            "sales", ["retail"], "events", "delta", "s3://w/events", "clicks", {"owner": "data-eng"}
+            catalog="sales",
+            namespace=("retail",),
+            name="events",
+            format="delta",
+            base_location="s3://w/events",
+            doc="clicks",
+            properties={"owner": "data-eng"},
         )
     ]
 
@@ -133,4 +146,4 @@ def test_delete_generic_table_returns_204():
     response = build_client(delete_generic_table=stub).delete(f"{BASE}/events")
 
     assert (response.status_code, response.content) == (204, b"")
-    assert stub.requests == [DeleteGenericTableUseCaseInput("sales", ["retail"], "events")]
+    assert stub.requests == [DeleteGenericTableUseCaseInput(catalog="sales", namespace=("retail",), name="events")]

@@ -18,7 +18,6 @@ from context.catalog.application.port.inbound.catalog import (
     GetCatalogUseCaseInput,
     GetCatalogUseCaseOutput,
     ListCatalogsUseCaseOutput,
-    ListCatalogsUseCaseOutputItem,
     UpdateCatalogUseCaseInput,
     UpdateCatalogUseCaseOutput,
 )
@@ -136,7 +135,7 @@ def test_unavailable_maps_to_502():
 
 def test_list_catalogs():
     """Listing returns every catalog."""
-    output = ListCatalogsUseCaseOutput(items=[ListCatalogsUseCaseOutputItem(**FIELDS)])
+    output = ListCatalogsUseCaseOutput(items=(ListCatalogsUseCaseOutput.Catalog(**FIELDS),))
     client = build_client(list_catalogs=StubUseCase(output))
 
     response = client.get("/v1/catalogs")

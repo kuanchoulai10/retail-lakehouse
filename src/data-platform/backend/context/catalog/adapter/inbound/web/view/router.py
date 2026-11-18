@@ -29,9 +29,9 @@ UseCases = Annotated[WebUseCases, Depends(use_cases_dependency)]
 _SEPARATOR = "\x1f"
 
 
-def _parts(namespace: str) -> list[str]:
+def _parts(namespace: str) -> tuple[str, ...]:
     """Split a path namespace, its parts joined by U+001F (%1F), into its parts."""
-    return namespace.split(_SEPARATOR) if namespace else []
+    return tuple(namespace.split(_SEPARATOR)) if namespace else ()
 
 
 @router.get("")

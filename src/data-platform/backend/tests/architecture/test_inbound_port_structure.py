@@ -125,9 +125,17 @@ def test_use_case_dir_has_no_extra_files(use_case_entry: tuple[str, str, Path]):
 
 
 def _exported_classes(module_path: str) -> list[str]:
-    """Return class names defined in a module."""
+    """Return the names of the top-level classes a module defines, not the ones it imports.
+
+    A migrated port's ``output.py`` imports ``UseCaseOutput`` (and ``datetime``) at runtime, and its
+    nested classes are attributes of the output class, not of the module, so neither is listed.
+    """
     mod = importlib.import_module(module_path)
-    return [name for name in dir(mod) if isinstance(getattr(mod, name), type) and not name.startswith("_")]
+    return [
+        name
+        for name in dir(mod)
+        if isinstance(obj := getattr(mod, name), type) and obj.__module__ == module_path and not name.startswith("_")
+    ]
 
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)

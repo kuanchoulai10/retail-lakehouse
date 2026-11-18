@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class DeleteGenericTableUseCaseInput:
+class DeleteGenericTableUseCaseInput(UseCaseInput):
     """Name the generic table by catalog, namespace parts and name."""
 
     catalog: str
-    namespace: list[str]
+    namespace: tuple[str, ...]
     name: str

@@ -2,31 +2,26 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from datetime import datetime
+from typing import Any
 
-if TYPE_CHECKING:
-    from datetime import datetime
-    from typing import Any
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class ListCatalogsUseCaseOutputItem:
-    """One catalog of the listing."""
-
-    name: str
-    type: str
-    default_base_location: str | None
-    properties: dict[str, str]
-    storage_config: dict[str, Any]
-    connection_config: dict[str, Any] | None
-    entity_version: int
-    created_at: datetime | None
-    updated_at: datetime | None
-
-
-@dataclass(frozen=True)
-class ListCatalogsUseCaseOutput:
+class ListCatalogsUseCaseOutput(UseCaseOutput):
     """Carry the listing."""
 
-    items: list[ListCatalogsUseCaseOutputItem]
+    class Catalog(UseCaseOutput):
+        """One catalog of the listing."""
+
+        name: str
+        type: str
+        default_base_location: str | None
+        properties: dict[str, str]
+        storage_config: dict[str, Any]
+        connection_config: dict[str, Any] | None
+        entity_version: int
+        created_at: datetime | None
+        updated_at: datetime | None
+
+    items: tuple[Catalog, ...]

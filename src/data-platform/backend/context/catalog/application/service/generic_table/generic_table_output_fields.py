@@ -12,7 +12,7 @@ def generic_table_output_fields(table: GenericTable) -> dict[str, Any]:
     """Return the primitive fields shared by the Get and Create generic table outputs."""
     return {
         "catalog": table.id.catalog,
-        "namespace": list(table.id.namespace),
+        "namespace": tuple(table.id.namespace),
         "name": table.id.name,
         "format": table.format,
         "base_location": table.base_location,

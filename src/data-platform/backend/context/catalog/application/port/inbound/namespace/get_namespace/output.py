@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class GetNamespaceUseCaseOutput:
+class GetNamespaceUseCaseOutput(UseCaseOutput):
     """Describe the namespace."""
 
     catalog: str
-    namespace: list[str]
+    namespace: tuple[str, ...]
     properties: dict[str, str]

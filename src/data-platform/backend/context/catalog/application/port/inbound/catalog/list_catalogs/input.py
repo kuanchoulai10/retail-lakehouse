@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class ListCatalogsUseCaseInput:
+class ListCatalogsUseCaseInput(UseCaseInput):
     """Carry the request to list every catalog."""

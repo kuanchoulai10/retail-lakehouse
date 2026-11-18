@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class DeleteNamespaceUseCaseInput:
+class DeleteNamespaceUseCaseInput(UseCaseInput):
     """Name the namespace to delete: its catalog and its parts, outermost first."""
 
     catalog: str
-    namespace: list[str]
+    namespace: tuple[str, ...]

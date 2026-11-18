@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class ListNamespacesUseCaseInput:
+class ListNamespacesUseCaseInput(UseCaseInput):
     """Name the catalog and the parent whose direct children to list; an empty parent is the top level."""
 
     catalog: str
-    parent: list[str]
+    parent: tuple[str, ...]

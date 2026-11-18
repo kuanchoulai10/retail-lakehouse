@@ -29,7 +29,7 @@ class GetNamespaceService(GetNamespaceUseCase):
         """Return the namespace or raise NotFoundError."""
         namespace = self._namespaces_repo.get(namespace_id_from_parts(request.catalog, request.namespace))
         if namespace is None:
-            raise NotFoundError(f"namespace {request.namespace} not found in catalog {request.catalog}")
+            raise NotFoundError(f"namespace {list(request.namespace)} not found in catalog {request.catalog}")
         return GetNamespaceUseCaseOutput(
-            catalog=namespace.catalog, namespace=list(namespace.parts), properties=dict(namespace.properties)
+            catalog=namespace.catalog, namespace=tuple(namespace.parts), properties=dict(namespace.properties)
         )

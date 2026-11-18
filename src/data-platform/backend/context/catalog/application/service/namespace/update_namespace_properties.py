@@ -33,5 +33,5 @@ class UpdateNamespacePropertiesService(UpdateNamespacePropertiesUseCase):
             raise ValidationError(f"properties cannot be both updated and removed: {', '.join(both)}")
         saved = self._namespaces_repo.update_properties(namespace_id, dict(request.updates), list(request.removals))
         return UpdateNamespacePropertiesUseCaseOutput(
-            catalog=saved.catalog, namespace=list(saved.parts), properties=dict(saved.properties)
+            catalog=saved.catalog, namespace=tuple(saved.parts), properties=dict(saved.properties)
         )

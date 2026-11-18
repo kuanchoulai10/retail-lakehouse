@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+from base import UseCaseInput
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
-@dataclass(frozen=True)
-class CreateCatalogUseCaseInput:
+class CreateCatalogUseCaseInput(UseCaseInput):
     """Carry the create catalog form.
 
     ``type`` is ``INTERNAL`` or ``EXTERNAL``. ``storage_config`` holds the storage fields by
@@ -21,4 +24,8 @@ class CreateCatalogUseCaseInput:
     type: str
     default_base_location: str
     storage_config: dict[str, Any]
-    connection_config: dict[str, Any] | None = field(default=None, repr=False)
+    connection_config: dict[str, Any] | None = None
+
+    def __repr_args__(self) -> Iterator[tuple[str | None, Any]]:
+        """Leave ``connection_config`` out of ``repr`` and ``str``: it may carry secrets."""
+        return ((name, value) for name, value in super().__repr_args__() if name != "connection_config")

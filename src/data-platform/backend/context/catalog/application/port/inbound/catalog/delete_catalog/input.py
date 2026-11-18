@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class DeleteCatalogUseCaseInput:
+class DeleteCatalogUseCaseInput(UseCaseInput):
     """Name the catalog to delete."""
 
     name: str

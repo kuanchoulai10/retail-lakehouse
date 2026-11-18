@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import Any
 
-if TYPE_CHECKING:
-    from typing import Any
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class CreateViewUseCaseOutput:
+class CreateViewUseCaseOutput(UseCaseOutput):
     """Describe the view as the catalog saved it, every field primitive.
 
     ``query`` (the SQL text), ``dialect`` and ``default_namespace`` are the current version's. ``schema`` is
@@ -19,14 +16,14 @@ class CreateViewUseCaseOutput:
     """
 
     catalog: str
-    namespace: list[str]
+    namespace: tuple[str, ...]
     name: str
     uuid: str
     location: str
     query: str
     dialect: str
-    default_namespace: list[str]
+    default_namespace: tuple[str, ...]
     current_version_id: int
     schema: dict[str, Any]
-    versions: list[dict[str, Any]]
+    versions: tuple[dict[str, Any], ...]
     properties: dict[str, str]

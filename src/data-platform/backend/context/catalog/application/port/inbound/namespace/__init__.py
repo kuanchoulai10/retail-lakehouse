@@ -34,7 +34,6 @@ from context.catalog.application.port.inbound.namespace.list_namespaces.input im
 )
 from context.catalog.application.port.inbound.namespace.list_namespaces.output import (
     ListNamespacesUseCaseOutput,
-    ListNamespacesUseCaseOutputItem,
 )
 from context.catalog.application.port.inbound.namespace.list_namespaces.use_case import (
     ListNamespacesUseCase,
@@ -62,7 +61,6 @@ __all__ = [
     "ListNamespacesUseCase",
     "ListNamespacesUseCaseInput",
     "ListNamespacesUseCaseOutput",
-    "ListNamespacesUseCaseOutputItem",
     "UpdateNamespacePropertiesUseCase",
     "UpdateNamespacePropertiesUseCaseInput",
     "UpdateNamespacePropertiesUseCaseOutput",

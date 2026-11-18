@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class GetNamespaceUseCaseInput:
+class GetNamespaceUseCaseInput(UseCaseInput):
     """Name the namespace to get: its catalog and its parts, outermost first."""
 
     catalog: str
-    namespace: list[str]
+    namespace: tuple[str, ...]

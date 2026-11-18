@@ -2,20 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class ListGenericTablesUseCaseOutputItem:
-    """One generic table of the listing, by identity only."""
-
-    catalog: str
-    namespace: list[str]
-    name: str
-
-
-@dataclass(frozen=True)
-class ListGenericTablesUseCaseOutput:
+class ListGenericTablesUseCaseOutput(UseCaseOutput):
     """Carry the listing."""
 
-    items: list[ListGenericTablesUseCaseOutputItem]
+    class GenericTable(UseCaseOutput):
+        """One generic table of the listing, by identity only."""
+
+        catalog: str
+        namespace: tuple[str, ...]
+        name: str
+
+    items: tuple[GenericTable, ...]

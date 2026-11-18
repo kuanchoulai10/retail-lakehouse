@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class CreateGenericTableUseCaseOutput:
+class CreateGenericTableUseCaseOutput(UseCaseOutput):
     """Describe the generic table as the catalog saved it, every field primitive."""
 
     catalog: str
-    namespace: list[str]
+    namespace: tuple[str, ...]
     name: str
     format: str
     base_location: str | None

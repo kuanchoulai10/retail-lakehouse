@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class GetCatalogUseCaseInput:
+class GetCatalogUseCaseInput(UseCaseInput):
     """Name the catalog to get."""
 
     name: str

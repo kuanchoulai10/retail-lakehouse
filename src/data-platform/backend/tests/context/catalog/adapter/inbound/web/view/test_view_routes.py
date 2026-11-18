@@ -18,7 +18,6 @@ from context.catalog.application.port.inbound.view import (
     GetViewUseCaseOutput,
     ListViewsUseCaseInput,
     ListViewsUseCaseOutput,
-    ListViewsUseCaseOutputItem,
 )
 from tests.context.catalog.adapter.inbound.web.web_test_support import StubUseCase, build_client
 
@@ -26,24 +25,25 @@ BASE = "/v1/catalogs/sales/namespaces/retail/views"
 
 
 def _fields() -> dict[str, Any]:
+    """Return the fields of a view output, in the port's types."""
     return {
         "catalog": "sales",
-        "namespace": ["retail"],
+        "namespace": ("retail",),
         "name": "top_orders",
         "uuid": "view-uuid-1",
         "location": "s3://w/retail/top_orders",
         "query": "SELECT 2",
         "dialect": "trino",
-        "default_namespace": ["retail"],
+        "default_namespace": ("retail",),
         "current_version_id": 2,
         "schema": {
             "schema_id": 1,
             "fields": [{"id": 1, "name": "order_id", "type": "long", "required": True, "doc": None}],
         },
-        "versions": [
+        "versions": (
             {"version_id": 1, "timestamp_ms": 10, "query": "SELECT 1"},
             {"version_id": 2, "timestamp_ms": 20, "query": "SELECT 2"},
-        ],
+        ),
         "properties": {"comment": "top"},
     }
 
@@ -54,12 +54,14 @@ def test_get_view_returns_sql_schema_versions_and_properties():
 
     response = build_client(get_view=stub).get(f"{BASE}/top_orders")
 
-    expected = _fields()
+    expected = {**_fields(), "namespace": ["retail"], "default_namespace": ["retail"]}
     expected["sql"] = expected.pop("query")
-    for version in expected["versions"]:
-        version["sql"] = version.pop("query")
+    expected["versions"] = [
+        {"version_id": 1, "timestamp_ms": 10, "sql": "SELECT 1"},
+        {"version_id": 2, "timestamp_ms": 20, "sql": "SELECT 2"},
+    ]
     assert (response.status_code, response.json()) == (200, expected)
-    assert stub.requests == [GetViewUseCaseInput("sales", ["retail"], "top_orders")]
+    assert stub.requests == [GetViewUseCaseInput(catalog="sales", namespace=("retail",), name="top_orders")]
 
 
 def test_get_unknown_view_returns_404():
@@ -77,17 +79,21 @@ def test_view_route_splits_the_namespace_on_the_unit_separator():
 
     build_client(get_view=stub).get("/v1/catalogs/sales/namespaces/a%1Fb.c/views/top_orders")
 
-    assert stub.requests == [GetViewUseCaseInput("sales", ["a", "b.c"], "top_orders")]
+    assert stub.requests == [GetViewUseCaseInput(catalog="sales", namespace=("a", "b.c"), name="top_orders")]
 
 
 def test_list_views():
     """Listing returns the identifiers."""
-    stub = StubUseCase(ListViewsUseCaseOutput([ListViewsUseCaseOutputItem("sales", ["retail"], "top_orders")]))
+    stub = StubUseCase(
+        ListViewsUseCaseOutput(
+            items=(ListViewsUseCaseOutput.View(catalog="sales", namespace=("retail",), name="top_orders"),)
+        )
+    )
 
     response = build_client(list_views=stub).get(BASE)
 
     assert response.json() == [{"catalog": "sales", "namespace": ["retail"], "name": "top_orders"}]
-    assert stub.requests == [ListViewsUseCaseInput("sales", ["retail"])]
+    assert stub.requests == [ListViewsUseCaseInput(catalog="sales", namespace=("retail",))]
 
 
 def test_create_view_returns_201_and_passes_the_form():
@@ -99,7 +105,11 @@ def test_create_view_returns_201_and_passes_the_form():
     )
 
     assert (response.status_code, response.json()["uuid"]) == (201, "view-uuid-1")
-    assert stub.requests == [CreateViewUseCaseInput("sales", ["retail"], "top_orders", "SELECT 2", "trino")]
+    assert stub.requests == [
+        CreateViewUseCaseInput(
+            catalog="sales", namespace=("retail",), name="top_orders", query="SELECT 2", dialect="trino"
+        )
+    ]
 
 
 def test_create_view_needs_sql_and_dialect_and_rejects_unknown_fields():
@@ -132,5 +142,7 @@ def test_delete_view_and_generic_table_return_204():
     table = client.delete("/v1/catalogs/sales/namespaces/retail/generic-tables/events")
 
     assert [(r.status_code, r.content) for r in (view, table)] == [(204, b""), (204, b"")]
-    assert view_stub.requests == [DeleteViewUseCaseInput("sales", ["retail"], "top_orders")]
-    assert table_stub.requests == [DeleteGenericTableUseCaseInput("sales", ["retail"], "events")]
+    assert view_stub.requests == [DeleteViewUseCaseInput(catalog="sales", namespace=("retail",), name="top_orders")]
+    assert table_stub.requests == [
+        DeleteGenericTableUseCaseInput(catalog="sales", namespace=("retail",), name="events")
+    ]

@@ -2,20 +2,19 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class CreateGenericTableUseCaseInput:
+class CreateGenericTableUseCaseInput(UseCaseInput):
     """Carry the create generic table form: name, format, optional base location and doc, properties.
 
     A blank base location or doc counts as absent.
     """
 
     catalog: str
-    namespace: list[str]
+    namespace: tuple[str, ...]
     name: str
     format: str
     base_location: str | None = None
     doc: str | None = None
-    properties: dict[str, str] = field(default_factory=dict)
+    properties: dict[str, str] = {}

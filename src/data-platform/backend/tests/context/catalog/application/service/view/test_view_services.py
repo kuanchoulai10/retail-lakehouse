@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
+import re
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -14,7 +14,7 @@ from context.catalog.application.port.inbound.view import (
     DeleteViewUseCaseInput,
     GetViewUseCaseInput,
     ListViewsUseCaseInput,
-    ListViewsUseCaseOutputItem,
+    ListViewsUseCaseOutput,
 )
 from context.catalog.application.service.view import (
     CreateViewService,
@@ -30,8 +30,13 @@ if TYPE_CHECKING:
 NOW = datetime(2025, 11, 7, 12, 0, tzinfo=UTC)
 NOW_MS = int(NOW.timestamp() * 1000)
 FORM = CreateViewUseCaseInput(
-    catalog="sales", namespace=["retail", "a.b"], name="top_orders", query="SELECT 1", dialect="spark"
+    catalog="sales", namespace=("retail", "a.b"), name="top_orders", query="SELECT 1", dialect="spark"
 )
+
+
+def _form(**changes: object) -> CreateViewUseCaseInput:
+    """Return the create view form with ``changes`` applied, validated like any input."""
+    return CreateViewUseCaseInput(**(FORM.model_dump() | changes))
 
 
 def _create(repo: InMemoryViewsRepo, form: CreateViewUseCaseInput = FORM):
@@ -42,9 +47,9 @@ def test_create_defines_version_one_in_the_namespace_at_the_clock_time(views_rep
     """The created view has one version with the sql and dialect, the namespace as default namespace and the time."""
     created = _create(views_repo)
 
-    assert (created.catalog, created.namespace, created.name) == ("sales", ["retail", "a.b"], "top_orders")
-    assert (created.query, created.dialect, created.default_namespace) == ("SELECT 1", "spark", ["retail", "a.b"])
-    assert created.versions == [{"version_id": 1, "timestamp_ms": NOW_MS, "query": "SELECT 1"}]
+    assert (created.catalog, created.namespace, created.name) == ("sales", ("retail", "a.b"), "top_orders")
+    assert (created.query, created.dialect, created.default_namespace) == ("SELECT 1", "spark", ("retail", "a.b"))
+    assert created.versions == ({"version_id": 1, "timestamp_ms": NOW_MS, "query": "SELECT 1"},)
     assert created.uuid == "view-uuid-1"
     assert created.schema == {"schema_id": 0, "fields": []}
     assert created.properties == {}
@@ -53,11 +58,11 @@ def test_create_defines_version_one_in_the_namespace_at_the_clock_time(views_rep
 def test_create_refuses_blank_sql_dialect_and_name(views_repo: InMemoryViewsRepo):
     """Every field of the form is required."""
     with pytest.raises(ValidationError, match="query"):
-        _create(views_repo, replace(FORM, query=" "))
+        _create(views_repo, _form(query=" "))
     with pytest.raises(ValidationError, match="dialect"):
-        _create(views_repo, replace(FORM, dialect=""))
+        _create(views_repo, _form(dialect=""))
     with pytest.raises(ValidationError, match="name"):
-        _create(views_repo, replace(FORM, name=" "))
+        _create(views_repo, _form(name=" "))
     assert views_repo.items == {}
 
 
@@ -74,19 +79,24 @@ def test_get_returns_the_view_and_unknown_is_not_found(views_repo: InMemoryViews
     created = _create(views_repo)
     service = GetViewService(views_repo)
 
-    assert vars(service.execute(GetViewUseCaseInput("sales", ["retail", "a.b"], "top_orders"))) == vars(created)
-    with pytest.raises(NotFoundError, match="missing"):
-        service.execute(GetViewUseCaseInput("sales", ["retail", "a.b"], "missing"))
+    fetched = service.execute(GetViewUseCaseInput(catalog="sales", namespace=("retail", "a.b"), name="top_orders"))
+    assert fetched.model_dump() == created.model_dump()
+    with pytest.raises(
+        NotFoundError, match=re.escape("view missing not found in namespace ['retail', 'a.b'] of catalog sales")
+    ):
+        service.execute(GetViewUseCaseInput(catalog="sales", namespace=("retail", "a.b"), name="missing"))
 
 
 def test_list_returns_the_identities_in_one_namespace_only(views_repo: InMemoryViewsRepo):
     """Only the views directly in the namespace are listed."""
     _create(views_repo)
-    _create(views_repo, replace(FORM, namespace=["other"], name="x"))
+    _create(views_repo, _form(namespace=("other",), name="x"))
 
-    output = ListViewsService(views_repo).execute(ListViewsUseCaseInput("sales", ["retail", "a.b"]))
+    output = ListViewsService(views_repo).execute(ListViewsUseCaseInput(catalog="sales", namespace=("retail", "a.b")))
 
-    assert output.items == [ListViewsUseCaseOutputItem("sales", ["retail", "a.b"], "top_orders")]
+    assert output.items == (
+        ListViewsUseCaseOutput.View(catalog="sales", namespace=("retail", "a.b"), name="top_orders"),
+    )
 
 
 def test_delete_removes_the_view_and_unknown_is_not_found(views_repo: InMemoryViewsRepo):
@@ -94,11 +104,11 @@ def test_delete_removes_the_view_and_unknown_is_not_found(views_repo: InMemoryVi
     _create(views_repo)
     service = DeleteViewService(views_repo)
 
-    service.execute(DeleteViewUseCaseInput("sales", ["retail", "a.b"], "top_orders"))
+    service.execute(DeleteViewUseCaseInput(catalog="sales", namespace=("retail", "a.b"), name="top_orders"))
 
     assert views_repo.items == {}
     with pytest.raises(NotFoundError):
-        service.execute(DeleteViewUseCaseInput("sales", ["retail", "a.b"], "top_orders"))
+        service.execute(DeleteViewUseCaseInput(catalog="sales", namespace=("retail", "a.b"), name="top_orders"))
 
 
 @pytest.mark.parametrize(

@@ -34,7 +34,6 @@ from context.catalog.application.port.inbound.view.list_views.input import (
 )
 from context.catalog.application.port.inbound.view.list_views.output import (
     ListViewsUseCaseOutput,
-    ListViewsUseCaseOutputItem,
 )
 from context.catalog.application.port.inbound.view.list_views.use_case import (
     ListViewsUseCase,
@@ -53,5 +52,4 @@ __all__ = [
     "ListViewsUseCase",
     "ListViewsUseCaseInput",
     "ListViewsUseCaseOutput",
-    "ListViewsUseCaseOutputItem",
 ]

@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
+from base import UseCaseInput
 
-@dataclass(frozen=True)
-class UpdateCatalogUseCaseInput:
+
+class UpdateCatalogUseCaseInput(UseCaseInput):
     """Carry the edit catalog form.
 
     ``entity_version`` is the version the caller loaded; the update is refused when the

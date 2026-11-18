@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class CreateViewUseCaseInput:
+class CreateViewUseCaseInput(UseCaseInput):
     """Carry the create view form: name, query (the SQL text) and the SQL dialect.
 
     The view is created with an empty schema and one version, whose default namespace is the
@@ -14,7 +13,7 @@ class CreateViewUseCaseInput:
     """
 
     catalog: str
-    namespace: list[str]
+    namespace: tuple[str, ...]
     name: str
     query: str
     dialect: str

@@ -29,6 +29,6 @@ class GetViewService(GetViewUseCase):
         view = self._views_repo.get(view_id_from_parts(request.catalog, request.namespace, request.name))
         if view is None:
             raise NotFoundError(
-                f"view {request.name} not found in namespace {request.namespace} of catalog {request.catalog}"
+                f"view {request.name} not found in namespace {list(request.namespace)} of catalog {request.catalog}"
             )
         return GetViewUseCaseOutput(**view_output_fields(view))

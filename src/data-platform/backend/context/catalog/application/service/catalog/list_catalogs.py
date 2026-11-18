@@ -8,7 +8,6 @@ from context.catalog.application.port.inbound.catalog import (
     ListCatalogsUseCase,
     ListCatalogsUseCaseInput,
     ListCatalogsUseCaseOutput,
-    ListCatalogsUseCaseOutputItem,
 )
 from context.catalog.application.service.catalog.catalog_output_fields import (
     catalog_output_fields,
@@ -28,8 +27,8 @@ class ListCatalogsService(ListCatalogsUseCase):
     def execute(self, request: ListCatalogsUseCaseInput) -> ListCatalogsUseCaseOutput:  # noqa: ARG002
         """Return every catalog the catalog service holds."""
         return ListCatalogsUseCaseOutput(
-            items=[
-                ListCatalogsUseCaseOutputItem(**catalog_output_fields(catalog))
+            items=tuple(
+                ListCatalogsUseCaseOutput.Catalog(**catalog_output_fields(catalog))
                 for catalog in self._catalogs_repo.list_all()
-            ]
+            )
         )

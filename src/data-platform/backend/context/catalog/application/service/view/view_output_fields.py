@@ -12,13 +12,13 @@ def view_output_fields(view: View) -> dict[str, Any]:
     """Return the primitive fields shared by the Get and Create view outputs."""
     return {
         "catalog": view.id.catalog,
-        "namespace": list(view.id.namespace),
+        "namespace": tuple(view.id.namespace),
         "name": view.id.name,
         "uuid": view.uuid,
         "location": view.location,
         "query": view.query,
         "dialect": view.dialect,
-        "default_namespace": list(view.default_namespace),
+        "default_namespace": tuple(view.default_namespace),
         "current_version_id": view.current_version_id,
         "schema": {
             "schema_id": view.current_schema.schema_id,
@@ -27,8 +27,8 @@ def view_output_fields(view: View) -> dict[str, Any]:
                 for f in view.current_schema.fields
             ],
         },
-        "versions": [
+        "versions": tuple(
             {"version_id": v.version_id, "timestamp_ms": v.timestamp_ms, "query": v.query} for v in view.versions
-        ],
+        ),
         "properties": dict(view.properties),
     }

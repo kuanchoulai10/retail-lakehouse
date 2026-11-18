@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class ListNamespacesUseCaseOutputItem:
-    """One namespace of the listing; the listing does not carry properties."""
-
-    catalog: str
-    namespace: list[str]
-
-
-@dataclass(frozen=True)
-class ListNamespacesUseCaseOutput:
+class ListNamespacesUseCaseOutput(UseCaseOutput):
     """Carry the listing."""
 
-    items: list[ListNamespacesUseCaseOutputItem]
+    class Namespace(UseCaseOutput):
+        """One namespace of the listing; the listing does not carry properties."""
+
+        catalog: str
+        namespace: tuple[str, ...]
+
+    items: tuple[Namespace, ...]

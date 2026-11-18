@@ -30,5 +30,5 @@ class CreateNamespaceService(CreateNamespaceUseCase):
         namespace_id = namespace_id_from_parts(request.catalog, request.namespace)
         saved = self._namespaces_repo.create(Namespace(id=namespace_id, properties=dict(request.properties)))
         return CreateNamespaceUseCaseOutput(
-            catalog=saved.catalog, namespace=list(saved.parts), properties=dict(saved.properties)
+            catalog=saved.catalog, namespace=tuple(saved.parts), properties=dict(saved.properties)
         )

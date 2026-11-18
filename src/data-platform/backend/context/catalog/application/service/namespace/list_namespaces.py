@@ -8,7 +8,6 @@ from context.catalog.application.port.inbound.namespace import (
     ListNamespacesUseCase,
     ListNamespacesUseCaseInput,
     ListNamespacesUseCaseOutput,
-    ListNamespacesUseCaseOutputItem,
 )
 from context.catalog.application.port.outbound.namespace import CatalogId
 from context.catalog.application.service.catalog import catalog_id_from_name
@@ -36,8 +35,8 @@ class ListNamespacesService(ListNamespacesUseCase):
             catalog_id, parts = catalog_id_from_name(request.catalog), ()
         found = self._namespaces_repo.list_in(catalog_id, parts)
         return ListNamespacesUseCaseOutput(
-            items=[
-                ListNamespacesUseCaseOutputItem(catalog=namespace.catalog, namespace=list(namespace.parts))
+            items=tuple(
+                ListNamespacesUseCaseOutput.Namespace(catalog=namespace.catalog, namespace=tuple(namespace.parts))
                 for namespace in found
-            ]
+            )
         )

@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from context.catalog.application.exceptions import ValidationError
 from context.catalog.application.port.outbound.namespace import NamespaceId
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
-def namespace_id_from_parts(catalog: str, parts: list[str]) -> NamespaceId:
+
+def namespace_id_from_parts(catalog: str, parts: Sequence[str]) -> NamespaceId:
     """Return the id of the namespace ``parts`` in ``catalog``, or raise ValidationError.
 
     A namespace has at least one part, no part is blank, and neither the catalog nor a part
