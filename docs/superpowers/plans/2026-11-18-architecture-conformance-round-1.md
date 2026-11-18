@@ -110,6 +110,7 @@
   - `test_base_exports_only_building_blocks`: `set(base.__all__) <= ALLOWED`, using the Global Constraints list.
   - `test_base_modules_define_nothing_public_outside_the_allowlist`: an AST scan of every `base/*.py` except `_`-prefixed modules; every public top-level class, function or assignment must be in `ALLOWED`.
   - `test_allowlist_rejects_an_extra_name`: feed the checker function a fake source that defines `helper()` and assert it is reported. This proves the guard bites.
+  - `test_private_base_modules_stay_inside_base`: an AST scan of every backend `.py` outside `base/` (including tests); none may import `base._<anything>` (`import base._x`, `from base._x import …`, `from base import _x`). Feed the checker a fake source with `from base._rebuild import rebuild` and assert it is reported.
 - [ ] **Step 2:** Run them. Expected: PASS, since Tasks 1–3 already emptied `base/`. If one fails, fix `base/`, not the test.
 - [ ] **Step 3:** Update the docs listed above.
 - [ ] **Step 4:** Run the full suite and the three checkers, then commit `test(architecture): allow only building blocks in base` together with the doc changes (or `docs(backend):` as a second commit).
