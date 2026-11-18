@@ -26,6 +26,10 @@ The full design is in `docs/superpowers/specs/2026-11-10-pydantic-domain-model-d
 
 - Invariants and converters become declarations and `model_validate` / `model_dump`, so there is less hand-written code to keep correct.
 - The domain now depends on a third-party library. The allow-list keeps that dependency to Pydantic alone.
-- `model_copy` does not validate, so domain code derives a changed copy through one helper that does, and an architecture test forbids bare `model_copy`.
+- `model_copy` does not validate, so domain code derives a changed copy through `ValueObject.with_changes`, which does, and an architecture test forbids bare `model_copy`.
 - Annotations that were `TYPE_CHECKING`-only may have to become runtime imports, so import cycles are checked by architecture tests (`tests/architecture/test_domain_models_complete.py`).
 - Adapters that hand a `list` to a `tuple` field, or a plain string to an enum field, now fail under strict mode at runtime.
+
+## Note, 2026-11-18
+
+Two things changed after the first build. A broken invariant now raises `InvariantViolation` (a `ValueError` chained from Pydantic's error) from construction, `from_primitives`, `model_validate` / `model_validate_json`, `with_changes` and attribute assignment, so the "Construction errors are Pydantic's" bullet above no longer holds for those paths; the API still answers 422. And `base` is held to an allowlist of building blocks by `tests/architecture/test_base_building_blocks.py`: helpers such as the whole-second duration type live in the context that uses them, not in `base`.

@@ -27,9 +27,9 @@ class ValueObject(InvariantGuardedModel):
 
     A value read from or written to the outside world goes through
     ``from_primitives`` / ``to_primitives``: JSON-compatible primitives,
-    enums as their values, durations as integer seconds under their
-    ``*_seconds`` alias. Code builds a value object by field name; the wire
-    form accepts only the aliases.
+    enums as their values, each field under its alias, which carries its wire
+    name. Code builds a value object by field name; the wire form accepts
+    only the aliases.
 
     Usage::
 

@@ -13,8 +13,10 @@ built on Pydantic v2:
   boundary for a cluster of related objects, and collects DomainEvents.
 - DomainEvent: a frozen record of something that happened, timestamped.
 - InvariantViolation: the ValueError every model base raises for refused
-  data, its string one line naming the first problem; Pydantic's
-  ValidationError never leaves the bases.
+  data, its string one line naming the first problem; construction,
+  ``from_primitives``, ``model_validate`` / ``model_validate_json``,
+  ``with_changes`` and attribute assignment raise it instead of Pydantic's
+  ValidationError.
 - Repository: an interface for retrieving and persisting aggregates/entities,
   decoupling the domain from infrastructure concerns.
 - UseCase: a single application-level operation that orchestrates domain
