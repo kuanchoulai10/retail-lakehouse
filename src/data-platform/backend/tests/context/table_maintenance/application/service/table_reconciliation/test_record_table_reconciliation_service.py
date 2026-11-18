@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -47,14 +46,14 @@ def _input(**overrides: object) -> RecordTableReconciliationUseCaseInput:
         dry_run=False,
         status="planned",
         skip_reason=None,
-        checks=[_due_check()],
+        checks=(_due_check(),),
         run_id="run-1",
         run_start_failed=False,
         policy_name="default",
         policy_version=3,
         policy_target=None,
     )
-    return replace(base, **overrides)
+    return RecordTableReconciliationUseCaseInput(**(base.model_dump() | overrides))
 
 
 @pytest.fixture
@@ -122,7 +121,7 @@ def test_other_verdicts_map_by_name_and_next_eligible_is_parsed(
     off = {**cooling, "operation": "remove_orphan_files", "verdict": "off", "next_eligible_at": None}
     not_due = {**cooling, "operation": "rewrite_manifests", "verdict": "not_needed", "next_eligible_at": None}
     unchecked = {**not_due, "operation": "rewrite_data_files", "verdict": "not_checked"}
-    service.execute(_input(checks=[cooling, off, not_due, unchecked], run_id=None))
+    service.execute(_input(checks=(cooling, off, not_due, unchecked), run_id=None))
 
     saved = repo.get(TableReconciliationId("rec-1"))
     assert saved is not None
@@ -150,7 +149,7 @@ def test_compaction_without_a_free_candidate_records_why(
 ) -> None:
     """A due compaction that found every candidate held or claimed is recorded as such, with no run."""
     check = {**_due_check(), "verdict": verdict, "next_eligible_at": "2026-11-10T12:02:00+00:00"}
-    service.execute(_input(checks=[check], run_id=None))
+    service.execute(_input(checks=(check,), run_id=None))
 
     saved = repo.get(TableReconciliationId("rec-1"))
     assert saved is not None
@@ -162,7 +161,7 @@ def test_skip_is_recorded_with_reason(
     service: RecordTableReconciliationService, repo: InMemoryTableReconciliationsRepo
 ) -> None:
     """Skip is recorded with reason."""
-    service.execute(_input(status="skip", skip_reason="table is paused", checks=[], run_id=None))
+    service.execute(_input(status="skip", skip_reason="table is paused", checks=(), run_id=None))
 
     saved = repo.get(TableReconciliationId("rec-1"))
     assert saved is not None
@@ -223,14 +222,14 @@ def test_recording_twice_keeps_one_record(
     [
         {"wake_reasons": {"bogus": 1}},
         {"wake_reasons": {}},
-        {"checks": [{**_due_check(), "verdict": "bogus"}]},
-        {"checks": [{**_due_check(), "verdict": "not_due"}]},
-        {"checks": [{**_due_check(), "verdict": "cooldown"}]},
-        {"checks": [{**_due_check(), "verdict": "disabled"}]},
-        {"checks": [{**_due_check(), "measurements": ["x"]}]},
+        {"checks": ({**_due_check(), "verdict": "bogus"},)},
+        {"checks": ({**_due_check(), "verdict": "not_due"},)},
+        {"checks": ({**_due_check(), "verdict": "cooldown"},)},
+        {"checks": ({**_due_check(), "verdict": "disabled"},)},
+        {"checks": ({**_due_check(), "measurements": ["x"]},)},
         {"run_id": None},
         {"status": "weird"},
-        {"status": "skip", "skip_reason": None, "checks": [], "run_id": None},
+        {"status": "skip", "skip_reason": None, "checks": (), "run_id": None},
     ],
 )
 def test_invalid_input_is_rejected(service: RecordTableReconciliationService, overrides: dict) -> None:

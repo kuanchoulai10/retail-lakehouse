@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class RecordTableMaintenanceOperationResultUseCaseOutput:
+class RecordTableMaintenanceOperationResultUseCaseOutput(UseCaseOutput):
     """Carry the result of the request to record the result of a maintenance operation attempt.
 
     ``failure_class``, ``next_step`` and ``next_size`` are what was decided for the attempt: why it

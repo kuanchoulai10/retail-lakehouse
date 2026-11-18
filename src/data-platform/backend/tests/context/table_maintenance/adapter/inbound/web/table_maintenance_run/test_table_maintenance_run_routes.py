@@ -11,7 +11,6 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
     GetTableMaintenanceRunUseCaseOutput,
     ListTableMaintenanceRunsUseCaseInput,
     ListTableMaintenanceRunsUseCaseOutput,
-    ListTableMaintenanceRunsUseCaseOutputItem,
     ProcessTableMaintenanceCallbackUseCaseInput,
     ProcessTableMaintenanceCallbackUseCaseOutput,
 )
@@ -36,7 +35,7 @@ FIELDS: dict[str, Any] = {
     "execution_ref": "wf-run-1",
     "trigger": "scheduled",
     "status": "running",
-    "operations": [
+    "operations": (
         {
             "operation": "rewrite_data_files",
             "status": "running",
@@ -73,8 +72,8 @@ FIELDS: dict[str, Any] = {
                     "next_size": None,
                 },
             ],
-        }
-    ],
+        },
+    ),
     "created_at": NOW,
     "finished_at": None,
 }
@@ -84,8 +83,8 @@ URL = "/v1/table-maintenance-runs/run-1/operations/rewrite_data_files/result"
 
 def test_list_runs_of_a_table() -> None:
     """Listing runs of a table passes the table and limit to the use case."""
-    item = ListTableMaintenanceRunsUseCaseOutputItem(**FIELDS)
-    stub = StubUseCase(ListTableMaintenanceRunsUseCaseOutput(items=[item]))
+    item = ListTableMaintenanceRunsUseCaseOutput.TableMaintenanceRun(**FIELDS)
+    stub = StubUseCase(ListTableMaintenanceRunsUseCaseOutput(items=(item,)))
     client = build_client(list_table_maintenance_runs=stub)
 
     response = client.get("/v1/tables/u-1/table-maintenance-runs", params={"limit": 5})
@@ -97,7 +96,7 @@ def test_list_runs_of_a_table() -> None:
 
 def test_list_runs_default_limit() -> None:
     """Listing runs without a limit leaves the limit to the use case default."""
-    stub = StubUseCase(ListTableMaintenanceRunsUseCaseOutput(items=[]))
+    stub = StubUseCase(ListTableMaintenanceRunsUseCaseOutput(items=()))
     client = build_client(list_table_maintenance_runs=stub)
 
     client.get("/v1/tables/u-1/table-maintenance-runs")

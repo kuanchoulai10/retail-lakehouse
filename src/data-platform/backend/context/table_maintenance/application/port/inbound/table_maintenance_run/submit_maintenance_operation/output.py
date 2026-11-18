@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class SubmitMaintenanceOperationUseCaseOutput:
+class SubmitMaintenanceOperationUseCaseOutput(UseCaseOutput):
     """Carry the result of the request to submit one attempt of a maintenance operation to Spark."""
 
     job_name: str

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from temporalio import activity
@@ -30,7 +29,6 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
     GetMaintenanceJobPodsUseCaseInput,
     GetMaintenanceJobStatusUseCaseInput,
     SubmitMaintenanceOperationUseCaseInput,
-    SubmitMaintenanceOperationUseCaseInputFilterItem,
 )
 from context.table_maintenance.application.port.inbound.table_reconciliation import (
     RecordTableReconciliationUseCaseInput,
@@ -107,54 +105,23 @@ class TableReconciliationActivities:
     def record_table_reconciliation(self, request: dict[str, Any]) -> dict[str, Any]:
         """Record one reconciliation: why it woke, what the plan found and the run it started."""
         with translate_application_errors():
-            output = self._record.execute(
-                RecordTableReconciliationUseCaseInput(
-                    reconciliation_id=request["reconciliation_id"],
-                    table_uuid=request["table_uuid"],
-                    reconciled_at=datetime.fromisoformat(request["reconciled_at"]),
-                    wake_reasons=dict(request["wake_reasons"]),
-                    dry_run=request["dry_run"],
-                    status=request["status"],
-                    skip_reason=request["skip_reason"],
-                    checks=list(request["checks"]),
-                    run_id=request["run_id"],
-                    run_start_failed=request["run_start_failed"],
-                    policy_name=request["policy_name"],
-                    policy_version=request["policy_version"],
-                    policy_target=request["policy_target"],
-                )
-            )
+            output = self._record.execute(RecordTableReconciliationUseCaseInput.from_primitives(request))
         return activity_payload(output)
 
     @activity.defn(name=TableReconciliationActivity.RELEASE_COMPACTION_CANDIDATES)
     def release_compaction_candidates(self, request: dict[str, Any]) -> dict[str, Any]:
         """Hand back the compaction candidates a run claimed but never started."""
         with translate_application_errors():
-            output = self._release.execute(
-                ReleaseCompactionCandidatesUseCaseInput(
-                    run_id=request["run_id"],
-                    now=datetime.fromisoformat(request["now"]),
-                )
-            )
+            output = self._release.execute(ReleaseCompactionCandidatesUseCaseInput.from_primitives(request))
         return activity_payload(output)
 
     @activity.defn(name=TableMaintenanceActivity.SUBMIT_MAINTENANCE_OPERATION)
     def submit_maintenance_operation(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Start one attempt of an operation and submit its Spark job."""
+        """Start one attempt of an operation and submit its Spark job, calling back to this worker's base URL."""
         with translate_application_errors():
             output = self._submit.execute(
-                SubmitMaintenanceOperationUseCaseInput(
-                    run_id=request["run_id"],
-                    operation=request["operation"],
-                    attempt=request["attempt"],
-                    filters=[
-                        SubmitMaintenanceOperationUseCaseInputFilterItem(spec_id=item["spec_id"], where=item["where"])
-                        for item in request["filters"]
-                    ],
-                    procedure_args=dict(request["procedure_args"]),
-                    callback_base_url=self._callback_base_url,
-                    now=datetime.fromisoformat(request["now"]),
-                    size=request.get("size", "S"),
+                SubmitMaintenanceOperationUseCaseInput.from_primitives(
+                    {**request, "callback_base_url": self._callback_base_url}
                 )
             )
         return activity_payload(output)
@@ -163,37 +130,19 @@ class TableReconciliationActivities:
     def get_maintenance_job_status(self, request: dict[str, Any]) -> dict[str, Any]:
         """Report the state of a Spark maintenance job."""
         with translate_application_errors():
-            output = self._status.execute(
-                GetMaintenanceJobStatusUseCaseInput(
-                    run_id=request["run_id"],
-                    operation=request["operation"],
-                    attempt=request["attempt"],
-                )
-            )
+            output = self._status.execute(GetMaintenanceJobStatusUseCaseInput.from_primitives(request))
         return activity_payload(output)
 
     @activity.defn(name=TableMaintenanceActivity.DELETE_MAINTENANCE_JOB)
     def delete_maintenance_job(self, request: dict[str, Any]) -> dict[str, Any]:
         """Delete the Spark job of one ``(run_id, operation, attempt)``."""
         with translate_application_errors():
-            output = self._delete.execute(
-                DeleteMaintenanceJobUseCaseInput(
-                    run_id=request["run_id"],
-                    operation=request["operation"],
-                    attempt=request["attempt"],
-                )
-            )
+            output = self._delete.execute(DeleteMaintenanceJobUseCaseInput.from_primitives(request))
         return activity_payload(output)
 
     @activity.defn(name=TableMaintenanceActivity.GET_MAINTENANCE_JOB_PODS)
     def get_maintenance_job_pods(self, request: dict[str, Any]) -> dict[str, Any]:
         """Report the live pods of the Spark job of one ``(run_id, operation, attempt)``."""
         with translate_application_errors():
-            output = self._pods.execute(
-                GetMaintenanceJobPodsUseCaseInput(
-                    run_id=request["run_id"],
-                    operation=request["operation"],
-                    attempt=request["attempt"],
-                )
-            )
+            output = self._pods.execute(GetMaintenanceJobPodsUseCaseInput.from_primitives(request))
         return activity_payload(output)

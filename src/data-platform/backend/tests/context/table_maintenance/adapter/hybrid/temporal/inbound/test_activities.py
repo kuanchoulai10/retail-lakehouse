@@ -20,13 +20,18 @@ from context.table_maintenance.application.port.inbound.table import (
     SyncDiscoveredTablesUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import (
-    SubmitMaintenanceOperationUseCaseInputFilterItem,
+    SubmitMaintenanceOperationUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_reconciliation import (
+    ListTableReconciliationsUseCaseInput,
     RecordTableReconciliationUseCaseInput,
 )
 from context.table_maintenance.application.service.table_maintenance_run import (
     GetMaintenanceJobPodsService,
+)
+from context.table_maintenance.application.service.table_reconciliation import (
+    ListTableReconciliationsService,
+    RecordTableReconciliationService,
 )
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fakes import (
     CREATED_AT,
@@ -39,6 +44,9 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fa
     FakeStatus,
     FakeSubmit,
     FakeSync,
+)
+from tests.context.table_maintenance.fakes.in_memory_table_reconciliations_repo import (
+    InMemoryTableReconciliationsRepo,
 )
 from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_pods_gateway import (
     ScriptedReadMaintenanceJobPodsGateway,
@@ -257,6 +265,133 @@ def test_plan_payload_keeps_every_field_of_a_full_plan():
     assert json.loads(json.dumps(result)) == result
 
 
+def _record_payload_of(plan: dict) -> dict:
+    """Return the record payload the reconciliation workflow builds from a plan, after a Temporal JSON trip."""
+    payload = {
+        "reconciliation_id": "rec-1",
+        "reconciled_at": NOW,
+        "wake_reasons": {"catalog_commit": 2},
+        "table_uuid": "u1",
+        "dry_run": plan["dry_run"],
+        "status": plan["status"],
+        "skip_reason": plan["reason"],
+        "checks": plan["checks"],
+        "run_id": "run-1",
+        "run_start_failed": False,
+        "policy_name": plan["policy_name"],
+        "policy_version": plan["policy_version"],
+        "policy_target": plan["policy_target"],
+    }
+    return json.loads(json.dumps(payload))
+
+
+def test_plan_checks_come_back_into_the_record_input_unchanged():
+    """The plan's checks cross Temporal as lists of dicts; the record input reads them back as the plan wrote them."""
+    activities, fakes = _reconcile()
+    activities._plan = FakePlan(_full_plan())  # noqa: SLF001
+    plan = activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW, "run_id": "run-1"})
+    payload = _record_payload_of(plan)
+
+    activities.record_table_reconciliation(payload)
+
+    (request,) = fakes["record"].requests
+    assert request == RecordTableReconciliationUseCaseInput.from_primitives(payload)
+    assert request.checks == (
+        {
+            "operation": "rewrite_data_files",
+            "verdict": "due",
+            "measurements": [
+                {
+                    "key": "small_files",
+                    "observed": 40,
+                    "unit": "files",
+                    "threshold": 10,
+                    "comparison": "gte",
+                    "met": True,
+                },
+                {
+                    "key": "data_bytes",
+                    "observed": 1024,
+                    "unit": "bytes",
+                    "threshold": None,
+                    "comparison": None,
+                    "met": None,
+                },
+            ],
+            "next_eligible_at": None,
+        },
+        {
+            "operation": "expire_snapshots",
+            "verdict": "cooling_down",
+            "measurements": [],
+            "next_eligible_at": "2026-10-24T07:00:00+00:00",
+        },
+    )
+    assert (request.policy_name, request.policy_version, request.policy_target) == (
+        "gold",
+        3,
+        {"type": "namespace", "path": ["iceberg", "sales"]},
+    )
+
+
+def _measured_plan() -> PlanTableMaintenanceUseCaseOutput:
+    """Return a plan whose checks hold measurements the domain accepts: a due compaction and a cooling expiry."""
+    return PlanTableMaintenanceUseCaseOutput(
+        status="planned",
+        reason=None,
+        reconcile_interval_seconds=900,
+        table_name="iceberg.sales.orders",
+        operations=(),
+        checks=(
+            PlanTableMaintenanceUseCaseOutput.Check(
+                operation="rewrite_data_files",
+                verdict="due",
+                measurements=(
+                    PlanTableMaintenanceUseCaseOutput.Measurement(
+                        key="small_files", observed=40, unit="count", threshold=10, comparison=">=", met=True
+                    ),
+                    PlanTableMaintenanceUseCaseOutput.Measurement(
+                        key="data_bytes", observed=1024, unit="bytes", threshold=None, comparison=None, met=None
+                    ),
+                ),
+                next_eligible_at=None,
+            ),
+            PlanTableMaintenanceUseCaseOutput.Check(
+                operation="expire_snapshots",
+                verdict="cooling_down",
+                measurements=(),
+                next_eligible_at=datetime(2026, 10, 24, 7, 0, tzinfo=UTC),
+            ),
+        ),
+        policy_name="gold",
+        policy_version=3,
+        policy_target={"type": "namespace", "path": ["iceberg", "sales"]},
+    )
+
+
+def test_plan_checks_are_recorded_as_the_measurements_the_plan_took():
+    """A plan's checks, through Temporal and the record activity, list back as the reconciliation's measurements."""
+    activities, _ = _reconcile()
+    activities._plan = FakePlan(_measured_plan())  # noqa: SLF001
+    repo = InMemoryTableReconciliationsRepo()
+    activities._record = RecordTableReconciliationService(repo)  # noqa: SLF001
+    plan = activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW, "run_id": "run-1"})
+
+    assert activities.record_table_reconciliation(_record_payload_of(plan)) == {"recorded": True}
+
+    (listed,) = (
+        ListTableReconciliationsService(repo).execute(ListTableReconciliationsUseCaseInput(table_uuid="u1")).items
+    )
+    assert [(op.operation, op.result, op.next_eligible_at) for op in listed.operations] == [
+        ("rewrite_data_files", "started", None),
+        ("expire_snapshots", "cooling_down", datetime(2026, 10, 24, 7, 0, tzinfo=UTC)),
+    ]
+    assert [(m.key, m.observed, m.threshold, m.comparison, m.met) for m in listed.operations[0].measurements] == [
+        ("small_files", 40, 10, ">=", True),
+        ("data_bytes", 1024, None, None, None),
+    ]
+
+
 WORKFLOW_PLAN_REQUEST = {
     "table_uuid": "u1",
     "now": NOW,
@@ -390,7 +525,7 @@ def test_record_reconciliation_passes_every_field_and_returns_dict():
             dry_run=False,
             status="planned",
             skip_reason=None,
-            checks=[CHECK],
+            checks=(CHECK,),
             run_id="run-1",
             run_start_failed=False,
             policy_name="nightly",
@@ -418,7 +553,7 @@ def test_submit_injects_callback_base_url_and_converts_filters():
     assert request.run_id == "r1"
     assert request.operation == "rewrite_data_files"
     assert request.attempt == 2
-    assert request.filters == [SubmitMaintenanceOperationUseCaseInputFilterItem(1, "y = 2")]
+    assert request.filters == (SubmitMaintenanceOperationUseCaseInput.Filter(spec_id=1, where="y = 2"),)
     assert request.procedure_args == {"a": 1}
     assert request.callback_base_url == "http://cp:8000"
     assert request.now == NOW_DT
@@ -561,7 +696,7 @@ def test_create_run_passes_fields_and_returns_iso_dict():
     assert request.execution_ref == "wf-r1"
     assert request.table_uuid == "u1"
     assert request.trigger == "scheduled"
-    assert request.operations == ["rewrite_data_files", "expire_snapshots"]
+    assert request.operations == ("rewrite_data_files", "expire_snapshots")
     assert request.now == NOW_DT
     assert result["run_id"] == "r1"
     assert result["status"] == "running"

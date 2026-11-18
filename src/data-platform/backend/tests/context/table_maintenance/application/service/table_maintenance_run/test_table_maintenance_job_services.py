@@ -34,7 +34,6 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
     GetMaintenanceJobStatusUseCaseInput,
     RecordTableMaintenanceOperationResultUseCaseInput,
     SubmitMaintenanceOperationUseCaseInput,
-    SubmitMaintenanceOperationUseCaseInputFilterItem,
 )
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
     SubmitMaintenanceJobGateway,
@@ -96,7 +95,7 @@ def submitter(runs_repo, tables_repo, submit_job, candidates_repo):
 
 
 def _filter(spec_id, where):
-    return SubmitMaintenanceOperationUseCaseInputFilterItem(spec_id, where)
+    return SubmitMaintenanceOperationUseCaseInput.Filter(spec_id=spec_id, where=where)
 
 
 def _submit(submitter, now, **overrides):
@@ -104,10 +103,10 @@ def _submit(submitter, now, **overrides):
         "run_id": "run-1",
         "operation": "rewrite_data_files",
         "attempt": 1,
-        "filters": [
-            SubmitMaintenanceOperationUseCaseInputFilterItem(0, "a = 1"),
-            SubmitMaintenanceOperationUseCaseInputFilterItem(1, "b = 2"),
-        ],
+        "filters": (
+            SubmitMaintenanceOperationUseCaseInput.Filter(spec_id=0, where="a = 1"),
+            SubmitMaintenanceOperationUseCaseInput.Filter(spec_id=1, where="b = 2"),
+        ),
         "procedure_args": {"min-input-files": 2},
         "callback_base_url": "http://tm.example:8000/",
         "now": now,
@@ -185,7 +184,13 @@ def test_failed_submit_can_be_recorded_and_the_next_attempt_goes_through(
     )
     recorder.execute(
         RecordTableMaintenanceOperationResultUseCaseInput(
-            "run-1", "rewrite_data_files", 1, False, {}, "submit failed", now
+            run_id="run-1",
+            operation="rewrite_data_files",
+            attempt=1,
+            succeeded=False,
+            metrics={},
+            error="submit failed",
+            now=now,
         )
     )
     op = runs_repo.get(TableMaintenanceRunId("run-1")).operations[0]
@@ -199,13 +204,13 @@ def test_failed_submit_can_be_recorded_and_the_next_attempt_goes_through(
 
 def test_submit_whole_table_filter_means_no_where(submitter, run, submit_job, now):
     """A whole table filter submits the job without a where clause."""
-    _submit(submitter, now, filters=[_filter(0, "")])
+    _submit(submitter, now, filters=(_filter(0, ""),))
     assert next(iter(submit_job.jobs.values())).where == []
 
 
 def test_submit_any_empty_where_makes_the_whole_table_the_target(submitter, run, submit_job, now):
     """If any filter has an empty where clause the job targets the whole table."""
-    _submit(submitter, now, filters=[_filter(0, "a = 1"), _filter(1, "")])
+    _submit(submitter, now, filters=(_filter(0, "a = 1"), _filter(1, "")))
     assert next(iter(submit_job.jobs.values())).where == []
 
 
@@ -266,7 +271,7 @@ def test_submit_rejects_bad_requests(submitter, run, submit_job, tables_repo, no
 
 
 def _status_input(run_id="run-1", operation="rewrite_data_files", attempt=1):
-    return GetMaintenanceJobStatusUseCaseInput(run_id, operation, attempt)
+    return GetMaintenanceJobStatusUseCaseInput(run_id=run_id, operation=operation, attempt=attempt)
 
 
 def test_get_job_status_passes_state_and_error_through(read_job):
@@ -357,13 +362,13 @@ class _CancelDuringSubmitGateway(SubmitMaintenanceJobGateway):
     def submit(self, input):  # noqa: A002
         self.recorder.execute(
             RecordTableMaintenanceOperationResultUseCaseInput(
-                input.run_id,
-                input.operation,
-                input.attempt,
-                False,
-                {},
-                "cancelled",
-                self.now,
+                run_id=input.run_id,
+                operation=input.operation,
+                attempt=input.attempt,
+                succeeded=False,
+                metrics={},
+                error="cancelled",
+                now=self.now,
             )
         )
         return SubmitMaintenanceJobGatewayOutput(job_name="job-cancelled")

@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from datetime import datetime
+from typing import Any
 
-if TYPE_CHECKING:
-    from datetime import datetime
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class RecordTableReconciliationUseCaseInput:
+class RecordTableReconciliationUseCaseInput(UseCaseInput):
     """Carry one reconciliation pass to record, as plain values.
 
     ``checks`` holds the plan's check items as dicts (operation, verdict,
@@ -25,7 +23,7 @@ class RecordTableReconciliationUseCaseInput:
     dry_run: bool
     status: str
     skip_reason: str | None
-    checks: list[dict[str, Any]]
+    checks: tuple[dict[str, Any], ...]
     run_id: str | None
     run_start_failed: bool
     policy_name: str

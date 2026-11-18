@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from datetime import datetime
 
-if TYPE_CHECKING:
-    from datetime import datetime
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class ListTableReconciliationsUseCaseInput:
+class ListTableReconciliationsUseCaseInput(UseCaseInput):
     """Carry the request to list the reconciliations of a table."""
 
     table_uuid: str

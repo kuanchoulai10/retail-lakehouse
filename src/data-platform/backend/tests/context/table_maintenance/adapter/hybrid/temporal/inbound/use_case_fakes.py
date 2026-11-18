@@ -123,20 +123,23 @@ class FakeDelete(DeleteMaintenanceJobUseCase):
 class FakeCreateRun(CreateTableMaintenanceRunUseCase):
     """Create run use case fake that records its requests."""
 
-    def __init__(self) -> None:
-        """Start with no recorded requests."""
+    def __init__(self, output: CreateTableMaintenanceRunUseCaseOutput | None = None) -> None:
+        """Hold the run to return, a running one built from the request by default, and start with no requests."""
         self.requests: list[CreateTableMaintenanceRunUseCaseInput] = []
+        self._output = output
 
     def execute(self, request: CreateTableMaintenanceRunUseCaseInput) -> CreateTableMaintenanceRunUseCaseOutput:
-        """Record the request and return a running run."""
+        """Record the request and return the run it holds, or a running one."""
         self.requests.append(request)
+        if self._output is not None:
+            return self._output
         return CreateTableMaintenanceRunUseCaseOutput(
             run_id=request.run_id,
             table_uuid=request.table_uuid,
             execution_ref=request.execution_ref,
             trigger=request.trigger,
             status="running",
-            operations=[{"operation": op} for op in request.operations],
+            operations=tuple({"operation": op} for op in request.operations),
             created_at=CREATED_AT,
             finished_at=None,
         )
@@ -145,15 +148,18 @@ class FakeCreateRun(CreateTableMaintenanceRunUseCase):
 class FakeRecordResult(RecordTableMaintenanceOperationResultUseCase):
     """Record result use case fake that records its requests."""
 
-    def __init__(self) -> None:
-        """Start with no recorded requests."""
+    def __init__(self, output: RecordTableMaintenanceOperationResultUseCaseOutput | None = None) -> None:
+        """Hold the reply to return, its run as running by default, and start with no recorded requests."""
         self.requests: list[RecordTableMaintenanceOperationResultUseCaseInput] = []
+        self._output = output
 
     def execute(
         self, request: RecordTableMaintenanceOperationResultUseCaseInput
     ) -> RecordTableMaintenanceOperationResultUseCaseOutput:
-        """Record the request and return its run as running."""
+        """Record the request and return the reply it holds, or its run as running."""
         self.requests.append(request)
+        if self._output is not None:
+            return self._output
         return RecordTableMaintenanceOperationResultUseCaseOutput(run_id=request.run_id, status="running")
 
 

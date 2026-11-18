@@ -6,7 +6,6 @@ from context.table_maintenance.application.port.inbound.compaction_candidate.lis
     ListCompactionCandidatesUseCase,
     ListCompactionCandidatesUseCaseInput,
     ListCompactionCandidatesUseCaseOutput,
-    ListCompactionCandidatesUseCaseOutputItem,
 )
 from context.table_maintenance.application.port.inbound.compaction_candidate.release_compaction_candidates import (
     ReleaseCompactionCandidatesUseCase,
@@ -18,7 +17,6 @@ __all__ = [
     "ListCompactionCandidatesUseCase",
     "ListCompactionCandidatesUseCaseInput",
     "ListCompactionCandidatesUseCaseOutput",
-    "ListCompactionCandidatesUseCaseOutputItem",
     "ReleaseCompactionCandidatesUseCase",
     "ReleaseCompactionCandidatesUseCaseInput",
     "ReleaseCompactionCandidatesUseCaseOutput",

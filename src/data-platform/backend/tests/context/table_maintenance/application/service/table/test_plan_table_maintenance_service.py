@@ -505,7 +505,7 @@ def _record(plan, now, **overrides):
         "dry_run": True,
         "status": plan.status,
         "skip_reason": plan.reason,
-        "checks": [check.model_dump() for check in plan.checks],
+        "checks": tuple(check.model_dump() for check in plan.checks),
         "run_id": None,
         "run_start_failed": False,
         "policy_name": plan.policy_name,

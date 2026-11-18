@@ -7,17 +7,16 @@ from datetime import UTC, datetime, timedelta
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.compaction_candidate import (
     ListCompactionCandidatesUseCaseOutput,
-    ListCompactionCandidatesUseCaseOutputItem,
 )
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import StubUseCase, build_client
 
 NOW = datetime(2026, 11, 13, 12, 0, tzinfo=UTC)
 
 
-def _item(rank: int | None, state: str = "pending") -> ListCompactionCandidatesUseCaseOutputItem:
-    return ListCompactionCandidatesUseCaseOutputItem(
+def _item(rank: int | None, state: str = "pending") -> ListCompactionCandidatesUseCaseOutput.CompactionCandidate:
+    return ListCompactionCandidatesUseCaseOutput.CompactionCandidate(
         spec_id=0,
-        values=["2026-11-01"],
+        values=("2026-11-01",),
         partition_label="day=2026-11-01",
         state=state,
         hold_reason=None,
@@ -40,7 +39,7 @@ def _item(rank: int | None, state: str = "pending") -> ListCompactionCandidatesU
 
 def test_lists_a_tables_candidates_with_how_many_one_run_takes():
     """The route answers the table's candidates in the use case's order, with partitions per run."""
-    stub = StubUseCase(ListCompactionCandidatesUseCaseOutput(partitions_per_run=10, items=[_item(1)]))
+    stub = StubUseCase(ListCompactionCandidatesUseCaseOutput(partitions_per_run=10, items=(_item(1),)))
     client = build_client(list_compaction_candidates=stub)
 
     response = client.get("/v1/tables/u-1/compaction-candidates")
@@ -76,7 +75,7 @@ def test_lists_a_tables_candidates_with_how_many_one_run_takes():
 
 def test_a_granted_candidate_names_its_round():
     """A granted candidate carries the round that granted it."""
-    stub = StubUseCase(ListCompactionCandidatesUseCaseOutput(partitions_per_run=10, items=[_item(None, "granted")]))
+    stub = StubUseCase(ListCompactionCandidatesUseCaseOutput(partitions_per_run=10, items=(_item(None, "granted"),)))
 
     candidate = build_client(list_compaction_candidates=stub).get("/v1/tables/u-1/compaction-candidates").json()
 

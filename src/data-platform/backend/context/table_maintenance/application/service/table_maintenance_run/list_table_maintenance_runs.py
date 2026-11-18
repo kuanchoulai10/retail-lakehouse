@@ -9,7 +9,6 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
     ListTableMaintenanceRunsUseCase,
     ListTableMaintenanceRunsUseCaseInput,
     ListTableMaintenanceRunsUseCaseOutput,
-    ListTableMaintenanceRunsUseCaseOutputItem,
 )
 from context.table_maintenance.application.service.table_maintenance_run.table_maintenance_run_output_fields import (
     table_maintenance_run_output_fields,
@@ -32,7 +31,8 @@ class ListTableMaintenanceRunsService(ListTableMaintenanceRunsUseCase):
         """Return up to ``limit`` runs of the table."""
         runs = self._runs_repo.list_by_table(TableId(request.table_uuid), request.limit)
         return ListTableMaintenanceRunsUseCaseOutput(
-            items=[
-                ListTableMaintenanceRunsUseCaseOutputItem(**table_maintenance_run_output_fields(run)) for run in runs
-            ]
+            items=tuple(
+                ListTableMaintenanceRunsUseCaseOutput.TableMaintenanceRun(**table_maintenance_run_output_fields(run))
+                for run in runs
+            )
         )

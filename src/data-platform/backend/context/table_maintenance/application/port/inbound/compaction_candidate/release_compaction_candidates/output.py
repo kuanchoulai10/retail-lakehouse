@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class ReleaseCompactionCandidatesUseCaseOutput:
+class ReleaseCompactionCandidatesUseCaseOutput(UseCaseOutput):
     """Say how many candidates were handed back."""
 
     released: int

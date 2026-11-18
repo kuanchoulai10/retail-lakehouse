@@ -75,7 +75,7 @@ def _submitted_callback_url() -> str:
             run_id="run-1",
             operation="expire_snapshots",
             attempt=1,
-            filters=[],
+            filters=(),
             procedure_args={},
             callback_base_url="http://api.example:8000/",
             now=NOW,

@@ -31,8 +31,6 @@ DOMAIN_MARKER = ".application.domain"
 
 PENDING_PORTS: frozenset[str] = frozenset(
     {
-        "table_maintenance/compaction_candidate/list_compaction_candidates",
-        "table_maintenance/compaction_candidate/release_compaction_candidates",
         "table_maintenance/compaction_round/get_compaction_round",
         "table_maintenance/compaction_round/get_platform_settings",
         "table_maintenance/compaction_round/get_scheduler_settings",
@@ -52,17 +50,6 @@ PENDING_PORTS: frozenset[str] = frozenset(
         "table_maintenance/table_maintenance_policy_attachment/detach_table_maintenance_policy",
         "table_maintenance/table_maintenance_policy_attachment/list_table_maintenance_policy_attachments",
         "table_maintenance/table_maintenance_policy_attachment/resolve_applicable_table_maintenance_policy",
-        "table_maintenance/table_maintenance_run/create_table_maintenance_run",
-        "table_maintenance/table_maintenance_run/delete_maintenance_job",
-        "table_maintenance/table_maintenance_run/get_maintenance_job_pods",
-        "table_maintenance/table_maintenance_run/get_maintenance_job_status",
-        "table_maintenance/table_maintenance_run/get_table_maintenance_run",
-        "table_maintenance/table_maintenance_run/list_table_maintenance_runs",
-        "table_maintenance/table_maintenance_run/process_table_maintenance_callback",
-        "table_maintenance/table_maintenance_run/record_table_maintenance_operation_result",
-        "table_maintenance/table_maintenance_run/submit_maintenance_operation",
-        "table_maintenance/table_reconciliation/list_table_reconciliations",
-        "table_maintenance/table_reconciliation/record_table_reconciliation",
     }
 )
 

@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class GetMaintenanceJobPodsUseCaseOutput:
+class GetMaintenanceJobPodsUseCaseOutput(UseCaseOutput):
     """Carry the names of the attempt's pods that can still run; empty once they are all gone."""
 
     live_pods: tuple[str, ...]

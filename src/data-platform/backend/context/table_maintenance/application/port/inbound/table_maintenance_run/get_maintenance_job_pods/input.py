@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class GetMaintenanceJobPodsUseCaseInput:
+class GetMaintenanceJobPodsUseCaseInput(UseCaseInput):
     """Carry the request to get the live pods of one operation attempt job."""
 
     run_id: str

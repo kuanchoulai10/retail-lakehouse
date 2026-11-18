@@ -2,20 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from datetime import datetime
 
-if TYPE_CHECKING:
-    from datetime import datetime
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class CreateTableMaintenanceRunUseCaseInput:
+class CreateTableMaintenanceRunUseCaseInput(UseCaseInput):
     """Carry the request to create a maintenance run."""
 
     run_id: str
     table_uuid: str
     execution_ref: str
     trigger: str
-    operations: list[str]
+    operations: tuple[str, ...]
     now: datetime

@@ -52,7 +52,6 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run.li
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run.list_table_maintenance_runs.output import (  # noqa: E501
     ListTableMaintenanceRunsUseCaseOutput,
-    ListTableMaintenanceRunsUseCaseOutputItem,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run.list_table_maintenance_runs.use_case import (  # noqa: E501
     ListTableMaintenanceRunsUseCase,
@@ -77,7 +76,6 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run.re
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run.submit_maintenance_operation.input import (  # noqa: E501
     SubmitMaintenanceOperationUseCaseInput,
-    SubmitMaintenanceOperationUseCaseInputFilterItem,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run.submit_maintenance_operation.output import (  # noqa: E501
     SubmitMaintenanceOperationUseCaseOutput,
@@ -105,7 +103,6 @@ __all__ = [
     "ListTableMaintenanceRunsUseCase",
     "ListTableMaintenanceRunsUseCaseInput",
     "ListTableMaintenanceRunsUseCaseOutput",
-    "ListTableMaintenanceRunsUseCaseOutputItem",
     "ProcessTableMaintenanceCallbackUseCase",
     "ProcessTableMaintenanceCallbackUseCaseInput",
     "ProcessTableMaintenanceCallbackUseCaseOutput",
@@ -114,6 +111,5 @@ __all__ = [
     "RecordTableMaintenanceOperationResultUseCaseOutput",
     "SubmitMaintenanceOperationUseCase",
     "SubmitMaintenanceOperationUseCaseInput",
-    "SubmitMaintenanceOperationUseCaseInputFilterItem",
     "SubmitMaintenanceOperationUseCaseOutput",
 ]

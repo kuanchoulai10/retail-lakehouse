@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class RecordTableReconciliationUseCaseOutput:
+class RecordTableReconciliationUseCaseOutput(UseCaseOutput):
     """Report whether the reconciliation was newly recorded or already existed."""
 
     recorded: bool

@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class DeleteMaintenanceJobUseCaseOutput:
+class DeleteMaintenanceJobUseCaseOutput(UseCaseOutput):
     """Carry the result of the request to delete a Spark maintenance job."""
 
     run_id: str

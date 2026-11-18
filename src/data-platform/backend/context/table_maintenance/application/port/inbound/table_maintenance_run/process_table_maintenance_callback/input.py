@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class ProcessTableMaintenanceCallbackUseCaseInput:
+class ProcessTableMaintenanceCallbackUseCaseInput(UseCaseInput):
     """Carry the request to forward a Spark job result callback to the workflow."""
 
     run_id: str

@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class DeleteMaintenanceJobUseCaseInput:
+class DeleteMaintenanceJobUseCaseInput(UseCaseInput):
     """Carry the request to delete the Spark job of one operation attempt."""
 
     run_id: str

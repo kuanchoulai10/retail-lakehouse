@@ -13,7 +13,6 @@ from context.table_maintenance.application.port.inbound.compaction_candidate imp
     ListCompactionCandidatesUseCase,
     ListCompactionCandidatesUseCaseInput,
     ListCompactionCandidatesUseCaseOutput,
-    ListCompactionCandidatesUseCaseOutputItem,
 )
 
 if TYPE_CHECKING:
@@ -68,7 +67,7 @@ class ListCompactionCandidatesService(ListCompactionCandidatesUseCase):
         started = self._round_starts({c.granted_round_id for c in ranked if c.granted_round_id and c.id not in expired})
         return ListCompactionCandidatesUseCaseOutput(
             partitions_per_run=self._partitions_per_run,
-            items=[
+            items=tuple(
                 _item(
                     c,
                     ranks.get(c.id),
@@ -77,7 +76,7 @@ class ListCompactionCandidatesService(ListCompactionCandidatesUseCase):
                     round_started_at=None if c.granted_round_id is None else started.get(c.granted_round_id),
                 )
                 for c in ranked
-            ],
+            ),
         )
 
     def _round_starts(self, round_ids: set[str]) -> dict[str, datetime]:
@@ -97,10 +96,10 @@ def _item(
     overdue: bool,
     expired: bool,
     round_started_at: datetime | None,
-) -> ListCompactionCandidatesUseCaseOutputItem:
-    return ListCompactionCandidatesUseCaseOutputItem(
+) -> ListCompactionCandidatesUseCaseOutput.CompactionCandidate:
+    return ListCompactionCandidatesUseCaseOutput.CompactionCandidate(
         spec_id=candidate.partition.spec_id,
-        values=list(candidate.partition.values),
+        values=tuple(candidate.partition.values),
         partition_label=candidate.label,
         state=CandidateState.PENDING.value if expired else candidate.state.value,
         hold_reason=None if candidate.hold_reason is None else candidate.hold_reason.value,

@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class GetMaintenanceJobStatusUseCaseOutput:
+class GetMaintenanceJobStatusUseCaseOutput(UseCaseOutput):
     """Carry the result of the request to get the state of a Spark maintenance job."""
 
     state: str

@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class ListCompactionCandidatesUseCaseInput:
+class ListCompactionCandidatesUseCaseInput(UseCaseInput):
     """Carry the request: list the compaction candidates of a table."""
 
     table_uuid: str

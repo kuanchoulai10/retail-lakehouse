@@ -85,7 +85,7 @@ def _create_input(now, run_id="run-1", **overrides):
         "run_id": run_id,
         "table_uuid": "u-1",
         "trigger": "scheduled",
-        "operations": ["expire_snapshots", "rewrite_data_files"],
+        "operations": ("expire_snapshots", "rewrite_data_files"),
         "execution_ref": "wf-run-1",
         "now": now,
     }
@@ -132,9 +132,9 @@ def test_create_run_validates_input(creator, table, now):
     with pytest.raises(ValidationError):
         creator.execute(_create_input(now, trigger="whenever"))
     with pytest.raises(ValidationError):
-        creator.execute(_create_input(now, operations=["defragment"]))
+        creator.execute(_create_input(now, operations=("defragment",)))
     with pytest.raises(ValidationError):
-        creator.execute(_create_input(now, operations=[]))
+        creator.execute(_create_input(now, operations=()))
     with pytest.raises(ValidationError):
         creator.execute(_create_input(now, execution_ref=""))
     with pytest.raises(NotFoundError):
@@ -274,7 +274,9 @@ def test_callback_forwards_result_to_the_workflow(runs_repo, started_run, result
     """The callback forwards the result to the workflow and accepts it."""
     service = ProcessTableMaintenanceCallbackService(runs_repo, results)
     out = service.execute(
-        ProcessTableMaintenanceCallbackUseCaseInput("run-1", "rewrite_data_files", 3, False, {"a": 1}, "OOM")
+        ProcessTableMaintenanceCallbackUseCaseInput(
+            run_id="run-1", operation="rewrite_data_files", attempt=3, succeeded=False, metrics={"a": 1}, error="OOM"
+        )
     )
     assert out.accepted is True
     (call,) = results.calls
@@ -291,7 +293,11 @@ def test_callback_unknown_run_not_found(runs_repo, results):
     """A callback for an unknown run raises NotFoundError and forwards nothing."""
     service = ProcessTableMaintenanceCallbackService(runs_repo, results)
     with pytest.raises(NotFoundError):
-        service.execute(ProcessTableMaintenanceCallbackUseCaseInput("nope", "rewrite_data_files", 1, True, {}, None))
+        service.execute(
+            ProcessTableMaintenanceCallbackUseCaseInput(
+                run_id="nope", operation="rewrite_data_files", attempt=1, succeeded=True, metrics={}, error=None
+            )
+        )
     assert results.calls == []
 
 
@@ -299,7 +305,11 @@ def test_callback_rejects_unknown_operation(runs_repo, started_run, results):
     """A callback with an unknown operation raises a ValidationError."""
     service = ProcessTableMaintenanceCallbackService(runs_repo, results)
     with pytest.raises(ValidationError):
-        service.execute(ProcessTableMaintenanceCallbackUseCaseInput("run-1", "x", 1, True, {}, None))
+        service.execute(
+            ProcessTableMaintenanceCallbackUseCaseInput(
+                run_id="run-1", operation="x", attempt=1, succeeded=True, metrics={}, error=None
+            )
+        )
 
 
 # --- get / list ---
@@ -308,11 +318,11 @@ def test_callback_rejects_unknown_operation(runs_repo, started_run, results):
 def test_get_run_returns_the_run_or_not_found(runs_repo, started_run):
     """Getting a run returns it with its operations, or raises NotFoundError."""
     service = GetTableMaintenanceRunService(runs_repo)
-    out = service.execute(GetTableMaintenanceRunUseCaseInput("run-1"))
+    out = service.execute(GetTableMaintenanceRunUseCaseInput(run_id="run-1"))
     assert out.status == "running"
     assert out.operations[0]["job_name"] == "tm-rdf-run1-a1"
     with pytest.raises(NotFoundError):
-        service.execute(GetTableMaintenanceRunUseCaseInput("nope"))
+        service.execute(GetTableMaintenanceRunUseCaseInput(run_id="nope"))
 
 
 def test_list_runs_newest_first_with_limit(runs_repo, table, now):
@@ -329,11 +339,11 @@ def test_list_runs_newest_first_with_limit(runs_repo, table, now):
             )
         )
     service = ListTableMaintenanceRunsService(runs_repo)
-    out = service.execute(ListTableMaintenanceRunsUseCaseInput("u-1"))
+    out = service.execute(ListTableMaintenanceRunsUseCaseInput(table_uuid="u-1"))
     assert [i.run_id for i in out.items] == ["run-2", "run-1", "run-0"]
-    limited = service.execute(ListTableMaintenanceRunsUseCaseInput("u-1", limit=1))
+    limited = service.execute(ListTableMaintenanceRunsUseCaseInput(table_uuid="u-1", limit=1))
     assert [i.run_id for i in limited.items] == ["run-2"]
-    assert service.execute(ListTableMaintenanceRunsUseCaseInput("other")).items == []
+    assert service.execute(ListTableMaintenanceRunsUseCaseInput(table_uuid="other")).items == ()
 
 
 # --- procedure arguments ---
@@ -412,7 +422,7 @@ def test_run_output_lists_every_attempt(runs_repo, started_run, now):
     )
     started_run.start_attempt(RDF, 2, "tm-rdf-run1-a2", now, size=ComputeSize.M)
     runs_repo.update(started_run)
-    out = GetTableMaintenanceRunService(runs_repo).execute(GetTableMaintenanceRunUseCaseInput("run-1"))
+    out = GetTableMaintenanceRunService(runs_repo).execute(GetTableMaintenanceRunUseCaseInput(run_id="run-1"))
     rdf = next(op for op in out.operations if op["operation"] == "rewrite_data_files")
     assert rdf["attempt_history"] == [
         {

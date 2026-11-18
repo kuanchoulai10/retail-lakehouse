@@ -22,7 +22,7 @@ from context.table_maintenance.application.port.inbound.compaction_candidate imp
 if TYPE_CHECKING:
     from context.table_maintenance.adapter.inbound.web.compaction_candidate.dto import CandidatePriorityApi
     from context.table_maintenance.application.port.inbound.compaction_candidate import (
-        ListCompactionCandidatesUseCaseOutputItem,
+        ListCompactionCandidatesUseCaseOutput,
     )
 
 router = APIRouter(tags=["compaction-candidates"])
@@ -40,9 +40,9 @@ def list_compaction_candidates(table_uuid: str, use_cases: UseCases) -> Compacti
     )
 
 
-def _candidate(item: ListCompactionCandidatesUseCaseOutputItem) -> CompactionCandidateApiResponse:
+def _candidate(item: ListCompactionCandidatesUseCaseOutput.CompactionCandidate) -> CompactionCandidateApiResponse:
     return CompactionCandidateApiResponse(
-        partition=CandidatePartitionApiResponse(spec_id=item.spec_id, values=item.values),
+        partition=CandidatePartitionApiResponse(spec_id=item.spec_id, values=list(item.values)),
         partition_label=item.partition_label,
         state=item.state,
         hold_reason=item.hold_reason,

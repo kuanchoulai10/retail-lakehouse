@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class GetTableMaintenanceRunUseCaseInput:
+class GetTableMaintenanceRunUseCaseInput(UseCaseInput):
     """Carry the request to get one maintenance run."""
 
     run_id: str

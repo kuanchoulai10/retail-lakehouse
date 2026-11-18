@@ -89,10 +89,10 @@ def test_candidates_come_best_first_and_only_pending_ones_are_ranked(service):
 
     assert out.partitions_per_run == 2
     assert [(i.values, i.state, i.rank) for i in out.items] == [
-        (["2026-11-04"], "claimed", None),
-        (["2026-11-02"], "held", None),
-        (["2026-11-03"], "pending", 1),
-        (["2026-11-01"], "pending", 2),
+        (("2026-11-04",), "claimed", None),
+        (("2026-11-02",), "held", None),
+        (("2026-11-03",), "pending", 1),
+        (("2026-11-01",), "pending", 2),
     ]
 
 
@@ -140,7 +140,7 @@ def test_a_table_without_candidates_lists_none(candidates_repo, tables_repo, now
         candidates_repo, tables_repo, InMemoryCompactionRoundsRepo(), partitions_per_run=10, sla=SLA
     )
 
-    assert service.execute(ListCompactionCandidatesUseCaseInput(table_uuid="u-1")).items == []
+    assert service.execute(ListCompactionCandidatesUseCaseInput(table_uuid="u-1")).items == ()
 
 
 def test_an_unknown_table_is_not_found(candidates_repo, tables_repo):

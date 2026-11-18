@@ -40,7 +40,7 @@ def table_maintenance_run_output_fields(run: TableMaintenanceRun) -> dict[str, A
         "execution_ref": run.execution_ref,
         "trigger": run.trigger.value,
         "status": run.status.value,
-        "operations": [
+        "operations": tuple(
             {
                 "operation": op.operation.value,
                 "status": op.status.value,
@@ -54,7 +54,7 @@ def table_maintenance_run_output_fields(run: TableMaintenanceRun) -> dict[str, A
                 "attempt_history": [_attempt_fields(a) for a in op.attempt_history],
             }
             for op in run.operations
-        ],
+        ),
         "created_at": run.created_at,
         "finished_at": run.finished_at,
     }

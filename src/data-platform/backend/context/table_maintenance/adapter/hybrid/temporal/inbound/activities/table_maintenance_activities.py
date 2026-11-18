@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from temporalio import activity
 
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
-    DEFAULT_MAX_ATTEMPTS,
     TableMaintenanceActivity,
 )
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.activity_payload import (
@@ -46,16 +44,7 @@ class TableMaintenanceActivities:
     def create_table_maintenance_run(self, request: dict[str, Any]) -> dict[str, Any]:
         """Create the run with its planned operations."""
         with translate_application_errors():
-            output = self._create_run.execute(
-                CreateTableMaintenanceRunUseCaseInput(
-                    run_id=request["run_id"],
-                    table_uuid=request["table_uuid"],
-                    execution_ref=request["execution_ref"],
-                    trigger=request["trigger"],
-                    operations=list(request["operations"]),
-                    now=datetime.fromisoformat(request["now"]),
-                )
-            )
+            output = self._create_run.execute(CreateTableMaintenanceRunUseCaseInput.from_primitives(request))
         return activity_payload(output)
 
     @activity.defn(name=TableMaintenanceActivity.RECORD_MAINTENANCE_OPERATION_RESULT)
@@ -63,20 +52,6 @@ class TableMaintenanceActivities:
         """Record the outcome of one operation attempt; an older request reads as a reported result."""
         with translate_application_errors():
             output = self._record_result.execute(
-                RecordTableMaintenanceOperationResultUseCaseInput(
-                    run_id=request["run_id"],
-                    operation=request["operation"],
-                    attempt=request["attempt"],
-                    succeeded=request["succeeded"],
-                    metrics=dict(request["metrics"]),
-                    error=request["error"],
-                    now=datetime.fromisoformat(request["now"]),
-                    ended_by=request.get("ended_by", "result"),
-                    still_running=request.get("still_running", False),
-                    max_attempts=request.get("max_attempts", DEFAULT_MAX_ATTEMPTS),
-                    policy_name=request.get("policy_name"),
-                    policy_version=request.get("policy_version"),
-                    policy_target=request.get("policy_target"),
-                )
+                RecordTableMaintenanceOperationResultUseCaseInput.from_primitives(request)
             )
         return activity_payload(output)

@@ -102,7 +102,7 @@ def _submit(submitter, now, operation=RDF, attempt=1):  # noqa: ANN001, ANN202
             run_id=RUN.value,
             operation=operation.value,
             attempt=attempt,
-            filters=[],
+            filters=(),
             procedure_args={},
             callback_base_url="http://cp",
             now=now,
