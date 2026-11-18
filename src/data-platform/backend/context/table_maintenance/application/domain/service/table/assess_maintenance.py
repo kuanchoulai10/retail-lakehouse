@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from base import validated_copy
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceAssessment,
     MaintenanceOperation,
@@ -85,8 +84,7 @@ def _assess(
     measured, planned = _measure(op, policy, observation, now)
     conditions = operation_policy.trigger_policy.conditions
     if conditions.is_empty() or any_condition_holds(measured.measurements):
-        assessment = validated_copy(
-            measured,
+        assessment = measured.with_changes(
             verdict=OperationVerdict.DUE,
             planned=PlannedOperation(operation=op) if planned is None else planned,
         )
@@ -94,7 +92,7 @@ def _assess(
         assessment = measured
     state = table.operation_state(op)
     if state.attention is not None:
-        return validated_copy(assessment, verdict=OperationVerdict.NEEDS_ATTENTION, planned=None)
+        return assessment.with_changes(verdict=OperationVerdict.NEEDS_ATTENTION, planned=None)
     if state.last_attempt_at is None:
         return assessment
     next_eligible_at = state.last_attempt_at + state.effective_cooldown(
@@ -102,8 +100,7 @@ def _assess(
     )
     if now >= next_eligible_at:
         return assessment
-    return validated_copy(
-        assessment,
+    return assessment.with_changes(
         verdict=OperationVerdict.COOLDOWN,
         next_eligible_at=next_eligible_at,
         planned=None,
@@ -170,14 +167,13 @@ def _measure_compaction(
     target_size = Measurement(key="target_file_size", observed=target, unit=MeasurementUnit.BYTES)
     if policy.scope.unit == CompactionUnit.TABLE or condition is None:
         total = sum(r for _, r in reducible)
-        measured = validated_copy(
-            base, measured=total, measurements=(_count("reducible_files", total, _at_least(condition)), target_size)
+        measured = base.with_changes(
+            measured=total, measurements=(_count("reducible_files", total, _at_least(condition)), target_size)
         )
         return measured, None
     qualifying = [(p, r) for p, r in reducible if r >= condition.at_least]
     total = sum(r for _, r in qualifying)
-    measured = validated_copy(
-        base,
+    measured = base.with_changes(
         measured=total,
         qualifying_partitions=len(qualifying),
         measurements=(

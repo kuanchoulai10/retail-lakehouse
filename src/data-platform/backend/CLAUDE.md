@@ -110,7 +110,7 @@ The domain model types, all strict (no coercion: `True` is not an `int`, a `list
 - `AggregateRoot[ID]` — `class Order(AggregateRoot[OrderId]): total: int`; an Entity that records events with `register_event()` and hands them over with `collect_events()` (a private attribute, never dumped or compared).
 - `DomainEvent` — frozen, `class OrderPlaced(DomainEvent): order_id: str`; `occurred_at` defaults to now (UTC).
 - `WholeSeconds` — `Annotated[timedelta, ...]`: a `timedelta` in the domain, integer seconds on the wire. Declare it with a matching alias pair, `min_interval: WholeSeconds = Field(validation_alias="min_interval_seconds", serialization_alias="min_interval_seconds")`; a non-whole-second duration is rejected when encoded.
-- `validated_copy(model, **changes)` — a changed copy of a value object that runs every validator. Domain code never calls `model_copy` (it skips validation), and never copies an aggregate (pending events would be lost).
+- `ValueObject.with_changes(**changes)` — a changed copy of a value object that runs every validator. Domain code never calls `model_copy` (it skips validation), and never copies an aggregate (pending events would be lost).
 - `validation_message(exc)` — a one-line message for a `ValidationError` (or any `ValueError`); services, ports and exceptions use it instead of importing Pydantic. A broken invariant answers 422 with that line; `InvalidTableTransition` / `InvalidRunTransition` still answer 409.
 
 Concrete domain types extend these bases directly (max depth 1, checked at class creation and by `test_inheritance_depth.py`). The five model bases are listed in ruff's `runtime-evaluated-base-classes`, so field-type imports stay at runtime; import the base from `base`, never `pydantic.BaseModel` directly.

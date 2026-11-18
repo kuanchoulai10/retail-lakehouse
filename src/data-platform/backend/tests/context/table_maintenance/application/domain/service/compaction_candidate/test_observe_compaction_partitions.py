@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 
 import pytest
 
-from base import validated_copy
 from context.table_maintenance.application.domain.model.compaction_candidate import PartitionKey
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
@@ -67,17 +66,13 @@ def _observation(partitions, specs=(REGION,)) -> TableObservation:  # noqa: ANN0
 
 def _compaction(*, unit: CompactionUnit = CompactionUnit.PARTITION, at_least: int | None = 5, enabled: bool = True):
     rdf = DEFAULT.operations.rewrite_data_files
-    trigger = validated_copy(
-        rdf.trigger_policy,
+    trigger = rdf.trigger_policy.with_changes(
         conditions=RewriteDataFilesConditions(reducible_files=None if at_least is None else AtLeast(at_least=at_least)),
     )
-    operations = validated_copy(
-        DEFAULT.operations,
-        rewrite_data_files=validated_copy(
-            rdf, enabled=enabled, scope=CompactionScope(unit=unit), trigger_policy=trigger
-        ),
+    operations = DEFAULT.operations.with_changes(
+        rewrite_data_files=rdf.with_changes(enabled=enabled, scope=CompactionScope(unit=unit), trigger_policy=trigger),
     )
-    return validated_copy(DEFAULT, operations=operations)
+    return DEFAULT.with_changes(operations=operations)
 
 
 def test_each_partition_meeting_the_condition_is_observed():
@@ -131,7 +126,7 @@ def test_whole_table_below_its_condition_observes_nothing():
 
 def test_a_qualifying_partition_of_an_unpartitioned_spec_makes_the_whole_table_the_candidate():
     """After partition evolution, an old unpartitioned spec cannot be filtered: the whole table is compacted."""
-    spec1 = validated_copy(REGION, spec_id=1)
+    spec1 = REGION.with_changes(spec_id=1)
     (whole,) = observe_compaction_partitions(
         _compaction(),
         _observation([_stats((), 10, spec_id=0), _stats(("eu",), 10, spec_id=1)], specs=(UNPARTITIONED, spec1)),

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from base import validated_copy
 from context.catalog.application.exceptions import ConflictError, NotFoundError
 from context.catalog.application.port.outbound.table import Table, TableId, TablesRepo
+from tests.context.catalog.fakes.rebuilt_copy import rebuilt_copy
 
 if TYPE_CHECKING:
     from base import EntityId
@@ -17,7 +17,7 @@ LAST_UPDATED_MS = 1762516800000
 
 def _copy(table: Table, **changes: object) -> Table:
     """Return a validated copy; it shares no mutable state with table and holds no pending events."""
-    return validated_copy(table, **changes)
+    return rebuilt_copy(table, **changes)
 
 
 class InMemoryTablesRepo(TablesRepo):

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, ClassVar
 
-from base import ValueObject, validated_copy
+from base import ValueObject
 from context.table_maintenance.application.domain.model.shared import ComputeSize
 from context.table_maintenance.application.domain.model.table.attention_mark import (
     AttentionMark,
@@ -67,8 +67,7 @@ class OperationState(ValueObject):
         if streak >= self.LOW_USE_RUNS:
             remembered = (ran_at.smaller() if ran_at else None) or ran_at
             streak = 0
-        return validated_copy(
-            self,
+        return self.with_changes(
             last_attempt_at=at,
             consecutive_failures=0,
             last_successful_size=remembered,
@@ -78,23 +77,22 @@ class OperationState(ValueObject):
 
     def recorded(self, attempt: RecordedAttempt) -> OperationState:
         """Return the state remembering that ``attempt``'s result was taken in."""
-        return validated_copy(self, last_recorded=attempt)
+        return self.with_changes(last_recorded=attempt)
 
     def after_failure(self, at: datetime) -> OperationState:
         """Return the state after a failed attempt."""
-        return validated_copy(
-            self,
+        return self.with_changes(
             last_attempt_at=at,
             consecutive_failures=self.consecutive_failures + 1,
         )
 
     def with_attention(self, mark: AttentionMark) -> OperationState:
         """Return the state marked as needing attention."""
-        return validated_copy(self, attention=mark)
+        return self.with_changes(attention=mark)
 
     def without_attention(self) -> OperationState:
         """Return the state with no attention mark."""
-        return validated_copy(self, attention=None)
+        return self.with_changes(attention=None)
 
     def needs_attention_under(self, policy: AppliedPolicyRef) -> bool:
         """Return whether the operation was marked as needing attention under ``policy``.

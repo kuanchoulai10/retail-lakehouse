@@ -5,10 +5,10 @@ from __future__ import annotations
 from datetime import timedelta
 from enum import StrEnum
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 import pytest
-from pydantic import Field, ValidationError
+from pydantic import Field, ValidationError, model_validator
 
 from base import ValueObject, WholeSeconds
 
@@ -133,3 +133,46 @@ def test_from_primitives_rejects_non_finite_numbers(bad: float) -> None:
     """NaN and Infinity are not JSON; they raise ValueError."""
     with pytest.raises(ValueError, match="JSON"):
         _Schedule.from_primitives({"unit": "hour", "min_interval_seconds": 3600, "retries": bad})
+
+
+class _Range(ValueObject):
+    """A value object whose model validator checks two fields together."""
+
+    low: int
+    high: int
+
+    @model_validator(mode="after")
+    def _low_not_above_high(self) -> Self:
+        if self.low > self.high:
+            raise ValueError("low must not exceed high")
+        return self
+
+
+def test_with_changes_applies_the_changes() -> None:
+    """The copy carries the changed field and keeps the others."""
+    assert _Range(low=1, high=5).with_changes(high=9) == _Range(low=1, high=9)
+
+
+def test_with_changes_leaves_the_original_alone() -> None:
+    """The original is unchanged."""
+    original = _Range(low=1, high=5)
+    original.with_changes(high=9)
+    assert original == _Range(low=1, high=5)
+
+
+def test_with_changes_runs_model_validators() -> None:
+    """A change that breaks a cross-field rule raises."""
+    with pytest.raises(ValidationError, match="low must not exceed high"):
+        _Range(low=1, high=5).with_changes(low=7)
+
+
+def test_with_changes_runs_field_validation() -> None:
+    """A change of the wrong type raises."""
+    with pytest.raises(ValidationError):
+        _Range(low=1, high=5).with_changes(low="7")
+
+
+def test_with_changes_unknown_field_raises() -> None:
+    """A change to a field that does not exist raises, naming the class."""
+    with pytest.raises(TypeError, match="_Range has no field colour"):
+        _Range(low=1, high=5).with_changes(colour="red")

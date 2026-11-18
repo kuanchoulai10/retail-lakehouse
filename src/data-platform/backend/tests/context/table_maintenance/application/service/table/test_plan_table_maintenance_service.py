@@ -9,7 +9,6 @@ from typing import Any
 
 import pytest
 
-from base import validated_copy
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
@@ -247,7 +246,7 @@ def test_plan_orders_operations_and_renders_procedure_args(planner, tables_repo,
 def test_plan_target_file_size_comes_from_the_policy(planner, tables_repo, catalog, policies, now):
     """The target file size and reconcile interval in the plan come from the applicable policy."""
     policy = policy_with_operation(
-        validated_copy(DEFAULT, reconcile_interval=timedelta(minutes=5)),
+        DEFAULT.with_changes(reconcile_interval=timedelta(minutes=5)),
         OPS.REWRITE_DATA_FILES,
         trigger_policy=RewriteDataFilesTriggerPolicy(
             cooldown=timedelta(hours=1),
@@ -377,7 +376,7 @@ def test_plan_output_names_resolved_policy(planner, tables_repo, catalog, polici
     """The plan names the policy it applied, its version and where it is attached."""
     _table(tables_repo, now)
     _observe(catalog, now)
-    gold = validated_copy(DEFAULT, reconcile_interval=timedelta(minutes=10), dry_run=True)
+    gold = DEFAULT.with_changes(reconcile_interval=timedelta(minutes=10), dry_run=True)
     CreateTableMaintenancePolicyService(policies, clock=lambda: now).execute(
         CreateTableMaintenancePolicyUseCaseInput(name="gold", content=gold.to_primitives())
     )
@@ -402,7 +401,7 @@ def test_plan_without_attachment_names_the_default_policy(planner, tables_repo, 
 
 def test_skipped_plan_names_the_policy_for_its_interval(planner, tables_repo, policies, now):
     """A skipped plan of a known table takes its interval from the applicable policy."""
-    _use_policy(policies, now, validated_copy(DEFAULT, reconcile_interval=timedelta(minutes=2)))
+    _use_policy(policies, now, DEFAULT.with_changes(reconcile_interval=timedelta(minutes=2)))
     _table(tables_repo, now).unmanage(now)
     plan = _plan(planner, now)
     assert (plan.reason, plan.reconcile_interval_seconds, plan.policy_name, plan.policy_version) == (
@@ -444,7 +443,7 @@ def test_scheduled_plan_reports_a_check_per_operation(planner, tables_repo, cata
 
 def test_dry_run_plans_no_operations_but_reports_due(planner, tables_repo, catalog, policies, now):
     """In dry run a scheduled plan has no operations while its checks still say due."""
-    _use_policy(policies, now, validated_copy(DEFAULT, dry_run=True))
+    _use_policy(policies, now, DEFAULT.with_changes(dry_run=True))
     _table(tables_repo, now)
     _observe(catalog, now)
     plan = _plan(planner, now)
@@ -454,7 +453,7 @@ def test_dry_run_plans_no_operations_but_reports_due(planner, tables_repo, catal
 
 def test_manual_plan_runs_in_dry_run(planner, tables_repo, catalog, policies, now):
     """A manual plan still returns its operations when the table is in dry run."""
-    _use_policy(policies, now, validated_copy(DEFAULT, dry_run=True))
+    _use_policy(policies, now, DEFAULT.with_changes(dry_run=True))
     _table(tables_repo, now)
     _observe(catalog, now)
     plan = _plan(planner, now, ["rewrite_manifests"])

@@ -5,9 +5,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from base import validated_copy
 from context.catalog.application.exceptions import ConflictError, NotFoundError
 from context.catalog.application.port.outbound.catalog import CatalogsRepo
+from tests.context.catalog.fakes.rebuilt_copy import rebuilt_copy
 
 if TYPE_CHECKING:
     from base import EntityId
@@ -18,7 +18,7 @@ NOW = datetime(2026, 11, 7, 12, 0, tzinfo=UTC)
 
 def _copy(catalog: Catalog, **changes: object) -> Catalog:
     """Return a validated copy; it shares no mutable state with catalog and holds no pending events."""
-    return validated_copy(catalog, **changes)
+    return rebuilt_copy(catalog, **changes)
 
 
 class InMemoryCatalogsRepo(CatalogsRepo):

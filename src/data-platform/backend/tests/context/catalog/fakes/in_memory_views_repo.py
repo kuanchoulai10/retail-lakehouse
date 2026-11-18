@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from base import validated_copy
 from context.catalog.application.exceptions import ConflictError, NotFoundError
 from context.catalog.application.port.outbound.view import View, ViewId, ViewsRepo
+from tests.context.catalog.fakes.rebuilt_copy import rebuilt_copy
 
 if TYPE_CHECKING:
     from base import EntityId
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 def _copy(view: View, **changes: object) -> View:
     """Return a validated copy; it shares no mutable state with view and holds no pending events."""
-    return validated_copy(view, **changes)
+    return rebuilt_copy(view, **changes)
 
 
 class InMemoryViewsRepo(ViewsRepo):

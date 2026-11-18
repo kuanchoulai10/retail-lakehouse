@@ -63,6 +63,20 @@ class ValueObject(BaseModel):
             raise ValueError(f"{cls.__name__} input must be JSON-compatible primitives: {exc}") from exc
         return cls.model_validate_json(payload, by_alias=True, by_name=False)
 
+    def with_changes(self, **changes: object) -> Self:
+        """Return a copy with ``changes`` applied, running every validator.
+
+        Pydantic's ``model_copy(update=...)`` skips validation; this rebuilds
+        the value from its field values so field and model validators see the
+        changed object. An unknown field name raises ``TypeError``.
+        """
+        fields = type(self).model_fields
+        unknown = sorted(changes.keys() - fields.keys())
+        if unknown:
+            raise TypeError(f"{type(self).__name__} has no field {', '.join(unknown)}")
+        data = {name: getattr(self, name) for name in fields} | changes
+        return type(self).model_validate(data, by_alias=False, by_name=True)
+
     def to_primitives(self) -> dict[str, Any]:
         """Return JSON-compatible primitives keyed by alias."""
         return self.model_dump(mode="json", by_alias=True)

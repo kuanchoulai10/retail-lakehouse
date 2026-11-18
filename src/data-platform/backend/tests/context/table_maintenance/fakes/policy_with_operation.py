@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from base import validated_copy
-
 if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.shared import MaintenanceOperation
     from context.table_maintenance.application.domain.model.table_maintenance_policy import (
@@ -18,5 +16,5 @@ def policy_with_operation(
 ) -> MaintenancePolicyContent:
     """Return ``content`` with the given fields of one operation's policy changed."""
     operations = content.operations
-    changed = validated_copy(operations.for_operation(operation), **changes)
-    return validated_copy(content, operations=validated_copy(operations, **{operation.value: changed}))
+    changed = operations.for_operation(operation).with_changes(**changes)
+    return content.with_changes(operations=operations.with_changes(**{operation.value: changed}))

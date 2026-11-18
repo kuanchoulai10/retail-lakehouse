@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from base import validated_copy
 from context.table_maintenance.adapter.outbound.table_maintenance_run.sql import (
     TableMaintenanceRunRowMapper,
     TableMaintenanceRunsSqlRepo,
@@ -59,8 +58,7 @@ def test_roundtrip_with_operation_details(repo: TableMaintenanceRunsSqlRepo):
     run = _run("r1")
     metrics = {"rewritten_data_files_count": 12}
     run.operations = (
-        validated_copy(
-            run.operations[0],
+        run.operations[0].with_changes(
             status=OperationRunStatus.SUCCEEDED,
             attempts=2,
             started_at=NOW,
@@ -69,7 +67,7 @@ def test_roundtrip_with_operation_details(repo: TableMaintenanceRunsSqlRepo):
             metrics=metrics,
             expected_files=40,
         ),
-        validated_copy(run.operations[1], status=OperationRunStatus.FAILED, error="boom"),
+        run.operations[1].with_changes(status=OperationRunStatus.FAILED, error="boom"),
     )
     run.finished_at = NOW + timedelta(minutes=5)
     repo.create(run)
@@ -105,7 +103,7 @@ def test_update_persists(repo: TableMaintenanceRunsSqlRepo):
     run = _run("r1")
     repo.create(run)
     run.operations = (
-        validated_copy(run.operations[0], status=OperationRunStatus.RUNNING, attempts=1),
+        run.operations[0].with_changes(status=OperationRunStatus.RUNNING, attempts=1),
         run.operations[1],
     )
     run.finished_at = NOW + timedelta(hours=1)

@@ -4,17 +4,22 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from base import validated_copy
 from context.catalog.application.exceptions import ConflictError, NotFoundError
 from context.catalog.application.port.outbound.generic_table import (
     GenericTable,
     GenericTableId,
     GenericTablesRepo,
 )
+from tests.context.catalog.fakes.rebuilt_copy import rebuilt_copy
 
 if TYPE_CHECKING:
     from base import EntityId
     from context.catalog.application.port.outbound.generic_table import NamespaceId
+
+
+def _copy(table: GenericTable) -> GenericTable:
+    """Return a validated copy; it shares no mutable state with table and holds no pending events."""
+    return rebuilt_copy(table)
 
 
 class InMemoryGenericTablesRepo(GenericTablesRepo):
@@ -28,17 +33,17 @@ class InMemoryGenericTablesRepo(GenericTablesRepo):
         """Store a new generic table; a taken name raises ConflictError."""
         if entity.id.value in self.items:
             raise ConflictError(f"Generic table already exists: {entity.id.name}")
-        self.items[entity.id.value] = validated_copy(entity)
-        return validated_copy(entity)
+        self.items[entity.id.value] = _copy(entity)
+        return _copy(entity)
 
     def get(self, entity_id: EntityId) -> GenericTable | None:
         """Return a copy of the generic table, or None."""
         stored = self.items.get(entity_id.value)
-        return None if stored is None else validated_copy(stored)
+        return None if stored is None else _copy(stored)
 
     def list_all(self) -> list[GenericTable]:
         """Return every generic table ordered by id."""
-        return [validated_copy(self.items[key]) for key in sorted(self.items)]
+        return [_copy(self.items[key]) for key in sorted(self.items)]
 
     def list_in(self, namespace: NamespaceId) -> list[GenericTableId]:
         """Return the ids of the generic tables directly in ``namespace``."""

@@ -7,7 +7,6 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pydantic import ValidationError
 
-from base import validated_copy
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
 )
@@ -277,7 +276,7 @@ def test_operation_update_revalidates():
     """Changing an operation goes through validation and rejects a wrong type."""
     operation = OperationRun(operation=Op.EXPIRE_SNAPSHOTS)
     with pytest.raises(ValidationError):
-        validated_copy(operation, attempts="many")
+        operation.with_changes(attempts="many")
 
 
 def test_operation_run_is_immutable():
@@ -416,7 +415,7 @@ def test_finishing_an_attempt_started_before_attempt_history_adds_its_entry():
     """An attempt started before attempt history existed gets its entry when it finishes."""
     run = _run([Op.REWRITE_DATA_FILES])
     run.start_attempt(Op.REWRITE_DATA_FILES, 1, "job-1", _now(1))
-    legacy = validated_copy(_op(run, Op.REWRITE_DATA_FILES), attempt_history=())
+    legacy = _op(run, Op.REWRITE_DATA_FILES).with_changes(attempt_history=())
     run.operations = (legacy,)
     run.fail(Op.REWRITE_DATA_FILES, 1, "boom", _now(3), failure_class=FailureClass.TIMEOUT)
     assert _attempts(run) == (

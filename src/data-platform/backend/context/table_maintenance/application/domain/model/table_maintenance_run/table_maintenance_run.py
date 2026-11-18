@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from base import AggregateRoot, validated_copy
+from base import AggregateRoot
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
@@ -134,8 +134,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             return
         self._require_startable(current, operation, attempt)
         self._replace(
-            validated_copy(
-                current,
+            current.with_changes(
                 status=OperationRunStatus.RUNNING,
                 attempts=attempt,
                 job_name=job_name,
@@ -170,7 +169,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             msg = f"attempt {attempt} of {operation} already has job {current.job_name}"
             raise InvalidRunTransition(msg)
         self.operations = tuple(
-            validated_copy(run, job_name=job_name) if run.operation == operation else run for run in self.operations
+            run.with_changes(job_name=job_name) if run.operation == operation else run for run in self.operations
         )
 
     def succeed(
@@ -228,8 +227,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             msg = f"cannot skip {operation} in status {current.status}"
             raise InvalidRunTransition(msg)
         self._replace(
-            validated_copy(
-                current,
+            current.with_changes(
                 status=OperationRunStatus.SKIPPED,
                 error=reason,
                 finished_at=now,
@@ -263,8 +261,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             msg = f"cannot mark {operation} {status} from status {current.status}"
             raise InvalidRunTransition(msg)
         self._replace(
-            validated_copy(
-                current,
+            current.with_changes(
                 status=status,
                 finished_at=now,
                 metrics=metrics,
@@ -302,8 +299,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             started_at = current.started_at or now
             history = (*history, OperationAttempt(attempt=attempt, size=None, status=status, started_at=started_at))
         return tuple(
-            validated_copy(
-                entry,
+            entry.with_changes(
                 status=status,
                 finished_at=now,
                 **outcome,

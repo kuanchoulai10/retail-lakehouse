@@ -4,7 +4,8 @@ Provides the foundational tactical patterns for structuring domain models,
 built on Pydantic v2:
 
 - ValueObject: frozen, strict value with no identity; reads and writes its
-  wire form through ``from_primitives`` / ``to_primitives``.
+  wire form through ``from_primitives`` / ``to_primitives`` and makes a changed
+  copy through ``with_changes``, which runs every validator.
 - EntityId: a typed string identifier for an Entity, built positionally.
 - Entity: an object with identity, equal by class and ``id``; every
   assignment is validated and atomic.
@@ -12,7 +13,6 @@ built on Pydantic v2:
   boundary for a cluster of related objects, and collects DomainEvents.
 - DomainEvent: a frozen record of something that happened, timestamped.
 - WholeSeconds: a ``timedelta`` written as integer seconds on the wire.
-- validated_copy: a copy with changes that runs every validator.
 - validation_message: a one-line message for a validation error.
 - Repository: an interface for retrieving and persisting aggregates/entities,
   decoupling the domain from infrastructure concerns.
@@ -35,7 +35,6 @@ from base.gateway import Gateway
 from base.repository import Repository
 from base.store import Store
 from base.use_case import UseCase
-from base.validated_copy import validated_copy
 from base.validation_message import validation_message
 from base.value_object import ValueObject
 from base.whole_seconds import WholeSeconds
@@ -53,6 +52,5 @@ __all__ = [
     "UseCase",
     "ValueObject",
     "WholeSeconds",
-    "validated_copy",
     "validation_message",
 ]

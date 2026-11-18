@@ -8,7 +8,6 @@ from pydantic import BaseModel, ConfigDict
 
 from base._inheritance_guard import enforce_max_depth
 from base.entity_id import EntityId
-from base.validated_copy import validated_copy
 
 
 class Entity[ID: EntityId](BaseModel):
@@ -90,8 +89,13 @@ class Entity[ID: EntityId](BaseModel):
         validator runs, untouched fields keep their values) and only then
         takes it over; if validation fails, nothing changes. Private
         attributes such as pending events are kept. Afterwards every
-        field counts as set, because ``validated_copy`` passes all fields.
+        field counts as set, because the rebuild passes all fields.
         """
-        candidate = validated_copy(self, **changes)
+        fields = type(self).model_fields
+        unknown = sorted(changes.keys() - fields.keys())
+        if unknown:
+            raise TypeError(f"{type(self).__name__} has no field {', '.join(unknown)}")
+        data = {name: getattr(self, name) for name in fields} | changes
+        candidate = type(self).model_validate(data, by_alias=False, by_name=True)
         self.__dict__.update(candidate.__dict__)
         self.__pydantic_fields_set__ |= candidate.__pydantic_fields_set__

@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from base import validated_copy
 from context.table_maintenance.application.domain.model.compaction_candidate import (
     CandidateFilters,
     CandidateSelection,
@@ -274,7 +273,7 @@ def test_start_size_keeps_a_larger_remembered_size(planner, tables_repo, catalog
 
 def test_dry_run_plan_claims_nothing(planner, tables_repo, catalog, candidates_repo, policies_repo, now):
     """A dry run syncs and scores the candidates but holds them all not due, so no round grants them."""
-    _use_policy(policies_repo, now, validated_copy(DEFAULT, dry_run=True))
+    _use_policy(policies_repo, now, DEFAULT.with_changes(dry_run=True))
     _table(tables_repo, now)
     _five(catalog)
 
@@ -439,7 +438,7 @@ def test_failure_backoff_cap_bounds_how_long_compaction_cools_down(
 
 def test_candidates_take_the_policy_priority(planner, tables_repo, catalog, candidates_repo, policies_repo, now):
     """The candidates carry the priority of the policy that applies to the table."""
-    _use_policy(policies_repo, now, validated_copy(DEFAULT, priority=MaintenancePriority.P0))
+    _use_policy(policies_repo, now, DEFAULT.with_changes(priority=MaintenancePriority.P0))
     _table(tables_repo, now)
     _five(catalog)
 
@@ -780,7 +779,7 @@ def test_a_cooldown_keeps_the_wait_and_a_dry_run_ends_it(
     (cooling,) = candidates_repo.list_all()
     assert (cooling.hold_reason, cooling.pending_since) == (HoldReason.COOLDOWN, now)
 
-    _use_policy(policies_repo, now, validated_copy(DEFAULT, dry_run=True))
+    _use_policy(policies_repo, now, DEFAULT.with_changes(dry_run=True))
     _plan(planner, now + timedelta(minutes=3), run_id=None)
     (dry,) = candidates_repo.list_all()
     assert (dry.hold_reason, dry.pending_since) == (HoldReason.NOT_DUE, None)
