@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class ResolveApplicableTableMaintenancePolicyUseCaseInput:
+class ResolveApplicableTableMaintenancePolicyUseCaseInput(UseCaseInput):
     """Carry the request to resolve the maintenance policy that applies to a catalog, namespace or table.
 
     A ``table_uuid`` without ``catalog`` names a table known to table maintenance; its name is read

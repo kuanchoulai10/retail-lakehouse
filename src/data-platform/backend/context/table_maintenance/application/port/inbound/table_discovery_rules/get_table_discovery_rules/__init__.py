@@ -7,7 +7,6 @@ from context.table_maintenance.application.port.inbound.table_discovery_rules.ge
 )
 from context.table_maintenance.application.port.inbound.table_discovery_rules.get_table_discovery_rules.output import (
     GetTableDiscoveryRulesUseCaseOutput,
-    GetTableDiscoveryRulesUseCaseOutputItem,
 )
 from context.table_maintenance.application.port.inbound.table_discovery_rules.get_table_discovery_rules.use_case import (  # noqa: E501
     GetTableDiscoveryRulesUseCase,
@@ -17,5 +16,4 @@ __all__ = [
     "GetTableDiscoveryRulesUseCase",
     "GetTableDiscoveryRulesUseCaseInput",
     "GetTableDiscoveryRulesUseCaseOutput",
-    "GetTableDiscoveryRulesUseCaseOutputItem",
 ]

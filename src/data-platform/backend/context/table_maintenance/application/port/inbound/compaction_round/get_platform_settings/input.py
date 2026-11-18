@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class GetPlatformSettingsUseCaseInput:
+class GetPlatformSettingsUseCaseInput(UseCaseInput):
     """Carry the request, which has no fields: there is one platform."""

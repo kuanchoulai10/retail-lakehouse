@@ -2,31 +2,26 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from datetime import datetime
 
-if TYPE_CHECKING:
-    from datetime import datetime
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class ReplaceTableDiscoveryRulesUseCaseOutputItem:
-    """One discovery rule."""
-
-    id: str
-    priority: int
-    action: str
-    enabled: bool
-    catalogs: list[str]
-    namespaces: list[str]
-    tables: list[str]
-    created_at: datetime
-    updated_at: datetime
-
-
-@dataclass(frozen=True)
-class ReplaceTableDiscoveryRulesUseCaseOutput:
+class ReplaceTableDiscoveryRulesUseCaseOutput(UseCaseOutput):
     """Carry the discovery rules in priority order and the list's version."""
 
+    class TableDiscoveryRule(UseCaseOutput):
+        """One discovery rule."""
+
+        id: str
+        priority: int
+        action: str
+        enabled: bool
+        catalogs: tuple[str, ...]
+        namespaces: tuple[str, ...]
+        tables: tuple[str, ...]
+        created_at: datetime
+        updated_at: datetime
+
     version: int
-    rules: list[ReplaceTableDiscoveryRulesUseCaseOutputItem]
+    rules: tuple[TableDiscoveryRule, ...]

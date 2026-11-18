@@ -2,19 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import UTC, datetime
 
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.compaction_round import (
     GetCompactionRoundUseCaseOutput,
-    GetCompactionRoundUseCaseOutputPick,
-    GetCompactionRoundUseCaseOutputSkip,
     ListCompactionRoundsUseCaseInput,
     ListCompactionRoundsUseCaseOutput,
-    ListCompactionRoundsUseCaseOutputItem,
-    ListCompactionRoundsUseCaseOutputPick,
-    ListCompactionRoundsUseCaseOutputSkip,
 )
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import StubUseCase, build_client
 
@@ -57,18 +51,18 @@ ROUND_JSON = {
 }
 
 
-def _listed() -> ListCompactionRoundsUseCaseOutputItem:
-    return ListCompactionRoundsUseCaseOutputItem(
+def _listed() -> ListCompactionRoundsUseCaseOutput.CompactionRound:
+    return ListCompactionRoundsUseCaseOutput.CompactionRound(
         round_id="compaction-rounds-1",
         started_at=NOW,
         budget_gb_hours=0.05,
         used_gb_hours=0.04,
-        picks=[
-            ListCompactionRoundsUseCaseOutputPick(
+        picks=(
+            ListCompactionRoundsUseCaseOutput.Pick(
                 table_uuid="t-1",
                 table_name="iceberg.sales.orders",
                 spec_id=0,
-                values=["2026-11-01"],
+                values=("2026-11-01",),
                 partition_label="day=2026-11-01",
                 priority="P0",
                 score=0.5,
@@ -76,16 +70,16 @@ def _listed() -> ListCompactionRoundsUseCaseOutputItem:
                 estimated_gb_hours=0.04,
                 overdue=True,
                 catalog="iceberg",
-                namespace=["sales"],
+                namespace=("sales",),
                 table="orders",
-            )
-        ],
-        skips=[
-            ListCompactionRoundsUseCaseOutputSkip(
+            ),
+        ),
+        skips=(
+            ListCompactionRoundsUseCaseOutput.Skip(
                 table_uuid="t-2",
                 table_name=None,
                 spec_id=-1,
-                values=[],
+                values=(),
                 partition_label="whole table",
                 priority="P2",
                 score=0.6,
@@ -93,8 +87,8 @@ def _listed() -> ListCompactionRoundsUseCaseOutputItem:
                 estimated_gb_hours=0.03,
                 overdue=False,
                 reason="budget_used",
-            )
-        ],
+            ),
+        ),
         skipped_total=3,
         busy_skipped=4,
     )
@@ -102,7 +96,7 @@ def _listed() -> ListCompactionRoundsUseCaseOutputItem:
 
 def test_lists_rounds_newest_first_with_picks_and_skips():
     """The list route answers the use case's rounds with their picks and skips."""
-    stub = StubUseCase(ListCompactionRoundsUseCaseOutput(items=[_listed()]))
+    stub = StubUseCase(ListCompactionRoundsUseCaseOutput(items=(_listed(),)))
 
     response = build_client(list_compaction_rounds=stub).get("/v1/compaction-rounds")
 
@@ -113,7 +107,7 @@ def test_lists_rounds_newest_first_with_picks_and_skips():
 
 def test_limit_and_before_reach_the_use_case():
     """``limit`` and ``before`` page through older rounds."""
-    stub = StubUseCase(ListCompactionRoundsUseCaseOutput(items=[]))
+    stub = StubUseCase(ListCompactionRoundsUseCaseOutput(items=()))
 
     response = build_client(list_compaction_rounds=stub).get(
         "/v1/compaction-rounds", params={"limit": 5, "before": "2026-11-13T12:00:00Z"}
@@ -125,7 +119,7 @@ def test_limit_and_before_reach_the_use_case():
 
 def test_a_limit_out_of_range_is_422():
     """A limit below 1 or above 200 is refused."""
-    client = build_client(list_compaction_rounds=StubUseCase(ListCompactionRoundsUseCaseOutput(items=[])))
+    client = build_client(list_compaction_rounds=StubUseCase(ListCompactionRoundsUseCaseOutput(items=())))
 
     assert client.get("/v1/compaction-rounds", params={"limit": 0}).status_code == 422
     assert client.get("/v1/compaction-rounds", params={"limit": 201}).status_code == 422
@@ -139,8 +133,8 @@ def test_gets_one_round():
             started_at=NOW,
             budget_gb_hours=0.05,
             used_gb_hours=0.04,
-            picks=[GetCompactionRoundUseCaseOutputPick(**vars(_listed().picks[0]))],
-            skips=[GetCompactionRoundUseCaseOutputSkip(**vars(_listed().skips[0]))],
+            picks=(GetCompactionRoundUseCaseOutput.Pick(**vars(_listed().picks[0])),),
+            skips=(GetCompactionRoundUseCaseOutput.Skip(**vars(_listed().skips[0])),),
             skipped_total=3,
             busy_skipped=4,
         )
@@ -163,8 +157,9 @@ def test_an_unknown_round_is_404():
 def test_a_busy_table_skip_is_served():
     """A skip because the table is busy reaches the client with its reason."""
     listed = _listed()
-    listed = replace(listed, skips=[replace(listed.skips[0], reason="table_busy")])
-    stub = StubUseCase(ListCompactionRoundsUseCaseOutput(items=[listed]))
+    busy = ListCompactionRoundsUseCaseOutput.Skip(**(listed.skips[0].model_dump() | {"reason": "table_busy"}))
+    listed = ListCompactionRoundsUseCaseOutput.CompactionRound(**(listed.model_dump() | {"skips": (busy,)}))
+    stub = StubUseCase(ListCompactionRoundsUseCaseOutput(items=(listed,)))
 
     response = build_client(list_compaction_rounds=stub).get("/v1/compaction-rounds")
 
@@ -174,7 +169,7 @@ def test_a_busy_table_skip_is_served():
 
 def test_a_before_without_a_time_zone_is_422():
     """A cursor with no offset is refused instead of failing inside the store."""
-    stub = StubUseCase(ListCompactionRoundsUseCaseOutput(items=[]))
+    stub = StubUseCase(ListCompactionRoundsUseCaseOutput(items=()))
 
     response = build_client(list_compaction_rounds=stub).get(
         "/v1/compaction-rounds", params={"before": "2026-11-13T12:00:00"}

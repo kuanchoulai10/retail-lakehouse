@@ -5,7 +5,6 @@ from __future__ import annotations
 from context.table_maintenance.application.port.inbound.compaction_round import (
     GetSchedulerSettingsUseCaseInput,
     GetSchedulerSettingsUseCaseOutput,
-    GetSchedulerSettingsUseCaseOutputPriority,
 )
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import StubUseCase, build_client
 
@@ -17,7 +16,7 @@ def test_serves_the_scheduler_settings():
             round_seconds=120,
             budget_gb_hours=0.05,
             grant_lease_seconds=600,
-            priorities=[GetSchedulerSettingsUseCaseOutputPriority(priority="P0", weight=4.0, sla_seconds=3600)],
+            priorities=(GetSchedulerSettingsUseCaseOutput.Priority(priority="P0", weight=4.0, sla_seconds=3600),),
         )
     )
 

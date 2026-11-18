@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from datetime import datetime
 
-if TYPE_CHECKING:
-    from datetime import datetime
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class AttachTableMaintenancePolicyUseCaseOutput:
+class AttachTableMaintenancePolicyUseCaseOutput(UseCaseOutput):
     """Carry the outcome of the request."""
 
     target_type: str

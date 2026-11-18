@@ -107,7 +107,7 @@ def test_grants_the_picked_candidates_and_saves_the_round(candidates):  # noqa: 
     output = _run(_service(candidates, rounds))
 
     assert (output.round_id, output.picked, output.skipped_total) == ("round-1", 2, 1)
-    assert output.granted_table_uuids == ["t-1", "t-2"]
+    assert output.granted_table_uuids == ("t-1", "t-2")
     assert output.used_gb_hours == pytest.approx(0.04)
     assert output.budget_gb_hours == 0.05
     granted = [c for c in candidates.list_all() if c.state is CandidateState.GRANTED]
@@ -134,7 +134,7 @@ def test_a_round_with_no_pending_candidate_is_recorded_empty():
 
     output = _run(_service(InMemoryCompactionCandidatesRepo(), rounds))
 
-    assert (output.picked, output.granted_table_uuids, output.used_gb_hours) == (0, [], 0.0)
+    assert (output.picked, output.granted_table_uuids, output.used_gb_hours) == (0, (), 0.0)
     assert rounds.get(CompactionRoundId("round-1")) is not None
 
 
@@ -196,7 +196,7 @@ def test_a_table_busy_with_a_run_gets_no_grant():
 
     output = _run(_service(repo, rounds))
 
-    assert output.granted_table_uuids == ["t-idle"]
+    assert output.granted_table_uuids == ("t-idle",)
     assert _states(repo) == {
         "running": CandidateState.RUNNING,
         "more": CandidateState.PENDING,
@@ -235,7 +235,7 @@ def test_a_round_retried_after_its_grants_were_saved_records_them_and_grants_no_
 
     again = _run(service, now=NOW + timedelta(seconds=5))
 
-    assert (again.picked, again.granted_table_uuids) == (2, ["t-1", "t-2"])
+    assert (again.picked, again.granted_table_uuids) == (2, ("t-1", "t-2"))
     assert again.used_gb_hours == pytest.approx(0.04)
     assert _states(candidates) == {
         "a": CandidateState.GRANTED,
@@ -308,7 +308,7 @@ def test_a_round_removes_the_candidates_of_a_table_maintenance_no_longer_manages
 
     output = _run(_service(candidates, rounds, tables=_left("t-gone", how)))
 
-    assert output.granted_table_uuids == ["t-1", "t-2"]
+    assert output.granted_table_uuids == ("t-1", "t-2")
     assert candidates.list_by_table(TableId("t-gone")) == []
     stored = rounds.get(CompactionRoundId("round-1"))
     assert stored is not None

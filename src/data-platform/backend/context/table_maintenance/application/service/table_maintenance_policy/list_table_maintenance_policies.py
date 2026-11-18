@@ -9,7 +9,6 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
     ListTableMaintenancePoliciesUseCase,
     ListTableMaintenancePoliciesUseCaseInput,
     ListTableMaintenancePoliciesUseCaseOutput,
-    ListTableMaintenancePoliciesUseCaseOutputItem,
 )
 from context.table_maintenance.application.service.table_maintenance_policy.table_maintenance_policy_output_fields import (  # noqa: E501
     table_maintenance_policy_output_fields,
@@ -41,10 +40,10 @@ class ListTableMaintenancePoliciesService(ListTableMaintenancePoliciesUseCase):
         """Return every policy at its current version with its attachment count."""
         counts = Counter(a.policy_name.value for a in self._attachments_repo.list_all())
         return ListTableMaintenancePoliciesUseCaseOutput(
-            items=[
-                ListTableMaintenancePoliciesUseCaseOutputItem(
+            items=tuple(
+                ListTableMaintenancePoliciesUseCaseOutput.TableMaintenancePolicy(
                     **table_maintenance_policy_output_fields(p), attachment_count=counts[p.id.value]
                 )
                 for p in self._policies_repo.list_all()
-            ]
+            )
         )

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class EnsureDefaultTableMaintenancePolicyUseCaseInput:
+class EnsureDefaultTableMaintenancePolicyUseCaseInput(UseCaseInput):
     """Carry the request to create the default table maintenance policy when it is missing."""

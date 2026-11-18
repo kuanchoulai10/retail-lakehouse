@@ -8,7 +8,6 @@ from context.table_maintenance.application.port.inbound.table_discovery_rules im
     GetTableDiscoveryRulesUseCase,
     GetTableDiscoveryRulesUseCaseInput,
     GetTableDiscoveryRulesUseCaseOutput,
-    GetTableDiscoveryRulesUseCaseOutputItem,
 )
 from context.table_maintenance.application.service.table_discovery_rules.table_discovery_rule_output_fields import (
     table_discovery_rule_output_fields,
@@ -35,7 +34,8 @@ class GetTableDiscoveryRulesService(GetTableDiscoveryRulesUseCase):
         rules = self._rules_repo.get_rules()
         return GetTableDiscoveryRulesUseCaseOutput(
             version=rules.version,
-            rules=[
-                GetTableDiscoveryRulesUseCaseOutputItem(**table_discovery_rule_output_fields(r)) for r in rules.rules
-            ],
+            rules=tuple(
+                GetTableDiscoveryRulesUseCaseOutput.TableDiscoveryRule(**table_discovery_rule_output_fields(r))
+                for r in rules.rules
+            ),
         )

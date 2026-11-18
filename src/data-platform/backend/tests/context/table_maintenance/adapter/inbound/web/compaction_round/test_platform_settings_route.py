@@ -7,8 +7,6 @@ from typing import TYPE_CHECKING, cast
 from context.table_maintenance.application.port.inbound.compaction_round import (
     GetPlatformSettingsUseCaseInput,
     GetPlatformSettingsUseCaseOutput,
-    GetPlatformSettingsUseCaseOutputGroup,
-    GetPlatformSettingsUseCaseOutputItem,
 )
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import StubUseCase, build_client
 
@@ -24,28 +22,28 @@ def _app() -> FastAPI:
 
 def _output() -> GetPlatformSettingsUseCaseOutput:
     return GetPlatformSettingsUseCaseOutput(
-        groups=[
-            GetPlatformSettingsUseCaseOutputGroup(
+        groups=(
+            GetPlatformSettingsUseCaseOutput.Group(
                 key="execution_capacity",
                 title="Execution capacity",
-                items=[
-                    GetPlatformSettingsUseCaseOutputItem(
+                items=(
+                    GetPlatformSettingsUseCaseOutput.Setting(
                         key="admission_limit",
                         label="Concurrent operations",
                         value=2,
                         unit="operations",
                         description="How many operations run at once.",
                     ),
-                    GetPlatformSettingsUseCaseOutputItem(
+                    GetPlatformSettingsUseCaseOutput.Setting(
                         key="compute_size_s_driver_memory",
                         label="S driver memory",
                         value="768m",
                         unit=None,
                         description="The memory of the driver.",
                     ),
-                ],
-            )
-        ]
+                ),
+            ),
+        )
     )
 
 

@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import Any
 
-if TYPE_CHECKING:
-    from typing import Any
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class ResolveApplicableTableMaintenancePolicyUseCaseOutput:
+class ResolveApplicableTableMaintenancePolicyUseCaseOutput(UseCaseOutput):
     """Carry the outcome of the request."""
 
     policy_name: str

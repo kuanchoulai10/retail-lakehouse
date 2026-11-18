@@ -26,4 +26,4 @@ class ListCoveredCatalogsService(ListCoveredCatalogsUseCase):
         request: ListCoveredCatalogsUseCaseInput,  # noqa: ARG002
     ) -> ListCoveredCatalogsUseCaseOutput:
         """Return the configured catalog names in order."""
-        return ListCoveredCatalogsUseCaseOutput(catalogs=list(self._catalog_names))
+        return ListCoveredCatalogsUseCaseOutput(catalogs=self._catalog_names)

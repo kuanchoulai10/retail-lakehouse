@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class DeleteTableMaintenancePolicyUseCaseInput:
+class DeleteTableMaintenancePolicyUseCaseInput(UseCaseInput):
     """Carry the request to delete a table maintenance policy and its versions."""
 
     name: str

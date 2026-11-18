@@ -9,7 +9,6 @@ from context.table_maintenance.application.port.inbound.compaction_round import 
     GetSchedulerSettingsUseCase,
     GetSchedulerSettingsUseCaseInput,
     GetSchedulerSettingsUseCaseOutput,
-    GetSchedulerSettingsUseCaseOutputPriority,
 )
 
 if TYPE_CHECKING:
@@ -44,12 +43,12 @@ class GetSchedulerSettingsService(GetSchedulerSettingsUseCase):
             round_seconds=self._round_seconds,
             budget_gb_hours=self._budget_gb_hours,
             grant_lease_seconds=int(self._grant_lease.total_seconds()),
-            priorities=[
-                GetSchedulerSettingsUseCaseOutputPriority(
+            priorities=tuple(
+                GetSchedulerSettingsUseCaseOutput.Priority(
                     priority=priority.value,
                     weight=self._weights.weight(priority),
                     sla_seconds=int(self._sla[priority].total_seconds()),
                 )
                 for priority in MaintenancePriority
-            ],
+            ),
         )

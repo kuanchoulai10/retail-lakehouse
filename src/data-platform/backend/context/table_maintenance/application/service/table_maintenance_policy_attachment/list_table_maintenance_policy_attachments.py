@@ -9,7 +9,6 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
     ListTableMaintenancePolicyAttachmentsUseCase,
     ListTableMaintenancePolicyAttachmentsUseCaseInput,
     ListTableMaintenancePolicyAttachmentsUseCaseOutput,
-    ListTableMaintenancePolicyAttachmentsUseCaseOutputItem,
 )
 from context.table_maintenance.application.port.outbound.table import (
     CatalogNotFoundError,
@@ -68,8 +67,8 @@ class ListTableMaintenancePolicyAttachmentsService(ListTableMaintenancePolicyAtt
             attachments = self._attachments_repo.list_for_policy(name)
         listings: dict[str, list[TableMetadataRef] | None] = {}
         return ListTableMaintenancePolicyAttachmentsUseCaseOutput(
-            items=[
-                ListTableMaintenancePolicyAttachmentsUseCaseOutputItem(
+            items=tuple(
+                ListTableMaintenancePolicyAttachmentsUseCaseOutput.TableMaintenancePolicyAttachment(
                     type=a.target.type.value,
                     path=a.target.path,
                     table_uuid=a.target.table_uuid,
@@ -78,7 +77,7 @@ class ListTableMaintenancePolicyAttachmentsService(ListTableMaintenancePolicyAtt
                     orphaned=not self._in_catalog(a.target, listings),
                 )
                 for a in attachments
-            ]
+            )
         )
 
     def _in_catalog(self, target: PolicyTarget, listings: dict[str, list[TableMetadataRef] | None]) -> bool:

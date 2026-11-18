@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class EnsureDefaultTableMaintenancePolicyUseCaseOutput:
+class EnsureDefaultTableMaintenancePolicyUseCaseOutput(UseCaseOutput):
     """Describe the result."""
 
     created: bool

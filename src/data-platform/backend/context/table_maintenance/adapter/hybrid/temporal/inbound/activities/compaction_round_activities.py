@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from temporalio import activity
@@ -41,9 +40,5 @@ class CompactionRoundActivities:
         retryable error, so the retry plans again on fresh reads.
         """
         with translate_application_errors():
-            output = self._schedule.execute(
-                ScheduleCompactionRoundUseCaseInput(
-                    round_id=request["round_id"], now=datetime.fromisoformat(request["now"])
-                )
-            )
+            output = self._schedule.execute(ScheduleCompactionRoundUseCaseInput.from_primitives(request))
         return activity_payload(output)

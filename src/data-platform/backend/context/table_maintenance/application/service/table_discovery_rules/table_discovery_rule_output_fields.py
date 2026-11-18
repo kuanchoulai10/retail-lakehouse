@@ -17,9 +17,9 @@ def table_discovery_rule_output_fields(rule: TableDiscoveryRule) -> dict[str, An
         "priority": rule.priority,
         "action": rule.action.value,
         "enabled": rule.enabled,
-        "catalogs": list(rule.catalogs.globs),
-        "namespaces": list(rule.namespaces.globs),
-        "tables": list(rule.tables.globs),
+        "catalogs": tuple(rule.catalogs.globs),
+        "namespaces": tuple(rule.namespaces.globs),
+        "tables": tuple(rule.tables.globs),
         "created_at": rule.created_at,
         "updated_at": rule.updated_at,
     }

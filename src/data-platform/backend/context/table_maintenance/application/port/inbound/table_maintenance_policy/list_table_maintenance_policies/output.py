@@ -2,28 +2,23 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from datetime import datetime
+from typing import Any
 
-if TYPE_CHECKING:
-    from datetime import datetime
-    from typing import Any
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class ListTableMaintenancePoliciesUseCaseOutputItem:
-    """One entry of the listing."""
-
-    name: str
-    content: dict[str, Any]
-    version: int
-    created_at: datetime
-    updated_at: datetime
-    attachment_count: int
-
-
-@dataclass(frozen=True)
-class ListTableMaintenancePoliciesUseCaseOutput:
+class ListTableMaintenancePoliciesUseCaseOutput(UseCaseOutput):
     """Carry the listing."""
 
-    items: list[ListTableMaintenancePoliciesUseCaseOutputItem]
+    class TableMaintenancePolicy(UseCaseOutput):
+        """One entry of the listing."""
+
+        name: str
+        content: dict[str, Any]
+        version: int
+        created_at: datetime
+        updated_at: datetime
+        attachment_count: int
+
+    items: tuple[TableMaintenancePolicy, ...]

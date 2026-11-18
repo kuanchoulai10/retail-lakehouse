@@ -8,7 +8,7 @@ from context.table_maintenance.application.domain.model.compaction_round import 
 from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePriority
 from context.table_maintenance.application.port.inbound.compaction_round import (
     GetSchedulerSettingsUseCaseInput,
-    GetSchedulerSettingsUseCaseOutputPriority,
+    GetSchedulerSettingsUseCaseOutput,
 )
 from context.table_maintenance.application.service.compaction_round import GetSchedulerSettingsService
 
@@ -30,8 +30,8 @@ def test_reports_the_round_settings_and_each_priority_weight_and_sla():
     output = service.execute(GetSchedulerSettingsUseCaseInput())
 
     assert (output.round_seconds, output.budget_gb_hours, output.grant_lease_seconds) == (120, 0.05, 600)
-    assert output.priorities == [
-        GetSchedulerSettingsUseCaseOutputPriority(priority="P0", weight=4.0, sla_seconds=3600),
-        GetSchedulerSettingsUseCaseOutputPriority(priority="P1", weight=2.0, sla_seconds=14400),
-        GetSchedulerSettingsUseCaseOutputPriority(priority="P2", weight=1.0, sla_seconds=28800),
-    ]
+    assert output.priorities == (
+        GetSchedulerSettingsUseCaseOutput.Priority(priority="P0", weight=4.0, sla_seconds=3600),
+        GetSchedulerSettingsUseCaseOutput.Priority(priority="P1", weight=2.0, sla_seconds=14400),
+        GetSchedulerSettingsUseCaseOutput.Priority(priority="P2", weight=1.0, sla_seconds=28800),
+    )

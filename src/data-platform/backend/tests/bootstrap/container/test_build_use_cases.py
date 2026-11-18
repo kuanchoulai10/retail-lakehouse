@@ -151,7 +151,7 @@ def test_use_cases_work_against_the_sql_repos():
 
     rules = use_cases.get_table_discovery_rules.execute(GetTableDiscoveryRulesUseCaseInput())
 
-    assert (rules.version, rules.rules) == (0, [])
+    assert (rules.version, rules.rules) == (0, ())
 
 
 def test_the_compaction_round_takes_the_scheduler_budget():

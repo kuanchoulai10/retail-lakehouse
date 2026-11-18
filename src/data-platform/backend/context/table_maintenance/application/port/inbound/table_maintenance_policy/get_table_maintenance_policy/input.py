@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class GetTableMaintenancePolicyUseCaseInput:
+class GetTableMaintenancePolicyUseCaseInput(UseCaseInput):
     """Carry the request to get the current version of a table maintenance policy."""
 
     name: str

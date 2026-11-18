@@ -31,7 +31,6 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
     ListTableMaintenancePoliciesUseCase,
     ListTableMaintenancePoliciesUseCaseInput,
     ListTableMaintenancePoliciesUseCaseOutput,
-    ListTableMaintenancePoliciesUseCaseOutputItem,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_policy.update_table_maintenance_policy import (  # noqa: E501
     UpdateTableMaintenancePolicyUseCase,
@@ -58,7 +57,6 @@ __all__ = [
     "ListTableMaintenancePoliciesUseCase",
     "ListTableMaintenancePoliciesUseCaseInput",
     "ListTableMaintenancePoliciesUseCaseOutput",
-    "ListTableMaintenancePoliciesUseCaseOutputItem",
     "UpdateTableMaintenancePolicyUseCase",
     "UpdateTableMaintenancePolicyUseCaseInput",
     "UpdateTableMaintenancePolicyUseCaseOutput",

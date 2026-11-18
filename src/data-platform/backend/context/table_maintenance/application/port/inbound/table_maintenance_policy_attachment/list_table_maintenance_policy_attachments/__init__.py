@@ -7,7 +7,6 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment.list_table_maintenance_policy_attachments.output import (  # noqa: E501
     ListTableMaintenancePolicyAttachmentsUseCaseOutput,
-    ListTableMaintenancePolicyAttachmentsUseCaseOutputItem,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_policy_attachment.list_table_maintenance_policy_attachments.use_case import (  # noqa: E501
     ListTableMaintenancePolicyAttachmentsUseCase,
@@ -17,5 +16,4 @@ __all__ = [
     "ListTableMaintenancePolicyAttachmentsUseCase",
     "ListTableMaintenancePolicyAttachmentsUseCaseInput",
     "ListTableMaintenancePolicyAttachmentsUseCaseOutput",
-    "ListTableMaintenancePolicyAttachmentsUseCaseOutputItem",
 ]

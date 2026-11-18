@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class ListCoveredCatalogsUseCaseOutput:
+class ListCoveredCatalogsUseCaseOutput(UseCaseOutput):
     """Report the names of the catalogs maintenance covers."""
 
-    catalogs: list[str]
+    catalogs: tuple[str, ...]

@@ -5,9 +5,6 @@ from context.table_maintenance.application.port.inbound.compaction_round.list_co
 )
 from context.table_maintenance.application.port.inbound.compaction_round.list_compaction_rounds.output import (
     ListCompactionRoundsUseCaseOutput,
-    ListCompactionRoundsUseCaseOutputItem,
-    ListCompactionRoundsUseCaseOutputPick,
-    ListCompactionRoundsUseCaseOutputSkip,
 )
 from context.table_maintenance.application.port.inbound.compaction_round.list_compaction_rounds.use_case import (
     ListCompactionRoundsUseCase,
@@ -17,7 +14,4 @@ __all__ = [
     "ListCompactionRoundsUseCase",
     "ListCompactionRoundsUseCaseInput",
     "ListCompactionRoundsUseCaseOutput",
-    "ListCompactionRoundsUseCaseOutputItem",
-    "ListCompactionRoundsUseCaseOutputPick",
-    "ListCompactionRoundsUseCaseOutputSkip",
 ]

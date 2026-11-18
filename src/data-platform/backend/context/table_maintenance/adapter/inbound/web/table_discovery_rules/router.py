@@ -19,7 +19,6 @@ from context.table_maintenance.application.port.inbound.table_discovery_rules im
     GetTableDiscoveryRulesUseCaseInput,
     ListCoveredCatalogsUseCaseInput,
     ReplaceTableDiscoveryRulesUseCaseInput,
-    ReplaceTableDiscoveryRulesUseCaseInputItem,
 )
 
 router = APIRouter(prefix="/discovery-rules", tags=["discovery-rules"])
@@ -42,7 +41,18 @@ def replace_table_discovery_rules(
     output = use_cases.replace_table_discovery_rules.execute(
         ReplaceTableDiscoveryRulesUseCaseInput(
             version=body.version,
-            rules=[ReplaceTableDiscoveryRulesUseCaseInputItem(**rule.model_dump()) for rule in body.rules],
+            rules=tuple(
+                ReplaceTableDiscoveryRulesUseCaseInput.TableDiscoveryRule(
+                    id=rule.id,
+                    priority=rule.priority,
+                    action=rule.action,
+                    enabled=rule.enabled,
+                    catalogs=tuple(rule.catalogs),
+                    namespaces=tuple(rule.namespaces),
+                    tables=tuple(rule.tables),
+                )
+                for rule in body.rules
+            ),
         )
     )
     return TableDiscoveryRulesApiResponse.model_validate(output)

@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class DetachTableMaintenancePolicyUseCaseInput:
+class DetachTableMaintenancePolicyUseCaseInput(UseCaseInput):
     """Carry the request to detach the maintenance policy from a catalog, namespace or table.
 
     ``policy_name``, when given, must be the policy attached there. ``table_uuid`` names a table

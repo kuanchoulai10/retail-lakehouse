@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class ListTableMaintenancePolicyAttachmentsUseCaseInput:
+class ListTableMaintenancePolicyAttachmentsUseCaseInput(UseCaseInput):
     """Carry the request to list attachments, optionally of one policy."""
 
     policy_name: str | None = None

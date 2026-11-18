@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from datetime import datetime
+from typing import Any
 
-if TYPE_CHECKING:
-    from datetime import datetime
-    from typing import Any
+from base import UseCaseOutput
 
 
-@dataclass(frozen=True)
-class GetTableMaintenancePolicyUseCaseOutput:
+class GetTableMaintenancePolicyUseCaseOutput(UseCaseOutput):
     """Describe the result."""
 
     name: str

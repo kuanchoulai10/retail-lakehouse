@@ -8,9 +8,7 @@ from context.table_maintenance.application.domain.model.table import Table, Tabl
 from context.table_maintenance.application.domain.model.table_discovery_rules import TableDiscoveryRuleId
 from context.table_maintenance.application.port.inbound.compaction_round import (
     ListCompactionRoundsUseCaseInput,
-    ListCompactionRoundsUseCaseOutputItem,
-    ListCompactionRoundsUseCaseOutputPick,
-    ListCompactionRoundsUseCaseOutputSkip,
+    ListCompactionRoundsUseCaseOutput,
 )
 from context.table_maintenance.application.service.compaction_round import ListCompactionRoundsService
 from tests.context.table_maintenance.application.service.compaction_round.recorded_round import recorded_round
@@ -52,17 +50,17 @@ def test_a_round_carries_its_budget_picks_and_skips_with_table_names(tables_repo
     """Each round says its budget and use, its picks and skips; a table no longer known has no name."""
     item = _service(tables_repo).execute(ListCompactionRoundsUseCaseInput(limit=1)).items[0]
 
-    assert item == ListCompactionRoundsUseCaseOutputItem(
+    assert item == ListCompactionRoundsUseCaseOutput.CompactionRound(
         round_id="round-4",
         started_at=NOW + timedelta(minutes=4),
         budget_gb_hours=0.05,
         used_gb_hours=0.04,
-        picks=[
-            ListCompactionRoundsUseCaseOutputPick(
+        picks=(
+            ListCompactionRoundsUseCaseOutput.Pick(
                 table_uuid="t-1",
                 table_name="ice.berg.sales.eu.orders",
                 spec_id=0,
-                values=["2026-11-01"],
+                values=("2026-11-01",),
                 partition_label="day=2026-11-01",
                 priority="P0",
                 score=0.5,
@@ -70,16 +68,16 @@ def test_a_round_carries_its_budget_picks_and_skips_with_table_names(tables_repo
                 estimated_gb_hours=0.04,
                 overdue=True,
                 catalog="ice.berg",
-                namespace=["sales", "eu"],
+                namespace=("sales", "eu"),
                 table="orders",
-            )
-        ],
-        skips=[
-            ListCompactionRoundsUseCaseOutputSkip(
+            ),
+        ),
+        skips=(
+            ListCompactionRoundsUseCaseOutput.Skip(
                 table_uuid="t-2",
                 table_name=None,
                 spec_id=-1,
-                values=[],
+                values=(),
                 partition_label="whole table",
                 priority="P2",
                 score=0.6,
@@ -87,8 +85,8 @@ def test_a_round_carries_its_budget_picks_and_skips_with_table_names(tables_repo
                 estimated_gb_hours=0.03,
                 overdue=False,
                 reason="budget_used",
-            )
-        ],
+            ),
+        ),
         skipped_total=3,
         busy_skipped=4,
     )

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class ListCoveredCatalogsUseCaseInput:
+class ListCoveredCatalogsUseCaseInput(UseCaseInput):
     """Carry the request to list the catalogs maintenance covers."""

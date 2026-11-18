@@ -8,8 +8,6 @@ from context.table_maintenance.application.port.inbound.compaction_round import 
     GetPlatformSettingsUseCase,
     GetPlatformSettingsUseCaseInput,
     GetPlatformSettingsUseCaseOutput,
-    GetPlatformSettingsUseCaseOutputGroup,
-    GetPlatformSettingsUseCaseOutputItem,
 )
 
 if TYPE_CHECKING:
@@ -24,8 +22,10 @@ _SECONDS = "seconds"
 
 def _item(
     key: str, label: str, value: float | str, unit: str | None, description: str
-) -> GetPlatformSettingsUseCaseOutputItem:
-    return GetPlatformSettingsUseCaseOutputItem(key=key, label=label, value=value, unit=unit, description=description)
+) -> GetPlatformSettingsUseCaseOutput.Setting:
+    return GetPlatformSettingsUseCaseOutput.Setting(
+        key=key, label=label, value=value, unit=unit, description=description
+    )
 
 
 class GetPlatformSettingsService(GetPlatformSettingsUseCase):
@@ -43,54 +43,54 @@ class GetPlatformSettingsService(GetPlatformSettingsUseCase):
         """Return the five groups of settings in the order the console shows them."""
         settings = self._settings
         return GetPlatformSettingsUseCaseOutput(
-            groups=[
-                GetPlatformSettingsUseCaseOutputGroup(
+            groups=(
+                GetPlatformSettingsUseCaseOutput.Group(
                     key="execution_capacity",
                     title="Execution capacity",
                     items=_execution_capacity(settings),
                 ),
-                GetPlatformSettingsUseCaseOutputGroup(
+                GetPlatformSettingsUseCaseOutput.Group(
                     key="compute_sizes",
                     title="Spark sizes",
-                    items=[item for size in settings.compute_sizes for item in _compute_size(size)],
+                    items=tuple(item for size in settings.compute_sizes for item in _compute_size(size)),
                 ),
-                GetPlatformSettingsUseCaseOutputGroup(
+                GetPlatformSettingsUseCaseOutput.Group(
                     key="compaction_scheduling",
                     title="Compaction scheduling",
                     items=_compaction_scheduling(settings),
                 ),
-                GetPlatformSettingsUseCaseOutputGroup(
+                GetPlatformSettingsUseCaseOutput.Group(
                     key="cooldown_and_backoff",
                     title="Cooldown and backoff",
-                    items=[
+                    items=(
                         _item(
                             "maintenance_failure_backoff_cap_seconds",
                             "Failure backoff cap",
                             settings.failure_backoff_cap_seconds,
                             _SECONDS,
                             "Each failure of an operation doubles its cooldown, up to this limit.",
-                        )
-                    ],
+                        ),
+                    ),
                 ),
-                GetPlatformSettingsUseCaseOutputGroup(
+                GetPlatformSettingsUseCaseOutput.Group(
                     key="discovery",
                     title="Discovery",
-                    items=[
+                    items=(
                         _item(
                             "discovery_interval_seconds",
                             "Scan interval",
                             settings.discovery_interval_seconds,
                             _SECONDS,
                             "How often discovery scans the catalogs for tables to manage.",
-                        )
-                    ],
+                        ),
+                    ),
                 ),
-            ]
+            )
         )
 
 
-def _execution_capacity(settings: PlatformSettings) -> list[GetPlatformSettingsUseCaseOutputItem]:
-    return [
+def _execution_capacity(settings: PlatformSettings) -> tuple[GetPlatformSettingsUseCaseOutput.Setting, ...]:
+    return (
         _item(
             "admission_limit",
             "Concurrent operations",
@@ -112,13 +112,13 @@ def _execution_capacity(settings: PlatformSettings) -> list[GetPlatformSettingsU
             "attempts",
             "How many times one run tries an operation before it gives the operation up as failed.",
         ),
-    ]
+    )
 
 
-def _compute_size(size: PlatformComputeSize) -> list[GetPlatformSettingsUseCaseOutputItem]:
+def _compute_size(size: PlatformComputeSize) -> tuple[GetPlatformSettingsUseCaseOutput.Setting, ...]:
     name = size.size.value
     prefix = f"compute_size_{name.lower()}"
-    return [
+    return (
         _item(
             f"{prefix}_driver_memory",
             f"{name} driver memory",
@@ -140,11 +140,11 @@ def _compute_size(size: PlatformComputeSize) -> list[GetPlatformSettingsUseCaseO
             "executors",
             f"How many Spark executors an operation gets when it runs at size {name}.",
         ),
-    ]
+    )
 
 
-def _compaction_scheduling(settings: PlatformSettings) -> list[GetPlatformSettingsUseCaseOutputItem]:
-    return [
+def _compaction_scheduling(settings: PlatformSettings) -> tuple[GetPlatformSettingsUseCaseOutput.Setting, ...]:
+    return (
         _item(
             "scheduler_round_seconds",
             "Round interval",
@@ -196,10 +196,10 @@ def _compaction_scheduling(settings: PlatformSettings) -> list[GetPlatformSettin
             "bytes",
             "A partition with less data than this is left alone as too small to compact.",
         ),
-    ]
+    )
 
 
-def _priority_weight(priority: PlatformPriority) -> GetPlatformSettingsUseCaseOutputItem:
+def _priority_weight(priority: PlatformPriority) -> GetPlatformSettingsUseCaseOutput.Setting:
     name = priority.priority
     return _item(
         f"scheduler_priority_weight_{name.lower()}",
@@ -210,7 +210,7 @@ def _priority_weight(priority: PlatformPriority) -> GetPlatformSettingsUseCaseOu
     )
 
 
-def _priority_sla(priority: PlatformPriority) -> GetPlatformSettingsUseCaseOutputItem:
+def _priority_sla(priority: PlatformPriority) -> GetPlatformSettingsUseCaseOutput.Setting:
     name = priority.priority
     return _item(
         f"scheduler_sla_seconds_{name.lower()}",

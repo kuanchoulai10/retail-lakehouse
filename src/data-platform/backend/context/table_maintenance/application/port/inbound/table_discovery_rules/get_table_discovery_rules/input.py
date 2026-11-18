@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class GetTableDiscoveryRulesUseCaseInput:
+class GetTableDiscoveryRulesUseCaseInput(UseCaseInput):
     """Carry the request to read the discovery rules."""

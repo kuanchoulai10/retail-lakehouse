@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class AttachTableMaintenancePolicyUseCaseInput:
+class AttachTableMaintenancePolicyUseCaseInput(UseCaseInput):
     """Carry the request to attach a maintenance policy to a catalog, namespace or table."""
 
     target_type: str

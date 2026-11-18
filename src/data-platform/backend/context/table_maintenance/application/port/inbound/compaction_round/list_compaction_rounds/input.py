@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from datetime import datetime
 
-if TYPE_CHECKING:
-    from datetime import datetime
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class ListCompactionRoundsUseCaseInput:
+class ListCompactionRoundsUseCaseInput(UseCaseInput):
     """Carry the request: up to ``limit`` rounds, newest first, that started before ``before`` (any when None)."""
 
     limit: int = 50

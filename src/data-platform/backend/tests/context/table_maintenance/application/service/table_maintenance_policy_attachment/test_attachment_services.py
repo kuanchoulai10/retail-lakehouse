@@ -235,6 +235,15 @@ def test_detach_removes_and_missing_is_404(world):
         world.detach("namespace", ("prod", "sales"))
 
 
+def test_detach_names_the_target_by_its_dotted_path(world):
+    """The not-found texts join the tuple path with dots, never print it as a tuple."""
+    with pytest.raises(NotFoundError, match=r"^no policy is attached to namespace prod\.sales$"):
+        world.detach("namespace", ("prod", "sales"))
+    world.attach("namespace", ("prod", "sales"), "gold")
+    with pytest.raises(NotFoundError, match=r"^policy silver is not attached to namespace prod\.sales$"):
+        world.detach("namespace", ("prod", "sales"), "silver")
+
+
 def test_list_filters_by_policy(world):
     """Listing can be limited to one policy."""
     world.attach("catalog", ("prod",), "gold")

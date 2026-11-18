@@ -9,12 +9,9 @@ import pytest
 from context.table_maintenance.application.exceptions import ConflictError, ValidationError
 from context.table_maintenance.application.port.inbound.table_discovery_rules import (
     GetTableDiscoveryRulesUseCaseOutput,
-    GetTableDiscoveryRulesUseCaseOutputItem,
     ListCoveredCatalogsUseCaseOutput,
     ReplaceTableDiscoveryRulesUseCaseInput,
-    ReplaceTableDiscoveryRulesUseCaseInputItem,
     ReplaceTableDiscoveryRulesUseCaseOutput,
-    ReplaceTableDiscoveryRulesUseCaseOutputItem,
 )
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import (
     NOW,
@@ -27,9 +24,9 @@ FIELDS: dict[str, Any] = {
     "priority": 10,
     "action": "exclude",
     "enabled": True,
-    "catalogs": ["*"],
-    "namespaces": ["production_*"],
-    "tables": ["tmp_*", "staging_*"],
+    "catalogs": ("*",),
+    "namespaces": ("production_*",),
+    "tables": ("tmp_*", "staging_*"),
     "created_at": NOW,
     "updated_at": NOW,
 }
@@ -42,11 +39,20 @@ BODY_RULE: dict[str, Any] = {
     "tables": ["tmp_*", "staging_*"],
 }
 SECOND_RULE: dict[str, Any] = {**BODY_RULE, "priority": 20}
+RULE_FIELDS: dict[str, Any] = {
+    **BODY_RULE,
+    "catalogs": ("*",),
+    "namespaces": ("production_*",),
+    "tables": ("tmp_*", "staging_*"),
+}
+SECOND_RULE_FIELDS: dict[str, Any] = {**RULE_FIELDS, "priority": 20}
 
 
 def test_get_discovery_rules_returns_version_and_rules() -> None:
     """GET answers the list's version and its rules."""
-    output = GetTableDiscoveryRulesUseCaseOutput(version=3, rules=[GetTableDiscoveryRulesUseCaseOutputItem(**FIELDS)])
+    output = GetTableDiscoveryRulesUseCaseOutput(
+        version=3, rules=(GetTableDiscoveryRulesUseCaseOutput.TableDiscoveryRule(**FIELDS),)
+    )
     response = build_client(get_table_discovery_rules=StubUseCase(output)).get("/v1/discovery-rules")
     assert response.status_code == 200
     body = response.json()
@@ -59,7 +65,7 @@ def test_put_discovery_rules_passes_the_whole_list_and_returns_it() -> None:
     """PUT hands the whole list and its version to the use case and answers the saved list."""
     stub = StubUseCase(
         ReplaceTableDiscoveryRulesUseCaseOutput(
-            version=4, rules=[ReplaceTableDiscoveryRulesUseCaseOutputItem(**FIELDS)]
+            version=4, rules=(ReplaceTableDiscoveryRulesUseCaseOutput.TableDiscoveryRule(**FIELDS),)
         )
     )
     response = build_client(replace_table_discovery_rules=stub).put(
@@ -71,10 +77,10 @@ def test_put_discovery_rules_passes_the_whole_list_and_returns_it() -> None:
     assert stub.requests == [
         ReplaceTableDiscoveryRulesUseCaseInput(
             version=3,
-            rules=[
-                ReplaceTableDiscoveryRulesUseCaseInputItem(id="r-1", **BODY_RULE),
-                ReplaceTableDiscoveryRulesUseCaseInputItem(id=None, **SECOND_RULE),
-            ],
+            rules=(
+                ReplaceTableDiscoveryRulesUseCaseInput.TableDiscoveryRule(id="r-1", **RULE_FIELDS),
+                ReplaceTableDiscoveryRulesUseCaseInput.TableDiscoveryRule(id=None, **SECOND_RULE_FIELDS),
+            ),
         )
     ]
 
@@ -97,7 +103,7 @@ def test_put_discovery_rules_rejects_unknown_key() -> None:
 
 def test_list_covered_catalogs() -> None:
     """GET /catalogs answers the catalogs maintenance covers."""
-    stub = StubUseCase(ListCoveredCatalogsUseCaseOutput(catalogs=["iceberg"]))
+    stub = StubUseCase(ListCoveredCatalogsUseCaseOutput(catalogs=("iceberg",)))
     response = build_client(list_covered_catalogs=stub).get("/v1/discovery-rules/catalogs")
     assert (response.status_code, response.json()) == (200, {"catalogs": ["iceberg"]})
 

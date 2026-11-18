@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class ListTableMaintenancePoliciesUseCaseInput:
+class ListTableMaintenancePoliciesUseCaseInput(UseCaseInput):
     """Carry the request to list all table maintenance policies."""

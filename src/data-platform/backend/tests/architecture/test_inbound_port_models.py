@@ -29,29 +29,7 @@ if TYPE_CHECKING:
 INBOUND_PORT = ("application", "port", "inbound")
 DOMAIN_MARKER = ".application.domain"
 
-PENDING_PORTS: frozenset[str] = frozenset(
-    {
-        "table_maintenance/compaction_round/get_compaction_round",
-        "table_maintenance/compaction_round/get_platform_settings",
-        "table_maintenance/compaction_round/get_scheduler_settings",
-        "table_maintenance/compaction_round/list_compaction_rounds",
-        "table_maintenance/compaction_round/schedule_compaction_round",
-        "table_maintenance/table_discovery_rules/get_table_discovery_rules",
-        "table_maintenance/table_discovery_rules/list_covered_catalogs",
-        "table_maintenance/table_discovery_rules/replace_table_discovery_rules",
-        "table_maintenance/table_maintenance_policy/create_table_maintenance_policy",
-        "table_maintenance/table_maintenance_policy/delete_table_maintenance_policy",
-        "table_maintenance/table_maintenance_policy/ensure_default_table_maintenance_policy",
-        "table_maintenance/table_maintenance_policy/get_table_maintenance_policy",
-        "table_maintenance/table_maintenance_policy/get_table_maintenance_policy_version",
-        "table_maintenance/table_maintenance_policy/list_table_maintenance_policies",
-        "table_maintenance/table_maintenance_policy/update_table_maintenance_policy",
-        "table_maintenance/table_maintenance_policy_attachment/attach_table_maintenance_policy",
-        "table_maintenance/table_maintenance_policy_attachment/detach_table_maintenance_policy",
-        "table_maintenance/table_maintenance_policy_attachment/list_table_maintenance_policy_attachments",
-        "table_maintenance/table_maintenance_policy_attachment/resolve_applicable_table_maintenance_policy",
-    }
-)
+PENDING_PORTS: frozenset[str] = frozenset()
 
 
 def _all_use_case_dirs() -> dict[str, Path]:

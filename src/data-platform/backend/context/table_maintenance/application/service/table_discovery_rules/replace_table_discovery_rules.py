@@ -11,7 +11,6 @@ from context.table_maintenance.application.port.inbound.table_discovery_rules im
     ReplaceTableDiscoveryRulesUseCase,
     ReplaceTableDiscoveryRulesUseCaseInput,
     ReplaceTableDiscoveryRulesUseCaseOutput,
-    ReplaceTableDiscoveryRulesUseCaseOutputItem,
 )
 from context.table_maintenance.application.port.outbound.table import (
     SendDiscoveryRequestGatewayInput,
@@ -81,10 +80,10 @@ class ReplaceTableDiscoveryRulesService(ReplaceTableDiscoveryRulesUseCase):
         self._discover(rules.version)
         return ReplaceTableDiscoveryRulesUseCaseOutput(
             version=rules.version,
-            rules=[
-                ReplaceTableDiscoveryRulesUseCaseOutputItem(**table_discovery_rule_output_fields(r))
+            rules=tuple(
+                ReplaceTableDiscoveryRulesUseCaseOutput.TableDiscoveryRule(**table_discovery_rule_output_fields(r))
                 for r in rules.rules
-            ],
+            ),
         )
 
     def _discover(self, version: int) -> None:

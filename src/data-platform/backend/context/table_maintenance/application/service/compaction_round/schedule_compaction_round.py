@@ -136,7 +136,7 @@ class ScheduleCompactionRoundService(ScheduleCompactionRoundUseCase):
 def _output(round_: CompactionRound) -> ScheduleCompactionRoundUseCaseOutput:
     return ScheduleCompactionRoundUseCaseOutput(
         round_id=round_.id.value,
-        granted_table_uuids=[t.value for t in round_.granted_tables()],
+        granted_table_uuids=tuple(t.value for t in round_.granted_tables()),
         picked=len(round_.picks),
         skipped_total=round_.skipped_total,
         used_gb_hours=round_.used_gb_hours,

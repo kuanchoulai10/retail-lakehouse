@@ -33,16 +33,12 @@ if TYPE_CHECKING:
     )
     from context.table_maintenance.application.port.inbound.compaction_round import (
         GetCompactionRoundUseCaseOutput,
-        GetCompactionRoundUseCaseOutputPick,
-        GetCompactionRoundUseCaseOutputSkip,
-        ListCompactionRoundsUseCaseOutputItem,
-        ListCompactionRoundsUseCaseOutputPick,
-        ListCompactionRoundsUseCaseOutputSkip,
+        ListCompactionRoundsUseCaseOutput,
     )
 
-    type _Round = ListCompactionRoundsUseCaseOutputItem | GetCompactionRoundUseCaseOutput
-    type _Pick = ListCompactionRoundsUseCaseOutputPick | GetCompactionRoundUseCaseOutputPick
-    type _Skip = ListCompactionRoundsUseCaseOutputSkip | GetCompactionRoundUseCaseOutputSkip
+    type _Round = ListCompactionRoundsUseCaseOutput.CompactionRound | GetCompactionRoundUseCaseOutput
+    type _Pick = ListCompactionRoundsUseCaseOutput.Pick | GetCompactionRoundUseCaseOutput.Pick
+    type _Skip = ListCompactionRoundsUseCaseOutput.Skip | GetCompactionRoundUseCaseOutput.Skip
 
 router = APIRouter(tags=["compaction-rounds"])
 
@@ -104,7 +100,7 @@ def _pick(pick: _Pick) -> CompactionRoundPickApiResponse:
         table_uuid=pick.table_uuid,
         table_name=pick.table_name,
         table=_table(pick),
-        partition=CompactionRoundPartitionApiResponse(spec_id=pick.spec_id, values=pick.values),
+        partition=CompactionRoundPartitionApiResponse(spec_id=pick.spec_id, values=list(pick.values)),
         partition_label=pick.partition_label,
         priority=cast("RoundPriorityApi", pick.priority),
         score=pick.score,
@@ -119,7 +115,7 @@ def _skip(skip: _Skip) -> CompactionRoundSkipApiResponse:
         table_uuid=skip.table_uuid,
         table_name=skip.table_name,
         table=_table(skip),
-        partition=CompactionRoundPartitionApiResponse(spec_id=skip.spec_id, values=skip.values),
+        partition=CompactionRoundPartitionApiResponse(spec_id=skip.spec_id, values=list(skip.values)),
         partition_label=skip.partition_label,
         priority=cast("RoundPriorityApi", skip.priority),
         score=skip.score,
@@ -133,4 +129,4 @@ def _skip(skip: _Skip) -> CompactionRoundSkipApiResponse:
 def _table(entry: _Pick | _Skip) -> CompactionRoundTableApiResponse | None:
     if entry.catalog is None or entry.namespace is None or entry.table is None:
         return None
-    return CompactionRoundTableApiResponse(catalog=entry.catalog, namespace=entry.namespace, name=entry.table)
+    return CompactionRoundTableApiResponse(catalog=entry.catalog, namespace=list(entry.namespace), name=entry.table)

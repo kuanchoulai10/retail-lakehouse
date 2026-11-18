@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from base import UseCaseInput
 
 
-@dataclass(frozen=True)
-class GetCompactionRoundUseCaseInput:
+class GetCompactionRoundUseCaseInput(UseCaseInput):
     """Carry the request: the compaction round ``round_id``."""
 
     round_id: str
