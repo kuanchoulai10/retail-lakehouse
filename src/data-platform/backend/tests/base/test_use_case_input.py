@@ -12,7 +12,7 @@ from pydantic import ValidationError
 from base import InvariantViolation, UseCaseInput
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Callable, Mapping
 
 
 class _ListCommitsUseCaseInput(UseCaseInput):
@@ -111,10 +111,48 @@ def test_from_primitives_stays_strict() -> None:
         _ListCommitsUseCaseInput.from_primitives({"uuid": "u", "limit": "1"})
 
 
-def test_from_primitives_rejects_an_unknown_key() -> None:
-    """An unknown key is refused at every nesting level."""
+def test_from_primitives_ignores_an_unknown_top_level_key() -> None:
+    """A tolerant reader: a key the input does not declare is ignored, so a newer sender does not break it."""
+    request = _ListCommitsUseCaseInput.from_primitives({"uuid": "u", "colour": "red"})
+    assert request == _ListCommitsUseCaseInput(uuid="u")
+
+
+def test_from_primitives_ignores_an_unknown_key_in_a_nested_class() -> None:
+    """Unknown keys are ignored at every depth, inside nested classes too."""
+    request = _ListCommitsUseCaseInput.from_primitives(
+        {"uuid": "u", "filters": [{"key": "k", "value": "v", "colour": 1}]}
+    )
+    assert request.filters == (_ListCommitsUseCaseInput.Filter(key="k", value="v"),)
+
+
+def test_from_primitives_refuses_a_missing_required_key() -> None:
+    """A tolerant reader still refuses a payload that lacks a required key."""
+    with pytest.raises(InvariantViolation, match="uuid: Field required"):
+        _ListCommitsUseCaseInput.from_primitives({"limit": 5})
+
+
+def test_from_primitives_refuses_a_missing_required_key_in_a_nested_class() -> None:
+    """A nested class missing a required key is refused."""
+    with pytest.raises(InvariantViolation, match="value: Field required"):
+        _ListCommitsUseCaseInput.from_primitives({"uuid": "u", "filters": [{"key": "k"}]})
+
+
+@pytest.mark.parametrize(
+    "build",
+    [
+        lambda: _ListCommitsUseCaseInput.model_validate({"uuid": "u", "colour": "red"}),
+        lambda: _ListCommitsUseCaseInput.model_validate_json('{"uuid": "u", "colour": "red"}'),
+        lambda: _ListCommitsUseCaseInput(
+            uuid="u",
+            filters=(_ListCommitsUseCaseInput.Filter(key="k", value="v", colour=1),),  # ty: ignore[unknown-argument]
+        ),
+    ],
+    ids=["model_validate", "model_validate_json", "nested keyword"],
+)
+def test_construction_in_code_still_refuses_an_unknown_key(build: Callable[[], object]) -> None:
+    """Only ``from_primitives`` is tolerant: an extra key in code is a typo, and every other path refuses it."""
     with pytest.raises(InvariantViolation, match="colour"):
-        _ListCommitsUseCaseInput.from_primitives({"uuid": "u", "filters": [{"key": "k", "value": "v", "colour": 1}]})
+        build()
 
 
 @pytest.mark.parametrize(

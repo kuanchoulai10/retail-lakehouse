@@ -286,6 +286,15 @@ def test_plan_activity_hands_the_use_case_the_input_built_from_the_payload():
     assert fakes["plan"].requests == [PlanTableMaintenanceUseCaseInput.from_primitives(WORKFLOW_PLAN_REQUEST)]
 
 
+def test_plan_activity_ignores_a_key_a_newer_workflow_sends():
+    """During a rolling deploy a newer workflow may send a key this worker does not know; the plan still runs."""
+    activities, fakes = _reconcile()
+
+    activities.plan_table_maintenance({**WORKFLOW_PLAN_REQUEST, "priority_hint": "high"})
+
+    assert fakes["plan"].requests == [PlanTableMaintenanceUseCaseInput.from_primitives(WORKFLOW_PLAN_REQUEST)]
+
+
 def test_plan_input_takes_a_scheduled_payload_without_operations_or_run():
     """A scheduled plan's payload names no manual operations and may name no run."""
     built = PlanTableMaintenanceUseCaseInput.from_primitives(
