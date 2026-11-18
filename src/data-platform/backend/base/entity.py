@@ -7,6 +7,7 @@ from typing import Any, ClassVar
 from pydantic import BaseModel, ConfigDict
 
 from base._inheritance_guard import enforce_max_depth
+from base._rebuild import rebuild
 from base.entity_id import EntityId
 
 
@@ -91,11 +92,6 @@ class Entity[ID: EntityId](BaseModel):
         attributes such as pending events are kept. Afterwards every
         field counts as set, because the rebuild passes all fields.
         """
-        fields = type(self).model_fields
-        unknown = sorted(changes.keys() - fields.keys())
-        if unknown:
-            raise TypeError(f"{type(self).__name__} has no field {', '.join(unknown)}")
-        data = {name: getattr(self, name) for name in fields} | changes
-        candidate = type(self).model_validate(data, by_alias=False, by_name=True)
+        candidate = rebuild(self, changes)
         self.__dict__.update(candidate.__dict__)
         self.__pydantic_fields_set__ |= candidate.__pydantic_fields_set__

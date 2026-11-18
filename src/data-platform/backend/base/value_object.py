@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Self
 from pydantic import BaseModel, ConfigDict
 
 from base._inheritance_guard import enforce_max_depth
+from base._rebuild import rebuild
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -70,12 +71,7 @@ class ValueObject(BaseModel):
         the value from its field values so field and model validators see the
         changed object. An unknown field name raises ``TypeError``.
         """
-        fields = type(self).model_fields
-        unknown = sorted(changes.keys() - fields.keys())
-        if unknown:
-            raise TypeError(f"{type(self).__name__} has no field {', '.join(unknown)}")
-        data = {name: getattr(self, name) for name in fields} | changes
-        return type(self).model_validate(data, by_alias=False, by_name=True)
+        return rebuild(self, changes)
 
     def to_primitives(self) -> dict[str, Any]:
         """Return JSON-compatible primitives keyed by alias."""
