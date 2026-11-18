@@ -2,7 +2,7 @@
 
 Date: 2026-11-10
 
-Status: Accepted
+Status: Accepted. Partly superseded by ADR 0010: inbound port input and output are Pydantic models on `base.UseCaseInput` / `base.UseCaseOutput`, so "Services stay free of Pydantic" now reads: services never import Pydantic, and ports reach it through `base`.
 
 ## Context
 

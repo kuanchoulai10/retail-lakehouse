@@ -42,6 +42,8 @@ runtime-evaluated-base-classes = [
     "base.Entity",
     "base.AggregateRoot",
     "base.DomainEvent",
+    "base.UseCaseInput",
+    "base.UseCaseOutput",
 ]
 runtime-evaluated-decorators = [
     "fastapi.APIRouter.delete",

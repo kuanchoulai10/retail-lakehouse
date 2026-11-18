@@ -6,10 +6,18 @@ from dataclasses import asdict
 from datetime import datetime
 from typing import Any
 
+from base import UseCaseOutput
+
 
 def activity_payload(output: Any) -> dict[str, Any]:  # noqa: ANN401
-    """Turn a use-case output dataclass into a primitive dict with ISO datetimes."""
-    return _primitive(asdict(output))
+    """Turn a use-case output into a primitive dict with ISO datetimes.
+
+    A ``UseCaseOutput`` is dumped with ``model_dump()``; a dataclass output (until every port is migrated)
+    with ``asdict``. Both then go through the same pass, so a datetime is always ``datetime.isoformat()``
+    and the Temporal payload does not change with the migration.
+    """
+    fields = output.model_dump() if isinstance(output, UseCaseOutput) else asdict(output)
+    return _primitive(fields)
 
 
 def _primitive(value: Any) -> Any:  # noqa: ANN401

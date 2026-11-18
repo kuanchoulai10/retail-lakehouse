@@ -11,6 +11,8 @@ Limits derive from DDD best practices:
   - Outbound ports (Repository, Store, Gateway) — port + adapter, max depth 2.
   - Inbound ports (UseCase) — port interface + service implementation,
     symmetric to the outbound port/adapter pattern, max depth 2.
+  - Inbound port models (UseCaseInput, UseCaseOutput) — each port's input,
+    output and the classes nested in them extend the base directly, max depth 1.
   - EventHandler — concrete handlers extend it directly, max depth 1.
   - EventDispatcher — concrete utility, must not be subclassed.
 
@@ -42,6 +44,8 @@ from base import (
     Repository,
     Store,
     UseCase,
+    UseCaseInput,
+    UseCaseOutput,
     ValueObject,
 )
 from tests.architecture.contexts import context_dir, context_names
@@ -138,6 +142,8 @@ DEPTH_CONTRACTS: list[tuple[type, int, tuple[type, ...]]] = [
     (Store, 2, ()),
     (Gateway, 2, ()),
     (UseCase, 2, ()),
+    (UseCaseInput, 1, ()),
+    (UseCaseOutput, 1, ()),
     (EventHandler, 1, ()),
 ]
 

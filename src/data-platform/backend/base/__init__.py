@@ -26,6 +26,10 @@ built on Pydantic v2:
   decoupling the domain from infrastructure concerns.
 - UseCase: a single application-level operation that orchestrates domain
   objects and repositories to fulfil a business action.
+- UseCaseInput / UseCaseOutput: the frozen, strict request and result of an
+  inbound port, holding primitives and nested classes only; an input built
+  from a dict of JSON primitives goes through ``from_primitives``. They raise
+  ``InvariantViolation`` and ``AttributeError`` as the model bases do.
 - Gateway / Store: outbound ports for other systems and stored state.
 - EventHandler: an abstract handler for a specific domain event type.
 - EventDispatcher: routes domain events to registered handlers.
@@ -44,6 +48,8 @@ from base.invariant_violation import InvariantViolation
 from base.repository import Repository
 from base.store import Store
 from base.use_case import UseCase
+from base.use_case_input import UseCaseInput
+from base.use_case_output import UseCaseOutput
 from base.value_object import ValueObject
 
 __all__ = [
@@ -58,5 +64,7 @@ __all__ = [
     "Repository",
     "Store",
     "UseCase",
+    "UseCaseInput",
+    "UseCaseOutput",
     "ValueObject",
 ]
