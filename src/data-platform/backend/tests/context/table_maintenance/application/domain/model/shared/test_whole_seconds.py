@@ -7,7 +7,7 @@ from datetime import timedelta
 import pytest
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from base import WholeSeconds
+from context.table_maintenance.application.domain.model.shared import WholeSeconds
 
 
 class _Timeout(BaseModel):

@@ -12,7 +12,6 @@ built on Pydantic v2:
 - AggregateRoot: an Entity that acts as the entry point and consistency
   boundary for a cluster of related objects, and collects DomainEvents.
 - DomainEvent: a frozen record of something that happened, timestamped.
-- WholeSeconds: a ``timedelta`` written as integer seconds on the wire.
 - validation_message: a one-line message for a validation error.
 - Repository: an interface for retrieving and persisting aggregates/entities,
   decoupling the domain from infrastructure concerns.
@@ -37,7 +36,6 @@ from base.store import Store
 from base.use_case import UseCase
 from base.validation_message import validation_message
 from base.value_object import ValueObject
-from base.whole_seconds import WholeSeconds
 
 __all__ = [
     "AggregateRoot",
@@ -51,6 +49,5 @@ __all__ = [
     "Store",
     "UseCase",
     "ValueObject",
-    "WholeSeconds",
     "validation_message",
 ]

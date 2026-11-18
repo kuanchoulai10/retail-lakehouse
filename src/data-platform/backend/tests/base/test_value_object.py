@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING, Any, Self
 import pytest
 from pydantic import Field, ValidationError, model_validator
 
-from base import ValueObject, WholeSeconds
+from base import ValueObject
+from context.table_maintenance.application.domain.model.shared import WholeSeconds
 
 if TYPE_CHECKING:
     from collections.abc import Mapping

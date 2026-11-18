@@ -74,6 +74,9 @@ from context.table_maintenance.application.domain.model.shared.spec_filter impor
 from context.table_maintenance.application.domain.model.shared.table_observation import (
     TableObservation,
 )
+from context.table_maintenance.application.domain.model.shared.whole_seconds import (
+    WholeSeconds,
+)
 
 __all__ = [
     "ComputeSize",
@@ -100,4 +103,5 @@ __all__ = [
     "SnapshotInfo",
     "SpecFilter",
     "TableObservation",
+    "WholeSeconds",
 ]

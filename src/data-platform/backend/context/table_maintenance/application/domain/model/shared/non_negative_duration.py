@@ -7,7 +7,7 @@ from typing import Annotated
 
 from pydantic import AfterValidator
 
-from base import WholeSeconds
+from context.table_maintenance.application.domain.model.shared.whole_seconds import WholeSeconds
 
 
 def _non_negative(value: timedelta) -> timedelta:

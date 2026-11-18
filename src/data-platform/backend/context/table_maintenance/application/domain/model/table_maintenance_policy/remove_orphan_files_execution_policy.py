@@ -6,7 +6,8 @@ from datetime import timedelta
 
 from pydantic import Field, field_validator
 
-from base import ValueObject, WholeSeconds
+from base import ValueObject
+from context.table_maintenance.application.domain.model.shared import WholeSeconds
 
 MIN_OLDER_THAN = timedelta(days=1)
 
