@@ -29,7 +29,7 @@ Option 3.
 - **Services still never import Pydantic.** Ports reach Pydantic only through `base`, and services only through ports and the domain. Contract `application-outer-rings-pydantic-free` is unchanged: `service`, `port` and `exceptions` never import `pydantic` directly, and it allows indirect imports.
 - **External formats do not change.** REST bodies, Temporal payloads and the settings JSON stay the same. `activity_payload` dumps a `UseCaseOutput` with `model_dump()` and writes datetimes with `isoformat()`, exactly as it wrote a dataclass. A `float` field always serialises as a float (`1.0`), even when it was set from an int, where a dataclass passed the int through (`1`).
 - **An input that cannot be built is a client error at every edge.** A web router, a Temporal activity or the event consumer that builds a port input, or runs a use case, and gets `InvariantViolation` treats it exactly like the application `ValidationError`: the web edge answers 422 with `{"detail": <its one line>}` through the same handler, a Temporal activity fails at once with a non-retryable `ApplicationError` of type `InvariantViolation`, and the event consumer drops the hint without retry (a hint input it cannot build is skipped as a malformed event).
-- **Migrated in batches.** `tests/architecture/test_inbound_port_models.py` checks every use case not listed in its `PENDING_PORTS`; each migration deletes its lines from that list, and a stale line fails the test.
+- **Every use case is checked.** `tests/architecture/test_inbound_port_models.py` checks each use case under `port/inbound`, with no list of exceptions, and `tests/architecture/test_inbound_port_field_names.py` checks the field names.
 
 ## Consequences
 
