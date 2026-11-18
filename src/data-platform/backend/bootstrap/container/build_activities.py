@@ -11,7 +11,6 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import
     TableDiscoveryActivities,
     TableMaintenanceActivities,
     TableReconciliationActivities,
-    WorkflowSignalActivities,
 )
 
 if TYPE_CHECKING:
@@ -28,23 +27,22 @@ def build_activities(use_cases: UseCases, client: Client, settings: AppSettings)
             plan=use_cases.plan_table_maintenance,
             record=use_cases.record_table_reconciliation,
             release=use_cases.release_compaction_candidates,
-            submit=use_cases.submit_maintenance_operation,
-            status=use_cases.get_maintenance_job_status,
-            delete=use_cases.delete_maintenance_job,
-            pods=use_cases.get_maintenance_job_pods,
-            callback_base_url=settings.callback_base_url,
+            client=client,
             attempt_deadline_seconds=settings.maintenance_attempt_deadline_seconds,
             max_attempts=settings.maintenance_max_attempts,
         ),
         maintenance=TableMaintenanceActivities(
             create_run=use_cases.create_table_maintenance_run,
             record_result=use_cases.record_table_maintenance_operation_result,
-        ),
-        discovery=TableDiscoveryActivities(sync=use_cases.sync_discovered_tables),
-        workflow_signal=WorkflowSignalActivities(
-            client,
+            submit=use_cases.submit_maintenance_operation,
+            status=use_cases.get_maintenance_job_status,
+            delete=use_cases.delete_maintenance_job,
+            pods=use_cases.get_maintenance_job_pods,
+            client=client,
+            callback_base_url=settings.callback_base_url,
             admission_limit=settings.admission_limit,
             admission_lease_seconds=admission_lease_seconds(settings),
         ),
+        discovery=TableDiscoveryActivities(sync=use_cases.sync_discovered_tables),
         compaction_round=CompactionRoundActivities(schedule=use_cases.schedule_compaction_round),
     )

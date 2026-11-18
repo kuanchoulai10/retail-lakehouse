@@ -28,9 +28,6 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
     TableReconciliationWorkflowInput,
     table_reconciliation_workflow_id,
 )
-from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
-    WorkflowSignalActivities,
-)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
     TableMaintenanceAttemptPolicy,
     TableReconciliationWorkflow,
@@ -55,6 +52,9 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_re
 )
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_maintenance_stub_workflow import (
     TableMaintenanceStubWorkflow,
+)
+from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_reconciliation_activities_with_fakes import (  # noqa: E501
+    table_reconciliation_activities_with_fakes,
 )
 
 if TYPE_CHECKING:
@@ -284,7 +284,7 @@ def _run(
             plans = ScriptedPlanActivity(script)
             recorder = ScriptedRecordActivity()
             releases = ScriptedReleaseActivity()
-            lookups = WorkflowSignalActivities(env.client, admission_limit=1, admission_lease_seconds=22500)
+            lookups = table_reconciliation_activities_with_fakes(client=env.client)
             async with Worker(
                 env.client,
                 task_queue=TASK_QUEUE,

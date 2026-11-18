@@ -33,6 +33,12 @@ from context.table_maintenance.application.service.table_reconciliation import (
     ListTableReconciliationsService,
     RecordTableReconciliationService,
 )
+from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_maintenance_activities_with_fakes import (  # noqa: E501
+    table_maintenance_activities_with_fakes,
+)
+from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_reconciliation_activities_with_fakes import (  # noqa: E501
+    table_reconciliation_activities_with_fakes,
+)
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fakes import (
     CREATED_AT,
     FakeCreateRun,
@@ -57,7 +63,6 @@ NOW_DT = datetime(2026, 10, 24, 1, 2, 3, tzinfo=UTC)
 
 
 def _reconcile(
-    submit: FakeSubmit | None = None,
     attempt_deadline_seconds: int = 21600,
     max_attempts: int = 3,
 ) -> tuple[TableReconciliationActivities, dict]:
@@ -65,22 +70,30 @@ def _reconcile(
         "plan": FakePlan(),
         "record": FakeRecordReconciliation(),
         "release": FakeReleaseCandidates(),
+    }
+    activities = table_reconciliation_activities_with_fakes(
+        plan=fakes["plan"],
+        record=fakes["record"],
+        release=fakes["release"],
+        attempt_deadline_seconds=attempt_deadline_seconds,
+        max_attempts=max_attempts,
+    )
+    return activities, fakes
+
+
+def _maintain(submit: FakeSubmit | None = None) -> tuple[TableMaintenanceActivities, dict]:
+    fakes = {
         "submit": submit or FakeSubmit(),
         "status": FakeStatus(),
         "delete": FakeDelete(),
         "pods_gateway": ScriptedReadMaintenanceJobPodsGateway(),
     }
-    activities = TableReconciliationActivities(
-        plan=fakes["plan"],
-        record=fakes["record"],
-        release=fakes["release"],
+    activities = table_maintenance_activities_with_fakes(
         submit=fakes["submit"],
         status=fakes["status"],
         delete=fakes["delete"],
         pods=GetMaintenanceJobPodsService(fakes["pods_gateway"]),
         callback_base_url="http://cp:8000",
-        attempt_deadline_seconds=attempt_deadline_seconds,
-        max_attempts=max_attempts,
     )
     return activities, fakes
 
@@ -538,7 +551,7 @@ def test_record_reconciliation_passes_every_field_and_returns_dict():
 
 def test_submit_injects_callback_base_url_and_converts_filters():
     """The submit activity adds the callback base URL and converts its filter payload for the use case."""
-    activities, fakes = _reconcile()
+    activities, fakes = _maintain()
     result = activities.submit_maintenance_operation(
         {
             "run_id": "r1",
@@ -562,7 +575,7 @@ def test_submit_injects_callback_base_url_and_converts_filters():
 
 def test_submit_activity_passes_the_size():
     """The submit activity passes the attempt's size to the use case."""
-    activities, fakes = _reconcile()
+    activities, fakes = _maintain()
     activities.submit_maintenance_operation(
         {
             "run_id": "r1",
@@ -579,7 +592,7 @@ def test_submit_activity_passes_the_size():
 
 def test_submit_activity_defaults_the_size_for_old_requests():
     """A submit request recorded before sizes existed runs at S."""
-    activities, fakes = _reconcile()
+    activities, fakes = _maintain()
     activities.submit_maintenance_operation(
         {
             "run_id": "r1",
@@ -595,7 +608,7 @@ def test_submit_activity_defaults_the_size_for_old_requests():
 
 def test_submit_translates_not_found_to_non_retryable():
     """A not found error from submit becomes a non-retryable application error."""
-    activities, _ = _reconcile(FakeSubmit(NotFoundError("no run")))
+    activities, _ = _maintain(FakeSubmit(NotFoundError("no run")))
     with pytest.raises(ApplicationError) as caught:
         activities.submit_maintenance_operation(
             {
@@ -613,7 +626,7 @@ def test_submit_translates_not_found_to_non_retryable():
 
 def test_submit_keeps_other_errors_retryable():
     """Other errors from submit propagate unchanged so Temporal retries them."""
-    activities, _ = _reconcile(FakeSubmit(RuntimeError("k8s down")))
+    activities, _ = _maintain(FakeSubmit(RuntimeError("k8s down")))
     with pytest.raises(RuntimeError, match="k8s down"):
         activities.submit_maintenance_operation(
             {
@@ -629,7 +642,7 @@ def test_submit_keeps_other_errors_retryable():
 
 def test_status_passes_the_attempt_triple():
     """The status activity passes the run, operation and attempt to the use case and returns its state."""
-    activities, fakes = _reconcile()
+    activities, fakes = _maintain()
     request = {"run_id": "r9", "operation": "expire_snapshots", "attempt": 3}
     assert activities.get_maintenance_job_status(request) == {
         "state": "FAILED",
@@ -649,7 +662,7 @@ def test_status_passes_the_attempt_triple():
 
 def test_delete_passes_the_attempt_triple():
     """The delete activity passes the run, operation and attempt to the use case and returns them."""
-    activities, fakes = _reconcile()
+    activities, fakes = _maintain()
     result = activities.delete_maintenance_job({"run_id": "r1", "operation": "expire_snapshots", "attempt": 2})
     request = fakes["delete"].requests[0]
     assert (request.run_id, request.operation, request.attempt) == (
@@ -666,7 +679,7 @@ def test_delete_passes_the_attempt_triple():
 
 def test_get_maintenance_job_pods_activity_returns_live_pod_names():
     """The pods activity passes the attempt triple through and returns the names of its live pods."""
-    activities, fakes = _reconcile()
+    activities, fakes = _maintain()
     fakes["pods_gateway"].set_live_pods("r1", "rewrite_data_files", 2, "driver", "exec-1")
 
     result = activities.get_maintenance_job_pods({"run_id": "r1", "operation": "rewrite_data_files", "attempt": 2})
@@ -680,7 +693,7 @@ def test_get_maintenance_job_pods_activity_returns_live_pod_names():
 def test_create_run_passes_fields_and_returns_iso_dict():
     """The create run activity passes its fields to the use case and returns ISO formatted timestamps."""
     create, record = FakeCreateRun(), FakeRecordResult()
-    activities = TableMaintenanceActivities(create_run=create, record_result=record)
+    activities = table_maintenance_activities_with_fakes(create_run=create, record_result=record)
     result = activities.create_table_maintenance_run(
         {
             "run_id": "r1",
@@ -706,7 +719,7 @@ def test_create_run_passes_fields_and_returns_iso_dict():
 def test_record_result_passes_fields():
     """The record result activity passes the run, attempt, outcome and metrics to the use case."""
     create, record = FakeCreateRun(), FakeRecordResult()
-    activities = TableMaintenanceActivities(create_run=create, record_result=record)
+    activities = table_maintenance_activities_with_fakes(create_run=create, record_result=record)
     result = activities.record_table_maintenance_operation_result(
         {
             "run_id": "r1",
@@ -734,7 +747,7 @@ def test_record_result_passes_fields():
 def test_record_activity_passes_ending_and_attempt_limit():
     """The record activity passes what ended the attempt, whether its job may still run and the attempt limit."""
     create, record = FakeCreateRun(), FakeRecordResult()
-    activities = TableMaintenanceActivities(create_run=create, record_result=record)
+    activities = table_maintenance_activities_with_fakes(create_run=create, record_result=record)
     activities.record_table_maintenance_operation_result(
         {
             "run_id": "r1",
@@ -756,7 +769,7 @@ def test_record_activity_passes_ending_and_attempt_limit():
 def test_record_activity_defaults_keys_of_old_requests():
     """A record request from before failure classes reads as a reported result of a finished job, of three attempts."""
     create, record = FakeCreateRun(), FakeRecordResult()
-    activities = TableMaintenanceActivities(create_run=create, record_result=record)
+    activities = table_maintenance_activities_with_fakes(create_run=create, record_result=record)
     activities.record_table_maintenance_operation_result(
         {
             "run_id": "r1",
@@ -776,7 +789,7 @@ def test_record_activity_defaults_keys_of_old_requests():
 def test_record_activity_passes_the_planned_policy():
     """The record activity passes the policy the run was planned under."""
     create, record = FakeCreateRun(), FakeRecordResult()
-    activities = TableMaintenanceActivities(create_run=create, record_result=record)
+    activities = table_maintenance_activities_with_fakes(create_run=create, record_result=record)
     target = {"type": "namespace", "path": ["iceberg", "sales"]}
     activities.record_table_maintenance_operation_result(
         {

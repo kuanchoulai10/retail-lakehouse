@@ -34,7 +34,6 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import
     TableDiscoveryActivities,
     TableMaintenanceActivities,
     TableReconciliationActivities,
-    WorkflowSignalActivities,
 )
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
     CompactionRoundWorkflow,
@@ -100,11 +99,10 @@ def test_activities_carry_the_callback_url_and_admission_settings():
     assert isinstance(activities.reconciliation, TableReconciliationActivities)
     assert isinstance(activities.maintenance, TableMaintenanceActivities)
     assert isinstance(activities.discovery, TableDiscoveryActivities)
-    assert isinstance(activities.workflow_signal, WorkflowSignalActivities)
     assert isinstance(activities.compaction_round, CompactionRoundActivities)
-    assert activities.reconciliation._callback_base_url == "http://api:8000"  # noqa: SLF001
-    assert activities.workflow_signal._admission_limit == 5  # noqa: SLF001
-    assert activities.workflow_signal._admission_lease_seconds == 1020  # noqa: SLF001
+    assert activities.maintenance._callback_base_url == "http://api:8000"  # noqa: SLF001
+    assert activities.maintenance._admission_limit == 5  # noqa: SLF001
+    assert activities.maintenance._admission_lease_seconds == 1020  # noqa: SLF001
     assert activities.reconciliation._attempt_deadline_seconds == 120  # noqa: SLF001
     assert activities.reconciliation._max_attempts == 4  # noqa: SLF001
 

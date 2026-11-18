@@ -20,16 +20,12 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.table_
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.translate_application_errors import (
     translate_application_errors,
 )
-from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.workflow_signal_activities import (
-    WorkflowSignalActivities,
-)
 
 __all__ = [
     "CompactionRoundActivities",
     "TableDiscoveryActivities",
     "TableMaintenanceActivities",
     "TableReconciliationActivities",
-    "WorkflowSignalActivities",
     "activity_payload",
     "translate_application_errors",
 ]

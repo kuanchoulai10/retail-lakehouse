@@ -11,10 +11,6 @@ from temporalio.exceptions import ApplicationError
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
     DEFAULT_MAX_ATTEMPTS,
 )
-from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
-    TableMaintenanceActivities,
-    TableReconciliationActivities,
-)
 from context.table_maintenance.application.port.inbound.compaction_candidate import (
     ReleaseCompactionCandidatesUseCaseInput,
 )
@@ -31,21 +27,19 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
 from context.table_maintenance.application.port.inbound.table_reconciliation import (
     RecordTableReconciliationUseCaseInput,
 )
-from context.table_maintenance.application.service.table_maintenance_run import (
-    GetMaintenanceJobPodsService,
+from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_maintenance_activities_with_fakes import (  # noqa: E501
+    table_maintenance_activities_with_fakes,
+)
+from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_reconciliation_activities_with_fakes import (  # noqa: E501
+    table_reconciliation_activities_with_fakes,
 )
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fakes import (
     FakeCreateRun,
     FakeDelete,
-    FakePlan,
     FakeRecordReconciliation,
     FakeRecordResult,
-    FakeReleaseCandidates,
     FakeStatus,
     FakeSubmit,
-)
-from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_pods_gateway import (
-    ScriptedReadMaintenanceJobPodsGateway,
 )
 
 NOW = "2026-10-24T01:02:03+00:00"
@@ -61,23 +55,6 @@ CREATE_REQUEST = {
     "operations": ["rewrite_data_files", "expire_snapshots"],
     "now": NOW,
 }
-
-
-def _reconcile(
-    record: FakeRecordReconciliation | None = None, submit: FakeSubmit | None = None
-) -> TableReconciliationActivities:
-    return TableReconciliationActivities(
-        plan=FakePlan(),
-        record=record or FakeRecordReconciliation(),
-        release=FakeReleaseCandidates(),
-        submit=submit or FakeSubmit(),
-        status=FakeStatus(),
-        delete=FakeDelete(),
-        pods=GetMaintenanceJobPodsService(ScriptedReadMaintenanceJobPodsGateway()),
-        callback_base_url="http://cp:8000",
-        attempt_deadline_seconds=21600,
-        max_attempts=3,
-    )
 
 
 def _full_run() -> CreateTableMaintenanceRunUseCaseOutput:
@@ -146,7 +123,7 @@ def _full_run() -> CreateTableMaintenanceRunUseCaseOutput:
 
 def test_create_run_payload_keeps_every_field_of_a_full_run():
     """The create run activity returns the run as primitives: lists, nested dicts and ISO times, None kept."""
-    activities = TableMaintenanceActivities(create_run=FakeCreateRun(_full_run()), record_result=FakeRecordResult())
+    activities = table_maintenance_activities_with_fakes(create_run=FakeCreateRun(_full_run()))
 
     result = activities.create_table_maintenance_run(dict(CREATE_REQUEST))
 
@@ -218,7 +195,7 @@ def test_record_result_payload_carries_the_decision_the_workflow_reads():
     reply = RecordTableMaintenanceOperationResultUseCaseOutput(
         run_id="r1", status="running", failure_class="oom", next_step="retry_larger", next_size="M"
     )
-    activities = TableMaintenanceActivities(create_run=FakeCreateRun(), record_result=FakeRecordResult(reply))
+    activities = table_maintenance_activities_with_fakes(record_result=FakeRecordResult(reply))
 
     result = activities.record_table_maintenance_operation_result(
         {
@@ -243,7 +220,7 @@ def test_record_result_payload_carries_the_decision_the_workflow_reads():
 
 def test_pods_payload_is_an_empty_list_once_every_pod_is_gone():
     """The pods activity returns an empty list, which the workflow reads as the pods being gone."""
-    activities = _reconcile()
+    activities = table_maintenance_activities_with_fakes()
 
     result = activities.get_maintenance_job_pods({"run_id": "r1", "operation": "rewrite_data_files", "attempt": 1})
 
@@ -338,7 +315,7 @@ def test_create_run_input_is_built_from_the_payload_the_maintenance_workflow_sen
 def test_create_run_activity_hands_the_use_case_the_input_built_from_the_payload():
     """The create run activity builds its input with from_primitives."""
     create = FakeCreateRun()
-    activities = TableMaintenanceActivities(create_run=create, record_result=FakeRecordResult())
+    activities = table_maintenance_activities_with_fakes(create_run=create)
 
     activities.create_table_maintenance_run(dict(CREATE_REQUEST))
 
@@ -369,7 +346,7 @@ def test_submit_input_is_built_from_the_payload_the_maintenance_workflow_sends()
 def test_submit_activity_hands_the_use_case_the_input_built_from_the_payload():
     """The submit activity adds its callback base URL to the payload and builds the input with from_primitives."""
     submit = FakeSubmit()
-    activities = _reconcile(submit=submit)
+    activities = table_maintenance_activities_with_fakes(submit=submit)
 
     activities.submit_maintenance_operation(dict(WORKFLOW_SUBMIT_REQUEST))
 
@@ -383,7 +360,7 @@ def test_submit_activity_hands_the_use_case_the_input_built_from_the_payload():
 def test_submit_activity_keeps_its_own_callback_base_url():
     """The callback base URL is the worker's setting, whatever the payload says."""
     submit = FakeSubmit()
-    activities = _reconcile(submit=submit)
+    activities = table_maintenance_activities_with_fakes(submit=submit)
 
     activities.submit_maintenance_operation({**WORKFLOW_SUBMIT_REQUEST, "callback_base_url": "http://elsewhere"})
 
@@ -393,7 +370,7 @@ def test_submit_activity_keeps_its_own_callback_base_url():
 def test_submit_activity_refuses_a_mistyped_payload_without_retry():
     """A submit payload whose attempt is not an integer fails the activity at once."""
     submit = FakeSubmit()
-    activities = _reconcile(submit=submit)
+    activities = table_maintenance_activities_with_fakes(submit=submit)
 
     with pytest.raises(ApplicationError) as caught:
         activities.submit_maintenance_operation({**WORKFLOW_SUBMIT_REQUEST, "attempt": "2"})
@@ -413,18 +390,7 @@ def test_submit_activity_refuses_a_mistyped_payload_without_retry():
 def test_job_activities_hand_the_use_case_the_input_built_from_the_payload(activity, fake, input_type):
     """The status and delete activities build their inputs from the workflow's attempt triple."""
     status, delete = FakeStatus(), FakeDelete()
-    activities = TableReconciliationActivities(
-        plan=FakePlan(),
-        record=FakeRecordReconciliation(),
-        release=FakeReleaseCandidates(),
-        submit=FakeSubmit(),
-        status=status,
-        delete=delete,
-        pods=GetMaintenanceJobPodsService(ScriptedReadMaintenanceJobPodsGateway()),
-        callback_base_url="http://cp:8000",
-        attempt_deadline_seconds=21600,
-        max_attempts=3,
-    )
+    activities = table_maintenance_activities_with_fakes(status=status, delete=delete)
 
     getattr(activities, activity)(dict(WORKFLOW_ATTEMPT_REQUEST))
 
@@ -445,7 +411,7 @@ def test_pods_input_is_built_from_the_payload_the_maintenance_workflow_sends():
 
 def test_pods_activity_refuses_a_payload_without_an_attempt_without_retry():
     """A pods payload missing its attempt fails the activity at once."""
-    activities = _reconcile()
+    activities = table_maintenance_activities_with_fakes()
 
     with pytest.raises(ApplicationError) as caught:
         activities.get_maintenance_job_pods({"run_id": "r1", "operation": "rewrite_data_files"})
@@ -505,7 +471,7 @@ def test_record_result_input_defaults_max_attempts_to_the_workflow_default():
 def test_record_result_activity_hands_the_use_case_the_input_built_from_the_payload():
     """The record result activity builds its input with from_primitives and ignores a key a newer workflow adds."""
     record = FakeRecordResult()
-    activities = TableMaintenanceActivities(create_run=FakeCreateRun(), record_result=record)
+    activities = table_maintenance_activities_with_fakes(record_result=record)
 
     activities.record_table_maintenance_operation_result({**WORKFLOW_RECORD_RESULT_REQUEST, "evidence_hint": "pods"})
 
@@ -538,7 +504,7 @@ def test_record_reconciliation_input_is_built_from_the_payload_the_reconciliatio
 def test_record_reconciliation_activity_hands_the_use_case_the_input_built_from_the_payload():
     """The record reconciliation activity builds its input with from_primitives."""
     record = FakeRecordReconciliation()
-    activities = _reconcile(record=record)
+    activities = table_reconciliation_activities_with_fakes(record=record)
 
     activities.record_table_reconciliation(dict(WORKFLOW_RECORD_RECONCILIATION_REQUEST))
 

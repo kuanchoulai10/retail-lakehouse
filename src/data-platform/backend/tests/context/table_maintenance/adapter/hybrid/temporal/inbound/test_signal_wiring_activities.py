@@ -1,4 +1,4 @@
-"""Test the activities that signal other workflows through the Temporal client."""
+"""Test the activities that signal or look up other workflows through the Temporal client."""
 
 from __future__ import annotations
 
@@ -22,7 +22,14 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
     TableReconciliationSignal,
 )
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
-    WorkflowSignalActivities,
+    TableMaintenanceActivities,
+    TableReconciliationActivities,
+)
+from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_maintenance_activities_with_fakes import (  # noqa: E501
+    table_maintenance_activities_with_fakes,
+)
+from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_reconciliation_activities_with_fakes import (  # noqa: E501
+    table_reconciliation_activities_with_fakes,
 )
 
 
@@ -85,7 +92,10 @@ async def _scenario() -> None:
     # The time-skipping server drops the summary of a signal-with-start.
     async with await WorkflowEnvironment.start_local() as env:
         queue = TASK_QUEUE
-        activities = WorkflowSignalActivities(env.client, admission_limit=2, admission_lease_seconds=60)
+        activities = table_maintenance_activities_with_fakes(
+            client=env.client, admission_limit=2, admission_lease_seconds=60
+        )
+        lookups = table_reconciliation_activities_with_fakes(client=env.client)
         async with Worker(
             env.client,
             task_queue=queue,
@@ -129,11 +139,11 @@ async def _scenario() -> None:
             )
             assert missing == {"delivered": False}
 
-            assert await act_env.run(activities.get_workflow_running, {"workflow_id": "parent-1"}) == {"running": True}
+            assert await act_env.run(lookups.get_workflow_running, {"workflow_id": "parent-1"}) == {"running": True}
             await parent.terminate()
-            assert await act_env.run(activities.get_workflow_running, {"workflow_id": "parent-1"}) == {"running": False}
+            assert await act_env.run(lookups.get_workflow_running, {"workflow_id": "parent-1"}) == {"running": False}
             nowhere = {"workflow_id": "no-such-workflow"}
-            assert await act_env.run(activities.get_workflow_running, nowhere) == {"running": False}
+            assert await act_env.run(lookups.get_workflow_running, nowhere) == {"running": False}
 
 
 def test_signal_with_start_admission_once_and_signal_parent():
@@ -142,6 +152,6 @@ def test_signal_with_start_admission_once_and_signal_parent():
 
 
 def test_task_queue_is_the_domain_constant_not_a_parameter():
-    """The task queue is a fixed constant and not a parameter of the signal activities."""
-    parameters = inspect.signature(WorkflowSignalActivities.__init__).parameters
-    assert "task_queue" not in parameters
+    """The task queue is a fixed constant and not a parameter of the activities that talk to the client."""
+    for activities in (TableMaintenanceActivities, TableReconciliationActivities):
+        assert "task_queue" not in inspect.signature(activities.__init__).parameters

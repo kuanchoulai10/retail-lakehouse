@@ -13,37 +13,34 @@ if TYPE_CHECKING:
         TableDiscoveryActivities,
         TableMaintenanceActivities,
         TableReconciliationActivities,
-        WorkflowSignalActivities,
     )
 
 
 @dataclass(frozen=True)
 class Activities:
-    """Hold the activity classes the worker registers."""
+    """Hold the activity classes the worker registers, one per workflow."""
 
     reconciliation: TableReconciliationActivities
     maintenance: TableMaintenanceActivities
     discovery: TableDiscoveryActivities
-    workflow_signal: WorkflowSignalActivities
     compaction_round: CompactionRoundActivities
 
     def callables(self) -> list[Callable[..., object]]:
         """Return every activity method, bound to its instance."""
         reconciliation, maintenance = self.reconciliation, self.maintenance
-        signal = self.workflow_signal
         return [
             reconciliation.plan_table_maintenance,
             reconciliation.record_table_reconciliation,
             reconciliation.release_compaction_candidates,
-            reconciliation.submit_maintenance_operation,
-            reconciliation.get_maintenance_job_status,
-            reconciliation.delete_maintenance_job,
-            reconciliation.get_maintenance_job_pods,
+            reconciliation.get_workflow_running,
             maintenance.create_table_maintenance_run,
             maintenance.record_table_maintenance_operation_result,
+            maintenance.submit_maintenance_operation,
+            maintenance.get_maintenance_job_status,
+            maintenance.delete_maintenance_job,
+            maintenance.get_maintenance_job_pods,
+            maintenance.signal_admission_acquire,
+            maintenance.signal_parent,
             self.discovery.sync_discovered_tables,
-            signal.signal_admission_acquire,
-            signal.signal_parent,
-            signal.get_workflow_running,
             self.compaction_round.schedule_compaction_round,
         ]

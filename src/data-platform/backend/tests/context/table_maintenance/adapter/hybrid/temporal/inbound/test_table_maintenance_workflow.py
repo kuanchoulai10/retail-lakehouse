@@ -35,9 +35,6 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
     TableMaintenanceAdmissionSignal,
     TableMaintenanceAdmissionWorkflowInput,
 )
-from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
-    WorkflowSignalActivities,
-)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
     TableMaintenanceAdmissionWorkflow,
     TableMaintenanceWorkflow,
@@ -50,6 +47,9 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.parent_stub
 )
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.scripted_maintenance_activities import (
     ScriptedMaintenanceActivities,
+)
+from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_maintenance_activities_with_fakes import (  # noqa: E501
+    table_maintenance_activities_with_fakes,
 )
 
 if TYPE_CHECKING:
@@ -185,8 +185,8 @@ def _run(
         async with await WorkflowEnvironment.start_time_skipping() as env:
             queue = TASK_QUEUE
             fakes = ScriptedMaintenanceActivities(env.client)
-            signals = WorkflowSignalActivities(
-                env.client,
+            signals = table_maintenance_activities_with_fakes(
+                client=env.client,
                 admission_limit=admission_limit,
                 admission_lease_seconds=lease_seconds,
             )

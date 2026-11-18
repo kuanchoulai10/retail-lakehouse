@@ -27,15 +27,15 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
     TableReconciliationSignal,
     table_reconciliation_workflow_id,
 )
-from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
-    WorkflowSignalActivities,
-)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
     CompactionRoundWorkflow,
     TableSearchAttributeKeys,
 )
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.register_table_search_attributes import (
     register_table_search_attributes,
+)
+from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_maintenance_activities_with_fakes import (  # noqa: E501
+    table_maintenance_activities_with_fakes,
 )
 
 if TYPE_CHECKING:
@@ -96,7 +96,7 @@ def _run(script: Script) -> Outcome:
         async with await WorkflowEnvironment.start_time_skipping() as env:
             await register_table_search_attributes(env.client)
             queue = f"q-{uuid.uuid4()}"
-            real = WorkflowSignalActivities(env.client, admission_limit=1, admission_lease_seconds=60)
+            real = table_maintenance_activities_with_fakes(client=env.client)
             async with Worker(
                 env.client,
                 task_queue=queue,

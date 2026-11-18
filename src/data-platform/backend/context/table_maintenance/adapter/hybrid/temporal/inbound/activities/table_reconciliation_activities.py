@@ -5,10 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from temporalio import activity
+from temporalio.client import RPCError, WorkflowExecutionStatus
+from temporalio.service import RPCStatusCode
 
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
-    TableMaintenanceActivity,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (
     TableReconciliationActivity,
 )
@@ -24,28 +23,18 @@ from context.table_maintenance.application.port.inbound.compaction_candidate imp
 from context.table_maintenance.application.port.inbound.table import (
     PlanTableMaintenanceUseCaseInput,
 )
-from context.table_maintenance.application.port.inbound.table_maintenance_run import (
-    DeleteMaintenanceJobUseCaseInput,
-    GetMaintenanceJobPodsUseCaseInput,
-    GetMaintenanceJobStatusUseCaseInput,
-    SubmitMaintenanceOperationUseCaseInput,
-)
 from context.table_maintenance.application.port.inbound.table_reconciliation import (
     RecordTableReconciliationUseCaseInput,
 )
 
 if TYPE_CHECKING:
+    from temporalio.client import Client
+
     from context.table_maintenance.application.port.inbound.compaction_candidate import (
         ReleaseCompactionCandidatesUseCase,
     )
     from context.table_maintenance.application.port.inbound.table import (
         PlanTableMaintenanceUseCase,
-    )
-    from context.table_maintenance.application.port.inbound.table_maintenance_run import (
-        DeleteMaintenanceJobUseCase,
-        GetMaintenanceJobPodsUseCase,
-        GetMaintenanceJobStatusUseCase,
-        SubmitMaintenanceOperationUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_reconciliation import (
         RecordTableReconciliationUseCase,
@@ -53,10 +42,11 @@ if TYPE_CHECKING:
 
 
 class TableReconciliationActivities:
-    """Plan and record reconciliations, release unstarted candidates, run maintenance Spark jobs and read their pods.
+    """Plan and record reconciliations, release unstarted candidates and look up the maintenance run's workflow.
 
-    Each method wraps exactly one use case. Inputs and outputs are primitive dicts;
-    ``now`` travels as an ISO-8601 string taken from ``workflow.now()``.
+    Each method wraps exactly one use case, except the workflow lookup, which asks
+    the Temporal client. Inputs and outputs are primitive dicts; ``now`` travels as
+    an ISO-8601 string taken from ``workflow.now()``.
     """
 
     def __init__(
@@ -65,15 +55,11 @@ class TableReconciliationActivities:
         plan: PlanTableMaintenanceUseCase,
         record: RecordTableReconciliationUseCase,
         release: ReleaseCompactionCandidatesUseCase,
-        submit: SubmitMaintenanceOperationUseCase,
-        status: GetMaintenanceJobStatusUseCase,
-        delete: DeleteMaintenanceJobUseCase,
-        pods: GetMaintenanceJobPodsUseCase,
-        callback_base_url: str,
+        client: Client,
         attempt_deadline_seconds: int,
         max_attempts: int,
     ) -> None:
-        """Bind the use cases and the base URL Spark jobs call back to.
+        """Bind the use cases and the client.
 
         ``attempt_deadline_seconds`` and ``max_attempts`` are the worker settings
         every plan carries, so the run it starts bounds each attempt by the first
@@ -82,11 +68,7 @@ class TableReconciliationActivities:
         self._plan = plan
         self._record = record
         self._release = release
-        self._submit = submit
-        self._status = status
-        self._delete = delete
-        self._pods = pods
-        self._callback_base_url = callback_base_url
+        self._client = client
         self._attempt_deadline_seconds = attempt_deadline_seconds
         self._max_attempts = max_attempts
 
@@ -115,34 +97,14 @@ class TableReconciliationActivities:
             output = self._release.execute(ReleaseCompactionCandidatesUseCaseInput.from_primitives(request))
         return activity_payload(output)
 
-    @activity.defn(name=TableMaintenanceActivity.SUBMIT_MAINTENANCE_OPERATION)
-    def submit_maintenance_operation(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Start one attempt of an operation and submit its Spark job, calling back to this worker's base URL."""
-        with translate_application_errors():
-            output = self._submit.execute(
-                SubmitMaintenanceOperationUseCaseInput.from_primitives(
-                    {**request, "callback_base_url": self._callback_base_url}
-                )
-            )
-        return activity_payload(output)
-
-    @activity.defn(name=TableMaintenanceActivity.GET_MAINTENANCE_JOB_STATUS)
-    def get_maintenance_job_status(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Report the state of a Spark maintenance job."""
-        with translate_application_errors():
-            output = self._status.execute(GetMaintenanceJobStatusUseCaseInput.from_primitives(request))
-        return activity_payload(output)
-
-    @activity.defn(name=TableMaintenanceActivity.DELETE_MAINTENANCE_JOB)
-    def delete_maintenance_job(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Delete the Spark job of one ``(run_id, operation, attempt)``."""
-        with translate_application_errors():
-            output = self._delete.execute(DeleteMaintenanceJobUseCaseInput.from_primitives(request))
-        return activity_payload(output)
-
-    @activity.defn(name=TableMaintenanceActivity.GET_MAINTENANCE_JOB_PODS)
-    def get_maintenance_job_pods(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Report the live pods of the Spark job of one ``(run_id, operation, attempt)``."""
-        with translate_application_errors():
-            output = self._pods.execute(GetMaintenanceJobPodsUseCaseInput.from_primitives(request))
-        return activity_payload(output)
+    @activity.defn(name=TableReconciliationActivity.GET_WORKFLOW_RUNNING)
+    async def get_workflow_running(self, request: dict[str, Any]) -> dict[str, bool]:
+        """Tell whether a workflow by id is still running; a missing or closed one is not."""
+        handle = self._client.get_workflow_handle(request["workflow_id"])
+        try:
+            description = await handle.describe()
+        except RPCError as error:
+            if error.status == RPCStatusCode.NOT_FOUND:
+                return {"running": False}
+            raise
+        return {"running": description.status == WorkflowExecutionStatus.RUNNING}
