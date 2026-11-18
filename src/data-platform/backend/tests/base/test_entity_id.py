@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
 
-from base import EntityId, ValueObject
+from base import EntityId, InvariantViolation, ValueObject
 
 
 class _Id(EntityId):
@@ -64,13 +63,13 @@ def test_is_hashable() -> None:
 def test_is_frozen() -> None:
     """An id cannot be reassigned."""
     identifier = _Id("a")
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         identifier.root = "b"
 
 
 def test_strict_rejects_a_non_string() -> None:
     """Strict mode rejects an int where a string is expected."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         _Id.model_validate(1)
 
 

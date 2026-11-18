@@ -7,14 +7,16 @@ from typing import Any
 from pydantic import ConfigDict, RootModel
 
 from base._inheritance_guard import enforce_max_depth
+from base._invariant_guarded_model import InvariantGuardedModel
 
 
-class EntityId(RootModel[str]):
+class EntityId(InvariantGuardedModel, RootModel[str]):
     """A typed identifier for an Entity.
 
     Wraps a raw string in a distinct type so that ids of different Entity
     kinds cannot be mixed up: ``OrderId("1") != UserId("1")``. Built
-    positionally, frozen, hashable and strict (only a ``str`` is accepted).
+    positionally, frozen, hashable and strict (only a ``str`` is accepted;
+    anything else raises ``InvariantViolation``).
 
     Subclass per Entity type::
 

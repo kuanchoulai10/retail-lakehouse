@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from pydantic import ValidationError
 
+from base import InvariantViolation
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     DEFAULT_POLICY_NAME,
     MaintenancePolicyContent,
@@ -62,5 +62,5 @@ def test_is_default():
 @pytest.mark.parametrize("name", ["has space", "", "x" * 65, "a/b"])
 def test_invalid_name_is_rejected(name: str):
     """A name outside the pattern is rejected."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         TableMaintenancePolicyName(name)

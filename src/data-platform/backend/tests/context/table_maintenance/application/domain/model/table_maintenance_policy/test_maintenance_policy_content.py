@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
 
+from base import InvariantViolation
 from context.table_maintenance.application.domain.model.shared import MaintenanceOperation
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     MaintenancePolicyContent,
@@ -50,7 +50,7 @@ def test_condition_of_another_operation_is_rejected() -> None:
     """Check the behaviour named by the test."""
     wire = MaintenancePolicyContent.platform_default().to_primitives()
     wire["operations"]["rewrite_manifests"]["trigger_policy"]["conditions"]["reducible_files"] = {"at_least": 5}
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         MaintenancePolicyContent.from_primitives(wire)
 
 
@@ -58,7 +58,7 @@ def test_orphan_older_than_below_one_day_is_rejected() -> None:
     """Check the behaviour named by the test."""
     wire = MaintenancePolicyContent.platform_default().to_primitives()
     wire["operations"]["remove_orphan_files"]["execution_policy"]["older_than_seconds"] = 86399
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         MaintenancePolicyContent.from_primitives(wire)
 
 
@@ -76,7 +76,7 @@ def test_reconcile_interval_not_positive_is_rejected(seconds: int) -> None:
     """A zero or negative reconcile interval would plan without pause."""
     wire = MaintenancePolicyContent.platform_default().to_primitives()
     wire["reconcile_interval_seconds"] = seconds
-    with pytest.raises(ValidationError, match="must be positive"):
+    with pytest.raises(InvariantViolation, match="must be positive"):
         MaintenancePolicyContent.from_primitives(wire)
 
 
@@ -84,7 +84,7 @@ def test_negative_cooldown_is_rejected() -> None:
     """A cooldown cannot be shorter than no cooldown."""
     wire = MaintenancePolicyContent.platform_default().to_primitives()
     wire["operations"]["expire_snapshots"]["trigger_policy"]["cooldown_seconds"] = -1
-    with pytest.raises(ValidationError, match="must not be negative"):
+    with pytest.raises(InvariantViolation, match="must not be negative"):
         MaintenancePolicyContent.from_primitives(wire)
 
 
@@ -121,5 +121,5 @@ def test_unknown_priority_is_rejected() -> None:
     """Only P0, P1 and P2 exist."""
     wire = MaintenancePolicyContent.platform_default().to_primitives()
     wire["priority"] = "P3"
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         MaintenancePolicyContent.from_primitives(wire)

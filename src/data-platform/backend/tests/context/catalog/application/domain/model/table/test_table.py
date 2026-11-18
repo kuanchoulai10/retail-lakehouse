@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
 
+from base import InvariantViolation
 from context.catalog.application.domain.model.shared import Schema, SchemaField
 from context.catalog.application.domain.model.table import (
     NullOrder,
@@ -92,7 +92,7 @@ def _orders() -> Table:
 def test_table_id_is_built_positionally_and_strict():
     """The id keeps its positional form and takes only a string."""
     assert TableId("sales\x1fretail\x1forders") == TableId.of("sales", ("retail",), "orders")
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         TableId(1)  # ty: ignore[invalid-argument-type]
 
 
@@ -117,7 +117,7 @@ def test_assigning_a_wrong_type_is_rejected_and_changes_nothing(field: str, valu
     table = _orders()
     before = table.model_dump()
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         setattr(table, field, value)
 
     assert table.model_dump() == before
@@ -140,19 +140,19 @@ def test_assigning_a_wrong_type_is_rejected_and_changes_nothing(field: str, valu
 )
 def test_table_value_objects_are_immutable(value: object, field: str, change: object):
     """A value object of the table cannot change after it is built."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         setattr(value, field, change)
 
 
 def test_table_value_objects_are_strict():
     """A plain string is not a sort direction, a list is not a tuple and a bool is not an id."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         SortField(source_id=1, transform="identity", direction="asc", null_order=NullOrder.NULLS_FIRST)  # ty: ignore[invalid-argument-type]
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         PartitionSpec(spec_id=0, fields=[])  # ty: ignore[invalid-argument-type]
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         PartitionField(source_id=True, field_id=1000, name="id", transform="identity")
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         Snapshot(snapshot_id=1, parent_id=None, timestamp_ms=10, operation="append", summary={"k": 1})  # ty: ignore[invalid-argument-type]
 
 

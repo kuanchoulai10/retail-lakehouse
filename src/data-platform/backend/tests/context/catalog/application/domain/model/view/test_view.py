@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
 
+from base import InvariantViolation
 from context.catalog.application.domain.model.shared import Schema
 from context.catalog.application.domain.model.view import View, ViewId, ViewVersion
 
@@ -124,9 +124,9 @@ def test_view_version_is_immutable_and_strict():
         version_id=1, timestamp_ms=10, schema_id=0, query="SELECT 1", dialect="spark", default_namespace=("retail",)
     )
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         version.query = "SELECT 2"
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         ViewVersion(
             version_id=1,
             timestamp_ms=10,
@@ -135,7 +135,7 @@ def test_view_version_is_immutable_and_strict():
             dialect="spark",
             default_namespace=["retail"],  # ty: ignore[invalid-argument-type]
         )
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         ViewVersion(
             version_id=True,
             timestamp_ms=10,
@@ -149,7 +149,7 @@ def test_view_version_is_immutable_and_strict():
 def test_view_id_is_built_positionally_and_strict():
     """The id keeps its positional form and takes only a string."""
     assert ViewId("sales\x1fretail\x1ftop_orders") == VIEW_ID
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         ViewId(1)  # ty: ignore[invalid-argument-type]
 
 
@@ -169,7 +169,7 @@ def test_assigning_a_wrong_type_is_rejected_and_changes_nothing(field: str, valu
     view = _view()
     before = view.model_dump()
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         setattr(view, field, value)
 
     assert view.model_dump() == before

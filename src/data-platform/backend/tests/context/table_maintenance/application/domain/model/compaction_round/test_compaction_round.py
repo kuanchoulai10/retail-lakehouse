@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
-from pydantic import ValidationError
 
+from base import InvariantViolation
 from context.table_maintenance.application.domain.model.compaction_candidate import PartitionKey
 from context.table_maintenance.application.domain.model.compaction_round import (
     CompactionRound,
@@ -58,7 +58,7 @@ def test_weights_give_each_priority_its_weight():
 @pytest.mark.parametrize("weights", [{"p0": 0.0}, {"p1": -1.0}])
 def test_weights_must_be_positive(weights):
     """A zero or negative weight would make a priority never ranked."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         PriorityWeights(**weights)
 
 
@@ -78,7 +78,7 @@ def test_round_holds_its_picks_and_skips():
 
 def test_round_counts_at_least_the_skips_it_keeps():
     """The skipped total cannot be below the number of skips kept."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         CompactionRound(
             id=CompactionRoundId("r-1"),
             started_at=NOW,
@@ -92,7 +92,7 @@ def test_round_counts_at_least_the_skips_it_keeps():
 
 def test_round_used_is_the_sum_of_its_picks():
     """The budget used is what the picks are estimated to cost."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         CompactionRound(
             id=CompactionRoundId("r-1"),
             started_at=NOW,
@@ -141,5 +141,5 @@ def test_round_counts_partitions_of_busy_tables_apart_from_its_skips():
         skips=(),
         skipped_total=0,
     )
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         round_.model_validate({**round_.model_dump(), "busy_skipped": -1})

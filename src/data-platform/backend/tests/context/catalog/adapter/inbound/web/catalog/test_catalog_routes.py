@@ -318,6 +318,28 @@ def test_storage_user_arn_is_not_accepted():
     assert response.status_code == 422
 
 
+def test_invalid_catalog_name_answers_422_with_the_reason():
+    """A catalog name that breaks the id's invariant answers 422 with a one-line reason."""
+    response = _real_create_client().post("/v1/catalogs", json={**CREATE_BODY, "name": "sa\x1fles"})
+
+    assert (response.status_code, response.json()) == (
+        422,
+        {"detail": "catalog name must not contain the unit separator U+001F"},
+    )
+
+
+def test_storage_invariant_answers_422_with_the_dotted_field():
+    """A storage config that breaks a field rule answers 422 naming the field under storage_config."""
+    body = {**CREATE_BODY, "storage_config": {"storage_type": "AZURE"}}
+
+    response = _real_create_client().post("/v1/catalogs", json=body)
+
+    assert (response.status_code, response.json()) == (
+        422,
+        {"detail": "storage_config.tenant_id: required for AZURE storage"},
+    )
+
+
 def test_update_without_properties_is_rejected():
     """Leaving the properties out must not wipe them, so the field is required."""
     stub = StubUseCase(UpdateCatalogUseCaseOutput(**UPDATED))

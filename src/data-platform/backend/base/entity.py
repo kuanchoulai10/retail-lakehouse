@@ -4,19 +4,21 @@ from __future__ import annotations
 
 from typing import Any, ClassVar
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict
 
 from base._inheritance_guard import enforce_max_depth
+from base._invariant_guarded_model import InvariantGuardedModel
 from base._rebuild import rebuild
 from base.entity_id import EntityId
 
 
-class Entity[ID: EntityId](BaseModel):
+class Entity[ID: EntityId](InvariantGuardedModel):
     """An object with a distinct identity that persists through state changes.
 
     Two Entities are equal when they are of one class and share the same
     ``id``, even if every other field differs; hashing follows the id.
-    State may change, and every assignment is validated, strictly.
+    State may change, and every assignment is validated, strictly; a
+    refused one raises ``InvariantViolation``.
 
     Usage::
 

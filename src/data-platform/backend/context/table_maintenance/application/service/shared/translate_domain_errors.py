@@ -5,7 +5,6 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
-from base import validation_message
 from context.table_maintenance.application.domain.model.compaction_candidate import (
     InvalidCandidateTransition,
 )
@@ -37,8 +36,8 @@ def translate_domain_errors() -> Iterator[None]:
 
     InvalidTableTransition, InvalidRunTransition, InvalidCandidateTransition,
     StalePolicyVersion and StaleDiscoveryRulesVersion become ConflictError, any
-    other ValueError (which covers invalid settings and rules, Pydantic's
-    included) becomes ValidationError with a one-line message, and a repo
+    other ValueError (which covers a broken invariant, an InvariantViolation
+    whose text is one line) becomes ValidationError with its message, and a repo
     LookupError becomes NotFoundError. Application exceptions pass through.
     """
     try:
@@ -52,6 +51,6 @@ def translate_domain_errors() -> Iterator[None]:
     ) as exc:
         raise ConflictError(str(exc)) from exc
     except ValueError as exc:
-        raise ValidationError(validation_message(exc)) from exc
+        raise ValidationError(str(exc)) from exc
     except LookupError as exc:
         raise NotFoundError(str(exc)) from exc

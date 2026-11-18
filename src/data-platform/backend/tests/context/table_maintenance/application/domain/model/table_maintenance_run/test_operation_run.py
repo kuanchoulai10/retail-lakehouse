@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
-from pydantic import ValidationError
 
+from base import InvariantViolation
 from context.table_maintenance.application.domain.model.shared import ComputeSize, MaintenanceOperation
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     OperationAttempt,
@@ -55,17 +55,17 @@ def test_empty_history_is_valid_for_any_attempt_count():
 )
 def test_attempt_numbers_must_increase(history):
     """An attempt listed twice, or out of order, is refused."""
-    with pytest.raises(ValidationError, match="increase"):
+    with pytest.raises(InvariantViolation, match="increase"):
         _run(2, *history)
 
 
 def test_last_attempt_must_be_the_latest_attempt():
     """A history whose last attempt is not the operation's latest attempt is refused."""
-    with pytest.raises(ValidationError, match="latest attempt"):
+    with pytest.raises(InvariantViolation, match="latest attempt"):
         _run(3, _attempt(1), _attempt(2))
 
 
 def test_history_cannot_hold_an_attempt_beyond_the_count():
     """A history listing an attempt the operation never reached is refused."""
-    with pytest.raises(ValidationError, match="latest attempt"):
+    with pytest.raises(InvariantViolation, match="latest attempt"):
         _run(1, _attempt(1), _attempt(2))

@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
-from pydantic import ValidationError
 
+from base import InvariantViolation
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation as Op,
 )
@@ -72,43 +72,43 @@ def _record(**overrides):
 
 def test_record_rejects_empty_wake_reasons():
     """A reconciliation needs at least one wake reason."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         _record(wake_reasons={})
 
 
 def test_record_rejects_wake_reason_count_below_one():
     """Each wake reason must have been counted at least once."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         _record(wake_reasons={WakeReason.SCHEDULE: 0})
 
 
 def test_record_rejects_skipped_without_skip_reason():
     """A skipped reconciliation says why."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         _record(outcome=ReconciliationOutcome.SKIPPED, skip_reason=None, operations=())
 
 
 def test_record_rejects_planned_with_skip_reason():
     """A planned reconciliation has no skip reason."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         _record(skip_reason="paused")
 
 
 def test_record_rejects_skipped_with_operations():
     """A skipped reconciliation assessed nothing."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         _record(outcome=ReconciliationOutcome.SKIPPED, skip_reason="paused")
 
 
 def test_record_rejects_run_id_without_started_operation():
     """A run id only makes sense when an operation started."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         _record(run_id=TableMaintenanceRunId("run-1"))
 
 
 def test_record_rejects_started_operation_without_run_id():
     """A started operation points at the run it started."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         _record(operations=(_outcome(Op.EXPIRE_SNAPSHOTS, OperationResult.STARTED),))
 
 
@@ -135,7 +135,7 @@ def test_skipped_record_is_valid():
 
 def test_direct_construction_checks_the_invariants():
     """Building the aggregate directly enforces the same rules as record."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         TableReconciliation(
             id=TableReconciliationId("rec-1"),
             table_uuid=TableId("t-1"),
@@ -153,16 +153,16 @@ def test_direct_construction_checks_the_invariants():
 
 
 def test_assigning_wrong_type_is_rejected():
-    """A field assigned the wrong type raises ValidationError."""
+    """A field assigned the wrong type raises InvariantViolation."""
     rec = _record()
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         rec.reconciled_at = "yesterday"
 
 
 def test_assignment_rechecks_invariants():
     """Assigning a run id without a started operation is rejected."""
     rec = _record()
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         rec.run_id = TableMaintenanceRunId("run-1")
     assert rec.run_id is None
 
@@ -170,7 +170,7 @@ def test_assignment_rechecks_invariants():
 def test_operation_outcome_is_immutable():
     """An operation outcome cannot be changed after creation."""
     outcome = _outcome(Op.EXPIRE_SNAPSHOTS)
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         outcome.result = OperationResult.OFF
 
 
@@ -183,5 +183,5 @@ def test_record_keeps_policy_name_version_and_target():
 
 def test_record_rejects_a_policy_version_below_one():
     """A policy version is at least 1."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         _record(policy_version=0)

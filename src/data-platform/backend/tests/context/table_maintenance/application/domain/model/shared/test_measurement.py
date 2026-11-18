@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
 
+from base import InvariantViolation
 from context.table_maintenance.application.domain.model.shared import (
     Measurement,
     MeasurementComparison,
@@ -31,20 +31,20 @@ def test_measurement_met_and_context():
 
 def test_threshold_without_comparison_is_rejected():
     """A threshold needs a comparison."""
-    with pytest.raises(ValidationError, match="comparison"):
+    with pytest.raises(InvariantViolation, match="comparison"):
         Measurement(key="x", observed=5, unit=MeasurementUnit.COUNT, threshold=5)
 
 
 def test_comparison_without_threshold_is_rejected():
     """A comparison needs a threshold."""
-    with pytest.raises(ValidationError, match="threshold"):
+    with pytest.raises(InvariantViolation, match="threshold"):
         Measurement(key="x", observed=5, unit=MeasurementUnit.COUNT, comparison=MeasurementComparison.AT_LEAST)
 
 
 def test_measurement_is_immutable():
     """A measurement cannot be changed after construction."""
     measurement = Measurement(key="x", observed=5, unit=MeasurementUnit.COUNT)
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         measurement.observed = 6
 
 

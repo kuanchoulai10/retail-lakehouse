@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
-from pydantic import ValidationError
 
+from base import InvariantViolation
 from context.catalog.application.domain.model.catalog import (
     Catalog,
     CatalogId,
@@ -34,7 +34,7 @@ def test_create_sets_only_the_default_base_location():
 def test_catalog_id_is_built_positionally_and_strict():
     """The id keeps its positional form and takes only a string."""
     assert CatalogId("sales") == CatalogId.of("sales")
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         CatalogId(1)  # ty: ignore[invalid-argument-type]
 
 
@@ -53,7 +53,7 @@ def test_assigning_a_wrong_type_is_rejected_and_changes_nothing(field: str, valu
     catalog = _catalog()
     before = catalog.model_dump()
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         setattr(catalog, field, value)
 
     assert catalog.model_dump() == before
@@ -80,7 +80,7 @@ def test_rejected_reconfigure_changes_nothing():
     catalog = _catalog()
     before = catalog.model_dump()
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         catalog.reconfigure(
             default_base_location="s3://bucket/v2",
             properties={"owner": "data"},

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
 
+from base import InvariantViolation
 from context.catalog.application.domain.model.generic_table import GenericTable, GenericTableId
 
 
@@ -51,7 +51,7 @@ def test_generic_table_id_refuses_the_unit_separator_inside_any_component(catalo
 def test_generic_table_id_is_built_positionally_and_strict():
     """The id keeps its positional form and takes only a string."""
     assert GenericTableId("sales\x1fretail\x1fevents") == GenericTableId.of("sales", ("retail",), "events")
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         GenericTableId(1)  # ty: ignore[invalid-argument-type]
 
 
@@ -70,7 +70,7 @@ def test_assigning_a_wrong_type_is_rejected_and_changes_nothing(field: str, valu
     )
     before = table.model_dump()
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         setattr(table, field, value)
 
     assert table.model_dump() == before

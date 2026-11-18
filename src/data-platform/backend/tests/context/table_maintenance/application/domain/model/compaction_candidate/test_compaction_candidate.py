@@ -6,8 +6,8 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
-from pydantic import ValidationError
 
+from base import InvariantViolation
 from context.table_maintenance.application.domain.model.compaction_candidate import (
     CandidateScore,
     CandidateState,
@@ -525,7 +525,7 @@ def test_combinations_that_cannot_happen_are_refused(fields):
         "observed_at": NOW,
         "updated_at": NOW,
     }
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         CompactionCandidate(**{**base, **fields})
 
 

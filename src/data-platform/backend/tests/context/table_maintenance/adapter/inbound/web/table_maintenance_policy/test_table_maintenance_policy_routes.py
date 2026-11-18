@@ -89,6 +89,15 @@ def test_create_broken_invariant_is_422(world: PolicyWebWorld, body: dict[str, o
     assert response.status_code == 422
 
 
+def test_broken_invariant_detail_names_the_dotted_field(world: PolicyWebWorld) -> None:
+    """A broken invariant deep in the content answers 422 with one line naming the dotted field."""
+    response = world.client.post("/v1/maintenance-policies", json={"name": "gold", **_with_cooldown(-1)})
+    assert (response.status_code, response.json()) == (
+        422,
+        {"detail": "operations.expire_snapshots.trigger_policy.cooldown_seconds: must not be negative"},
+    )
+
+
 def test_put_with_current_version_increments_it(world: PolicyWebWorld) -> None:
     """PUT with the version read replaces the content and answers the next version."""
     world.create("gold")

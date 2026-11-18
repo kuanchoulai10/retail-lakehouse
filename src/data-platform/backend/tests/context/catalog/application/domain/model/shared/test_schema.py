@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
 
+from base import InvariantViolation
 from context.catalog.application.domain.model.shared import Schema, SchemaField
 
 ID = SchemaField(id=1, name="id", type="long", required=True, doc=None)
@@ -29,13 +29,13 @@ def test_field_named_finds_a_top_level_field():
 )
 def test_construction_is_strict(build):
     """A list is no tuple, a string no int, an int no bool, and ``doc`` must be given."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         build()
 
 
 def test_schema_and_field_are_immutable():
     """Neither a schema nor a field changes in place."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         ID.name = "other"
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         Schema(schema_id=0, fields=()).schema_id = 1

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError, model_validator
+from pydantic import model_validator
 
-from base import AggregateRoot, DomainEvent, EntityId
+from base import AggregateRoot, DomainEvent, EntityId, InvariantViolation
 
 
 class _RangeId(EntityId):
@@ -39,7 +39,7 @@ def _range() -> _Range:
 def test_single_assignments_cannot_move_a_range_past_itself() -> None:
     """Assigning one related field at a time fails on the half-changed state."""
     r = _range()
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         r.low = 10
 
 
@@ -60,10 +60,10 @@ def test_assign_together_keeps_untouched_defaulted_field() -> None:
 
 
 def test_assign_together_invalid_combination_changes_nothing() -> None:
-    """An invalid result raises ValidationError and leaves the entity as it was."""
+    """An invalid result raises InvariantViolation and leaves the entity as it was."""
     r = _range()
     r.label = "custom"
-    with pytest.raises(ValidationError, match="low must be below high"):
+    with pytest.raises(InvariantViolation, match="low must be below high"):
         r._assign_together(low=30, high=20, label="other")
     assert (r.low, r.high, r.label) == (1, 2, "custom")
 
@@ -71,7 +71,7 @@ def test_assign_together_invalid_combination_changes_nothing() -> None:
 def test_assign_together_wrong_type_changes_nothing() -> None:
     """A wrong-typed value is rejected and nothing changes."""
     r = _range()
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         r._assign_together(low="x", high=20)
     assert (r.low, r.high) == (1, 2)
 

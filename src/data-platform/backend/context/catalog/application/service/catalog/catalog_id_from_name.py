@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from base import validation_message
 from context.catalog.application.domain.model.catalog import CatalogId
 from context.catalog.application.exceptions import ValidationError
 
@@ -18,4 +17,4 @@ def catalog_id_from_name(name: str) -> CatalogId:
     try:
         return CatalogId.of(name)
     except ValueError as exc:
-        raise ValidationError(validation_message(exc)) from None
+        raise ValidationError(str(exc)) from None

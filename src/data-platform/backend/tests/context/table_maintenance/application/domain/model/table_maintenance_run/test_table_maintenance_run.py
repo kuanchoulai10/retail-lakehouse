@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from pydantic import ValidationError
 
+from base import InvariantViolation
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
 )
@@ -265,7 +265,7 @@ def test_attach_job_name_is_guarded():
 
 
 def test_forbidden_transition_still_raises_invalid_run_transition():
-    """A forbidden transition raises InvalidRunTransition, not a ValidationError."""
+    """A forbidden transition raises InvalidRunTransition, not an InvariantViolation."""
     run = _run([Op.EXPIRE_SNAPSHOTS])
     with pytest.raises(InvalidRunTransition):
         run.succeed(Op.EXPIRE_SNAPSHOTS, 1, {}, _now(1))
@@ -275,21 +275,21 @@ def test_forbidden_transition_still_raises_invalid_run_transition():
 def test_operation_update_revalidates():
     """Changing an operation goes through validation and rejects a wrong type."""
     operation = OperationRun(operation=Op.EXPIRE_SNAPSHOTS)
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         operation.with_changes(attempts="many")
 
 
 def test_operation_run_is_immutable():
     """An operation run cannot be changed in place."""
     operation = OperationRun(operation=Op.EXPIRE_SNAPSHOTS)
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         operation.attempts = 3
 
 
 def test_run_rejects_a_wrong_typed_assignment():
-    """Assigning a wrong type to a run field raises ValidationError."""
+    """Assigning a wrong type to a run field raises InvariantViolation."""
     run = _run()
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         run.created_at = "yesterday"  # ty: ignore[invalid-assignment]
 
 

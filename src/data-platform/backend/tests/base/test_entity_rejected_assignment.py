@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError, model_validator
+from pydantic import model_validator
 
-from base import AggregateRoot, DomainEvent, Entity, EntityId
+from base import AggregateRoot, DomainEvent, Entity, EntityId, InvariantViolation
 
 
 class BoxId(EntityId):
@@ -45,7 +45,7 @@ def test_rejected_cross_field_assignment_keeps_value_and_fields_set():
     """A rejected cross-field assignment changes neither value nor fields_set."""
     box = Box(id=BoxId("b"))
     before = set(box.model_fields_set)
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         box.low = 99
     assert box.low == 0
     assert box.model_fields_set == before
@@ -54,7 +54,7 @@ def test_rejected_cross_field_assignment_keeps_value_and_fields_set():
 def test_rejected_type_assignment_keeps_value():
     """A rejected wrong-type assignment keeps the old value."""
     box = Box(id=BoxId("b"))
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         box.low = "x"  # ty: ignore[invalid-assignment]
     assert box.low == 0
     assert "low" not in box.model_fields_set
@@ -73,7 +73,7 @@ def test_pending_events_survive_rejected_assignment():
     crate = Crate(id=BoxId("c"))
     event = Opened()
     crate.register_event(event)
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         crate.size = -1
     assert crate.size == 1
     assert crate.collect_events() == [event]

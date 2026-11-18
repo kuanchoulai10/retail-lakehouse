@@ -16,9 +16,8 @@ import json
 from typing import Any
 
 import pytest
-from pydantic import ValidationError
 
-from base import validation_message
+from base import InvariantViolation
 from context.catalog.application.domain.model.catalog import (
     AuthenticationParameters,
     AuthenticationType,
@@ -458,10 +457,10 @@ def test_connection_without_authentication_encodes_it_as_null() -> None:
 )
 def test_invalid_storage_input_names_the_field(data: dict[str, Any], message: str) -> None:
     """Invalid storage input is rejected with a one-line message naming the field."""
-    with pytest.raises(ValidationError) as raised:
+    with pytest.raises(InvariantViolation) as raised:
         StorageConfig.from_primitives(data)
 
-    assert validation_message(raised.value) == message
+    assert str(raised.value) == message
 
 
 @pytest.mark.parametrize(
@@ -503,31 +502,31 @@ def test_invalid_storage_input_names_the_field(data: dict[str, Any], message: st
 )
 def test_invalid_connection_input_names_the_field(data: dict[str, Any], message: str) -> None:
     """Invalid connection input is rejected with a one-line message naming the field."""
-    with pytest.raises(ValidationError) as raised:
+    with pytest.raises(InvariantViolation) as raised:
         ConnectionConfig.from_primitives(data)
 
-    assert validation_message(raised.value) == message
+    assert str(raised.value) == message
 
 
 def test_rejection_message_never_carries_a_secret() -> None:
     """A rejected input that holds a secret does not echo it in the message."""
     data = {**OAUTH_IN, "authentication": {"authentication_type": "OAUTH", "bearer_token": "fake-bearer-token"}}
 
-    with pytest.raises(ValidationError) as raised:
+    with pytest.raises(InvariantViolation) as raised:
         ConnectionConfig.from_primitives(data)
 
-    assert "fake-bearer-token" not in validation_message(raised.value)
+    assert "fake-bearer-token" not in str(raised.value)
 
 
 def test_azure_storage_without_tenant_is_refused_in_code() -> None:
     """The AZURE tenant rule holds for a config built in code too."""
-    with pytest.raises(ValidationError, match="required for AZURE storage"):
+    with pytest.raises(InvariantViolation, match="required for AZURE storage"):
         StorageConfig(storage_type=StorageType.AZURE)
 
 
 def test_authentication_field_of_another_type_is_refused_in_code() -> None:
     """A field of another authentication type is refused for a value built in code too."""
-    with pytest.raises(ValidationError, match="token_uri does not apply to BEARER authentication"):
+    with pytest.raises(InvariantViolation, match="token_uri does not apply to BEARER authentication"):
         AuthenticationParameters(authentication_type=AuthenticationType.BEARER, token_uri="https://t")
 
 
@@ -542,7 +541,7 @@ def test_authentication_field_of_another_type_is_refused_in_code() -> None:
 )
 def test_code_construction_is_strict(build: Any) -> None:  # noqa: ANN401
     """Built in code, a plain string is no enum and a list is no tuple."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         build()
 
 
@@ -556,5 +555,5 @@ def test_code_construction_is_strict(build: Any) -> None:  # noqa: ANN401
 )
 def test_config_value_objects_are_immutable(value: Any, field: str, new: str) -> None:  # noqa: ANN401
     """Storage, connection and authentication configs cannot be changed in place."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         setattr(value, field, new)

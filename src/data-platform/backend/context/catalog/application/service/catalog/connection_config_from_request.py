@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from base import validation_message
 from context.catalog.application.domain.model.catalog import ConnectionConfig
 from context.catalog.application.exceptions import ValidationError
 
@@ -19,7 +18,7 @@ def connection_config_from_request(data: dict[str, Any]) -> ConnectionConfig:
     try:
         config = ConnectionConfig.from_primitives(data)
     except ValueError as exc:
-        raise ValidationError(f"connection_config.{validation_message(exc)}") from None
+        raise ValidationError(f"connection_config.{exc}") from None
     if config.authentication is None:
         raise ValidationError("connection_config.authentication: Field required")
     return config

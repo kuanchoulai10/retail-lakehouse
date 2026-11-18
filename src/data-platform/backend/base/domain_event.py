@@ -5,20 +5,22 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from base._inheritance_guard import enforce_max_depth
+from base._invariant_guarded_model import InvariantGuardedModel
 
 
 def _now() -> datetime:
     return datetime.now(UTC)
 
 
-class DomainEvent(BaseModel):
+class DomainEvent(InvariantGuardedModel):
     """A record of something meaningful that occurred in the domain.
 
-    Named in past tense (OrderPlaced), frozen and strict. Every event
-    carries ``occurred_at``, which defaults to the current UTC time.
+    Named in past tense (OrderPlaced), frozen and strict: refused data
+    raises ``InvariantViolation``. Every event carries ``occurred_at``,
+    which defaults to the current UTC time.
 
     Usage::
 

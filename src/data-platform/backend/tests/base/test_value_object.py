@@ -8,9 +8,9 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Self
 
 import pytest
-from pydantic import Field, ValidationError, model_validator
+from pydantic import Field, model_validator
 
-from base import ValueObject
+from base import InvariantViolation, ValueObject
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -50,19 +50,19 @@ def test_equal_by_value() -> None:
 def test_is_frozen() -> None:
     """A value object rejects assignment."""
     schedule = _schedule()
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         schedule.retries = 3
 
 
 def test_rejects_an_unknown_key() -> None:
     """``extra="forbid"`` rejects a key that is not a field."""
-    with pytest.raises(ValidationError, match="extra"):
+    with pytest.raises(InvariantViolation, match="^colour: Extra inputs are not permitted$"):
         _Schedule.from_primitives({"unit": "hour", "min_interval_seconds": 3600, "colour": "red"})
 
 
 def test_from_primitives_rejects_a_bool_for_an_int() -> None:
     """Strict mode rejects ``true`` where an integer is expected."""
-    with pytest.raises(ValidationError, match="retries"):
+    with pytest.raises(InvariantViolation, match="retries"):
         _Schedule.from_primitives({"unit": "hour", "min_interval_seconds": 3600, "retries": True})
 
 
@@ -74,13 +74,13 @@ def test_from_primitives_reads_wire_values() -> None:
 
 def test_from_primitives_rejects_the_field_name() -> None:
     """The wire form accepts only the ``*_seconds`` alias, never the field name."""
-    with pytest.raises(ValidationError, match="min_interval_seconds"):
+    with pytest.raises(InvariantViolation, match="min_interval_seconds"):
         _Schedule.from_primitives({"unit": "hour", "min_interval": 3600, "retries": 2})
 
 
 def test_from_primitives_rejects_a_nested_field_name() -> None:
     """A nested value object read from the wire also accepts only its aliases."""
-    with pytest.raises(ValidationError, match="schedule.min_interval_seconds"):
+    with pytest.raises(InvariantViolation, match="schedule.min_interval_seconds"):
         _Plan.from_primitives({"schedule": {"unit": "hour", "min_interval": 3600}})
 
 
@@ -160,13 +160,13 @@ def test_with_changes_leaves_the_original_alone() -> None:
 
 def test_with_changes_runs_model_validators() -> None:
     """A change that breaks a cross-field rule raises."""
-    with pytest.raises(ValidationError, match="low must not exceed high"):
+    with pytest.raises(InvariantViolation, match="low must not exceed high"):
         _Range(low=1, high=5).with_changes(low=7)
 
 
 def test_with_changes_runs_field_validation() -> None:
     """A change of the wrong type raises."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         _Range(low=1, high=5).with_changes(low="7")
 
 

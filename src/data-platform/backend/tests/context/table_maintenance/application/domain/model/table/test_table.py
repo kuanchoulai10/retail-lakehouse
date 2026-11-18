@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from pydantic import ValidationError
 
+from base import InvariantViolation
 from context.table_maintenance.application.domain.model.shared import ComputeSize, MaintenanceOperation
 from context.table_maintenance.application.domain.model.table import (
     AppliedPolicyRef,
@@ -159,21 +159,21 @@ def test_rename_keeps_identity():
 def test_table_rejects_wrong_type_on_assignment():
     """Every assignment is validated: a string is not a datetime."""
     t = managed()
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         t.updated_at = "2026-01-01T00:00:00Z"  # ty: ignore[invalid-assignment]
     assert t.updated_at == T0
 
 
 def test_table_name_rejects_an_empty_table_as_a_validation_error():
     """An empty table name is a broken invariant at construction."""
-    with pytest.raises(ValidationError, match="table name must not be empty"):
+    with pytest.raises(InvariantViolation, match="table name must not be empty"):
         TableName(catalog="iceberg", namespace="inventory", table="")
 
 
 def test_operation_state_is_immutable():
     """An operation state changes only by building a new one."""
     state = OperationState()
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         state.consecutive_failures = 1
 
 
@@ -246,7 +246,7 @@ def test_another_attempt_is_recorded():
 @pytest.mark.parametrize(("run_id", "attempt"), [("", 1), ("run-1", 0)])
 def test_a_recorded_attempt_names_a_run_and_a_positive_attempt(run_id, attempt):
     """A recorded attempt needs its run and a positive attempt number."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         RecordedAttempt(run_id=run_id, attempt=attempt)
 
 

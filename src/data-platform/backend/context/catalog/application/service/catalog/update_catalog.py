@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from base import validation_message
 from context.catalog.application.exceptions import (
     ConflictError,
     NotFoundError,
@@ -54,7 +53,7 @@ class UpdateCatalogService(UpdateCatalogUseCase):
                 loaded_version=request.entity_version,
             )
         except ValueError as exc:
-            raise ValidationError(validation_message(exc)) from None
+            raise ValidationError(str(exc)) from None
         try:
             saved = self._catalogs_repo.update(catalog)
         except ConflictError as exc:

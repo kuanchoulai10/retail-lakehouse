@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
 
+from base import InvariantViolation
 from context.table_maintenance.application.domain.model.compaction_candidate import CandidateScoring
 from context.table_maintenance.application.domain.service.compaction_candidate import score_candidate
 
@@ -88,7 +88,7 @@ def test_weights_need_not_sum_to_one():
 )
 def test_scoring_rejects_meaningless_settings(fields):
     """Weights are not negative and not both zero; reference bounds are positive."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         CandidateScoring(**fields)
 
 

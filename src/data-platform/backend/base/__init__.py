@@ -12,7 +12,9 @@ built on Pydantic v2:
 - AggregateRoot: an Entity that acts as the entry point and consistency
   boundary for a cluster of related objects, and collects DomainEvents.
 - DomainEvent: a frozen record of something that happened, timestamped.
-- validation_message: a one-line message for a validation error.
+- InvariantViolation: the ValueError every model base raises for refused
+  data, its string one line naming the first problem; Pydantic's
+  ValidationError never leaves the bases.
 - Repository: an interface for retrieving and persisting aggregates/entities,
   decoupling the domain from infrastructure concerns.
 - UseCase: a single application-level operation that orchestrates domain
@@ -31,10 +33,10 @@ from base.entity_id import EntityId
 from base.event_dispatcher import EventDispatcher
 from base.event_handler import EventHandler
 from base.gateway import Gateway
+from base.invariant_violation import InvariantViolation
 from base.repository import Repository
 from base.store import Store
 from base.use_case import UseCase
-from base.validation_message import validation_message
 from base.value_object import ValueObject
 
 __all__ = [
@@ -45,9 +47,9 @@ __all__ = [
     "EventDispatcher",
     "EventHandler",
     "Gateway",
+    "InvariantViolation",
     "Repository",
     "Store",
     "UseCase",
     "ValueObject",
-    "validation_message",
 ]

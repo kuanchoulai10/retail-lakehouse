@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from pydantic import ValidationError
 
+from base import InvariantViolation
 from context.catalog.application.domain.model.table import (
     TablePropertyCatalogue,
     TablePropertyDefinition,
@@ -106,39 +106,39 @@ def test_unknown_key_has_no_definition():
 
 def test_definition_refuses_a_blank_key_or_description():
     """A key and a description are required text."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         _definition(" ")
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         _definition(description=" ")
 
 
 def test_definition_refuses_a_key_with_whitespace():
     """A property key holds no whitespace."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         _definition("write format")
 
 
 def test_not_resettable_definition_is_never_written_on_create():
     """A key Iceberg writes on create is restored by a reset, so it cannot also refuse a reset."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         _definition(resettable=False, written_on_create=True)
 
 
 def test_written_on_create_needs_a_default():
     """A reset writes the default, so a key written on create has one."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         _definition(iceberg_default=None, written_on_create=True)
 
 
 def test_catalogue_refuses_duplicate_keys():
     """Two entries with one key are refused."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         TablePropertyCatalogue(iceberg_version="1.10.1", definitions=(_definition(), _definition()))
 
 
 def test_catalogue_refuses_a_blank_version():
     """The Iceberg version the defaults belong to is required."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         TablePropertyCatalogue(iceberg_version=" ", definitions=(_definition(),))
 
 
@@ -163,5 +163,5 @@ def test_gc_enabled_description_says_it_can_still_be_edited():
 )
 def test_set_by_catalog_definition_has_no_default_and_is_not_resettable(changes: dict[str, Any]):
     """A key the catalog service writes has no default to reset to and refuses a reset."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         _definition(set_by_catalog=True, **changes)

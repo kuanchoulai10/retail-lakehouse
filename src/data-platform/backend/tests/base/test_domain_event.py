@@ -5,9 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
-from pydantic import ValidationError
 
-from base import DomainEvent
+from base import DomainEvent, InvariantViolation
 
 
 class _OrderPlaced(DomainEvent):
@@ -34,19 +33,19 @@ def test_occurred_at_can_be_given() -> None:
 def test_is_frozen() -> None:
     """An event rejects assignment."""
     event = _OrderPlaced(order_id="1", total=100)
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         event.total = 5
 
 
 def test_strict_rejects_a_bool_for_an_int() -> None:
     """Strict mode rejects a bool where an int is expected."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         _OrderPlaced.model_validate({"order_id": "1", "total": True})
 
 
 def test_rejects_an_unknown_key() -> None:
     """``extra="forbid"`` rejects a key that is not a field."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         _OrderPlaced.model_validate({"order_id": "1", "total": 1, "colour": "red"})
 
 

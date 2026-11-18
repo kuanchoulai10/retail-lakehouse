@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
 
+from base import InvariantViolation
 from context.table_maintenance.application.domain.model.compaction_candidate import PartitionKey
 
 
@@ -35,7 +35,7 @@ def test_whole_table_has_no_spec_and_no_values():
 
 def test_whole_table_spec_takes_no_values():
     """A whole-table key with values cannot exist."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         PartitionKey(spec_id=-1, values=("eu",))
 
 

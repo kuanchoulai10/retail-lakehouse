@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from base import validation_message
 from context.catalog.application.domain.model.catalog import StorageConfig
 from context.catalog.application.exceptions import ValidationError
 
@@ -22,4 +21,4 @@ def storage_config_from_request(data: dict[str, Any]) -> StorageConfig:
     try:
         return StorageConfig.from_primitives(data)
     except ValueError as exc:
-        raise ValidationError(f"storage_config.{validation_message(exc)}") from None
+        raise ValidationError(f"storage_config.{exc}") from None

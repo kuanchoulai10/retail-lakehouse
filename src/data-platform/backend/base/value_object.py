@@ -5,22 +5,25 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, Any, Self
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict
 
 from base._inheritance_guard import enforce_max_depth
+from base._invariant_guarded_model import InvariantGuardedModel
 from base._rebuild import rebuild
+from base.invariant_violation import InvariantViolation
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
 
-class ValueObject(BaseModel):
+class ValueObject(InvariantGuardedModel):
     """An immutable, self-contained descriptor with no conceptual identity.
 
     Two ValueObjects are equal when all of their fields are equal. They
     are frozen, so they are hashable and freely shareable. Validation is
     strict (no coercion: ``True`` is not an ``int``) and unknown keys are
-    rejected, so an invalid value never gets built.
+    rejected, so an invalid value never gets built: every way of building
+    or changing one raises ``InvariantViolation`` instead.
 
     A value read from or written to the outside world goes through
     ``from_primitives`` / ``to_primitives``: JSON-compatible primitives,
@@ -56,12 +59,12 @@ class ValueObject(BaseModel):
         Only wire names are read: a field with an alias (``min_interval_seconds``)
         rejects its field name (``min_interval``) as an unknown key, at every
         nesting level. Input that is not JSON-compatible (a ``timedelta`` value, a mapping
-        that is not a ``dict``, NaN or Infinity) raises ``ValueError``, like any invalid input.
+        that is not a ``dict``, NaN or Infinity) raises ``InvariantViolation``, like any invalid input.
         """
         try:
             payload = json.dumps(data, allow_nan=False)
         except TypeError as exc:
-            raise ValueError(f"{cls.__name__} input must be JSON-compatible primitives: {exc}") from exc
+            raise InvariantViolation(f"{cls.__name__} input must be JSON-compatible primitives: {exc}") from exc
         return cls.model_validate_json(payload, by_alias=True, by_name=False)
 
     def with_changes(self, **changes: object) -> Self:
@@ -69,7 +72,8 @@ class ValueObject(BaseModel):
 
         Pydantic's ``model_copy(update=...)`` skips validation; this rebuilds
         the value from its field values so field and model validators see the
-        changed object. An unknown field name raises ``TypeError``.
+        changed object; a broken rule raises ``InvariantViolation``. An unknown
+        field name raises ``TypeError``.
         """
         return rebuild(self, changes)
 

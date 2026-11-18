@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
 
+from base import InvariantViolation
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     AtLeast,
     RemoveOrphanFilesConditions,
@@ -25,5 +25,5 @@ def test_missing_condition_means_empty() -> None:
 
 def test_at_least_zero_is_rejected() -> None:
     """Check the behaviour named by the test."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         AtLeast.from_primitives({"at_least": 0})

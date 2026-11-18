@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
 
+from base import InvariantViolation
 from context.catalog.application.domain.model.namespace import Namespace, NamespaceId
 
 
@@ -58,7 +58,7 @@ def test_namespace_id_refuses_the_unit_separator_inside_a_catalog_or_part(catalo
 def test_namespace_id_is_built_positionally_and_strict():
     """The id keeps its positional form and takes only a string."""
     assert NamespaceId("sales\x1fraw") == NamespaceId.of("sales", ("raw",))
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         NamespaceId(1)  # ty: ignore[invalid-argument-type]
 
 
@@ -67,7 +67,7 @@ def test_assigning_wrong_properties_is_rejected_and_changes_nothing(value: objec
     """Properties are a map of text to text; a rejected assignment leaves the namespace as it was."""
     namespace = Namespace(id=NamespaceId.of("sales", ("raw",)), properties={"owner": "de"})
 
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         namespace.properties = value  # ty: ignore[invalid-assignment]
 
     assert namespace.properties == {"owner": "de"}

@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from pydantic import ValidationError
 
+from base import InvariantViolation
 from context.table_maintenance.application.domain.model.catalog_discovery import (
     CatalogDiscovery,
     CatalogDiscoveryId,
@@ -40,5 +40,5 @@ def test_an_older_discovery_does_not_move_the_time_back():
 
 def test_a_catalog_discovery_needs_a_catalog_name():
     """An empty catalog name is refused."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         CatalogDiscovery.first("", T0)

@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import pytest
-from pydantic import ValidationError
 
-from base import Entity, EntityId
+from base import Entity, EntityId, InvariantViolation
 
 
 class _UserId(EntityId):
@@ -55,7 +54,7 @@ def test_validates_assignment() -> None:
     """``validate_assignment`` rejects a wrong type."""
     user = _User(id=_UserId("1"), name="a")
     field = "name"
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         setattr(user, field, 1)
 
 
@@ -66,13 +65,13 @@ def test_a_raw_string_is_read_as_the_id() -> None:
 
 def test_strict_rejects_a_wrongly_typed_id() -> None:
     """Strict mode still rejects an int where the id's string is expected."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         _User.model_validate({"id": 1, "name": "a"})
 
 
 def test_rejects_an_unknown_key() -> None:
     """``extra="forbid"`` rejects a key that is not a field."""
-    with pytest.raises(ValidationError):
+    with pytest.raises(InvariantViolation):
         _User.model_validate({"id": _UserId("1"), "name": "a", "colour": "red"})
 
 
