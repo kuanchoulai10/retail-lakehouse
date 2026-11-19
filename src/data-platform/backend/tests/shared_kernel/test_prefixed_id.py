@@ -111,3 +111,10 @@ def test_refuses_bad_prefix(prefix: str):
         new_prefixed_id(prefix)
     with pytest.raises(ValueError, match="prefix"):
         prefixed_id_pattern(prefix)
+
+
+@pytest.mark.parametrize("unix_ms", [-1, 1 << 48], ids=["negative", "past 48 bits"])
+def test_refuses_milliseconds_outside_48_bits(unix_ms: int):
+    """The UUIDv7 time field holds 48 bits, so a negative or larger value is refused."""
+    with pytest.raises(ValueError, match="unix_ms must fit in 48 bits"):
+        prefixed_id_from_parts("mr", unix_ms, 1)

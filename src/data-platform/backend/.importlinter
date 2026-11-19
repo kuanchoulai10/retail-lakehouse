@@ -167,7 +167,7 @@ forbidden_modules =
     context
 
 [importlinter:contract:base-isolation]
-name = Base (DDD kernel) depends on nothing project-internal
+name = Base (DDD kernel) depends on nothing project-internal except the shared kernel
 type = forbidden
 source_modules =
     base

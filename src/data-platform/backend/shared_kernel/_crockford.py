@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz"
-SUFFIX_LENGTH = 26
+_ALPHABET = "0123456789abcdefghjkmnpqrstvwxyz"
 
 
 def encode_128_bits(value: int) -> str:
@@ -13,4 +12,4 @@ def encode_128_bits(value: int) -> str:
     """
     if not 0 <= value < 1 << 128:
         raise ValueError("value must fit in 128 bits")
-    return "".join(ALPHABET[(value >> shift) & 0b11111] for shift in range(125, -1, -5))
+    return "".join(_ALPHABET[(value >> shift) & 0b11111] for shift in range(125, -1, -5))

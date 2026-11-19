@@ -70,3 +70,13 @@ def test_contracts_name_no_single_context():
         if SINGLE_CONTEXT.search(line)
     ]
     assert offenders == [], "\n".join(offenders)
+
+
+def test_base_may_import_only_the_shared_kernel():
+    """Contract ``base-isolation`` forbids ``base`` every project root package but ``shared_kernel``."""
+    parser = _config()
+    section = f"{CONTRACT_PREFIX}base-isolation"
+    roots = set(parser.get("importlinter", "root_packages").split())
+    assert parser.get(section, "source_modules").split() == ["base"]
+    assert set(parser.get(section, "forbidden_modules").split()) == roots - {"base", "shared_kernel"}
+    assert "except the shared kernel" in parser.get(section, "name")

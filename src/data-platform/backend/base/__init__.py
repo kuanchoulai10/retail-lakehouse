@@ -6,7 +6,9 @@ built on Pydantic v2:
 - ValueObject: frozen, strict value with no identity; reads and writes its
   wire form through ``from_primitives`` / ``to_primitives`` and makes a changed
   copy through ``with_changes``, which runs every validator.
-- EntityId: a typed string identifier for an Entity, built positionally.
+- EntityId: a typed string identifier for an Entity, built positionally; a
+  kind declaring ``PREFIX`` accepts only ``<PREFIX>-<26 base32 characters>``
+  and mints one with ``new()`` (docs/adr/0011).
 - Entity: an object with identity, equal by class and ``id``; every
   assignment is validated and atomic.
 - AggregateRoot: an Entity that acts as the entry point and consistency

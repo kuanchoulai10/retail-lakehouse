@@ -1,4 +1,4 @@
-"""The domain and the DDD kernel may import only the stdlib, base, their own domain and Pydantic."""
+"""The domain and the DDD kernel may import only the stdlib, base, the shared kernel, their own domain and Pydantic."""
 
 from __future__ import annotations
 
