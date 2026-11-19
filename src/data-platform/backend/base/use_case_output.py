@@ -26,10 +26,11 @@ class UseCaseOutput(InvariantGuardedModel):
     failure. Assigning to a field raises ``AttributeError``.
 
     Fields hold primitives and standard-library types only (``str``, ``int``,
-    ``float``, ``bool``, ``None``, ``datetime``, ``timedelta``, ``list``,
-    ``tuple``, ``dict``) and classes nested one level inside the output, each
-    extending ``UseCaseOutput`` directly and named by what it holds; never a
-    domain type, so adapters never see the domain.
+    ``float``, ``bool``, ``None``, ``datetime``, ``timedelta``, ``tuple``,
+    ``dict``; a sequence is a ``tuple``, never a ``list``) and classes nested
+    one level inside the output, each extending ``UseCaseOutput`` directly and
+    named by what it holds; never a domain type, so adapters never see the
+    domain.
 
     Usage::
 

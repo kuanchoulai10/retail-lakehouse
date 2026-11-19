@@ -26,9 +26,10 @@ class UseCaseInput(InvariantGuardedModel):
     to a field raises ``AttributeError``.
 
     Fields hold primitives and standard-library types only (``str``, ``int``,
-    ``float``, ``bool``, ``None``, ``datetime``, ``timedelta``, ``list``,
-    ``tuple``, ``dict``) and classes nested one level inside the input, each
-    extending ``UseCaseInput`` directly; never a domain type.
+    ``float``, ``bool``, ``None``, ``datetime``, ``timedelta``, ``tuple``,
+    ``dict``; a sequence is a ``tuple``, never a ``list``) and classes nested
+    one level inside the input, each extending ``UseCaseInput`` directly;
+    never a domain type.
 
     A caller holding a dict of JSON primitives (a Temporal or Kafka payload)
     builds the input with ``from_primitives``, a tolerant reader that ignores
