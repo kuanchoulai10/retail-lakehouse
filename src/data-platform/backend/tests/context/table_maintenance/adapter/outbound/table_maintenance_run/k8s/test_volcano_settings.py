@@ -34,3 +34,14 @@ def test_names_are_configurable():
     assert settings.queue_for("P0") == "uq"
     assert settings.queue_for("P2") == "q"
     assert settings.priority_class_for("P1") == "pc-p1"
+
+
+@pytest.mark.parametrize("priority", ["P9", "p0", "", "P0 "])
+def test_an_unknown_priority_is_refused(priority: str):
+    """Only exactly P0, P1, P2 and P3 name a queue or a class; anything else is refused, case included."""
+    settings = VolcanoSettings()
+
+    with pytest.raises(ValueError, match="priority"):
+        settings.queue_for(priority)
+    with pytest.raises(ValueError, match="priority"):
+        settings.priority_class_for(priority)

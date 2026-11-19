@@ -248,3 +248,10 @@ def test_the_job_request_carries_the_priority():
     env = {e["name"]: e.get("value") for e in spec["driver"]["env"]}
 
     assert json.loads(env["GLAC_REQUEST"])["priority"] == "P1"
+
+
+@pytest.mark.parametrize("priority", ["P9", "p0"])
+def test_unknown_priority_is_refused_and_nothing_is_rendered(priority: str):
+    """A priority outside P0 to P3 never reaches Kubernetes, lowercase included."""
+    with pytest.raises(ValueError, match="priority"):
+        build_spark_application(CONFIG, replace(INPUT, priority=priority), "app")
