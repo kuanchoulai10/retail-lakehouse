@@ -36,8 +36,12 @@ from context.table_maintenance.application.service.table import (
 from tests.context.table_maintenance.fakes.plan_service_on_fakes import plan_service_on_fakes
 from tests.context.table_maintenance.fakes.track_calls import track_calls
 
+RULE_1 = "dr-00000000000000000000000001"
+RULE_2 = "dr-00000000000000000000000002"
+RULE_EX = "dr-00000000000000000000000003"
 
-def _rule(rules_repo, now, action, tables=("*",), rid="r-1", priority=10):  # noqa: PLR0913
+
+def _rule(rules_repo, now, action, tables=("*",), rid=RULE_1, priority=10):  # noqa: PLR0913
     """Add one enabled rule to the saved discovery rules."""
     every = GlobList(globs=("*",))
     rule = TableDiscoveryRule.create(
@@ -59,12 +63,12 @@ def _include_all(rules_repo, now):
     _rule(rules_repo, now, RuleAction.INCLUDE)
 
 
-def _exclude_all(rules_repo, now, rid="r-ex"):
+def _exclude_all(rules_repo, now, rid=RULE_EX):
     _rule(rules_repo, now, RuleAction.EXCLUDE, rid=rid, priority=1)
 
 
 def _row(repo, now, uuid, name, *, unmanaged=False):
-    table = Table.register(TableId(uuid), name, TableDiscoveryRuleId("r-1"), now)
+    table = Table.register(TableId(uuid), name, TableDiscoveryRuleId(RULE_1), now)
     if unmanaged:
         table.unmanage(now)
     repo.create(table)
@@ -125,7 +129,7 @@ def test_sync_registers_include_match_as_managed(sync, tables_repo, rules_repo, 
     assert (out.registered, out.renamed, out.dropped, out.skipped) == (1, 0, 0, 0)
     table = tables_repo.get(TableId("u-1"))
     assert table.status == TableStatus.MANAGED
-    assert table.matched_rule_id == TableDiscoveryRuleId("r-1")
+    assert table.matched_rule_id == TableDiscoveryRuleId(RULE_1)
     assert _calls(signals) == [("u-1", "seen", True)]
     assert [c.table_name for c in signals.calls] == ["iceberg.sales.orders"]
 
@@ -227,13 +231,13 @@ def test_known_managed_table_without_any_matching_rule_becomes_unmanaged(sync, t
 
 def test_unmanaged_table_is_managed_again_when_rule_includes_it(sync, tables_repo, rules_repo, catalog, signals, now):
     """An unmanaged table an include rule now decides is managed again and its workflow started."""
-    _rule(rules_repo, now, RuleAction.INCLUDE, rid="r-2")
+    _rule(rules_repo, now, RuleAction.INCLUDE, rid=RULE_2)
     _row(tables_repo, now, "u-1", _name("orders"), unmanaged=True)
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     out = sync.execute(_catalog_wide())
     table = tables_repo.get(TableId("u-1"))
     assert table.status == TableStatus.MANAGED
-    assert table.matched_rule_id == TableDiscoveryRuleId("r-2")
+    assert table.matched_rule_id == TableDiscoveryRuleId(RULE_2)
     assert (out.managed, out.unmanaged, out.ensured) == (1, 0, 0)
     assert _calls(signals) == [("u-1", "seen", True)]
 
@@ -254,13 +258,13 @@ def test_managed_table_now_decided_by_another_include_rule_records_it(
     sync, tables_repo, rules_repo, catalog, signals, log, now
 ):
     """A managed table matched first by another include rule stores that rule and stays managed."""
-    _rule(rules_repo, now, RuleAction.INCLUDE, rid="r-2", priority=1)
+    _rule(rules_repo, now, RuleAction.INCLUDE, rid=RULE_2, priority=1)
     _row(tables_repo, now, "u-1", _name("orders"))
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
     out = sync.execute(_catalog_wide())
     table = tables_repo.get(TableId("u-1"))
-    assert (table.status, table.matched_rule_id) == (TableStatus.MANAGED, TableDiscoveryRuleId("r-2"))
+    assert (table.status, table.matched_rule_id) == (TableStatus.MANAGED, TableDiscoveryRuleId(RULE_2))
     assert (out.managed, out.unmanaged, out.ensured) == (0, 0, 1)
     assert log == [("tables.update", "u-1")]
     assert _calls(signals) == [("u-1", "seen", True)]
@@ -270,12 +274,12 @@ def test_namespace_pass_stores_a_rule_change_without_signalling(
     sync, tables_repo, rules_repo, catalog, signals, log, now
 ):
     """A rule-only change is stored; a namespace pass does not signal the still-managed table."""
-    _rule(rules_repo, now, RuleAction.INCLUDE, rid="r-2", priority=1)
+    _rule(rules_repo, now, RuleAction.INCLUDE, rid=RULE_2, priority=1)
     _row(tables_repo, now, "u-1", _name("orders"))
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
     sync.execute(_namespace())
-    assert tables_repo.get(TableId("u-1")).matched_rule_id == TableDiscoveryRuleId("r-2")
+    assert tables_repo.get(TableId("u-1")).matched_rule_id == TableDiscoveryRuleId(RULE_2)
     assert log == [("tables.update", "u-1")]
     assert signals.calls == []
 
@@ -359,7 +363,7 @@ def test_namespace_pass_never_unmanages_missing_tables(sync, tables_repo, rules_
 def test_sync_namespace_scope_still_registers_renames_and_decides(sync, tables_repo, rules_repo, catalog, now):
     """A sync scoped to a namespace still registers, renames and decides the tables it lists."""
     _include_all(rules_repo, now)
-    _rule(rules_repo, now, RuleAction.EXCLUDE, ("tmp_*",), rid="r-ex", priority=1)
+    _rule(rules_repo, now, RuleAction.EXCLUDE, ("tmp_*",), rid=RULE_EX, priority=1)
     _row(tables_repo, now, "u-1", _name("old"))
     _row(tables_repo, now, "u-3", _name("tmp_x"))
     catalog.add_table("iceberg", "sales", "new", "u-1")
@@ -441,7 +445,7 @@ def test_sync_retry_after_failed_start_still_starts_workflow(
 def test_sync_reensures_workflow_of_every_managed_table(sync, tables_repo, rules_repo, catalog, signals, now):
     """Sync makes sure every managed table has its workflow, and only those."""
     _include_all(rules_repo, now)
-    _rule(rules_repo, now, RuleAction.EXCLUDE, ("x",), rid="r-ex", priority=1)
+    _rule(rules_repo, now, RuleAction.EXCLUDE, ("x",), rid=RULE_EX, priority=1)
     _row(tables_repo, now, "u-managed", _name("a"))
     _row(tables_repo, now, "u-other", _name("b"))
     _row(tables_repo, now, "u-unmanaged", _name("x"), unmanaged=True)

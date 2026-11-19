@@ -53,7 +53,7 @@ def table() -> Table:
     return Table.register(
         TableId("u"),
         TableName(catalog="c", namespace="n", table="t"),
-        TableDiscoveryRuleId("r"),
+        TableDiscoveryRuleId.new(),
         NOW - timedelta(days=30),
     )
 

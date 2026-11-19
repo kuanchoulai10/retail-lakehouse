@@ -42,7 +42,7 @@ def repo() -> InMemoryTablesRepo:
         Table.register(
             TableId("u-1"),
             TableName(catalog="iceberg", namespace="sales", table="orders"),
-            TableDiscoveryRuleId("r-1"),
+            TableDiscoveryRuleId.new(),
             NOW,
         )
     )

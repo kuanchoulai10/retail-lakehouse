@@ -22,7 +22,7 @@ def _service(tables_repo):  # noqa: ANN001, ANN202
         Table.register(
             TableId("t-1"),
             TableName(catalog="ice.berg", namespace="sales.eu", table="orders"),
-            TableDiscoveryRuleId("r"),
+            TableDiscoveryRuleId.new(),
             NOW,
         )
     )

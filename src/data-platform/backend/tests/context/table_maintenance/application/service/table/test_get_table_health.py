@@ -59,7 +59,7 @@ NAME = TableName(catalog=KEY[0], namespace=KEY[1], table=KEY[2])
 
 
 def _register(repo, now):
-    table = Table.register(TableId("u-1"), NAME, TableDiscoveryRuleId("r-1"), now)
+    table = Table.register(TableId("u-1"), NAME, TableDiscoveryRuleId.new(), now)
     repo.create(table)
     return table
 

@@ -23,6 +23,10 @@ from context.table_maintenance.application.port.outbound.table_discovery_rules i
 if TYPE_CHECKING:
     from sqlalchemy import Engine
 
+RULE_A = "dr-00000000000000000000000001"
+RULE_B = "dr-00000000000000000000000002"
+RULE_C = "dr-00000000000000000000000003"
+RULE_Z = "dr-00000000000000000000000004"
 NOW = datetime(2026, 11, 1, tzinfo=UTC)
 
 
@@ -59,12 +63,12 @@ def test_nothing_saved_reads_as_empty_version_zero(repo: TableDiscoveryRulesSqlR
 
 def test_save_round_trips_every_field_in_priority_order(repo: TableDiscoveryRulesSqlRepo):
     """A saved list loads back whole, in priority order, with its globs and timestamps."""
-    repo.save(_replaced(repo, _rule("b", 20, RuleAction.EXCLUDE, enabled=False), _rule("a", 10)))
+    repo.save(_replaced(repo, _rule(RULE_B, 20, RuleAction.EXCLUDE, enabled=False), _rule(RULE_A, 10)))
     loaded = repo.get_rules()
     assert loaded.version == 1
     assert [(r.id.value, r.priority, r.action, r.enabled) for r in loaded.rules] == [
-        ("a", 10, RuleAction.INCLUDE, True),
-        ("b", 20, RuleAction.EXCLUDE, False),
+        (RULE_A, 10, RuleAction.INCLUDE, True),
+        (RULE_B, 20, RuleAction.EXCLUDE, False),
     ]
     first = loaded.rules[0]
     assert (first.catalogs, first.namespaces, first.tables) == (
@@ -80,28 +84,28 @@ def test_save_round_trips_every_field_in_priority_order(repo: TableDiscoveryRule
 
 def test_save_replaces_every_rule(repo: TableDiscoveryRulesSqlRepo):
     """A second save adds, edits and deletes rules at once."""
-    repo.save(_replaced(repo, _rule("a", 10), _rule("b", 20)))
-    repo.save(_replaced(repo, _rule("b", 5), _rule("c", 30), at=NOW + timedelta(hours=1)))
+    repo.save(_replaced(repo, _rule(RULE_A, 10), _rule(RULE_B, 20)))
+    repo.save(_replaced(repo, _rule(RULE_B, 5), _rule(RULE_C, 30), at=NOW + timedelta(hours=1)))
     loaded = repo.get_rules()
-    assert (loaded.version, [(r.id.value, r.priority) for r in loaded.rules]) == (2, [("b", 5), ("c", 30)])
+    assert (loaded.version, [(r.id.value, r.priority) for r in loaded.rules]) == (2, [(RULE_B, 5), (RULE_C, 30)])
 
 
 def test_concurrent_save_from_the_same_version_is_stale(repo: TableDiscoveryRulesSqlRepo):
     """Of two saves replaced from one version, the second is stale and changes nothing."""
-    first = _replaced(repo, _rule("a", 10))
-    second = _replaced(repo, _rule("z", 99))
+    first = _replaced(repo, _rule(RULE_A, 10))
+    second = _replaced(repo, _rule(RULE_Z, 99))
     repo.save(first)
     with pytest.raises(StaleDiscoveryRulesVersion):
         repo.save(second)
-    assert [r.id.value for r in repo.get_rules().rules] == ["a"]
+    assert [r.id.value for r in repo.get_rules().rules] == [RULE_A]
 
 
 def test_concurrent_later_save_is_stale(repo: TableDiscoveryRulesSqlRepo):
     """A save from an older stored version is stale once the list moved on."""
-    repo.save(_replaced(repo, _rule("a", 10)))
-    first = _replaced(repo, _rule("b", 10))
-    second = _replaced(repo, _rule("c", 10))
+    repo.save(_replaced(repo, _rule(RULE_A, 10)))
+    first = _replaced(repo, _rule(RULE_B, 10))
+    second = _replaced(repo, _rule(RULE_C, 10))
     repo.save(first)
     with pytest.raises(StaleDiscoveryRulesVersion):
         repo.save(second)
-    assert [r.id.value for r in repo.get_rules().rules] == ["b"]
+    assert [r.id.value for r in repo.get_rules().rules] == [RULE_B]

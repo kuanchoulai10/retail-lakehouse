@@ -36,11 +36,12 @@ from tests.context.table_maintenance.fakes.in_memory_catalog_discoveries_repo im
     InMemoryCatalogDiscoveriesRepo,
 )
 
+RULE_1 = "dr-00000000000000000000000001"
 NAME = TableName(catalog="iceberg", namespace="sales", table="orders")
 
 
 def _managed(repo, now, uuid="u-1", name=NAME):
-    table = Table.register(TableId(uuid), name, TableDiscoveryRuleId("r-1"), now)
+    table = Table.register(TableId(uuid), name, TableDiscoveryRuleId(RULE_1), now)
     repo.create(table)
     return table
 
@@ -91,7 +92,7 @@ def test_get_table_includes_status_rule_and_operation_states(tables_repo, now):
     out = GetTableService(tables_repo, InMemoryCatalogDiscoveriesRepo()).execute(GetTableUseCaseInput(uuid="u-1"))
     assert (out.catalog, out.namespace, out.table) == ("iceberg", "sales", "orders")
     assert out.status == "managed"
-    assert out.matched_rule_id == "r-1"
+    assert out.matched_rule_id == RULE_1
     assert out.operation_states["expire_snapshots"] == {
         "last_attempt_at": now,
         "consecutive_failures": 1,

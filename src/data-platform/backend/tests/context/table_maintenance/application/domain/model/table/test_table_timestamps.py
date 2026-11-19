@@ -21,7 +21,7 @@ NAME = TableName(catalog="iceberg", namespace="inventory", table="orders")
 
 def managed(at: datetime = T0) -> Table:
     """Provide a table registered as managed at ``at``."""
-    return Table.register(TableId("u1"), NAME, TableDiscoveryRuleId("r1"), at)
+    return Table.register(TableId("u1"), NAME, TableDiscoveryRuleId.new(), at)
 
 
 # --- last commit ---

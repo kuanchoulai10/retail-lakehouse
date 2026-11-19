@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
-from uuid import uuid4
 
+from context.table_maintenance.application.domain.model.table_discovery_rules import TableDiscoveryRuleId
 from context.table_maintenance.application.port.inbound.table_discovery_rules import (
     ReplaceTableDiscoveryRulesUseCase,
     ReplaceTableDiscoveryRulesUseCaseInput,
@@ -46,7 +46,7 @@ class ReplaceTableDiscoveryRulesService(ReplaceTableDiscoveryRulesUseCase):
         catalog_names: Sequence[str],
         *,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
-        new_id: Callable[[], str] = lambda: str(uuid4()),
+        new_id: Callable[[], str] = lambda: TableDiscoveryRuleId.new().value,
     ) -> None:
         """Bind the repo, the discovery gateway, the covered catalogs, the clock and the id generator."""
         self._rules_repo = rules_repo
@@ -58,10 +58,11 @@ class ReplaceTableDiscoveryRulesService(ReplaceTableDiscoveryRulesUseCase):
     def execute(self, request: ReplaceTableDiscoveryRulesUseCaseInput) -> ReplaceTableDiscoveryRulesUseCaseOutput:
         """Save the list when ``version`` is the current one, then start one discovery run per covered catalog.
 
-        A rule without an id gets a new one; an id the stored list does not hold
-        is refused. An invalid list (equal priorities, an unknown action, an empty
-        glob list, an unknown id) raises ValidationError and a stale version
-        ConflictError; either way nothing is saved and nothing discovered.
+        A rule without an id gets a new ``dr-`` id; an id the stored list does not
+        hold, or one not shaped as a ``dr-`` id, is refused. An invalid list (equal
+        priorities, an unknown action, an empty glob list, an unknown or misshapen
+        id) raises ValidationError and a stale version ConflictError; either way
+        nothing is saved and nothing discovered.
 
         The discovery runs are started after the save commits and not waited for.
         Each carries the saved version, so a save is never folded into a run that

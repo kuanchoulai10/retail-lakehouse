@@ -70,7 +70,7 @@ class PolicyWebWorld:
             Table.register(
                 TableId("u-1"),
                 TableName(catalog="prod", namespace="sales.eu", table="orders"),
-                TableDiscoveryRuleId("r"),
+                TableDiscoveryRuleId.new(),
                 NOW,
             )
         )

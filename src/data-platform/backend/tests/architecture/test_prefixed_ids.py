@@ -27,7 +27,10 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
     from collections.abc import Set as AbstractSet
 
-EXPECTED_PREFIXES: dict[str, str] = {}
+EXPECTED_PREFIXES: dict[str, str] = {
+    "TableDiscoveryRulesId": "dp",
+    "TableDiscoveryRuleId": "dr",
+}
 UNPREFIXED: frozenset[str] = frozenset(
     {
         "TableId",
@@ -42,8 +45,6 @@ UNPREFIXED: frozenset[str] = frozenset(
 PENDING: frozenset[str] = frozenset(
     {
         "TableMaintenancePolicyId",
-        "TableDiscoveryRulesId",
-        "TableDiscoveryRuleId",
         "TableMaintenancePolicyAttachmentId",
         "TableMaintenanceRunId",
         "TableReconciliationId",

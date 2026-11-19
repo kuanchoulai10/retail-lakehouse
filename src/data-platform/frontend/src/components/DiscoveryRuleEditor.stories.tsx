@@ -3,9 +3,11 @@ import { expect, fn, screen, userEvent, within } from "storybook/test";
 import type { DiscoveryRuleDraft } from "@/lib/discoveryRuleDraft";
 import { DiscoveryRuleEditor } from "./DiscoveryRuleEditor";
 
+const RULE_ID = "dr-01m7s6c3tqee0rhg00xz1dk9cs";
+
 const RULE: DiscoveryRuleDraft = {
-  key: "rule-tmp",
-  id: "rule-tmp",
+  key: RULE_ID,
+  id: RULE_ID,
   priority: 50,
   action: "exclude",
   enabled: true,

@@ -67,7 +67,7 @@ OPS = MaintenanceOperation
 
 
 def _table(repo, now, settings=None, uuid="u-1", name=NAME):
-    table = Table.register(TableId(uuid), name, TableDiscoveryRuleId("r-1"), now)
+    table = Table.register(TableId(uuid), name, TableDiscoveryRuleId.new(), now)
     repo.create(table)
     return table
 

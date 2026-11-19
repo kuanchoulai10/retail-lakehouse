@@ -79,9 +79,9 @@ def clock() -> Callable[[], datetime]:
 
 @pytest.fixture
 def new_id() -> Callable[[], str]:
-    """Provide an id generator that returns id-1, id-2 and so on."""
+    """Provide a discovery rule id generator that returns dr-…001, dr-…002 and so on (26 base32 characters)."""
     counter = iter(range(1, 1000))
-    return lambda: f"id-{next(counter)}"
+    return lambda: f"dr-{next(counter):026d}"
 
 
 @pytest.fixture

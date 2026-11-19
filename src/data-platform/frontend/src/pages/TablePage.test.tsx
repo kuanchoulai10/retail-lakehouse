@@ -78,7 +78,7 @@ function stubTable({ table = catalogTableFixture(), covered = ["iceberg"], maint
 }
 
 const RULE = {
-  id: "rule-1",
+  id: "dr-01m7s6c3tqee0rhg00xn5s97gw",
   priority: 10,
   action: "include",
   enabled: true,
@@ -265,7 +265,7 @@ describe("TablePage", { timeout: 15_000 }, () => {
     const link = await within(summary).findByRole("link", { name: "Priority 10" });
     expect(link).toHaveAttribute("href", "/discovery-rules");
     expect(within(summary).getByText("Maintenance: managed")).toBeInTheDocument();
-    expect(within(summary).queryByText("rule-1")).not.toBeInTheDocument();
+    expect(within(summary).queryByText("dr-01m7s6c3tqee0rhg00xn5s97gw")).not.toBeInTheDocument();
   });
 
   it("overview shows no rule when the rule is not in the rule list", async () => {

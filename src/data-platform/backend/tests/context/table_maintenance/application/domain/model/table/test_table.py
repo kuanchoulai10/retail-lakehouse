@@ -23,10 +23,12 @@ from context.table_maintenance.application.domain.model.table_discovery_rules im
     TableDiscoveryRuleId,
 )
 
+RULE_1 = "dr-00000000000000000000000001"
+RULE_2 = "dr-00000000000000000000000002"
 T0 = datetime(2026, 1, 1, tzinfo=UTC)
 T1 = T0 + timedelta(hours=1)
 NAME = TableName(catalog="iceberg", namespace="inventory", table="orders")
-RULE = TableDiscoveryRuleId("r1")
+RULE = TableDiscoveryRuleId(RULE_1)
 OP = MaintenanceOperation.REWRITE_DATA_FILES
 
 
@@ -82,9 +84,9 @@ def test_manage_an_unmanaged_table_again():
     """Managing an unmanaged table makes it managed under the deciding rule."""
     t = managed()
     t.unmanage(T1)
-    t.manage(TableDiscoveryRuleId("r2"), T1 + timedelta(hours=1))
+    t.manage(TableDiscoveryRuleId(RULE_2), T1 + timedelta(hours=1))
     assert t.status == TableStatus.MANAGED
-    assert t.matched_rule_id == TableDiscoveryRuleId("r2")
+    assert t.matched_rule_id == TableDiscoveryRuleId(RULE_2)
     assert t.updated_at == T1 + timedelta(hours=1)
 
 
@@ -98,9 +100,9 @@ def test_manage_a_managed_table_by_the_same_rule_changes_nothing():
 def test_manage_a_managed_table_by_another_rule_records_the_rule():
     """A managed table now decided by another include rule records that rule."""
     t = managed()
-    t.manage(TableDiscoveryRuleId("r2"), T1)
+    t.manage(TableDiscoveryRuleId(RULE_2), T1)
     assert t.status == TableStatus.MANAGED
-    assert t.matched_rule_id == TableDiscoveryRuleId("r2")
+    assert t.matched_rule_id == TableDiscoveryRuleId(RULE_2)
     assert t.updated_at == T1
 
 

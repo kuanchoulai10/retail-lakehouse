@@ -130,7 +130,7 @@ def test_schedule_refuses_an_unreadable_payload_without_retry(request_):  # noqa
 
 def _table(uuid: str) -> Table:
     return Table.register(
-        TableId(uuid), TableName(catalog="iceberg", namespace="retail", table=uuid), TableDiscoveryRuleId("r-1"), NOW
+        TableId(uuid), TableName(catalog="iceberg", namespace="retail", table=uuid), TableDiscoveryRuleId.new(), NOW
     )
 
 

@@ -30,7 +30,7 @@ FIELDS: dict[str, Any] = {
     "namespace": "sales",
     "table": "orders",
     "status": "managed",
-    "matched_rule_id": "r-1",
+    "matched_rule_id": "dr-01h455vb4pex5vsknk084sn02q",
     "operation_states": {"rewrite_data_files": {"last_attempt_at": NOW, "consecutive_failures": 0}},
     "registered_at": NOW,
     "updated_at": NOW,

@@ -41,6 +41,7 @@ from context.table_maintenance.application.service.table import (
 from tests.context.table_maintenance.fakes.plan_service_on_fakes import plan_service_on_fakes
 from tests.context.table_maintenance.fakes.track_calls import track_calls
 
+RULE_1 = "dr-00000000000000000000000001"
 EARLIER = datetime(2026, 10, 24, 11, 0, tzinfo=UTC)
 COMMIT = datetime(2026, 10, 24, 11, 30, tzinfo=UTC)
 NEWER_COMMIT = COMMIT + timedelta(minutes=5)
@@ -50,7 +51,7 @@ NAME = TableName(catalog="iceberg", namespace="sales", table="orders")
 def _include_all(rules_repo, now):
     every = GlobList(globs=("*",))
     rule = TableDiscoveryRule.create(
-        id=TableDiscoveryRuleId("r-1"),
+        id=TableDiscoveryRuleId(RULE_1),
         priority=10,
         action=RuleAction.INCLUDE,
         enabled=True,
@@ -65,7 +66,7 @@ def _include_all(rules_repo, now):
 
 
 def _row(repo, at, uuid="u-1", name=NAME):
-    table = Table.register(TableId(uuid), name, TableDiscoveryRuleId("r-1"), at)
+    table = Table.register(TableId(uuid), name, TableDiscoveryRuleId(RULE_1), at)
     repo.create(table)
     return table
 

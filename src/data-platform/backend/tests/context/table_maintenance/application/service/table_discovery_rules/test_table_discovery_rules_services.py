@@ -18,11 +18,15 @@ from context.table_maintenance.application.service.table_discovery_rules import 
     ListCoveredCatalogsService,
     ReplaceTableDiscoveryRulesService,
 )
+from shared_kernel import prefixed_id_pattern
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table import SendDiscoveryRequestGatewayInput
 
 COVERED = ("iceberg", "lake")
+FIRST_MINTED = "dr-00000000000000000000000001"
+SECOND_MINTED = "dr-00000000000000000000000002"
+UNKNOWN_RULE = "dr-7zzzzzzzzzzzzzzzzzzzzzzzzz"
 
 
 class _FailingFor(SendDiscoveryRequestGateway):
@@ -80,12 +84,24 @@ def test_save_stores_the_whole_list_in_priority_order(replace, get, now):
         )
     )
     assert out.version == 1
-    assert [(r.id, r.priority, r.action) for r in out.rules] == [("id-2", 10, "exclude"), ("id-1", 20, "include")]
+    assert [(r.id, r.priority, r.action) for r in out.rules] == [
+        (SECOND_MINTED, 10, "exclude"),
+        (FIRST_MINTED, 20, "include"),
+    ]
     assert out.rules[1].tables == ("orders", "tmp_*")
     assert (out.rules[0].created_at, out.rules[0].updated_at) == (now, now)
     stored = get.execute(GetTableDiscoveryRulesUseCaseInput())
     assert stored.version == out.version
     assert [r.model_dump() for r in stored.rules] == [r.model_dump() for r in out.rules]
+
+
+def test_rule_ids_minted_by_replace_have_the_dr_prefix(rules_repo, discovery_requests):
+    """Without an injected generator, each rule saved without an id gets a fresh dr- id of its own."""
+    service = ReplaceTableDiscoveryRulesService(rules_repo, discovery_requests, COVERED)
+    out = service.execute(ReplaceTableDiscoveryRulesUseCaseInput(version=0, rules=(_item(priority=1), _item())))
+    ids = [r.id for r in out.rules]
+    assert all(prefixed_id_pattern("dr").fullmatch(rule_id) for rule_id in ids), ids
+    assert len(set(ids)) == 2
 
 
 def test_save_discovers_each_covered_catalog_once(replace, discovery_requests):
@@ -111,15 +127,15 @@ def test_a_failed_discovery_start_still_answers_the_saved_rules(rules_repo, cloc
     gateway = _FailingFor("iceberg")
     service = ReplaceTableDiscoveryRulesService(rules_repo, gateway, COVERED, clock=clock, new_id=new_id)
     out = service.execute(ReplaceTableDiscoveryRulesUseCaseInput(version=0, rules=(_item(),)))
-    assert (out.version, [r.id for r in out.rules]) == (1, ["id-1"])
+    assert (out.version, [r.id for r in out.rules]) == (1, [FIRST_MINTED])
     assert [c.catalog for c in gateway.calls] == ["lake"]
     assert "iceberg" in caplog.text
 
 
 def test_an_id_not_in_the_saved_list_is_rejected(replace, get, discovery_requests):
     """A rule id the stored list does not hold is a validation error; nothing is saved or discovered."""
-    with pytest.raises(ValidationError, match="unknown discovery rule id made-up"):
-        replace.execute(ReplaceTableDiscoveryRulesUseCaseInput(version=0, rules=(_item("made-up"),)))
+    with pytest.raises(ValidationError, match=f"unknown discovery rule id {UNKNOWN_RULE}"):
+        replace.execute(ReplaceTableDiscoveryRulesUseCaseInput(version=0, rules=(_item(UNKNOWN_RULE),)))
     assert get.execute(GetTableDiscoveryRulesUseCaseInput()).version == 0
     assert discovery_requests.calls == []
 
@@ -139,7 +155,7 @@ def test_stale_version_conflicts(replace, get, discovery_requests):
     with pytest.raises(ConflictError, match="version 1, not 0"):
         replace.execute(ReplaceTableDiscoveryRulesUseCaseInput(version=0, rules=()))
     stored = get.execute(GetTableDiscoveryRulesUseCaseInput())
-    assert (stored.version, [r.id for r in stored.rules]) == (1, ["id-1"])
+    assert (stored.version, [r.id for r in stored.rules]) == (1, [FIRST_MINTED])
     assert discovery_requests.calls == []
 
 

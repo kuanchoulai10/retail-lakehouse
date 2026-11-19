@@ -149,7 +149,7 @@ def test_a_qualifying_partition_of_an_unpartitioned_spec_makes_the_whole_table_t
 def test_candidates_exist_exactly_when_the_assessment_finds_compaction_due(policy, partitions):
     """Candidates sit under the policy: some partition is observed exactly when its conditions make compaction due."""
     table = Table.register(
-        TableId("t-1"), TableName(catalog="c", namespace="n", table="t"), TableDiscoveryRuleId("r"), NOW
+        TableId("t-1"), TableName(catalog="c", namespace="n", table="t"), TableDiscoveryRuleId.new(), NOW
     )
     observation = _observation(partitions)
     (compaction,) = [

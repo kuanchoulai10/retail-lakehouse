@@ -45,7 +45,7 @@ MANAGED = ("t-1", "t-2", "t-3", "t-busy", "t-idle")
 
 def _table(uuid: str) -> Table:
     return Table.register(
-        TableId(uuid), TableName(catalog="iceberg", namespace="retail", table=uuid), TableDiscoveryRuleId("r-1"), NOW
+        TableId(uuid), TableName(catalog="iceberg", namespace="retail", table=uuid), TableDiscoveryRuleId.new(), NOW
     )
 
 

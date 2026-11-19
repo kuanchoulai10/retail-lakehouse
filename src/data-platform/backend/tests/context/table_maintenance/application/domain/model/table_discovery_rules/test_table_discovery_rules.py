@@ -18,6 +18,16 @@ from context.table_maintenance.application.domain.model.table_discovery_rules im
     UnknownDiscoveryRuleId,
 )
 
+RULE_1 = "dr-00000000000000000000000001"
+RULE_IN = "dr-00000000000000000000000002"
+RULE_EX = "dr-00000000000000000000000003"
+RULE_OFF = "dr-00000000000000000000000004"
+RULE_A = "dr-00000000000000000000000005"
+RULE_B = "dr-00000000000000000000000006"
+RULE_SAME = "dr-00000000000000000000000007"
+RULE_EDITED = "dr-00000000000000000000000008"
+RULE_NEW = "dr-00000000000000000000000009"
+UNKNOWN_RULE = "dr-00000000000000000000000010"
 T0 = datetime(2026, 11, 1, tzinfo=UTC)
 T1 = T0 + timedelta(hours=1)
 
@@ -62,7 +72,7 @@ def _rules(*rules: TableDiscoveryRule) -> TableDiscoveryRules:
 
 def test_any_glob_in_field_matches_and_all_fields_must_match():
     """A rule matches when any glob of each field matches and all three fields match."""
-    rule = _rule("r-1", 1, catalogs=("iceberg", "lake"), namespaces=("hr", "sal*"), tables=("tmp_*", "orders"))
+    rule = _rule(RULE_1, 1, catalogs=("iceberg", "lake"), namespaces=("hr", "sal*"), tables=("tmp_*", "orders"))
     assert rule.matches(_name())
     assert rule.matches(_name(catalog="lake", namespace="hr", table="tmp_x"))
     assert not rule.matches(_name(catalog="other"))
@@ -72,12 +82,12 @@ def test_any_glob_in_field_matches_and_all_fields_must_match():
 
 def test_matching_is_case_sensitive():
     """Globs match case-sensitively."""
-    assert not _rule("r-1", 1, tables=("Orders",)).matches(_name())
+    assert not _rule(RULE_1, 1, tables=("Orders",)).matches(_name())
 
 
 def test_namespace_glob_matches_full_dotted_name():
     """A namespace glob is matched on the full dotted namespace name."""
-    rule = _rule("r-1", 1, namespaces=("prod.*",))
+    rule = _rule(RULE_1, 1, namespaces=("prod.*",))
     assert rule.matches(_name(namespace="prod.sales"))
     assert rule.matches(_name(namespace="prod.sales.eu"))
     assert not rule.matches(_name(namespace="prod"))
@@ -94,18 +104,18 @@ def test_glob_list_must_not_be_empty():
 def test_decide_returns_first_enabled_match_by_priority():
     """The enabled matching rule with the lowest priority decides."""
     rules = _rules(
-        _rule("r-in", 20),
-        _rule("r-ex", 10, RuleAction.EXCLUDE, tables=("orders",)),
+        _rule(RULE_IN, 20),
+        _rule(RULE_EX, 10, RuleAction.EXCLUDE, tables=("orders",)),
     )
-    assert _decided(rules, _name()) == "r-ex"
-    assert _decided(rules, _name(table="customers")) == "r-in"
+    assert _decided(rules, _name()) == RULE_EX
+    assert _decided(rules, _name(table="customers")) == RULE_IN
 
 
 def test_disabled_rule_skipped():
     """A disabled rule is skipped as if absent."""
-    rules = _rules(_rule("r-off", 1, RuleAction.EXCLUDE, enabled=False), _rule("r-in", 2))
-    assert _decided(rules, _name()) == "r-in"
-    assert _rules(_rule("r-off", 1, enabled=False)).decide(_name()) is None
+    rules = _rules(_rule(RULE_OFF, 1, RuleAction.EXCLUDE, enabled=False), _rule(RULE_IN, 2))
+    assert _decided(rules, _name()) == RULE_IN
+    assert _rules(_rule(RULE_OFF, 1, enabled=False)).decide(_name()) is None
 
 
 def test_no_rule_decides_nothing():
@@ -117,33 +127,37 @@ def test_empty_list_is_the_global_singleton_at_version_zero():
     """The rules start empty at version 0 under the singleton id."""
     rules = TableDiscoveryRules.empty()
     assert (rules.id, rules.rules, rules.version) == (GLOBAL_TABLE_DISCOVERY_RULES_ID, (), 0)
-    assert GLOBAL_TABLE_DISCOVERY_RULES_ID.value == "global"
+
+
+def test_global_rules_id_is_the_fixed_dp_id():
+    """The one rule list has the fixed id of the dp prefix whose suffix is all zeros."""
+    assert GLOBAL_TABLE_DISCOVERY_RULES_ID.value == "dp-00000000000000000000000000"
 
 
 def test_replace_orders_by_priority_and_bumps_version():
     """A replacement stores the rules in priority order as the next version."""
-    rules = _rules(_rule("b", 20), _rule("a", 10))
-    assert [r.id.value for r in rules.rules] == ["a", "b"]
+    rules = _rules(_rule(RULE_B, 20), _rule(RULE_A, 10))
+    assert [r.id.value for r in rules.rules] == [RULE_A, RULE_B]
     assert rules.version == 1
 
 
 def test_equal_priorities_rejected_and_list_unchanged():
     """Two rules with one priority are rejected; the list stays as it was."""
-    rules = _rules(_rule("a", 10))
+    rules = _rules(_rule(RULE_A, 10))
     with pytest.raises(ValueError, match="priority 5"):
-        rules.replace((_rule("a", 5), _rule("b", 5)), 1, T1, new_ids={TableDiscoveryRuleId("b")})
-    assert ([r.id.value for r in rules.rules], rules.rules[0].priority, rules.version) == (["a"], 10, 1)
+        rules.replace((_rule(RULE_A, 5), _rule(RULE_B, 5)), 1, T1, new_ids={TableDiscoveryRuleId(RULE_B)})
+    assert ([r.id.value for r in rules.rules], rules.rules[0].priority, rules.version) == ([RULE_A], 10, 1)
 
 
 def test_duplicate_rule_ids_rejected():
     """Two rules with one id are rejected."""
-    with pytest.raises(ValueError, match="rule a"):
-        _rules(_rule("a", 1), _rule("a", 2))
+    with pytest.raises(ValueError, match=f"rule {RULE_A}"):
+        _rules(_rule(RULE_A, 1), _rule(RULE_A, 2))
 
 
 def test_stale_version_rejected_and_list_unchanged():
     """A replacement from a version that is not the current one is rejected."""
-    rules = _rules(_rule("a", 10))
+    rules = _rules(_rule(RULE_A, 10))
     with pytest.raises(StaleDiscoveryRulesVersion, match="version 1, not 0"):
         rules.replace((), 0, T1)
     assert (len(rules.rules), rules.version) == (1, 1)
@@ -151,37 +165,37 @@ def test_stale_version_rejected_and_list_unchanged():
 
 def test_replace_keeps_created_at_and_touches_only_changed_rules():
     """A kept rule keeps its creation time; only a changed one gets a new update time."""
-    rules = _rules(_rule("same", 1), _rule("edited", 2))
+    rules = _rules(_rule(RULE_SAME, 1), _rule(RULE_EDITED, 2))
     rules.replace(
-        (_rule("same", 1, now=T1), _rule("edited", 2, RuleAction.EXCLUDE, now=T1), _rule("new", 3, now=T1)),
+        (_rule(RULE_SAME, 1, now=T1), _rule(RULE_EDITED, 2, RuleAction.EXCLUDE, now=T1), _rule(RULE_NEW, 3, now=T1)),
         1,
         T1,
-        new_ids={TableDiscoveryRuleId("new")},
+        new_ids={TableDiscoveryRuleId(RULE_NEW)},
     )
     by_id = {r.id.value: r for r in rules.rules}
-    assert (by_id["same"].created_at, by_id["same"].updated_at) == (T0, T0)
-    assert (by_id["edited"].created_at, by_id["edited"].updated_at, by_id["edited"].action) == (
+    assert (by_id[RULE_SAME].created_at, by_id[RULE_SAME].updated_at) == (T0, T0)
+    assert (by_id[RULE_EDITED].created_at, by_id[RULE_EDITED].updated_at, by_id[RULE_EDITED].action) == (
         T0,
         T1,
         RuleAction.EXCLUDE,
     )
-    assert (by_id["new"].created_at, by_id["new"].updated_at) == (T1, T1)
+    assert (by_id[RULE_NEW].created_at, by_id[RULE_NEW].updated_at) == (T1, T1)
     assert rules.version == 2
 
 
 def test_replace_with_empty_list_removes_every_rule():
     """Replacing with no rules deletes them all."""
-    rules = _rules(_rule("a", 1))
+    rules = _rules(_rule(RULE_A, 1))
     rules.replace((), 1, T1)
     assert (rules.rules, rules.version) == ((), 2)
 
 
 def test_an_id_neither_stored_nor_new_is_rejected_and_list_unchanged():
     """A rule must either be in the list already or be declared new; a made-up id is rejected."""
-    rules = _rules(_rule("a", 1))
-    with pytest.raises(UnknownDiscoveryRuleId, match="unknown discovery rule id made-up"):
-        rules.replace((_rule("a", 1), _rule("made-up", 2)), 1, T1)
-    assert ([r.id.value for r in rules.rules], rules.version) == (["a"], 1)
+    rules = _rules(_rule(RULE_A, 1))
+    with pytest.raises(UnknownDiscoveryRuleId, match=f"unknown discovery rule id {UNKNOWN_RULE}"):
+        rules.replace((_rule(RULE_A, 1), _rule(UNKNOWN_RULE, 2)), 1, T1)
+    assert ([r.id.value for r in rules.rules], rules.version) == ([RULE_A], 1)
 
 
 def test_unknown_discovery_rule_id_is_a_value_error():

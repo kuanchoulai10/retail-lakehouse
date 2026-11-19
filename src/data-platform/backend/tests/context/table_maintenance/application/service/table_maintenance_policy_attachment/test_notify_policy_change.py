@@ -77,7 +77,7 @@ class _World:
     def add_table(self, uuid: str, namespace: str, table: str, *, managed: bool = True) -> None:
         self.catalog.add_table("prod", namespace, table, uuid)
         registered = Table.register(
-            TableId(uuid), TableName(catalog="prod", namespace=namespace, table=table), TableDiscoveryRuleId("r"), NOW
+            TableId(uuid), TableName(catalog="prod", namespace=namespace, table=table), TableDiscoveryRuleId.new(), NOW
         )
         if not managed:
             registered.unmanage(NOW)

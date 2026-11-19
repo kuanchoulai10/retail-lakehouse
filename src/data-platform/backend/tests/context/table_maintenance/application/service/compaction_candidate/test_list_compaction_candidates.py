@@ -59,7 +59,7 @@ def service(candidates_repo, tables_repo, now):  # noqa: ANN001, ANN201
     """Provide the service over a known table with four candidates."""
     tables_repo.create(
         Table.register(
-            TABLE, TableName(catalog="iceberg", namespace="sales", table="orders"), TableDiscoveryRuleId("r"), now
+            TABLE, TableName(catalog="iceberg", namespace="sales", table="orders"), TableDiscoveryRuleId.new(), now
         )
     )
     claimed = _candidate("2026-11-04", 0.9, now)
@@ -133,7 +133,7 @@ def test_a_table_without_candidates_lists_none(candidates_repo, tables_repo, now
     """A known table with nothing to compact has an empty list."""
     tables_repo.create(
         Table.register(
-            TABLE, TableName(catalog="iceberg", namespace="sales", table="orders"), TableDiscoveryRuleId("r"), now
+            TABLE, TableName(catalog="iceberg", namespace="sales", table="orders"), TableDiscoveryRuleId.new(), now
         )
     )
     service = ListCompactionCandidatesService(
@@ -157,7 +157,7 @@ def test_a_grant_whose_lease_ended_reads_as_pending(candidates_repo, tables_repo
     """A grant nobody claimed in time is shown as pending again, ranked, without its round, until it is observed."""
     tables_repo.create(
         Table.register(
-            TABLE, TableName(catalog="iceberg", namespace="sales", table="orders"), TableDiscoveryRuleId("r"), now
+            TABLE, TableName(catalog="iceberg", namespace="sales", table="orders"), TableDiscoveryRuleId.new(), now
         )
     )
     expired, live = _candidate("2026-11-01", 0.9, now), _candidate("2026-11-02", 0.5, now)
@@ -186,7 +186,7 @@ def test_a_granted_candidate_says_when_its_round_started(candidates_repo, tables
     """A grant names its round by the round's start, so people find it in the rounds list; a purged round has none."""
     tables_repo.create(
         Table.register(
-            TABLE, TableName(catalog="iceberg", namespace="sales", table="orders"), TableDiscoveryRuleId("r"), now
+            TABLE, TableName(catalog="iceberg", namespace="sales", table="orders"), TableDiscoveryRuleId.new(), now
         )
     )
     rounds = InMemoryCompactionRoundsRepo()

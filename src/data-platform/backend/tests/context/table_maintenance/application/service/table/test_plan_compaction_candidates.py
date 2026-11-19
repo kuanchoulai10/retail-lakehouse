@@ -131,7 +131,7 @@ def _five(catalog) -> None:  # noqa: ANN001
 
 
 def _table(tables_repo, now) -> Table:  # noqa: ANN001
-    table = Table.register(TableId("u-1"), NAME, TableDiscoveryRuleId("r-1"), now)
+    table = Table.register(TableId("u-1"), NAME, TableDiscoveryRuleId.new(), now)
     tables_repo.create(table)
     return table
 

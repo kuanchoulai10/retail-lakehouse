@@ -13,14 +13,22 @@ from context.table_maintenance.application.port.inbound.table_discovery_rules im
     ReplaceTableDiscoveryRulesUseCaseInput,
     ReplaceTableDiscoveryRulesUseCaseOutput,
 )
+from context.table_maintenance.application.service.table_discovery_rules import ReplaceTableDiscoveryRulesService
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import (
     NOW,
     StubUseCase,
     build_client,
 )
+from tests.context.table_maintenance.fakes.in_memory_table_discovery_rules_repo import (
+    InMemoryTableDiscoveryRulesRepo,
+)
+from tests.context.table_maintenance.fakes.recording_send_discovery_request_gateway import (
+    RecordingSendDiscoveryRequestGateway,
+)
 
+RULE_ID = "dr-01h455vb4pex5vsknk084sn02q"
 FIELDS: dict[str, Any] = {
-    "id": "r-1",
+    "id": RULE_ID,
     "priority": 10,
     "action": "exclude",
     "enabled": True,
@@ -57,7 +65,7 @@ def test_get_discovery_rules_returns_version_and_rules() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["version"] == 3
-    assert body["rules"][0]["id"] == "r-1"
+    assert body["rules"][0]["id"] == RULE_ID
     assert body["rules"][0]["tables"] == ["tmp_*", "staging_*"]
 
 
@@ -70,7 +78,7 @@ def test_put_discovery_rules_passes_the_whole_list_and_returns_it() -> None:
     )
     response = build_client(replace_table_discovery_rules=stub).put(
         "/v1/discovery-rules",
-        json={"version": 3, "rules": [{"id": "r-1", **BODY_RULE}, SECOND_RULE]},
+        json={"version": 3, "rules": [{"id": RULE_ID, **BODY_RULE}, SECOND_RULE]},
     )
     assert response.status_code == 200
     assert response.json()["version"] == 4
@@ -78,7 +86,7 @@ def test_put_discovery_rules_passes_the_whole_list_and_returns_it() -> None:
         ReplaceTableDiscoveryRulesUseCaseInput(
             version=3,
             rules=(
-                ReplaceTableDiscoveryRulesUseCaseInput.TableDiscoveryRule(id="r-1", **RULE_FIELDS),
+                ReplaceTableDiscoveryRulesUseCaseInput.TableDiscoveryRule(id=RULE_ID, **RULE_FIELDS),
                 ReplaceTableDiscoveryRulesUseCaseInput.TableDiscoveryRule(id=None, **SECOND_RULE_FIELDS),
             ),
         )
@@ -93,6 +101,18 @@ def test_put_discovery_rules_maps_errors(error: Exception, status: int) -> None:
     client = build_client(replace_table_discovery_rules=StubUseCase(error=error))
     response = client.put("/v1/discovery-rules", json={"version": 0, "rules": []})
     assert (response.status_code, response.json()) == (status, {"detail": str(error)})
+
+
+def test_replace_refuses_a_rule_id_of_another_shape() -> None:
+    """A rule id that is not a dr- id answers 422 naming the shape; nothing is saved or discovered."""
+    rules_repo, discovery_requests = InMemoryTableDiscoveryRulesRepo(), RecordingSendDiscoveryRequestGateway()
+    service = ReplaceTableDiscoveryRulesService(rules_repo, discovery_requests, ("iceberg",))
+    response = build_client(replace_table_discovery_rules=service).put(
+        "/v1/discovery-rules", json={"version": 0, "rules": [{"id": "r-1", **BODY_RULE}]}
+    )
+    assert response.status_code == 422
+    assert "TableDiscoveryRuleId must look like dr-<26 base32 characters>" in response.json()["detail"]
+    assert (rules_repo.get_rules().version, discovery_requests.calls) == (0, [])
 
 
 def test_put_discovery_rules_rejects_unknown_key() -> None:

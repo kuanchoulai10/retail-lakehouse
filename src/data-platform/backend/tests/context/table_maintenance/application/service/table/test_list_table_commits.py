@@ -32,7 +32,7 @@ def service(tables_repo, catalog, now):
     """Provide the list table commits service on the fakes."""
     tables_repo.create(
         Table.register(
-            TableId("u-1"), TableName(catalog=KEY[0], namespace=KEY[1], table=KEY[2]), TableDiscoveryRuleId("r-1"), now
+            TableId("u-1"), TableName(catalog=KEY[0], namespace=KEY[1], table=KEY[2]), TableDiscoveryRuleId.new(), now
         )
     )
     return ListTableCommitsService(tables_repo, catalog)

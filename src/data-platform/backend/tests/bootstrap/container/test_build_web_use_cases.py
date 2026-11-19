@@ -19,6 +19,8 @@ from tests.bootstrap.container.container_support import (
 if TYPE_CHECKING:
     from context.table_maintenance.adapter.inbound.web.shared import WebUseCases
 
+UNKNOWN_RULE = "dr-7zzzzzzzzzzzzzzzzzzzzzzzzz"
+
 
 def _web_use_cases() -> WebUseCases:
     use_cases = build_use_cases(
@@ -72,7 +74,7 @@ def test_saving_a_rule_id_the_list_does_not_hold_answers_422():
     """A PUT naming a rule id the saved list does not hold is refused with 422 and saves nothing."""
     client = TestClient(create_api_app(lambda app: register_routes(app, _web_use_cases())))
     rule = {
-        "id": "made-up",
+        "id": UNKNOWN_RULE,
         "priority": 1,
         "action": "exclude",
         "enabled": True,
@@ -82,5 +84,5 @@ def test_saving_a_rule_id_the_list_does_not_hold_answers_422():
     }
     response = client.put("/v1/discovery-rules", json={"version": 0, "rules": [rule]})
     assert response.status_code == 422
-    assert "unknown discovery rule id made-up" in response.json()["detail"]
+    assert f"unknown discovery rule id {UNKNOWN_RULE}" in response.json()["detail"]
     assert client.get("/v1/discovery-rules").json()["version"] == 0

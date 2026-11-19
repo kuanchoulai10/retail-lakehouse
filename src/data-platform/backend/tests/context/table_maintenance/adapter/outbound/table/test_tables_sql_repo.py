@@ -42,6 +42,7 @@ if TYPE_CHECKING:
 
     from context.table_maintenance.application.port.outbound.table import TablesRepo
 
+RULE_1 = "dr-00000000000000000000000001"
 NOW = datetime(2026, 10, 24, 12, 0, tzinfo=UTC)
 
 
@@ -55,7 +56,7 @@ def _table(
         id=TableId(uuid),
         name=name or TableName(catalog="iceberg", namespace="inventory", table="orders"),
         status=status,
-        matched_rule_id=TableDiscoveryRuleId("r1"),
+        matched_rule_id=TableDiscoveryRuleId(RULE_1),
         registered_at=NOW,
         updated_at=updated_at,
         operation_states={
@@ -80,7 +81,7 @@ def test_roundtrip_field_by_field(repo: TablesSqlRepo):
     assert loaded.id == original.id
     assert loaded.name == original.name
     assert loaded.status is TableStatus.MANAGED
-    assert loaded.matched_rule_id == TableDiscoveryRuleId("r1")
+    assert loaded.matched_rule_id == TableDiscoveryRuleId(RULE_1)
     assert loaded.registered_at == NOW
     assert loaded.registered_at.tzinfo is not None
     assert loaded.updated_at == NOW

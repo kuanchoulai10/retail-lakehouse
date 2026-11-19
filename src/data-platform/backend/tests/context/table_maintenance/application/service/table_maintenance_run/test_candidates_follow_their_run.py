@@ -65,7 +65,7 @@ def setup(tables_repo, runs_repo, candidates_repo, now):  # noqa: ANN001, ANN201
         Table.register(
             TableId("u-1"),
             TableName(catalog="iceberg", namespace="sales", table="orders"),
-            TableDiscoveryRuleId("r"),
+            TableDiscoveryRuleId.new(),
             now,
         )
     )

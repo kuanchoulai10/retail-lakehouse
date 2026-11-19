@@ -227,7 +227,7 @@ export const MAINTAINED_ORDERS: TableApiResponse = {
   namespace: "retail",
   table: "orders",
   status: "managed",
-  matched_rule_id: "rule-retail",
+  matched_rule_id: "dr-01m7s6c3tqee0rhg00xry2zqqt",
   operation_states: {},
   registered_at: "2026-11-02T10:00:00Z",
   updated_at: "2026-11-09T08:00:00Z",
@@ -494,7 +494,7 @@ export const CANDIDATES: CompactionCandidatesApiResponse = {
 
 export const RULES: TableDiscoveryRuleApiResponse[] = [
   {
-    id: "rule-retail",
+    id: "dr-01m7s6c3tqee0rhg00xry2zqqt",
     priority: 10,
     action: "include",
     catalogs: ["iceberg"],
@@ -505,7 +505,7 @@ export const RULES: TableDiscoveryRuleApiResponse[] = [
     updated_at: "2026-11-01T09:00:00Z",
   },
   {
-    id: "rule-tmp",
+    id: "dr-01m7s6c3tqee0rhg00xz1dk9cs",
     priority: 50,
     action: "exclude",
     catalogs: ["*"],

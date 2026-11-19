@@ -73,7 +73,7 @@ def table(tables_repo, now):
     t = Table.register(
         TableId("u-1"),
         TableName(catalog="iceberg", namespace="sales", table="orders"),
-        TableDiscoveryRuleId("r-1"),
+        TableDiscoveryRuleId.new(),
         now,
     )
     tables_repo.create(t)

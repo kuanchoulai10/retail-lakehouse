@@ -63,7 +63,7 @@ OOM = "Py4JJavaError: An error occurred. java.lang.OutOfMemoryError: Java heap s
 def table(tables_repo, now) -> Table:
     """Provide a stored managed table."""
     t = Table.register(
-        TableId("u-1"), TableName(catalog="iceberg", namespace="sales", table="orders"), TableDiscoveryRuleId("r"), now
+        TableId("u-1"), TableName(catalog="iceberg", namespace="sales", table="orders"), TableDiscoveryRuleId.new(), now
     )
     tables_repo.create(t)
     return t

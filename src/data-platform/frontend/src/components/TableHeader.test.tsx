@@ -88,7 +88,7 @@ describe("TableHeader", () => {
     expect(screen.queryByText("Dry run")).not.toBeInTheDocument();
     expect(screen.queryByText(/Policy:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Rule:/)).not.toBeInTheDocument();
-    expect(screen.queryByText("rule-1")).not.toBeInTheDocument();
+    expect(screen.queryByText("dr-01m7s6c3tqee0rhg00xn5s97gw")).not.toBeInTheDocument();
   });
 
   it.each(["managed", "unmanaged"])("shows the same six numbers for a %s table", (status) => {
