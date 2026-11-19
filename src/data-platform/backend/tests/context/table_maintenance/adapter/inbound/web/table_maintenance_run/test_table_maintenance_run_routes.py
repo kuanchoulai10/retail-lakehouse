@@ -15,6 +15,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
     ProcessTableMaintenanceCallbackUseCaseOutput,
 )
 from context.table_maintenance.application.service.table_maintenance_run import (
+    GetTableMaintenanceRunService,
     ProcessTableMaintenanceCallbackService,
 )
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import (
@@ -29,8 +30,9 @@ from tests.context.table_maintenance.fakes.recording_send_maintenance_result_gat
     RecordingSendMaintenanceResultGateway,
 )
 
+RUN_ID = "mr-01kaa4zc9qf3v8d2m6xk0w7b1n"
 FIELDS: dict[str, Any] = {
-    "run_id": "run-1",
+    "run_id": RUN_ID,
     "table_uuid": "u-1",
     "execution_ref": "wf-run-1",
     "trigger": "scheduled",
@@ -42,7 +44,7 @@ FIELDS: dict[str, Any] = {
             "attempts": 2,
             "started_at": NOW,
             "finished_at": None,
-            "job_name": "run-1-rewrite_data_files-2",
+            "job_name": f"{RUN_ID}-rewrite_data_files-2",
             "metrics": {},
             "error": None,
             "expected_files": None,
@@ -78,7 +80,9 @@ FIELDS: dict[str, Any] = {
     "finished_at": None,
 }
 CALLBACK = {"attempt": 1, "succeeded": True, "metrics": {"rewritten_files": 4}}
-URL = "/v1/table-maintenance-runs/run-1/operations/rewrite_data_files/result"
+URL = f"/v1/table-maintenance-runs/{RUN_ID}/operations/rewrite_data_files/result"
+OLD_UUID_RUN_ID = "3f2504e0-4f89-11d3-9a0c-0305e82c3301"
+RUN_ID_SHAPE = "TableMaintenanceRunId must look like mr-<26 base32 characters>"
 
 
 def test_list_runs_of_a_table() -> None:
@@ -90,7 +94,7 @@ def test_list_runs_of_a_table() -> None:
     response = client.get("/v1/tables/u-1/table-maintenance-runs", params={"limit": 5})
 
     assert response.status_code == 200
-    assert response.json()[0]["run_id"] == "run-1"
+    assert response.json()[0]["run_id"] == RUN_ID
     assert stub.requests == [ListTableMaintenanceRunsUseCaseInput(table_uuid="u-1", limit=5)]
 
 
@@ -109,19 +113,19 @@ def test_get_run() -> None:
     stub = StubUseCase(GetTableMaintenanceRunUseCaseOutput(**FIELDS))
     client = build_client(get_table_maintenance_run=stub)
 
-    response = client.get("/v1/table-maintenance-runs/run-1")
+    response = client.get(f"/v1/table-maintenance-runs/{RUN_ID}")
 
     assert response.status_code == 200
     assert response.json()["operations"][0]["operation"] == "rewrite_data_files"
     assert response.json()["execution_ref"] == "wf-run-1"
-    assert stub.requests == [GetTableMaintenanceRunUseCaseInput(run_id="run-1")]
+    assert stub.requests == [GetTableMaintenanceRunUseCaseInput(run_id=RUN_ID)]
 
 
 def test_run_response_lists_each_attempt() -> None:
     """A run's operation lists every attempt with its size, failure class and what followed it."""
     client = build_client(get_table_maintenance_run=StubUseCase(GetTableMaintenanceRunUseCaseOutput(**FIELDS)))
 
-    operation = client.get("/v1/table-maintenance-runs/run-1").json()["operations"][0]
+    operation = client.get(f"/v1/table-maintenance-runs/{RUN_ID}").json()["operations"][0]
 
     assert operation["attempt_history"][1]["size"] == "M"
     assert operation["attempt_history"][0] == {
@@ -159,7 +163,7 @@ def test_callback_returns_202_and_maps_the_body() -> None:
     assert response.json() == {"accepted": True}
     assert stub.requests == [
         ProcessTableMaintenanceCallbackUseCaseInput(
-            run_id="run-1",
+            run_id=RUN_ID,
             operation="rewrite_data_files",
             attempt=1,
             succeeded=True,
@@ -175,7 +179,7 @@ def test_callback_accepts_the_runtime_body_with_matching_ids() -> None:
     client = build_client(process_table_maintenance_callback=stub)
     body = {
         **CALLBACK,
-        "run_id": "run-1",
+        "run_id": RUN_ID,
         "operation": "rewrite_data_files",
         "error": None,
         "extra_runtime_field": "ignored",
@@ -215,7 +219,7 @@ def test_callback_with_unknown_operation_returns_422() -> None:
     )
     client = build_client(process_table_maintenance_callback=service)
 
-    response = client.post("/v1/table-maintenance-runs/run-1/operations/defragment/result", json=CALLBACK)
+    response = client.post(f"/v1/table-maintenance-runs/{RUN_ID}/operations/defragment/result", json=CALLBACK)
 
     assert response.status_code == 422
 
@@ -228,3 +232,28 @@ def test_old_run_routes_are_gone() -> None:
     assert client.get("/v1/tables/u-1/runs").status_code == 404
     old = "/v1/runs/run-1/operations/rewrite_data_files/result"
     assert client.post(old, json=CALLBACK).status_code == 404
+
+
+def test_get_run_with_an_old_uuid_is_422() -> None:
+    """A run id of the old UUID shape answers 422 naming the mr- shape, not 404."""
+    client = build_client(get_table_maintenance_run=GetTableMaintenanceRunService(InMemoryTableMaintenanceRunsRepo()))
+
+    response = client.get(f"/v1/table-maintenance-runs/{OLD_UUID_RUN_ID}")
+
+    assert response.status_code == 422
+    assert RUN_ID_SHAPE in response.json()["detail"]
+
+
+def test_callback_with_an_old_uuid_is_422() -> None:
+    """A callback naming a run id of the old UUID shape answers 422 naming the mr- shape and sends nothing."""
+    results = RecordingSendMaintenanceResultGateway()
+    service = ProcessTableMaintenanceCallbackService(InMemoryTableMaintenanceRunsRepo(), results)
+    client = build_client(process_table_maintenance_callback=service)
+
+    response = client.post(
+        f"/v1/table-maintenance-runs/{OLD_UUID_RUN_ID}/operations/rewrite_data_files/result", json=CALLBACK
+    )
+
+    assert response.status_code == 422
+    assert RUN_ID_SHAPE in response.json()["detail"]
+    assert results.calls == []

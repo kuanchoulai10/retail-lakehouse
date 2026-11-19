@@ -33,6 +33,8 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
     TableReconciliationWorkflowInput,
 )
 
+RUN_ID = "mr-00000000000000000000000001"
+
 
 def _round_trip(value: object) -> object:
     async def go() -> object:
@@ -50,7 +52,7 @@ def test_contracts_round_trip():
         TableReconciliationWorkflowInput("u1"),
         TableReconciliationWorkflowInput(
             "u1",
-            in_flight_run_id="r1",
+            in_flight_run_id=RUN_ID,
             in_flight_started_at="2026-10-24T00:00:00+00:00",
             in_flight_operation_count=2,
             pending_manual=["expire_snapshots"],
@@ -60,7 +62,7 @@ def test_contracts_round_trip():
         ),
         TableDiscoveryWorkflowInput("iceberg"),
         TableDiscoveryWorkflowInput("iceberg", "sales"),
-        TableMaintenanceWorkflowInput("r1", "u1", "table-reconciliation:table-uuid=u1", "scheduled", plan),
+        TableMaintenanceWorkflowInput(RUN_ID, "u1", "table-reconciliation:table-uuid=u1", "scheduled", plan),
         TableMaintenanceAdmissionWorkflowInput(2),
         TableMaintenanceAdmissionWorkflowInput(
             2,
@@ -75,7 +77,7 @@ def test_contracts_round_trip():
         ),
         AdmissionAcquireSignal("r1", "w1"),
         AdmissionReleaseSignal("r1"),
-        OperationResultSignal("r1", "x", 1, False, {"a": 1}, "err"),
+        OperationResultSignal(RUN_ID, "x", 1, False, {"a": 1}, "err"),
     ]
     for value in values:
         assert _round_trip(value) == value
@@ -83,13 +85,13 @@ def test_contracts_round_trip():
 
 def test_maintenance_workflow_input_default_attempt_deadline():
     """The maintenance workflow input defaults its attempt deadline to six hours."""
-    value = TableMaintenanceWorkflowInput("r1", "u1", "p", "scheduled", {})
+    value = TableMaintenanceWorkflowInput(RUN_ID, "u1", "p", "scheduled", {})
     assert value.attempt_deadline_seconds == 21600 == DEFAULT_ATTEMPT_DEADLINE_SECONDS
 
 
 def test_maintenance_workflow_input_default_max_attempts():
     """The maintenance workflow input defaults to three attempts per operation, as the workflow always allowed."""
-    value = TableMaintenanceWorkflowInput("r1", "u1", "p", "scheduled", {})
+    value = TableMaintenanceWorkflowInput(RUN_ID, "u1", "p", "scheduled", {})
     assert value.max_attempts == 3 == DEFAULT_MAX_ATTEMPTS
 
 
@@ -133,7 +135,7 @@ def test_table_reconcile_workflow_input_defaults():
         AdmissionAcquireSignal("r1", "w1"),
         TableMaintenanceAdmissionWorkflowInput(1),
         AdmissionReleaseSignal("r1"),
-        TableMaintenanceWorkflowInput("r1", "u1", "p", "scheduled", {}),
+        TableMaintenanceWorkflowInput(RUN_ID, "u1", "p", "scheduled", {}),
     ],
 )
 def test_contracts_are_frozen(value: Any):  # noqa: ANN401

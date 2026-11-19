@@ -22,6 +22,13 @@ from tests.context.table_maintenance.fakes.in_memory_table_reconciliations_repo 
     InMemoryTableReconciliationsRepo,
 )
 
+RUN_1 = "mr-00000000000000000000000001"
+REC_1 = "rc-00000000000000000000000001"
+OLD_REC = "rc-00000000000000000000000002"
+RECENT_REC = "rc-00000000000000000000000003"
+NOW_REC = "rc-00000000000000000000000004"
+OTHER_REC = "rc-00000000000000000000000005"
+
 NOW = datetime(2026, 11, 10, 12, 0, tzinfo=UTC)
 
 
@@ -39,7 +46,7 @@ def _due_check(operation: str = "rewrite_data_files") -> dict:
 
 def _input(**overrides: object) -> RecordTableReconciliationUseCaseInput:
     base = RecordTableReconciliationUseCaseInput(
-        reconciliation_id="rec-1",
+        reconciliation_id=REC_1,
         table_uuid="table-1",
         reconciled_at=NOW,
         wake_reasons={"schedule": 1},
@@ -47,7 +54,7 @@ def _input(**overrides: object) -> RecordTableReconciliationUseCaseInput:
         status="planned",
         skip_reason=None,
         checks=(_due_check(),),
-        run_id="run-1",
+        run_id=RUN_1,
         run_start_failed=False,
         policy_name="default",
         policy_version=3,
@@ -75,10 +82,10 @@ def test_started_due_operations_link_the_run(
     out = service.execute(_input())
 
     assert out.recorded is True
-    saved = repo.get(TableReconciliationId("rec-1"))
+    saved = repo.get(TableReconciliationId(REC_1))
     assert saved is not None
     assert saved.run_id is not None
-    assert saved.run_id.value == "run-1"
+    assert saved.run_id.value == RUN_1
     assert saved.outcome is ReconciliationOutcome.PLANNED
     assert saved.operations[0].result is OperationResult.STARTED
     assert saved.operations[0].measurements[0].met is True
@@ -90,7 +97,7 @@ def test_dry_run_due_becomes_would_start(
     """Dry run due becomes would start."""
     service.execute(_input(dry_run=True, run_id=None))
 
-    saved = repo.get(TableReconciliationId("rec-1"))
+    saved = repo.get(TableReconciliationId(REC_1))
     assert saved is not None
     assert saved.operations[0].result is OperationResult.WOULD_START
     assert saved.run_id is None
@@ -102,7 +109,7 @@ def test_failed_start_records_start_failed_without_run(
     """Failed start records start failed without run."""
     service.execute(_input(run_id=None, run_start_failed=True))
 
-    saved = repo.get(TableReconciliationId("rec-1"))
+    saved = repo.get(TableReconciliationId(REC_1))
     assert saved is not None
     assert saved.operations[0].result is OperationResult.START_FAILED
     assert saved.run_id is None
@@ -123,7 +130,7 @@ def test_other_verdicts_map_by_name_and_next_eligible_is_parsed(
     unchecked = {**not_due, "operation": "rewrite_data_files", "verdict": "not_checked"}
     service.execute(_input(checks=(cooling, off, not_due, unchecked), run_id=None))
 
-    saved = repo.get(TableReconciliationId("rec-1"))
+    saved = repo.get(TableReconciliationId(REC_1))
     assert saved is not None
     by_op = {op.operation.value: op for op in saved.operations}
     assert by_op["expire_snapshots"].result is OperationResult.COOLING_DOWN
@@ -151,7 +158,7 @@ def test_compaction_without_a_free_candidate_records_why(
     check = {**_due_check(), "verdict": verdict, "next_eligible_at": "2026-11-10T12:02:00+00:00"}
     service.execute(_input(checks=(check,), run_id=None))
 
-    saved = repo.get(TableReconciliationId("rec-1"))
+    saved = repo.get(TableReconciliationId(REC_1))
     assert saved is not None
     assert saved.operations[0].result is result
     assert saved.operations[0].next_eligible_at == datetime(2026, 11, 10, 12, 2, tzinfo=UTC)
@@ -163,7 +170,7 @@ def test_skip_is_recorded_with_reason(
     """Skip is recorded with reason."""
     service.execute(_input(status="skip", skip_reason="table is paused", checks=(), run_id=None))
 
-    saved = repo.get(TableReconciliationId("rec-1"))
+    saved = repo.get(TableReconciliationId(REC_1))
     assert saved is not None
     assert saved.outcome is ReconciliationOutcome.SKIPPED
     assert saved.skip_reason == "table is paused"
@@ -174,16 +181,18 @@ def test_records_older_than_thirty_days_are_purged(
     service: RecordTableReconciliationService, repo: InMemoryTableReconciliationsRepo
 ) -> None:
     """Records older than thirty days are purged."""
-    service.execute(_input(reconciliation_id="old", reconciled_at=NOW - timedelta(days=31), run_id=None, dry_run=True))
     service.execute(
-        _input(reconciliation_id="recent", reconciled_at=NOW - timedelta(days=29), run_id=None, dry_run=True)
+        _input(reconciliation_id=OLD_REC, reconciled_at=NOW - timedelta(days=31), run_id=None, dry_run=True)
+    )
+    service.execute(
+        _input(reconciliation_id=RECENT_REC, reconciled_at=NOW - timedelta(days=29), run_id=None, dry_run=True)
     )
 
-    service.execute(_input(reconciliation_id="now", run_id=None, dry_run=True))
+    service.execute(_input(reconciliation_id=NOW_REC, run_id=None, dry_run=True))
 
-    assert repo.get(TableReconciliationId("old")) is None
-    assert repo.get(TableReconciliationId("recent")) is not None
-    assert repo.get(TableReconciliationId("now")) is not None
+    assert repo.get(TableReconciliationId(OLD_REC)) is None
+    assert repo.get(TableReconciliationId(RECENT_REC)) is not None
+    assert repo.get(TableReconciliationId(NOW_REC)) is not None
 
 
 def test_purge_leaves_other_tables_alone(
@@ -192,7 +201,7 @@ def test_purge_leaves_other_tables_alone(
     """Purge leaves other tables alone."""
     service.execute(
         _input(
-            reconciliation_id="other",
+            reconciliation_id=OTHER_REC,
             table_uuid="table-2",
             reconciled_at=NOW - timedelta(days=40),
             run_id=None,
@@ -202,7 +211,7 @@ def test_purge_leaves_other_tables_alone(
 
     service.execute(_input(run_id=None, dry_run=True))
 
-    assert repo.get(TableReconciliationId("other")) is not None
+    assert repo.get(TableReconciliationId(OTHER_REC)) is not None
 
 
 def test_recording_twice_keeps_one_record(
@@ -243,12 +252,14 @@ def test_noop_path_still_purges_old_records(
 ) -> None:
     """A retried record that already exists still purges records past retention."""
     service.execute(_input())
-    service.execute(_input(reconciliation_id="old", reconciled_at=NOW - timedelta(days=31), run_id=None, dry_run=True))
+    service.execute(
+        _input(reconciliation_id=OLD_REC, reconciled_at=NOW - timedelta(days=31), run_id=None, dry_run=True)
+    )
 
     again = service.execute(_input())
 
     assert again.recorded is False
-    assert repo.get(TableReconciliationId("old")) is None
+    assert repo.get(TableReconciliationId(OLD_REC)) is None
 
 
 def test_discovery_scan_is_a_known_wake_reason(
@@ -257,7 +268,7 @@ def test_discovery_scan_is_a_known_wake_reason(
     """A discovery scan is recorded as its own wake reason."""
     service.execute(_input(wake_reasons={"discovery_scan": 1}))
 
-    saved = repo.get(TableReconciliationId("rec-1"))
+    saved = repo.get(TableReconciliationId(REC_1))
     assert saved is not None
     assert {reason.value: count for reason, count in saved.wake_reasons.items()} == {"discovery_scan": 1}
 
@@ -274,7 +285,7 @@ def test_record_keeps_policy_name_version_and_target(
         )
     )
 
-    saved = repo.get(TableReconciliationId("rec-1"))
+    saved = repo.get(TableReconciliationId(REC_1))
     assert saved is not None
     assert (saved.policy_name, saved.policy_version) == ("nightly", 4)
     assert saved.policy_target is not None
@@ -288,7 +299,7 @@ def test_record_keeps_a_table_target_with_its_uuid(
     target = {"type": "table", "path": ["prod", "sales", "orders"], "table_uuid": "table-1"}
     service.execute(_input(policy_target=target))
 
-    saved = repo.get(TableReconciliationId("rec-1"))
+    saved = repo.get(TableReconciliationId(REC_1))
     assert saved is not None
     assert saved.policy_target is not None
     assert saved.policy_target.table_uuid == "table-1"
@@ -300,7 +311,7 @@ def test_default_fallback_records_no_target(
     """The default policy with nothing attached records a null target."""
     service.execute(_input(policy_target=None))
 
-    saved = repo.get(TableReconciliationId("rec-1"))
+    saved = repo.get(TableReconciliationId(REC_1))
     assert saved is not None
     assert saved.policy_target is None
 

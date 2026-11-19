@@ -86,12 +86,12 @@ function runPath(runId: string): string {
   return `../maintenance?run=${encodeURIComponent(runId)}`;
 }
 
-// Shows the run id's first 8 characters; the accessible name carries the whole id.
+// Shows the whole run id (an mr- id, docs/adr/0011) in monospace; the accessible name carries it too.
 function RunLink({ runId, label, className }: { runId: string; label: string; className?: string }) {
   return (
     <TextLink asChild className={className}>
       <Link to={runPath(runId)} relative="path" aria-label={`Open maintenance run ${runId}`}>
-        {label} <span className="font-mono">{runId.slice(0, 8)}</span>
+        {label} <span className="font-mono">{runId}</span>
       </Link>
     </TextLink>
   );

@@ -32,6 +32,7 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import 
     TableMaintenanceAttemptPolicy,
     TableReconciliationWorkflow,
 )
+from shared_kernel import prefixed_id_pattern
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.eventually import (
     eventually,
 )
@@ -63,6 +64,8 @@ if TYPE_CHECKING:
     from temporalio.client import Client, WorkflowHandle
     from temporalio.common import TypedSearchAttributes
     from temporalio.worker import WorkflowRunner
+GHOST_RUN_ID = "mr-00000000000000000000000009"
+OTHER_RUN_ID = "mr-00000000000000000000000008"
 
 UUID = "u1"
 TABLE = "iceberg.e2e.t"
@@ -74,6 +77,8 @@ TABLE_UUID_KEY = SearchAttributeKey.for_keyword("TableUuid")
 TABLE_NAME_KEY = SearchAttributeKey.for_keyword("TableName")
 OPERATIONS_KEY = SearchAttributeKey.for_keyword_list("MaintenanceOperations")
 TRIGGER_KEY = SearchAttributeKey.for_keyword("MaintenanceTrigger")
+RUN_ID_SHAPE = prefixed_id_pattern("mr")
+RECONCILIATION_ID_SHAPE = prefixed_id_pattern("rc")
 
 
 def _check(operation: str, verdict: str = "due") -> dict[str, Any]:
@@ -277,6 +282,8 @@ def _run(
     scenario: Callable[[Harness], Awaitable[None]],
     script: Callable[[dict[str, Any]], dict[str, Any]] = lambda _: _planned(),
     runner: WorkflowRunner | None = None,
+    *,
+    max_cached_workflows: int = 1000,
 ) -> None:
     async def go() -> None:
         async with await WorkflowEnvironment.start_time_skipping() as env:
@@ -296,6 +303,7 @@ def _run(
                     lookups.get_workflow_running,
                 ],
                 workflow_runner=runner or SandboxedWorkflowRunner(),
+                max_cached_workflows=max_cached_workflows,
             ):
                 await scenario(Harness(env, env.client, plans, recorder, releases))
 
@@ -481,7 +489,7 @@ def test_stale_maintenance_finished_is_ignored():
         run_id = await h.in_flight()
         await h.signal(
             TableReconciliationSignal.MAINTENANCE_FINISHED,
-            {"run_id": "other", "record_failures": 0},
+            {"run_id": OTHER_RUN_ID, "record_failures": 0},
         )
         await h.settle()
         assert (await h.state())["in_flight_run_id"] == run_id
@@ -790,13 +798,13 @@ def test_carried_in_flight_run_without_start_time_gets_a_fixed_deadline():
     async def scenario(h: Harness) -> None:
         await h.start(
             start_signal=None,
-            in_flight_run_id="ghost",
-            in_flight_workflow_id=_child_id("ghost"),
+            in_flight_run_id=GHOST_RUN_ID,
+            in_flight_workflow_id=_child_id(GHOST_RUN_ID),
             in_flight_operation_count=1,
         )
         state = await eventually(h.state, lambda s: s["in_flight_started_at"])
         await h.env.sleep(OPERATION_BUDGET - timedelta(minutes=1))
-        assert (await h.settle())["in_flight_run_id"] == "ghost"
+        assert (await h.settle())["in_flight_run_id"] == GHOST_RUN_ID
         assert h.plans.requests == []
         # The time-skipping test server never resolves a cancel of a missing
         # workflow, so the give-up falls back to the 15 min grace here.
@@ -811,7 +819,7 @@ def test_carried_in_flight_run_without_workflow_id_is_given_up_without_grace():
     """A carried in-flight run without a workflow id is given up without a grace period."""
 
     async def scenario(h: Harness) -> None:
-        await h.start(start_signal=None, in_flight_run_id="ghost", in_flight_operation_count=1)
+        await h.start(start_signal=None, in_flight_run_id=GHOST_RUN_ID, in_flight_operation_count=1)
         state = await eventually(h.state, lambda s: s["in_flight_started_at"])
         assert state["in_flight_workflow_id"] is None
         await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=1))
@@ -1078,13 +1086,15 @@ def test_give_up_before_the_plan_timer_plans_once_as_previous_run_finished():
     async def scenario(h: Harness) -> None:
         await h.start(
             start_signal=None,
-            in_flight_run_id="ghost",
+            in_flight_run_id=GHOST_RUN_ID,
             in_flight_operation_count=1,
             reconcile_interval_seconds=10**6,
         )
         await eventually(h.state, lambda s: s["in_flight_started_at"])
         await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=1))
-        run_id = (await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, "ghost")))["in_flight_run_id"]
+        run_id = (await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, GHOST_RUN_ID)))[
+            "in_flight_run_id"
+        ]
         [record] = await h.records(1)
         assert record["wake_reasons"] == {"previous_run_finished": 1}
         assert record["run_id"] == run_id
@@ -1288,13 +1298,13 @@ def test_carried_in_flight_run_keeps_its_attempt_deadline():
     async def scenario(h: Harness) -> None:
         await h.start(
             start_signal=None,
-            in_flight_run_id="ghost",
+            in_flight_run_id=GHOST_RUN_ID,
             in_flight_operation_count=1,
             in_flight_attempt_deadline_seconds=120,
         )
         state = await eventually(h.state, lambda s: s["in_flight_started_at"])
         await h.env.sleep(SHORT_DEADLINE_BUDGET - timedelta(minutes=1))
-        assert (await h.settle())["in_flight_run_id"] == "ghost"
+        assert (await h.settle())["in_flight_run_id"] == GHOST_RUN_ID
         await h.env.sleep(timedelta(minutes=2))
         await h.plan_count(1)
         await h.idle_after(state)
@@ -1330,6 +1340,33 @@ def test_history_from_before_this_milestone_replays():
         await Replayer(workflows=[TableReconciliationWorkflow]).replay_workflow(history)
 
     asyncio.run(go())
+
+
+def test_run_and_reconciliation_ids_survive_replay():
+    """The run and reconciliation ids are minted deterministically: every workflow task replays the history.
+
+    With no workflow cached, the worker rebuilds the workflow from its history on
+    every task, so the plan, the child start and the record (each in a later task
+    than the minting) see the ids minted again on replay; they agree, they have
+    the ``mr-`` and ``rc-`` shapes, the history carries the patch marker that
+    keeps older histories on their UUIDs, and it replays cleanly under the sandbox.
+    """
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        run_id = await h.in_flight()
+        record = (await h.records(1))[0]
+        assert RUN_ID_SHAPE.fullmatch(run_id)
+        assert RECONCILIATION_ID_SHAPE.fullmatch(record["reconciliation_id"])
+        assert h.plans.requests[0]["run_id"] == run_id
+        assert record["run_id"] == run_id
+        assert (await h.child(run_id))["run_id"] == run_id
+        history = await h.client.get_workflow_handle(WORKFLOW_ID).fetch_history()
+        markers = [e.SerializeToString() for e in history.events if e.HasField("marker_recorded_event_attributes")]
+        assert any(b"prefixed-run-and-reconciliation-ids" in m for m in markers)
+        await Replayer(workflows=[TableReconciliationWorkflow]).replay_workflow(history)
+
+    _run(scenario, script=lambda _: _planned(COMPACTION), max_cached_workflows=0)
 
 
 # --- compaction candidates ---

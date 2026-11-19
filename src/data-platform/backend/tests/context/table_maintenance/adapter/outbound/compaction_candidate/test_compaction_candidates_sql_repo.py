@@ -37,10 +37,12 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.compaction_candidate import (
         CompactionCandidatesRepo,
     )
+RUN_1 = "mr-00000000000000000000000001"
+RUN_2 = "mr-00000000000000000000000002"
 
 NOW = datetime(2026, 11, 13, 12, tzinfo=UTC)
 TABLE = TableId("t-1")
-RUN = TableMaintenanceRunId("run-1")
+RUN = TableMaintenanceRunId(RUN_1)
 SCORE = CandidateScore(reducible_files=7, data_bytes=3 * 1024**3, estimated_gb_hours=0.375, score=0.4125)
 
 
@@ -203,7 +205,7 @@ def test_list_by_table_returns_only_that_table(repo: CompactionCandidatesRepo):
 def test_list_by_run_returns_the_candidates_the_run_holds(repo: CompactionCandidatesRepo):
     """Only the candidates claimed by the run are listed for it."""
     claimed, other, free = _candidate(("eu",)), _candidate(("us",)), _candidate(("ap",))
-    for candidate, run in ((claimed, RUN), (other, TableMaintenanceRunId("run-2"))):
+    for candidate, run in ((claimed, RUN), (other, TableMaintenanceRunId(RUN_2))):
         candidate.grant("round-1", NOW + timedelta(minutes=10), NOW)
         candidate.claim(run, NOW + timedelta(hours=1), NOW)
     repo.save_all([claimed, other, free])

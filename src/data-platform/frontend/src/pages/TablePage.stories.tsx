@@ -13,7 +13,7 @@ import { ConsolePage } from "@/stories/ConsolePage";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
 import { lakehouseHandlers } from "@/stories/lakehouseHandlers";
 import { PHONE } from "@/stories/phone";
-import { ESCALATED_RUN, MAINTAINED_ORDERS, POLICIES } from "@/stories/storyData";
+import { ESCALATED_RUN, ESCALATED_RUN_ID, MAINTAINED_ORDERS, POLICIES, SCHEDULED_RUN_ID } from "@/stories/storyData";
 
 const ORDERS = "/catalogs/iceberg/namespaces/retail/tables/orders";
 
@@ -90,7 +90,7 @@ export const Maintenance: Story = {
 
 async function openEscalatedRun(canvasElement: HTMLElement) {
   const canvas = within(canvasElement);
-  await userEvent.click(await canvas.findByRole("button", { name: "Expand run run-escalated" }));
+  await userEvent.click(await canvas.findByRole("button", { name: `Expand run ${ESCALATED_RUN_ID}` }));
   return within(canvas.getByRole("table", { name: "Attempts of rewrite_data_files" }));
 }
 
@@ -124,7 +124,7 @@ export const Candidates: Story = {
   args: { route: `${ORDERS}/candidates` },
   play: async ({ canvasElement }) => {
     const table = within(await within(canvasElement).findByRole("table", { name: "Compaction candidates, best first" }));
-    await expect(table.getByText("In run run-1")).toBeVisible();
+    await expect(table.getByText(`In run ${SCHEDULED_RUN_ID}`)).toBeVisible();
     await expect(table.getByText("Still being written; checked again after a quiet period")).toBeVisible();
     await expect(table.getByText("Waiting for a later round: below the top 2 (2 per table per round)")).toBeVisible();
     await expect(table.getByRole("link", { name: formatTimestamp("2026-11-13T02:00:00Z") })).toHaveAttribute(
@@ -178,7 +178,9 @@ export const Reconciliations: Story = {
     await expect(canvas.getByRole("button", { name: /^4 reconciliations found nothing to do/ })).toBeVisible();
     await expect(canvas.getByRole("button", { name: /^Would start Rewrite data files/ })).toHaveTextContent("Dry run");
     await expect(canvas.getByRole("button", { name: /^Skipped: table not found/ })).toBeVisible();
-    await expect(canvas.getByRole("link", { name: "Open maintenance run run-1" })).toHaveTextContent(/^Run run-1$/);
+    await expect(canvas.getByRole("link", { name: `Open maintenance run ${SCHEDULED_RUN_ID}` })).toHaveTextContent(
+      new RegExp(`^Run ${SCHEDULED_RUN_ID}$`),
+    );
     const day = canvas.getByRole("region", { name: /^Reconciliations on / });
     for (const part of Array.from(day.querySelectorAll<HTMLElement>("ul, li, button"))) {
       const style = getComputedStyle(part);
@@ -197,9 +199,9 @@ export const ReconciliationDrawer: Story = {
     const drawer = within(await within(canvasElement.ownerDocument.body).findByRole("dialog"));
     await expect(drawer.getByRole("heading", { level: 2, name: "Started Rewrite data files" })).toBeVisible();
     await expect(drawer.getByText(/Catalog commit × 3/)).toBeVisible();
-    await expect(drawer.getByRole("link", { name: "Open maintenance run run-1" })).toHaveAttribute(
+    await expect(drawer.getByRole("link", { name: `Open maintenance run ${SCHEDULED_RUN_ID}` })).toHaveAttribute(
       "href",
-      `${ORDERS}/maintenance?run=run-1`,
+      `${ORDERS}/maintenance?run=${SCHEDULED_RUN_ID}`,
     );
     const measurements = drawer.getAllByRole("button", { name: "All measurements" })[0]!;
     await userEvent.click(measurements);

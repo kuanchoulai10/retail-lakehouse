@@ -36,6 +36,11 @@ if TYPE_CHECKING:
     from fastapi.testclient import TestClient
 
 NOW = datetime(2026, 11, 10, 12, 0, tzinfo=UTC)
+OLD = "rc-00000000000000000000000001"
+NEW = "rc-00000000000000000000000002"
+FIRST = "rc-00000000000000000000000003"
+SECOND = "rc-00000000000000000000000004"
+THIRD = "rc-00000000000000000000000005"
 
 
 def _reconciliation(rec_id: str, at: datetime, table: str = "t-1") -> TableReconciliation:
@@ -83,32 +88,32 @@ def _ids(response) -> list[str]:  # noqa: ANN001
 
 def test_lists_newest_first() -> None:
     """The newest reconciliation comes first."""
-    client = _client(_reconciliation("old", NOW - timedelta(hours=2)), _reconciliation("new", NOW))
+    client = _client(_reconciliation(OLD, NOW - timedelta(hours=2)), _reconciliation(NEW, NOW))
 
     response = client.get("/v1/tables/t-1/reconciliations")
 
     assert response.status_code == 200
-    assert _ids(response) == ["new", "old"]
+    assert _ids(response) == [NEW, OLD]
 
 
 def test_before_pages_older_records() -> None:
     """Only records strictly before the cursor are returned."""
     client = _client(
-        _reconciliation("a", NOW - timedelta(hours=2)),
-        _reconciliation("b", NOW - timedelta(hours=1)),
-        _reconciliation("c", NOW),
+        _reconciliation(FIRST, NOW - timedelta(hours=2)),
+        _reconciliation(SECOND, NOW - timedelta(hours=1)),
+        _reconciliation(THIRD, NOW),
     )
 
     response = client.get("/v1/tables/t-1/reconciliations", params={"before": (NOW - timedelta(hours=1)).isoformat()})
 
-    assert _ids(response) == ["a"]
+    assert _ids(response) == [FIRST]
 
 
 def test_limit_caps_the_page() -> None:
     """The limit caps the number of records."""
-    client = _client(_reconciliation("a", NOW - timedelta(hours=1)), _reconciliation("b", NOW))
+    client = _client(_reconciliation(FIRST, NOW - timedelta(hours=1)), _reconciliation(SECOND, NOW))
 
-    assert _ids(client.get("/v1/tables/t-1/reconciliations", params={"limit": 1})) == ["b"]
+    assert _ids(client.get("/v1/tables/t-1/reconciliations", params={"limit": 1})) == [SECOND]
 
 
 def test_limit_above_200_is_422() -> None:
@@ -123,7 +128,7 @@ def test_limit_below_1_is_422() -> None:
 
 def test_unknown_table_returns_empty_list() -> None:
     """A table with no records lists as empty."""
-    response = _client(_reconciliation("a", NOW)).get("/v1/tables/other/reconciliations")
+    response = _client(_reconciliation(FIRST, NOW)).get("/v1/tables/other/reconciliations")
 
     assert response.status_code == 200
     assert response.json() == []
@@ -131,7 +136,7 @@ def test_unknown_table_returns_empty_list() -> None:
 
 def test_context_measurement_has_null_threshold_and_met() -> None:
     """A context measurement carries null threshold, comparison and met."""
-    body = _client(_reconciliation("a", NOW)).get("/v1/tables/t-1/reconciliations").json()[0]
+    body = _client(_reconciliation(FIRST, NOW)).get("/v1/tables/t-1/reconciliations").json()[0]
 
     operation = body["operations"][0]
     assert operation["operation"] == "rewrite_data_files"
@@ -155,7 +160,7 @@ def test_context_measurement_has_null_threshold_and_met() -> None:
 
 def test_response_names_the_policy_used() -> None:
     """Each record carries the policy name, version and target."""
-    body = _client(_reconciliation("a", NOW)).get("/v1/tables/t-1/reconciliations").json()[0]
+    body = _client(_reconciliation(FIRST, NOW)).get("/v1/tables/t-1/reconciliations").json()[0]
 
     assert body["policy_name"] == "nightly"
     assert body["policy_version"] == 4

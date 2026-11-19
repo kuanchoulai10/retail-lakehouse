@@ -21,10 +21,13 @@ from context.table_maintenance.application.domain.service.compaction_candidate i
     pick_compaction_candidates,
 )
 
+RUN_1 = "mr-00000000000000000000000001"
+RUN_2 = "mr-00000000000000000000000002"
+
 NOW = datetime(2026, 11, 13, 12, tzinfo=UTC)
 TABLE = TableId("t-1")
-RUN = TableMaintenanceRunId("run-1")
-OTHER = TableMaintenanceRunId("run-2")
+RUN = TableMaintenanceRunId(RUN_1)
+OTHER = TableMaintenanceRunId(RUN_2)
 LEASE = NOW + timedelta(hours=2)
 GRANT_LEASE = NOW + timedelta(minutes=10)
 SELECTION = CandidateSelection(partitions_per_run=2, filters=CandidateFilters(quiet_seconds=120))

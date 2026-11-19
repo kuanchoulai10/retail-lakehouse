@@ -16,6 +16,8 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
     SubmitMaintenanceJobGatewayInput,
 )
 
+RUN_1 = "mr-00000000000000000000000001"
+
 CONFIG = SparkK8sConfig(
     image="table-maintenance-spark:dev",
     service_account="spark",
@@ -26,7 +28,7 @@ CONFIG = SparkK8sConfig(
 )
 
 INPUT = SubmitMaintenanceJobGatewayInput(
-    run_id="run1",
+    run_id=RUN_1,
     operation="rewrite_data_files",
     attempt=1,
     catalog="iceberg",
@@ -131,7 +133,7 @@ def test_spark_application_labels_driver_and_executor_pods_with_the_attempt():
     spec = _spec()
 
     attempt_labels = {
-        "table-maintenance/run-id": "run1",
+        "table-maintenance/run-id": RUN_1,
         "table-maintenance/operation": "rewrite_data_files",
         "table-maintenance/attempt": "1",
     }

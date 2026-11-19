@@ -20,8 +20,10 @@ from tests.context.table_maintenance.fakes.in_memory_compaction_candidates_repo 
     InMemoryCompactionCandidatesRepo,
 )
 
+RUN_1 = "mr-00000000000000000000000001"
+
 NOW = datetime(2026, 11, 13, 12, tzinfo=UTC)
-RUN = TableMaintenanceRunId("run-1")
+RUN = TableMaintenanceRunId(RUN_1)
 
 
 def _candidate(value: str, run: TableMaintenanceRunId | None) -> CompactionCandidate:
@@ -44,11 +46,16 @@ def test_release_hands_back_every_candidate_the_run_holds():
     """The run's candidates are pending again; another run's and free ones are untouched."""
     repo = InMemoryCompactionCandidatesRepo()
     repo.save_all(
-        [_candidate("a", RUN), _candidate("b", RUN), _candidate("c", TableMaintenanceRunId("x")), _candidate("d", None)]
+        [
+            _candidate("a", RUN),
+            _candidate("b", RUN),
+            _candidate("c", TableMaintenanceRunId.new()),
+            _candidate("d", None),
+        ]
     )
 
     output = ReleaseCompactionCandidatesService(repo).execute(
-        ReleaseCompactionCandidatesUseCaseInput(run_id="run-1", now=NOW + timedelta(minutes=1))
+        ReleaseCompactionCandidatesUseCaseInput(run_id=RUN_1, now=NOW + timedelta(minutes=1))
     )
 
     assert output.released == 2
@@ -66,7 +73,7 @@ def test_release_twice_changes_nothing_more():
     repo = InMemoryCompactionCandidatesRepo()
     repo.save_all([_candidate("a", RUN)])
     service = ReleaseCompactionCandidatesService(repo)
-    request = ReleaseCompactionCandidatesUseCaseInput(run_id="run-1", now=NOW)
+    request = ReleaseCompactionCandidatesUseCaseInput(run_id=RUN_1, now=NOW)
 
     service.execute(request)
     assert service.execute(request).released == 0

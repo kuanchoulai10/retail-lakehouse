@@ -26,7 +26,9 @@ CONFIG = SparkK8sConfig(
     s3_endpoint="http://rustfs.object-storage.svc:9000",
     s3_secret_name="rustfs-credentials",
 )
-INPUT = ReadMaintenanceJobPodsGatewayInput(run_id="r1", operation="rewrite_data_files", attempt=2)
+RUN_ID = "mr-01kaa4zc9qf3v8d2m6xk0w7b1n"
+RUN_ID_SUFFIX = "01kaa4zc9qf3v8d2m6xk0w7b1n"
+INPUT = ReadMaintenanceJobPodsGatewayInput(run_id=RUN_ID, operation="rewrite_data_files", attempt=2)
 
 
 def _pod(name: str, phase: str | None, *, deleting: bool = False) -> V1Pod:
@@ -37,8 +39,10 @@ def _pod(name: str, phase: str | None, *, deleting: bool = False) -> V1Pod:
     )
 
 
-OUR_SELECTOR = "table-maintenance/run-id=r1,table-maintenance/operation=rewrite_data_files,table-maintenance/attempt=2"
-OPERATOR_SELECTOR = "sparkoperator.k8s.io/app-name=tm-rdf-r1-a2"
+OUR_SELECTOR = (
+    f"table-maintenance/run-id={RUN_ID},table-maintenance/operation=rewrite_data_files,table-maintenance/attempt=2"
+)
+OPERATOR_SELECTOR = f"sparkoperator.k8s.io/app-name=tm-rdf-{RUN_ID_SUFFIX}-a2"
 
 
 def _gateway(*pods: V1Pod, by_operator: tuple[V1Pod, ...] = ()) -> tuple[ReadMaintenanceJobPodsK8sGateway, MagicMock]:

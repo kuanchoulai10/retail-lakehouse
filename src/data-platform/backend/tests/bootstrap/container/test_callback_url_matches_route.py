@@ -45,6 +45,8 @@ from tests.context.table_maintenance.fakes.recording_submit_maintenance_job_gate
     RecordingSubmitMaintenanceJobGateway,
 )
 
+RUN_1 = "mr-00000000000000000000000001"
+
 
 def _submitted_callback_url() -> str:
     tables = InMemoryTablesRepo()
@@ -59,7 +61,7 @@ def _submitted_callback_url() -> str:
     runs = InMemoryTableMaintenanceRunsRepo()
     runs.create(
         TableMaintenanceRun.create(
-            TableMaintenanceRunId("run-1"),
+            TableMaintenanceRunId(RUN_1),
             TableId("u-1"),
             TriggerType.SCHEDULED,
             [MaintenanceOperation.EXPIRE_SNAPSHOTS],
@@ -72,7 +74,7 @@ def _submitted_callback_url() -> str:
         runs, tables, gateway, candidates_repo=InMemoryCompactionCandidatesRepo()
     ).execute(
         SubmitMaintenanceOperationUseCaseInput(
-            run_id="run-1",
+            run_id=RUN_1,
             operation="expire_snapshots",
             attempt=1,
             filters=(),
@@ -96,4 +98,4 @@ def test_callback_url_is_served_by_the_result_route():
     assert response.status_code not in (404, 405)
     assert response.status_code == 202
     (request,) = callback.requests
-    assert (request.run_id, request.operation) == ("run-1", "expire_snapshots")
+    assert (request.run_id, request.operation) == (RUN_1, "expire_snapshots")

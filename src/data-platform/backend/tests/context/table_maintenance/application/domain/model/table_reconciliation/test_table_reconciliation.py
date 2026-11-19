@@ -32,6 +32,9 @@ from context.table_maintenance.application.domain.model.table_reconciliation imp
     WakeReason,
 )
 
+RUN_1 = "mr-00000000000000000000000001"
+REC_1 = "rc-00000000000000000000000001"
+
 NOW = datetime(2026, 11, 10, 12, tzinfo=UTC)
 
 
@@ -53,7 +56,7 @@ def _outcome(op: Op, result: OperationResult = OperationResult.NOT_NEEDED) -> Op
 
 def _record(**overrides):
     args = {
-        "id": TableReconciliationId("rec-1"),
+        "id": TableReconciliationId(REC_1),
         "table_uuid": TableId("t-1"),
         "reconciled_at": NOW,
         "wake_reasons": {WakeReason.SCHEDULE: 1},
@@ -103,7 +106,7 @@ def test_record_rejects_skipped_with_operations():
 def test_record_rejects_run_id_without_started_operation():
     """A run id only makes sense when an operation started."""
     with pytest.raises(InvariantViolation):
-        _record(run_id=TableMaintenanceRunId("run-1"))
+        _record(run_id=TableMaintenanceRunId(RUN_1))
 
 
 def test_record_rejects_started_operation_without_run_id():
@@ -122,9 +125,9 @@ def test_started_operation_carries_the_run():
     """A started operation together with a run id is a valid record."""
     rec = _record(
         operations=(_outcome(Op.EXPIRE_SNAPSHOTS, OperationResult.STARTED),),
-        run_id=TableMaintenanceRunId("run-1"),
+        run_id=TableMaintenanceRunId(RUN_1),
     )
-    assert rec.run_id == TableMaintenanceRunId("run-1")
+    assert rec.run_id == TableMaintenanceRunId(RUN_1)
 
 
 def test_skipped_record_is_valid():
@@ -137,7 +140,7 @@ def test_direct_construction_checks_the_invariants():
     """Building the aggregate directly enforces the same rules as record."""
     with pytest.raises(InvariantViolation):
         TableReconciliation(
-            id=TableReconciliationId("rec-1"),
+            id=TableReconciliationId(REC_1),
             table_uuid=TableId("t-1"),
             reconciled_at=NOW,
             wake_reasons={},
@@ -163,7 +166,7 @@ def test_assignment_rechecks_invariants():
     """Assigning a run id without a started operation is rejected."""
     rec = _record()
     with pytest.raises(InvariantViolation):
-        rec.run_id = TableMaintenanceRunId("run-1")
+        rec.run_id = TableMaintenanceRunId(RUN_1)
     assert rec.run_id is None
 
 

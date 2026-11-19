@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+from context.table_maintenance.application.domain.model.table_reconciliation import TableReconciliationId
 from context.table_maintenance.application.port.inbound.table_reconciliation import (
     ListTableReconciliationsUseCaseInput,
 )
@@ -18,6 +19,10 @@ from tests.context.table_maintenance.fakes.in_memory_table_reconciliations_repo 
     InMemoryTableReconciliationsRepo,
 )
 
+RUN_1 = "mr-00000000000000000000000001"
+REC_1 = "rc-00000000000000000000000001"
+RUN_2 = "mr-00000000000000000000000002"
+
 NOW = datetime(2026, 11, 10, 12, 0, tzinfo=UTC)
 
 
@@ -29,7 +34,7 @@ def test_maps_a_recorded_reconciliation_to_plain_items() -> None:
     output = ListTableReconciliationsService(repo).execute(ListTableReconciliationsUseCaseInput(table_uuid="table-1"))
 
     (item,) = output.items
-    assert (item.reconciliation_id, item.outcome, item.run_id) == ("rec-1", "planned", "run-1")
+    assert (item.reconciliation_id, item.outcome, item.run_id) == (REC_1, "planned", RUN_1)
     assert item.wake_reasons == {"schedule": 1}
     operation = item.operations[0]
     assert (operation.operation, operation.result) == ("rewrite_data_files", "started")
@@ -40,11 +45,12 @@ def test_before_and_limit_are_passed_to_the_repo() -> None:
     """The cursor and the page size reach the repository."""
     repo = InMemoryTableReconciliationsRepo()
     record = RecordTableReconciliationService(repo)
-    record.execute(_input(reconciliation_id="a", reconciled_at=NOW - timedelta(hours=1), run_id="r-a"))
-    record.execute(_input(reconciliation_id="b", reconciled_at=NOW, run_id="r-b"))
+    older, newer = TableReconciliationId.new().value, TableReconciliationId.new().value
+    record.execute(_input(reconciliation_id=older, reconciled_at=NOW - timedelta(hours=1), run_id=RUN_1))
+    record.execute(_input(reconciliation_id=newer, reconciled_at=NOW, run_id=RUN_2))
 
     output = ListTableReconciliationsService(repo).execute(
         ListTableReconciliationsUseCaseInput(table_uuid="table-1", before=NOW, limit=1)
     )
 
-    assert [i.reconciliation_id for i in output.items] == ["a"]
+    assert [i.reconciliation_id for i in output.items] == [older]

@@ -338,11 +338,14 @@ export const COMMITS: TableCommitsApiResponse = {
   ],
 };
 
+export const SCHEDULED_RUN_ID = "mr-01m6we4j80f049yj9fq93t3z57";
+export const ESCALATED_RUN_ID = "mr-01m6z0h980ebq90tzxr5xezxae";
+
 export const RUNS: TableMaintenanceRunApiResponse[] = [
   {
-    run_id: "run-1",
+    run_id: SCHEDULED_RUN_ID,
     table_uuid: ORDERS_UUID,
-    execution_ref: `table-maintenance:table=${ORDERS_UUID}:run=run-1`,
+    execution_ref: `table-maintenance:table=${ORDERS_UUID}:run=${SCHEDULED_RUN_ID}`,
     trigger: "scheduled",
     status: "succeeded",
     created_at: "2026-11-08T02:00:00Z",
@@ -379,9 +382,9 @@ export const RUNS: TableMaintenanceRunApiResponse[] = [
 
 // A compaction that ran out of memory at S and succeeded at M.
 export const ESCALATED_RUN: TableMaintenanceRunApiResponse = {
-  run_id: "run-escalated",
+  run_id: ESCALATED_RUN_ID,
   table_uuid: ORDERS_UUID,
-  execution_ref: `table-maintenance:table=${ORDERS_UUID}:run=run-escalated`,
+  execution_ref: `table-maintenance:table=${ORDERS_UUID}:run=${ESCALATED_RUN_ID}`,
   trigger: "manual",
   status: "succeeded",
   created_at: "2026-11-09T02:00:00Z",
@@ -464,7 +467,7 @@ export const CANDIDATES: CompactionCandidatesApiResponse = {
       reducible_files: 412,
       data_bytes: 1_932_735_283,
       estimated_gb_hours: 0.9,
-      claimed_by_run_id: "run-1",
+      claimed_by_run_id: SCHEDULED_RUN_ID,
       lease_expires_at: "2026-11-13T21:48:00Z",
     }),
     orderDay("2026-11-12", {
@@ -568,12 +571,12 @@ function reconciliation(
 // Newest first, as the API returns them: a run started by catalog commits, four quiet hourly
 // passes that fold into one line, a dry run that would have compacted, and a paused skip.
 export const RECONCILIATIONS: TableReconciliationApiResponse[] = [
-  reconciliation("rec-109", "2026-11-10T10:42:00Z", {
+  reconciliation("rc-01m72gst60f5grrcwpsxv0365q", "2026-11-10T10:42:00Z", {
     wake_reasons: { catalog_commit: 3 },
     policy_name: "retail-nightly",
     policy_version: 4,
     policy_target: { type: "namespace", path: ["iceberg", "retail"] },
-    run_id: "run-1",
+    run_id: SCHEDULED_RUN_ID,
     operations: [
       {
         operation: "rewrite_data_files",
@@ -600,11 +603,11 @@ export const RECONCILIATIONS: TableReconciliationApiResponse[] = [
       { operation: "remove_orphan_files", result: "off", measurements: [], next_eligible_at: null },
     ],
   }),
-  reconciliation("rec-108", "2026-11-10T09:42:00Z"),
-  reconciliation("rec-107", "2026-11-10T08:42:00Z"),
-  reconciliation("rec-106", "2026-11-10T07:42:00Z"),
-  reconciliation("rec-105", "2026-11-10T06:42:00Z"),
-  reconciliation("rec-104", "2026-11-10T05:42:00Z", {
+  reconciliation("rc-01m72dbyj0estvsettdm9dkcmx", "2026-11-10T09:42:00Z"),
+  reconciliation("rc-01m729y2y0ecz8089c4t29a30p", "2026-11-10T08:42:00Z"),
+  reconciliation("rc-01m726g7a0e1c9rgpgzsspthwp", "2026-11-10T07:42:00Z"),
+  reconciliation("rc-01m7232bp0fhwtjqjqm50mws3n", "2026-11-10T06:42:00Z"),
+  reconciliation("rc-01m71zmg20etj8d09t7kday4n5", "2026-11-10T05:42:00Z", {
     dry_run: true,
     operations: [
       {
@@ -620,7 +623,7 @@ export const RECONCILIATIONS: TableReconciliationApiResponse[] = [
       ...QUIET_OPERATIONS.slice(1),
     ],
   }),
-  reconciliation("rec-103", "2026-11-10T04:42:00Z", {
+  reconciliation("rc-01m71w6me0ev18xh0hgdd2hvf2", "2026-11-10T04:42:00Z", {
     wake_reasons: { policy_changed: 1 },
     outcome: "skipped",
     skip_reason: "not_found",

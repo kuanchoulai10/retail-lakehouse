@@ -34,6 +34,10 @@ from context.table_maintenance.application.service.table import GetTableStorageS
 KEY = ("iceberg", "sales", "orders")
 OPS = MaintenanceOperation
 
+RUN_ID = "mr-00000000000000000000000001"
+SECOND_RUN_ID = "mr-00000000000000000000000002"
+TOO_OLD_RUN_ID = "mr-00000000000000000000000003"
+
 
 def _register(repo, now):
     repo.create(
@@ -129,7 +133,7 @@ def test_reclaimed_sums_metric_keys(service, tables_repo, catalog, runs_repo, no
     _measure(catalog)
     _run(
         runs_repo,
-        "r1",
+        RUN_ID,
         now - timedelta(days=1),
         {
             OPS.REWRITE_DATA_FILES: (
@@ -145,7 +149,7 @@ def test_reclaimed_sums_metric_keys(service, tables_repo, catalog, runs_repo, no
     )
     _run(
         runs_repo,
-        "r2",
+        SECOND_RUN_ID,
         now - timedelta(days=2),
         {
             OPS.REWRITE_DATA_FILES: (True, {"rewritten_data_files_count": 3}),
@@ -167,7 +171,7 @@ def test_reclaimed_sums_metric_keys(service, tables_repo, catalog, runs_repo, no
     )
     _run(
         runs_repo,
-        "too-old",
+        TOO_OLD_RUN_ID,
         now - timedelta(days=31),
         {OPS.REWRITE_DATA_FILES: (True, {"rewritten_data_files_count": 999})},
     )
@@ -192,7 +196,7 @@ def test_failed_operations_add_nothing(service, tables_repo, catalog, runs_repo,
     _measure(catalog)
     _run(
         runs_repo,
-        "r1",
+        RUN_ID,
         now - timedelta(days=1),
         {
             OPS.REWRITE_DATA_FILES: (False, {}),
@@ -213,7 +217,7 @@ def test_counts_attempts_without_metrics(service, tables_repo, catalog, runs_rep
     _measure(catalog)
     _run(
         runs_repo,
-        "r1",
+        RUN_ID,
         now - timedelta(days=1),
         {
             OPS.REWRITE_DATA_FILES: (True, {"completed_without_callback": 1}),

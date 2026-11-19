@@ -28,6 +28,8 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
     TriggerType,
 )
 
+RUN_1 = "mr-00000000000000000000000001"
+
 T0 = datetime(2026, 10, 24, tzinfo=UTC)
 
 
@@ -37,7 +39,7 @@ def _now(minutes: int = 0) -> datetime:
 
 def _run(ops: list[Op] | None = None) -> TableMaintenanceRun:
     return TableMaintenanceRun.create(
-        TableMaintenanceRunId("run-1"),
+        TableMaintenanceRunId(RUN_1),
         TableId("t-1"),
         TriggerType.MANUAL,
         ops if ops is not None else [Op.EXPIRE_SNAPSHOTS, Op.REWRITE_DATA_FILES],
@@ -226,7 +228,7 @@ def test_create_rejects_an_empty_execution_ref():
     """A run without an execution reference is rejected."""
     with pytest.raises(ValueError, match="execution reference"):
         TableMaintenanceRun.create(
-            TableMaintenanceRunId("run-1"),
+            TableMaintenanceRunId(RUN_1),
             TableId("t-1"),
             TriggerType.MANUAL,
             [Op.EXPIRE_SNAPSHOTS],

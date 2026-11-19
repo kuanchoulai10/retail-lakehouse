@@ -21,12 +21,15 @@ from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePriority
 from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRunId
 
+RUN_1 = "mr-00000000000000000000000001"
+RUN_2 = "mr-00000000000000000000000002"
+
 NOW = datetime(2026, 11, 13, 12, tzinfo=UTC)
 LATER = NOW + timedelta(minutes=5)
 TABLE = TableId("t-1")
 KEY = PartitionKey(spec_id=0, values=("eu",))
-RUN = TableMaintenanceRunId("run-1")
-OTHER_RUN = TableMaintenanceRunId("run-2")
+RUN = TableMaintenanceRunId(RUN_1)
+OTHER_RUN = TableMaintenanceRunId(RUN_2)
 SCORE = CandidateScore(reducible_files=10, data_bytes=1000, estimated_gb_hours=0.1, score=0.6)
 NEW_SCORE = CandidateScore(reducible_files=12, data_bytes=1200, estimated_gb_hours=0.12, score=0.65)
 LEASE = NOW + timedelta(hours=1)

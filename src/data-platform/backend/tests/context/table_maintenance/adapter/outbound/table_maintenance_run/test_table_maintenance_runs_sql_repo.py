@@ -26,11 +26,15 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
     TriggerType,
 )
 from context.table_maintenance.application.exceptions import ConflictError
+from tests.context.table_maintenance.numbered_id import numbered_id
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine, RowMapping
 
 NOW = datetime(2026, 10, 24, 12, tzinfo=UTC)
+R1 = numbered_id("mr", 1)
+OTHER = numbered_id("mr", 900)
+MISSING = numbered_id("mr", 999)
 
 
 def _run(run_id: str, table: str = "u1", at: datetime = NOW) -> TableMaintenanceRun:
@@ -55,7 +59,7 @@ def repo(engine: Engine) -> TableMaintenanceRunsSqlRepo:
 
 def test_roundtrip_with_operation_details(repo: TableMaintenanceRunsSqlRepo):
     """A stored run loads back with its table, trigger and operation details."""
-    run = _run("r1")
+    run = _run(R1)
     metrics = {"rewritten_data_files_count": 12}
     run.operations = (
         run.operations[0].with_changes(
@@ -71,11 +75,11 @@ def test_roundtrip_with_operation_details(repo: TableMaintenanceRunsSqlRepo):
     )
     run.finished_at = NOW + timedelta(minutes=5)
     repo.create(run)
-    loaded = repo.get(TableMaintenanceRunId("r1"))
+    loaded = repo.get(TableMaintenanceRunId(R1))
     assert loaded is not None
     assert loaded.table_uuid == TableId("u1")
     assert loaded.trigger is TriggerType.SCHEDULED
-    assert loaded.execution_ref == "wf-r1"
+    assert loaded.execution_ref == f"wf-{R1}"
     assert loaded.created_at == NOW
     assert loaded.created_at.tzinfo is not None
     assert loaded.finished_at == NOW + timedelta(minutes=5)
@@ -95,12 +99,12 @@ def test_roundtrip_with_operation_details(repo: TableMaintenanceRunsSqlRepo):
 
 def test_get_missing_returns_none(repo: TableMaintenanceRunsSqlRepo):
     """Getting a run that does not exist returns None."""
-    assert repo.get(TableMaintenanceRunId("nope")) is None
+    assert repo.get(TableMaintenanceRunId(MISSING)) is None
 
 
 def test_update_persists(repo: TableMaintenanceRunsSqlRepo):
     """An update persists the operation status and finish time."""
-    run = _run("r1")
+    run = _run(R1)
     repo.create(run)
     run.operations = (
         run.operations[0].with_changes(status=OperationRunStatus.RUNNING, attempts=1),
@@ -117,51 +121,53 @@ def test_update_persists(repo: TableMaintenanceRunsSqlRepo):
 def test_update_missing_raises(repo: TableMaintenanceRunsSqlRepo):
     """Updating a run that does not exist raises LookupError."""
     with pytest.raises(LookupError):
-        repo.update(_run("ghost"))
+        repo.update(_run(MISSING))
 
 
 def test_list_by_table_newest_first_with_limit(repo: TableMaintenanceRunsSqlRepo):
     """Runs of a table are listed newest first, cut at the limit, and empty for another table."""
     for i in range(5):
-        repo.create(_run(f"r{i}", "u1", NOW + timedelta(minutes=i)))
-    repo.create(_run("other", "u2", NOW + timedelta(hours=9)))
+        repo.create(_run(numbered_id("mr", i), "u1", NOW + timedelta(minutes=i)))
+    repo.create(_run(OTHER, "u2", NOW + timedelta(hours=9)))
     got = repo.list_by_table(TableId("u1"))
-    assert [r.id.value for r in got] == ["r4", "r3", "r2", "r1", "r0"]
+    assert [r.id.value for r in got] == [numbered_id("mr", i) for i in (4, 3, 2, 1, 0)]
     limited = repo.list_by_table(TableId("u1"), limit=2)
-    assert [r.id.value for r in limited] == ["r4", "r3"]
+    assert [r.id.value for r in limited] == [numbered_id("mr", 4), numbered_id("mr", 3)]
     assert repo.list_by_table(TableId("none")) == []
 
 
 def test_list_all_newest_first(repo: TableMaintenanceRunsSqlRepo):
     """Listing all runs returns the newest first."""
-    repo.create(_run("a", at=NOW))
-    repo.create(_run("b", at=NOW + timedelta(minutes=1)))
-    assert [r.id.value for r in repo.list_all()] == ["b", "a"]
+    first, second = numbered_id("mr", 1), numbered_id("mr", 2)
+    repo.create(_run(first, at=NOW))
+    repo.create(_run(second, at=NOW + timedelta(minutes=1)))
+    assert [r.id.value for r in repo.list_all()] == [second, first]
 
 
 def test_create_duplicate_primary_key_raises_conflict(
     repo: TableMaintenanceRunsSqlRepo,
 ):
     """Creating a run with an existing id raises ConflictError."""
-    repo.create(_run("r1"))
+    repo.create(_run(R1))
     with pytest.raises(ConflictError):
-        repo.create(_run("r1"))
+        repo.create(_run(R1))
 
 
 def test_list_by_table_since_filters_by_created_at(repo: TableMaintenanceRunsSqlRepo):
     """Listing runs of a table since a time keeps the runs created at or after it."""
     since = NOW - timedelta(days=30)
-    repo.create(_run("old", "u1", since - timedelta(seconds=1)))
-    repo.create(_run("edge", "u1", since))
-    repo.create(_run("new", "u1", NOW))
-    repo.create(_run("other", "u2", NOW))
+    old, edge, new = (numbered_id("mr", i) for i in (1, 2, 3))
+    repo.create(_run(old, "u1", since - timedelta(seconds=1)))
+    repo.create(_run(edge, "u1", since))
+    repo.create(_run(new, "u1", NOW))
+    repo.create(_run(OTHER, "u2", NOW))
     got = repo.list_by_table_since(TableId("u1"), since)
-    assert [r.id.value for r in got] == ["new", "edge"]
+    assert [r.id.value for r in got] == [new, edge]
 
 
 def test_attempt_history_round_trips(repo: TableMaintenanceRunsSqlRepo):
     """Every attempt of an operation, with its size, class, event log state and next step, loads back."""
-    run = _run("r-attempts")
+    run = _run(R1)
     rdf = MaintenanceOperation.REWRITE_DATA_FILES
     run.start_attempt(rdf, 1, "job-1", NOW, size=ComputeSize.S)
     run.fail(
@@ -176,7 +182,7 @@ def test_attempt_history_round_trips(repo: TableMaintenanceRunsSqlRepo):
     run.start_attempt(rdf, 2, "job-2", NOW + timedelta(minutes=2), size=ComputeSize.M)
     run.succeed(rdf, 2, {"rewritten_data_files_count": 3}, NOW + timedelta(minutes=3), event_log_finished=True)
     repo.create(run)
-    loaded = repo.get(TableMaintenanceRunId("r-attempts"))
+    loaded = repo.get(TableMaintenanceRunId(R1))
     assert loaded is not None
     assert loaded.operations == run.operations
 
@@ -184,9 +190,9 @@ def test_attempt_history_round_trips(repo: TableMaintenanceRunsSqlRepo):
 def test_row_without_attempt_history_decodes_to_none_recorded():
     """A row written before attempt history existed decodes with an empty history."""
     row = {
-        "id": "r-old",
+        "id": R1,
         "table_uuid": "u1",
-        "execution_ref": "wf-r-old",
+        "execution_ref": f"wf-{R1}",
         "trigger": "scheduled",
         "operations_json": [
             {

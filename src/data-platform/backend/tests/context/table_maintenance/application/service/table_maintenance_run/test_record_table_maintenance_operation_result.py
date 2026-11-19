@@ -48,6 +48,8 @@ from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_evidenc
 )
 from tests.context.table_maintenance.fakes.track_calls import track_calls
 
+RUN_1 = "mr-00000000000000000000000001"
+
 RDF = MaintenanceOperation.REWRITE_DATA_FILES
 MIB = 1024 * 1024
 SIZE_MEMORY = {
@@ -112,7 +114,7 @@ def recorder(runs_repo, tables_repo, evidence, event_log, resolve_applicable_pol
 def _run(runs_repo, table, now, *sizes: ComputeSize) -> TableMaintenanceRun:
     """Store a run whose rewrite operation has failed every size but the last, which is running."""
     run = TableMaintenanceRun.create(
-        TableMaintenanceRunId("run-1"), table.id, TriggerType.SCHEDULED, [RDF], now, execution_ref="wf-1"
+        TableMaintenanceRunId(RUN_1), table.id, TriggerType.SCHEDULED, [RDF], now, execution_ref="wf-1"
     )
     for attempt, size in enumerate(sizes, start=1):
         if attempt > 1:
@@ -124,7 +126,7 @@ def _run(runs_repo, table, now, *sizes: ComputeSize) -> TableMaintenanceRun:
 
 def _record(recorder, now, **overrides):
     fields: dict[str, Any] = {
-        "run_id": "run-1",
+        "run_id": RUN_1,
         "operation": "rewrite_data_files",
         "attempt": 1,
         "succeeded": False,
@@ -145,7 +147,7 @@ def test_oom_text_is_classified_and_retried_at_the_next_size(recorder, runs_repo
     _run(runs_repo, table, now, ComputeSize.S)
     out = _record(recorder, now)
     assert (out.failure_class, out.next_step, out.next_size) == ("oom", "retry_larger", "M")
-    record = runs_repo.get(TableMaintenanceRunId("run-1")).attempt_record(RDF, 1)
+    record = runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(RDF, 1)
     assert (record.failure_class, record.next_step, record.next_size, record.error) == (
         FailureClass.OOM,
         NextStep.RETRY_LARGER,
@@ -158,7 +160,7 @@ def test_executor_oom_kill_is_read_from_the_job_evidence(recorder, runs_repo, ta
     """An executor killed for memory makes an otherwise vague failure an OOM."""
     _run(runs_repo, table, now, ComputeSize.S)
     killed = JobContainerExit(role="executor", reason="OOMKilled", exit_code=137, message=None)
-    evidence.set_evidence("run-1", "rewrite_data_files", 1, _evidence(APP_ID, None, killed))
+    evidence.set_evidence(RUN_1, "rewrite_data_files", 1, _evidence(APP_ID, None, killed))
     out = _record(recorder, now, error="RuntimeError: rewrite_data_files failed: no file group was committed")
     assert out.failure_class == "oom"
 
@@ -167,25 +169,25 @@ def test_a_driver_termination_message_is_read_as_text(recorder, runs_repo, table
     """A driver that left an OutOfMemoryError in its termination message failed of OOM."""
     _run(runs_repo, table, now, ComputeSize.S)
     driver = JobContainerExit(role="driver", reason="Error", exit_code=1, message="java.lang.OutOfMemoryError")
-    evidence.set_evidence("run-1", "rewrite_data_files", 1, _evidence(APP_ID, "driver failed", driver))
+    evidence.set_evidence(RUN_1, "rewrite_data_files", 1, _evidence(APP_ID, "driver failed", driver))
     assert _record(recorder, now, error="spark job failed", ended_by="job_failed").failure_class == "oom"
 
 
 def test_event_log_state_is_recorded_on_the_attempt(recorder, runs_repo, table, evidence, event_log, now):
     """The event log state is recorded on failures and successes; without an execution id it is unknown."""
     _run(runs_repo, table, now, ComputeSize.S)
-    evidence.set_evidence("run-1", "rewrite_data_files", 1, _evidence())
+    evidence.set_evidence(RUN_1, "rewrite_data_files", 1, _evidence())
     event_log.finished[APP_ID] = False
     _record(recorder, now)
-    assert runs_repo.get(TableMaintenanceRunId("run-1")).attempt_record(RDF, 1).event_log_finished is False
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(RDF, 1).event_log_finished is False
 
-    run = runs_repo.get(TableMaintenanceRunId("run-1"))
+    run = runs_repo.get(TableMaintenanceRunId(RUN_1))
     run.start_attempt(RDF, 2, "job-2", now, size=ComputeSize.M)
     runs_repo.update(run)
-    evidence.set_evidence("run-1", "rewrite_data_files", 2, _evidence("spark-0002"))
+    evidence.set_evidence(RUN_1, "rewrite_data_files", 2, _evidence("spark-0002"))
     event_log.finished["spark-0002"] = True
     _record(recorder, now, attempt=2, succeeded=True, error=None)
-    assert runs_repo.get(TableMaintenanceRunId("run-1")).attempt_record(RDF, 2).event_log_finished is True
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(RDF, 2).event_log_finished is True
     assert len(event_log.calls) == 2
 
 
@@ -193,7 +195,7 @@ def test_no_execution_id_leaves_the_event_log_unknown_without_reading_it(recorde
     """An attempt whose job has no execution id records an unknown event log state and reads no log."""
     _run(runs_repo, table, now, ComputeSize.S)
     _record(recorder, now)
-    assert runs_repo.get(TableMaintenanceRunId("run-1")).attempt_record(RDF, 1).event_log_finished is None
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(RDF, 1).event_log_finished is None
     assert event_log.calls == []
 
 
@@ -221,7 +223,7 @@ def test_unreadable_evidence_still_records_the_attempt(recorder, runs_repo, tabl
     evidence.error = RuntimeError("k8s down")
     out = _record(recorder, now)
     assert out.failure_class == "oom"
-    record = runs_repo.get(TableMaintenanceRunId("run-1")).attempt_record(RDF, 1)
+    record = runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(RDF, 1)
     assert record.status.value == "failed"
     assert record.event_log_finished is None
     assert event_log.calls == []
@@ -230,10 +232,10 @@ def test_unreadable_evidence_still_records_the_attempt(recorder, runs_repo, tabl
 def test_unreadable_event_log_still_records_the_attempt(recorder, runs_repo, table, evidence, event_log, now):
     """When the event log cannot be read its state is unknown and the attempt is still saved."""
     _run(runs_repo, table, now, ComputeSize.S)
-    evidence.set_evidence("run-1", "rewrite_data_files", 1, _evidence())
+    evidence.set_evidence(RUN_1, "rewrite_data_files", 1, _evidence())
     event_log.error = OSError("rustfs down")
     _record(recorder, now)
-    assert runs_repo.get(TableMaintenanceRunId("run-1")).attempt_record(RDF, 1).event_log_finished is None
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).attempt_record(RDF, 1).event_log_finished is None
 
 
 def test_oom_at_l_marks_the_operation_needs_attention_under_the_applicable_policy(
@@ -277,7 +279,7 @@ def test_replayed_record_returns_the_stored_decision(
 ):
     """A retried record returns the decision it stored and reads and saves nothing again."""
     _run(runs_repo, table, now, ComputeSize.M, ComputeSize.L)
-    evidence.set_evidence("run-1", "rewrite_data_files", 2, _evidence())
+    evidence.set_evidence(RUN_1, "rewrite_data_files", 2, _evidence())
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
     first = _record(recorder, now, attempt=2)
     second = _record(recorder, now, attempt=2)

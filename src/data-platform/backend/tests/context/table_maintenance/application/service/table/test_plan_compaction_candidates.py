@@ -65,7 +65,12 @@ KEY = ("iceberg", "sales", "orders")
 NAME = TableName(catalog="iceberg", namespace="sales", table="orders")
 DEFAULT = MaintenancePolicyContent.platform_default()
 COMPACTION = MaintenanceOperation.REWRITE_DATA_FILES
-RUN = "run-1"
+RUN = "mr-00000000000000000000000001"
+OTHER_RUN = "mr-00000000000000000000000002"
+OLD_RUN = "mr-00000000000000000000000003"
+NEVER_STARTED_RUN = "mr-00000000000000000000000004"
+NEXT_RUN = "mr-00000000000000000000000005"
+PAST_RUN = "mr-00000000000000000000000006"
 GIB = 1024**3
 MIB = 1024**2
 LEASE = timedelta(hours=19)
@@ -514,8 +519,8 @@ def test_all_claimed_plans_no_compaction_and_says_why(planner, tables_repo, cata
     """When another run still holds every candidate under its lease, compaction is not planned."""
     _table(tables_repo, now)
     _observe(catalog, [_partition("a", 10)])
-    _plan_granted(planner, candidates_repo, now, run_id="other-run")
-    _run_record(runs_repo, "other-run", now, finished=False)
+    _plan_granted(planner, candidates_repo, now, run_id=OTHER_RUN)
+    _run_record(runs_repo, OTHER_RUN, now, finished=False)
 
     plan = _plan(planner, now + timedelta(minutes=1))
 
@@ -530,9 +535,9 @@ def test_candidates_of_a_finished_run_are_released(planner, tables_repo, catalog
     """A claim left by a run that has finished is handed back to the next round, then can be taken again."""
     _table(tables_repo, now)
     _observe(catalog, [_partition("a", 10)])
-    _plan_granted(planner, candidates_repo, now, run_id="old-run")
+    _plan_granted(planner, candidates_repo, now, run_id=OLD_RUN)
     run = TableMaintenanceRun.create(
-        TableMaintenanceRunId("old-run"), TableId("u-1"), TriggerType.SCHEDULED, [COMPACTION], now, execution_ref="wf"
+        TableMaintenanceRunId(OLD_RUN), TableId("u-1"), TriggerType.SCHEDULED, [COMPACTION], now, execution_ref="wf"
     )
     run.start_attempt(COMPACTION, 1, None, now)
     run.fail(COMPACTION, 1, "boom", now + timedelta(minutes=1))
@@ -560,18 +565,18 @@ def test_plan_releases_claims_of_a_run_that_never_started(planner, tables_repo, 
     _plan(planner, now - timedelta(seconds=30), run_id=None)
     _grant(candidates_repo, now - timedelta(seconds=20), only="d")
     _grant(candidates_repo, now - timedelta(seconds=20), only="e")
-    _plan(planner, now, run_id="never-started")
+    _plan(planner, now, run_id=NEVER_STARTED_RUN)
 
-    released = _plan(planner, now + timedelta(minutes=5), run_id="next-run")
+    released = _plan(planner, now + timedelta(minutes=5), run_id=NEXT_RUN)
     assert _check(released).verdict == "awaiting_schedule"
     _grant(candidates_repo, now + timedelta(minutes=6))
-    plan = _plan(planner, now + timedelta(minutes=7), run_id="next-run")
+    plan = _plan(planner, now + timedelta(minutes=7), run_id=NEXT_RUN)
 
     compaction = _compaction(plan)
     assert compaction is not None
     assert [(p.spec_id, p.values) for p in compaction.candidate_partitions] == [(0, ("e",)), (0, ("d",))]
     claimed = [c for c in candidates_repo.list_all() if c.state is CandidateState.CLAIMED]
-    assert {c.claimed_by_run_id for c in claimed} == {TableMaintenanceRunId("next-run")}
+    assert {c.claimed_by_run_id for c in claimed} == {TableMaintenanceRunId(NEXT_RUN)}
 
 
 def test_claims_of_a_finished_run_older_than_the_recent_runs_are_released(
@@ -580,10 +585,10 @@ def test_claims_of_a_finished_run_older_than_the_recent_runs_are_released(
     """The release looks each holder up, so a finished run past the newest runs read for throughput still counts."""
     _table(tables_repo, now)
     _observe(catalog, [_partition("a", 10)])
-    _plan_granted(planner, candidates_repo, now, run_id="old-run")
-    _run_record(runs_repo, "old-run", now, finished=True)
+    _plan_granted(planner, candidates_repo, now, run_id=OLD_RUN)
+    _run_record(runs_repo, OLD_RUN, now, finished=True)
     for i in range(60):
-        _run_record(runs_repo, f"later-{i:02d}", now + timedelta(minutes=2 + i), finished=True)
+        _run_record(runs_repo, TableMaintenanceRunId.new().value, now + timedelta(minutes=2 + i), finished=True)
 
     _plan(planner, now + timedelta(hours=2), run_id=None)
     _grant(candidates_repo, now + timedelta(hours=2, minutes=1))
@@ -649,7 +654,7 @@ def test_cost_uses_the_remembered_size_and_the_measured_throughput(
     table = _table(tables_repo, now)
     table.record_operation_result(COMPACTION, True, now - timedelta(days=1), size=ComputeSize.M)
     run = TableMaintenanceRun.create(
-        TableMaintenanceRunId("past"),
+        TableMaintenanceRunId(PAST_RUN),
         TableId("u-1"),
         TriggerType.SCHEDULED,
         [COMPACTION],
@@ -673,7 +678,7 @@ def test_cost_ignores_past_compactions_below_the_throughput_floor(
     """A past compaction of a few MiB measures Spark start-up, not throughput: the default is used instead."""
     _table(tables_repo, now)
     run = TableMaintenanceRun.create(
-        TableMaintenanceRunId("past"),
+        TableMaintenanceRunId(PAST_RUN),
         TableId("u-1"),
         TriggerType.SCHEDULED,
         [COMPACTION],

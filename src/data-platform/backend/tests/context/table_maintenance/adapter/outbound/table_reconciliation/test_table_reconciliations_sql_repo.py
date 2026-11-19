@@ -38,6 +38,7 @@ from context.table_maintenance.application.exceptions import ConflictError
 from tests.context.table_maintenance.fakes.in_memory_table_reconciliations_repo import (
     InMemoryTableReconciliationsRepo,
 )
+from tests.context.table_maintenance.numbered_id import numbered_id
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine
@@ -46,7 +47,12 @@ if TYPE_CHECKING:
         TableReconciliationsRepo,
     )
 
+RUN_1 = "mr-00000000000000000000000001"
 NOW = datetime(2026, 11, 10, 12, tzinfo=UTC)
+
+
+def _rc(number: int) -> str:
+    return numbered_id("rc", number)
 
 
 def _rec(rec_id: str, table: str = "u1", at: datetime = NOW) -> TableReconciliation:
@@ -77,7 +83,7 @@ def repo(request: pytest.FixtureRequest, engine: Engine) -> TableReconciliations
 def test_create_and_get_round_trip(repo: TableReconciliationsRepo):
     """A stored reconciliation loads back with measurements, wake reasons and run id."""
     rec = TableReconciliation.record(
-        id=TableReconciliationId("r1"),
+        id=TableReconciliationId(_rc(1)),
         table_uuid=TableId("u1"),
         reconciled_at=NOW,
         wake_reasons={WakeReason.SCHEDULE: 2, WakeReason.DISCOVERY_SCAN: 1},
@@ -114,13 +120,13 @@ def test_create_and_get_round_trip(repo: TableReconciliationsRepo):
                 next_eligible_at=NOW + timedelta(hours=1),
             ),
         ),
-        run_id=TableMaintenanceRunId("run-1"),
+        run_id=TableMaintenanceRunId(RUN_1),
         policy_name="nightly",
         policy_version=4,
         policy_target=PolicyTarget(type=PolicyTargetType.TABLE, path=("prod", "sales", "orders"), table_uuid="u1"),
     )
     repo.create(rec)
-    loaded = repo.get(TableReconciliationId("r1"))
+    loaded = repo.get(TableReconciliationId(_rc(1)))
     assert loaded is not None
     assert loaded.model_dump() == rec.model_dump()
     assert loaded.table_uuid == rec.table_uuid
@@ -131,7 +137,7 @@ def test_create_and_get_round_trip(repo: TableReconciliationsRepo):
     assert loaded.dry_run is False
     assert loaded.outcome is ReconciliationOutcome.PLANNED
     assert loaded.skip_reason is None
-    assert loaded.run_id == TableMaintenanceRunId("run-1")
+    assert loaded.run_id == TableMaintenanceRunId(RUN_1)
     assert loaded.operations == rec.operations
     assert loaded.operations[0].measurements[1].threshold is None
     assert loaded.operations[0].measurements[1].met is None
@@ -141,7 +147,7 @@ def test_create_and_get_round_trip(repo: TableReconciliationsRepo):
 def test_skipped_round_trip(repo: TableReconciliationsRepo):
     """A skipped reconciliation keeps its skip reason."""
     rec = TableReconciliation.record(
-        id=TableReconciliationId("s1"),
+        id=TableReconciliationId(_rc(50)),
         table_uuid=TableId("u1"),
         reconciled_at=NOW,
         wake_reasons={WakeReason.POLICY_CHANGED: 1},
@@ -155,7 +161,7 @@ def test_skipped_round_trip(repo: TableReconciliationsRepo):
         policy_target=None,
     )
     repo.create(rec)
-    loaded = repo.get(TableReconciliationId("s1"))
+    loaded = repo.get(TableReconciliationId(_rc(50)))
     assert loaded is not None
     assert loaded.skip_reason == "paused"
     assert loaded.operations == ()
@@ -163,40 +169,40 @@ def test_skipped_round_trip(repo: TableReconciliationsRepo):
 
 def test_get_unknown_returns_none(repo: TableReconciliationsRepo):
     """An unknown id yields None."""
-    assert repo.get(TableReconciliationId("nope")) is None
+    assert repo.get(TableReconciliationId(_rc(999))) is None
 
 
 def test_create_duplicate_id_conflicts(repo: TableReconciliationsRepo):
     """Creating the same id twice is a conflict."""
-    repo.create(_rec("r1"))
+    repo.create(_rec(_rc(1)))
     with pytest.raises(ConflictError):
-        repo.create(_rec("r1"))
+        repo.create(_rec(_rc(1)))
 
 
 def test_list_by_table_newest_first_with_cursor(repo: TableReconciliationsRepo):
     """Pages run newest first and the cursor excludes the given instant."""
     for i in range(4):
-        repo.create(_rec(f"r{i}", at=NOW + timedelta(minutes=i)))
-    repo.create(_rec("other", table="u2", at=NOW + timedelta(minutes=10)))
+        repo.create(_rec(_rc(i), at=NOW + timedelta(minutes=i)))
+    repo.create(_rec(_rc(100), table="u2", at=NOW + timedelta(minutes=10)))
     page = repo.list_by_table(TableId("u1"))
-    assert [r.id.value for r in page] == ["r3", "r2", "r1", "r0"]
+    assert [r.id.value for r in page] == [_rc(3), _rc(2), _rc(1), _rc(0)]
     older = repo.list_by_table(TableId("u1"), before=NOW + timedelta(minutes=2))
-    assert [r.id.value for r in older] == ["r1", "r0"]
+    assert [r.id.value for r in older] == [_rc(1), _rc(0)]
 
 
 def test_list_by_table_respects_limit(repo: TableReconciliationsRepo):
     """The limit caps the page."""
     for i in range(5):
-        repo.create(_rec(f"r{i}", at=NOW + timedelta(minutes=i)))
-    assert [r.id.value for r in repo.list_by_table(TableId("u1"), limit=2)] == ["r4", "r3"]
+        repo.create(_rec(_rc(i), at=NOW + timedelta(minutes=i)))
+    assert [r.id.value for r in repo.list_by_table(TableId("u1"), limit=2)] == [_rc(4), _rc(3)]
 
 
 def test_delete_older_than_only_touches_that_table(repo: TableReconciliationsRepo):
     """Retention removes old rows of one table and leaves others."""
-    repo.create(_rec("old", at=NOW - timedelta(days=40)))
-    repo.create(_rec("new", at=NOW))
-    repo.create(_rec("other-old", table="u2", at=NOW - timedelta(days=40)))
+    repo.create(_rec(_rc(101), at=NOW - timedelta(days=40)))
+    repo.create(_rec(_rc(103), at=NOW))
+    repo.create(_rec(_rc(102), table="u2", at=NOW - timedelta(days=40)))
     assert repo.delete_older_than(TableId("u1"), NOW - timedelta(days=30)) == 1
-    assert repo.get(TableReconciliationId("old")) is None
-    assert repo.get(TableReconciliationId("new")) is not None
-    assert repo.get(TableReconciliationId("other-old")) is not None
+    assert repo.get(TableReconciliationId(_rc(101))) is None
+    assert repo.get(TableReconciliationId(_rc(103))) is not None
+    assert repo.get(TableReconciliationId(_rc(102))) is not None

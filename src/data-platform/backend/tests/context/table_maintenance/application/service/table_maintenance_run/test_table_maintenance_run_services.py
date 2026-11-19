@@ -62,6 +62,11 @@ from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_evidenc
     ScriptedReadMaintenanceJobEvidenceGateway,
 )
 from tests.context.table_maintenance.fakes.track_calls import track_calls
+from tests.context.table_maintenance.numbered_id import numbered_id
+
+RUN_1 = "mr-00000000000000000000000001"
+RUN_2 = "mr-00000000000000000000000002"
+UNKNOWN_RUN = "mr-7zzzzzzzzzzzzzzzzzzzzzzzzz"
 
 OPS = MaintenanceOperation
 RDF = OPS.REWRITE_DATA_FILES
@@ -80,7 +85,7 @@ def table(tables_repo, now):
     return t
 
 
-def _create_input(now, run_id="run-1", **overrides):
+def _create_input(now, run_id=RUN_1, **overrides):
     fields = {
         "run_id": run_id,
         "table_uuid": "u-1",
@@ -102,9 +107,9 @@ def creator(runs_repo, tables_repo):
 def test_create_run_persists_pending_run_in_canonical_order(creator, runs_repo, table, now):
     """Creating a run stores it with its operations in canonical order and its execution reference."""
     out = creator.execute(_create_input(now))
-    assert (out.run_id, out.table_uuid, out.trigger) == ("run-1", "u-1", "scheduled")
+    assert (out.run_id, out.table_uuid, out.trigger) == (RUN_1, "u-1", "scheduled")
     assert out.execution_ref == "wf-run-1"
-    assert runs_repo.get(TableMaintenanceRunId("run-1")).execution_ref == "wf-run-1"
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).execution_ref == "wf-run-1"
     assert out.status == "pending"
     assert [o["operation"] for o in out.operations] == [
         "rewrite_data_files",
@@ -112,13 +117,13 @@ def test_create_run_persists_pending_run_in_canonical_order(creator, runs_repo, 
     ]
     assert out.operations[0]["status"] == "pending"
     assert out.created_at == now
-    assert runs_repo.get(TableMaintenanceRunId("run-1")) is not None
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)) is not None
 
 
 def test_create_run_is_idempotent_by_id(creator, runs_repo, table, now):
     """Creating a run twice with the same id returns the existing run."""
     creator.execute(_create_input(now))
-    run = runs_repo.get(TableMaintenanceRunId("run-1"))
+    run = runs_repo.get(TableMaintenanceRunId(RUN_1))
     run.start_attempt(RDF, 1, "app-1", now)
     again = creator.execute(_create_input(now + timedelta(hours=1), trigger="manual"))
     assert again.trigger == "scheduled"
@@ -148,7 +153,7 @@ def test_create_run_validates_input(creator, table, now):
 def started_run(runs_repo, table, now):
     """Provide a stored run whose first attempt has started."""
     run = TableMaintenanceRun.create(
-        TableMaintenanceRunId("run-1"),
+        TableMaintenanceRunId(RUN_1),
         table.id,
         TriggerType.SCHEDULED,
         [RDF, OPS.EXPIRE_SNAPSHOTS],
@@ -176,7 +181,7 @@ def recorder(runs_repo, tables_repo, resolve_applicable_policy, candidates_repo)
 
 def _record(recorder, now, **overrides):
     fields: dict[str, Any] = {
-        "run_id": "run-1",
+        "run_id": RUN_1,
         "operation": "rewrite_data_files",
         "attempt": 1,
         "succeeded": True,
@@ -192,7 +197,7 @@ def test_record_result_updates_run_and_table_backoff(recorder, started_run, tabl
     """Recording a failure updates the run and the failure state of the table."""
     later = now + timedelta(minutes=5)
     out = _record(recorder, later, succeeded=False, error="OOM")
-    assert (out.run_id, out.status) == ("run-1", "running")
+    assert (out.run_id, out.status) == (RUN_1, "running")
     op = started_run.operations[0]
     assert (op.status.value, op.error, op.finished_at) == ("failed", "OOM", later)
     state = table.operation_state(RDF)
@@ -212,7 +217,7 @@ def test_record_result_saves_run_then_table(recorder, started_run, table, runs_r
     track_calls(runs_repo, "update", "runs.update", log, lambda r: r.id.value)
     track_calls(tables_repo, "update", "tables.update", log, lambda t: t.id.value)
     _record(recorder, now)
-    assert log == [("runs.update", "run-1"), ("tables.update", "u-1")]
+    assert log == [("runs.update", RUN_1), ("tables.update", "u-1")]
 
 
 def test_record_result_stale_attempt_is_ignored(recorder, started_run, table, now):
@@ -258,7 +263,7 @@ def test_record_result_final_operation_finishes_run(recorder, started_run, table
 def test_record_result_rejects_bad_requests(recorder, started_run, now):
     """Requests for an unknown run, an invalid input or an operation outside the run are rejected."""
     with pytest.raises(NotFoundError):
-        _record(recorder, now, run_id="nope")
+        _record(recorder, now, run_id=UNKNOWN_RUN)
     with pytest.raises(ValidationError):
         _record(recorder, now, operation="defragment")
     with pytest.raises(ConflictError, match="not part of"):
@@ -275,13 +280,13 @@ def test_callback_forwards_result_to_the_workflow(runs_repo, started_run, result
     service = ProcessTableMaintenanceCallbackService(runs_repo, results)
     out = service.execute(
         ProcessTableMaintenanceCallbackUseCaseInput(
-            run_id="run-1", operation="rewrite_data_files", attempt=3, succeeded=False, metrics={"a": 1}, error="OOM"
+            run_id=RUN_1, operation="rewrite_data_files", attempt=3, succeeded=False, metrics={"a": 1}, error="OOM"
         )
     )
     assert out.accepted is True
     (call,) = results.calls
     assert (call.run_id, call.operation, call.attempt) == (
-        "run-1",
+        RUN_1,
         "rewrite_data_files",
         3,
     )
@@ -295,7 +300,7 @@ def test_callback_unknown_run_not_found(runs_repo, results):
     with pytest.raises(NotFoundError):
         service.execute(
             ProcessTableMaintenanceCallbackUseCaseInput(
-                run_id="nope", operation="rewrite_data_files", attempt=1, succeeded=True, metrics={}, error=None
+                run_id=UNKNOWN_RUN, operation="rewrite_data_files", attempt=1, succeeded=True, metrics={}, error=None
             )
         )
     assert results.calls == []
@@ -307,7 +312,7 @@ def test_callback_rejects_unknown_operation(runs_repo, started_run, results):
     with pytest.raises(ValidationError):
         service.execute(
             ProcessTableMaintenanceCallbackUseCaseInput(
-                run_id="run-1", operation="x", attempt=1, succeeded=True, metrics={}, error=None
+                run_id=RUN_1, operation="x", attempt=1, succeeded=True, metrics={}, error=None
             )
         )
 
@@ -318,11 +323,11 @@ def test_callback_rejects_unknown_operation(runs_repo, started_run, results):
 def test_get_run_returns_the_run_or_not_found(runs_repo, started_run):
     """Getting a run returns it with its operations, or raises NotFoundError."""
     service = GetTableMaintenanceRunService(runs_repo)
-    out = service.execute(GetTableMaintenanceRunUseCaseInput(run_id="run-1"))
+    out = service.execute(GetTableMaintenanceRunUseCaseInput(run_id=RUN_1))
     assert out.status == "running"
     assert out.operations[0]["job_name"] == "tm-rdf-run1-a1"
     with pytest.raises(NotFoundError):
-        service.execute(GetTableMaintenanceRunUseCaseInput(run_id="nope"))
+        service.execute(GetTableMaintenanceRunUseCaseInput(run_id=UNKNOWN_RUN))
 
 
 def test_list_runs_newest_first_with_limit(runs_repo, table, now):
@@ -330,7 +335,7 @@ def test_list_runs_newest_first_with_limit(runs_repo, table, now):
     for i in range(3):
         runs_repo.create(
             TableMaintenanceRun.create(
-                TableMaintenanceRunId(f"run-{i}"),
+                TableMaintenanceRunId(numbered_id("mr", i)),
                 table.id,
                 TriggerType.MANUAL,
                 [RDF],
@@ -340,9 +345,9 @@ def test_list_runs_newest_first_with_limit(runs_repo, table, now):
         )
     service = ListTableMaintenanceRunsService(runs_repo)
     out = service.execute(ListTableMaintenanceRunsUseCaseInput(table_uuid="u-1"))
-    assert [i.run_id for i in out.items] == ["run-2", "run-1", "run-0"]
+    assert [i.run_id for i in out.items] == [RUN_2, RUN_1, numbered_id("mr", 0)]
     limited = service.execute(ListTableMaintenanceRunsUseCaseInput(table_uuid="u-1", limit=1))
-    assert [i.run_id for i in limited.items] == ["run-2"]
+    assert [i.run_id for i in limited.items] == [RUN_2]
     assert service.execute(ListTableMaintenanceRunsUseCaseInput(table_uuid="other")).items == ()
 
 
@@ -422,7 +427,7 @@ def test_run_output_lists_every_attempt(runs_repo, started_run, now):
     )
     started_run.start_attempt(RDF, 2, "tm-rdf-run1-a2", now, size=ComputeSize.M)
     runs_repo.update(started_run)
-    out = GetTableMaintenanceRunService(runs_repo).execute(GetTableMaintenanceRunUseCaseInput(run_id="run-1"))
+    out = GetTableMaintenanceRunService(runs_repo).execute(GetTableMaintenanceRunUseCaseInput(run_id=RUN_1))
     rdf = next(op for op in out.operations if op["operation"] == "rewrite_data_files")
     assert rdf["attempt_history"] == [
         {

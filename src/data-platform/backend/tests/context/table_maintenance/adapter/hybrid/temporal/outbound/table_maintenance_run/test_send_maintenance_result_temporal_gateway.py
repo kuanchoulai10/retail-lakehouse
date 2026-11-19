@@ -20,6 +20,8 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
     SendMaintenanceResultGatewayInput,
 )
 
+RUN_ID = "mr-00000000000000000000000001"
+
 
 def _input(run_id: str, workflow_id: str) -> SendMaintenanceResultGatewayInput:
     return SendMaintenanceResultGatewayInput(
@@ -45,7 +47,7 @@ def test_result_reaches_maintenance_workflow(harness):
         )
 
     harness.bridge.run(start)
-    SendMaintenanceResultTemporalGateway(harness.client, harness.bridge).send(_input("r1", "any-workflow-id-of-r1"))
+    SendMaintenanceResultTemporalGateway(harness.client, harness.bridge).send(_input(RUN_ID, "any-workflow-id-of-r1"))
     handle = harness.client.get_workflow_handle("any-workflow-id-of-r1")
 
     async def query() -> list:
@@ -58,7 +60,7 @@ def test_result_reaches_maintenance_workflow(harness):
         time.sleep(0.2)
     assert got == [
         {
-            "run_id": "r1",
+            "run_id": RUN_ID,
             "operation": "rewrite_data_files",
             "attempt": 1,
             "succeeded": True,

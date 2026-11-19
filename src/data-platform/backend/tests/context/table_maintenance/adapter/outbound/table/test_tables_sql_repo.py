@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from sqlalchemy import Engine
 
     from context.table_maintenance.application.port.outbound.table import TablesRepo
+RUN_7 = "mr-00000000000000000000000007"
 
 RULE_1 = "dr-00000000000000000000000001"
 NOW = datetime(2026, 10, 24, 12, 0, tzinfo=UTC)
@@ -244,7 +245,7 @@ def test_operation_state_round_trips_size_and_attention(repo: TablesSqlRepo):
             last_attempt_at=NOW,
             last_successful_size=ComputeSize.L,
             attention=mark,
-            last_recorded=RecordedAttempt(run_id="run-7", attempt=3),
+            last_recorded=RecordedAttempt(run_id=RUN_7, attempt=3),
         ),
         MaintenanceOperation.EXPIRE_SNAPSHOTS: OperationState(last_successful_size=ComputeSize.M, low_use_successes=2),
     }

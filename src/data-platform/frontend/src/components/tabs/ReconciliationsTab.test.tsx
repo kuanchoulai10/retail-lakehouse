@@ -54,7 +54,7 @@ function quiet(id: string, reconciledAt: string): TableReconciliationApiResponse
   };
 }
 
-const RUN_ID = "0b9e3c1a-2f4d-4c8e-9a1b-5d6e7f8a9b0c";
+const RUN_ID = "mr-01kaa4zc9qf3v8d2m6xk0w7b1n";
 
 const STARTED: TableReconciliationApiResponse = {
   ...quiet("rec-started", at(10, 10)),
@@ -255,18 +255,18 @@ describe("ReconciliationsTab", () => {
     expect(partitions).not.toHaveTextContent(/met:/i);
   });
 
-  it("run link points at the maintenance tab with the run id", async () => {
+  it("run link points at the maintenance tab and shows the whole run id", async () => {
     const user = userEvent.setup();
     renderTab();
     const row = (await screen.findByRole("button", { name: /Started Rewrite data files/ })).closest("li") as HTMLElement;
     const lineLink = within(row).getByRole("link", { name: `Open maintenance run ${RUN_ID}` });
     expect(lineLink).toHaveAttribute("href", `/tables/orders/maintenance?run=${RUN_ID}`);
-    expect(lineLink).toHaveTextContent(/^Run 0b9e3c1a$/);
-    expect(within(lineLink).getByText("0b9e3c1a")).toHaveClass("font-mono");
+    expect(lineLink).toHaveTextContent(new RegExp(`^Run ${RUN_ID}$`));
+    expect(within(lineLink).getByText(RUN_ID)).toHaveClass("font-mono");
     const dialog = await openDrawer(user, /Started Rewrite data files/);
     const drawerLink = within(dialog).getByRole("link", { name: `Open maintenance run ${RUN_ID}` });
     expect(drawerLink).toHaveAttribute("href", `/tables/orders/maintenance?run=${RUN_ID}`);
-    expect(drawerLink).toHaveTextContent(/^Open maintenance run 0b9e3c1a$/);
+    expect(drawerLink).toHaveTextContent(new RegExp(`^Open maintenance run ${RUN_ID}$`));
   });
 
   it("draws an open timeline: a filled marker for what started, outlined for others, dashed for a fold", async () => {

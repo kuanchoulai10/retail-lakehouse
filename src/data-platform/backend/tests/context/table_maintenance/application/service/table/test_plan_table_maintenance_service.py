@@ -75,6 +75,8 @@ from tests.context.table_maintenance.fakes.recording_send_table_change_gateway i
 )
 from tests.context.table_maintenance.fakes.track_calls import track_calls
 
+REC_1 = "rc-00000000000000000000000001"
+
 NAME = TableName(catalog="iceberg", namespace="sales", table="orders")
 KEY = ("iceberg", "sales", "orders")
 OPS = MaintenanceOperation
@@ -498,7 +500,7 @@ def test_unmanaged_table_skips_with_table_found(planner, tables_repo, now):
 def _record(plan, now, **overrides):
     repo = InMemoryTableReconciliationsRepo()
     fields = {
-        "reconciliation_id": "rec-1",
+        "reconciliation_id": REC_1,
         "table_uuid": "u-1",
         "reconciled_at": now,
         "wake_reasons": {"schedule": 1},

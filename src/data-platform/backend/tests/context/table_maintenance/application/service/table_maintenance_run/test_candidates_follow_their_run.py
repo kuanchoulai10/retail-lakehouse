@@ -35,10 +35,13 @@ from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_evidenc
     ScriptedReadMaintenanceJobEvidenceGateway,
 )
 
+RUN_1 = "mr-00000000000000000000000001"
+RUN_2 = "mr-00000000000000000000000002"
+
 RDF = MaintenanceOperation.REWRITE_DATA_FILES
 EXPIRE = MaintenanceOperation.EXPIRE_SNAPSHOTS
-RUN = TableMaintenanceRunId("run-1")
-OTHER = TableMaintenanceRunId("run-2")
+RUN = TableMaintenanceRunId(RUN_1)
+OTHER = TableMaintenanceRunId(RUN_2)
 SCORE = CandidateScore(reducible_files=10, data_bytes=1000, estimated_gb_hours=0.1, score=0.5)
 
 

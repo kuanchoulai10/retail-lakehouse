@@ -24,8 +24,10 @@ from context.table_maintenance.application.service.compaction_candidate import L
 from tests.context.table_maintenance.application.service.compaction_round.recorded_round import recorded_round
 from tests.context.table_maintenance.fakes.in_memory_compaction_rounds_repo import InMemoryCompactionRoundsRepo
 
+RUN_1 = "mr-00000000000000000000000001"
+
 TABLE = TableId("u-1")
-RUN = TableMaintenanceRunId("run-1")
+RUN = TableMaintenanceRunId(RUN_1)
 SLA = {
     MaintenancePriority.P0: timedelta(hours=1),
     MaintenancePriority.P1: timedelta(hours=4),
@@ -108,7 +110,7 @@ def test_each_candidate_says_what_it_is_worth_and_who_holds_it(service, now):
         0.25,
         0.9,
     )
-    assert (claimed.claimed_by_run_id, claimed.lease_expires_at) == ("run-1", now + timedelta(hours=1))
+    assert (claimed.claimed_by_run_id, claimed.lease_expires_at) == (RUN_1, now + timedelta(hours=1))
     assert (held.hold_reason, held.claimed_by_run_id) == ("recently_written", None)
     assert held.last_written_at == now - timedelta(hours=1)
     assert held.observed_at == now

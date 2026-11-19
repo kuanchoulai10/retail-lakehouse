@@ -42,13 +42,16 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fa
     FakeSubmit,
 )
 
+RUN_1 = "mr-00000000000000000000000001"
+REC_1 = "rc-00000000000000000000000001"
+
 NOW = "2026-10-24T01:02:03+00:00"
 STARTED = datetime(2026, 10, 24, 1, 5, tzinfo=UTC)
 FAILED = datetime(2026, 10, 24, 1, 20, 30, tzinfo=UTC)
 RETRIED = datetime(2026, 10, 24, 1, 22, tzinfo=UTC)
 
 CREATE_REQUEST = {
-    "run_id": "r1",
+    "run_id": RUN_1,
     "table_uuid": "u1",
     "execution_ref": "wf-r1",
     "trigger": "manual",
@@ -60,7 +63,7 @@ CREATE_REQUEST = {
 def _full_run() -> CreateTableMaintenanceRunUseCaseOutput:
     """Return a run that sets every field: an operation with two attempts and one not started."""
     return CreateTableMaintenanceRunUseCaseOutput(
-        run_id="r1",
+        run_id=RUN_1,
         table_uuid="u1",
         execution_ref="wf-r1",
         trigger="manual",
@@ -128,7 +131,7 @@ def test_create_run_payload_keeps_every_field_of_a_full_run():
     result = activities.create_table_maintenance_run(dict(CREATE_REQUEST))
 
     assert result == {
-        "run_id": "r1",
+        "run_id": RUN_1,
         "table_uuid": "u1",
         "execution_ref": "wf-r1",
         "trigger": "manual",
@@ -193,13 +196,13 @@ def test_create_run_payload_keeps_every_field_of_a_full_run():
 def test_record_result_payload_carries_the_decision_the_workflow_reads():
     """The record result activity returns the failure class, next step and next size the workflow acts on."""
     reply = RecordTableMaintenanceOperationResultUseCaseOutput(
-        run_id="r1", status="running", failure_class="oom", next_step="retry_larger", next_size="M"
+        run_id=RUN_1, status="running", failure_class="oom", next_step="retry_larger", next_size="M"
     )
     activities = table_maintenance_activities_with_fakes(record_result=FakeRecordResult(reply))
 
     result = activities.record_table_maintenance_operation_result(
         {
-            "run_id": "r1",
+            "run_id": RUN_1,
             "operation": "rewrite_data_files",
             "attempt": 1,
             "succeeded": False,
@@ -210,7 +213,7 @@ def test_record_result_payload_carries_the_decision_the_workflow_reads():
     )
 
     assert result == {
-        "run_id": "r1",
+        "run_id": RUN_1,
         "status": "running",
         "failure_class": "oom",
         "next_step": "retry_larger",
@@ -222,7 +225,7 @@ def test_pods_payload_is_an_empty_list_once_every_pod_is_gone():
     """The pods activity returns an empty list, which the workflow reads as the pods being gone."""
     activities = table_maintenance_activities_with_fakes()
 
-    result = activities.get_maintenance_job_pods({"run_id": "r1", "operation": "rewrite_data_files", "attempt": 1})
+    result = activities.get_maintenance_job_pods({"run_id": RUN_1, "operation": "rewrite_data_files", "attempt": 1})
 
     assert result == {"live_pods": []}
 
@@ -230,7 +233,7 @@ def test_pods_payload_is_an_empty_list_once_every_pod_is_gone():
 NOW_DT = datetime(2026, 10, 24, 1, 2, 3, tzinfo=UTC)
 
 WORKFLOW_SUBMIT_REQUEST = {
-    "run_id": "r1",
+    "run_id": RUN_1,
     "operation": "rewrite_data_files",
     "attempt": 2,
     "filters": [{"spec_id": 1, "where": "region = 'eu'"}, {"spec_id": 1, "where": "region = 'us'"}],
@@ -239,10 +242,10 @@ WORKFLOW_SUBMIT_REQUEST = {
     "now": NOW,
 }
 
-WORKFLOW_ATTEMPT_REQUEST = {"run_id": "r1", "operation": "rewrite_data_files", "attempt": 2}
+WORKFLOW_ATTEMPT_REQUEST = {"run_id": RUN_1, "operation": "rewrite_data_files", "attempt": 2}
 
 WORKFLOW_RECORD_RESULT_REQUEST = {
-    "run_id": "r1",
+    "run_id": RUN_1,
     "operation": "rewrite_data_files",
     "attempt": 2,
     "succeeded": True,
@@ -282,7 +285,7 @@ WORKFLOW_CHECKS = [
 ]
 
 WORKFLOW_RECORD_RECONCILIATION_REQUEST = {
-    "reconciliation_id": "rec-1",
+    "reconciliation_id": REC_1,
     "reconciled_at": NOW,
     "wake_reasons": {"catalog_commit": 3},
     "table_uuid": "u1",
@@ -290,7 +293,7 @@ WORKFLOW_RECORD_RECONCILIATION_REQUEST = {
     "status": "planned",
     "skip_reason": None,
     "checks": WORKFLOW_CHECKS,
-    "run_id": "run-1",
+    "run_id": RUN_1,
     "run_start_failed": False,
     "policy_name": "gold",
     "policy_version": 3,
@@ -303,7 +306,7 @@ def test_create_run_input_is_built_from_the_payload_the_maintenance_workflow_sen
     assert CreateTableMaintenanceRunUseCaseInput.from_primitives(
         CREATE_REQUEST
     ) == CreateTableMaintenanceRunUseCaseInput(
-        run_id="r1",
+        run_id=RUN_1,
         table_uuid="u1",
         execution_ref="wf-r1",
         trigger="manual",
@@ -329,7 +332,7 @@ def test_submit_input_is_built_from_the_payload_the_maintenance_workflow_sends()
     )
 
     assert built == SubmitMaintenanceOperationUseCaseInput(
-        run_id="r1",
+        run_id=RUN_1,
         operation="rewrite_data_files",
         attempt=2,
         filters=(
@@ -395,10 +398,10 @@ def test_job_activities_hand_the_use_case_the_input_built_from_the_payload(activ
     getattr(activities, activity)(dict(WORKFLOW_ATTEMPT_REQUEST))
 
     assert {"status": status, "delete": delete}[fake].requests == [
-        input_type(run_id="r1", operation="rewrite_data_files", attempt=2)
+        input_type(run_id=RUN_1, operation="rewrite_data_files", attempt=2)
     ]
     assert input_type.from_primitives(WORKFLOW_ATTEMPT_REQUEST) == input_type(
-        run_id="r1", operation="rewrite_data_files", attempt=2
+        run_id=RUN_1, operation="rewrite_data_files", attempt=2
     )
 
 
@@ -406,7 +409,7 @@ def test_pods_input_is_built_from_the_payload_the_maintenance_workflow_sends():
     """The pods input reads the workflow's attempt triple."""
     assert GetMaintenanceJobPodsUseCaseInput.from_primitives(
         WORKFLOW_ATTEMPT_REQUEST
-    ) == GetMaintenanceJobPodsUseCaseInput(run_id="r1", operation="rewrite_data_files", attempt=2)
+    ) == GetMaintenanceJobPodsUseCaseInput(run_id=RUN_1, operation="rewrite_data_files", attempt=2)
 
 
 def test_pods_activity_refuses_a_payload_without_an_attempt_without_retry():
@@ -414,7 +417,7 @@ def test_pods_activity_refuses_a_payload_without_an_attempt_without_retry():
     activities = table_maintenance_activities_with_fakes()
 
     with pytest.raises(ApplicationError) as caught:
-        activities.get_maintenance_job_pods({"run_id": "r1", "operation": "rewrite_data_files"})
+        activities.get_maintenance_job_pods({"run_id": RUN_1, "operation": "rewrite_data_files"})
 
     assert caught.value.non_retryable
     assert caught.value.type == "InvariantViolation"
@@ -425,7 +428,7 @@ def test_record_result_input_is_built_from_the_payload_the_maintenance_workflow_
     assert RecordTableMaintenanceOperationResultUseCaseInput.from_primitives(
         WORKFLOW_RECORD_RESULT_REQUEST
     ) == RecordTableMaintenanceOperationResultUseCaseInput(
-        run_id="r1",
+        run_id=RUN_1,
         operation="rewrite_data_files",
         attempt=2,
         succeeded=True,
@@ -445,7 +448,7 @@ def test_record_result_input_defaults_the_keys_an_older_workflow_does_not_send()
     """A record request from before failure classes and planned policies reads with the old defaults."""
     built = RecordTableMaintenanceOperationResultUseCaseInput.from_primitives(
         {
-            "run_id": "r1",
+            "run_id": RUN_1,
             "operation": "rewrite_data_files",
             "attempt": 1,
             "succeeded": False,
@@ -485,7 +488,7 @@ def test_record_reconciliation_input_is_built_from_the_payload_the_reconciliatio
     built = RecordTableReconciliationUseCaseInput.from_primitives(WORKFLOW_RECORD_RECONCILIATION_REQUEST)
 
     assert built == RecordTableReconciliationUseCaseInput(
-        reconciliation_id="rec-1",
+        reconciliation_id=REC_1,
         table_uuid="u1",
         reconciled_at=NOW_DT,
         wake_reasons={"catalog_commit": 3},
@@ -493,7 +496,7 @@ def test_record_reconciliation_input_is_built_from_the_payload_the_reconciliatio
         status="planned",
         skip_reason=None,
         checks=tuple(WORKFLOW_CHECKS),
-        run_id="run-1",
+        run_id=RUN_1,
         run_start_failed=False,
         policy_name="gold",
         policy_version=3,
@@ -516,5 +519,5 @@ def test_record_reconciliation_activity_hands_the_use_case_the_input_built_from_
 def test_release_input_is_built_from_the_payload_the_reconciliation_workflow_sends():
     """The release input reads the run and the ISO time the workflow sends."""
     assert ReleaseCompactionCandidatesUseCaseInput.from_primitives(
-        {"run_id": "run-1", "now": NOW}
-    ) == ReleaseCompactionCandidatesUseCaseInput(run_id="run-1", now=NOW_DT)
+        {"run_id": RUN_1, "now": NOW}
+    ) == ReleaseCompactionCandidatesUseCaseInput(run_id=RUN_1, now=NOW_DT)

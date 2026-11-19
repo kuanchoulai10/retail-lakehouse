@@ -34,6 +34,7 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_m
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_search_attribute_keys import (
     TableSearchAttributeKeys,
 )
+from shared_kernel import prefixed_id_from_parts
 
 _ACTIVITY_TIMEOUT = timedelta(minutes=2)
 _ACTIVITY_RETRY = RetryPolicy(maximum_attempts=5, initial_interval=timedelta(seconds=2), backoff_coefficient=2.0)
@@ -56,7 +57,18 @@ _AWAIT_CLOSE_PATCH = "await-cancelled-run-close"
 _RELEASE_PATCH = "release-unstarted-candidates"
 _RECHECK_PATCH = "recheck-held-candidates"
 _COMPACTION_GRANTED_PATCH = "compaction-granted-signal"
+_PREFIXED_IDS_PATCH = "prefixed-run-and-reconciliation-ids"
 _MIN_RECHECK = timedelta(seconds=10)
+_RUN_ID_PREFIX = "mr"
+_RECONCILIATION_ID_PREFIX = "rc"
+_ID_RANDOM_BITS = 74
+
+
+def _minted_id(prefix: str) -> str:
+    """Mint a ``<prefix>-`` id (docs/adr/0011) from the workflow clock and random, so replay mints it again."""
+    return prefixed_id_from_parts(
+        prefix, int(workflow.now().timestamp() * 1000), workflow.random().getrandbits(_ID_RANDOM_BITS)
+    )
 
 
 @workflow.defn(name=TABLE_RECONCILIATION_WORKFLOW)
@@ -423,8 +435,7 @@ class TableReconciliationWorkflow:
 
     async def _plan_and_start_once(self) -> bool:
         manual = self._pending_manual
-        reconciliation_id = str(workflow.uuid4())
-        run_id = str(workflow.uuid4())
+        reconciliation_id, run_id = self._mint_ids()
         now = workflow.now()
         reasons, self._wake_reasons = self._wake_reasons, {}
         self._woken = False
@@ -478,6 +489,13 @@ class TableReconciliationWorkflow:
             await self._release_unstarted(plan, run_id)
         await self._record(record, plan, run_id=run_id if started else None, run_start_failed=not started)
         return False
+
+    @staticmethod
+    def _mint_ids() -> tuple[str, str]:
+        """Return a new reconciliation id and run id; a history from before prefixed ids replays its UUIDs."""
+        if not workflow.patched(_PREFIXED_IDS_PATCH):
+            return str(workflow.uuid4()), str(workflow.uuid4())
+        return _minted_id(_RECONCILIATION_ID_PREFIX), _minted_id(_RUN_ID_PREFIX)
 
     def _next_plan_after(self, plan: dict[str, Any]) -> datetime:
         """Return when to plan next: one interval on, or when the first candidate hold ends if that is sooner."""

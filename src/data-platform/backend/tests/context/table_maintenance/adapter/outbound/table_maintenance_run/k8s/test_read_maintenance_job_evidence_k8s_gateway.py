@@ -36,8 +36,10 @@ CONFIG = SparkK8sConfig(
     s3_endpoint="http://rustfs.object-storage.svc:9000",
     s3_secret_name="rustfs-credentials",
 )
-INPUT = ReadMaintenanceJobEvidenceGatewayInput(run_id="r1", operation="rewrite_data_files", attempt=2)
-OPERATOR_SELECTOR = "sparkoperator.k8s.io/app-name=tm-rdf-r1-a2"
+RUN_ID = "mr-01kaa4zc9qf3v8d2m6xk0w7b1n"
+RUN_ID_SUFFIX = "01kaa4zc9qf3v8d2m6xk0w7b1n"
+INPUT = ReadMaintenanceJobEvidenceGatewayInput(run_id=RUN_ID, operation="rewrite_data_files", attempt=2)
+OPERATOR_SELECTOR = f"sparkoperator.k8s.io/app-name=tm-rdf-{RUN_ID_SUFFIX}-a2"
 
 
 def _terminated(reason: str, exit_code: int, message: str | None = None) -> V1ContainerState:
@@ -109,7 +111,7 @@ def test_evidence_reads_the_application_id_and_error():
     out = gateway.read(INPUT)
     assert out.execution_id == "spark-0123abcd"
     assert out.error == "driver container failed with ExitCode: 1"
-    assert custom.get_namespaced_custom_object.call_args.kwargs["name"] == "tm-rdf-r1-a2"
+    assert custom.get_namespaced_custom_object.call_args.kwargs["name"] == f"tm-rdf-{RUN_ID_SUFFIX}-a2"
     assert custom.get_namespaced_custom_object.call_args.kwargs["namespace"] == "lakehouse-maintenance-operations"
 
 

@@ -58,6 +58,10 @@ from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_pods_ga
     ScriptedReadMaintenanceJobPodsGateway,
 )
 
+RUN_1 = "mr-00000000000000000000000001"
+RUN_9 = "mr-00000000000000000000000009"
+REC_1 = "rc-00000000000000000000000001"
+
 NOW = "2026-10-24T01:02:03+00:00"
 NOW_DT = datetime(2026, 10, 24, 1, 2, 3, tzinfo=UTC)
 
@@ -102,13 +106,13 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
     """The plan activity passes the table, time and manual operations to the use case and returns a dict."""
     activities, fakes = _reconcile()
     result = activities.plan_table_maintenance(
-        {"table_uuid": "u1", "now": NOW, "manual_operations": ["expire_snapshots"], "run_id": "run-1"}
+        {"table_uuid": "u1", "now": NOW, "manual_operations": ["expire_snapshots"], "run_id": RUN_1}
     )
     request = fakes["plan"].requests[0]
     assert request.table_uuid == "u1"
     assert request.now == NOW_DT
     assert request.manual_operations == ("expire_snapshots",)
-    assert request.run_id == "run-1"
+    assert request.run_id == RUN_1
     assert result == {
         "status": "planned",
         "reason": None,
@@ -200,7 +204,7 @@ def test_plan_payload_keeps_every_field_of_a_full_plan():
     activities._plan = plan  # noqa: SLF001
 
     result = activities.plan_table_maintenance(
-        {"table_uuid": "u1", "now": NOW, "manual_operations": None, "run_id": "run-1"}
+        {"table_uuid": "u1", "now": NOW, "manual_operations": None, "run_id": RUN_1}
     )
 
     assert result == {
@@ -281,7 +285,7 @@ def test_plan_payload_keeps_every_field_of_a_full_plan():
 def _record_payload_of(plan: dict) -> dict:
     """Return the record payload the reconciliation workflow builds from a plan, after a Temporal JSON trip."""
     payload = {
-        "reconciliation_id": "rec-1",
+        "reconciliation_id": REC_1,
         "reconciled_at": NOW,
         "wake_reasons": {"catalog_commit": 2},
         "table_uuid": "u1",
@@ -289,7 +293,7 @@ def _record_payload_of(plan: dict) -> dict:
         "status": plan["status"],
         "skip_reason": plan["reason"],
         "checks": plan["checks"],
-        "run_id": "run-1",
+        "run_id": RUN_1,
         "run_start_failed": False,
         "policy_name": plan["policy_name"],
         "policy_version": plan["policy_version"],
@@ -302,7 +306,7 @@ def test_plan_checks_come_back_into_the_record_input_unchanged():
     """The plan's checks cross Temporal as lists of dicts; the record input reads them back as the plan wrote them."""
     activities, fakes = _reconcile()
     activities._plan = FakePlan(_full_plan())  # noqa: SLF001
-    plan = activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW, "run_id": "run-1"})
+    plan = activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW, "run_id": RUN_1})
     payload = _record_payload_of(plan)
 
     activities.record_table_reconciliation(payload)
@@ -388,7 +392,7 @@ def test_plan_checks_are_recorded_as_the_measurements_the_plan_took():
     activities._plan = FakePlan(_measured_plan())  # noqa: SLF001
     repo = InMemoryTableReconciliationsRepo()
     activities._record = RecordTableReconciliationService(repo)  # noqa: SLF001
-    plan = activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW, "run_id": "run-1"})
+    plan = activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW, "run_id": RUN_1})
 
     assert activities.record_table_reconciliation(_record_payload_of(plan)) == {"recorded": True}
 
@@ -409,7 +413,7 @@ WORKFLOW_PLAN_REQUEST = {
     "table_uuid": "u1",
     "now": NOW,
     "manual_operations": ["expire_snapshots", "rewrite_manifests"],
-    "run_id": "run-1",
+    "run_id": RUN_1,
 }
 
 
@@ -421,7 +425,7 @@ def test_plan_input_is_built_from_the_payload_the_reconciliation_workflow_sends(
         table_uuid="u1",
         now=NOW_DT,
         manual_operations=("expire_snapshots", "rewrite_manifests"),
-        run_id="run-1",
+        run_id=RUN_1,
     )
 
 
@@ -494,10 +498,10 @@ def test_release_compaction_candidates_passes_the_run_and_now():
     """The release activity hands back the candidates of a run that never started."""
     activities, fakes = _reconcile()
 
-    result = activities.release_compaction_candidates({"run_id": "run-1", "now": NOW})
+    result = activities.release_compaction_candidates({"run_id": RUN_1, "now": NOW})
 
     (request,) = fakes["release"].requests
-    assert (request.run_id, request.now) == ("run-1", NOW_DT)
+    assert (request.run_id, request.now) == (RUN_1, NOW_DT)
     assert result == {"released": 2}
 
 
@@ -514,7 +518,7 @@ def test_record_reconciliation_passes_every_field_and_returns_dict():
     activities, fakes = _reconcile()
     result = activities.record_table_reconciliation(
         {
-            "reconciliation_id": "r1",
+            "reconciliation_id": REC_1,
             "table_uuid": "u1",
             "reconciled_at": NOW,
             "wake_reasons": {"catalog_commit": 3, "previous_run_finished": 1},
@@ -522,7 +526,7 @@ def test_record_reconciliation_passes_every_field_and_returns_dict():
             "status": "planned",
             "skip_reason": None,
             "checks": [CHECK],
-            "run_id": "run-1",
+            "run_id": RUN_1,
             "run_start_failed": False,
             "policy_name": "nightly",
             "policy_version": 4,
@@ -531,7 +535,7 @@ def test_record_reconciliation_passes_every_field_and_returns_dict():
     )
     assert fakes["record"].requests == [
         RecordTableReconciliationUseCaseInput(
-            reconciliation_id="r1",
+            reconciliation_id=REC_1,
             table_uuid="u1",
             reconciled_at=NOW_DT,
             wake_reasons={"catalog_commit": 3, "previous_run_finished": 1},
@@ -539,7 +543,7 @@ def test_record_reconciliation_passes_every_field_and_returns_dict():
             status="planned",
             skip_reason=None,
             checks=(CHECK,),
-            run_id="run-1",
+            run_id=RUN_1,
             run_start_failed=False,
             policy_name="nightly",
             policy_version=4,
@@ -554,7 +558,7 @@ def test_submit_injects_callback_base_url_and_converts_filters():
     activities, fakes = _maintain()
     result = activities.submit_maintenance_operation(
         {
-            "run_id": "r1",
+            "run_id": RUN_1,
             "operation": "rewrite_data_files",
             "attempt": 2,
             "filters": [{"spec_id": 1, "where": "y = 2"}],
@@ -563,7 +567,7 @@ def test_submit_injects_callback_base_url_and_converts_filters():
         }
     )
     request = fakes["submit"].requests[0]
-    assert request.run_id == "r1"
+    assert request.run_id == RUN_1
     assert request.operation == "rewrite_data_files"
     assert request.attempt == 2
     assert request.filters == (SubmitMaintenanceOperationUseCaseInput.Filter(spec_id=1, where="y = 2"),)
@@ -578,7 +582,7 @@ def test_submit_activity_passes_the_size():
     activities, fakes = _maintain()
     activities.submit_maintenance_operation(
         {
-            "run_id": "r1",
+            "run_id": RUN_1,
             "operation": "rewrite_data_files",
             "attempt": 2,
             "filters": [],
@@ -595,7 +599,7 @@ def test_submit_activity_defaults_the_size_for_old_requests():
     activities, fakes = _maintain()
     activities.submit_maintenance_operation(
         {
-            "run_id": "r1",
+            "run_id": RUN_1,
             "operation": "rewrite_data_files",
             "attempt": 1,
             "filters": [],
@@ -612,7 +616,7 @@ def test_submit_translates_not_found_to_non_retryable():
     with pytest.raises(ApplicationError) as caught:
         activities.submit_maintenance_operation(
             {
-                "run_id": "r1",
+                "run_id": RUN_1,
                 "operation": "rewrite_data_files",
                 "attempt": 1,
                 "filters": [],
@@ -630,7 +634,7 @@ def test_submit_keeps_other_errors_retryable():
     with pytest.raises(RuntimeError, match="k8s down"):
         activities.submit_maintenance_operation(
             {
-                "run_id": "r1",
+                "run_id": RUN_1,
                 "operation": "rewrite_data_files",
                 "attempt": 1,
                 "filters": [],
@@ -643,7 +647,7 @@ def test_submit_keeps_other_errors_retryable():
 def test_status_passes_the_attempt_triple():
     """The status activity passes the run, operation and attempt to the use case and returns its state."""
     activities, fakes = _maintain()
-    request = {"run_id": "r9", "operation": "expire_snapshots", "attempt": 3}
+    request = {"run_id": RUN_9, "operation": "expire_snapshots", "attempt": 3}
     assert activities.get_maintenance_job_status(request) == {
         "state": "FAILED",
         "error": "oom",
@@ -654,7 +658,7 @@ def test_status_passes_the_attempt_triple():
         status_request.operation,
         status_request.attempt,
     ) == (
-        "r9",
+        RUN_9,
         "expire_snapshots",
         3,
     )
@@ -663,15 +667,15 @@ def test_status_passes_the_attempt_triple():
 def test_delete_passes_the_attempt_triple():
     """The delete activity passes the run, operation and attempt to the use case and returns them."""
     activities, fakes = _maintain()
-    result = activities.delete_maintenance_job({"run_id": "r1", "operation": "expire_snapshots", "attempt": 2})
+    result = activities.delete_maintenance_job({"run_id": RUN_1, "operation": "expire_snapshots", "attempt": 2})
     request = fakes["delete"].requests[0]
     assert (request.run_id, request.operation, request.attempt) == (
-        "r1",
+        RUN_1,
         "expire_snapshots",
         2,
     )
     assert result == {
-        "run_id": "r1",
+        "run_id": RUN_1,
         "operation": "expire_snapshots",
         "attempt": 2,
     }
@@ -680,13 +684,13 @@ def test_delete_passes_the_attempt_triple():
 def test_get_maintenance_job_pods_activity_returns_live_pod_names():
     """The pods activity passes the attempt triple through and returns the names of its live pods."""
     activities, fakes = _maintain()
-    fakes["pods_gateway"].set_live_pods("r1", "rewrite_data_files", 2, "driver", "exec-1")
+    fakes["pods_gateway"].set_live_pods(RUN_1, "rewrite_data_files", 2, "driver", "exec-1")
 
-    result = activities.get_maintenance_job_pods({"run_id": "r1", "operation": "rewrite_data_files", "attempt": 2})
+    result = activities.get_maintenance_job_pods({"run_id": RUN_1, "operation": "rewrite_data_files", "attempt": 2})
 
     assert result == {"live_pods": ["driver", "exec-1"]}
     assert [(c.run_id, c.operation, c.attempt) for c in fakes["pods_gateway"].calls] == [
-        ("r1", "rewrite_data_files", 2)
+        (RUN_1, "rewrite_data_files", 2)
     ]
 
 
@@ -696,7 +700,7 @@ def test_create_run_passes_fields_and_returns_iso_dict():
     activities = table_maintenance_activities_with_fakes(create_run=create, record_result=record)
     result = activities.create_table_maintenance_run(
         {
-            "run_id": "r1",
+            "run_id": RUN_1,
             "table_uuid": "u1",
             "trigger": "scheduled",
             "operations": ["rewrite_data_files", "expire_snapshots"],
@@ -705,13 +709,13 @@ def test_create_run_passes_fields_and_returns_iso_dict():
         }
     )
     request = create.requests[0]
-    assert request.run_id == "r1"
+    assert request.run_id == RUN_1
     assert request.execution_ref == "wf-r1"
     assert request.table_uuid == "u1"
     assert request.trigger == "scheduled"
     assert request.operations == ("rewrite_data_files", "expire_snapshots")
     assert request.now == NOW_DT
-    assert result["run_id"] == "r1"
+    assert result["run_id"] == RUN_1
     assert result["status"] == "running"
     assert result["created_at"] == CREATED_AT.isoformat()
 
@@ -722,7 +726,7 @@ def test_record_result_passes_fields():
     activities = table_maintenance_activities_with_fakes(create_run=create, record_result=record)
     result = activities.record_table_maintenance_operation_result(
         {
-            "run_id": "r1",
+            "run_id": RUN_1,
             "operation": "expire_snapshots",
             "attempt": 3,
             "succeeded": False,
@@ -733,7 +737,7 @@ def test_record_result_passes_fields():
     )
     request = record.requests[0]
     assert (request.run_id, request.operation, request.attempt) == (
-        "r1",
+        RUN_1,
         "expire_snapshots",
         3,
     )
@@ -741,7 +745,7 @@ def test_record_result_passes_fields():
     assert request.metrics == {}
     assert request.error == "spark job failed"
     assert request.now == NOW_DT
-    assert result == {"run_id": "r1", "status": "running", "failure_class": None, "next_step": None, "next_size": None}
+    assert result == {"run_id": RUN_1, "status": "running", "failure_class": None, "next_step": None, "next_size": None}
 
 
 def test_record_activity_passes_ending_and_attempt_limit():
@@ -750,7 +754,7 @@ def test_record_activity_passes_ending_and_attempt_limit():
     activities = table_maintenance_activities_with_fakes(create_run=create, record_result=record)
     activities.record_table_maintenance_operation_result(
         {
-            "run_id": "r1",
+            "run_id": RUN_1,
             "operation": "rewrite_data_files",
             "attempt": 2,
             "succeeded": False,
@@ -772,7 +776,7 @@ def test_record_activity_defaults_keys_of_old_requests():
     activities = table_maintenance_activities_with_fakes(create_run=create, record_result=record)
     activities.record_table_maintenance_operation_result(
         {
-            "run_id": "r1",
+            "run_id": RUN_1,
             "operation": "rewrite_data_files",
             "attempt": 1,
             "succeeded": False,
@@ -793,7 +797,7 @@ def test_record_activity_passes_the_planned_policy():
     target = {"type": "namespace", "path": ["iceberg", "sales"]}
     activities.record_table_maintenance_operation_result(
         {
-            "run_id": "r1",
+            "run_id": RUN_1,
             "operation": "rewrite_data_files",
             "attempt": 1,
             "succeeded": False,

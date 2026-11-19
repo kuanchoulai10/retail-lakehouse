@@ -21,9 +21,11 @@ from context.table_maintenance.application.domain.service.compaction_candidate i
     sync_compaction_candidates,
 )
 
+RUN_1 = "mr-00000000000000000000000001"
+
 NOW = datetime(2026, 11, 13, 12, tzinfo=UTC)
 TABLE = TableId("t-1")
-RUN = TableMaintenanceRunId("run-1")
+RUN = TableMaintenanceRunId(RUN_1)
 GIB = 1024**3
 FILTERS = CandidateFilters(min_partition_bytes=1000, quiet_seconds=120, max_quiet_wait_seconds=3600)
 LONG_AGO = NOW - timedelta(hours=2)

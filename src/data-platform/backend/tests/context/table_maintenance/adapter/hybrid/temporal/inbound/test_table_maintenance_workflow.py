@@ -59,7 +59,7 @@ if TYPE_CHECKING:
 
 COMPACTION = "rewrite_data_files"
 EXPIRE = "expire_snapshots"
-RUN_ID = "run-1"
+RUN_ID = "mr-00000000000000000000000001"
 TABLE = "iceberg.e2e.t"
 WORKFLOW_ID = table_maintenance_workflow_id(TABLE, RUN_ID)
 PARENT_ID = "parent-1"

@@ -26,6 +26,8 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
     SubmitMaintenanceJobGatewayInput,
 )
 
+RUN_1 = "mr-00000000000000000000000001"
+
 CONFIG = SparkK8sConfig(
     image="table-maintenance-spark:dev",
     service_account="spark",
@@ -36,13 +38,13 @@ CONFIG = SparkK8sConfig(
 )
 
 
-NAME = spark_application_name("run1", "rewrite_data_files", 1)
-ATTEMPT = ("run1", "rewrite_data_files", 1)
+NAME = spark_application_name(RUN_1, "rewrite_data_files", 1)
+ATTEMPT = (RUN_1, "rewrite_data_files", 1)
 
 
 def _input(**overrides) -> SubmitMaintenanceJobGatewayInput:
     data: dict[str, Any] = {
-        "run_id": "run1",
+        "run_id": RUN_1,
         "operation": "rewrite_data_files",
         "attempt": 1,
         "catalog": "iceberg",
@@ -65,7 +67,7 @@ def test_manifest_snapshot():
     assert app["metadata"]["namespace"] == "lakehouse-maintenance-operations"
     assert app["metadata"]["labels"] == {
         "app.kubernetes.io/part-of": "table-maintenance",
-        "table-maintenance/run-id": "run1",
+        "table-maintenance/run-id": RUN_1,
         "table-maintenance/operation": "rewrite_data_files",
         "table-maintenance/attempt": "1",
     }
@@ -118,9 +120,9 @@ def test_manifest_driver_and_executor_env():
 
 
 def test_application_name_fits_k8s_limit():
-    """The application name fits the 63 character Kubernetes limit."""
+    """The application name fits the 63 character Kubernetes limit, even for the largest run id and attempt."""
     for operation in MaintenanceOperation:
-        name = spark_application_name("A" * 64, operation.value, 12)
+        name = spark_application_name("mr-7zzzzzzzzzzzzzzzzzzzzzzzzz", operation.value, 999)
         assert len(name) <= 63
 
 

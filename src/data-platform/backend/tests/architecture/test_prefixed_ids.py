@@ -30,6 +30,8 @@ if TYPE_CHECKING:
 EXPECTED_PREFIXES: dict[str, str] = {
     "TableDiscoveryRulesId": "dp",
     "TableDiscoveryRuleId": "dr",
+    "TableMaintenanceRunId": "mr",
+    "TableReconciliationId": "rc",
 }
 UNPREFIXED: frozenset[str] = frozenset(
     {
@@ -46,8 +48,6 @@ PENDING: frozenset[str] = frozenset(
     {
         "TableMaintenancePolicyId",
         "TableMaintenancePolicyAttachmentId",
-        "TableMaintenanceRunId",
-        "TableReconciliationId",
         "CompactionRoundId",
         "CompactionCandidateId",
     }

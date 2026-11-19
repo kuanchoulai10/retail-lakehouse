@@ -33,6 +33,8 @@ from tests.context.table_maintenance.fakes.in_memory_compaction_candidates_repo 
 from tests.context.table_maintenance.fakes.in_memory_compaction_rounds_repo import InMemoryCompactionRoundsRepo
 from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
 
+RUN_1 = "mr-00000000000000000000000001"
+
 NOW = datetime(2026, 11, 13, 12, tzinfo=UTC)
 SLA = {
     MaintenancePriority.P0: timedelta(hours=1),
@@ -188,7 +190,7 @@ def test_a_table_busy_with_a_run_gets_no_grant():
     repo = InMemoryCompactionCandidatesRepo()
     running = _candidate("t-busy", "running", score=0.99)
     running.grant("round-0", NOW + GRANT_LEASE, NOW - timedelta(minutes=1))
-    run = TableMaintenanceRunId("run-1")
+    run = TableMaintenanceRunId(RUN_1)
     running.claim(run, NOW + timedelta(hours=1), NOW - timedelta(minutes=1))
     running.start(run, NOW - timedelta(minutes=1))
     repo.save_all([running, _candidate("t-busy", "more", score=0.9), _candidate("t-idle", "a", score=0.5)])
@@ -255,7 +257,7 @@ def test_a_rebuilt_round_counts_grants_its_tables_already_claimed(candidates, mo
     with pytest.raises(RuntimeError):
         _run(service)
     (a,) = [c for c in candidates.list_all() if c.partition.values == ("a",)]
-    a.claim(TableMaintenanceRunId("run-1"), NOW + timedelta(hours=1), NOW + timedelta(seconds=1))
+    a.claim(TableMaintenanceRunId(RUN_1), NOW + timedelta(hours=1), NOW + timedelta(seconds=1))
     candidates.save_all([a])
 
     again = _run(service, now=NOW + timedelta(seconds=5))
@@ -277,7 +279,7 @@ def _held(table: str, value: str) -> CompactionCandidate:
 
 def _finished(table: str, value: str, *, succeeded: bool) -> CompactionCandidate:
     candidate = _candidate(table, value, score=0.95)
-    run = TableMaintenanceRunId(f"run-{value}")
+    run = TableMaintenanceRunId.new()
     at = NOW - timedelta(minutes=3)
     candidate.grant("round-0", NOW + GRANT_LEASE, at)
     candidate.claim(run, NOW + timedelta(hours=1), at)

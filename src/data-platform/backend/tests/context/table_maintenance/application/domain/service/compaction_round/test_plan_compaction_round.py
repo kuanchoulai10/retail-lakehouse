@@ -21,6 +21,8 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRunId
 from context.table_maintenance.application.domain.service.compaction_round import plan_compaction_round
 
+RUN_1 = "mr-00000000000000000000000001"
+
 NOW = datetime(2026, 11, 13, 12, tzinfo=UTC)
 ROUND = CompactionRoundId("round-1")
 WEIGHTS = PriorityWeights(p0=4.0, p1=2.0, p2=1.0)
@@ -189,7 +191,7 @@ def _busy(table: str, value: str, state: str) -> CompactionCandidate:
     candidate = _candidate(table, value, score=0.99)
     candidate.grant("round-0", NOW + timedelta(minutes=10), NOW - timedelta(minutes=1))
     if state != "granted":
-        run = TableMaintenanceRunId("run-1")
+        run = TableMaintenanceRunId(RUN_1)
         candidate.claim(run, NOW + timedelta(hours=1), NOW - timedelta(minutes=1))
         candidate.start(run, NOW - timedelta(minutes=1))
         if state == "done":
