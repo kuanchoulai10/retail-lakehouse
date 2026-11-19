@@ -16,6 +16,9 @@ Namespace: lakehouse-control-plane
 Namespace: lakehouse-maintenance-operations
   ServiceAccount/Role/RoleBinding table-maintenance-spark   Spark driver
   Role/RoleBinding table-maintenance-worker                 worker may manage SparkApplications
+Cluster-scoped
+  Queue (volcano)  table-maintenance, table-maintenance-urgent   capability cpu 2 / memory 5017Mi (one L job) each
+  PriorityClass    table-maintenance-p0 .. p3                    values 1000003 .. 1000000, preemptionPolicy Never
 ```
 
 ## Deploy
@@ -67,6 +70,19 @@ Every maintenance attempt runs at one of three sizes, set under `spark.sizes` in
 An L job fits on the 8-CPU / 26 GB node only alone; next to another Spark job it stays Pending while its attempt clock runs. A partial override (one `GLAC_SPARK__SIZE_L__EXECUTOR_MEMORY`) keeps the other values of that size.
 
 An operation starts at the size its table last succeeded at (S for a table that never did). Each failed attempt is classified when it is recorded: `oom` (a driver or executor container `OOMKilled` or exit 137, an executor exit 52, or `java.lang.OutOfMemoryError` / `OOMKilled` / `exit code 52` in the error or a driver termination message; container exits count only when Spark itself ended the attempt, since the platform's own deletes also exit 137), `timeout`, `commit_conflict`, `permanent` (missing table, forbidden), `cancelled` or `other`. An `oom` retries at the next size; other failures retry at the same size, within `worker.maxAttempts` (3) attempts. An `oom` at L stops the operation and marks it **needs attention** on the table: reconcile stops planning it until a manual run of it, or until another policy (or policy version, or the same policy attached elsewhere) applies to the table than the one its run was planned under. The next reconcile after such a change clears the mark for good, so going back to the earlier policy does not bring the block back; until that reconcile, health and the table API both still show the mark. A success records the attempt's size, and the Spark runtime reports the peak heap the driver and the busiest executor used, in bytes (`peak_driver_heap_bytes`, `peak_executor_heap_bytes`, read from the driver's own Spark UI REST API on localhost before the session stops). A success counts toward stepping down only when both peaks fit within 70% of the next smaller size's driver and executor memory (as set in `spark.sizes`); three such successes in a row at the remembered size step it down one size, and a role with no measured peak never counts. The run API lists every attempt with its size, failure class, event-log state and next step, and the console's Maintenance tab shows them.
+
+### Volcano queues and priorities
+
+Maintenance SparkApplications are scheduled by Volcano. The `volcano` block in `chart/values.yaml` creates two Volcano queues and four PriorityClasses (`chart/templates/volcano.yaml`, wave 10 installs the CRDs) and renders their names for the worker as `GLAC_SPARK__VOLCANO__QUEUE`, `GLAC_SPARK__VOLCANO__URGENT_QUEUE` and `GLAC_SPARK__VOLCANO__PRIORITY_CLASS_PREFIX`:
+
+| Table priority | Queue | PriorityClass | Value |
+|---|---|---|---|
+| P0 | `table-maintenance-urgent` | `table-maintenance-p0` | 1000003 |
+| P1 | `table-maintenance` | `table-maintenance-p1` | 1000002 |
+| P2 | `table-maintenance` | `table-maintenance-p2` | 1000001 |
+| P3 (default) | `table-maintenance` | `table-maintenance-p3` | 1000000 |
+
+Each queue's `capability` is one L job (`cpu: "2"`, `memory: 5017Mi`), with no `guarantee` and no `reclaimable`. Every class has `preemptionPolicy: Never` and `globalDefault: false`: a higher priority is picked first when capacity frees up, but never evicts a running job.
 
 ### Compaction candidates
 

@@ -1,0 +1,25 @@
+{{- range $queue := list .Values.volcano.queues.maintenance .Values.volcano.queues.urgent }}
+---
+apiVersion: scheduling.volcano.sh/v1beta1
+kind: Queue
+metadata:
+  name: {{ $queue.name }}
+  labels:
+    {{- include "table-maintenance.labels" (dict "root" $ "name" "table-maintenance" "component" "scheduling") | nindent 4 }}
+spec:
+  capability:
+    cpu: {{ $queue.capability.cpu | quote }}
+    memory: {{ $queue.capability.memory | quote }}
+{{- end }}
+{{- range $priority, $value := .Values.volcano.priorities }}
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: {{ $.Values.volcano.priorityClassPrefix }}-{{ lower $priority }}
+  labels:
+    {{- include "table-maintenance.labels" (dict "root" $ "name" "table-maintenance" "component" "scheduling") | nindent 4 }}
+value: {{ $value | int64 }}
+preemptionPolicy: Never
+globalDefault: false
+{{- end }}

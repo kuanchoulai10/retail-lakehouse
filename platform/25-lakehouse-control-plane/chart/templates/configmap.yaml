@@ -27,6 +27,9 @@ data:
   GLAC_SPARK__NAMESPACE: {{ .Values.namespaces.maintenanceOperations | quote }}
   GLAC_SPARK__SPARK_VERSION: {{ .Values.spark.sparkVersion | quote }}
   GLAC_SPARK__ICEBERG_VERSION: {{ .Values.spark.icebergVersion | quote }}
+  GLAC_SPARK__VOLCANO__QUEUE: {{ .Values.volcano.queues.maintenance.name | quote }}
+  GLAC_SPARK__VOLCANO__URGENT_QUEUE: {{ .Values.volcano.queues.urgent.name | quote }}
+  GLAC_SPARK__VOLCANO__PRIORITY_CLASS_PREFIX: {{ .Values.volcano.priorityClassPrefix | quote }}
   GLAC_SPARK__SIZE_S__DRIVER_MEMORY: {{ .Values.spark.sizes.S.driverMemory | quote }}
   GLAC_SPARK__SIZE_S__EXECUTOR_MEMORY: {{ .Values.spark.sizes.S.executorMemory | quote }}
   GLAC_SPARK__SIZE_S__EXECUTOR_INSTANCES: {{ .Values.spark.sizes.S.executorInstances | quote }}
