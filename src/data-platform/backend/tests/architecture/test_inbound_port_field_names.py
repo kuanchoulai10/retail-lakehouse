@@ -9,15 +9,14 @@ classes included.
 
 from __future__ import annotations
 
-import importlib
 import warnings
 
 import pytest
 from pydantic import BaseModel
 
 from base import UseCaseInput, UseCaseOutput
-from tests.architecture.contexts import context_module
-from tests.architecture.inbound_ports import INBOUND_PORT_ROOTS, use_case_dirs
+from tests.architecture.inbound_port_models import port_models
+from tests.architecture.inbound_ports import use_case_dirs
 
 RESERVED_ATTRIBUTES = frozenset(dir(BaseModel)) | frozenset(dir(UseCaseInput)) | frozenset(dir(UseCaseOutput))
 
@@ -32,32 +31,15 @@ def shadowing_fields(model: type[BaseModel]) -> list[str]:
     return problems
 
 
-def _port_models(key: str) -> list[type[BaseModel]]:
-    """Return the top-level input and output models defined by the use case ``key``."""
-    context, aggregate, use_case = key.split("/")
-    package = ".".join([context_module(context), *INBOUND_PORT_ROOTS, aggregate, use_case])
-    models: list[type[BaseModel]] = []
-    for file_name, base in (("input", UseCaseInput), ("output", UseCaseOutput)):
-        if not (use_case_dirs()[key] / f"{file_name}.py").is_file():
-            continue
-        module = importlib.import_module(f"{package}.{file_name}")
-        models.extend(
-            value
-            for value in vars(module).values()
-            if isinstance(value, type) and issubclass(value, base) and value.__module__ == module.__name__
-        )
-    return models
-
-
 def test_the_scan_finds_models_to_check() -> None:
     """The use cases yield models, so a pass means something."""
-    assert sum(len(_port_models(key)) for key in sorted(use_case_dirs())) > 0
+    assert sum(len(port_models(key)) for key in sorted(use_case_dirs())) > 0
 
 
 @pytest.mark.parametrize("key", sorted(use_case_dirs()))
 def test_no_port_field_shadows_a_base_model_attribute(key: str) -> None:
     """Every field of an input or output, and of its nested classes, has a name the port bases lack."""
-    problems = [problem for model in _port_models(key) for problem in shadowing_fields(model)]
+    problems = [problem for model in port_models(key) for problem in shadowing_fields(model)]
     assert problems == [], f"{key} has fields that shadow a pydantic.BaseModel attribute: {problems}"
 
 
