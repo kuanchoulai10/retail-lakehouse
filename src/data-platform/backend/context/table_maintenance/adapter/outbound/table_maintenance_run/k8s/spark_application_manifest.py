@@ -109,7 +109,8 @@ def build_spark_application(
     dies with an error carries the tail of its log as its termination message.
     The application is scheduled by Volcano in the queue and priority class of the run's
     priority, with the PodGroup's cpu and memory spelled out, because the operator's own
-    arithmetic cannot read Spark memory strings.
+    arithmetic cannot read Spark memory strings. The operator copies the class only to the
+    PodGroup, so the driver and executor pods are given it too.
     """
     resources = config.sizes.get(input.size)
     if resources is None:
@@ -118,6 +119,7 @@ def build_spark_application(
     s3_env_from = [{"secretRef": {"name": config.s3_secret_name}}]
     attempt_labels = maintenance_job_pod_labels(input.run_id, input.operation, input.attempt)
     region_env = {"name": "AWS_REGION", "value": config.s3_region}
+    priority_class = config.volcano.priority_class_for(input.priority)
     return {
         "apiVersion": f"{GROUP}/{VERSION}",
         "kind": "SparkApplication",
@@ -140,13 +142,14 @@ def build_spark_application(
             "batchScheduler": "volcano",
             "batchSchedulerOptions": {
                 "queue": config.volcano.queue_for(input.priority),
-                "priorityClassName": config.volcano.priority_class_for(input.priority),
+                "priorityClassName": priority_class,
                 "resources": pod_group_resources(resources, config.driver_cores, config.executor_cores),
             },
             "deps": {"jars": _jars(config)},
             "sparkConf": _spark_conf(config, input),
             "driver": {
                 "labels": dict(attempt_labels),
+                "priorityClassName": priority_class,
                 "cores": config.driver_cores,
                 "coreLimit": config.driver_core_limit,
                 "memory": resources.driver_memory,
@@ -179,6 +182,7 @@ def build_spark_application(
             },
             "executor": {
                 "labels": dict(attempt_labels),
+                "priorityClassName": priority_class,
                 "instances": resources.executor_instances,
                 "cores": config.executor_cores,
                 "coreLimit": config.executor_core_limit,
