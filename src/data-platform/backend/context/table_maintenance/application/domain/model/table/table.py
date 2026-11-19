@@ -8,7 +8,11 @@ from typing import TYPE_CHECKING
 from pydantic import Field
 
 from base import AggregateRoot
-from context.table_maintenance.application.domain.model.shared import ComputeSize, MaintenanceOperation
+from context.table_maintenance.application.domain.model.shared import (
+    ComputeSize,
+    MaintenanceOperation,
+    TablePriority,
+)
 from context.table_maintenance.application.domain.model.table.invalid_table_transition import (
     InvalidTableTransition,
 )
@@ -45,6 +49,8 @@ class Table(AggregateRoot[TableId]):
     ``unmanage`` apply their decision, and an unmanaged table keeps its row, so
     its history and per-operation state survive.
 
+    ``priority`` says how urgently the table's maintenance is scheduled; it starts at P3.
+
     ``last_committed_at`` is the newest commit seen in the catalog, None until one is
     seen. ``last_discovered_at`` is stamped when the table is dropped: the last time
     discovery saw it. A live table takes its catalog's last discovery instead (see
@@ -61,6 +67,7 @@ class Table(AggregateRoot[TableId]):
     operation_states: dict[MaintenanceOperation, OperationState] = Field(default_factory=dict)
     last_committed_at: datetime | None = None
     last_discovered_at: datetime | None = None
+    priority: TablePriority = TablePriority.P3
 
     @classmethod
     def register(
@@ -123,6 +130,13 @@ class Table(AggregateRoot[TableId]):
         if self.status == TableStatus.UNMANAGED:
             return
         self._assign_together(status=TableStatus.UNMANAGED, matched_rule_id=None, updated_at=now)
+
+    def set_priority(self, priority: TablePriority, now: datetime) -> None:
+        """Set how urgently the table's maintenance is scheduled; idempotent."""
+        self._ensure_not_dropped()
+        if self.priority == priority:
+            return
+        self._assign_together(priority=priority, updated_at=now)
 
     def mark_dropped(self, now: datetime, *, catalog_discovered_at: datetime | None = None) -> None:
         """Mark the table dropped; terminal and idempotent.

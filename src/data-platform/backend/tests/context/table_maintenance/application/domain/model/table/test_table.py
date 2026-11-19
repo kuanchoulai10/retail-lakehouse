@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from base import InvariantViolation
-from context.table_maintenance.application.domain.model.shared import ComputeSize, MaintenanceOperation
+from context.table_maintenance.application.domain.model.shared import ComputeSize, MaintenanceOperation, TablePriority
 from context.table_maintenance.application.domain.model.table import (
     AppliedPolicyRef,
     AttentionMark,
@@ -299,3 +299,33 @@ def test_lifting_nothing_leaves_the_table_unchanged():
     t.mark_needs_attention(OP, AttentionMark(since=T0, reason="oom", policy=v1, policy_name=DEFAULT_NAME), T0)
     assert t.lift_attention_set_under_another_policy(v1, T1) == []
     assert t.updated_at == T0
+
+
+def test_a_registered_table_starts_at_p3():
+    """A table registered through a rule or without one starts at the default priority P3."""
+    assert managed().priority is TablePriority.P3
+    assert Table.register_unmanaged(TableId("u1"), NAME, T0).priority is TablePriority.P3
+
+
+def test_set_priority_moves_updated_at():
+    """Setting another priority changes it and stamps the change time."""
+    t = managed()
+    t.set_priority(TablePriority.P1, T1)
+    assert t.priority is TablePriority.P1
+    assert t.updated_at == T1
+
+
+def test_set_the_same_priority_is_a_no_op():
+    """Setting the priority a table already has leaves its updated time alone."""
+    t = managed()
+    t.set_priority(TablePriority.P3, T1)
+    assert t.priority is TablePriority.P3
+    assert t.updated_at == T0
+
+
+def test_a_dropped_table_refuses_set_priority():
+    """A dropped table's priority cannot be changed."""
+    t = managed()
+    t.mark_dropped(T1)
+    with pytest.raises(InvalidTableTransition):
+        t.set_priority(TablePriority.P0, T1)

@@ -20,6 +20,7 @@ from context.table_maintenance.application.port.outbound.table import (
     TableMaintenancePolicyId,
     TableMaintenancePolicyName,
     TableName,
+    TablePriority,
     TableStatus,
 )
 
@@ -118,6 +119,7 @@ class TableRowMapper:
             "operation_states_json": {op.value: _encode_state(state) for op, state in table.operation_states.items()},
             "last_committed_at": table.last_committed_at,
             "last_discovered_at": table.last_discovered_at,
+            "priority": table.priority.value,
         }
 
     @staticmethod
@@ -140,4 +142,5 @@ class TableRowMapper:
             },
             last_committed_at=row["last_committed_at"],
             last_discovered_at=row["last_discovered_at"],
+            priority=TablePriority(row["priority"] or TablePriority.default()),
         )

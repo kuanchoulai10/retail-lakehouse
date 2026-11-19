@@ -13,6 +13,7 @@ from context.table_maintenance.adapter.outbound.table.sql import TablesSqlRepo, 
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
+    TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
     AppliedPolicyRef,
@@ -365,6 +366,26 @@ def test_a_table_stored_before_the_two_times_reads_them_as_unknown(tmp_path: Pat
     loaded = TablesSqlRepo(engine).get(TableId("u-old"))
     assert loaded is not None
     assert (loaded.last_committed_at, loaded.last_discovered_at) == (None, None)
+
+
+def test_priority_round_trips(repo: TablesSqlRepo):
+    """A table's priority is stored and read back."""
+    table = _table()
+    table.set_priority(TablePriority.P1, NOW + timedelta(minutes=1))
+    repo.create(table)
+    loaded = repo.get(table.id)
+    assert loaded is not None
+    assert loaded.priority is TablePriority.P1
+
+
+def test_a_row_without_a_priority_reads_as_p3(repo: TablesSqlRepo, engine: Engine):
+    """A row stored before priorities existed (priority NULL) reads as the default, P3."""
+    repo.create(_table())
+    with engine.begin() as connection:
+        connection.execute(text("UPDATE tables SET priority = NULL"))
+    loaded = repo.get(TableId("u1"))
+    assert loaded is not None
+    assert loaded.priority is TablePriority.P3
 
 
 @pytest.fixture(params=["sql", "memory"])

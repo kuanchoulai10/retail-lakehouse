@@ -5,6 +5,7 @@ from __future__ import annotations
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
+    TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
     AppliedPolicyRef,
@@ -92,6 +93,7 @@ __all__ = [
     "TableMetadataObservation",
     "TableMetadataRef",
     "TableName",
+    "TablePriority",
     "TableStatus",
     "TablesRepo",
 ]

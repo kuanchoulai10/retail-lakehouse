@@ -20,5 +20,6 @@ tables_table = Table(
     Column("operation_states_json", JSON, nullable=False),
     Column("last_committed_at", UtcDateTime, nullable=True),
     Column("last_discovered_at", UtcDateTime, nullable=True),
+    Column("priority", String, nullable=True),
     Index("ix_tables_name", "catalog", "namespace", "table_name"),
 )
