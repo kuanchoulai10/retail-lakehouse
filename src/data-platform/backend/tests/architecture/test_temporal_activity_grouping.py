@@ -4,7 +4,9 @@ Each workflow contract package names its activities in one ``XActivity`` enum
 (``contracts/<workflow>/activity.py``), and one ``XActivities`` class in
 ``inbound/activities/`` holds every method decorated with a member of that enum.
 Each method wraps exactly one inbound port, except the signal wiring that talks
-to the Temporal client instead.
+to the Temporal client instead, exempted by enum and member. The scan sees
+exactly the enum members, so a method decorated with a string name, or a
+member no method is decorated with, is reported.
 """
 
 from __future__ import annotations
@@ -23,7 +25,11 @@ _CONTRACTS = _TEMPORAL / "contracts"
 _ENUM_SUFFIX = "Activity"
 _CLASS_SUFFIX = "Activities"
 
-SIGNAL_EXCEPTIONS = {"SIGNAL_ADMISSION_ACQUIRE", "SIGNAL_PARENT", "GET_WORKFLOW_RUNNING"}
+SIGNAL_EXCEPTIONS = {
+    ("TableMaintenanceActivity", "SIGNAL_ADMISSION_ACQUIRE"),
+    ("TableMaintenanceActivity", "SIGNAL_PARENT"),
+    ("TableReconciliationActivity", "GET_WORKFLOW_RUNNING"),
+}
 
 
 @dataclass(frozen=True)
@@ -110,6 +116,29 @@ def activity_enums(contracts_dir: Path) -> set[str]:
     }
 
 
+def activity_enum_members(contracts_dir: Path) -> set[tuple[str, str]]:
+    """Return ``(enum, member)`` for every member of the ``*Activity`` enums in ``contracts/*/activity.py``."""
+    return {
+        (node.name, target.id)
+        for path in contracts_dir.glob("*/activity.py")
+        for node in ast.parse(path.read_text()).body
+        if isinstance(node, ast.ClassDef) and node.name.endswith(_ENUM_SUFFIX)
+        for statement in node.body
+        if isinstance(statement, ast.Assign)
+        for target in statement.targets
+        if isinstance(target, ast.Name)
+    }
+
+
+def unscanned_activity_members(contracts_dir: Path, activities_dir: Path) -> list[str]:
+    """Return each enum member no method is decorated with, and each decorated name that is not a member."""
+    members = activity_enum_members(contracts_dir)
+    scanned = {(found.enum, found.member) for found in decorated_activities(activities_dir)}
+    return [f"{enum}.{member} is not a decorated activity" for enum, member in sorted(members - scanned)] + [
+        f"{enum}.{member} is not an activity enum member" for enum, member in sorted(scanned - members)
+    ]
+
+
 def _class_for(enum: str) -> str:
     return enum.removesuffix(_ENUM_SUFFIX) + _CLASS_SUFFIX
 
@@ -126,9 +155,9 @@ def misplaced_activities(activities_dir: Path) -> list[str]:
 def port_call_violations(activities_dir: Path) -> list[str]:
     """Return each activity that calls other than one inbound port, or a signal activity that calls one."""
     return [
-        f"{found.owner}.{found.method} ({found.member}) calls {found.port_calls} inbound ports"
+        f"{found.owner}.{found.method} ({found.enum}.{found.member}) calls {found.port_calls} inbound ports"
         for found in decorated_activities(activities_dir)
-        if found.port_calls != (0 if found.member in SIGNAL_EXCEPTIONS else 1)
+        if found.port_calls != (0 if (found.enum, found.member) in SIGNAL_EXCEPTIONS else 1)
     ]
 
 
@@ -153,9 +182,9 @@ def test_one_activities_class_per_activity_enum(context: str):
 
 
 def test_signal_exceptions_name_real_activities():
-    """Every exempted name is an activity some activities class still declares."""
+    """Every exempted enum member is an activity some activities class still declares."""
     members = {
-        found.member
+        (found.enum, found.member)
         for context in _temporal_contexts()
         for found in decorated_activities(context_dir(context) / _ACTIVITIES)
     }
@@ -196,6 +225,72 @@ def test_scan_counts_the_inbound_port_calls(tmp_path: Path):
     """An activity calling its port twice is reported; a signal activity calling none is not."""
     (tmp_path / "table_reconciliation_activities.py").write_text(_MISPLACED)
     assert port_call_violations(tmp_path) == [
-        "TableReconciliationActivities.submit_maintenance_operation (SUBMIT_MAINTENANCE_OPERATION) "
-        "calls 2 inbound ports"
+        "TableReconciliationActivities.submit_maintenance_operation "
+        "(TableMaintenanceActivity.SUBMIT_MAINTENANCE_OPERATION) calls 2 inbound ports"
+    ]
+
+
+@pytest.mark.parametrize("context", _temporal_contexts())
+def test_every_activity_enum_member_is_a_scanned_activity(context: str):
+    """The scan sees exactly the activity enum members, so an activity decorated without an enum name is caught."""
+    root = context_dir(context)
+    assert unscanned_activity_members(root / _CONTRACTS, root / _ACTIVITIES) == []
+
+
+_CONTRACT = """
+from enum import StrEnum
+
+
+class TableReconciliationActivity(StrEnum):
+    PLAN_TABLE_MAINTENANCE = "plan_table_maintenance"
+    RECORD_TABLE_RECONCILIATION = "record_table_reconciliation"
+"""
+
+_NAMED_BY_STRING = """
+from temporalio import activity
+
+
+class TableReconciliationActivities:
+    @activity.defn(name=TableReconciliationActivity.PLAN_TABLE_MAINTENANCE)
+    def plan_table_maintenance(self, request):
+        return self._plan.execute(request)
+
+    @activity.defn(name="record_table_reconciliation")
+    def record_table_reconciliation(self, request):
+        return self._record.execute(request)
+
+    @activity.defn(name=TableReconciliationActivity.RELEASE_COMPACTION_CANDIDATES)
+    def release_compaction_candidates(self, request):
+        return self._release.execute(request)
+"""
+
+
+def test_scan_reports_a_member_no_method_is_decorated_with(tmp_path: Path):
+    """A member named by a string, not the enum, is missing from the scan; a name not in the enum is extra."""
+    (tmp_path / "contracts" / "table_reconciliation").mkdir(parents=True)
+    (tmp_path / "contracts" / "table_reconciliation" / "activity.py").write_text(_CONTRACT)
+    (tmp_path / "activities").mkdir()
+    (tmp_path / "activities" / "table_reconciliation_activities.py").write_text(_NAMED_BY_STRING)
+    assert unscanned_activity_members(tmp_path / "contracts", tmp_path / "activities") == [
+        "TableReconciliationActivity.RECORD_TABLE_RECONCILIATION is not a decorated activity",
+        "TableReconciliationActivity.RELEASE_COMPACTION_CANDIDATES is not an activity enum member",
+    ]
+
+
+_SIGNAL_OF_ANOTHER_ENUM = """
+from temporalio import activity
+
+
+class TableReconciliationActivities:
+    @activity.defn(name=TableReconciliationActivity.SIGNAL_PARENT)
+    async def signal_parent(self, request):
+        return None
+"""
+
+
+def test_signal_exception_matches_the_enum_too(tmp_path: Path):
+    """Only TableMaintenanceActivity.SIGNAL_PARENT is exempt; a same-named member of another enum is not."""
+    (tmp_path / "table_reconciliation_activities.py").write_text(_SIGNAL_OF_ANOTHER_ENUM)
+    assert port_call_violations(tmp_path) == [
+        "TableReconciliationActivities.signal_parent (TableReconciliationActivity.SIGNAL_PARENT) calls 0 inbound ports"
     ]
