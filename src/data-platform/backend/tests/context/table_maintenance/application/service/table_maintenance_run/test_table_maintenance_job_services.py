@@ -10,6 +10,7 @@ import pytest
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
+    TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
     Table,
@@ -433,3 +434,27 @@ def test_submit_refuses_an_unknown_size(submitter, run, runs_repo, submit_job, n
         _submit(submitter, now, size="XL")
     assert submit_job.jobs == {}
     assert runs_repo.get(TableMaintenanceRunId(RUN_1)).operations[0].attempts == 0
+
+
+def test_submit_passes_the_runs_priority(submitter, runs_repo, tables_repo, submit_job, now):
+    """The job is submitted with the priority the run was created with."""
+    _table(tables_repo, now)
+    runs_repo.create(
+        TableMaintenanceRun.create(
+            TableMaintenanceRunId(RUN_1),
+            TableId("u-1"),
+            TriggerType.MANUAL,
+            [OPS.REWRITE_DATA_FILES],
+            now,
+            execution_ref="wf-run-1",
+            priority=TablePriority.P1,
+        )
+    )
+    out = _submit(submitter, now)
+    assert submit_job.jobs[out.job_name].priority == "P1"
+
+
+def test_submit_of_a_default_run_is_p3(submitter, run, submit_job, now):
+    """A run created without a priority is submitted as P3."""
+    out = _submit(submitter, now)
+    assert submit_job.jobs[out.job_name].priority == "P3"

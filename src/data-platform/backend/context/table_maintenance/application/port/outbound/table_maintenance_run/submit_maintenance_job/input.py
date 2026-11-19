@@ -23,3 +23,4 @@ class SubmitMaintenanceJobGatewayInput:
     procedure_args: dict[str, Any]
     callback_url: str
     size: str = "S"
+    priority: str = "P3"

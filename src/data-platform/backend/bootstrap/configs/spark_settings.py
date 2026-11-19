@@ -7,6 +7,7 @@ from typing import Any
 from pydantic import BaseModel, Field, model_validator
 
 from bootstrap.configs.spark_size_settings import SparkSizeSettings
+from bootstrap.configs.spark_volcano_settings import SparkVolcanoSettings
 
 SIZE_DEFAULTS: dict[str, dict[str, Any]] = {
     "size_s": {"driver_memory": "768m", "executor_memory": "768m", "executor_instances": 1},
@@ -24,6 +25,7 @@ class SparkSettings(BaseModel):
     ``AWS_SECRET_ACCESS_KEY``. Each maintenance attempt runs at one of the sizes
     ``size_s``, ``size_m`` or ``size_l``, which set its memory and executor count; a
     size given only in part (one environment variable) keeps its defaults for the rest.
+    ``volcano`` names the queues and priority classes the applications are scheduled in.
     """
 
     image: str = "table-maintenance-spark:0.1.0"
@@ -45,6 +47,7 @@ class SparkSettings(BaseModel):
     size_s: SparkSizeSettings = Field(default_factory=lambda: SparkSizeSettings(**SIZE_DEFAULTS["size_s"]))
     size_m: SparkSizeSettings = Field(default_factory=lambda: SparkSizeSettings(**SIZE_DEFAULTS["size_m"]))
     size_l: SparkSizeSettings = Field(default_factory=lambda: SparkSizeSettings(**SIZE_DEFAULTS["size_l"]))
+    volcano: SparkVolcanoSettings = Field(default_factory=SparkVolcanoSettings)
 
     @model_validator(mode="before")
     @classmethod

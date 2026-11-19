@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import (
     SparkK8sConfig,
     SparkSizeResources,
+    VolcanoSettings,
 )
 
 if TYPE_CHECKING:
@@ -48,4 +49,9 @@ def build_spark_config(settings: AppSettings) -> SparkK8sConfig:
         executor_cores=spark.executor_cores,
         executor_core_limit=spark.executor_core_limit,
         sizes={"S": _resources(spark.size_s), "M": _resources(spark.size_m), "L": _resources(spark.size_l)},
+        volcano=VolcanoSettings(
+            queue=spark.volcano.queue,
+            urgent_queue=spark.volcano.urgent_queue,
+            priority_class_prefix=spark.volcano.priority_class_prefix,
+        ),
     )

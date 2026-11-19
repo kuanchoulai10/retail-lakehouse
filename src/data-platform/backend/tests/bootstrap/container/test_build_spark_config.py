@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from bootstrap.configs import AppSettings, CatalogSettings, SparkSettings, SparkSizeSettings
+from bootstrap.configs import AppSettings, CatalogSettings, SparkSettings, SparkSizeSettings, SparkVolcanoSettings
 from bootstrap.container import build_spark_config
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import (
     SparkK8sConfig,
     SparkSizeResources,
+    VolcanoSettings,
 )
 
 
@@ -93,3 +94,17 @@ def test_default_sizes_reach_the_spark_config():
         "M": SparkSizeResources(driver_memory="1g", executor_memory="1536m", executor_instances=1),
         "L": SparkSizeResources(driver_memory="1536m", executor_memory="2g", executor_instances=1),
     }
+
+
+def test_volcano_settings_reach_the_spark_config():
+    """The Volcano queue names and class prefix come through to the config."""
+    volcano = SparkVolcanoSettings(queue="q", urgent_queue="uq", priority_class_prefix="pc")
+
+    config = build_spark_config(AppSettings(spark=SparkSettings(volcano=volcano)))
+
+    assert config.volcano == VolcanoSettings(queue="q", urgent_queue="uq", priority_class_prefix="pc")
+
+
+def test_default_volcano_settings_reach_the_spark_config():
+    """With no settings the config holds the default queues and prefix."""
+    assert build_spark_config(AppSettings()).volcano == VolcanoSettings()

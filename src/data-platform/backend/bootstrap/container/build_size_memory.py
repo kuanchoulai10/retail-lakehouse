@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from bootstrap.container.spark_memory_bytes import spark_memory_bytes
+from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import spark_memory_bytes
 from context.table_maintenance.application.domain.model.shared import ComputeSize, SizeMemory
 
 if TYPE_CHECKING:

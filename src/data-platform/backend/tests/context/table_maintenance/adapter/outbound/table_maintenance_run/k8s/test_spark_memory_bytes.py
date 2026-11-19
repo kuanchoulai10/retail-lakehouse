@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from bootstrap.container import spark_memory_bytes
+from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import spark_memory_bytes
 
 MIB = 1024 * 1024
 
@@ -26,7 +26,7 @@ def test_reads_spark_memory_settings_as_bytes(setting, expected):
     assert spark_memory_bytes(setting) == expected
 
 
-@pytest.mark.parametrize("setting", ["", "1.5g", "lots", "-1g", "0m"])
+@pytest.mark.parametrize("setting", ["", "1.5g", "lots", "-1g", "0m", "1x"])
 def test_rejects_settings_spark_would_not_read(setting):
     """A setting that is not a positive whole amount is rejected at startup."""
     with pytest.raises(ValueError, match="memory"):

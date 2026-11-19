@@ -265,3 +265,25 @@ def test_attempt_and_backoff_defaults_match_the_domain_defaults():
 
     assert settings.maintenance_max_attempts == DEFAULT_MAX_ATTEMPTS
     assert settings.maintenance_failure_backoff_cap_seconds == DEFAULT_FAILURE_BACKOFF_CAP.total_seconds()
+
+
+def test_volcano_defaults_name_the_chart_queues_and_classes():
+    """Without an environment the jobs go to the chart's queues and priority classes."""
+    volcano = AppSettings().spark.volcano
+
+    assert (volcano.queue, volcano.urgent_queue, volcano.priority_class_prefix) == (
+        "table-maintenance",
+        "table-maintenance-urgent",
+        "table-maintenance",
+    )
+
+
+def test_volcano_reads_env(monkeypatch: pytest.MonkeyPatch):
+    """The queues and the class prefix are read from GLAC_SPARK__VOLCANO__<NAME>."""
+    monkeypatch.setenv("GLAC_SPARK__VOLCANO__QUEUE", "q")
+    monkeypatch.setenv("GLAC_SPARK__VOLCANO__URGENT_QUEUE", "uq")
+    monkeypatch.setenv("GLAC_SPARK__VOLCANO__PRIORITY_CLASS_PREFIX", "pc")
+
+    volcano = AppSettings().spark.volcano
+
+    assert (volcano.queue, volcano.urgent_queue, volcano.priority_class_prefix) == ("q", "uq", "pc")

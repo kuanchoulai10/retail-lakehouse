@@ -9,6 +9,9 @@ from typing import TYPE_CHECKING, Any
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.maintenance_job_pod_labels import (
     maintenance_job_pod_labels,
 )
+from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.pod_group_resources import (
+    pod_group_resources,
+)
 
 if TYPE_CHECKING:
     from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s.spark_k8s_config import (
@@ -104,6 +107,9 @@ def build_spark_application(
     as the application, so the pods of one attempt can be found after it is deleted.
     Their memory and the executor count come from the attempt's size; a driver that
     dies with an error carries the tail of its log as its termination message.
+    The application is scheduled by Volcano in the queue and priority class of the run's
+    priority, with the PodGroup's cpu and memory spelled out, because the operator's own
+    arithmetic cannot read Spark memory strings.
     """
     resources = config.sizes.get(input.size)
     if resources is None:
@@ -131,6 +137,12 @@ def build_spark_application(
             "sparkVersion": config.spark_version,
             "mainApplicationFile": config.main_application_file,
             "restartPolicy": {"type": "Never"},
+            "batchScheduler": "volcano",
+            "batchSchedulerOptions": {
+                "queue": config.volcano.queue_for(input.priority),
+                "priorityClassName": config.volcano.priority_class_for(input.priority),
+                "resources": pod_group_resources(resources, config.driver_cores, config.executor_cores),
+            },
             "deps": {"jars": _jars(config)},
             "sparkConf": _spark_conf(config, input),
             "driver": {

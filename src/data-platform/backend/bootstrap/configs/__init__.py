@@ -16,6 +16,7 @@ from bootstrap.configs.priority_weight_settings import PriorityWeightSettings
 from bootstrap.configs.scheduler_settings import SchedulerSettings
 from bootstrap.configs.spark_settings import SparkSettings
 from bootstrap.configs.spark_size_settings import SparkSizeSettings
+from bootstrap.configs.spark_volcano_settings import SparkVolcanoSettings
 from bootstrap.configs.sqlite_settings import SqliteSettings
 from bootstrap.configs.temporal_settings import TemporalSettings
 
@@ -33,6 +34,7 @@ __all__ = [
     "SchedulerSettings",
     "SparkSettings",
     "SparkSizeSettings",
+    "SparkVolcanoSettings",
     "SqliteSettings",
     "TemporalSettings",
     "get_settings",

@@ -42,7 +42,6 @@ from bootstrap.container.load_k8s_config import load_k8s_config
 from bootstrap.container.repositories import Repositories
 from bootstrap.container.run_event_consumer import run_event_consumer
 from bootstrap.container.run_migrations import run_migrations
-from bootstrap.container.spark_memory_bytes import spark_memory_bytes
 from bootstrap.container.use_cases import UseCases
 
 __all__ = [
@@ -84,5 +83,4 @@ __all__ = [
     "load_k8s_config",
     "run_event_consumer",
     "run_migrations",
-    "spark_memory_bytes",
 ]

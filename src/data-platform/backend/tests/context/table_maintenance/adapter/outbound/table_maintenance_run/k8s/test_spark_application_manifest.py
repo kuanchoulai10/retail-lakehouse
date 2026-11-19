@@ -10,6 +10,7 @@ import pytest
 from context.table_maintenance.adapter.outbound.table_maintenance_run.k8s import (
     SparkK8sConfig,
     SparkSizeResources,
+    VolcanoSettings,
     build_spark_application,
 )
 from context.table_maintenance.application.port.outbound.table_maintenance_run import (
@@ -197,3 +198,53 @@ def test_the_job_request_carries_the_size():
     """The runtime's request names the attempt's size."""
     env = {e["name"]: e.get("value") for e in _spec()["driver"]["env"]}
     assert json.loads(env["GLAC_REQUEST"])["size"] == "S"
+
+
+def test_manifest_uses_volcano_for_p0():
+    """A P0 job goes to the urgent queue, in the P0 class, with its resources spelled out."""
+    spec = build_spark_application(CONFIG, replace(INPUT, priority="P0"), "app")["spec"]
+
+    assert spec["batchScheduler"] == "volcano"
+    assert spec["batchSchedulerOptions"] == {
+        "queue": "table-maintenance-urgent",
+        "priorityClassName": "table-maintenance-p0",
+        "resources": {"cpu": "2", "memory": "2304Mi"},
+    }
+
+
+def test_manifest_puts_p3_in_the_normal_queue():
+    """A P3 job goes to the normal queue in the P3 class."""
+    options = build_spark_application(CONFIG, replace(INPUT, priority="P3"), "app")["spec"]["batchSchedulerOptions"]
+
+    assert (options["queue"], options["priorityClassName"]) == ("table-maintenance", "table-maintenance-p3")
+
+
+def test_manifest_defaults_to_p3():
+    """An input without a priority is scheduled as P3."""
+    options = _spec()["batchSchedulerOptions"]
+
+    assert (options["queue"], options["priorityClassName"]) == ("table-maintenance", "table-maintenance-p3")
+
+
+def test_pod_group_resources_follow_the_size_and_the_cores():
+    """The PodGroup holds the memory of the attempt's size and the configured cores."""
+    spec = build_spark_application(replace(CONFIG, driver_cores=2), replace(INPUT, size="L"), "app")["spec"]
+
+    assert spec["batchSchedulerOptions"]["resources"] == {"cpu": "3", "memory": "5017Mi"}
+
+
+def test_volcano_names_are_configurable():
+    """The queue names and the class prefix come from the config."""
+    config = replace(CONFIG, volcano=VolcanoSettings(queue="q", urgent_queue="uq", priority_class_prefix="pc"))
+
+    options = build_spark_application(config, replace(INPUT, priority="P0"), "app")["spec"]["batchSchedulerOptions"]
+
+    assert (options["queue"], options["priorityClassName"]) == ("uq", "pc-p0")
+
+
+def test_the_job_request_carries_the_priority():
+    """The runtime's request names the run's priority."""
+    spec = build_spark_application(CONFIG, replace(INPUT, priority="P1"), "app")["spec"]
+    env = {e["name"]: e.get("value") for e in spec["driver"]["env"]}
+
+    assert json.loads(env["GLAC_REQUEST"])["priority"] == "P1"

@@ -103,6 +103,7 @@ class SubmitMaintenanceOperationService(SubmitMaintenanceOperationUseCase):
                     f"/operations/{operation.value}/result"
                 ),
                 size=size.value,
+                priority=run.priority.value,
             )
         )
         output = SubmitMaintenanceOperationUseCaseOutput(job_name=submitted.job_name)
