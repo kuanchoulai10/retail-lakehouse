@@ -12,7 +12,7 @@ context.<name>.adapter/hybrid   ──> application ──> domain
 adapter/*  ──✗──> domain (forbidden: must go through application)
 ```
 
-Everything below, except `base/`, `bootstrap/` and `entrypoint.py`, lives inside one bounded context, `context/<name>/`. Paths like `application/` and `adapter/` in the rules are relative to that context. Inside `application/` the order is `service` → `port` → `domain/service` → `domain/model`; a ring may import only rings below it, never above (contract `application-ring-order`).
+Everything below, except `base/`, `shared_kernel/`, `bootstrap/` and `entrypoint.py`, lives inside one bounded context, `context/<name>/`. Paths like `application/` and `adapter/` in the rules are relative to that context. Inside `application/` the order is `service` → `port` → `domain/service` → `domain/model`; a ring may import only rings below it, never above (contract `application-ring-order`).
 
 ### Backend Structure
 
@@ -21,6 +21,7 @@ Backend code is grouped by **bounded context** first. Inside a context, one **ag
 ```
 backend/
 ├── base/                         # DDD shared kernel (imports no context)
+├── shared_kernel/                # Stdlib-only code shared by base and Temporal workflows
 ├── bootstrap/                    # Composition roots (knows every context)
 │   ├── configs/                  # AppSettings, Component enum, adapter enums
 │   ├── container/                # Wiring of services, ports and adapters
@@ -132,6 +133,16 @@ The ports and helpers:
 - `Store` — infrastructure persistence (not aggregate)
 - `Gateway` — external system interaction
 - `UseCase[TInput, TOutput]` — single `execute()` method
+
+## Shared Kernel (`shared_kernel/`)
+
+A small top-level package beside `base/`, for code that both `base` and Temporal workflow contracts need. Temporal workflows may not import `base` or Pydantic (contract `temporal-workflows-sandbox-safe`), so anything a workflow shares with `base` lives here. It uses the standard library only: it imports no `base`, `bootstrap`, `context`, third-party package or sibling project package (contract `shared-kernel-stdlib-only`, `tests/architecture/test_shared_kernel_stdlib_only.py`). Anything may import it: `base`, contexts (any layer), `bootstrap`, Temporal contracts and workflows. Import from `shared_kernel`, never from its modules; modules starting with `_` are private to the package. Keep it small: add to it only what two parts that cannot import each other must share.
+
+- `prefixed_id_from_parts(prefix, unix_ms, random_bits)` — a prefixed id such as `mr-01h455vb4pex5vsknk084sn02q`: the prefix, a dash and a UUIDv7 as 26 lowercase Crockford base32 characters (the TypeID suffix encoding). Deterministic, so a workflow passes `workflow.now()` and `workflow.random()`. The prefix is 2 to 8 lowercase letters, else `ValueError`.
+- `new_prefixed_id(prefix)` — the same with `uuid.uuid7()`, for code that may use the clock and the system random source.
+- `prefixed_id_pattern(prefix)` — the compiled pattern `^<prefix>-[0-7][0-9a-hjkmnp-tv-z]{25}$`.
+
+The format and the prefix list are in `docs/adr/0011-prefixed-resource-ids.md`.
 
 ## Outbound Port & Adapter Naming Convention
 

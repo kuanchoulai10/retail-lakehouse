@@ -25,6 +25,7 @@ REQUIRED_CONTRACTS = {
     "adapters-no-bootstrap",
     "configs-leaf",
     "base-isolation",
+    "shared-kernel-stdlib-only",
     "application-exceptions-leaf",
 }
 
@@ -51,10 +52,10 @@ def test_required_contracts_present():
     assert not missing, f"missing import-linter contracts: {sorted(missing)}"
 
 
-def test_root_packages_are_base_bootstrap_context():
-    """The import-linter root packages are base, bootstrap and context."""
+def test_root_packages_are_base_bootstrap_context_shared_kernel():
+    """The import-linter root packages are base, bootstrap, context and shared_kernel."""
     roots = set(_config().get("importlinter", "root_packages").split())
-    assert roots == {"base", "bootstrap", "context"}
+    assert roots == {"base", "bootstrap", "context", "shared_kernel"}
 
 
 def test_contracts_name_no_single_context():

@@ -3,6 +3,7 @@ root_packages =
     base
     bootstrap
     context
+    shared_kernel
 include_external_packages = True
 
 [importlinter:contract:domain-pure]
@@ -185,3 +186,17 @@ forbidden_modules =
     context.*.application.service
     context.*.adapter
     bootstrap
+
+[importlinter:contract:shared-kernel-stdlib-only]
+name = Shared kernel depends on the stdlib only
+type = forbidden
+source_modules =
+    shared_kernel
+forbidden_modules =
+    base
+    bootstrap
+    context
+    pydantic
+    temporalio
+    sqlalchemy
+    fastapi
