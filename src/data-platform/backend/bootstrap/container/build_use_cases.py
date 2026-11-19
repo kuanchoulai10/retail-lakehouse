@@ -165,7 +165,7 @@ def build_use_cases(
         get_table_storage=GetTableStorageService(tables, catalog, runs, clock=clock),
         list_table_commits=ListTableCommitsService(tables, catalog),
         list_tables=ListTablesService(tables, discoveries, policies),
-        set_table_priority=SetTablePriorityService(tables),
+        set_table_priority=SetTablePriorityService(tables, clock=clock),
         trigger_table_maintenance=TriggerTableMaintenanceService(tables, table_changes),
         trigger_table_reconciliation=TriggerTableReconciliationService(tables, table_changes),
         create_table_maintenance_run=CreateTableMaintenanceRunService(runs, tables),

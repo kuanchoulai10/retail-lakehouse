@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime  # noqa: TC003
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, status
@@ -84,9 +84,7 @@ def list_table_commits(
 @router.put("/{table_uuid}/priority")
 def set_table_priority(table_uuid: str, body: SetTablePriorityApiRequest, use_cases: UseCases) -> TableApiResponse:
     """Set how urgently a table's maintenance is scheduled; answers the updated table."""
-    use_cases.set_table_priority.execute(
-        SetTablePriorityUseCaseInput(uuid=table_uuid, priority=body.priority, now=datetime.now(UTC))
-    )
+    use_cases.set_table_priority.execute(SetTablePriorityUseCaseInput(uuid=table_uuid, priority=body.priority))
     output = use_cases.get_table.execute(GetTableUseCaseInput(uuid=table_uuid))
     return TableApiResponse.model_validate(output)
 

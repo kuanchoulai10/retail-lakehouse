@@ -65,7 +65,7 @@ def client(repo, signals):
     """Provide a test client wired to the repository and the signal gateway."""
     return build_client(
         trigger_table_maintenance=TriggerTableMaintenanceService(repo, signals),
-        set_table_priority=SetTablePriorityService(repo),
+        set_table_priority=SetTablePriorityService(repo, clock=lambda: NOW),
         get_table=GetTableService(repo, InMemoryCatalogDiscoveriesRepo(), InMemoryTableMaintenancePoliciesRepo()),
         list_tables=ListTablesService(repo, InMemoryCatalogDiscoveriesRepo(), InMemoryTableMaintenancePoliciesRepo()),
     )

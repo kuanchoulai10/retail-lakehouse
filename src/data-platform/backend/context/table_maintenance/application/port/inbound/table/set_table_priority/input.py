@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
 from base import UseCaseInput
 
 
@@ -12,4 +10,3 @@ class SetTablePriorityUseCaseInput(UseCaseInput):
 
     uuid: str
     priority: str
-    now: datetime

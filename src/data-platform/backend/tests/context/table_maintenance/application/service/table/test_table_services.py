@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
 
 from context.table_maintenance.application.domain.model.shared import ComputeSize, MaintenanceOperation, TablePriority
@@ -126,32 +128,64 @@ def test_get_unknown_table_not_found(tables_repo):
 
 
 def test_set_priority_saves_the_table(tables_repo, now):
-    """Setting a priority saves it on the table and answers it."""
+    """Setting a priority saves it on the table, stamped with the clock's time, and answers it."""
     _managed(tables_repo, now)
-    out = SetTablePriorityService(tables_repo).execute(SetTablePriorityUseCaseInput(uuid="u-1", priority="P1", now=now))
+    later = now + timedelta(minutes=5)
+    out = SetTablePriorityService(tables_repo, clock=lambda: later).execute(
+        SetTablePriorityUseCaseInput(uuid="u-1", priority="P1")
+    )
     assert (out.uuid, out.priority) == ("u-1", "P1")
     assert tables_repo.items["u-1"].priority.value == "P1"
+    assert tables_repo.items["u-1"].updated_at == later
+
+
+def test_set_priority_to_the_same_priority_saves_nothing(tables_repo, now, monkeypatch):
+    """Setting the priority a table already has does not write it."""
+    _managed(tables_repo, now)
+    saved = []
+    monkeypatch.setattr(tables_repo, "update", saved.append)
+    out = SetTablePriorityService(tables_repo, clock=lambda: now + timedelta(minutes=5)).execute(
+        SetTablePriorityUseCaseInput(uuid="u-1", priority="P3")
+    )
+    assert out.priority == "P3"
+    assert saved == []
+    assert tables_repo.items["u-1"].updated_at == now
 
 
 def test_unknown_priority_is_a_validation_error(tables_repo, now):
     """An unknown priority is rejected and the table keeps its priority."""
     _managed(tables_repo, now)
     with pytest.raises(ValidationError):
-        SetTablePriorityService(tables_repo).execute(SetTablePriorityUseCaseInput(uuid="u-1", priority="P4", now=now))
+        SetTablePriorityService(tables_repo, clock=lambda: now).execute(
+            SetTablePriorityUseCaseInput(uuid="u-1", priority="P4")
+        )
     assert tables_repo.items["u-1"].priority.value == "P3"
 
 
 def test_set_priority_on_unknown_table_is_not_found(tables_repo, now):
     """Setting the priority of an unknown table raises NotFoundError."""
     with pytest.raises(NotFoundError):
-        SetTablePriorityService(tables_repo).execute(SetTablePriorityUseCaseInput(uuid="nope", priority="P1", now=now))
+        SetTablePriorityService(tables_repo, clock=lambda: now).execute(
+            SetTablePriorityUseCaseInput(uuid="nope", priority="P1")
+        )
 
 
 def test_set_priority_on_dropped_table_conflicts(tables_repo, now):
     """Setting the priority of a dropped table raises ConflictError."""
     _dropped(tables_repo, now)
     with pytest.raises(ConflictError):
-        SetTablePriorityService(tables_repo).execute(SetTablePriorityUseCaseInput(uuid="u-1", priority="P1", now=now))
+        SetTablePriorityService(tables_repo, clock=lambda: now).execute(
+            SetTablePriorityUseCaseInput(uuid="u-1", priority="P1")
+        )
+
+
+def test_set_the_same_priority_on_dropped_table_conflicts(tables_repo, now):
+    """A dropped table refuses even the priority it already has."""
+    _dropped(tables_repo, now)
+    with pytest.raises(ConflictError):
+        SetTablePriorityService(tables_repo, clock=lambda: now).execute(
+            SetTablePriorityUseCaseInput(uuid="u-1", priority="P3")
+        )
 
 
 def test_get_table_answers_the_priority(tables_repo, now):

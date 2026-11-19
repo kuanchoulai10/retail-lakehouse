@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.shared import TablePriority
@@ -15,15 +16,23 @@ from context.table_maintenance.application.port.inbound.table import (
 from context.table_maintenance.application.service.shared import translate_domain_errors
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from context.table_maintenance.application.port.outbound.table import TablesRepo
 
 
 class SetTablePriorityService(SetTablePriorityUseCase):
     """Set the priority of a table and save it."""
 
-    def __init__(self, tables_repo: TablesRepo) -> None:
-        """Bind the repo."""
+    def __init__(
+        self,
+        tables_repo: TablesRepo,
+        *,
+        clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+    ) -> None:
+        """Bind the repo and the clock."""
         self._tables_repo = tables_repo
+        self._clock = clock
 
     def execute(self, request: SetTablePriorityUseCaseInput) -> SetTablePriorityUseCaseOutput:
         """Set the priority, or raise ValidationError, NotFoundError or ConflictError (a dropped table)."""
@@ -35,6 +44,8 @@ class SetTablePriorityService(SetTablePriorityUseCase):
         if table is None:
             raise NotFoundError(f"table {request.uuid} not found")
         with translate_domain_errors():
-            table.set_priority(priority, request.now)
-            self._tables_repo.update(table)
+            changed = table.priority != priority
+            table.set_priority(priority, self._clock())
+            if changed:
+                self._tables_repo.update(table)
         return SetTablePriorityUseCaseOutput(uuid=table.id.value, priority=table.priority.value)
