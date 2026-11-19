@@ -198,3 +198,12 @@ def test_a_before_without_a_time_zone_is_422():
 
     assert response.status_code == 422
     assert stub.requests == []
+
+
+def test_round_id_path_parameter_describes_its_shape() -> None:
+    """The ``round_id`` parameter tells an API user the ``cr-`` shape, with no pattern of its own."""
+    operation = build_client().get("/openapi.json").json()["paths"]["/v1/compaction-rounds/{round_id}"]["get"]
+    parameter = next(p for p in operation["parameters"] if p["name"] == "round_id")
+    assert "`cr-`" in parameter["description"]
+    assert "ADR 0011" in parameter["description"]
+    assert "pattern" not in parameter["schema"]

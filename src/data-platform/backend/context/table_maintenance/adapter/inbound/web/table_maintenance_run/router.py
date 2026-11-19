@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
 from context.table_maintenance.adapter.inbound.web.shared import (
     WebUseCases,
@@ -24,6 +24,10 @@ from context.table_maintenance.application.port.inbound.table_maintenance_run im
 router = APIRouter(tags=["table-maintenance-runs"])
 
 UseCases = Annotated[WebUseCases, Depends(use_cases_dependency)]
+RunId = Annotated[
+    str,
+    Path(description="An `mr-` id (prefix, dash, 26 lowercase Crockford base32 characters; ADR 0011)."),
+]
 
 
 @router.get("/tables/{table_uuid}/table-maintenance-runs")
@@ -40,7 +44,7 @@ def list_table_maintenance_runs(
 
 
 @router.get("/table-maintenance-runs/{run_id}")
-def get_table_maintenance_run(run_id: str, use_cases: UseCases) -> TableMaintenanceRunApiResponse:
+def get_table_maintenance_run(run_id: RunId, use_cases: UseCases) -> TableMaintenanceRunApiResponse:
     """Return one maintenance run."""
     output = use_cases.get_table_maintenance_run.execute(GetTableMaintenanceRunUseCaseInput(run_id=run_id))
     return TableMaintenanceRunApiResponse.model_validate(output)
@@ -51,7 +55,7 @@ def get_table_maintenance_run(run_id: str, use_cases: UseCases) -> TableMaintena
     status_code=status.HTTP_202_ACCEPTED,
 )
 def process_table_maintenance_callback(
-    run_id: str,
+    run_id: RunId,
     operation: str,
     body: ProcessTableMaintenanceCallbackApiRequest,
     use_cases: UseCases,

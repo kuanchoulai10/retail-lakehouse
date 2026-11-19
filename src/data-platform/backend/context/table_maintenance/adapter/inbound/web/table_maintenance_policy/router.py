@@ -48,6 +48,7 @@ def _policy_response(
         {
             "id": output.id,
             "name": output.name,
+            "is_default": output.is_default,
             "version": output.version,
             "created_at": output.created_at,
             "updated_at": output.updated_at,
@@ -66,6 +67,7 @@ def list_table_maintenance_policies(use_cases: UseCases) -> TableMaintenancePoli
                 {
                     "id": item.id,
                     "name": item.name,
+                    "is_default": item.is_default,
                     "version": item.version,
                     "created_at": item.created_at,
                     "updated_at": item.updated_at,
@@ -128,6 +130,7 @@ def get_table_maintenance_policy_version(
         {
             "id": output.id,
             "name": output.name,
+            "is_default": output.is_default,
             "version": output.version,
             "created_at": output.created_at,
             **output.content,

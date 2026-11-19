@@ -10,9 +10,10 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 _CONTENT_CONFIG = ConfigDict(extra="forbid", json_schema_mode_override="validation")
+_IS_DEFAULT = "Whether this is the platform default policy, which applies where nothing is attached."
 
 type MaintenancePriorityApi = Literal["P0", "P1", "P2"]
 
@@ -233,6 +234,7 @@ class TableMaintenancePolicyApiResponse(BaseModel):
 
     id: str
     name: str
+    is_default: bool = Field(description=_IS_DEFAULT)
     version: int
     description: str
     reconcile_interval_seconds: int
@@ -248,6 +250,7 @@ class ListedTableMaintenancePolicyApiResponse(BaseModel):
 
     id: str
     name: str
+    is_default: bool = Field(description=_IS_DEFAULT)
     version: int
     description: str
     reconcile_interval_seconds: int
@@ -270,6 +273,7 @@ class TableMaintenancePolicyVersionApiResponse(BaseModel):
 
     id: str
     name: str
+    is_default: bool = Field(description=_IS_DEFAULT)
     version: int
     description: str
     reconcile_interval_seconds: int

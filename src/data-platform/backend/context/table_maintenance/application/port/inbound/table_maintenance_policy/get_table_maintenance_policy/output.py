@@ -13,6 +13,7 @@ class GetTableMaintenancePolicyUseCaseOutput(UseCaseOutput):
 
     id: str
     name: str
+    is_default: bool
     content: dict[str, Any]
     version: int
     created_at: datetime

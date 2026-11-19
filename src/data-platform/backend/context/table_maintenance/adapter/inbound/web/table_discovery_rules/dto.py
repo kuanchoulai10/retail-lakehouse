@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TableDiscoveryRuleApiRequest(BaseModel):
@@ -12,7 +12,13 @@ class TableDiscoveryRuleApiRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    id: str | None = None
+    id: str | None = Field(
+        default=None,
+        description=(
+            "A `dr-` id (prefix, dash, 26 lowercase Crockford base32 characters; ADR 0011), as the rule "
+            "list returned it; omit it for a new rule."
+        ),
+    )
     priority: int
     action: str
     enabled: bool

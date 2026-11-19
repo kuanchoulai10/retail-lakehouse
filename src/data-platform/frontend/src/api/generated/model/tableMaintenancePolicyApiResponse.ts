@@ -15,6 +15,8 @@ export interface TableMaintenancePolicyApiResponse {
   description: string;
   dry_run: boolean;
   id: string;
+  /** Whether this is the platform default policy, which applies where nothing is attached. */
+  is_default: boolean;
   name: string;
   operations: OperationPoliciesApiRequest;
   priority: MaintenancePriorityApi;

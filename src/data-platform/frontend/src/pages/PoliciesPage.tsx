@@ -17,9 +17,9 @@ import { ResourceListPage } from "@/components/ResourceListPage";
 import { errorMessage } from "@/format";
 import type { PolicyContent } from "@/lib/policyDraft";
 
-const DEFAULT_POLICY = "default";
-// The server always seeds `default`; a new policy copies it, so without it there is nothing
-// to start from, and the console never guesses the values.
+// The server always seeds the default policy and flags it with `is_default` (its name is only
+// for display); a new policy copies it, so without it there is nothing to start from, and the
+// console never guesses the values.
 const NO_DEFAULT_MESSAGE =
   "The default policy is missing, so a new policy has nothing to start from. Reload the page.";
 
@@ -36,7 +36,7 @@ function contentOf(policy: Policy): PolicyContent {
 }
 
 function deleteDisabledReason(policy: Policy): string | null {
-  if (policy.name === DEFAULT_POLICY) return "The default policy cannot be deleted.";
+  if (policy.is_default) return "The default policy cannot be deleted.";
   if (policy.attachment_count > 0) return "Detach it from every target before deleting it.";
   return null;
 }
@@ -44,7 +44,7 @@ function deleteDisabledReason(policy: Policy): string | null {
 // The default first, then by name.
 function inListOrder(policies: Policy[]): Policy[] {
   return [...policies].sort(
-    (a, b) => Number(b.name === DEFAULT_POLICY) - Number(a.name === DEFAULT_POLICY) || a.name.localeCompare(b.name),
+    (a, b) => Number(b.is_default) - Number(a.is_default) || a.name.localeCompare(b.name),
   );
 }
 
@@ -71,7 +71,7 @@ export function PoliciesPage() {
   }
 
   const rows = inListOrder(policies.data.policies);
-  const defaultPolicy = rows.find((policy) => policy.name === DEFAULT_POLICY);
+  const defaultPolicy = rows.find((policy) => policy.is_default);
   return (
     <>
       <ResourceListPage
@@ -82,7 +82,7 @@ export function PoliciesPage() {
             cell: (row) => (
               <span className="flex flex-wrap items-center gap-2">
                 <span className="font-mono font-medium">{row.name}</span>
-                {row.name === DEFAULT_POLICY && <Badge>Default</Badge>}
+                {row.is_default && <Badge>Default</Badge>}
               </span>
             ),
           },

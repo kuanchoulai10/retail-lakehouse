@@ -50,6 +50,19 @@ def test_policy_routes_still_use_names(world: PolicyWebWorld) -> None:
     assert world.client.delete("/v1/maintenance-policies/gold").status_code == 204
 
 
+def test_every_policy_answer_says_whether_it_is_the_default(world: PolicyWebWorld) -> None:
+    """Each answer carries ``is_default``, true only for the platform default, so no client compares names."""
+    created = world.create("gold")
+    assert created["is_default"] is False
+    assert world.client.get("/v1/maintenance-policies/default").json()["is_default"] is True
+    assert world.client.get("/v1/maintenance-policies/gold").json()["is_default"] is False
+    put = world.client.put("/v1/maintenance-policies/gold", json={"version": 1, **policy_body()})
+    assert put.json()["is_default"] is False
+    assert world.client.get("/v1/maintenance-policies/default/versions/1").json()["is_default"] is True
+    listed = world.client.get("/v1/maintenance-policies").json()["policies"]
+    assert {p["name"]: p["is_default"] for p in listed} == {"default": True, "gold": False}
+
+
 def test_create_accepts_a_missing_condition_as_not_checked(world: PolicyWebWorld) -> None:
     """A condition left out of the body is not checked."""
     content = policy_body()

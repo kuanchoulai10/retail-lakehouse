@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, cast
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Path, Query
 from pydantic import AwareDatetime  # noqa: TC002 - FastAPI resolves the annotation at runtime
 
 from context.table_maintenance.adapter.inbound.web.compaction_round.dto import (
@@ -60,7 +60,13 @@ def list_compaction_rounds(
 
 
 @router.get("/compaction-rounds/{round_id}")
-def get_compaction_round(round_id: str, use_cases: UseCases) -> CompactionRoundApiResponse:
+def get_compaction_round(
+    round_id: Annotated[
+        str,
+        Path(description="A `cr-` id (prefix, dash, 26 lowercase Crockford base32 characters; ADR 0011)."),
+    ],
+    use_cases: UseCases,
+) -> CompactionRoundApiResponse:
     """Read one recorded compaction round."""
     return _round(use_cases.get_compaction_round.execute(GetCompactionRoundUseCaseInput(round_id=round_id)))
 

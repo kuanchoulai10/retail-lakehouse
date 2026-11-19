@@ -15,6 +15,7 @@ def table_maintenance_policy_output_fields(policy: TableMaintenancePolicy) -> di
     return {
         "id": policy.id.value,
         "name": policy.name.value,
+        "is_default": policy.is_default,
         "content": policy.content.to_primitives(),
         "version": policy.version,
         "created_at": policy.created_at,

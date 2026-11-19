@@ -1711,6 +1711,11 @@
             "title": "Id",
             "type": "string"
           },
+          "is_default": {
+            "description": "Whether this is the platform default policy, which applies where nothing is attached.",
+            "title": "Is Default",
+            "type": "boolean"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -1738,6 +1743,7 @@
         "required": [
           "id",
           "name",
+          "is_default",
           "version",
           "description",
           "reconcile_interval_seconds",
@@ -3524,6 +3530,7 @@
                 "type": "null"
               }
             ],
+            "description": "A `dr-` id (prefix, dash, 26 lowercase Crockford base32 characters; ADR 0011), as the rule list returned it; omit it for a new rule.",
             "title": "Id"
           },
           "namespaces": {
@@ -3843,6 +3850,11 @@
             "title": "Id",
             "type": "string"
           },
+          "is_default": {
+            "description": "Whether this is the platform default policy, which applies where nothing is attached.",
+            "title": "Is Default",
+            "type": "boolean"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -3870,6 +3882,7 @@
         "required": [
           "id",
           "name",
+          "is_default",
           "version",
           "description",
           "reconcile_interval_seconds",
@@ -3948,6 +3961,11 @@
             "title": "Id",
             "type": "string"
           },
+          "is_default": {
+            "description": "Whether this is the platform default policy, which applies where nothing is attached.",
+            "title": "Is Default",
+            "type": "boolean"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -3970,6 +3988,7 @@
         "required": [
           "id",
           "name",
+          "is_default",
           "version",
           "description",
           "reconcile_interval_seconds",
@@ -6388,10 +6407,12 @@
         "operationId": "get_compaction_round",
         "parameters": [
           {
+            "description": "A `cr-` id (prefix, dash, 26 lowercase Crockford base32 characters; ADR 0011).",
             "in": "path",
             "name": "round_id",
             "required": true,
             "schema": {
+              "description": "A `cr-` id (prefix, dash, 26 lowercase Crockford base32 characters; ADR 0011).",
               "title": "Round Id",
               "type": "string"
             }
@@ -6939,10 +6960,12 @@
         "operationId": "get_table_maintenance_run",
         "parameters": [
           {
+            "description": "An `mr-` id (prefix, dash, 26 lowercase Crockford base32 characters; ADR 0011).",
             "in": "path",
             "name": "run_id",
             "required": true,
             "schema": {
+              "description": "An `mr-` id (prefix, dash, 26 lowercase Crockford base32 characters; ADR 0011).",
               "title": "Run Id",
               "type": "string"
             }
@@ -6982,10 +7005,12 @@
         "operationId": "process_table_maintenance_callback",
         "parameters": [
           {
+            "description": "An `mr-` id (prefix, dash, 26 lowercase Crockford base32 characters; ADR 0011).",
             "in": "path",
             "name": "run_id",
             "required": true,
             "schema": {
+              "description": "An `mr-` id (prefix, dash, 26 lowercase Crockford base32 characters; ADR 0011).",
               "title": "Run Id",
               "type": "string"
             }

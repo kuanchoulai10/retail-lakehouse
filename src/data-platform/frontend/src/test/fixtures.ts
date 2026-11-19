@@ -73,6 +73,8 @@ export function policyFixture(
   return {
     id: DEFAULT_POLICY_ID,
     name: "default",
+    // As the backend tells it: the default is the policy with the fixed id.
+    is_default: (overrides.id ?? DEFAULT_POLICY_ID) === DEFAULT_POLICY_ID,
     version: 3,
     attachment_count: 0,
     created_at: "2026-11-01T09:00:00Z",

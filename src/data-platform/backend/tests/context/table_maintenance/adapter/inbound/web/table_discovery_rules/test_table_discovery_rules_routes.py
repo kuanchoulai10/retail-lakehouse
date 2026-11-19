@@ -146,3 +146,12 @@ def test_old_discovery_endpoints_are_gone(method: str, path: str) -> None:
     """The per-rule, switch, scan, old covered-catalog and preview endpoints no longer exist."""
     response = build_client().request(method, path, json={})
     assert response.status_code == 404
+
+
+def test_rule_id_in_the_body_describes_its_shape() -> None:
+    """A rule's ``id`` in the replace body tells an API user the ``dr-`` shape, with no pattern of its own."""
+    schemas = build_client().get("/openapi.json").json()["components"]["schemas"]
+    rule_id = schemas["TableDiscoveryRuleApiRequest"]["properties"]["id"]
+    assert "`dr-`" in rule_id["description"]
+    assert "ADR 0011" in rule_id["description"]
+    assert "pattern" not in str(rule_id)

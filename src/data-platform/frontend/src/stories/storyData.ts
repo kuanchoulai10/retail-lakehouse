@@ -674,6 +674,7 @@ function policy(overrides: Partial<ListedTableMaintenancePolicyApiResponse>): Li
   return {
     id: DEFAULT_POLICY_ID,
     name: "default",
+    is_default: (overrides.id ?? DEFAULT_POLICY_ID) === DEFAULT_POLICY_ID,
     version: 1,
     attachment_count: 0,
     created_at: "2026-11-01T09:00:00Z",

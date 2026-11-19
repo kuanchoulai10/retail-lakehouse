@@ -12,6 +12,7 @@ export interface TableDiscoveryRuleApiRequest {
   action: string;
   catalogs: string[];
   enabled: boolean;
+  /** A `dr-` id (prefix, dash, 26 lowercase Crockford base32 characters; ADR 0011), as the rule list returned it; omit it for a new rule. */
   id?: string | null;
   namespaces: string[];
   priority: number;

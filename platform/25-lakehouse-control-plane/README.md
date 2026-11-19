@@ -157,7 +157,7 @@ curl -X PUT http://localhost:8000/v1/discovery-rules -H 'Content-Type: applicati
        "catalogs": ["iceberg"], "namespaces": ["e2e"], "tables": ["tm_e2e_*"]}]}'
 ```
 
-A policy holds, per operation (`rewrite_data_files`, `rewrite_manifests`, `expire_snapshots`, `remove_orphan_files`), an `enabled` switch, a `trigger_policy` (`cooldown_seconds` and `conditions`) and an `execution_policy`; `rewrite_data_files` also has `scope.unit` (`partition` or `table`). `reconcile_interval_seconds` and `dry_run` sit at the top level. Read `GET /v1/maintenance-policies/default` for a complete body; unknown keys return 422.
+A policy holds, per operation (`rewrite_data_files`, `rewrite_manifests`, `expire_snapshots`, `remove_orphan_files`), an `enabled` switch, a `trigger_policy` (`cooldown_seconds` and `conditions`) and an `execution_policy`; `rewrite_data_files` also has `scope.unit` (`partition` or `table`). `reconcile_interval_seconds` and `dry_run` sit at the top level. Read `GET /v1/maintenance-policies/default` for a complete body, and drop the fields the server sets (`id`, `name`, `is_default`, `version`, `created_at`, `updated_at`) before sending it as a new policy with its own `name` (for an update, send `version` back instead); unknown keys return 422.
 
 ## End-to-end check
 

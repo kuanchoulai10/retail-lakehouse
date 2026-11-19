@@ -43,6 +43,7 @@ class GetTableMaintenancePolicyVersionService(GetTableMaintenancePolicyVersionUs
         return GetTableMaintenancePolicyVersionUseCaseOutput(
             id=policy.id.value,
             name=policy.name.value,
+            is_default=policy.is_default,
             version=version.version,
             content=version.content.to_primitives(),
             created_at=version.created_at,

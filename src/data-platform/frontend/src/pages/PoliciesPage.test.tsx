@@ -152,6 +152,28 @@ describe("PoliciesPage", () => {
     expect(remove).toHaveAccessibleDescription("The default policy cannot be deleted.");
   });
 
+  it("tells the default by the flag the API sets, not by its name", async () => {
+    stubApi({
+      "GET /v1/maintenance-policies": () =>
+        jsonResponse({
+          policies: [
+            policyFixture({ name: "platform", description: "Platform default", is_default: true }),
+            policyFixture({ id: SCRATCH_POLICY_ID, name: "default", description: "Named default", is_default: false }),
+          ],
+        }),
+    });
+    renderPage();
+    await screen.findByText("Named default");
+    const names = screen
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) => within(row).getAllByRole("cell")[0]?.textContent);
+    expect(names).toEqual(["platformDefault", "default"]);
+    expect(within(policyRow("platform")).getByRole("button", { name: "Delete platform" })).toBeDisabled();
+    expect(within(policyRow("default")).getByRole("button", { name: "Delete default" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "New policy" })).toBeEnabled();
+  });
+
   it("disables delete of an attached policy with its reason", async () => {
     stubApi();
     renderPage();

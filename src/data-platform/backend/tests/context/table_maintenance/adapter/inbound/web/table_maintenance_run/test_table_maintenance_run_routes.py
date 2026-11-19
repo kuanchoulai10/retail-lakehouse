@@ -257,3 +257,23 @@ def test_callback_with_an_old_uuid_is_422() -> None:
     assert response.status_code == 422
     assert RUN_ID_SHAPE in response.json()["detail"]
     assert results.calls == []
+
+
+def _path_parameter(path: str, method: str, name: str) -> dict:
+    operation = build_client().get("/openapi.json").json()["paths"][path][method]
+    return next(p for p in operation["parameters"] if p["name"] == name)
+
+
+@pytest.mark.parametrize(
+    ("path", "method"),
+    [
+        ("/v1/table-maintenance-runs/{run_id}", "get"),
+        ("/v1/table-maintenance-runs/{run_id}/operations/{operation}/result", "post"),
+    ],
+)
+def test_run_id_path_parameter_describes_its_shape(path: str, method: str) -> None:
+    """The ``run_id`` parameter tells an API user the ``mr-`` shape, with no pattern of its own."""
+    parameter = _path_parameter(path, method, "run_id")
+    assert "`mr-`" in parameter["description"]
+    assert "ADR 0011" in parameter["description"]
+    assert "pattern" not in parameter["schema"]
