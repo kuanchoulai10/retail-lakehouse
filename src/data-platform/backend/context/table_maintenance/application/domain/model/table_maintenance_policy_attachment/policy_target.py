@@ -8,9 +8,6 @@ from base import ValueObject
 from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment.policy_target_type import (  # noqa: E501
     PolicyTargetType,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment.table_maintenance_policy_attachment_id import (  # noqa: E501
-    TableMaintenancePolicyAttachmentId,
-)
 
 
 class PolicyTarget(ValueObject):
@@ -40,8 +37,12 @@ class PolicyTarget(ValueObject):
             raise ValueError("path elements must be non-empty")
         return self
 
-    def attachment_id(self) -> TableMaintenancePolicyAttachmentId:
-        """Return the id of the attachment on this target."""
+    def key(self) -> str:
+        """Return the key that names this target, one attachment per key.
+
+        A table is keyed by its uuid (``table:<uuid>``), so a renamed or moved table keeps its
+        attachment; a catalog or namespace by its type and unit-separated path.
+        """
         if self.type == PolicyTargetType.TABLE:
-            return TableMaintenancePolicyAttachmentId(f"table:{self.table_uuid}")
-        return TableMaintenancePolicyAttachmentId(f"{self.type}:" + "\x1f".join(self.path))
+            return f"table:{self.table_uuid}"
+        return f"{self.type}:" + "\x1f".join(self.path)

@@ -17,10 +17,25 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.domain.model.table_maintenance_policy import (
         TableMaintenancePolicyName,
     )
+    from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
+        PolicyTarget,
+    )
 
 
 class TableMaintenancePolicyAttachmentsRepo(Repository[TableMaintenancePolicyAttachment]):
-    """Persist and query TableMaintenancePolicyAttachment aggregates."""
+    """Persist and query TableMaintenancePolicyAttachment aggregates.
+
+    A target has at most one attachment: ``create`` of a second one on the same
+    ``PolicyTarget.key()`` raises ConflictError, whatever its id.
+    """
+
+    @abstractmethod
+    def get_by_target(self, target: PolicyTarget) -> TableMaintenancePolicyAttachment | None:
+        """Return the attachment on the target (matched by ``target.key()``), or None."""
+
+    @abstractmethod
+    def get_many_by_targets(self, targets: Sequence[PolicyTarget]) -> list[TableMaintenancePolicyAttachment]:
+        """Return the attachments on any of ``targets`` (matched by key), in no particular order."""
 
     @abstractmethod
     def update(self, attachment: TableMaintenancePolicyAttachment) -> TableMaintenancePolicyAttachment:

@@ -58,17 +58,18 @@ class DetachTableMaintenancePolicyService(DetachTableMaintenancePolicyUseCase):
         target = policy_target_from_request(
             self._gateway, request.target_type, request.path, request.table_uuid, must_exist=False
         )
-        attachment = self._attachments_repo.get(target.attachment_id())
+        attachment = self._attachments_repo.get_by_target(target)
         described = f"{request.target_type} {'.'.join(request.path)}"
         if attachment is None:
             raise NotFoundError(f"no policy is attached to {described}")
         if request.policy_name is not None and attachment.policy_name.value != request.policy_name:
             raise NotFoundError(f"policy {request.policy_name} is not attached to {described}")
+        attachment_id = attachment.id
         notify_policy_change(
             self._tables_repo,
             self._policies_repo,
             self._attachments_repo,
             self._table_changes,
-            lambda: self._attachments_repo.delete(target.attachment_id()),
+            lambda: self._attachments_repo.delete(attachment_id),
         )
         return DetachTableMaintenancePolicyUseCaseOutput()

@@ -54,12 +54,10 @@ class ResolveApplicableTableMaintenancePolicyService(ResolveApplicableTableMaint
     ) -> ResolveApplicableTableMaintenancePolicyUseCaseOutput:
         """Return the nearest attached policy, or the default one with no target."""
         candidates = self._candidates(request)
-        attached = {a.id: a for a in self._attachments_repo.get_many([c.attachment_id() for c in candidates])}
-        matched = next((c for c in candidates if c.attachment_id() in attached), None)
+        attached = {a.target.key(): a for a in self._attachments_repo.get_many_by_targets(candidates)}
+        matched = next((c for c in candidates if c.key() in attached), None)
         name = (
-            TableMaintenancePolicyName(DEFAULT_POLICY_NAME)
-            if matched is None
-            else attached[matched.attachment_id()].policy_name
+            TableMaintenancePolicyName(DEFAULT_POLICY_NAME) if matched is None else attached[matched.key()].policy_name
         )
         policy = self._policies_repo.get(name)
         if policy is None:

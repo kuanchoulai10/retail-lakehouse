@@ -196,6 +196,29 @@ def test_attach_replaces_existing_attachment_on_target(world):
     assert [(i.policy_name, i.type) for i in items] == [("silver", "catalog")]
 
 
+def test_attach_twice_to_one_target_replaces_not_duplicates(world):
+    """A second attach finds the target's attachment by its key and replaces its policy, keeping its id."""
+    world.attach("namespace", ("prod", "sales"), "gold")
+    (first,) = world.attachments.list_all()
+    world.attach("namespace", ("prod", "sales"), "silver")
+    (stored,) = world.attachments.list_all()
+    assert stored.id == first.id
+    assert stored.policy_name.value == "silver"
+
+
+def test_resolve_picks_table_over_namespace_over_catalog(world):
+    """With all three attached the table's wins; detached, the namespace's; then the catalog's."""
+    world.attach("catalog", ("prod",), "silver")
+    world.attach("namespace", ("prod", "sales"), "gold")
+    world.attach("table", ("prod", "sales", "eu", "orders"), DEFAULT_POLICY_NAME)
+    assert world.resolve_orders().target["type"] == "table"
+    world.detach("table", ("prod", "sales", "eu", "orders"), table_uuid="u-1")
+    assert world.resolve_orders().target == {"type": "namespace", "path": ["prod", "sales"]}
+    world.detach("namespace", ("prod", "sales"))
+    assert world.resolve_orders().policy_name == "silver"
+    assert world.resolve_orders().target == {"type": "catalog", "path": ["prod"]}
+
+
 @pytest.mark.parametrize(
     ("type_", "path"),
     [

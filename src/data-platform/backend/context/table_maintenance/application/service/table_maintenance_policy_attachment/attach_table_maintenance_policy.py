@@ -88,7 +88,7 @@ class AttachTableMaintenancePolicyService(AttachTableMaintenancePolicyUseCase):
 
     def _save(self, target: PolicyTarget, policy_name: TableMaintenancePolicyName) -> TableMaintenancePolicyAttachment:
         now = self._clock()
-        attachment = self._attachments_repo.get(target.attachment_id())
+        attachment = self._attachments_repo.get_by_target(target)
         if attachment is None:
             return self._attachments_repo.create(TableMaintenancePolicyAttachment.attach(target, policy_name, now))
         attachment.replace_policy(policy_name, now)

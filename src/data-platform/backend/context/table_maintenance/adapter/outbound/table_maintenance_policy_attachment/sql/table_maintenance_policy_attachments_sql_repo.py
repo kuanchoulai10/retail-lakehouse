@@ -25,13 +25,19 @@ if TYPE_CHECKING:
 
     from base import EntityId
     from context.table_maintenance.application.port.outbound.table_maintenance_policy_attachment import (
+        PolicyTarget,
         TableMaintenancePolicyAttachment,
         TableMaintenancePolicyName,
     )
 
 
 class TableMaintenancePolicyAttachmentsSqlRepo(TableMaintenancePolicyAttachmentsRepo):
-    """Store TableMaintenancePolicyAttachment aggregates in a SQL database."""
+    """Store TableMaintenancePolicyAttachment aggregates in a SQL database.
+
+    An attachment's id is random; the unique index on ``target_key`` keeps one
+    attachment per target, so two attaches to one target at once collide there
+    and the second is refused with ConflictError.
+    """
 
     def __init__(self, engine: Engine) -> None:
         """Bind the repository to an engine."""
@@ -51,6 +57,16 @@ class TableMaintenancePolicyAttachmentsSqlRepo(TableMaintenancePolicyAttachments
         with self._engine.connect() as conn:
             row = conn.execute(select(attachments).where(attachments.c.id == entity_id.value)).first()
         return None if row is None else TableMaintenancePolicyAttachmentRowMapper.to_aggregate(row._mapping)
+
+    def get_by_target(self, target: PolicyTarget) -> TableMaintenancePolicyAttachment | None:
+        """Return the attachment on the target, matched by its key, or None."""
+        with self._engine.connect() as conn:
+            row = conn.execute(select(attachments).where(attachments.c.target_key == target.key())).first()
+        return None if row is None else TableMaintenancePolicyAttachmentRowMapper.to_aggregate(row._mapping)
+
+    def get_many_by_targets(self, targets: Sequence[PolicyTarget]) -> list[TableMaintenancePolicyAttachment]:
+        """Return the attachments on any of the targets, matched by key."""
+        return self._select(select(attachments).where(attachments.c.target_key.in_([t.key() for t in targets])))
 
     def list_all(self) -> list[TableMaintenancePolicyAttachment]:
         """Return all attachments ordered by id."""

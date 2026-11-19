@@ -31,8 +31,8 @@ class TableMaintenancePolicyAttachment(AggregateRoot[TableMaintenancePolicyAttac
         policy_name: TableMaintenancePolicyName,
         now: datetime,
     ) -> TableMaintenancePolicyAttachment:
-        """Attach a policy to a target."""
-        return cls(id=target.attachment_id(), target=target, policy_name=policy_name, attached_at=now)
+        """Attach a policy to a target, under a new ``pa-`` id."""
+        return cls(id=TableMaintenancePolicyAttachmentId.new(), target=target, policy_name=policy_name, attached_at=now)
 
     def replace_policy(self, policy_name: TableMaintenancePolicyName, now: datetime) -> None:
         """Attach another policy to the same target."""

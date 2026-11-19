@@ -58,12 +58,12 @@ def _resolve(
     policies_repo: TableMaintenancePoliciesRepo,
     attachments_repo: TableMaintenancePolicyAttachmentsRepo,
 ) -> _ResolvedPolicies:
-    attached = {a.id: a.policy_name.value for a in attachments_repo.list_all()}
+    attached = {a.target.key(): a.policy_name.value for a in attachments_repo.list_all()}
     versions = {p.id.value: p.version for p in policies_repo.list_all()}
     resolved: _ResolvedPolicies = {}
     for table in tables:
         candidates = candidate_policy_targets(table.name, table.id.value)
-        name = next((attached[c.attachment_id()] for c in candidates if c.attachment_id() in attached), None)
+        name = next((attached[c.key()] for c in candidates if c.key() in attached), None)
         name = DEFAULT_POLICY_NAME if name is None else name
         resolved[table.id.value] = (name, versions.get(name))
     return resolved

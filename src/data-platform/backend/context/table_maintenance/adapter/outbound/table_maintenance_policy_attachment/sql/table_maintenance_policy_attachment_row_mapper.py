@@ -21,9 +21,10 @@ class TableMaintenancePolicyAttachmentRowMapper:
 
     @staticmethod
     def to_values(attachment: TableMaintenancePolicyAttachment) -> dict[str, Any]:
-        """Return the columns of the attachment row."""
+        """Return the columns of the attachment row; ``target_key`` is the target's unique key."""
         return {
             "id": attachment.id.value,
+            "target_key": attachment.target.key(),
             "target_type": attachment.target.type.value,
             "path_json": list(attachment.target.path),
             "table_uuid": attachment.target.table_uuid,
