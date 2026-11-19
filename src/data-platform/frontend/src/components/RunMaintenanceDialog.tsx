@@ -1,9 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Banner, Button, CheckBox, ModalDialog } from "@retail-lakehouse/design-system";
+import { Banner, Button, CheckBox, ModalDialog, Select } from "@retail-lakehouse/design-system";
 import { useState } from "react";
 import { getListTableMaintenanceRunsQueryKey } from "@/api/generated/table-maintenance-runs/table-maintenance-runs";
 import { triggerTableMaintenance } from "@/api/generated/tables/tables";
+import type { TriggerTableMaintenanceApiRequestPriority } from "@/api/generated/model";
 import { errorMessage } from "@/format";
+import { TABLE_PRIORITY_ITEMS } from "@/lib/tablePriorityItems";
 
 export const ALL_OPERATIONS = [
   "rewrite_data_files",
@@ -14,6 +16,8 @@ export const ALL_OPERATIONS = [
 
 interface Props {
   tableUuid: string;
+  // The table's own priority, the run's until the user picks another.
+  tablePriority: string;
   initialOperations?: string[];
   open?: boolean;
   onClose: () => void;
@@ -21,16 +25,19 @@ interface Props {
 
 export function RunMaintenanceDialog({
   tableUuid,
+  tablePriority,
   initialOperations = ALL_OPERATIONS,
   open = true,
   onClose,
 }: Props) {
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<string[]>(initialOperations);
+  const [priority, setPriority] = useState(tablePriority);
   const run = useMutation({
     mutationFn: () =>
       triggerTableMaintenance(tableUuid, {
         operations: ALL_OPERATIONS.filter((op) => selected.includes(op)),
+        priority: priority as TriggerTableMaintenanceApiRequestPriority,
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: getListTableMaintenanceRunsQueryKey(tableUuid) });
@@ -75,6 +82,12 @@ export function RunMaintenanceDialog({
             onCheckedChange={() => toggle(operation)}
           />
         ))}
+        <Select
+          label="Priority"
+          items={TABLE_PRIORITY_ITEMS}
+          value={priority}
+          onValueChange={setPriority}
+        />
         {run.isError && (
           <Banner type="negative" title={`Could not start maintenance: ${errorMessage(run.error)}`} />
         )}

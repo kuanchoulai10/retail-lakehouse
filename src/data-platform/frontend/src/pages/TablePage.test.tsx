@@ -277,6 +277,46 @@ describe("TablePage", { timeout: 15_000 }, () => {
     expect(within(summary).queryByRole("link", { name: /Priority/ })).not.toBeInTheDocument();
   });
 
+  it("overview shows the table's priority and saves a new one, then reads the record again", async () => {
+    const user = userEvent.setup();
+    let record = maintenance({ priority: "P3" });
+    const calls = stubTable({
+      maintenanceTable: () => jsonResponse(record),
+      extra: {
+        "PUT /v1/tables/uuid-orders/priority": (body) => {
+          record = maintenance({ priority: (body as { priority: string }).priority });
+          return jsonResponse(record);
+        },
+      },
+    });
+    renderAt(PAGE);
+    const summary = await screen.findByRole("region", { name: "Table" });
+    const select = await within(summary).findByRole("combobox", { name: "Priority" });
+    expect(select).toHaveTextContent("P3 · default");
+    await user.click(select);
+    await user.click(await screen.findByRole("option", { name: "P0 · urgent" }));
+    await waitFor(() => expect(bodyOf(calls, "PUT", "/v1/tables/uuid-orders/priority")).toEqual({ priority: "P0" }));
+    await waitFor(() => expect(within(summary).getByRole("combobox", { name: "Priority" })).toHaveTextContent("P0 · urgent"));
+    expect(callsTo(calls, "GET", "/v1/tables/uuid-orders").length).toBeGreaterThan(1);
+  });
+
+  it("overview shows a dropped table's priority read-only", async () => {
+    stubTable({ maintenanceTable: () => jsonResponse(maintenance({ status: "dropped", priority: "P1" })) });
+    renderAt(PAGE);
+    const summary = await screen.findByRole("region", { name: "Table" });
+    const select = await within(summary).findByRole("combobox", { name: "Priority" });
+    expect(select).toBeDisabled();
+    expect(select).toHaveTextContent("P1");
+  });
+
+  it("overview has no priority for a table maintenance has no record of", async () => {
+    stubTable({ maintenanceTable: () => jsonResponse({ detail: "table uuid-orders not found" }, 404) });
+    renderAt(PAGE);
+    await screen.findByText("Maintenance: not managed");
+    await settle();
+    expect(screen.queryByRole("combobox", { name: "Priority" })).not.toBeInTheDocument();
+  });
+
   it("overview does not ask for the discovery rules when the table is not managed", async () => {
     const calls = stubTable({ maintenanceTable: () => jsonResponse(maintenance({ status: "unmanaged" })) });
     renderAt(PAGE);

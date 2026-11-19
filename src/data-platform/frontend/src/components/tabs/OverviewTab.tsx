@@ -5,6 +5,7 @@ import { useGetTableDiscoveryRules } from "@/api/generated/discovery-rules/disco
 import type { CatalogTableApiResponse, TableApiResponse } from "@/api/generated/model";
 import { ApplicablePolicyPanel } from "@/components/ApplicablePolicyPanel";
 import { MaintenanceGate } from "@/components/MaintenanceGate";
+import { TablePrioritySelect } from "@/components/TablePrioritySelect";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { formatBytes, formatCount, formatRelativeTime } from "@/format";
 import type { TableMaintenanceState } from "@/lib/tableMaintenanceState";
@@ -74,6 +75,11 @@ export function OverviewTab({ table, maintenance, record }: Props) {
           <Fact label="Data files">{formatCount(files)}</Fact>
           <Fact label="Size">{size === null ? "—" : formatBytes(size)}</Fact>
           <Fact label="Last updated">{formatRelativeTime(new Date(table.last_updated_ms).toISOString())}</Fact>
+          {record.data !== undefined && (
+            <Fact label="Priority">
+              <TablePrioritySelect table={record.data} />
+            </Fact>
+          )}
         </dl>
       </Panel>
       {record.isPending ? (

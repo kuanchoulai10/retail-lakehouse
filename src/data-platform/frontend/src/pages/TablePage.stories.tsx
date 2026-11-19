@@ -44,6 +44,7 @@ export const Overview: Story = {
     await expect(header.queryByText(/Policy:|Rule:/)).toBeNull();
     const table = within(await canvas.findByRole("region", { name: "Table" }));
     await expect(await table.findByRole("link", { name: "Priority 10" })).toHaveAttribute("href", "/discovery-rules");
+    await expect(await table.findByRole("combobox", { name: "Priority" })).toHaveTextContent("P3 · default");
   },
 };
 

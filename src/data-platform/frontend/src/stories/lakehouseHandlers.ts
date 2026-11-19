@@ -34,6 +34,8 @@ import {
   getListTableCommitsMockHandler,
   getListTablesMockHandler,
   getResetCatalogTablePropertiesMockHandler,
+  getSetTablePriorityMockHandler,
+  getTriggerTableMaintenanceMockHandler,
 } from "@/api/generated/tables/tables.msw";
 import { getListTableMaintenanceRunsMockHandler } from "@/api/generated/table-maintenance-runs/table-maintenance-runs.msw";
 import { getListTableReconciliationsMockHandler } from "@/api/generated/table-reconciliations/table-reconciliations.msw";
@@ -79,6 +81,11 @@ export function lakehouseHandlers() {
     getListCoveredCatalogsMockHandler({ catalogs: ["iceberg"] }),
     getListTablesMockHandler(MAINTAINED_TABLES),
     getGetTableMockHandler(MAINTAINED_ORDERS),
+    getSetTablePriorityMockHandler(async ({ request }) => ({
+      ...MAINTAINED_ORDERS,
+      priority: ((await request.json()) as { priority: string }).priority,
+    })),
+    getTriggerTableMaintenanceMockHandler({ accepted: true }),
     getListTableCommitsMockHandler(({ request }) => {
       const query = new URL(request.url).searchParams;
       const since = query.get("since");

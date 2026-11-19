@@ -139,6 +139,7 @@ export function TableHeader({ table, managed, menuItems }: Props) {
         <RunMaintenanceDialog
           key={openCount}
           tableUuid={managed.uuid}
+          tablePriority={managed.priority}
           open={dialogOpen}
           onClose={() => setDialogOpen(false)}
         />

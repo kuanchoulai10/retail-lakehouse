@@ -194,6 +194,7 @@ describe("TableHeader", () => {
     await vi.waitFor(() => expect(calls[0]?.path).toBe("/v1/tables/uuid-orders/maintenance"));
     expect(bodyOf(calls, "POST", "/v1/tables/uuid-orders/maintenance")).toEqual({
       operations: ["rewrite_data_files", "rewrite_manifests", "remove_orphan_files"],
+      priority: "P3",
     });
   });
 
@@ -204,6 +205,7 @@ describe("TableHeader", () => {
       <QueryClientProvider client={client}>
         <RunMaintenanceDialog
           tableUuid="uuid-orders"
+          tablePriority="P3"
           initialOperations={["expire_snapshots"]}
           onClose={() => {}}
         />
