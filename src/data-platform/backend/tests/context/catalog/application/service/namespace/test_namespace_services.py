@@ -42,8 +42,8 @@ def test_create_namespace_with_properties(namespaces_repo: InMemoryNamespacesRep
     assert namespaces_repo.items["sales\x1fraw"] == {"owner": "data-eng"}
 
 
-@pytest.mark.parametrize("parts", [[], [""], ["a", " "]])
-def test_namespace_id_from_parts_rejects_empty_or_blank_parts(parts: list[str]):
+@pytest.mark.parametrize("parts", [(), ("",), ("a", " ")])
+def test_namespace_id_from_parts_rejects_empty_or_blank_parts(parts: tuple[str, ...]):
     """A namespace needs at least one part and none may be blank."""
     with pytest.raises(ValidationError):
         namespace_id_from_parts("sales", parts)
@@ -52,18 +52,18 @@ def test_namespace_id_from_parts_rejects_empty_or_blank_parts(parts: list[str]):
 def test_namespace_id_from_parts_rejects_a_part_with_the_unit_separator():
     """U+001F joins the parts in a path, so it cannot be inside one."""
     with pytest.raises(ValidationError, match="U\\+001F"):
-        namespace_id_from_parts("sales", ["a\x1fb"])
+        namespace_id_from_parts("sales", ("a\x1fb",))
 
 
 def test_namespace_id_from_parts_rejects_a_blank_catalog():
     """A blank catalog name is refused."""
     with pytest.raises(ValidationError):
-        namespace_id_from_parts(" ", ["a"])
+        namespace_id_from_parts(" ", ("a",))
 
 
 def test_namespace_id_from_parts_keeps_dots_and_spaces():
     """Dots and spaces are ordinary characters of a part."""
-    assert namespace_id_from_parts("sales", ["a.b", "c d"]).parts == ("a.b", "c d")
+    assert namespace_id_from_parts("sales", ("a.b", "c d")).parts == ("a.b", "c d")
 
 
 def test_create_namespace_with_invalid_parts_saves_nothing(namespaces_repo: InMemoryNamespacesRepo):
@@ -181,7 +181,7 @@ def test_update_unknown_namespace_is_not_found(namespaces_repo: InMemoryNamespac
 def test_namespace_id_from_parts_rejects_a_catalog_with_the_unit_separator():
     """A catalog holding U+001F would reroute to another catalog, so it is a validation error."""
     with pytest.raises(ValidationError, match="catalog name must not contain the unit separator"):
-        namespace_id_from_parts("a\x1fb", ["c"])
+        namespace_id_from_parts("a\x1fb", ("c",))
 
 
 @pytest.mark.parametrize(

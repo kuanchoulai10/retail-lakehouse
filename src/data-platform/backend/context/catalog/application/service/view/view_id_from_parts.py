@@ -2,17 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from context.catalog.application.exceptions import ValidationError
 from context.catalog.application.port.outbound.view import ViewId
 from context.catalog.application.service.namespace import namespace_id_from_parts
 
-if TYPE_CHECKING:
-    from collections.abc import Sequence
 
-
-def view_id_from_parts(catalog: str, namespace: Sequence[str], name: str) -> ViewId:
+def view_id_from_parts(catalog: str, namespace: tuple[str, ...], name: str) -> ViewId:
     """Return the id of the view ``name`` in ``namespace`` of ``catalog``, or raise ValidationError.
 
     The catalog and namespace follow ``namespace_id_from_parts``; the name is not blank and

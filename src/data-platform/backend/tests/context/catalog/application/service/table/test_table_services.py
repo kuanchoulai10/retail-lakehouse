@@ -321,8 +321,8 @@ def test_update_properties_needs_the_loaded_uuid(tables_repo: InMemoryTablesRepo
         )
 
 
-@pytest.mark.parametrize(("namespace", "name"), [([], "t"), (["a"], ""), (["a"], "x\x1fy"), ([" "], "t")])
-def test_table_id_from_parts_rejects_bad_parts(namespace: list[str], name: str):
+@pytest.mark.parametrize(("namespace", "name"), [((), "t"), (("a",), ""), (("a",), "x\x1fy"), ((" ",), "t")])
+def test_table_id_from_parts_rejects_bad_parts(namespace: tuple[str, ...], name: str):
     """A table needs a namespace, a name without U+001F, and no blank part."""
     with pytest.raises(ValidationError):
         table_id_from_parts("sales", namespace, name)
@@ -330,9 +330,9 @@ def test_table_id_from_parts_rejects_bad_parts(namespace: list[str], name: str):
 
 @pytest.mark.parametrize(
     ("catalog", "namespace", "name"),
-    [("a\x1fb", ["c"], "t"), ("sales", ["a\x1fb"], "t"), ("sales", ["a"], "t\x1fu")],
+    [("a\x1fb", ("c",), "t"), ("sales", ("a\x1fb",), "t"), ("sales", ("a",), "t\x1fu")],
 )
-def test_table_id_from_parts_refuses_the_unit_separator_anywhere(catalog: str, namespace: list[str], name: str):
+def test_table_id_from_parts_refuses_the_unit_separator_anywhere(catalog: str, namespace: tuple[str, ...], name: str):
     """U+001F in the catalog, a part or the name is a validation error, never another table's id."""
     with pytest.raises(ValidationError, match="must not contain the unit separator U\\+001F"):
         table_id_from_parts(catalog, namespace, name)
