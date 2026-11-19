@@ -50,7 +50,7 @@ class TableMaintenanceRunApiResponse(BaseModel):
     table_uuid: str
     execution_ref: str
     trigger: str
-    priority: str
+    priority: str = Field(description="The priority this run was started with, `P0` to `P3`.")
     status: str
     operations: list[TableMaintenanceRunOperationApiResponse]
     created_at: datetime

@@ -18,7 +18,7 @@ class TableApiResponse(BaseModel):
     namespace: str
     table: str
     status: str
-    priority: str
+    priority: str = Field(description="The table's maintenance priority, `P0` (urgent) to `P3` (the default).")
     matched_rule_id: str | None
     operation_states: dict[str, dict[str, Any]]
     registered_at: datetime

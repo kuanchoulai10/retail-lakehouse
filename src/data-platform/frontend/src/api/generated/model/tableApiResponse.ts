@@ -18,6 +18,7 @@ export interface TableApiResponse {
   matched_rule_id: string | null;
   namespace: string;
   operation_states: TableApiResponseOperationStates;
+  /** The table's maintenance priority, `P0` (urgent) to `P3` (the default). */
   priority: string;
   registered_at: string;
   status: string;

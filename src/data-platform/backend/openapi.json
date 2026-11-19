@@ -3334,6 +3334,7 @@
             "type": "object"
           },
           "priority": {
+            "description": "The table's maintenance priority, `P0` (urgent) to `P3` (the default).",
             "title": "Priority",
             "type": "string"
           },
@@ -4058,6 +4059,7 @@
             "type": "array"
           },
           "priority": {
+            "description": "The priority this run was started with, `P0` to `P3`.",
             "title": "Priority",
             "type": "string"
           },

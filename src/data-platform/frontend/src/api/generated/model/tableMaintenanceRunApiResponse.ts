@@ -14,6 +14,7 @@ export interface TableMaintenanceRunApiResponse {
   execution_ref: string;
   finished_at: string | null;
   operations: TableMaintenanceRunOperationApiResponse[];
+  /** The priority this run was started with, `P0` to `P3`. */
   priority: string;
   run_id: string;
   status: string;
