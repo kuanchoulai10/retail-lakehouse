@@ -128,9 +128,10 @@ def test_third_level_subclass_is_rejected() -> None:
 
 @pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
 def test_from_primitives_rejects_non_finite_numbers(bad: float) -> None:
-    """NaN and Infinity are not JSON; they raise ValueError."""
-    with pytest.raises(ValueError, match="JSON"):
+    """NaN and Infinity are not JSON; they raise InvariantViolation, like any refused input."""
+    with pytest.raises(InvariantViolation, match="_Schedule input must be JSON-compatible primitives") as caught:
         _Schedule.from_primitives({"unit": "hour", "min_interval_seconds": 3600, "retries": bad})
+    assert isinstance(caught.value.__cause__, ValueError)
 
 
 class _Range(ValueObject):

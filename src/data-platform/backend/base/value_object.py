@@ -66,7 +66,7 @@ class ValueObject(InvariantGuardedModel):
         """
         try:
             payload = json.dumps(data, allow_nan=False)
-        except TypeError as exc:
+        except (TypeError, ValueError) as exc:
             raise InvariantViolation(f"{cls.__name__} input must be JSON-compatible primitives: {exc}") from exc
         return cls.model_validate_json(payload, by_alias=True, by_name=False)
 
