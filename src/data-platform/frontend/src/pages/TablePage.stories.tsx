@@ -13,7 +13,14 @@ import { ConsolePage } from "@/stories/ConsolePage";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
 import { lakehouseHandlers } from "@/stories/lakehouseHandlers";
 import { PHONE } from "@/stories/phone";
-import { ESCALATED_RUN, ESCALATED_RUN_ID, MAINTAINED_ORDERS, POLICIES, SCHEDULED_RUN_ID } from "@/stories/storyData";
+import {
+  ESCALATED_RUN,
+  ESCALATED_RUN_ID,
+  MAINTAINED_ORDERS,
+  NEWEST_ROUND_ID,
+  POLICIES,
+  SCHEDULED_RUN_ID,
+} from "@/stories/storyData";
 
 const ORDERS = "/catalogs/iceberg/namespaces/retail/tables/orders";
 
@@ -129,7 +136,7 @@ export const Candidates: Story = {
     await expect(table.getByText("Waiting for a later round: below the top 2 (2 per table per round)")).toBeVisible();
     await expect(table.getByRole("link", { name: formatTimestamp("2026-11-13T02:00:00Z") })).toHaveAttribute(
       "href",
-      "/compaction-rounds?round=compaction-rounds-2026-11-13T02%3A00%3A00Z",
+      `/compaction-rounds?round=${NEWEST_ROUND_ID}`,
     );
     await expect(table.getAllByText("Overdue")).toHaveLength(1);
     await expect(await table.findByText(/^Waited \d+ (min|h|d); P0 allows 1 h$/)).toBeVisible();

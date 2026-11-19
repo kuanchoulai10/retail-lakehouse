@@ -20,6 +20,8 @@ from tests.context.table_maintenance.fakes.in_memory_compaction_candidates_repo 
     InMemoryCompactionCandidatesRepo,
 )
 
+ROUND_1 = "cr-00000000000000000000000001"
+
 RUN_1 = "mr-00000000000000000000000001"
 
 NOW = datetime(2026, 11, 13, 12, tzinfo=UTC)
@@ -37,7 +39,7 @@ def _candidate(value: str, run: TableMaintenanceRunId | None) -> CompactionCandi
         now=NOW,
     )
     if run is not None:
-        candidate.grant("round-1", NOW + timedelta(minutes=10), NOW)
+        candidate.grant(ROUND_1, NOW + timedelta(minutes=10), NOW)
         candidate.claim(run, NOW + timedelta(hours=1), NOW)
     return candidate
 

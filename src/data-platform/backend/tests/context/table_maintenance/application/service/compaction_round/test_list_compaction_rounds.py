@@ -13,6 +13,11 @@ from context.table_maintenance.application.port.inbound.compaction_round import 
 from context.table_maintenance.application.service.compaction_round import ListCompactionRoundsService
 from tests.context.table_maintenance.application.service.compaction_round.recorded_round import recorded_round
 from tests.context.table_maintenance.fakes.in_memory_compaction_rounds_repo import InMemoryCompactionRoundsRepo
+from tests.context.table_maintenance.numbered_id import numbered_id
+
+ROUND_0 = "cr-00000000000000000000000000"
+ROUND_2 = "cr-00000000000000000000000002"
+ROUND_4 = "cr-00000000000000000000000004"
 
 NOW = datetime(2026, 11, 13, 12, tzinfo=UTC)
 
@@ -28,7 +33,7 @@ def _service(tables_repo):  # noqa: ANN001, ANN202
     )
     rounds = InMemoryCompactionRoundsRepo()
     for minutes in (0, 2, 4):
-        rounds.save(recorded_round(f"round-{minutes}", NOW + timedelta(minutes=minutes)))
+        rounds.save(recorded_round(numbered_id("cr", minutes), NOW + timedelta(minutes=minutes)))
     return ListCompactionRoundsService(rounds, tables_repo)
 
 
@@ -36,14 +41,14 @@ def test_rounds_come_newest_first_up_to_the_limit(tables_repo):
     """The newest rounds are listed first, at most ``limit`` of them."""
     out = _service(tables_repo).execute(ListCompactionRoundsUseCaseInput(limit=2))
 
-    assert [r.round_id for r in out.items] == ["round-4", "round-2"]
+    assert [r.round_id for r in out.items] == [ROUND_4, ROUND_2]
 
 
 def test_before_pages_to_older_rounds(tables_repo):
     """``before`` lists only rounds that started before it, so the last round's start fetches the next page."""
     out = _service(tables_repo).execute(ListCompactionRoundsUseCaseInput(limit=2, before=NOW + timedelta(minutes=2)))
 
-    assert [r.round_id for r in out.items] == ["round-0"]
+    assert [r.round_id for r in out.items] == [ROUND_0]
 
 
 def test_a_round_carries_its_budget_picks_and_skips_with_table_names(tables_repo):
@@ -51,7 +56,7 @@ def test_a_round_carries_its_budget_picks_and_skips_with_table_names(tables_repo
     item = _service(tables_repo).execute(ListCompactionRoundsUseCaseInput(limit=1)).items[0]
 
     assert item == ListCompactionRoundsUseCaseOutput.CompactionRound(
-        round_id="round-4",
+        round_id=ROUND_4,
         started_at=NOW + timedelta(minutes=4),
         budget_gb_hours=0.05,
         used_gb_hours=0.04,

@@ -3,6 +3,9 @@ import type { CompactionCandidateApiResponse } from "@/api/generated/model";
 import { formatTimestamp } from "@/format";
 import { overdueText, roundPath, whyNotPicked } from "./candidateText";
 
+const ROUND_ID = "cr-01m7acesg0fabv7jf1pza0mv4e";
+const UNLISTED_ROUND_ID = "cr-01m79a0g20fyg9rjvt5yegdse3";
+
 function candidate(overrides: Partial<CompactionCandidateApiResponse>): CompactionCandidateApiResponse {
   return {
     partition: { spec_id: 0, values: ["2026-11-01"] },
@@ -54,7 +57,7 @@ describe("whyNotPicked", () => {
         candidate({
           state: "granted",
           rank: null,
-          granted_round_id: "compaction-rounds-2026-11-13T12:00:00Z",
+          granted_round_id: ROUND_ID,
           granted_round_started_at: "2026-11-13T12:00:03Z",
         }),
         10,
@@ -64,7 +67,7 @@ describe("whyNotPicked", () => {
 
   it("says a partition was granted when its round is no longer listed", () => {
     expect(
-      whyNotPicked(candidate({ state: "granted", rank: null, granted_round_id: "compaction-rounds-x" }), 10),
+      whyNotPicked(candidate({ state: "granted", rank: null, granted_round_id: UNLISTED_ROUND_ID }), 10),
     ).toBe("Granted");
   });
 
@@ -97,9 +100,7 @@ describe("whyNotPicked", () => {
 
 describe("roundPath", () => {
   it("opens the rounds page at the round", () => {
-    expect(roundPath("compaction-rounds-2026-11-13T12:00:00Z")).toBe(
-      "/compaction-rounds?round=compaction-rounds-2026-11-13T12%3A00%3A00Z",
-    );
+    expect(roundPath(ROUND_ID)).toBe(`/compaction-rounds?round=${ROUND_ID}`);
   });
 });
 

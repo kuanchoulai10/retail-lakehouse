@@ -8,6 +8,9 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.compact
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.compaction_round_workflow import (
     CompactionRoundWorkflow,
 )
+from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.mint_workflow_prefixed_id import (
+    mint_workflow_prefixed_id,
+)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_discovery_workflow import (
     TableDiscoveryWorkflow,
 )
@@ -40,4 +43,5 @@ __all__ = [
     "TableMaintenanceWorkflow",
     "TableReconciliationWorkflow",
     "TableSearchAttributeKeys",
+    "mint_workflow_prefixed_id",
 ]

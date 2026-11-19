@@ -162,7 +162,7 @@ function RoundDetail({ round }: { round: CompactionRoundApiResponse }) {
         <p className="type-body-small text-on-surface-variant">{busyText(round.busy_skipped)}</p>
       )}
       <p className="type-body-small text-on-surface-variant">
-        Workflow id <span className="font-mono">{round.round_id}</span>
+        Round id <span className="font-mono">{round.round_id}</span>
       </p>
     </div>
   );

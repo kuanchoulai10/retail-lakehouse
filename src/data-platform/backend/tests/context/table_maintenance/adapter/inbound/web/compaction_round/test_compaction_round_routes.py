@@ -4,13 +4,20 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.compaction_round import (
     GetCompactionRoundUseCaseOutput,
     ListCompactionRoundsUseCaseInput,
     ListCompactionRoundsUseCaseOutput,
 )
+from context.table_maintenance.application.service.compaction_round import GetCompactionRoundService
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import StubUseCase, build_client
+from tests.context.table_maintenance.fakes.in_memory_compaction_rounds_repo import InMemoryCompactionRoundsRepo
+from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
+
+ROUND_1 = "cr-00000000000000000000000001"
+UNKNOWN_ROUND = "cr-00000000000000000000000099"
+OLD_WORKFLOW_ROUND_ID = "compaction-rounds-2026-11-13T12:00:00Z"
+ROUND_ID_SHAPE = "CompactionRoundId must look like cr-<26 base32 characters>"
 
 NOW = datetime(2026, 11, 13, 12, 0, tzinfo=UTC)
 
@@ -40,7 +47,7 @@ SKIP_JSON = {
     "reason": "budget_used",
 }
 ROUND_JSON = {
-    "round_id": "compaction-rounds-1",
+    "round_id": ROUND_1,
     "started_at": "2026-11-13T12:00:00Z",
     "budget_gb_hours": 0.05,
     "used_gb_hours": 0.04,
@@ -53,7 +60,7 @@ ROUND_JSON = {
 
 def _listed() -> ListCompactionRoundsUseCaseOutput.CompactionRound:
     return ListCompactionRoundsUseCaseOutput.CompactionRound(
-        round_id="compaction-rounds-1",
+        round_id=ROUND_1,
         started_at=NOW,
         budget_gb_hours=0.05,
         used_gb_hours=0.04,
@@ -129,7 +136,7 @@ def test_gets_one_round():
     """The get route answers one round by id."""
     stub = StubUseCase(
         GetCompactionRoundUseCaseOutput(
-            round_id="compaction-rounds-1",
+            round_id=ROUND_1,
             started_at=NOW,
             budget_gb_hours=0.05,
             used_gb_hours=0.04,
@@ -140,18 +147,32 @@ def test_gets_one_round():
         )
     )
 
-    response = build_client(get_compaction_round=stub).get("/v1/compaction-rounds/compaction-rounds-1")
+    response = build_client(get_compaction_round=stub).get(f"/v1/compaction-rounds/{ROUND_1}")
 
     assert response.status_code == 200
     assert response.json() == ROUND_JSON
-    assert stub.requests[0].round_id == "compaction-rounds-1"
+    assert stub.requests[0].round_id == ROUND_1
 
 
 def test_an_unknown_round_is_404():
     """A round never recorded, or purged, answers 404."""
-    client = build_client(get_compaction_round=StubUseCase(error=NotFoundError("compaction round nope not found")))
+    client = build_client(
+        get_compaction_round=GetCompactionRoundService(InMemoryCompactionRoundsRepo(), InMemoryTablesRepo())
+    )
 
-    assert client.get("/v1/compaction-rounds/nope").status_code == 404
+    assert client.get(f"/v1/compaction-rounds/{UNKNOWN_ROUND}").status_code == 404
+
+
+def test_a_round_id_of_the_old_workflow_id_shape_is_422():
+    """A round id named after its workflow, as rounds were before ``cr-`` ids, answers 422 naming the shape."""
+    client = build_client(
+        get_compaction_round=GetCompactionRoundService(InMemoryCompactionRoundsRepo(), InMemoryTablesRepo())
+    )
+
+    response = client.get(f"/v1/compaction-rounds/{OLD_WORKFLOW_ROUND_ID}")
+
+    assert response.status_code == 422
+    assert ROUND_ID_SHAPE in response.json()["detail"]
 
 
 def test_a_busy_table_skip_is_served():

@@ -37,6 +37,9 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.compaction_candidate import (
         CompactionCandidatesRepo,
     )
+
+ROUND_1 = "cr-00000000000000000000000001"
+ROUND_7 = "cr-00000000000000000000000007"
 RUN_1 = "mr-00000000000000000000000001"
 RUN_2 = "mr-00000000000000000000000002"
 
@@ -84,7 +87,7 @@ def test_round_trip_keeps_every_field(repo: CompactionCandidatesRepo):
         waiting_since=NOW - timedelta(minutes=10),
         label="day=2022-01-08, region=o'neil",
     )
-    candidate.grant("round-1", NOW + timedelta(minutes=10), NOW)
+    candidate.grant(ROUND_1, NOW + timedelta(minutes=10), NOW)
     candidate.claim(RUN, NOW + timedelta(hours=19), NOW)
     candidate.observe(
         SCORE, NOW - timedelta(minutes=2), None, NOW + timedelta(minutes=1), priority=MaintenancePriority.P0
@@ -134,7 +137,7 @@ def test_round_trip_of_a_granted_candidate(repo: CompactionCandidatesRepo):
     """A granted candidate keeps its round, lease, pending start and priority."""
     candidate = _candidate()
     candidate.observe(SCORE, None, None, NOW, priority=MaintenancePriority.P1)
-    candidate.grant("round-7", NOW + timedelta(minutes=10), NOW + timedelta(minutes=1))
+    candidate.grant(ROUND_7, NOW + timedelta(minutes=10), NOW + timedelta(minutes=1))
     repo.save_all([candidate])
 
     loaded = repo.get(candidate.id)
@@ -142,7 +145,7 @@ def test_round_trip_of_a_granted_candidate(repo: CompactionCandidatesRepo):
     assert loaded.model_dump() == candidate.model_dump()
     assert (loaded.state, loaded.granted_round_id, loaded.priority) == (
         CandidateState.GRANTED,
-        "round-7",
+        ROUND_7,
         MaintenancePriority.P1,
     )
     assert loaded.pending_since == NOW
@@ -176,9 +179,9 @@ def test_list_unheld_reads_every_table(repo: CompactionCandidatesRepo):
     """Every candidate of every table but the held ones is listed."""
     held = _candidate(("held",), hold=HoldReason.NOT_DUE)
     granted = _candidate(("granted",))
-    granted.grant("round-1", NOW + timedelta(minutes=10), NOW)
+    granted.grant(ROUND_1, NOW + timedelta(minutes=10), NOW)
     claimed = _candidate(("claimed",))
-    claimed.grant("round-1", NOW + timedelta(minutes=10), NOW)
+    claimed.grant(ROUND_1, NOW + timedelta(minutes=10), NOW)
     claimed.claim(RUN, NOW + timedelta(hours=1), NOW)
     mine, theirs = _candidate(("eu",)), _candidate(("eu",), table=TableId("t-2"))
     repo.save_all([held, granted, claimed, mine, theirs])
@@ -206,7 +209,7 @@ def test_list_by_run_returns_the_candidates_the_run_holds(repo: CompactionCandid
     """Only the candidates claimed by the run are listed for it."""
     claimed, other, free = _candidate(("eu",)), _candidate(("us",)), _candidate(("ap",))
     for candidate, run in ((claimed, RUN), (other, TableMaintenanceRunId(RUN_2))):
-        candidate.grant("round-1", NOW + timedelta(minutes=10), NOW)
+        candidate.grant(ROUND_1, NOW + timedelta(minutes=10), NOW)
         candidate.claim(run, NOW + timedelta(hours=1), NOW)
     repo.save_all([claimed, other, free])
 
@@ -268,7 +271,7 @@ def test_save_of_a_stale_candidate_raises_and_saves_nothing(file_engine: Engine)
     first.save_all([_candidate(("eu",)), _candidate(("us",))])
     a1, _ = first.list_by_table(TABLE)
     b1, b2 = second.list_by_table(TABLE)
-    a1.grant("round-1", NOW + timedelta(minutes=10), NOW)
+    a1.grant(ROUND_1, NOW + timedelta(minutes=10), NOW)
     first.save_all([a1])
 
     b2.observe(CandidateScore(reducible_files=1, data_bytes=1, estimated_gb_hours=0.0, score=0.1), None, None, NOW)

@@ -36,7 +36,7 @@ from tests.context.table_maintenance.fakes.in_memory_compaction_rounds_repo impo
 from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
 
 NOW = datetime(2026, 11, 13, 12, tzinfo=UTC)
-WORKFLOW_ROUND_ID = "compaction-rounds-2026-11-13T12:00:00Z"
+WORKFLOW_ROUND_ID = "cr-01kaa4zc9qf3v8d2m6xk0w7b2r"
 WORKFLOW_SCHEDULE_REQUEST = {"round_id": WORKFLOW_ROUND_ID, "now": "2026-11-13T12:00:00+00:00"}
 
 
@@ -68,12 +68,12 @@ def test_schedule_passes_the_round_and_now_and_returns_dict():
     schedule = FakeSchedule()
 
     result = CompactionRoundActivities(schedule=schedule).schedule_compaction_round(
-        {"round_id": "compaction-rounds-1", "now": NOW.isoformat()}
+        {"round_id": WORKFLOW_ROUND_ID, "now": NOW.isoformat()}
     )
 
-    assert schedule.requests == [ScheduleCompactionRoundUseCaseInput(round_id="compaction-rounds-1", now=NOW)]
+    assert schedule.requests == [ScheduleCompactionRoundUseCaseInput(round_id=WORKFLOW_ROUND_ID, now=NOW)]
     assert result == {
-        "round_id": "compaction-rounds-1",
+        "round_id": WORKFLOW_ROUND_ID,
         "granted_table_uuids": ["t-1"],
         "picked": 2,
         "skipped_total": 1,
@@ -87,7 +87,7 @@ def test_a_stale_candidate_stays_retryable():
     activities = CompactionRoundActivities(schedule=FakeSchedule(StaleCompactionCandidate("changed")))
 
     with pytest.raises(StaleCompactionCandidate):
-        activities.schedule_compaction_round({"round_id": "r", "now": NOW.isoformat()})
+        activities.schedule_compaction_round({"round_id": WORKFLOW_ROUND_ID, "now": NOW.isoformat()})
 
 
 def test_round_input_is_built_from_the_payload_the_round_workflow_sends():
@@ -177,6 +177,6 @@ def test_round_activity_returns_the_payload_the_round_workflow_reads():
     result = CompactionRoundActivities(schedule=service).schedule_compaction_round(dict(WORKFLOW_SCHEDULE_REQUEST))
 
     assert json.dumps(result) == (
-        '{"round_id": "compaction-rounds-2026-11-13T12:00:00Z", "granted_table_uuids": ["t-1", "t-2"], '
+        '{"round_id": "cr-01kaa4zc9qf3v8d2m6xk0w7b2r", "granted_table_uuids": ["t-1", "t-2"], '
         '"picked": 2, "skipped_total": 1, "used_gb_hours": 1.0, "budget_gb_hours": 1.0}'
     )

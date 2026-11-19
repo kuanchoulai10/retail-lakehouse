@@ -32,6 +32,12 @@ from tests.context.table_maintenance.fakes.in_memory_compaction_candidates_repo 
 )
 from tests.context.table_maintenance.fakes.in_memory_compaction_rounds_repo import InMemoryCompactionRoundsRepo
 from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
+from tests.context.table_maintenance.numbered_id import numbered_id
+
+ROUND_0 = "cr-00000000000000000000000000"
+ROUND_1 = "cr-00000000000000000000000001"
+ROUND_2 = "cr-00000000000000000000000002"
+ROUND_3 = "cr-00000000000000000000000003"
 
 RUN_1 = "mr-00000000000000000000000001"
 
@@ -84,7 +90,7 @@ def _service(candidates, rounds, *, tables=None, rounds_kept: int = 500):  # noq
     )
 
 
-def _run(service, round_id: str = "round-1", now: datetime = NOW):  # noqa: ANN001, ANN202
+def _run(service, round_id: str = ROUND_1, now: datetime = NOW):  # noqa: ANN001, ANN202
     return service.execute(ScheduleCompactionRoundUseCaseInput(round_id=round_id, now=now))
 
 
@@ -108,14 +114,14 @@ def test_grants_the_picked_candidates_and_saves_the_round(candidates):  # noqa: 
 
     output = _run(_service(candidates, rounds))
 
-    assert (output.round_id, output.picked, output.skipped_total) == ("round-1", 2, 1)
+    assert (output.round_id, output.picked, output.skipped_total) == (ROUND_1, 2, 1)
     assert output.granted_table_uuids == ("t-1", "t-2")
     assert output.used_gb_hours == pytest.approx(0.04)
     assert output.budget_gb_hours == 0.05
     granted = [c for c in candidates.list_all() if c.state is CandidateState.GRANTED]
     assert sorted(str(c.partition.values[0]) for c in granted) == ["a", "b"]
-    assert {(c.granted_round_id, c.lease_expires_at) for c in granted} == {("round-1", NOW + GRANT_LEASE)}
-    stored = rounds.get(CompactionRoundId("round-1"))
+    assert {(c.granted_round_id, c.lease_expires_at) for c in granted} == {(ROUND_1, NOW + GRANT_LEASE)}
+    stored = rounds.get(CompactionRoundId(ROUND_1))
     assert stored is not None
     assert [p.label for p in stored.picks] == ["day=a", "day=b"]
     assert [(s.label, s.reason) for s in stored.skips] == [("day=c", SkipReason.BUDGET_USED)]
@@ -137,7 +143,7 @@ def test_a_round_with_no_pending_candidate_is_recorded_empty():
     output = _run(_service(InMemoryCompactionCandidatesRepo(), rounds))
 
     assert (output.picked, output.granted_table_uuids, output.used_gb_hours) == (0, (), 0.0)
-    assert rounds.get(CompactionRoundId("round-1")) is not None
+    assert rounds.get(CompactionRoundId(ROUND_1)) is not None
 
 
 def test_a_stale_candidate_saves_neither_grants_nor_round(candidates):  # noqa: ANN001
@@ -180,16 +186,16 @@ def test_purges_old_rounds(candidates):  # noqa: ANN001
     service = _service(candidates, rounds, rounds_kept=2)
 
     for i in range(4):
-        _run(service, round_id=f"round-{i}", now=NOW + timedelta(minutes=i))
+        _run(service, round_id=numbered_id("cr", i), now=NOW + timedelta(minutes=i))
 
-    assert sorted(r.id.value for r in rounds.list_all()) == ["round-2", "round-3"]
+    assert sorted(r.id.value for r in rounds.list_all()) == [ROUND_2, ROUND_3]
 
 
 def test_a_table_busy_with_a_run_gets_no_grant():
     """A table whose run holds a candidate gets nothing, counted apart from the skips; an idle table gets the budget."""
     repo = InMemoryCompactionCandidatesRepo()
     running = _candidate("t-busy", "running", score=0.99)
-    running.grant("round-0", NOW + GRANT_LEASE, NOW - timedelta(minutes=1))
+    running.grant(ROUND_0, NOW + GRANT_LEASE, NOW - timedelta(minutes=1))
     run = TableMaintenanceRunId(RUN_1)
     running.claim(run, NOW + timedelta(hours=1), NOW - timedelta(minutes=1))
     running.start(run, NOW - timedelta(minutes=1))
@@ -204,7 +210,7 @@ def test_a_table_busy_with_a_run_gets_no_grant():
         "more": CandidateState.PENDING,
         "a": CandidateState.GRANTED,
     }
-    stored = rounds.get(CompactionRoundId("round-1"))
+    stored = rounds.get(CompactionRoundId(ROUND_1))
     assert stored is not None
     assert (stored.skips, stored.skipped_total, stored.busy_skipped) == ((), 0, 1)
 
@@ -245,7 +251,7 @@ def test_a_round_retried_after_its_grants_were_saved_records_them_and_grants_no_
         "c": CandidateState.PENDING,
         "d": CandidateState.PENDING,
     }
-    stored = rounds.get(CompactionRoundId("round-1"))
+    stored = rounds.get(CompactionRoundId(ROUND_1))
     assert stored is not None
     assert [p.label for p in stored.picks] == ["day=a", "day=b"]
 
@@ -281,7 +287,7 @@ def _finished(table: str, value: str, *, succeeded: bool) -> CompactionCandidate
     candidate = _candidate(table, value, score=0.95)
     run = TableMaintenanceRunId.new()
     at = NOW - timedelta(minutes=3)
-    candidate.grant("round-0", NOW + GRANT_LEASE, at)
+    candidate.grant(ROUND_0, NOW + GRANT_LEASE, at)
     candidate.claim(run, NOW + timedelta(hours=1), at)
     candidate.start(run, at)
     candidate.finish(run, succeeded=succeeded, now=at)
@@ -312,7 +318,7 @@ def test_a_round_removes_the_candidates_of_a_table_maintenance_no_longer_manages
 
     assert output.granted_table_uuids == ("t-1", "t-2")
     assert candidates.list_by_table(TableId("t-gone")) == []
-    stored = rounds.get(CompactionRoundId("round-1"))
+    stored = rounds.get(CompactionRoundId(ROUND_1))
     assert stored is not None
     assert all(s.table_uuid.value != "t-gone" for s in stored.skips)
 
@@ -326,7 +332,7 @@ def test_a_table_that_left_with_a_finished_run_does_not_stay_busy(candidates, su
     _run(_service(candidates, rounds, tables=_left("t-gone", "unmanaged")))
 
     assert candidates.list_by_table(TableId("t-gone")) == []
-    stored = rounds.get(CompactionRoundId("round-1"))
+    stored = rounds.get(CompactionRoundId(ROUND_1))
     assert stored is not None
     assert all(s.reason is not SkipReason.TABLE_BUSY for s in stored.skips)
 

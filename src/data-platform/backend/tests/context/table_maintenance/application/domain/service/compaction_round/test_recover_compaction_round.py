@@ -16,8 +16,10 @@ from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePriority
 from context.table_maintenance.application.domain.service.compaction_round import recover_compaction_round
 
+ROUND_1 = "cr-00000000000000000000000001"
+
 NOW = datetime(2026, 11, 13, 12, tzinfo=UTC)
-ROUND = CompactionRoundId("round-1")
+ROUND = CompactionRoundId(ROUND_1)
 SLA = {
     MaintenancePriority.P0: timedelta(hours=1),
     MaintenancePriority.P1: timedelta(hours=4),

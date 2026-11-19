@@ -2,7 +2,10 @@
 
 Temporal replays workflow code, so wall-clock time, randomness, UUIDs and the
 client or worker APIs are off limits; workflows use ``workflow.now()``,
-``workflow.random()``, ``workflow.uuid4()`` and activities instead.
+``workflow.random()``, ``workflow.uuid4()`` and activities instead. That covers
+``shared_kernel.new_prefixed_id`` too, which mints from ``uuid.uuid7()``: a
+workflow mints a prefixed id with ``prefixed_id_from_parts`` from its own clock
+and random (docs/adr/0011).
 """
 
 from __future__ import annotations
@@ -23,7 +26,10 @@ _FORBIDDEN_MODULES = (
     "threading",
     "temporalio.client",
     "temporalio.worker",
+    "shared_kernel.new_prefixed_id",
 )
+# Names that mint from the wall clock or system randomness, however they are reached.
+_FORBIDDEN_NAMES = ("new_prefixed_id",)
 _CLOCK_CLASSES = ("datetime", "date")
 _CLOCK_METHODS = ("now", "utcnow", "today")
 
@@ -62,13 +68,17 @@ def violations(source: str) -> list[str]:
         elif isinstance(node, ast.ImportFrom) and node.module:
             if _is_forbidden(node.module):
                 found.append(f"from {node.module} import ...")
-            elif node.module == "temporalio":
+            else:
                 found += [
-                    f"from temporalio import {a.name}" for a in node.names if _is_forbidden(f"temporalio.{a.name}")
+                    f"from {node.module} import {a.name}"
+                    for a in node.names
+                    if _is_forbidden(f"{node.module}.{a.name}") or a.name in _FORBIDDEN_NAMES
                 ]
         elif isinstance(node, ast.Attribute):
             owner = _rightmost_name(node.value)
             if owner in clock_names and node.attr in _CLOCK_METHODS:
+                found.append(f"{owner}.{node.attr}")
+            elif node.attr in _FORBIDDEN_NAMES:
                 found.append(f"{owner}.{node.attr}")
     return found
 
@@ -127,6 +137,11 @@ def test_workflow_module_is_deterministic(path: Path):
         "from datetime import datetime\nx = datetime.today()",
         "from datetime import datetime as dt\nx = dt.now()",
         "import datetime as d\nx = d.date.today()",
+        "from shared_kernel import new_prefixed_id",
+        "from shared_kernel.new_prefixed_id import new_prefixed_id",
+        "import shared_kernel.new_prefixed_id",
+        "import shared_kernel\nx = shared_kernel.new_prefixed_id('cr')",
+        "import shared_kernel as sk\nx = sk.new_prefixed_id('cr')",
     ],
 )
 def test_checker_flags_forbidden_source(source: str):
@@ -137,4 +152,14 @@ def test_checker_flags_forbidden_source(source: str):
 def test_checker_accepts_workflow_apis():
     """The checker accepts the deterministic workflow replacements."""
     source = "from temporalio import workflow\nfrom datetime import timedelta\n"
+    assert violations(source) == []
+
+
+def test_checker_accepts_minting_a_prefixed_id_from_workflow_parts():
+    """Minting a prefixed id from the workflow clock and random (``prefixed_id_from_parts``) is deterministic."""
+    source = (
+        "from temporalio import workflow\n"
+        "from shared_kernel import prefixed_id_from_parts\n"
+        "x = prefixed_id_from_parts('cr', int(workflow.now().timestamp() * 1000), workflow.random().getrandbits(74))\n"
+    )
     assert violations(source) == []

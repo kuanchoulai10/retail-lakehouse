@@ -12,8 +12,10 @@ import { CompactionRoundsPage } from "./CompactionRoundsPage";
 const PATH = "GET /v1/compaction-rounds?limit=50";
 const SETTINGS = "GET /v1/scheduler-settings";
 
+const ROUND_ID = "cr-01m7acesg0fabv7jf1pza0mv4e";
+
 const ROUND: CompactionRoundApiResponse = {
-  round_id: "compaction-rounds-2026-11-13T12:00:00Z",
+  round_id: ROUND_ID,
   started_at: "2026-11-13T12:00:00Z",
   budget_gb_hours: 0.05,
   used_gb_hours: 0.04,
@@ -108,12 +110,12 @@ describe("CompactionRoundsPage", () => {
     expect(screen.getByText("The first 1 of 3 skipped partitions, in rank order.")).toBeInTheDocument();
   });
 
-  it("keeps the workflow id as secondary detail, not as the round's name", async () => {
+  it("keeps the round id as secondary detail, not as the round's name", async () => {
     stubCatalogApi({ [PATH]: () => jsonResponse([ROUND]) });
     renderPage();
     await userEvent.click(await screen.findByRole("button", { name: `Expand round ${ROUND_NAME}` }));
     expect(screen.getByText(ROUND.round_id)).toHaveClass("font-mono");
-    expect(screen.getByText(ROUND.round_id).parentElement).toHaveTextContent(`Workflow id ${ROUND.round_id}`);
+    expect(screen.getByText(ROUND.round_id).parentElement).toHaveTextContent(`Round id ${ROUND.round_id}`);
   });
 
   it("explains the weighted score, overdue and each skip reason", async () => {

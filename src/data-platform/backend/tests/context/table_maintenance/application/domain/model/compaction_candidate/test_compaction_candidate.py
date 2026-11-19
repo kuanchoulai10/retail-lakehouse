@@ -33,7 +33,8 @@ OTHER_RUN = TableMaintenanceRunId(RUN_2)
 SCORE = CandidateScore(reducible_files=10, data_bytes=1000, estimated_gb_hours=0.1, score=0.6)
 NEW_SCORE = CandidateScore(reducible_files=12, data_bytes=1200, estimated_gb_hours=0.12, score=0.65)
 LEASE = NOW + timedelta(hours=1)
-ROUND = "round-1"
+ROUND = "cr-00000000000000000000000001"
+OTHER_ROUND = "cr-00000000000000000000000002"
 GRANT_LEASE = NOW + timedelta(minutes=10)
 SLA = {
     MaintenancePriority.P0: timedelta(hours=1),
@@ -287,7 +288,7 @@ def test_grant_moves_pending_to_granted_with_a_lease():
 def test_grant_refuses_a_candidate_that_is_not_pending(make):
     """Only a pending candidate can be granted; a held one is filtered, a granted or claimed one is taken."""
     with pytest.raises(InvalidCandidateTransition):
-        make().grant("round-2", GRANT_LEASE, NOW)
+        make().grant(OTHER_ROUND, GRANT_LEASE, NOW)
 
 
 def test_grant_lease_must_end_after_the_grant():

@@ -21,10 +21,13 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRunId
 from context.table_maintenance.application.domain.service.compaction_round import plan_compaction_round
 
+ROUND_0 = "cr-00000000000000000000000000"
+ROUND_1 = "cr-00000000000000000000000001"
+
 RUN_1 = "mr-00000000000000000000000001"
 
 NOW = datetime(2026, 11, 13, 12, tzinfo=UTC)
-ROUND = CompactionRoundId("round-1")
+ROUND = CompactionRoundId(ROUND_1)
 WEIGHTS = PriorityWeights(p0=4.0, p1=2.0, p2=1.0)
 SLA = {
     MaintenancePriority.P0: timedelta(hours=1),
@@ -189,7 +192,7 @@ def test_granted_tables_are_unique_in_pick_order():
 def _busy(table: str, value: str, state: str) -> CompactionCandidate:
     """A candidate of ``table`` that a round granted (``granted``), a run holds (``running``) or finished (``done``)."""
     candidate = _candidate(table, value, score=0.99)
-    candidate.grant("round-0", NOW + timedelta(minutes=10), NOW - timedelta(minutes=1))
+    candidate.grant(ROUND_0, NOW + timedelta(minutes=10), NOW - timedelta(minutes=1))
     if state != "granted":
         run = TableMaintenanceRunId(RUN_1)
         candidate.claim(run, NOW + timedelta(hours=1), NOW - timedelta(minutes=1))
@@ -226,7 +229,7 @@ def test_only_pending_candidates_are_picked_or_skipped():
 def test_an_expired_grant_does_not_keep_its_table_busy():
     """A grant whose lease ended no longer holds the table."""
     stale = _candidate("t-1", "old")
-    stale.grant("round-0", NOW - timedelta(seconds=1), NOW - timedelta(minutes=11))
+    stale.grant(ROUND_0, NOW - timedelta(seconds=1), NOW - timedelta(minutes=11))
 
     assert _picked(_plan([stale, _candidate("t-1", "new")])) == ["t-1/new"]
 

@@ -10,6 +10,8 @@ from context.table_maintenance.application.port.inbound.compaction_candidate imp
 )
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import StubUseCase, build_client
 
+ROUND_1 = "cr-00000000000000000000000001"
+
 NOW = datetime(2026, 11, 13, 12, 0, tzinfo=UTC)
 
 
@@ -30,7 +32,7 @@ def _item(rank: int | None, state: str = "pending") -> ListCompactionCandidatesU
         last_written_at=NOW - timedelta(hours=1),
         observed_at=NOW,
         priority="P1",
-        granted_round_id="compaction-rounds-1" if state == "granted" else None,
+        granted_round_id=ROUND_1 if state == "granted" else None,
         pending_since=NOW - timedelta(hours=5),
         overdue=True,
         granted_round_started_at=NOW - timedelta(minutes=1) if state == "granted" else None,
@@ -82,7 +84,7 @@ def test_a_granted_candidate_names_its_round():
     (granted,) = candidate["candidates"]
     assert (granted["state"], granted["granted_round_id"], granted["granted_round_started_at"]) == (
         "granted",
-        "compaction-rounds-1",
+        ROUND_1,
         "2026-11-13T11:59:00Z",
     )
 

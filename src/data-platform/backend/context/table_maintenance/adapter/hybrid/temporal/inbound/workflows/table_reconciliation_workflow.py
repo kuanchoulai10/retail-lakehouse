@@ -28,13 +28,15 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
     TableReconciliationSignal,
     TableReconciliationWorkflowInput,
 )
+from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.mint_workflow_prefixed_id import (
+    mint_workflow_prefixed_id,
+)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_maintenance_attempt_policy import (
     TableMaintenanceAttemptPolicy,
 )
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_search_attribute_keys import (
     TableSearchAttributeKeys,
 )
-from shared_kernel import prefixed_id_from_parts
 
 _ACTIVITY_TIMEOUT = timedelta(minutes=2)
 _ACTIVITY_RETRY = RetryPolicy(maximum_attempts=5, initial_interval=timedelta(seconds=2), backoff_coefficient=2.0)
@@ -61,14 +63,6 @@ _PREFIXED_IDS_PATCH = "prefixed-run-and-reconciliation-ids"
 _MIN_RECHECK = timedelta(seconds=10)
 _RUN_ID_PREFIX = "mr"
 _RECONCILIATION_ID_PREFIX = "rc"
-_ID_RANDOM_BITS = 74
-
-
-def _minted_id(prefix: str) -> str:
-    """Mint a ``<prefix>-`` id (docs/adr/0011) from the workflow clock and random, so replay mints it again."""
-    return prefixed_id_from_parts(
-        prefix, int(workflow.now().timestamp() * 1000), workflow.random().getrandbits(_ID_RANDOM_BITS)
-    )
 
 
 @workflow.defn(name=TABLE_RECONCILIATION_WORKFLOW)
@@ -495,7 +489,7 @@ class TableReconciliationWorkflow:
         """Return a new reconciliation id and run id; a history from before prefixed ids replays its UUIDs."""
         if not workflow.patched(_PREFIXED_IDS_PATCH):
             return str(workflow.uuid4()), str(workflow.uuid4())
-        return _minted_id(_RECONCILIATION_ID_PREFIX), _minted_id(_RUN_ID_PREFIX)
+        return mint_workflow_prefixed_id(_RECONCILIATION_ID_PREFIX), mint_workflow_prefixed_id(_RUN_ID_PREFIX)
 
     def _next_plan_after(self, plan: dict[str, Any]) -> datetime:
         """Return when to plan next: one interval on, or when the first candidate hold ends if that is sooner."""

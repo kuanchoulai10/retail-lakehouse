@@ -65,6 +65,8 @@ from tests.bootstrap.container.container_support import (
 if TYPE_CHECKING:
     from pyiceberg.catalog import Catalog
 
+ROUND_1 = "cr-00000000000000000000000001"
+
 
 MIGRATION_ONLY_SERVICES: set[type] = {EnsureDefaultTableMaintenancePolicyService}
 """Services the migrate component builds itself (`run_migrations`); no API, worker or consumer calls them."""
@@ -164,9 +166,9 @@ def test_the_compaction_round_takes_the_scheduler_budget():
         scheduler=SchedulerSettings(budget_gb_hours=0.3),
     )
 
-    result = use_cases.schedule_compaction_round.execute(ScheduleCompactionRoundUseCaseInput(round_id="r-1", now=NOW))
+    result = use_cases.schedule_compaction_round.execute(ScheduleCompactionRoundUseCaseInput(round_id=ROUND_1, now=NOW))
 
-    assert (result.round_id, result.budget_gb_hours, result.picked) == ("r-1", 0.3, 0)
+    assert (result.round_id, result.budget_gb_hours, result.picked) == (ROUND_1, 0.3, 0)
 
 
 def test_the_scheduler_settings_report_what_the_rounds_run_under():

@@ -61,6 +61,8 @@ from tests.context.table_maintenance.fakes.recording_send_table_change_gateway i
 if TYPE_CHECKING:
     from datetime import datetime
 
+ROUND_1 = "cr-00000000000000000000000001"
+
 KEY = ("iceberg", "sales", "orders")
 NAME = TableName(catalog="iceberg", namespace="sales", table="orders")
 DEFAULT = MaintenancePolicyContent.platform_default()
@@ -202,7 +204,7 @@ def _grant(candidates_repo, now, only: str | None = None) -> None:  # noqa: ANN0
         if c.state is CandidateState.PENDING and (only is None or c.partition.values == (only,))
     ]
     for candidate in pending:
-        candidate.grant("round-1", now + GRANT_LEASE, now)
+        candidate.grant(ROUND_1, now + GRANT_LEASE, now)
     candidates_repo.save_all(pending)
 
 
@@ -390,7 +392,7 @@ def test_due_compaction_claims_its_granted_candidates_only(planner, tables_repo,
         CandidateState.PENDING,
     )
     claimed = [c for c in candidates_repo.list_all() if c.state is CandidateState.CLAIMED]
-    assert {c.granted_round_id for c in claimed} == {"round-1"}
+    assert {c.granted_round_id for c in claimed} == {ROUND_1}
 
 
 def test_cooling_down_compaction_holds_candidates_in_cooldown(

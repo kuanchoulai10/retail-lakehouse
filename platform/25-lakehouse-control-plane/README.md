@@ -127,7 +127,7 @@ All run on task queue `table-maintenance` in Temporal namespace `default`. IDs a
 | `TableReconciliationWorkflow` | `table-reconciliation:table-uuid={uuid}` | `{catalog}.{namespace}.{table}` at first start |
 | `TableMaintenanceWorkflow` | `table-maintenance:table={catalog}.{namespace}.{table}:run={run_id}` (table name as of the run start; stored on the run as `execution_ref`) | `{catalog}.{namespace}.{table} · {operations}` |
 | `TableMaintenanceAdmissionWorkflow` | `table-maintenance-admission` | `global Spark maintenance admission (limit={limit})` |
-| `CompactionRoundWorkflow` | schedule `compaction-rounds` (Temporal appends the firing time; the workflow ID is the round ID) | `compaction round · budget {budget} GB·h`; its current details read `granted {n} partitions of {m} tables`, and the search attribute `GrantedTableUuids` lists the tables it granted |
+| `CompactionRoundWorkflow` | schedule `compaction-rounds` (Temporal appends the firing time to the workflow ID; the workflow mints a `cr-` round ID once, which every retry of the round activity reuses) | `compaction round · budget {budget} GB·h`; its current details read `granted {n} partitions of {m} tables`, and the search attribute `GrantedTableUuids` lists the tables it granted |
 
 ## Call the API
 

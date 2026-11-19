@@ -17,6 +17,8 @@ if TYPE_CHECKING:
     )
     from context.table_maintenance.application.port.outbound.compaction_candidate import CompactionCandidatesRepo
 
+ROUND_BEFORE_PLAN = "cr-00000000000000000000000099"
+
 GRANT_LEASE = timedelta(minutes=10)
 
 
@@ -40,6 +42,6 @@ class PlanAfterARound(PlanTableMaintenanceUseCase):
             self._planner.execute(PlanTableMaintenanceUseCaseInput(**(request.model_dump() | {"run_id": None})))
             pending = [c for c in self._candidates_repo.list_unheld() if c.state is CandidateState.PENDING]
             for candidate in pending:
-                candidate.grant("round-before-plan", request.now + GRANT_LEASE, request.now)
+                candidate.grant(ROUND_BEFORE_PLAN, request.now + GRANT_LEASE, request.now)
             self._candidates_repo.save_all(pending)
         return self._planner.execute(request)

@@ -64,6 +64,9 @@ if TYPE_CHECKING:
     from temporalio.client import Client, WorkflowHandle
     from temporalio.common import TypedSearchAttributes
     from temporalio.worker import WorkflowRunner
+
+OLDER_WORKER_ROUND = "cr-00000000000000000000000098"
+ROUND_1 = "cr-00000000000000000000000001"
 GHOST_RUN_ID = "mr-00000000000000000000000009"
 OTHER_RUN_ID = "mr-00000000000000000000000008"
 
@@ -1109,7 +1112,7 @@ def test_reconciliation_plans_on_compaction_granted():
 
     async def scenario(h: Harness) -> None:
         await h.start(start_signal=None)
-        await h.signal(TableReconciliationSignal.COMPACTION_GRANTED, {"round_id": "round-1"})
+        await h.signal(TableReconciliationSignal.COMPACTION_GRANTED, {"round_id": ROUND_1})
         assert (await h.plan_count(1))[0]["manual_operations"] is None
         record = (await h.records(1))[0]
         assert record["wake_reasons"] == {"compaction_granted": 1}
@@ -1123,7 +1126,7 @@ def test_compaction_granted_during_a_run_plans_after_it_finishes():
     async def scenario(h: Harness) -> None:
         await h.start()
         run_id = await h.in_flight()
-        await h.signal(TableReconciliationSignal.COMPACTION_GRANTED, {"round_id": "round-1"})
+        await h.signal(TableReconciliationSignal.COMPACTION_GRANTED, {"round_id": ROUND_1})
         await h.settle()
         assert len(h.plans.requests) == 1
         await h.complete_child(run_id)
@@ -1140,7 +1143,7 @@ def test_compaction_granted_after_stop_cancels_the_stop():
         await h.start()
         run_id = await h.in_flight()
         await h.signal(TableReconciliationSignal.STOP)
-        await h.signal(TableReconciliationSignal.COMPACTION_GRANTED, {"round_id": "round-1"})
+        await h.signal(TableReconciliationSignal.COMPACTION_GRANTED, {"round_id": ROUND_1})
         assert (await h.settle())["stopping"] is False
         await h.complete_child(run_id)
         await h.plan_count(2)
@@ -1518,7 +1521,7 @@ def test_a_compaction_grant_an_older_worker_ignored_replays():
                 recorded,
                 after_event_id=22,
                 signal=TableReconciliationSignal.COMPACTION_GRANTED.value,
-                arg={"round_id": "compaction-rounds-old"},
+                arg={"round_id": OLDER_WORKER_ROUND},
             ),
         )
         await Replayer(workflows=[TableReconciliationWorkflow]).replay_workflow(history)
@@ -1531,7 +1534,7 @@ def test_a_compaction_grant_records_its_patch_marker_and_its_history_replays():
 
     async def scenario(h: Harness) -> None:
         await h.start(start_signal=None)
-        await h.signal(TableReconciliationSignal.COMPACTION_GRANTED, {"round_id": "round-1"})
+        await h.signal(TableReconciliationSignal.COMPACTION_GRANTED, {"round_id": ROUND_1})
         await h.records(1)
         history = await h.client.get_workflow_handle(WORKFLOW_ID).fetch_history()
         markers = [e.SerializeToString() for e in history.events if e.HasField("marker_recorded_event_attributes")]

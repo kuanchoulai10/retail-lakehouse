@@ -23,19 +23,27 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.compaction_round_activity_policy import (
     CompactionRoundActivityPolicy,
 )
+from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.mint_workflow_prefixed_id import (
+    mint_workflow_prefixed_id,
+)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_search_attribute_keys import (
     TableSearchAttributeKeys,
 )
 
 _POLICY = CompactionRoundActivityPolicy()
+_PREFIXED_ROUND_ID_PATCH = "prefixed-compaction-round-id"
+_ROUND_ID_PREFIX = "cr"
 
 
 @workflow.defn(name=COMPACTION_ROUND_WORKFLOW)
 class CompactionRoundWorkflow:
     """Run one round of the compaction scheduler and hand its grants to the tables.
 
-    The round is named by the workflow id, so an activity retried after it
-    saved answers with the round it recorded instead of granting twice. A
+    The workflow mints the round's ``cr-`` id once, before its first activity,
+    and every attempt of the round activity is sent it, so an attempt retried
+    after it saved answers with the round it recorded instead of granting
+    twice. The schedule starts each round once (no retry policy, no
+    continue-as-new), so one workflow names one round. A
     candidate another writer changed meanwhile makes the activity fail and
     retry on fresh reads. Each granted table's reconciliation is woken once
     with ``compaction_granted``; a table without a running reconciliation is
@@ -51,7 +59,7 @@ class CompactionRoundWorkflow:
         The signals go first: tagging can fail the workflow task (an attribute
         the namespace lacks), and the grants must reach their tables anyway.
         """
-        round_id = workflow.info().workflow_id
+        round_id = self._mint_round_id()
         result = await workflow.execute_activity(
             CompactionRoundActivity.SCHEDULE_COMPACTION_ROUND,
             {"round_id": round_id, "now": workflow.now().isoformat()},
@@ -64,6 +72,13 @@ class CompactionRoundWorkflow:
         if granted:
             workflow.upsert_search_attributes([TableSearchAttributeKeys.GRANTED_TABLE_UUIDS.value_set(granted)])
         return result
+
+    @staticmethod
+    def _mint_round_id() -> str:
+        """Return a new ``cr-`` round id; a history from before prefixed ids replays its workflow id."""
+        if not workflow.patched(_PREFIXED_ROUND_ID_PATCH):
+            return workflow.info().workflow_id
+        return mint_workflow_prefixed_id(_ROUND_ID_PREFIX)
 
     async def _grant(self, table_uuid: str, round_id: str) -> None:
         await workflow.execute_activity(

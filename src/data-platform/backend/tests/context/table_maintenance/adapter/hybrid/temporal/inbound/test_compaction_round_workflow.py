@@ -5,15 +5,15 @@ from __future__ import annotations
 import asyncio
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 import pytest
 from temporalio import activity
-from temporalio.client import WorkflowFailureError
+from temporalio.client import WorkflowFailureError, WorkflowHistory
 from temporalio.exceptions import ApplicationError
 from temporalio.testing import WorkflowEnvironment
-from temporalio.worker import Worker
+from temporalio.worker import Replayer, Worker
 
 from context.table_maintenance.adapter.hybrid.temporal.contracts.compaction_round import (
     COMPACTION_ROUND_WORKFLOW,
@@ -27,19 +27,41 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
     TableReconciliationSignal,
     table_reconciliation_workflow_id,
 )
+from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import CompactionRoundActivities
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
     CompactionRoundWorkflow,
     TableSearchAttributeKeys,
 )
+from context.table_maintenance.application.domain.model.compaction_candidate import (
+    CandidateScore,
+    CandidateState,
+    CompactionCandidate,
+    PartitionKey,
+)
+from context.table_maintenance.application.domain.model.compaction_round import CompactionRoundId, PriorityWeights
+from context.table_maintenance.application.domain.model.table import Table, TableId, TableName
+from context.table_maintenance.application.domain.model.table_discovery_rules import TableDiscoveryRuleId
+from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePriority
+from context.table_maintenance.application.service.compaction_round import ScheduleCompactionRoundService
+from shared_kernel import prefixed_id_pattern
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.register_table_search_attributes import (
     register_table_search_attributes,
 )
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_maintenance_activities_with_fakes import (  # noqa: E501
     table_maintenance_activities_with_fakes,
 )
+from tests.context.table_maintenance.fakes.in_memory_compaction_candidates_repo import (
+    InMemoryCompactionCandidatesRepo,
+)
+from tests.context.table_maintenance.fakes.in_memory_compaction_rounds_repo import InMemoryCompactionRoundsRepo
+from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+    from context.table_maintenance.application.port.inbound.compaction_round import ScheduleCompactionRoundUseCase
+
+ROUND_ID_SHAPE = prefixed_id_pattern("cr")
 
 
 def _round(*tables: str, picked: int | None = None) -> dict[str, Any]:
@@ -62,15 +84,20 @@ class Outcome:
     signals: list[dict[str, Any]]
     granted: list[str] | None
     details: str
+    history: WorkflowHistory
 
 
 @dataclass
 class Script:
-    """Answer the round activity and, unless ``real_signals``, record the signals instead of sending them."""
+    """Answer the round activity and, unless ``real_signals``, record the signals instead of sending them.
+
+    With a ``schedule`` use case the round activity runs it, as the worker does, instead of answering ``answer``.
+    """
 
     answer: dict[str, Any]
     real_signals: bool = False
     fail: bool = False
+    schedule: ScheduleCompactionRoundUseCase | None = None
     requests: list[dict[str, Any]] = field(default_factory=list)
     signals: list[dict[str, Any]] = field(default_factory=list)
 
@@ -79,12 +106,14 @@ def _listed(values: Sequence[str] | None) -> list[str] | None:
     return None if values is None else list(values)
 
 
-def _run(script: Script) -> Outcome:
+def _run(script: Script, *, max_cached_workflows: int = 1000) -> Outcome:
     @activity.defn(name=CompactionRoundActivity.SCHEDULE_COMPACTION_ROUND)
     async def schedule_compaction_round(request: dict[str, Any]) -> dict[str, Any]:
         script.requests.append(request)
         if script.fail:
             raise ApplicationError("database down", non_retryable=True)
+        if script.schedule is not None:
+            return CompactionRoundActivities(schedule=script.schedule).schedule_compaction_round(request)
         return {**script.answer, "round_id": request["round_id"]}
 
     @activity.defn(name=TableMaintenanceActivity.SIGNAL_PARENT)
@@ -102,6 +131,7 @@ def _run(script: Script) -> Outcome:
                 task_queue=queue,
                 workflows=[CompactionRoundWorkflow],
                 activities=[schedule_compaction_round, real.signal_parent if script.real_signals else signal_parent],
+                max_cached_workflows=max_cached_workflows,
             ):
                 handle = await env.client.start_workflow(
                     COMPACTION_ROUND_WORKFLOW,
@@ -120,6 +150,7 @@ def _run(script: Script) -> Outcome:
                         description.typed_search_attributes.get(TableSearchAttributeKeys.GRANTED_TABLE_UUIDS)
                     ),
                     details=metadata.current_details,
+                    history=await handle.fetch_history(),
                 )
 
     return asyncio.run(go())
@@ -141,13 +172,108 @@ def test_round_signals_each_granted_table_once():
     assert outcome.result == {**_round("t-1", "t-2", picked=3), "round_id": round_id}
 
 
-def test_round_is_named_by_its_workflow_and_runs_at_workflow_time():
-    """The round id is the workflow id, so a retried activity records the same round; now is workflow time."""
-    outcome = _run(Script(_round()))
+def test_round_workflow_passes_a_cr_id():
+    """The workflow mints a ``cr-`` round id, not its workflow id, and runs the round at workflow time."""
+    outcome = _run(Script(_round("t-1")))
 
     request = outcome.requests[0]
-    assert request["round_id"].startswith("compaction-rounds-")
+    assert ROUND_ID_SHAPE.fullmatch(request["round_id"])
+    assert outcome.signals[0]["arg"] == {"round_id": request["round_id"]}
     assert datetime.fromisoformat(request["now"]).tzinfo is not None
+
+
+NOW = datetime(2026, 11, 13, 12, tzinfo=UTC)
+
+
+def _table(table_uuid: str) -> Table:
+    return Table.register(
+        TableId(table_uuid),
+        TableName(catalog="iceberg", namespace="retail", table=table_uuid),
+        TableDiscoveryRuleId.new(),
+        NOW,
+    )
+
+
+def _candidate(table: str, value: str) -> CompactionCandidate:
+    return CompactionCandidate.create(
+        table_uuid=TableId(table),
+        partition=PartitionKey(spec_id=0, values=(value,)),
+        label=f"day={value}",
+        score=CandidateScore(reducible_files=5, data_bytes=1000, estimated_gb_hours=0.02, score=0.9),
+        last_written_at=None,
+        hold_reason=None,
+        now=NOW - timedelta(minutes=5),
+    )
+
+
+def _rounds_repo_failing_its_first_save(monkeypatch: pytest.MonkeyPatch) -> InMemoryCompactionRoundsRepo:
+    """Fail the first save of a round, as a crash between the grants and the record would."""
+    rounds = InMemoryCompactionRoundsRepo()
+    save = rounds.save
+    saves: list[object] = []
+
+    def fail_first(entity) -> None:  # noqa: ANN001
+        saves.append(entity)
+        if len(saves) == 1:
+            raise RuntimeError("the database went away")
+        save(entity)
+
+    monkeypatch.setattr(rounds, "save", fail_first)
+    return rounds
+
+
+def test_round_id_is_stable_across_activity_retries(monkeypatch: pytest.MonkeyPatch):
+    """A schedule activity retried after it saved its grants gets the same ``cr-`` id, so it finds and records them.
+
+    The first attempt grants both candidates and fails before recording the
+    round; the retry is sent the same payload, finds the grants under its
+    round id and records exactly them instead of granting a second batch.
+    """
+    tables = InMemoryTablesRepo()
+    for table in ("t-1", "t-2"):
+        tables.create(_table(table))
+    candidates = InMemoryCompactionCandidatesRepo()
+    candidates.save_all([_candidate("t-1", "a"), _candidate("t-2", "b")])
+    rounds = _rounds_repo_failing_its_first_save(monkeypatch)
+    service = ScheduleCompactionRoundService(
+        candidates,
+        rounds,
+        tables,
+        weights=PriorityWeights(),
+        budget_gb_hours=1,
+        partitions_per_run=10,
+        sla={priority: timedelta(hours=1) for priority in MaintenancePriority},
+        grant_lease=timedelta(minutes=10),
+        rounds_kept=500,
+    )
+
+    outcome = _run(Script(_round(), schedule=service))
+
+    first, retry = outcome.requests
+    assert retry == first
+    round_id = first["round_id"]
+    assert ROUND_ID_SHAPE.fullmatch(round_id)
+    assert rounds.get(CompactionRoundId(round_id)) is not None
+    assert {(c.state, c.granted_round_id) for c in candidates.list_all()} == {(CandidateState.GRANTED, round_id)}
+    assert (outcome.result["round_id"], outcome.result["picked"]) == (round_id, 2)
+
+
+def test_round_id_survives_replay():
+    """The round id is minted deterministically: with no workflow cached, every later task replays the minting.
+
+    The signals are scheduled in a later workflow task than the minting, so
+    they carry the id minted again on replay; it agrees with the one the round
+    activity got, the history carries the patch marker that keeps older
+    histories on their workflow id, and it replays cleanly under the sandbox.
+    """
+    outcome = _run(Script(_round("t-1", "t-2")), max_cached_workflows=0)
+
+    round_id = outcome.requests[0]["round_id"]
+    assert ROUND_ID_SHAPE.fullmatch(round_id)
+    assert {signal["arg"]["round_id"] for signal in outcome.signals} == {round_id}
+    markers = [e.SerializeToString() for e in outcome.history.events if e.HasField("marker_recorded_event_attributes")]
+    assert any(b"prefixed-compaction-round-id" in m for m in markers)
+    asyncio.run(Replayer(workflows=[CompactionRoundWorkflow]).replay_workflow(outcome.history))
 
 
 def test_round_tags_itself_with_the_tables_it_granted():

@@ -21,6 +21,8 @@ from context.table_maintenance.application.domain.service.compaction_candidate i
     pick_compaction_candidates,
 )
 
+ROUND_1 = "cr-00000000000000000000000001"
+
 RUN_1 = "mr-00000000000000000000000001"
 RUN_2 = "mr-00000000000000000000000002"
 
@@ -70,7 +72,7 @@ def _granted(observed, grant: set[str]):  # noqa: ANN001, ANN202
     candidates = list(_pick([], observed, now=NOW - timedelta(minutes=1)).saved)
     for candidate in candidates:
         if candidate.partition.values[0] in grant:
-            candidate.grant("round-1", GRANT_LEASE, NOW - timedelta(minutes=1))
+            candidate.grant(ROUND_1, GRANT_LEASE, NOW - timedelta(minutes=1))
     return candidates
 
 
@@ -92,7 +94,7 @@ def test_due_compaction_claims_its_granted_candidates_only():
     assert _values(pick.selected) == ["b", "a"]
     assert {c.state for c in pick.selected} == {CandidateState.CLAIMED}
     assert {c.claimed_by_run_id for c in pick.selected} == {RUN}
-    assert {c.granted_round_id for c in pick.selected} == {"round-1"}
+    assert {c.granted_round_id for c in pick.selected} == {ROUND_1}
     assert [c.state for c in pick.saved if _values([c]) == ["c"]] == [CandidateState.PENDING]
     assert pick.shortfall is None
 

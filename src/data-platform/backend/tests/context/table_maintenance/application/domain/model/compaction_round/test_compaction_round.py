@@ -19,6 +19,8 @@ from context.table_maintenance.application.domain.model.compaction_round import 
 from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePriority
 
+ROUND_1 = "cr-00000000000000000000000001"
+
 NOW = datetime(2026, 11, 13, 12, tzinfo=UTC)
 
 
@@ -65,7 +67,7 @@ def test_weights_must_be_positive(weights):
 def test_round_holds_its_picks_and_skips():
     """A round says what it picked, what it skipped and how much of its budget it used."""
     round_ = CompactionRound(
-        id=CompactionRoundId("r-1"),
+        id=CompactionRoundId(ROUND_1),
         started_at=NOW,
         budget_gb_hours=0.05,
         used_gb_hours=0.02,
@@ -80,7 +82,7 @@ def test_round_counts_at_least_the_skips_it_keeps():
     """The skipped total cannot be below the number of skips kept."""
     with pytest.raises(InvariantViolation):
         CompactionRound(
-            id=CompactionRoundId("r-1"),
+            id=CompactionRoundId(ROUND_1),
             started_at=NOW,
             budget_gb_hours=0.05,
             used_gb_hours=0.0,
@@ -94,7 +96,7 @@ def test_round_used_is_the_sum_of_its_picks():
     """The budget used is what the picks are estimated to cost."""
     with pytest.raises(InvariantViolation):
         CompactionRound(
-            id=CompactionRoundId("r-1"),
+            id=CompactionRoundId(ROUND_1),
             started_at=NOW,
             budget_gb_hours=0.05,
             used_gb_hours=0.5,
@@ -107,7 +109,7 @@ def test_round_used_is_the_sum_of_its_picks():
 def test_round_round_trips_through_primitives():
     """Picks and skips are stored as primitives and read back equal."""
     round_ = CompactionRound(
-        id=CompactionRoundId("r-1"),
+        id=CompactionRoundId(ROUND_1),
         started_at=NOW,
         budget_gb_hours=0.05,
         used_gb_hours=0.02,
@@ -122,7 +124,7 @@ def test_round_round_trips_through_primitives():
 def test_round_counts_partitions_of_busy_tables_apart_from_its_skips():
     """Partitions of tables busy with compaction are counted, never kept as skips; none by default."""
     round_ = CompactionRound(
-        id=CompactionRoundId("r-1"),
+        id=CompactionRoundId(ROUND_1),
         started_at=NOW,
         budget_gb_hours=0.05,
         used_gb_hours=0.0,
@@ -133,7 +135,7 @@ def test_round_counts_partitions_of_busy_tables_apart_from_its_skips():
     )
     assert round_.busy_skipped == 4
     assert round_.model_copy(update={"busy_skipped": 0}) == CompactionRound(
-        id=CompactionRoundId("r-1"),
+        id=CompactionRoundId(ROUND_1),
         started_at=NOW,
         budget_gb_hours=0.05,
         used_gb_hours=0.0,

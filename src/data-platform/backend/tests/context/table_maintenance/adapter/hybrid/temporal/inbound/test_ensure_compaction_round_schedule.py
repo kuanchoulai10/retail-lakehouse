@@ -122,3 +122,16 @@ def test_a_round_on_a_long_interval_runs_for_at_most_three_intervals(h):
     _ensure(h, interval=timedelta(minutes=30))
 
     assert _execution_timeout(h) == timedelta(minutes=90)
+
+
+def test_schedule_action_has_no_retry_policy(h):
+    """A round's workflow is started once and never retried, so the round id it mints names one round.
+
+    A workflow retry would start a new run that mints another ``cr-`` id, and the
+    grants the failed run saved would be left under a round nobody records.
+    """
+    _ensure(h, interval=timedelta(seconds=120))
+
+    action = _describe(h).schedule.action
+    assert isinstance(action, ScheduleActionStartWorkflow)
+    assert action.retry_policy is None

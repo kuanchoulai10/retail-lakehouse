@@ -7,6 +7,7 @@ import { ConsolePage } from "@/stories/ConsolePage";
 import { expectNoHorizontalPageScroll } from "@/stories/expectNoHorizontalPageScroll";
 import { lakehouseHandlers } from "@/stories/lakehouseHandlers";
 import { PHONE } from "@/stories/phone";
+import { NEWEST_ROUND_ID } from "@/stories/storyData";
 
 const meta = {
   title: "Pages/Compaction rounds",
@@ -44,7 +45,7 @@ export const Expanded: Story = {
     await expect(picks.getByText("2.96")).toBeVisible();
     await expect(await picks.findByText("P0 (within 1 h)")).toBeVisible();
     await expect(await canvas.findByText(/^Weighted is the score times its priority's weight \(P0 × 4/)).toBeVisible();
-    await expect(canvas.getByText("compaction-rounds-2026-11-13T02:00:00Z")).toHaveClass("font-mono");
+    await expect(canvas.getByText(NEWEST_ROUND_ID)).toHaveClass("font-mono");
     const skips = within(canvas.getByRole("table", { name: `Partitions round ${NEWEST} skipped` }));
     await expect(skips.getByText("Budget used")).toBeVisible();
     await expect(skips.getByText("Overdue", { selector: "span" })).toBeVisible();
@@ -56,7 +57,7 @@ export const Expanded: Story = {
 };
 
 export const LinkedRound: Story = {
-  args: { route: "/compaction-rounds?round=compaction-rounds-2026-11-13T02%3A00%3A00Z" },
+  args: { route: `/compaction-rounds?round=${NEWEST_ROUND_ID}` },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole("table", { name: `Partitions round ${NEWEST} granted` })).toBeVisible();

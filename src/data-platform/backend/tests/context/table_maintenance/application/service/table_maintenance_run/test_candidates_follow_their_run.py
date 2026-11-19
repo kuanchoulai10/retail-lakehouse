@@ -35,6 +35,8 @@ from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_evidenc
     ScriptedReadMaintenanceJobEvidenceGateway,
 )
 
+ROUND_1 = "cr-00000000000000000000000001"
+
 RUN_1 = "mr-00000000000000000000000001"
 RUN_2 = "mr-00000000000000000000000002"
 
@@ -56,7 +58,7 @@ def _candidate(value: str, run: TableMaintenanceRunId | None, now):  # noqa: ANN
         now=now,
     )
     if run is not None:
-        candidate.grant("round-1", now + timedelta(minutes=10), now)
+        candidate.grant(ROUND_1, now + timedelta(minutes=10), now)
         candidate.claim(run, now + timedelta(hours=20), now)
     return candidate
 

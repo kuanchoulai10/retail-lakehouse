@@ -24,6 +24,11 @@ from context.table_maintenance.application.service.compaction_candidate import L
 from tests.context.table_maintenance.application.service.compaction_round.recorded_round import recorded_round
 from tests.context.table_maintenance.fakes.in_memory_compaction_rounds_repo import InMemoryCompactionRoundsRepo
 
+ROUND_0 = "cr-00000000000000000000000000"
+ROUND_1 = "cr-00000000000000000000000001"
+ROUND_2 = "cr-00000000000000000000000002"
+ROUND_7 = "cr-00000000000000000000000007"
+
 RUN_1 = "mr-00000000000000000000000001"
 
 TABLE = TableId("u-1")
@@ -65,7 +70,7 @@ def service(candidates_repo, tables_repo, now):  # noqa: ANN001, ANN201
         )
     )
     claimed = _candidate("2026-11-04", 0.9, now)
-    claimed.grant("round-1", now + timedelta(minutes=10), now)
+    claimed.grant(ROUND_1, now + timedelta(minutes=10), now)
     claimed.claim(RUN, now + timedelta(hours=1), now)
     candidates_repo.save_all(
         [
@@ -119,14 +124,14 @@ def test_each_candidate_says_what_it_is_worth_and_who_holds_it(service, now):
 def test_each_candidate_says_its_priority_grant_and_whether_it_is_overdue(service, candidates_repo, now):
     """An item carries the priority, the round that granted it, its wait start and the overdue mark of its SLA."""
     granted = next(c for c in candidates_repo.list_by_table(TABLE) if c.partition.values == ("2026-11-01",))
-    granted.grant("round-7", now + timedelta(hours=3), now)
+    granted.grant(ROUND_7, now + timedelta(hours=3), now)
     candidates_repo.save_all([granted])
 
     items = {i.values[0]: i for i in service.execute(ListCompactionCandidatesUseCaseInput(table_uuid="u-1")).items}
 
     p0, p2 = items["2026-11-03"], items["2026-11-01"]
     assert (p0.priority, p0.granted_round_id, p0.pending_since, p0.overdue) == ("P0", None, now, True)
-    assert (p2.priority, p2.state, p2.granted_round_id, p2.overdue) == ("P2", "granted", "round-7", False)
+    assert (p2.priority, p2.state, p2.granted_round_id, p2.overdue) == ("P2", "granted", ROUND_7, False)
     assert (items["2026-11-04"].pending_since, items["2026-11-04"].overdue) == (None, False)
     assert (items["2026-11-02"].granted_round_id, items["2026-11-02"].overdue) == (None, False)
 
@@ -163,8 +168,8 @@ def test_a_grant_whose_lease_ended_reads_as_pending(candidates_repo, tables_repo
         )
     )
     expired, live = _candidate("2026-11-01", 0.9, now), _candidate("2026-11-02", 0.5, now)
-    expired.grant("round-1", now + timedelta(minutes=10), now)
-    live.grant("round-2", now + timedelta(hours=1), now)
+    expired.grant(ROUND_1, now + timedelta(minutes=10), now)
+    live.grant(ROUND_2, now + timedelta(hours=1), now)
     candidates_repo.save_all([expired, live, _candidate("2026-11-03", 0.4, now)])
     service = ListCompactionCandidatesService(
         candidates_repo,
@@ -179,7 +184,7 @@ def test_a_grant_whose_lease_ended_reads_as_pending(candidates_repo, tables_repo
 
     assert [(i.state, i.granted_round_id, i.lease_expires_at is None, i.rank) for i in items] == [
         ("pending", None, True, 1),
-        ("granted", "round-2", False, None),
+        ("granted", ROUND_2, False, None),
         ("pending", None, True, 2),
     ]
 
@@ -192,10 +197,10 @@ def test_a_granted_candidate_says_when_its_round_started(candidates_repo, tables
         )
     )
     rounds = InMemoryCompactionRoundsRepo()
-    rounds.save(recorded_round("compaction-rounds-1", now - timedelta(seconds=30)))
+    rounds.save(recorded_round(ROUND_1, now - timedelta(seconds=30)))
     kept, purged = _candidate("2026-11-01", 0.9, now), _candidate("2026-11-02", 0.5, now)
-    kept.grant("compaction-rounds-1", now + timedelta(minutes=10), now)
-    purged.grant("compaction-rounds-0", now + timedelta(minutes=10), now)
+    kept.grant(ROUND_1, now + timedelta(minutes=10), now)
+    purged.grant(ROUND_0, now + timedelta(minutes=10), now)
     candidates_repo.save_all([kept, purged, _candidate("2026-11-03", 0.4, now)])
     service = ListCompactionCandidatesService(
         candidates_repo, tables_repo, rounds, partitions_per_run=2, sla=SLA, clock=lambda: now

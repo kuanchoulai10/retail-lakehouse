@@ -13,6 +13,7 @@ import { CandidatesTab } from "./CandidatesTab";
 
 const PATH = "GET /v1/tables/uuid-orders/compaction-candidates";
 const SETTINGS = "GET /v1/scheduler-settings";
+const ROUND_ID = "cr-01m7acesg0fabv7jf1pza0mv4e";
 
 const THREE_HOURS_AGO = new Date(Date.now() - (3 * 3600 + 60) * 1000).toISOString();
 
@@ -168,7 +169,7 @@ describe("CandidatesTab", () => {
       candidates: [
         candidate("2026-11-02", {
           state: "granted",
-          granted_round_id: "compaction-rounds-2026-11-13T12:00:00Z",
+          granted_round_id: ROUND_ID,
           granted_round_started_at: "2026-11-13T12:00:03Z",
         }),
       ],
@@ -180,7 +181,7 @@ describe("CandidatesTab", () => {
     expect(rowsOf(table)[0]!.slice(-2)).toEqual(["Granted", `Granted in round ${started}`]);
     expect(within(table).getByRole("link", { name: started })).toHaveAttribute(
       "href",
-      "/compaction-rounds?round=compaction-rounds-2026-11-13T12%3A00%3A00Z",
+      `/compaction-rounds?round=${ROUND_ID}`,
     );
   });
 

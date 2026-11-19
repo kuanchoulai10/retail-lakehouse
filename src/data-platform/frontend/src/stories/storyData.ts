@@ -430,7 +430,8 @@ export const ESCALATED_RUN: TableMaintenanceRunApiResponse = {
   ],
 };
 
-const ROUND_ID = "compaction-rounds-2026-11-13T02:00:00Z";
+export const NEWEST_ROUND_ID = "cr-01m79a4580ekrvn7jjtkvbg2gx";
+const OLDER_ROUND_ID = "cr-01m79a0g20fyg9rjvt5yegdse3";
 
 function orderDay(day: string, overrides: Partial<CompactionCandidateApiResponse>): CompactionCandidateApiResponse {
   return {
@@ -483,7 +484,7 @@ export const CANDIDATES: CompactionCandidatesApiResponse = {
       reducible_files: 160,
       data_bytes: 640 * 1024 * 1024,
       estimated_gb_hours: 0.35,
-      granted_round_id: ROUND_ID,
+      granted_round_id: NEWEST_ROUND_ID,
       granted_round_started_at: "2026-11-13T02:00:00Z",
       lease_expires_at: "2026-11-13T02:10:00Z",
       pending_since: "2026-11-13T01:00:00Z",
@@ -825,7 +826,7 @@ export const PLATFORM_SETTINGS: PlatformSettingsApiResponse = {
 // stock-levels partition, then ran out of budget; the one before had nothing pending.
 export const ROUNDS: CompactionRoundApiResponse[] = [
   {
-    round_id: ROUND_ID,
+    round_id: NEWEST_ROUND_ID,
     started_at: "2026-11-13T02:00:00Z",
     budget_gb_hours: 0.5,
     used_gb_hours: 0.47,
@@ -874,7 +875,7 @@ export const ROUNDS: CompactionRoundApiResponse[] = [
     busy_skipped: 3,
   },
   {
-    round_id: "compaction-rounds-2026-11-13T01:58:00Z",
+    round_id: OLDER_ROUND_ID,
     started_at: "2026-11-13T01:58:00Z",
     budget_gb_hours: 0.5,
     used_gb_hours: 0,
