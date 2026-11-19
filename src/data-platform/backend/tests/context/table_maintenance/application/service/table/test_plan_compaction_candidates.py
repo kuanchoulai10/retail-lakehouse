@@ -601,6 +601,22 @@ def test_claims_of_a_finished_run_older_than_the_recent_runs_are_released(
     assert candidate.claimed_by_run_id == TableMaintenanceRunId(RUN)
 
 
+def test_reobserved_partition_keeps_its_candidate_id(planner, tables_repo, catalog, candidates_repo, now):
+    """A partition observed again updates its stored candidate: one row, the same id, the new observation."""
+    _table(tables_repo, now)
+    _observe(catalog, [_partition("e", 10)])
+    _plan(planner, now, run_id=None)
+    (first,) = candidates_repo.list_all()
+    _observe(catalog, [_partition("e", 12)])
+
+    _plan(planner, now + timedelta(minutes=1), run_id=None)
+
+    (again,) = candidates_repo.list_all()
+    assert again.id == first.id
+    assert again.score.reducible_files > first.score.reducible_files
+    assert again.version == first.version + 1
+
+
 def test_healthy_partitions_leave_the_candidates(planner, tables_repo, catalog, candidates_repo, now):
     """A partition that no longer qualifies is removed at the next plan."""
     _table(tables_repo, now)

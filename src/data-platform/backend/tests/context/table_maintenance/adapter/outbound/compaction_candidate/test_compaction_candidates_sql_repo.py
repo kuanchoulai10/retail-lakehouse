@@ -175,6 +175,25 @@ def test_save_of_a_new_candidate_for_a_stored_partition_is_stale(repo: Compactio
         repo.save_all([_candidate()])
 
 
+def test_two_new_candidates_for_one_partition_in_one_save_are_stale(repo: CompactionCandidatesRepo):
+    """Two fresh candidates of one partition have two ids; one save of both is refused and stores nothing."""
+    first, second = _candidate(), _candidate()
+    assert first.id != second.id
+    with pytest.raises(StaleCompactionCandidate):
+        repo.save_all([first, second])
+    assert repo.list_all() == []
+
+
+def test_save_of_a_stored_partition_under_another_id_is_stale(repo: CompactionCandidatesRepo):
+    """A save matches the stored row by id: a candidate of a stored partition under another id is refused."""
+    repo.save_all([_candidate()])
+    (stored,) = repo.list_by_table(TABLE)
+    impostor = stored.model_copy(update={"id": CompactionCandidateId.new()})
+    with pytest.raises(StaleCompactionCandidate):
+        repo.save_all([impostor])
+    assert [c.id for c in repo.list_all()] == [stored.id]
+
+
 def test_list_unheld_reads_every_table(repo: CompactionCandidatesRepo):
     """Every candidate of every table but the held ones is listed."""
     held = _candidate(("held",), hold=HoldReason.NOT_DUE)
@@ -221,7 +240,7 @@ def test_delete_removes_only_the_named_candidates(repo: CompactionCandidatesRepo
     eu, us = _candidate(("eu",)), _candidate(("us",))
     repo.save_all([eu, us])
 
-    repo.delete([eu.id, CompactionCandidateId("nope")])
+    repo.delete([eu.id, CompactionCandidateId.new()])
 
     assert [c.id for c in repo.list_by_table(TABLE)] == [us.id]
 
@@ -284,6 +303,20 @@ def test_save_of_a_stale_candidate_raises_and_saves_nothing(file_engine: Engine)
     assert stored[("us",)].score == SCORE
     assert stored[("us",)].version == 1
     assert (b1.version, b2.version) == (1, 1)
+
+
+def test_concurrent_first_observation_of_one_partition_is_stale_for_the_loser(file_engine: Engine):
+    """Two writers each create a candidate of one partition: the unique key refuses the second's whole save."""
+    winner, loser = CompactionCandidatesSqlRepo(file_engine), CompactionCandidatesSqlRepo(file_engine)
+    winner_eu, loser_eu, loser_us = _candidate(("eu",)), _candidate(("eu",)), _candidate(("us",))
+    assert winner_eu.id != loser_eu.id
+    winner.save_all([winner_eu])
+
+    with pytest.raises(StaleCompactionCandidate):
+        loser.save_all([loser_us, loser_eu])
+
+    assert [c.id for c in winner.list_all()] == [winner_eu.id]
+    assert (loser_eu.version, loser_us.version) == (0, 0)
 
 
 def test_reads_rows_written_before_the_new_columns(file_engine: Engine):

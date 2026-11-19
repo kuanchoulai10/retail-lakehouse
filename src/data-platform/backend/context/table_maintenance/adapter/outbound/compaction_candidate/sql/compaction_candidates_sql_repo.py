@@ -39,10 +39,10 @@ _CHUNK = 500
 class CompactionCandidatesSqlRepo(CompactionCandidatesRepo):
     """Store CompactionCandidate aggregates in a SQL database, one row per table and partition.
 
-    A candidate's id is derived from its table and partition, so replacing the
-    row by id is replacing it by that key. Each row carries a version: a save
-    inserts a candidate never stored and updates any other only where the row
-    is still at the version it was read at, all in one transaction.
+    A candidate's id is random; the unique key on table and partition keeps one
+    candidate per partition. Each row carries a version: a save inserts a
+    candidate never stored and updates any other by id only where the row is
+    still at the version it was read at, all in one transaction.
     """
 
     def __init__(self, engine: Engine) -> None:
@@ -52,8 +52,9 @@ class CompactionCandidatesSqlRepo(CompactionCandidatesRepo):
     def create(self, entity: CompactionCandidate) -> CompactionCandidate:
         """Store one candidate as ``save_all`` does: insert a new one, or update one still at its read version.
 
-        Raises ``StaleCompactionCandidate`` when the row exists already (for a
-        new candidate) or moved past the version it was read at.
+        Raises ``StaleCompactionCandidate`` when the partition has a candidate
+        already (for a new candidate) or the row moved past the version it was
+        read at.
         """
         self.save_all([entity])
         return entity
@@ -103,8 +104,9 @@ class CompactionCandidatesSqlRepo(CompactionCandidatesRepo):
 
         Stored candidates are updated in id order, so two writers that share
         rows lock them in the same order and do not deadlock. New candidates are
-        inserted in chunks that keep each statement small; a row that exists
-        already means another writer created it first.
+        inserted in chunks that keep each statement small; an insert that hits
+        a stored id or a stored table and partition means another writer
+        created that partition's candidate first.
         """
         if not candidates:
             return

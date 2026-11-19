@@ -2,23 +2,17 @@
 
 from __future__ import annotations
 
-import hashlib
-from typing import TYPE_CHECKING
+from typing import ClassVar
 
 from base import EntityId
 
-if TYPE_CHECKING:
-    from context.table_maintenance.application.domain.model.compaction_candidate.partition_key import (
-        PartitionKey,
-    )
-    from context.table_maintenance.application.domain.model.table import TableId
-
 
 class CompactionCandidateId(EntityId):
-    """Identify a CompactionCandidate; one per table and partition."""
+    """Identify a CompactionCandidate: a ``cc-`` id minted when its partition is first found to need compaction.
 
-    @classmethod
-    def for_partition(cls, table_uuid: TableId, partition: PartitionKey) -> CompactionCandidateId:
-        """Return the id of the candidate of ``partition`` of ``table_uuid``, the same on every observation."""
-        digest = hashlib.sha256(f"{table_uuid.value}\x1f{partition.canonical()}".encode()).hexdigest()
-        return cls(digest[:32])
+    The id is random, not derived from the partition; the store keeps one
+    candidate per table and partition, so a partition observed again keeps the
+    candidate (and the id) it already has.
+    """
+
+    PREFIX: ClassVar[str | None] = "cc"

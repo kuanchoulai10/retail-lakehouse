@@ -33,6 +33,7 @@ EXPECTED_PREFIXES: dict[str, str] = {
     "TableMaintenanceRunId": "mr",
     "TableReconciliationId": "rc",
     "CompactionRoundId": "cr",
+    "CompactionCandidateId": "cc",
 }
 UNPREFIXED: frozenset[str] = frozenset(
     {
@@ -49,7 +50,6 @@ PENDING: frozenset[str] = frozenset(
     {
         "TableMaintenancePolicyId",
         "TableMaintenancePolicyAttachmentId",
-        "CompactionCandidateId",
     }
 )
 

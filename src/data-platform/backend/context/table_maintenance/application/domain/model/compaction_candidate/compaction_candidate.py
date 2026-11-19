@@ -132,7 +132,7 @@ class CompactionCandidate(AggregateRoot[CompactionCandidateId]):
     ) -> CompactionCandidate:
         """Create the candidate of a partition first found to need compaction: pending, or held by a filter."""
         return cls(
-            id=CompactionCandidateId.for_partition(table_uuid, partition),
+            id=CompactionCandidateId.new(),
             table_uuid=table_uuid,
             partition=partition,
             label=label,

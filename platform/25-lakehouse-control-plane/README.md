@@ -70,7 +70,7 @@ An operation starts at the size its table last succeeded at (S for a table that 
 
 ### Compaction candidates
 
-A scheduled compaction picks partitions, not the whole table. Each scheduled reconcile observes the table and keeps one **compaction candidate** for each partition that has enough small files to merge. A candidate records its partition, its label (for example `ordered_at_day=2026-11-09`), what compacting it is worth (the files it removes), what it costs (the estimated GB-hours), its score and its state:
+A scheduled compaction picks partitions, not the whole table. Each scheduled reconcile observes the table and keeps one **compaction candidate** for each partition that has enough small files to merge. A candidate gets a random `cc-` id when its partition is first found, and keeps it while the partition stays a candidate. A candidate records its partition, its label (for example `ordered_at_day=2026-11-09`), what compacting it is worth (the files it removes), what it costs (the estimated GB-hours), its score and its state:
 
 | State | Meaning |
 |---|---|

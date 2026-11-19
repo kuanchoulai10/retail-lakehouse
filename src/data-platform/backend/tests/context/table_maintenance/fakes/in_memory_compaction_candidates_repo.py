@@ -26,7 +26,8 @@ class InMemoryCompactionCandidatesRepo(CompactionCandidatesRepo):
     """Keep compaction candidates in a dict keyed by table and partition, as copies.
 
     Copies keep a caller's later changes out of the store, as a database would,
-    and saves check versions as the SQL repository does.
+    and saves check ids, versions and the one candidate per table and partition
+    as the SQL repository does.
     """
 
     def __init__(self) -> None:
@@ -65,12 +66,27 @@ class InMemoryCompactionCandidatesRepo(CompactionCandidatesRepo):
         return list(dict.fromkeys(c.table_uuid for c in self.items.values()))
 
     def save_all(self, candidates: Sequence[CompactionCandidate]) -> None:
-        """Store copies of the candidates, all or none: a version another save moved past is refused."""
+        """Store copies of the candidates, all or none, refusing what the SQL repository refuses.
+
+        A stored candidate is matched by id and must still be at the version it
+        was read at; a new one must not reuse a stored id, nor a table and
+        partition that already has a candidate (in the store or in this save).
+        """
         self.saves += 1
+        by_id = {c.id: c for c in self.items.values()}
+        new_keys: set[tuple[str, str]] = set()
+        new_ids: set[CompactionCandidateId] = set()
         for candidate in candidates:
-            stored = self.items.get(self._key(candidate))
-            if (stored.version if stored is not None else 0) != candidate.version:
-                raise StaleCompactionCandidate(f"candidate {candidate.label} changed since it was read")
+            if candidate.version > 0:
+                stored = by_id.get(candidate.id)
+                if stored is None or stored.version != candidate.version:
+                    raise StaleCompactionCandidate(f"candidate {candidate.label} changed since it was read")
+                continue
+            key = self._key(candidate)
+            if key in self.items or key in new_keys or candidate.id in by_id or candidate.id in new_ids:
+                raise StaleCompactionCandidate(f"a candidate of {candidate.label} was created by another writer first")
+            new_keys.add(key)
+            new_ids.add(candidate.id)
         for candidate in candidates:
             candidate.mark_saved()
             self.items[self._key(candidate)] = candidate.model_copy(deep=True)

@@ -20,9 +20,12 @@ from context.table_maintenance.application.domain.model.compaction_candidate imp
 from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import MaintenancePriority
 from context.table_maintenance.application.domain.model.table_maintenance_run import TableMaintenanceRunId
+from shared_kernel import prefixed_id_pattern
 
 RUN_1 = "mr-00000000000000000000000001"
 RUN_2 = "mr-00000000000000000000000002"
+CANDIDATE_ID = "cc-00000000000000000000000001"
+CANDIDATE_ID_SHAPE = prefixed_id_pattern("cc")
 
 NOW = datetime(2026, 11, 13, 12, tzinfo=UTC)
 LATER = NOW + timedelta(minutes=5)
@@ -90,13 +93,11 @@ def test_new_filtered_candidate_is_held_with_its_reason():
     assert candidate.hold_reason is HoldReason.TOO_SMALL
 
 
-def test_id_is_derived_from_the_table_and_the_partition():
-    """The same table and partition always get the same id; another partition gets another."""
-    assert _candidate().id == CompactionCandidateId.for_partition(TABLE, KEY)
-    assert CompactionCandidateId.for_partition(TABLE, KEY) != CompactionCandidateId.for_partition(
-        TABLE, PartitionKey(spec_id=1, values=("eu",))
-    )
-    assert CompactionCandidateId.for_partition(TABLE, KEY) != CompactionCandidateId.for_partition(TableId("t-2"), KEY)
+def test_new_candidate_gets_a_cc_id():
+    """A new candidate gets a fresh random ``cc-`` id; the store keeps one per table and partition."""
+    first, second = _candidate(), _candidate()
+    assert CANDIDATE_ID_SHAPE.fullmatch(first.id.value)
+    assert first.id != second.id
 
 
 def test_claim_takes_a_granted_candidate_for_a_run_under_a_lease():
@@ -464,7 +465,7 @@ def test_a_granted_candidate_can_be_overdue_but_a_held_or_claimed_one_cannot():
 def test_a_pending_candidate_without_pending_since_is_not_overdue():
     """A row stored before the wait was recorded has no start, so it is never overdue."""
     candidate = CompactionCandidate(
-        id=CompactionCandidateId.for_partition(TABLE, KEY),
+        id=CompactionCandidateId(CANDIDATE_ID),
         table_uuid=TABLE,
         partition=KEY,
         label="region=eu",
@@ -520,7 +521,7 @@ def test_a_new_candidate_has_never_been_saved():
 def test_combinations_that_cannot_happen_are_refused(fields):
     """The state, hold reason, claim and lease always agree."""
     base: dict[str, Any] = {
-        "id": CompactionCandidateId.for_partition(TABLE, KEY),
+        "id": CompactionCandidateId(CANDIDATE_ID),
         "table_uuid": TABLE,
         "partition": KEY,
         "label": "region=eu",
