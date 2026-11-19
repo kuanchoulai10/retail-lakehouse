@@ -16,3 +16,4 @@ class CreateTableMaintenanceRunUseCaseInput(UseCaseInput):
     trigger: str
     operations: tuple[str, ...]
     now: datetime
+    priority: str = "P3"

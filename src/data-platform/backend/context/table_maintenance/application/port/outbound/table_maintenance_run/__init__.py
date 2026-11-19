@@ -5,6 +5,7 @@ from __future__ import annotations
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
+    TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
@@ -114,4 +115,5 @@ __all__ = [
     "TableId",
     "TableMaintenanceRun",
     "TableMaintenanceRunsRepo",
+    "TablePriority",
 ]

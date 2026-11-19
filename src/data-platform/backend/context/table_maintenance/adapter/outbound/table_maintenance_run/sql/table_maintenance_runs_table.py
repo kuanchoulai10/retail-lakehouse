@@ -13,6 +13,7 @@ table_maintenance_runs_table = Table(
     Column("table_uuid", String, nullable=False),
     Column("execution_ref", String, nullable=False),
     Column("trigger", String, nullable=False),
+    Column("priority", String, nullable=True),
     Column("operations_json", JSON, nullable=False),
     Column("created_at", UtcDateTime, nullable=False),
     Column("finished_at", UtcDateTime, nullable=True),

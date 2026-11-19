@@ -18,6 +18,7 @@ class ListTableMaintenanceRunsUseCaseOutput(UseCaseOutput):
         table_uuid: str
         execution_ref: str
         trigger: str
+        priority: str
         status: str
         operations: tuple[dict[str, Any], ...]
         created_at: datetime

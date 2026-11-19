@@ -16,6 +16,7 @@ from context.table_maintenance.application.port.outbound.table_maintenance_run i
     TableId,
     TableMaintenanceRun,
     TableMaintenanceRunId,
+    TablePriority,
     TriggerType,
 )
 
@@ -110,6 +111,7 @@ class TableMaintenanceRunRowMapper:
             "table_uuid": run.table_uuid.value,
             "execution_ref": run.execution_ref,
             "trigger": run.trigger.value,
+            "priority": run.priority.value,
             "operations_json": [_encode_operation(op) for op in run.operations],
             "created_at": run.created_at,
             "finished_at": run.finished_at,
@@ -126,4 +128,5 @@ class TableMaintenanceRunRowMapper:
             created_at=row["created_at"],
             execution_ref=row["execution_ref"],
             finished_at=row["finished_at"],
+            priority=TablePriority(row["priority"] or TablePriority.default()),
         )

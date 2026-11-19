@@ -39,6 +39,7 @@ def table_maintenance_run_output_fields(run: TableMaintenanceRun) -> dict[str, A
         "table_uuid": run.table_uuid.value,
         "execution_ref": run.execution_ref,
         "trigger": run.trigger.value,
+        "priority": run.priority.value,
         "status": run.status.value,
         "operations": tuple(
             {

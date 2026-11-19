@@ -36,6 +36,7 @@ FIELDS: dict[str, Any] = {
     "table_uuid": "u-1",
     "execution_ref": "wf-run-1",
     "trigger": "scheduled",
+    "priority": "P1",
     "status": "running",
     "operations": (
         {
@@ -118,6 +119,7 @@ def test_get_run() -> None:
     assert response.status_code == 200
     assert response.json()["operations"][0]["operation"] == "rewrite_data_files"
     assert response.json()["execution_ref"] == "wf-run-1"
+    assert response.json()["priority"] == "P1"
     assert stub.requests == [GetTableMaintenanceRunUseCaseInput(run_id=RUN_ID)]
 
 

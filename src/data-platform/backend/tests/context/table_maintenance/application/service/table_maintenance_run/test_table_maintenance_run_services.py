@@ -10,6 +10,7 @@ import pytest
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
+    TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
     AppliedPolicyRef,
@@ -88,7 +89,7 @@ def table(tables_repo, now):
 
 
 def _create_input(now, run_id=RUN_1, **overrides):
-    fields = {
+    fields: dict[str, Any] = {
         "run_id": run_id,
         "table_uuid": "u-1",
         "trigger": "scheduled",
@@ -120,6 +121,42 @@ def test_create_run_persists_pending_run_in_canonical_order(creator, runs_repo, 
     assert out.operations[0]["status"] == "pending"
     assert out.created_at == now
     assert runs_repo.get(TableMaintenanceRunId(RUN_1)) is not None
+
+
+def test_create_run_records_its_priority(creator, runs_repo, table, now):
+    """A run created with a priority stores it and reports it."""
+    out = creator.execute(_create_input(now, priority="P0"))
+    assert out.priority == "P0"
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).priority is TablePriority.P0
+
+
+def test_create_run_without_a_priority_records_p3(creator, runs_repo, table, now):
+    """A run created without a priority records P3."""
+    out = creator.execute(_create_input(now))
+    assert out.priority == "P3"
+    assert runs_repo.get(TableMaintenanceRunId(RUN_1)).priority is TablePriority.P3
+
+
+def test_create_run_with_an_unknown_priority_is_refused(creator, runs_repo, table, now):
+    """A priority outside P0 to P3 raises a ValidationError and stores nothing."""
+    with pytest.raises(ValidationError):
+        creator.execute(_create_input(now, priority="P9"))
+    assert len(runs_repo.items) == 0
+
+
+def test_create_input_without_a_priority_parses_as_p3(now):
+    """A payload written before runs had a priority still parses, as P3."""
+    parsed = CreateTableMaintenanceRunUseCaseInput.from_primitives(
+        {
+            "run_id": RUN_1,
+            "table_uuid": "u-1",
+            "execution_ref": "wf-run-1",
+            "trigger": "scheduled",
+            "operations": ["rewrite_data_files"],
+            "now": now.isoformat(),
+        }
+    )
+    assert parsed.priority == "P3"
 
 
 def test_create_run_is_idempotent_by_id(creator, runs_repo, table, now):

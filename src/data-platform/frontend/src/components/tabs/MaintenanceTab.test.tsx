@@ -13,6 +13,7 @@ const RUN: TableMaintenanceRunApiResponse = {
   table_uuid: "uuid-orders",
   execution_ref: "table-maintenance:table=uuid-orders:run=run-1",
   trigger: "manual",
+  priority: "P3",
   status: "failed",
   created_at: "2026-10-31T10:00:00Z",
   finished_at: "2026-10-31T10:02:30Z",

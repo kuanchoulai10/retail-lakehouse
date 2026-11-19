@@ -140,6 +140,7 @@ class FakeCreateRun(CreateTableMaintenanceRunUseCase):
             table_uuid=request.table_uuid,
             execution_ref=request.execution_ref,
             trigger=request.trigger,
+            priority=request.priority,
             status="running",
             operations=tuple({"operation": op} for op in request.operations),
             created_at=CREATED_AT,

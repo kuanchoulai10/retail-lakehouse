@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, cast
 
 import pytest
+from sqlalchemy import text
 
 from context.table_maintenance.adapter.outbound.table_maintenance_run.sql import (
     TableMaintenanceRunRowMapper,
@@ -14,6 +15,7 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.sql import
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
+    TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
@@ -95,6 +97,33 @@ def test_roundtrip_with_operation_details(repo: TableMaintenanceRunsSqlRepo):
     assert loaded.operations[1].error == "boom"
     assert loaded.status == run.status
     assert loaded.collect_events() == []
+
+
+def test_priority_round_trips(repo: TableMaintenanceRunsSqlRepo):
+    """A run's priority is stored and read back."""
+    run = TableMaintenanceRun.create(
+        TableMaintenanceRunId(R1),
+        TableId("u1"),
+        TriggerType.MANUAL,
+        [MaintenanceOperation.EXPIRE_SNAPSHOTS],
+        NOW,
+        execution_ref=f"wf-{R1}",
+        priority=TablePriority.P1,
+    )
+    repo.create(run)
+    loaded = repo.get(TableMaintenanceRunId(R1))
+    assert loaded is not None
+    assert loaded.priority is TablePriority.P1
+
+
+def test_a_row_without_a_priority_reads_as_p3(repo: TableMaintenanceRunsSqlRepo, engine: Engine):
+    """A run stored before priorities existed (priority NULL) reads as the default, P3."""
+    repo.create(_run(R1))
+    with engine.begin() as connection:
+        connection.execute(text("UPDATE table_maintenance_runs SET priority = NULL"))
+    loaded = repo.get(TableMaintenanceRunId(R1))
+    assert loaded is not None
+    assert loaded.priority is TablePriority.P3
 
 
 def test_get_missing_returns_none(repo: TableMaintenanceRunsSqlRepo):
@@ -194,6 +223,7 @@ def test_row_without_attempt_history_decodes_to_none_recorded():
         "table_uuid": "u1",
         "execution_ref": f"wf-{R1}",
         "trigger": "scheduled",
+        "priority": None,
         "operations_json": [
             {
                 "operation": "rewrite_data_files",

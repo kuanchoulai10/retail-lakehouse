@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
+    TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import TableId, TableStatus
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
@@ -55,6 +56,7 @@ class CreateTableMaintenanceRunService(CreateTableMaintenanceRunUseCase):
             raise ValidationError("operations must not be empty")
         with translate_domain_errors():
             trigger = TriggerType(request.trigger)
+            priority = TablePriority(request.priority)
             operations = [MaintenanceOperation(op) for op in request.operations]
             run = self._runs_repo.get(TableMaintenanceRunId(request.run_id))
             if run is None:
@@ -70,6 +72,7 @@ class CreateTableMaintenanceRunService(CreateTableMaintenanceRunUseCase):
                         operations,
                         request.now,
                         execution_ref=request.execution_ref,
+                        priority=priority,
                     )
                 )
                 if trigger is TriggerType.MANUAL:

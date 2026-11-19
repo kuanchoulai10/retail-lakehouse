@@ -4057,6 +4057,10 @@
             "title": "Operations",
             "type": "array"
           },
+          "priority": {
+            "title": "Priority",
+            "type": "string"
+          },
           "run_id": {
             "title": "Run Id",
             "type": "string"
@@ -4079,6 +4083,7 @@
           "table_uuid",
           "execution_ref",
           "trigger",
+          "priority",
           "status",
           "operations",
           "created_at",

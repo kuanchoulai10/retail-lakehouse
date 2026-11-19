@@ -14,6 +14,7 @@ export interface TableMaintenanceRunApiResponse {
   execution_ref: string;
   finished_at: string | null;
   operations: TableMaintenanceRunOperationApiResponse[];
+  priority: string;
   run_id: string;
   status: string;
   table_uuid: string;

@@ -9,6 +9,7 @@ import pytest
 from base import InvariantViolation
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
+    TablePriority,
 )
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation as Op,
@@ -50,6 +51,25 @@ def _run(ops: list[Op] | None = None) -> TableMaintenanceRun:
 
 def _op(run: TableMaintenanceRun, op: Op):
     return next(o for o in run.operations if o.operation == op)
+
+
+def test_create_records_the_priority_it_is_given():
+    """A run keeps the priority it was started with."""
+    run = TableMaintenanceRun.create(
+        TableMaintenanceRunId(RUN_1),
+        TableId("t-1"),
+        TriggerType.MANUAL,
+        [Op.EXPIRE_SNAPSHOTS],
+        _now(),
+        execution_ref="wf-run-1",
+        priority=TablePriority.P1,
+    )
+    assert run.priority is TablePriority.P1
+
+
+def test_create_without_a_priority_records_p3():
+    """A run started without a priority records the default, P3."""
+    assert _run().priority is TablePriority.P3
 
 
 def test_create_orders_dedupes_and_starts_pending():

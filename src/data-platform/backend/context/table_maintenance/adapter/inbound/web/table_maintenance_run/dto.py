@@ -50,6 +50,7 @@ class TableMaintenanceRunApiResponse(BaseModel):
     table_uuid: str
     execution_ref: str
     trigger: str
+    priority: str
     status: str
     operations: list[TableMaintenanceRunOperationApiResponse]
     created_at: datetime

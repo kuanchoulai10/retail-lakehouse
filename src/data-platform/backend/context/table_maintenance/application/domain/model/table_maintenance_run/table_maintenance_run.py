@@ -9,6 +9,7 @@ from base import AggregateRoot
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
+    TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_run.failure_class import (
@@ -65,6 +66,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
     created_at: datetime
     execution_ref: str
     finished_at: datetime | None = None
+    priority: TablePriority = TablePriority.P3
 
     @classmethod
     def create(
@@ -76,11 +78,13 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
         now: datetime,
         *,
         execution_ref: str,
+        priority: TablePriority = TablePriority.P3,
     ) -> TableMaintenanceRun:
         """Create a run with the given operations in canonical order, all pending.
 
         ``execution_ref`` names the execution that runs it, so a result
         that only carries the run id can still be routed to that execution.
+        ``priority`` is the priority the run was started with.
         """
         if not execution_ref:
             msg = "a maintenance run needs the execution reference that runs it"
@@ -96,6 +100,7 @@ class TableMaintenanceRun(AggregateRoot[TableMaintenanceRunId]):
             operations=tuple(OperationRun(operation=op) for op in MaintenanceOperation.ordered() if op in requested),
             created_at=now,
             execution_ref=execution_ref,
+            priority=priority,
         )
 
     @property

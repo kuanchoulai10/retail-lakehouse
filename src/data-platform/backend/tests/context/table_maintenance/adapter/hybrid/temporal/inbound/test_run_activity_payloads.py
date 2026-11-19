@@ -68,6 +68,7 @@ def _full_run() -> CreateTableMaintenanceRunUseCaseOutput:
         table_uuid="u1",
         execution_ref="wf-r1",
         trigger="manual",
+        priority="P3",
         status="running",
         operations=(
             {
@@ -136,6 +137,7 @@ def test_create_run_payload_keeps_every_field_of_a_full_run():
         "table_uuid": "u1",
         "execution_ref": "wf-r1",
         "trigger": "manual",
+        "priority": "P3",
         "status": "running",
         "operations": [
             {
