@@ -22,6 +22,9 @@ from context.table_maintenance.application.domain.model.table import (
 from context.table_maintenance.application.domain.model.table_discovery_rules import (
     TableDiscoveryRuleId,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    DEFAULT_POLICY_ID,
+)
 
 RUN_1 = "mr-00000000000000000000000001"
 RUN_2 = "mr-00000000000000000000000002"
@@ -203,7 +206,7 @@ def test_mark_and_clear_needs_attention():
     mark = AttentionMark(
         since=T1,
         reason="out of memory at size L",
-        policy=AppliedPolicyRef(name="default", version=1, target=None),
+        policy=AppliedPolicyRef(policy_id=DEFAULT_POLICY_ID, version=1, target=None),
     )
     t.mark_needs_attention(OP, mark, T1)
     assert t.operation_state(OP).attention == mark
@@ -218,7 +221,9 @@ def test_a_dropped_table_refuses_attention_changes():
     """A dropped table records no operation state change."""
     t = managed()
     t.mark_dropped(T1)
-    mark = AttentionMark(since=T1, reason="r", policy=AppliedPolicyRef(name="default", version=1, target=None))
+    mark = AttentionMark(
+        since=T1, reason="r", policy=AppliedPolicyRef(policy_id=DEFAULT_POLICY_ID, version=1, target=None)
+    )
     with pytest.raises(InvalidTableTransition):
         t.mark_needs_attention(OP, mark, T1)
     with pytest.raises(InvalidTableTransition):
@@ -257,8 +262,8 @@ def test_a_recorded_attempt_names_a_run_and_a_positive_attempt(run_id, attempt):
 
 def test_marks_set_under_another_policy_are_lifted():
     """Only the marks set under a policy other than the one that applies now are lifted."""
-    v1 = AppliedPolicyRef(name="default", version=1, target=None)
-    v2 = AppliedPolicyRef(name="default", version=2, target=None)
+    v1 = AppliedPolicyRef(policy_id=DEFAULT_POLICY_ID, version=1, target=None)
+    v2 = AppliedPolicyRef(policy_id=DEFAULT_POLICY_ID, version=2, target=None)
     t = managed()
     t.mark_needs_attention(OP, AttentionMark(since=T0, reason="oom", policy=v1), T0)
     t.mark_needs_attention(MaintenanceOperation.EXPIRE_SNAPSHOTS, AttentionMark(since=T0, reason="oom", policy=v2), T0)
@@ -270,7 +275,7 @@ def test_marks_set_under_another_policy_are_lifted():
 
 def test_lifting_nothing_leaves_the_table_unchanged():
     """With every mark set under the applicable policy, nothing is lifted and the table is untouched."""
-    v1 = AppliedPolicyRef(name="default", version=1, target=None)
+    v1 = AppliedPolicyRef(policy_id=DEFAULT_POLICY_ID, version=1, target=None)
     t = managed()
     t.mark_needs_attention(OP, AttentionMark(since=T0, reason="oom", policy=v1), T0)
     assert t.lift_attention_set_under_another_policy(v1, T1) == []

@@ -12,8 +12,9 @@ class PlanTableMaintenanceUseCaseOutput(UseCaseOutput):
     """Carry the result of the request to plan the maintenance operations of a table.
 
     ``table_name`` is the fully qualified ``catalog.namespace.table`` name, or
-    ``None`` when the table is not managed (any more). ``policy_name``,
-    ``policy_version`` and ``policy_target`` name the maintenance policy that
+    ``None`` when the table is not managed (any more). ``policy_id`` (the
+    policy's ``mp-`` id, not its name, which may change), ``policy_version`` and
+    ``policy_target`` point at the maintenance policy that
     was applied and where it is attached (``None`` for the default with nothing
     attached); they are ``None`` only when the table is unknown. ``next_check_at``
     is when a due compaction whose candidates are all held by a filter may find
@@ -79,7 +80,7 @@ class PlanTableMaintenanceUseCaseOutput(UseCaseOutput):
     dry_run: bool = False
     table_found: bool = True
     checks: tuple[Check, ...] = ()
-    policy_name: str | None = None
+    policy_id: str | None = None
     policy_version: int | None = None
     policy_target: dict[str, Any] | None = None
     next_check_at: datetime | None = None

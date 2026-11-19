@@ -135,6 +135,7 @@ export function lakehouseHandlers() {
     }),
     getGetTableApplicableMaintenancePolicyMockHandler(applicablePolicy(ORDERS.catalog, ORDERS.namespace)),
     getAttachTableMaintenancePolicyMockHandler(async ({ params, request }) => ({
+      policy_id: (POLICIES.find((p) => p.name === params.name) ?? POLICIES[0]!).id,
       policy_name: params.name,
       target: { ...((await request.json()).target), table_uuid: null },
       attached_at: "2026-11-12T09:00:00Z",

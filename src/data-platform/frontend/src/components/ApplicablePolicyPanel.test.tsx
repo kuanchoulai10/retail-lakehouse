@@ -5,7 +5,14 @@ import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import type { ApplicableTableMaintenancePolicyApiResponse, PolicyTargetApiResponse } from "../api/generated/model";
 import { bodyOf, callsTo, stubCatalogApi, type StubHandler } from "../test/catalogApiStub";
-import { jsonResponse, policyContentFixture, policyFixture } from "../test/fixtures";
+import {
+  DEFAULT_POLICY_ID,
+  jsonResponse,
+  NIGHTLY_POLICY_ID,
+  policyContentFixture,
+  policyFixture,
+  SCRATCH_POLICY_ID,
+} from "../test/fixtures";
 import { ApplicablePolicyPanel, type PolicyScope } from "./ApplicablePolicyPanel";
 
 const TABLE_SCOPE: PolicyScope = { type: "table", catalog: "iceberg", namespace: ["retail"], table: "orders", tableUuid: "uuid-orders", recorded: true };
@@ -19,10 +26,14 @@ function applicable(
   target: PolicyTargetApiResponse | null,
   overrides: Partial<ApplicableTableMaintenancePolicyApiResponse> = {},
 ): ApplicableTableMaintenancePolicyApiResponse {
-  return { ...policyContentFixture(), name: "nightly", version: 4, target, ...overrides };
+  return { ...policyContentFixture(), id: NIGHTLY_POLICY_ID, name: "nightly", version: 4, target, ...overrides };
 }
 
-const POLICIES = [policyFixture({ name: "default" }), policyFixture({ name: "nightly", version: 4 }), policyFixture({ name: "scratch" })];
+const POLICIES = [
+  policyFixture({ name: "default" }),
+  policyFixture({ id: NIGHTLY_POLICY_ID, name: "nightly", version: 4 }),
+  policyFixture({ id: SCRATCH_POLICY_ID, name: "scratch" }),
+];
 
 function stubApi(routes: Record<string, StubHandler>) {
   return stubCatalogApi({ "GET /v1/maintenance-policies": () => jsonResponse({ policies: POLICIES }), ...routes });
@@ -54,7 +65,7 @@ describe("ApplicablePolicyPanel", () => {
   });
 
   it("says the platform default applies when nothing is attached here or above", async () => {
-    stubApi({ [NAMESPACE_APPLICABLE]: () => jsonResponse(applicable(null, { name: "default", version: 3, dry_run: true })) });
+    stubApi({ [NAMESPACE_APPLICABLE]: () => jsonResponse(applicable(null, { id: DEFAULT_POLICY_ID, name: "default", version: 3, dry_run: true })) });
     renderPanel(NAMESPACE_SCOPE);
     expect(await screen.findByText("Platform default")).toBeInTheDocument();
     expect(screen.getByText("Dry run")).toBeInTheDocument();
@@ -78,7 +89,7 @@ describe("ApplicablePolicyPanel", () => {
 
   it("attaches the chosen policy to this target", async () => {
     const calls = stubApi({
-      [NAMESPACE_APPLICABLE]: () => jsonResponse(applicable(null, { name: "default", version: 3 })),
+      [NAMESPACE_APPLICABLE]: () => jsonResponse(applicable(null, { id: DEFAULT_POLICY_ID, name: "default", version: 3 })),
       "PUT /v1/maintenance-policies/scratch/mappings": () =>
         jsonResponse({ policy_name: "scratch", target: { type: "namespace", path: ["iceberg", "retail", "eu"], table_uuid: null }, attached_at: "2026-11-12T09:00:00Z" }),
     });

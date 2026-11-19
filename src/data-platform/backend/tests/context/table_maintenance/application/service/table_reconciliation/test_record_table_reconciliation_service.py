@@ -28,6 +28,8 @@ OLD_REC = "rc-00000000000000000000000002"
 RECENT_REC = "rc-00000000000000000000000003"
 NOW_REC = "rc-00000000000000000000000004"
 OTHER_REC = "rc-00000000000000000000000005"
+DEFAULT_POLICY_ID = "mp-00000000000000000000000000"
+NIGHTLY = "mp-00000000000000000000000004"
 
 NOW = datetime(2026, 11, 10, 12, 0, tzinfo=UTC)
 
@@ -56,7 +58,7 @@ def _input(**overrides: object) -> RecordTableReconciliationUseCaseInput:
         checks=(_due_check(),),
         run_id=RUN_1,
         run_start_failed=False,
-        policy_name="default",
+        policy_id=DEFAULT_POLICY_ID,
         policy_version=3,
         policy_target=None,
     )
@@ -239,6 +241,7 @@ def test_recording_twice_keeps_one_record(
         {"run_id": None},
         {"status": "weird"},
         {"status": "skip", "skip_reason": None, "checks": (), "run_id": None},
+        {"policy_id": "nightly"},
     ],
 )
 def test_invalid_input_is_rejected(service: RecordTableReconciliationService, overrides: dict) -> None:
@@ -273,13 +276,13 @@ def test_discovery_scan_is_a_known_wake_reason(
     assert {reason.value: count for reason, count in saved.wake_reasons.items()} == {"discovery_scan": 1}
 
 
-def test_record_keeps_policy_name_version_and_target(
+def test_record_keeps_policy_id_version_and_target(
     service: RecordTableReconciliationService, repo: InMemoryTableReconciliationsRepo
 ) -> None:
-    """The record keeps the plan's policy name, version and the target it was attached to."""
+    """The record keeps the plan's policy id, version and the target it was attached to."""
     service.execute(
         _input(
-            policy_name="nightly",
+            policy_id=NIGHTLY,
             policy_version=4,
             policy_target={"type": "namespace", "path": ["prod", "sales"]},
         )
@@ -287,7 +290,7 @@ def test_record_keeps_policy_name_version_and_target(
 
     saved = repo.get(TableReconciliationId(REC_1))
     assert saved is not None
-    assert (saved.policy_name, saved.policy_version) == ("nightly", 4)
+    assert (saved.policy_id.value, saved.policy_version) == (NIGHTLY, 4)
     assert saved.policy_target is not None
     assert (saved.policy_target.type.value, saved.policy_target.path) == ("namespace", ("prod", "sales"))
 

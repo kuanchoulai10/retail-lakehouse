@@ -11,6 +11,7 @@ import type { PolicyTargetApiResponse } from './policyTargetApiResponse';
  */
 export interface TableMaintenancePolicyMappingApiResponse {
   attached_at: string;
+  policy_id: string;
   policy_name: string;
   target: PolicyTargetApiResponse;
 }

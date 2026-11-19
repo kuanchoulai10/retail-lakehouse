@@ -24,6 +24,7 @@ from context.table_maintenance.application.domain.model.table_discovery_rules im
     TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    DEFAULT_POLICY_ID,
     DEFAULT_POLICY_NAME,
     AtLeast,
     MaintenancePolicyContent,
@@ -31,6 +32,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     RewriteDataFilesConditions,
     RewriteDataFilesExecutionPolicy,
     RewriteDataFilesTriggerPolicy,
+    TableMaintenancePolicyId,
 )
 from context.table_maintenance.application.exceptions import ValidationError
 from context.table_maintenance.application.port.inbound.table import (
@@ -379,7 +381,7 @@ def test_plan_output_names_resolved_policy(planner, tables_repo, catalog, polici
     _table(tables_repo, now)
     _observe(catalog, now)
     gold = DEFAULT.with_changes(reconcile_interval=timedelta(minutes=10), dry_run=True)
-    CreateTableMaintenancePolicyService(policies, clock=lambda: now).execute(
+    created = CreateTableMaintenancePolicyService(policies, clock=lambda: now).execute(
         CreateTableMaintenancePolicyUseCaseInput(name="gold", content=gold.to_primitives())
     )
     AttachTableMaintenancePolicyService(
@@ -388,7 +390,7 @@ def test_plan_output_names_resolved_policy(planner, tables_repo, catalog, polici
         AttachTableMaintenancePolicyUseCaseInput(target_type="namespace", path=("iceberg", "sales"), policy_name="gold")
     )
     plan = _plan(planner, now)
-    assert (plan.policy_name, plan.policy_version) == ("gold", 1)
+    assert (plan.policy_id, plan.policy_version) == (created.id, 1)
     assert plan.policy_target == {"type": "namespace", "path": ["iceberg", "sales"]}
     assert (plan.reconcile_interval_seconds, plan.dry_run) == (600, True)
 
@@ -398,7 +400,7 @@ def test_plan_without_attachment_names_the_default_policy(planner, tables_repo, 
     _table(tables_repo, now)
     _observe(catalog, now)
     plan = _plan(planner, now)
-    assert (plan.policy_name, plan.policy_version, plan.policy_target) == (DEFAULT_POLICY_NAME, 1, None)
+    assert (plan.policy_id, plan.policy_version, plan.policy_target) == (DEFAULT_POLICY_ID.value, 1, None)
 
 
 def test_skipped_plan_names_the_policy_for_its_interval(planner, tables_repo, policies, now):
@@ -406,10 +408,10 @@ def test_skipped_plan_names_the_policy_for_its_interval(planner, tables_repo, po
     _use_policy(policies, now, DEFAULT.with_changes(reconcile_interval=timedelta(minutes=2)))
     _table(tables_repo, now).unmanage(now)
     plan = _plan(planner, now)
-    assert (plan.reason, plan.reconcile_interval_seconds, plan.policy_name, plan.policy_version) == (
+    assert (plan.reason, plan.reconcile_interval_seconds, plan.policy_id, plan.policy_version) == (
         "unmanaged",
         120,
-        DEFAULT_POLICY_NAME,
+        DEFAULT_POLICY_ID.value,
         2,
     )
 
@@ -510,7 +512,7 @@ def _record(plan, now, **overrides):
         "checks": tuple(check.model_dump() for check in plan.checks),
         "run_id": None,
         "run_start_failed": False,
-        "policy_name": plan.policy_name,
+        "policy_id": plan.policy_id,
         "policy_version": plan.policy_version,
         "policy_target": plan.policy_target,
     }
@@ -550,7 +552,9 @@ def test_manual_plan_checks_can_be_recorded(planner, tables_repo, catalog, now):
 def _mark_under_current_policy(planner, table, tables_repo, now, op=OPS.REWRITE_DATA_FILES):
     """Mark ``op`` as needing attention under the policy that applies now."""
     first = _plan(planner, now)
-    applied = AppliedPolicyRef(name=first.policy_name, version=first.policy_version, target=first.policy_target)
+    applied = AppliedPolicyRef(
+        policy_id=TableMaintenancePolicyId(first.policy_id), version=first.policy_version, target=first.policy_target
+    )
     table.mark_needs_attention(op, AttentionMark(since=now, reason="out of memory at size L", policy=applied), now)
     tables_repo.update(table)
 
@@ -653,7 +657,7 @@ def test_detaching_the_new_policy_does_not_bring_the_block_back(
         policies, attachments, catalog, tables_repo, RecordingSendTableChangeGateway()
     ).execute(DetachTableMaintenancePolicyUseCaseInput(target_type="namespace", path=("iceberg", "sales")))
     plan = _plan(planner, now)
-    assert plan.policy_name == DEFAULT_POLICY_NAME
+    assert plan.policy_id == DEFAULT_POLICY_ID.value
     assert _checks(plan)["rewrite_data_files"].verdict == "due"
 
 

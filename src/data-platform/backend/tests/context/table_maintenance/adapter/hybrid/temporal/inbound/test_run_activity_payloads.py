@@ -34,6 +34,7 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_recon
     table_reconciliation_activities_with_fakes,
 )
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fakes import (
+    GOLD_POLICY_ID,
     FakeCreateRun,
     FakeDelete,
     FakeRecordReconciliation,
@@ -254,7 +255,7 @@ WORKFLOW_RECORD_RESULT_REQUEST = {
     "ended_by": "result",
     "still_running": False,
     "max_attempts": 5,
-    "policy_name": "gold",
+    "policy_id": GOLD_POLICY_ID,
     "policy_version": 3,
     "policy_target": {"type": "table", "path": ["iceberg", "sales", "orders"], "table_uuid": "u1"},
     "now": NOW,
@@ -295,7 +296,7 @@ WORKFLOW_RECORD_RECONCILIATION_REQUEST = {
     "checks": WORKFLOW_CHECKS,
     "run_id": RUN_1,
     "run_start_failed": False,
-    "policy_name": "gold",
+    "policy_id": GOLD_POLICY_ID,
     "policy_version": 3,
     "policy_target": {"type": "namespace", "path": ["iceberg", "sales"]},
 }
@@ -438,7 +439,7 @@ def test_record_result_input_is_built_from_the_payload_the_maintenance_workflow_
         ended_by="result",
         still_running=False,
         max_attempts=5,
-        policy_name="gold",
+        policy_id=GOLD_POLICY_ID,
         policy_version=3,
         policy_target={"type": "table", "path": ["iceberg", "sales", "orders"], "table_uuid": "u1"},
     )
@@ -459,7 +460,7 @@ def test_record_result_input_defaults_the_keys_an_older_workflow_does_not_send()
     )
 
     assert (built.ended_by, built.still_running, built.max_attempts) == ("result", False, 3)
-    assert (built.policy_name, built.policy_version, built.policy_target) == (None, None, None)
+    assert (built.policy_id, built.policy_version, built.policy_target) == (None, None, None)
 
 
 def test_record_result_input_defaults_max_attempts_to_the_workflow_default():
@@ -498,7 +499,7 @@ def test_record_reconciliation_input_is_built_from_the_payload_the_reconciliatio
         checks=tuple(WORKFLOW_CHECKS),
         run_id=RUN_1,
         run_start_failed=False,
-        policy_name="gold",
+        policy_id=GOLD_POLICY_ID,
         policy_version=3,
         policy_target={"type": "namespace", "path": ["iceberg", "sales"]},
     )

@@ -53,7 +53,7 @@ _FENCE_CANCELLED_PATCH = "fence-cancelled-attempt"
 _CANCELLED = "cancelled"
 _DECISION_PATCH = "classify-attempt-failure"
 _FEWER_PARTITIONS_PATCH = "fewer-partitions-after-oom"
-_PLANNED_POLICY_KEYS = ("policy_name", "policy_version", "policy_target")
+_PLANNED_POLICY_KEYS = ("policy_id", "policy_version", "policy_target")
 
 
 @workflow.defn(name=TABLE_MAINTENANCE_WORKFLOW)
@@ -83,8 +83,10 @@ class TableMaintenanceWorkflow:
     failure that needs a person, is not retried or may still be running ends the operation at once
     (patch ``classify-attempt-failure``; a record reply without a decision, as before failure
     classes, retries at the same size). Every record names the policy the run was planned under,
-    from the plan, so a needs-attention mark is set under it; this changes only the record
-    activity's input, not the workflow's commands, so it needs no patch. A compaction whose plan
+    by its id, from the plan, so a needs-attention mark is set under it; this changes only the record
+    activity's input, not the workflow's commands, so it needs no patch. A plan from before policies
+    had ids carries no ``policy_id``; its records then leave the policy to the recorder, which marks
+    under the policy applying when it records. A compaction whose plan
     carries ``filter_sets`` (ever fewer of its partitions) submits the next set after each attempt
     that ran out of memory, and keeps the smallest once it was tried (patch
     ``fewer-partitions-after-oom``); a plan without them submits its ``filters`` every time. A failed operation

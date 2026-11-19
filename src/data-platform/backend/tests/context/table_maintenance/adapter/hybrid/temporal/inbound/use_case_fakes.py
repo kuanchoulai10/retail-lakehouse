@@ -41,6 +41,7 @@ from context.table_maintenance.application.port.inbound.table_reconciliation imp
 )
 
 CREATED_AT = datetime(2026, 10, 24, tzinfo=UTC)
+GOLD_POLICY_ID = "mp-00000000000000000000000003"
 
 
 class FakePlan(PlanTableMaintenanceUseCase):
@@ -68,7 +69,7 @@ class FakePlan(PlanTableMaintenanceUseCase):
                     procedure_args={"strategy": "binpack"},
                 ),
             ),
-            policy_name="gold",
+            policy_id=GOLD_POLICY_ID,
             policy_version=3,
             policy_target={"type": "namespace", "path": ["iceberg", "sales"]},
         )

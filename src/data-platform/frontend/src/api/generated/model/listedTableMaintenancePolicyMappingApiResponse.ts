@@ -12,6 +12,7 @@ import type { PolicyTargetApiResponse } from './policyTargetApiResponse';
 export interface ListedTableMaintenancePolicyMappingApiResponse {
   attached_at: string;
   orphaned: boolean;
+  policy_id: string;
   policy_name: string;
   target: PolicyTargetApiResponse;
 }

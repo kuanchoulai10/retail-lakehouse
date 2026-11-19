@@ -5,28 +5,35 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from datetime import datetime
 
     from context.table_maintenance.application.domain.model.table import OperationState, Table
 
 
-def _attention_fields(state: OperationState) -> dict[str, Any] | None:
+def _attention_fields(state: OperationState, policy_names: Mapping[str, str]) -> dict[str, Any] | None:
     mark = state.attention
     if mark is None:
         return None
+    policy_id = mark.policy.policy_id.value
     return {
         "since": mark.since,
         "reason": mark.reason,
-        "policy_name": mark.policy.name,
+        "policy_id": policy_id,
+        "policy_name": policy_names.get(policy_id),
         "policy_version": mark.policy.version,
     }
 
 
-def table_output_fields(table: Table, catalog_discovered_at: datetime | None) -> dict[str, Any]:
+def table_output_fields(
+    table: Table, catalog_discovered_at: datetime | None, policy_names: Mapping[str, str]
+) -> dict[str, Any]:
     """Return the primitive fields shared by every table output.
 
     ``catalog_discovered_at`` is the last discovery of the table's catalog, None
     when it was never discovered; the table's last discovery is derived from it.
+    ``policy_names`` maps a policy id to its current name; a needs-attention mark
+    shows its policy's id and that name, or no name when the policy was deleted.
     """
     return {
         "uuid": table.id.value,
@@ -40,7 +47,7 @@ def table_output_fields(table: Table, catalog_discovered_at: datetime | None) ->
                 "last_attempt_at": state.last_attempt_at,
                 "consecutive_failures": state.consecutive_failures,
                 "last_successful_size": state.last_successful_size and state.last_successful_size.value,
-                "needs_attention": _attention_fields(state),
+                "needs_attention": _attention_fields(state, policy_names),
             }
             for op, state in table.operation_states.items()
         },

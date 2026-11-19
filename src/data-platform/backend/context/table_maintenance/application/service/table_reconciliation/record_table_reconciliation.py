@@ -12,6 +12,7 @@ from context.table_maintenance.application.domain.model.shared import (
     MeasurementUnit,
 )
 from context.table_maintenance.application.domain.model.table import TableId
+from context.table_maintenance.application.domain.model.table_maintenance_policy import TableMaintenancePolicyId
 from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
     PolicyTarget,
 )
@@ -78,7 +79,7 @@ class RecordTableReconciliationService(RecordTableReconciliationUseCase):
                 skip_reason=request.skip_reason,
                 operations=[_operation_outcome(check, request) for check in request.checks],
                 run_id=TableMaintenanceRunId(request.run_id) if request.run_id else None,
-                policy_name=request.policy_name,
+                policy_id=TableMaintenancePolicyId(request.policy_id),
                 policy_version=request.policy_version,
                 policy_target=_policy_target(request.policy_target),
             )

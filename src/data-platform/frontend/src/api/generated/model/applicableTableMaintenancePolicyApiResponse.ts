@@ -13,6 +13,7 @@ import type { PolicyTargetApiResponse } from './policyTargetApiResponse';
 export interface ApplicableTableMaintenancePolicyApiResponse {
   description: string;
   dry_run: boolean;
+  id: string;
   name: string;
   operations: OperationPoliciesApiRequest;
   reconcile_interval_seconds: number;

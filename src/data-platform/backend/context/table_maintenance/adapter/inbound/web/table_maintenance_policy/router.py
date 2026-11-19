@@ -46,6 +46,7 @@ def _policy_response(
 ) -> TableMaintenancePolicyApiResponse:
     return TableMaintenancePolicyApiResponse.model_validate(
         {
+            "id": output.id,
             "name": output.name,
             "version": output.version,
             "created_at": output.created_at,
@@ -63,6 +64,7 @@ def list_table_maintenance_policies(use_cases: UseCases) -> TableMaintenancePoli
         policies=[
             ListedTableMaintenancePolicyApiResponse.model_validate(
                 {
+                    "id": item.id,
                     "name": item.name,
                     "version": item.version,
                     "created_at": item.created_at,
@@ -123,5 +125,11 @@ def get_table_maintenance_policy_version(
         GetTableMaintenancePolicyVersionUseCaseInput(name=name, version=version)
     )
     return TableMaintenancePolicyVersionApiResponse.model_validate(
-        {"name": output.name, "version": output.version, "created_at": output.created_at, **output.content}
+        {
+            "id": output.id,
+            "name": output.name,
+            "version": output.version,
+            "created_at": output.created_at,
+            **output.content,
+        }
     )

@@ -4,6 +4,12 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    MaintenancePolicyContent,
+    TableMaintenancePolicy,
+    TableMaintenancePolicyId,
+    TableMaintenancePolicyName,
+)
 from context.table_maintenance.application.domain.model.table_reconciliation import TableReconciliationId
 from context.table_maintenance.application.port.inbound.table_reconciliation import (
     ListTableReconciliationsUseCaseInput,
@@ -14,6 +20,9 @@ from context.table_maintenance.application.service.table_reconciliation import (
 )
 from tests.context.table_maintenance.application.service.table_reconciliation.test_record_table_reconciliation_service import (  # noqa: E501
     _input,
+)
+from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_repo import (
+    InMemoryTableMaintenancePoliciesRepo,
 )
 from tests.context.table_maintenance.fakes.in_memory_table_reconciliations_repo import (
     InMemoryTableReconciliationsRepo,
@@ -31,7 +40,9 @@ def test_maps_a_recorded_reconciliation_to_plain_items() -> None:
     repo = InMemoryTableReconciliationsRepo()
     RecordTableReconciliationService(repo).execute(_input())
 
-    output = ListTableReconciliationsService(repo).execute(ListTableReconciliationsUseCaseInput(table_uuid="table-1"))
+    output = ListTableReconciliationsService(repo, InMemoryTableMaintenancePoliciesRepo()).execute(
+        ListTableReconciliationsUseCaseInput(table_uuid="table-1")
+    )
 
     (item,) = output.items
     assert (item.reconciliation_id, item.outcome, item.run_id) == (REC_1, "planned", RUN_1)
@@ -39,6 +50,40 @@ def test_maps_a_recorded_reconciliation_to_plain_items() -> None:
     operation = item.operations[0]
     assert (operation.operation, operation.result) == ("rewrite_data_files", "started")
     assert [(m.key, m.met) for m in operation.measurements] == [("small_files", True), ("data_bytes", None)]
+
+
+def test_reconciliation_record_points_at_the_policy_id_and_lists_its_name() -> None:
+    """A record keeps the policy's id; the listing names that policy by its id and its current name."""
+    repo, policies = InMemoryTableReconciliationsRepo(), InMemoryTableMaintenancePoliciesRepo()
+    nightly = TableMaintenancePolicy.create(
+        TableMaintenancePolicyName(value="nightly"), MaintenancePolicyContent.platform_default(), NOW
+    )
+    policies.create(nightly)
+    RecordTableReconciliationService(repo).execute(_input(policy_id=nightly.id.value, policy_version=4))
+
+    (item,) = (
+        ListTableReconciliationsService(repo, policies)
+        .execute(ListTableReconciliationsUseCaseInput(table_uuid="table-1"))
+        .items
+    )
+
+    assert repo.list_all()[0].policy_id == nightly.id
+    assert (item.policy_id, item.policy_name, item.policy_version) == (nightly.id.value, "nightly", 4)
+
+
+def test_a_reconciliation_under_a_deleted_policy_lists_no_name() -> None:
+    """A policy deleted since the reconciliation keeps its id in the listing and has no name."""
+    repo = InMemoryTableReconciliationsRepo()
+    gone = TableMaintenancePolicyId.new().value
+    RecordTableReconciliationService(repo).execute(_input(policy_id=gone))
+
+    (item,) = (
+        ListTableReconciliationsService(repo, InMemoryTableMaintenancePoliciesRepo())
+        .execute(ListTableReconciliationsUseCaseInput(table_uuid="table-1"))
+        .items
+    )
+
+    assert (item.policy_id, item.policy_name) == (gone, None)
 
 
 def test_before_and_limit_are_passed_to_the_repo() -> None:
@@ -49,7 +94,7 @@ def test_before_and_limit_are_passed_to_the_repo() -> None:
     record.execute(_input(reconciliation_id=older, reconciled_at=NOW - timedelta(hours=1), run_id=RUN_1))
     record.execute(_input(reconciliation_id=newer, reconciled_at=NOW, run_id=RUN_2))
 
-    output = ListTableReconciliationsService(repo).execute(
+    output = ListTableReconciliationsService(repo, InMemoryTableMaintenancePoliciesRepo()).execute(
         ListTableReconciliationsUseCaseInput(table_uuid="table-1", before=NOW, limit=1)
     )
 

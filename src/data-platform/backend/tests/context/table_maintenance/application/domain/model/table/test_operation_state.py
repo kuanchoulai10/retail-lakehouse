@@ -10,11 +10,16 @@ from context.table_maintenance.application.domain.model.table import (
     AttentionMark,
     OperationState,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    TableMaintenancePolicyId,
+)
 
 T0 = datetime(2026, 11, 13, tzinfo=UTC)
 T1 = T0 + timedelta(hours=1)
 TARGET = {"type": "table", "path": ["iceberg", "e2e", "orders"], "table_uuid": "u1"}
-POLICY = AppliedPolicyRef(name="nightly", version=1, target=TARGET)
+NIGHTLY = TableMaintenancePolicyId("mp-00000000000000000000000001")
+WEEKLY = TableMaintenancePolicyId("mp-00000000000000000000000002")
+POLICY = AppliedPolicyRef(policy_id=NIGHTLY, version=1, target=TARGET)
 MARK = AttentionMark(since=T0, reason="out of memory at size L", policy=POLICY)
 
 
@@ -61,13 +66,13 @@ def test_without_attention_clears_the_mark():
 
 
 def test_needs_attention_only_under_the_policy_it_was_marked_under():
-    """The mark holds under the same policy name, version and target, and under no other."""
+    """The mark holds under the same policy id, version and target, and under no other."""
     state = OperationState().with_attention(MARK)
-    assert state.needs_attention_under(AppliedPolicyRef(name="nightly", version=1, target=dict(TARGET)))
-    assert not state.needs_attention_under(AppliedPolicyRef(name="nightly", version=2, target=TARGET))
-    assert not state.needs_attention_under(AppliedPolicyRef(name="weekly", version=1, target=TARGET))
+    assert state.needs_attention_under(AppliedPolicyRef(policy_id=NIGHTLY, version=1, target=dict(TARGET)))
+    assert not state.needs_attention_under(AppliedPolicyRef(policy_id=NIGHTLY, version=2, target=TARGET))
+    assert not state.needs_attention_under(AppliedPolicyRef(policy_id=WEEKLY, version=1, target=TARGET))
     other_target = {"type": "namespace", "path": ["iceberg", "e2e"]}
-    assert not state.needs_attention_under(AppliedPolicyRef(name="nightly", version=1, target=other_target))
+    assert not state.needs_attention_under(AppliedPolicyRef(policy_id=NIGHTLY, version=1, target=other_target))
     assert not OperationState().needs_attention_under(POLICY)
 
 

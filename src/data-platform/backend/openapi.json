@@ -12,6 +12,10 @@
             "title": "Dry Run",
             "type": "boolean"
           },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -39,6 +43,7 @@
           }
         },
         "required": [
+          "id",
           "name",
           "version",
           "description",
@@ -1702,6 +1707,10 @@
             "title": "Dry Run",
             "type": "boolean"
           },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -1727,6 +1736,7 @@
           }
         },
         "required": [
+          "id",
           "name",
           "version",
           "description",
@@ -1753,6 +1763,10 @@
             "title": "Orphaned",
             "type": "boolean"
           },
+          "policy_id": {
+            "title": "Policy Id",
+            "type": "string"
+          },
           "policy_name": {
             "title": "Policy Name",
             "type": "string"
@@ -1763,6 +1777,7 @@
         },
         "required": [
           "target",
+          "policy_id",
           "policy_name",
           "attached_at",
           "orphaned"
@@ -3824,6 +3839,10 @@
             "title": "Dry Run",
             "type": "boolean"
           },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -3849,6 +3868,7 @@
           }
         },
         "required": [
+          "id",
           "name",
           "version",
           "description",
@@ -3870,6 +3890,10 @@
             "title": "Attached At",
             "type": "string"
           },
+          "policy_id": {
+            "title": "Policy Id",
+            "type": "string"
+          },
           "policy_name": {
             "title": "Policy Name",
             "type": "string"
@@ -3880,6 +3904,7 @@
         },
         "required": [
           "target",
+          "policy_id",
           "policy_name",
           "attached_at"
         ],
@@ -3919,6 +3944,10 @@
             "title": "Dry Run",
             "type": "boolean"
           },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -3939,6 +3968,7 @@
           }
         },
         "required": [
+          "id",
           "name",
           "version",
           "description",
@@ -4242,9 +4272,20 @@
             "title": "Outcome",
             "type": "string"
           },
-          "policy_name": {
-            "title": "Policy Name",
+          "policy_id": {
+            "title": "Policy Id",
             "type": "string"
+          },
+          "policy_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policy Name"
           },
           "policy_target": {
             "anyOf": [
@@ -4313,6 +4354,7 @@
           "skip_reason",
           "operations",
           "run_id",
+          "policy_id",
           "policy_name",
           "policy_version",
           "policy_target"

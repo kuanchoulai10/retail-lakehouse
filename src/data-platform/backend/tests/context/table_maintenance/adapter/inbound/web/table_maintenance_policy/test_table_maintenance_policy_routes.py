@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import pytest
 
+from shared_kernel import prefixed_id_pattern
 from tests.context.table_maintenance.adapter.inbound.web.policy_web_world import PolicyWebWorld, policy_body
+
+MP_ID = prefixed_id_pattern("mp")
+DEFAULT_POLICY_ID = "mp-00000000000000000000000000"
 
 
 @pytest.fixture
@@ -29,6 +33,21 @@ def test_create_then_get_answers_the_content_flat_with_server_fields(world: Poli
         "conditions": {"reducible_files": {"at_least": 5}},
     }
     assert body["operations"]["remove_orphan_files"]["execution_policy"] == {"older_than_seconds": 259200}
+
+
+def test_policy_routes_still_use_names(world: PolicyWebWorld) -> None:
+    """Every policy route is addressed by name; each answer adds the policy's ``mp-`` id beside the name."""
+    created = world.create("gold")
+    policy_id = created["id"]
+    assert MP_ID.match(policy_id)
+    assert world.client.get("/v1/maintenance-policies/gold").json()["id"] == policy_id
+    put = world.client.put("/v1/maintenance-policies/gold", json={"version": 1, **policy_body()})
+    assert put.json()["id"] == policy_id
+    assert world.client.get("/v1/maintenance-policies/gold/versions/1").json()["id"] == policy_id
+    listed = world.client.get("/v1/maintenance-policies").json()["policies"]
+    assert {p["name"]: p["id"] for p in listed} == {"default": DEFAULT_POLICY_ID, "gold": policy_id}
+    assert world.client.get(f"/v1/maintenance-policies/{policy_id}").status_code == 404
+    assert world.client.delete("/v1/maintenance-policies/gold").status_code == 204
 
 
 def test_create_accepts_a_missing_condition_as_not_checked(world: PolicyWebWorld) -> None:

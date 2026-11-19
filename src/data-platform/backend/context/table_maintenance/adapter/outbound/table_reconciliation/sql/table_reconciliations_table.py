@@ -18,7 +18,7 @@ table_reconciliations_table = Table(
     Column("skip_reason", String, nullable=True),
     Column("operations_json", JSON, nullable=False),
     Column("run_id", String, nullable=True),
-    Column("policy_name", String, nullable=False),
+    Column("policy_id", String, nullable=False),
     Column("policy_version", Integer, nullable=False),
     Column("policy_target_json", JSON, nullable=True),
     Index("ix_table_reconciliations_table_reconciled", "table_uuid", "reconciled_at"),

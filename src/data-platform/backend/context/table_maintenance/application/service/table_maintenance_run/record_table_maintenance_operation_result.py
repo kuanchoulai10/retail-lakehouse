@@ -16,6 +16,7 @@ from context.table_maintenance.application.domain.model.table import (
     RecordedAttempt,
     TableStatus,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy import TableMaintenancePolicyId
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     AttemptEnding,
     ContainerExit,
@@ -289,9 +290,11 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         self, table: Table, request: RecordTableMaintenanceOperationResultUseCaseInput
     ) -> AppliedPolicyRef:
         """Return the policy the run was planned under, or, when the request does not say, the one applying now."""
-        if request.policy_name is not None and request.policy_version is not None:
+        if request.policy_id is not None and request.policy_version is not None:
             return AppliedPolicyRef(
-                name=request.policy_name, version=request.policy_version, target=request.policy_target
+                policy_id=TableMaintenancePolicyId(request.policy_id),
+                version=request.policy_version,
+                target=request.policy_target,
             )
         applied = self._resolve_applicable_policy.execute(
             ResolveApplicableTableMaintenancePolicyUseCaseInput(

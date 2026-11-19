@@ -9,7 +9,7 @@ import type {
   TableReconciliationApiResponse,
 } from "../../api/generated/model";
 import { stubCatalogApi, type StubbedCall } from "../../test/catalogApiStub";
-import { jsonResponse } from "../../test/fixtures";
+import { DEFAULT_POLICY_ID, jsonResponse, NIGHTLY_POLICY_ID } from "../../test/fixtures";
 import { ReconciliationsTab } from "./ReconciliationsTab";
 
 // Local times, so each record lands on the same day and clock time in any time zone.
@@ -48,6 +48,7 @@ function quiet(id: string, reconciledAt: string): TableReconciliationApiResponse
     skip_reason: null,
     operations: QUIET_OPERATIONS,
     run_id: null,
+    policy_id: DEFAULT_POLICY_ID,
     policy_name: "default",
     policy_version: 1,
     policy_target: null,
@@ -313,13 +314,30 @@ describe("ReconciliationsTab", () => {
 
   it("each line names the policy and version it used, linking to that version from its details", async () => {
     const user = userEvent.setup();
-    stubList([{ ...STARTED, policy_name: "nightly", policy_version: 4, policy_target: { type: "namespace", path: ["iceberg", "retail"] } }]);
+    stubList([
+      {
+        ...STARTED,
+        policy_id: NIGHTLY_POLICY_ID,
+        policy_name: "nightly",
+        policy_version: 4,
+        policy_target: { type: "namespace", path: ["iceberg", "retail"] },
+      },
+    ]);
     renderTab();
     const row = await screen.findByRole("button", { name: /Started Rewrite data files/ });
     expect(row).toHaveTextContent("nightly v4");
     const dialog = await openDrawer(user, /Started Rewrite data files/);
     expect(within(dialog).getByRole("link", { name: "nightly v4" })).toHaveAttribute("href", "/policies/nightly/versions/4");
     expect(within(dialog).getByText(/inherited from namespace iceberg\.retail/)).toBeInTheDocument();
+  });
+
+  it("names a policy deleted since by its id, without a link", async () => {
+    const user = userEvent.setup();
+    stubList([{ ...STARTED, policy_id: NIGHTLY_POLICY_ID, policy_name: null, policy_version: 4 }]);
+    renderTab();
+    const dialog = await openDrawer(user, /Started Rewrite data files/);
+    expect(within(dialog).getByText(`${NIGHTLY_POLICY_ID} v4 (deleted)`)).toBeInTheDocument();
+    expect(within(dialog).queryByRole("link", { name: /v4/ })).not.toBeInTheDocument();
   });
 
   it("says so when the list cannot be loaded", async () => {

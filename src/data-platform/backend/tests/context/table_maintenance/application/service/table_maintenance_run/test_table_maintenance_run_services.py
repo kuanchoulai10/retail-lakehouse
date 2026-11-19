@@ -22,6 +22,7 @@ from context.table_maintenance.application.domain.model.table_discovery_rules im
     TableDiscoveryRuleId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    DEFAULT_POLICY_ID,
     MaintenancePolicyContent,
     PartialProgress,
     RewriteDataFilesExecutionPolicy,
@@ -459,7 +460,9 @@ def test_run_output_lists_every_attempt(runs_repo, started_run, now):
 
 def _attention_mark(now) -> AttentionMark:
     return AttentionMark(
-        since=now, reason="out of memory at size L", policy=AppliedPolicyRef(name="default", version=1, target=None)
+        since=now,
+        reason="out of memory at size L",
+        policy=AppliedPolicyRef(policy_id=DEFAULT_POLICY_ID, version=1, target=None),
     )
 
 

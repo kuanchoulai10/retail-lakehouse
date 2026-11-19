@@ -41,6 +41,7 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_recon
 )
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fakes import (
     CREATED_AT,
+    GOLD_POLICY_ID,
     FakeCreateRun,
     FakeDelete,
     FakePlan,
@@ -50,6 +51,9 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.use_case_fa
     FakeStatus,
     FakeSubmit,
     FakeSync,
+)
+from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_repo import (
+    InMemoryTableMaintenancePoliciesRepo,
 )
 from tests.context.table_maintenance.fakes.in_memory_table_reconciliations_repo import (
     InMemoryTableReconciliationsRepo,
@@ -61,6 +65,7 @@ from tests.context.table_maintenance.fakes.scripted_read_maintenance_job_pods_ga
 RUN_1 = "mr-00000000000000000000000001"
 RUN_9 = "mr-00000000000000000000000009"
 REC_1 = "rc-00000000000000000000000001"
+NIGHTLY_POLICY_ID = "mp-00000000000000000000000004"
 
 NOW = "2026-10-24T01:02:03+00:00"
 NOW_DT = datetime(2026, 10, 24, 1, 2, 3, tzinfo=UTC)
@@ -131,13 +136,21 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
         "dry_run": False,
         "table_found": True,
         "checks": [],
-        "policy_name": "gold",
+        "policy_id": GOLD_POLICY_ID,
         "policy_version": 3,
         "policy_target": {"type": "namespace", "path": ["iceberg", "sales"]},
         "next_check_at": None,
         "attempt_deadline_seconds": 21600,
         "max_attempts": 3,
     }
+
+
+def test_plan_payload_carries_policy_id():
+    """The plan crosses Temporal pointing at its policy by ``mp-`` id; the name is no longer in the payload."""
+    activities, _ = _reconcile()
+    result = activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW, "run_id": RUN_1})
+    assert result["policy_id"] == GOLD_POLICY_ID
+    assert "policy_name" not in result
 
 
 def _full_plan() -> PlanTableMaintenanceUseCaseOutput:
@@ -190,7 +203,7 @@ def _full_plan() -> PlanTableMaintenanceUseCaseOutput:
                 next_eligible_at=datetime(2026, 10, 24, 7, 0, tzinfo=UTC),
             ),
         ),
-        policy_name="gold",
+        policy_id=GOLD_POLICY_ID,
         policy_version=3,
         policy_target={"type": "namespace", "path": ["iceberg", "sales"]},
         next_check_at=datetime(2026, 10, 24, 1, 32, 3, tzinfo=UTC),
@@ -272,7 +285,7 @@ def test_plan_payload_keeps_every_field_of_a_full_plan():
                 "next_eligible_at": "2026-10-24T07:00:00+00:00",
             },
         ],
-        "policy_name": "gold",
+        "policy_id": GOLD_POLICY_ID,
         "policy_version": 3,
         "policy_target": {"type": "namespace", "path": ["iceberg", "sales"]},
         "next_check_at": "2026-10-24T01:32:03+00:00",
@@ -295,7 +308,7 @@ def _record_payload_of(plan: dict) -> dict:
         "checks": plan["checks"],
         "run_id": RUN_1,
         "run_start_failed": False,
-        "policy_name": plan["policy_name"],
+        "policy_id": plan["policy_id"],
         "policy_version": plan["policy_version"],
         "policy_target": plan["policy_target"],
     }
@@ -344,8 +357,8 @@ def test_plan_checks_come_back_into_the_record_input_unchanged():
             "next_eligible_at": "2026-10-24T07:00:00+00:00",
         },
     )
-    assert (request.policy_name, request.policy_version, request.policy_target) == (
-        "gold",
+    assert (request.policy_id, request.policy_version, request.policy_target) == (
+        GOLD_POLICY_ID,
         3,
         {"type": "namespace", "path": ["iceberg", "sales"]},
     )
@@ -380,7 +393,7 @@ def _measured_plan() -> PlanTableMaintenanceUseCaseOutput:
                 next_eligible_at=datetime(2026, 10, 24, 7, 0, tzinfo=UTC),
             ),
         ),
-        policy_name="gold",
+        policy_id=GOLD_POLICY_ID,
         policy_version=3,
         policy_target={"type": "namespace", "path": ["iceberg", "sales"]},
     )
@@ -397,7 +410,9 @@ def test_plan_checks_are_recorded_as_the_measurements_the_plan_took():
     assert activities.record_table_reconciliation(_record_payload_of(plan)) == {"recorded": True}
 
     (listed,) = (
-        ListTableReconciliationsService(repo).execute(ListTableReconciliationsUseCaseInput(table_uuid="u1")).items
+        ListTableReconciliationsService(repo, InMemoryTableMaintenancePoliciesRepo())
+        .execute(ListTableReconciliationsUseCaseInput(table_uuid="u1"))
+        .items
     )
     assert [(op.operation, op.result, op.next_eligible_at) for op in listed.operations] == [
         ("rewrite_data_files", "started", None),
@@ -528,7 +543,7 @@ def test_record_reconciliation_passes_every_field_and_returns_dict():
             "checks": [CHECK],
             "run_id": RUN_1,
             "run_start_failed": False,
-            "policy_name": "nightly",
+            "policy_id": NIGHTLY_POLICY_ID,
             "policy_version": 4,
             "policy_target": {"type": "catalog", "path": ["prod"]},
         }
@@ -545,7 +560,7 @@ def test_record_reconciliation_passes_every_field_and_returns_dict():
             checks=(CHECK,),
             run_id=RUN_1,
             run_start_failed=False,
-            policy_name="nightly",
+            policy_id=NIGHTLY_POLICY_ID,
             policy_version=4,
             policy_target={"type": "catalog", "path": ["prod"]},
         )
@@ -787,7 +802,7 @@ def test_record_activity_defaults_keys_of_old_requests():
     )
     request = record.requests[0]
     assert (request.ended_by, request.still_running, request.max_attempts) == ("result", False, 3)
-    assert (request.policy_name, request.policy_version, request.policy_target) == (None, None, None)
+    assert (request.policy_id, request.policy_version, request.policy_target) == (None, None, None)
 
 
 def test_record_activity_passes_the_planned_policy():
@@ -804,13 +819,13 @@ def test_record_activity_passes_the_planned_policy():
             "metrics": {},
             "error": "boom",
             "now": NOW,
-            "policy_name": "nightly",
+            "policy_id": NIGHTLY_POLICY_ID,
             "policy_version": 4,
             "policy_target": target,
         }
     )
     request = record.requests[0]
-    assert (request.policy_name, request.policy_version, request.policy_target) == ("nightly", 4, target)
+    assert (request.policy_id, request.policy_version, request.policy_target) == (NIGHTLY_POLICY_ID, 4, target)
 
 
 def test_sync_input_is_built_from_the_payload_the_discovery_workflow_sends():

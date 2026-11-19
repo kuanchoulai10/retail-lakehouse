@@ -64,6 +64,7 @@ class TableMaintenancePolicyMappingApiResponse(BaseModel):
     """Describe a policy attached to a target."""
 
     target: PolicyTargetApiResponse
+    policy_id: str
     policy_name: str
     attached_at: datetime
 
@@ -72,6 +73,7 @@ class ListedTableMaintenancePolicyMappingApiResponse(BaseModel):
     """Describe a listed mapping; ``orphaned`` when its target is no longer in the catalog."""
 
     target: PolicyTargetApiResponse
+    policy_id: str
     policy_name: str
     attached_at: datetime
     orphaned: bool
@@ -86,6 +88,7 @@ class TableMaintenancePolicyMappingsApiResponse(BaseModel):
 class ApplicableTableMaintenancePolicyApiResponse(BaseModel):
     """Describe the policy that applies after inheritance and the target it is attached to, null for the default."""
 
+    id: str
     name: str
     version: int
     description: str

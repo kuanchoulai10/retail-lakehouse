@@ -15,6 +15,12 @@ from context.table_maintenance.application.domain.model.table import (
 from context.table_maintenance.application.domain.model.table_discovery_rules import (
     TableDiscoveryRuleId,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    MaintenancePolicyContent,
+    TableMaintenancePolicy,
+    TableMaintenancePolicyId,
+    TableMaintenancePolicyName,
+)
 from context.table_maintenance.application.exceptions import (
     ConflictError,
     NotFoundError,
@@ -34,6 +40,9 @@ from context.table_maintenance.application.service.table import (
 )
 from tests.context.table_maintenance.fakes.in_memory_catalog_discoveries_repo import (
     InMemoryCatalogDiscoveriesRepo,
+)
+from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_repo import (
+    InMemoryTableMaintenancePoliciesRepo,
 )
 
 RULE_1 = "dr-00000000000000000000000001"
@@ -69,7 +78,7 @@ def test_list_tables_all_and_by_status(tables_repo, now):
     """Listing returns all tables, or only those of the requested status."""
     _managed(tables_repo, now, "u-1")
     _unmanaged(tables_repo, now, "u-2", TableName(catalog="iceberg", namespace="sales", table="items"))
-    service = ListTablesService(tables_repo, InMemoryCatalogDiscoveriesRepo())
+    service = ListTablesService(tables_repo, InMemoryCatalogDiscoveriesRepo(), InMemoryTableMaintenancePoliciesRepo())
     assert len(service.execute(ListTablesUseCaseInput()).items) == 2
     out = service.execute(ListTablesUseCaseInput(status="unmanaged"))
     assert [i.uuid for i in out.items] == ["u-2"]
@@ -80,16 +89,18 @@ def test_list_tables_unknown_status_is_invalid(tables_repo):
     """Listing with an unknown status raises a ValidationError; the old statuses are unknown."""
     for status in ("sleeping", "active", "paused", "excluded"):
         with pytest.raises(ValidationError):
-            ListTablesService(tables_repo, InMemoryCatalogDiscoveriesRepo()).execute(
-                ListTablesUseCaseInput(status=status)
-            )
+            ListTablesService(
+                tables_repo, InMemoryCatalogDiscoveriesRepo(), InMemoryTableMaintenancePoliciesRepo()
+            ).execute(ListTablesUseCaseInput(status=status))
 
 
 def test_get_table_includes_status_rule_and_operation_states(tables_repo, now):
     """Getting a table returns its name, status, deciding rule and operation states."""
     table = _managed(tables_repo, now)
     table.record_operation_result(MaintenanceOperation.EXPIRE_SNAPSHOTS, False, now)
-    out = GetTableService(tables_repo, InMemoryCatalogDiscoveriesRepo()).execute(GetTableUseCaseInput(uuid="u-1"))
+    out = GetTableService(
+        tables_repo, InMemoryCatalogDiscoveriesRepo(), InMemoryTableMaintenancePoliciesRepo()
+    ).execute(GetTableUseCaseInput(uuid="u-1"))
     assert (out.catalog, out.namespace, out.table) == ("iceberg", "sales", "orders")
     assert out.status == "managed"
     assert out.matched_rule_id == RULE_1
@@ -104,7 +115,9 @@ def test_get_table_includes_status_rule_and_operation_states(tables_repo, now):
 def test_get_unknown_table_not_found(tables_repo):
     """Getting an unknown table raises NotFoundError."""
     with pytest.raises(NotFoundError):
-        GetTableService(tables_repo, InMemoryCatalogDiscoveriesRepo()).execute(GetTableUseCaseInput(uuid="nope"))
+        GetTableService(tables_repo, InMemoryCatalogDiscoveriesRepo(), InMemoryTableMaintenancePoliciesRepo()).execute(
+            GetTableUseCaseInput(uuid="nope")
+        )
 
 
 # --- trigger ---
@@ -200,20 +213,46 @@ def test_reconcile_now_unknown_table(tables_repo, signals):
     assert signals.calls == []
 
 
-def test_get_table_shows_the_remembered_size_and_needs_attention(tables_repo, now):
-    """A table's operation state shows its remembered size and its needs-attention mark."""
-    table = _managed(tables_repo, now)
-    table.record_operation_result(MaintenanceOperation.REWRITE_DATA_FILES, True, now, size=ComputeSize.M)
+def _mark_under(table, policy_id, now) -> None:
     mark = AttentionMark(
-        since=now, reason="out of memory at size L", policy=AppliedPolicyRef(name="nightly", version=2, target=None)
+        since=now,
+        reason="out of memory at size L",
+        policy=AppliedPolicyRef(policy_id=policy_id, version=2, target=None),
     )
     table.mark_needs_attention(MaintenanceOperation.REWRITE_DATA_FILES, mark, now)
-    out = GetTableService(tables_repo, InMemoryCatalogDiscoveriesRepo()).execute(GetTableUseCaseInput(uuid="u-1"))
+
+
+def test_get_table_shows_the_remembered_size_and_needs_attention(tables_repo, now):
+    """A table's operation state shows its remembered size and its mark, naming the policy by id and current name."""
+    policies = InMemoryTableMaintenancePoliciesRepo()
+    nightly = TableMaintenancePolicy.create(
+        TableMaintenancePolicyName(value="nightly"), MaintenancePolicyContent.platform_default(), now
+    )
+    policies.create(nightly)
+    table = _managed(tables_repo, now)
+    table.record_operation_result(MaintenanceOperation.REWRITE_DATA_FILES, True, now, size=ComputeSize.M)
+    _mark_under(table, nightly.id, now)
+    out = GetTableService(tables_repo, InMemoryCatalogDiscoveriesRepo(), policies).execute(
+        GetTableUseCaseInput(uuid="u-1")
+    )
     state = out.operation_states["rewrite_data_files"]
     assert state["last_successful_size"] == "M"
     assert state["needs_attention"] == {
         "since": now,
         "reason": "out of memory at size L",
+        "policy_id": nightly.id.value,
         "policy_name": "nightly",
         "policy_version": 2,
     }
+
+
+def test_needs_attention_under_a_deleted_policy_has_no_policy_name(tables_repo, now):
+    """A mark set under a policy deleted since keeps its id and shows no name."""
+    gone = TableMaintenancePolicyId.new()
+    table = _managed(tables_repo, now)
+    _mark_under(table, gone, now)
+    out = ListTablesService(
+        tables_repo, InMemoryCatalogDiscoveriesRepo(), InMemoryTableMaintenancePoliciesRepo()
+    ).execute(ListTablesUseCaseInput())
+    attention = out.items[0].operation_states["rewrite_data_files"]["needs_attention"]
+    assert (attention["policy_id"], attention["policy_name"]) == (gone.value, None)

@@ -46,6 +46,7 @@ def list_table_maintenance_policy_mappings(name: str, use_cases: UseCases) -> Ta
         mappings=[
             ListedTableMaintenancePolicyMappingApiResponse(
                 target=PolicyTargetApiResponse(type=item.type, path=list(item.path), table_uuid=item.table_uuid),
+                policy_id=item.policy_id,
                 policy_name=item.policy_name,
                 attached_at=item.attached_at,
                 orphaned=item.orphaned,
@@ -67,6 +68,7 @@ def attach_table_maintenance_policy(
     )
     return TableMaintenancePolicyMappingApiResponse(
         target=PolicyTargetApiResponse(type=output.target_type, path=list(output.path), table_uuid=output.table_uuid),
+        policy_id=output.policy_id,
         policy_name=output.policy_name,
         attached_at=output.attached_at,
     )
@@ -120,6 +122,7 @@ def _applicable_response(
     target = output.target
     return ApplicableTableMaintenancePolicyApiResponse.model_validate(
         {
+            "id": output.policy_id,
             "name": output.policy_name,
             "version": output.version,
             "target": None

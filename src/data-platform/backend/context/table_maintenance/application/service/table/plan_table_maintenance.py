@@ -367,7 +367,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             operations=tuple(operations),
             dry_run=policy.dry_run,
             checks=checks,
-            policy_name=applied.policy_name,
+            policy_id=applied.policy_id,
             policy_version=applied.version,
             policy_target=applied.target,
             next_check_at=compaction.next_check_at,
@@ -491,7 +491,7 @@ def _skip(
         reconcile_interval_seconds=_interval(policy),
         table_name=table.name.fully_qualified(),
         operations=(),
-        policy_name=applied.policy_name,
+        policy_id=applied.policy_id,
         policy_version=applied.version,
         policy_target=applied.target,
     )

@@ -65,7 +65,7 @@ WORKFLOW_ID = table_maintenance_workflow_id(TABLE, RUN_ID)
 PARENT_ID = "parent-1"
 REAL_TIMEOUT_SECONDS = 60
 ATTEMPT_DEADLINE_SECONDS = 21600
-PLANNED_POLICY = ("nightly", 2, {"type": "namespace", "path": ["iceberg", "sales"]})
+PLANNED_POLICY = ("mp-00000000000000000000000004", 2, {"type": "namespace", "path": ["iceberg", "sales"]})
 
 
 def _plan(*operations: str, start_size: str | None = None) -> dict:
@@ -75,7 +75,7 @@ def _plan(*operations: str, start_size: str | None = None) -> dict:
         "reason": None,
         "reconcile_interval_seconds": 3600,
         "table_name": TABLE,
-        "policy_name": PLANNED_POLICY[0],
+        "policy_id": PLANNED_POLICY[0],
         "policy_version": PLANNED_POLICY[1],
         "policy_target": PLANNED_POLICY[2],
         "operations": [
@@ -1214,10 +1214,24 @@ def test_records_carry_the_policy_the_run_was_planned_under():
         _ending_by_failed_state(h)
         await h.run_maintenance(COMPACTION)
 
-        assert [(r["policy_name"], r["policy_version"], r["policy_target"]) for r in h.fakes.records] == [
+        assert [(r["policy_id"], r["policy_version"], r["policy_target"]) for r in h.fakes.records] == [
             PLANNED_POLICY,
             PLANNED_POLICY,
         ]
+        assert all("policy_name" not in r for r in h.fakes.records)
+
+    _run(scenario)
+
+
+def test_a_plan_from_before_policy_ids_records_no_planned_policy_id():
+    """A plan an older reconciliation passed names its policy, not its id; records then leave the id to the recorder."""
+
+    async def scenario(h: Harness) -> None:
+        _ending_by_failed_state(h)
+        older = {key: value for key, value in _plan(COMPACTION).items() if key != "policy_id"}
+        await h.run_maintenance(plan={**older, "policy_name": "nightly"})
+
+        assert [r["policy_id"] for r in h.fakes.records] == [None, None]
 
     _run(scenario)
 

@@ -276,8 +276,10 @@ export function reasonSentence(op: ReconciliationOperationApiResponse, { manualR
   }
 }
 
-// "nightly v4": the policy and the version this reconciliation decided with.
+// "nightly v4": the policy and the version this reconciliation decided with. A policy deleted
+// since has no name any more, so it is named by its id: "mp-… v4 (deleted)".
 export function policyLabel(r: TableReconciliationApiResponse): string {
+  if (r.policy_name === null) return `${r.policy_id} v${r.policy_version} (deleted)`;
   return `${r.policy_name} v${r.policy_version}`;
 }
 

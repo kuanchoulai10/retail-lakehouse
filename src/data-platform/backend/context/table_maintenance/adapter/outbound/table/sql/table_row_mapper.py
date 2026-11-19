@@ -20,6 +20,9 @@ from context.table_maintenance.application.port.outbound.table import (
     TableName,
     TableStatus,
 )
+from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
+    TableMaintenancePolicyId,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy import RowMapping
@@ -31,7 +34,7 @@ def _encode_attention(mark: AttentionMark | None) -> dict[str, Any] | None:
     return {
         "since": IsoDatetimeCodec.encode(mark.since),
         "reason": mark.reason,
-        "policy": {"name": mark.policy.name, "version": mark.policy.version, "target": mark.policy.target},
+        "policy": {"id": mark.policy.policy_id.value, "version": mark.policy.version, "target": mark.policy.target},
     }
 
 
@@ -46,7 +49,9 @@ def _decode_attention(data: dict[str, Any] | None) -> AttentionMark | None:
     return AttentionMark(
         since=since,
         reason=data["reason"],
-        policy=AppliedPolicyRef(name=policy["name"], version=policy["version"], target=policy["target"]),
+        policy=AppliedPolicyRef(
+            policy_id=TableMaintenancePolicyId(policy["id"]), version=policy["version"], target=policy["target"]
+        ),
     )
 
 

@@ -14,6 +14,7 @@ export interface TableMaintenancePolicyApiResponse {
   created_at: string;
   description: string;
   dry_run: boolean;
+  id: string;
   name: string;
   operations: OperationPoliciesApiRequest;
   priority: MaintenancePriorityApi;

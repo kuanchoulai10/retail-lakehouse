@@ -21,8 +21,12 @@ def test_attach_answers_the_mapping_and_wakes_the_table(world: PolicyWebWorld) -
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["target"] == {"type": "namespace", "path": ["prod", "sales"], "table_uuid": None}
-    assert body["policy_name"] == "gold"
+    assert (body["policy_id"], body["policy_name"]) == (_gold_id(world), "gold")
     assert [(c.table_uuid, c.change) for c in world.changes.calls] == [("u-1", "policy_changed")]
+
+
+def _gold_id(world: PolicyWebWorld) -> str:
+    return world.client.get("/v1/maintenance-policies/gold").json()["id"]
 
 
 def test_attach_to_a_table_resolves_its_uuid(world: PolicyWebWorld) -> None:
@@ -66,6 +70,7 @@ def test_list_mappings_marks_orphans(world: PolicyWebWorld) -> None:
         ("catalog", True),
         ("namespace", True),
     ]
+    assert {(m["policy_id"], m["policy_name"]) for m in body["mappings"]} == {(_gold_id(world), "gold")}
 
 
 def test_list_mappings_of_an_unknown_policy_is_404(world: PolicyWebWorld) -> None:
@@ -119,7 +124,7 @@ def test_table_applicable_policy_names_where_it_came_from(world: PolicyWebWorld)
     """GET /tables/{uuid}/applicable-policy answers the policy, its version and the target it is inherited from."""
     world.attach("gold", "namespace", ["prod", "sales"])
     body = world.client.get("/v1/tables/u-1/applicable-policy").json()
-    assert (body["name"], body["version"]) == ("gold", 1)
+    assert (body["id"], body["name"], body["version"]) == (_gold_id(world), "gold", 1)
     assert body["target"] == {"type": "namespace", "path": ["prod", "sales"], "table_uuid": None}
     assert body["operations"]["rewrite_data_files"]["enabled"] is True
 
@@ -127,7 +132,7 @@ def test_table_applicable_policy_names_where_it_came_from(world: PolicyWebWorld)
 def test_table_applicable_policy_falls_back_to_default(world: PolicyWebWorld) -> None:
     """With nothing attached the default applies and the target is null."""
     body = world.client.get("/v1/tables/u-1/applicable-policy").json()
-    assert (body["name"], body["target"]) == ("default", None)
+    assert (body["id"], body["name"], body["target"]) == ("mp-00000000000000000000000000", "default", None)
 
 
 def test_unknown_table_applicable_policy_is_404(world: PolicyWebWorld) -> None:

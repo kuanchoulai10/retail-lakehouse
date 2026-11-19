@@ -4,6 +4,7 @@ import type {
   ReconciliationOperationApiResponse,
   TableReconciliationApiResponse,
 } from "../../api/generated/model";
+import { DEFAULT_POLICY_ID, NIGHTLY_POLICY_ID } from "../../test/fixtures";
 import {
   foldKey,
   foldText,
@@ -45,6 +46,7 @@ function record(overrides: Partial<TableReconciliationApiResponse>): TableReconc
     skip_reason: null,
     operations: [],
     run_id: null,
+    policy_id: DEFAULT_POLICY_ID,
     policy_name: "default",
     policy_version: 1,
     policy_target: null,
@@ -277,6 +279,12 @@ describe("foldText", () => {
 describe("policyLabel", () => {
   it("names the policy and the version the reconciliation used", () => {
     expect(policyLabel(record({ policy_name: "nightly", policy_version: 4 }))).toBe("nightly v4");
+  });
+
+  it("names a policy deleted since by its id", () => {
+    expect(policyLabel(record({ policy_id: NIGHTLY_POLICY_ID, policy_name: null, policy_version: 4 }))).toBe(
+      `${NIGHTLY_POLICY_ID} v4 (deleted)`,
+    );
   });
 });
 

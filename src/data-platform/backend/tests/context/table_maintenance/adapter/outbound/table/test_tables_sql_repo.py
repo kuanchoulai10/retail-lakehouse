@@ -28,6 +28,9 @@ from context.table_maintenance.application.domain.model.table_discovery_rules im
     TableDiscoveryRuleId,
     TableDiscoveryRules,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    TableMaintenancePolicyId,
+)
 from context.table_maintenance.application.exceptions import ConflictError
 from context.table_maintenance.application.service.table import apply_discovery_to_known_table
 from tests.context.table_maintenance.fakes.in_memory_tables_repo import InMemoryTablesRepo
@@ -44,6 +47,7 @@ if TYPE_CHECKING:
 RUN_7 = "mr-00000000000000000000000007"
 
 RULE_1 = "dr-00000000000000000000000001"
+NIGHTLY = TableMaintenancePolicyId("mp-00000000000000000000000003")
 NOW = datetime(2026, 10, 24, 12, 0, tzinfo=UTC)
 
 
@@ -237,7 +241,9 @@ def test_operation_state_round_trips_size_and_attention(repo: TablesSqlRepo):
         since=NOW,
         reason="out of memory at size L",
         policy=AppliedPolicyRef(
-            name="nightly", version=3, target={"type": "table", "path": ["iceberg", "inventory"], "table_uuid": "u1"}
+            policy_id=NIGHTLY,
+            version=3,
+            target={"type": "table", "path": ["iceberg", "inventory"], "table_uuid": "u1"},
         ),
     )
     table.operation_states = {
@@ -272,6 +278,19 @@ def test_operation_state_without_new_keys_decodes_with_defaults(repo: TablesSqlR
     assert state == OperationState(last_attempt_at=NOW, consecutive_failures=1)
     assert state.start_size() is ComputeSize.S
     assert state.low_use_successes == 0
+
+
+def test_attention_mark_is_stored_with_the_policy_id(repo: TablesSqlRepo, engine: Engine):
+    """A needs-attention mark is stored as ``{"policy": {"id", "version", "target"}}``, pointing at the policy id."""
+    table = _table()
+    mark = AttentionMark(since=NOW, reason="r", policy=AppliedPolicyRef(policy_id=NIGHTLY, version=3, target=None))
+    table.operation_states = {MaintenanceOperation.REWRITE_DATA_FILES: OperationState(attention=mark)}
+    repo.create(table)
+
+    with engine.connect() as conn:
+        stored = conn.execute(tables_table.select()).one()._mapping["operation_states_json"]
+
+    assert stored["rewrite_data_files"]["attention"]["policy"] == {"id": NIGHTLY.value, "version": 3, "target": None}
 
 
 def test_last_commit_and_last_discovery_round_trip(repo: TablesSqlRepo):

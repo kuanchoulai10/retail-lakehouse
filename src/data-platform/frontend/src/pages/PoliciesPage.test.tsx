@@ -5,20 +5,34 @@ import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import type { ListedTableMaintenancePolicyMappingApiResponse } from "../api/generated/model";
 import { bodyOf, callsTo, stubCatalogApi, type StubHandler } from "../test/catalogApiStub";
-import { jsonResponse, policyContentFixture, policyFixture, SCHEDULER_SETTINGS } from "../test/fixtures";
+import {
+  jsonResponse,
+  NIGHTLY_POLICY_ID,
+  policyContentFixture,
+  policyFixture,
+  SCHEDULER_SETTINGS,
+  SCRATCH_POLICY_ID,
+} from "../test/fixtures";
 import { PoliciesPage } from "./PoliciesPage";
 
 const POLICIES = [
-  policyFixture({ name: "nightly", description: "Nightly compaction", version: 4, attachment_count: 2, priority: "P0" }),
+  policyFixture({
+    id: NIGHTLY_POLICY_ID,
+    name: "nightly",
+    description: "Nightly compaction",
+    version: 4,
+    attachment_count: 2,
+    priority: "P0",
+  }),
   policyFixture({ name: "default", description: "Platform default", version: 3, attachment_count: 0 }),
-  policyFixture({ name: "scratch", description: "", version: 1, attachment_count: 0 }),
+  policyFixture({ id: SCRATCH_POLICY_ID, name: "scratch", description: "", version: 1, attachment_count: 0 }),
 ];
 
 function mapping(
   target: ListedTableMaintenancePolicyMappingApiResponse["target"],
   orphaned = false,
 ): ListedTableMaintenancePolicyMappingApiResponse {
-  return { policy_name: "nightly", target, orphaned, attached_at: "2026-11-03T09:00:00Z" };
+  return { policy_id: NIGHTLY_POLICY_ID, policy_name: "nightly", target, orphaned, attached_at: "2026-11-03T09:00:00Z" };
 }
 
 const NIGHTLY_MAPPINGS = [

@@ -35,7 +35,11 @@ class ListTableReconciliationsUseCaseOutput(UseCaseOutput):
         path: tuple[str, ...]
 
     class TableReconciliation(UseCaseOutput):
-        """One reconciliation of the listing."""
+        """One reconciliation of the listing.
+
+        ``policy_id`` is the ``mp-`` id of the policy the reconciliation used and ``policy_name``
+        that policy's current name, or ``None`` when the policy has been deleted since.
+        """
 
         reconciliation_id: str
         table_uuid: str
@@ -46,7 +50,8 @@ class ListTableReconciliationsUseCaseOutput(UseCaseOutput):
         skip_reason: str | None
         operations: tuple[ListTableReconciliationsUseCaseOutput.Operation, ...]
         run_id: str | None
-        policy_name: str
+        policy_id: str
+        policy_name: str | None
         policy_version: int
         policy_target: ListTableReconciliationsUseCaseOutput.PolicyTarget | None
 

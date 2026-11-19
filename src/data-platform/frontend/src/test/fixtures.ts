@@ -62,10 +62,16 @@ export function policyContentFixture(): Omit<CreateTableMaintenancePolicyApiRequ
   };
 }
 
+// Policy ids: the default's fixed id and one for each other policy the tests name.
+export const DEFAULT_POLICY_ID = "mp-00000000000000000000000000";
+export const NIGHTLY_POLICY_ID = "mp-01m7sd16b1ef2vww335cwcg9k7";
+export const SCRATCH_POLICY_ID = "mp-01m7sd16b1ef2vww335jk8dm9t";
+
 export function policyFixture(
   overrides: Partial<ListedTableMaintenancePolicyApiResponse> = {},
 ): ListedTableMaintenancePolicyApiResponse {
   return {
+    id: DEFAULT_POLICY_ID,
     name: "default",
     version: 3,
     attachment_count: 0,

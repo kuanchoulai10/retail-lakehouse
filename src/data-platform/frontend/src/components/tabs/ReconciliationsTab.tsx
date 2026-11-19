@@ -283,9 +283,13 @@ function ReconciliationDetail({ record }: { record: TableReconciliationApiRespon
           </p>
           <p className="type-body-small text-on-surface-variant">
             Policy{" "}
-            <TextLink asChild inline className="font-mono">
-              <Link to={policyVersionPath(record.policy_name, record.policy_version)}>{policyLabel(record)}</Link>
-            </TextLink>
+            {record.policy_name === null ? (
+              <span className="font-mono">{policyLabel(record)}</span>
+            ) : (
+              <TextLink asChild inline className="font-mono">
+                <Link to={policyVersionPath(record.policy_name, record.policy_version)}>{policyLabel(record)}</Link>
+              </TextLink>
+            )}
             , {policyOrigin(record)}
           </p>
         </div>

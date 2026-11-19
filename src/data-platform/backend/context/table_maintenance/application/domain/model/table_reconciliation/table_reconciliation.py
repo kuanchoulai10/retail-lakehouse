@@ -12,6 +12,7 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
 )
 from context.table_maintenance.application.domain.model.table import TableId
+from context.table_maintenance.application.domain.model.table_maintenance_policy import TableMaintenancePolicyId
 from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
     PolicyTarget,
 )
@@ -41,8 +42,9 @@ if TYPE_CHECKING:
 class TableReconciliation(AggregateRoot[TableReconciliationId]):
     """Record one pass of the reconciler over a table and what it decided.
 
-    ``policy_name``, ``policy_version`` and ``policy_target`` name the maintenance policy the
-    pass assessed with and where it is attached (``None`` for the default with nothing attached).
+    ``policy_id``, ``policy_version`` and ``policy_target`` point at the maintenance policy the
+    pass assessed with, by its ``mp-`` id, and where it is attached (``None`` for the default with
+    nothing attached). The id stays after the policy is renamed or deleted.
     """
 
     id: TableReconciliationId
@@ -54,7 +56,7 @@ class TableReconciliation(AggregateRoot[TableReconciliationId]):
     skip_reason: str | None
     operations: tuple[OperationOutcome, ...]
     run_id: TableMaintenanceRunId | None
-    policy_name: str
+    policy_id: TableMaintenancePolicyId
     policy_version: PositiveInt
     policy_target: PolicyTarget | None
 
@@ -91,7 +93,7 @@ class TableReconciliation(AggregateRoot[TableReconciliationId]):
         skip_reason: str | None,
         operations: Iterable[OperationOutcome],
         run_id: TableMaintenanceRunId | None,
-        policy_name: str,
+        policy_id: TableMaintenancePolicyId,
         policy_version: int,
         policy_target: PolicyTarget | None,
     ) -> TableReconciliation:
@@ -107,7 +109,7 @@ class TableReconciliation(AggregateRoot[TableReconciliationId]):
             skip_reason=skip_reason,
             operations=tuple(sorted(operations, key=lambda o: position[o.operation])),
             run_id=run_id,
-            policy_name=policy_name,
+            policy_id=policy_id,
             policy_version=policy_version,
             policy_target=policy_target,
         )

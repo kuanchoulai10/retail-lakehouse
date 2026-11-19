@@ -12,6 +12,12 @@ from context.table_maintenance.application.domain.model.shared import (
     MeasurementUnit,
 )
 from context.table_maintenance.application.domain.model.table import TableId
+from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    MaintenancePolicyContent,
+    TableMaintenancePolicy,
+    TableMaintenancePolicyId,
+    TableMaintenancePolicyName,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
     PolicyTarget,
     PolicyTargetType,
@@ -28,6 +34,9 @@ from context.table_maintenance.application.service.table_reconciliation import (
     ListTableReconciliationsService,
 )
 from tests.context.table_maintenance.adapter.inbound.web.web_test_support import build_client
+from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_repo import (
+    InMemoryTableMaintenancePoliciesRepo,
+)
 from tests.context.table_maintenance.fakes.in_memory_table_reconciliations_repo import (
     InMemoryTableReconciliationsRepo,
 )
@@ -41,6 +50,7 @@ NEW = "rc-00000000000000000000000002"
 FIRST = "rc-00000000000000000000000003"
 SECOND = "rc-00000000000000000000000004"
 THIRD = "rc-00000000000000000000000005"
+NIGHTLY = TableMaintenancePolicyId("mp-00000000000000000000000004")
 
 
 def _reconciliation(rec_id: str, at: datetime, table: str = "t-1") -> TableReconciliation:
@@ -69,7 +79,7 @@ def _reconciliation(rec_id: str, at: datetime, table: str = "t-1") -> TableRecon
             )
         ],
         run_id=None,
-        policy_name="nightly",
+        policy_id=NIGHTLY,
         policy_version=4,
         policy_target=PolicyTarget(type=PolicyTargetType.NAMESPACE, path=("prod", "sales")),
     )
@@ -79,7 +89,18 @@ def _client(*items: TableReconciliation) -> TestClient:
     repo = InMemoryTableReconciliationsRepo()
     for item in items:
         repo.create(item)
-    return build_client(list_table_reconciliations=ListTableReconciliationsService(repo))
+    policies = InMemoryTableMaintenancePoliciesRepo()
+    policies.create(
+        TableMaintenancePolicy(
+            id=NIGHTLY,
+            name=TableMaintenancePolicyName(value="nightly"),
+            content=MaintenancePolicyContent.platform_default(),
+            version=4,
+            created_at=NOW,
+            updated_at=NOW,
+        )
+    )
+    return build_client(list_table_reconciliations=ListTableReconciliationsService(repo, policies))
 
 
 def _ids(response) -> list[str]:  # noqa: ANN001
@@ -159,9 +180,23 @@ def test_context_measurement_has_null_threshold_and_met() -> None:
 
 
 def test_response_names_the_policy_used() -> None:
-    """Each record carries the policy name, version and target."""
+    """Each record carries the policy's id, its current name, the version and the target."""
     body = _client(_reconciliation(FIRST, NOW)).get("/v1/tables/t-1/reconciliations").json()[0]
 
+    assert body["policy_id"] == NIGHTLY.value
     assert body["policy_name"] == "nightly"
     assert body["policy_version"] == 4
     assert body["policy_target"] == {"type": "namespace", "path": ["prod", "sales"]}
+
+
+def test_response_under_a_deleted_policy_has_a_null_policy_name() -> None:
+    """A record whose policy was deleted since keeps the policy id and answers a null name."""
+    repo = InMemoryTableReconciliationsRepo()
+    repo.create(_reconciliation(FIRST, NOW))
+    client = build_client(
+        list_table_reconciliations=ListTableReconciliationsService(repo, InMemoryTableMaintenancePoliciesRepo())
+    )
+
+    body = client.get("/v1/tables/t-1/reconciliations").json()[0]
+
+    assert (body["policy_id"], body["policy_name"]) == (NIGHTLY.value, None)

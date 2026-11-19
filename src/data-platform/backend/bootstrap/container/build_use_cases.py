@@ -157,13 +157,13 @@ def build_use_cases(
         update_table_maintenance_policy=UpdateTableMaintenancePolicyService(
             policies, attachments, tables, table_changes, clock=clock
         ),
-        get_table=GetTableService(tables, discoveries),
+        get_table=GetTableService(tables, discoveries, policies),
         get_table_health=GetTableHealthService(
             tables, catalog, resolve_applicable_policy, failure_backoff_cap=failure_backoff_cap, clock=clock
         ),
         get_table_storage=GetTableStorageService(tables, catalog, runs, clock=clock),
         list_table_commits=ListTableCommitsService(tables, catalog),
-        list_tables=ListTablesService(tables, discoveries),
+        list_tables=ListTablesService(tables, discoveries, policies),
         trigger_table_maintenance=TriggerTableMaintenanceService(tables, table_changes),
         trigger_table_reconciliation=TriggerTableReconciliationService(tables, table_changes),
         create_table_maintenance_run=CreateTableMaintenanceRunService(runs, tables),
@@ -225,7 +225,7 @@ def build_use_cases(
             sla=build_priority_sla(rounds),
             clock=clock,
         ),
-        list_table_reconciliations=ListTableReconciliationsService(reconciliations),
+        list_table_reconciliations=ListTableReconciliationsService(reconciliations, policies),
         record_table_reconciliation=RecordTableReconciliationService(reconciliations),
         submit_maintenance_operation=SubmitMaintenanceOperationService(
             runs, tables, gateways.submit_maintenance_job, candidates_repo=candidates

@@ -34,6 +34,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     CompactionUnit,
     MaintenancePolicyContent,
     MaintenancePriority,
+    TableMaintenancePolicyId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     TableMaintenanceRun,
@@ -815,7 +816,9 @@ def test_a_table_needing_attention_ends_the_wait(planner, tables_repo, catalog, 
     table = _table(tables_repo, now)
     _observe(catalog, [_partition("a", 10)])
     first = _plan(planner, now, run_id=None)
-    applied = AppliedPolicyRef(name=first.policy_name, version=first.policy_version, target=first.policy_target)
+    applied = AppliedPolicyRef(
+        policy_id=TableMaintenancePolicyId(first.policy_id), version=first.policy_version, target=first.policy_target
+    )
     table.record_operation_result(COMPACTION, True, now + timedelta(minutes=1))
     mark = AttentionMark(since=now + timedelta(minutes=1), reason="out of memory at size L", policy=applied)
     table.mark_needs_attention(COMPACTION, mark, now + timedelta(minutes=1))

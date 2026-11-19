@@ -270,7 +270,7 @@ def test_a_reconcile_that_observes_no_newer_commit_saves_nothing(
 # --- listing ---
 
 
-def test_listing_shows_the_last_commit_and_the_last_discovery(tables_repo, discoveries_repo):
+def test_listing_shows_the_last_commit_and_the_last_discovery(tables_repo, discoveries_repo, policies_repo):
     """A live table shows its catalog's discovery, a dropped one its stamp, an undiscovered catalog's none."""
     _row(tables_repo, EARLIER - timedelta(days=1), "u-live").record_last_commit(COMMIT)
     gone = TableName(catalog="iceberg", namespace="sales", table="gone")
@@ -278,7 +278,7 @@ def test_listing_shows_the_last_commit_and_the_last_discovery(tables_repo, disco
     dropped.mark_dropped(EARLIER, catalog_discovered_at=EARLIER - timedelta(hours=1))
     _row(tables_repo, EARLIER, "u-other", TableName(catalog="other", namespace="sales", table="orders"))
     discoveries_repo.save(CatalogDiscovery.first("iceberg", EARLIER))
-    listed = ListTablesService(tables_repo, discoveries_repo).execute(ListTablesUseCaseInput())
+    listed = ListTablesService(tables_repo, discoveries_repo, policies_repo).execute(ListTablesUseCaseInput())
     items = {i.uuid: i for i in listed.items}
     assert (items["u-live"].last_committed_at, items["u-live"].last_discovered_at) == (COMMIT, EARLIER)
     assert (items["u-gone"].last_committed_at, items["u-gone"].last_discovered_at) == (
@@ -288,9 +288,9 @@ def test_listing_shows_the_last_commit_and_the_last_discovery(tables_repo, disco
     assert (items["u-other"].last_committed_at, items["u-other"].last_discovered_at) == (None, None)
 
 
-def test_getting_a_table_shows_the_last_commit_and_the_last_discovery(tables_repo, discoveries_repo):
+def test_getting_a_table_shows_the_last_commit_and_the_last_discovery(tables_repo, discoveries_repo, policies_repo):
     """One table shows the same two times as the listing."""
     _row(tables_repo, EARLIER - timedelta(days=1)).record_last_commit(COMMIT)
     discoveries_repo.save(CatalogDiscovery.first("iceberg", EARLIER))
-    out = GetTableService(tables_repo, discoveries_repo).execute(GetTableUseCaseInput(uuid="u-1"))
+    out = GetTableService(tables_repo, discoveries_repo, policies_repo).execute(GetTableUseCaseInput(uuid="u-1"))
     assert (out.last_committed_at, out.last_discovered_at) == (COMMIT, EARLIER)

@@ -81,6 +81,10 @@ export const RETAIL_TABLES: TableIdentifierApiResponse[] = [
 
 export const ORDERS_UUID = "5f2b8c1e-0d4a-4c8e-9a51-7c3f0b6d2e91";
 
+export const DEFAULT_POLICY_ID = "mp-00000000000000000000000000";
+export const RETAIL_NIGHTLY_POLICY_ID = "mp-01m7sd16b1ef2vww335cwcg9k7";
+const SCRATCH_POLICY_ID = "mp-01m7sd16b1ef2vww335jk8dm9t";
+
 export const ORDERS: CatalogTableApiResponse = {
   catalog: "iceberg",
   namespace: ["retail"],
@@ -562,6 +566,7 @@ function reconciliation(
     skip_reason: null,
     operations: QUIET_OPERATIONS,
     run_id: null,
+    policy_id: DEFAULT_POLICY_ID,
     policy_name: "default",
     policy_version: 1,
     policy_target: null,
@@ -574,6 +579,7 @@ function reconciliation(
 export const RECONCILIATIONS: TableReconciliationApiResponse[] = [
   reconciliation("rc-01m72gst60f5grrcwpsxv0365q", "2026-11-10T10:42:00Z", {
     wake_reasons: { catalog_commit: 3 },
+    policy_id: RETAIL_NIGHTLY_POLICY_ID,
     policy_name: "retail-nightly",
     policy_version: 4,
     policy_target: { type: "namespace", path: ["iceberg", "retail"] },
@@ -665,6 +671,7 @@ export const DEFAULT_POLICY_CONTENT: PolicyContent = {
 
 function policy(overrides: Partial<ListedTableMaintenancePolicyApiResponse>): ListedTableMaintenancePolicyApiResponse {
   return {
+    id: DEFAULT_POLICY_ID,
     name: "default",
     version: 1,
     attachment_count: 0,
@@ -681,6 +688,7 @@ function policy(overrides: Partial<ListedTableMaintenancePolicyApiResponse>): Li
 export const POLICIES: ListedTableMaintenancePolicyApiResponse[] = [
   policy({ name: "default", description: "Platform default", version: 3 }),
   policy({
+    id: RETAIL_NIGHTLY_POLICY_ID,
     name: "retail-nightly",
     description: "Compacts whole tables once a day",
     version: 4,
@@ -696,17 +704,19 @@ export const POLICIES: ListedTableMaintenancePolicyApiResponse[] = [
       },
     },
   }),
-  policy({ name: "scratch", description: "", version: 1, dry_run: true }),
+  policy({ id: SCRATCH_POLICY_ID, name: "scratch", description: "", version: 1, dry_run: true }),
 ];
 
 export const POLICY_MAPPINGS: ListedTableMaintenancePolicyMappingApiResponse[] = [
   {
+    policy_id: RETAIL_NIGHTLY_POLICY_ID,
     policy_name: "retail-nightly",
     target: { type: "namespace", path: ["iceberg", "retail"], table_uuid: null },
     orphaned: false,
     attached_at: "2026-11-03T09:00:00Z",
   },
   {
+    policy_id: RETAIL_NIGHTLY_POLICY_ID,
     policy_name: "retail-nightly",
     target: { type: "catalog", path: ["legacy"], table_uuid: null },
     orphaned: true,

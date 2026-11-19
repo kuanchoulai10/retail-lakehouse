@@ -231,6 +231,7 @@ class UpdateTableMaintenancePolicyApiRequest(BaseModel):
 class TableMaintenancePolicyApiResponse(BaseModel):
     """Describe a policy at its current version."""
 
+    id: str
     name: str
     version: int
     description: str
@@ -245,6 +246,7 @@ class TableMaintenancePolicyApiResponse(BaseModel):
 class ListedTableMaintenancePolicyApiResponse(BaseModel):
     """Describe a listed policy at its current version with how many targets it is attached to."""
 
+    id: str
     name: str
     version: int
     description: str
@@ -266,6 +268,7 @@ class TableMaintenancePoliciesApiResponse(BaseModel):
 class TableMaintenancePolicyVersionApiResponse(BaseModel):
     """Describe one stored version of a policy; ``created_at`` is when that version was written."""
 
+    id: str
     name: str
     version: int
     description: str

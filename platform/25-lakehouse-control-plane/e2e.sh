@@ -463,7 +463,7 @@ table_uuid() {
 ensure_policy() {
   local name="$1" description="$2" overrides="$3" base body existing version
   base="$(api GET /v1/maintenance-policies/default)"
-  body="$(jq -c --arg d "${description}" "del(.name, .version, .created_at, .updated_at)
+  body="$(jq -c --arg d "${description}" "del(.id, .name, .version, .created_at, .updated_at)
     | .description = \$d | ${overrides}" <<<"${base}")"
   existing="$(api_call GET "/v1/maintenance-policies/${name}")"
   if jq -e '.status == 200' <<<"${existing}" >/dev/null; then

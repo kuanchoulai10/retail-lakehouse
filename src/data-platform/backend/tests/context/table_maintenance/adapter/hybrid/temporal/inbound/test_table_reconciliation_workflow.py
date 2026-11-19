@@ -93,8 +93,9 @@ def _check(operation: str, verdict: str = "due") -> dict[str, Any]:
     }
 
 
-POLICY = {"policy_name": "nightly", "policy_version": 4, "policy_target": {"type": "catalog", "path": ["prod"]}}
-NO_POLICY = {"policy_name": None, "policy_version": None, "policy_target": None}
+NIGHTLY_POLICY_ID = "mp-00000000000000000000000004"
+POLICY = {"policy_id": NIGHTLY_POLICY_ID, "policy_version": 4, "policy_target": {"type": "catalog", "path": ["prod"]}}
+NO_POLICY = {"policy_id": None, "policy_version": None, "policy_target": None}
 
 
 def _planned(*operations: str, interval: int = 3600) -> dict[str, Any]:
@@ -889,11 +890,26 @@ def test_timer_wake_records_schedule():
         assert record["checks"] == [_check(COMPACTION, "not_needed")]
         assert record["run_id"] is None
         assert record["run_start_failed"] is False
-        assert record["policy_name"] == "nightly"
+        assert record["policy_id"] == NIGHTLY_POLICY_ID
+        assert "policy_name" not in record
         assert record["policy_version"] == 4
         assert record["policy_target"] == {"type": "catalog", "path": ["prod"]}
 
     _run(scenario, script=lambda _: {**_planned(), "checks": [_check(COMPACTION, "not_needed")]})
+
+
+def test_a_plan_from_before_policy_ids_is_recorded_without_a_policy_id():
+    """A plan an older worker returned names its policy instead of its id; the loop still records it, with no id."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start(start_signal=None)
+        await h.env.sleep(timedelta(seconds=3700))
+        record = (await h.records(1))[0]
+        assert record["policy_id"] is None
+        assert record["policy_version"] == 4
+
+    older = {key: value for key, value in _planned().items() if key != "policy_id"} | {"policy_name": "nightly"}
+    _run(scenario, script=lambda _: older)
 
 
 def test_three_catalog_commits_during_a_run_are_recorded_after_it_finishes():

@@ -13,7 +13,8 @@ class RecordTableReconciliationUseCaseInput(UseCaseInput):
 
     ``checks`` holds the plan's check items as dicts (operation, verdict,
     measurements, next_eligible_at), the shape they have after crossing a Temporal activity.
-    ``policy_target`` is the plan's target dict (type, path and, for a table, table_uuid) or None.
+    ``policy_id`` is the ``mp-`` id of the policy the plan applied, and ``policy_target`` the plan's
+    target dict (type, path and, for a table, table_uuid) or None.
     """
 
     reconciliation_id: str
@@ -26,6 +27,6 @@ class RecordTableReconciliationUseCaseInput(UseCaseInput):
     checks: tuple[dict[str, Any], ...]
     run_id: str | None
     run_start_failed: bool
-    policy_name: str
+    policy_id: str
     policy_version: int
     policy_target: dict[str, Any] | None
