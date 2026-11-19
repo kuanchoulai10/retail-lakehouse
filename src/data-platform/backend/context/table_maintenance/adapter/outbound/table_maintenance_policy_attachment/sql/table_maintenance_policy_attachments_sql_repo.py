@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table_maintenance_policy_attachment import (
         PolicyTarget,
         TableMaintenancePolicyAttachment,
-        TableMaintenancePolicyName,
+        TableMaintenancePolicyId,
     )
 
 
@@ -90,18 +90,18 @@ class TableMaintenancePolicyAttachmentsSqlRepo(TableMaintenancePolicyAttachments
         """Return the attachments that exist among the ids."""
         return self._select(select(attachments).where(attachments.c.id.in_([i.value for i in ids])))
 
-    def list_for_policy(self, policy_name: TableMaintenancePolicyName) -> list[TableMaintenancePolicyAttachment]:
+    def list_for_policy(self, policy_id: TableMaintenancePolicyId) -> list[TableMaintenancePolicyAttachment]:
         """Return the attachments of one policy ordered by id."""
         return self._select(
-            select(attachments).where(attachments.c.policy_name == policy_name.value).order_by(attachments.c.id)
+            select(attachments).where(attachments.c.policy_id == policy_id.value).order_by(attachments.c.id)
         )
 
-    def has_attachments_for_policy(self, policy_name: TableMaintenancePolicyName) -> bool:
+    def has_attachments_for_policy(self, policy_id: TableMaintenancePolicyId) -> bool:
         """Return whether any attachment uses the policy."""
         with self._engine.connect() as conn:
             return (
                 conn.execute(
-                    select(attachments.c.id).where(attachments.c.policy_name == policy_name.value).limit(1)
+                    select(attachments.c.id).where(attachments.c.policy_id == policy_id.value).limit(1)
                 ).first()
                 is not None
             )

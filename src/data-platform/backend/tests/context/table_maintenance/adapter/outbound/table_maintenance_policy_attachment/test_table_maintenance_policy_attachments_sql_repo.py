@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 
 from context.table_maintenance.adapter.outbound.shared.sql import create_schema
 from context.table_maintenance.adapter.outbound.table_maintenance_policy.sql import (
@@ -18,6 +18,7 @@ from context.table_maintenance.adapter.outbound.table_maintenance_policy_attachm
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     MaintenancePolicyContent,
     TableMaintenancePolicy,
+    TableMaintenancePolicyId,
     TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
@@ -29,6 +30,7 @@ from context.table_maintenance.application.exceptions import ConflictError
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policy_attachments_repo import (
     InMemoryTableMaintenancePolicyAttachmentsRepo,
 )
+from tests.context.table_maintenance.numbered_id import numbered_id
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -43,14 +45,23 @@ NOW = datetime(2026, 10, 24, tzinfo=UTC)
 CATALOG = PolicyTarget(type=PolicyTargetType.CATALOG, path=("prod",))
 NAMESPACE = PolicyTarget(type=PolicyTargetType.NAMESPACE, path=("prod", "sales", "eu"))
 TABLE = PolicyTarget(type=PolicyTargetType.TABLE, path=("prod", "sales", "orders"), table_uuid="u-1")
+POLICY_IDS = {
+    "gold": TableMaintenancePolicyId(numbered_id("mp", 1)),
+    "silver": TableMaintenancePolicyId(numbered_id("mp", 2)),
+}
 
 
 def _store_policies(engine: Engine) -> None:
     policies = TableMaintenancePoliciesSqlRepo(engine)
-    for name in ("gold", "silver"):
+    for name, policy_id in POLICY_IDS.items():
         policies.create(
-            TableMaintenancePolicy.create(
-                TableMaintenancePolicyName(name), MaintenancePolicyContent.platform_default(), NOW
+            TableMaintenancePolicy(
+                id=policy_id,
+                name=TableMaintenancePolicyName(value=name),
+                content=MaintenancePolicyContent.platform_default(),
+                version=1,
+                created_at=NOW,
+                updated_at=NOW,
             )
         )
 
@@ -65,7 +76,7 @@ def repo(request: pytest.FixtureRequest, engine: Engine) -> TableMaintenancePoli
 
 
 def _attach(target: PolicyTarget, policy: str = "gold") -> TableMaintenancePolicyAttachment:
-    return TableMaintenancePolicyAttachment.attach(target, TableMaintenancePolicyName(policy), NOW)
+    return TableMaintenancePolicyAttachment.attach(target, POLICY_IDS[policy], NOW)
 
 
 def test_roundtrip_of_each_target_type(repo: TableMaintenancePolicyAttachmentsRepo):
@@ -77,7 +88,7 @@ def test_roundtrip_of_each_target_type(repo: TableMaintenancePolicyAttachmentsRe
         assert loaded is not None
         assert loaded.id == attachment.id
         assert loaded.target == target
-        assert loaded.policy_name.value == "gold"
+        assert loaded.policy_id == POLICY_IDS["gold"]
         assert loaded.attached_at == NOW
         assert repo.get_by_target(target) == loaded
 
@@ -86,12 +97,12 @@ def test_update_replaces_the_policy(repo: TableMaintenancePolicyAttachmentsRepo)
     """Updating an attachment stores its new policy."""
     attachment = _attach(CATALOG)
     repo.create(attachment)
-    attachment.replace_policy(TableMaintenancePolicyName("silver"), NOW)
+    attachment.replace_policy(POLICY_IDS["silver"], NOW)
     repo.update(attachment)
     loaded = repo.get_by_target(CATALOG)
     assert loaded is not None
     assert loaded.id == attachment.id
-    assert loaded.policy_name.value == "silver"
+    assert loaded.policy_id == POLICY_IDS["silver"]
 
 
 def test_get_many_and_list_for_policy_and_delete(repo: TableMaintenancePolicyAttachmentsRepo):
@@ -101,10 +112,10 @@ def test_get_many_and_list_for_policy_and_delete(repo: TableMaintenancePolicyAtt
     repo.create(namespace)
     found = repo.get_many([namespace.id, _attach(TABLE).id])
     assert [a.id for a in found] == [namespace.id]
-    assert [a.id for a in repo.list_for_policy(TableMaintenancePolicyName("gold"))] == [catalog.id]
-    assert repo.has_attachments_for_policy(TableMaintenancePolicyName("silver"))
+    assert [a.id for a in repo.list_for_policy(POLICY_IDS["gold"])] == [catalog.id]
+    assert repo.has_attachments_for_policy(POLICY_IDS["silver"])
     repo.delete(namespace.id)
-    assert not repo.has_attachments_for_policy(TableMaintenancePolicyName("silver"))
+    assert not repo.has_attachments_for_policy(POLICY_IDS["silver"])
     assert len(repo.list_all()) == 1
 
 
@@ -167,4 +178,18 @@ def test_concurrent_attach_to_one_target_keeps_one(file_engine: Engine):
         loser.create(loser_attachment)
 
     stored = loser.list_all()
-    assert [(a.id, a.policy_name.value) for a in stored] == [(winner_attachment.id, "gold")]
+    assert [(a.id, a.policy_id) for a in stored] == [(winner_attachment.id, POLICY_IDS["gold"])]
+
+
+def test_attachment_to_an_unknown_policy_id_is_refused(tmp_path: Path):
+    """The attachment's policy id is a foreign key to the stored policies."""
+    engine = create_engine(f"sqlite:///{tmp_path / 'fk.sqlite'}")
+    event.listen(engine, "connect", lambda dbapi_connection, _: dbapi_connection.execute("PRAGMA foreign_keys=ON"))
+    create_schema(engine)
+    _store_policies(engine)
+    repo = TableMaintenancePolicyAttachmentsSqlRepo(engine)
+
+    with pytest.raises(ConflictError):
+        repo.create(TableMaintenancePolicyAttachment.attach(CATALOG, TableMaintenancePolicyId.new(), NOW))
+    repo.create(_attach(CATALOG, "gold"))
+    assert [a.policy_id for a in repo.list_all()] == [POLICY_IDS["gold"]]

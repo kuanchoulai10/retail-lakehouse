@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
-    DEFAULT_POLICY_NAME,
     TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.exceptions import (
@@ -45,12 +44,13 @@ class DeleteTableMaintenancePolicyService(DeleteTableMaintenancePolicyUseCase):
     def execute(self, request: DeleteTableMaintenancePolicyUseCaseInput) -> DeleteTableMaintenancePolicyUseCaseOutput:
         """Delete the policy, refusing the default one and one that has attachments."""
         with translate_domain_errors():
-            name = TableMaintenancePolicyName(request.name)
-        if self._policies_repo.get(name) is None:
+            name = TableMaintenancePolicyName(value=request.name)
+        policy = self._policies_repo.get_by_name(name)
+        if policy is None:
             raise NotFoundError(f"table maintenance policy {request.name} not found")
-        if name.value == DEFAULT_POLICY_NAME:
+        if policy.is_default:
             raise ConflictError("the default policy cannot be deleted")
-        if self._attachments_repo.has_attachments_for_policy(name):
+        if self._attachments_repo.has_attachments_for_policy(policy.id):
             raise ConflictError(f"policy {name.value} is still attached to a catalog, namespace or table")
-        self._policies_repo.delete(name)
+        self._policies_repo.delete(policy.id)
         return DeleteTableMaintenancePolicyUseCaseOutput()

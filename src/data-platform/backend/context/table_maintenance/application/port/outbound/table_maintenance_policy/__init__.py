@@ -6,6 +6,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     MaintenancePolicyContent,
     StalePolicyVersion,
     TableMaintenancePolicy,
+    TableMaintenancePolicyId,
     TableMaintenancePolicyName,
     TableMaintenancePolicyVersion,
 )
@@ -18,6 +19,7 @@ __all__ = [
     "StalePolicyVersion",
     "TableMaintenancePoliciesRepo",
     "TableMaintenancePolicy",
+    "TableMaintenancePolicyId",
     "TableMaintenancePolicyName",
     "TableMaintenancePolicyVersion",
 ]

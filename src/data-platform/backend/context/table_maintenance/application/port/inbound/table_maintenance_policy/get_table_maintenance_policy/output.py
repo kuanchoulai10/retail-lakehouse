@@ -9,8 +9,9 @@ from base import UseCaseOutput
 
 
 class GetTableMaintenancePolicyUseCaseOutput(UseCaseOutput):
-    """Describe the result."""
+    """Describe the result: the policy's ``mp-`` id, its name and its current version."""
 
+    id: str
     name: str
     content: dict[str, Any]
     version: int

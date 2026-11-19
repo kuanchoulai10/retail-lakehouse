@@ -3,11 +3,10 @@
 Every ``EntityId`` subclass in a context is in exactly one of three lists:
 
 - ``EXPECTED_PREFIXES``, class name to the prefix its ``PREFIX`` declares;
-- ``UNPREFIXED``, ids that are never prefixed: the table maintenance ``TableId`` (the Iceberg table UUID),
-  ``CatalogDiscoveryId`` (the catalog name) and ``TableMaintenancePolicyName`` (a name, which the policy keeps for
-  display and URLs once it has its own ``mp-`` id), and every catalog context id (Polaris is its source of truth);
+- ``UNPREFIXED``, ids that are never prefixed: the table maintenance ``TableId`` (the Iceberg table UUID) and
+  ``CatalogDiscoveryId`` (the catalog name), and every catalog context id (Polaris is its source of truth);
 - ``PENDING``, ids that will get a prefix but do not have it yet. A name here may not exist yet. Each task of the
-  prefixed-id plan moves its rows from ``PENDING`` to ``EXPECTED_PREFIXES``; the last one empties ``PENDING``.
+  prefixed-id plan moved its rows from ``PENDING`` to ``EXPECTED_PREFIXES``, so ``PENDING`` is empty now.
 
 Every context is walked, not one by name, so a new context's ids must be listed too. Prefixes are unique across
 ``EXPECTED_PREFIXES`` and across every id type of the project that declares one.
@@ -35,23 +34,19 @@ EXPECTED_PREFIXES: dict[str, str] = {
     "CompactionRoundId": "cr",
     "CompactionCandidateId": "cc",
     "TableMaintenancePolicyAttachmentId": "pa",
+    "TableMaintenancePolicyId": "mp",
 }
 UNPREFIXED: frozenset[str] = frozenset(
     {
         "TableId",
         "CatalogDiscoveryId",
-        "TableMaintenancePolicyName",
         "CatalogId",
         "NamespaceId",
         "GenericTableId",
         "ViewId",
     }
 )
-PENDING: frozenset[str] = frozenset(
-    {
-        "TableMaintenancePolicyId",
-    }
-)
+PENDING: frozenset[str] = frozenset()
 
 
 def prefix_violations(

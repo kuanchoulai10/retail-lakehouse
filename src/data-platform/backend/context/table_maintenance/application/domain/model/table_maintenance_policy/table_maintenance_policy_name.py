@@ -1,4 +1,4 @@
-"""Define the TableMaintenancePolicyName identifier."""
+"""Define the TableMaintenancePolicyName value object."""
 
 from __future__ import annotations
 
@@ -6,15 +6,20 @@ import re
 
 from pydantic import field_validator
 
-from base import EntityId
+from base import ValueObject
 
 _PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 
-class TableMaintenancePolicyName(EntityId):
-    """Identify a TableMaintenancePolicy by its name: 1 to 64 letters, digits, ``_`` or ``-``."""
+class TableMaintenancePolicyName(ValueObject):
+    """Name a TableMaintenancePolicy for display and URLs: 1 to 64 letters, digits, ``_`` or ``-``.
 
-    @field_validator("root")
+    Names are unique, but a policy is identified by its ``TableMaintenancePolicyId``.
+    """
+
+    value: str
+
+    @field_validator("value")
     @classmethod
     def _matches_pattern(cls, value: str) -> str:
         if _PATTERN.fullmatch(value) is None:

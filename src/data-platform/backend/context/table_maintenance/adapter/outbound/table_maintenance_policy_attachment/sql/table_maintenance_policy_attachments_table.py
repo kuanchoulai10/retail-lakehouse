@@ -14,8 +14,8 @@ table_maintenance_policy_attachments_table = Table(
     Column("target_type", String, nullable=False),
     Column("path_json", JSON, nullable=False),
     Column("table_uuid", String, nullable=True),
-    Column("policy_name", String, ForeignKey("table_maintenance_policies.name"), nullable=False),
+    Column("policy_id", String, ForeignKey("table_maintenance_policies.id"), nullable=False),
     Column("attached_at", UtcDateTime, nullable=False),
-    Index("ix_table_maintenance_policy_attachments_policy_name", "policy_name"),
+    Index("ix_table_maintenance_policy_attachments_policy_id", "policy_id"),
     Index("uq_table_maintenance_policy_attachments_target_key", "target_key", unique=True),
 )

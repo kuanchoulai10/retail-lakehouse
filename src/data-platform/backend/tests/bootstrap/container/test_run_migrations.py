@@ -50,3 +50,13 @@ def test_run_migrations_seeds_default_policy():
     items = use_cases.list_table_maintenance_policies.execute(ListTableMaintenancePoliciesUseCaseInput()).items
     assert [(p.name, p.version) for p in items] == [("default", 1)]
     assert items[0].content == MaintenancePolicyContent.platform_default().to_primitives()
+
+
+def test_run_migrations_seeds_the_default_policy_under_its_fixed_id():
+    """The seeded default policy has the fixed id ``mp-00000000000000000000000000``."""
+    engine = build_engine(sqlite_settings())
+
+    run_migrations(engine)
+
+    items = _use_cases(engine).list_table_maintenance_policies.execute(ListTableMaintenancePoliciesUseCaseInput()).items
+    assert [(p.id, p.name) for p in items] == [("mp-00000000000000000000000000", "default")]

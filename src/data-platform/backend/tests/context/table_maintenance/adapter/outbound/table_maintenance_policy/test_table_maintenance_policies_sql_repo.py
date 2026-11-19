@@ -20,6 +20,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     MaintenancePolicyContent,
     StalePolicyVersion,
     TableMaintenancePolicy,
+    TableMaintenancePolicyId,
     TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
@@ -33,7 +34,7 @@ if TYPE_CHECKING:
     from sqlalchemy import Engine
 
 NOW = datetime(2026, 10, 24, tzinfo=UTC)
-NAME = TableMaintenancePolicyName("gold")
+NAME = TableMaintenancePolicyName(value="gold")
 
 
 @pytest.fixture
@@ -42,12 +43,14 @@ def repo(engine: Engine) -> TableMaintenancePoliciesSqlRepo:
     return TableMaintenancePoliciesSqlRepo(engine)
 
 
-def _policy() -> TableMaintenancePolicy:
-    return TableMaintenancePolicy.create(NAME, MaintenancePolicyContent.platform_default(), NOW)
+def _policy(name: str = "gold") -> TableMaintenancePolicy:
+    return TableMaintenancePolicy.create(
+        TableMaintenancePolicyName(value=name), MaintenancePolicyContent.platform_default(), NOW
+    )
 
 
 def test_roundtrip_of_a_policy_and_two_versions(repo: TableMaintenancePoliciesSqlRepo):
-    """A policy with two versions loads back, both versions readable."""
+    """A policy with two versions loads back by its id, both versions readable."""
     policy = _policy()
     repo.create(policy)
     first = MaintenancePolicyContent.platform_default()
@@ -55,41 +58,71 @@ def test_roundtrip_of_a_policy_and_two_versions(repo: TableMaintenancePoliciesSq
     policy.replace(second, expected_version=1, now=NOW + timedelta(hours=1))
     repo.update(policy)
 
-    loaded = repo.get(NAME)
+    loaded = repo.get(policy.id)
     assert loaded is not None
+    assert loaded.id == policy.id
+    assert loaded.name == NAME
     assert loaded.version == 2
     assert loaded.content == second
     assert loaded.created_at == NOW
     assert loaded.created_at.tzinfo is not None
     assert loaded.updated_at == NOW + timedelta(hours=1)
-    v1 = repo.get_version(NAME, 1)
-    v2 = repo.get_version(NAME, 2)
+    v1 = repo.get_version(policy.id, 1)
+    v2 = repo.get_version(policy.id, 2)
     assert v1 is not None
+    assert v1.policy_id == policy.id
     assert v1.content == first
     assert v1.created_at == NOW
     assert v2 is not None
     assert v2.content == second
-    assert repo.get_version(NAME, 3) is None
+    assert repo.get_version(policy.id, 3) is None
 
 
 def test_get_missing_returns_none(repo: TableMaintenancePoliciesSqlRepo):
     """Getting an unknown policy returns None."""
-    assert repo.get(TableMaintenancePolicyName("nope")) is None
+    assert repo.get(TableMaintenancePolicyId.new()) is None
+
+
+def test_get_by_name_finds_the_policy(repo: TableMaintenancePoliciesSqlRepo):
+    """A policy is found by its name, which is what a URL names it by; an unknown name is None."""
+    policy = _policy()
+    repo.create(policy)
+
+    found = repo.get_by_name(NAME)
+
+    assert found is not None
+    assert found.id == policy.id
+    assert repo.get_by_name(TableMaintenancePolicyName(value="nope")) is None
+
+
+def test_get_many_returns_the_existing_ones(repo: TableMaintenancePoliciesSqlRepo):
+    """``get_many`` returns the policies that exist among the ids, skipping unknown ones."""
+    gold, silver = _policy("gold"), _policy("silver")
+    repo.create(gold)
+    repo.create(silver)
+
+    found = repo.get_many([gold.id, TableMaintenancePolicyId.new(), silver.id])
+
+    assert sorted(p.name.value for p in found) == ["gold", "silver"]
+    assert repo.get_many([]) == []
 
 
 def test_duplicate_name_conflicts(repo: TableMaintenancePoliciesSqlRepo):
-    """Creating a taken name raises ConflictError."""
+    """A second policy with a taken name raises ConflictError, though its id is new."""
     repo.create(_policy())
+    other = _policy()
     with pytest.raises(ConflictError):
-        repo.create(_policy())
+        repo.create(other)
+    assert repo.get(other.id) is None
 
 
 def test_update_of_stale_aggregate_raises(repo: TableMaintenancePoliciesSqlRepo):
     """Persisting a version that skips ahead of the stored one is rejected."""
-    repo.create(_policy())
-    other = repo.get(NAME)
+    policy = _policy()
+    repo.create(policy)
+    other = repo.get(policy.id)
     assert other is not None
-    mine = repo.get(NAME)
+    mine = repo.get(policy.id)
     assert mine is not None
     other.replace(MaintenancePolicyContent.platform_default(), expected_version=1, now=NOW)
     repo.update(other)
@@ -100,13 +133,9 @@ def test_update_of_stale_aggregate_raises(repo: TableMaintenancePoliciesSqlRepo)
 
 def test_list_all_orders_by_name(repo: TableMaintenancePoliciesSqlRepo):
     """Policies are listed ordered by name."""
-    repo.create(
-        TableMaintenancePolicy.create(TableMaintenancePolicyName("b"), MaintenancePolicyContent.platform_default(), NOW)
-    )
-    repo.create(
-        TableMaintenancePolicy.create(TableMaintenancePolicyName("a"), MaintenancePolicyContent.platform_default(), NOW)
-    )
-    assert [p.id.value for p in repo.list_all()] == ["a", "b"]
+    repo.create(_policy("b"))
+    repo.create(_policy("a"))
+    assert [p.name.value for p in repo.list_all()] == ["a", "b"]
 
 
 def test_delete_removes_versions_too(repo: TableMaintenancePoliciesSqlRepo):
@@ -115,10 +144,10 @@ def test_delete_removes_versions_too(repo: TableMaintenancePoliciesSqlRepo):
     repo.create(policy)
     policy.replace(MaintenancePolicyContent.platform_default(), expected_version=1, now=NOW)
     repo.update(policy)
-    repo.delete(NAME)
-    assert repo.get(NAME) is None
-    assert repo.get_version(NAME, 1) is None
-    assert repo.get_version(NAME, 2) is None
+    repo.delete(policy.id)
+    assert repo.get(policy.id) is None
+    assert repo.get_version(policy.id, 1) is None
+    assert repo.get_version(policy.id, 2) is None
 
 
 def _engine_enforcing_foreign_keys() -> Engine:
@@ -132,10 +161,13 @@ def test_delete_of_a_policy_attached_meanwhile_conflicts():
     """An attachment landing after the delete's check makes the delete a ConflictError and keeps the policy."""
     engine = _engine_enforcing_foreign_keys()
     repo = TableMaintenancePoliciesSqlRepo(engine)
-    repo.create(_policy())
+    policy = _policy()
+    repo.create(policy)
     target = PolicyTarget(type=PolicyTargetType.CATALOG, path=("prod",))
-    TableMaintenancePolicyAttachmentsSqlRepo(engine).create(TableMaintenancePolicyAttachment.attach(target, NAME, NOW))
+    TableMaintenancePolicyAttachmentsSqlRepo(engine).create(
+        TableMaintenancePolicyAttachment.attach(target, policy.id, NOW)
+    )
     with pytest.raises(ConflictError):
-        repo.delete(NAME)
-    assert repo.get(NAME) is not None
-    assert repo.get_version(NAME, 1) is not None
+        repo.delete(policy.id)
+    assert repo.get(policy.id) is not None
+    assert repo.get_version(policy.id, 1) is not None

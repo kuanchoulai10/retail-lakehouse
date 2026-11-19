@@ -9,7 +9,7 @@ from context.table_maintenance.application.port.outbound.table_maintenance_polic
     PolicyTargetType,
     TableMaintenancePolicyAttachment,
     TableMaintenancePolicyAttachmentId,
-    TableMaintenancePolicyName,
+    TableMaintenancePolicyId,
 )
 
 if TYPE_CHECKING:
@@ -28,7 +28,7 @@ class TableMaintenancePolicyAttachmentRowMapper:
             "target_type": attachment.target.type.value,
             "path_json": list(attachment.target.path),
             "table_uuid": attachment.target.table_uuid,
-            "policy_name": attachment.policy_name.value,
+            "policy_id": attachment.policy_id.value,
             "attached_at": attachment.attached_at,
         }
 
@@ -42,6 +42,6 @@ class TableMaintenancePolicyAttachmentRowMapper:
                 path=tuple(row["path_json"]),
                 table_uuid=row["table_uuid"],
             ),
-            policy_name=TableMaintenancePolicyName(row["policy_name"]),
+            policy_id=TableMaintenancePolicyId(row["policy_id"]),
             attached_at=row["attached_at"],
         )

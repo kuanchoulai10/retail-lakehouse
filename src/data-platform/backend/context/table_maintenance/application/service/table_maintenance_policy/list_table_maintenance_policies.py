@@ -38,7 +38,7 @@ class ListTableMaintenancePoliciesService(ListTableMaintenancePoliciesUseCase):
         request: ListTableMaintenancePoliciesUseCaseInput,  # noqa: ARG002
     ) -> ListTableMaintenancePoliciesUseCaseOutput:
         """Return every policy at its current version with its attachment count."""
-        counts = Counter(a.policy_name.value for a in self._attachments_repo.list_all())
+        counts = Counter(a.policy_id.value for a in self._attachments_repo.list_all())
         return ListTableMaintenancePoliciesUseCaseOutput(
             items=tuple(
                 ListTableMaintenancePoliciesUseCaseOutput.TableMaintenancePolicy(

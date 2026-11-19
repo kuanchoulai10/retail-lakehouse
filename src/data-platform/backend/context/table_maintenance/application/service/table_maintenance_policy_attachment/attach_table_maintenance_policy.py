@@ -11,9 +11,11 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
     AttachTableMaintenancePolicyUseCaseInput,
     AttachTableMaintenancePolicyUseCaseOutput,
 )
+from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
+    TableMaintenancePolicyName,
+)
 from context.table_maintenance.application.port.outbound.table_maintenance_policy_attachment import (
     TableMaintenancePolicyAttachment,
-    TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.service.shared import translate_domain_errors
 from context.table_maintenance.application.service.table_maintenance_policy_attachment.notify_policy_change import (  # noqa: E501
@@ -33,6 +35,7 @@ if TYPE_CHECKING:
     )
     from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
         TableMaintenancePoliciesRepo,
+        TableMaintenancePolicyId,
     )
     from context.table_maintenance.application.port.outbound.table_maintenance_policy_attachment import (
         PolicyTarget,
@@ -67,29 +70,32 @@ class AttachTableMaintenancePolicyService(AttachTableMaintenancePolicyUseCase):
         Every managed table whose applicable policy changes is told so.
         """
         with translate_domain_errors():
-            policy_name = TableMaintenancePolicyName(request.policy_name)
+            policy_name = TableMaintenancePolicyName(value=request.policy_name)
         target = policy_target_from_request(self._gateway, request.target_type, request.path, must_exist=True)
-        if self._policies_repo.get(policy_name) is None:
+        policy = self._policies_repo.get_by_name(policy_name)
+        if policy is None:
             raise NotFoundError(f"table maintenance policy {request.policy_name} not found")
+        policy_id = policy.id
         attachment = notify_policy_change(
             self._tables_repo,
             self._policies_repo,
             self._attachments_repo,
             self._table_changes,
-            lambda: self._save(target, policy_name),
+            lambda: self._save(target, policy_id),
         )
         return AttachTableMaintenancePolicyUseCaseOutput(
             target_type=attachment.target.type.value,
             path=attachment.target.path,
             table_uuid=attachment.target.table_uuid,
-            policy_name=attachment.policy_name.value,
+            policy_id=attachment.policy_id.value,
+            policy_name=policy.name.value,
             attached_at=attachment.attached_at,
         )
 
-    def _save(self, target: PolicyTarget, policy_name: TableMaintenancePolicyName) -> TableMaintenancePolicyAttachment:
+    def _save(self, target: PolicyTarget, policy_id: TableMaintenancePolicyId) -> TableMaintenancePolicyAttachment:
         now = self._clock()
         attachment = self._attachments_repo.get_by_target(target)
         if attachment is None:
-            return self._attachments_repo.create(TableMaintenancePolicyAttachment.attach(target, policy_name, now))
-        attachment.replace_policy(policy_name, now)
+            return self._attachments_repo.create(TableMaintenancePolicyAttachment.attach(target, policy_id, now))
+        attachment.replace_policy(policy_id, now)
         return self._attachments_repo.update(attachment)

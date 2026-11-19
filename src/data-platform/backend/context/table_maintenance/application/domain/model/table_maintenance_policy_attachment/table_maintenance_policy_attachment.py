@@ -6,7 +6,7 @@ from datetime import datetime
 
 from base import AggregateRoot
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
-    TableMaintenancePolicyName,
+    TableMaintenancePolicyId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment.policy_target import (
     PolicyTarget,
@@ -17,23 +17,23 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 
 
 class TableMaintenancePolicyAttachment(AggregateRoot[TableMaintenancePolicyAttachmentId]):
-    """The maintenance policy attached to one catalog, namespace or table."""
+    """The maintenance policy attached to one catalog, namespace or table, pointed at by its id."""
 
     id: TableMaintenancePolicyAttachmentId
     target: PolicyTarget
-    policy_name: TableMaintenancePolicyName
+    policy_id: TableMaintenancePolicyId
     attached_at: datetime
 
     @classmethod
     def attach(
         cls,
         target: PolicyTarget,
-        policy_name: TableMaintenancePolicyName,
+        policy_id: TableMaintenancePolicyId,
         now: datetime,
     ) -> TableMaintenancePolicyAttachment:
         """Attach a policy to a target, under a new ``pa-`` id."""
-        return cls(id=TableMaintenancePolicyAttachmentId.new(), target=target, policy_name=policy_name, attached_at=now)
+        return cls(id=TableMaintenancePolicyAttachmentId.new(), target=target, policy_id=policy_id, attached_at=now)
 
-    def replace_policy(self, policy_name: TableMaintenancePolicyName, now: datetime) -> None:
+    def replace_policy(self, policy_id: TableMaintenancePolicyId, now: datetime) -> None:
         """Attach another policy to the same target."""
-        self._assign_together(policy_name=policy_name, attached_at=now)
+        self._assign_together(policy_id=policy_id, attached_at=now)

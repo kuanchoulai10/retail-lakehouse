@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 import pytest
 
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
-    TableMaintenancePolicyName,
+    TableMaintenancePolicyId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
     PolicyTarget,
@@ -62,19 +62,22 @@ def test_key_of_namespace_joins_the_path():
 def test_attachment_id_has_the_pa_prefix():
     """Attaching mints a random pa- id, never one derived from the target."""
     target = PolicyTarget(type=PolicyTargetType.CATALOG, path=("c",))
-    first = TableMaintenancePolicyAttachment.attach(target, TableMaintenancePolicyName("gold"), NOW)
-    second = TableMaintenancePolicyAttachment.attach(target, TableMaintenancePolicyName("gold"), NOW)
+    gold = TableMaintenancePolicyId.new()
+    first = TableMaintenancePolicyAttachment.attach(target, gold, NOW)
+    second = TableMaintenancePolicyAttachment.attach(target, gold, NOW)
     assert prefixed_id_pattern("pa").fullmatch(first.id.value)
     assert first.id != second.id
 
 
 def test_attach_and_replace_policy():
-    """An attachment records its policy and moves to another, keeping its id."""
+    """An attachment records its policy by id and moves to another, keeping its own id."""
     target = PolicyTarget(type=PolicyTargetType.CATALOG, path=("c",))
-    attachment = TableMaintenancePolicyAttachment.attach(target, TableMaintenancePolicyName("gold"), NOW)
+    gold, silver = TableMaintenancePolicyId.new(), TableMaintenancePolicyId.new()
+    attachment = TableMaintenancePolicyAttachment.attach(target, gold, NOW)
+    assert attachment.policy_id == gold
     attached_id = attachment.id
     later = datetime(2026, 2, 1, tzinfo=UTC)
-    attachment.replace_policy(TableMaintenancePolicyName("silver"), later)
-    assert attachment.policy_name.value == "silver"
+    attachment.replace_policy(silver, later)
+    assert attachment.policy_id == silver
     assert attachment.attached_at == later
     assert attachment.id == attached_id

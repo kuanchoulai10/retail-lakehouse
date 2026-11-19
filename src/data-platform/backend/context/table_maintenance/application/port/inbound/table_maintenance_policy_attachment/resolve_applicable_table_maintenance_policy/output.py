@@ -8,8 +8,9 @@ from base import UseCaseOutput
 
 
 class ResolveApplicableTableMaintenancePolicyUseCaseOutput(UseCaseOutput):
-    """Carry the outcome of the request."""
+    """Carry the outcome of the request: the applicable policy's ``mp-`` id, name, version and content."""
 
+    policy_id: str
     policy_name: str
     version: int
     content: dict[str, Any]

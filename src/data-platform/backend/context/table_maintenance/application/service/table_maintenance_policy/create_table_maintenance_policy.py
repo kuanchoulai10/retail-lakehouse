@@ -47,9 +47,9 @@ class CreateTableMaintenancePolicyService(CreateTableMaintenancePolicyUseCase):
     def execute(self, request: CreateTableMaintenancePolicyUseCaseInput) -> CreateTableMaintenancePolicyUseCaseOutput:
         """Create the policy at version 1, rejecting a bad name, bad content or a taken name."""
         with translate_domain_errors():
-            name = TableMaintenancePolicyName(request.name)
+            name = TableMaintenancePolicyName(value=request.name)
             content = MaintenancePolicyContent.from_primitives(request.content)
-        if self._policies_repo.get(name) is not None:
+        if self._policies_repo.get_by_name(name) is not None:
             raise ConflictError(f"policy name {name.value!r} already exists")
         policy = TableMaintenancePolicy.create(name, content, self._clock())
         self._policies_repo.create(policy)

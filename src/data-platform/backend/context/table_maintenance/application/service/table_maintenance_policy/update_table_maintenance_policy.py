@@ -63,9 +63,9 @@ class UpdateTableMaintenancePolicyService(UpdateTableMaintenancePolicyUseCase):
         Every managed table the policy applies to is told that its policy changed.
         """
         with translate_domain_errors():
-            name = TableMaintenancePolicyName(request.name)
+            name = TableMaintenancePolicyName(value=request.name)
             content = MaintenancePolicyContent.from_primitives(request.content)
-        policy = self._policies_repo.get(name)
+        policy = self._policies_repo.get_by_name(name)
         if policy is None:
             raise NotFoundError(f"table maintenance policy {request.name} not found")
         notify_policy_change(

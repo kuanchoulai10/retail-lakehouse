@@ -9,8 +9,11 @@ import pytest
 from context.table_maintenance.application.domain.model.table import Table, TableId, TableName
 from context.table_maintenance.application.domain.model.table_discovery_rules import TableDiscoveryRuleId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    DEFAULT_POLICY_ID,
     DEFAULT_POLICY_NAME,
     MaintenancePolicyContent,
+    TableMaintenancePolicyId,
+    TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.exceptions import ConflictError, NotFoundError
 from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
@@ -117,6 +120,11 @@ class _World:
     def resolve_orders(self):
         return self.resolve("u-1", "prod", "sales.eu", "orders")
 
+    def policy_id(self, name: str) -> TableMaintenancePolicyId:
+        policy = self.policies.get_by_name(TableMaintenancePolicyName(value=name))
+        assert policy is not None
+        return policy.id
+
 
 @pytest.fixture
 def world() -> _World:
@@ -127,9 +135,36 @@ def world() -> _World:
 def test_no_attachment_falls_back_to_default(world):
     """With nothing attached the default policy applies and the target is None."""
     out = world.resolve_orders()
-    assert out.policy_name == DEFAULT_POLICY_NAME
+    assert (out.policy_id, out.policy_name) == (DEFAULT_POLICY_ID.value, DEFAULT_POLICY_NAME)
     assert out.version == 1
     assert out.target is None
+
+
+def test_attachment_points_at_the_policy_id(world):
+    """Attaching by name stores the policy's id; the answer names the policy by id and by its name."""
+    out = world.attach("namespace", ("prod", "sales"), "gold")
+
+    (stored,) = world.attachments.list_all()
+    assert stored.policy_id == world.policy_id("gold")
+    assert (out.policy_id, out.policy_name) == (world.policy_id("gold").value, "gold")
+
+
+def test_resolve_names_the_attached_policy_by_id_and_name(world):
+    """The applicable policy is found through the attachment's policy id and answered with both."""
+    world.attach("namespace", ("prod", "sales"), "silver")
+
+    out = world.resolve_orders()
+
+    assert (out.policy_id, out.policy_name) == (world.policy_id("silver").value, "silver")
+
+
+def test_list_attachments_name_the_policy_by_id_and_name(world):
+    """Each listed attachment carries its policy's id and current name."""
+    world.attach("catalog", ("prod",), "gold")
+
+    (item,) = world.list_attachments.execute(ListTableMaintenancePolicyAttachmentsUseCaseInput()).items
+
+    assert (item.policy_id, item.policy_name) == (world.policy_id("gold").value, "gold")
 
 
 def test_deepest_attachment_wins(world):
@@ -203,7 +238,7 @@ def test_attach_twice_to_one_target_replaces_not_duplicates(world):
     world.attach("namespace", ("prod", "sales"), "silver")
     (stored,) = world.attachments.list_all()
     assert stored.id == first.id
-    assert stored.policy_name.value == "silver"
+    assert stored.policy_id == world.policy_id("silver")
 
 
 def test_resolve_picks_table_over_namespace_over_catalog(world):

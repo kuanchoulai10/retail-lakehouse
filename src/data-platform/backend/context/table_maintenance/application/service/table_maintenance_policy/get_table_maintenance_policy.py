@@ -36,8 +36,8 @@ class GetTableMaintenancePolicyService(GetTableMaintenancePolicyUseCase):
     def execute(self, request: GetTableMaintenancePolicyUseCaseInput) -> GetTableMaintenancePolicyUseCaseOutput:
         """Return the policy or raise NotFoundError."""
         with translate_domain_errors():
-            name = TableMaintenancePolicyName(request.name)
-        policy = self._policies_repo.get(name)
+            name = TableMaintenancePolicyName(value=request.name)
+        policy = self._policies_repo.get_by_name(name)
         if policy is None:
             raise NotFoundError(f"table maintenance policy {request.name} not found")
         return GetTableMaintenancePolicyUseCaseOutput(**table_maintenance_policy_output_fields(policy))

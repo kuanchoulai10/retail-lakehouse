@@ -12,8 +12,9 @@ class ListTableMaintenancePoliciesUseCaseOutput(UseCaseOutput):
     """Carry the listing."""
 
     class TableMaintenancePolicy(UseCaseOutput):
-        """One entry of the listing."""
+        """One entry of the listing: the policy's ``mp-`` id, its name and its current version."""
 
+        id: str
         name: str
         content: dict[str, Any]
         version: int

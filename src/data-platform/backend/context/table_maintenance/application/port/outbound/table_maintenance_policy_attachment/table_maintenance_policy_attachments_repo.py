@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
     from base import EntityId
     from context.table_maintenance.application.domain.model.table_maintenance_policy import (
-        TableMaintenancePolicyName,
+        TableMaintenancePolicyId,
     )
     from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
         PolicyTarget,
@@ -50,9 +50,9 @@ class TableMaintenancePolicyAttachmentsRepo(Repository[TableMaintenancePolicyAtt
         """Return the attachments that exist among ``ids``, in no particular order."""
 
     @abstractmethod
-    def list_for_policy(self, policy_name: TableMaintenancePolicyName) -> list[TableMaintenancePolicyAttachment]:
+    def list_for_policy(self, policy_id: TableMaintenancePolicyId) -> list[TableMaintenancePolicyAttachment]:
         """Return the attachments of one policy."""
 
     @abstractmethod
-    def has_attachments_for_policy(self, policy_name: TableMaintenancePolicyName) -> bool:
+    def has_attachments_for_policy(self, policy_id: TableMaintenancePolicyId) -> bool:
         """Return whether any target uses the policy."""

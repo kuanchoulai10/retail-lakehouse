@@ -35,12 +35,14 @@ class GetTableMaintenancePolicyVersionService(GetTableMaintenancePolicyVersionUs
     ) -> GetTableMaintenancePolicyVersionUseCaseOutput:
         """Return the version or raise NotFoundError."""
         with translate_domain_errors():
-            name = TableMaintenancePolicyName(request.name)
-        version = self._policies_repo.get_version(name, request.version)
-        if version is None:
+            name = TableMaintenancePolicyName(value=request.name)
+        policy = self._policies_repo.get_by_name(name)
+        version = None if policy is None else self._policies_repo.get_version(policy.id, request.version)
+        if policy is None or version is None:
             raise NotFoundError(f"table maintenance policy {request.name} has no version {request.version}")
         return GetTableMaintenancePolicyVersionUseCaseOutput(
-            name=version.name.value,
+            id=policy.id.value,
+            name=policy.name.value,
             version=version.version,
             content=version.content.to_primitives(),
             created_at=version.created_at,

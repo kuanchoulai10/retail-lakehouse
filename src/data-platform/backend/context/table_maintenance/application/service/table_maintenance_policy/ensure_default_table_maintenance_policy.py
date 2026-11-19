@@ -6,10 +6,8 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
-    DEFAULT_POLICY_NAME,
-    MaintenancePolicyContent,
+    DEFAULT_POLICY_ID,
     TableMaintenancePolicy,
-    TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
     EnsureDefaultTableMaintenancePolicyUseCase,
@@ -42,10 +40,8 @@ class EnsureDefaultTableMaintenancePolicyService(EnsureDefaultTableMaintenancePo
         self,
         request: EnsureDefaultTableMaintenancePolicyUseCaseInput,  # noqa: ARG002
     ) -> EnsureDefaultTableMaintenancePolicyUseCaseOutput:
-        """Create ``default`` with the platform default content unless it exists."""
-        name = TableMaintenancePolicyName(DEFAULT_POLICY_NAME)
-        if self._policies_repo.get(name) is not None:
+        """Create ``default`` under its fixed id with the platform default content unless that id exists."""
+        if self._policies_repo.get(DEFAULT_POLICY_ID) is not None:
             return EnsureDefaultTableMaintenancePolicyUseCaseOutput(created=False)
-        policy = TableMaintenancePolicy.create(name, MaintenancePolicyContent.platform_default(), self._clock())
-        self._policies_repo.create(policy)
+        self._policies_repo.create(TableMaintenancePolicy.create_default(self._clock()))
         return EnsureDefaultTableMaintenancePolicyUseCaseOutput(created=True)

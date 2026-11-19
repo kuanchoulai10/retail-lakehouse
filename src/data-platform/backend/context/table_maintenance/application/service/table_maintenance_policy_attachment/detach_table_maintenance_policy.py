@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     )
     from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
         TableMaintenancePoliciesRepo,
+        TableMaintenancePolicyId,
     )
     from context.table_maintenance.application.port.outbound.table_maintenance_policy_attachment import (
         TableMaintenancePolicyAttachmentsRepo,
@@ -62,7 +63,7 @@ class DetachTableMaintenancePolicyService(DetachTableMaintenancePolicyUseCase):
         described = f"{request.target_type} {'.'.join(request.path)}"
         if attachment is None:
             raise NotFoundError(f"no policy is attached to {described}")
-        if request.policy_name is not None and attachment.policy_name.value != request.policy_name:
+        if request.policy_name is not None and not self._is_named(attachment.policy_id, request.policy_name):
             raise NotFoundError(f"policy {request.policy_name} is not attached to {described}")
         attachment_id = attachment.id
         notify_policy_change(
@@ -73,3 +74,8 @@ class DetachTableMaintenancePolicyService(DetachTableMaintenancePolicyUseCase):
             lambda: self._attachments_repo.delete(attachment_id),
         )
         return DetachTableMaintenancePolicyUseCaseOutput()
+
+    def _is_named(self, policy_id: TableMaintenancePolicyId, name: str) -> bool:
+        """Return whether the policy with ``policy_id`` is the one called ``name`` now."""
+        policy = self._policies_repo.get(policy_id)
+        return policy is not None and policy.name.value == name

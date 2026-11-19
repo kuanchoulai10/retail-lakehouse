@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
-    TableMaintenancePolicyName,
+    TableMaintenancePolicyId,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
     PolicyTarget,
@@ -21,5 +21,5 @@ __all__ = [
     "TableMaintenancePolicyAttachment",
     "TableMaintenancePolicyAttachmentId",
     "TableMaintenancePolicyAttachmentsRepo",
-    "TableMaintenancePolicyName",
+    "TableMaintenancePolicyId",
 ]

@@ -17,9 +17,11 @@ from context.table_maintenance.application.port.outbound.table import (
     TableMetadataRef,
     TableStatus,
 )
+from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
+    TableMaintenancePolicyName,
+)
 from context.table_maintenance.application.port.outbound.table_maintenance_policy_attachment import (
     PolicyTargetType,
-    TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.service.shared import translate_domain_errors
 from context.table_maintenance.application.service.table_maintenance_policy_attachment.scope_target_in_listing import (  # noqa: E501
@@ -61,10 +63,12 @@ class ListTableMaintenancePolicyAttachmentsService(ListTableMaintenancePolicyAtt
             attachments = self._attachments_repo.list_all()
         else:
             with translate_domain_errors():
-                name = TableMaintenancePolicyName(request.policy_name)
-            if self._policies_repo.get(name) is None:
+                name = TableMaintenancePolicyName(value=request.policy_name)
+            policy = self._policies_repo.get_by_name(name)
+            if policy is None:
                 raise NotFoundError(f"table maintenance policy {request.policy_name} not found")
-            attachments = self._attachments_repo.list_for_policy(name)
+            attachments = self._attachments_repo.list_for_policy(policy.id)
+        names = {p.id.value: p.name.value for p in self._policies_repo.get_many([a.policy_id for a in attachments])}
         listings: dict[str, list[TableMetadataRef] | None] = {}
         return ListTableMaintenancePolicyAttachmentsUseCaseOutput(
             items=tuple(
@@ -72,7 +76,8 @@ class ListTableMaintenancePolicyAttachmentsService(ListTableMaintenancePolicyAtt
                     type=a.target.type.value,
                     path=a.target.path,
                     table_uuid=a.target.table_uuid,
-                    policy_name=a.policy_name.value,
+                    policy_id=a.policy_id.value,
+                    policy_name=names[a.policy_id.value],
                     attached_at=a.attached_at,
                     orphaned=not self._in_catalog(a.target, listings),
                 )

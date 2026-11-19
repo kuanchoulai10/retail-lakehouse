@@ -7,7 +7,9 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    DEFAULT_POLICY_ID,
     MaintenancePolicyContent,
+    TableMaintenancePolicyId,
     TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.exceptions import (
@@ -33,6 +35,7 @@ from context.table_maintenance.application.service.table_maintenance_policy impo
     ListTableMaintenancePoliciesService,
     UpdateTableMaintenancePolicyService,
 )
+from shared_kernel import prefixed_id_pattern
 from tests.context.table_maintenance.fakes.in_memory_table_maintenance_policies_repo import (
     InMemoryTableMaintenancePoliciesRepo,
 )
@@ -46,6 +49,13 @@ from tests.context.table_maintenance.fakes.recording_send_table_change_gateway i
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
 CONTENT = MaintenancePolicyContent.platform_default().to_primitives()
+GOLD = TableMaintenancePolicyName(value="gold")
+
+
+def _gold_id(repo: InMemoryTableMaintenancePoliciesRepo) -> TableMaintenancePolicyId:
+    policy = repo.get_by_name(GOLD)
+    assert policy is not None
+    return policy.id
 
 
 def _no_tables():
@@ -65,10 +75,22 @@ def test_create_then_get_and_list():
     assert out.version == 1
     got = GetTableMaintenancePolicyService(repo).execute(GetTableMaintenancePolicyUseCaseInput(name="gold"))
     assert got.content == CONTENT
+    assert got.id == out.id
     listed = ListTableMaintenancePoliciesService(repo, InMemoryTableMaintenancePolicyAttachmentsRepo()).execute(
         ListTableMaintenancePoliciesUseCaseInput()
     )
-    assert [i.name for i in listed.items] == ["gold"]
+    assert [(i.id, i.name) for i in listed.items] == [(out.id, "gold")]
+
+
+def test_create_returns_the_new_mp_id():
+    """Creating a policy answers with the ``mp-`` id it was stored under, beside its name."""
+    repo = InMemoryTableMaintenancePoliciesRepo()
+
+    out = _create(repo)
+
+    assert prefixed_id_pattern("mp").fullmatch(out.id)
+    assert out.name == "gold"
+    assert _gold_id(repo).value == out.id
 
 
 def test_get_missing_is_not_found():
@@ -88,13 +110,22 @@ def test_replace_increments_version_and_keeps_old_version_readable():
         UpdateTableMaintenancePolicyUseCaseInput(name="gold", content=new_content, version=1)
     )
     assert out.version == 2
-    old = repo.get_version(TableMaintenancePolicyName("gold"), 1)
+    old = repo.get_version(_gold_id(repo), 1)
     assert old is not None
     assert old.content.to_primitives() == CONTENT
     via_service = GetTableMaintenancePolicyVersionService(repo).execute(
         GetTableMaintenancePolicyVersionUseCaseInput(name="gold", version=2)
     )
     assert via_service.content == new_content
+    assert (via_service.id, via_service.name) == (out.id, "gold")
+
+
+def test_get_version_of_an_unknown_policy_name_is_not_found():
+    """A version of a name no policy has is NotFoundError."""
+    with pytest.raises(NotFoundError):
+        GetTableMaintenancePolicyVersionService(InMemoryTableMaintenancePoliciesRepo()).execute(
+            GetTableMaintenancePolicyVersionUseCaseInput(name="nope", version=1)
+        )
 
 
 def test_replace_with_stale_version_conflicts():
@@ -107,7 +138,7 @@ def test_replace_with_stale_version_conflicts():
     )
     with pytest.raises(ConflictError):
         service.execute(UpdateTableMaintenancePolicyUseCaseInput(name="gold", content=CONTENT, version=1))
-    policy = repo.get(TableMaintenancePolicyName("gold"))
+    policy = repo.get(_gold_id(repo))
     assert policy is not None
     assert policy.version == 2
     assert policy.content.dry_run is True
@@ -146,11 +177,12 @@ def test_invalid_content_is_422():
 def test_delete_removes_policy():
     """Deleting a policy removes it."""
     repo = InMemoryTableMaintenancePoliciesRepo()
-    _create(repo)
+    gold = TableMaintenancePolicyId(_create(repo).id)
     DeleteTableMaintenancePolicyService(repo, InMemoryTableMaintenancePolicyAttachmentsRepo()).execute(
         DeleteTableMaintenancePolicyUseCaseInput(name="gold")
     )
-    assert repo.get(TableMaintenancePolicyName("gold")) is None
+    assert repo.get(gold) is None
+    assert repo.get_by_name(GOLD) is None
 
 
 def test_delete_missing_is_not_found():
@@ -180,5 +212,18 @@ def test_ensure_default_is_idempotent():
     assert service.execute(EnsureDefaultTableMaintenancePolicyUseCaseInput()).created is True
     assert service.execute(EnsureDefaultTableMaintenancePolicyUseCaseInput()).created is False
     policies = repo.list_all()
-    assert [(p.id.value, p.version) for p in policies] == [("default", 1)]
+    assert [(p.id, p.name.value, p.version) for p in policies] == [(DEFAULT_POLICY_ID, "default", 1)]
     assert policies[0].content == MaintenancePolicyContent.platform_default()
+
+
+def test_ensure_default_seeds_the_fixed_id():
+    """The default policy is seeded under ``mp-00000000000000000000000000`` and found by that id."""
+    repo = InMemoryTableMaintenancePoliciesRepo()
+
+    EnsureDefaultTableMaintenancePolicyService(repo, clock=lambda: NOW).execute(
+        EnsureDefaultTableMaintenancePolicyUseCaseInput()
+    )
+
+    seeded = repo.get(TableMaintenancePolicyId("mp-00000000000000000000000000"))
+    assert seeded is not None
+    assert seeded.is_default

@@ -11,6 +11,9 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 from context.table_maintenance.application.domain.model.table_maintenance_policy.compaction_unit import (  # noqa: E501
     CompactionUnit,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy.default_policy_id import (  # noqa: E501
+    DEFAULT_POLICY_ID,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_policy.default_policy_name import (  # noqa: E501
     DEFAULT_POLICY_NAME,
 )
@@ -86,6 +89,9 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
 from context.table_maintenance.application.domain.model.table_maintenance_policy.table_maintenance_policy import (  # noqa: E501
     TableMaintenancePolicy,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy.table_maintenance_policy_id import (  # noqa: E501
+    TableMaintenancePolicyId,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_policy.table_maintenance_policy_name import (  # noqa: E501
     TableMaintenancePolicyName,
 )
@@ -100,6 +106,7 @@ __all__ = [
     "AtLeast",
     "CompactionScope",
     "CompactionUnit",
+    "DEFAULT_POLICY_ID",
     "DEFAULT_POLICY_NAME",
     "ExpireSnapshotsConditions",
     "ExpireSnapshotsExecutionPolicy",
@@ -125,6 +132,7 @@ __all__ = [
     "SmallManifestsCondition",
     "StalePolicyVersion",
     "TableMaintenancePolicy",
+    "TableMaintenancePolicyId",
     "TableMaintenancePolicyName",
     "TableMaintenancePolicyVersion",
     "TriggerPolicy",

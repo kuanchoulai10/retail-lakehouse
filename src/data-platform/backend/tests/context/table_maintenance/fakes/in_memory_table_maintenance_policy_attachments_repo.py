@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
     from base import EntityId
     from context.table_maintenance.application.domain.model.table_maintenance_policy import (
-        TableMaintenancePolicyName,
+        TableMaintenancePolicyId,
     )
     from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
         PolicyTarget,
@@ -74,10 +74,10 @@ class InMemoryTableMaintenancePolicyAttachmentsRepo(TableMaintenancePolicyAttach
         """Return the stored attachments among ``ids``."""
         return [self.items[i.value] for i in ids if i.value in self.items]
 
-    def list_for_policy(self, policy_name: TableMaintenancePolicyName) -> list[TableMaintenancePolicyAttachment]:
+    def list_for_policy(self, policy_id: TableMaintenancePolicyId) -> list[TableMaintenancePolicyAttachment]:
         """Return the attachments of one policy, ordered by id."""
-        return [a for a in self.list_all() if a.policy_name == policy_name]
+        return [a for a in self.list_all() if a.policy_id == policy_id]
 
-    def has_attachments_for_policy(self, policy_name: TableMaintenancePolicyName) -> bool:
+    def has_attachments_for_policy(self, policy_id: TableMaintenancePolicyId) -> bool:
         """Return whether any attachment uses the policy."""
-        return any(a.policy_name == policy_name for a in self.items.values())
+        return any(a.policy_id == policy_id for a in self.items.values())
