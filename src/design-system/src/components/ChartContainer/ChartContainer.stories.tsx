@@ -5,15 +5,15 @@ import { expectNoHorizontalPageScroll } from "../../stories/assertions";
 import { CHART_COLOURS, ChartContainer } from "./ChartContainer";
 
 const data = [
-  { day: "Mon", succeeded: 12, failed: 1 },
-  { day: "Tue", succeeded: 9, failed: 3 },
-  { day: "Wed", succeeded: 14, failed: 0 },
+  { day: "Mon", appends: 12, overwrites: 1 },
+  { day: "Tue", appends: 9, overwrites: 3 },
+  { day: "Wed", appends: 14, overwrites: 0 },
 ];
 
 const meta = {
   title: "Components/ChartContainer",
   component: ChartContainer,
-  args: { label: "Runs per day", height: 240, children: <div /> },
+  args: { label: "Commits per day", height: 240, children: <div /> },
   parameters: {
     docs: {
       description: {
@@ -34,14 +34,14 @@ const chart = (
     <CartesianGrid vertical={false} />
     <XAxis dataKey="day" />
     <YAxis width={32} />
-    <Bar dataKey="succeeded" fill={CHART_COLOURS[0]} />
-    <Bar dataKey="failed" fill={CHART_COLOURS[3]} />
+    <Bar dataKey="appends" fill={CHART_COLOURS[0]} />
+    <Bar dataKey="overwrites" fill={CHART_COLOURS[1]} />
   </BarChart>
 );
 
 export const Default: Story = {
   render: () => (
-    <ChartContainer label="Runs per day" height={240}>
+    <ChartContainer label="Commits per day" height={240}>
       {chart}
     </ChartContainer>
   ),
@@ -57,7 +57,7 @@ export const Default: Story = {
 export const Phone: Story = {
   globals: { viewport: { value: "phone", isRotated: false } },
   render: () => (
-    <ChartContainer label="Runs per day" height={200}>
+    <ChartContainer label="Commits per day" height={200}>
       {chart}
     </ChartContainer>
   ),
