@@ -12,8 +12,8 @@
 ## Deployed waves
 
 **Deployed on minikube** (via `bootstrap-by-scripts`):
-- Wave 10: cert-manager, kube-prometheus, Strimzi
-- Wave 11: KEDA, Spark Operator, OTel Operator, Istio base, Gateway API CRDs
+- Wave 10: cert-manager, kube-prometheus, Strimzi, Volcano (chart 1.16.0 in `volcano-system`, the chart's default scheduler config: actions `enqueue, allocate, backfill`, no preemption; queue `default`; installed before the Spark Operator, whose Volcano integration needs the `PodGroup` CRD)
+- Wave 11: KEDA, Spark Operator (`controller.batchScheduler.enable: true` with no default: a `SparkApplication` goes through Volcano only when it sets `spec.batchScheduler: volcano`), OTel Operator, Istio base, Gateway API CRDs
 - Wave 12: istiod, istio-cni (`cni.cniNetnsDir: /var/run/netns`), ztunnel (PodMonitor `ztunnel` on :15020 `/metrics`, plus a Prometheus Role / RoleBinding in `istio-system` so kube-prometheus can discover it), `12-platform-gateway` (Gateway `platform-gateway` in `istio-ingress`, listener http :80 on any hostname, routes by path prefix, admits HTTPRoutes only from namespaces labelled `retail-lakehouse.io/gateway-routes=allowed`; routes table in its README; istiod registers the ext_authz extension provider `oauth2-proxy`)
 - Wave 13: `13-identity` (namespace `identity`: Keycloak 26.8.2 + `keycloak-db` PostgreSQL 17.11, realm `retail-lakehouse` imported at first start, clients `oauth2-proxy` / `trino` / `platform-validate`, user `platform-admin` with a generated password in Secret `identity/keycloak-clients`; oauth2-proxy v7.15.6; HTTPRoutes `/keycloak` and `/sso`, both ungated; AuthorizationPolicy `platform-gateway-sso` (CUSTOM, provider `oauth2-proxy`) gates every other gateway path except `/polaris` behind a Keycloak session, plus `platform-gateway-sso-builtins` (DENY `/robots.txt`); validate scripts call the gate with a `platform-validate` bearer token via `gateway::curl`)
 - Wave 20: Kafka (3 brokers), RustFS, MySQL, Polaris DB, Jaeger (trino / thanos), temporal-db (creates the `temporal` namespace; PostgreSQL for Temporal)
@@ -34,7 +34,7 @@
 
 Rule: a new application namespace is created with the ambient label. Exceptions:
 - Never enrolled: `thanos` (on hold), `istio-system` (Istio's own namespace: a circular dependency), `istio-ingress` (the gateway is already a mesh proxy) and `kube-system` (host-network pods, excluded by istio-cni, and DNS is at risk).
-- Not enrolled by default: operator namespaces (cert-manager, strimzi-operator, keda, spark-operator, opentelemetry-operator; their traffic goes to the apiserver, which is outside the mesh and already TLS) and `monitoring` (kept outside so that it can still diagnose a broken mesh).
+- Not enrolled by default: operator namespaces (cert-manager, strimzi-operator, volcano-system, keda, spark-operator, opentelemetry-operator; their traffic goes to the apiserver, which is outside the mesh and already TLS) and `monitoring` (kept outside so that it can still diagnose a broken mesh).
 
 ## Kubernetes labels
 

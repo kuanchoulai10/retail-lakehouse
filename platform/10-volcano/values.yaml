@@ -1,0 +1,2 @@
+basic:
+  image_pull_policy: "IfNotPresent"

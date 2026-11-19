@@ -105,7 +105,7 @@ controller:
   batchScheduler:
     # -- Specifies whether to enable batch scheduler for spark jobs scheduling.
     # If enabled, users can specify batch scheduler name in spark application.
-    enable: false
+    enable: true
     # -- Specifies a list of kube-scheduler names for scheduling Spark pods.
     kubeSchedulerNames: []
     # - default-scheduler

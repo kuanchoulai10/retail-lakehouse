@@ -21,3 +21,8 @@ kubectl rollout status deployment/spark-operator-webhook \
   --namespace spark-operator \
   --timeout "${TIMEOUT}" \
   --context "${KUBE_CONTEXT}"
+
+kubectl get deployment/spark-operator-controller \
+  --namespace spark-operator \
+  --output jsonpath='{.spec.template.spec.containers[0].args}' \
+  --context "${KUBE_CONTEXT}" | grep --quiet -- '--enable-batch-scheduler=true'
