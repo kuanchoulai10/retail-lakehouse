@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+from fastapi.testclient import TestClient
+
 from context.catalog.adapter.inbound.web.catalog import AuthenticationParametersApiRequest
 from context.catalog.application.exceptions import (
     CatalogUnavailableError,
@@ -25,6 +28,7 @@ from context.catalog.application.service.catalog import CreateCatalogService
 from tests.context.catalog.adapter.inbound.web.web_test_support import (
     NOW,
     StubUseCase,
+    build_app,
     build_client,
 )
 from tests.context.catalog.fakes.in_memory_catalogs_repo import InMemoryCatalogsRepo
@@ -131,6 +135,32 @@ def test_unavailable_maps_to_502():
 
     assert response.status_code == 502
     assert response.json() == {"detail": message}
+
+
+class _ServiceBuildingABadOutput(StubUseCase):
+    """A list catalogs service with a bug: it builds its output with a list where a tuple is declared."""
+
+    def execute(self, request: Any) -> Any:  # noqa: ANN401
+        """Record the request, then build the refused output."""
+        self.requests.append(request)
+        return ListCatalogsUseCaseOutput(items=[])  # ty: ignore[invalid-argument-type]
+
+
+def test_an_output_the_service_cannot_build_answers_500_not_422():
+    """A refused output is a server bug: the route answers 500, never a client error."""
+    client = TestClient(build_app(list_catalogs=_ServiceBuildingABadOutput()), raise_server_exceptions=False)
+
+    response = client.get("/v1/catalogs")
+
+    assert response.status_code == 500
+
+
+def test_an_output_the_service_cannot_build_reaches_the_server_unhandled():
+    """No handler takes the refused output's TypeError, so the server logs it with its traceback."""
+    client = TestClient(build_app(list_catalogs=_ServiceBuildingABadOutput()))
+
+    with pytest.raises(TypeError, match="ListCatalogsUseCaseOutput was built with refused data: items"):
+        client.get("/v1/catalogs")
 
 
 def test_list_catalogs():

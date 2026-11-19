@@ -6,6 +6,7 @@ from datetime import timedelta
 
 import pytest
 
+from base import UseCaseOutput
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     RemoveOrphanFilesExecutionPolicy,
 )
@@ -42,3 +43,15 @@ def test_a_lookup_error_becomes_not_found() -> None:
     """A repo LookupError becomes a NotFoundError."""
     with pytest.raises(NotFoundError, match="missing"), translate_domain_errors():
         raise LookupError("missing")
+
+
+class _ProbeUseCaseOutput(UseCaseOutput):
+    """An output with one tuple field."""
+
+    names: tuple[str, ...]
+
+
+def test_an_output_the_service_cannot_build_is_not_a_validation_error() -> None:
+    """A refused output is a server bug: its TypeError passes through, never becoming a 422 ValidationError."""
+    with pytest.raises(TypeError, match="_ProbeUseCaseOutput was built with refused data"), translate_domain_errors():
+        _ProbeUseCaseOutput(names=["a"])  # ty: ignore[invalid-argument-type]

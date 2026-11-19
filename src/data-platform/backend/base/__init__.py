@@ -12,8 +12,8 @@ built on Pydantic v2:
 - AggregateRoot: an Entity that acts as the entry point and consistency
   boundary for a cluster of related objects, and collects DomainEvents.
 - DomainEvent: a frozen record of something that happened, timestamped.
-- InvariantViolation: the ValueError every model base raises for refused
-  data, its string one line naming the first problem; construction,
+- InvariantViolation: the ValueError every model base except UseCaseOutput
+  raises for refused data, its string one line naming the first problem; construction,
   ``from_primitives``, ``model_validate`` / ``model_validate_json``,
   ``with_changes`` and entity attribute assignment raise it instead of
   Pydantic's ValidationError. Validating a base through a Pydantic
@@ -28,8 +28,10 @@ built on Pydantic v2:
   objects and repositories to fulfil a business action.
 - UseCaseInput / UseCaseOutput: the frozen, strict request and result of an
   inbound port, holding primitives and nested classes only; an input built
-  from a dict of JSON primitives goes through ``from_primitives``. They raise
-  ``InvariantViolation`` and ``AttributeError`` as the model bases do.
+  from a dict of JSON primitives goes through ``from_primitives``. A refused
+  input raises ``InvariantViolation``; a refused output raises builtin
+  ``TypeError``, since only services build outputs and a refusal is a server
+  bug. Both raise ``AttributeError`` on assignment, as the model bases do.
 - Gateway / Store: outbound ports for other systems and stored state.
 - EventHandler: an abstract handler for a specific domain event type.
 - EventDispatcher: routes domain events to registered handlers.

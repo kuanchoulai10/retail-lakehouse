@@ -232,6 +232,39 @@ def test_a_refused_input_from_the_use_case_is_not_retried() -> None:
     assert sleeps == []
 
 
+class _UseCaseBuildingABadOutput(ProcessTableHintUseCase):
+    """A process table hint service with a bug: it builds its output with a non-string action."""
+
+    def __init__(self) -> None:
+        """Start with no recorded calls."""
+        self.calls: list[ProcessTableHintUseCaseInput] = []
+
+    def execute(self, request: ProcessTableHintUseCaseInput) -> ProcessTableHintUseCaseOutput:
+        """Record the call, then build the refused output."""
+        self.calls.append(request)
+        return ProcessTableHintUseCaseOutput(action=1)  # ty: ignore[invalid-argument-type]
+
+
+def test_an_output_the_service_cannot_build_is_retried_and_logged_like_any_failure(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A refused output is a server bug, not a bad hint: it is retried, logged with its traceback, then committed."""
+    record = _record(1)
+    source = FakeEventSource([record])
+    use_case = _UseCaseBuildingABadOutput()
+
+    with caplog.at_level("WARNING"):
+        sleeps = _run(source, use_case)
+
+    assert len(use_case.calls) == 3
+    assert sleeps == [0.5, 1.0]
+    assert source.committed == [record]
+    given_up = [r for r in caplog.records if r.levelname == "ERROR"]
+    assert len(given_up) == 1
+    assert given_up[0].exc_info is not None
+    assert given_up[0].exc_info[0] is TypeError
+
+
 def test_a_hint_input_that_cannot_be_built_is_skipped_without_retry(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:

@@ -12,7 +12,8 @@ _VALUE_ERROR_PREFIX = "Value error, "
 class InvariantViolation(ValueError):
     """A domain object refused the data it was built or changed with.
 
-    The model bases raise it, chained from Pydantic's error, wherever they
+    The model bases (all but ``UseCaseOutput``, which raises ``TypeError``)
+    raise it, chained from Pydantic's error, wherever they
     validate, so Pydantic's ``ValidationError`` never leaves them. It is a
     ``ValueError``, and its string is one line naming the first problem.
     """

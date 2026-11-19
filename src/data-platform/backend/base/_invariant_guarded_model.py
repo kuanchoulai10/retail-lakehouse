@@ -9,6 +9,10 @@ construction, ``model_validate``, ``model_validate_json``,
 inside an outer model's validator reaches Pydantic as a ``ValueError``, so it
 comes out of the outer model as one ``InvariantViolation`` with the inner line.
 
+A base whose refusal is never the caller's fault overrides ``_refusal`` to
+raise another exception: ``UseCaseOutput`` raises ``TypeError``, because only
+our own services build outputs, so a refused output is a server bug.
+
 Changing a frozen model in place, or deleting a field of any model, is a
 programming error rather than refused data, so it raises Python's builtin
 ``AttributeError`` (as a frozen dataclass does), never ``InvariantViolation``.
@@ -33,12 +37,12 @@ _FROZEN_ERRORS = frozenset({"frozen_instance", "frozen_field"})
 
 
 @contextmanager
-def _raising_invariant_violation() -> Iterator[None]:
-    """Re-raise a Pydantic ``ValidationError`` as an ``InvariantViolation`` chained from it."""
+def _raising_refusal(model_class: type[InvariantGuardedModel]) -> Iterator[None]:
+    """Re-raise a Pydantic ``ValidationError`` as the class's ``_refusal``, chained from it."""
     try:
         yield
     except ValidationError as exc:
-        raise InvariantViolation.from_error(exc) from exc
+        raise model_class._refusal(exc) from exc
 
 
 @contextmanager
@@ -62,10 +66,15 @@ class InvariantGuardedModel(BaseModel):
 
     _immutable_hint: ClassVar[str] = ""
 
+    @classmethod
+    def _refusal(cls, exc: ValidationError) -> Exception:
+        """Return the exception raised for refused data: an ``InvariantViolation``, its line from ``exc``."""
+        return InvariantViolation.from_error(exc)
+
     def __init__(self, /, *args: Any, **data: Any) -> None:  # noqa: ANN401
         """Validate the data as the next base does (``EntityId`` takes its root positionally)."""
         __tracebackhide__ = True
-        with _raising_invariant_violation():
+        with _raising_refusal(type(self)):
             super().__init__(*args, **data)
 
     # Pydantic calls a model's own ``__init__`` when validating it nested inside another
@@ -85,7 +94,7 @@ class InvariantGuardedModel(BaseModel):
         by_name: bool | None = None,
     ) -> Self:
         """Validate ``obj`` as Pydantic does, raising ``InvariantViolation``."""
-        with _raising_invariant_violation():
+        with _raising_refusal(cls):
             return super().model_validate(
                 obj,
                 strict=strict,
@@ -108,7 +117,7 @@ class InvariantGuardedModel(BaseModel):
         by_name: bool | None = None,
     ) -> Self:
         """Validate ``json_data`` as Pydantic does, raising ``InvariantViolation``."""
-        with _raising_invariant_violation():
+        with _raising_refusal(cls):
             return super().model_validate_json(
                 json_data, strict=strict, extra=extra, context=context, by_alias=by_alias, by_name=by_name
             )
@@ -125,14 +134,14 @@ class InvariantGuardedModel(BaseModel):
         by_name: bool | None = None,
     ) -> Self:
         """Validate string data as Pydantic does, raising ``InvariantViolation``."""
-        with _raising_invariant_violation():
+        with _raising_refusal(cls):
             return super().model_validate_strings(
                 obj, strict=strict, extra=extra, context=context, by_alias=by_alias, by_name=by_name
             )
 
     def __setattr__(self, name: str, value: Any) -> None:  # noqa: ANN401
         """Assign as Pydantic does: a refused value raises ``InvariantViolation``, a frozen model ``AttributeError``."""
-        with _raising_invariant_violation(), _refusing_frozen_changes(self):
+        with _raising_refusal(type(self)), _refusing_frozen_changes(self):
             super().__setattr__(name, value)
 
     def __delattr__(self, name: str) -> None:

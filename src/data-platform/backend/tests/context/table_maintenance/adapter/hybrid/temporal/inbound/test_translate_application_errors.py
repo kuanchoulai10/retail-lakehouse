@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from temporalio.exceptions import ApplicationError
 
-from base import InvariantViolation, UseCaseInput
+from base import InvariantViolation, UseCaseInput, UseCaseOutput
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import (
     translate_application_errors,
 )
@@ -57,3 +57,16 @@ def test_an_input_the_activity_cannot_build_is_non_retryable() -> None:
     assert caught.value.type == "InvariantViolation"
     assert caught.value.message.startswith("limit: ")
     assert isinstance(caught.value.__cause__, InvariantViolation)
+
+
+class _ProbeUseCaseOutput(UseCaseOutput):
+    """An output with one int field."""
+
+    count: int
+
+
+def test_an_output_the_service_cannot_build_stays_retryable() -> None:
+    """A refused output is a server bug: its TypeError passes through as an ordinary retryable failure."""
+    with pytest.raises(TypeError, match="_ProbeUseCaseOutput was built with refused data: count"):
+        with translate_application_errors():
+            _ProbeUseCaseOutput(count="1")  # ty: ignore[invalid-argument-type]
