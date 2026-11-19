@@ -266,6 +266,15 @@ def test_a_recorded_attempt_names_a_run_and_a_positive_attempt(run_id, attempt):
         RecordedAttempt(run_id=run_id, attempt=attempt)
 
 
+@pytest.mark.parametrize(
+    "run_id", ["0193f3a2-7c41-7d6e-9a55-1b2c3d4e5f60", "mr-0000000000000000000000000", "rc-00000000000000000000000001"]
+)
+def test_a_recorded_attempt_refuses_a_run_id_of_another_shape(run_id):
+    """A recorded attempt holds an ``mr-`` run id only, like ``TableMaintenanceRunId``; an old UUID is refused."""
+    with pytest.raises(InvariantViolation, match="mr-<26 base32 characters>"):
+        RecordedAttempt(run_id=run_id, attempt=1)
+
+
 def test_marks_set_under_another_policy_are_lifted():
     """Only the marks set under a policy other than the one that applies now are lifted."""
     v1 = AppliedPolicyRef(policy_id=DEFAULT_POLICY_ID, version=1, target=None)

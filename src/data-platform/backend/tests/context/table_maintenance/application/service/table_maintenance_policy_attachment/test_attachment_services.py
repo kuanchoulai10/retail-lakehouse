@@ -312,6 +312,17 @@ def test_list_filters_by_policy(world):
     assert [i.path for i in items] == [("prod", "sales")]
 
 
+def test_list_skips_an_attachment_whose_policy_went_missing_between_the_reads(world):
+    """A detach and delete racing the listing leave an attachment with no policy; that row is skipped, not a 500."""
+    world.attach("catalog", ("prod",), "gold")
+    world.attach("namespace", ("prod", "sales"), "silver")
+    world.policies.delete(world.policy_id("silver"))
+
+    items = world.list_attachments.execute(ListTableMaintenancePolicyAttachmentsUseCaseInput()).items
+
+    assert [(i.policy_name, i.path) for i in items] == [("gold", ("prod",))]
+
+
 def test_list_for_an_unknown_policy_is_not_found(world):
     """Listing the attachments of a policy that does not exist answers NotFoundError."""
     with pytest.raises(NotFoundError):

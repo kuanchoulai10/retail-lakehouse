@@ -305,6 +305,33 @@ def test_attention_mark_is_stored_with_the_policy_id(repo: TablesSqlRepo, engine
     }
 
 
+@pytest.mark.parametrize(
+    "old_policy",
+    [
+        {"name": "nightly", "version": 3, "target": None},
+        {"id": NIGHTLY.value, "version": 3, "target": None},
+    ],
+    ids=["named-by-name", "without-name"],
+)
+def test_an_attention_mark_of_an_older_shape_is_refused_naming_the_expected_one(
+    repo: TablesSqlRepo, engine: Engine, old_policy: dict
+):
+    """A mark stored before policies had ids and kept names is refused with the shape it needs, not a KeyError."""
+    repo.create(_table())
+    mark = {"since": NOW.isoformat(), "reason": "r", "policy": old_policy}
+    with engine.begin() as conn:
+        conn.execute(
+            tables_table.update().values(
+                operation_states_json={
+                    "rewrite_data_files": {"last_attempt_at": None, "consecutive_failures": 0, "attention": mark}
+                }
+            )
+        )
+    with pytest.raises(ValueError, match=r'"id", "version", "target", "name"') as refused:
+        repo.get(TableId("u1"))
+    assert not isinstance(refused.value, KeyError)
+
+
 def test_last_commit_and_last_discovery_round_trip(repo: TablesSqlRepo):
     """A table's last commit and the last discovery stamped when it was dropped are stored and read back."""
     table = _table()

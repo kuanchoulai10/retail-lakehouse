@@ -47,7 +47,8 @@ def test_compaction_round_summary_names_the_budget():
 
 
 def test_compaction_round_details_count_partitions_and_tables():
-    """A round's details say how many partitions of how many tables it granted."""
-    assert compaction_round_details(3, 2) == "granted 3 partitions of 2 tables"
-    assert compaction_round_details(1, 1) == "granted 1 partition of 1 table"
-    assert compaction_round_details(0, 0) == "granted 0 partitions of 0 tables"
+    """A round's details name its round id, so the console's round is found in Temporal, then what it granted."""
+    round_id = "cr-00000000000000000000000001"
+    assert compaction_round_details(round_id, 3, 2) == f"round {round_id} · granted 3 partitions of 2 tables"
+    assert compaction_round_details(round_id, 1, 1) == f"round {round_id} · granted 1 partition of 1 table"
+    assert compaction_round_details(round_id, 0, 0) == f"round {round_id} · granted 0 partitions of 0 tables"

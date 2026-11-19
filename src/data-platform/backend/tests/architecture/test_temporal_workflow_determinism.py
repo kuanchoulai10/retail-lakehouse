@@ -138,6 +138,7 @@ def test_workflow_module_is_deterministic(path: Path):
         "from datetime import datetime as dt\nx = dt.now()",
         "import datetime as d\nx = d.date.today()",
         "from shared_kernel import new_prefixed_id",
+        "from shared_kernel import new_prefixed_id as mint\nx = mint('cr')",
         "from shared_kernel.new_prefixed_id import new_prefixed_id",
         "import shared_kernel.new_prefixed_id",
         "import shared_kernel\nx = shared_kernel.new_prefixed_id('cr')",

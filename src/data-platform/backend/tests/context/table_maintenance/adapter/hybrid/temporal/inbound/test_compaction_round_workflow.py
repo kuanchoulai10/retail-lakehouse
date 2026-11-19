@@ -281,7 +281,7 @@ def test_round_tags_itself_with_the_tables_it_granted():
     outcome = _run(Script(_round("t-1", "t-2", picked=3)))
 
     assert outcome.granted == ["t-1", "t-2"]
-    assert outcome.details == "granted 3 partitions of 2 tables"
+    assert outcome.details == f"round {outcome.requests[0]['round_id']} · granted 3 partitions of 2 tables"
 
 
 def test_round_with_nothing_granted_signals_nobody():
@@ -290,7 +290,7 @@ def test_round_with_nothing_granted_signals_nobody():
 
     assert outcome.signals == []
     assert outcome.granted is None
-    assert outcome.details == "granted 0 partitions of 0 tables"
+    assert outcome.details == f"round {outcome.requests[0]['round_id']} · granted 0 partitions of 0 tables"
 
 
 def test_a_missing_reconciliation_workflow_does_not_fail_the_round():

@@ -127,6 +127,10 @@ class TableReconciliationWorkflow:
     found every candidate held says when the first hold ends
     (``next_check_at``), and the next plan comes then, at least 10 seconds
     later, when that is before the interval (patch ``recheck-held-candidates``).
+
+    Each pass mints its reconciliation id (``rc-``) and the run id it would start under (``mr-``)
+    from the workflow's clock and random source (patch ``prefixed-run-and-reconciliation-ids``); a
+    history from before prefixed ids replays with the UUIDs it minted then.
     """
 
     @workflow.init

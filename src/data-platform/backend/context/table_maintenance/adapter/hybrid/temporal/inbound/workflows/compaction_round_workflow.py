@@ -40,10 +40,15 @@ class CompactionRoundWorkflow:
     """Run one round of the compaction scheduler and hand its grants to the tables.
 
     The workflow mints the round's ``cr-`` id once, before its first activity,
-    and every attempt of the round activity is sent it, so an attempt retried
-    after it saved answers with the round it recorded instead of granting
-    twice. The schedule starts each round once (no retry policy, no
-    continue-as-new), so one workflow names one round. A
+    from the workflow's clock and random source (patch
+    ``prefixed-compaction-round-id``; a history from before it replays with its
+    workflow id as the round id), and every attempt of the schedule activity is
+    sent it, so an attempt retried after it saved answers with the round it
+    recorded instead of granting twice. The schedule starts each round once (no
+    retry policy, no continue-as-new), so one workflow names one round; a reset
+    of the workflow would mint a new id. Its current details name the round id
+    and what it granted, so the round the console shows can be found in the
+    Temporal UI. A
     candidate another writer changed meanwhile makes the activity fail and
     retry on fresh reads. Each granted table's reconciliation is woken once
     with ``compaction_granted``; a table without a running reconciliation is
@@ -67,7 +72,7 @@ class CompactionRoundWorkflow:
             retry_policy=_POLICY.retry_policy(),
         )
         granted = [str(table) for table in result["granted_table_uuids"]]
-        workflow.set_current_details(compaction_round_details(int(result["picked"]), len(granted)))
+        workflow.set_current_details(compaction_round_details(round_id, int(result["picked"]), len(granted)))
         await asyncio.gather(*(self._grant(table, round_id) for table in granted))
         if granted:
             workflow.upsert_search_attributes([TableSearchAttributeKeys.GRANTED_TABLE_UUIDS.value_set(granted)])

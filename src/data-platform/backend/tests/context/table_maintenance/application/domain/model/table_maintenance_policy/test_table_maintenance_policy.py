@@ -101,3 +101,20 @@ def test_invalid_name_is_rejected(name: str):
     """A name outside the pattern is rejected."""
     with pytest.raises(InvariantViolation):
         TableMaintenancePolicyName(value=name)
+
+
+@pytest.mark.parametrize(
+    "name", ["mp-00000000000000000000000000", "mp-01kaa4zc9qf3v8d2m6xk0w7b1n", "rc-00000000000000000000000001"]
+)
+def test_a_name_shaped_like_a_prefixed_id_is_rejected(name: str):
+    """A name that reads as an id (``mp-…`` or any other prefix) is refused, so names and ids never mix."""
+    with pytest.raises(InvariantViolation, match="must not look like a prefixed id"):
+        TableMaintenancePolicyName(value=name)
+
+
+@pytest.mark.parametrize(
+    "name", ["mp-nightly", "nightly-v2-01kaa4zc9qf3v8d2m6xk0w7b1n", "MP-00000000000000000000000000"]
+)
+def test_a_name_that_only_resembles_an_id_is_accepted(name: str):
+    """Only the exact id shape is refused; a name that merely starts with a prefix stays valid."""
+    assert TableMaintenancePolicyName(value=name).value == name

@@ -628,6 +628,19 @@ assert_manual_run_recorded() {
   progress "reconciliation of ${uuid} records the manual run ${run_id}"
 }
 
+assert_prefixed_ids() {
+  local uuid="$1" run_id="$2" rule_id="$3" policy="$4" ids
+  ids="$(jq -cn --arg mr "${run_id}" --arg dr "${rule_id}" \
+    --arg rc "$(reconciliation_ids "${uuid}" | jq -r '.[0] // ""')" \
+    --arg cr "$(api GET "/v1/compaction-rounds?limit=1" | jq -r '.[0].round_id // ""')" \
+    --arg mp "$(api GET "/v1/maintenance-policies/${policy}" | jq -r '.id')" \
+    '{mr: $mr, rc: $rc, cr: $cr, dr: $dr, mp: $mp}')"
+  # shellcheck disable=SC2016
+  check 'to_entries | all(.[]; . as $e | $e.value | test("^" + $e.key + "-[0-7][0-9a-hjkmnp-tv-z]{25}$"))' \
+    "${ids}" "an id the API returned is not <prefix>-<26 base32 characters> (ADR 0011)"
+  progress "run, reconciliation, round, discovery rule and policy ids are prefixed: $(jq -c . <<<"${ids}")"
+}
+
 assert_no_failed_candidates() {
   local uuid="$1" candidates failed
   candidates="$(api GET "/v1/tables/${uuid}/compaction-candidates")"
@@ -932,3 +945,4 @@ fi
 assert_reconcile_running "${ORDERS_UUID}"
 assert_reconcile_running "${REGIONS_UUID}"
 assert_workflows_found_by_table "${ORDERS_UUID}" "${ORDERS_MANUAL_RUN_ID}"
+assert_prefixed_ids "${ORDERS_UUID}" "${ORDERS_MANUAL_RUN_ID}" "${RULE_ID}" tm-e2e-orders

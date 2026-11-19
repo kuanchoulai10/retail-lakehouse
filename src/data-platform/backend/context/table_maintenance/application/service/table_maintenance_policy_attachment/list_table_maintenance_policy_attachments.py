@@ -58,7 +58,11 @@ class ListTableMaintenancePolicyAttachmentsService(ListTableMaintenancePolicyAtt
     def execute(
         self, request: ListTableMaintenancePolicyAttachmentsUseCaseInput
     ) -> ListTableMaintenancePolicyAttachmentsUseCaseOutput:
-        """Return the attachments, each orphaned when its target left the catalog; an unknown policy is not found."""
+        """Return the attachments, each orphaned when its target left the catalog; an unknown policy is not found.
+
+        The attachments and their policies are two reads: an attachment whose policy was detached
+        and deleted in between has no policy left to name, so it is skipped.
+        """
         if request.policy_name is None:
             attachments = self._attachments_repo.list_all()
         else:
@@ -82,6 +86,7 @@ class ListTableMaintenancePolicyAttachmentsService(ListTableMaintenancePolicyAtt
                     orphaned=not self._in_catalog(a.target, listings),
                 )
                 for a in attachments
+                if a.policy_id.value in names
             )
         )
 

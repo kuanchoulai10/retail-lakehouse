@@ -312,12 +312,13 @@ KUBE_CONTEXT=retail-lakehouse bash platform/25-lakehouse-control-plane/bootstrap
 
 # 3. 查看 driver log（即時串流；app 名稱見下方說明）
 kubectl logs -f \
-  -l spark-role=driver,spark-app-name=tm-rdf-<run-id 前 20 碼>-a1 \
+  -l spark-role=driver,spark-app-name=tm-rdf-<run id 中 mr- 之後的 26 碼>-a1 \
   --namespace lakehouse-maintenance-operations \
   --context retail-lakehouse
 ```
 
-每次嘗試會建立一個 `SparkApplication`，名稱為 `tm-<操作代碼>-<run id 去掉連字號後的前 20 碼>-a<attempt>`，
+每次嘗試會建立一個 `SparkApplication`，名稱為 `tm-<操作代碼>-<run id 中 mr- 之後的 26 碼>-a<attempt>`
+（例如 run `mr-01kaa4zc9qf3v8d2m6xk0w7b1n` 的第一次 `rewrite_data_files` 為 `tm-rdf-01kaa4zc9qf3v8d2m6xk0w7b1n-a1`），
 操作代碼為 `rdf`（`rewrite_data_files`）、`rm`（`rewrite_manifests`）、`es`（`expire_snapshots`）、
 `rof`（`remove_orphan_files`）。每個 app 也帶有 `table-maintenance/run-id`、`table-maintenance/operation`
 與 `table-maintenance/attempt` label。
@@ -333,7 +334,7 @@ kubectl get sparkapplications \
 
 # 查看某個 app 的 pods
 kubectl get pods \
-  -l spark-app-name=tm-rdf-<run-id 前 20 碼>-a1 \
+  -l spark-app-name=tm-rdf-<run id 中 mr- 之後的 26 碼>-a1 \
   --namespace lakehouse-maintenance-operations \
   --context retail-lakehouse
 ```

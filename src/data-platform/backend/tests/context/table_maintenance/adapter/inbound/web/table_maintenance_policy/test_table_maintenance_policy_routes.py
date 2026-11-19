@@ -46,7 +46,7 @@ def test_policy_routes_still_use_names(world: PolicyWebWorld) -> None:
     assert world.client.get("/v1/maintenance-policies/gold/versions/1").json()["id"] == policy_id
     listed = world.client.get("/v1/maintenance-policies").json()["policies"]
     assert {p["name"]: p["id"] for p in listed} == {"default": DEFAULT_POLICY_ID, "gold": policy_id}
-    assert world.client.get(f"/v1/maintenance-policies/{policy_id}").status_code == 404
+    assert world.client.get(f"/v1/maintenance-policies/{policy_id}").status_code == 422
     assert world.client.delete("/v1/maintenance-policies/gold").status_code == 204
 
 
@@ -128,6 +128,15 @@ def test_broken_invariant_detail_names_the_dotted_field(world: PolicyWebWorld) -
         422,
         {"detail": "operations.expire_snapshots.trigger_policy.cooldown_seconds: must not be negative"},
     )
+
+
+def test_create_with_a_name_shaped_like_an_id_is_422(world: PolicyWebWorld) -> None:
+    """A policy named like an ``mp-`` id answers 422 with a message that says why."""
+    response = world.client.post(
+        "/v1/maintenance-policies", json={"name": "mp-01kaa4zc9qf3v8d2m6xk0w7b1n", **policy_body()}
+    )
+    assert response.status_code == 422
+    assert "must not look like a prefixed id" in response.json()["detail"]
 
 
 def test_put_with_current_version_increments_it(world: PolicyWebWorld) -> None:

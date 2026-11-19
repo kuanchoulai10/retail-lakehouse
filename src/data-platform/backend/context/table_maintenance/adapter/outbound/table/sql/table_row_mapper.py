@@ -26,6 +26,8 @@ from context.table_maintenance.application.port.outbound.table import (
 if TYPE_CHECKING:
     from sqlalchemy import RowMapping
 
+_ATTENTION_POLICY_KEYS = frozenset({"id", "version", "target", "name"})
+
 
 def _encode_attention(mark: AttentionMark | None) -> dict[str, Any] | None:
     if mark is None:
@@ -50,6 +52,13 @@ def _decode_attention(data: dict[str, Any] | None) -> AttentionMark | None:
         msg = "an attention mark needs its start time"
         raise ValueError(msg)
     policy = data["policy"]
+    if not isinstance(policy, dict) or not _ATTENTION_POLICY_KEYS <= policy.keys():
+        found = sorted(policy) if isinstance(policy, dict) else type(policy).__name__
+        msg = (
+            'an attention mark\'s policy must be {"id", "version", "target", "name"} (an mp- id and the '
+            f"policy's name when the mark was set); found {found}, a mark from before policies had ids"
+        )
+        raise ValueError(msg)
     return AttentionMark(
         since=since,
         reason=data["reason"],
