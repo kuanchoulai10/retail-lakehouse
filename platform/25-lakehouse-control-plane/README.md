@@ -82,7 +82,7 @@ Maintenance SparkApplications are scheduled by Volcano. The `volcano` block in `
 | P2 | `table-maintenance` | `table-maintenance-p2` | 1000001 |
 | P3 (default) | `table-maintenance` | `table-maintenance-p3` | 1000000 |
 
-Each queue's `capability` is one L job (`cpu: "2"`, `memory: 5017Mi`), with no `guarantee` and no `reclaimable`. Every class has `preemptionPolicy: Never` and `globalDefault: false`: a higher priority is picked first when capacity frees up, but never evicts a running job.
+Each queue's `capability` is one L job (`cpu: "2"`, `memory: 5017Mi`), with no `guarantee` and no `reclaimable`. Every size requests 2 CPU and the cap is cpu 2, so each queue runs one job of any size at a time; the cpu cap is what to raise for more concurrency (the memory cap then decides how many fit). Every class has `preemptionPolicy: Never` and `globalDefault: false`: a higher priority is picked first when capacity frees up, but never evicts a running job.
 
 ### Compaction candidates
 

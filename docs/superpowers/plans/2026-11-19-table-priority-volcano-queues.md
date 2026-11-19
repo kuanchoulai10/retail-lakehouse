@@ -252,6 +252,6 @@ def test_submit_passes_the_runs_priority(): ...       # run created with P1 → 
 
 - [ ] **Step 1:** `task offboard KUBE_CONTEXT=retail-lakehouse`, then `task onboard KUBE_CONTEXT=retail-lakehouse`; `task apps:validate KUBE_CONTEXT=retail-lakehouse` exits 0.
 - [ ] **Step 2:** Run maintenance on one table; `kubectl get podgroups --namespace lakehouse-maintenance-operations --context retail-lakehouse --output wide` shows queue `table-maintenance`, the pods' `schedulerName` is `volcano` and `priorityClassName` `table-maintenance-p3`, and the PodGroup `minResources.memory` matches the size.
-- [ ] **Step 3:** Start manual P3 runs on three small tables at once (size S, `2304Mi` each, so two fit under `5017Mi` and the third does not): the third PodGroup stays `Pending` until one finishes. While it waits, a manual P0 run on a fourth table runs in `table-maintenance-urgent`.
+- [ ] **Step 3:** Start manual P3 runs on two tables at once: one PodGroup runs and the other stays `Pending` until it finishes (each queue holds one job of any size: cpu 2). With one P3 job running and an admission slot free, a manual P0 run on a third table runs at once in `table-maintenance-urgent`.
 - [ ] **Step 4:** Set a table to `P1` in the console; its next run's PodGroup uses `table-maintenance-p1`.
 - [ ] **Step 5:** `task gates:pre-pr`; record the results on KCL-92 in a dated comment, add the `project-history.md` line, and push only when the user asks.
