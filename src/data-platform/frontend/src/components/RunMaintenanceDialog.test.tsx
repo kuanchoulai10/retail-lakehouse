@@ -24,11 +24,26 @@ describe("RunMaintenanceDialog", { timeout: 15_000 }, () => {
     expect(screen.getByRole("combobox", { name: "Priority" })).toHaveTextContent("P1");
   });
 
-  it("sends the table's priority when the user does not change it", async () => {
+  it("sends no priority when the user does not change the table's", async () => {
     const user = userEvent.setup();
     const calls = renderDialog("P2");
     await user.click(screen.getByRole("button", { name: "Run" }));
-    await waitFor(() => expect(bodyOf(calls, "POST", PATH)).toMatchObject({ priority: "P2" }));
+    await waitFor(() =>
+      expect(bodyOf(calls, "POST", PATH)).toEqual({
+        operations: ["rewrite_data_files", "rewrite_manifests", "expire_snapshots", "remove_orphan_files"],
+      }),
+    );
+  });
+
+  it("sends no priority when the user picks another and then goes back to the table's", async () => {
+    const user = userEvent.setup();
+    const calls = renderDialog("P3");
+    await user.click(screen.getByRole("combobox", { name: "Priority" }));
+    await user.click(await screen.findByRole("option", { name: "P0 · urgent" }));
+    await user.click(screen.getByRole("combobox", { name: "Priority" }));
+    await user.click(await screen.findByRole("option", { name: "P3 · default" }));
+    await user.click(screen.getByRole("button", { name: "Run" }));
+    await waitFor(() => expect(bodyOf(calls, "POST", PATH)).not.toHaveProperty("priority"));
   });
 
   it("sends the priority the user picked", async () => {

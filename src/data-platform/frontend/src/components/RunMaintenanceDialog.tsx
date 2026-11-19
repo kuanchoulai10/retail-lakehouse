@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Banner, Button, CheckBox, ModalDialog, Select } from "@retail-lakehouse/design-system";
+import { Banner, Button, CheckBox, Divider, ModalDialog, Select } from "@retail-lakehouse/design-system";
 import { useState } from "react";
 import { getListTableMaintenanceRunsQueryKey } from "@/api/generated/table-maintenance-runs/table-maintenance-runs";
 import { triggerTableMaintenance } from "@/api/generated/tables/tables";
@@ -16,7 +16,7 @@ export const ALL_OPERATIONS = [
 
 interface Props {
   tableUuid: string;
-  // The table's own priority, the run's until the user picks another.
+  // The table's own priority. A run that keeps it sends none, so the backend uses the table's at plan time.
   tablePriority: string;
   initialOperations?: string[];
   open?: boolean;
@@ -37,7 +37,9 @@ export function RunMaintenanceDialog({
     mutationFn: () =>
       triggerTableMaintenance(tableUuid, {
         operations: ALL_OPERATIONS.filter((op) => selected.includes(op)),
-        priority: priority as TriggerTableMaintenanceApiRequestPriority,
+        ...(priority === tablePriority
+          ? {}
+          : { priority: priority as TriggerTableMaintenanceApiRequestPriority }),
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: getListTableMaintenanceRunsQueryKey(tableUuid) });
@@ -82,6 +84,7 @@ export function RunMaintenanceDialog({
             onCheckedChange={() => toggle(operation)}
           />
         ))}
+        <Divider className="my-2" />
         <Select
           label="Priority"
           items={TABLE_PRIORITY_ITEMS}

@@ -43,7 +43,7 @@ describe("PolicyVersionPage", () => {
     expect(within(data).getByText("Reducible files at least 5")).toBeInTheDocument();
     expect(screen.getByText("On: nothing is started")).toBeInTheDocument();
     const facts = screen.getByRole("region", { name: "Policy" });
-    expect(within(facts).getByText("Priority")).toBeInTheDocument();
+    expect(within(facts).getByText("Compaction priority")).toBeInTheDocument();
     expect(await within(facts).findByText("P1 (within 4 h)")).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Save|Edit/ })).not.toBeInTheDocument();

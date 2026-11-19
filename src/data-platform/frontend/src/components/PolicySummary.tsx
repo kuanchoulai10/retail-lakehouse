@@ -68,7 +68,7 @@ export function PolicySummary({ description, reconcileIntervalSeconds, dryRun, p
             { label: "Description", value: description === "" ? "—" : description },
             { label: "Reconcile interval", value: seconds(reconcileIntervalSeconds) },
             { label: "Dry run", value: dryRun ? "On: nothing is started" : "Off" },
-            { label: "Priority", value: <PriorityText priority={priority} /> },
+            { label: "Compaction priority", value: <PriorityText priority={priority} /> },
           ]}
         />
       </Panel>
