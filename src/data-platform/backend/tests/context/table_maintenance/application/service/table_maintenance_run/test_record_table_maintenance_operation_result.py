@@ -254,6 +254,7 @@ def test_oom_at_l_marks_the_operation_needs_attention_under_the_applicable_polic
     assert mark.since == now
     assert mark.reason == "out of memory at size L"
     assert mark.policy == AppliedPolicyRef(policy_id=DEFAULT_POLICY_ID, version=1, target=None)
+    assert mark.policy_name.value == "default"
     assert len(resolve_calls) == 1
 
 
@@ -412,8 +413,17 @@ def test_needs_attention_is_marked_under_the_policy_the_run_was_planned_under(
     """An OOM at L marks the operation under the policy its run was planned under, not the one applying now."""
     _run(runs_repo, table, now, ComputeSize.M, ComputeSize.L)
     target = {"type": "table", "path": ["iceberg", "sales"], "table_uuid": "u-1"}
-    _record(recorder, now, attempt=2, policy_id=NIGHTLY.value, policy_version=2, policy_target=target)
+    _record(
+        recorder,
+        now,
+        attempt=2,
+        policy_id=NIGHTLY.value,
+        policy_name="nightly",
+        policy_version=2,
+        policy_target=target,
+    )
     mark = tables_repo.get(TableId("u-1")).operation_state(RDF).attention
     assert mark is not None
     assert mark.policy == AppliedPolicyRef(policy_id=NIGHTLY, version=2, target=target)
+    assert mark.policy_name.value == "nightly"
     assert resolve_calls == []

@@ -12,6 +12,7 @@ from context.table_maintenance.application.domain.model.table import (
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     TableMaintenancePolicyId,
+    TableMaintenancePolicyName,
 )
 
 T0 = datetime(2026, 11, 13, tzinfo=UTC)
@@ -20,7 +21,12 @@ TARGET = {"type": "table", "path": ["iceberg", "e2e", "orders"], "table_uuid": "
 NIGHTLY = TableMaintenancePolicyId("mp-00000000000000000000000001")
 WEEKLY = TableMaintenancePolicyId("mp-00000000000000000000000002")
 POLICY = AppliedPolicyRef(policy_id=NIGHTLY, version=1, target=TARGET)
-MARK = AttentionMark(since=T0, reason="out of memory at size L", policy=POLICY)
+MARK = AttentionMark(
+    since=T0,
+    reason="out of memory at size L",
+    policy=POLICY,
+    policy_name=TableMaintenancePolicyName(value="nightly"),
+)
 
 
 def test_start_size_defaults_to_s():

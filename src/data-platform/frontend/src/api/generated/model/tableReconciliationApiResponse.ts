@@ -15,8 +15,9 @@ export interface TableReconciliationApiResponse {
   dry_run: boolean;
   operations: ReconciliationOperationApiResponse[];
   outcome: string;
+  policy_deleted: boolean;
   policy_id: string;
-  policy_name: string | null;
+  policy_name: string;
   policy_target: ReconciliationPolicyTargetApiResponse | null;
   policy_version: number;
   reconciled_at: string;

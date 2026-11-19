@@ -80,6 +80,7 @@ def _reconciliation(rec_id: str, at: datetime, table: str = "t-1") -> TableRecon
         ],
         run_id=None,
         policy_id=NIGHTLY,
+        policy_name=TableMaintenancePolicyName(value="nightly"),
         policy_version=4,
         policy_target=PolicyTarget(type=PolicyTargetType.NAMESPACE, path=("prod", "sales")),
     )
@@ -185,12 +186,13 @@ def test_response_names_the_policy_used() -> None:
 
     assert body["policy_id"] == NIGHTLY.value
     assert body["policy_name"] == "nightly"
+    assert body["policy_deleted"] is False
     assert body["policy_version"] == 4
     assert body["policy_target"] == {"type": "namespace", "path": ["prod", "sales"]}
 
 
-def test_response_under_a_deleted_policy_has_a_null_policy_name() -> None:
-    """A record whose policy was deleted since keeps the policy id and answers a null name."""
+def test_response_under_a_deleted_policy_keeps_its_name() -> None:
+    """A record whose policy was deleted since keeps the policy id and the name it recorded, flagged deleted."""
     repo = InMemoryTableReconciliationsRepo()
     repo.create(_reconciliation(FIRST, NOW))
     client = build_client(
@@ -199,4 +201,4 @@ def test_response_under_a_deleted_policy_has_a_null_policy_name() -> None:
 
     body = client.get("/v1/tables/t-1/reconciliations").json()[0]
 
-    assert (body["policy_id"], body["policy_name"]) == (NIGHTLY.value, None)
+    assert (body["policy_id"], body["policy_name"], body["policy_deleted"]) == (NIGHTLY.value, "nightly", True)

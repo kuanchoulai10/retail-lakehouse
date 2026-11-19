@@ -30,6 +30,7 @@ from context.table_maintenance.application.domain.model.table_discovery_rules im
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     TableMaintenancePolicyId,
+    TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.exceptions import ConflictError
 from context.table_maintenance.application.service.table import apply_discovery_to_known_table
@@ -245,6 +246,7 @@ def test_operation_state_round_trips_size_and_attention(repo: TablesSqlRepo):
             version=3,
             target={"type": "table", "path": ["iceberg", "inventory"], "table_uuid": "u1"},
         ),
+        policy_name=TableMaintenancePolicyName(value="nightly"),
     )
     table.operation_states = {
         MaintenanceOperation.REWRITE_DATA_FILES: OperationState(
@@ -281,16 +283,26 @@ def test_operation_state_without_new_keys_decodes_with_defaults(repo: TablesSqlR
 
 
 def test_attention_mark_is_stored_with_the_policy_id(repo: TablesSqlRepo, engine: Engine):
-    """A needs-attention mark is stored as ``{"policy": {"id", "version", "target"}}``, pointing at the policy id."""
+    """A needs-attention mark is stored as ``{"policy": {"id", "version", "target", "name"}}``, by the policy id."""
     table = _table()
-    mark = AttentionMark(since=NOW, reason="r", policy=AppliedPolicyRef(policy_id=NIGHTLY, version=3, target=None))
+    mark = AttentionMark(
+        since=NOW,
+        reason="r",
+        policy=AppliedPolicyRef(policy_id=NIGHTLY, version=3, target=None),
+        policy_name=TableMaintenancePolicyName(value="nightly"),
+    )
     table.operation_states = {MaintenanceOperation.REWRITE_DATA_FILES: OperationState(attention=mark)}
     repo.create(table)
 
     with engine.connect() as conn:
         stored = conn.execute(tables_table.select()).one()._mapping["operation_states_json"]
 
-    assert stored["rewrite_data_files"]["attention"]["policy"] == {"id": NIGHTLY.value, "version": 3, "target": None}
+    assert stored["rewrite_data_files"]["attention"]["policy"] == {
+        "id": NIGHTLY.value,
+        "version": 3,
+        "target": None,
+        "name": "nightly",
+    }
 
 
 def test_last_commit_and_last_discovery_round_trip(repo: TablesSqlRepo):

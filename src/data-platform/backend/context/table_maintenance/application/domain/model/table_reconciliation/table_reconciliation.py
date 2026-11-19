@@ -12,7 +12,10 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
 )
 from context.table_maintenance.application.domain.model.table import TableId
-from context.table_maintenance.application.domain.model.table_maintenance_policy import TableMaintenancePolicyId
+from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    TableMaintenancePolicyId,
+    TableMaintenancePolicyName,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
     PolicyTarget,
 )
@@ -44,7 +47,9 @@ class TableReconciliation(AggregateRoot[TableReconciliationId]):
 
     ``policy_id``, ``policy_version`` and ``policy_target`` point at the maintenance policy the
     pass assessed with, by its ``mp-`` id, and where it is attached (``None`` for the default with
-    nothing attached). The id stays after the policy is renamed or deleted.
+    nothing attached). The id stays after the policy is renamed or deleted. ``policy_name`` is a
+    display-only copy of the policy's name when the record was written, so a record under a
+    policy deleted since still reads by name; the relation is the id, never the name.
     """
 
     id: TableReconciliationId
@@ -57,6 +62,7 @@ class TableReconciliation(AggregateRoot[TableReconciliationId]):
     operations: tuple[OperationOutcome, ...]
     run_id: TableMaintenanceRunId | None
     policy_id: TableMaintenancePolicyId
+    policy_name: TableMaintenancePolicyName
     policy_version: PositiveInt
     policy_target: PolicyTarget | None
 
@@ -94,6 +100,7 @@ class TableReconciliation(AggregateRoot[TableReconciliationId]):
         operations: Iterable[OperationOutcome],
         run_id: TableMaintenanceRunId | None,
         policy_id: TableMaintenancePolicyId,
+        policy_name: TableMaintenancePolicyName,
         policy_version: int,
         policy_target: PolicyTarget | None,
     ) -> TableReconciliation:
@@ -110,6 +117,7 @@ class TableReconciliation(AggregateRoot[TableReconciliationId]):
             operations=tuple(sorted(operations, key=lambda o: position[o.operation])),
             run_id=run_id,
             policy_id=policy_id,
+            policy_name=policy_name,
             policy_version=policy_version,
             policy_target=policy_target,
         )

@@ -522,10 +522,11 @@ class TableReconciliationWorkflow:
     ) -> None:
         """Store one reconciliation of a table the plan found; a failure is logged and the loop goes on.
 
-        The record points at the plan's policy by id. A plan an older worker returned names its
-        policy instead and has no ``policy_id``: the record then carries none, the recorder refuses
-        it and the refusal is logged like any other failure (it changes only the activity's input,
-        so it needs no patch).
+        The record points at the plan's policy by id and carries the plan's ``policy_name`` for
+        display. A plan an older worker returned names its policy instead and has no ``policy_id``
+        (or no ``policy_name``): the record then carries none, the recorder refuses it and the
+        refusal is logged like any other failure (it changes only the activity's input, so it
+        needs no patch).
         """
         if not plan["table_found"]:
             return
@@ -542,6 +543,7 @@ class TableReconciliationWorkflow:
                     "run_id": run_id,
                     "run_start_failed": run_start_failed,
                     "policy_id": plan.get("policy_id"),
+                    "policy_name": plan.get("policy_name"),
                     "policy_version": plan["policy_version"],
                     "policy_target": plan["policy_target"],
                 },

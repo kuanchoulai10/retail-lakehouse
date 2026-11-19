@@ -38,7 +38,8 @@ class ListTableReconciliationsUseCaseOutput(UseCaseOutput):
         """One reconciliation of the listing.
 
         ``policy_id`` is the ``mp-`` id of the policy the reconciliation used and ``policy_name``
-        that policy's current name, or ``None`` when the policy has been deleted since.
+        that policy's current name, or, when ``policy_deleted`` says the policy has been deleted
+        since, the name it had when the reconciliation was recorded.
         """
 
         reconciliation_id: str
@@ -51,7 +52,8 @@ class ListTableReconciliationsUseCaseOutput(UseCaseOutput):
         operations: tuple[ListTableReconciliationsUseCaseOutput.Operation, ...]
         run_id: str | None
         policy_id: str
-        policy_name: str | None
+        policy_name: str
+        policy_deleted: bool
         policy_version: int
         policy_target: ListTableReconciliationsUseCaseOutput.PolicyTarget | None
 

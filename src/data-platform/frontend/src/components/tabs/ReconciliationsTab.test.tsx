@@ -50,6 +50,7 @@ function quiet(id: string, reconciledAt: string): TableReconciliationApiResponse
     run_id: null,
     policy_id: DEFAULT_POLICY_ID,
     policy_name: "default",
+    policy_deleted: false,
     policy_version: 1,
     policy_target: null,
   };
@@ -331,12 +332,14 @@ describe("ReconciliationsTab", () => {
     expect(within(dialog).getByText(/inherited from namespace iceberg\.retail/)).toBeInTheDocument();
   });
 
-  it("names a policy deleted since by its id, without a link", async () => {
+  it("names a policy deleted since by the name it had, without a link", async () => {
     const user = userEvent.setup();
-    stubList([{ ...STARTED, policy_id: NIGHTLY_POLICY_ID, policy_name: null, policy_version: 4 }]);
+    stubList([
+      { ...STARTED, policy_id: NIGHTLY_POLICY_ID, policy_name: "nightly", policy_deleted: true, policy_version: 4 },
+    ]);
     renderTab();
     const dialog = await openDrawer(user, /Started Rewrite data files/);
-    expect(within(dialog).getByText(`${NIGHTLY_POLICY_ID} v4 (deleted)`)).toBeInTheDocument();
+    expect(within(dialog).getByText("nightly v4 (deleted)")).toBeInTheDocument();
     expect(within(dialog).queryByRole("link", { name: /v4/ })).not.toBeInTheDocument();
   });
 

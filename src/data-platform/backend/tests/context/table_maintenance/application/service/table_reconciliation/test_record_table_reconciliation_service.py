@@ -59,6 +59,7 @@ def _input(**overrides: object) -> RecordTableReconciliationUseCaseInput:
         run_id=RUN_1,
         run_start_failed=False,
         policy_id=DEFAULT_POLICY_ID,
+        policy_name="default",
         policy_version=3,
         policy_target=None,
     )
@@ -279,10 +280,11 @@ def test_discovery_scan_is_a_known_wake_reason(
 def test_record_keeps_policy_id_version_and_target(
     service: RecordTableReconciliationService, repo: InMemoryTableReconciliationsRepo
 ) -> None:
-    """The record keeps the plan's policy id, version and the target it was attached to."""
+    """The record keeps the plan's policy id, its name then, the version and the target it was attached to."""
     service.execute(
         _input(
             policy_id=NIGHTLY,
+            policy_name="nightly",
             policy_version=4,
             policy_target={"type": "namespace", "path": ["prod", "sales"]},
         )
@@ -290,7 +292,7 @@ def test_record_keeps_policy_id_version_and_target(
 
     saved = repo.get(TableReconciliationId(REC_1))
     assert saved is not None
-    assert (saved.policy_id.value, saved.policy_version) == (NIGHTLY, 4)
+    assert (saved.policy_id.value, saved.policy_name.value, saved.policy_version) == (NIGHTLY, "nightly", 4)
     assert saved.policy_target is not None
     assert (saved.policy_target.type.value, saved.policy_target.path) == ("namespace", ("prod", "sales"))
 

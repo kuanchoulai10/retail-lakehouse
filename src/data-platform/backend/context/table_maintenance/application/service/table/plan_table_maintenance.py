@@ -368,6 +368,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             dry_run=policy.dry_run,
             checks=checks,
             policy_id=applied.policy_id,
+            policy_name=applied.policy_name,
             policy_version=applied.version,
             policy_target=applied.target,
             next_check_at=compaction.next_check_at,
@@ -492,6 +493,7 @@ def _skip(
         table_name=table.name.fully_qualified(),
         operations=(),
         policy_id=applied.policy_id,
+        policy_name=applied.policy_name,
         policy_version=applied.version,
         policy_target=applied.target,
     )

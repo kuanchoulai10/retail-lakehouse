@@ -70,6 +70,7 @@ class FakePlan(PlanTableMaintenanceUseCase):
                 ),
             ),
             policy_id=GOLD_POLICY_ID,
+            policy_name="gold",
             policy_version=3,
             policy_target={"type": "namespace", "path": ["iceberg", "sales"]},
         )

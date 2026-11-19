@@ -17,11 +17,10 @@ from context.table_maintenance.application.port.outbound.table import (
     Table,
     TableDiscoveryRuleId,
     TableId,
+    TableMaintenancePolicyId,
+    TableMaintenancePolicyName,
     TableName,
     TableStatus,
-)
-from context.table_maintenance.application.port.outbound.table_maintenance_policy import (
-    TableMaintenancePolicyId,
 )
 
 if TYPE_CHECKING:
@@ -34,7 +33,12 @@ def _encode_attention(mark: AttentionMark | None) -> dict[str, Any] | None:
     return {
         "since": IsoDatetimeCodec.encode(mark.since),
         "reason": mark.reason,
-        "policy": {"id": mark.policy.policy_id.value, "version": mark.policy.version, "target": mark.policy.target},
+        "policy": {
+            "id": mark.policy.policy_id.value,
+            "version": mark.policy.version,
+            "target": mark.policy.target,
+            "name": mark.policy_name.value,
+        },
     }
 
 
@@ -52,6 +56,7 @@ def _decode_attention(data: dict[str, Any] | None) -> AttentionMark | None:
         policy=AppliedPolicyRef(
             policy_id=TableMaintenancePolicyId(policy["id"]), version=policy["version"], target=policy["target"]
         ),
+        policy_name=TableMaintenancePolicyName(value=policy["name"]),
     )
 
 

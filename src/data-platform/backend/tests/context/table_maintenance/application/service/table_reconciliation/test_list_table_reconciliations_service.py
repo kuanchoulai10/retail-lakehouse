@@ -59,7 +59,9 @@ def test_reconciliation_record_points_at_the_policy_id_and_lists_its_name() -> N
         TableMaintenancePolicyName(value="nightly"), MaintenancePolicyContent.platform_default(), NOW
     )
     policies.create(nightly)
-    RecordTableReconciliationService(repo).execute(_input(policy_id=nightly.id.value, policy_version=4))
+    RecordTableReconciliationService(repo).execute(
+        _input(policy_id=nightly.id.value, policy_name="nightly", policy_version=4)
+    )
 
     (item,) = (
         ListTableReconciliationsService(repo, policies)
@@ -69,21 +71,54 @@ def test_reconciliation_record_points_at_the_policy_id_and_lists_its_name() -> N
 
     assert repo.list_all()[0].policy_id == nightly.id
     assert (item.policy_id, item.policy_name, item.policy_version) == (nightly.id.value, "nightly", 4)
+    assert item.policy_deleted is False
 
 
-def test_a_reconciliation_under_a_deleted_policy_lists_no_name() -> None:
-    """A policy deleted since the reconciliation keeps its id in the listing and has no name."""
-    repo = InMemoryTableReconciliationsRepo()
-    gone = TableMaintenancePolicyId.new().value
-    RecordTableReconciliationService(repo).execute(_input(policy_id=gone))
+def test_reconciliation_keeps_the_policy_name_after_the_policy_is_deleted() -> None:
+    """A record keeps the name its policy had when it was written, so it still reads after the delete."""
+    repo, policies = InMemoryTableReconciliationsRepo(), InMemoryTableMaintenancePoliciesRepo()
+    nightly = TableMaintenancePolicy.create(
+        TableMaintenancePolicyName(value="nightly"), MaintenancePolicyContent.platform_default(), NOW
+    )
+    policies.create(nightly)
+    RecordTableReconciliationService(repo).execute(
+        _input(policy_id=nightly.id.value, policy_name="nightly", policy_version=4)
+    )
+    policies.delete(nightly.id)
 
     (item,) = (
-        ListTableReconciliationsService(repo, InMemoryTableMaintenancePoliciesRepo())
+        ListTableReconciliationsService(repo, policies)
         .execute(ListTableReconciliationsUseCaseInput(table_uuid="table-1"))
         .items
     )
 
-    assert (item.policy_id, item.policy_name) == (gone, None)
+    assert (item.policy_id, item.policy_name, item.policy_version) == (nightly.id.value, "nightly", 4)
+    assert item.policy_deleted is True
+
+
+def test_a_reconciliation_under_a_live_policy_lists_its_current_name() -> None:
+    """The name kept on the record is only a fallback: a policy that still exists is named as it is now."""
+    repo, policies = InMemoryTableReconciliationsRepo(), InMemoryTableMaintenancePoliciesRepo()
+    policy_id = TableMaintenancePolicyId.new()
+    policies.create(
+        TableMaintenancePolicy(
+            id=policy_id,
+            name=TableMaintenancePolicyName(value="nightly-v2"),
+            content=MaintenancePolicyContent.platform_default(),
+            version=1,
+            created_at=NOW,
+            updated_at=NOW,
+        )
+    )
+    RecordTableReconciliationService(repo).execute(_input(policy_id=policy_id.value, policy_name="nightly"))
+
+    (item,) = (
+        ListTableReconciliationsService(repo, policies)
+        .execute(ListTableReconciliationsUseCaseInput(table_uuid="table-1"))
+        .items
+    )
+
+    assert (item.policy_name, item.policy_deleted) == ("nightly-v2", False)
 
 
 def test_before_and_limit_are_passed_to_the_repo() -> None:

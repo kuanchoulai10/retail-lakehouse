@@ -137,6 +137,7 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
         "table_found": True,
         "checks": [],
         "policy_id": GOLD_POLICY_ID,
+        "policy_name": "gold",
         "policy_version": 3,
         "policy_target": {"type": "namespace", "path": ["iceberg", "sales"]},
         "next_check_at": None,
@@ -145,12 +146,11 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
     }
 
 
-def test_plan_payload_carries_policy_id():
-    """The plan crosses Temporal pointing at its policy by ``mp-`` id; the name is no longer in the payload."""
+def test_plan_payload_carries_policy_id_and_a_display_name():
+    """The plan crosses Temporal pointing at its policy by ``mp-`` id, with its name then for the records to keep."""
     activities, _ = _reconcile()
     result = activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW, "run_id": RUN_1})
-    assert result["policy_id"] == GOLD_POLICY_ID
-    assert "policy_name" not in result
+    assert (result["policy_id"], result["policy_name"]) == (GOLD_POLICY_ID, "gold")
 
 
 def _full_plan() -> PlanTableMaintenanceUseCaseOutput:
@@ -204,6 +204,7 @@ def _full_plan() -> PlanTableMaintenanceUseCaseOutput:
             ),
         ),
         policy_id=GOLD_POLICY_ID,
+        policy_name="gold",
         policy_version=3,
         policy_target={"type": "namespace", "path": ["iceberg", "sales"]},
         next_check_at=datetime(2026, 10, 24, 1, 32, 3, tzinfo=UTC),
@@ -286,6 +287,7 @@ def test_plan_payload_keeps_every_field_of_a_full_plan():
             },
         ],
         "policy_id": GOLD_POLICY_ID,
+        "policy_name": "gold",
         "policy_version": 3,
         "policy_target": {"type": "namespace", "path": ["iceberg", "sales"]},
         "next_check_at": "2026-10-24T01:32:03+00:00",
@@ -309,6 +311,7 @@ def _record_payload_of(plan: dict) -> dict:
         "run_id": RUN_1,
         "run_start_failed": False,
         "policy_id": plan["policy_id"],
+        "policy_name": plan["policy_name"],
         "policy_version": plan["policy_version"],
         "policy_target": plan["policy_target"],
     }
@@ -394,6 +397,7 @@ def _measured_plan() -> PlanTableMaintenanceUseCaseOutput:
             ),
         ),
         policy_id=GOLD_POLICY_ID,
+        policy_name="gold",
         policy_version=3,
         policy_target={"type": "namespace", "path": ["iceberg", "sales"]},
     )
@@ -544,6 +548,7 @@ def test_record_reconciliation_passes_every_field_and_returns_dict():
             "run_id": RUN_1,
             "run_start_failed": False,
             "policy_id": NIGHTLY_POLICY_ID,
+            "policy_name": "nightly",
             "policy_version": 4,
             "policy_target": {"type": "catalog", "path": ["prod"]},
         }
@@ -561,6 +566,7 @@ def test_record_reconciliation_passes_every_field_and_returns_dict():
             run_id=RUN_1,
             run_start_failed=False,
             policy_id=NIGHTLY_POLICY_ID,
+            policy_name="nightly",
             policy_version=4,
             policy_target={"type": "catalog", "path": ["prod"]},
         )

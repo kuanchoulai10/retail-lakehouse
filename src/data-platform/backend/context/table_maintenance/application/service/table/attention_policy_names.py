@@ -16,7 +16,8 @@ if TYPE_CHECKING:
 def attention_policy_names(tables: Iterable[Table], policies_repo: TableMaintenancePoliciesRepo) -> dict[str, str]:
     """Return the current name of each policy a needs-attention mark of the tables points at, keyed by its id.
 
-    A policy deleted since its mark was set is missing from the result, so the mark shows no name.
+    A policy deleted since its mark was set is missing from the result, so the mark shows the
+    name it kept when it was set.
     """
     ids = {
         state.attention.policy.policy_id: None

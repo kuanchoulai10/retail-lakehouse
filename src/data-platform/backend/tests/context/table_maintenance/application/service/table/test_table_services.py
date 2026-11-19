@@ -213,11 +213,12 @@ def test_reconcile_now_unknown_table(tables_repo, signals):
     assert signals.calls == []
 
 
-def _mark_under(table, policy_id, now) -> None:
+def _mark_under(table, policy_id, now, name="nightly") -> None:
     mark = AttentionMark(
         since=now,
         reason="out of memory at size L",
         policy=AppliedPolicyRef(policy_id=policy_id, version=2, target=None),
+        policy_name=TableMaintenancePolicyName(value=name),
     )
     table.mark_needs_attention(MaintenanceOperation.REWRITE_DATA_FILES, mark, now)
 
@@ -242,17 +243,38 @@ def test_get_table_shows_the_remembered_size_and_needs_attention(tables_repo, no
         "reason": "out of memory at size L",
         "policy_id": nightly.id.value,
         "policy_name": "nightly",
+        "policy_deleted": False,
         "policy_version": 2,
     }
 
 
-def test_needs_attention_under_a_deleted_policy_has_no_policy_name(tables_repo, now):
-    """A mark set under a policy deleted since keeps its id and shows no name."""
+def test_attention_mark_keeps_the_policy_name_after_the_policy_is_deleted(tables_repo, now):
+    """A mark set under a policy deleted since keeps its id and the name it took when set, flagged deleted."""
     gone = TableMaintenancePolicyId.new()
     table = _managed(tables_repo, now)
-    _mark_under(table, gone, now)
+    _mark_under(table, gone, now, name="nightly")
     out = ListTablesService(
         tables_repo, InMemoryCatalogDiscoveriesRepo(), InMemoryTableMaintenancePoliciesRepo()
     ).execute(ListTablesUseCaseInput())
     attention = out.items[0].operation_states["rewrite_data_files"]["needs_attention"]
-    assert (attention["policy_id"], attention["policy_name"]) == (gone.value, None)
+    assert (attention["policy_id"], attention["policy_name"], attention["policy_deleted"]) == (
+        gone.value,
+        "nightly",
+        True,
+    )
+
+
+def test_attention_mark_under_a_live_policy_shows_its_current_name(tables_repo, now):
+    """The name kept on the mark is only a fallback: a policy that still exists is named as it is now."""
+    policies = InMemoryTableMaintenancePoliciesRepo()
+    nightly = TableMaintenancePolicy.create(
+        TableMaintenancePolicyName(value="nightly-v2"), MaintenancePolicyContent.platform_default(), now
+    )
+    policies.create(nightly)
+    table = _managed(tables_repo, now)
+    _mark_under(table, nightly.id, now, name="nightly")
+    out = GetTableService(tables_repo, InMemoryCatalogDiscoveriesRepo(), policies).execute(
+        GetTableUseCaseInput(uuid="u-1")
+    )
+    attention = out.operation_states["rewrite_data_files"]["needs_attention"]
+    assert (attention["policy_name"], attention["policy_deleted"]) == ("nightly-v2", False)

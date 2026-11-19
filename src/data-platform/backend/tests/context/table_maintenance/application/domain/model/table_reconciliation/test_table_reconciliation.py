@@ -19,6 +19,7 @@ from context.table_maintenance.application.domain.model.table import TableId
 from context.table_maintenance.application.domain.model.table_maintenance_policy import (
     DEFAULT_POLICY_ID,
     TableMaintenancePolicyId,
+    TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_policy_attachment import (
     PolicyTarget,
@@ -39,6 +40,7 @@ from context.table_maintenance.application.domain.model.table_reconciliation imp
 RUN_1 = "mr-00000000000000000000000001"
 REC_1 = "rc-00000000000000000000000001"
 NIGHTLY = TableMaintenancePolicyId("mp-00000000000000000000000004")
+DEFAULT_NAME = TableMaintenancePolicyName(value="default")
 
 NOW = datetime(2026, 11, 10, 12, tzinfo=UTC)
 
@@ -71,6 +73,7 @@ def _record(**overrides):
         "operations": (_outcome(Op.EXPIRE_SNAPSHOTS),),
         "run_id": None,
         "policy_id": DEFAULT_POLICY_ID,
+        "policy_name": DEFAULT_NAME,
         "policy_version": 3,
         "policy_target": None,
     }
@@ -155,6 +158,7 @@ def test_direct_construction_checks_the_invariants():
             operations=(),
             run_id=None,
             policy_id=DEFAULT_POLICY_ID,
+            policy_name=DEFAULT_NAME,
             policy_version=1,
             policy_target=None,
         )
@@ -183,10 +187,11 @@ def test_operation_outcome_is_immutable():
 
 
 def test_record_keeps_policy_id_version_and_target():
-    """A record points at the policy by id, with its version and where it was attached."""
+    """A record points at the policy by id, with its name then, its version and where it was attached."""
     target = PolicyTarget(type=PolicyTargetType.NAMESPACE, path=("prod", "sales"))
-    rec = _record(policy_id=NIGHTLY, policy_version=4, policy_target=target)
-    assert (rec.policy_id, rec.policy_version, rec.policy_target) == (NIGHTLY, 4, target)
+    name = TableMaintenancePolicyName(value="nightly")
+    rec = _record(policy_id=NIGHTLY, policy_name=name, policy_version=4, policy_target=target)
+    assert (rec.policy_id, rec.policy_name, rec.policy_version, rec.policy_target) == (NIGHTLY, name, 4, target)
 
 
 def test_record_rejects_a_policy_version_below_one():

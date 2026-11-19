@@ -16,6 +16,7 @@ from context.table_maintenance.application.port.outbound.table_reconciliation im
     ReconciliationOutcome,
     TableId,
     TableMaintenancePolicyId,
+    TableMaintenancePolicyName,
     TableMaintenanceRunId,
     TableReconciliation,
     TableReconciliationId,
@@ -82,6 +83,7 @@ class TableReconciliationRowMapper:
             "operations_json": [_encode_operation(op) for op in rec.operations],
             "run_id": None if rec.run_id is None else rec.run_id.value,
             "policy_id": rec.policy_id.value,
+            "policy_name": rec.policy_name.value,
             "policy_version": rec.policy_version,
             "policy_target_json": None if rec.policy_target is None else rec.policy_target.to_primitives(),
         }
@@ -102,6 +104,7 @@ class TableReconciliationRowMapper:
             operations=tuple(_decode_operation(d) for d in row["operations_json"]),
             run_id=None if run_id is None else TableMaintenanceRunId(run_id),
             policy_id=TableMaintenancePolicyId(row["policy_id"]),
+            policy_name=TableMaintenancePolicyName(value=row["policy_name"]),
             policy_version=row["policy_version"],
             policy_target=None if target is None else PolicyTarget.from_primitives(target),
         )

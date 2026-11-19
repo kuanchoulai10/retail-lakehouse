@@ -4272,20 +4272,17 @@
             "title": "Outcome",
             "type": "string"
           },
+          "policy_deleted": {
+            "title": "Policy Deleted",
+            "type": "boolean"
+          },
           "policy_id": {
             "title": "Policy Id",
             "type": "string"
           },
           "policy_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Policy Name"
+            "title": "Policy Name",
+            "type": "string"
           },
           "policy_target": {
             "anyOf": [
@@ -4356,6 +4353,7 @@
           "run_id",
           "policy_id",
           "policy_name",
+          "policy_deleted",
           "policy_version",
           "policy_target"
         ],

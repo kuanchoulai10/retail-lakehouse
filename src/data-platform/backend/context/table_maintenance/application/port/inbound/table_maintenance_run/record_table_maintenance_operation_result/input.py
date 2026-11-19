@@ -14,7 +14,8 @@ class RecordTableMaintenanceOperationResultUseCaseInput(UseCaseInput):
     ``ended_by`` names what ended the attempt (an ``AttemptEnding`` value), ``still_running`` says
     its job may still be running, and ``max_attempts`` is how many attempts the operation is allowed.
     ``policy_id`` (the policy's ``mp-`` id), ``policy_version`` and ``policy_target`` point at the
-    policy the run was planned under; without them (a run planned before policies had ids leaves
+    policy the run was planned under, and ``policy_name`` is its name then, which a needs-attention
+    mark keeps for display; without them (a run planned before policies had ids leaves
     ``policy_id`` out) a needs-attention mark is set under the policy that applies when recorded.
     """
 
@@ -29,5 +30,6 @@ class RecordTableMaintenanceOperationResultUseCaseInput(UseCaseInput):
     still_running: bool = False
     max_attempts: int = 3
     policy_id: str | None = None
+    policy_name: str | None = None
     policy_version: int | None = None
     policy_target: dict[str, Any] | None = None

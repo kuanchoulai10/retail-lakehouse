@@ -20,7 +20,8 @@ def _attention_fields(state: OperationState, policy_names: Mapping[str, str]) ->
         "since": mark.since,
         "reason": mark.reason,
         "policy_id": policy_id,
-        "policy_name": policy_names.get(policy_id),
+        "policy_name": policy_names.get(policy_id, mark.policy_name.value),
+        "policy_deleted": policy_id not in policy_names,
         "policy_version": mark.policy.version,
     }
 
@@ -33,7 +34,8 @@ def table_output_fields(
     ``catalog_discovered_at`` is the last discovery of the table's catalog, None
     when it was never discovered; the table's last discovery is derived from it.
     ``policy_names`` maps a policy id to its current name; a needs-attention mark
-    shows its policy's id and that name, or no name when the policy was deleted.
+    shows its policy's id and that name, or, when the policy was deleted since
+    (``policy_deleted``), the name the mark kept when it was set.
     """
     return {
         "uuid": table.id.value,

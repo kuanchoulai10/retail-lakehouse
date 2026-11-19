@@ -24,6 +24,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     DEFAULT_POLICY_NAME,
     MaintenancePolicyContent,
     TableMaintenancePolicyId,
+    TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.exceptions import NotFoundError
 from context.table_maintenance.application.port.inbound.table import (
@@ -203,6 +204,7 @@ def test_health_shows_needs_attention(service, tables_repo, catalog, resolve_app
         policy=AppliedPolicyRef(
             policy_id=TableMaintenancePolicyId(applied.policy_id), version=applied.version, target=applied.target
         ),
+        policy_name=TableMaintenancePolicyName(value=applied.policy_name),
     )
     table.mark_needs_attention(MaintenanceOperation.REWRITE_DATA_FILES, mark, now)
     tables_repo.update(table)
@@ -220,7 +222,12 @@ def test_health_and_the_table_agree_on_a_mark_under_another_policy(service, tabl
         version=3,
         target={"type": "namespace", "path": ["iceberg", "sales"]},
     )
-    mark = AttentionMark(since=now, reason="out of memory at size L", policy=other)
+    mark = AttentionMark(
+        since=now,
+        reason="out of memory at size L",
+        policy=other,
+        policy_name=TableMaintenancePolicyName(value="other"),
+    )
     table.mark_needs_attention(MaintenanceOperation.REWRITE_DATA_FILES, mark, now)
     tables_repo.update(table)
     shown = GetTableService(tables_repo, InMemoryCatalogDiscoveriesRepo(), policies_repo).execute(

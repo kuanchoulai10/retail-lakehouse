@@ -16,7 +16,9 @@ class PlanTableMaintenanceUseCaseOutput(UseCaseOutput):
     policy's ``mp-`` id, not its name, which may change), ``policy_version`` and
     ``policy_target`` point at the maintenance policy that
     was applied and where it is attached (``None`` for the default with nothing
-    attached); they are ``None`` only when the table is unknown. ``next_check_at``
+    attached); they are ``None`` only when the table is unknown. ``policy_name`` is
+    that policy's name at planning time, carried to the records written under the
+    plan for display only (``None`` likewise). ``next_check_at``
     is when a due compaction whose candidates are all held by a filter may find
     one free (None otherwise), so the caller can look again then.
     """
@@ -81,6 +83,7 @@ class PlanTableMaintenanceUseCaseOutput(UseCaseOutput):
     table_found: bool = True
     checks: tuple[Check, ...] = ()
     policy_id: str | None = None
+    policy_name: str | None = None
     policy_version: int | None = None
     policy_target: dict[str, Any] | None = None
     next_check_at: datetime | None = None

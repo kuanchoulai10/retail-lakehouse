@@ -50,6 +50,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     RewriteManifestsConditions,
     RewriteManifestsTriggerPolicy,
     SmallManifestsCondition,
+    TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.domain.service.table import (
     any_condition_holds,
@@ -467,7 +468,12 @@ def test_cooldown_keeps_the_measurements():
 
 
 POLICY_V1 = AppliedPolicyRef(policy_id=DEFAULT_POLICY_ID, version=1, target=None)
-OOM_AT_L = AttentionMark(since=NOW, reason="out of memory at size L", policy=POLICY_V1)
+OOM_AT_L = AttentionMark(
+    since=NOW,
+    reason="out of memory at size L",
+    policy=POLICY_V1,
+    policy_name=TableMaintenancePolicyName(value="default"),
+)
 
 
 def _needing_attention(op: Op) -> Table:

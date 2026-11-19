@@ -33,6 +33,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     RewriteDataFilesExecutionPolicy,
     RewriteDataFilesTriggerPolicy,
     TableMaintenancePolicyId,
+    TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.exceptions import ValidationError
 from context.table_maintenance.application.port.inbound.table import (
@@ -390,7 +391,7 @@ def test_plan_output_names_resolved_policy(planner, tables_repo, catalog, polici
         AttachTableMaintenancePolicyUseCaseInput(target_type="namespace", path=("iceberg", "sales"), policy_name="gold")
     )
     plan = _plan(planner, now)
-    assert (plan.policy_id, plan.policy_version) == (created.id, 1)
+    assert (plan.policy_id, plan.policy_name, plan.policy_version) == (created.id, "gold", 1)
     assert plan.policy_target == {"type": "namespace", "path": ["iceberg", "sales"]}
     assert (plan.reconcile_interval_seconds, plan.dry_run) == (600, True)
 
@@ -408,10 +409,11 @@ def test_skipped_plan_names_the_policy_for_its_interval(planner, tables_repo, po
     _use_policy(policies, now, DEFAULT.with_changes(reconcile_interval=timedelta(minutes=2)))
     _table(tables_repo, now).unmanage(now)
     plan = _plan(planner, now)
-    assert (plan.reason, plan.reconcile_interval_seconds, plan.policy_id, plan.policy_version) == (
+    assert (plan.reason, plan.reconcile_interval_seconds, plan.policy_id, plan.policy_name, plan.policy_version) == (
         "unmanaged",
         120,
         DEFAULT_POLICY_ID.value,
+        "default",
         2,
     )
 
@@ -513,6 +515,7 @@ def _record(plan, now, **overrides):
         "run_id": None,
         "run_start_failed": False,
         "policy_id": plan.policy_id,
+        "policy_name": plan.policy_name,
         "policy_version": plan.policy_version,
         "policy_target": plan.policy_target,
     }
@@ -555,7 +558,13 @@ def _mark_under_current_policy(planner, table, tables_repo, now, op=OPS.REWRITE_
     applied = AppliedPolicyRef(
         policy_id=TableMaintenancePolicyId(first.policy_id), version=first.policy_version, target=first.policy_target
     )
-    table.mark_needs_attention(op, AttentionMark(since=now, reason="out of memory at size L", policy=applied), now)
+    mark = AttentionMark(
+        since=now,
+        reason="out of memory at size L",
+        policy=applied,
+        policy_name=TableMaintenancePolicyName(value=first.policy_name),
+    )
+    table.mark_needs_attention(op, mark, now)
     tables_repo.update(table)
 
 

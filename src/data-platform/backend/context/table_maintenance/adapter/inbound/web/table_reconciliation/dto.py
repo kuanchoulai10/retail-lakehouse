@@ -55,6 +55,7 @@ class TableReconciliationApiResponse(BaseModel):
     operations: list[ReconciliationOperationApiResponse]
     run_id: str | None
     policy_id: str
-    policy_name: str | None
+    policy_name: str
+    policy_deleted: bool
     policy_version: int
     policy_target: ReconciliationPolicyTargetApiResponse | None

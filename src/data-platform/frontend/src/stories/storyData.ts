@@ -568,6 +568,7 @@ function reconciliation(
     run_id: null,
     policy_id: DEFAULT_POLICY_ID,
     policy_name: "default",
+    policy_deleted: false,
     policy_version: 1,
     policy_target: null,
     ...overrides,

@@ -66,6 +66,7 @@ PARENT_ID = "parent-1"
 REAL_TIMEOUT_SECONDS = 60
 ATTEMPT_DEADLINE_SECONDS = 21600
 PLANNED_POLICY = ("mp-00000000000000000000000004", 2, {"type": "namespace", "path": ["iceberg", "sales"]})
+PLANNED_POLICY_NAME = "nightly"
 
 
 def _plan(*operations: str, start_size: str | None = None) -> dict:
@@ -76,6 +77,7 @@ def _plan(*operations: str, start_size: str | None = None) -> dict:
         "reconcile_interval_seconds": 3600,
         "table_name": TABLE,
         "policy_id": PLANNED_POLICY[0],
+        "policy_name": PLANNED_POLICY_NAME,
         "policy_version": PLANNED_POLICY[1],
         "policy_target": PLANNED_POLICY[2],
         "operations": [
@@ -1208,7 +1210,7 @@ def test_record_reaches_the_ending_of_each_failure(script, deadline, ending):
 
 
 def test_records_carry_the_policy_the_run_was_planned_under():
-    """Every record names the policy of the plan, so a needs-attention mark is set under it."""
+    """Every record names the policy of the plan and its name then, so a needs-attention mark is set under it."""
 
     async def scenario(h: Harness) -> None:
         _ending_by_failed_state(h)
@@ -1218,7 +1220,7 @@ def test_records_carry_the_policy_the_run_was_planned_under():
             PLANNED_POLICY,
             PLANNED_POLICY,
         ]
-        assert all("policy_name" not in r for r in h.fakes.records)
+        assert [r["policy_name"] for r in h.fakes.records] == [PLANNED_POLICY_NAME, PLANNED_POLICY_NAME]
 
     _run(scenario)
 

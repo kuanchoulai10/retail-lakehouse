@@ -283,7 +283,7 @@ function ReconciliationDetail({ record }: { record: TableReconciliationApiRespon
           </p>
           <p className="type-body-small text-on-surface-variant">
             Policy{" "}
-            {record.policy_name === null ? (
+            {record.policy_deleted ? (
               <span className="font-mono">{policyLabel(record)}</span>
             ) : (
               <TextLink asChild inline className="font-mono">

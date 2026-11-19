@@ -36,7 +36,11 @@ class ListTableReconciliationsService(ListTableReconciliationsUseCase):
         self._policies_repo = policies_repo
 
     def execute(self, request: ListTableReconciliationsUseCaseInput) -> ListTableReconciliationsUseCaseOutput:
-        """Return up to ``limit`` reconciliations strictly before ``before``, each naming its policy by id and name."""
+        """Return up to ``limit`` reconciliations strictly before ``before``, each naming its policy by id and name.
+
+        A policy that still exists is named as it is now; one deleted since keeps the name the
+        record took when it was written, and is flagged as deleted.
+        """
         found = self._reconciliations_repo.list_by_table(
             TableId(request.table_uuid), before=request.before, limit=request.limit
         )
@@ -61,7 +65,8 @@ def _item(
         operations=tuple(_operation(op) for op in reconciliation.operations),
         run_id=reconciliation.run_id.value if reconciliation.run_id else None,
         policy_id=reconciliation.policy_id.value,
-        policy_name=names.get(reconciliation.policy_id.value),
+        policy_name=names.get(reconciliation.policy_id.value, reconciliation.policy_name.value),
+        policy_deleted=reconciliation.policy_id.value not in names,
         policy_version=reconciliation.policy_version,
         policy_target=_policy_target(reconciliation),
     )

@@ -19,6 +19,10 @@ from context.table_maintenance.application.domain.model.table import (
 from context.table_maintenance.application.domain.model.table_discovery_rules import (
     TableDiscoveryRuleId,
 )
+from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    TableMaintenancePolicyId,
+    TableMaintenancePolicyName,
+)
 from context.table_maintenance.application.port.outbound.table.read_table_metadata.catalog_not_found_error import (
     CatalogNotFoundError,
 )
@@ -72,6 +76,8 @@ __all__ = [
     "RecordedAttempt",
     "TableDiscoveryRuleId",
     "TableId",
+    "TableMaintenancePolicyId",
+    "TableMaintenancePolicyName",
     "ReadTableMetadataGateway",
     "TableCommitSelection",
     "ReadTableMetadataGatewayListInput",

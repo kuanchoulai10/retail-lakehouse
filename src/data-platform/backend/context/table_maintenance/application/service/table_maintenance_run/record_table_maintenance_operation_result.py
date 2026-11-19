@@ -16,7 +16,10 @@ from context.table_maintenance.application.domain.model.table import (
     RecordedAttempt,
     TableStatus,
 )
-from context.table_maintenance.application.domain.model.table_maintenance_policy import TableMaintenancePolicyId
+from context.table_maintenance.application.domain.model.table_maintenance_policy import (
+    TableMaintenancePolicyId,
+    TableMaintenancePolicyName,
+)
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     AttemptEnding,
     ContainerExit,
@@ -281,21 +284,29 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
         operation: MaintenanceOperation,
         request: RecordTableMaintenanceOperationResultUseCaseInput,
     ) -> None:
+        policy, name = self._planned_policy(table, request)
         mark = AttentionMark(
-            since=request.now, reason=_NEEDS_ATTENTION_REASON, policy=self._planned_policy(table, request)
+            since=request.now,
+            reason=_NEEDS_ATTENTION_REASON,
+            policy=policy,
+            policy_name=TableMaintenancePolicyName(value=name),
         )
         table.mark_needs_attention(operation, mark, request.now)
 
     def _planned_policy(
         self, table: Table, request: RecordTableMaintenanceOperationResultUseCaseInput
-    ) -> AppliedPolicyRef:
-        """Return the policy the run was planned under, or, when the request does not say, the one applying now."""
-        if request.policy_id is not None and request.policy_version is not None:
-            return AppliedPolicyRef(
+    ) -> tuple[AppliedPolicyRef, str]:
+        """Return the policy the run was planned under and its name then.
+
+        When the request does not say, the policy applying now and its current name.
+        """
+        if request.policy_id is not None and request.policy_version is not None and request.policy_name is not None:
+            ref = AppliedPolicyRef(
                 policy_id=TableMaintenancePolicyId(request.policy_id),
                 version=request.policy_version,
                 target=request.policy_target,
             )
+            return ref, request.policy_name
         applied = self._resolve_applicable_policy.execute(
             ResolveApplicableTableMaintenancePolicyUseCaseInput(
                 catalog=table.name.catalog,
@@ -304,7 +315,7 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
                 table=table.name.table,
             )
         )
-        return applied_policy_ref_of(applied)
+        return applied_policy_ref_of(applied), applied.policy_name
 
 
 def _measured(value: int | None) -> int | None:

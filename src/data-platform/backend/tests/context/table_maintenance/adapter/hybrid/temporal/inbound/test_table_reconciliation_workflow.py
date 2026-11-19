@@ -94,8 +94,13 @@ def _check(operation: str, verdict: str = "due") -> dict[str, Any]:
 
 
 NIGHTLY_POLICY_ID = "mp-00000000000000000000000004"
-POLICY = {"policy_id": NIGHTLY_POLICY_ID, "policy_version": 4, "policy_target": {"type": "catalog", "path": ["prod"]}}
-NO_POLICY = {"policy_id": None, "policy_version": None, "policy_target": None}
+POLICY = {
+    "policy_id": NIGHTLY_POLICY_ID,
+    "policy_name": "nightly",
+    "policy_version": 4,
+    "policy_target": {"type": "catalog", "path": ["prod"]},
+}
+NO_POLICY = {"policy_id": None, "policy_name": None, "policy_version": None, "policy_target": None}
 
 
 def _planned(*operations: str, interval: int = 3600) -> dict[str, Any]:
@@ -891,7 +896,7 @@ def test_timer_wake_records_schedule():
         assert record["run_id"] is None
         assert record["run_start_failed"] is False
         assert record["policy_id"] == NIGHTLY_POLICY_ID
-        assert "policy_name" not in record
+        assert record["policy_name"] == "nightly"
         assert record["policy_version"] == 4
         assert record["policy_target"] == {"type": "catalog", "path": ["prod"]}
 

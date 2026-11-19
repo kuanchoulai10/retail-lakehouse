@@ -26,6 +26,7 @@ from context.table_maintenance.application.domain.model.table_maintenance_policy
     MaintenancePolicyContent,
     PartialProgress,
     RewriteDataFilesExecutionPolicy,
+    TableMaintenancePolicyName,
 )
 from context.table_maintenance.application.domain.model.table_maintenance_run import (
     FailureClass,
@@ -463,6 +464,7 @@ def _attention_mark(now) -> AttentionMark:
         since=now,
         reason="out of memory at size L",
         policy=AppliedPolicyRef(policy_id=DEFAULT_POLICY_ID, version=1, target=None),
+        policy_name=TableMaintenancePolicyName(value="default"),
     )
 
 
