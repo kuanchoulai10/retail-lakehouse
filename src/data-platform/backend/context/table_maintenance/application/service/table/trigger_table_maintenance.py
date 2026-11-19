@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.shared import (
     MaintenanceOperation,
+    TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
     TableChange,
@@ -41,13 +42,18 @@ class TriggerTableMaintenanceService(TriggerTableMaintenanceUseCase):
         self._table_change_gateway = table_change_gateway
 
     def execute(self, request: TriggerTableMaintenanceUseCaseInput) -> TriggerTableMaintenanceUseCaseOutput:
-        """Validate the operations, then signal ``trigger_now``."""
+        """Validate the operations and the priority, then signal ``trigger_now``."""
         if not request.operations:
             raise ValidationError("operations must not be empty")
         try:
             requested = {MaintenanceOperation(op) for op in request.operations}
         except ValueError as exc:
             raise ValidationError(str(exc)) from exc
+        if request.priority is not None:
+            try:
+                TablePriority(request.priority)
+            except ValueError as exc:
+                raise ValidationError(f"unknown priority {request.priority!r}; expected one of P0, P1, P2, P3") from exc
         table = self._tables_repo.get(TableId(request.uuid))
         if table is None:
             raise NotFoundError(f"table {request.uuid} not found")
@@ -60,6 +66,7 @@ class TriggerTableMaintenanceService(TriggerTableMaintenanceUseCase):
                 change=TableChange.MAINTENANCE_REQUESTED.value,
                 is_managed=table.is_managed,
                 operations=[op.value for op in MaintenanceOperation.ordered() if op in requested],
+                priority=request.priority,
             )
         )
         return TriggerTableMaintenanceUseCaseOutput(accepted=True)

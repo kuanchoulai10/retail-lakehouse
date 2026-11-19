@@ -10,3 +10,4 @@ class TriggerTableMaintenanceUseCaseInput(UseCaseInput):
 
     uuid: str
     operations: tuple[str, ...]
+    priority: str | None = None

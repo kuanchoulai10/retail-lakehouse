@@ -10,7 +10,8 @@ class SendTableChangeGatewayInput:
     """Name the table, what changed about it and whether it is managed.
 
     ``table_name`` is the fully qualified ``catalog.namespace.table`` name.
-    ``change`` is a ``TableChange`` value. ``operations`` is used only by
+    ``change`` is a ``TableChange`` value. ``operations`` and ``priority`` (a
+    ``TablePriority`` value, or ``None`` for the table's own) are used only by
     ``maintenance_requested``.
     """
 
@@ -19,3 +20,4 @@ class SendTableChangeGatewayInput:
     change: str
     is_managed: bool
     operations: list[str] = field(default_factory=list)
+    priority: str | None = None

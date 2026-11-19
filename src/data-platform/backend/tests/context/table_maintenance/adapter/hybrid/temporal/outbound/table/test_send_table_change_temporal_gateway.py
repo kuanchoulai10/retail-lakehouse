@@ -64,6 +64,7 @@ def _change(
     is_managed: bool,
     table_name: str = "iceberg.sales.orders",
     operations: list[str] | None = None,
+    priority: str | None = None,
 ) -> SendTableChangeGatewayInput:
     return SendTableChangeGatewayInput(
         table_uuid=table_uuid,
@@ -71,6 +72,7 @@ def _change(
         change=change,
         is_managed=is_managed,
         operations=operations or [],
+        priority=priority,
     )
 
 
@@ -129,6 +131,21 @@ def test_maintenance_requested_carries_the_operations(harness):
             TableReconciliationSignal.TRIGGER_NOW,
             {"operations": ["expire_snapshots", "rewrite_data_files"]},
         ]
+    ]
+
+
+def test_maintenance_requested_carries_the_priority_only_when_given(harness):
+    """A maintenance request signal names the priority when one is given and leaves it out otherwise."""
+    gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
+    gateway.send(
+        _change("trigger-p0", "maintenance_requested", is_managed=True, operations=["expire_snapshots"], priority="P0")
+    )
+    gateway.send(_change("trigger-none", "maintenance_requested", is_managed=True, operations=["expire_snapshots"]))
+    assert _signals(harness, "trigger-p0") == [
+        [TableReconciliationSignal.TRIGGER_NOW, {"operations": ["expire_snapshots"], "priority": "P0"}]
+    ]
+    assert _signals(harness, "trigger-none") == [
+        [TableReconciliationSignal.TRIGGER_NOW, {"operations": ["expire_snapshots"]}]
     ]
 
 

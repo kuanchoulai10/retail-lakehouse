@@ -111,11 +111,12 @@ class TableCommitsApiResponse(BaseModel):
 
 
 class TriggerTableMaintenanceApiRequest(BaseModel):
-    """Carry the operations to run now."""
+    """Carry the operations to run now and, optionally, the priority of the run."""
 
     model_config = ConfigDict(extra="forbid")
 
     operations: list[str]
+    priority: Literal["P0", "P1", "P2", "P3"] | None = None
 
 
 class SetTablePriorityApiRequest(BaseModel):

@@ -4504,7 +4504,7 @@
       },
       "TriggerTableMaintenanceApiRequest": {
         "additionalProperties": false,
-        "description": "Carry the operations to run now.",
+        "description": "Carry the operations to run now and, optionally, the priority of the run.",
         "properties": {
           "operations": {
             "items": {
@@ -4512,6 +4512,23 @@
             },
             "title": "Operations",
             "type": "array"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "enum": [
+                  "P0",
+                  "P1",
+                  "P2",
+                  "P3"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
           }
         },
         "required": [

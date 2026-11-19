@@ -4,10 +4,12 @@
  * Data Platform API
  * OpenAPI spec version: 0.1.0
  */
+import type { TriggerTableMaintenanceApiRequestPriority } from './triggerTableMaintenanceApiRequestPriority';
 
 /**
- * Carry the operations to run now.
+ * Carry the operations to run now and, optionally, the priority of the run.
  */
 export interface TriggerTableMaintenanceApiRequest {
   operations: string[];
+  priority?: TriggerTableMaintenanceApiRequestPriority;
 }

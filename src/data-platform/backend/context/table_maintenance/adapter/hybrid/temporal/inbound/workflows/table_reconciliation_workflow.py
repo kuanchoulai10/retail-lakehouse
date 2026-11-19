@@ -148,6 +148,7 @@ class TableReconciliationWorkflow:
         self._in_flight_attempt_deadline_seconds = input.in_flight_attempt_deadline_seconds
         self._in_flight_max_attempts = input.in_flight_max_attempts
         self._pending_manual = None if input.pending_manual is None else list(input.pending_manual)
+        self._pending_manual_priority = input.pending_manual_priority
         self._next_plan_at = datetime.fromisoformat(input.next_plan_at) if input.next_plan_at else None
         self._continue_as_new_after = input.continue_as_new_after
         self._interval = timedelta(seconds=input.reconcile_interval_seconds)
@@ -218,6 +219,7 @@ class TableReconciliationWorkflow:
         """Keep a manual trigger, replacing any pending one, and wake the loop."""
         operations = (payload or {}).get("operations") or []
         self._pending_manual = [str(op) for op in operations]
+        self._pending_manual_priority = (payload or {}).get("priority")
         self._wake(_REASON_MANUAL_RUN, cancels_stop=True)
 
     @workflow.signal(name=TableReconciliationSignal.RECONCILE_NOW)
@@ -251,6 +253,7 @@ class TableReconciliationWorkflow:
             "in_flight_workflow_id": self._in_flight_workflow_id,
             "in_flight_started_at": _iso(self._in_flight_started_at),
             "pending_manual": self._pending_manual,
+            "pending_manual_priority": self._pending_manual_priority,
             "stopping": self._stopping,
             "next_plan_at": _iso(self._next_plan_at),
             "reconcile_interval_seconds": int(self._interval.total_seconds()),
@@ -309,6 +312,7 @@ class TableReconciliationWorkflow:
             in_flight_started_at=_iso(self._in_flight_started_at),
             in_flight_operation_count=self._in_flight_operations,
             pending_manual=self._pending_manual,
+            pending_manual_priority=self._pending_manual_priority,
             next_plan_at=_iso(self._next_plan_at),
             reconcile_interval_seconds=int(self._interval.total_seconds()),
             continue_as_new_after=self._continue_as_new_after,
@@ -433,6 +437,7 @@ class TableReconciliationWorkflow:
 
     async def _plan_and_start_once(self) -> bool:
         manual = self._pending_manual
+        manual_priority = self._pending_manual_priority
         reconciliation_id, run_id = self._mint_ids()
         now = workflow.now()
         reasons, self._wake_reasons = self._wake_reasons, {}
@@ -444,6 +449,7 @@ class TableReconciliationWorkflow:
                     "table_uuid": self._table_uuid,
                     "now": now.isoformat(),
                     "manual_operations": manual or None,
+                    "manual_priority": manual_priority if manual is not None else None,
                     "run_id": run_id,
                 },
                 start_to_close_timeout=_ACTIVITY_TIMEOUT,
@@ -563,6 +569,7 @@ class TableReconciliationWorkflow:
         if manual is None or self._pending_manual is not manual:
             return
         self._pending_manual = None
+        self._pending_manual_priority = None
         if dropped_because is not None:
             workflow.logger.info("dropping manual trigger %s: %s", manual, dropped_because)
 

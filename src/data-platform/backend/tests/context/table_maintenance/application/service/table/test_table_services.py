@@ -219,6 +219,25 @@ def test_trigger_signals_operations_in_canonical_order(tables_repo, signals, now
     ]
 
 
+def test_trigger_sends_the_priority_when_given_and_none_when_omitted(tables_repo, signals, now):
+    """Triggering passes a given priority to the gateway and sends none when it is omitted."""
+    _managed(tables_repo, now)
+    service = TriggerTableMaintenanceService(tables_repo, signals)
+    service.execute(TriggerTableMaintenanceUseCaseInput(uuid="u-1", operations=("expire_snapshots",), priority="P0"))
+    service.execute(TriggerTableMaintenanceUseCaseInput(uuid="u-1", operations=("expire_snapshots",)))
+    assert [c.priority for c in signals.calls] == ["P0", None]
+
+
+def test_trigger_rejects_an_unknown_priority(tables_repo, signals, now):
+    """An unknown priority is a ValidationError and sends nothing."""
+    _managed(tables_repo, now)
+    with pytest.raises(ValidationError, match="P7"):
+        TriggerTableMaintenanceService(tables_repo, signals).execute(
+            TriggerTableMaintenanceUseCaseInput(uuid="u-1", operations=("expire_snapshots",), priority="P7")
+        )
+    assert signals.calls == []
+
+
 def test_trigger_on_dropped_table_conflicts(tables_repo, signals, now):
     """Triggering maintenance on a dropped table raises ConflictError."""
     _dropped(tables_repo, now)

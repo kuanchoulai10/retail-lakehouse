@@ -144,6 +144,7 @@ export * from './tableStorageApiResponse';
 export * from './tableStorageApiResponseReclaimed';
 export * from './tableSummaryApiResponse';
 export * from './triggerTableMaintenanceApiRequest';
+export * from './triggerTableMaintenanceApiRequestPriority';
 export * from './triggerTableMaintenanceApiResponse';
 export * from './triggerTableReconciliationApiResponse';
 export * from './updateCatalogApiRequest';

@@ -141,6 +141,30 @@ def test_trigger_table_maintenance_returns_202() -> None:
     assert stub.requests == [TriggerTableMaintenanceUseCaseInput(uuid="u-1", operations=("rewrite_data_files",))]
 
 
+def test_trigger_table_maintenance_passes_the_priority_when_given() -> None:
+    """A priority in the body reaches the use case."""
+    stub = StubUseCase(TriggerTableMaintenanceUseCaseOutput(accepted=True))
+    client = build_client(trigger_table_maintenance=stub)
+
+    response = client.post("/v1/tables/u-1/maintenance", json={"operations": ["rewrite_data_files"], "priority": "P0"})
+
+    assert response.status_code == 202
+    assert stub.requests == [
+        TriggerTableMaintenanceUseCaseInput(uuid="u-1", operations=("rewrite_data_files",), priority="P0")
+    ]
+
+
+def test_trigger_table_maintenance_rejects_an_unknown_priority_with_422() -> None:
+    """A priority outside P0 to P3 is 422 and the use case is not called."""
+    stub = StubUseCase(TriggerTableMaintenanceUseCaseOutput(accepted=True))
+    client = build_client(trigger_table_maintenance=stub)
+
+    response = client.post("/v1/tables/u-1/maintenance", json={"operations": ["rewrite_data_files"], "priority": "P9"})
+
+    assert response.status_code == 422
+    assert stub.requests == []
+
+
 def test_put_priority_sets_it_then_answers_the_table() -> None:
     """Setting the priority passes the table and priority to the use case and answers the table read back."""
     set_stub = StubUseCase(SetTablePriorityUseCaseOutput(uuid="u-1", priority="P1"))

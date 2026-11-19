@@ -448,6 +448,63 @@ def test_trigger_now_while_in_flight_runs_after_finish():
     _run(scenario, script=lambda r: _planned(*(r["manual_operations"] or [COMPACTION])))
 
 
+def test_trigger_now_priority_reaches_the_manual_plan_only():
+    """A manual trigger's priority goes to its plan; the scheduled plan before it carries none."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = await h.in_flight()
+        await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE], "priority": "P0"})
+        await h.settle()
+        assert (await h.state())["pending_manual_priority"] == "P0"
+        await h.complete_child(first)
+        requests = await h.plan_count(2)
+        assert requests[0]["manual_priority"] is None
+        assert requests[1]["manual_priority"] == "P0"
+        second = await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first))
+        assert second["pending_manual_priority"] is None
+
+    _run(scenario, script=lambda r: _planned(*(r["manual_operations"] or [COMPACTION])))
+
+
+def test_a_later_trigger_without_priority_clears_the_pending_priority():
+    """A second manual trigger replaces the first, so one that names no priority clears it."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = await h.in_flight()
+        await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE], "priority": "P0"})
+        await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE]})
+        await h.settle()
+        assert (await h.state())["pending_manual_priority"] is None
+        await h.complete_child(first)
+        assert (await h.plan_count(2))[1]["manual_priority"] is None
+
+    _run(scenario, script=lambda r: _planned(*(r["manual_operations"] or [COMPACTION])))
+
+
+def test_trigger_now_priority_survives_continue_as_new():
+    """A pending manual priority is carried through continue as new."""
+
+    async def scenario(h: Harness) -> None:
+        handle = await h.start(continue_as_new_after=2)
+        first_run = handle.result_run_id
+        run_id = await h.in_flight()
+        await h.signal(TableReconciliationSignal.TRIGGER_NOW, {"operations": [EXPIRE], "priority": "P1"})
+        for _ in range(3):
+            await h.signal(TableReconciliationSignal.POLICY_CHANGED)
+
+        async def run_id_now() -> str | None:
+            return (await h.client.get_workflow_handle(WORKFLOW_ID).describe()).run_id
+
+        await eventually(run_id_now, lambda r: r != first_run)
+        assert (await h.state())["pending_manual_priority"] == "P1"
+        await h.complete_child(run_id)
+        assert (await h.plan_count(2))[1]["manual_priority"] == "P1"
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
 def test_trigger_now_without_operations_plans_all_due_as_manual():
     """A manual trigger without operations plans every due operation as a manual run."""
 

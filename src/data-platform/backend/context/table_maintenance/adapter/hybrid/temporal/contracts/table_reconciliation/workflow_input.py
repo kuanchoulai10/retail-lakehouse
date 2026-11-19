@@ -23,6 +23,7 @@ class TableReconciliationWorkflowInput:
     ``in_flight_max_attempts``. ``pending_manual`` is a
     manual trigger not yet planned: ``None`` means none, ``[]`` means a manual run
     of every due operation, a non-empty list names the requested operations.
+    ``pending_manual_priority`` is the priority that trigger asked for (``None``: the table's own).
     ``next_plan_at`` (ISO-8601) is when the timer plans next; ``None`` means one
     ``reconcile_interval_seconds`` after start. That interval comes from the last
     plan and is also used after a failed plan. ``continue_as_new_after`` bounds
@@ -43,3 +44,4 @@ class TableReconciliationWorkflowInput:
     wake_reasons: dict[str, int] | None = None
     in_flight_attempt_deadline_seconds: int = DEFAULT_ATTEMPT_DEADLINE_SECONDS
     in_flight_max_attempts: int = DEFAULT_MAX_ATTEMPTS
+    pending_manual_priority: str | None = None
