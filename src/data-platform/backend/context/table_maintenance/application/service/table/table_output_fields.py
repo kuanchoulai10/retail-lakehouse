@@ -43,6 +43,7 @@ def table_output_fields(
         "namespace": table.name.namespace,
         "table": table.name.table,
         "status": table.status.value,
+        "priority": table.priority.value,
         "matched_rule_id": (None if table.matched_rule_id is None else table.matched_rule_id.value),
         "operation_states": {
             op.value: {

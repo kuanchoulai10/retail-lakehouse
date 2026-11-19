@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from context.table_maintenance.application.domain.model.shared import ComputeSize, MaintenanceOperation
+from context.table_maintenance.application.domain.model.shared import ComputeSize, MaintenanceOperation, TablePriority
 from context.table_maintenance.application.domain.model.table import (
     AppliedPolicyRef,
     AttentionMark,
@@ -29,12 +29,14 @@ from context.table_maintenance.application.exceptions import (
 from context.table_maintenance.application.port.inbound.table import (
     GetTableUseCaseInput,
     ListTablesUseCaseInput,
+    SetTablePriorityUseCaseInput,
     TriggerTableMaintenanceUseCaseInput,
     TriggerTableReconciliationUseCaseInput,
 )
 from context.table_maintenance.application.service.table import (
     GetTableService,
     ListTablesService,
+    SetTablePriorityService,
     TriggerTableMaintenanceService,
     TriggerTableReconciliationService,
 )
@@ -118,6 +120,47 @@ def test_get_unknown_table_not_found(tables_repo):
         GetTableService(tables_repo, InMemoryCatalogDiscoveriesRepo(), InMemoryTableMaintenancePoliciesRepo()).execute(
             GetTableUseCaseInput(uuid="nope")
         )
+
+
+# --- set priority ---
+
+
+def test_set_priority_saves_the_table(tables_repo, now):
+    """Setting a priority saves it on the table and answers it."""
+    _managed(tables_repo, now)
+    out = SetTablePriorityService(tables_repo).execute(SetTablePriorityUseCaseInput(uuid="u-1", priority="P1", now=now))
+    assert (out.uuid, out.priority) == ("u-1", "P1")
+    assert tables_repo.items["u-1"].priority.value == "P1"
+
+
+def test_unknown_priority_is_a_validation_error(tables_repo, now):
+    """An unknown priority is rejected and the table keeps its priority."""
+    _managed(tables_repo, now)
+    with pytest.raises(ValidationError):
+        SetTablePriorityService(tables_repo).execute(SetTablePriorityUseCaseInput(uuid="u-1", priority="P4", now=now))
+    assert tables_repo.items["u-1"].priority.value == "P3"
+
+
+def test_set_priority_on_unknown_table_is_not_found(tables_repo, now):
+    """Setting the priority of an unknown table raises NotFoundError."""
+    with pytest.raises(NotFoundError):
+        SetTablePriorityService(tables_repo).execute(SetTablePriorityUseCaseInput(uuid="nope", priority="P1", now=now))
+
+
+def test_set_priority_on_dropped_table_conflicts(tables_repo, now):
+    """Setting the priority of a dropped table raises ConflictError."""
+    _dropped(tables_repo, now)
+    with pytest.raises(ConflictError):
+        SetTablePriorityService(tables_repo).execute(SetTablePriorityUseCaseInput(uuid="u-1", priority="P1", now=now))
+
+
+def test_get_table_answers_the_priority(tables_repo, now):
+    """A new table is at P3 and a changed priority shows."""
+    table = _managed(tables_repo, now)
+    service = GetTableService(tables_repo, InMemoryCatalogDiscoveriesRepo(), InMemoryTableMaintenancePoliciesRepo())
+    assert service.execute(GetTableUseCaseInput(uuid="u-1")).priority == "P3"
+    table.set_priority(TablePriority.P0, now)
+    assert service.execute(GetTableUseCaseInput(uuid="u-1")).priority == "P0"
 
 
 # --- trigger ---

@@ -18,6 +18,7 @@ export interface TableApiResponse {
   matched_rule_id: string | null;
   namespace: string;
   operation_states: TableApiResponseOperationStates;
+  priority: string;
   registered_at: string;
   status: string;
   table: string;

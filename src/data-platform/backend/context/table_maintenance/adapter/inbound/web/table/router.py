@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime  # noqa: TC003
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, status
@@ -12,6 +12,7 @@ from context.table_maintenance.adapter.inbound.web.shared import (
     use_cases_dependency,
 )
 from context.table_maintenance.adapter.inbound.web.table.dto import (
+    SetTablePriorityApiRequest,
     TableApiResponse,
     TableCommitsApiResponse,
     TableHealthApiResponse,
@@ -26,6 +27,7 @@ from context.table_maintenance.application.port.inbound.table import (
     GetTableUseCaseInput,
     ListTableCommitsUseCaseInput,
     ListTablesUseCaseInput,
+    SetTablePriorityUseCaseInput,
     TriggerTableMaintenanceUseCaseInput,
     TriggerTableReconciliationUseCaseInput,
 )
@@ -77,6 +79,16 @@ def list_table_commits(
         ListTableCommitsUseCaseInput(uuid=table_uuid, limit=limit, since=since, before=before, writer=writer)
     )
     return TableCommitsApiResponse.model_validate(output)
+
+
+@router.put("/{table_uuid}/priority")
+def set_table_priority(table_uuid: str, body: SetTablePriorityApiRequest, use_cases: UseCases) -> TableApiResponse:
+    """Set how urgently a table's maintenance is scheduled; answers the updated table."""
+    use_cases.set_table_priority.execute(
+        SetTablePriorityUseCaseInput(uuid=table_uuid, priority=body.priority, now=datetime.now(UTC))
+    )
+    output = use_cases.get_table.execute(GetTableUseCaseInput(uuid=table_uuid))
+    return TableApiResponse.model_validate(output)
 
 
 @router.post("/{table_uuid}/maintenance", status_code=status.HTTP_202_ACCEPTED)

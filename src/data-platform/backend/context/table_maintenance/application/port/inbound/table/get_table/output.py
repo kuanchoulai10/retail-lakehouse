@@ -16,6 +16,7 @@ class GetTableUseCaseOutput(UseCaseOutput):
     namespace: str
     table: str
     status: str
+    priority: str
     matched_rule_id: str | None
     operation_states: dict[str, dict[str, Any]]
     registered_at: datetime

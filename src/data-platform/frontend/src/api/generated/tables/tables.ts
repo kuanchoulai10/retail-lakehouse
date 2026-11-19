@@ -32,6 +32,7 @@ import type {
   ListTablesParams,
   RenameTableApiRequest,
   ResetTablePropertiesApiRequest,
+  SetTablePriorityApiRequest,
   TableApiResponse,
   TableCommitsApiResponse,
   TableHealthApiResponse,
@@ -1370,6 +1371,95 @@ export const useTriggerTableMaintenance = <TError = HTTPValidationError,
         TContext
       > => {
       return useMutation(getTriggerTableMaintenanceMutationOptions(options), queryClient);
+    }
+    export const getSetTablePriorityUrl = (tableUuid: string,) => {
+
+
+
+
+  return `/v1/tables/${encodeURIComponent(String(tableUuid))}/priority`
+}
+
+/**
+ * Set how urgently a table's maintenance is scheduled; answers the updated table.
+ * @summary Set Table Priority
+ */
+export const setTablePriority = async (tableUuid: string,
+    setTablePriorityApiRequest: SetTablePriorityApiRequest, options?: Parameters<typeof apiFetch>[1]): Promise<TableApiResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<TableApiResponse>(getSetTablePriorityUrl(tableUuid),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(setTablePriorityApiRequest)
+  }
+);}
+
+
+
+
+
+export const getSetTablePriorityMutationKey = () => ['setTablePriority'] as const;
+
+export const getSetTablePriorityMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setTablePriority>>, TError,SetTablePriorityMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setTablePriority>>, TError,SetTablePriorityMutationVariables, TContext> => {
+
+const mutationKey = getSetTablePriorityMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setTablePriority>>, SetTablePriorityMutationVariables> = (props) => {
+          const {tableUuid,data} = props ?? {};
+
+          return  setTablePriority(tableUuid,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetTablePriorityMutationResult = NonNullable<Awaited<ReturnType<typeof setTablePriority>>>
+    export type SetTablePriorityMutationBody = SetTablePriorityApiRequest
+    export type SetTablePriorityMutationError = HTTPValidationError
+    export type SetTablePriorityMutationVariables = {tableUuid: string;data: SetTablePriorityApiRequest}
+
+    /**
+ * @summary Set Table Priority
+ */
+export const useSetTablePriority = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setTablePriority>>, TError,SetTablePriorityMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof setTablePriority>>,
+        TError,
+        SetTablePriorityMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSetTablePriorityMutationOptions(options), queryClient);
     }
     export const getTriggerTableReconciliationUrl = (tableUuid: string,) => {
 

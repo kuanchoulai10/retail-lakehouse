@@ -113,6 +113,7 @@ KNOWN_VERBS = {
     "Plan",
     "Record",
     "Release",
+    "Set",
 }
 
 

@@ -21,6 +21,7 @@ if TYPE_CHECKING:
         GetTableUseCase,
         ListTableCommitsUseCase,
         ListTablesUseCase,
+        SetTablePriorityUseCase,
         TriggerTableMaintenanceUseCase,
         TriggerTableReconciliationUseCase,
     )
@@ -75,6 +76,7 @@ class WebUseCases:
     get_table_health: GetTableHealthUseCase
     get_table_storage: GetTableStorageUseCase
     list_table_commits: ListTableCommitsUseCase
+    set_table_priority: SetTablePriorityUseCase
     trigger_table_maintenance: TriggerTableMaintenanceUseCase
     trigger_table_reconciliation: TriggerTableReconciliationUseCase
     list_table_maintenance_runs: ListTableMaintenanceRunsUseCase

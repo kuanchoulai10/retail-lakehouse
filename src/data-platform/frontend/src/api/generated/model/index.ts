@@ -108,6 +108,8 @@ export * from './schedulerSettingsApiResponse';
 export * from './schemaApiResponse';
 export * from './schemaFieldApiRequest';
 export * from './schemaFieldApiResponse';
+export * from './setTablePriorityApiRequest';
+export * from './setTablePriorityApiRequestPriority';
 export * from './smallManifestsConditionApiRequest';
 export * from './snapshotApiResponse';
 export * from './snapshotApiResponseSummary';

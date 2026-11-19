@@ -25,6 +25,7 @@ if TYPE_CHECKING:
         ListTablesUseCase,
         PlanTableMaintenanceUseCase,
         ProcessTableHintUseCase,
+        SetTablePriorityUseCase,
         SyncDiscoveredTablesUseCase,
         TriggerTableMaintenanceUseCase,
         TriggerTableReconciliationUseCase,
@@ -89,6 +90,7 @@ class UseCases:
     get_table_storage: GetTableStorageUseCase
     list_table_commits: ListTableCommitsUseCase
     list_tables: ListTablesUseCase
+    set_table_priority: SetTablePriorityUseCase
     trigger_table_maintenance: TriggerTableMaintenanceUseCase
     trigger_table_reconciliation: TriggerTableReconciliationUseCase
     create_table_maintenance_run: CreateTableMaintenanceRunUseCase

@@ -19,6 +19,7 @@ export function tableFixture(overrides: Partial<TableApiResponse> = {}): TableAp
     namespace: "inventory",
     table: "orders",
     status: "managed",
+    priority: "P3",
     matched_rule_id: "dr-01m7s6c3tqee0rhg00xn5s97gw",
     operation_states: {},
     registered_at: "2026-10-30T10:00:00Z",

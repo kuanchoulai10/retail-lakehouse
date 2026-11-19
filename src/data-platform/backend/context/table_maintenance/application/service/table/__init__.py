@@ -50,6 +50,9 @@ from context.table_maintenance.application.service.table.register_discovered_tab
 from context.table_maintenance.application.service.table.registration_outcome import (
     RegistrationOutcome,
 )
+from context.table_maintenance.application.service.table.set_table_priority import (
+    SetTablePriorityService,
+)
 from context.table_maintenance.application.service.table.summary_int import summary_int
 from context.table_maintenance.application.service.table.sync_discovered_tables import (
     SyncDiscoveredTablesService,
@@ -83,6 +86,7 @@ __all__ = [
     "PlanTableMaintenanceService",
     "ProcessTableHintService",
     "RegistrationOutcome",
+    "SetTablePriorityService",
     "SyncDiscoveredTablesService",
     "TableHintAction",
     "TriggerTableMaintenanceService",

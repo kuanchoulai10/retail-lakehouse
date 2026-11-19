@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -18,6 +18,7 @@ class TableApiResponse(BaseModel):
     namespace: str
     table: str
     status: str
+    priority: str
     matched_rule_id: str | None
     operation_states: dict[str, dict[str, Any]]
     registered_at: datetime
@@ -115,6 +116,14 @@ class TriggerTableMaintenanceApiRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     operations: list[str]
+
+
+class SetTablePriorityApiRequest(BaseModel):
+    """Carry the priority to set on a table."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    priority: Literal["P0", "P1", "P2", "P3"]
 
 
 class TriggerTableMaintenanceApiResponse(BaseModel):

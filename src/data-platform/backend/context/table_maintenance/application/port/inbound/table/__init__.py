@@ -65,6 +65,15 @@ from context.table_maintenance.application.port.inbound.table.process_table_hint
 from context.table_maintenance.application.port.inbound.table.process_table_hint.use_case import (
     ProcessTableHintUseCase,
 )
+from context.table_maintenance.application.port.inbound.table.set_table_priority.input import (
+    SetTablePriorityUseCaseInput,
+)
+from context.table_maintenance.application.port.inbound.table.set_table_priority.output import (
+    SetTablePriorityUseCaseOutput,
+)
+from context.table_maintenance.application.port.inbound.table.set_table_priority.use_case import (
+    SetTablePriorityUseCase,
+)
 from context.table_maintenance.application.port.inbound.table.sync_discovered_tables.input import (
     SyncDiscoveredTablesUseCaseInput,
 )
@@ -115,6 +124,9 @@ __all__ = [
     "ProcessTableHintUseCase",
     "ProcessTableHintUseCaseInput",
     "ProcessTableHintUseCaseOutput",
+    "SetTablePriorityUseCase",
+    "SetTablePriorityUseCaseInput",
+    "SetTablePriorityUseCaseOutput",
     "SyncDiscoveredTablesUseCase",
     "SyncDiscoveredTablesUseCaseInput",
     "SyncDiscoveredTablesUseCaseOutput",

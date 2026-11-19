@@ -231,6 +231,7 @@ export const MAINTAINED_ORDERS: TableApiResponse = {
   namespace: "retail",
   table: "orders",
   status: "managed",
+  priority: "P3",
   matched_rule_id: "dr-01m7s6c3tqee0rhg00xry2zqqt",
   operation_states: {},
   registered_at: "2026-11-02T10:00:00Z",

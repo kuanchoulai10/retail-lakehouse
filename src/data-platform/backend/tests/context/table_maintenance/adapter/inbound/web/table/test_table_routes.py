@@ -13,6 +13,7 @@ from context.table_maintenance.application.port.inbound.table import (
     GetTableUseCaseOutput,
     ListTablesUseCaseInput,
     ListTablesUseCaseOutput,
+    SetTablePriorityUseCaseOutput,
     TriggerTableMaintenanceUseCaseInput,
     TriggerTableMaintenanceUseCaseOutput,
     TriggerTableReconciliationUseCaseInput,
@@ -30,6 +31,7 @@ FIELDS: dict[str, Any] = {
     "namespace": "sales",
     "table": "orders",
     "status": "managed",
+    "priority": "P3",
     "matched_rule_id": "dr-01h455vb4pex5vsknk084sn02q",
     "operation_states": {"rewrite_data_files": {"last_attempt_at": NOW, "consecutive_failures": 0}},
     "registered_at": NOW,
@@ -137,6 +139,20 @@ def test_trigger_table_maintenance_returns_202() -> None:
     assert response.status_code == 202
     assert response.json() == {"accepted": True}
     assert stub.requests == [TriggerTableMaintenanceUseCaseInput(uuid="u-1", operations=("rewrite_data_files",))]
+
+
+def test_put_priority_sets_it_then_answers_the_table() -> None:
+    """Setting the priority passes the table and priority to the use case and answers the table read back."""
+    set_stub = StubUseCase(SetTablePriorityUseCaseOutput(uuid="u-1", priority="P1"))
+    get_stub = StubUseCase(GetTableUseCaseOutput(**(GetTableUseCaseOutput(**FIELDS).model_dump() | {"priority": "P1"})))
+    client = build_client(set_table_priority=set_stub, get_table=get_stub)
+
+    response = client.put("/v1/tables/u-1/priority", json={"priority": "P1"})
+
+    assert response.status_code == 200
+    assert response.json()["priority"] == "P1"
+    assert [(r.uuid, r.priority) for r in set_stub.requests] == [("u-1", "P1")]
+    assert get_stub.requests == [GetTableUseCaseInput(uuid="u-1")]
 
 
 def test_reconcile_table_returns_202() -> None:
