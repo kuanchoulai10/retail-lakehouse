@@ -67,6 +67,24 @@ export { TitleBar, type TitleBarOverflowAction, type TitleBarProps } from "./com
 export { TopAppBar, type TopAppBarProps } from "./components/TopAppBar/TopAppBar";
 export { Banner, type BannerProps } from "./components/Banner/Banner";
 export { CHART_COLOURS, ChartContainer, type ChartContainerProps } from "./components/ChartContainer/ChartContainer";
+export type { ChartSeries } from "./lib/chart/ChartSeries";
+export { AreaChart, type AreaChartProps } from "./components/AreaChart/AreaChart";
+export { BarChart, type BarChartProps } from "./components/BarChart/BarChart";
+export { BarList, type BarListItem, type BarListProps } from "./components/BarList/BarList";
+export { ChartLegend, type ChartLegendItem, type ChartLegendProps } from "./components/ChartLegend/ChartLegend";
+export { ChartState, type ChartStateProps } from "./components/ChartState/ChartState";
+export { ChartTooltip, type ChartTooltipEntry, type ChartTooltipProps } from "./components/ChartTooltip/ChartTooltip";
+export { DonutChart, type DonutChartProps, type DonutChartSlice } from "./components/DonutChart/DonutChart";
+export { LineChart, type LineChartProps } from "./components/LineChart/LineChart";
+export { Meter, type MeterProps } from "./components/Meter/Meter";
+export { MetricCard, type MetricCardDelta, type MetricCardProps } from "./components/MetricCard/MetricCard";
+export { Sparkline, type SparklineProps } from "./components/Sparkline/Sparkline";
+export {
+  TimeRangePicker,
+  type TimeRangeOption,
+  type TimeRangePickerProps,
+} from "./components/TimeRangePicker/TimeRangePicker";
+export { Tracker, type TrackerItem, type TrackerProps } from "./components/Tracker/Tracker";
 export { DataTable, type DataTableProps } from "./components/DataTable/DataTable";
 export { createDataTableColumnHelper } from "./components/DataTable/createDataTableColumnHelper";
 export type { DataTableColumn, DataTableFeatures } from "./components/DataTable/dataTableFeatures";

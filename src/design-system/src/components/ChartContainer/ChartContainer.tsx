@@ -25,7 +25,7 @@ export function ChartContainer({ label, height, children, className }: ChartCont
       className={cn("w-full min-w-0 text-on-surface-variant", className)}
       style={{ height }}
     >
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 1, height }}>
         {children}
       </ResponsiveContainer>
     </div>

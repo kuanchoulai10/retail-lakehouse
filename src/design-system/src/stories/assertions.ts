@@ -34,6 +34,14 @@ export async function exerciseOverlay(
   await waitFor(() => expect(trigger).toHaveFocus());
 }
 
+export async function chartTooltip(canvasElement: HTMLElement): Promise<HTMLElement> {
+  return waitFor(() => {
+    const found = canvasElement.querySelector("[data-chart-tooltip]");
+    expect(found).not.toBeNull();
+    return found as HTMLElement;
+  });
+}
+
 export function resolvedColor(token: string, context: HTMLElement): string {
   const probe = context.ownerDocument.createElement("span");
   probe.style.color = `var(--ds-${token})`;
