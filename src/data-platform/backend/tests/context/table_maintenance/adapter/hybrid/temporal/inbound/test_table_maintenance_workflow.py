@@ -226,6 +226,28 @@ def _run(
     asyncio.run(go())
 
 
+def test_the_run_is_created_with_the_priority_of_the_plan():
+    """The create-run activity gets the priority the plan carries."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(EXPIRE, 1): [(1, True, None)]}
+        await h.run_maintenance(EXPIRE, plan={**_plan(EXPIRE), "priority": "P1"})
+        assert h.fakes.created[0]["priority"] == "P1"
+
+    _run(scenario)
+
+
+def test_the_run_is_created_at_p3_when_the_plan_has_no_priority():
+    """A plan without a priority creates its run at P3."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.callbacks = {(EXPIRE, 1): [(1, True, None)]}
+        await h.run_maintenance(EXPIRE)
+        assert h.fakes.created[0]["priority"] == "P3"
+
+    _run(scenario)
+
+
 def test_operations_run_in_order_and_parent_signalled():
     """The operations run in order, each result is recorded and the parent is told when the run finishes."""
 

@@ -141,6 +141,7 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
         "policy_version": 3,
         "policy_target": {"type": "namespace", "path": ["iceberg", "sales"]},
         "next_check_at": None,
+        "priority": "P3",
         "attempt_deadline_seconds": 21600,
         "max_attempts": 3,
     }
@@ -291,6 +292,7 @@ def test_plan_payload_keeps_every_field_of_a_full_plan():
         "policy_version": 3,
         "policy_target": {"type": "namespace", "path": ["iceberg", "sales"]},
         "next_check_at": "2026-10-24T01:32:03+00:00",
+        "priority": "P3",
         "attempt_deadline_seconds": 21600,
         "max_attempts": 3,
     }
@@ -511,6 +513,14 @@ def test_plan_without_manual_operations_defaults_to_none():
     activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW})
     assert fakes["plan"].requests[0].manual_operations is None
     assert fakes["plan"].requests[0].run_id is None
+
+
+def test_plan_passes_the_manual_priority_and_defaults_to_none():
+    """The plan activity hands the use case the manual priority of its payload, None when it names none."""
+    activities, fakes = _reconcile()
+    activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW, "manual_priority": "P0"})
+    activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW})
+    assert [r.manual_priority for r in fakes["plan"].requests] == ["P0", None]
 
 
 def test_release_compaction_candidates_passes_the_run_and_now():
@@ -739,6 +749,23 @@ def test_create_run_passes_fields_and_returns_iso_dict():
     assert result["run_id"] == RUN_1
     assert result["status"] == "running"
     assert result["created_at"] == CREATED_AT.isoformat()
+
+
+def test_create_run_passes_the_priority_and_defaults_to_p3():
+    """The create run activity hands the use case the priority of its payload, P3 when it names none."""
+    create, record = FakeCreateRun(), FakeRecordResult()
+    activities = table_maintenance_activities_with_fakes(create_run=create, record_result=record)
+    payload = {
+        "run_id": RUN_1,
+        "table_uuid": "u1",
+        "trigger": "scheduled",
+        "operations": ["expire_snapshots"],
+        "execution_ref": "wf-r1",
+        "now": NOW,
+    }
+    activities.create_table_maintenance_run({**payload, "priority": "P1"})
+    activities.create_table_maintenance_run(payload)
+    assert [r.priority for r in create.requests] == ["P1", "P3"]
 
 
 def test_record_result_passes_fields():

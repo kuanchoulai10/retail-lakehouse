@@ -11,6 +11,7 @@ import pytest
 from context.table_maintenance.application.domain.model.shared import (
     ComputeSize,
     MaintenanceOperation,
+    TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
     AppliedPolicyRef,
@@ -167,12 +168,55 @@ def _use_policy(policies, now, content):
     )
 
 
-def _plan(planner, now, manual=None, uuid="u-1"):
+def _plan(planner, now, manual=None, uuid="u-1", manual_priority=None):
     operations = None if manual is None else tuple(manual)
-    return planner.execute(PlanTableMaintenanceUseCaseInput(table_uuid=uuid, now=now, manual_operations=operations))
+    return planner.execute(
+        PlanTableMaintenanceUseCaseInput(
+            table_uuid=uuid, now=now, manual_operations=operations, manual_priority=manual_priority
+        )
+    )
 
 
 # --- plan ---
+
+
+def test_plan_carries_the_tables_priority(planner, tables_repo, catalog, now):
+    """A plan names the priority the table has, P3 when it was never set."""
+    table = _table(tables_repo, now)
+    _observe(catalog, now)
+    assert _plan(planner, now).priority == "P3"
+    table.set_priority(TablePriority.P1, now)
+    tables_repo.update(table)
+    assert _plan(planner, now).priority == "P1"
+    assert _plan(planner, now, ["rewrite_manifests"]).priority == "P1"
+
+
+def test_plan_takes_the_manual_priority_over_the_tables(planner, tables_repo, catalog, now):
+    """A plan with a manual priority names it, and the table keeps its own."""
+    table = _table(tables_repo, now)
+    table.set_priority(TablePriority.P1, now)
+    tables_repo.update(table)
+    _observe(catalog, now)
+    assert _plan(planner, now, ["rewrite_manifests"], manual_priority="P0").priority == "P0"
+    assert tables_repo.items["u-1"].priority is TablePriority.P1
+
+
+def test_plan_rejects_an_unknown_manual_priority(planner, tables_repo, catalog, now):
+    """A manual priority that is not P0 to P3 is rejected."""
+    _table(tables_repo, now)
+    _observe(catalog, now)
+    with pytest.raises(ValidationError):
+        _plan(planner, now, ["rewrite_manifests"], manual_priority="P5")
+
+
+def test_skipped_plans_carry_a_priority_too(planner, tables_repo, catalog, now):
+    """A skip plan names the table's priority, and P3 when the table is unknown."""
+    unmanaged = _table(tables_repo, now, uuid="u-u", name=TableName(catalog="c", namespace="n", table="u"))
+    unmanaged.set_priority(TablePriority.P2, now)
+    unmanaged.unmanage(now)
+    tables_repo.update(unmanaged)
+    assert _plan(planner, now, uuid="u-u").priority == "P2"
+    assert _plan(planner, now, uuid="missing").priority == "P3"
 
 
 def test_plan_skip_reasons(planner, tables_repo, catalog, now):

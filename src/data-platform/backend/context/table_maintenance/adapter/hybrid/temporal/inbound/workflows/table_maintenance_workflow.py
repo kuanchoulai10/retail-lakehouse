@@ -125,6 +125,7 @@ class TableMaintenanceWorkflow:
                     "execution_ref": workflow.info().workflow_id,
                     "trigger": input.trigger,
                     "operations": [op["operation"] for op in operations],
+                    "priority": input.plan.get("priority", "P3"),
                     "now": _now(),
                 },
             )

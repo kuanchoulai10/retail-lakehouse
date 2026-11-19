@@ -20,7 +20,9 @@ class PlanTableMaintenanceUseCaseOutput(UseCaseOutput):
     that policy's name at planning time, carried to the records written under the
     plan for display only (``None`` likewise). ``next_check_at``
     is when a due compaction whose candidates are all held by a filter may find
-    one free (None otherwise), so the caller can look again then.
+    one free (None otherwise), so the caller can look again then. ``priority`` is
+    the priority the run the plan starts gets: the manual priority when one was
+    given, else the table's own (P3 when the table is unknown).
     """
 
     class Filter(UseCaseOutput):
@@ -87,3 +89,4 @@ class PlanTableMaintenanceUseCaseOutput(UseCaseOutput):
     policy_version: int | None = None
     policy_target: dict[str, Any] | None = None
     next_check_at: datetime | None = None
+    priority: str = "P3"

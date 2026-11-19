@@ -17,6 +17,7 @@ from context.table_maintenance.application.domain.model.shared import (
     MaintenancePlan,
     OperationVerdict,
     PlannedOperation,
+    TablePriority,
 )
 from context.table_maintenance.application.domain.model.table import (
     DEFAULT_FAILURE_BACKOFF_CAP,
@@ -144,6 +145,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         them.
         """
         manual = self._parse_manual(request.manual_operations)
+        manual_priority = self._parse_manual_priority(request.manual_priority)
         table = self._tables_repo.get(TableId(request.table_uuid))
         if table is None:
             self._candidates_repo.delete_by_table(TableId(request.table_uuid))
@@ -153,14 +155,14 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         reason = _SKIP_REASONS.get(table.status)
         if reason is not None:
             self._candidates_repo.delete_by_table(table.id)
-            return _skip(reason, applied, policy, table)
+            return _skip(reason, applied, policy, table, manual_priority)
         ref = TableMetadataRef(table.name.catalog, table.name.namespace, table.name.table)
         gateway_observation = self._catalog_gateway.observe_table(ref)
         with translate_domain_errors():
             observation = None if gateway_observation is None else table_observation_from_gateway(gateway_observation)
             if observation is None or observation.table_uuid != table.id.value:
                 self._candidates_repo.delete_by_table(table.id)
-                return _skip("not_found", applied, policy, table)
+                return _skip("not_found", applied, policy, table, manual_priority)
             self._record_last_commit(table, observation.last_committed_at)
             self._lift_stale_marks(table, applied, request.now)
             if manual is not None:
@@ -180,7 +182,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
                 )
                 if policy.dry_run:
                     plan = MaintenancePlan()
-            return self._render(table, applied, policy, plan, checks, observation, request, compaction)
+            return self._render(table, applied, policy, plan, checks, observation, request, compaction, manual_priority)
 
     def _share_compaction(  # noqa: PLR0913
         self,
@@ -329,6 +331,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
         observation: TableObservation,
         request: PlanTableMaintenanceUseCaseInput,
         compaction: CompactionShare,
+        manual_priority: TablePriority | None,
     ) -> PlanTableMaintenanceUseCaseOutput:
         properties = observation.properties
         operations: list[PlanTableMaintenanceUseCaseOutput.Operation] = []
@@ -372,6 +375,7 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             policy_version=applied.version,
             policy_target=applied.target,
             next_check_at=compaction.next_check_at,
+            priority=_priority_of(table, manual_priority),
         )
 
     @staticmethod
@@ -384,6 +388,20 @@ class PlanTableMaintenanceService(PlanTableMaintenanceUseCase):
             return [MaintenanceOperation(op) for op in raw]
         except ValueError as exc:
             raise ValidationError(str(exc)) from exc
+
+    @staticmethod
+    def _parse_manual_priority(raw: str | None) -> TablePriority | None:
+        if raw is None:
+            return None
+        try:
+            return TablePriority(raw)
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
+
+
+def _priority_of(table: Table, manual_priority: TablePriority | None) -> str:
+    """Return the priority a run of ``table`` gets: the manual one when given, else the table's own."""
+    return (manual_priority or table.priority).value
 
 
 def _partitions_of(
@@ -485,6 +503,7 @@ def _skip(
     applied: ResolveApplicableTableMaintenancePolicyUseCaseOutput,
     policy: MaintenancePolicyContent,
     table: Table,
+    manual_priority: TablePriority | None,
 ) -> PlanTableMaintenanceUseCaseOutput:
     return PlanTableMaintenanceUseCaseOutput(
         status="skip",
@@ -496,6 +515,7 @@ def _skip(
         policy_name=applied.policy_name,
         policy_version=applied.version,
         policy_target=applied.target,
+        priority=_priority_of(table, manual_priority),
     )
 
 
