@@ -1,15 +1,15 @@
-"""Guard tests for inbound port directory structure and naming conventions.
+"""Guard tests for inbound port directory structure and use case naming.
 
 Use cases are grouped under port/inbound/{aggregate}/ (e.g. table/).
 Each use case directory must contain exactly:
   __init__.py, input.py, output.py, use_case.py
 
-Naming convention:
-  {Name}UseCaseInput   in input.py
-  {Name}UseCaseOutput  in output.py
-  {Name}UseCase        in use_case.py
+and use_case.py defines {Name}UseCase.
 
-__init__.py must re-export all three symbols.
+``test_inbound_port_models.py`` checks the rest, more strictly: input.py and
+output.py each define exactly one top-level ``{Name}UseCaseInput`` /
+``{Name}UseCaseOutput`` on the right base, and __init__.py exports exactly the
+use case, its input and its output.
 """
 
 from __future__ import annotations
@@ -121,14 +121,14 @@ def test_use_case_dir_has_no_extra_files(use_case_entry: tuple[str, str, Path]):
     assert extra == set(), f"{use_case_dir.name}/ has unexpected files: {extra}"
 
 
-# --- Rule 3: Naming conventions ---
+# --- Rule 3: use_case.py naming ---
 
 
 def _exported_classes(module_path: str) -> list[str]:
     """Return the names of the top-level classes a module defines, not the ones it imports.
 
-    An ``output.py`` imports ``UseCaseOutput`` (and ``datetime``) at runtime, and its
-    nested classes are attributes of the output class, not of the module, so neither is listed.
+    A ``use_case.py`` imports ``UseCase`` and may import its input and output, which
+    other modules define, so none of them is listed.
     """
     mod = importlib.import_module(module_path)
     return [
@@ -136,30 +136,6 @@ def _exported_classes(module_path: str) -> list[str]:
         for name in dir(mod)
         if isinstance(obj := getattr(mod, name), type) and obj.__module__ == module_path and not name.startswith("_")
     ]
-
-
-@pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
-def test_input_class_naming(use_case_entry: tuple[str, str, Path]):
-    """Verify that input.py exports a class named {PascalCase}UseCaseInput."""
-    context, group, use_case_dir = use_case_entry
-    if group in AGGREGATE_GROUPS_NO_INPUT:
-        pytest.skip("No-input use case")
-    prefix = _pascal_to_words(use_case_dir.name)
-    expected = f"{prefix}UseCaseInput"
-    module = f"{_inbound_port_module(context)}.{group}.{use_case_dir.name}.input"
-    classes = _exported_classes(module)
-    assert expected in classes, f"{use_case_dir.name}/input.py must export '{expected}', found: {classes}"
-
-
-@pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
-def test_output_class_naming(use_case_entry: tuple[str, str, Path]):
-    """Verify that output.py exports a class named {PascalCase}UseCaseOutput."""
-    context, group, use_case_dir = use_case_entry
-    prefix = _pascal_to_words(use_case_dir.name)
-    expected = f"{prefix}UseCaseOutput"
-    module = f"{_inbound_port_module(context)}.{group}.{use_case_dir.name}.output"
-    classes = _exported_classes(module)
-    assert expected in classes, f"{use_case_dir.name}/output.py must export '{expected}', found: {classes}"
 
 
 @pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
@@ -171,30 +147,3 @@ def test_use_case_class_naming(use_case_entry: tuple[str, str, Path]):
     module = f"{_inbound_port_module(context)}.{group}.{use_case_dir.name}.use_case"
     classes = _exported_classes(module)
     assert expected in classes, f"{use_case_dir.name}/use_case.py must export '{expected}', found: {classes}"
-
-
-# --- Rule 4: __init__.py re-exports all three symbols ---
-
-
-@pytest.mark.parametrize("use_case_entry", _use_case_dirs(), ids=_use_case_id)
-def test_init_reexports_all_symbols(use_case_entry: tuple[str, str, Path]):
-    """Verify that __init__.py re-exports UseCaseInput, UseCaseOutput, and UseCase in __all__."""
-    context, group, use_case_dir = use_case_entry
-    prefix = _pascal_to_words(use_case_dir.name)
-    module = f"{_inbound_port_module(context)}.{group}.{use_case_dir.name}"
-    mod = importlib.import_module(module)
-    exported = set(getattr(mod, "__all__", []))
-
-    # UseCase is always required
-    assert f"{prefix}UseCase" in exported, (
-        f"{use_case_dir.name}/__init__.py must re-export '{prefix}UseCase' in __all__"
-    )
-    # UseCaseOutput is required
-    assert f"{prefix}UseCaseOutput" in exported, (
-        f"{use_case_dir.name}/__init__.py must re-export '{prefix}UseCaseOutput' in __all__"
-    )
-    # UseCaseInput is required only for groups with input
-    if group not in AGGREGATE_GROUPS_NO_INPUT:
-        assert f"{prefix}UseCaseInput" in exported, (
-            f"{use_case_dir.name}/__init__.py must re-export '{prefix}UseCaseInput' in __all__"
-        )
