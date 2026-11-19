@@ -68,7 +68,7 @@ tasks:
       - TIMEOUT=10s bash platform/21-kafka-debezium-mysql-connector/validate.sh
       - TIMEOUT=10s bash platform/22-kafka-iceberg-connector/validate.sh
       - TIMEOUT=10s bash platform/23-kafka-ui/validate.sh
-      - TIMEOUT=10s bash platform/23-trino/validate.sh
+      # - TIMEOUT=10s bash platform/23-trino/validate.sh
       # - TIMEOUT=10s bash platform/23-kiali/validate.sh
       - TIMEOUT=10s bash platform/25-lakehouse-control-plane/validate.sh
     cmds:
@@ -124,8 +124,8 @@ tasks:
       - bash platform/22-kafka-iceberg-connector/validate.sh
       - bash platform/23-kafka-ui/bootstrap.sh
       - bash platform/23-kafka-ui/validate.sh
-      - bash platform/23-trino/bootstrap.sh
-      - bash platform/23-trino/validate.sh
+      # - bash platform/23-trino/bootstrap.sh
+      # - bash platform/23-trino/validate.sh
       # - bash platform/23-kiali/bootstrap.sh
       # - bash platform/23-kiali/validate.sh
       - bash platform/25-lakehouse-control-plane/bootstrap.sh
@@ -211,9 +211,9 @@ tasks:
       - task: validate-kafka-ui
         vars:
           KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
-      - task: validate-trino
-        vars:
-          KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
+      # - task: validate-trino
+      #   vars:
+      #     KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
       # - task: validate-kiali
       #   vars:
       #     KUBE_CONTEXT: "{{.KUBE_CONTEXT}}"
