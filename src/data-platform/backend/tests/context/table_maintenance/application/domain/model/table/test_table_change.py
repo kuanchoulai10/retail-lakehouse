@@ -14,4 +14,5 @@ def test_table_change_values():
         "maintenance_requested",
         "reconcile_requested",
         "seen",
+        "managed",
     ]

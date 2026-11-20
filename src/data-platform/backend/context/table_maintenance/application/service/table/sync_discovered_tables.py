@@ -100,7 +100,9 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         ``skipped``. A catalog-wide sync also signal-with-starts the
         reconciliation workflow of every known managed table (counted in
         ``ensured``), so a table whose workflow was never started, or was lost,
-        is picked up again.
+        is picked up again. A table that ends up newly managed (registered or
+        managed again) is sent ``managed``, which checks it at once; the ``seen``
+        sent to a table already managed only keeps its workflow and checks nothing.
 
         Every table read from the catalog has its last commit moved to its newest
         commit. A catalog-wide sync that completes records the catalog's
@@ -156,9 +158,7 @@ class SyncDiscoveredTablesService(SyncDiscoveredTablesUseCase):
         """Register an unknown table, or apply the discovery to a known live one; None for neither."""
         existing = self._tables_repo.get(TableId(found.table_uuid))
         if existing is None:
-            return register_discovered_table(
-                found, rules, self._tables_repo, self._table_change_gateway, TableChange.SEEN, now
-            )
+            return register_discovered_table(found, rules, self._tables_repo, self._table_change_gateway, now)
         if existing.status == TableStatus.DROPPED:
             return None
         name = TableName(catalog=found.catalog, namespace=found.namespace, table=found.table)

@@ -53,7 +53,7 @@ _TRIGGER_SCHEDULED = "scheduled"
 _TRIGGER_MANUAL = "manual"
 _REASON_SCHEDULE = "schedule"
 _REASON_CATALOG_COMMIT = "catalog_commit"
-_REASON_DISCOVERY_SCAN = "discovery_scan"
+_REASON_TABLE_MANAGED = "table_managed"
 _REASON_POLICY_CHANGED = "policy_changed"
 _REASON_MANUAL_RUN = "manual_run"
 _REASON_RECONCILE_NOW = "reconcile_now"
@@ -66,7 +66,6 @@ _CLOSING_BOUND = TableMaintenanceActivityPolicy().worst_case()
 _CLOSING_POLL = timedelta(seconds=5)
 _RUN_ID_PREFIX = "mr"
 _RECONCILIATION_ID_PREFIX = "rc"
-_OLDER_PLAN_INTERVAL_KEY = "reconcile_interval_seconds"
 
 
 @workflow.defn(name=TABLE_RECONCILIATION_WORKFLOW)
@@ -116,7 +115,10 @@ class TableReconciliationWorkflow:
     wake that arrives while a plan says dropped or unmanaged makes it plan again.
 
     Every wake also counts its reason (a due plan timer counts ``schedule``;
-    ``stop`` counts nothing), except a catalog commit, which is debounced. The
+    ``stop`` and a discovery scan's ``table_seen`` count nothing, so a scan only
+    keeps the workflow alive and cancels a ``stop``; a table that became managed
+    counts ``table_managed`` and is checked at once), except a catalog commit,
+    which is debounced. The
     first commit not yet covered by a check opens a window of the plan's
     ``catalog_commit_debounce_seconds`` (five minutes before the first plan);
     later commits join it without moving its end, so a table written every
@@ -257,8 +259,17 @@ class TableReconciliationWorkflow:
 
     @workflow.signal(name=TableReconciliationSignal.TABLE_SEEN)
     def table_seen(self, payload: dict | None = None) -> None:
-        """Wake the loop because a discovery scan saw the table."""
-        self._wake(_REASON_DISCOVERY_SCAN, cancels_stop=True)
+        """Take a discovery scan that saw the table as managed: it cancels a ``stop`` (R31) and checks nothing.
+
+        It is sent with signal-with-start, so a scan restarts a workflow that was lost; the table is
+        then checked at its schedule.
+        """
+        self._wake(None, cancels_stop=True)
+
+    @workflow.signal(name=TableReconciliationSignal.TABLE_MANAGED)
+    def table_managed(self, payload: dict | None = None) -> None:
+        """Wake the loop to check a table that just became managed."""
+        self._wake(_REASON_TABLE_MANAGED, cancels_stop=True)
 
     @workflow.signal(name=TableReconciliationSignal.TRIGGER_NOW)
     def trigger_now(self, payload: dict | None = None) -> None:
@@ -707,14 +718,11 @@ class TableReconciliationWorkflow:
     def _follow_plan_triggers(self, plan: dict[str, Any]) -> None:
         """Take the schedule interval and the commit debounce from the plan.
 
-        A plan an older worker returned, as a history from before the debounce holds, names its
-        interval ``reconcile_interval_seconds`` and has no debounce: its interval is read under that
-        name, so the history replays, and the debounce stays the last one (it changes only what the
-        activity returns, so it needs no patch).
+        A plan an older worker returned, as a history from before the debounce holds, has no
+        debounce: the debounce then stays the last one (it changes only what the activity returns,
+        so it needs no patch).
         """
-        interval = plan.get("schedule_interval_seconds", plan.get(_OLDER_PLAN_INTERVAL_KEY))
-        if interval is not None:
-            self._interval = timedelta(seconds=interval)
+        self._interval = timedelta(seconds=plan["schedule_interval_seconds"])
         if "catalog_commit_debounce_seconds" in plan:
             self._commit_debounce = _seconds_or_none(plan["catalog_commit_debounce_seconds"])
 

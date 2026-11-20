@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from context.table_maintenance.application.domain.model.table import (
     Table,
+    TableChange,
     TableId,
     TableName,
 )
@@ -23,7 +24,6 @@ from context.table_maintenance.application.service.table.registration_outcome im
 if TYPE_CHECKING:
     from datetime import datetime
 
-    from context.table_maintenance.application.domain.model.table import TableChange
     from context.table_maintenance.application.domain.model.table_discovery_rules import (
         TableDiscoveryRules,
     )
@@ -34,20 +34,19 @@ if TYPE_CHECKING:
     )
 
 
-def register_discovered_table(  # noqa: PLR0913
+def register_discovered_table(
     found: TableMetadata,
     rules: TableDiscoveryRules,
     tables_repo: TablesRepo,
     table_change_gateway: SendTableChangeGateway,
-    change: TableChange,
     now: datetime,
 ) -> RegistrationOutcome:
     """Decide an unknown table by the discovery rules and register it.
 
-    An include match registers the table as managed and sends ``change`` for it,
-    which starts its reconciliation workflow. An exclude match, or no match,
-    registers it as unmanaged and sends nothing, so the registry lists every
-    table discovery has seen. Either way the table starts with its newest commit.
+    An include match registers the table as managed and sends ``managed`` for it,
+    which starts its reconciliation workflow and checks the table at once. An
+    exclude match, or no match, registers it as unmanaged and sends nothing, so
+    the registry lists every table discovery has seen. Either way the table starts with its newest commit.
     """
     name = TableName(catalog=found.catalog, namespace=found.namespace, table=found.table)
     rule = rules.decide(name)
@@ -63,7 +62,7 @@ def register_discovered_table(  # noqa: PLR0913
         SendTableChangeGatewayInput(
             table_uuid=table.id.value,
             table_name=name.fully_qualified(),
-            change=change.value,
+            change=TableChange.MANAGED.value,
             is_managed=table.is_managed,
         )
     )

@@ -107,10 +107,14 @@ describe("wakeText", () => {
     );
   });
 
-  it("names a discovery scan and ranks it right after a catalog commit", () => {
-    expect(wakeText(record({ wake_reasons: { policy_changed: 1, discovery_scan: 1, catalog_commit: 1 } }))).toBe(
-      "Catalog commit, Discovery scan, Policy changed",
+  it("names a table that became managed and ranks it right after a catalog commit", () => {
+    expect(wakeText(record({ wake_reasons: { policy_changed: 1, table_managed: 1, catalog_commit: 1 } }))).toBe(
+      "Catalog commit, Table managed, Policy changed",
     );
+  });
+
+  it("reads a table that became managed as Table managed", () => {
+    expect(wakeText(record({ wake_reasons: { table_managed: 1 } }))).toBe("Table managed");
   });
 });
 

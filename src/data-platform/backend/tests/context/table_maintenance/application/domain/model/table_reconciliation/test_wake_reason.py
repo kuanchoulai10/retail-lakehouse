@@ -6,11 +6,15 @@ from context.table_maintenance.application.domain.model.table_reconciliation imp
 
 
 def test_wake_reason_values():
-    """A reconciliation wakes on a schedule, a catalog or discovery event, a policy change, a request or a run's end."""
+    """The wake reasons are the documented ones, in their documented order.
+
+    A reconciliation wakes on its schedule, a catalog commit, a table becoming managed, a policy change,
+    a request or a run's end.
+    """
     assert [r.value for r in WakeReason] == [
         "schedule",
         "catalog_commit",
-        "discovery_scan",
+        "table_managed",
         "policy_changed",
         "manual_run",
         "reconcile_now",

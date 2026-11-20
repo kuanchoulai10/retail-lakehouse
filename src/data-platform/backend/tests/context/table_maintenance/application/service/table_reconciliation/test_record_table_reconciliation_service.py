@@ -242,15 +242,15 @@ def test_noop_path_still_purges_old_records(
     assert repo.get(TableReconciliationId(OLD_REC)) is None
 
 
-def test_discovery_scan_is_a_known_wake_reason(
+def test_table_managed_is_a_known_wake_reason(
     service: RecordTableReconciliationService, repo: InMemoryTableReconciliationsRepo
 ) -> None:
-    """A discovery scan is recorded as its own wake reason."""
-    service.execute(_input(wake_reasons={"discovery_scan": 1}))
+    """A table that became managed is recorded as its own wake reason."""
+    service.execute(_input(wake_reasons={"table_managed": 1}))
 
     saved = repo.get(TableReconciliationId(REC_1))
     assert saved is not None
-    assert {reason.value: count for reason, count in saved.wake_reasons.items()} == {"discovery_scan": 1}
+    assert {reason.value: count for reason, count in saved.wake_reasons.items()} == {"table_managed": 1}
 
 
 def test_record_keeps_policy_id_version_and_target(

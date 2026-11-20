@@ -122,7 +122,7 @@ def test_sync_of_unknown_catalog_fails_and_drops_nothing(sync, tables_repo, cata
 
 
 def test_sync_registers_include_match_as_managed(sync, tables_repo, rules_repo, catalog, signals, now):
-    """Sync registers a table an include rule matches as managed and starts its workflow."""
+    """Sync registers a table an include rule matches as managed and starts its workflow, sending ``managed``."""
     _include_all(rules_repo, now)
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     out = sync.execute(_catalog_wide())
@@ -130,7 +130,7 @@ def test_sync_registers_include_match_as_managed(sync, tables_repo, rules_repo, 
     table = tables_repo.get(TableId("u-1"))
     assert table.status == TableStatus.MANAGED
     assert table.matched_rule_id == TableDiscoveryRuleId(RULE_1)
-    assert _calls(signals) == [("u-1", "seen", True)]
+    assert _calls(signals) == [("u-1", "managed", True)]
     assert [c.table_name for c in signals.calls] == ["iceberg.sales.orders"]
 
 
@@ -168,7 +168,7 @@ def test_sync_manages_a_registered_unmanaged_table_once_a_rule_includes_it(
     out = sync.execute(_catalog_wide())
     assert out.managed == 1
     assert tables_repo.get(TableId("u-1")).status == TableStatus.MANAGED
-    assert _calls(signals)[0] == ("u-1", "seen", True)
+    assert _calls(signals)[0] == ("u-1", "managed", True)
 
 
 def test_namespace_sync_of_a_managed_table_does_not_reensure(sync, tables_repo, rules_repo, catalog, signals, now):
@@ -239,7 +239,7 @@ def test_unmanaged_table_is_managed_again_when_rule_includes_it(sync, tables_rep
     assert table.status == TableStatus.MANAGED
     assert table.matched_rule_id == TableDiscoveryRuleId(RULE_2)
     assert (out.managed, out.unmanaged, out.ensured) == (1, 0, 0)
-    assert _calls(signals) == [("u-1", "seen", True)]
+    assert _calls(signals) == [("u-1", "managed", True)]
 
 
 def test_unmanaged_table_still_excluded_is_left_alone(sync, tables_repo, rules_repo, catalog, signals, log, now):
@@ -381,7 +381,7 @@ def test_sync_namespace_scope_signals_management_changes(sync, tables_repo, rule
     catalog.add_table("iceberg", "sales", "back", "u-back")
     catalog.add_table("iceberg", "sales", "out", "u-out")
     sync.execute(_namespace())
-    assert sorted(_calls(signals)) == [("u-back", "seen", True), ("u-out", "stopped", False)]
+    assert sorted(_calls(signals)) == [("u-back", "managed", True), ("u-out", "stopped", False)]
 
 
 def test_sync_catalog_wide_drops_only_rows_of_that_catalog(sync, tables_repo, catalog, signals, now):
@@ -473,7 +473,7 @@ def test_sync_does_not_reensure_freshly_registered_table_twice(sync, rules_repo,
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     out = sync.execute(_catalog_wide())
     assert (out.registered, out.ensured) == (1, 0)
-    assert _calls(signals) == [("u-1", "seen", True)]
+    assert _calls(signals) == [("u-1", "managed", True)]
 
 
 def test_sync_namespace_scope_does_not_reensure(sync, tables_repo, rules_repo, catalog, signals, now):
@@ -551,7 +551,7 @@ def test_table_hint_manages_an_unmanaged_table_the_rules_include(hint, tables_re
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     assert hint.execute(_hint()).action == "managed"
     assert tables_repo.get(TableId("u-1")).status == TableStatus.MANAGED
-    assert _calls(signals) == [("u-1", "updated", True)]
+    assert _calls(signals) == [("u-1", "managed", True)]
 
 
 def test_table_hint_registers_a_new_table_no_rule_includes_as_unmanaged(hint, tables_repo, catalog, signals, now):
@@ -612,12 +612,12 @@ def test_table_hint_with_new_name_renames_then_signals(hint, tables_repo, rules_
 
 
 def test_table_hint_registers_unregistered_table_by_rules(hint, tables_repo, rules_repo, catalog, signals, now):
-    """A hint for an unregistered table registers it as managed by the discovery rules."""
+    """A hint for an unregistered table registers it as managed by the discovery rules and sends ``managed``."""
     _include_all(rules_repo, now)
     catalog.add_table("iceberg", "sales", "orders", "u-1")
     assert hint.execute(_hint()).action == "registered"
     assert tables_repo.get(TableId("u-1")).status == TableStatus.MANAGED
-    assert _calls(signals) == [("u-1", "updated", True)]
+    assert _calls(signals) == [("u-1", "managed", True)]
 
 
 def test_table_hint_for_missing_table_with_row_requests_discovery(hint, tables_repo, discovery_requests, now):
@@ -683,4 +683,50 @@ def test_table_hint_retry_after_failed_start_still_starts_workflow(
         hint.execute(_hint())
     assert tables_repo.get(TableId("u-1")) is not None
     assert hint.execute(_hint()).action == "signalled"
+    assert _calls(signals) == [("u-1", "updated", True)]
+
+
+# --- what discovery tells the reconciliation ---
+
+
+def test_a_scan_that_registers_a_managed_table_sends_managed(sync, rules_repo, catalog, signals, now):
+    """A scan that registers a table as managed sends ``managed``, so the table is checked at once."""
+    _include_all(rules_repo, now)
+    catalog.add_table("iceberg", "sales", "orders", "u-1")
+    sync.execute(_namespace())
+    assert _calls(signals) == [("u-1", "managed", True)]
+
+
+def test_a_hint_that_registers_a_managed_table_sends_managed(hint, rules_repo, catalog, signals, now):
+    """A catalog event that registers a table as managed sends ``managed``, not ``updated``."""
+    _include_all(rules_repo, now)
+    catalog.add_table("iceberg", "sales", "orders", "u-1")
+    hint.execute(_hint())
+    assert _calls(signals) == [("u-1", "managed", True)]
+
+
+def test_a_table_managed_again_sends_managed(sync, tables_repo, rules_repo, catalog, signals, now):
+    """An unmanaged table the rules now manage is sent ``managed``."""
+    _include_all(rules_repo, now)
+    _row(tables_repo, now, "u-1", _name("orders"), unmanaged=True)
+    catalog.add_table("iceberg", "sales", "orders", "u-1")
+    sync.execute(_catalog_wide())
+    assert _calls(signals) == [("u-1", "managed", True)]
+
+
+def test_a_scan_of_a_managed_table_sends_seen(sync, tables_repo, rules_repo, catalog, signals, now):
+    """A catalog-wide scan of an unchanged managed table sends ``seen``, which only keeps its workflow."""
+    _include_all(rules_repo, now)
+    _row(tables_repo, now, "u-1", _name("orders"))
+    catalog.add_table("iceberg", "sales", "orders", "u-1")
+    sync.execute(_catalog_wide())
+    assert _calls(signals) == [("u-1", "seen", True)]
+
+
+def test_a_commit_hint_for_a_managed_table_sends_updated(hint, tables_repo, rules_repo, catalog, signals, now):
+    """A catalog event for a table already managed sends ``updated``."""
+    _include_all(rules_repo, now)
+    _row(tables_repo, now, "u-1", _name("orders"))
+    catalog.add_table("iceberg", "sales", "orders", "u-1")
+    hint.execute(_hint())
     assert _calls(signals) == [("u-1", "updated", True)]

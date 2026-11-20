@@ -175,7 +175,7 @@ class Harness:
     sent: int = 0
 
     async def start(
-        self, start_signal: str | None = TableReconciliationSignal.TABLE_SEEN, **fields: Any
+        self, start_signal: str | None = TableReconciliationSignal.TABLE_MANAGED, **fields: Any
     ) -> WorkflowHandle:
         """Start the workflow with a start signal and the given input fields."""
         options: dict[str, Any] = {}
@@ -496,7 +496,7 @@ def test_child_summary_names_the_table_and_the_planned_operations():
 @pytest.mark.parametrize(
     ("start_signal", "trigger"),
     [
-        (TableReconciliationSignal.TABLE_SEEN, "scheduled"),
+        (TableReconciliationSignal.TABLE_MANAGED, "scheduled"),
         (TableReconciliationSignal.TRIGGER_NOW, "manual"),
     ],
 )
@@ -802,7 +802,7 @@ def test_skip_unmanaged_ends_workflow():
         [record] = h.recorder.records
         assert record["status"] == "skip"
         assert record["skip_reason"] == "unmanaged"
-        assert record["wake_reasons"] == {"discovery_scan": 1}
+        assert record["wake_reasons"] == {"table_managed": 1}
 
     _run(scenario, script=lambda _: _skip("unmanaged"))
 
@@ -921,7 +921,7 @@ def test_in_flight_run_is_given_up_only_after_the_child_worst_case():
         await h.plan_count(2)
         await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first) and not s["planning"])
         # The cancelled child reports back, so the next plan wakes on its finish, not on schedule.
-        assert [r["wake_reasons"] for r in h.recorder.records] == [{"discovery_scan": 1}, {"previous_run_finished": 1}]
+        assert [r["wake_reasons"] for r in h.recorder.records] == [{"table_managed": 1}, {"previous_run_finished": 1}]
 
     _run(scenario, script=lambda _: _planned(COMPACTION, EXPIRE, interval=10**6))
 
@@ -956,7 +956,7 @@ def test_give_up_waits_for_a_cancelled_child_that_is_still_running():
         await h.complete_child(first)
         await h.plan_count(2)
         await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first) and not s["planning"])
-        assert [r["wake_reasons"] for r in h.recorder.records] == [{"discovery_scan": 1}, {"previous_run_finished": 1}]
+        assert [r["wake_reasons"] for r in h.recorder.records] == [{"table_managed": 1}, {"previous_run_finished": 1}]
 
     _run(scenario, script=lambda _: plan)
 
@@ -996,7 +996,7 @@ def test_managed_again_while_in_flight_keeps_workflow():
         await h.start()
         first = await h.in_flight()
         await h.signal(TableReconciliationSignal.STOP)
-        await h.signal(TableReconciliationSignal.TABLE_SEEN)
+        await h.signal(TableReconciliationSignal.TABLE_MANAGED)
         assert (await h.settle())["stopping"] is False
         await h.complete_child(first)
         await h.plan_count(2)
@@ -1014,7 +1014,7 @@ def test_unmanaged_plan_with_wake_during_activity_replans():
         h.plans.gate = asyncio.Event()
         await h.start()
         await h.plan_count(1)
-        await h.signal(TableReconciliationSignal.TABLE_SEEN)
+        await h.signal(TableReconciliationSignal.TABLE_MANAGED)
         await eventually(h.state, lambda s: s["signals_handled"] >= h.sent)
         h.plans.gate.set()
         await h.plan_count(2)
@@ -1182,7 +1182,7 @@ def test_three_catalog_commits_during_a_run_are_recorded_after_it_finishes():
         await h.start()
         run_id = await h.in_flight()
         first = (await h.records(1))[0]
-        assert first["wake_reasons"] == {"discovery_scan": 1}
+        assert first["wake_reasons"] == {"table_managed": 1}
         assert first["run_id"] == run_id
         assert (await h.child(run_id))["run_id"] == run_id
         for _ in range(3):
@@ -1317,7 +1317,7 @@ def test_reason_arriving_during_a_plan_goes_on_the_next_record():
         await h.records(1)
         await h.env.sleep(timedelta(seconds=300))
         first, second = (await h.records(2))[:2]
-        assert first["wake_reasons"] == {"discovery_scan": 1}
+        assert first["wake_reasons"] == {"table_managed": 1}
         assert second["wake_reasons"] == {"catalog_commit": 1}
 
     _run(scenario, script=lambda _: _planned())
@@ -1336,7 +1336,7 @@ def test_given_up_run_before_the_plan_timer_is_not_recorded_as_schedule():
         await eventually(h.state, lambda s: s["in_flight_run_id"] != first and not s["planning"])
         records = await h.records(2)
         assert [r["wake_reasons"] for r in records] == [
-            {"discovery_scan": 1},
+            {"table_managed": 1},
             {"catalog_commit": 1, "previous_run_finished": 1},
         ]
         # The child's report during the grace ends the same run: no second count, no extra plan.
@@ -1387,21 +1387,37 @@ def test_give_up_before_the_plan_timer_plans_once_as_previous_run_finished():
     _run(scenario, script=lambda _: _planned(COMPACTION, interval=10**6))
 
 
-def test_discovery_scan_is_recorded_as_its_own_wake_reason():
-    """A discovery scan that sees the table wakes the loop and is recorded as a discovery scan."""
+def test_a_table_that_became_managed_is_checked_at_once():
+    """A table that became managed is checked at once, recorded as ``table_managed``."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start(start_signal=TableReconciliationSignal.TABLE_MANAGED)
+        [record] = await h.records(1)
+        assert record["wake_reasons"] == {"table_managed": 1}
+        await h.settle()
+        assert len(h.plans.requests) == 1
+
+    _run(scenario, script=lambda _: _planned())
+
+
+def test_a_discovery_scan_checks_nothing():
+    """A discovery scan that sees a managed table neither plans nor counts a reason."""
 
     async def scenario(h: Harness) -> None:
         await h.start()
         await h.records(1)
+        await h.settle()
         await h.signal(TableReconciliationSignal.TABLE_SEEN)
-        second = (await h.records(2))[1]
-        assert second["wake_reasons"] == {"discovery_scan": 1}
+        state = await h.settle()
+        assert state["wake_reasons"] == {}
+        assert len(h.plans.requests) == 1
+        assert len(h.recorder.records) == 1
 
     _run(scenario, script=lambda _: _planned())
 
 
 def test_catalog_commit_is_still_recorded_as_catalog_commit():
-    """A table update from the catalog is still recorded as a catalog commit, not a discovery scan."""
+    """A table update from the catalog is recorded as a catalog commit."""
 
     async def scenario(h: Harness) -> None:
         await h.start()
@@ -1414,28 +1430,34 @@ def test_catalog_commit_is_still_recorded_as_catalog_commit():
     _run(scenario, script=lambda _: _planned())
 
 
-def test_discovery_scan_starts_a_missing_workflow():
-    """Signal-with-start on a discovery scan starts the missing workflow and records the scan."""
+def test_a_discovery_scan_starts_a_missing_workflow_without_a_check():
+    """Signal-with-start on a discovery scan starts the missing workflow, which first checks at its schedule."""
 
     async def scenario(h: Harness) -> None:
         await h.start(start_signal=TableReconciliationSignal.TABLE_SEEN)
-        first = (await h.records(1))[0]
-        assert first["wake_reasons"] == {"discovery_scan": 1}
+        state = await h.settle()
+        assert state["wake_reasons"] == {}
+        assert h.plans.requests == []
+        await h.env.sleep(timedelta(seconds=3600))
+        [first] = await h.records(1)
+        assert first["wake_reasons"] == {"schedule": 1}
 
     _run(scenario, script=lambda _: _planned())
 
 
-def test_discovery_scan_after_stop_cancels_the_stop():
-    """A discovery scan after ``stop`` supersedes it, the same as a catalog commit."""
+def test_a_discovery_scan_after_stop_cancels_the_stop():
+    """A discovery scan after ``stop`` supersedes it, the same as a catalog commit, and counts no reason."""
 
     async def scenario(h: Harness) -> None:
         await h.start()
         first = await h.in_flight()
         await h.signal(TableReconciliationSignal.STOP)
         await h.signal(TableReconciliationSignal.TABLE_SEEN)
-        assert (await h.settle())["stopping"] is False
+        state = await h.settle()
+        assert (state["stopping"], state["wake_reasons"]) == (False, {})
         await h.complete_child(first)
-        await h.plan_count(2)
+        second = (await h.records(2))[1]
+        assert second["wake_reasons"] == {"previous_run_finished": 1}
         assert await h.status() == WorkflowExecutionStatus.RUNNING
 
     _run(scenario, script=lambda _: _planned(COMPACTION))

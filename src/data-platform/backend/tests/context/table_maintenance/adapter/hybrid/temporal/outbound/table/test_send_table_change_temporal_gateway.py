@@ -84,6 +84,7 @@ def _change(
         ("stopped", TableReconciliationSignal.STOP),
         ("reconcile_requested", TableReconciliationSignal.RECONCILE_NOW),
         ("seen", TableReconciliationSignal.TABLE_SEEN),
+        ("managed", TableReconciliationSignal.TABLE_MANAGED),
     ],
 )
 def test_each_change_maps_to_its_signal(harness, change, signal):
@@ -99,6 +100,7 @@ _SIGNAL_BY_TABLE_CHANGE = {
     TableChange.STOPPED: [TableReconciliationSignal.STOP, {}],
     TableChange.RECONCILE_REQUESTED: [TableReconciliationSignal.RECONCILE_NOW, {}],
     TableChange.SEEN: [TableReconciliationSignal.TABLE_SEEN, {}],
+    TableChange.MANAGED: [TableReconciliationSignal.TABLE_MANAGED, {}],
     TableChange.MAINTENANCE_REQUESTED: [
         TableReconciliationSignal.TRIGGER_NOW,
         {"operations": []},
@@ -155,6 +157,14 @@ def test_change_of_a_managed_table_starts_the_missing_workflow(harness):
     assert not _workflow_exists(harness, "seen-start")
     gateway.send(_change("seen-start", "seen", is_managed=True))
     assert _signals(harness, "seen-start") == [[TableReconciliationSignal.TABLE_SEEN, {}]]
+
+
+def test_managed_signal_with_starts_the_workflow(harness):
+    """A table that became managed starts its missing workflow with ``table_managed``."""
+    gateway = SendTableChangeTemporalGateway(harness.client, harness.bridge)
+    assert not _workflow_exists(harness, "managed-start")
+    gateway.send(_change("managed-start", "managed", is_managed=True))
+    assert _signals(harness, "managed-start") == [[TableReconciliationSignal.TABLE_MANAGED, {}]]
 
 
 def test_managed_changes_start_one_workflow_and_deliver_both(harness):

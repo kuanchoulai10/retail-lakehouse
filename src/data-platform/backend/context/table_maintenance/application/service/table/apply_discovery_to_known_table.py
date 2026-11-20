@@ -54,8 +54,8 @@ def apply_discovery_to_known_table(  # noqa: PLR0913
     commit gets just that written, so this copy of the table, read before any
     other writer's change, never puts the rest of it back. A table
     the rules unmanage is sent ``stopped``; one they manage again is sent
-    ``seen_change`` (``seen`` when None) as a managed table, so its workflow starts
-    again under the same ID. A table whose management did not change (a rule-only
+    ``managed`` as a managed table, so its workflow starts again under the same ID
+    and checks it at once. A table whose management did not change (a rule-only
     change included) is sent ``seen_change`` only when it is managed and
     ``seen_change`` is given.
     """
@@ -72,7 +72,7 @@ def apply_discovery_to_known_table(  # noqa: PLR0913
     if change == TableManagementChange.UNMANAGED:
         _send(table_change_gateway, table, TableChange.STOPPED)
     elif change == TableManagementChange.MANAGED:
-        _send(table_change_gateway, table, seen_change or TableChange.SEEN)
+        _send(table_change_gateway, table, TableChange.MANAGED)
     elif table.is_managed and seen_change is not None:
         _send(table_change_gateway, table, seen_change)
         signalled = True

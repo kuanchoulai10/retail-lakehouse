@@ -147,7 +147,7 @@ def test_a_raise_delivered_while_the_run_reports_gives_the_manual_trigger_back()
             TableReconciliationWorkflowInput(table_uuid=UUID),
             id=WORKFLOW_ID,
             task_queue=TASK_QUEUE,
-            start_signal=TableReconciliationSignal.TABLE_SEEN,
+            start_signal=TableReconciliationSignal.TABLE_MANAGED,
             start_signal_args=[{}],
         )
 

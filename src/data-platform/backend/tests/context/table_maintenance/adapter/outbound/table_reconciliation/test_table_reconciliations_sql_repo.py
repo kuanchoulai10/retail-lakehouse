@@ -94,7 +94,7 @@ def test_create_and_get_round_trip(repo: TableReconciliationsRepo):
         id=TableReconciliationId(_rc(1)),
         table_uuid=TableId("u1"),
         reconciled_at=NOW,
-        wake_reasons={WakeReason.SCHEDULE: 2, WakeReason.DISCOVERY_SCAN: 1},
+        wake_reasons={WakeReason.SCHEDULE: 2, WakeReason.TABLE_MANAGED: 1},
         dry_run=False,
         outcome=ReconciliationOutcome.PLANNED,
         skip_reason=None,
@@ -142,7 +142,7 @@ def test_create_and_get_round_trip(repo: TableReconciliationsRepo):
     assert loaded.reconciled_at == NOW
     assert (loaded.policy_id, loaded.policy_name.value, loaded.policy_version) == (NIGHTLY, "nightly", 4)
     assert loaded.policy_target == rec.policy_target
-    assert loaded.wake_reasons == {WakeReason.SCHEDULE: 2, WakeReason.DISCOVERY_SCAN: 1}
+    assert loaded.wake_reasons == {WakeReason.SCHEDULE: 2, WakeReason.TABLE_MANAGED: 1}
     assert loaded.dry_run is False
     assert loaded.outcome is ReconciliationOutcome.PLANNED
     assert loaded.skip_reason is None

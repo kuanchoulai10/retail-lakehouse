@@ -14,3 +14,4 @@ class TableChange(StrEnum):
     MAINTENANCE_REQUESTED = "maintenance_requested"
     RECONCILE_REQUESTED = "reconcile_requested"
     SEEN = "seen"
+    MANAGED = "managed"

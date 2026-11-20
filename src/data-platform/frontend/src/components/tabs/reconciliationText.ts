@@ -37,7 +37,7 @@ const RESULT_LABELS: Record<string, string> = {
 const WAKE_REASONS: [string, string][] = [
   ["schedule", "Schedule"],
   ["catalog_commit", "Catalog commit"],
-  ["discovery_scan", "Discovery scan"],
+  ["table_managed", "Table managed"],
   ["policy_changed", "Policy changed"],
   ["manual_run", "Manual run"],
   ["reconcile_now", "Reconcile now"],
