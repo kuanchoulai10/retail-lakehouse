@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { TooltipProvider } from "@retail-lakehouse/design-system";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -32,13 +33,15 @@ function renderAt(path: string, namespacePage: ReactNode = <p>namespace page</p>
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route path="/catalogs/:catalog/namespaces/:namespace" element={namespacePage} />
-          <Route path="/catalogs/:catalog/namespaces/:namespace/tables/:table/:tab?" element={<TablePage />} />
-        </Routes>
-        <Location />
-      </MemoryRouter>
+      <TooltipProvider>
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route path="/catalogs/:catalog/namespaces/:namespace" element={namespacePage} />
+            <Route path="/catalogs/:catalog/namespaces/:namespace/tables/:table/:tab?" element={<TablePage />} />
+          </Routes>
+          <Location />
+        </MemoryRouter>
+      </TooltipProvider>
     </QueryClientProvider>,
   );
   return client;
@@ -530,6 +533,43 @@ describe("TablePage", { timeout: 15_000 }, () => {
       "/catalogs/iceberg/namespaces/retail%1Feu/tables/orders_v2/schema",
     );
     expect(callsTo(calls, "GET", TABLE)).toHaveLength(1);
+  });
+
+  it("links a commit of a table in a nested namespace to its schema version on the Schema tab", async () => {
+    const nested = "/v1/catalogs/iceberg/namespaces/retail%1Feu/tables/orders";
+    stubTable({
+      extra: {
+        [`GET ${nested}`]: () => jsonResponse(catalogTableFixture({ namespace: ["retail", "eu"] })),
+        "GET /v1/tables/uuid-orders": () => jsonResponse(maintenance({ namespace: "retail.eu" })),
+        "GET /v1/tables/uuid-orders/commits*": () =>
+          jsonResponse({
+            items: [
+              {
+                snapshot_id: "1111111222",
+                parent_id: null,
+                committed_at: "2026-10-31T12:00:00Z",
+                operation: "append",
+                writer: "kafka_connect",
+                schema_id: 3,
+                added_records: 1,
+                deleted_records: 0,
+                added_data_files: 1,
+                deleted_data_files: 0,
+                added_delete_files: 0,
+                removed_delete_files: 0,
+                summary: {},
+              },
+            ],
+            truncated: false,
+          }),
+      },
+    });
+    renderAt("/catalogs/iceberg/namespaces/retail%1Feu/tables/orders/commits");
+    const link = await screen.findByRole("link", { name: "Schema v3" });
+    const href = link.getAttribute("href") ?? "";
+    expect(href).toContain("%1F");
+    expect(href).toContain("/schema?schema=");
+    expect(href).toBe("/catalogs/iceberg/namespaces/retail%1Feu/tables/orders/schema?schema=3");
   });
 
   it("the actions menu holds rename and delete only; properties are edited in the Properties tab", async () => {

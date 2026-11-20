@@ -2,6 +2,7 @@ import type {
   PartitionChangeCountsApiResponse,
   PartitionFieldComparisonApiResponseChangesItem,
 } from "@/api/generated/model";
+import { changeSummary, type ChangeSummaryPart } from "@/lib/changeSummary";
 
 type Retagged = Exclude<PartitionFieldComparisonApiResponseChangesItem, "added" | "removed">;
 
@@ -10,7 +11,8 @@ const TAGS: Record<Retagged, string> = {
   transform_changed: "Transform changed",
 };
 
-const PARTS: [keyof PartitionChangeCountsApiResponse, (count: number) => string][] = [
+// Enum order, so a summary always reads the same way.
+const PARTS: ChangeSummaryPart<keyof PartitionChangeCountsApiResponse>[] = [
   ["added", (count) => `+${count} added`],
   ["removed", (count) => `−${count} removed`],
   ["renamed", (count) => `${count} renamed`],
@@ -19,9 +21,7 @@ const PARTS: [keyof PartitionChangeCountsApiResponse, (count: number) => string]
 
 // What a partition spec version changed against the one before it, in one line; null is the first version.
 export function partitionChangeSummary(changes: PartitionChangeCountsApiResponse | null): string {
-  if (changes === null) return "First version";
-  const parts = PARTS.filter(([kind]) => changes[kind] > 0).map(([kind, text]) => text(changes[kind]));
-  return parts.length === 0 ? "No changes" : parts.join(" · ");
+  return changeSummary(PARTS, changes);
 }
 
 export function partitionChangeTag(change: Retagged): string {

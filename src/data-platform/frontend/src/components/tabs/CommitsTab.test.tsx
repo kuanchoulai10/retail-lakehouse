@@ -153,7 +153,7 @@ describe("CommitsTab", () => {
     expect(screen.getByText(/"kafka.connect.task-id": "0"/)).toBeInTheDocument();
   });
 
-  it("links each commit to the schema version it was written with", async () => {
+  it("links a commit to the schema version it was written with", async () => {
     stubCatalogApi({
       "GET /v1/tables/uuid-orders/commits*": () =>
         jsonResponse({
@@ -169,6 +169,29 @@ describe("CommitsTab", () => {
     expect(link).toHaveTextContent("v1");
     expect(link).toHaveAttribute("href", "/tables/orders/schema?schema=1");
     expect(screen.getAllByRole("link")).toHaveLength(1);
+  });
+
+  it("links a commit written with schema 0 to v0", async () => {
+    stubCatalogApi({
+      "GET /v1/tables/uuid-orders/commits*": () =>
+        jsonResponse({ items: [commit({ snapshot_id: "1111111222", schema_id: 0 })], truncated: false }),
+    });
+    renderTab();
+    const link = await screen.findByRole("link", { name: "Schema v0" });
+    expect(link).toHaveTextContent("v0");
+    expect(link).toHaveAttribute("href", "/tables/orders/schema?schema=0");
+  });
+
+  it("says which schema a commit was written with when its link takes focus", async () => {
+    const user = userEvent.setup();
+    stubCatalogApi({
+      "GET /v1/tables/uuid-orders/commits*": () =>
+        jsonResponse({ items: [commit({ snapshot_id: "1111111222", schema_id: 2 })], truncated: false }),
+    });
+    renderTab();
+    const link = await screen.findByRole("link", { name: "Schema v2" });
+    while (document.activeElement !== link) await user.tab();
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Written with schema v2");
   });
 
   it("shows no schema link on a commit with no schema version", async () => {

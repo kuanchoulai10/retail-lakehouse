@@ -230,6 +230,19 @@ describe("SchemaTab", () => {
     expect(within(list).getByText("Removed")).toBeInTheDocument();
   });
 
+  it("drops base from the url when the first compare choice is picked again", async () => {
+    const user = userEvent.setup();
+    renderTab("?schema=0&base=1");
+    const schema = screen.getByRole("region", { name: "Schema" });
+    const compare = await within(schema).findByRole("combobox", { name: "Compare with" });
+    expect(compare).toHaveTextContent("v1");
+    await user.click(compare);
+    const first = (await screen.findAllByRole("option"))[0] as HTMLElement;
+    expect(first).toHaveTextContent("No earlier version");
+    await user.click(first);
+    await waitFor(() => expect(screen.getByTestId("location")).toHaveTextContent(/^\?schema=0$/));
+  });
+
   it("names the previous version in the compare choices", async () => {
     const user = userEvent.setup();
     renderTab();

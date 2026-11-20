@@ -1,12 +1,7 @@
-import type { DiffChange, DiffListItem } from "@retail-lakehouse/design-system";
+import type { DiffListItem } from "@retail-lakehouse/design-system";
 import type { CatalogTableSchemaComparisonApiResponse, SchemaFieldComparisonApiResponse } from "@/api/generated/model";
+import { diffChange } from "@/lib/diffChange";
 import { schemaChangeTag } from "@/lib/schemaChangeText";
-
-function changeOf(field: SchemaFieldComparisonApiResponse): DiffChange {
-  if (field.changes.includes("added")) return "added";
-  if (field.changes.includes("removed")) return "removed";
-  return field.changes.length > 0 ? "changed" : "unchanged";
-}
 
 function typeAndRequirement(type: string | null, required: boolean | null): string | undefined {
   return type === null ? undefined : `${type} · ${required ? "required" : "optional"}`;
@@ -25,14 +20,14 @@ function descriptionOf(field: SchemaFieldComparisonApiResponse): string | undefi
 // One row per field, matched by field id: a renamed field is one row, never a removal and an addition.
 export function schemaDiffItems(comparison: CatalogTableSchemaComparisonApiResponse): DiffListItem[] {
   return comparison.fields.map((field) => {
-    const change = changeOf(field);
+    const { change, tags } = diffChange(field.changes, schemaChangeTag);
     const changedValue = field.changes.includes("type_changed") || field.changes.includes("nullability_changed");
     return {
       id: String(field.field_id),
       change,
       label: (field.path ?? field.previous_path ?? []).join("."),
       depth: field.depth,
-      tags: field.changes.flatMap((kind) => (kind === "added" || kind === "removed" ? [] : [schemaChangeTag(kind)])),
+      tags,
       before:
         change === "removed" || changedValue
           ? typeAndRequirement(field.previous_type, field.previous_required)
