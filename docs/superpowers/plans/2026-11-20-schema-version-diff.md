@@ -8,7 +8,9 @@
 
 **Tech Stack:** Python 3.14, Pydantic (strict `ValueObject` / `UseCaseOutput`), FastAPI, httpx (Polaris REST), PyIceberg (table maintenance commits), React + TanStack Query + orval + MSW, Radix (`Switch`), Tailwind 4, Storybook 10 browser tests with axe.
 
-**Spec:** Linear KCL-97 (https://linear.app/kcl10/issue/KCL-97), with the screen decided in the KCL-79 comments of 2026-11-17 and 2026-11-19 (https://linear.app/kcl10/issue/KCL-79).
+**Spec:** Linear KCL-97 (https://linear.app/kcl10/issue/KCL-97, no comments), with the screen decided in the KCL-79 comments of 2026-11-17 and 2026-11-19 (https://linear.app/kcl10/issue/KCL-79).
+
+**Refreshed 2026-11-20 against HEAD `bfdc0987`** (KCL-93 and KCL-91 built). **Order:** KCL-96 (`docs/superpowers/plans/2026-11-20-overview-metric-trends.md`) is implemented first, then this plan. Where both change a file, this plan starts from KCL-96's committed version (list under Global Constraints). **Read each file at HEAD before changing it; never apply a step against a remembered version.**
 
 ## Global Constraints
 
@@ -41,7 +43,16 @@ Decided here (each with its reason):
 - **Diff markers are text and neutral badges, never status colours** (`src/design-system/CLAUDE.md`: status colours are for status only). A row shows a sign (`+`, `−`, `~`), a `Badge` naming the change, and a removed row's label struck through in `text-on-surface-variant`.
 - **The Schema tab's selection lives in the url** (`?schema=5&base=3&only_changes=1&spec=1&spec_base=0&spec_only_changes=1`, `replace` navigation), so a comparison can be shared and survives a reload (console rule for filter state).
 - **Phones:** the version list stacks above the comparison below 768px; long paths and types wrap (`break-all`); no horizontal page scroll.
-- Not touched (KCL-93 removes them first): compaction rounds and candidates, `/v1/compaction-rounds*`, `/v1/scheduler-settings`, `/v1/tables/{uuid}/compaction-candidates`, the Compaction Rounds page and the Candidates tab, admission, `/v1/platform-settings`. Nothing here depends on them.
+- **KCL-93 and KCL-91 are built (refreshed 2026-11-20).** Compaction rounds and candidates, `/v1/compaction-rounds*`, `/v1/scheduler-settings`, `/v1/tables/{uuid}/compaction-candidates`, the Compaction Rounds page, the Candidates tab and admission are gone (`TablePage`'s tabs are Overview, Schema, Properties, Commits, Maintenance, Reconciliations; an old `/candidates` url falls back to the Overview); `/v1/platform-settings` lives under `table_maintenance_run`. KCL-91's policy shape (`description`, `on`, `dry_run`, four `{target, options}` blocks), cooldown settings, commit window and the `table_managed` wake reason are not read by anything here. The catalog context, the design system's `List`, `Badge`, `Switch`, `Select`, `TextLink` and `Tooltip`, and the console's `SchemaTab` / `CommitsTab` are unchanged since this plan was written; the design system's `FieldProps.description` is now a `ReactNode` (no effect here: `DiffList` has its own props). No decision below changed.
+- **Cluster access (refreshed 2026-11-20).** Wave 13 gates every gateway path but `/polaris` behind a Keycloak session, so the verification's API calls through the gateway use `gateway::curl <path>` (source `scripts/utils/gateway.sh` with `KUBE_CONTEXT=retail-lakehouse`; it gets a `platform-validate` token) instead of a bare `curl`, and the console logs in as `platform-admin` (password in Secret `identity/keycloak-clients`).
+- **Builds on KCL-96 (refreshed 2026-11-20; `TM` / `FE` as in File Structure).** These files are changed by KCL-96 first; each step here edits KCL-96's committed version, never the HEAD `bfdc0987` one:
+  - `TM/adapter/inbound/web/table/dto.py` (KCL-96 removes `TableHealthApiResponse`, `TableHealthOperationApiResponse`, `TableStorageApiResponse` and adds the metrics DTOs; Task 6 adds `schema_id` to `TableCommitApiResponse` there);
+  - `tests/context/table_maintenance/adapter/outbound/table/pyiceberg/test_read_table_metadata_pyiceberg_gateway.py` (KCL-96 adds count tests and removes the `measure_storage` tests);
+  - `src/data-platform/backend/openapi.json` and `src/data-platform/frontend/src/api/generated/` (regenerated with `GENAPI` on top of KCL-96's routes);
+  - `FE/pages/TablePage.test.tsx` (KCL-96's `stubTable` has no `health` / `storage` stubs and answers `metrics/current` and `metrics*`; Task 8 adds the four version routes to it);
+  - `FE/pages/TablePage.stories.tsx`, `FE/stories/storyData.ts`, `FE/stories/lakehouseHandlers.ts` (KCL-96 adds `ORDERS_CURRENT_METRICS`, `ORDERS_METRIC_TRENDS`, two metrics handlers and the `Overview*` stories; Tasks 8 and 9 add theirs beside them);
+  - `src/data-platform/backend/CLAUDE.md`, `src/data-platform/frontend/CLAUDE.md`, `docs/agents/project-history.md` (one more paragraph, bullet and line each, after KCL-96's).
+  `FE/pages/TablePage.tsx` and `FE/components/tabs/OverviewTab.tsx`: KCL-96 does not change `TablePage.tsx`; nothing here touches `OverviewTab.tsx`.
 - No new dependency, no data migration, no ADR (the decisions follow KCL-79 and ADRs 0005, 0009, 0010).
 - Follow `CLAUDE.md`: TDD, one object per file, `from __future__ import annotations`, StrEnum, ABC ports, `uv run`, never `cd`, `kubectl <verb>` first, never `--no-verify`, never `sops`, never edit `.claude/settings*.json`, explicit paths in `git add`, never run two test suites at once.
 - Every commit passes `task -d /Users/kcl/Projects/retail-lakehouse gates:pre-pr scope=<side>` (`backend`, `frontend`, or `all` when the generated client changes). After a DTO change run `task -d /Users/kcl/Projects/retail-lakehouse dev:generate-api` and commit `src/data-platform/backend/openapi.json` and `src/data-platform/frontend/src/api/generated/` with it.
@@ -77,7 +88,7 @@ Backend paths are relative to `src/data-platform/backend/`; `CAT` = `context/cat
 | `TM/adapter/outbound/table/pyiceberg/commit_page_mapper.py`, `ListTableCommitsUseCaseOutput`, `list_table_commits.py`, `TableCommitApiResponse` | commit `schema_id` |
 | `DS/components/DiffList/DiffList.tsx`, `DiffList.stories.tsx` (new), `DS/index.ts` | diff list |
 | `FE/components/VersionList.tsx` (+ test), `FE/components/SchemaHistoryPanel.tsx`, `FE/components/PartitionSpecHistoryPanel.tsx`, `FE/components/tabs/useSchemaHistorySelection.ts`, `FE/lib/schemaChangeText.ts`, `FE/lib/partitionChangeText.ts`, `FE/lib/schemaDiffItems.ts`, `FE/lib/partitionDiffItems.ts` (new, with tests) | Schema tab pieces |
-| `FE/components/tabs/SchemaTab.tsx` (+ new `SchemaTab.test.tsx`), `FE/components/tabs/CommitsTab.tsx`, `FE/pages/TablePage.tsx`, `FE/pages/TablePage.stories.tsx`, `FE/stories/storyData.ts`, `FE/stories/lakehouseHandlers.ts` | tabs, stories |
+| `FE/components/tabs/SchemaTab.tsx` (+ new `SchemaTab.test.tsx`), `FE/components/tabs/CommitsTab.tsx`, `FE/pages/TablePage.tsx`, `FE/pages/TablePage.test.tsx`, `FE/pages/TablePage.stories.tsx`, `FE/stories/storyData.ts`, `FE/stories/lakehouseHandlers.ts` | tabs, stories (the last four on top of KCL-96's versions) |
 
 Shorthands used in commands below:
 
@@ -120,7 +131,7 @@ def test_outer_type_of_nested_and_primitive_fields(): ...  # "struct<a: int>"→
                                                           # "map<string, int>"→"map", "decimal(10,2)"→"decimal(10,2)"
 ```
 
-In `test_tables_polaris_repo.py`:
+In `test_tables_polaris_repo.py` (add a helper `_load_orders(body=None) -> Table` that does what the existing tests do inline: `PolarisStub()`, `stub.on("GET", ORDERS, httpx.Response(200, json=body or _load_result()))`, `TablesPolarisRepo(stub.client()).get(ORDERS_ID)`, asserting it is not None; there is no such helper at HEAD):
 
 ```python
 def test_load_keeps_nested_field_ids():
@@ -132,6 +143,8 @@ def test_load_keeps_nested_field_ids():
 
 def test_load_keeps_map_key_and_value_ids(): ...  # a map field {key-id 11, value-id 12, value-required true}
                                                   # → children [(11, "key", True), (12, "value", True)]
+                                                  # (the body is built as test_load_maps_map_types_and_optional_nested_elements
+                                                  # builds its own, appending to schemas[1])
 def test_nested_field_id_that_is_not_an_integer_is_unavailable(): ...  # element-id "6" → CatalogUnavailableError
 ```
 
@@ -309,7 +322,7 @@ def test_unpartitioned_to_partitioned(): ...     # spec 0 () → spec 1 {1000}: 
 
 **Files:**
 - Create: `CAT/application/port/inbound/table/list_table_schema_versions/{__init__,input,output,use_case}.py`, `.../get_table_schema_comparison/…`, `.../list_table_partition_spec_versions/…`, `.../get_table_partition_spec_comparison/…`; `CAT/application/service/table/list_table_schema_versions.py`, `get_table_schema_comparison.py`, `list_table_partition_spec_versions.py`, `get_table_partition_spec_comparison.py`, `load_table.py`
-- Modify: both table `__init__.py` files (ports and services), `CAT/application/service/table/get_table.py` (use `load_table`), `tests/architecture/test_service_structure.py` (add `load_table.py` to the helper allowlist), `CAT/adapter/inbound/web/table/router.py`, `dto.py`, `CAT/adapter/inbound/web/shared/web_use_cases.py`, `bootstrap/container/build_catalog_web_use_cases.py`, the web test support's use-case stub set if it lists every field, `src/data-platform/backend/CLAUDE.md` (one paragraph beside the table-properties one: what the comparisons match on and the four routes), `openapi.json` + generated client
+- Modify: both table `__init__.py` files (ports and services), `CAT/application/service/table/get_table.py` (use `load_table`), `CAT/application/service/table/load_table_and_catalog.py` (its table half calls `load_table`; it raises the same text today), `tests/architecture/test_service_structure.py` (add `load_table.py` to the helper allowlist, beside `load_table_and_catalog.py`), `CAT/adapter/inbound/web/table/router.py`, `dto.py`, `CAT/adapter/inbound/web/shared/web_use_cases.py`, `bootstrap/container/build_catalog_web_use_cases.py` (`tests/context/catalog/adapter/inbound/web/web_test_support.build_app` derives its stubs from `WebUseCases`, so it needs no change; `tests/bootstrap/container/test_build_catalog_web_use_cases.py` asserts the four new services are wired), `src/data-platform/backend/CLAUDE.md` (on top of KCL-96's version) (one paragraph beside the table-properties one: what the comparisons match on and the four routes), `openapi.json` + generated client
 - Test: `tests/context/catalog/application/service/table/test_table_version_services.py` (new), `tests/context/catalog/adapter/inbound/web/table/test_table_version_routes.py` (new)
 
 **Interfaces:**
@@ -361,8 +374,8 @@ Routes (stub use cases, as `test_table_routes.py` does): each route answers 200 
 ### Task 6: Each commit carries its schema id
 
 **Files:**
-- Modify: `TM/adapter/outbound/table/pyiceberg/commit_page_mapper.py` (`"schema_id": snapshot.schema_id`), `TM/application/port/outbound/table/read_table_metadata/table_commit_page.py` (docstring lists `schema_id`), `TM/application/port/inbound/table/list_table_commits/output.py` (`Commit.schema_id: int | None`), `TM/application/service/table/list_table_commits.py` (`commit.get("schema_id")`, so a fake or older page without the key reads None), `TM/adapter/inbound/web/table/dto.py` (`TableCommitApiResponse.schema_id: int | None`), `openapi.json` + generated client
-- Test: `tests/context/table_maintenance/adapter/outbound/table/pyiceberg/test_read_table_metadata_pyiceberg_gateway.py`, `tests/context/table_maintenance/application/service/table/test_list_table_commits.py`, `tests/context/table_maintenance/adapter/inbound/web/table/test_table_commits_route.py`
+- Modify: `TM/adapter/outbound/table/pyiceberg/commit_page_mapper.py` (`"schema_id": snapshot.schema_id` in the dict beside `"snapshot_id"`, `"parent_id"`, `"committed_at"`, `"operation"`, `"summary"`, `"writer"`), `TM/application/port/outbound/table/read_table_metadata/table_commit_page.py` (docstring lists `schema_id`), `TM/application/port/inbound/table/list_table_commits/output.py` (`Commit.schema_id: int | None`), `TM/application/service/table/list_table_commits.py` (`commit.get("schema_id")`, so a fake or older page without the key reads None; the other keys stay `commit[...]`), `TM/adapter/inbound/web/table/dto.py` (KCL-96's version; `TableCommitApiResponse.schema_id: int | None`), `openapi.json` + generated client
+- Test: `tests/context/table_maintenance/adapter/outbound/table/pyiceberg/test_read_table_metadata_pyiceberg_gateway.py` (KCL-96's version), `tests/context/table_maintenance/application/service/table/test_list_table_commits.py`, `tests/context/table_maintenance/adapter/inbound/web/table/test_table_commits_route.py`
 
 **Interfaces:**
 - Produces: `GET /v1/tables/{table_uuid}/commits` items gain `schema_id: int | None` (the TypeScript `TableCommitApiResponse.schema_id: number | null`).
@@ -419,7 +432,7 @@ export type DiffListProps = {
 
 **Files:**
 - Create: `FE/lib/schemaChangeText.ts`, `FE/lib/partitionChangeText.ts`, `FE/lib/schemaDiffItems.ts`, `FE/lib/partitionDiffItems.ts` (each with a `.test.ts`), `FE/components/VersionList.tsx` (+ `.test.tsx`), `FE/components/SchemaHistoryPanel.tsx`, `FE/components/PartitionSpecHistoryPanel.tsx`, `FE/components/tabs/useSchemaHistorySelection.ts`, `FE/components/tabs/SchemaTab.test.tsx`
-- Modify: `FE/components/tabs/SchemaTab.tsx`, `FE/stories/storyData.ts`, `FE/stories/lakehouseHandlers.ts`, `FE/pages/TablePage.stories.tsx`, `src/data-platform/frontend/CLAUDE.md` (Catalog pages: one bullet on the Schema tab)
+- Modify: `FE/components/tabs/SchemaTab.tsx` (its `<SchemaFieldsPanel schema={table.schema} />` becomes `SchemaHistoryPanel`, and its "Partition spec" `Panel` with the partition `DataTable` becomes `PartitionSpecHistoryPanel`; `SchemaFieldsPanel` itself stays, `ViewPage` uses it), and on top of KCL-96's versions: `FE/stories/storyData.ts`, `FE/stories/lakehouseHandlers.ts` (the four generated `…MockHandler`s from `@/api/generated/tables/tables.msw`, where both contexts' `tables` tag lands, in `lakehouseHandlers()`'s list), `FE/pages/TablePage.stories.tsx`, `FE/pages/TablePage.test.tsx` (`stubTable` gains `GET ${TABLE}/schema-versions*` and `GET ${TABLE}/partition-spec-versions*`, answering version lists and comparisons written for `catalogTableFixture()`'s `address` struct and `placed_at_day` field; the test "shows the schema with partition spec sort order and spark ddl" now finds the current version's `Current` badge and an `address.zip` row in the "Schema" region (a comparison row shows the outer type `struct`, no longer `struct<city: required string, zip: string>`), the `Default` badge and `day(placed_at)` in the "Partition spec" region, and keeps its Sort order and DDL assertions), `src/data-platform/frontend/CLAUDE.md` (Catalog pages: one bullet on the Schema tab, after KCL-96's change to "The table page joins two APIs")
 - Test: the files above
 
 **Interfaces:**
@@ -455,7 +468,7 @@ it("summarises a version's changes", () => {
 
 Stories in `TablePage.stories.tsx` (fixtures in `storyData.ts`, handlers in `lakehouseHandlers.ts` answering each comparison by its `schema_id` and `base`): update `Schema` (finds `Current` and `+5 added · 1 doc changed`), add `SchemaCompareTwoVersions` (route `${ORDERS}/schema?schema=0&base=1`), `SchemaOnlyChanges`, `SchemaManyVersions` (12 versions, "Show 2 earlier versions"), `SchemaPartitionTransformChange`, `SchemaVersionsError` (`apiError` on the versions route), `SchemaPhone` (`globals: PHONE`, `expectNoHorizontalPageScroll`).
 
-- [ ] **Step 2: Run and watch them fail**: `npm --prefix /Users/kcl/Projects/retail-lakehouse/src/data-platform/frontend test -- --run schemaChangeText partitionChangeText schemaDiffItems partitionDiffItems VersionList SchemaTab`, then `npm --prefix /Users/kcl/Projects/retail-lakehouse/src/data-platform/frontend run test:stories -- TablePage`
+- [ ] **Step 2: Run and watch them fail**: `npm --prefix /Users/kcl/Projects/retail-lakehouse/src/data-platform/frontend test -- --run schemaChangeText partitionChangeText schemaDiffItems partitionDiffItems VersionList SchemaTab TablePage`, then `npm --prefix /Users/kcl/Projects/retail-lakehouse/src/data-platform/frontend run test:stories -- TablePage`
 - [ ] **Step 3: Implement** with design-system components only (`List`, `ListItem`, `Badge`, `Button`, `Select`, `Panel`, `Banner`, `DiffList`), semantic utilities only, identifiers in `type-code`.
 - [ ] **Step 4: Run and watch them pass**; `GATE scope=frontend`
 - [ ] **Step 5: Commit** `feat(console): list and compare schema and partition spec versions on the Schema tab (KCL-97)`
@@ -463,11 +476,11 @@ Stories in `TablePage.stories.tsx` (fixtures in `storyData.ts`, handlers in `lak
 ### Task 9: The Commits tab links each commit to its schema version
 
 **Files:**
-- Modify: `FE/components/tabs/CommitsTab.tsx`, `FE/components/tabs/CommitsTab.test.tsx`, `FE/pages/TablePage.tsx`, `FE/pages/TablePage.stories.tsx`, `FE/stories/storyData.ts` (`schema_id` on the commits)
+- Modify: `FE/components/tabs/CommitsTab.tsx`, `FE/components/tabs/CommitsTab.test.tsx`, `FE/pages/TablePage.tsx`, and on top of KCL-96's and Task 8's versions `FE/pages/TablePage.stories.tsx` and `FE/stories/storyData.ts` (`schema_id` on each item of `COMMITS`)
 
 **Interfaces:**
 - Consumes: Task 6 (`TableCommitApiResponse.schema_id`), Task 8's `schema` url param.
-- Produces: `CommitsTab({ tableUuid, schemaHref }: { tableUuid: string; schemaHref: (schemaId: number) => string })`. `TablePage` passes `` (id) => `${tablePath(catalog, parts, name, "schema")}?schema=${id}` ``. Each `CommitRow` with a `schema_id` shows, before the short snapshot id, a `TextLink` wrapping the router `Link` with text `v<N>`, accessible name `Schema v<N>` and a `Tooltip` "Written with schema v<N>"; a commit with no `schema_id` shows nothing there.
+- Produces: `CommitsTab({ tableUuid, schemaHref }: { tableUuid: string; schemaHref: (schemaId: number) => string })` (today `CommitsTab({ tableUuid })`, which hands `tableUuid` to `CommitHistory`; `schemaHref` goes down `CommitHistory` → `CommitDaySection` → `CommitRow`). `TablePage`'s `tabBody` (case `"commits"`, inside its `MaintenanceGate`) passes `` (id) => `${tablePath(table.catalog, table.namespace, table.name, "schema")}?schema=${id}` `` (`tablePath` from `@/lib/catalogPaths`). Each `CommitRow` with a `schema_id` shows, before the short snapshot id, a `TextLink` wrapping the router `Link` with text `v<N>`, accessible name `Schema v<N>` and a `Tooltip` "Written with schema v<N>"; a commit with no `schema_id` shows nothing there.
 
 - [ ] **Step 1: Failing tests and stories:** `CommitsTab.test.tsx`: a commit with `schema_id: 1` has a link named `Schema v1` whose href is `schemaHref(1)`; a commit with `schema_id: null` has no schema link. Story `CommitsSchemaLink` (route `${ORDERS}/commits`): click `Schema v0` and land on the Schema tab with `v0` selected (its list item `aria-current` / selected state and the comparison caption `Changes in schema v0`). `CommitsPhone` still passes `expectNoHorizontalPageScroll`.
 - [ ] **Step 2: Run and watch them fail**: `npm --prefix /Users/kcl/Projects/retail-lakehouse/src/data-platform/frontend test -- --run CommitsTab`
@@ -477,8 +490,10 @@ Stories in `TablePage.stories.tsx` (fixtures in `storyData.ts`, handlers in `lak
 
 ### Task 10: Verify on a rebuilt cluster (run by the controller)
 
+**Batched (refreshed 2026-11-20):** the controller runs this task in one batch rebuild with KCL-91 (Task 9 of `docs/superpowers/plans/2026-11-20-maintenance-policy-target-state.md`) and KCL-96 (Task 11 of `docs/superpowers/plans/2026-11-20-overview-metric-trends.md`), after both plans here are implemented: Step 1 is done once for the three, then each plan's checks run on that cluster. The checks below stay as they are; API calls through the gateway use `gateway::curl` (Global Constraints, "Cluster access").
+
 - [ ] **Step 1:** `task -d /Users/kcl/Projects/retail-lakehouse offboard KUBE_CONTEXT=retail-lakehouse`, then `task -d /Users/kcl/Projects/retail-lakehouse onboard KUBE_CONTEXT=retail-lakehouse`; `task -d /Users/kcl/Projects/retail-lakehouse apps:validate KUBE_CONTEXT=retail-lakehouse` exits 0.
-- [ ] **Step 2:** Open the gateway: `kubectl port-forward service/platform-gateway-istio 8591:80 --namespace istio-ingress --context retail-lakehouse`. Create `iceberg.inventory.schema_demo` with `POST http://localhost:8591/api/v1/catalogs/iceberg/namespaces/inventory/tables`, body `{"name": "schema_demo", "schema_fields": [{"name": "order_id", "type": "int"}, {"name": "customer_id", "type": "long", "required": false}, {"name": "order_ts", "type": "timestamptz", "required": false}, {"name": "shipping", "type": "struct<city: string>", "required": false}], "partition_fields": [{"source_column": "order_ts", "transform": "day"}]}`.
+- [ ] **Step 2:** Open the gateway: `kubectl port-forward service/platform-gateway-istio 8591:80 --namespace istio-ingress --context retail-lakehouse`. Create `iceberg.inventory.schema_demo` with `gateway::curl /api/v1/catalogs/iceberg/namespaces/inventory/tables -fsS -X POST -H 'Content-Type: application/json' --data '<body>'`, body `{"name": "schema_demo", "schema_fields": [{"name": "order_id", "type": "int"}, {"name": "customer_id", "type": "long", "required": false}, {"name": "order_ts", "type": "timestamptz", "required": false}, {"name": "shipping", "type": "struct<city: string>", "required": false}], "partition_fields": [{"source_column": "order_ts", "transform": "day"}]}`.
 - [ ] **Step 3:** Evolve it from the API pod, appending one row after each change so each version has a commit:
 
 ```bash
@@ -507,10 +522,10 @@ append()
 ```
 
   If the API pod cannot reach object storage, run the same command in `deployment/table-maintenance-worker`.
-- [ ] **Step 4: API checks** (`curl --silent http://localhost:8591/api/v1/catalogs/iceberg/namespaces/inventory/tables/schema_demo/...`):
+- [ ] **Step 4: API checks** (`gateway::curl /api/v1/catalogs/iceberg/namespaces/inventory/tables/schema_demo/... -fsS`):
   - `schema-versions`: `current_schema_id` 1, versions `[1, 0]`, `v1` changes `added 1, renamed 1, type_changed 1, nullability_changed 1`, `v0` changes null.
   - `schema-versions/1/comparison`: one row for field `customer_id`'s id with `["renamed"]`, `order_id` with `["type_changed", "nullability_changed"]`, `["shipping", "zip"]` `["added"]` at depth 1; `?base=9` → 404.
   - `partition-spec-versions`: `default_spec_id` 1; `partition-spec-versions/1/comparison`: one `transform_changed` row, `previous_expression` `day(order_ts)`, `expression` `hour(order_ts)`.
-  - `GET /api/v1/tables/{uuid}/commits` (uuid from the console or `GET /api/v1/tables`): three commits with `schema_id` 0, 1, 1.
-- [ ] **Step 5: Console checks** at `http://localhost:8591/console/`: the table's Schema tab shows `v1` `Current` with "+1 added · 1 renamed · 1 type changed · 1 nullability changed", the comparison lists `shipping.zip` indented, "Show changes only" hides `order_ts`, "Compare with" `v0` on `v1` and back; the partition panel reads `day(order_ts) → hour(order_ts)` with `Default` on `v1`; the DDL note names `v1`. Once maintenance manages the table (discovery or a catalog event; the Overview says so), the Commits tab shows `v0` / `v1` links and `v0` lands on the Schema tab with `v0` selected. At phone width (browser devtools, 390px) neither tab scrolls sideways. Delete `schema_demo` from the console afterwards.
-- [ ] **Step 6:** `GATE` (all scopes); add the `docs/agents/project-history.md` line (2026-11-2x: KCL-97: the catalog table keeps every schema, spec and snapshot schema id; the four version routes; comparisons by field id with transform changes paired by source column; `DiffList` in the design system; the Schema tab's version lists and the Commits tab's schema link; verified on a rebuilt cluster), commit it `docs: record schema and partition spec version comparison (KCL-97)`, record the results on KCL-97 in a dated comment, and push only when the user asks.
+  - `GET /api/v1/tables/{uuid}/commits` (uuid from the console or `GET /api/v1/tables`, once maintenance manages the table, see Step 5): three commits with `schema_id` 0, 1, 1.
+- [ ] **Step 5: Console checks** at `http://localhost:8591/console/` (logged in as `platform-admin`): the table's Schema tab shows `v1` `Current` with "+1 added · 1 renamed · 1 type changed · 1 nullability changed", the comparison lists `shipping.zip` indented, "Show changes only" hides `order_ts`, "Compare with" `v0` on `v1` and back; the partition panel reads `day(order_ts) → hour(order_ts)` with `Default` on `v1`; the DDL note names `v1`. Once maintenance manages the table (the discovery rule for `iceberg / inventory / *` that KCL-96's batch step adds covers `schema_demo`; after KCL-71, a discovery policy on `iceberg.inventory`; the Overview says "Maintenance: managed" and its Reconciliations tab shows a first check with `table_managed`), the Commits tab shows `v0` / `v1` links and `v0` lands on the Schema tab with `v0` selected. At phone width (browser devtools, 390px) neither tab scrolls sideways. Delete `schema_demo` from the console afterwards.
+- [ ] **Step 6:** `GATE` (all scopes); add the `docs/agents/project-history.md` line (after KCL-96's) (2026-11-2x: KCL-97: the catalog table keeps every schema, spec and snapshot schema id; the four version routes; comparisons by field id with transform changes paired by source column; `DiffList` in the design system; the Schema tab's version lists and the Commits tab's schema link; verified on a rebuilt cluster), commit it `docs: record schema and partition spec version comparison (KCL-97)`, record the results on KCL-97 in a dated comment, and push only when the user asks.
