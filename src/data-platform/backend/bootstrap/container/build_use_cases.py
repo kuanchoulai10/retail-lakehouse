@@ -17,7 +17,6 @@ from context.table_maintenance.application.service.compaction_candidate import (
 )
 from context.table_maintenance.application.service.compaction_round import (
     GetCompactionRoundService,
-    GetPlatformSettingsService,
     GetSchedulerSettingsService,
     ListCompactionRoundsService,
     ScheduleCompactionRoundService,
@@ -59,6 +58,7 @@ from context.table_maintenance.application.service.table_maintenance_run import 
     DeleteMaintenanceJobService,
     GetMaintenanceJobPodsService,
     GetMaintenanceJobStatusService,
+    GetPlatformSettingsService,
     GetTableMaintenanceRunService,
     ListTableMaintenanceRunsService,
     ProcessTableMaintenanceCallbackService,

@@ -8,14 +8,8 @@ from context.table_maintenance.adapter.inbound.web.compaction_round.dto import (
     CompactionRoundPickApiResponse,
     CompactionRoundSkipApiResponse,
     CompactionRoundTableApiResponse,
-    PlatformSettingApiResponse,
-    PlatformSettingsApiResponse,
-    PlatformSettingsGroupApiResponse,
     SchedulerPriorityApiResponse,
     SchedulerSettingsApiResponse,
-)
-from context.table_maintenance.adapter.inbound.web.compaction_round.platform_settings_router import (
-    platform_settings_router,
 )
 from context.table_maintenance.adapter.inbound.web.compaction_round.router import (
     router,
@@ -27,11 +21,7 @@ __all__ = [
     "CompactionRoundPickApiResponse",
     "CompactionRoundSkipApiResponse",
     "CompactionRoundTableApiResponse",
-    "PlatformSettingApiResponse",
-    "PlatformSettingsApiResponse",
-    "PlatformSettingsGroupApiResponse",
     "SchedulerPriorityApiResponse",
     "SchedulerSettingsApiResponse",
-    "platform_settings_router",
     "router",
 ]

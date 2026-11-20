@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     )
     from context.table_maintenance.application.port.inbound.compaction_round import (
         GetCompactionRoundUseCase,
-        GetPlatformSettingsUseCase,
         GetSchedulerSettingsUseCase,
         ListCompactionRoundsUseCase,
     )
@@ -45,6 +44,7 @@ if TYPE_CHECKING:
         ResolveApplicableTableMaintenancePolicyUseCase,
     )
     from context.table_maintenance.application.port.inbound.table_maintenance_run import (
+        GetPlatformSettingsUseCase,
         GetTableMaintenanceRunUseCase,
         ListTableMaintenanceRunsUseCase,
         ProcessTableMaintenanceCallbackUseCase,

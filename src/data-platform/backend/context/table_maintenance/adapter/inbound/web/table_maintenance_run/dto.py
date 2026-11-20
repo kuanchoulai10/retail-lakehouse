@@ -76,3 +76,30 @@ class ProcessTableMaintenanceCallbackApiResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     accepted: bool
+
+
+class PlatformSettingApiResponse(BaseModel):
+    """Describe one platform setting: a stable key, a label, its value and unit, and a one-sentence description.
+
+    ``unit`` is null for a value that carries its own, such as ``768m``.
+    """
+
+    key: str
+    label: str
+    value: int | float | str
+    unit: str | None
+    description: str
+
+
+class PlatformSettingsGroupApiResponse(BaseModel):
+    """Describe one theme of platform settings: a stable key, a title and its settings in reading order."""
+
+    key: str
+    title: str
+    items: list[PlatformSettingApiResponse]
+
+
+class PlatformSettingsApiResponse(BaseModel):
+    """Describe the platform-level settings the running component was started with, grouped by theme."""
+
+    groups: list[PlatformSettingsGroupApiResponse]

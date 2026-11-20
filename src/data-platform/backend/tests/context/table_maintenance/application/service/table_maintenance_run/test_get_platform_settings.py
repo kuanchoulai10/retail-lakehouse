@@ -13,11 +13,11 @@ from context.table_maintenance.application.domain.model.shared import (
     PlatformPriority,
     PlatformSettings,
 )
-from context.table_maintenance.application.port.inbound.compaction_round import (
+from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     GetPlatformSettingsUseCaseInput,
     GetPlatformSettingsUseCaseOutput,
 )
-from context.table_maintenance.application.service.compaction_round import GetPlatformSettingsService
+from context.table_maintenance.application.service.table_maintenance_run import GetPlatformSettingsService
 
 SECRET_WORDS = ("password", "secret", "key", "token", "credential")
 USERINFO_URI = re.compile(r"[a-z][a-z0-9+.-]*://[^/\s]*@", re.IGNORECASE)

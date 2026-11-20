@@ -6,16 +6,16 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from context.table_maintenance.adapter.inbound.web.compaction_round.dto import (
-    PlatformSettingApiResponse,
-    PlatformSettingsApiResponse,
-    PlatformSettingsGroupApiResponse,
-)
 from context.table_maintenance.adapter.inbound.web.shared import (
     WebUseCases,
     use_cases_dependency,
 )
-from context.table_maintenance.application.port.inbound.compaction_round import (
+from context.table_maintenance.adapter.inbound.web.table_maintenance_run.dto import (
+    PlatformSettingApiResponse,
+    PlatformSettingsApiResponse,
+    PlatformSettingsGroupApiResponse,
+)
+from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     GetPlatformSettingsUseCaseInput,
 )
 

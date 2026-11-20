@@ -44,13 +44,13 @@ from context.table_maintenance.adapter.outbound.table_maintenance_run.s3 import 
     ReadMaintenanceEventLogS3Gateway,
 )
 from context.table_maintenance.application.port.inbound.compaction_round import (
-    GetPlatformSettingsUseCaseInput,
     GetSchedulerSettingsUseCaseInput,
     ScheduleCompactionRoundUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_discovery_rules import (
     GetTableDiscoveryRulesUseCaseInput,
 )
+from context.table_maintenance.application.port.inbound.table_maintenance_run import GetPlatformSettingsUseCaseInput
 from context.table_maintenance.application.service.table_maintenance_policy import (
     EnsureDefaultTableMaintenancePolicyService,
 )

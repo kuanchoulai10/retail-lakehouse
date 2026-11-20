@@ -8,9 +8,6 @@ from context.table_maintenance.adapter.inbound.web.compaction_candidate import (
     router as compaction_candidate_router,
 )
 from context.table_maintenance.adapter.inbound.web.compaction_round import (
-    platform_settings_router,
-)
-from context.table_maintenance.adapter.inbound.web.compaction_round import (
     router as compaction_round_router,
 )
 from context.table_maintenance.adapter.inbound.web.error_handlers import (
@@ -25,6 +22,9 @@ from context.table_maintenance.adapter.inbound.web.table_maintenance_policy impo
 )
 from context.table_maintenance.adapter.inbound.web.table_maintenance_policy_attachment import (
     router as table_maintenance_policy_attachment_router,
+)
+from context.table_maintenance.adapter.inbound.web.table_maintenance_run import (
+    platform_settings_router,
 )
 from context.table_maintenance.adapter.inbound.web.table_maintenance_run import (
     router as table_maintenance_run_router,

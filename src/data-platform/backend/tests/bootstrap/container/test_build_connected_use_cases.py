@@ -18,10 +18,10 @@ from bootstrap.container import (
 from context.table_maintenance.adapter.hybrid.temporal.outbound.shared import (
     AsyncLoopBridge,
 )
-from context.table_maintenance.application.port.inbound.compaction_round import GetPlatformSettingsUseCaseInput
 from context.table_maintenance.application.port.inbound.table_maintenance_policy import (
     ListTableMaintenancePoliciesUseCaseInput,
 )
+from context.table_maintenance.application.port.inbound.table_maintenance_run import GetPlatformSettingsUseCaseInput
 from context.table_maintenance.application.service.compaction_candidate import ListCompactionCandidatesService
 from context.table_maintenance.application.service.table import GetTableHealthService, PlanTableMaintenanceService
 from context.table_maintenance.application.service.table_maintenance_run import (

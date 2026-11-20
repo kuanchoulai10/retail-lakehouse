@@ -12,7 +12,6 @@ if TYPE_CHECKING:
     )
     from context.table_maintenance.application.port.inbound.compaction_round import (
         GetCompactionRoundUseCase,
-        GetPlatformSettingsUseCase,
         GetSchedulerSettingsUseCase,
         ListCompactionRoundsUseCase,
         ScheduleCompactionRoundUseCase,
@@ -54,6 +53,7 @@ if TYPE_CHECKING:
         DeleteMaintenanceJobUseCase,
         GetMaintenanceJobPodsUseCase,
         GetMaintenanceJobStatusUseCase,
+        GetPlatformSettingsUseCase,
         GetTableMaintenanceRunUseCase,
         ListTableMaintenanceRunsUseCase,
         ProcessTableMaintenanceCallbackUseCase,

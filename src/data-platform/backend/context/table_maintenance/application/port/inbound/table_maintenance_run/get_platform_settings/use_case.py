@@ -5,10 +5,10 @@ from __future__ import annotations
 from abc import abstractmethod
 
 from base import UseCase
-from context.table_maintenance.application.port.inbound.compaction_round.get_platform_settings.input import (
+from context.table_maintenance.application.port.inbound.table_maintenance_run.get_platform_settings.input import (
     GetPlatformSettingsUseCaseInput,
 )
-from context.table_maintenance.application.port.inbound.compaction_round.get_platform_settings.output import (
+from context.table_maintenance.application.port.inbound.table_maintenance_run.get_platform_settings.output import (
     GetPlatformSettingsUseCaseOutput,
 )
 

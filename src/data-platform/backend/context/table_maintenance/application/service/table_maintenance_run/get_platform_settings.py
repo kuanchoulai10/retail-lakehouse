@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from context.table_maintenance.application.port.inbound.compaction_round import (
+from context.table_maintenance.application.port.inbound.table_maintenance_run import (
     GetPlatformSettingsUseCase,
     GetPlatformSettingsUseCaseInput,
     GetPlatformSettingsUseCaseOutput,

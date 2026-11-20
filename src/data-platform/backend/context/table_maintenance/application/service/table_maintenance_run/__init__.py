@@ -14,6 +14,9 @@ from context.table_maintenance.application.service.table_maintenance_run.get_mai
 from context.table_maintenance.application.service.table_maintenance_run.get_maintenance_job_status import (
     GetMaintenanceJobStatusService,
 )
+from context.table_maintenance.application.service.table_maintenance_run.get_platform_settings import (
+    GetPlatformSettingsService,
+)
 from context.table_maintenance.application.service.table_maintenance_run.get_table_maintenance_run import (
     GetTableMaintenanceRunService,
 )
@@ -41,6 +44,7 @@ __all__ = [
     "DeleteMaintenanceJobService",
     "GetMaintenanceJobPodsService",
     "GetMaintenanceJobStatusService",
+    "GetPlatformSettingsService",
     "GetTableMaintenanceRunService",
     "ListTableMaintenanceRunsService",
     "ProcessTableMaintenanceCallbackService",
