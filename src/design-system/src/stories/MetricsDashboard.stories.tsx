@@ -8,7 +8,13 @@ import { TimeRangePicker } from "../components/TimeRangePicker/TimeRangePicker";
 import { expectNoHorizontalPageScroll } from "./assertions";
 import { FILE_COUNTS, SAMPLE_TIMES, TOTAL_BYTES, formatBytes, formatSampleTime } from "./chartSamples";
 
-const ROWS = SAMPLE_TIMES.map((time, step) => ({ time, rows: 48_200_000 + step * 310_000 }));
+const FILES = FILE_COUNTS.map((point, step) => ({ ...point, deletionVectors: 4 + (step % 4) - (step >= 24 ? 3 : 0) }));
+const ROWS = SAMPLE_TIMES.map((time, step) => ({
+  time,
+  rows: 48_200_000 + step * 310_000,
+  positionDeleteRows: 120_000 + step * 4_000 - (step >= 24 ? 110_000 : 0),
+  equalityDeleteRows: 8_000 + (step % 6) * 500,
+}));
 const REDUCIBLE = SAMPLE_TIMES.map((time, step) => ({ time, reducible: step >= 24 ? 12 + (step - 24) : 180 + step * 13 }));
 const MANIFESTS = SAMPLE_TIMES.map((time, step) => ({
   time,
@@ -44,22 +50,22 @@ function Dashboard() {
         <MetricCard
           label="Data files"
           value="1,174"
-          delta={{ text: "−6 in 6h", direction: "down", tone: "positive" }}
+          delta={{ text: "−6 in 6h", direction: "down", tone: "neutral" }}
           trend={FILE_COUNTS.map((point) => point.dataFiles)}
           trendLabel="Data files, dropping after compaction"
         />
         <MetricCard
-          label="Total size"
+          label="Data size"
           value="4.0 GB"
           delta={{ text: "+875 MB in 6h", direction: "up", tone: "neutral" }}
           trend={TOTAL_BYTES.map((point) => point.bytes)}
-          trendLabel="Total size, rising"
+          trendLabel="Data size, rising"
         />
         <MetricCard label="Total rows" value="59.1M" delta={{ text: "+10.9M in 6h", direction: "up", tone: "neutral" }} />
         <MetricCard
           label="Reducible files"
           value="23"
-          delta={{ text: "−457 in 6h", direction: "down", tone: "positive" }}
+          delta={{ text: "−457 in 6h", direction: "down", tone: "neutral" }}
           trend={REDUCIBLE.map((point) => point.reducible)}
           trendLabel="Reducible files, dropping after compaction"
         />
@@ -70,24 +76,39 @@ function Dashboard() {
         <Section title="Files">
           <LineChart
             label="Data and delete files over the last 6 hours"
-            data={FILE_COUNTS}
+            data={FILES}
             index="time"
             indexFormatter={formatSampleTime}
             series={[
               { key: "dataFiles", name: "Data files" },
-              { key: "positionDeletes", name: "Position deletes" },
-              { key: "equalityDeletes", name: "Equality deletes" },
+              { key: "positionDeletes", name: "Position delete files" },
+              { key: "equalityDeletes", name: "Equality delete files" },
+              { key: "deletionVectors", name: "Deletion vectors" },
             ]}
           />
         </Section>
         <Section title="Size">
           <AreaChart
-            label="Total size over the last 6 hours"
+            label="Data size over the last 6 hours"
             data={TOTAL_BYTES}
             index="time"
             indexFormatter={formatSampleTime}
             valueFormatter={formatBytes}
-            series={[{ key: "bytes", name: "Total size" }]}
+            series={[{ key: "bytes", name: "Data size" }]}
+          />
+        </Section>
+        <Section title="Rows">
+          <LineChart
+            label="Total and deleted rows over the last 6 hours"
+            data={ROWS}
+            index="time"
+            indexFormatter={formatSampleTime}
+            valueFormatter={(value) => (value >= 1_000_000 ? `${(value / 1_000_000).toFixed(1)}M` : value.toLocaleString("en-US"))}
+            series={[
+              { key: "rows", name: "Total rows" },
+              { key: "positionDeleteRows", name: "Position delete rows" },
+              { key: "equalityDeleteRows", name: "Equality delete rows" },
+            ]}
           />
         </Section>
         <Section title="Reducible files">
@@ -97,16 +118,6 @@ function Dashboard() {
             index="time"
             indexFormatter={formatSampleTime}
             series={[{ key: "reducible", name: "Reducible files" }]}
-          />
-        </Section>
-        <Section title="Rows">
-          <LineChart
-            label="Total rows over the last 6 hours"
-            data={ROWS}
-            index="time"
-            indexFormatter={formatSampleTime}
-            valueFormatter={(value) => `${(value / 1_000_000).toFixed(1)}M`}
-            series={[{ key: "rows", name: "Total rows" }]}
           />
         </Section>
         <Section title="Manifests">
@@ -159,7 +170,15 @@ export const Desktop: Story = {
   globals: { viewport: { value: "desktop", isRotated: false } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getAllByRole("region").length).toBe(6);
+    await expect(canvas.getAllByRole("region").map((region) => region.querySelector("h2")?.textContent)).toEqual([
+      "Files",
+      "Size",
+      "Rows",
+      "Reducible files",
+      "Manifests",
+      "Snapshots",
+    ]);
+    await expect(canvas.getByRole("group", { name: "Data size" })).toBeVisible();
     await waitFor(() => expect(canvasElement.querySelectorAll(".recharts-line-curve").length).toBeGreaterThan(5));
     await expectNoHorizontalPageScroll(canvasElement);
   },

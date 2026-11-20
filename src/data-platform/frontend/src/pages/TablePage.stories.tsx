@@ -25,7 +25,7 @@ import {
 } from "@/stories/storyData";
 
 const ORDERS = "/catalogs/iceberg/namespaces/retail/tables/orders";
-const METRIC_CARDS = ["Data files", "Total size", "Total rows", "Reducible files", "Snapshots", "Manifests"];
+const METRIC_CARDS = ["Data files", "Data size", "Total rows", "Reducible files", "Snapshots", "Manifests"];
 const METRIC_SECTIONS = ["Files", "Size", "Rows", "Reducible files", "Manifests", "Snapshots"];
 
 const meta = {
@@ -53,6 +53,7 @@ export const Overview: Story = {
       await expect(await canvas.findByRole("group", { name: label })).toBeVisible();
     }
     await expect(await within(canvas.getByRole("group", { name: "Data files" })).findByText("1,174")).toBeVisible();
+    await expect(canvas.getByText(/^Measured /)).toBeVisible();
     await canvas.findByRole("region", { name: "Maintenance policy" });
     await expect(canvas.getAllByRole("region").map((region) => region.querySelector("h2")?.textContent)).toEqual([
       ...METRIC_SECTIONS,

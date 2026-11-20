@@ -14,7 +14,7 @@ import { TableMetricsDashboard } from "./TableMetricsDashboard";
 
 const CURRENT_PATH = "/v1/tables/uuid-orders/metrics/current";
 const TRENDS_PATH = "/v1/tables/uuid-orders/metrics?range=";
-const CARDS = ["Data files", "Total size", "Total rows", "Reducible files", "Snapshots", "Manifests"];
+const CARDS = ["Data files", "Data size", "Total rows", "Reducible files", "Snapshots", "Manifests"];
 const SECTIONS = ["Files", "Size", "Rows", "Reducible files", "Manifests", "Snapshots"];
 
 const METRICS: TableMetricValuesApiResponse = {
@@ -59,13 +59,16 @@ function Location() {
   return <p data-testid="location">{location.search}</p>;
 }
 
-function renderDashboard(routes: Record<string, StubHandler> = {}, search = "") {
+function renderDashboard(
+  routes: Record<string, StubHandler> = {},
+  search = "",
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+) {
   const calls = stubCatalogApi({
     [`GET ${CURRENT_PATH}`]: () => jsonResponse(CURRENT),
     [`GET ${TRENDS_PATH}*`]: () => jsonResponse(trends("6h")),
     ...routes,
   });
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[`/overview${search}`]}>
@@ -95,6 +98,47 @@ describe("TableMetricsDashboard", () => {
     const dataFiles = within(screen.getByRole("group", { name: "Data files" }));
     expect(await dataFiles.findByText("−6 in 6h")).toBeInTheDocument();
     expect(within(screen.getByRole("group", { name: "Snapshots" })).getByText("No change in 6h")).toBeInTheDocument();
+  });
+
+  it("names the size card and chart after data files, whose bytes they count", async () => {
+    renderDashboard();
+    await screen.findByText("1,174");
+    await waitFor(() => expect(screen.getAllByRole("img", { name: "Data size over the last 6 hours" })).toHaveLength(2));
+    expect(screen.queryByText(/Total size/)).toBeNull();
+  });
+
+  it("says when the cards were measured, beside the range picker", async () => {
+    const observedAt = new Date(Date.now() - 5 * 60_000).toISOString();
+    renderDashboard({ [`GET ${CURRENT_PATH}`]: () => jsonResponse({ ...CURRENT, observed_at: observedAt }) });
+    expect(await screen.findByText("Measured 5 min ago")).toBeInTheDocument();
+  });
+
+  it("says nothing about when the cards were measured before the first reconciliation", async () => {
+    renderDashboard({ [`GET ${CURRENT_PATH}`]: () => jsonResponse({ observed_at: null, metrics: null }) });
+    await screen.findByText("Metrics appear after the table's next reconciliation.");
+    expect(screen.queryByText(/^Measured/)).toBeNull();
+  });
+
+  it("drops the cards' delta and sparkline when the trends fail after a good answer", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    let failing = false;
+    renderDashboard(
+      {
+        [`GET ${TRENDS_PATH}*`]: () =>
+          failing ? jsonResponse({ detail: "Prometheus is down" }, 502) : jsonResponse(trends("6h")),
+      },
+      "",
+      client,
+    );
+    const dataFiles = within(await screen.findByRole("group", { name: "Data files" }));
+    expect(await dataFiles.findByText("−6 in 6h")).toBeInTheDocument();
+    expect(dataFiles.getByRole("img", { name: "Data files over the last 6 hours" })).toBeInTheDocument();
+    failing = true;
+    await client.refetchQueries();
+    await waitFor(() => expect(screen.getAllByRole("alert")).toHaveLength(7));
+    expect(dataFiles.queryByText("−6 in 6h")).toBeNull();
+    expect(dataFiles.queryByRole("img")).toBeNull();
+    expect(dataFiles.getByText("1,174")).toBeInTheDocument();
   });
 
   it("holds six sections, one per topic", async () => {

@@ -11,7 +11,7 @@ import type { ReactNode } from "react";
 import type { GetTableMetricTrendsRange, TableMetricValuesApiResponse } from "@/api/generated/model";
 import { useGetTableCurrentMetrics, useGetTableMetricTrends } from "@/api/generated/tables/tables";
 import { useMetricRange } from "@/components/tabs/useMetricRange";
-import { errorMessage, formatBytes, formatCount } from "@/format";
+import { errorMessage, formatBytes, formatCount, formatRelativeTime } from "@/format";
 import { formatTrendTime } from "@/lib/formatTrendTime";
 import { metricDelta, metricTrendRows, type MetricTrendRow } from "@/lib/metricTrendRows";
 
@@ -31,7 +31,7 @@ const RANGE_TEXT: Record<GetTableMetricTrendsRange, string> = {
 
 const CARDS: readonly { label: string; key: keyof TableMetricValuesApiResponse; format: (value: number) => string }[] = [
   { label: "Data files", key: "data_files", format: formatCount },
-  { label: "Total size", key: "data_size_bytes", format: formatBytes },
+  { label: "Data size", key: "data_size_bytes", format: formatBytes },
   { label: "Total rows", key: "data_records", format: formatCount },
   { label: "Reducible files", key: "reducible_files", format: formatCount },
   { label: "Snapshots", key: "snapshots", format: formatCount },
@@ -44,7 +44,7 @@ const FILES: readonly ChartSeries[] = [
   { key: "equality_delete_files", name: "Equality delete files" },
   { key: "deletion_vectors", name: "Deletion vectors" },
 ];
-const SIZE: readonly ChartSeries[] = [{ key: "data_size_bytes", name: "Total size" }];
+const SIZE: readonly ChartSeries[] = [{ key: "data_size_bytes", name: "Data size" }];
 const ROWS: readonly ChartSeries[] = [
   { key: "data_records", name: "Total rows" },
   { key: "position_delete_records", name: "Position delete rows" },
@@ -77,13 +77,16 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 // A managed table's metrics on its Overview: the newest values from the database as cards, and their
 // trend over the chosen window from Prometheus as charts. The two load apart, so a Prometheus that
-// cannot answer leaves the cards in place.
+// cannot answer leaves the cards in place. The cards are as of the table's last check, which they say.
 export function TableMetricsDashboard({ tableUuid }: { tableUuid: string }) {
   const { range, setRange } = useMetricRange();
   const current = useGetTableCurrentMetrics(tableUuid, { query: { refetchInterval: REFETCH_MS } });
   const trends = useGetTableMetricTrends(tableUuid, { range }, { query: { refetchInterval: REFETCH_MS } });
   const metrics = current.data?.metrics ?? null;
-  const rows = trends.data === undefined ? [] : metricTrendRows(trends.data);
+  const observedAt = current.data?.observed_at ?? null;
+  // A failed refetch keeps the last good answer in trends.data; the cards drop it with the charts.
+  const trendData = trends.isError ? undefined : trends.data;
+  const rows = trendData === undefined ? [] : metricTrendRows(trendData);
   const over = RANGE_TEXT[range];
   const chart = (series: readonly ChartSeries[]) => ({
     data: chartRows(rows, series),
@@ -111,7 +114,12 @@ export function TableMetricsDashboard({ tableUuid }: { tableUuid: string }) {
     <div className="flex min-w-0 flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
         {note}
-        <TimeRangePicker className="ml-auto" options={RANGES} value={range} onValueChange={setRange} />
+        {observedAt !== null && (
+          <p className="type-body-medium ml-auto text-on-surface-variant">
+            {`Measured ${formatRelativeTime(observedAt)}`}
+          </p>
+        )}
+        <TimeRangePicker className={observedAt === null ? "ml-auto" : undefined} options={RANGES} value={range} onValueChange={setRange} />
       </div>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(10rem,1fr))] gap-3">
         {CARDS.map(({ label, key, format }) => {
@@ -123,7 +131,7 @@ export function TableMetricsDashboard({ tableUuid }: { tableUuid: string }) {
               label={label}
               loading={current.isPending}
               value={value === undefined ? "—" : format(value)}
-              delta={value === undefined || trends.data === undefined ? undefined : metricDelta(trends.data, key, value, range, format)}
+              delta={value === undefined || trendData === undefined ? undefined : metricDelta(trendData, key, value, range, format)}
               trend={trend.length > 0 ? trend : undefined}
               trendLabel={`${label} over ${over}`}
             />
@@ -135,7 +143,7 @@ export function TableMetricsDashboard({ tableUuid }: { tableUuid: string }) {
           <LineChart label={`Data and delete files over ${over}`} {...chart(FILES)} />
         </Section>
         <Section title="Size">
-          <AreaChart label={`Total size over ${over}`} valueFormatter={formatBytes} {...chart(SIZE)} />
+          <AreaChart label={`Data size over ${over}`} valueFormatter={formatBytes} {...chart(SIZE)} />
         </Section>
         <Section title="Rows">
           <LineChart label={`Total and deleted rows over ${over}`} {...chart(ROWS)} />

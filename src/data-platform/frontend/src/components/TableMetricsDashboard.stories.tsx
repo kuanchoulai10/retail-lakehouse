@@ -13,7 +13,7 @@ import { PHONE } from "@/stories/phone";
 import { ORDERS_METRIC_TRENDS, ORDERS_UUID } from "@/stories/storyData";
 import { TableMetricsDashboard } from "./TableMetricsDashboard";
 
-const CARDS = ["Data files", "Total size", "Total rows", "Reducible files", "Snapshots", "Manifests"];
+const CARDS = ["Data files", "Data size", "Total rows", "Reducible files", "Snapshots", "Manifests"];
 const CHARTS = 7;
 
 const meta = {
@@ -65,6 +65,7 @@ export const Keyboard: Story = {
       (await canvas.findAllByRole("group", { name: new RegExp(`^(${CARDS.join("|")})$`) })).length,
     ).toBe(CARDS.length);
     await expect(await canvas.findByText("1,174")).toBeVisible();
+    await expect(canvas.getByText(/^Measured /)).toBeVisible();
     await focusableCharts(canvasElement);
     const picker = canvas.getByRole("radiogroup", { name: "Time range" });
     const [oneHour, threeHours, sixHours] = within(picker).getAllByRole("radio") as [HTMLElement, HTMLElement, HTMLElement];
@@ -107,6 +108,7 @@ export const NotReconciledYet: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText("Metrics appear after the table's next reconciliation.")).toBeVisible();
+    await expect(canvas.queryByText(/^Measured /)).toBeNull();
     await waitFor(() => expect(canvas.getAllByText("No data in this time range")).toHaveLength(CHARTS));
     for (const label of CARDS) {
       await expect(canvas.getByRole("group", { name: label })).toHaveTextContent("—");
