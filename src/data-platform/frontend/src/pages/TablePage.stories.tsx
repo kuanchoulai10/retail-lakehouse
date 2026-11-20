@@ -3,7 +3,14 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { getListCoveredCatalogsMockHandler } from "@/api/generated/discovery-rules/discovery-rules.msw";
 import { getGetTableApplicableMaintenancePolicyMockHandler } from "@/api/generated/maintenance-policies/maintenance-policies.msw";
 import { getListTableMaintenanceRunsMockHandler } from "@/api/generated/table-maintenance-runs/table-maintenance-runs.msw";
-import { getGetTableCurrentMetricsMockHandler, getGetTableMockHandler } from "@/api/generated/tables/tables.msw";
+import {
+  getGetCatalogTablePartitionSpecComparisonMockHandler,
+  getGetCatalogTableSchemaComparisonMockHandler,
+  getGetTableCurrentMetricsMockHandler,
+  getGetTableMockHandler,
+  getListCatalogTablePartitionSpecVersionsMockHandler,
+  getListCatalogTableSchemaVersionsMockHandler,
+} from "@/api/generated/tables/tables.msw";
 import { getListTableReconciliationsMockHandler } from "@/api/generated/table-reconciliations/table-reconciliations.msw";
 import { temporalWorkflowsUrl } from "@/lib/temporalWorkflowsUrl";
 import { apiError } from "@/stories/apiError";
@@ -17,6 +24,10 @@ import {
   inFlightRun,
   IN_FLIGHT_RUN_ID,
   MAINTAINED_ORDERS,
+  ORDERS_HOURLY_SPEC_COMPARISON,
+  ORDERS_HOURLY_SPEC_VERSIONS,
+  ordersManySchemaVersions,
+  ordersSchemaComparison,
   POLICIES,
   QUEUE_TIMEOUT_RUN,
   QUEUE_TIMEOUT_RUN_ID,
@@ -130,7 +141,103 @@ export const Actions: Story = {
 export const Schema: Story = {
   args: { route: `${ORDERS}/schema` },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText("customer_id")).toBeVisible();
+    const schema = within(await within(canvasElement).findByRole("region", { name: "Schema" }));
+    const newest = await schema.findByRole("button", { name: /^v1(?!\d)/ });
+    await expect(newest).toHaveTextContent("Current");
+    await expect(newest).toHaveTextContent("+5 added · 1 doc changed");
+    await expect(await schema.findByText("customer_id")).toBeVisible();
+    await expect(await schema.findByText("shipping.zip")).toBeVisible();
+    await expect(
+      within(await within(canvasElement).findByRole("region", { name: "Partition spec" })).getByRole("button", {
+        name: /^v0(?!\d)/,
+      }),
+    ).toHaveTextContent("Default");
+  },
+};
+
+export const SchemaCompareTwoVersions: Story = {
+  args: { route: `${ORDERS}/schema?schema=0&base=1` },
+  play: async ({ canvasElement }) => {
+    const schema = within(await within(canvasElement).findByRole("region", { name: "Schema" }));
+    const list = within(await schema.findByRole("list", { name: "Changes in schema v0" }));
+    await expect(await list.findByText("coupon_code")).toBeVisible();
+    await expect(list.getAllByText("Removed")).toHaveLength(5);
+    await expect(schema.getByRole("combobox", { name: "Compare with" })).toHaveTextContent("v1");
+  },
+};
+
+export const SchemaOnlyChanges: Story = {
+  args: { route: `${ORDERS}/schema` },
+  play: async ({ canvasElement }) => {
+    const schema = within(await within(canvasElement).findByRole("region", { name: "Schema" }));
+    await expect(await schema.findByText("customer_id")).toBeVisible();
+    await userEvent.click(schema.getByRole("switch", { name: "Show changes only" }));
+    await waitFor(() => expect(schema.queryByText("customer_id")).toBeNull());
+    await expect(schema.getByText("coupon_code")).toBeVisible();
+    await expect(schema.getByText("order_id")).toBeVisible();
+  },
+};
+
+export const SchemaManyVersions: Story = {
+  args: { route: `${ORDERS}/schema` },
+  beforeEach({ msw }) {
+    msw.use(
+      getListCatalogTableSchemaVersionsMockHandler(ordersManySchemaVersions(12)),
+      getGetCatalogTableSchemaComparisonMockHandler(({ params }) => ({
+        ...ordersSchemaComparison(1, 0),
+        schema_id: Number(params.schemaId),
+        base_schema_id: Number(params.schemaId) - 1,
+      })),
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const schema = within(await within(canvasElement).findByRole("region", { name: "Schema" }));
+    const more = await schema.findByRole("button", { name: "Show 2 earlier versions" });
+    await expect(schema.queryByRole("button", { name: /^v0(?!\d)/ })).toBeNull();
+    await userEvent.click(more);
+    await expect(await schema.findByRole("button", { name: /^v0(?!\d)/ })).toBeVisible();
+  },
+};
+
+export const SchemaPartitionTransformChange: Story = {
+  args: { route: `${ORDERS}/schema` },
+  beforeEach({ msw }) {
+    msw.use(
+      getListCatalogTablePartitionSpecVersionsMockHandler(ORDERS_HOURLY_SPEC_VERSIONS),
+      getGetCatalogTablePartitionSpecComparisonMockHandler(ORDERS_HOURLY_SPEC_COMPARISON),
+    );
+  },
+  play: async ({ canvasElement }) => {
+    const spec = within(await within(canvasElement).findByRole("region", { name: "Partition spec" }));
+    await expect(await spec.findByRole("button", { name: /^v1/ })).toHaveTextContent("Default");
+    const row = (await spec.findByText("ordered_at_hour")).closest("li") as HTMLElement;
+    await expect(row).toHaveTextContent("Transform changed");
+    await expect(row).toHaveTextContent("day(ordered_at)");
+    await expect(row).toHaveTextContent("hour(ordered_at)");
+  },
+};
+
+export const SchemaVersionsError: Story = {
+  args: { route: `${ORDERS}/schema` },
+  beforeEach({ msw }) {
+    msw.use(
+      apiError("get", "/v1/catalogs/:catalog/namespaces/:namespace/tables/:table/schema-versions", "Polaris is unreachable"),
+    );
+  },
+  play: async ({ canvasElement }) => {
+    await expect(
+      await within(canvasElement).findByText("Could not load schema versions: Polaris is unreachable"),
+    ).toBeVisible();
+  },
+};
+
+export const SchemaPhone: Story = {
+  args: { route: `${ORDERS}/schema` },
+  globals: PHONE,
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByText("shipping.zip");
+    await within(canvasElement).findByRole("list", { name: "Changes in partition spec v0" });
+    await expectNoHorizontalPageScroll(canvasElement);
   },
 };
 

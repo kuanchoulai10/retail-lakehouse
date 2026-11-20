@@ -2,15 +2,21 @@ import type {
   ApplicableTableMaintenancePolicyApiResponse,
   CatalogApiResponse,
   CatalogTableApiResponse,
+  CatalogTablePartitionSpecComparisonApiResponse,
+  CatalogTablePartitionSpecVersionsApiResponse,
   CatalogTablePropertiesApiResponse,
+  CatalogTableSchemaComparisonApiResponse,
+  CatalogTableSchemaVersionsApiResponse,
   ListedTableMaintenancePolicyApiResponse,
   ListedTableMaintenancePolicyMappingApiResponse,
   NamespaceApiResponse,
   NamespaceSummaryApiResponse,
+  PartitionFieldComparisonApiResponse,
   PlatformSettingApiResponse,
   PlatformSettingsApiResponse,
   PlatformSettingsGroupApiResponse,
   ReconciliationOperationApiResponse,
+  SchemaFieldComparisonApiResponse,
   TableApiResponse,
   TableCommitsApiResponse,
   TableCurrentMetricsApiResponse,
@@ -95,12 +101,15 @@ export const ORDERS: CatalogTableApiResponse = {
   last_updated_ms: Date.parse("2026-11-09T08:30:00Z"),
   current_snapshot_id: "4812093741203984123",
   schema: {
-    schema_id: 0,
+    schema_id: 1,
     fields: [
       { id: 1, name: "order_id", type: "long", required: true, doc: "Order key from MySQL" },
       { id: 2, name: "customer_id", type: "long", required: true, doc: null },
       { id: 3, name: "amount", type: "decimal(10, 2)", required: false, doc: null },
       { id: 4, name: "ordered_at", type: "timestamptz", required: true, doc: null },
+      { id: 5, name: "coupon_code", type: "string", required: false, doc: null },
+      { id: 6, name: "shipping", type: "struct<city: string, zip: string>", required: false, doc: null },
+      { id: 9, name: "channel", type: "string", required: false, doc: null },
     ],
   },
   partition_spec: {
@@ -114,7 +123,7 @@ export const ORDERS: CatalogTableApiResponse = {
       parent_id: "3011920384710293847",
       operation: "append",
       timestamp_ms: Date.parse("2026-11-09T08:30:00Z"),
-      schema_id: 0,
+      schema_id: 1,
       summary: { "added-records": "1200", "added-data-files": "4" },
     },
     {
@@ -268,6 +277,191 @@ export const MAINTAINED_TABLES: TableApiResponse[] = [
     last_discovered_at: "2026-11-06T09:00:00Z",
   },
 ];
+
+function schemaRow(
+  id: number,
+  path: string[],
+  type: string,
+  required: boolean,
+  overrides: Partial<SchemaFieldComparisonApiResponse> = {},
+): SchemaFieldComparisonApiResponse {
+  return {
+    field_id: id,
+    depth: path.length - 1,
+    path,
+    previous_path: path,
+    type,
+    previous_type: type,
+    required,
+    previous_required: required,
+    doc: null,
+    previous_doc: null,
+    changes: [],
+    ...overrides,
+  };
+}
+
+function addedRow(id: number, path: string[], type: string): SchemaFieldComparisonApiResponse {
+  return schemaRow(id, path, type, false, {
+    previous_path: null,
+    previous_type: null,
+    previous_required: null,
+    changes: ["added"],
+  });
+}
+
+function removedRow(id: number, path: string[], type: string): SchemaFieldComparisonApiResponse {
+  return schemaRow(id, path, type, false, {
+    path: null,
+    type: null,
+    required: null,
+    previous_path: path,
+    previous_type: type,
+    previous_required: false,
+    changes: ["removed"],
+  });
+}
+
+const orderIdDocChanged = (doc: string | null, previousDoc: string | null) =>
+  schemaRow(1, ["order_id"], "long", true, { doc, previous_doc: previousDoc, changes: ["doc_changed"] });
+
+const ORDERS_V0_ROWS = [
+  schemaRow(2, ["customer_id"], "long", true),
+  schemaRow(3, ["amount"], "decimal(10, 2)", false),
+  schemaRow(4, ["ordered_at"], "timestamptz", true),
+];
+
+// orders has two schema versions: v0 has the four columns the table was created with; v1 added five
+// fields (coupon_code, the shipping struct with its two children, channel) and documented order_id.
+export const ORDERS_SCHEMA_VERSIONS: CatalogTableSchemaVersionsApiResponse = {
+  current_schema_id: 1,
+  versions: [
+    {
+      schema_id: 1,
+      previous_schema_id: 0,
+      current: true,
+      column_count: 9,
+      changes: { added: 5, removed: 0, renamed: 0, type_changed: 0, nullability_changed: 0, doc_changed: 1 },
+    },
+    { schema_id: 0, previous_schema_id: null, current: false, column_count: 4, changes: null },
+  ],
+};
+
+// The comparison the page asks for: `base` is null when the url names none (the previous version).
+export function ordersSchemaComparison(schemaId: number, base: number | null): CatalogTableSchemaComparisonApiResponse {
+  if (schemaId === 1 && (base === null || base === 0)) {
+    return {
+      schema_id: 1,
+      base_schema_id: 0,
+      fields: [
+        orderIdDocChanged("Order key from MySQL", null),
+        ...ORDERS_V0_ROWS,
+        addedRow(5, ["coupon_code"], "string"),
+        addedRow(6, ["shipping"], "struct"),
+        { ...addedRow(7, ["shipping", "city"], "string"), depth: 1 },
+        { ...addedRow(8, ["shipping", "zip"], "string"), depth: 1 },
+        addedRow(9, ["channel"], "string"),
+      ],
+    };
+  }
+  if (schemaId === 0 && base === null) {
+    return {
+      schema_id: 0,
+      base_schema_id: null,
+      fields: [schemaRow(1, ["order_id"], "long", true), ...ORDERS_V0_ROWS],
+    };
+  }
+  if (schemaId === 0 && base === 1) {
+    return {
+      schema_id: 0,
+      base_schema_id: 1,
+      fields: [
+        orderIdDocChanged(null, "Order key from MySQL"),
+        ...ORDERS_V0_ROWS,
+        removedRow(5, ["coupon_code"], "string"),
+        removedRow(6, ["shipping"], "struct"),
+        { ...removedRow(7, ["shipping", "city"], "string"), depth: 1 },
+        { ...removedRow(8, ["shipping", "zip"], "string"), depth: 1 },
+        removedRow(9, ["channel"], "string"),
+      ],
+    };
+  }
+  throw new Error(`no story comparison of schema ${schemaId} with ${base ?? "the previous version"}`);
+}
+
+// A long history: ids 0..count-1 (newest first), each adding one column, the newest current.
+export function ordersManySchemaVersions(count: number): CatalogTableSchemaVersionsApiResponse {
+  return {
+    current_schema_id: count - 1,
+    versions: Array.from({ length: count }, (_, index) => {
+      const id = count - 1 - index;
+      return {
+        schema_id: id,
+        previous_schema_id: id === 0 ? null : id - 1,
+        current: id === count - 1,
+        column_count: 4 + id,
+        changes:
+          id === 0 ? null : { added: 1, removed: 0, renamed: 0, type_changed: 0, nullability_changed: 0, doc_changed: 0 },
+      };
+    }),
+  };
+}
+
+function partitionRow(overrides: Partial<PartitionFieldComparisonApiResponse>): PartitionFieldComparisonApiResponse {
+  return {
+    field_id: 1000,
+    previous_field_id: 1000,
+    name: "ordered_at_day",
+    previous_name: "ordered_at_day",
+    transform: "day",
+    previous_transform: "day",
+    expression: "day(ordered_at)",
+    previous_expression: "day(ordered_at)",
+    source_path: ["ordered_at"],
+    previous_source_path: ["ordered_at"],
+    changes: [],
+    ...overrides,
+  };
+}
+
+// orders has one partition spec: day(ordered_at).
+export const ORDERS_SPEC_VERSIONS: CatalogTablePartitionSpecVersionsApiResponse = {
+  default_spec_id: 0,
+  versions: [{ spec_id: 0, previous_spec_id: null, default: true, field_count: 1, changes: null }],
+};
+
+export function ordersSpecComparison(specId: number): CatalogTablePartitionSpecComparisonApiResponse {
+  return { spec_id: specId, base_spec_id: null, fields: [partitionRow({})] };
+}
+
+// The same table once its partitioning went from day to hour: v1 is the default.
+export const ORDERS_HOURLY_SPEC_VERSIONS: CatalogTablePartitionSpecVersionsApiResponse = {
+  default_spec_id: 1,
+  versions: [
+    {
+      spec_id: 1,
+      previous_spec_id: 0,
+      default: true,
+      field_count: 1,
+      changes: { added: 0, removed: 0, renamed: 0, transform_changed: 1 },
+    },
+    ORDERS_SPEC_VERSIONS.versions[0]!,
+  ],
+};
+
+export const ORDERS_HOURLY_SPEC_COMPARISON: CatalogTablePartitionSpecComparisonApiResponse = {
+  spec_id: 1,
+  base_spec_id: 0,
+  fields: [
+    partitionRow({
+      field_id: 1001,
+      name: "ordered_at_hour",
+      transform: "hour",
+      expression: "hour(ordered_at)",
+      changes: ["transform_changed"],
+    }),
+  ],
+};
 
 export const COMMITS: TableCommitsApiResponse = {
   truncated: false,

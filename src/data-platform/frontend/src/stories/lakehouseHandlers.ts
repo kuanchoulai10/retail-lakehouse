@@ -22,11 +22,15 @@ import {
 } from "@/api/generated/maintenance-policies/maintenance-policies.msw";
 import {
   getGetCatalogTableMockHandler,
+  getGetCatalogTablePartitionSpecComparisonMockHandler,
+  getGetCatalogTableSchemaComparisonMockHandler,
   getGetTableCurrentMetricsMockHandler,
   getGetTableMetricTrendsMockHandler,
   getGetTableMockHandler,
-  getListCatalogTablesMockHandler,
+  getListCatalogTablePartitionSpecVersionsMockHandler,
   getListCatalogTablePropertiesMockHandler,
+  getListCatalogTableSchemaVersionsMockHandler,
+  getListCatalogTablesMockHandler,
   getListTableCommitsMockHandler,
   getListTablesMockHandler,
   getResetCatalogTablePropertiesMockHandler,
@@ -47,6 +51,10 @@ import {
   ORDERS_CURRENT_METRICS,
   ORDERS_METRIC_TRENDS,
   ORDERS_PROPERTIES,
+  ORDERS_SCHEMA_VERSIONS,
+  ORDERS_SPEC_VERSIONS,
+  ordersSchemaComparison,
+  ordersSpecComparison,
   PLATFORM_SETTINGS,
   POLICIES,
   POLICY_MAPPINGS,
@@ -73,6 +81,13 @@ export function lakehouseHandlers() {
     getGetCatalogTableMockHandler(ORDERS),
     getListCatalogTablePropertiesMockHandler(ORDERS_PROPERTIES),
     getResetCatalogTablePropertiesMockHandler(ORDERS_PROPERTIES),
+    getListCatalogTableSchemaVersionsMockHandler(ORDERS_SCHEMA_VERSIONS),
+    getGetCatalogTableSchemaComparisonMockHandler(({ params, request }) => {
+      const base = new URL(request.url).searchParams.get("base");
+      return ordersSchemaComparison(Number(params.schemaId), base === null ? null : Number(base));
+    }),
+    getListCatalogTablePartitionSpecVersionsMockHandler(ORDERS_SPEC_VERSIONS),
+    getGetCatalogTablePartitionSpecComparisonMockHandler(({ params }) => ordersSpecComparison(Number(params.specId))),
     getListCoveredCatalogsMockHandler({ catalogs: ["iceberg"] }),
     getListTablesMockHandler(MAINTAINED_TABLES),
     getGetTableMockHandler(MAINTAINED_ORDERS),

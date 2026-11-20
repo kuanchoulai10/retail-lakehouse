@@ -59,6 +59,10 @@ function stubTable({ table = catalogTableFixture(), covered = ["iceberg"], maint
   return stubCatalogApi({
     [`GET ${TABLE}`]: () => jsonResponse(table),
     [`GET ${TABLE}/properties`]: () => jsonResponse(catalogTablePropertiesFixture()),
+    [`GET ${TABLE}/schema-versions`]: () => jsonResponse(SCHEMA_VERSIONS),
+    [`GET ${TABLE}/schema-versions/0/comparison*`]: () => jsonResponse(SCHEMA_COMPARISON),
+    [`GET ${TABLE}/partition-spec-versions`]: () => jsonResponse(SPEC_VERSIONS),
+    [`GET ${TABLE}/partition-spec-versions/0/comparison*`]: () => jsonResponse(SPEC_COMPARISON),
     "GET /v1/discovery-rules/catalogs": () => jsonResponse({ catalogs: covered }),
     "GET /v1/discovery-rules": () => jsonResponse({ version: 1, rules: [RULE] }),
     "GET /v1/tables/uuid-orders": maintenanceTable ?? (() => jsonResponse(maintenance())),
@@ -69,6 +73,64 @@ function stubTable({ table = catalogTableFixture(), covered = ["iceberg"], maint
     ...extra,
   });
 }
+
+const SCHEMA_VERSIONS = {
+  current_schema_id: 0,
+  versions: [{ schema_id: 0, previous_schema_id: null, current: true, column_count: 3, changes: null }],
+};
+
+function schemaField(id: number, path: string[], type: string, required: boolean) {
+  return {
+    field_id: id,
+    depth: path.length - 1,
+    path,
+    previous_path: path,
+    type,
+    previous_type: type,
+    required,
+    previous_required: required,
+    doc: null,
+    previous_doc: null,
+    changes: [],
+  };
+}
+
+const SCHEMA_COMPARISON = {
+  schema_id: 0,
+  base_schema_id: null,
+  fields: [
+    schemaField(1, ["id"], "long", true),
+    schemaField(2, ["placed_at"], "timestamptz", false),
+    schemaField(3, ["address"], "struct", false),
+    schemaField(4, ["address", "city"], "string", true),
+    schemaField(5, ["address", "zip"], "string", false),
+  ],
+};
+
+const SPEC_VERSIONS = {
+  default_spec_id: 0,
+  versions: [{ spec_id: 0, previous_spec_id: null, default: true, field_count: 1, changes: null }],
+};
+
+const SPEC_COMPARISON = {
+  spec_id: 0,
+  base_spec_id: null,
+  fields: [
+    {
+      field_id: 1000,
+      previous_field_id: 1000,
+      name: "placed_at_day",
+      previous_name: "placed_at_day",
+      transform: "day",
+      previous_transform: "day",
+      expression: "day(placed_at)",
+      previous_expression: "day(placed_at)",
+      source_path: ["placed_at"],
+      previous_source_path: ["placed_at"],
+      changes: [],
+    },
+  ],
+};
 
 const CURRENT_METRICS = {
   observed_at: "2026-11-20T09:58:00Z",
@@ -418,10 +480,12 @@ describe("TablePage", { timeout: 15_000 }, () => {
     stubTable();
     renderAt(`${PAGE}/schema`);
     const fields = await screen.findByRole("region", { name: "Schema" });
-    expect(within(fields).getByText("struct<city: required string, zip: string>")).toBeInTheDocument();
+    expect(await within(fields).findByText("Current")).toBeInTheDocument();
+    expect(await within(fields).findByText("address.zip")).toBeInTheDocument();
+    expect(within(fields).getByText("struct · optional")).toBeInTheDocument();
     const spec = screen.getByRole("region", { name: "Partition spec" });
-    expect(within(spec).getByText("placed_at_day")).toBeInTheDocument();
-    expect(within(spec).getByText("placed_at")).toBeInTheDocument();
+    expect(await within(spec).findByText("Default")).toBeInTheDocument();
+    expect(await within(spec).findByText("day(placed_at)")).toBeInTheDocument();
     const order = screen.getByRole("region", { name: "Sort order" });
     expect(within(order).getByText("nulls-first")).toBeInTheDocument();
     const ddl = screen.getByRole("region", { name: "DDL (Spark SQL)" });

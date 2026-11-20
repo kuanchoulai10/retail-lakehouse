@@ -1,6 +1,7 @@
 import { Banner, createDataTableColumnHelper, DataTable, Panel } from "@retail-lakehouse/design-system";
-import type { CatalogTableApiResponse, PartitionFieldApiResponse, SortFieldApiResponse } from "@/api/generated/model";
-import { SchemaFieldsPanel } from "@/components/SchemaFieldsPanel";
+import type { CatalogTableApiResponse, SortFieldApiResponse } from "@/api/generated/model";
+import { PartitionSpecHistoryPanel } from "@/components/PartitionSpecHistoryPanel";
+import { SchemaHistoryPanel } from "@/components/SchemaHistoryPanel";
 import { sparkTableDdl } from "@/lib/sparkTableDdl";
 
 function ddlOrProblem(table: CatalogTableApiResponse): { ddl: string } | { problem: string } {
@@ -13,27 +14,12 @@ function ddlOrProblem(table: CatalogTableApiResponse): { ddl: string } | { probl
 
 const code = (value: string) => <span className="type-code">{value}</span>;
 
-const partitionColumn = createDataTableColumnHelper<PartitionFieldApiResponse>();
 const sortColumn = createDataTableColumnHelper<SortFieldApiResponse>();
 
 export function SchemaTab({ table }: { table: CatalogTableApiResponse }) {
   const columnName = (sourceId: number) =>
     table.schema.fields.find((field) => field.id === sourceId)?.name ?? String(sourceId);
   const ddl = ddlOrProblem(table);
-  const partitionColumns = partitionColumn.columns([
-    partitionColumn.accessor("name", { header: "Field", enableSorting: false, cell: (info) => code(info.getValue()) }),
-    partitionColumn.accessor((field) => columnName(field.source_id), {
-      id: "source",
-      header: "Source column",
-      enableSorting: false,
-      cell: (info) => code(info.getValue()),
-    }),
-    partitionColumn.accessor("transform", {
-      header: "Transform",
-      enableSorting: false,
-      cell: (info) => code(info.getValue()),
-    }),
-  ]);
   const sortColumns = sortColumn.columns([
     sortColumn.accessor((field) => columnName(field.source_id), {
       id: "source",
@@ -47,19 +33,8 @@ export function SchemaTab({ table }: { table: CatalogTableApiResponse }) {
   ]);
   return (
     <div className="flex flex-col gap-6">
-      <SchemaFieldsPanel schema={table.schema} />
-      <Panel title="Partition spec">
-        {table.partition_spec.fields.length === 0 ? (
-          <p className="type-body-small text-on-surface-variant">Unpartitioned.</p>
-        ) : (
-          <DataTable
-            caption="Partition fields"
-            columns={partitionColumns}
-            data={table.partition_spec.fields}
-            getRowId={(field) => String(field.field_id)}
-          />
-        )}
-      </Panel>
+      <SchemaHistoryPanel table={table} />
+      <PartitionSpecHistoryPanel table={table} />
       <Panel title="Sort order">
         {table.sort_order.fields.length === 0 ? (
           <p className="type-body-small text-on-surface-variant">Unsorted.</p>
@@ -68,8 +43,16 @@ export function SchemaTab({ table }: { table: CatalogTableApiResponse }) {
         )}
       </Panel>
       <Panel title="DDL (Spark SQL)">
+        <p className="type-body-small mb-3 text-on-surface-variant">
+          {`Built from the current schema (v${table.schema.schema_id}); earlier versions have no DDL here.`}
+        </p>
         {"ddl" in ddl ? (
-          <pre className="type-code overflow-x-auto rounded-md bg-surface p-3">
+          <pre
+            role="region"
+            aria-label="Spark SQL DDL"
+            tabIndex={0}
+            className="type-code overflow-x-auto rounded-md bg-surface p-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring"
+          >
             <code>{ddl.ddl}</code>
           </pre>
         ) : (
