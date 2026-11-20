@@ -7,9 +7,6 @@ from datetime import datetime, timedelta
 from temporalio import workflow
 from temporalio.exceptions import FailureError
 
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
-    TableMaintenanceSignal,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission import (
     TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
     AdmissionAcquireSignal,
@@ -18,6 +15,8 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
     TableMaintenanceAdmissionSignal,
     TableMaintenanceAdmissionWorkflowInput,
 )
+
+_ADMISSION_GRANTED = "admission_granted"
 
 
 @workflow.defn(name=TABLE_MAINTENANCE_ADMISSION_WORKFLOW)
@@ -144,7 +143,7 @@ class TableMaintenanceAdmissionWorkflow:
     async def _notify(self, requester_workflow_id: str, request_id: str) -> bool:
         handle = workflow.get_external_workflow_handle(requester_workflow_id)
         try:
-            await handle.signal(TableMaintenanceSignal.ADMISSION_GRANTED, request_id)
+            await handle.signal(_ADMISSION_GRANTED, request_id)
         except FailureError as error:
             workflow.logger.warning(
                 "requester %s of %s is gone (%s); dropping it",

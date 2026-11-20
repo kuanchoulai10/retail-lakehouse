@@ -11,7 +11,6 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery
     table_discovery_schedule_id,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
-    TableMaintenanceSignal,
     table_maintenance_workflow_id,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission import (
@@ -25,12 +24,14 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
 def test_workflow_ids():
     """Reconciliation ids embed the table uuid and the admission workflow has one fixed id."""
     assert table_reconciliation_workflow_id("u1") == "table-reconciliation:table-uuid=u1"
-    assert (
-        table_maintenance_workflow_id("iceberg.e2e.orders", "r1") == "table-maintenance:table=iceberg.e2e.orders:run=r1"
-    )
     assert TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID == "table-maintenance-admission"
     assert TASK_QUEUE == "table-maintenance"
-    assert TableMaintenanceSignal.ADMISSION_GRANTED == "admission_granted"
+
+
+def test_workflow_id_names_the_table_uuid():
+    """A table's maintenance runs one after another under one id, named by the table uuid."""
+    uuid = "0b6c5e1a-7d2f-4c8e-9a3b-1f4e6d8c2a90"
+    assert table_maintenance_workflow_id(uuid) == f"table-maintenance:table-uuid={uuid}"
 
 
 def test_discovery_adhoc_workflow_id():

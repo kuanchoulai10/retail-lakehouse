@@ -6,16 +6,13 @@ import asyncio
 import itertools
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
-from temporalio import activity
-from temporalio.client import WorkflowFailureError, WorkflowHistory
-from temporalio.common import WorkflowIDConflictPolicy
-from temporalio.exceptions import ApplicationError, CancelledError
+from temporalio.client import WorkflowFailureError
+from temporalio.exceptions import CancelledError
 from temporalio.testing import WorkflowEnvironment
-from temporalio.worker import Replayer, UnsandboxedWorkflowRunner, Worker
+from temporalio.worker import UnsandboxedWorkflowRunner, Worker
 
 from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
@@ -23,20 +20,11 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
     TABLE_MAINTENANCE_WORKFLOW,
     OperationResultSignal,
-    TableMaintenanceActivity,
     TableMaintenanceSignal,
     TableMaintenanceWorkflowInput,
     table_maintenance_workflow_id,
 )
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission import (
-    TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
-    TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
-    AdmissionAcquireSignal,
-    TableMaintenanceAdmissionSignal,
-    TableMaintenanceAdmissionWorkflowInput,
-)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
-    TableMaintenanceAdmissionWorkflow,
     TableMaintenanceWorkflow,
 )
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.eventually import (
@@ -60,8 +48,10 @@ if TYPE_CHECKING:
 COMPACTION = "rewrite_data_files"
 EXPIRE = "expire_snapshots"
 RUN_ID = "mr-00000000000000000000000001"
+PREVIOUS_RUN_ID = "mr-00000000000000000000000000"
 TABLE = "iceberg.e2e.t"
-WORKFLOW_ID = table_maintenance_workflow_id(TABLE, RUN_ID)
+TABLE_UUID = "u1"
+WORKFLOW_ID = table_maintenance_workflow_id(TABLE_UUID)
 PARENT_ID = "parent-1"
 REAL_TIMEOUT_SECONDS = 60
 ATTEMPT_DEADLINE_SECONDS = 21600
@@ -126,7 +116,7 @@ class Harness:
             TABLE_MAINTENANCE_WORKFLOW,
             TableMaintenanceWorkflowInput(
                 run_id=RUN_ID,
-                table_uuid="u1",
+                table_uuid=TABLE_UUID,
                 parent_workflow_id=parent_id,
                 trigger="scheduled",
                 plan=plan or _plan(*operations, start_size=start_size),
@@ -165,53 +155,21 @@ class Harness:
                 issued.append((f"signal:{name}", at))
         return issued
 
-    async def admission_holders(self) -> dict:
-        """Return the request ids that hold an admission slot."""
-        handle = self.client.get_workflow_handle(TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID)
-        return (await handle.query("state"))["holders"]
 
-
-def _run(
-    scenario: Callable[[Harness], Awaitable[None]],
-    admission_limit: int = 1,
-    lease_seconds: int = 30 * 24 * 3600,
-    failing_acquires: frozenset[str] = frozenset(),
-) -> None:
-    """Run ``scenario`` against the workflows on a time-skipping server.
-
-    The admission acquire is the real signal activity, except that an acquire for a request id in
-    ``failing_acquires`` fails non-retryably, as when the admission workflow cannot be reached.
-    """
+def _run(scenario: Callable[[Harness], Awaitable[None]]) -> None:
+    """Run ``scenario`` against the workflow on a time-skipping server, with the real parent signal activity."""
 
     async def go() -> None:
         async with await WorkflowEnvironment.start_time_skipping() as env:
             queue = TASK_QUEUE
             fakes = ScriptedMaintenanceActivities(env.client)
-            signals = table_maintenance_activities_with_fakes(
-                client=env.client,
-                admission_limit=admission_limit,
-                admission_lease_seconds=lease_seconds,
-            )
-
-            @activity.defn(name=TableMaintenanceActivity.SIGNAL_ADMISSION_ACQUIRE)
-            async def signal_admission_acquire(request: dict) -> None:
-                if request["request_id"] in failing_acquires:
-                    raise ApplicationError("admission workflow unavailable", type="RuntimeError", non_retryable=True)
-                await signals.signal_admission_acquire(request)
-
+            signals = table_maintenance_activities_with_fakes(client=env.client)
             async with (
                 Worker(
                     env.client,
                     task_queue=queue,
-                    workflows=[
-                        TableMaintenanceWorkflow,
-                        TableMaintenanceAdmissionWorkflow,
-                    ],
-                    activities=[
-                        *fakes.all(),
-                        signal_admission_acquire,
-                        signals.signal_parent,
-                    ],
+                    workflows=[TableMaintenanceWorkflow],
+                    activities=[*fakes.all(), signals.signal_parent],
                 ),
                 Worker(
                     env.client,
@@ -277,7 +235,6 @@ def test_operations_run_in_order_and_parent_signalled():
             f"{RUN_ID}-{EXPIRE}-1",
         ]
         assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
-        assert await h.admission_holders() == {}
 
     _run(scenario)
 
@@ -415,8 +372,8 @@ def test_polling_detects_missing_job_and_completed_without_callback():
     _run(scenario)
 
 
-def test_admission_released_when_submit_activity_fails():
-    """The admission slot is released and the job deleted when the submit activity fails."""
+def test_job_deleted_when_submit_activity_fails():
+    """A failed submit is recorded, its job deleted, and the next attempt follows after the first backoff."""
 
     async def scenario(h: Harness) -> None:
         h.fakes.submit_errors = {(COMPACTION, 1): "attempt already started"}
@@ -433,9 +390,8 @@ def test_admission_released_when_submit_activity_fails():
             f"{RUN_ID}-{COMPACTION}-1",
             f"{RUN_ID}-{COMPACTION}-2",
         ]
-        assert await h.admission_holders() == {}
 
-    _run(scenario, admission_limit=1)
+    _run(scenario)
 
 
 def test_missing_parent_does_not_fail_the_workflow():
@@ -507,8 +463,8 @@ def test_poll_interval_backs_off_after_ten_minutes():
     _run(scenario)
 
 
-def test_cancelled_workflow_records_releases_deletes_and_notifies():
-    """A cancelled workflow records the cancellation, releases its slot, deletes the job and notifies the parent."""
+def test_cancelled_workflow_records_deletes_and_notifies():
+    """A cancelled workflow records the cancellation, deletes the job and notifies the parent."""
 
     async def scenario(h: Harness) -> None:
         cancelled: list[bool] = []
@@ -522,34 +478,8 @@ def test_cancelled_workflow_records_releases_deletes_and_notifies():
         assert h.recorded() == [(COMPACTION, 1, False, "cancelled")]
         assert set(h.fakes.deletes) == {f"{RUN_ID}-{COMPACTION}-1"}
         assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
-        assert await h.admission_holders() == {}
 
     _run(scenario)
-
-
-def test_late_grant_for_another_request_is_released_at_once():
-    """A grant that arrives for another request is released immediately."""
-
-    async def scenario(h: Harness) -> None:
-        h.fakes.create_gate = asyncio.Event()
-        h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)]}
-        handle = await h.start_maintenance(COMPACTION)
-        await eventually(lambda: _value(len(h.fakes.created)), lambda n: n == 1)
-        await h.client.start_workflow(
-            TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
-            TableMaintenanceAdmissionWorkflowInput(limit=1, lease_seconds=30 * 24 * 3600),
-            id=TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
-            task_queue=h.queue,
-            id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
-            start_signal=TableMaintenanceAdmissionSignal.ACQUIRE,
-            start_signal_args=[AdmissionAcquireSignal("stray", handle.id)],
-        )
-        await eventually(h.admission_holders, lambda holders: holders == {})
-        h.fakes.create_gate.set()
-        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
-        assert h.recorded() == [(COMPACTION, 1, True, None)]
-
-    _run(scenario, admission_limit=1)
 
 
 def test_record_failures_are_counted_in_the_parent_payload():
@@ -598,7 +528,6 @@ async def _cancel_while_blocked(
     assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1)]
     assert set(h.fakes.deletes) == {f"{RUN_ID}-{COMPACTION}-1"}
     assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
-    assert await h.admission_holders() == {}
 
 
 def test_cancel_during_status_poll_activity_cancels_the_workflow():
@@ -675,8 +604,8 @@ def _first_after(commands: list[tuple[str, datetime]], name: str, start: int) ->
     return next(i for i in range(start, len(commands)) if commands[i][0] == name)
 
 
-def test_timed_out_attempt_deletes_the_job_before_release():
-    """A timed-out attempt deletes its job and confirms its pods are gone before its slot is released and retried."""
+def test_timed_out_attempt_deletes_the_job_before_the_next_attempt():
+    """A timed-out attempt deletes its job and confirms its pods are gone before the next attempt is submitted."""
 
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
@@ -687,10 +616,8 @@ def test_timed_out_attempt_deletes_the_job_before_release():
         names = _names(commands)
         delete = names.index("delete_maintenance_job")
         pods = _first_after(commands, "get_maintenance_job_pods", delete)
-        release = _first_after(commands, "signal:release", pods)
-        second_submit = _first_after(commands, "submit_maintenance_operation", release)
-        assert names.index("submit_maintenance_operation") < delete < pods < release < second_submit
-        assert "signal:release" not in names[:pods]
+        second_submit = _first_after(commands, "submit_maintenance_operation", pods)
+        assert names.index("submit_maintenance_operation") < delete < pods < second_submit
         assert h.recorded() == [(COMPACTION, 1, False, "spark job timed out"), (COMPACTION, 2, True, None)]
         assert h.fakes.pods_calls == [FIRST]
 
@@ -715,40 +642,6 @@ def test_next_attempt_is_not_submitted_while_pods_are_live():
     _run(scenario)
 
 
-def test_fencing_renews_the_admission_lease_while_waiting():
-    """While the pods of a timed-out attempt stay live, the attempt keeps renewing its admission lease."""
-
-    async def scenario(h: Harness) -> None:
-        h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
-        h.fakes.pods_live_for[FIRST] = timedelta(minutes=12)
-        handle = await h.start_maintenance(COMPACTION, attempt_deadline_seconds=FENCE_DEADLINE_SECONDS)
-        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
-
-        commands = await h.commands()
-        names = _names(commands)
-        delete = names.index("delete_maintenance_job")
-        release = _first_after(commands, "signal:release", delete)
-        renews = [at for name, at in commands[delete:release] if name == "signal:renew"]
-        assert len(renews) >= 2
-        assert all(b - a <= timedelta(minutes=5, seconds=30) for a, b in itertools.pairwise(renews))
-
-    _run(scenario, lease_seconds=FENCE_DEADLINE_SECONDS + 15 * 60)
-
-
-def test_fencing_renews_the_lease_before_it_deletes_the_job():
-    """The first thing a timed-out attempt does is renew its lease, then it deletes its job."""
-
-    async def scenario(h: Harness) -> None:
-        h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
-        handle = await h.start_maintenance(COMPACTION, attempt_deadline_seconds=FENCE_DEADLINE_SECONDS)
-        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
-
-        names = _names(await h.commands())
-        assert names.index("signal:renew") < names.index("delete_maintenance_job")
-
-    _run(scenario)
-
-
 def test_failed_delete_is_retried_on_every_fencing_poll():
     """A delete that fails is tried again on the next poll, and the pods are checked only once it succeeded."""
 
@@ -768,8 +661,8 @@ def test_failed_delete_is_retried_on_every_fencing_poll():
     _run(scenario)
 
 
-def test_job_that_cannot_be_deleted_fails_the_operation_and_keeps_the_slot():
-    """A job still not deleted 15 minutes after the timeout fails the operation; the slot waits for the delete."""
+def test_job_that_cannot_be_deleted_fails_the_operation_and_waits_for_the_delete():
+    """A job still not deleted 15 minutes after the timeout fails the operation; the next one waits for the delete."""
 
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {(EXPIRE, 1): [(1, True, None)]}
@@ -780,15 +673,13 @@ def test_job_that_cannot_be_deleted_fails_the_operation_and_keeps_the_slot():
         undeletable = "spark job timed out; its job could still not be deleted 15 minutes after the timeout"
         assert h.recorded() == [(COMPACTION, 1, False, undeletable), (EXPIRE, 1, True, None)]
         assert h.fakes.pods_times[0] >= h.fakes.delete_times[FIRST]
-        commands = await h.commands()
-        release = _first_after(commands, "signal:release", _names(commands).index("delete_maintenance_job"))
-        assert commands[release][1] >= h.fakes.delete_times[FIRST]
+        assert h.submit_times()[1] >= h.fakes.delete_times[FIRST]
 
     _run(scenario)
 
 
-def test_missing_job_is_fenced_before_its_slot_is_released():
-    """A job that went missing has its pods waited for, with the lease renewed, before the slot is released."""
+def test_missing_job_is_fenced_before_the_next_attempt():
+    """A job that went missing is deleted and its pods waited for before the next attempt is submitted."""
 
     async def scenario(h: Harness) -> None:
         h.fakes.states[FIRST] = {"state": "NOT_FOUND", "error": None}
@@ -799,19 +690,16 @@ def test_missing_job_is_fenced_before_its_slot_is_released():
         commands = await h.commands()
         names = _names(commands)
         status = names.index("get_maintenance_job_status")
-        renew = _first_after(commands, "signal:renew", status)
-        delete = _first_after(commands, "delete_maintenance_job", renew)
-        release = _first_after(commands, "signal:release", delete)
+        assert status < _first_after(commands, "delete_maintenance_job", status)
         assert h.fakes.pods_calls == [FIRST] * 4
-        assert commands[release][1] >= h.fakes.pods_times[-1]
         assert h.submit_times()[1] > h.fakes.pods_times[-1]
         assert h.recorded() == [(COMPACTION, 1, False, "spark job missing"), (COMPACTION, 2, True, None)]
 
     _run(scenario)
 
 
-def test_missing_job_whose_pods_stay_fails_the_operation_and_keeps_the_slot():
-    """Pods of a missing job still live 15 minutes later fail the operation; the slot waits for them."""
+def test_missing_job_whose_pods_stay_fails_the_operation_and_waits_for_them():
+    """Pods of a missing job still live 15 minutes later fail the operation; the next one waits for them."""
 
     async def scenario(h: Harness) -> None:
         h.fakes.states[FIRST] = {"state": "NOT_FOUND", "error": None}
@@ -821,9 +709,7 @@ def test_missing_job_whose_pods_stay_fails_the_operation_and_keeps_the_slot():
 
         stuck = "spark job missing; its pods were still running 15 minutes after the job went missing"
         assert h.recorded() == [(COMPACTION, 1, False, stuck), (EXPIRE, 1, True, None)]
-        commands = await h.commands()
-        release = _first_after(commands, "signal:release", _names(commands).index("delete_maintenance_job"))
-        assert commands[release][1] - h.fakes.delete_times[FIRST] >= timedelta(minutes=20)
+        assert h.submit_times()[1] - h.fakes.delete_times[FIRST] >= timedelta(minutes=20)
 
     _run(scenario)
 
@@ -856,8 +742,8 @@ def _cancel_on_the_first_status_poll(h: Harness, cancelled: list[bool]) -> None:
     h.fakes.status_hook = cancel
 
 
-def test_cancelled_run_fences_its_live_attempt_before_it_releases_the_slot():
-    """A cancel during an attempt deletes its job and waits, renewing, for its pods to go before the slot is freed."""
+def test_cancelled_run_fences_its_live_attempt_before_it_reports():
+    """A cancel during an attempt deletes its job and waits for its pods to go before the parent is told."""
 
     async def scenario(h: Harness) -> None:
         h.fakes.pods_live_for[FIRST] = timedelta(minutes=10)
@@ -876,22 +762,19 @@ def test_cancelled_run_fences_its_live_attempt_before_it_releases_the_slot():
 
         commands = await h.commands()
         names = _names(commands)
-        renew = names.index("signal:renew")
-        delete = _first_after(commands, "delete_maintenance_job", renew)
-        release = _first_after(commands, "signal:release", delete)
-        assert "signal:release" not in names[:release]
-        assert commands[release][1] - h.fakes.delete_times[FIRST] >= timedelta(minutes=10)
+        delete = names.index("delete_maintenance_job")
+        report = _first_after(commands, "signal_parent", delete)
+        assert commands[report][1] - h.fakes.delete_times[FIRST] >= timedelta(minutes=10)
         assert h.fakes.pods_times[-1] - h.fakes.delete_times[FIRST] >= timedelta(minutes=10)
         assert h.recorded() == [(COMPACTION, 1, False, "cancelled")]
         assert [(s["operation"], s["attempt"]) for s in h.fakes.submits] == [(COMPACTION, 1)]
         assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0}]
-        assert await h.admission_holders() == {}
 
     _run(scenario)
 
 
 def test_cancel_during_fencing_keeps_fencing_until_the_pods_are_gone():
-    """A cancel that arrives while a timed-out attempt is fenced still waits for its pods before the slot is freed."""
+    """A cancel that arrives while a timed-out attempt is fenced still waits for its pods before the parent is told."""
 
     async def scenario(h: Harness) -> None:
         h.fakes.pods_live_for[FIRST] = timedelta(minutes=30)
@@ -908,15 +791,14 @@ def test_cancel_during_fencing_keeps_fencing_until_the_pods_are_gone():
 
         assert cancelled == [True]
         commands = await h.commands()
-        release = _first_after(commands, "signal:release", _names(commands).index("delete_maintenance_job"))
-        assert commands[release][1] - h.fakes.delete_times[FIRST] >= timedelta(minutes=30)
-        assert await h.admission_holders() == {}
+        report = _first_after(commands, "signal_parent", _names(commands).index("delete_maintenance_job"))
+        assert commands[report][1] - h.fakes.delete_times[FIRST] >= timedelta(minutes=30)
 
     _run(scenario)
 
 
 def test_cancelled_fence_polls_slowly_once_past_its_bound():
-    """A cancelled attempt whose pods stay polls every 30 s for 15 minutes, then every 5 minutes, still renewing."""
+    """A cancelled attempt whose pods stay polls every 30 s for 15 minutes, then every 5 minutes."""
 
     async def scenario(h: Harness) -> None:
         h.fakes.pods_live_for[FIRST] = timedelta(hours=2)
@@ -934,42 +816,12 @@ def test_cancelled_fence_polls_slowly_once_past_its_bound():
         assert len(late) <= 21
         early = [t for t in h.fakes.pods_times if t - deleted_at < timedelta(minutes=14)]
         assert all(b - a < timedelta(minutes=1) for a, b in itertools.pairwise(early))
-        commands = await h.commands()
-        renews = [at for name, at in commands if name == "signal:renew" and at - deleted_at >= timedelta(minutes=16)]
-        assert all(b - a <= timedelta(minutes=10) for a, b in itertools.pairwise(renews))
-        assert len(renews) >= 10
 
     _run(scenario)
 
 
-def test_renew_is_what_keeps_the_slot_of_an_attempt_past_its_lease():
-    """An attempt whose pods outlive its lease keeps its slot only because it renews it."""
-
-    async def scenario(h: Harness) -> None:
-        h.fakes.callbacks = {(EXPIRE, 1): [(1, True, None)]}
-        h.fakes.pods_live_for[FIRST] = timedelta(minutes=40)
-        holders_late: list[dict] = []
-
-        async def look_late(app_name: str) -> None:
-            deleted_at = h.fakes.delete_times.get(FIRST)
-            late = deleted_at is not None and h.fakes.pods_times[-1] - deleted_at >= timedelta(minutes=30)
-            if app_name == FIRST and late and not holders_late:
-                holders_late.append(await h.admission_holders())
-
-        h.fakes.pods_hook = look_late
-        handle = await h.start_maintenance(COMPACTION, EXPIRE, attempt_deadline_seconds=FENCE_DEADLINE_SECONDS)
-        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
-
-        lease = timedelta(seconds=FENCE_DEADLINE_SECONDS + 15 * 60)
-        assert h.fakes.delete_times[FIRST] - h.submit_times()[0] + timedelta(minutes=30) > lease
-        assert len(holders_late) == 1
-        assert list(holders_late[0]) == [FIRST]
-
-    _run(scenario)
-
-
-def test_unconfirmed_deletion_fails_the_operation_and_keeps_the_slot():
-    """Pods still live 15 minutes after the delete fail the operation, and the slot is held until they are gone."""
+def test_unconfirmed_deletion_fails_the_operation_and_waits_for_the_pods():
+    """Pods still live 15 minutes after the delete fail the operation; the next one waits until they are gone."""
 
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {(EXPIRE, 1): [(1, True, None)]}
@@ -986,12 +838,9 @@ def test_unconfirmed_deletion_fails_the_operation_and_keeps_the_slot():
 
         commands = await h.commands()
         names = _names(commands)
-        delete = names.index("delete_maintenance_job")
-        release = _first_after(commands, "signal:release", delete)
-        released_at = commands[release][1]
-        assert released_at - deleted_at >= timedelta(minutes=20)
-        assert names.index("record_maintenance_operation_result") < release
-        assert _first_after(commands, "submit_maintenance_operation", delete) > release
+        next_submit = _first_after(commands, "submit_maintenance_operation", names.index("delete_maintenance_job"))
+        assert commands[next_submit][1] - deleted_at >= timedelta(minutes=20)
+        assert names.index("record_maintenance_operation_result") < next_submit
         last_live_poll = max(t for t in h.fakes.pods_times if t - deleted_at < timedelta(minutes=20))
         assert last_live_poll - deleted_at >= timedelta(minutes=15)
         slow_gaps = [
@@ -1002,25 +851,6 @@ def test_unconfirmed_deletion_fails_the_operation_and_keeps_the_slot():
         assert all(g >= timedelta(minutes=5) for g in slow_gaps)
 
     _run(scenario)
-
-
-def test_attempt_keeps_its_slot_for_its_own_deadline_under_an_older_lease():
-    """An admission workflow started with a shorter lease still lets an attempt hold its slot for its own deadline."""
-
-    async def scenario(h: Harness) -> None:
-        handle = await h.start_maintenance(COMPACTION, attempt_deadline_seconds=3600)
-        await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n == 1)
-        await h.env.sleep(timedelta(minutes=20))
-        assert list(await h.admission_holders()) == [FIRST]
-
-        await handle.signal(
-            TableMaintenanceSignal.OPERATION_RESULT,
-            OperationResultSignal(RUN_ID, COMPACTION, 1, True, {"files": 1}, None),
-        )
-        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
-        assert h.recorded() == [(COMPACTION, 1, True, None)]
-
-    _run(scenario, lease_seconds=600)
 
 
 def test_job_completing_during_fencing_still_counts_as_timed_out():
@@ -1049,33 +879,6 @@ def test_job_completing_during_fencing_still_counts_as_timed_out():
         assert h.recorded() == [(COMPACTION, 1, False, "spark job timed out"), (COMPACTION, 2, True, None)]
 
     _run(scenario)
-
-
-FIXTURES = Path(__file__).parent / "fixtures"
-
-
-def test_history_from_before_fencing_replays():
-    """A run that timed out under the code before fencing replays on the new code without non-determinism."""
-
-    async def go() -> None:
-        history = WorkflowHistory.from_json(
-            WORKFLOW_ID, (FIXTURES / "maintenance_timeout_before_fencing.json").read_text()
-        )
-        await Replayer(workflows=[TableMaintenanceWorkflow]).replay_workflow(history)
-
-    asyncio.run(go())
-
-
-def test_history_from_before_failure_classes_replays():
-    """A run whose attempts all failed under the code before failure classes replays without non-determinism."""
-
-    async def go() -> None:
-        history = WorkflowHistory.from_json(
-            WORKFLOW_ID, (FIXTURES / "maintenance_failures_before_failure_classes.json").read_text()
-        )
-        await Replayer(workflows=[TableMaintenanceWorkflow]).replay_workflow(history)
-
-    asyncio.run(go())
 
 
 OOM_ERROR = "java.lang.OutOfMemoryError: Java heap space"
@@ -1302,98 +1105,64 @@ def test_failed_attempt_is_recorded_before_its_job_is_deleted():
     _run(scenario)
 
 
-def test_failed_admission_is_recorded_as_admission_failed():
-    """An attempt whose admission request could not be sent is recorded as ended by the failed admission."""
-
-    async def scenario(h: Harness) -> None:
-        h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
-        await h.run_maintenance(COMPACTION)
-
-        assert [(r["attempt"], r["succeeded"], r["ended_by"]) for r in h.fakes.records] == [
-            (1, False, "admission_failed"),
-            (2, True, "result"),
-        ]
-        assert h.fakes.records[0]["error"] == "admission acquire failed: admission workflow unavailable"
-        assert [s["attempt"] for s in h.fakes.submits] == [2]
-
-    _run(scenario, failing_acquires=frozenset({f"{RUN_ID}-{COMPACTION}-1"}))
-
-
-ALL_PARTITIONS = [{"spec_id": 0, "where": "region IN ('eu', 'us', 'ap', 'sa')"}]
+PLANNED_FILTERS = [{"spec_id": 0, "where": "region IN ('eu', 'us', 'ap', 'sa')"}]
 TOP_HALF = [{"spec_id": 0, "where": "region IN ('eu', 'us')"}]
-TOP_QUARTER = [{"spec_id": 0, "where": "region IN ('eu')"}]
 
 
-def _narrowable_plan(*filter_sets: list[dict]) -> dict:
-    plan = _plan(COMPACTION)
-    plan["operations"][0] = {**plan["operations"][0], "filters": filter_sets[0], "filter_sets": list(filter_sets)}
-    return plan
-
-
-def _filters(h: Harness) -> list[list[dict]]:
-    return [s["filters"] for s in h.fakes.submits if s["operation"] == COMPACTION]
-
-
-def _failing(h: Harness, failure_class: str, step: str, attempts: int = 2) -> None:
-    h.fakes.callbacks = {(COMPACTION, a): [(a, False, OOM_ERROR)] for a in range(1, attempts + 1)}
-    h.fakes.callbacks[(COMPACTION, attempts + 1)] = [(attempts + 1, True, None)]
-    h.fakes.record_replies = {
-        (COMPACTION, a): {"failure_class": failure_class, "next_step": step, "next_size": "M"}
-        for a in range(1, attempts + 1)
-    }
-
-
-def test_oom_retry_submits_the_top_half_of_the_partitions():
-    """Each out-of-memory retry submits fewer partitions: all of them, the best half, the best quarter."""
+def test_oom_retry_keeps_the_planned_filters():
+    """Every attempt, also after running out of memory, submits the operation's filters; filter sets are ignored."""
 
     async def scenario(h: Harness) -> None:
-        _failing(h, "oom", "retry_larger")
-        await h.run_maintenance(plan=_narrowable_plan(ALL_PARTITIONS, TOP_HALF, TOP_QUARTER))
-        assert _filters(h) == [ALL_PARTITIONS, TOP_HALF, TOP_QUARTER]
+        h.fakes.callbacks = {(COMPACTION, a): [(a, False, OOM_ERROR)] for a in (1, 2)}
+        h.fakes.callbacks[(COMPACTION, 3)] = [(3, True, None)]
+        h.fakes.record_replies = {
+            (COMPACTION, a): {"failure_class": "oom", "next_step": "retry_larger", "next_size": "M"} for a in (1, 2)
+        }
+        plan = _plan(COMPACTION)
+        plan["operations"][0] = {
+            **plan["operations"][0],
+            "filters": PLANNED_FILTERS,
+            "filter_sets": [PLANNED_FILTERS, TOP_HALF],
+        }
+        await h.run_maintenance(plan=plan)
+        assert [s["filters"] for s in h.fakes.submits] == [PLANNED_FILTERS] * 3
 
     _run(scenario)
 
 
-def test_oom_retry_past_the_smallest_set_keeps_it():
-    """Once the smallest set was tried, further out-of-memory retries keep it."""
+def test_attempt_submits_without_admission():
+    """An attempt is submitted right after the run is created: no admission is asked for and nothing is signalled."""
 
     async def scenario(h: Harness) -> None:
-        _failing(h, "oom", "retry_larger")
-        await h.run_maintenance(plan=_narrowable_plan(ALL_PARTITIONS, TOP_HALF))
-        assert _filters(h) == [ALL_PARTITIONS, TOP_HALF, TOP_HALF]
-
-    _run(scenario)
-
-
-def test_other_failures_retry_the_same_partitions():
-    """A retry after a failure that is not out of memory submits the same partitions."""
-
-    async def scenario(h: Harness) -> None:
-        _failing(h, "other", "retry_same")
-        await h.run_maintenance(plan=_narrowable_plan(ALL_PARTITIONS, TOP_HALF, TOP_QUARTER))
-        assert _filters(h) == [ALL_PARTITIONS, ALL_PARTITIONS, ALL_PARTITIONS]
-
-    _run(scenario)
-
-
-def test_plan_without_filter_sets_retries_its_filters():
-    """A plan from before filter sets submits its filters on every attempt."""
-
-    async def scenario(h: Harness) -> None:
-        _failing(h, "oom", "retry_larger")
+        h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)]}
         await h.run_maintenance(COMPACTION)
-        assert _filters(h) == [[{"spec_id": 0, "where": f"{COMPACTION} = 1"}]] * 3
+
+        names = _names(await h.commands())
+        assert names[:2] == ["create_maintenance_run", "submit_maintenance_operation"]
+        assert "signal_admission_acquire" not in names
+        assert not [name for name in names if name.startswith("signal:")]
 
     _run(scenario)
 
 
-def test_history_from_before_fewer_partitions_replays():
-    """A run retried after running out of memory under the code before, with a plan carrying filter sets, replays."""
+def test_late_result_of_another_run_is_ignored():
+    """A result of an earlier run of the table, sent to the table's workflow id, is ignored; the own result counts."""
 
-    async def go() -> None:
-        history = WorkflowHistory.from_json(
-            WORKFLOW_ID, (FIXTURES / "maintenance_oom_before_fewer_partitions.json").read_text()
+    async def scenario(h: Harness) -> None:
+        handle = await h.start_maintenance(COMPACTION)
+        await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n == 1)
+        await handle.signal(
+            TableMaintenanceSignal.OPERATION_RESULT,
+            OperationResultSignal(PREVIOUS_RUN_ID, COMPACTION, 1, False, {}, "late failure"),
         )
-        await Replayer(workflows=[TableMaintenanceWorkflow]).replay_workflow(history)
+        await handle.signal(
+            TableMaintenanceSignal.OPERATION_RESULT,
+            OperationResultSignal(RUN_ID, COMPACTION, 1, True, {"files": 3}, None),
+        )
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
 
-    asyncio.run(go())
+        assert h.recorded() == [(COMPACTION, 1, True, None)]
+        assert all(r["run_id"] == RUN_ID for r in h.fakes.records)
+        assert h.fakes.records[0]["metrics"] == {"files": 3}
+
+    _run(scenario)

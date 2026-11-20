@@ -536,7 +536,7 @@
       "eventType": "EVENT_TYPE_START_CHILD_WORKFLOW_EXECUTION_INITIATED",
       "startChildWorkflowExecutionInitiatedEventAttributes": {
         "namespace": "default",
-        "workflowId": "table-maintenance:table=iceberg.e2e.t:run=bfb2b7db-8991-498f-b3d5-135779dbc2e7",
+        "workflowId": "table-maintenance:table-uuid=u1",
         "workflowType": {
           "name": "TableMaintenanceWorkflow"
         },
@@ -573,7 +573,7 @@
         "namespace": "default",
         "initiatedEventId": "33",
         "workflowExecution": {
-          "workflowId": "table-maintenance:table=iceberg.e2e.t:run=bfb2b7db-8991-498f-b3d5-135779dbc2e7",
+          "workflowId": "table-maintenance:table-uuid=u1",
           "runId": "cb533c43-8f91-489a-b675-b581e5b18eb1"
         },
         "workflowType": {
@@ -883,7 +883,7 @@
         },
         "namespace": "default",
         "workflowExecution": {
-          "workflowId": "table-maintenance:table=iceberg.e2e.t:run=bfb2b7db-8991-498f-b3d5-135779dbc2e7",
+          "workflowId": "table-maintenance:table-uuid=u1",
           "runId": "cb533c43-8f91-489a-b675-b581e5b18eb1"
         },
         "workflowType": {

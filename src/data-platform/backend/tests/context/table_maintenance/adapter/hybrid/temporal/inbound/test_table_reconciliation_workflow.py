@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from temporalio.client import WorkflowExecutionStatus, WorkflowHistory
 from temporalio.common import SearchAttributeKey
+from temporalio.converter import DataConverter
 from temporalio.exceptions import WorkflowAlreadyStartedError
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Replayer, UnsandboxedWorkflowRunner, Worker
@@ -20,6 +21,8 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
+    TABLE_MAINTENANCE_WORKFLOW,
+    TableMaintenanceWorkflowInput,
     table_maintenance_workflow_id,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (
@@ -73,6 +76,7 @@ OTHER_RUN_ID = "mr-00000000000000000000000008"
 UUID = "u1"
 TABLE = "iceberg.e2e.t"
 WORKFLOW_ID = table_reconciliation_workflow_id(UUID)
+CHILD_ID = table_maintenance_workflow_id(UUID)
 COMPACTION = "rewrite_data_files"
 EXPIRE = "expire_snapshots"
 REAL_TIMEOUT_SECONDS = 20
@@ -155,10 +159,6 @@ def _skip(reason: str, interval: int = 3600, *, table_found: bool = True) -> dic
     }
 
 
-def _child_id(run_id: str) -> str:
-    return table_maintenance_workflow_id(TABLE, run_id)
-
-
 def _within_a_second(gap: timedelta, seconds: int) -> bool:
     """Tell whether ``gap`` is ``seconds`` long, allowing for the activity's run time."""
     return timedelta(seconds=seconds) <= gap < timedelta(seconds=seconds + 1)
@@ -234,20 +234,51 @@ class Harness:
             lambda s: s["in_flight_run_id"] != before["in_flight_run_id"] and not s["planning"],
         )
 
+    async def child_handle(self, run_id: str) -> WorkflowHandle:
+        """Return the handle of the child execution of a run.
+
+        Every run of the table runs under the table's one workflow id, so the
+        execution of a run is found in the reconciliation's history (all its
+        runs, across continue-as-new) and the handle pins its Temporal run id.
+        """
+
+        async def started() -> dict[str, str]:
+            return await self._started_children()
+
+        children = await eventually(started, lambda found: run_id in found)
+        return self.client.get_workflow_handle(CHILD_ID, run_id=children[run_id])
+
+    async def _started_children(self) -> dict[str, str]:
+        """Map each maintenance run id the reconciliation started to its child's Temporal run id."""
+        converter = DataConverter.default.payload_converter
+        found: dict[str, str] = {}
+        temporal_run: str | None = (await self.client.get_workflow_handle(WORKFLOW_ID).describe()).run_id
+        while temporal_run:
+            history = await self.client.get_workflow_handle(WORKFLOW_ID, run_id=temporal_run).fetch_history()
+            temporal_run = None
+            initiated: dict[int, str] = {}
+            for event in history.events:
+                if event.HasField("workflow_execution_started_event_attributes"):
+                    temporal_run = event.workflow_execution_started_event_attributes.continued_execution_run_id
+                elif event.HasField("start_child_workflow_execution_initiated_event_attributes"):
+                    payloads = event.start_child_workflow_execution_initiated_event_attributes.input.payloads
+                    initiated[event.event_id] = converter.from_payloads(payloads)[0]["run_id"]
+                elif event.HasField("child_workflow_execution_started_event_attributes"):
+                    child = event.child_workflow_execution_started_event_attributes
+                    found[initiated[child.initiated_event_id]] = child.workflow_execution.run_id
+        return found
+
     async def child(self, run_id: str) -> dict[str, Any]:
         """Query the stub child of a run for the input it started with."""
-        handle = self.client.get_workflow_handle(_child_id(run_id))
-        return await handle.query("started_with")
+        return await (await self.child_handle(run_id)).query("started_with")
 
     async def child_summary(self, run_id: str) -> str | None:
         """Return the static summary of the child workflow of a run."""
-        handle = self.client.get_workflow_handle(_child_id(run_id))
-        return await (await handle.describe()).static_summary()
+        return await (await (await self.child_handle(run_id)).describe()).static_summary()
 
     async def child_search_attributes(self, run_id: str) -> TypedSearchAttributes:
         """Return the search attributes the child workflow of a run started with."""
-        handle = self.client.get_workflow_handle(_child_id(run_id))
-        return (await handle.describe()).typed_search_attributes
+        return (await (await self.child_handle(run_id)).describe()).typed_search_attributes
 
     async def search_attributes(self) -> TypedSearchAttributes:
         """Return the search attributes of the reconciliation workflow."""
@@ -255,13 +286,11 @@ class Harness:
 
     async def child_status(self, run_id: str) -> WorkflowExecutionStatus | None:
         """Return the execution status of the child workflow of a run."""
-        handle = self.client.get_workflow_handle(_child_id(run_id))
-        return (await handle.describe()).status
+        return (await (await self.child_handle(run_id)).describe()).status
 
     async def complete_child(self, run_id: str) -> None:
         """Signal the stub child of a run to finish."""
-        handle = self.client.get_workflow_handle(_child_id(run_id))
-        await handle.signal("complete")
+        await (await self.child_handle(run_id)).signal("complete")
         self.sent += 1
 
     async def ended(self) -> None:
@@ -358,7 +387,64 @@ def test_signal_with_start_plans_and_starts_child_with_abandon_semantics():
         assert child["trigger"] == "scheduled"
         assert child["plan"] == _planned(COMPACTION)
         assert len(h.plans.requests) == 1
-        assert (await h.state())["in_flight_workflow_id"] == (f"table-maintenance:table={TABLE}:run={run_id}")
+        assert (await h.state())["in_flight_workflow_id"] == CHILD_ID
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+def test_child_runs_under_the_table_workflow_id():
+    """The child runs under the table's maintenance workflow id, named by the table uuid."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        run_id = await h.in_flight()
+        assert (await h.state())["in_flight_workflow_id"] == f"table-maintenance:table-uuid={UUID}"
+        assert (await (await h.child_handle(run_id)).describe()).id == f"table-maintenance:table-uuid={UUID}"
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+def test_second_run_for_the_table_is_refused_while_one_runs():
+    """A run already running under the table's workflow id refuses the next start, recorded as a failed start."""
+
+    async def scenario(h: Harness) -> None:
+        await h.client.start_workflow(
+            TABLE_MAINTENANCE_WORKFLOW,
+            TableMaintenanceWorkflowInput(
+                run_id=OTHER_RUN_ID,
+                table_uuid=UUID,
+                parent_workflow_id="elsewhere",
+                trigger="manual",
+                plan=_planned(COMPACTION),
+            ),
+            id=CHILD_ID,
+            task_queue=TASK_QUEUE,
+        )
+        await h.start()
+        record = (await h.records(1))[0]
+        assert (await h.settle())["in_flight_run_id"] is None
+        assert record["run_id"] is None
+        assert record["run_start_failed"] is True
+        started_with = await h.client.get_workflow_handle(CHILD_ID).query("started_with")
+        assert started_with["run_id"] == OTHER_RUN_ID
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+def test_next_run_reuses_the_id_after_the_first_closed():
+    """Once a table's run has closed, the next run starts under the same workflow id."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = await h.in_flight()
+        await h.complete_child(first)
+        second = (await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first)))["in_flight_run_id"]
+        assert (await h.state())["in_flight_workflow_id"] == CHILD_ID
+        assert await h.child_status(first) == WorkflowExecutionStatus.COMPLETED
+        assert await h.child_status(second) == WorkflowExecutionStatus.RUNNING
+        assert (await h.child(second))["run_id"] == second
+        records = await h.records(2)
+        assert [r["run_start_failed"] for r in records[:2]] == [False, False]
 
     _run(scenario, script=lambda _: _planned(COMPACTION))
 
@@ -537,7 +623,7 @@ def test_child_result_received_after_continue_as_new():
         await eventually(run_id_now, lambda r: r != first_run)
         state = await h.state()
         assert state["in_flight_run_id"] == run_id
-        assert state["in_flight_workflow_id"] == _child_id(run_id)
+        assert state["in_flight_workflow_id"] == CHILD_ID
         assert state["pending_manual"] == [EXPIRE]
         assert len(h.plans.requests) == 1
         await h.complete_child(run_id)
@@ -770,7 +856,7 @@ def test_give_up_forgets_a_cancelled_child_that_closed_without_reporting():
         first = await h.in_flight()
         await h.env.sleep(OPERATION_BUDGET + timedelta(minutes=5))
         assert (await h.settle())["in_flight_run_id"] == first
-        await h.client.get_workflow_handle(_child_id(first)).terminate()
+        await (await h.child_handle(first)).terminate()
         await h.env.sleep(timedelta(minutes=12))
         await h.plan_count(2)
         await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first) and not s["planning"])
@@ -865,7 +951,7 @@ def test_carried_in_flight_run_without_start_time_gets_a_fixed_deadline():
         await h.start(
             start_signal=None,
             in_flight_run_id=GHOST_RUN_ID,
-            in_flight_workflow_id=_child_id(GHOST_RUN_ID),
+            in_flight_workflow_id=CHILD_ID,
             in_flight_operation_count=1,
         )
         state = await eventually(h.state, lambda s: s["in_flight_started_at"])

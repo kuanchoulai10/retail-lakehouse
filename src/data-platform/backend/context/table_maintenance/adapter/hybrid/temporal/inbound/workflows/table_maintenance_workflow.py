@@ -14,19 +14,11 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
     DEFAULT_START_SIZE,
     TABLE_MAINTENANCE_WORKFLOW,
     MaintenanceAttemptEnding,
-    MaintenanceFailureClass,
     MaintenanceNextStep,
     OperationResultSignal,
     TableMaintenanceActivity,
     TableMaintenanceSignal,
     TableMaintenanceWorkflowInput,
-)
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission import (
-    ADMISSION_LEASE_MARGIN_SECONDS,
-    TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
-    AdmissionReleaseSignal,
-    AdmissionRenewSignal,
-    TableMaintenanceAdmissionSignal,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (
     TableReconciliationSignal,
@@ -44,7 +36,6 @@ FAST_POLL_INTERVAL = timedelta(seconds=30)
 FAST_POLL_WINDOW = timedelta(minutes=10)
 SLOW_POLL_INTERVAL = timedelta(minutes=5)
 _CALLBACK_GRACE = timedelta(seconds=120)
-_ACQUIRE_RESEND_INTERVAL = timedelta(minutes=5)
 _TIMED_OUT = "spark job timed out"
 _MISSING = "spark job missing"
 _FENCE_PATCH = "fence-timed-out-attempt"
@@ -52,7 +43,6 @@ _FENCE_MISSING_PATCH = "fence-missing-job"
 _FENCE_CANCELLED_PATCH = "fence-cancelled-attempt"
 _CANCELLED = "cancelled"
 _DECISION_PATCH = "classify-attempt-failure"
-_FEWER_PARTITIONS_PATCH = "fewer-partitions-after-oom"
 _PLANNED_POLICY_KEYS = ("policy_id", "policy_name", "policy_version", "policy_target")
 
 
@@ -60,23 +50,24 @@ _PLANNED_POLICY_KEYS = ("policy_id", "policy_name", "policy_version", "policy_ta
 class TableMaintenanceWorkflow:
     """Run the planned operations of one maintenance run, in order, on Spark.
 
-    Each operation gets up to ``max_attempts`` attempts (input, 3 by default). An attempt holds one admission slot
-    from the admission workflow while its Spark job runs, leased for its attempt
-    deadline plus 15 minutes, and ends with the job's
-    ``operation_result`` callback for that exact attempt, with what polling the
+    A table runs one of these at a time, under the table's workflow id (see
+    ``table_maintenance_workflow_id``). Each operation gets up to ``max_attempts`` attempts (input, 3 by
+    default). An attempt is submitted straight to Spark, whose scheduler queues it, and ends with the job's
+    ``operation_result`` callback for that exact run and attempt (a late result of an earlier run of the
+    table, sent to the same workflow id, is ignored), with what polling the
     job's state reveals, or with a timeout ``attempt_deadline_seconds`` (input, 6 h by
     default) after the submit. Polling runs every 30 s for the first 10 minutes of an attempt and
     every 5 minutes after that, which bounds the history. A timed-out attempt is
-    fenced before its slot is released: its Spark job is deleted and its pods are
-    polled until none is live, while the attempt renews its admission lease (see
+    fenced before the next one is submitted: its Spark job is deleted and its pods are
+    polled until none is live (see
     ``TableMaintenanceFencingPolicy``); pods still live after the confirm bound fail
-    the operation without a further attempt, and the slot is held until they are
+    the operation without a further attempt, and the next operation waits until they are
     gone. An attempt whose job went missing is fenced the same way, since its
     pods can outlive the SparkApplication. Histories from before fencing replay
     unfenced (patches ``fence-timed-out-attempt`` and ``fence-missing-job``). A
     cancellation (a manual cancel, or the reconciliation giving the run up) fences
     the attempt it interrupts the same way, without a bound and even if another
-    cancel arrives meanwhile, before the slot is released (patch
+    cancel arrives meanwhile, before the run reports (patch
     ``fence-cancelled-attempt``). The first attempt runs at the plan's start size (S when the plan
     names none). Recording a failed attempt names how it ended and returns what follows it: an
     out-of-memory failure is retried at the next size, other failures at the same size, and a
@@ -87,10 +78,8 @@ class TableMaintenanceWorkflow:
     the name for display; this changes only the record
     activity's input, not the workflow's commands, so it needs no patch. A plan from before policies
     had ids carries no ``policy_id``; its records then leave the policy to the recorder, which marks
-    under the policy applying when it records. A compaction whose plan
-    carries ``filter_sets`` (ever fewer of its partitions) submits the next set after each attempt
-    that ran out of memory, and keeps the smallest once it was tried (patch
-    ``fewer-partitions-after-oom``); a plan without them submits its ``filters`` every time. A failed operation
+    under the policy applying when it records. Every attempt submits the operation's ``filters``, also
+    after running out of memory. A failed operation
     never fails the run: the next operation still runs. At the end, also after a
     cancellation, the Spark job of every started attempt is deleted and the parent
     reconciliation workflow is told the run finished and how many results could not be
@@ -99,15 +88,13 @@ class TableMaintenanceWorkflow:
 
     @workflow.init
     def __init__(self, input: TableMaintenanceWorkflowInput) -> None:  # noqa: A002
-        """Prepare the result and grant mailboxes and the attempt log."""
+        """Prepare the result mailbox and the attempt log."""
         self._run_id = input.run_id
         self._policy = TableMaintenanceAttemptPolicy(
             max_attempts=input.max_attempts, attempt_deadline=timedelta(seconds=input.attempt_deadline_seconds)
         )
         self._planned_policy = {key: input.plan.get(key) for key in _PLANNED_POLICY_KEYS}
         self._results: dict[tuple[str, int], OperationResultSignal] = {}
-        self._granted: set[str] = set()
-        self._current_request: str | None = None
         self._started_attempts: list[tuple[str, int]] = []
         self._settled_attempts: set[tuple[str, int]] = set()
         self._record_failures = 0
@@ -142,27 +129,15 @@ class TableMaintenanceWorkflow:
             return
         self._results.setdefault((result.operation, result.attempt), result)
 
-    @workflow.signal(name=TableMaintenanceSignal.ADMISSION_GRANTED)
-    async def admission_granted(self, request_id: str) -> None:
-        """Take the grant of the awaited request; hand any other grant straight back."""
-        if request_id == self._current_request:
-            self._granted.add(request_id)
-            return
-        workflow.logger.warning("releasing unexpected grant %s", request_id)
-        await self._release(request_id)
-
     async def _run_operation(self, operation: dict[str, Any]) -> None:
         size: str = operation.get("start_size") or DEFAULT_START_SIZE
-        out_of_memory = 0
         for attempt in range(1, self._policy.max_attempts + 1):
-            outcome = await self._run_attempt(self._narrowed(operation, out_of_memory), attempt, size)
+            outcome = await self._run_attempt(operation, attempt, size)
             if (outcome.operation, outcome.attempt) in self._settled_attempts:
                 return
             decision = await self._record(outcome) or {}
             if outcome.succeeded:
                 return
-            if decision.get("failure_class") == MaintenanceFailureClass.OOM:
-                out_of_memory += 1
             step = decision.get("next_step")
             if step not in (None, MaintenanceNextStep.RETRY_SAME) and workflow.patched(_DECISION_PATCH):
                 if step != MaintenanceNextStep.RETRY_LARGER:
@@ -171,20 +146,10 @@ class TableMaintenanceWorkflow:
             if attempt < self._policy.max_attempts:
                 await workflow.sleep(self._policy.backoff_after(attempt))
 
-    @staticmethod
-    def _narrowed(operation: dict[str, Any], out_of_memory: int) -> dict[str, Any]:
-        """Return the operation with the filters of its attempt: fewer partitions after each out-of-memory one."""
-        filter_sets = operation.get("filter_sets") or []
-        if out_of_memory == 0 or len(filter_sets) < 2 or not workflow.patched(_FEWER_PARTITIONS_PATCH):
-            return operation
-        return {**operation, "filters": filter_sets[min(out_of_memory, len(filter_sets) - 1)]}
-
     async def _run_attempt(self, operation: dict[str, Any], attempt: int, size: str) -> OperationResultSignal:
         name = operation["operation"]
-        request_id = f"{self._run_id}-{name}-{attempt}"
-        self._current_request = request_id
         try:
-            return await self._attempt_outcome(operation, attempt, size, request_id)
+            return await self._attempt_outcome(operation, attempt, size)
         except asyncio.CancelledError:
             if (name, attempt) not in self._settled_attempts:
                 await self._record(self._failure(name, attempt, _CANCELLED, MaintenanceAttemptEnding.CANCELLED))
@@ -193,7 +158,6 @@ class TableMaintenanceWorkflow:
                     self._fence(
                         name,
                         attempt,
-                        request_id,
                         _CANCELLED,
                         MaintenanceAttemptEnding.CANCELLED,
                         since="the cancel",
@@ -201,24 +165,9 @@ class TableMaintenanceWorkflow:
                     )
                 )
             raise
-        finally:
-            self._current_request = None
-            await self._release(request_id)
 
-    async def _attempt_outcome(
-        self, operation: dict[str, Any], attempt: int, size: str, request_id: str
-    ) -> OperationResultSignal:
+    async def _attempt_outcome(self, operation: dict[str, Any], attempt: int, size: str) -> OperationResultSignal:
         name = operation["operation"]
-        try:
-            await self._acquire(request_id)
-        except ActivityError as error:
-            _raise_if_cancelled(error)
-            return self._failure(
-                name,
-                attempt,
-                f"admission acquire failed: {_message(error)}",
-                MaintenanceAttemptEnding.ADMISSION_FAILED,
-            )
         self._started_attempts.append((name, attempt))
         try:
             submitted = await self._activity(
@@ -238,36 +187,9 @@ class TableMaintenanceWorkflow:
             return self._failure(
                 name, attempt, f"submit failed: {_message(error)}", MaintenanceAttemptEnding.SUBMIT_FAILED
             )
-        return await self._await_outcome(name, attempt, submitted["job_name"], request_id)
+        return await self._await_outcome(name, attempt, submitted["job_name"])
 
-    async def _acquire(self, request_id: str) -> None:
-        request = {
-            "request_id": request_id,
-            "requester_workflow_id": workflow.info().workflow_id,
-            "lease_seconds": int(self._policy.attempt_deadline.total_seconds()) + ADMISSION_LEASE_MARGIN_SECONDS,
-        }
-        await self._activity(TableMaintenanceActivity.SIGNAL_ADMISSION_ACQUIRE, request)
-        while True:
-            try:
-                await workflow.wait_condition(
-                    lambda: request_id in self._granted,
-                    timeout=_ACQUIRE_RESEND_INTERVAL,
-                )
-                return
-            except TimeoutError:
-                await self._activity(TableMaintenanceActivity.SIGNAL_ADMISSION_ACQUIRE, request)
-
-    async def _release(self, request_id: str) -> None:
-        handle = workflow.get_external_workflow_handle(TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID)
-        try:
-            await handle.signal(
-                TableMaintenanceAdmissionSignal.RELEASE,
-                AdmissionReleaseSignal(request_id),
-            )
-        except FailureError as error:
-            workflow.logger.warning("release of %s failed: %s", request_id, error)
-
-    async def _await_outcome(self, name: str, attempt: int, job_name: str, request_id: str) -> OperationResultSignal:
+    async def _await_outcome(self, name: str, attempt: int, job_name: str) -> OperationResultSignal:
         key = (name, attempt)
         submitted_at = workflow.now()
         deadline = submitted_at + self._policy.attempt_deadline
@@ -277,7 +199,7 @@ class TableMaintenanceWorkflow:
                 return self._results[key]
             now = workflow.now()
             if now >= deadline:
-                return await self._timed_out(name, attempt, request_id)
+                return await self._timed_out(name, attempt)
             in_fast_window = now - submitted_at < FAST_POLL_WINDOW
             interval = FAST_POLL_INTERVAL if in_fast_window else SLOW_POLL_INTERVAL
             try:
@@ -296,7 +218,7 @@ class TableMaintenanceWorkflow:
                     name, attempt, status["error"] or "spark job failed", MaintenanceAttemptEnding.JOB_FAILED
                 )
             if state == "NOT_FOUND":
-                return await self._missing(name, attempt, request_id)
+                return await self._missing(name, attempt)
             if state != "COMPLETED":
                 completed_since = None
                 continue
@@ -312,19 +234,17 @@ class TableMaintenanceWorkflow:
                     error=None,
                 )
 
-    async def _timed_out(self, name: str, attempt: int, request_id: str) -> OperationResultSignal:
+    async def _timed_out(self, name: str, attempt: int) -> OperationResultSignal:
         """Fence the timed-out attempt; a history from before fencing replays its immediate failure."""
         if workflow.patched(_FENCE_PATCH):
-            return await self._fence(
-                name, attempt, request_id, _TIMED_OUT, MaintenanceAttemptEnding.TIMED_OUT, since="the timeout"
-            )
+            return await self._fence(name, attempt, _TIMED_OUT, MaintenanceAttemptEnding.TIMED_OUT, since="the timeout")
         return self._failure(name, attempt, _TIMED_OUT, MaintenanceAttemptEnding.TIMED_OUT)
 
-    async def _missing(self, name: str, attempt: int, request_id: str) -> OperationResultSignal:
+    async def _missing(self, name: str, attempt: int) -> OperationResultSignal:
         """Fence an attempt whose job went missing, as its pods may outlive it; older histories fail it at once."""
         if workflow.patched(_FENCE_MISSING_PATCH):
             return await self._fence(
-                name, attempt, request_id, _MISSING, MaintenanceAttemptEnding.MISSING, since="the job went missing"
+                name, attempt, _MISSING, MaintenanceAttemptEnding.MISSING, since="the job went missing"
             )
         return self._failure(name, attempt, _MISSING, MaintenanceAttemptEnding.MISSING)
 
@@ -332,14 +252,13 @@ class TableMaintenanceWorkflow:
         self,
         name: str,
         attempt: int,
-        request_id: str,
         reason: str,
         ending: MaintenanceAttemptEnding,
         *,
         since: str,
         bounded: bool = True,
     ) -> OperationResultSignal:
-        """Delete an ended attempt's job and wait until its pods are gone; the slot stays held meanwhile.
+        """Delete an ended attempt's job and wait until its pods are gone; nothing else is submitted meanwhile.
 
         ``reason`` is why the attempt ended (it timed out, or its job went
         missing), ``ending`` names that ending for the record, and ``since``
@@ -348,27 +267,22 @@ class TableMaintenanceWorkflow:
         long they take, polling slowly once past the bound so its history stays
         small.
 
-        Each poll first renews the lease when it is due (the first poll always
-        does, before anything else), then tries the delete again until one has
-        succeeded, and only then reads the pods. A result that arrives now is
+        Each poll tries the delete again until one has succeeded, and only
+        then reads the pods. A result that arrives now is
         ignored: the attempt has ended, and the next reconcile reads the table
         to see what it did. Pods gone within the confirm bound (counted from
         when the attempt ended) fail the attempt with ``reason``, so the caller
-        releases the slot and retries. Pods still live at the bound, or a job that could not
+        retries. Pods still live at the bound, or a job that could not
         be deleted by then, fail the operation for good: the failure is
         recorded at once, then polling goes on, slower, until the pods are
-        gone, and only then does the caller release the slot.
+        gone, and only then does the caller go on.
         """
         fencing = self._policy.fencing
         key = (name, attempt)
         confirm_by = workflow.now() + fencing.confirm_bound
-        renew_at = workflow.now()
         deleted = False
         outcome = self._failure(name, attempt, reason, ending)
         while True:
-            if workflow.now() >= renew_at:
-                await self._renew(request_id)
-                renew_at = workflow.now() + fencing.renew_interval
             deleted = deleted or await self._delete_job(name, attempt)
             if deleted and await self._pods_gone(name, attempt):
                 return outcome
@@ -405,13 +319,6 @@ class TableMaintenanceWorkflow:
             workflow.logger.warning("pods of %s attempt %s unknown: %s", name, attempt, error)
             return False
         return not pods["live_pods"]
-
-    async def _renew(self, request_id: str) -> None:
-        handle = workflow.get_external_workflow_handle(TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID)
-        try:
-            await handle.signal(TableMaintenanceAdmissionSignal.RENEW, AdmissionRenewSignal(request_id))
-        except FailureError as error:
-            workflow.logger.warning("renewing the lease of %s failed: %s", request_id, error)
 
     async def _job_status(self, name: str, attempt: int) -> dict[str, Any] | None:
         try:

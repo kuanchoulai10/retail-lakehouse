@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 
-def table_maintenance_workflow_id(table: str, run_id: str) -> str:
-    """Return the workflow ID of the table maintenance workflow for a run.
+def table_maintenance_workflow_id(table_uuid: str) -> str:
+    """Return the workflow ID every maintenance run of a table runs under.
 
-    ``table`` is the fully qualified ``catalog.namespace.table`` name as of the
-    run start; a later rename does not change the ID, so paths that only know
-    the run look the ID up on the maintenance run instead of rebuilding it.
+    A table runs one maintenance workflow at a time: the reconciliation starts
+    each run under this ID, so a start while another run of the table is still
+    running is refused, and a run that closed frees the ID for the next one.
+    The table uuid never changes, so a rename keeps the ID.
     """
-    return f"table-maintenance:table={table}:run={run_id}"
+    return f"table-maintenance:table-uuid={table_uuid}"

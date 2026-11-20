@@ -91,7 +91,6 @@ def test_table_maintenance_signals():
     """The table maintenance signal names are the stable wire names."""
     assert _values(TableMaintenanceSignal) == {
         "OPERATION_RESULT": "operation_result",
-        "ADMISSION_GRANTED": "admission_granted",
     }
 
 

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from temporalio import workflow
-from temporalio.common import RetryPolicy, SearchAttributePair, TypedSearchAttributes
+from temporalio.common import RetryPolicy, SearchAttributePair, TypedSearchAttributes, WorkflowIDReusePolicy
 from temporalio.exceptions import ActivityError, FailureError, is_cancelled_exception
 from temporalio.workflow import ParentClosePolicy
 
@@ -82,9 +82,9 @@ class TableReconciliationWorkflow:
     (per planned operation: every attempt timing out after the attempt deadline the
     plan carried, six hours for a plan without one, and being fenced for 15
     minutes, plus the backoffs, plus 1 h): the child is cancelled first (by the
-    workflow ID recorded when it started, as the ID carries the table name of
-    that time), so its cleanup fences its live attempt, records the result,
-    releases its admission slot and deletes its Spark job, and its report is
+    workflow ID recorded when it started, the table's maintenance workflow ID),
+    so its cleanup fences its live attempt, records the result
+    and deletes its Spark job, and its report is
     awaited for as long as the child still runs (less if the cancel fails
     because the child is gone or no workflow ID was recorded), so a new run does
     not overlap the old one's Spark job. A skip
@@ -574,8 +574,12 @@ class TableReconciliationWorkflow:
             workflow.logger.info("dropping manual trigger %s: %s", manual, dropped_because)
 
     async def _start_run(self, plan: dict[str, Any], manual: bool, run_id: str) -> bool:
-        """Start the child run under ``run_id``; False when it could not be started."""
-        child_id = table_maintenance_workflow_id(plan["table_name"], run_id)
+        """Start the child run under ``run_id``; False when it could not be started.
+
+        The child runs under the table's one maintenance workflow id: a run of the
+        table still running refuses the start, and a closed one frees the id.
+        """
+        child_id = table_maintenance_workflow_id(self._table_uuid)
         attempt_deadline_seconds = plan.get("attempt_deadline_seconds", DEFAULT_ATTEMPT_DEADLINE_SECONDS)
         max_attempts = plan.get("max_attempts", DEFAULT_MAX_ATTEMPTS)
         self._in_flight_run_id = run_id
@@ -599,6 +603,7 @@ class TableReconciliationWorkflow:
                     max_attempts=max_attempts,
                 ),
                 id=child_id,
+                id_reuse_policy=WorkflowIDReusePolicy.ALLOW_DUPLICATE,
                 task_queue=TASK_QUEUE,
                 parent_close_policy=ParentClosePolicy.ABANDON,
                 static_summary=table_maintenance_summary(plan["table_name"], operations),

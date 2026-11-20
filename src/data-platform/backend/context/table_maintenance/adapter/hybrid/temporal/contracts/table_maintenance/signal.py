@@ -9,4 +9,3 @@ class TableMaintenanceSignal(StrEnum):
     """Name the signals a table maintenance workflow receives."""
 
     OPERATION_RESULT = "operation_result"
-    ADMISSION_GRANTED = "admission_granted"
