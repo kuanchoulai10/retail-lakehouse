@@ -19,6 +19,7 @@ data:
   GLAC_CATALOG__S3_REGION: {{ .Values.catalog.s3Region | quote }}
   GLAC_KAFKA__BOOTSTRAP_SERVERS: {{ .Values.kafka.bootstrapServers | quote }}
   GLAC_KAFKA__TOPIC: {{ .Values.kafka.topic | quote }}
+  GLAC_METRICS__PROMETHEUS_URL: {{ .Values.metrics.prometheusUrl | quote }}
   GLAC_SPARK__IMAGE: {{ include "table-maintenance.sparkImage" . | quote }}
   GLAC_SPARK__IMAGE_PULL_POLICY: {{ .Values.image.pullPolicy | quote }}
   GLAC_SPARK__SERVICE_ACCOUNT: {{ .Values.spark.serviceAccount | quote }}

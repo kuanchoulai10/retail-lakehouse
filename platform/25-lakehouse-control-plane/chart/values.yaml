@@ -140,4 +140,7 @@ migrate:
     limits:
       memory: 512Mi
 
+metrics:
+  prometheusUrl: http://table-metrics-prometheus.table-metrics.svc.cluster.local:9090
+
 logLevel: INFO
