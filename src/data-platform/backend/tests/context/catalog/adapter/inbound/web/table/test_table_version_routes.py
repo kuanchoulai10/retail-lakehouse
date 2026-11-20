@@ -13,7 +13,13 @@ from context.catalog.application.port.inbound.table import (
     ListTableSchemaVersionsUseCaseInput,
     ListTableSchemaVersionsUseCaseOutput,
 )
+from context.catalog.application.port.outbound.table import PartitionSpec, Schema, SchemaField, Table, TableId
+from context.catalog.application.service.table import (
+    GetTablePartitionSpecComparisonService,
+    GetTableSchemaComparisonService,
+)
 from tests.context.catalog.adapter.inbound.web.web_test_support import StubUseCase, build_client
+from tests.context.catalog.fakes.in_memory_tables_repo import InMemoryTablesRepo
 
 BASE = "/v1/catalogs/sales/namespaces/retail/tables/orders"
 
@@ -311,3 +317,23 @@ def test_version_routes_answer_404_for_a_missing_table():
     for path in ("schema-versions", "partition-spec-versions", "partition-spec-versions/1/comparison"):
         response = client.get(f"{BASE}/{path}")
         assert (response.status_code, response.json()) == (404, {"detail": str(error)})
+
+
+def test_unknown_version_through_the_real_services_is_404_with_the_message():
+    """An unknown schema or spec id raised by the services reaches the error handler as a 404 with their text."""
+    tables_repo = InMemoryTablesRepo()
+    first = Schema(schema_id=0, fields=(SchemaField(id=1, name="id", type="long", required=True, doc=None),))
+    table_id = TableId.of("sales", ("retail",), "orders")
+    tables_repo.items[table_id.value] = Table.define(table_id, first, PartitionSpec.unpartitioned(), None, {})
+    client = build_client(
+        get_table_schema_comparison=GetTableSchemaComparisonService(tables_repo),
+        get_table_partition_spec_comparison=GetTablePartitionSpecComparisonService(tables_repo),
+    )
+
+    unknown = client.get(f"{BASE}/schema-versions/9/comparison")
+    base = client.get(f"{BASE}/schema-versions/0/comparison?base=7")
+    spec = client.get(f"{BASE}/partition-spec-versions/4/comparison")
+
+    assert (unknown.status_code, unknown.json()) == (404, {"detail": "schema 9 not found in table orders"})
+    assert (base.status_code, base.json()) == (404, {"detail": "schema 7 not found in table orders"})
+    assert (spec.status_code, spec.json()) == (404, {"detail": "partition spec 4 not found in table orders"})

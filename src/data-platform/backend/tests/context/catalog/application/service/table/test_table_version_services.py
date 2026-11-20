@@ -238,3 +238,50 @@ def test_unknown_table_is_not_found(tables_repo):
         )
     with pytest.raises(NotFoundError, match=MISSING):
         GetTablePartitionSpecComparisonService(tables_repo).execute(_spec_input(1, name="missing"))
+
+
+@pytest.fixture
+def reused_ids_repo(tables_repo) -> InMemoryTablesRepo:
+    """Provide orders with schemas 0, 1 and 2 where schema 1 is current, and specs 0 and 2 where spec 0 is the default.
+
+    Iceberg reuses an existing id when a change produces a schema or spec it already has, so the
+    current one need not be the highest, and ids need not be consecutive.
+    """
+    table = tables_repo.items[TABLE_ID.value]
+    schema_2 = Schema(schema_id=2, fields=(*table.schemas[1].fields, _field(9, "channel")))
+    day = PartitionField(source_id=3, field_id=1000, name="order_ts_day", transform="day")
+    hour = PartitionField(source_id=3, field_id=1002, name="order_ts_hour", transform="hour")
+    tables_repo.items[TABLE_ID.value] = table.model_copy(
+        update={
+            "schemas": (*table.schemas, schema_2),
+            "current_schema_id": 1,
+            "partition_specs": (PartitionSpec(spec_id=0, fields=(day,)), PartitionSpec(spec_id=2, fields=(hour,))),
+            "default_spec_id": 0,
+        }
+    )
+    return tables_repo
+
+
+def test_current_schema_and_default_spec_follow_the_metadata_not_the_highest_id(reused_ids_repo):
+    """Only schema 1 is current and only spec 0 is the default, though schema 2 and spec 2 are higher."""
+    schemas = ListTableSchemaVersionsService(reused_ids_repo).execute(
+        ListTableSchemaVersionsUseCaseInput(catalog="sales", namespace=("retail",), name="orders")
+    )
+    specs = ListTablePartitionSpecVersionsService(reused_ids_repo).execute(
+        ListTablePartitionSpecVersionsUseCaseInput(catalog="sales", namespace=("retail",), name="orders")
+    )
+
+    assert schemas.current_schema_id == 1
+    assert [(v.schema_id, v.current) for v in schemas.items] == [(2, False), (1, True), (0, False)]
+    assert specs.default_spec_id == 0
+    assert [(v.spec_id, v.previous_spec_id, v.default) for v in specs.items] == [(2, 0, False), (0, None, True)]
+
+
+def test_default_base_is_the_next_lower_id_not_the_id_minus_one(reused_ids_repo):
+    """Spec 2 is set against spec 0, the next lower id the table has, never against a missing spec 1."""
+    out = GetTablePartitionSpecComparisonService(reused_ids_repo).execute(_spec_input(2))
+
+    assert (out.base_spec_id, out.spec_id) == (0, 2)
+    assert {(field.previous_expression, field.expression, field.changes) for field in out.items} == {
+        ("day(order_ts)", "hour(order_ts)", ("transform_changed",))
+    }

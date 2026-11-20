@@ -7,9 +7,7 @@
 import type { PartitionChangeCountsApiResponse } from './partitionChangeCountsApiResponse';
 
 /**
- * One partition spec version: its id, the version below it, whether it is the default, its field count and changes.
- *
- * ``changes`` is null for the first version, which has nothing to compare with.
+ * One partition spec version: its id, the version below it, whether it is the default, its fields and changes.
  */
 export interface CatalogTablePartitionSpecVersionApiResponse {
   changes: PartitionChangeCountsApiResponse | null;

@@ -234,10 +234,7 @@ class SchemaChangeCountsApiResponse(BaseModel):
 
 
 class CatalogTableSchemaVersionApiResponse(BaseModel):
-    """One schema version: its id, the version below it, whether it is current, its column count and what it changed.
-
-    ``changes`` is null for the first version, which has nothing to compare with.
-    """
+    """One schema version: its id, the version below it, whether it is current, its column count and what it changed."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -256,12 +253,7 @@ class CatalogTableSchemaVersionsApiResponse(BaseModel):
 
 
 class SchemaFieldComparisonApiResponse(BaseModel):
-    """One field of a schema comparison matched by field id, with its current and previous state.
-
-    The current side is null for a removed field and the previous side null for an added one;
-    a path lists the names from the top-level column down, and ``type`` is the outer type
-    (``struct``, ``list``, ``map`` or the primitive). ``changes`` is empty for an unchanged field.
-    """
+    """One field of a schema comparison matched by field id, with its current and previous state."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -298,10 +290,7 @@ class PartitionChangeCountsApiResponse(BaseModel):
 
 
 class CatalogTablePartitionSpecVersionApiResponse(BaseModel):
-    """One partition spec version: its id, the version below it, whether it is the default, its field count and changes.
-
-    ``changes`` is null for the first version, which has nothing to compare with.
-    """
+    """One partition spec version: its id, the version below it, whether it is the default, its fields and changes."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -320,12 +309,7 @@ class CatalogTablePartitionSpecVersionsApiResponse(BaseModel):
 
 
 class PartitionFieldComparisonApiResponse(BaseModel):
-    """One partition field of a spec comparison, with its current and previous state and ``transform(column)`` text.
-
-    The current side is null for a removed field and the previous side null for an added one;
-    a field whose transform changed carries its new field id and the old one in ``previous_field_id``.
-    ``changes`` is empty for an unchanged field.
-    """
+    """One partition field of a spec comparison, with its current and previous state and ``transform(column)`` text."""
 
     model_config = ConfigDict(from_attributes=True)
 

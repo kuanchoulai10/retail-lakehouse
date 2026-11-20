@@ -8,10 +8,6 @@ import type { SchemaFieldComparisonApiResponseChangesItem } from './schemaFieldC
 
 /**
  * One field of a schema comparison matched by field id, with its current and previous state.
- *
- * The current side is null for a removed field and the previous side null for an added one;
- * a path lists the names from the top-level column down, and ``type`` is the outer type
- * (``struct``, ``list``, ``map`` or the primitive). ``changes`` is empty for an unchanged field.
  */
 export interface SchemaFieldComparisonApiResponse {
   changes: SchemaFieldComparisonApiResponseChangesItem[];

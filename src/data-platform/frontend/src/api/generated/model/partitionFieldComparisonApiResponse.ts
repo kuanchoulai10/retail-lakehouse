@@ -8,10 +8,6 @@ import type { PartitionFieldComparisonApiResponseChangesItem } from './partition
 
 /**
  * One partition field of a spec comparison, with its current and previous state and ``transform(column)`` text.
- *
- * The current side is null for a removed field and the previous side null for an added one;
- * a field whose transform changed carries its new field id and the old one in ``previous_field_id``.
- * ``changes`` is empty for an unchanged field.
  */
 export interface PartitionFieldComparisonApiResponse {
   changes: PartitionFieldComparisonApiResponseChangesItem[];

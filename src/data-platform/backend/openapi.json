@@ -591,7 +591,7 @@
         "type": "object"
       },
       "CatalogTablePartitionSpecVersionApiResponse": {
-        "description": "One partition spec version: its id, the version below it, whether it is the default, its field count and changes.\n\n``changes`` is null for the first version, which has nothing to compare with.",
+        "description": "One partition spec version: its id, the version below it, whether it is the default, its fields and changes.",
         "properties": {
           "changes": {
             "anyOf": [
@@ -803,7 +803,7 @@
         "type": "object"
       },
       "CatalogTableSchemaVersionApiResponse": {
-        "description": "One schema version: its id, the version below it, whether it is current, its column count and what it changed.\n\n``changes`` is null for the first version, which has nothing to compare with.",
+        "description": "One schema version: its id, the version below it, whether it is current, its column count and what it changed.",
         "properties": {
           "changes": {
             "anyOf": [
@@ -1764,7 +1764,7 @@
         "type": "object"
       },
       "PartitionFieldComparisonApiResponse": {
-        "description": "One partition field of a spec comparison, with its current and previous state and ``transform(column)`` text.\n\nThe current side is null for a removed field and the previous side null for an added one;\na field whose transform changed carries its new field id and the old one in ``previous_field_id``.\n``changes`` is empty for an unchanged field.",
+        "description": "One partition field of a spec comparison, with its current and previous state and ``transform(column)`` text.",
         "properties": {
           "changes": {
             "items": {
@@ -2809,7 +2809,7 @@
         "type": "object"
       },
       "SchemaFieldComparisonApiResponse": {
-        "description": "One field of a schema comparison matched by field id, with its current and previous state.\n\nThe current side is null for a removed field and the previous side null for an added one;\na path lists the names from the top-level column down, and ``type`` is the outer type\n(``struct``, ``list``, ``map`` or the primitive). ``changes`` is empty for an unchanged field.",
+        "description": "One field of a schema comparison matched by field id, with its current and previous state.",
         "properties": {
           "changes": {
             "items": {

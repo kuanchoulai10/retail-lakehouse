@@ -8,8 +8,6 @@ import type { SchemaChangeCountsApiResponse } from './schemaChangeCountsApiRespo
 
 /**
  * One schema version: its id, the version below it, whether it is current, its column count and what it changed.
- *
- * ``changes`` is null for the first version, which has nothing to compare with.
  */
 export interface CatalogTableSchemaVersionApiResponse {
   changes: SchemaChangeCountsApiResponse | null;
