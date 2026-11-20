@@ -48,7 +48,7 @@ from context.table_maintenance.application.port.inbound.table_discovery_rules im
     GetTableDiscoveryRulesUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import GetPlatformSettingsUseCaseInput
-from context.table_maintenance.application.service.table import GetTableHealthService, PlanTableMaintenanceService
+from context.table_maintenance.application.service.table import PlanTableMaintenanceService
 from context.table_maintenance.application.service.table_maintenance_policy import (
     EnsureDefaultTableMaintenancePolicyService,
 )
@@ -169,8 +169,8 @@ def test_the_platform_settings_report_the_values_they_are_given():
     assert (values["maintenance_attempt_deadline_seconds"], values["maintenance_max_attempts"]) == (900, 6)
 
 
-def test_the_planner_and_the_health_report_are_given_the_cooldowns():
-    """The planner and the table health read the cooldowns build_use_cases is given, the platform default otherwise."""
+def test_the_planner_is_given_the_cooldowns():
+    """The planner reads the cooldowns build_use_cases is given, the platform default otherwise."""
     cooldowns = OperationCooldowns.platform_default().with_changes(rewrite_data_files=timedelta(minutes=5))
     built = build_use_cases(
         build_repositories(sqlite_engine()),
@@ -185,11 +185,8 @@ def test_the_planner_and_the_health_report_are_given_the_cooldowns():
 
     for use_cases, expected in ((built, cooldowns), (default, OperationCooldowns.platform_default())):
         planner = use_cases.plan_table_maintenance
-        health = use_cases.get_table_health
         assert isinstance(planner, PlanTableMaintenanceService)
-        assert isinstance(health, GetTableHealthService)
         assert planner._cooldowns == expected  # noqa: SLF001
-        assert health._cooldowns == expected  # noqa: SLF001
 
 
 def test_the_platform_settings_are_required():

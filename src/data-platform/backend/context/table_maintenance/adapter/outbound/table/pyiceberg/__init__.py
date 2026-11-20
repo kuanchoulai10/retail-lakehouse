@@ -18,9 +18,6 @@ from context.table_maintenance.adapter.outbound.table.pyiceberg.partition_value_
 from context.table_maintenance.adapter.outbound.table.pyiceberg.read_table_metadata_pyiceberg_gateway import (
     ReadTableMetadataPyIcebergGateway,
 )
-from context.table_maintenance.adapter.outbound.table.pyiceberg.storage_measure_mapper import (
-    storage_measure_from_table,
-)
 from context.table_maintenance.adapter.outbound.table.pyiceberg.table_metadata_mapper import (
     table_metadata_from_table,
 )
@@ -31,7 +28,6 @@ __all__ = [
     "commit_writer_of",
     "observation_from_table",
     "spec_of",
-    "storage_measure_from_table",
     "table_metadata_from_table",
     "partition_value_to_primitive",
 ]

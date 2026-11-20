@@ -11,23 +11,14 @@ from context.table_maintenance.application.port.inbound.table.get_table.output i
 from context.table_maintenance.application.port.inbound.table.get_table.use_case import (
     GetTableUseCase,
 )
-from context.table_maintenance.application.port.inbound.table.get_table_health.input import (
-    GetTableHealthUseCaseInput,
+from context.table_maintenance.application.port.inbound.table.get_table_current_metrics.input import (
+    GetTableCurrentMetricsUseCaseInput,
 )
-from context.table_maintenance.application.port.inbound.table.get_table_health.output import (
-    GetTableHealthUseCaseOutput,
+from context.table_maintenance.application.port.inbound.table.get_table_current_metrics.output import (
+    GetTableCurrentMetricsUseCaseOutput,
 )
-from context.table_maintenance.application.port.inbound.table.get_table_health.use_case import (
-    GetTableHealthUseCase,
-)
-from context.table_maintenance.application.port.inbound.table.get_table_storage.input import (
-    GetTableStorageUseCaseInput,
-)
-from context.table_maintenance.application.port.inbound.table.get_table_storage.output import (
-    GetTableStorageUseCaseOutput,
-)
-from context.table_maintenance.application.port.inbound.table.get_table_storage.use_case import (
-    GetTableStorageUseCase,
+from context.table_maintenance.application.port.inbound.table.get_table_current_metrics.use_case import (
+    GetTableCurrentMetricsUseCase,
 )
 from context.table_maintenance.application.port.inbound.table.list_table_commits.input import (
     ListTableCommitsUseCaseInput,
@@ -115,12 +106,9 @@ __all__ = [
     "GetTableUseCase",
     "GetTableUseCaseInput",
     "GetTableUseCaseOutput",
-    "GetTableHealthUseCase",
-    "GetTableHealthUseCaseInput",
-    "GetTableHealthUseCaseOutput",
-    "GetTableStorageUseCase",
-    "GetTableStorageUseCaseInput",
-    "GetTableStorageUseCaseOutput",
+    "GetTableCurrentMetricsUseCase",
+    "GetTableCurrentMetricsUseCaseInput",
+    "GetTableCurrentMetricsUseCaseOutput",
     "ListTableCommitsUseCase",
     "ListTableCommitsUseCaseInput",
     "ListTableCommitsUseCaseOutput",

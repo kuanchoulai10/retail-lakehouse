@@ -42,9 +42,9 @@ def test_healthz_is_not_under_the_v1_prefix() -> None:
 def test_unknown_catalog_maps_to_404() -> None:
     """A catalog the gateway does not know answers 404 with the message as detail."""
     error = CatalogNotFoundError("nope")
-    client = build_client(get_table_health=StubUseCase(error=error))
+    client = build_client(list_table_commits=StubUseCase(error=error))
 
-    response = client.get("/v1/tables/u-1/health")
+    response = client.get("/v1/tables/u-1/commits")
 
     assert response.status_code == 404
     assert response.json() == {"detail": "catalog nope not found"}

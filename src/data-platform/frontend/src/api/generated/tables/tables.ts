@@ -35,9 +35,8 @@ import type {
   SetTablePriorityApiRequest,
   TableApiResponse,
   TableCommitsApiResponse,
-  TableHealthApiResponse,
+  TableCurrentMetricsApiResponse,
   TableIdentifierApiResponse,
-  TableStorageApiResponse,
   TriggerTableMaintenanceApiRequest,
   TriggerTableMaintenanceApiResponse,
   TriggerTableReconciliationApiResponse,
@@ -1182,107 +1181,6 @@ export function useListTableCommits<TData = Awaited<ReturnType<typeof listTableC
 
 
 
-export const getGetTableHealthUrl = (tableUuid: string,) => {
-
-
-
-
-  return `/v1/tables/${encodeURIComponent(String(tableUuid))}/health`
-}
-
-/**
- * Return the scheduler's maintenance evaluation of one table.
- * @summary Get Table Health
- */
-export const getTableHealth = async (tableUuid: string, options?: Parameters<typeof apiFetch>[1]): Promise<TableHealthApiResponse> => {
-
-  return apiFetch<TableHealthApiResponse>(getGetTableHealthUrl(tableUuid),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetTableHealthQueryKey = (tableUuid: string,) => {
-    return [
-    `/v1/tables/${tableUuid}/health`
-    ] as const;
-    }
-
-
-export const getGetTableHealthQueryOptions = <TData = Awaited<ReturnType<typeof getTableHealth>>, TError = HTTPValidationError>(tableUuid: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableHealth>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetTableHealthQueryKey(tableUuid);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTableHealth>>> = ({ signal }) => getTableHealth(tableUuid, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, enabled: tableUuid !== null && tableUuid !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTableHealth>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetTableHealthQueryResult = NonNullable<Awaited<ReturnType<typeof getTableHealth>>>
-export type GetTableHealthQueryError = HTTPValidationError
-
-
-export function useGetTableHealth<TData = Awaited<ReturnType<typeof getTableHealth>>, TError = HTTPValidationError>(
- tableUuid: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableHealth>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getTableHealth>>,
-          TError,
-          Awaited<ReturnType<typeof getTableHealth>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetTableHealth<TData = Awaited<ReturnType<typeof getTableHealth>>, TError = HTTPValidationError>(
- tableUuid: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableHealth>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getTableHealth>>,
-          TError,
-          Awaited<ReturnType<typeof getTableHealth>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetTableHealth<TData = Awaited<ReturnType<typeof getTableHealth>>, TError = HTTPValidationError>(
- tableUuid: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableHealth>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Get Table Health
- */
-
-export function useGetTableHealth<TData = Awaited<ReturnType<typeof getTableHealth>>, TError = HTTPValidationError>(
- tableUuid: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableHealth>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getGetTableHealthQueryOptions(tableUuid,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
 export const getTriggerTableMaintenanceUrl = (tableUuid: string,) => {
 
 
@@ -1372,7 +1270,108 @@ export const useTriggerTableMaintenance = <TError = HTTPValidationError,
       > => {
       return useMutation(getTriggerTableMaintenanceMutationOptions(options), queryClient);
     }
-    export const getSetTablePriorityUrl = (tableUuid: string,) => {
+    export const getGetTableCurrentMetricsUrl = (tableUuid: string,) => {
+
+
+
+
+  return `/v1/tables/${encodeURIComponent(String(tableUuid))}/metrics/current`
+}
+
+/**
+ * Return a table's newest metrics; both fields are null when it is not managed or not reconciled yet.
+ * @summary Get Table Current Metrics
+ */
+export const getTableCurrentMetrics = async (tableUuid: string, options?: Parameters<typeof apiFetch>[1]): Promise<TableCurrentMetricsApiResponse> => {
+
+  return apiFetch<TableCurrentMetricsApiResponse>(getGetTableCurrentMetricsUrl(tableUuid),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTableCurrentMetricsQueryKey = (tableUuid: string,) => {
+    return [
+    `/v1/tables/${tableUuid}/metrics/current`
+    ] as const;
+    }
+
+
+export const getGetTableCurrentMetricsQueryOptions = <TData = Awaited<ReturnType<typeof getTableCurrentMetrics>>, TError = HTTPValidationError>(tableUuid: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableCurrentMetrics>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTableCurrentMetricsQueryKey(tableUuid);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTableCurrentMetrics>>> = ({ signal }) => getTableCurrentMetrics(tableUuid, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: tableUuid !== null && tableUuid !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTableCurrentMetrics>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetTableCurrentMetricsQueryResult = NonNullable<Awaited<ReturnType<typeof getTableCurrentMetrics>>>
+export type GetTableCurrentMetricsQueryError = HTTPValidationError
+
+
+export function useGetTableCurrentMetrics<TData = Awaited<ReturnType<typeof getTableCurrentMetrics>>, TError = HTTPValidationError>(
+ tableUuid: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableCurrentMetrics>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTableCurrentMetrics>>,
+          TError,
+          Awaited<ReturnType<typeof getTableCurrentMetrics>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTableCurrentMetrics<TData = Awaited<ReturnType<typeof getTableCurrentMetrics>>, TError = HTTPValidationError>(
+ tableUuid: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableCurrentMetrics>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTableCurrentMetrics>>,
+          TError,
+          Awaited<ReturnType<typeof getTableCurrentMetrics>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTableCurrentMetrics<TData = Awaited<ReturnType<typeof getTableCurrentMetrics>>, TError = HTTPValidationError>(
+ tableUuid: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableCurrentMetrics>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Get Table Current Metrics
+ */
+
+export function useGetTableCurrentMetrics<TData = Awaited<ReturnType<typeof getTableCurrentMetrics>>, TError = HTTPValidationError>(
+ tableUuid: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableCurrentMetrics>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetTableCurrentMetricsQueryOptions(tableUuid,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+export const getSetTablePriorityUrl = (tableUuid: string,) => {
 
 
 
@@ -1535,104 +1534,3 @@ export const useTriggerTableReconciliation = <TError = HTTPValidationError,
       > => {
       return useMutation(getTriggerTableReconciliationMutationOptions(options), queryClient);
     }
-    export const getGetTableStorageUrl = (tableUuid: string,) => {
-
-
-
-
-  return `/v1/tables/${encodeURIComponent(String(tableUuid))}/storage`
-}
-
-/**
- * Return the current and old-snapshot storage of one table.
- * @summary Get Table Storage
- */
-export const getTableStorage = async (tableUuid: string, options?: Parameters<typeof apiFetch>[1]): Promise<TableStorageApiResponse> => {
-
-  return apiFetch<TableStorageApiResponse>(getGetTableStorageUrl(tableUuid),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetTableStorageQueryKey = (tableUuid: string,) => {
-    return [
-    `/v1/tables/${tableUuid}/storage`
-    ] as const;
-    }
-
-
-export const getGetTableStorageQueryOptions = <TData = Awaited<ReturnType<typeof getTableStorage>>, TError = HTTPValidationError>(tableUuid: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableStorage>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetTableStorageQueryKey(tableUuid);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTableStorage>>> = ({ signal }) => getTableStorage(tableUuid, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, enabled: tableUuid !== null && tableUuid !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTableStorage>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetTableStorageQueryResult = NonNullable<Awaited<ReturnType<typeof getTableStorage>>>
-export type GetTableStorageQueryError = HTTPValidationError
-
-
-export function useGetTableStorage<TData = Awaited<ReturnType<typeof getTableStorage>>, TError = HTTPValidationError>(
- tableUuid: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableStorage>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getTableStorage>>,
-          TError,
-          Awaited<ReturnType<typeof getTableStorage>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetTableStorage<TData = Awaited<ReturnType<typeof getTableStorage>>, TError = HTTPValidationError>(
- tableUuid: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableStorage>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getTableStorage>>,
-          TError,
-          Awaited<ReturnType<typeof getTableStorage>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetTableStorage<TData = Awaited<ReturnType<typeof getTableStorage>>, TError = HTTPValidationError>(
- tableUuid: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableStorage>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Get Table Storage
- */
-
-export function useGetTableStorage<TData = Awaited<ReturnType<typeof getTableStorage>>, TError = HTTPValidationError>(
- tableUuid: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTableStorage>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getGetTableStorageQueryOptions(tableUuid,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-

@@ -50,9 +50,6 @@ from context.table_maintenance.application.port.outbound.table.read_table_metada
 from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_metadata_ref import (
     TableMetadataRef,
 )
-from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_storage_measure import (
-    TableStorageMeasure,
-)
 from context.table_maintenance.application.port.outbound.table.send_discovery_request.gateway import (
     SendDiscoveryRequestGateway,
 )
@@ -94,7 +91,6 @@ __all__ = [
     "SendTableChangeGatewayInput",
     "Table",
     "TableCommitPage",
-    "TableStorageMeasure",
     "TableMetadata",
     "TableMetadataObservation",
     "TableMetadataRef",

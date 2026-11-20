@@ -26,9 +26,6 @@ if TYPE_CHECKING:
     from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_metadata_ref import (
         TableMetadataRef,
     )
-    from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_storage_measure import (
-        TableStorageMeasure,
-    )
 
 
 class ReadTableMetadataGateway(Gateway):
@@ -59,7 +56,3 @@ class ReadTableMetadataGateway(Gateway):
 
         None when the table does not exist.
         """
-
-    @abstractmethod
-    def measure_storage(self, ref: TableMetadataRef) -> TableStorageMeasure | None:
-        """Return the table's current and referenced storage, or None."""

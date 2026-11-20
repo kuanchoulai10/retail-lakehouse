@@ -15,15 +15,14 @@ from context.table_maintenance.adapter.inbound.web.table.dto import (
     SetTablePriorityApiRequest,
     TableApiResponse,
     TableCommitsApiResponse,
-    TableHealthApiResponse,
-    TableStorageApiResponse,
+    TableCurrentMetricsApiResponse,
+    TableMetricValuesApiResponse,
     TriggerTableMaintenanceApiRequest,
     TriggerTableMaintenanceApiResponse,
     TriggerTableReconciliationApiResponse,
 )
 from context.table_maintenance.application.port.inbound.table import (
-    GetTableHealthUseCaseInput,
-    GetTableStorageUseCaseInput,
+    GetTableCurrentMetricsUseCaseInput,
     GetTableUseCaseInput,
     ListTableCommitsUseCaseInput,
     ListTablesUseCaseInput,
@@ -51,18 +50,14 @@ def get_table(table_uuid: str, use_cases: UseCases) -> TableApiResponse:
     return TableApiResponse.model_validate(output)
 
 
-@router.get("/{table_uuid}/health")
-def get_table_health(table_uuid: str, use_cases: UseCases) -> TableHealthApiResponse:
-    """Return the scheduler's maintenance evaluation of one table."""
-    output = use_cases.get_table_health.execute(GetTableHealthUseCaseInput(uuid=table_uuid))
-    return TableHealthApiResponse.model_validate(output)
-
-
-@router.get("/{table_uuid}/storage")
-def get_table_storage(table_uuid: str, use_cases: UseCases) -> TableStorageApiResponse:
-    """Return the current and old-snapshot storage of one table."""
-    output = use_cases.get_table_storage.execute(GetTableStorageUseCaseInput(uuid=table_uuid))
-    return TableStorageApiResponse.model_validate(output)
+@router.get("/{table_uuid}/metrics/current")
+def get_table_current_metrics(table_uuid: str, use_cases: UseCases) -> TableCurrentMetricsApiResponse:
+    """Return a table's newest metrics; both fields are null when it is not managed or not reconciled yet."""
+    output = use_cases.get_table_current_metrics.execute(GetTableCurrentMetricsUseCaseInput(uuid=table_uuid))
+    return TableCurrentMetricsApiResponse(
+        observed_at=output.observed_at,
+        metrics=None if output.counts is None else TableMetricValuesApiResponse(**output.counts),
+    )
 
 
 @router.get("/{table_uuid}/commits")

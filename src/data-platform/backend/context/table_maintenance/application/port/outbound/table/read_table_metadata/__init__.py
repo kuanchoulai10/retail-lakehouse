@@ -24,9 +24,6 @@ from context.table_maintenance.application.port.outbound.table.read_table_metada
 from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_metadata_ref import (
     TableMetadataRef,
 )
-from context.table_maintenance.application.port.outbound.table.read_table_metadata.table_storage_measure import (
-    TableStorageMeasure,
-)
 
 __all__ = [
     "CatalogNotFoundError",
@@ -37,5 +34,4 @@ __all__ = [
     "TableMetadataObservation",
     "TableMetadata",
     "TableMetadataRef",
-    "TableStorageMeasure",
 ]

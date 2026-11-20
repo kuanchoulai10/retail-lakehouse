@@ -12,9 +12,6 @@ from context.table_maintenance.adapter.outbound.table.pyiceberg.commit_page_mapp
 from context.table_maintenance.adapter.outbound.table.pyiceberg.observation_mapper import (
     observation_from_table,
 )
-from context.table_maintenance.adapter.outbound.table.pyiceberg.storage_measure_mapper import (
-    storage_measure_from_table,
-)
 from context.table_maintenance.adapter.outbound.table.pyiceberg.table_metadata_mapper import (
     table_metadata_from_table,
 )
@@ -27,7 +24,6 @@ from context.table_maintenance.application.port.outbound.table import (
     TableMetadata,
     TableMetadataObservation,
     TableMetadataRef,
-    TableStorageMeasure,
 )
 
 if TYPE_CHECKING:
@@ -95,13 +91,6 @@ class ReadTableMetadataPyIcebergGateway(ReadTableMetadataGateway):
         if table is None:
             return None
         return commit_page_from_table(table, selection)
-
-    def measure_storage(self, ref: TableMetadataRef) -> TableStorageMeasure | None:
-        """Return the table's current and referenced storage, or None when the table does not exist."""
-        table = self._load(ref)
-        if table is None:
-            return None
-        return storage_measure_from_table(table)
 
     def _open(self, name: str) -> Catalog:
         try:

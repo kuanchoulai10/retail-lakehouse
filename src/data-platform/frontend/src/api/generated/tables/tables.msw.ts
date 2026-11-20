@@ -26,9 +26,8 @@ import type {
   SetTablePriorityApiRequest,
   TableApiResponse,
   TableCommitsApiResponse,
-  TableHealthApiResponse,
+  TableCurrentMetricsApiResponse,
   TableIdentifierApiResponse,
-  TableStorageApiResponse,
   TriggerTableMaintenanceApiRequest,
   TriggerTableMaintenanceApiResponse,
   TriggerTableReconciliationApiResponse,
@@ -74,19 +73,15 @@ export const getListTableCommitsResponseMock = (overrideResponse: Partial<Extrac
         [faker.string.alphanumeric(5)]: faker.string.alpha({length: {min: 10, max: 20}})
       }, writer: faker.string.alpha({length: {min: 10, max: 20}})})), truncated: faker.datatype.boolean(), ...overrideResponse})
 
-export const getGetTableHealthResponseMock = (overrideResponse: Partial<Extract<TableHealthApiResponse, object>> = {}): TableHealthApiResponse => ({equality_delete_files: faker.number.int(), not_scheduled_reason: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), operations: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({measured: faker.helpers.arrayElement([faker.number.int(),null,]), next_eligible_at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,]), operation: faker.string.alpha({length: {min: 10, max: 20}}), qualifying_partitions: faker.helpers.arrayElement([faker.number.int(),null,]), size_bytes: faker.helpers.arrayElement([faker.number.int(),null,]), size_source: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), threshold: faker.helpers.arrayElement([faker.number.int(),null,]), verdict: faker.string.alpha({length: {min: 10, max: 20}})})), position_delete_files: faker.number.int(), scheduled: faker.datatype.boolean(), ...overrideResponse})
-
 export const getTriggerTableMaintenanceResponseMock = (overrideResponse: Partial<Extract<TriggerTableMaintenanceApiResponse, object>> = {}): TriggerTableMaintenanceApiResponse => ({accepted: faker.datatype.boolean(), ...overrideResponse})
+
+export const getGetTableCurrentMetricsResponseMock = (overrideResponse: Partial<Extract<TableCurrentMetricsApiResponse, object>> = {}): TableCurrentMetricsApiResponse => ({metrics: faker.helpers.arrayElement([{data_files: faker.number.int(), data_records: faker.number.int(), data_size_bytes: faker.number.int(), deletion_vectors: faker.number.int(), equality_delete_files: faker.number.int(), equality_delete_records: faker.number.int(), manifest_added_entries: faker.number.int(), manifest_deleted_entries: faker.number.int(), manifest_existing_entries: faker.number.int(), manifests: faker.number.int(), manifests_size_bytes: faker.number.int(), position_delete_files: faker.number.int(), position_delete_records: faker.number.int(), reducible_files: faker.number.int(), snapshots: faker.number.int()},null,]), observed_at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,]), ...overrideResponse})
 
 export const getSetTablePriorityResponseMock = (overrideResponse: Partial<Extract<TableApiResponse, object>> = {}): TableApiResponse => ({catalog: faker.string.alpha({length: {min: 10, max: 20}}), last_committed_at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,]), last_discovered_at: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z',null,]), matched_rule_id: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}),null,]), namespace: faker.string.alpha({length: {min: 10, max: 20}}), operation_states: {
         [faker.string.alphanumeric(5)]: {}
       }, priority: faker.string.alpha({length: {min: 10, max: 20}}), registered_at: faker.date.past().toISOString().slice(0, 19) + 'Z', status: faker.string.alpha({length: {min: 10, max: 20}}), table: faker.string.alpha({length: {min: 10, max: 20}}), updated_at: faker.date.past().toISOString().slice(0, 19) + 'Z', uuid: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
 
 export const getTriggerTableReconciliationResponseMock = (overrideResponse: Partial<Extract<TriggerTableReconciliationApiResponse, object>> = {}): TriggerTableReconciliationApiResponse => ({accepted: faker.datatype.boolean(), ...overrideResponse})
-
-export const getGetTableStorageResponseMock = (overrideResponse: Partial<Extract<TableStorageApiResponse, object>> = {}): TableStorageApiResponse => ({attempts_without_metrics: faker.number.int(), current_bytes: faker.number.int(), current_files: faker.number.int(), old_snapshot_bytes: faker.number.int(), old_snapshot_files: faker.number.int(), reclaimed: {
-        [faker.string.alphanumeric(5)]: faker.number.int()
-      }, window_days: faker.number.int(), ...overrideResponse})
 
 
 export const getListCatalogTablesMockHandler = (overrideResponse?: TableIdentifierApiResponse[] | ((info: Parameters<HttpResponseResolver<{ catalog: string; namespace: string }>>[0]) => Promise<TableIdentifierApiResponse[]> | TableIdentifierApiResponse[]), options?: RequestHandlerOptions) => {
@@ -219,18 +214,6 @@ export const getListTableCommitsMockHandler = (overrideResponse?: TableCommitsAp
   }, options)
 }
 
-export const getGetTableHealthMockHandler = (overrideResponse?: TableHealthApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<TableHealthApiResponse> | TableHealthApiResponse), options?: RequestHandlerOptions) => {
-  return http.get<{ tableUuid: string }>('*/v1/tables/:tableUuid/health', async (info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => {
-
-
-    return HttpResponse.json(overrideResponse !== undefined
-    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getGetTableHealthResponseMock(),
-      { status: 200
-      })
-  }, options)
-}
-
 export const getTriggerTableMaintenanceMockHandler = (overrideResponse?: TriggerTableMaintenanceApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }, TriggerTableMaintenanceApiRequest>>[0]) => Promise<TriggerTableMaintenanceApiResponse> | TriggerTableMaintenanceApiResponse), options?: RequestHandlerOptions) => {
   return http.post<{ tableUuid: string }, TriggerTableMaintenanceApiRequest>('*/v1/tables/:tableUuid/maintenance', async (info: Parameters<HttpResponseResolver<{ tableUuid: string }, TriggerTableMaintenanceApiRequest>>[0]) => {
 
@@ -239,6 +222,18 @@ export const getTriggerTableMaintenanceMockHandler = (overrideResponse?: Trigger
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
     : getTriggerTableMaintenanceResponseMock(),
       { status: 202
+      })
+  }, options)
+}
+
+export const getGetTableCurrentMetricsMockHandler = (overrideResponse?: TableCurrentMetricsApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<TableCurrentMetricsApiResponse> | TableCurrentMetricsApiResponse), options?: RequestHandlerOptions) => {
+  return http.get<{ tableUuid: string }>('*/v1/tables/:tableUuid/metrics/current', async (info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => {
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetTableCurrentMetricsResponseMock(),
+      { status: 200
       })
   }, options)
 }
@@ -266,18 +261,6 @@ export const getTriggerTableReconciliationMockHandler = (overrideResponse?: Trig
       })
   }, options)
 }
-
-export const getGetTableStorageMockHandler = (overrideResponse?: TableStorageApiResponse | ((info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => Promise<TableStorageApiResponse> | TableStorageApiResponse), options?: RequestHandlerOptions) => {
-  return http.get<{ tableUuid: string }>('*/v1/tables/:tableUuid/storage', async (info: Parameters<HttpResponseResolver<{ tableUuid: string }>>[0]) => {
-
-
-    return HttpResponse.json(overrideResponse !== undefined
-    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getGetTableStorageResponseMock(),
-      { status: 200
-      })
-  }, options)
-}
 export const getTablesMock = () => [
   getListCatalogTablesMockHandler(),
   getCreateTableMockHandler(),
@@ -290,9 +273,8 @@ export const getTablesMock = () => [
   getListTablesMockHandler(),
   getGetTableMockHandler(),
   getListTableCommitsMockHandler(),
-  getGetTableHealthMockHandler(),
   getTriggerTableMaintenanceMockHandler(),
+  getGetTableCurrentMetricsMockHandler(),
   getSetTablePriorityMockHandler(),
-  getTriggerTableReconciliationMockHandler(),
-  getGetTableStorageMockHandler()
+  getTriggerTableReconciliationMockHandler()
 ]

@@ -47,7 +47,6 @@ GATEWAY_EXTRA_FILES = {
     "table_metadata_observation.py",
     "table_commit_page.py",
     "table_commit_selection.py",
-    "table_storage_measure.py",
     "catalog_not_found_error.py",
     "job_container_exit.py",
 }

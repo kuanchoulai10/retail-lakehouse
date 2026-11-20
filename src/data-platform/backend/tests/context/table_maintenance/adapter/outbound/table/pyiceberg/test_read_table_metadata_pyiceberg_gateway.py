@@ -471,49 +471,12 @@ def test_list_commits_by_writer(catalog: SqlCatalog, gateway: ReadTableMetadataP
     assert spark.truncated is False
 
 
-def test_measure_storage_counts_files_kept_by_old_snapshots(
-    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
-) -> None:
-    """Storage measures count the files that only old snapshots still reference."""
-    table = _partitioned(catalog)
-    table.append(_rows([1, 2], day=1))
-    table.overwrite(_rows([5, 6], day=2))
-
-    measure = gateway.measure_storage(_ref())
-
-    assert measure is not None
-    assert measure.table_uuid == str(table.metadata.table_uuid)
-    assert measure.current_files > 0
-    assert measure.referenced_files > measure.current_files
-    assert measure.referenced_bytes > measure.current_bytes > 0
-
-
-def test_measure_storage_of_empty_table_is_zero(
-    catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway
-) -> None:
-    """The storage of a table without data measures zero."""
-    catalog.create_namespace("db")
-    table = catalog.create_table("db.events", SCHEMA)
-
-    measure = gateway.measure_storage(_ref())
-
-    assert measure is not None
-    assert measure.table_uuid == str(table.metadata.table_uuid)
-    assert (
-        measure.current_bytes,
-        measure.current_files,
-        measure.referenced_bytes,
-        measure.referenced_files,
-    ) == (0, 0, 0, 0)
-
-
 def test_reads_return_none_for_missing_table(catalog: SqlCatalog, gateway: ReadTableMetadataPyIcebergGateway) -> None:
-    """List commits and measure storage return None for a missing table."""
+    """List commits returns None for a missing table."""
     catalog.create_namespace("db")
     ref = _ref(table="nope")
 
     assert gateway.list_commits(ref, TableCommitSelection(limit=5)) is None
-    assert gateway.measure_storage(ref) is None
 
 
 def test_unknown_catalog_raises_catalog_not_found() -> None:

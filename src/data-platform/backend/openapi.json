@@ -3098,6 +3098,39 @@
         "title": "TableCommitsApiResponse",
         "type": "object"
       },
+      "TableCurrentMetricsApiResponse": {
+        "description": "Carry a table's newest metrics; both fields are null for a table that is not managed or not reconciled yet.",
+        "properties": {
+          "metrics": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TableMetricValuesApiResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          }
+        },
+        "required": [
+          "observed_at",
+          "metrics"
+        ],
+        "title": "TableCurrentMetricsApiResponse",
+        "type": "object"
+      },
       "TableDiscoveryRuleApiRequest": {
         "additionalProperties": false,
         "description": "Carry one rule of a rule list; a rule without ``id`` is new.",
@@ -3244,142 +3277,6 @@
           "rules"
         ],
         "title": "TableDiscoveryRulesApiResponse",
-        "type": "object"
-      },
-      "TableHealthApiResponse": {
-        "description": "Describe the maintenance health of a table.",
-        "properties": {
-          "equality_delete_files": {
-            "title": "Equality Delete Files",
-            "type": "integer"
-          },
-          "not_scheduled_reason": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Not Scheduled Reason"
-          },
-          "operations": {
-            "items": {
-              "$ref": "#/components/schemas/TableHealthOperationApiResponse"
-            },
-            "title": "Operations",
-            "type": "array"
-          },
-          "position_delete_files": {
-            "title": "Position Delete Files",
-            "type": "integer"
-          },
-          "scheduled": {
-            "title": "Scheduled",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "scheduled",
-          "not_scheduled_reason",
-          "operations",
-          "position_delete_files",
-          "equality_delete_files"
-        ],
-        "title": "TableHealthApiResponse",
-        "type": "object"
-      },
-      "TableHealthOperationApiResponse": {
-        "description": "Describe the scheduler's verdict on one maintenance operation.",
-        "properties": {
-          "measured": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Measured"
-          },
-          "next_eligible_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Next Eligible At"
-          },
-          "operation": {
-            "title": "Operation",
-            "type": "string"
-          },
-          "qualifying_partitions": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Qualifying Partitions"
-          },
-          "size_bytes": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Size Bytes"
-          },
-          "size_source": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Size Source"
-          },
-          "threshold": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Threshold"
-          },
-          "verdict": {
-            "title": "Verdict",
-            "type": "string"
-          }
-        },
-        "required": [
-          "operation",
-          "verdict",
-          "measured",
-          "threshold",
-          "next_eligible_at",
-          "qualifying_partitions",
-          "size_bytes",
-          "size_source"
-        ],
-        "title": "TableHealthOperationApiResponse",
         "type": "object"
       },
       "TableIdentifierApiResponse": {
@@ -3959,6 +3856,90 @@
         "title": "TableMaintenanceRunOperationApiResponse",
         "type": "object"
       },
+      "TableMetricValuesApiResponse": {
+        "description": "Carry the measured counts of a table's files, manifests and snapshots.",
+        "properties": {
+          "data_files": {
+            "title": "Data Files",
+            "type": "integer"
+          },
+          "data_records": {
+            "title": "Data Records",
+            "type": "integer"
+          },
+          "data_size_bytes": {
+            "title": "Data Size Bytes",
+            "type": "integer"
+          },
+          "deletion_vectors": {
+            "title": "Deletion Vectors",
+            "type": "integer"
+          },
+          "equality_delete_files": {
+            "title": "Equality Delete Files",
+            "type": "integer"
+          },
+          "equality_delete_records": {
+            "title": "Equality Delete Records",
+            "type": "integer"
+          },
+          "manifest_added_entries": {
+            "title": "Manifest Added Entries",
+            "type": "integer"
+          },
+          "manifest_deleted_entries": {
+            "title": "Manifest Deleted Entries",
+            "type": "integer"
+          },
+          "manifest_existing_entries": {
+            "title": "Manifest Existing Entries",
+            "type": "integer"
+          },
+          "manifests": {
+            "title": "Manifests",
+            "type": "integer"
+          },
+          "manifests_size_bytes": {
+            "title": "Manifests Size Bytes",
+            "type": "integer"
+          },
+          "position_delete_files": {
+            "title": "Position Delete Files",
+            "type": "integer"
+          },
+          "position_delete_records": {
+            "title": "Position Delete Records",
+            "type": "integer"
+          },
+          "reducible_files": {
+            "title": "Reducible Files",
+            "type": "integer"
+          },
+          "snapshots": {
+            "title": "Snapshots",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "data_files",
+          "position_delete_files",
+          "equality_delete_files",
+          "deletion_vectors",
+          "data_size_bytes",
+          "data_records",
+          "position_delete_records",
+          "equality_delete_records",
+          "reducible_files",
+          "manifests",
+          "manifests_size_bytes",
+          "manifest_added_entries",
+          "manifest_existing_entries",
+          "manifest_deleted_entries",
+          "snapshots"
+        ],
+        "title": "TableMetricValuesApiResponse",
+        "type": "object"
+      },
       "TableReconciliationApiResponse": {
         "description": "Describe one reconciliation of a table.",
         "properties": {
@@ -4063,53 +4044,6 @@
           "policy_target"
         ],
         "title": "TableReconciliationApiResponse",
-        "type": "object"
-      },
-      "TableStorageApiResponse": {
-        "description": "Describe the storage of a table and what maintenance reclaimed.",
-        "properties": {
-          "attempts_without_metrics": {
-            "title": "Attempts Without Metrics",
-            "type": "integer"
-          },
-          "current_bytes": {
-            "title": "Current Bytes",
-            "type": "integer"
-          },
-          "current_files": {
-            "title": "Current Files",
-            "type": "integer"
-          },
-          "old_snapshot_bytes": {
-            "title": "Old Snapshot Bytes",
-            "type": "integer"
-          },
-          "old_snapshot_files": {
-            "title": "Old Snapshot Files",
-            "type": "integer"
-          },
-          "reclaimed": {
-            "additionalProperties": {
-              "type": "integer"
-            },
-            "title": "Reclaimed",
-            "type": "object"
-          },
-          "window_days": {
-            "title": "Window Days",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "current_bytes",
-          "current_files",
-          "old_snapshot_bytes",
-          "old_snapshot_files",
-          "window_days",
-          "reclaimed",
-          "attempts_without_metrics"
-        ],
-        "title": "TableStorageApiResponse",
         "type": "object"
       },
       "TableSummaryApiResponse": {
@@ -6913,49 +6847,6 @@
         ]
       }
     },
-    "/v1/tables/{table_uuid}/health": {
-      "get": {
-        "description": "Return the scheduler's maintenance evaluation of one table.",
-        "operationId": "get_table_health",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "table_uuid",
-            "required": true,
-            "schema": {
-              "title": "Table Uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TableHealthApiResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Table Health",
-        "tags": [
-          "tables"
-        ]
-      }
-    },
     "/v1/tables/{table_uuid}/maintenance": {
       "post": {
         "description": "Run the given operations on a table now.",
@@ -7004,6 +6895,49 @@
           }
         },
         "summary": "Trigger Table Maintenance",
+        "tags": [
+          "tables"
+        ]
+      }
+    },
+    "/v1/tables/{table_uuid}/metrics/current": {
+      "get": {
+        "description": "Return a table's newest metrics; both fields are null when it is not managed or not reconciled yet.",
+        "operationId": "get_table_current_metrics",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_uuid",
+            "required": true,
+            "schema": {
+              "title": "Table Uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableCurrentMetricsApiResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Table Current Metrics",
         "tags": [
           "tables"
         ]
@@ -7178,49 +7112,6 @@
         "summary": "List Table Reconciliations",
         "tags": [
           "table-reconciliations"
-        ]
-      }
-    },
-    "/v1/tables/{table_uuid}/storage": {
-      "get": {
-        "description": "Return the current and old-snapshot storage of one table.",
-        "operationId": "get_table_storage",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "table_uuid",
-            "required": true,
-            "schema": {
-              "title": "Table Uuid",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TableStorageApiResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Table Storage",
-        "tags": [
-          "tables"
         ]
       }
     },

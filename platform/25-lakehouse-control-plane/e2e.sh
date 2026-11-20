@@ -826,7 +826,6 @@ ORDERS_OBJECTS_BEFORE="$(object_count "${ORDERS_PREFIX}")"
 progress "before: ${ORDERS} files=${ORDERS_FILES_BEFORE} snapshots=${ORDERS_SNAPSHOTS_BEFORE} objects=${ORDERS_OBJECTS_BEFORE}"
 
 ORDERS_BEFORE_RUNS="$(run_ids "${ORDERS_UUID}")"
-RECLAIMED_BEFORE="$(api GET "/v1/tables/${ORDERS_UUID}/storage" | jq '.reclaimed.rewritten_data_files // 0')"
 
 progress "checking the applicable policies of both tables"
 assert_applicable_policy "${ORDERS_UUID}" tm-e2e-orders
@@ -864,14 +863,13 @@ REGIONS_OBJECTS_AFTER="$(object_count "${REGIONS_PREFIX}")"
 progress "after: ${ORDERS} files=${ORDERS_FILES_AFTER} snapshots=${ORDERS_SNAPSHOTS_AFTER} objects=${ORDERS_OBJECTS_AFTER}"
 progress "after: ${REGIONS} files=${REGIONS_FILES_AFTER} snapshots=${REGIONS_SNAPSHOTS_AFTER} objects=${REGIONS_OBJECTS_AFTER}"
 
-progress "reading ${ORDERS} metadata, commits, health and storage through the API"
+progress "reading ${ORDERS} metadata and commits and ${REGIONS} current metrics through the API"
 # shellcheck disable=SC2016
 check 'any(.[]; .name == $t)' "$(api GET "/v1/catalogs/${CATALOG}/namespaces/${SCHEMA}/tables")" \
   "the table list of ${CATALOG}.${SCHEMA} lacks ${ORDERS}" --arg t "${ORDERS}"
 ORDERS_METADATA="$(api GET "/v1/catalogs/${CATALOG}/namespaces/${SCHEMA}/tables/${ORDERS}")"
 ORDERS_COMMITS="$(api GET "/v1/tables/${ORDERS_UUID}/commits?limit=1000")"
-ORDERS_HEALTH="$(api GET "/v1/tables/${ORDERS_UUID}/health")"
-ORDERS_STORAGE="$(api GET "/v1/tables/${ORDERS_UUID}/storage")"
+REGIONS_METRICS="$(api GET "/v1/tables/${REGIONS_UUID}/metrics/current")"
 jq -e '.uuid == "'"${ORDERS_UUID}"'"' <<<"${ORDERS_METADATA}" >/dev/null \
   || { echo "the catalog API returned another uuid than the maintenance table ${ORDERS_UUID}" >&2; exit 1; }
 METADATA_FILES="$(jq '(.current_snapshot_id) as $current
@@ -891,17 +889,15 @@ progress "metadata: ${ORDERS} data+delete files=${METADATA_FILES} snapshots=${ME
 jq -e '[.items[].committed_at | sub("\\.[0-9]+"; "") | sub("\\+00:00$"; "Z") | fromdateiso8601]
   | length > 0 and .[0] == max' <<<"${ORDERS_COMMITS}" >/dev/null \
   || { echo "${ORDERS} commits are not newest first" >&2; exit 1; }
-jq -e '.operations | length == 4' <<<"${ORDERS_HEALTH}" >/dev/null \
-  || { echo "${ORDERS} health does not report four operations" >&2; exit 1; }
-RECLAIMED_REWRITTEN=$(( $(jq '.reclaimed.rewritten_data_files // 0' <<<"${ORDERS_STORAGE}") - RECLAIMED_BEFORE ))
-progress "storage: ${ORDERS} reclaimed ${RECLAIMED_REWRITTEN} more rewritten data files (${RECLAIMED_BEFORE} before the run)"
+jq -e '.metrics.data_files != null' <<<"${REGIONS_METRICS}" >/dev/null \
+  || { echo "${REGIONS} current metrics carry no data_files: ${REGIONS_METRICS}" >&2; exit 1; }
 REPORTED_REWRITTEN="$(jq '[.[] | .operations[] | select(.operation == "rewrite_data_files")
   | .metrics.rewritten_data_files_count // 0] | add // 0' <<<"${ORDERS_RUNS}")"
 if jq -e '[.[] | .operations[] | select(.operation == "rewrite_data_files")
     | .metrics.completed_without_callback] | any' <<<"${ORDERS_RUNS}" >/dev/null; then
-  progress "${ORDERS}: the compaction callback was lost; skipping the reclaimed check"
-elif (( RECLAIMED_REWRITTEN <= 0 || RECLAIMED_REWRITTEN != REPORTED_REWRITTEN )); then
-  echo "${ORDERS} storage reclaimed ${RECLAIMED_REWRITTEN} more rewritten data files, the compaction reported ${REPORTED_REWRITTEN}" >&2
+  progress "${ORDERS}: the compaction callback was lost; skipping the rewritten files check"
+elif (( REPORTED_REWRITTEN <= 0 )); then
+  echo "${ORDERS} compaction reported no rewritten data files" >&2
   exit 1
 fi
 

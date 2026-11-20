@@ -7,8 +7,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from context.table_maintenance.application.port.inbound.table import (
-        GetTableHealthUseCase,
-        GetTableStorageUseCase,
+        GetTableCurrentMetricsUseCase,
         GetTableUseCase,
         ListTableCommitsUseCase,
         ListTableMetricsUseCase,
@@ -79,8 +78,7 @@ class UseCases:
     list_table_maintenance_policies: ListTableMaintenancePoliciesUseCase
     update_table_maintenance_policy: UpdateTableMaintenancePolicyUseCase
     get_table: GetTableUseCase
-    get_table_health: GetTableHealthUseCase
-    get_table_storage: GetTableStorageUseCase
+    get_table_current_metrics: GetTableCurrentMetricsUseCase
     list_table_commits: ListTableCommitsUseCase
     list_table_metrics: ListTableMetricsUseCase
     list_tables: ListTablesUseCase

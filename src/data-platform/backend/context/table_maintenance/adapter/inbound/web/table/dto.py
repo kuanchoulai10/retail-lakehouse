@@ -35,45 +35,35 @@ class TableApiResponse(BaseModel):
     )
 
 
-class TableHealthOperationApiResponse(BaseModel):
-    """Describe the scheduler's verdict on one maintenance operation."""
+class TableMetricValuesApiResponse(BaseModel):
+    """Carry the measured counts of a table's files, manifests and snapshots."""
 
     model_config = ConfigDict(from_attributes=True)
 
-    operation: str
-    verdict: str
-    measured: int | None
-    threshold: int | None
-    next_eligible_at: datetime | None
-    qualifying_partitions: int | None
-    size_bytes: int | None
-    size_source: str | None
-
-
-class TableHealthApiResponse(BaseModel):
-    """Describe the maintenance health of a table."""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    scheduled: bool
-    not_scheduled_reason: str | None
-    operations: list[TableHealthOperationApiResponse]
+    data_files: int
     position_delete_files: int
     equality_delete_files: int
+    deletion_vectors: int
+    data_size_bytes: int
+    data_records: int
+    position_delete_records: int
+    equality_delete_records: int
+    reducible_files: int
+    manifests: int
+    manifests_size_bytes: int
+    manifest_added_entries: int
+    manifest_existing_entries: int
+    manifest_deleted_entries: int
+    snapshots: int
 
 
-class TableStorageApiResponse(BaseModel):
-    """Describe the storage of a table and what maintenance reclaimed."""
+class TableCurrentMetricsApiResponse(BaseModel):
+    """Carry a table's newest metrics; both fields are null for a table that is not managed or not reconciled yet."""
 
     model_config = ConfigDict(from_attributes=True)
 
-    current_bytes: int
-    current_files: int
-    old_snapshot_bytes: int
-    old_snapshot_files: int
-    window_days: int
-    reclaimed: dict[str, int]
-    attempts_without_metrics: int
+    observed_at: datetime | None
+    metrics: TableMetricValuesApiResponse | None
 
 
 class TableCommitApiResponse(BaseModel):

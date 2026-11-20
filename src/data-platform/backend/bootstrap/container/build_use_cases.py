@@ -8,9 +8,8 @@ from typing import TYPE_CHECKING
 from bootstrap.container.use_cases import UseCases
 from context.table_maintenance.application.domain.model.table import DEFAULT_OPERATION_COOLDOWNS
 from context.table_maintenance.application.service.table import (
-    GetTableHealthService,
+    GetTableCurrentMetricsService,
     GetTableService,
-    GetTableStorageService,
     ListTableCommitsService,
     ListTableMetricsService,
     ListTablesService,
@@ -135,10 +134,7 @@ def build_use_cases(
             policies, attachments, tables, table_changes, clock=clock
         ),
         get_table=GetTableService(tables, discoveries, policies),
-        get_table_health=GetTableHealthService(
-            tables, catalog, resolve_applicable_policy, cooldowns=cooldowns, clock=clock
-        ),
-        get_table_storage=GetTableStorageService(tables, catalog, runs, clock=clock),
+        get_table_current_metrics=GetTableCurrentMetricsService(tables, repos.table_metrics),
         list_table_commits=ListTableCommitsService(tables, catalog),
         list_table_metrics=ListTableMetricsService(tables, repos.table_metrics),
         list_tables=ListTablesService(tables, discoveries, policies),

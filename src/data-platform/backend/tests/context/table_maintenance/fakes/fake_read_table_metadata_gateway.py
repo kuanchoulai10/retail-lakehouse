@@ -16,7 +16,6 @@ if TYPE_CHECKING:
         TableCommitPage,
         TableCommitSelection,
         TableMetadataObservation,
-        TableStorageMeasure,
     )
 
 
@@ -29,7 +28,6 @@ class FakeReadTableMetadataGateway(ReadTableMetadataGateway):
         self.last_commits: dict[tuple[str, str, str], str] = {}
         self.observations: dict[tuple[str, str, str], TableMetadataObservation] = {}
         self.commit_pages: dict[tuple[str, str, str], TableCommitPage] = {}
-        self.storage_measures: dict[tuple[str, str, str], TableStorageMeasure] = {}
         self.calls: list[tuple[str, object]] = []
 
     def add_table(
@@ -86,8 +84,3 @@ class FakeReadTableMetadataGateway(ReadTableMetadataGateway):
         """Return the registered commit page or None."""
         self.calls.append(("list_commits", (ref, selection)))
         return self.commit_pages.get((ref.catalog, ref.namespace, ref.table))
-
-    def measure_storage(self, ref: TableMetadataRef) -> TableStorageMeasure | None:
-        """Return the registered storage measure or None."""
-        self.calls.append(("measure_storage", ref))
-        return self.storage_measures.get((ref.catalog, ref.namespace, ref.table))

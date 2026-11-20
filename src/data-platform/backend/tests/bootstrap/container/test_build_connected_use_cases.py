@@ -22,7 +22,7 @@ from context.table_maintenance.application.port.inbound.table_maintenance_policy
     ListTableMaintenancePoliciesUseCaseInput,
 )
 from context.table_maintenance.application.port.inbound.table_maintenance_run import GetPlatformSettingsUseCaseInput
-from context.table_maintenance.application.service.table import GetTableHealthService, PlanTableMaintenanceService
+from context.table_maintenance.application.service.table import PlanTableMaintenanceService
 from context.table_maintenance.application.service.table_maintenance_run import (
     RecordTableMaintenanceOperationResultService,
 )
@@ -79,8 +79,8 @@ def test_the_recorder_knows_each_size_s_memory(tmp_path):
     assert recorder._size_memory == build_size_memory(settings.spark)  # noqa: SLF001
 
 
-def test_the_planner_and_the_health_report_read_the_cooldowns_the_settings_say(tmp_path):
-    """Both the planner and the table health read the cooldowns and the backoff cap the worker and the api are given."""
+def test_the_planner_reads_the_cooldowns_the_settings_say(tmp_path):
+    """The planner reads the cooldowns and the backoff cap the worker and the api are given."""
     settings = sqlite_settings(
         maintenance_failure_backoff_cap_seconds=7200, maintenance_rewrite_data_files_cooldown_seconds=60
     )
@@ -96,14 +96,11 @@ def test_the_planner_and_the_health_report_read_the_cooldowns_the_settings_say(t
         bridge.close()
 
     planner = use_cases.plan_table_maintenance
-    health = use_cases.get_table_health
     assert isinstance(planner, PlanTableMaintenanceService)
-    assert isinstance(health, GetTableHealthService)
     expected = build_operation_cooldowns(settings)
     assert expected.failure_backoff_cap == timedelta(hours=2)
     assert expected.rewrite_data_files == timedelta(seconds=60)
     assert planner._cooldowns == expected  # noqa: SLF001
-    assert health._cooldowns == expected  # noqa: SLF001
 
 
 def test_the_planner_saves_the_metrics_in_sql(tmp_path):

@@ -11,11 +11,8 @@ from context.table_maintenance.application.service.table.attention_policy_names 
 from context.table_maintenance.application.service.table.get_table import (
     GetTableService,
 )
-from context.table_maintenance.application.service.table.get_table_health import (
-    GetTableHealthService,
-)
-from context.table_maintenance.application.service.table.get_table_storage import (
-    GetTableStorageService,
+from context.table_maintenance.application.service.table.get_table_current_metrics import (
+    GetTableCurrentMetricsService,
 )
 from context.table_maintenance.application.service.table.known_table_outcome import (
     KnownTableOutcome,
@@ -78,8 +75,7 @@ __all__ = [
     "apply_discovery_to_known_table",
     "attention_policy_names",
     "GetTableService",
-    "GetTableHealthService",
-    "GetTableStorageService",
+    "GetTableCurrentMetricsService",
     "ListTableCommitsService",
     "ListTableMetricsService",
     "ListTablesService",
