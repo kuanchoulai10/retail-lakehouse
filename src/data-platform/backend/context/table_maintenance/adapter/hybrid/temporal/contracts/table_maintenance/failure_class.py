@@ -14,3 +14,4 @@ class MaintenanceFailureClass(StrEnum):
     PERMANENT = "permanent"
     CANCELLED = "cancelled"
     OTHER = "other"
+    QUEUE_TIMEOUT = "queue_timeout"

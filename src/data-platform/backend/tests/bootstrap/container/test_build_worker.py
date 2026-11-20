@@ -92,6 +92,7 @@ def test_activities_carry_the_callback_url_and_the_attempt_settings():
         callback_base_url="http://api:8000",
         maintenance_attempt_deadline_seconds=120,
         maintenance_max_attempts=4,
+        maintenance_queue_wait_limit_seconds=600,
     )
 
     assert isinstance(activities.reconciliation, TableReconciliationActivities)
@@ -101,6 +102,7 @@ def test_activities_carry_the_callback_url_and_the_attempt_settings():
     assert activities.maintenance._callback_base_url == "http://api:8000"  # noqa: SLF001
     assert activities.reconciliation._attempt_deadline_seconds == 120  # noqa: SLF001
     assert activities.reconciliation._max_attempts == 4  # noqa: SLF001
+    assert activities.reconciliation._queue_wait_limit_seconds == 600  # noqa: SLF001
 
 
 class RecordingWorkerFactory:

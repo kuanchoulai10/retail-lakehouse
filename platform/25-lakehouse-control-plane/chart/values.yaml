@@ -98,6 +98,7 @@ worker:
   discoveryIntervalSeconds: 600
   attemptDeadlineSeconds: 21600
   maxAttempts: 3
+  queueWaitLimitSeconds: 86400
   failureBackoffCapSeconds: 86400
   terminationGracePeriodSeconds: 90
   resources:

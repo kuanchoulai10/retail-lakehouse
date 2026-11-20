@@ -17,6 +17,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
     DEFAULT_ATTEMPT_DEADLINE_SECONDS,
     DEFAULT_MAX_ATTEMPTS,
+    DEFAULT_QUEUE_WAIT_LIMIT_SECONDS,
     TABLE_MAINTENANCE_WORKFLOW,
     TableMaintenanceWorkflowInput,
     table_maintenance_summary,
@@ -79,9 +80,10 @@ class TableReconciliationWorkflow:
     why the run in flight survives continue-as-new. While a run is in flight
     nothing is planned; a ``trigger_now`` is kept and planned once it finishes. A
     run that never reports back is given up once the child's worst case has passed
-    (per planned operation: every attempt timing out after the attempt deadline the
-    plan carried, six hours for a plan without one, and being fenced for 15
-    minutes, plus the backoffs, plus 1 h): the child is cancelled first (by the
+    (per planned operation: every attempt waiting out the queue wait limit the plan
+    carried, 24 hours for a plan without one, then timing out after the attempt
+    deadline the plan carried, six hours for a plan without one, and being fenced
+    for 15 minutes, plus the backoffs, plus 1 h): the child is cancelled first (by the
     workflow ID recorded when it started, the table's maintenance workflow ID),
     so its cleanup fences its live attempt, records the result
     and deletes its Spark job, and its report is
@@ -147,6 +149,7 @@ class TableReconciliationWorkflow:
         self._in_flight_operations = input.in_flight_operation_count
         self._in_flight_attempt_deadline_seconds = input.in_flight_attempt_deadline_seconds
         self._in_flight_max_attempts = input.in_flight_max_attempts
+        self._in_flight_queue_wait_limit_seconds = input.in_flight_queue_wait_limit_seconds
         self._pending_manual = None if input.pending_manual is None else list(input.pending_manual)
         self._pending_manual_priority = input.pending_manual_priority
         self._next_plan_at = datetime.fromisoformat(input.next_plan_at) if input.next_plan_at else None
@@ -319,6 +322,7 @@ class TableReconciliationWorkflow:
             wake_reasons=dict(self._wake_reasons),
             in_flight_attempt_deadline_seconds=self._in_flight_attempt_deadline_seconds,
             in_flight_max_attempts=self._in_flight_max_attempts,
+            in_flight_queue_wait_limit_seconds=self._in_flight_queue_wait_limit_seconds,
         )
 
     async def _wait(self) -> None:
@@ -340,13 +344,15 @@ class TableReconciliationWorkflow:
     def _in_flight_per_operation(self) -> timedelta:
         """Return how long one operation of the run in flight may take: its worst case plus 1 h.
 
-        The worst case counts the fencing of every attempt; a history from before
+        The worst case counts the queue wait and the fencing of every attempt; a history from before
         fencing (patch ``fencing-in-flight-bound``) keeps the unfenced bound it gave
         runs up on.
         """
         attempt_deadline = timedelta(seconds=self._in_flight_attempt_deadline_seconds)
         policy = TableMaintenanceAttemptPolicy(
-            max_attempts=self._in_flight_max_attempts, attempt_deadline=attempt_deadline
+            max_attempts=self._in_flight_max_attempts,
+            attempt_deadline=attempt_deadline,
+            queue_wait_limit=timedelta(seconds=self._in_flight_queue_wait_limit_seconds),
         )
         if workflow.patched(_FENCED_BOUND_PATCH):
             return policy.operation_worst_case() + _IN_FLIGHT_MARGIN
@@ -426,6 +432,7 @@ class TableReconciliationWorkflow:
         self._in_flight_operations = 0
         self._in_flight_attempt_deadline_seconds = DEFAULT_ATTEMPT_DEADLINE_SECONDS
         self._in_flight_max_attempts = DEFAULT_MAX_ATTEMPTS
+        self._in_flight_queue_wait_limit_seconds = DEFAULT_QUEUE_WAIT_LIMIT_SECONDS
 
     async def _plan_and_start(self) -> bool:
         """Plan once and start a run if anything is planned; True ends the workflow."""
@@ -582,12 +589,14 @@ class TableReconciliationWorkflow:
         child_id = table_maintenance_workflow_id(self._table_uuid)
         attempt_deadline_seconds = plan.get("attempt_deadline_seconds", DEFAULT_ATTEMPT_DEADLINE_SECONDS)
         max_attempts = plan.get("max_attempts", DEFAULT_MAX_ATTEMPTS)
+        queue_wait_limit_seconds = plan.get("queue_wait_limit_seconds", DEFAULT_QUEUE_WAIT_LIMIT_SECONDS)
         self._in_flight_run_id = run_id
         self._in_flight_workflow_id = child_id
         self._in_flight_started_at = workflow.now()
         self._in_flight_operations = len(plan["operations"])
         self._in_flight_attempt_deadline_seconds = attempt_deadline_seconds
         self._in_flight_max_attempts = max_attempts
+        self._in_flight_queue_wait_limit_seconds = queue_wait_limit_seconds
         trigger = _TRIGGER_MANUAL if manual else _TRIGGER_SCHEDULED
         operations = [op["operation"] for op in plan["operations"]]
         try:
@@ -601,6 +610,7 @@ class TableReconciliationWorkflow:
                     plan=plan,
                     attempt_deadline_seconds=attempt_deadline_seconds,
                     max_attempts=max_attempts,
+                    queue_wait_limit_seconds=queue_wait_limit_seconds,
                 ),
                 id=child_id,
                 id_reuse_policy=WorkflowIDReusePolicy.ALLOW_DUPLICATE,

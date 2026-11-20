@@ -75,6 +75,7 @@ NOW_DT = datetime(2026, 10, 24, 1, 2, 3, tzinfo=UTC)
 def _reconcile(
     attempt_deadline_seconds: int = 21600,
     max_attempts: int = 3,
+    queue_wait_limit_seconds: int = 86400,
 ) -> tuple[TableReconciliationActivities, dict]:
     fakes = {
         "plan": FakePlan(),
@@ -87,6 +88,7 @@ def _reconcile(
         release=fakes["release"],
         attempt_deadline_seconds=attempt_deadline_seconds,
         max_attempts=max_attempts,
+        queue_wait_limit_seconds=queue_wait_limit_seconds,
     )
     return activities, fakes
 
@@ -147,6 +149,7 @@ def test_plan_passes_table_now_and_manual_operations_and_returns_dict():
         "priority": "P3",
         "attempt_deadline_seconds": 21600,
         "max_attempts": 3,
+        "queue_wait_limit_seconds": 86400,
     }
 
 
@@ -298,6 +301,7 @@ def test_plan_payload_keeps_every_field_of_a_full_plan():
         "priority": "P3",
         "attempt_deadline_seconds": 21600,
         "max_attempts": 3,
+        "queue_wait_limit_seconds": 86400,
     }
     assert json.loads(json.dumps(result)) == result
 
@@ -508,6 +512,15 @@ def test_plan_carries_the_max_attempts():
     result = activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW})
 
     assert result["max_attempts"] == 5
+
+
+def test_plan_carries_the_queue_wait_limit():
+    """The plan tells the run how long each attempt may wait in its queue, from the worker setting."""
+    activities, _ = _reconcile(queue_wait_limit_seconds=600)
+
+    result = activities.plan_table_maintenance({"table_uuid": "u1", "now": NOW})
+
+    assert result["queue_wait_limit_seconds"] == 600
 
 
 def test_plan_without_manual_operations_defaults_to_none():

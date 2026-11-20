@@ -9,7 +9,11 @@ from context.table_maintenance.application.domain.model.table_maintenance_run im
     NextStep,
 )
 
-STOPPING_CLASSES = {FailureClass.CANCELLED: NextStep.CANCELLED, FailureClass.PERMANENT: NextStep.NOT_RETRIED}
+STOPPING_CLASSES = {
+    FailureClass.CANCELLED: NextStep.CANCELLED,
+    FailureClass.PERMANENT: NextStep.NOT_RETRIED,
+    FailureClass.QUEUE_TIMEOUT: NextStep.NOT_RETRIED,
+}
 
 
 def decide_next_attempt(
@@ -23,7 +27,8 @@ def decide_next_attempt(
     """Return what follows a failed attempt, from the first rule that holds.
 
     An attempt without a size started before sizes existed and ran at what is now S. An OOM at the
-    largest size needs a person even when attempts remain, since a retry would hit the same wall.
+    largest size needs a person even when attempts remain, since a retry would hit the same wall. An
+    attempt that waited in its queue past the limit is not retried: its operation waits for the next plan.
     """
     if still_running:
         return NextAttempt(step=NextStep.STILL_RUNNING)

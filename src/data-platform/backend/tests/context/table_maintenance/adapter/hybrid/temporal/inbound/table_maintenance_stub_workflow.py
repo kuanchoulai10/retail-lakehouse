@@ -65,4 +65,5 @@ class TableMaintenanceStubWorkflow:
             "plan": self._input.plan,
             "attempt_deadline_seconds": self._input.attempt_deadline_seconds,
             "max_attempts": self._input.max_attempts,
+            "queue_wait_limit_seconds": self._input.queue_wait_limit_seconds,
         }

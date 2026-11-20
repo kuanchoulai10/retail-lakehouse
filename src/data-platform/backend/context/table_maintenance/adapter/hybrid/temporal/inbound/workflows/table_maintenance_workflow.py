@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from temporalio import workflow
@@ -38,6 +38,7 @@ SLOW_POLL_INTERVAL = timedelta(minutes=5)
 _CALLBACK_GRACE = timedelta(seconds=120)
 _TIMED_OUT = "spark job timed out"
 _MISSING = "spark job missing"
+_QUEUE_TIMED_OUT = "spark job waited in the queue longer than the queue wait limit"
 _FENCE_PATCH = "fence-timed-out-attempt"
 _FENCE_MISSING_PATCH = "fence-missing-job"
 _FENCE_CANCELLED_PATCH = "fence-cancelled-attempt"
@@ -55,9 +56,15 @@ class TableMaintenanceWorkflow:
     default). An attempt is submitted straight to Spark, whose scheduler queues it, and ends with the job's
     ``operation_result`` callback for that exact run and attempt (a late result of an earlier run of the
     table, sent to the same workflow id, is ignored), with what polling the
-    job's state reveals, or with a timeout ``attempt_deadline_seconds`` (input, 6 h by
-    default) after the submit. Polling runs every 30 s for the first 10 minutes of an attempt and
-    every 5 minutes after that, which bounds the history. A timed-out attempt is
+    job's state reveals, or with a timeout. An attempt is queued from its submit until a status
+    poll reports when its Spark driver started; that start, clamped between the submit and the
+    poll, is recorded (``record_maintenance_attempt_running``; a failed record is logged) and
+    starts the attempt's deadline, ``attempt_deadline_seconds`` (input, 6 h by default), so time
+    spent waiting in the queue does not count toward it. An attempt still queued
+    ``queue_wait_limit_seconds`` (input, 24 h by default) after its submit is fenced and ends
+    ``queue_timed_out``. Polling runs every 30 s for the first 10 minutes of an attempt's queue
+    wait and again for the first 10 minutes after its driver starts, and every 5 minutes
+    otherwise, which bounds the history. A timed-out attempt is
     fenced before the next one is submitted: its Spark job is deleted and its pods are
     polled until none is live (see
     ``TableMaintenanceFencingPolicy``); pods still live after the confirm bound fail
@@ -91,7 +98,9 @@ class TableMaintenanceWorkflow:
         """Prepare the result mailbox and the attempt log."""
         self._run_id = input.run_id
         self._policy = TableMaintenanceAttemptPolicy(
-            max_attempts=input.max_attempts, attempt_deadline=timedelta(seconds=input.attempt_deadline_seconds)
+            max_attempts=input.max_attempts,
+            attempt_deadline=timedelta(seconds=input.attempt_deadline_seconds),
+            queue_wait_limit=timedelta(seconds=input.queue_wait_limit_seconds),
         )
         self._planned_policy = {key: input.plan.get(key) for key in _PLANNED_POLICY_KEYS}
         self._results: dict[tuple[str, int], OperationResultSignal] = {}
@@ -190,17 +199,19 @@ class TableMaintenanceWorkflow:
         return await self._await_outcome(name, attempt, submitted["job_name"])
 
     async def _await_outcome(self, name: str, attempt: int, job_name: str) -> OperationResultSignal:
+        """Wait for the attempt to end: queued until its driver starts, then bounded by its deadline from that start."""
         key = (name, attempt)
         submitted_at = workflow.now()
-        deadline = submitted_at + self._policy.attempt_deadline
+        running_since: datetime | None = None
+        deadline = submitted_at + self._policy.queue_wait_limit
         completed_since: datetime | None = None
         while True:
             if key in self._results:
                 return self._results[key]
             now = workflow.now()
             if now >= deadline:
-                return await self._timed_out(name, attempt)
-            in_fast_window = now - submitted_at < FAST_POLL_WINDOW
+                return await self._past_deadline(name, attempt, running=running_since is not None)
+            in_fast_window = now - (running_since or submitted_at) < FAST_POLL_WINDOW
             interval = FAST_POLL_INTERVAL if in_fast_window else SLOW_POLL_INTERVAL
             try:
                 await workflow.wait_condition(lambda: key in self._results, timeout=min(interval, deadline - now))
@@ -212,6 +223,9 @@ class TableMaintenanceWorkflow:
             status = await self._job_status(name, attempt)
             if status is None:
                 continue
+            if running_since is None and status.get("driver_started_at"):
+                running_since = await self._started_running(name, attempt, status["driver_started_at"], submitted_at)
+                deadline = running_since + self._policy.attempt_deadline
             state = status["state"]
             if state == "FAILED":
                 return self._failure(
@@ -233,6 +247,48 @@ class TableMaintenanceWorkflow:
                     metrics={"completed_without_callback": 1},
                     error=None,
                 )
+
+    async def _started_running(
+        self, name: str, attempt: int, driver_started_at: str, submitted_at: datetime
+    ) -> datetime:
+        """Return when the attempt started running and record it; a failed record is logged and changes nothing.
+
+        The driver's start is clamped into ``[submitted_at, now]``, so a pod clock
+        ahead of or behind the workflow's never moves the deadline before the
+        submit or into the future.
+        """
+        started = datetime.fromisoformat(driver_started_at)
+        if started.tzinfo is None:
+            started = started.replace(tzinfo=UTC)
+        now = workflow.now()
+        running_since = min(max(started, submitted_at), now)
+        try:
+            await self._activity(
+                TableMaintenanceActivity.RECORD_MAINTENANCE_ATTEMPT_RUNNING,
+                {
+                    "run_id": self._run_id,
+                    "operation": name,
+                    "attempt": attempt,
+                    "started_running_at": running_since.isoformat(),
+                    "now": now.isoformat(),
+                },
+            )
+        except ActivityError as error:
+            _raise_if_cancelled(error)
+            workflow.logger.warning("recording %s attempt %s running failed: %s", name, attempt, error)
+        return running_since
+
+    async def _past_deadline(self, name: str, attempt: int, *, running: bool) -> OperationResultSignal:
+        """End an attempt at its deadline: timed out once running, queue timed out while still queued."""
+        if not running:
+            return await self._queue_timed_out(name, attempt)
+        return await self._timed_out(name, attempt)
+
+    async def _queue_timed_out(self, name: str, attempt: int) -> OperationResultSignal:
+        """Fence an attempt whose driver never started within the queue wait limit."""
+        return await self._fence(
+            name, attempt, _QUEUE_TIMED_OUT, MaintenanceAttemptEnding.QUEUE_TIMED_OUT, since="the queue wait limit"
+        )
 
     async def _timed_out(self, name: str, attempt: int) -> OperationResultSignal:
         """Fence the timed-out attempt; a history from before fencing replays its immediate failure."""
@@ -260,8 +316,8 @@ class TableMaintenanceWorkflow:
     ) -> OperationResultSignal:
         """Delete an ended attempt's job and wait until its pods are gone; nothing else is submitted meanwhile.
 
-        ``reason`` is why the attempt ended (it timed out, or its job went
-        missing), ``ending`` names that ending for the record, and ``since``
+        ``reason`` is why the attempt ended (it timed out, waited in the queue
+        too long, or its job went missing), ``ending`` names that ending for the record, and ``since``
         names that moment in the error of an unconfirmed fence. An unbounded
         fence (after a cancel) records nothing and waits for the pods however
         long they take, polling slowly once past the bound so its history stays

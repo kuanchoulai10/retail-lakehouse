@@ -6,28 +6,41 @@ from datetime import timedelta
 
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
     DEFAULT_ATTEMPT_DEADLINE_SECONDS,
+    DEFAULT_QUEUE_WAIT_LIMIT_SECONDS,
 )
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
     TableMaintenanceAttemptPolicy,
     TableMaintenanceFencingPolicy,
 )
 
+DEFAULT_PER_ATTEMPT = timedelta(seconds=86400 + 21600 + 900)
+
 
 def test_default_policy_matches_the_maintenance_workflow_defaults():
-    """The default policy has three attempts, the default deadline and a 60 second first backoff."""
+    """The default policy has three attempts, the default deadline and queue wait limit, and a 60 s first backoff."""
     policy = TableMaintenanceAttemptPolicy()
     assert policy.max_attempts == 3
     assert policy.attempt_deadline == timedelta(seconds=DEFAULT_ATTEMPT_DEADLINE_SECONDS)
+    assert policy.queue_wait_limit == timedelta(seconds=DEFAULT_QUEUE_WAIT_LIMIT_SECONDS)
+    assert DEFAULT_QUEUE_WAIT_LIMIT_SECONDS == 86400
     assert policy.backoff_after(1) == timedelta(seconds=60)
     assert policy.backoff_after(2) == timedelta(seconds=120)
 
 
-def test_operation_worst_case_is_every_attempt_timing_out_and_fenced_plus_backoffs():
-    """The worst case of an operation is every attempt hitting its deadline and fencing bound, plus the backoffs."""
+def test_operation_worst_case_is_every_attempt_waiting_timing_out_and_fenced_plus_backoffs():
+    """The worst case is every attempt waiting out the queue limit, its deadline and its fence, plus the backoffs."""
     policy = TableMaintenanceAttemptPolicy()
-    assert policy.operation_worst_case() == timedelta(seconds=3 * (21600 + 900) + 180)
-    short = TableMaintenanceAttemptPolicy(attempt_deadline=timedelta(minutes=10))
-    assert short.operation_worst_case() == timedelta(minutes=3 * 25 + 3)
+    assert policy.operation_worst_case() == DEFAULT_PER_ATTEMPT * 3 + timedelta(seconds=180)
+    short = TableMaintenanceAttemptPolicy(attempt_deadline=timedelta(minutes=10), queue_wait_limit=timedelta(minutes=5))
+    assert short.operation_worst_case() == timedelta(minutes=3 * 30 + 3)
+
+
+def test_worst_case_counts_the_queue_wait():
+    """A queue wait limit adds to every attempt of the worst case."""
+    policy = TableMaintenanceAttemptPolicy(
+        max_attempts=3, attempt_deadline=timedelta(hours=6), queue_wait_limit=timedelta(hours=24)
+    )
+    assert policy.operation_worst_case() == (timedelta(hours=30, minutes=15)) * 3 + timedelta(seconds=180)
 
 
 def test_default_fencing_polls_and_bounds_the_wait():
@@ -53,11 +66,10 @@ def test_backoff_beyond_the_listed_ones_repeats_the_last():
 
 def test_worst_case_counts_one_backoff_between_each_pair_of_attempts():
     """The worst case sleeps after every attempt but the last, so it follows the number of attempts."""
-    per_attempt = timedelta(seconds=21600 + 900)
-    assert TableMaintenanceAttemptPolicy(max_attempts=5).operation_worst_case() == per_attempt * 5 + timedelta(
+    assert TableMaintenanceAttemptPolicy(max_attempts=5).operation_worst_case() == DEFAULT_PER_ATTEMPT * 5 + timedelta(
         seconds=60 + 120 + 120 + 120
     )
-    assert TableMaintenanceAttemptPolicy(max_attempts=1).operation_worst_case() == per_attempt
+    assert TableMaintenanceAttemptPolicy(max_attempts=1).operation_worst_case() == DEFAULT_PER_ATTEMPT
     assert TableMaintenanceAttemptPolicy(max_attempts=5).unfenced_operation_worst_case() == timedelta(
         seconds=5 * 21600 + 60 + 120 + 120 + 120
     )

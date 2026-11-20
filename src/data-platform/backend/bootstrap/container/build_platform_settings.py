@@ -27,6 +27,7 @@ def build_platform_settings(settings: AppSettings) -> PlatformSettings:
     return PlatformSettings(
         attempt_deadline_seconds=settings.maintenance_attempt_deadline_seconds,
         max_attempts=settings.maintenance_max_attempts,
+        queue_wait_limit_seconds=settings.maintenance_queue_wait_limit_seconds,
         compute_sizes=(
             _compute_size(ComputeSize.S, settings.spark.size_s),
             _compute_size(ComputeSize.M, settings.spark.size_m),

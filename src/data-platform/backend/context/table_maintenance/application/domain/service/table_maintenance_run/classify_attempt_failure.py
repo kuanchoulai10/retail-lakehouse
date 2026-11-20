@@ -23,19 +23,23 @@ KILLED_EXIT_CODE = 137
 EXECUTOR_OOM_EXIT_CODE = 52
 EXECUTOR_ROLE = "executor"
 ENDINGS_WITH_TRUSTED_EXITS = frozenset({AttemptEnding.RESULT, AttemptEnding.JOB_FAILED})
+PLATFORM_ENDINGS = {
+    AttemptEnding.TIMED_OUT: FailureClass.TIMEOUT,
+    AttemptEnding.QUEUE_TIMED_OUT: FailureClass.QUEUE_TIMEOUT,
+    AttemptEnding.CANCELLED: FailureClass.CANCELLED,
+}
 
 
 def classify_attempt_failure(evidence: FailureEvidence) -> FailureClass:
     """Return why a maintenance attempt failed, from the first rule its evidence meets.
 
-    The platform's own kill (a timeout, a cancel, a vanished job) deletes the pods, which then
+    An attempt the platform itself ended (a timeout, a queue timeout, a cancel) is classified by that
+    ending alone. The platform's own kill (a timeout, a cancel, a vanished job) deletes the pods, which then
     exit with 137 as an OOM kill would; container exits therefore count only when Spark itself
     reported the failure.
     """
-    if evidence.ended_by is AttemptEnding.TIMED_OUT:
-        return FailureClass.TIMEOUT
-    if evidence.ended_by is AttemptEnding.CANCELLED:
-        return FailureClass.CANCELLED
+    if evidence.ended_by in PLATFORM_ENDINGS:
+        return PLATFORM_ENDINGS[evidence.ended_by]
     texts = (*evidence.texts, *(c.message for c in evidence.containers if c.message))
     trusted_exits = evidence.ended_by in ENDINGS_WITH_TRUSTED_EXITS
     if (trusted_exits and any(_is_oom_exit(c) for c in evidence.containers)) or _any_holds(texts, OOM_TEXTS):

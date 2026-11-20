@@ -87,3 +87,8 @@ def test_a_retry_carries_a_size_and_a_stop_carries_none() -> None:
         NextAttempt(step=NextStep.RETRY_SAME)
     with pytest.raises(ValueError, match="size"):
         NextAttempt(step=NextStep.DONE, size=ComputeSize.S)
+
+
+def test_queue_timeout_is_not_retried() -> None:
+    """An attempt that waited in its queue past the limit stops; its operation waits for the next plan."""
+    assert decide_next_attempt(FailureClass.QUEUE_TIMEOUT, ComputeSize.S, 1, 3).step is NextStep.NOT_RETRIED

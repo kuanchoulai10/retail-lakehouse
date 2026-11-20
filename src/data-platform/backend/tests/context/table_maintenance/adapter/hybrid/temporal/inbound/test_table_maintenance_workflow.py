@@ -55,6 +55,7 @@ WORKFLOW_ID = table_maintenance_workflow_id(TABLE_UUID)
 PARENT_ID = "parent-1"
 REAL_TIMEOUT_SECONDS = 60
 ATTEMPT_DEADLINE_SECONDS = 21600
+QUEUE_WAIT_LIMIT_SECONDS = 86400
 PLANNED_POLICY = ("mp-00000000000000000000000004", 2, {"type": "namespace", "path": ["iceberg", "sales"]})
 PLANNED_POLICY_NAME = "nightly"
 
@@ -108,6 +109,7 @@ class Harness:
         parent_id: str = PARENT_ID,
         attempt_deadline_seconds: int = ATTEMPT_DEADLINE_SECONDS,
         max_attempts: int = 3,
+        queue_wait_limit_seconds: int = QUEUE_WAIT_LIMIT_SECONDS,
         start_size: str | None = None,
         plan: dict | None = None,
     ) -> WorkflowHandle:
@@ -122,6 +124,7 @@ class Harness:
                 plan=plan or _plan(*operations, start_size=start_size),
                 attempt_deadline_seconds=attempt_deadline_seconds,
                 max_attempts=max_attempts,
+                queue_wait_limit_seconds=queue_wait_limit_seconds,
             ),
             id=WORKFLOW_ID,
             task_queue=self.queue,
@@ -1163,5 +1166,102 @@ def test_late_result_of_another_run_is_ignored():
         assert h.recorded() == [(COMPACTION, 1, True, None)]
         assert all(r["run_id"] == RUN_ID for r in h.fakes.records)
         assert h.fakes.records[0]["metrics"] == {"files": 3}
+
+    _run(scenario)
+
+
+QUEUED_FOR = timedelta(hours=3)
+SHORT_DEADLINE = timedelta(hours=1)
+FIRST_APP = f"{RUN_ID}-{COMPACTION}-1"
+
+
+async def _run_with_a_short_deadline(h: Harness) -> None:
+    """Run one compaction whose first attempt has a one-hour deadline and whose second attempt succeeds."""
+    h.fakes.callbacks = {(COMPACTION, 2): [(2, True, None)]}
+    handle = await h.start_maintenance(COMPACTION, attempt_deadline_seconds=int(SHORT_DEADLINE.total_seconds()))
+    await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+
+def test_queue_wait_does_not_count_toward_the_deadline():
+    """An attempt queued for three hours is not timed out at its one-hour deadline; it is one hour after its start."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = (QUEUED_FOR, QUEUED_FOR)
+        await _run_with_a_short_deadline(h)
+
+        assert h.recorded() == [(COMPACTION, 1, False, "spark job timed out"), (COMPACTION, 2, True, None)]
+        assert h.fakes.records[0]["ended_by"] == "timed_out"
+        first, second = h.submit_times()
+        assert QUEUED_FOR + SHORT_DEADLINE <= second - first < QUEUED_FOR + SHORT_DEADLINE + timedelta(minutes=3)
+
+    _run(scenario)
+
+
+def test_attempt_is_recorded_running_once():
+    """The first poll that sees the driver started records the attempt running, with the driver's start."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = (QUEUED_FOR, QUEUED_FOR)
+        await _run_with_a_short_deadline(h)
+
+        first = h.submit_times()[0]
+        records = [r for r in h.fakes.running_records if r["attempt"] == 1]
+        assert len(records) == 1
+        assert (records[0]["run_id"], records[0]["operation"]) == (RUN_ID, COMPACTION)
+        assert datetime.fromisoformat(records[0]["started_running_at"]) == first + QUEUED_FOR
+        assert datetime.fromisoformat(records[0]["now"]) >= first + QUEUED_FOR
+
+    _run(scenario)
+
+
+def test_queued_past_the_limit_ends_queue_timed_out():
+    """An attempt whose driver never starts is fenced at the queue wait limit and recorded as queue_timed_out."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = None
+        h.fakes.record_replies[(COMPACTION, 1)] = {"next_step": "not_retried"}
+        await h.run_maintenance(COMPACTION)
+
+        assert h.recorded() == [
+            (COMPACTION, 1, False, "spark job waited in the queue longer than the queue wait limit")
+        ]
+        assert h.fakes.records[0]["ended_by"] == "queue_timed_out"
+        assert h.fakes.running_records == []
+        assert h.fakes.deletes == [FIRST_APP, FIRST_APP]
+        assert FIRST_APP in h.fakes.pods_calls
+        fenced_at = h.fakes.delete_times[FIRST_APP]
+        limit = timedelta(seconds=QUEUE_WAIT_LIMIT_SECONDS)
+        assert limit <= fenced_at - h.submit_times()[0] < limit + timedelta(seconds=5)
+
+    _run(scenario)
+
+
+def test_driver_start_before_submit_is_clamped():
+    """A driver clock that reads before the submit starts the deadline at the submit, not earlier."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = (timedelta(0), -timedelta(minutes=10))
+        await _run_with_a_short_deadline(h)
+
+        first, second = h.submit_times()
+        assert SHORT_DEADLINE <= second - first < SHORT_DEADLINE + timedelta(minutes=3)
+        started = datetime.fromisoformat(h.fakes.running_records[0]["started_running_at"])
+        assert first <= started < first + timedelta(seconds=5)
+
+    _run(scenario)
+
+
+def test_failed_running_record_still_starts_the_deadline():
+    """A running record that fails is logged; the attempt's deadline still runs from its driver start."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = (QUEUED_FOR, QUEUED_FOR)
+        h.fakes.running_record_errors = {(COMPACTION, 1)}
+        await _run_with_a_short_deadline(h)
+
+        assert [r["attempt"] for r in h.fakes.running_records] == [1]
+        assert h.recorded()[0] == (COMPACTION, 1, False, "spark job timed out")
+        first, second = h.submit_times()
+        assert QUEUED_FOR + SHORT_DEADLINE <= second - first < QUEUED_FOR + SHORT_DEADLINE + timedelta(minutes=3)
 
     _run(scenario)

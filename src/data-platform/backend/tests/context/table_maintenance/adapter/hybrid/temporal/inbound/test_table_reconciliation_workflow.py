@@ -786,8 +786,9 @@ def test_planned_empty_starts_no_child():
     _run(scenario, script=lambda _: _planned())
 
 
-# Per planned operation: 3 attempts of 6 h, backoffs of 60 s + 120 s, 1 h margin.
-OPERATION_BUDGET = timedelta(hours=19, minutes=48)
+# Per planned operation: 3 attempts of a 24 h queue wait, a 6 h deadline and a 15 min fence,
+# backoffs of 60 s + 120 s, 1 h margin.
+OPERATION_BUDGET = timedelta(hours=91, minutes=48)
 
 
 def test_in_flight_run_is_given_up_only_after_the_child_worst_case():
@@ -1485,13 +1486,116 @@ def test_in_flight_bound_includes_the_fencing_bound():
     async def scenario(h: Harness) -> None:
         await h.start()
         first = await h.in_flight()
-        without_fencing = 3 * timedelta(hours=6) + timedelta(minutes=3) + timedelta(hours=1)
+        without_fencing = 3 * (timedelta(hours=24) + timedelta(hours=6)) + timedelta(minutes=3) + timedelta(hours=1)
         await h.env.sleep(without_fencing + timedelta(minutes=30))
         assert (await h.settle())["in_flight_run_id"] == first
         assert len(h.plans.requests) == 1
         assert OPERATION_BUDGET == without_fencing + 3 * timedelta(minutes=15)
 
     _run(scenario, script=lambda _: _planned(COMPACTION, interval=10**6))
+
+
+def test_reconciliation_passes_the_plan_queue_wait_limit_to_the_run():
+    """The run gets the queue wait limit the plan carries from the worker setting."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        run_id = await h.in_flight()
+        assert (await h.child(run_id))["queue_wait_limit_seconds"] == 600
+
+    _run(scenario, script=lambda _: {**_planned(COMPACTION), "queue_wait_limit_seconds": 600})
+
+
+def test_reconciliation_defaults_the_queue_wait_limit_for_old_plans():
+    """A plan without a queue wait limit lets each attempt of the run wait a day in its queue."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        run_id = await h.in_flight()
+        assert (await h.child(run_id))["queue_wait_limit_seconds"] == 86400
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+SHORT_QUEUE_BUDGET = TableMaintenanceAttemptPolicy(
+    attempt_deadline=timedelta(seconds=120), queue_wait_limit=timedelta(seconds=600)
+).operation_worst_case() + (timedelta(hours=1))
+
+
+def test_give_up_waits_for_queue_wait_plus_deadline():
+    """A run is given up after every attempt's queue wait limit and deadline, as the plan carried them."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = await h.in_flight()
+        assert SHORT_QUEUE_BUDGET == 3 * timedelta(seconds=600 + 120 + 900) + timedelta(minutes=3, hours=1)
+        await h.env.sleep(SHORT_QUEUE_BUDGET - timedelta(minutes=1))
+        assert (await h.settle())["in_flight_run_id"] == first
+        await h.env.sleep(timedelta(minutes=2))
+        await h.plan_count(2)
+        assert await h.child_status(first) == WorkflowExecutionStatus.CANCELED
+
+    _run(
+        scenario,
+        script=lambda _: {
+            **_planned(COMPACTION, interval=10**6),
+            "attempt_deadline_seconds": 120,
+            "queue_wait_limit_seconds": 600,
+        },
+    )
+
+
+def test_carried_in_flight_run_keeps_its_queue_wait_limit():
+    """Continue-as-new carries the in-flight run's queue wait limit, so its bound does not change."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start(
+            start_signal=None,
+            in_flight_run_id=GHOST_RUN_ID,
+            in_flight_operation_count=1,
+            in_flight_attempt_deadline_seconds=120,
+            in_flight_queue_wait_limit_seconds=600,
+        )
+        state = await eventually(h.state, lambda s: s["in_flight_started_at"])
+        await h.env.sleep(SHORT_QUEUE_BUDGET - timedelta(minutes=1))
+        assert (await h.settle())["in_flight_run_id"] == GHOST_RUN_ID
+        await h.env.sleep(timedelta(minutes=2))
+        await h.plan_count(1)
+        await h.idle_after(state)
+
+    _run(scenario, script=lambda _: _planned())
+
+
+def test_continue_as_new_carries_the_in_flight_queue_wait_limit():
+    """A carried run in flight across another continue-as-new is still given up on its queue wait limit."""
+
+    async def scenario(h: Harness) -> None:
+        handle = await h.start(
+            start_signal=None,
+            in_flight_run_id=GHOST_RUN_ID,
+            in_flight_operation_count=1,
+            in_flight_attempt_deadline_seconds=120,
+            in_flight_queue_wait_limit_seconds=600,
+            continue_as_new_after=2,
+        )
+        first_run = handle.result_run_id
+        state = await eventually(h.state, lambda s: s["in_flight_started_at"])
+        for _ in range(3):
+            await h.signal(TableReconciliationSignal.POLICY_CHANGED)
+
+        async def run_id_now() -> str | None:
+            return (await h.client.get_workflow_handle(WORKFLOW_ID).describe()).run_id
+
+        await eventually(run_id_now, lambda r: r != first_run)
+        h.sent = 0
+        assert (await h.settle())["in_flight_run_id"] == GHOST_RUN_ID
+        await h.env.sleep(SHORT_QUEUE_BUDGET - timedelta(minutes=1))
+        assert (await h.settle())["in_flight_run_id"] == GHOST_RUN_ID
+        await h.env.sleep(timedelta(minutes=2))
+        await h.plan_count(1)
+        await h.idle_after(state)
+
+    _run(scenario, script=lambda _: _planned())
 
 
 FIXTURES = Path(__file__).parent / "fixtures"

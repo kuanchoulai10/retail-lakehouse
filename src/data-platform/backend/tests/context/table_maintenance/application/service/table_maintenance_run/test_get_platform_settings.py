@@ -27,6 +27,7 @@ def _settings(**changes: Any) -> PlatformSettings:  # noqa: ANN401
     values: dict[str, Any] = {
         "attempt_deadline_seconds": 21600,
         "max_attempts": 3,
+        "queue_wait_limit_seconds": 86400,
         "compute_sizes": (
             PlatformComputeSize(size=ComputeSize.S, driver_memory="768m", executor_memory="768m", executor_instances=1),
             PlatformComputeSize(size=ComputeSize.M, driver_memory="1g", executor_memory="1536m", executor_instances=1),
@@ -71,12 +72,13 @@ def test_groups_follow_the_page_order_with_a_key_and_a_title():
     ]
 
 
-def test_execution_capacity_reports_the_deadline_and_attempts():
-    """The execution capacity group lists the attempt time limit and the attempts per operation."""
-    group = _output(attempt_deadline_seconds=120, max_attempts=5).groups[0]
+def test_execution_capacity_reports_the_deadline_the_queue_wait_limit_and_attempts():
+    """The execution capacity group lists the attempt time limit, the queue wait limit and the attempts."""
+    group = _output(attempt_deadline_seconds=120, queue_wait_limit_seconds=600, max_attempts=5).groups[0]
 
     assert [(i.key, i.value, i.unit) for i in group.items] == [
         ("maintenance_attempt_deadline_seconds", 120, "seconds"),
+        ("maintenance_queue_wait_limit_seconds", 600, "seconds"),
         ("maintenance_max_attempts", 5, "attempts"),
     ]
 
@@ -165,3 +167,18 @@ def test_no_value_is_a_uri_with_user_info():
     values = [str(item.value) for group in _output().groups for item in group.items]
 
     assert not [value for value in values if USERINFO_URI.search(value)]
+
+
+def test_the_attempt_limits_say_what_the_queue_wait_counts_toward():
+    """The attempt time limit runs from the Spark job's start; the queue wait limit bounds the wait before it."""
+    items = {item.key: item for item in _output().groups[0].items}
+
+    assert items["maintenance_attempt_deadline_seconds"].description == (
+        "How long one attempt may run once its Spark job has started; time spent waiting in the queue does not count."
+    )
+    queue = items["maintenance_queue_wait_limit_seconds"]
+    assert (queue.label, queue.unit) == ("Queue wait limit", "seconds")
+    assert queue.description == (
+        "How long one attempt may wait in its Volcano queue before it is stopped; its operation then waits for the "
+        "next plan."
+    )

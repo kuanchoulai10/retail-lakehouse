@@ -14,3 +14,4 @@ class MaintenanceAttemptEnding(StrEnum):
     MISSING = "missing"
     CANCELLED = "cancelled"
     SUBMIT_FAILED = "submit_failed"
+    QUEUE_TIMED_OUT = "queue_timed_out"

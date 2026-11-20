@@ -36,6 +36,7 @@ def table_reconciliation_activities_with_fakes(
     client: Client | None = None,
     attempt_deadline_seconds: int = 21600,
     max_attempts: int = 3,
+    queue_wait_limit_seconds: int = 86400,
 ) -> TableReconciliationActivities:
     """Build the reconciliation activities, a recording fake for every use case and a mock client not given."""
     return TableReconciliationActivities(
@@ -45,4 +46,5 @@ def table_reconciliation_activities_with_fakes(
         client=client or MagicMock(),
         attempt_deadline_seconds=attempt_deadline_seconds,
         max_attempts=max_attempts,
+        queue_wait_limit_seconds=queue_wait_limit_seconds,
     )

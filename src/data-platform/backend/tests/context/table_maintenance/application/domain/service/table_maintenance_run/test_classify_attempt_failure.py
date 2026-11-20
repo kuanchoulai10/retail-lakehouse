@@ -117,3 +117,8 @@ def test_partial_progress_with_nothing_committed_is_other() -> None:
 def test_unknown_error_is_other() -> None:
     """An error with no known signal is other."""
     assert classify(AttemptEnding.SUBMIT_FAILED, "connection reset by peer") is FailureClass.OTHER
+
+
+def test_queue_timed_out_attempt_is_queue_timeout_even_with_exit_137() -> None:
+    """An attempt stopped for waiting in its queue too long is a queue timeout, whatever its pods exited with."""
+    assert classify(AttemptEnding.QUEUE_TIMED_OUT, containers=(driver("Error", 137),)) is FailureClass.QUEUE_TIMEOUT

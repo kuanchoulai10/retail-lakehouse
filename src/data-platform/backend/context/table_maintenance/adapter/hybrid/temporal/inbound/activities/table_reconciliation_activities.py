@@ -58,12 +58,14 @@ class TableReconciliationActivities:
         client: Client,
         attempt_deadline_seconds: int,
         max_attempts: int,
+        queue_wait_limit_seconds: int,
     ) -> None:
         """Bind the use cases and the client.
 
-        ``attempt_deadline_seconds`` and ``max_attempts`` are the worker settings
-        every plan carries, so the run it starts bounds each attempt by the first
-        and gives each operation that many attempts.
+        ``attempt_deadline_seconds``, ``max_attempts`` and ``queue_wait_limit_seconds``
+        are the worker settings every plan carries, so the run it starts bounds each
+        running attempt by the first, gives each operation that many attempts and
+        lets each attempt wait in its queue for the last.
         """
         self._plan = plan
         self._record = record
@@ -71,16 +73,18 @@ class TableReconciliationActivities:
         self._client = client
         self._attempt_deadline_seconds = attempt_deadline_seconds
         self._max_attempts = max_attempts
+        self._queue_wait_limit_seconds = queue_wait_limit_seconds
 
     @activity.defn(name=TableReconciliationActivity.PLAN_TABLE_MAINTENANCE)
     def plan_table_maintenance(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Plan the maintenance operations of a table, with the attempt deadline and attempts its run uses."""
+        """Plan a table's maintenance, with the attempt deadline, attempts and queue wait limit its run uses."""
         with translate_application_errors():
             output = self._plan.execute(PlanTableMaintenanceUseCaseInput.from_primitives(request))
         return {
             **activity_payload(output),
             "attempt_deadline_seconds": self._attempt_deadline_seconds,
             "max_attempts": self._max_attempts,
+            "queue_wait_limit_seconds": self._queue_wait_limit_seconds,
         }
 
     @activity.defn(name=TableReconciliationActivity.RECORD_TABLE_RECONCILIATION)

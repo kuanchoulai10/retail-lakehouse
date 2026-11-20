@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from temporalio import activity
@@ -16,7 +17,6 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
 if TYPE_CHECKING:
     import asyncio
     from collections.abc import Awaitable, Callable
-    from datetime import datetime, timedelta
 
     from temporalio.client import Client
 
@@ -43,6 +43,13 @@ class ScriptedMaintenanceActivities:
     ``delete_failures[app_name]`` makes that many deletes of the job fail
     non-retryably before one succeeds; ``delete_times`` keeps the first delete
     that succeeded.
+
+    Each status also reports when the job's driver started: at its submit by default.
+    ``driver_starts[app_name]`` is ``(reported_after, started_after)``: polls less than
+    ``reported_after`` past the submit report no start, later ones report the submit plus
+    ``started_after`` (negative for a clock before the submit); ``None`` never reports one.
+    ``running_records`` keeps each record of a running attempt, and the attempts in
+    ``running_record_errors`` fail that record non-retryably.
     """
 
     def __init__(self, client: Client) -> None:
@@ -70,6 +77,10 @@ class ScriptedMaintenanceActivities:
         self.pods_times: list[datetime] = []
         self.delete_times: dict[str, datetime] = {}
         self.delete_failures: dict[str, int] = {}
+        self.driver_starts: dict[str, tuple[timedelta, timedelta] | None] = {}
+        self.submitted_at: dict[str, datetime] = {}
+        self.running_records: list[dict] = []
+        self.running_record_errors: set[tuple[str, int]] = set()
 
     @staticmethod
     def app_name(run_id: str, operation: str, attempt: int) -> str:
@@ -92,6 +103,9 @@ class ScriptedMaintenanceActivities:
     async def submit_maintenance_operation(self, request: dict) -> dict:
         """Submit the operation, or fail with the scripted submit error for it."""
         self.submits.append(request)
+        self.submitted_at[self.app_name(request["run_id"], request["operation"], request["attempt"])] = (
+            datetime.fromisoformat(request["now"])
+        )
         if self.submit_gate is not None:
             await self.submit_gate.wait()
         key = (request["operation"], request["attempt"])
@@ -127,8 +141,23 @@ class ScriptedMaintenanceActivities:
         state = self.states.get(app_name, {"state": "RUNNING", "error": None})
         if isinstance(state, list):
             calls = self.status_calls.count(app_name)
-            return state[min(calls, len(state)) - 1]
-        return state
+            state = state[min(calls, len(state)) - 1]
+        return {"driver_started_at": self._driver_started_at(app_name, activity.info().scheduled_time), **state}
+
+    def _driver_started_at(self, app_name: str, polled_at: datetime) -> str | None:
+        submitted_at = self.submitted_at[app_name]
+        start = self.driver_starts.get(app_name, (timedelta(0), timedelta(0)))
+        if start is None or polled_at - submitted_at < start[0]:
+            return None
+        return (submitted_at + start[1]).isoformat()
+
+    @activity.defn(name=TableMaintenanceActivity.RECORD_MAINTENANCE_ATTEMPT_RUNNING)
+    async def record_maintenance_attempt_running(self, request: dict) -> dict:
+        """Record that the attempt's driver started, or fail when the script says the database is down."""
+        self.running_records.append(request)
+        if (request["operation"], request["attempt"]) in self.running_record_errors:
+            raise ApplicationError("db down", type="ConflictError", non_retryable=True)
+        return {"status": "running", "started_running_at": request["started_running_at"]}
 
     @activity.defn(name=TableMaintenanceActivity.RECORD_MAINTENANCE_OPERATION_RESULT)
     async def record_table_maintenance_operation_result(self, request: dict) -> dict:
@@ -177,4 +206,5 @@ class ScriptedMaintenanceActivities:
             self.record_table_maintenance_operation_result,
             self.delete_maintenance_job,
             self.get_maintenance_job_pods,
+            self.record_maintenance_attempt_running,
         ]

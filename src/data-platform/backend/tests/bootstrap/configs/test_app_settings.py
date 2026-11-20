@@ -7,7 +7,10 @@ import os
 import pytest
 
 from bootstrap.configs import AppSettings, Component, DatabaseBackend, TemporalSettings
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import DEFAULT_MAX_ATTEMPTS
+from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
+    DEFAULT_MAX_ATTEMPTS,
+    DEFAULT_QUEUE_WAIT_LIMIT_SECONDS,
+)
 from context.table_maintenance.application.domain.model.table import DEFAULT_FAILURE_BACKOFF_CAP
 
 
@@ -125,6 +128,26 @@ def test_attempt_deadline_reads_env(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("GLAC_MAINTENANCE_ATTEMPT_DEADLINE_SECONDS", "120")
 
     assert AppSettings().maintenance_attempt_deadline_seconds == 120
+
+
+def test_queue_wait_limit_defaults_to_24_hours():
+    """Without an environment each maintenance attempt may wait a day in its queue."""
+    assert AppSettings().maintenance_queue_wait_limit_seconds == 86400
+
+
+def test_queue_wait_limit_reads_env(monkeypatch: pytest.MonkeyPatch):
+    """The queue wait limit is read from GLAC_MAINTENANCE_QUEUE_WAIT_LIMIT_SECONDS."""
+    monkeypatch.setenv("GLAC_MAINTENANCE_QUEUE_WAIT_LIMIT_SECONDS", "600")
+
+    assert AppSettings().maintenance_queue_wait_limit_seconds == 600
+
+
+def test_queue_wait_limit_must_be_at_least_one_second(monkeypatch: pytest.MonkeyPatch):
+    """An attempt may always wait at least a second, so zero is refused at start-up."""
+    monkeypatch.setenv("GLAC_MAINTENANCE_QUEUE_WAIT_LIMIT_SECONDS", "0")
+
+    with pytest.raises(ValueError, match="maintenance_queue_wait_limit_seconds"):
+        AppSettings()
 
 
 def test_max_attempts_defaults_to_three():
@@ -262,6 +285,7 @@ def test_attempt_and_backoff_defaults_match_the_domain_defaults():
     settings = AppSettings()
 
     assert settings.maintenance_max_attempts == DEFAULT_MAX_ATTEMPTS
+    assert settings.maintenance_queue_wait_limit_seconds == DEFAULT_QUEUE_WAIT_LIMIT_SECONDS
     assert settings.maintenance_failure_backoff_cap_seconds == DEFAULT_FAILURE_BACKOFF_CAP.total_seconds()
 
 

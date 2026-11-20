@@ -96,7 +96,16 @@ def _execution_capacity(settings: PlatformSettings) -> tuple[GetPlatformSettings
             "Attempt time limit",
             settings.attempt_deadline_seconds,
             _SECONDS,
-            "How long one attempt of an operation may run before it is stopped and counted as failed.",
+            "How long one attempt may run once its Spark job has started; time spent waiting in the queue does not "
+            "count.",
+        ),
+        _item(
+            "maintenance_queue_wait_limit_seconds",
+            "Queue wait limit",
+            settings.queue_wait_limit_seconds,
+            _SECONDS,
+            "How long one attempt may wait in its Volcano queue before it is stopped; its operation then waits for the "
+            "next plan.",
         ),
         _item(
             "maintenance_max_attempts",
