@@ -20,6 +20,9 @@ from context.table_maintenance.application.domain.service.table.decide_table_man
 from context.table_maintenance.application.domain.service.table.fits_smaller_size import (
     fits_smaller_size,
 )
+from context.table_maintenance.application.domain.service.table.measure_table import (
+    measure_table,
+)
 from context.table_maintenance.application.domain.service.table.plan_manual_maintenance import (
     plan_manual_maintenance,
 )
@@ -31,5 +34,6 @@ __all__ = [
     "compute_reducible_files",
     "decide_table_management",
     "fits_smaller_size",
+    "measure_table",
     "plan_manual_maintenance",
 ]

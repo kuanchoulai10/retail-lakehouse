@@ -37,6 +37,10 @@ from context.table_maintenance.application.domain.model.table.table_id import Ta
 from context.table_maintenance.application.domain.model.table.table_management_change import (
     TableManagementChange,
 )
+from context.table_maintenance.application.domain.model.table.table_metrics import (
+    TABLE_METRIC_COUNT_FIELDS,
+    TableMetrics,
+)
 from context.table_maintenance.application.domain.model.table.table_name import (
     TableName,
 )
@@ -47,6 +51,7 @@ from context.table_maintenance.application.domain.model.table.table_status impor
 __all__ = [
     "DEFAULT_FAILURE_BACKOFF_CAP",
     "DEFAULT_OPERATION_COOLDOWNS",
+    "TABLE_METRIC_COUNT_FIELDS",
     "AppliedPolicyRef",
     "AttentionMark",
     "InvalidTableTransition",
@@ -58,6 +63,7 @@ __all__ = [
     "TableChange",
     "TableId",
     "TableManagementChange",
+    "TableMetrics",
     "TableName",
     "TableStatus",
 ]
