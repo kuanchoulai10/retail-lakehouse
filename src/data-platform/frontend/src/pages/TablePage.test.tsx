@@ -21,7 +21,7 @@ import { TablePage } from "./TablePage";
 
 const TABLE = "/v1/catalogs/iceberg/namespaces/retail/tables/orders";
 const PAGE = "/catalogs/iceberg/namespaces/retail/tables/orders";
-const TABS = ["Overview", "Schema", "Properties", "Commits", "Maintenance", "Candidates", "Reconciliations"];
+const TABS = ["Overview", "Schema", "Properties", "Commits", "Maintenance", "Reconciliations"];
 
 function Location() {
   const location = useLocation();
@@ -141,8 +141,8 @@ describe("TablePage", { timeout: 15_000 }, () => {
   });
 
   describe.each(UNMANAGED)("unmanaged table (%s)", (_reason, options, message) => {
-    it.each(["commits", "maintenance", "candidates", "reconciliations"])(
-      "unmanaged table shows the empty state on commits maintenance candidates and reconciliations: %s",
+    it.each(["commits", "maintenance", "reconciliations"])(
+      "unmanaged table shows the empty state on commits maintenance and reconciliations: %s",
       async (tab) => {
         stubTable(options);
         renderAt(`${PAGE}/${tab}`);
@@ -501,9 +501,9 @@ describe("TablePage", { timeout: 15_000 }, () => {
     expect(callsTo(calls, "GET", TABLE)).toHaveLength(1);
   });
 
-  it("falls back to Overview for an unknown tab segment", async () => {
+  it.each(["nonsense", "candidates"])("falls back to Overview for an unknown tab segment: %s", async (segment) => {
     stubTable();
-    renderAt(`${PAGE}/nonsense`);
+    renderAt(`${PAGE}/${segment}`);
     await screen.findByRole("region", { name: "Table" });
     expect(screen.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
   });

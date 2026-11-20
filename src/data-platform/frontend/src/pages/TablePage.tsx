@@ -18,7 +18,6 @@ import { RenameTableDialog } from "@/components/forms/RenameTableDialog";
 import { MaintenanceGate } from "@/components/MaintenanceGate";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
 import { TableHeader } from "@/components/TableHeader";
-import { CandidatesTab } from "@/components/tabs/CandidatesTab";
 import { CommitsTab } from "@/components/tabs/CommitsTab";
 import { MaintenanceTab } from "@/components/tabs/MaintenanceTab";
 import { OverviewTab } from "@/components/tabs/OverviewTab";
@@ -38,7 +37,6 @@ const TABS = [
   { key: "properties", label: "Properties" },
   { key: "commits", label: "Commits" },
   { key: "maintenance", label: "Maintenance" },
-  { key: "candidates", label: "Candidates" },
   { key: "reconciliations", label: "Reconciliations" },
 ] as const;
 
@@ -75,8 +73,6 @@ function tabBody(
       return <MaintenanceGate state={maintenance}>{(managed) => <CommitsTab tableUuid={managed.uuid} />}</MaintenanceGate>;
     case "maintenance":
       return <MaintenanceGate state={maintenance}>{(managed) => <MaintenanceTab tableUuid={managed.uuid} />}</MaintenanceGate>;
-    case "candidates":
-      return <MaintenanceGate state={maintenance}>{(managed) => <CandidatesTab tableUuid={managed.uuid} />}</MaintenanceGate>;
     case "reconciliations":
       return (
         <MaintenanceGate state={maintenance}>{(managed) => <ReconciliationsTab tableUuid={managed.uuid} />}</MaintenanceGate>

@@ -10,7 +10,6 @@ import {
   NIGHTLY_POLICY_ID,
   policyContentFixture,
   policyFixture,
-  SCHEDULER_SETTINGS,
   SCRATCH_POLICY_ID,
 } from "../test/fixtures";
 import { PoliciesPage } from "./PoliciesPage";
@@ -82,13 +81,13 @@ describe("PoliciesPage", () => {
     expect(within(policyRow("nightly")).getByText("4")).toBeInTheDocument();
   });
 
-  it("shows each policy's priority with the time it allows", async () => {
-    stubApi({ "GET /v1/scheduler-settings": () => jsonResponse(SCHEDULER_SETTINGS) });
+  it("shows each policy's priority as it is", async () => {
+    stubApi();
     renderPage();
     await screen.findByText("Nightly compaction");
     expect(screen.getAllByRole("columnheader").map((h) => h.textContent)).toContain("Priority");
-    expect(await within(policyRow("nightly")).findByText("P0 (within 1 h)")).toBeInTheDocument();
-    expect(within(policyRow("default")).getByText("P2 (within 8 h)")).toBeInTheDocument();
+    expect(await within(policyRow("nightly")).findByText("P0")).toBeInTheDocument();
+    expect(within(policyRow("default")).getByText("P2")).toBeInTheDocument();
   });
 
   it("shows where each policy is attached, marking a target no longer in the catalog", async () => {

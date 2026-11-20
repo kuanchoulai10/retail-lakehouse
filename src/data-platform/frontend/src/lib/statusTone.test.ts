@@ -9,7 +9,6 @@ describe("statusTone", () => {
     ["error", "negative"],
     ["due", "notice"],
     ["truncated", "notice"],
-    ["overdue", "notice"],
     ["granted", "neutral"],
     ["managed", "neutral"],
     ["unmanaged", "neutral"],

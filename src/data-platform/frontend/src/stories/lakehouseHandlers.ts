@@ -1,10 +1,4 @@
 import { getListCatalogsMockHandler, getGetCatalogMockHandler } from "@/api/generated/catalogs/catalogs.msw";
-import { getListCompactionCandidatesMockHandler } from "@/api/generated/compaction-candidates/compaction-candidates.msw";
-import {
-  getGetCompactionRoundMockHandler,
-  getGetSchedulerSettingsMockHandler,
-  getListCompactionRoundsMockHandler,
-} from "@/api/generated/compaction-rounds/compaction-rounds.msw";
 import { getGetPlatformSettingsMockHandler } from "@/api/generated/platform-settings/platform-settings.msw";
 import { getListGenericTablesMockHandler } from "@/api/generated/generic-tables/generic-tables.msw";
 import { getGetNamespaceMockHandler, getListNamespacesMockHandler } from "@/api/generated/namespaces/namespaces.msw";
@@ -42,7 +36,6 @@ import { getListTableReconciliationsMockHandler } from "@/api/generated/table-re
 import { getListViewsMockHandler } from "@/api/generated/views/views.msw";
 import {
   applicablePolicy,
-  CANDIDATES,
   CATALOGS,
   COMMITS,
   MAINTAINED_ORDERS,
@@ -56,10 +49,8 @@ import {
   RECONCILIATIONS,
   RETAIL,
   RETAIL_TABLES,
-  ROUNDS,
   RULES,
   RUNS,
-  SCHEDULER_SETTINGS,
 } from "./storyData";
 
 // Every read the console makes, answered from storyData through the generated MSW handlers.
@@ -102,11 +93,7 @@ export function lakehouseHandlers() {
       };
     }),
     getListTableMaintenanceRunsMockHandler(RUNS),
-    getListCompactionCandidatesMockHandler(CANDIDATES),
-    getListCompactionRoundsMockHandler(ROUNDS),
-    getGetSchedulerSettingsMockHandler(SCHEDULER_SETTINGS),
     getGetPlatformSettingsMockHandler(PLATFORM_SETTINGS),
-    getGetCompactionRoundMockHandler(({ params }) => ROUNDS.find((r) => r.round_id === params.roundId) ?? ROUNDS[0]!),
     getListTableReconciliationsMockHandler(({ request }) => {
       const query = new URL(request.url).searchParams;
       const before = query.get("before");

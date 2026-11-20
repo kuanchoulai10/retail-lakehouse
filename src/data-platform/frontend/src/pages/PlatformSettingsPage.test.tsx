@@ -16,18 +16,20 @@ const SETTINGS: PlatformSettingsApiResponse = {
       title: "Execution capacity",
       items: [
         {
-          key: "admission_limit",
-          label: "Concurrent operations",
-          value: 2,
-          unit: "operations",
-          description: "How many maintenance operations may run at the same time across the whole platform.",
-        },
-        {
           key: "maintenance_attempt_deadline_seconds",
           label: "Attempt time limit",
           value: 21_600,
           unit: "seconds",
-          description: "How long one attempt of an operation may run before it is stopped and counted as failed.",
+          description:
+            "How long one attempt may run once its Spark job has started; time spent waiting in the queue does not count.",
+        },
+        {
+          key: "maintenance_queue_wait_limit_seconds",
+          label: "Queue wait limit",
+          value: 86_400,
+          unit: "seconds",
+          description:
+            "How long one attempt may wait in its Volcano queue before it is stopped; its operation then waits for the next plan.",
         },
       ],
     },
@@ -94,10 +96,12 @@ describe("PlatformSettingsPage", () => {
     renderPage();
     const panel = await screen.findByRole("region", { name: "Execution capacity" });
     const facts = within(panel).getAllByRole("term").map((t) => t.textContent);
-    expect(facts).toEqual(["Concurrent operations", "Attempt time limit"]);
-    expect(within(panel).getByText("2 operations")).toBeInTheDocument();
+    expect(facts).toEqual(["Attempt time limit", "Queue wait limit"]);
+    expect(within(panel).getByText("86,400 seconds")).toBeInTheDocument();
     expect(
-      within(panel).getByText("How many maintenance operations may run at the same time across the whole platform."),
+      within(panel).getByText(
+        "How long one attempt may wait in its Volcano queue before it is stopped; its operation then waits for the next plan.",
+      ),
     ).toBeInTheDocument();
   });
 

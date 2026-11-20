@@ -2,7 +2,6 @@ import { TextLink } from "@retail-lakehouse/design-system";
 import { Link, Route, Routes } from "react-router";
 import { CatalogPage } from "./pages/CatalogPage";
 import { CatalogsPage } from "./pages/CatalogsPage";
-import { CompactionRoundsPage } from "./pages/CompactionRoundsPage";
 import { DiscoveryRulesPage } from "./pages/DiscoveryRulesPage";
 import { GenericTablePage } from "./pages/GenericTablePage";
 import { NamespacePage } from "./pages/NamespacePage";
@@ -36,7 +35,6 @@ export function AppRoutes() {
       <Route path="/discovery-rules" element={<DiscoveryRulesPage />} />
       <Route path="/policies" element={<PoliciesPage />} />
       <Route path="/policies/:name/versions/:version" element={<PolicyVersionPage />} />
-      <Route path="/compaction-rounds" element={<CompactionRoundsPage />} />
       <Route path="/platform-settings" element={<PlatformSettingsPage />} />
       <Route path="/catalogs" element={<CatalogsPage />} />
       <Route path="/catalogs/:catalog" element={<CatalogPage />} />

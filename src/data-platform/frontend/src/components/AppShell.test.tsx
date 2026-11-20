@@ -46,17 +46,8 @@ describe("AppShell", () => {
       "Catalog",
       "Discovery rules",
       "Maintenance policies",
-      "Compaction rounds",
       "Platform settings",
     ]);
-  });
-
-  it("links the compaction rounds page and marks it current there", () => {
-    renderShell("/compaction-rounds");
-    const nav = screen.getByRole("navigation", { name: "Main" });
-    const link = within(nav).getByRole("link", { name: "Compaction rounds" });
-    expect(link).toHaveAttribute("href", "/compaction-rounds");
-    expect(link).toHaveAttribute("aria-current", "page");
   });
 
   it("links the policies page and marks it current there", () => {

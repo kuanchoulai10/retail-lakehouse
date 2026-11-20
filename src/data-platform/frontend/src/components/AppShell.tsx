@@ -2,7 +2,6 @@ import {
   AppLayout,
   IconAdjustmentsHorizontal,
   IconBook,
-  IconCalendar,
   IconInfoCircle,
   IconTable,
   IconRadar,
@@ -47,12 +46,6 @@ const NAV_ENTRIES: NavEntry[] = [
     label: "Maintenance policies",
     icon: IconAdjustmentsHorizontal,
     matches: (pathname) => pathname.startsWith("/policies"),
-  },
-  {
-    href: "/compaction-rounds",
-    label: "Compaction rounds",
-    icon: IconCalendar,
-    matches: (pathname) => pathname.startsWith("/compaction-rounds"),
   },
   {
     href: "/platform-settings",

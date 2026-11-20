@@ -3,9 +3,6 @@ import type {
   CatalogApiResponse,
   CatalogTableApiResponse,
   CatalogTablePropertiesApiResponse,
-  CompactionCandidateApiResponse,
-  CompactionCandidatesApiResponse,
-  CompactionRoundApiResponse,
   ListedTableMaintenancePolicyApiResponse,
   ListedTableMaintenancePolicyMappingApiResponse,
   NamespaceApiResponse,
@@ -14,7 +11,6 @@ import type {
   PlatformSettingsApiResponse,
   PlatformSettingsGroupApiResponse,
   ReconciliationOperationApiResponse,
-  SchedulerSettingsApiResponse,
   TableApiResponse,
   TableCommitsApiResponse,
   TableDiscoveryRuleApiResponse,
@@ -558,72 +554,6 @@ export const QUEUE_TIMEOUT_RUN = runOfAttempts(
   "2026-11-19T02:00:00Z",
 );
 
-export const NEWEST_ROUND_ID = "cr-01m79a4580ekrvn7jjtkvbg2gx";
-const OLDER_ROUND_ID = "cr-01m79a0g20fyg9rjvt5yegdse3";
-
-function orderDay(day: string, overrides: Partial<CompactionCandidateApiResponse>): CompactionCandidateApiResponse {
-  return {
-    partition: { spec_id: 0, values: [day] },
-    partition_label: `ordered_at_day=${day}`,
-    state: "pending",
-    hold_reason: null,
-    reducible_files: 18,
-    data_bytes: 96 * 1024 * 1024,
-    estimated_gb_hours: 0.12,
-    score: 0.5,
-    rank: null,
-    claimed_by_run_id: null,
-    lease_expires_at: null,
-    last_written_at: "2026-11-12T23:40:00Z",
-    observed_at: "2026-11-13T02:00:00Z",
-    priority: "P0",
-    granted_round_id: null,
-    granted_round_started_at: null,
-    pending_since: null,
-    overdue: false,
-    ...overrides,
-  };
-}
-
-// The order days that need compaction, best first: one in a run, one still being written, one a
-// round granted, the top two pending (two per run, one overdue), one below them and one too small.
-export const CANDIDATES: CompactionCandidatesApiResponse = {
-  partitions_per_run: 2,
-  candidates: [
-    orderDay("2026-11-10", {
-      state: "running",
-      score: 0.92,
-      reducible_files: 412,
-      data_bytes: 1_932_735_283,
-      estimated_gb_hours: 0.9,
-      claimed_by_run_id: SCHEDULED_RUN_ID,
-      lease_expires_at: "2026-11-13T21:48:00Z",
-    }),
-    orderDay("2026-11-12", {
-      state: "held",
-      hold_reason: "recently_written",
-      score: 0.81,
-      reducible_files: 240,
-      last_written_at: "2026-11-13T01:59:00Z",
-    }),
-    orderDay("2026-11-09", {
-      state: "granted",
-      score: 0.74,
-      reducible_files: 160,
-      data_bytes: 640 * 1024 * 1024,
-      estimated_gb_hours: 0.35,
-      granted_round_id: NEWEST_ROUND_ID,
-      granted_round_started_at: "2026-11-13T02:00:00Z",
-      lease_expires_at: "2026-11-13T02:10:00Z",
-      pending_since: "2026-11-13T01:00:00Z",
-    }),
-    orderDay("2026-11-08", { rank: 1, score: 0.55, reducible_files: 96, pending_since: "2026-11-12T22:00:00Z", overdue: true }),
-    orderDay("2026-11-07", { rank: 2, score: 0.31, reducible_files: 40, pending_since: "2026-11-13T01:00:00Z" }),
-    orderDay("2026-11-05", { rank: 3, score: 0.22, reducible_files: 24, pending_since: "2026-11-13T01:00:00Z" }),
-    orderDay("2026-11-06", { state: "held", hold_reason: "too_small", score: 0.08, reducible_files: 6, data_bytes: 2 * 1024 * 1024, estimated_gb_hours: 0.01 }),
-  ],
-};
-
 export const RULES: TableDiscoveryRuleApiResponse[] = [
   {
     id: "dr-01m7s6c3tqee0rhg00xry2zqqt",
@@ -860,19 +790,6 @@ export function applicablePolicy(catalog: string, namespace: string[] = []): App
   return { ...POLICIES[inRetail ? 1 : 0]!, target: inRetail ? RETAIL_TARGET : null };
 }
 
-// The scheduler's settings: a round every 2 minutes within 0.5 GB·h, and each priority's weight and
-// the time it allows a pending partition before it is overdue.
-export const SCHEDULER_SETTINGS: SchedulerSettingsApiResponse = {
-  round_seconds: 120,
-  budget_gb_hours: 0.5,
-  grant_lease_seconds: 600,
-  priorities: [
-    { priority: "P0", weight: 4, sla_seconds: 3600 },
-    { priority: "P1", weight: 2, sla_seconds: 14_400 },
-    { priority: "P2", weight: 1, sla_seconds: 28_800 },
-  ],
-};
-
 function setting(
   key: string,
   label: string,
@@ -892,10 +809,10 @@ function group(key: string, title: string, items: PlatformSettingApiResponse[]):
 export const PLATFORM_SETTINGS: PlatformSettingsApiResponse = {
   groups: [
     group("execution_capacity", "Execution capacity", [
-      setting("admission_limit", "Concurrent operations", 2, "operations",
-        "How many maintenance operations may run at the same time across the whole platform."),
       setting("maintenance_attempt_deadline_seconds", "Attempt time limit", 21600, "seconds",
-        "How long one attempt of an operation may run before it is stopped and counted as failed."),
+        "How long one attempt may run once its Spark job has started; time spent waiting in the queue does not count."),
+      setting("maintenance_queue_wait_limit_seconds", "Queue wait limit", 86400, "seconds",
+        "How long one attempt may wait in its Volcano queue before it is stopped; its operation then waits for the next plan."),
       setting("maintenance_max_attempts", "Attempts per operation", 3, "attempts",
         "How many times one run tries an operation before it gives the operation up as failed."),
     ]),
@@ -919,34 +836,6 @@ export const PLATFORM_SETTINGS: PlatformSettingsApiResponse = {
       setting("compute_size_l_executor_instances", "L executors", 1, "executors",
         "How many Spark executors an operation gets when it runs at size L."),
     ]),
-    group("compaction_scheduling", "Compaction scheduling", [
-      setting("scheduler_round_seconds", "Round interval", 120, "seconds",
-        "How often a compaction round decides which partitions to compact next."),
-      setting("scheduler_budget_gb_hours", "Round budget", 0.05, "GB·hours",
-        "The most estimated compute a single round may grant, in GB·hours."),
-      setting("scheduler_priority_weight_p0", "P0 weight", 4, "times",
-        "How many times a P0 partition's score is multiplied when a round ranks partitions."),
-      setting("scheduler_priority_weight_p1", "P1 weight", 2, "times",
-        "How many times a P1 partition's score is multiplied when a round ranks partitions."),
-      setting("scheduler_priority_weight_p2", "P2 weight", 1, "times",
-        "How many times a P2 partition's score is multiplied when a round ranks partitions."),
-      setting("scheduler_sla_seconds_p0", "P0 SLA", 3600, "seconds",
-        "How long a P0 partition may wait for compaction before it is shown as overdue."),
-      setting("scheduler_sla_seconds_p1", "P1 SLA", 14400, "seconds",
-        "How long a P1 partition may wait for compaction before it is shown as overdue."),
-      setting("scheduler_sla_seconds_p2", "P2 SLA", 28800, "seconds",
-        "How long a P2 partition may wait for compaction before it is shown as overdue."),
-      setting("scheduler_grant_lease_seconds", "Grant retention", 600, "seconds",
-        "How long a granted partition stays reserved for its table to claim before the grant lapses."),
-      setting("compaction_partitions_per_run", "Partitions per run", 10, "partitions",
-        "The most partitions one compaction run rewrites."),
-      setting("compaction_quiet_seconds", "Quiet period", 120, "seconds",
-        "How long a partition must go without a new write before it is compacted."),
-      setting("compaction_max_quiet_wait_seconds", "Longest quiet wait", 3600, "seconds",
-        "The longest a partition that keeps receiving writes is held back before it is compacted anyway."),
-      setting("compaction_min_partition_bytes", "Minimum partition size", 0, "bytes",
-        "A partition with less data than this is left alone as too small to compact."),
-    ]),
     group("cooldown_and_backoff", "Cooldown and backoff", [
       setting("maintenance_failure_backoff_cap_seconds", "Failure backoff cap", 86400, "seconds",
         "Each failure of an operation doubles its cooldown, up to this limit."),
@@ -957,67 +846,3 @@ export const PLATFORM_SETTINGS: PlatformSettingsApiResponse = {
     ]),
   ],
 };
-
-// Two rounds of the compaction scheduler: the newest granted an order day (P0, weight 4) and a
-// stock-levels partition, then ran out of budget; the one before had nothing pending.
-export const ROUNDS: CompactionRoundApiResponse[] = [
-  {
-    round_id: NEWEST_ROUND_ID,
-    started_at: "2026-11-13T02:00:00Z",
-    budget_gb_hours: 0.5,
-    used_gb_hours: 0.47,
-    picks: [
-      {
-        table_uuid: ORDERS_UUID,
-        table_name: "iceberg.retail.orders",
-        table: { catalog: "iceberg", namespace: ["retail"], name: "orders" },
-        partition: { spec_id: 0, values: ["2026-11-09"] },
-        partition_label: "ordered_at_day=2026-11-09",
-        priority: "P0",
-        score: 0.74,
-        weighted_score: 2.96,
-        estimated_gb_hours: 0.35,
-        overdue: false,
-      },
-      {
-        table_uuid: "1d3f5b7a-2c4e-4a6b-8c0d-e2f4a6b8c0d1",
-        table_name: "iceberg.inventory.stock_levels",
-        table: { catalog: "iceberg", namespace: ["inventory"], name: "stock_levels" },
-        partition: { spec_id: 0, values: ["2026-11-12"] },
-        partition_label: "updated_at_day=2026-11-12",
-        priority: "P2",
-        score: 0.81,
-        weighted_score: 0.81,
-        estimated_gb_hours: 0.12,
-        overdue: false,
-      },
-    ],
-    skips: [
-      {
-        table_uuid: ORDERS_UUID,
-        table_name: "iceberg.retail.orders",
-        table: { catalog: "iceberg", namespace: ["retail"], name: "orders" },
-        partition: { spec_id: 0, values: ["2026-11-08"] },
-        partition_label: "ordered_at_day=2026-11-08",
-        priority: "P0",
-        score: 0.55,
-        weighted_score: 2.2,
-        estimated_gb_hours: 0.12,
-        overdue: true,
-        reason: "budget_used",
-      },
-    ],
-    skipped_total: 4,
-    busy_skipped: 3,
-  },
-  {
-    round_id: OLDER_ROUND_ID,
-    started_at: "2026-11-13T01:58:00Z",
-    budget_gb_hours: 0.5,
-    used_gb_hours: 0,
-    picks: [],
-    skips: [],
-    skipped_total: 0,
-    busy_skipped: 0,
-  },
-];

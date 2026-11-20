@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { bodyOf, callsTo, stubCatalogApi, type StubbedCall } from "../test/catalogApiStub";
-import { jsonResponse, policyContentFixture, policyFixture, SCHEDULER_SETTINGS } from "../test/fixtures";
+import { jsonResponse, policyContentFixture, policyFixture } from "../test/fixtures";
 import { PolicyEditor } from "./PolicyEditor";
 
 const NIGHTLY = policyFixture({ name: "nightly", description: "Nightly compaction", version: 4 });
@@ -223,19 +223,17 @@ describe("PolicyEditor", () => {
     expect(bodyOf(calls, "PUT", "/v1/maintenance-policies/nightly")).toMatchObject({ priority: "P0", version: 4 });
   });
 
-  it("offers each priority with the time it allows and says what happens past it", async () => {
-    stubCatalogApi({ "GET /v1/scheduler-settings": () => jsonResponse(SCHEDULER_SETTINGS) });
+  it("offers each priority as it is and says compaction rounds no longer order maintenance", async () => {
+    stubCatalogApi({});
     const user = userEvent.setup();
     renderEditor(<PolicyEditor policy={NIGHTLY} content={NIGHTLY} onClose={vi.fn()} />);
     const dialog = await screen.findByRole("dialog", { name: "Edit policy" });
-    await waitFor(() =>
-      expect(within(dialog).getByRole("combobox", { name: "Priority" })).toHaveTextContent("P2 (within 8 h)"),
-    );
+    expect(within(dialog).getByRole("combobox", { name: "Priority" })).toHaveTextContent("P2");
     await user.click(within(dialog).getByRole("combobox", { name: "Priority" }));
-    expect(await screen.findByRole("option", { name: "P0 (within 1 h)" })).toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: "P0" })).toBeInTheDocument();
     expect(
       within(dialog).getByText(
-        "When a compaction round cannot afford every table, P0 goes first and P2 last. A partition waiting longer than its priority allows is marked overdue. P2 is the default.",
+        "Compaction rounds are gone: this priority no longer orders maintenance. A table's own priority (on its Overview tab) does. KCL-91 removes this field.",
       ),
     ).toBeInTheDocument();
   });

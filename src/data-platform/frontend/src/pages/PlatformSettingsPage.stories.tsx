@@ -25,7 +25,7 @@ export const Default: Story = {
     await expect(within(capacity).getByText("Attempt time limit")).toBeVisible();
     await expect(within(capacity).getByText("6 h")).toBeVisible();
     await expect(within(capacity).getByText("21,600 seconds")).toBeVisible();
-    for (const title of ["Spark sizes", "Compaction scheduling", "Cooldown and backoff", "Discovery"]) {
+    for (const title of ["Spark sizes", "Cooldown and backoff", "Discovery"]) {
       await expect(canvas.getByRole("region", { name: title })).toBeVisible();
     }
     await expect(

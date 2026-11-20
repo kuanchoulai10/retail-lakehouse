@@ -11,7 +11,6 @@ import {
 import type { MaintenancePriorityApi, TableMaintenancePolicyApiResponse } from "@/api/generated/model";
 import { errorMessage } from "@/format";
 import { priorityText } from "@/lib/priorityText";
-import { useSchedulerPriorities } from "@/lib/useSchedulerPriorities";
 import {
   contentFromDraft,
   draftFromContent,
@@ -52,10 +51,9 @@ export function PolicyEditor({ policy, content, onClose }: Props) {
     policy === undefined ? null : { name: policy.name, version: policy.version },
   );
   const [draft, setDraft] = useState<PolicyDraft>(() => draftFromContent(content));
-  const schedulerPriorities = useSchedulerPriorities();
   const priorityOptions: SelectOption<MaintenancePriorityApi>[] = PRIORITIES.map((value) => ({
     value,
-    label: priorityText(value, schedulerPriorities),
+    label: priorityText(value),
   }));
   const [name, setName] = useState("");
   const [invalid, setInvalid] = useState<string | null>(null);
@@ -185,8 +183,8 @@ export function PolicyEditor({ policy, content, onClose }: Props) {
           onChange={(priority) => update("priority", priority)}
         />
         <p className="type-body-small text-on-surface-variant">
-          When a compaction round cannot afford every table, P0 goes first and P2 last. A partition waiting longer
-          than its priority allows is marked overdue. P2 is the default.
+          Compaction rounds are gone: this priority no longer orders maintenance. A table&apos;s own priority (on its
+          Overview tab) does. KCL-91 removes this field.
         </p>
       </div>
 
