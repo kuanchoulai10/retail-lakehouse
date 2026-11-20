@@ -731,23 +731,17 @@ CREATE TABLE IF NOT EXISTS ${CATALOG}.${SCHEMA}.${REGIONS} (
 ) WITH (partitioning = ARRAY['region'])"
 
 progress "creating the policies tm-e2e-orders (inert for scheduling) and tm-e2e-regions and attaching them before any write"
-ensure_policy tm-e2e-orders "e2e: manual runs only, lowered execution values" "$(cat <<JQ
-.operations.rewrite_data_files.enabled = false
-| .operations.rewrite_manifests.enabled = false
-| .operations.expire_snapshots.enabled = false
-| .operations.remove_orphan_files.enabled = false
-| .operations.rewrite_data_files.execution_policy.min_input_files = 1
-| .operations.expire_snapshots.execution_policy = {older_than_seconds: ${EXPIRE_AGE_SECONDS}, retain_last: 1}
-| .operations.remove_orphan_files.execution_policy.older_than_seconds = 86400
+ensure_policy tm-e2e-orders "e2e: manual runs only, lowered target values" "$(cat <<JQ
+.dry_run = true
+| .rewrite_data_files.options.min_input_files = 1
+| .expire_snapshots.target = {min_snapshots_to_keep: 1, max_snapshot_age_seconds: ${EXPIRE_AGE_SECONDS}}
+| .remove_orphan_files.target.older_than_seconds = 86400
 JQ
 )"
 ensure_policy tm-e2e-regions "e2e: scheduled whole-table compaction" "$(cat <<JQ
-.reconcile_interval_seconds = 300
-| .operations.rewrite_data_files.trigger_policy.conditions.reducible_files = {at_least: 2}
-| .operations.rewrite_data_files.trigger_policy.cooldown_seconds = 60
-| .operations.rewrite_manifests.enabled = false
-| .operations.expire_snapshots.enabled = false
-| .operations.remove_orphan_files.enabled = false
+.on = {schedule: {every_seconds: 300}, catalog_commit: {debounce_seconds: 60}}
+| .rewrite_data_files.target.reducible_files.at_most = 1
+| del(.rewrite_manifests, .expire_snapshots, .remove_orphan_files)
 JQ
 )"
 attach_policy tm-e2e-orders "${ORDERS}"

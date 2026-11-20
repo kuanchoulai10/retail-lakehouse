@@ -15,7 +15,6 @@ Open issues and deferred work. Not loaded automatically; read the entries for th
 - A renamed table outside the covered catalogs lists its policy mapping as orphaned (the catalog gateway cannot look a table up by UUID).
 - Execution `target_file_size_bytes` can disagree with the measured target size.
 - A retried `record_maintenance_operation_result` activity can lose the table's backoff update.
-- Every CDC commit sends a hint that triggers a full metadata scan in the plan; debounce planning.
 - No auth on the API or the Spark result callback, and no NetworkPolicy.
 - Table maintenance uses the Polaris root principal; switch to a scoped principal.
 - The SparkApplications the backend submits (`spark_application_manifest.py`) carry no `app.kubernetes.io/*` labels; the label standard covers only `platform/` manifests and the wave-25 chart.
@@ -94,3 +93,9 @@ Open issues and deferred work. Not loaded automatically; read the entries for th
 - A priority raise can race the driver start (2026-11-20, KCL-93): the check that a queued attempt's job reads `PENDING` with no driver start and the delete of that job are two steps, so a driver that starts in between is killed with the job and the attempt runs again under the same attempt number. The maintenance procedures are idempotent, so nothing is lost, but the time that driver ran is.
 - `assess_maintenance` still selects the qualifying partitions of a table (2026-11-20, KCL-93), although a `rewrite_data_files` plan now compacts the whole table and ignores them, until KCL-94.
 - The admission-era maintenance replay tests were deleted (2026-11-20, KCL-93), so the pre-patch branches of the patches `fence-timed-out-attempt`, `fence-missing-job` and `classify-attempt-failure` in `TableMaintenanceWorkflow` are unreachable on the rebuilt cluster. `fence-cancelled-attempt` also has a pre-patch branch (a cancelled attempt is not fenced), but no replay test ever reached it, the deleted ones included (none of their histories cancels a run); it is just as unreachable on the rebuilt cluster. Remove all four branches, with their patches, in a later cleanup.
+- A run's own commit (compaction, expiry) opens a commit window too and costs one extra check (2026-11-20, KCL-91).
+- A managed table whose reconciliation workflow was lost is checked only at its schedule after a discovery scan restarts it (2026-11-20, KCL-91); its `table_managed` check is not sent again. If sending `managed` fails at registration, the retry finds the table already managed and sends `seen` or `updated`, so the table's first check waits for its schedule or a commit window. A durable "first check pending" flag or an outbox would fix this and the lost-workflow case together.
+- `per: partition` decides only whether compaction is due (2026-11-20, KCL-91): a run compacts the whole table until KCL-94.
+- A policy's `options` cover a curated subset of each Iceberg procedure's arguments (2026-11-20, KCL-91); another argument is a new field in the policy, the API, the plan and the Spark runtime.
+- `small_manifests.at_most: 0` makes manifest rewrites due at every cooldown (2026-11-20, KCL-91), since the newest manifest is usually small.
+- No migration for the target-state policy (2026-11-20, KCL-91): reconciliation records stored with the old wake reason `discovery_scan` no longer load, and an old workflow history whose `table_seen` planned no longer replays. Rebuild the cluster (`task offboard`, `task onboard KUBE_CONTEXT=retail-lakehouse`).
