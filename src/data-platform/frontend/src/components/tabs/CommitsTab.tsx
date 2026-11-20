@@ -8,10 +8,12 @@ import {
   IconGitCommit,
   List,
   Select,
+  TextLink,
   Tooltip,
 } from "@retail-lakehouse/design-system";
 import { keepPreviousData } from "@tanstack/react-query";
 import { useEffect, useId, useState } from "react";
+import { Link } from "react-router";
 import { ListTableCommitsWriter, type TableCommitApiResponse } from "@/api/generated/model";
 import { useListTableCommits } from "@/api/generated/tables/tables";
 import { PanelSkeleton } from "@/components/PanelSkeleton";
@@ -109,7 +111,13 @@ function CommitDetail({ id, commit }: { id: string; commit: TableCommitApiRespon
   );
 }
 
-function CommitRow({ commit }: { commit: TableCommitApiResponse }) {
+function CommitRow({
+  commit,
+  schemaHref,
+}: {
+  commit: TableCommitApiResponse;
+  schemaHref: (schemaId: number) => string;
+}) {
   const [open, setOpen] = useState(false);
   const detailId = useId();
 
@@ -126,6 +134,15 @@ function CommitRow({ commit }: { commit: TableCommitApiResponse }) {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          {commit.schema_id !== null && (
+            <Tooltip content={`Written with schema v${commit.schema_id}`}>
+              <TextLink asChild className="type-code font-mono">
+                <Link to={schemaHref(commit.schema_id)} aria-label={`Schema v${commit.schema_id}`}>
+                  v{commit.schema_id}
+                </Link>
+              </TextLink>
+            </Tooltip>
+          )}
           <span className="type-code font-mono text-on-surface-variant" title={commit.snapshot_id}>
             {commit.snapshot_id.slice(0, SHORT_ID_LENGTH)}
           </span>
@@ -150,7 +167,7 @@ function CommitRow({ commit }: { commit: TableCommitApiResponse }) {
 
 // One day of the history, drawn as GitHub draws it: a commit mark on a line running down the
 // left, the day's commits in one box beside it.
-function CommitDaySection({ day }: { day: CommitDay }) {
+function CommitDaySection({ day, schemaHref }: { day: CommitDay; schemaHref: (schemaId: number) => string }) {
   const headingId = useId();
   return (
     <section aria-labelledby={headingId} className="relative pb-6 pl-9 last:pb-0">
@@ -161,7 +178,7 @@ function CommitDaySection({ day }: { day: CommitDay }) {
       </h2>
       <List className="mt-2 divide-y divide-outline rounded-md border border-outline bg-surface">
         {day.commits.map((commit) => (
-          <CommitRow key={commit.snapshot_id} commit={commit} />
+          <CommitRow key={commit.snapshot_id} commit={commit} schemaHref={schemaHref} />
         ))}
       </List>
     </section>
@@ -203,7 +220,15 @@ function CommitFilterBar({ filters }: { filters: CommitFilters }) {
   );
 }
 
-function CommitHistory({ tableUuid, filters }: { tableUuid: string; filters: CommitFilters }) {
+function CommitHistory({
+  tableUuid,
+  filters,
+  schemaHref,
+}: {
+  tableUuid: string;
+  filters: CommitFilters;
+  schemaHref: (schemaId: number) => string;
+}) {
   const commits = useListTableCommits(tableUuid, filters.params, { query: { placeholderData: keepPreviousData } });
 
   if (commits.isPending) return <PanelSkeleton label="Loading commits…" />;
@@ -218,7 +243,7 @@ function CommitHistory({ tableUuid, filters }: { tableUuid: string; filters: Com
           {filters.isFiltered ? "No commits match these filters." : "No commits."}
         </p>
       ) : (
-        days.map((day) => <CommitDaySection key={day.label} day={day} />)
+        days.map((day) => <CommitDaySection key={day.label} day={day} schemaHref={schemaHref} />)
       )}
       {commits.data.truncated && (
         <p className="type-body-small mt-3 text-notice-text">Showing the newest commits only.</p>
@@ -227,12 +252,18 @@ function CommitHistory({ tableUuid, filters }: { tableUuid: string; filters: Com
   );
 }
 
-export function CommitsTab({ tableUuid }: { tableUuid: string }) {
+export function CommitsTab({
+  tableUuid,
+  schemaHref,
+}: {
+  tableUuid: string;
+  schemaHref: (schemaId: number) => string;
+}) {
   const filters = useCommitFilters();
   return (
     <>
       <CommitFilterBar filters={filters} />
-      <CommitHistory tableUuid={tableUuid} filters={filters} />
+      <CommitHistory tableUuid={tableUuid} filters={filters} schemaHref={schemaHref} />
     </>
   );
 }

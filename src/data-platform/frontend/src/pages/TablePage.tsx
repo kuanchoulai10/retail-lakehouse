@@ -70,7 +70,16 @@ function tabBody(
     case "properties":
       return <PropertiesTab table={table} />;
     case "commits":
-      return <MaintenanceGate state={maintenance}>{(managed) => <CommitsTab tableUuid={managed.uuid} />}</MaintenanceGate>;
+      return (
+        <MaintenanceGate state={maintenance}>
+          {(managed) => (
+            <CommitsTab
+              tableUuid={managed.uuid}
+              schemaHref={(id) => `${tablePath(table.catalog, table.namespace, table.name, "schema")}?schema=${id}`}
+            />
+          )}
+        </MaintenanceGate>
+      );
     case "maintenance":
       return <MaintenanceGate state={maintenance}>{(managed) => <MaintenanceTab tableUuid={managed.uuid} />}</MaintenanceGate>;
     case "reconciliations":

@@ -70,7 +70,7 @@ function renderTab(search = "") {
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[`/tables/orders/commits${search}`]}>
         <TooltipProvider>
-          <CommitsTab tableUuid="uuid-orders" />
+          <CommitsTab tableUuid="uuid-orders" schemaHref={(id) => `/tables/orders/schema?schema=${id}`} />
         </TooltipProvider>
         <LocationProbe />
       </MemoryRouter>
@@ -151,6 +151,34 @@ describe("CommitsTab", () => {
     expect(screen.getByText("Snapshot id: 3051729675574597004")).toBeInTheDocument();
     expect(screen.getByText("Parent id: 3051729675574597003")).toBeInTheDocument();
     expect(screen.getByText(/"kafka.connect.task-id": "0"/)).toBeInTheDocument();
+  });
+
+  it("links each commit to the schema version it was written with", async () => {
+    stubCatalogApi({
+      "GET /v1/tables/uuid-orders/commits*": () =>
+        jsonResponse({
+          items: [
+            commit({ snapshot_id: "1111111222", schema_id: 1 }),
+            commit({ snapshot_id: "2222222333", schema_id: null }),
+          ],
+          truncated: false,
+        }),
+    });
+    renderTab();
+    const link = await screen.findByRole("link", { name: "Schema v1" });
+    expect(link).toHaveTextContent("v1");
+    expect(link).toHaveAttribute("href", "/tables/orders/schema?schema=1");
+    expect(screen.getAllByRole("link")).toHaveLength(1);
+  });
+
+  it("shows no schema link on a commit with no schema version", async () => {
+    stubCatalogApi({
+      "GET /v1/tables/uuid-orders/commits*": () =>
+        jsonResponse({ items: [commit({ snapshot_id: "2222222333", schema_id: null })], truncated: false }),
+    });
+    renderTab();
+    await screen.findByText("2222222");
+    expect(screen.queryByRole("link", { name: /^Schema v/ })).not.toBeInTheDocument();
   });
 
   it("copies the exact 64-bit snapshot id", async () => {

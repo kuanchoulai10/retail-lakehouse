@@ -257,6 +257,17 @@ export const CommitsBySpark: Story = {
   },
 };
 
+export const CommitsSchemaLink: Story = {
+  args: { route: `${ORDERS}/commits` },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click((await canvas.findAllByRole("link", { name: "Schema v0" }))[0] as HTMLElement);
+    const schema = within(await canvas.findByRole("region", { name: "Schema" }));
+    await expect(await versionButton(schema, "v0")).toHaveAttribute("aria-current", "true");
+    await expect(await schema.findByRole("list", { name: "Changes in schema v0" })).toBeVisible();
+  },
+};
+
 export const CommitsPhone: Story = {
   args: { route: `${ORDERS}/commits` },
   globals: PHONE,
