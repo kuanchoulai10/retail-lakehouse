@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import timedelta
 
 from temporalio import workflow
 
@@ -24,7 +25,9 @@ class TableMaintenanceStubWorkflow:
     A cancellation is reported to the parent like the real child's cleanup does,
     unless the plan carries ``stub_ignores_cancel``: then the stub keeps waiting.
     The priority raises it receives are kept for the ``raises`` query, and a plan carrying
-    ``stub_leaves_raises_unapplied`` reports any raise it received as unapplied.
+    ``stub_leaves_raises_unapplied`` reports any raise it received as unapplied. A plan carrying
+    ``stub_lingers_seconds`` stays open that long after it reported, as the real child does
+    while its report activity completes.
     """
 
     @workflow.init
@@ -46,6 +49,9 @@ class TableMaintenanceStubWorkflow:
                 await self._report(input)
                 raise
         await self._report(input)
+        lingers = input.plan.get("stub_lingers_seconds")
+        if lingers:
+            await workflow.sleep(timedelta(seconds=lingers))
 
     async def _report(self, input: TableMaintenanceWorkflowInput) -> None:  # noqa: A002
         unapplied = bool(self._raises) and bool(input.plan.get("stub_leaves_raises_unapplied"))

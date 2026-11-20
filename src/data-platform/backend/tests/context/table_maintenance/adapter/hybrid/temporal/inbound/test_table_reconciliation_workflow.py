@@ -33,6 +33,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
     table_reconciliation_workflow_id,
 )
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
+    TableMaintenanceActivityPolicy,
     TableMaintenanceAttemptPolicy,
     TableReconciliationWorkflow,
 )
@@ -88,6 +89,7 @@ OPERATIONS_KEY = SearchAttributeKey.for_keyword_list("MaintenanceOperations")
 TRIGGER_KEY = SearchAttributeKey.for_keyword("MaintenanceTrigger")
 RUN_ID_SHAPE = prefixed_id_pattern("mr")
 RECONCILIATION_ID_SHAPE = prefixed_id_pattern("rc")
+CLOSING_BOUND = TableMaintenanceActivityPolicy().worst_case()
 
 
 def _check(operation: str, verdict: str = "due") -> dict[str, Any]:
@@ -465,7 +467,7 @@ def test_next_run_reuses_the_id_after_the_first_closed():
         records = await h.records(2)
         assert [r["run_start_failed"] for r in records[:2]] == [False, False]
 
-    _run(scenario, script=lambda _: _planned(COMPACTION))
+    _run(scenario, script=lambda _: {**_planned(COMPACTION), "stub_lingers_seconds": 1})
 
 
 def test_child_summary_names_the_table_and_the_planned_operations():
@@ -1885,13 +1887,13 @@ def test_a_compaction_grant_records_its_patch_marker_and_its_history_replays():
     _run(scenario, script=lambda _: _planned(COMPACTION))
 
 
-def _first_plan_with(flag: str) -> Callable[[dict[str, Any]], dict[str, Any]]:
-    """Plan a compaction carrying the stub flag ``flag`` first, then the manual operations asked for."""
+def _first_plan_with(flag: str, **stub: Any) -> Callable[[dict[str, Any]], dict[str, Any]]:
+    """Plan a compaction carrying the stub flag ``flag`` (and ``stub``) first, then the manual operations asked for."""
 
     def answer(request: dict[str, Any]) -> dict[str, Any]:
         if request["manual_operations"]:
             return _planned(*request["manual_operations"])
-        return {**_planned(COMPACTION), flag: True}
+        return {**_planned(COMPACTION), flag: True, **stub}
 
     return answer
 
@@ -1961,11 +1963,14 @@ def test_manual_trigger_whose_raise_the_run_left_unapplied_is_planned_after_it()
         await h.complete_child(first)
         plan = (await h.plan_count(2))[1]
         assert (plan["manual_operations"], plan["manual_priority"]) == ([EXPIRE], "P0")
-        assert (await h.records(2))[1]["wake_reasons"] == {"manual_run": 1, "previous_run_finished": 1}
+        second = (await h.records(2))[1]
+        assert second["wake_reasons"] == {"manual_run": 1, "previous_run_finished": 1}
+        assert second["run_start_failed"] is False
         run = await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first))
         assert run["raised_manual"] is None
+        assert (await h.child(run["in_flight_run_id"]))["trigger"] == "manual"
 
-    _run(scenario, script=_first_plan_with("stub_leaves_raises_unapplied"))
+    _run(scenario, script=_first_plan_with("stub_leaves_raises_unapplied", stub_lingers_seconds=1))
 
 
 def test_an_applied_raise_plans_no_manual_run_after_the_run():
@@ -2005,3 +2010,87 @@ def test_continue_as_new_carries_the_raised_manual_trigger():
         assert (plan["manual_operations"], plan["manual_priority"]) == ([EXPIRE], "P1")
 
     _run(scenario, script=lambda r: _planned(*(r["manual_operations"] or [COMPACTION])))
+
+
+LINGERS = timedelta(minutes=3)
+
+
+def test_next_run_waits_for_the_reporting_run_to_close():
+    """A run that stays open a while after it reported is waited for; the next run then starts under the same id."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = await h.in_flight()
+        await h.complete_child(first)
+        await h.plan_count(2)
+        state = await h.state()
+        assert (state["closing_workflow_id"], len(h.recorder.records)) == (CHILD_ID, 1)
+        await h.env.sleep(LINGERS + timedelta(seconds=30))
+        second = await eventually(h.state, lambda s: s["in_flight_run_id"] not in (None, first))
+        records = await h.records(2)
+        assert [r["run_start_failed"] for r in records[:2]] == [False, False]
+        assert (await h.child(second["in_flight_run_id"]))["run_id"] == second["in_flight_run_id"]
+        assert second["closing_workflow_id"] is None
+
+    _run(scenario, script=lambda _: {**_planned(COMPACTION), "stub_lingers_seconds": int(LINGERS.total_seconds())})
+
+
+def test_refused_start_keeps_the_manual_trigger_pending():
+    """A manual trigger whose run could not be started stays pending for the next plan."""
+
+    async def scenario(h: Harness) -> None:
+        await h.client.start_workflow(
+            TABLE_MAINTENANCE_WORKFLOW,
+            TableMaintenanceWorkflowInput(
+                run_id=OTHER_RUN_ID, table_uuid=UUID, parent_workflow_id="elsewhere", trigger="manual", plan=_planned()
+            ),
+            id=CHILD_ID,
+            task_queue=TASK_QUEUE,
+        )
+        await h.start(start_signal=TableReconciliationSignal.TRIGGER_NOW)
+        record = (await h.records(1))[0]
+        assert record["run_start_failed"] is True
+        state = await h.settle()
+        assert state["pending_manual"] == []
+        assert len(h.plans.requests) == 1
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))
+
+
+def test_next_run_after_a_run_that_never_closes_is_refused():
+    """A reported run still open past the closing bound is waited for no longer; its start is refused."""
+
+    async def scenario(h: Harness) -> None:
+        await h.start()
+        first = await h.in_flight()
+        await h.complete_child(first)
+        await h.env.sleep(CLOSING_BOUND + timedelta(minutes=1))
+        record = (await h.records(2))[1]
+        assert record["run_start_failed"] is True
+        assert (await h.settle())["closing_workflow_id"] is None
+
+    _run(scenario, script=lambda _: {**_planned(COMPACTION), "stub_lingers_seconds": 7200})
+
+
+def test_carried_closing_run_is_waited_for_before_the_next_plan():
+    """A closing run carried through continue as new is looked up until it closed, then the next run starts."""
+
+    async def scenario(h: Harness) -> None:
+        await h.client.start_workflow(
+            TABLE_MAINTENANCE_WORKFLOW,
+            TableMaintenanceWorkflowInput(
+                run_id=OTHER_RUN_ID, table_uuid=UUID, parent_workflow_id="elsewhere", trigger="manual", plan=_planned()
+            ),
+            id=CHILD_ID,
+            task_queue=TASK_QUEUE,
+        )
+        await h.start(closing_workflow_id=CHILD_ID)
+        await h.env.sleep(timedelta(minutes=1))
+        assert h.recorder.records == []
+        assert (await h.state())["closing_workflow_id"] == CHILD_ID
+        await h.client.get_workflow_handle(CHILD_ID).signal("complete")
+        await h.env.sleep(timedelta(seconds=30))
+        record = (await h.records(1))[0]
+        assert record["run_start_failed"] is False
+
+    _run(scenario, script=lambda _: _planned(COMPACTION))

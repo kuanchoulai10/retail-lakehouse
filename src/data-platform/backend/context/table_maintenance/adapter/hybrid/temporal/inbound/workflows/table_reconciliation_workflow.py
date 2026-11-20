@@ -34,6 +34,9 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconcili
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.mint_workflow_prefixed_id import (
     mint_workflow_prefixed_id,
 )
+from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_maintenance_activity_policy import (
+    TableMaintenanceActivityPolicy,
+)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_maintenance_attempt_policy import (
     TableMaintenanceAttemptPolicy,
 )
@@ -64,6 +67,8 @@ _RECHECK_PATCH = "recheck-held-candidates"
 _COMPACTION_GRANTED_PATCH = "compaction-granted-signal"
 _PREFIXED_IDS_PATCH = "prefixed-run-and-reconciliation-ids"
 _MIN_RECHECK = timedelta(seconds=10)
+_CLOSING_BOUND = TableMaintenanceActivityPolicy().worst_case()
+_CLOSING_POLL = timedelta(seconds=5)
 _RUN_ID_PREFIX = "mr"
 _RECONCILIATION_ID_PREFIX = "rc"
 
@@ -140,6 +145,16 @@ class TableReconciliationWorkflow:
     (``next_check_at``), and the next plan comes then, at least 10 seconds
     later, when that is before the interval (patch ``recheck-held-candidates``).
 
+    A run that reported may still be open: its report activity completes, and is
+    retried, after the report landed. The next run is started under the same
+    workflow id only once that execution closed: awaited through the child handle
+    of a run this execution started, looked up every 5 seconds
+    (``get_workflow_running``) for one carried through continue-as-new, and for at
+    most the report activity's worst case (``TableMaintenanceActivityPolicy``),
+    after which the start is tried and, if refused, recorded as a failed start. A
+    manual trigger is consumed only by a run that started, so a refused start
+    keeps it pending for the next plan.
+
     Each pass mints its reconciliation id (``rc-``) and the run id it would start under (``mr-``)
     from the workflow's clock and random source (patch ``prefixed-run-and-reconciliation-ids``); a
     history from before prefixed ids replays with the UUIDs it minted then.
@@ -164,6 +179,9 @@ class TableReconciliationWorkflow:
         self._pending_manual_priority = input.pending_manual_priority
         self._raised_manual = None if input.raised_manual is None else list(input.raised_manual)
         self._raised_manual_priority = input.raised_manual_priority
+        self._closing_workflow_id = input.closing_workflow_id
+        self._closing_handle: workflow.ChildWorkflowHandle[Any, Any] | None = None
+        self._child_handle: workflow.ChildWorkflowHandle[Any, Any] | None = None
         self._next_plan_at = datetime.fromisoformat(input.next_plan_at) if input.next_plan_at else None
         self._continue_as_new_after = input.continue_as_new_after
         self._interval = timedelta(seconds=input.reconcile_interval_seconds)
@@ -260,6 +278,8 @@ class TableReconciliationWorkflow:
             return
         if (payload or {}).get("unapplied_raise", False):
             self._give_back_raised_manual(run_id)
+        self._closing_workflow_id = self._in_flight_workflow_id
+        self._closing_handle = self._child_handle
         self._clear_in_flight()
         self._count(_REASON_PREVIOUS_RUN_FINISHED)
         self._woken = True
@@ -275,6 +295,7 @@ class TableReconciliationWorkflow:
             "pending_manual_priority": self._pending_manual_priority,
             "raised_manual": self._raised_manual,
             "raised_manual_priority": self._raised_manual_priority,
+            "closing_workflow_id": self._closing_workflow_id,
             "stopping": self._stopping,
             "next_plan_at": _iso(self._next_plan_at),
             "reconcile_interval_seconds": int(self._interval.total_seconds()),
@@ -343,6 +364,7 @@ class TableReconciliationWorkflow:
             in_flight_queue_wait_limit_seconds=self._in_flight_queue_wait_limit_seconds,
             raised_manual=self._raised_manual,
             raised_manual_priority=self._raised_manual_priority,
+            closing_workflow_id=self._closing_workflow_id,
         )
 
     async def _wait(self) -> None:
@@ -497,6 +519,32 @@ class TableReconciliationWorkflow:
         else:
             self._wake_reasons.pop(reason, None)
 
+    async def _await_closing(self) -> None:
+        """Wait, for at most the closing bound, until the run that reported last has closed.
+
+        A run this execution started is awaited through its child handle; one carried through
+        continue-as-new is looked up every few seconds (a failed lookup counts as still running).
+        """
+        workflow_id = self._closing_workflow_id
+        if workflow_id is None:
+            return
+        handle = self._closing_handle
+        closes_by = workflow.now() + _CLOSING_BOUND
+        if handle is not None:
+            if not handle.done():
+                try:
+                    await workflow.wait_condition(handle.done, timeout=_CLOSING_BOUND)
+                except TimeoutError:
+                    workflow.logger.warning("workflow %s did not close after its report; starting anyway", workflow_id)
+        else:
+            while await self._still_running(workflow_id):
+                if workflow.now() >= closes_by:
+                    workflow.logger.warning("workflow %s did not close after its report; starting anyway", workflow_id)
+                    break
+                await workflow.sleep(_CLOSING_POLL)
+        self._closing_workflow_id = None
+        self._closing_handle = None
+
     def _clear_in_flight(self) -> None:
         self._in_flight_run_id = None
         self._in_flight_workflow_id = None
@@ -507,6 +555,7 @@ class TableReconciliationWorkflow:
         self._in_flight_queue_wait_limit_seconds = DEFAULT_QUEUE_WAIT_LIMIT_SECONDS
         self._raised_manual = None
         self._raised_manual_priority = None
+        self._child_handle = None
 
     async def _plan_and_start(self) -> bool:
         """Plan once and start a run if anything is planned; True ends the workflow."""
@@ -568,9 +617,12 @@ class TableReconciliationWorkflow:
             self._consume_manual(manual, "nothing was planned")
             await self._record(record, plan, run_id=None, run_start_failed=False)
             return False
-        self._consume_manual(manual, None)
         started = await self._start_run(plan, manual is not None, run_id)
-        if not started:
+        if started:
+            self._consume_manual(manual, None)
+        else:
+            if manual is not None:
+                workflow.logger.info("keeping manual trigger %s: its run did not start", manual)
             await self._release_unstarted(plan, run_id)
         await self._record(record, plan, run_id=run_id if started else None, run_start_failed=not started)
         return False
@@ -658,8 +710,10 @@ class TableReconciliationWorkflow:
         """Start the child run under ``run_id``; False when it could not be started.
 
         The child runs under the table's one maintenance workflow id: a run of the
-        table still running refuses the start, and a closed one frees the id.
+        table still running refuses the start, and a closed one frees the id, so the
+        run that reported last is first awaited until it closed (``_await_closing``).
         """
+        await self._await_closing()
         child_id = table_maintenance_workflow_id(self._table_uuid)
         attempt_deadline_seconds = plan.get("attempt_deadline_seconds", DEFAULT_ATTEMPT_DEADLINE_SECONDS)
         max_attempts = plan.get("max_attempts", DEFAULT_MAX_ATTEMPTS)
@@ -694,6 +748,7 @@ class TableReconciliationWorkflow:
                 search_attributes=self._run_search_attributes(plan["table_name"], operations, trigger),
             )
             child.add_done_callback(_discard_outcome)
+            self._child_handle = child
         except FailureError as error:
             if is_cancelled_exception(error):
                 raise asyncio.CancelledError from error

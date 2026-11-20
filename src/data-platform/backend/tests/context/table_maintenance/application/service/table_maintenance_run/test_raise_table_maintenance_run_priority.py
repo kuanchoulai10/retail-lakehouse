@@ -40,9 +40,8 @@ def table(tables_repo, now) -> Table:
     return t
 
 
-@pytest.fixture
-def run(runs_repo, now) -> TableMaintenanceRun:
-    """Provide a stored run at P3 whose first attempt is queued."""
+def _stored_run(runs_repo, now, priority: TablePriority) -> TableMaintenanceRun:
+    """Store a run at ``priority`` whose first attempt is queued."""
     r = TableMaintenanceRun.create(
         TableMaintenanceRunId(RUN_1),
         TableId("u-1"),
@@ -50,28 +49,23 @@ def run(runs_repo, now) -> TableMaintenanceRun:
         [RDF],
         now,
         execution_ref="wf-1",
-        priority=TablePriority.P3,
+        priority=priority,
     )
     r.start_attempt(RDF, 1, None, now)
     runs_repo.create(r)
     return r
+
+
+@pytest.fixture
+def run(runs_repo, now) -> TableMaintenanceRun:
+    """Provide a stored run at P3 whose first attempt is queued."""
+    return _stored_run(runs_repo, now, TablePriority.P3)
 
 
 @pytest.fixture
 def run_at_p1(runs_repo, now) -> TableMaintenanceRun:
     """Provide a stored run at P1 whose first attempt is queued."""
-    r = TableMaintenanceRun.create(
-        TableMaintenanceRunId(RUN_1),
-        TableId("u-1"),
-        TriggerType.SCHEDULED,
-        [RDF],
-        now,
-        execution_ref="wf-1",
-        priority=TablePriority.P1,
-    )
-    r.start_attempt(RDF, 1, None, now)
-    runs_repo.create(r)
-    return r
+    return _stored_run(runs_repo, now, TablePriority.P1)
 
 
 @pytest.fixture

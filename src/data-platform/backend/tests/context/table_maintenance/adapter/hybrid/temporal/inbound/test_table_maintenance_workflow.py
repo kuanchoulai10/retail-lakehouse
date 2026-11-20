@@ -92,6 +92,7 @@ class Harness:
     client: Client
     queue: str
     fakes: ScriptedMaintenanceActivities
+    raise_sent_at: datetime | None = None
 
     async def run_maintenance(
         self,
@@ -1342,10 +1343,22 @@ REPLACE_ERROR = "queued job could not be replaced: its job was still there 15 mi
 
 
 async def _raise_after(h: Harness, handle: WorkflowHandle, wait: timedelta, priority: str | None = "P0") -> None:
-    """Let the first attempt be submitted and ``wait`` pass, then signal a priority raise."""
-    await eventually(lambda: _value(len(h.fakes.submits)), lambda n: n >= 1)
-    await h.env.sleep(wait)
-    await handle.signal(TableMaintenanceSignal.RAISE_PRIORITY, RaisePrioritySignal(priority))
+    """Signal a priority raise from the first status poll at least ``wait`` after the first submit.
+
+    The signal goes out from inside that poll, before any hook already set runs, and its time is kept
+    in ``h.raise_sent_at``; sending it from the poll, rather than from the test after skipping time,
+    keeps the time-skipping server's clock moving only while the test awaits the result.
+    """
+    earlier = h.fakes.status_hook
+
+    async def hook(app_name: str, polled_at: datetime) -> None:
+        if h.raise_sent_at is None and polled_at - h.fakes.submitted_at[FIRST_APP] >= wait:
+            h.raise_sent_at = polled_at
+            await handle.signal(TableMaintenanceSignal.RAISE_PRIORITY, RaisePrioritySignal(priority))
+        elif earlier is not None:
+            await earlier(app_name, polled_at)
+
+    h.fakes.status_hook = hook
 
 
 def _succeed_on_raise(h: Harness, operation: str = COMPACTION) -> None:
@@ -1385,7 +1398,9 @@ def test_raise_requeues_a_queued_attempt():
         assert h.recorded() == [(COMPACTION, 1, True, None)]
         commands = await h.commands()
         raised_at = next(at for name, at in commands if name == "raise_maintenance_run_priority")
-        assert raised_at - h.submit_times()[0] < timedelta(minutes=16)
+        assert h.raise_sent_at is not None
+        assert h.raise_sent_at - h.submit_times()[0] >= timedelta(minutes=15)
+        assert raised_at - h.raise_sent_at < timedelta(minutes=1)
         names = _names(commands)
         raised = names.index("raise_maintenance_run_priority")
         assert names[raised : raised + 6] == [
@@ -1536,6 +1551,7 @@ def test_failed_raise_is_dropped():
         assert len(h.fakes.raises) == 1
         assert len(h.fakes.submits) == 1
         assert h.fakes.deletes == [FIRST_APP]
+        assert (await h.parent_payloads())[0]["unapplied_raise"] is True
 
     _run(scenario)
 
@@ -1678,5 +1694,48 @@ def test_finish_reports_a_raise_left_unapplied():
 
         assert h.fakes.raises == []
         assert await h.parent_payloads() == [{"run_id": RUN_ID, "record_failures": 0, "unapplied_raise": True}]
+
+    _run(scenario)
+
+
+def test_raise_interrupted_by_a_cancel_is_reported_unapplied():
+    """A raise whose record a cancel interrupted is reported to the parent as unapplied."""
+
+    async def scenario(h: Harness) -> None:
+        gate = asyncio.Event()
+
+        async def hook(_: dict) -> None:
+            await gate.wait()
+
+        h.fakes.raise_hook = hook
+        handle = await h.start_maintenance(COMPACTION)
+        try:
+            await _raise_after(h, handle, timedelta(minutes=1))
+            result = asyncio.ensure_future(handle.result())
+            await eventually(lambda: _value(len(h.fakes.raises)), lambda n: n == 1)
+            await handle.cancel()
+            with pytest.raises(WorkflowFailureError):
+                await asyncio.wait_for(result, timeout=REAL_TIMEOUT_SECONDS)
+        finally:
+            gate.set()
+        assert (await h.parent_payloads())[0]["unapplied_raise"] is True
+
+    _run(scenario)
+
+
+def test_result_during_the_raise_poll_is_not_requeued():
+    """A result that arrives while the poll after a raise runs wins; the pending job is not replaced."""
+
+    async def scenario(h: Harness) -> None:
+        h.fakes.driver_starts[FIRST_APP] = None
+        h.fakes.vanish_after_delete[FIRST_APP] = timedelta(0)
+        _succeed_on_the_status_read_after_the_raise(h)
+        handle = await h.start_maintenance(COMPACTION)
+        await _raise_after(h, handle, timedelta(minutes=1))
+        await asyncio.wait_for(handle.result(), timeout=REAL_TIMEOUT_SECONDS)
+
+        assert len(h.fakes.submits) == 1
+        assert h.fakes.deletes == [FIRST_APP]
+        assert h.recorded() == [(COMPACTION, 1, True, None)]
 
     _run(scenario)

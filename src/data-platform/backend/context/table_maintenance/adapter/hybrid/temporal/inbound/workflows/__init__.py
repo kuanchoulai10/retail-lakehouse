@@ -14,6 +14,9 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.mint_wo
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_discovery_workflow import (
     TableDiscoveryWorkflow,
 )
+from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_maintenance_activity_policy import (
+    TableMaintenanceActivityPolicy,
+)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_maintenance_attempt_policy import (
     TableMaintenanceAttemptPolicy,
 )
@@ -34,6 +37,7 @@ __all__ = [
     "CompactionRoundActivityPolicy",
     "CompactionRoundWorkflow",
     "TableDiscoveryWorkflow",
+    "TableMaintenanceActivityPolicy",
     "TableMaintenanceAttemptPolicy",
     "TableMaintenanceFencingPolicy",
     "TableMaintenanceWorkflow",

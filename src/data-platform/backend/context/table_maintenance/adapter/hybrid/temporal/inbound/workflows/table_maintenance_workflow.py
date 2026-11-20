@@ -7,7 +7,6 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from temporalio import workflow
-from temporalio.common import RetryPolicy
 from temporalio.exceptions import ActivityError, FailureError, is_cancelled_exception
 
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
@@ -24,6 +23,9 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (
     TableReconciliationSignal,
 )
+from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_maintenance_activity_policy import (
+    TableMaintenanceActivityPolicy,
+)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_maintenance_attempt_policy import (
     TableMaintenanceAttemptPolicy,
 )
@@ -31,8 +33,7 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows.table_m
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
 
-_ACTIVITY_TIMEOUT = timedelta(minutes=2)
-_ACTIVITY_RETRY = RetryPolicy(maximum_attempts=5, initial_interval=timedelta(seconds=2), backoff_coefficient=2.0)
+_ACTIVITIES = TableMaintenanceActivityPolicy()
 FAST_POLL_INTERVAL = timedelta(seconds=30)
 FAST_POLL_WINDOW = timedelta(minutes=10)
 SLOW_POLL_INTERVAL = timedelta(minutes=5)
@@ -125,6 +126,7 @@ class TableMaintenanceWorkflow:
         self._record_failures = 0
         self._priority: str = input.plan.get("priority", "P3")
         self._raise_requests: list[RaisePrioritySignal] = []
+        self._dropped_raise = False
 
     @workflow.run
     async def run(self, input: TableMaintenanceWorkflowInput) -> None:  # noqa: A002
@@ -321,11 +323,12 @@ class TableMaintenanceWorkflow:
         """Apply the raises that arrived, in order, and tell whether any raised the run.
 
         Each raise is recorded on the run, which keeps the higher priority; a raise that fails to
-        record is logged and dropped.
+        record is logged and dropped, and the run then reports a raise unapplied. A raise leaves
+        ``_raise_requests`` only once its record ended, so one a cancel interrupts is unapplied too.
         """
         raised = False
         while self._raise_requests:
-            request = self._raise_requests.pop(0)
+            request = self._raise_requests[0]
             try:
                 reply = await self._activity(
                     TableMaintenanceActivity.RAISE_MAINTENANCE_RUN_PRIORITY,
@@ -334,7 +337,10 @@ class TableMaintenanceWorkflow:
             except ActivityError as error:
                 _raise_if_cancelled(error)
                 workflow.logger.warning("raising the priority of run %s failed: %s", self._run_id, error)
+                self._raise_requests.pop(0)
+                self._dropped_raise = True
                 continue
+            self._raise_requests.pop(0)
             self._priority = reply["priority"]
             raised = raised or bool(reply["raised"])
             workflow.logger.info(
@@ -353,9 +359,9 @@ class TableMaintenanceWorkflow:
 
         A job in any other state is not replaced: ``RUNNING`` without a driver start keeps running (a
         later poll reads the start), and a failed, missing or completed job was already handled as a
-        poll handles it.
+        poll handles it. Nor is an attempt whose result arrived during the poll.
         """
-        if not queued or status["state"] != "PENDING":
+        if not queued or status["state"] != "PENDING" or (operation["operation"], attempt) in self._results:
             return None
         return await self._requeue(operation, attempt, size)
 
@@ -612,7 +618,7 @@ class TableMaintenanceWorkflow:
                     "arg": {
                         "run_id": self._run_id,
                         "record_failures": self._record_failures,
-                        "unapplied_raise": bool(self._raise_requests),
+                        "unapplied_raise": self._dropped_raise or bool(self._raise_requests),
                     },
                 },
             )
@@ -647,8 +653,8 @@ class TableMaintenanceWorkflow:
         return await workflow.execute_activity(
             name,
             request,
-            start_to_close_timeout=_ACTIVITY_TIMEOUT,
-            retry_policy=_ACTIVITY_RETRY,
+            start_to_close_timeout=_ACTIVITIES.start_to_close,
+            retry_policy=_ACTIVITIES.retry_policy(),
         )
 
 
