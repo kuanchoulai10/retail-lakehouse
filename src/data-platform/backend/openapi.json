@@ -2435,6 +2435,17 @@
             ],
             "title": "Parent Id"
           },
+          "schema_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Id"
+          },
           "summary": {
             "additionalProperties": {
               "type": "string"
@@ -2451,6 +2462,7 @@
           "id",
           "parent_id",
           "timestamp_ms",
+          "schema_id",
           "operation",
           "summary"
         ],

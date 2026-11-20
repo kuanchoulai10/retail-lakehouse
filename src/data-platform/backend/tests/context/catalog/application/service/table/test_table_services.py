@@ -73,10 +73,12 @@ def _with_snapshots(repo: InMemoryTablesRepo) -> None:
         location="s3://w/retail/orders",
         current_snapshot_id=2,
         last_updated_ms=20,
-        current_schema=Schema(
-            schema_id=0, fields=(SchemaField(id=1, name="order_id", type="long", required=True, doc=None),)
+        schemas=(
+            Schema(schema_id=0, fields=(SchemaField(id=1, name="order_id", type="long", required=True, doc=None),)),
         ),
-        partition_spec=PartitionSpec.unpartitioned(),
+        current_schema_id=0,
+        partition_specs=(PartitionSpec.unpartitioned(),),
+        default_spec_id=0,
         sort_order=SortOrder.unsorted(),
         snapshots=[
             Snapshot(
@@ -86,6 +88,7 @@ def _with_snapshots(repo: InMemoryTablesRepo) -> None:
                 snapshot_id=2,
                 parent_id=1,
                 timestamp_ms=20,
+                schema_id=0,
                 operation="append",
                 summary={"total-records": "9", "total-data-files": "3", "total-files-size": "300"},
             ),
@@ -177,6 +180,7 @@ def test_get_table_maps_snapshots_and_summary_of_the_current_snapshot(tables_rep
         "id": 2,
         "parent_id": 1,
         "timestamp_ms": 20,
+        "schema_id": 0,
         "operation": "append",
         "summary": {"total-records": "9", "total-data-files": "3", "total-files-size": "300"},
     }

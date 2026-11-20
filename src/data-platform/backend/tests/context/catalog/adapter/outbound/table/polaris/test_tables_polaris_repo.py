@@ -118,6 +118,21 @@ def test_load_maps_schema_partition_sort_snapshots_and_summary():
     )
 
 
+def test_load_keeps_every_schema_and_spec_and_snapshot_schema_ids():
+    """The fixture has schemas 0 and 1 (current 1), specs 0 and 1 (default 1) and a snapshot per schema."""
+    table = _load_orders()
+
+    assert [s.schema_id for s in table.schemas] == [0, 1]
+    assert table.current_schema_id == 1 and table.current_schema.schema_id == 1
+    assert [len(s.fields) for s in table.schemas] == [3, 6]
+    assert [s.spec_id for s in table.partition_specs] == [0, 1] and table.default_spec_id == 1
+    assert [[f.field_id for f in s.fields] for s in table.partition_specs] == [[1000], [1000, 1001]]
+    assert [(s.snapshot_id, s.schema_id) for s in table.snapshots] == [
+        (8333017788700497002, 0),
+        (3051729675574597004, 1),
+    ]
+
+
 def test_load_table_without_snapshots_has_an_empty_summary():
     """A table with no snapshot has no current snapshot and every summary count is None."""
     body = _load_result()
@@ -539,6 +554,8 @@ def test_v1_metadata_without_schemas_or_specs_uses_the_single_schema_and_spec():
     metadata["partition-spec"] = [{"name": "order_ts_day", "transform": "day", "source-id": 3, "field-id": 1000}]
     metadata.pop("sort-orders")
     metadata.pop("default-sort-order-id")
+    for snapshot in metadata["snapshots"]:
+        snapshot.pop("schema-id")
     stub = PolarisStub()
     stub.on("GET", ORDERS, httpx.Response(200, json=body))
 
@@ -550,6 +567,9 @@ def test_v1_metadata_without_schemas_or_specs_uses_the_single_schema_and_spec():
         spec_id=0, fields=(PartitionField(source_id=3, field_id=1000, name="order_ts_day", transform="day"),)
     )
     assert table.sort_order == SortOrder.unsorted()
+    assert [s.schema_id for s in table.schemas] == [0] and table.current_schema_id == 0
+    assert [s.spec_id for s in table.partition_specs] == [0] and table.default_spec_id == 0
+    assert [s.schema_id for s in table.snapshots] == [None, None]
 
 
 def _snapshot(metadata: dict[str, Any]) -> dict[str, Any]:
@@ -584,6 +604,8 @@ ILL_TYPED = {
     "snapshots is an object": lambda m: m.update({"snapshots": {}}),
     "snapshot-id is text": lambda m: _snapshot(m).update({"snapshot-id": "3051729675574597004"}),
     "parent-snapshot-id is text": lambda m: _snapshot(m).update({"parent-snapshot-id": "8333017788700497002"}),
+    "snapshot schema-id is text": lambda m: _snapshot(m).update({"schema-id": "1"}),
+    "snapshot schema-id is a bool": lambda m: _snapshot(m).update({"schema-id": True}),
     "timestamp-ms is a bool": lambda m: _snapshot(m).update({"timestamp-ms": True}),
     "summary is a list of pairs": lambda m: _snapshot(m).update({"summary": [["operation", "append"]]}),
     "summary value is a number": lambda m: _snapshot(m).update(

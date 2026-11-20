@@ -50,6 +50,7 @@ def table_output_fields(table: Table) -> dict[str, Any]:
                 "id": s.snapshot_id,
                 "parent_id": s.parent_id,
                 "timestamp_ms": s.timestamp_ms,
+                "schema_id": s.schema_id,
                 "operation": s.operation,
                 "summary": dict(s.summary),
             }

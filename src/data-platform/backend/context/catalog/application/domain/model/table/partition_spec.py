@@ -7,7 +7,7 @@ from context.catalog.application.domain.model.table.partition_field import Parti
 
 
 class PartitionSpec(ValueObject):
-    """The default partition spec of a table; no fields means the table is unpartitioned."""
+    """One partition spec of a table, by its id; no fields means it partitions nothing."""
 
     spec_id: int
     fields: tuple[PartitionField, ...]

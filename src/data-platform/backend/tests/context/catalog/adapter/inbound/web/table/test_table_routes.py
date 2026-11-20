@@ -50,7 +50,9 @@ def _fields() -> dict[str, Any]:
             "order_id": 1,
             "fields": [{"source_id": 1, "transform": "identity", "direction": "asc", "null_order": "nulls-first"}],
         },
-        "snapshots": [{"id": 2, "parent_id": None, "timestamp_ms": 20, "operation": "append", "summary": {}}],
+        "snapshots": [
+            {"id": 2, "parent_id": None, "timestamp_ms": 20, "schema_id": 0, "operation": "append", "summary": {}}
+        ],
         "properties": {"owner": "data-eng"},
         "summary": {"total_records": 9, "total_data_files": 3, "total_files_size": 300},
     }
@@ -78,6 +80,19 @@ def test_get_table_returns_every_panel_field():
     assert stub.requests == [GetTableUseCaseInput(catalog="sales", namespace=("retail",), name="orders")]
 
 
+def test_get_table_shows_the_schema_id_of_each_snapshot():
+    """Each snapshot carries the id of the schema it was written with, or null when the table does not record it."""
+    fields = _fields()
+    fields["snapshots"] = (
+        *fields["snapshots"],
+        {"id": 3, "parent_id": 2, "timestamp_ms": 30, "schema_id": None, "operation": "append", "summary": {}},
+    )
+
+    body = build_client(get_table=StubUseCase(GetTableUseCaseOutput(**_port(fields)))).get(f"{BASE}/orders").json()
+
+    assert [s["schema_id"] for s in body["snapshots"]] == [0, None]
+
+
 def test_snapshot_ids_above_two_to_the_53_are_exact_strings():
     """Snapshot ids are 64-bit; JSON carries them as text so a browser cannot round them (Ruling R9)."""
     fields = _fields()
@@ -87,10 +102,18 @@ def test_snapshot_ids_above_two_to_the_53_are_exact_strings():
             "id": 3051729675574597004,
             "parent_id": 8333017788700497002,
             "timestamp_ms": 20,
+            "schema_id": 1,
             "operation": "overwrite",
             "summary": {},
         },
-        {"id": 8333017788700497002, "parent_id": None, "timestamp_ms": 10, "operation": "append", "summary": {}},
+        {
+            "id": 8333017788700497002,
+            "parent_id": None,
+            "timestamp_ms": 10,
+            "schema_id": None,
+            "operation": "append",
+            "summary": {},
+        },
     ]
 
     response = build_client(get_table=StubUseCase(GetTableUseCaseOutput(**_port(fields)))).get(f"{BASE}/orders")

@@ -13,6 +13,7 @@ export interface SnapshotApiResponse {
   id: string;
   operation: string | null;
   parent_id: string | null;
+  schema_id: number | null;
   summary: SnapshotApiResponseSummary;
   timestamp_ms: number;
 }

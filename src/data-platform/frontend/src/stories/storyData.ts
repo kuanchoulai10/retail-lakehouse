@@ -114,6 +114,7 @@ export const ORDERS: CatalogTableApiResponse = {
       parent_id: "3011920384710293847",
       operation: "append",
       timestamp_ms: Date.parse("2026-11-09T08:30:00Z"),
+      schema_id: 0,
       summary: { "added-records": "1200", "added-data-files": "4" },
     },
     {
@@ -121,6 +122,7 @@ export const ORDERS: CatalogTableApiResponse = {
       parent_id: null,
       operation: "append",
       timestamp_ms: Date.parse("2026-11-09T07:30:00Z"),
+      schema_id: 0,
       summary: { "added-records": "980", "added-data-files": "3" },
     },
   ],

@@ -143,6 +143,7 @@ class SnapshotApiResponse(BaseModel):
     id: SnapshotIdText
     parent_id: SnapshotIdText | None
     timestamp_ms: int
+    schema_id: int | None
     operation: str | None
     summary: dict[str, str]
 

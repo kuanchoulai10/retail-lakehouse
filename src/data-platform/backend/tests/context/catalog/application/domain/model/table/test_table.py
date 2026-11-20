@@ -105,8 +105,10 @@ def test_table_id_is_built_positionally_and_strict():
         ("location", 3),
         ("current_snapshot_id", "1"),
         ("last_updated_ms", 1.5),
-        ("current_schema", "schema 0"),
-        ("partition_spec", "unpartitioned"),
+        ("schemas", ("schema 0",)),
+        ("current_schema_id", "0"),
+        ("partition_specs", ("unpartitioned",)),
+        ("default_spec_id", "0"),
         ("sort_order", ("asc",)),
         ("snapshots", ({"snapshot_id": 1},)),
         ("properties", {"a": 1}),
@@ -160,3 +162,153 @@ def test_table_value_objects_require_keywords():
     """Value objects are built by field name; positional values are refused."""
     with pytest.raises(TypeError):
         PartitionSpec(0, ())  # ty: ignore[too-many-positional-arguments, missing-argument]
+
+
+def _schema(schema_id: int, *fields: SchemaField) -> Schema:
+    return Schema(
+        schema_id=schema_id, fields=fields or (SchemaField(id=1, name="id", type="long", required=True, doc=None),)
+    )
+
+
+def _spec(spec_id: int) -> PartitionSpec:
+    return PartitionSpec(spec_id=spec_id, fields=())
+
+
+def _versioned(
+    schemas: tuple[Schema, ...] | None = None,
+    current_schema_id: int = 1,
+    partition_specs: tuple[PartitionSpec, ...] | None = None,
+    default_spec_id: int = 1,
+) -> Table:
+    return Table(
+        id=TableId.of("sales", ("retail",), "orders"),
+        uuid="u-1",
+        format_version=2,
+        location="s3://w/retail/orders",
+        current_snapshot_id=None,
+        last_updated_ms=1,
+        schemas=schemas or (_schema(0), _schema(1)),
+        current_schema_id=current_schema_id,
+        partition_specs=partition_specs or (_spec(0), _spec(1)),
+        default_spec_id=default_spec_id,
+        sort_order=SortOrder.unsorted(),
+    )
+
+
+def test_define_holds_one_schema_and_one_spec():
+    """A defined table has its one schema as the current one and its one spec as the default."""
+    schema = _schema(0)
+    spec = PartitionSpec(
+        spec_id=0, fields=(PartitionField(source_id=1, field_id=1000, name="id", transform="identity"),)
+    )
+
+    table = Table.define(
+        id=TableId.of("sales", ("retail",), "orders"), schema=schema, partition_spec=spec, location=None, properties={}
+    )
+
+    assert table.schemas == (schema,) and table.current_schema_id == 0 and table.current_schema == schema
+    assert table.partition_specs == (spec,) and table.default_spec_id == 0 and table.partition_spec == spec
+
+
+def test_duplicate_schema_ids_are_refused():
+    """Two schemas with one id leave the id naming two schemas."""
+    with pytest.raises(InvariantViolation, match="schema ids"):
+        _versioned(schemas=(_schema(0), _schema(1), _schema(1)))
+
+
+def test_duplicate_partition_spec_ids_are_refused():
+    """Two specs with one id leave the id naming two specs."""
+    with pytest.raises(InvariantViolation, match="partition spec ids"):
+        _versioned(partition_specs=(_spec(0), _spec(1), _spec(1)))
+
+
+def test_current_schema_id_must_name_a_schema():
+    """A current id with no schema behind it is refused."""
+    with pytest.raises(InvariantViolation, match="current_schema_id 5"):
+        _versioned(current_schema_id=5)
+
+
+def test_default_spec_id_must_name_a_partition_spec():
+    """A default id with no spec behind it is refused."""
+    with pytest.raises(InvariantViolation, match="default_spec_id 5"):
+        _versioned(default_spec_id=5)
+
+
+def test_schemas_out_of_id_order_are_refused():
+    """Schemas are held in ascending id order, so the previous version is the one before it."""
+    with pytest.raises(InvariantViolation, match="schema ids"):
+        _versioned(schemas=(_schema(1), _schema(0)))
+
+
+def test_partition_specs_out_of_id_order_are_refused():
+    """Specs are held in ascending id order."""
+    with pytest.raises(InvariantViolation, match="partition spec ids"):
+        _versioned(partition_specs=(_spec(1), _spec(0)))
+
+
+def test_previous_schema_is_the_next_lower_id():
+    """The previous schema of an id is the one with the largest id below it; the first has none."""
+    table = _versioned(schemas=(_schema(0), _schema(1), _schema(2)), current_schema_id=2)
+
+    previous = table.previous_schema(2)
+    assert previous is not None and previous.schema_id == 1
+    assert table.previous_schema(0) is None
+    assert table.schema_by_id(1) == _schema(1)
+    assert table.schema_by_id(7) is None
+
+
+def test_previous_schema_skips_ids_the_table_does_not_have():
+    """Schema ids 0, 3 and 5: the previous of 5 is 3."""
+    table = _versioned(schemas=(_schema(0), _schema(3), _schema(5)), current_schema_id=5)
+
+    previous = table.previous_schema(5)
+    assert previous is not None and previous.schema_id == 3
+
+
+def test_previous_partition_spec_is_the_next_lower_id():
+    """Specs follow the same rule as schemas."""
+    table = _versioned(partition_specs=(_spec(0), _spec(1), _spec(2)), default_spec_id=2)
+
+    previous = table.previous_partition_spec(2)
+    assert previous is not None and previous.spec_id == 1
+    assert table.previous_partition_spec(0) is None
+    assert table.partition_spec_by_id(1) == _spec(1)
+    assert table.partition_spec_by_id(7) is None
+
+
+def test_reused_schema_id_stays_current():
+    """Iceberg reuses an existing schema id, so the current schema may sit below the highest id."""
+    table = _versioned(schemas=(_schema(0), _schema(1), _schema(2)), current_schema_id=1)
+
+    assert table.current_schema.schema_id == 1
+
+
+def test_column_paths_prefer_the_current_schema():
+    """A field id takes its path from the current schema, then from the highest schema id holding it."""
+    customer_id = SchemaField(id=2, name="customer_id", type="long", required=False, doc=None)
+    customer = SchemaField(id=2, name="customer", type="long", required=False, doc=None)
+    legacy = SchemaField(id=3, name="legacy", type="string", required=False, doc=None)
+    city = SchemaField(id=6, name="city", type="string", required=False, doc=None)
+    shipping = SchemaField(
+        id=5, name="shipping", type="struct<city: string>", required=False, doc=None, children=(city,)
+    )
+    table = _versioned(
+        schemas=(_schema(0, customer_id, legacy), _schema(1, customer, shipping)),
+        current_schema_id=1,
+    )
+
+    paths = table.column_paths()
+
+    assert paths[2] == ("customer",)
+    assert paths[3] == ("legacy",)
+    assert paths[5] == ("shipping",)
+    assert paths[6] == ("shipping", "city")
+
+
+def test_column_paths_prefer_a_higher_schema_id_over_a_lower_one_when_the_current_lacks_the_field():
+    """With the current schema holding neither, the newest schema holding the id names it."""
+    old = SchemaField(id=3, name="old_name", type="string", required=False, doc=None)
+    newer = SchemaField(id=3, name="newer_name", type="string", required=False, doc=None)
+    table = _versioned(schemas=(_schema(0, old), _schema(1, newer), _schema(2)), current_schema_id=2)
+
+    assert table.column_paths()[3] == ("newer_name",)

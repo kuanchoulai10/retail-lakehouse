@@ -10,13 +10,13 @@ from context.catalog.adapter.outbound.shared.polaris import (
     polaris_text_map,
     read_polaris_reply,
 )
-from context.catalog.adapter.outbound.table.polaris.partition_spec_from_polaris import (
-    partition_spec_from_polaris,
+from context.catalog.adapter.outbound.table.polaris.partition_specs_from_polaris import (
+    partition_specs_from_polaris,
 )
 from context.catalog.adapter.outbound.table.polaris.snapshot_from_polaris import snapshot_from_polaris
 from context.catalog.adapter.outbound.table.polaris.sort_order_from_polaris import sort_order_from_polaris
-from context.catalog.adapter.outbound.table.polaris.table_schema_from_polaris import (
-    table_schema_from_polaris,
+from context.catalog.adapter.outbound.table.polaris.table_schemas_from_polaris import (
+    table_schemas_from_polaris,
 )
 from context.catalog.application.port.outbound.table import Snapshot, Table
 
@@ -46,6 +46,8 @@ def _snapshots(value: Any) -> list[Snapshot]:  # noqa: ANN401
 
 
 def _table(table_id: TableId, metadata: Mapping[str, Any]) -> Table:
+    schemas, current_schema_id = table_schemas_from_polaris(metadata)
+    partition_specs, default_spec_id = partition_specs_from_polaris(metadata)
     return Table(
         id=table_id,
         uuid=polaris_text(metadata["table-uuid"], "table-uuid"),
@@ -53,8 +55,10 @@ def _table(table_id: TableId, metadata: Mapping[str, Any]) -> Table:
         location=polaris_text(metadata["location"], "location"),
         current_snapshot_id=_current_snapshot_id(metadata.get("current-snapshot-id")),
         last_updated_ms=polaris_integer(metadata["last-updated-ms"], "last-updated-ms"),
-        current_schema=table_schema_from_polaris(metadata),
-        partition_spec=partition_spec_from_polaris(metadata),
+        schemas=schemas,
+        current_schema_id=current_schema_id,
+        partition_specs=partition_specs,
+        default_spec_id=default_spec_id,
         sort_order=sort_order_from_polaris(metadata),
         snapshots=_snapshots(metadata.get("snapshots")),
         properties=polaris_text_map(metadata.get("properties"), "properties"),

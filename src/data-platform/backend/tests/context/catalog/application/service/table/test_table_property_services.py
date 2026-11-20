@@ -46,10 +46,10 @@ def tables() -> InMemoryTablesRepo:
         location="s3://w/retail/orders",
         current_snapshot_id=None,
         last_updated_ms=1,
-        current_schema=Schema(
-            schema_id=0, fields=(SchemaField(id=1, name="id", type="long", required=True, doc=None),)
-        ),
-        partition_spec=PartitionSpec.unpartitioned(),
+        schemas=(Schema(schema_id=0, fields=(SchemaField(id=1, name="id", type="long", required=True, doc=None),)),),
+        current_schema_id=0,
+        partition_specs=(PartitionSpec.unpartitioned(),),
+        default_spec_id=0,
         sort_order=SortOrder.unsorted(),
         properties={
             "write.format.default": "orc",

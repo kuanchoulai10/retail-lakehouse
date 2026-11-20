@@ -1,4 +1,4 @@
-"""Define the partition_spec_from_polaris function."""
+"""Define the partition_specs_from_polaris function."""
 
 from __future__ import annotations
 
@@ -26,8 +26,8 @@ def _fields(fields: Any) -> tuple[PartitionField, ...]:  # noqa: ANN401
     return tuple(_field(field) for field in fields)
 
 
-def partition_spec_from_polaris(metadata: Mapping[str, Any]) -> PartitionSpec:
-    """Map the default partition spec of Iceberg table metadata: ``partition-specs`` at ``default-spec-id``.
+def partition_specs_from_polaris(metadata: Mapping[str, Any]) -> tuple[tuple[PartitionSpec, ...], int]:
+    """Map every partition spec of Iceberg table metadata, sorted by id, with the id ``default-spec-id`` names.
 
     Without ``default-spec-id`` (format v1) the single ``partition-spec`` field list is spec 0,
     and with neither (or a null one) the table is unpartitioned. A default id that matches no
@@ -36,9 +36,20 @@ def partition_spec_from_polaris(metadata: Mapping[str, Any]) -> PartitionSpec:
     """
     if "default-spec-id" not in metadata:
         v1_fields = metadata.get("partition-spec")
-        return PartitionSpec(spec_id=0, fields=() if v1_fields is None else _fields(v1_fields))
+        return (PartitionSpec(spec_id=0, fields=() if v1_fields is None else _fields(v1_fields)),), 0
     default_id = polaris_integer(metadata["default-spec-id"], "default-spec-id")
-    for spec in metadata["partition-specs"]:
-        if polaris_integer(spec["spec-id"], "spec-id") == default_id:
-            return PartitionSpec(spec_id=default_id, fields=_fields(spec["fields"]))
-    raise ValueError(f"default-spec-id {default_id} matches no partition spec")
+    specs = tuple(
+        sorted(
+            (
+                PartitionSpec(
+                    spec_id=polaris_integer(spec["spec-id"], "spec-id"),
+                    fields=_fields(spec["fields"]),
+                )
+                for spec in metadata["partition-specs"]
+            ),
+            key=lambda spec: spec.spec_id,
+        )
+    )
+    if default_id not in {spec.spec_id for spec in specs}:
+        raise ValueError(f"default-spec-id {default_id} matches no partition spec")
+    return specs, default_id
