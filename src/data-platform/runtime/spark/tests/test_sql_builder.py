@@ -119,7 +119,7 @@ def test_rewrite_data_files_renders_boolean_options_in_lower_case(make_request):
     assert "options => map('rewrite-all', 'true', 'remove-dangling-deletes', 'false')" in statement
 
 
-def test_rewrite_data_files_without_options_renders_none(make_request):
+def test_rewrite_data_files_leaves_out_an_empty_options_map(make_request):
     (statement,) = build_call_statements(make_request(procedure_args={"strategy": "binpack", "options": {}}))
     assert statement.endswith("strategy => 'binpack')")
 
@@ -244,4 +244,23 @@ def test_an_unknown_prefix_mismatch_mode_is_refused(make_request):
 )
 def test_a_wrongly_typed_or_non_positive_value_is_refused(make_request, operation, args):
     with pytest.raises(ValueError):
+        build_call_statements(make_request(operation=operation, procedure_args=args))
+
+
+@pytest.mark.parametrize("value", [1.5, None, ["a"], {"a": 1}])
+def test_a_rewrite_option_of_another_type_is_refused(make_request, value):
+    with pytest.raises(ValueError, match="min-input-files"):
+        build_call_statements(make_request(procedure_args={"options": {"min-input-files": value}}))
+
+
+@pytest.mark.parametrize(
+    ("operation", "args", "key"),
+    [
+        ("expire_snapshots", {"retain_last": 1}, "older_than"),
+        ("expire_snapshots", {"older_than": "2026-10-23T12:00:00+00:00"}, "retain_last"),
+        ("remove_orphan_files", {}, "older_than"),
+    ],
+)
+def test_a_missing_required_argument_is_refused(make_request, operation, args, key):
+    with pytest.raises(ValueError, match=f"^{key} is required for {operation}$"):
         build_call_statements(make_request(operation=operation, procedure_args=args))

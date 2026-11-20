@@ -37,10 +37,12 @@ def _timestamp(value: str) -> str:
     return f"TIMESTAMP '{parsed.astimezone(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}'"
 
 
-def _option_text(value: object) -> str:
+def _option_text(key: str, value: object) -> str:
     if isinstance(value, bool):
         return "true" if value else "false"
-    return str(value)
+    if isinstance(value, (int, str)):
+        return str(value)
+    raise ValueError(f"option {key} must be a boolean, an integer or a string, got {value!r}")
 
 
 _STRATEGIES = ("binpack", "sort")
@@ -51,6 +53,12 @@ def _refuse_unknown(operation: str, args: dict[str, Any], known: tuple[str, ...]
     unknown = sorted(set(args) - set(known))
     if unknown:
         raise ValueError(f"Unsupported {operation} argument: {', '.join(unknown)}")
+
+
+def _required(operation: str, args: dict[str, Any], key: str) -> object:
+    if key not in args:
+        raise ValueError(f"{key} is required for {operation}")
+    return args[key]
 
 
 def _bool_arg(name: str, value: object) -> str:
@@ -88,7 +96,7 @@ def _rewrite_data_files_args(args: dict[str, Any]) -> list[str]:
     if not isinstance(options, dict):
         raise ValueError(f"options must be an object, got {options!r}")
     if options:
-        pairs = ", ".join(f"{sql_literal(k)}, {sql_literal(_option_text(v))}" for k, v in options.items())
+        pairs = ", ".join(f"{sql_literal(k)}, {sql_literal(_option_text(k, v))}" for k, v in options.items())
         rendered.append(f"options => map({pairs})")
     return rendered
 
@@ -101,8 +109,8 @@ def _rewrite_manifests_args(args: dict[str, Any]) -> list[str]:
 def _expire_snapshots_args(args: dict[str, Any]) -> list[str]:
     _refuse_unknown("expire_snapshots", args, ("older_than", "retain_last", "max_concurrent_deletes", "stream_results"))
     rendered = [
-        f"older_than => {_timestamp(args['older_than'])}",
-        f"retain_last => {_positive_int_arg('retain_last', args['retain_last'])}",
+        f"older_than => {_timestamp(_string_arg('older_than', _required('expire_snapshots', args, 'older_than')))}",
+        f"retain_last => {_positive_int_arg('retain_last', _required('expire_snapshots', args, 'retain_last'))}",
     ]
     if "max_concurrent_deletes" in args:
         rendered.append(
@@ -115,7 +123,8 @@ def _expire_snapshots_args(args: dict[str, Any]) -> list[str]:
 
 def _remove_orphan_files_args(args: dict[str, Any]) -> list[str]:
     _refuse_unknown("remove_orphan_files", args, ("older_than", "max_concurrent_deletes", "prefix_mismatch_mode"))
-    rendered = [f"older_than => {_timestamp(args['older_than'])}", "prefix_listing => true"]
+    older_than = _string_arg("older_than", _required("remove_orphan_files", args, "older_than"))
+    rendered = [f"older_than => {_timestamp(older_than)}", "prefix_listing => true"]
     if "max_concurrent_deletes" in args:
         rendered.append(
             f"max_concurrent_deletes => {_positive_int_arg('max_concurrent_deletes', args['max_concurrent_deletes'])}"
