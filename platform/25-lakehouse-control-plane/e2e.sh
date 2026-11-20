@@ -21,6 +21,7 @@ DISCOVERY_TIMEOUT_SECONDS="${DISCOVERY_TIMEOUT_SECONDS:-900}"
 RUN_TIMEOUT_SECONDS="${RUN_TIMEOUT_SECONDS:-3600}"
 RECONCILE_TIMEOUT_SECONDS="${RECONCILE_TIMEOUT_SECONDS:-300}"
 EXPIRE_AGE_SECONDS=60
+REGIONS_SCHEDULE_SECONDS=300
 TRINO_PID=""
 RT_BUCKET="tm-e2e-catalogs"
 RT_CATALOG=""
@@ -519,8 +520,8 @@ wait_for_quiet_table() {
 }
 
 wait_for_new_run() {
-  local uuid="$1" before="$2" selector="$3" deadline runs found active
-  deadline=$(( $(date +%s) + RUN_TIMEOUT_SECONDS ))
+  local uuid="$1" before="$2" selector="$3" extra_seconds="${4:-0}" deadline runs found active
+  deadline=$(( $(date +%s) + RUN_TIMEOUT_SECONDS + extra_seconds ))
   while (( $(date +%s) < deadline )); do
     runs="$(api GET "/v1/tables/${uuid}/table-maintenance-runs?limit=500" \
       | jq -c --argjson before "${before}" '[.[] | select(.run_id as $id | $before | index($id) | not)]')"
@@ -532,7 +533,7 @@ wait_for_new_run() {
     fi
     sleep 15
   done
-  echo "no terminal run matching ${selector} for ${uuid} within ${RUN_TIMEOUT_SECONDS}s" >&2
+  echo "no terminal run matching ${selector} for ${uuid} within $(( RUN_TIMEOUT_SECONDS + extra_seconds ))s" >&2
   return 1
 }
 
@@ -739,7 +740,7 @@ ensure_policy tm-e2e-orders "e2e: manual runs only, lowered target values" "$(ca
 JQ
 )"
 ensure_policy tm-e2e-regions "e2e: scheduled whole-table compaction" "$(cat <<JQ
-.on = {schedule: {every_seconds: 300}, catalog_commit: {debounce_seconds: 60}}
+.on = {schedule: {every_seconds: ${REGIONS_SCHEDULE_SECONDS}}, catalog_commit: {debounce_seconds: 60}}
 | .rewrite_data_files.target.reducible_files.at_most = 1
 | del(.rewrite_manifests, .expire_snapshots, .remove_orphan_files)
 JQ
@@ -790,12 +791,22 @@ progress "waiting for event-driven runs to settle"
 wait_for_quiet_table "${ORDERS_UUID}"
 wait_for_quiet_table "${REGIONS_UUID}"
 
+REGIONS_EXTRA_WAIT_SECONDS=0
+if [[ "${REGIONS_BEFORE_RUNS}" != "[]" ]]; then
+  REWRITE_COOLDOWN_SECONDS="$(api GET /v1/platform-settings | jq -er '[.groups[].items[]
+    | select(.key == "maintenance_rewrite_data_files_cooldown_seconds") | .value][0]')"
+  REGIONS_EXTRA_WAIT_SECONDS=$(( REWRITE_COOLDOWN_SECONDS + REGIONS_SCHEDULE_SECONDS ))
+  progress "rerun: ${REGIONS} was compacted before, so its compaction waits out the ${REWRITE_COOLDOWN_SECONDS}s rewrite cooldown; waiting up to ${REGIONS_EXTRA_WAIT_SECONDS}s longer"
+fi
+
 progress "waiting for the ${REGIONS} scheduled compaction run to finish before any ${ORDERS} run, so one Spark job runs at a time"
 wait_for_new_run "${REGIONS_UUID}" "${REGIONS_BEFORE_RUNS}" \
-  '.trigger == "scheduled" and any(.operations[]; .operation == "rewrite_data_files")' >/dev/null
+  '.trigger == "scheduled" and any(.operations[]; .operation == "rewrite_data_files")' \
+  "${REGIONS_EXTRA_WAIT_SECONDS}" >/dev/null
 wait_for_quiet_table "${REGIONS_UUID}"
 REGIONS_RUNS="$(wait_for_new_run "${REGIONS_UUID}" "${REGIONS_BEFORE_RUNS}" \
-  '.trigger == "scheduled" and any(.operations[]; .operation == "rewrite_data_files")')"
+  '.trigger == "scheduled" and any(.operations[]; .operation == "rewrite_data_files")' \
+  "${REGIONS_EXTRA_WAIT_SECONDS}")"
 report_runs "${REGIONS}" "${REGIONS_RUNS}"
 assert_runs_succeeded "${REGIONS}" "${REGIONS_RUNS}"
 assert_attempts_timed "${REGIONS}" "${REGIONS_RUNS}"
