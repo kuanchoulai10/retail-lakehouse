@@ -6,8 +6,11 @@ from context.catalog.application.domain.model.table.iceberg_table_property_catal
     iceberg_table_property_catalogue,
 )
 from context.catalog.application.domain.model.table.null_order import NullOrder
+from context.catalog.application.domain.model.table.partition_change import PartitionChange
 from context.catalog.application.domain.model.table.partition_field import PartitionField
+from context.catalog.application.domain.model.table.partition_field_comparison import PartitionFieldComparison
 from context.catalog.application.domain.model.table.partition_spec import PartitionSpec
+from context.catalog.application.domain.model.table.partition_spec_comparison import PartitionSpecComparison
 from context.catalog.application.domain.model.table.schema_change import SchemaChange
 from context.catalog.application.domain.model.table.schema_comparison import SchemaComparison
 from context.catalog.application.domain.model.table.schema_field_comparison import SchemaFieldComparison
@@ -35,8 +38,11 @@ from context.catalog.application.domain.model.table.table_summary import TableSu
 
 __all__ = [
     "NullOrder",
+    "PartitionChange",
     "PartitionField",
+    "PartitionFieldComparison",
     "PartitionSpec",
+    "PartitionSpecComparison",
     "SchemaChange",
     "SchemaComparison",
     "SchemaFieldComparison",
