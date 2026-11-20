@@ -48,8 +48,6 @@ def table_maintenance_activities_with_fakes(  # noqa: PLR0913
     record_running: RecordMaintenanceAttemptRunningUseCase | None = None,
     client: Client | None = None,
     callback_base_url: str = "http://cp:8000",
-    admission_limit: int = 1,
-    admission_lease_seconds: int = 60,
 ) -> TableMaintenanceActivities:
     """Build the maintenance activities, a recording fake for every use case and a mock client not given."""
     return TableMaintenanceActivities(
@@ -62,6 +60,4 @@ def table_maintenance_activities_with_fakes(  # noqa: PLR0913
         record_running=record_running or FakeRecordRunning(),
         client=client or MagicMock(),
         callback_base_url=callback_base_url,
-        admission_limit=admission_limit,
-        admission_lease_seconds=admission_lease_seconds,
     )

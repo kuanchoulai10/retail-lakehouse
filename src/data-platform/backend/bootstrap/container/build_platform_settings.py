@@ -25,7 +25,6 @@ def build_platform_settings(settings: AppSettings) -> PlatformSettings:
     scheduler = settings.scheduler
     compaction = settings.compaction
     return PlatformSettings(
-        admission_limit=settings.admission_limit,
         attempt_deadline_seconds=settings.maintenance_attempt_deadline_seconds,
         max_attempts=settings.maintenance_max_attempts,
         compute_sizes=(

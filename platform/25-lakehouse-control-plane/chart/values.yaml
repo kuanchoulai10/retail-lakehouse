@@ -95,7 +95,6 @@ api:
       memory: 512Mi
 
 worker:
-  admissionLimit: 2
   discoveryIntervalSeconds: 600
   attemptDeadlineSeconds: 21600
   maxAttempts: 3

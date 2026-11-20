@@ -13,18 +13,14 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_discovery
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
     table_maintenance_workflow_id,
 )
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission import (
-    TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (
     table_reconciliation_workflow_id,
 )
 
 
 def test_workflow_ids():
-    """Reconciliation ids embed the table uuid and the admission workflow has one fixed id."""
+    """Reconciliation ids embed the table uuid."""
     assert table_reconciliation_workflow_id("u1") == "table-reconciliation:table-uuid=u1"
-    assert TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID == "table-maintenance-admission"
     assert TASK_QUEUE == "table-maintenance"
 
 

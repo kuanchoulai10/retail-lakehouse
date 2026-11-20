@@ -204,7 +204,7 @@ def test_no_execution_id_leaves_the_event_log_unknown_without_reading_it(recorde
     assert event_log.calls == []
 
 
-@pytest.mark.parametrize("ended_by", ["timed_out", "cancelled", "missing", "submit_failed", "admission_failed"])
+@pytest.mark.parametrize("ended_by", ["timed_out", "cancelled", "missing", "submit_failed"])
 def test_evidence_is_not_read_for_attempts_spark_did_not_end(
     recorder, runs_repo, table, evidence, event_log, now, ended_by
 ):

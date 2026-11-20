@@ -92,13 +92,6 @@ class GetPlatformSettingsService(GetPlatformSettingsUseCase):
 def _execution_capacity(settings: PlatformSettings) -> tuple[GetPlatformSettingsUseCaseOutput.Setting, ...]:
     return (
         _item(
-            "admission_limit",
-            "Concurrent operations",
-            settings.admission_limit,
-            "operations",
-            "How many maintenance operations may run at the same time across the whole platform.",
-        ),
-        _item(
             "maintenance_attempt_deadline_seconds",
             "Attempt time limit",
             settings.attempt_deadline_seconds,

@@ -193,13 +193,15 @@ def test_the_platform_settings_report_the_values_they_are_given():
         build_repositories(sqlite_engine()),
         fake_gateways(),
         clock=lambda: NOW,
-        platform_settings=build_platform_settings(sqlite_settings(admission_limit=9, maintenance_max_attempts=6)),
+        platform_settings=build_platform_settings(
+            sqlite_settings(maintenance_attempt_deadline_seconds=900, maintenance_max_attempts=6)
+        ),
     )
 
     output = use_cases.get_platform_settings.execute(GetPlatformSettingsUseCaseInput())
 
     values = {item.key: item.value for group in output.groups for item in group.items}
-    assert (values["admission_limit"], values["maintenance_max_attempts"]) == (9, 6)
+    assert (values["maintenance_attempt_deadline_seconds"], values["maintenance_max_attempts"]) == (900, 6)
 
 
 def test_the_platform_settings_are_required():

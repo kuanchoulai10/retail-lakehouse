@@ -25,7 +25,6 @@ USERINFO_URI = re.compile(r"[a-z][a-z0-9+.-]*://[^/\s]*@", re.IGNORECASE)
 
 def _settings(**changes: Any) -> PlatformSettings:  # noqa: ANN401
     values: dict[str, Any] = {
-        "admission_limit": 2,
         "attempt_deadline_seconds": 21600,
         "max_attempts": 3,
         "compute_sizes": (
@@ -72,12 +71,11 @@ def test_groups_follow_the_page_order_with_a_key_and_a_title():
     ]
 
 
-def test_execution_capacity_reports_the_slots_deadline_and_attempts():
-    """The execution capacity group lists the admission limit, the attempt time limit and the attempts per operation."""
-    group = _output(admission_limit=4, attempt_deadline_seconds=120, max_attempts=5).groups[0]
+def test_execution_capacity_reports_the_deadline_and_attempts():
+    """The execution capacity group lists the attempt time limit and the attempts per operation."""
+    group = _output(attempt_deadline_seconds=120, max_attempts=5).groups[0]
 
     assert [(i.key, i.value, i.unit) for i in group.items] == [
-        ("admission_limit", 4, "operations"),
         ("maintenance_attempt_deadline_seconds", 120, "seconds"),
         ("maintenance_max_attempts", 5, "attempts"),
     ]

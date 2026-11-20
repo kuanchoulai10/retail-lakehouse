@@ -26,7 +26,6 @@ _ENUM_SUFFIX = "Activity"
 _CLASS_SUFFIX = "Activities"
 
 SIGNAL_EXCEPTIONS = {
-    ("TableMaintenanceActivity", "SIGNAL_ADMISSION_ACQUIRE"),
     ("TableMaintenanceActivity", "SIGNAL_PARENT"),
     ("TableReconciliationActivity", "GET_WORKFLOW_RUNNING"),
 }

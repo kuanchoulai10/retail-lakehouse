@@ -9,7 +9,6 @@ from context.table_maintenance.application.domain.model.shared import ComputeSiz
 from tests.bootstrap.container.container_support import sqlite_settings
 
 WHITELIST = {
-    "admission_limit",
     "attempt_deadline_seconds",
     "max_attempts",
     "compute_sizes",
@@ -36,7 +35,7 @@ def test_defaults_are_the_values_the_platform_ran_with_before_they_had_names():
     """With no environment the values are the ones that used to be hard-coded or defaulted."""
     settings = build_platform_settings(sqlite_settings())
 
-    assert (settings.admission_limit, settings.attempt_deadline_seconds, settings.max_attempts) == (2, 21600, 3)
+    assert (settings.attempt_deadline_seconds, settings.max_attempts) == (21600, 3)
     assert settings.failure_backoff_cap_seconds == 86400
     assert settings.discovery_interval_seconds == 600
     assert (settings.round_seconds, settings.budget_gb_hours, settings.grant_lease_seconds) == (120, 0.05, 600)
@@ -58,7 +57,6 @@ def test_values_follow_the_application_settings():
     """What the deployment sets is what is shown, for every listed setting."""
     settings = build_platform_settings(
         sqlite_settings(
-            admission_limit=4,
             maintenance_attempt_deadline_seconds=900,
             maintenance_max_attempts=5,
             maintenance_failure_backoff_cap_seconds=7200,
@@ -80,7 +78,7 @@ def test_values_follow_the_application_settings():
         )
     )
 
-    assert (settings.admission_limit, settings.attempt_deadline_seconds, settings.max_attempts) == (4, 900, 5)
+    assert (settings.attempt_deadline_seconds, settings.max_attempts) == (900, 5)
     assert (settings.failure_backoff_cap_seconds, settings.discovery_interval_seconds) == (7200, 60)
     assert (settings.round_seconds, settings.budget_gb_hours, settings.grant_lease_seconds) == (30, 0.4, 90)
     assert (settings.priorities[0].weight, settings.priorities[1].sla_seconds) == (8.0, 60)

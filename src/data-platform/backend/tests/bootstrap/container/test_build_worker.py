@@ -38,7 +38,6 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.activities import
 from context.table_maintenance.adapter.hybrid.temporal.inbound.workflows import (
     CompactionRoundWorkflow,
     TableDiscoveryWorkflow,
-    TableMaintenanceAdmissionWorkflow,
     TableMaintenanceWorkflow,
     TableReconciliationWorkflow,
 )
@@ -87,11 +86,10 @@ def test_activities_cover_every_activity_name_once():
     assert sorted(names) == sorted(ALL_ACTIVITY_NAMES)
 
 
-def test_activities_carry_the_callback_url_and_admission_settings():
-    """The activity groups are built with the callback URL, the admission settings and the attempt deadline."""
+def test_activities_carry_the_callback_url_and_the_attempt_settings():
+    """The activity groups are built with the callback URL and the attempt deadline and attempt limit."""
     activities = _activities(
         callback_base_url="http://api:8000",
-        admission_limit=5,
         maintenance_attempt_deadline_seconds=120,
         maintenance_max_attempts=4,
     )
@@ -101,8 +99,6 @@ def test_activities_carry_the_callback_url_and_admission_settings():
     assert isinstance(activities.discovery, TableDiscoveryActivities)
     assert isinstance(activities.compaction_round, CompactionRoundActivities)
     assert activities.maintenance._callback_base_url == "http://api:8000"  # noqa: SLF001
-    assert activities.maintenance._admission_limit == 5  # noqa: SLF001
-    assert activities.maintenance._admission_lease_seconds == 1020  # noqa: SLF001
     assert activities.reconciliation._attempt_deadline_seconds == 120  # noqa: SLF001
     assert activities.reconciliation._max_attempts == 4  # noqa: SLF001
 
@@ -141,7 +137,6 @@ def test_worker_registers_all_workflows_and_activities():
         TableReconciliationWorkflow,
         TableDiscoveryWorkflow,
         TableMaintenanceWorkflow,
-        TableMaintenanceAdmissionWorkflow,
         CompactionRoundWorkflow,
     }
     names = {_activity_name(fn) for fn in factory.kwargs["activities"]}

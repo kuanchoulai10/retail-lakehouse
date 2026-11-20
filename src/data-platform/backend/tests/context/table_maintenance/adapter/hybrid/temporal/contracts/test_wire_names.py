@@ -32,11 +32,6 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
     TableMaintenanceActivity,
     TableMaintenanceSignal,
 )
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission import (
-    TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
-    TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
-    TableMaintenanceAdmissionSignal,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (
     TABLE_RECONCILIATION_WORKFLOW,
     TableReconciliationActivity,
@@ -61,14 +56,12 @@ def test_workflow_type_names():
     assert TABLE_DISCOVERY_WORKFLOW == "TableDiscoveryWorkflow"
     assert TABLE_RECONCILIATION_WORKFLOW == "TableReconciliationWorkflow"
     assert TABLE_MAINTENANCE_WORKFLOW == "TableMaintenanceWorkflow"
-    assert TABLE_MAINTENANCE_ADMISSION_WORKFLOW == "TableMaintenanceAdmissionWorkflow"
     assert COMPACTION_ROUND_WORKFLOW == "CompactionRoundWorkflow"
 
 
 def test_task_queue_and_fixed_ids():
     """The task queue name and the fixed workflow and schedule ids are the stable wire values."""
     assert TASK_QUEUE == "table-maintenance"
-    assert TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID == "table-maintenance-admission"
     assert TABLE_DISCOVERY_SCHEDULE_ID_PREFIX == "table-discovery:catalog="
     assert COMPACTION_ROUND_SCHEDULE_ID == "compaction-rounds"
 
@@ -94,15 +87,6 @@ def test_table_maintenance_signals():
     }
 
 
-def test_table_maintenance_admission_signals():
-    """The admission signal names are the stable wire names."""
-    assert _values(TableMaintenanceAdmissionSignal) == {
-        "ACQUIRE": "acquire",
-        "RELEASE": "release",
-        "RENEW": "renew",
-    }
-
-
 def test_table_reconciliation_activities():
     """The table reconciliation activity names are the stable wire names."""
     assert _values(TableReconciliationActivity) == {
@@ -123,7 +107,6 @@ def test_table_maintenance_activities():
         "DELETE_MAINTENANCE_JOB": "delete_maintenance_job",
         "GET_MAINTENANCE_JOB_PODS": "get_maintenance_job_pods",
         "RECORD_MAINTENANCE_ATTEMPT_RUNNING": "record_maintenance_attempt_running",
-        "SIGNAL_ADMISSION_ACQUIRE": "signal_admission_acquire",
         "SIGNAL_PARENT": "signal_parent",
     }
 
@@ -162,7 +145,6 @@ def test_maintenance_attempt_endings():
         "MISSING": "missing",
         "CANCELLED": "cancelled",
         "SUBMIT_FAILED": "submit_failed",
-        "ADMISSION_FAILED": "admission_failed",
     }
 
 

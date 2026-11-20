@@ -8,9 +8,6 @@ from context.table_maintenance.adapter.hybrid.temporal.inbound.ensure_compaction
 from context.table_maintenance.adapter.hybrid.temporal.inbound.ensure_table_discovery_schedule import (
     ensure_table_discovery_schedule,
 )
-from context.table_maintenance.adapter.hybrid.temporal.inbound.ensure_table_maintenance_admission import (
-    ensure_table_maintenance_admission,
-)
 from context.table_maintenance.adapter.hybrid.temporal.inbound.missing_table_search_attributes import (
     MissingTableSearchAttributes,
 )
@@ -22,6 +19,5 @@ __all__ = [
     "MissingTableSearchAttributes",
     "ensure_compaction_round_schedule",
     "ensure_table_discovery_schedule",
-    "ensure_table_maintenance_admission",
     "require_table_search_attributes",
 ]

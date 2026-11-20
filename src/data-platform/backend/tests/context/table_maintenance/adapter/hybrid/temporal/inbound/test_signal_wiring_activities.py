@@ -12,12 +12,6 @@ from temporalio.worker import UnsandboxedWorkflowRunner, Worker
 from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
     TASK_QUEUE,
 )
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission import (
-    TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
-    TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
-    AdmissionAcquireSignal,
-    TableMaintenanceAdmissionWorkflowInput,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (
     TableReconciliationSignal,
 )
@@ -31,37 +25,6 @@ from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_maint
 from tests.context.table_maintenance.adapter.hybrid.temporal.inbound.table_reconciliation_activities_with_fakes import (  # noqa: E501
     table_reconciliation_activities_with_fakes,
 )
-
-
-@workflow.defn(name=TABLE_MAINTENANCE_ADMISSION_WORKFLOW)
-class StubAdmission:
-    """Admission workflow stub that records the input and the acquire signals."""
-
-    def __init__(self) -> None:
-        """Start with no acquire signals and no input."""
-        self.acquires: list[AdmissionAcquireSignal] = []
-        self.input: TableMaintenanceAdmissionWorkflowInput | None = None
-
-    @workflow.run
-    async def run(self, payload: TableMaintenanceAdmissionWorkflowInput) -> None:
-        """Record the input and wait forever."""
-        self.input = payload
-        await workflow.wait_condition(lambda: False)
-
-    @workflow.signal(name="acquire")
-    def acquire(self, signal: AdmissionAcquireSignal) -> None:
-        """Record an acquire signal."""
-        self.acquires.append(signal)
-
-    @workflow.query
-    def state(self) -> dict:
-        """Query returning the limit, lease and recorded acquire signals."""
-        assert self.input is not None
-        return {
-            "limit": self.input.limit,
-            "lease": self.input.lease_seconds,
-            "acquires": [[a.request_id, a.lease_seconds] for a in self.acquires],
-        }
 
 
 @workflow.defn(name="StubParent")
@@ -89,34 +52,17 @@ class StubParent:
 
 
 async def _scenario() -> None:
-    # The time-skipping server drops the summary of a signal-with-start.
     async with await WorkflowEnvironment.start_local() as env:
         queue = TASK_QUEUE
-        activities = table_maintenance_activities_with_fakes(
-            client=env.client, admission_limit=2, admission_lease_seconds=60
-        )
+        activities = table_maintenance_activities_with_fakes(client=env.client)
         lookups = table_reconciliation_activities_with_fakes(client=env.client)
         async with Worker(
             env.client,
             task_queue=queue,
-            workflows=[StubAdmission, StubParent],
+            workflows=[StubParent],
             workflow_runner=UnsandboxedWorkflowRunner(),
         ):
             act_env = ActivityEnvironment()
-            await act_env.run(
-                activities.signal_admission_acquire,
-                {"request_id": "a", "requester_workflow_id": "w", "lease_seconds": 900},
-            )
-            await act_env.run(
-                activities.signal_admission_acquire,
-                {"request_id": "b", "requester_workflow_id": "w"},
-            )
-            admission = env.client.get_workflow_handle(TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID)
-            state = await admission.query("state")
-            assert state == {"limit": 2, "lease": 60, "acquires": [["a", 900], ["b", None]]}
-            description = await admission.describe()
-            assert await description.static_summary() == ("global Spark maintenance admission (limit=2)")
-
             parent = await env.client.start_workflow("StubParent", id="parent-1", task_queue=queue)
             delivered = await act_env.run(
                 activities.signal_parent,
@@ -146,8 +92,8 @@ async def _scenario() -> None:
             assert await act_env.run(lookups.get_workflow_running, nowhere) == {"running": False}
 
 
-def test_signal_with_start_admission_once_and_signal_parent():
-    """The admission acquire is signalled with start and the parent is signalled when maintenance finishes."""
+def test_signal_parent_and_look_up_a_running_workflow():
+    """The parent is signalled when maintenance finishes, and a workflow's running state is looked up."""
     asyncio.run(_scenario())
 
 

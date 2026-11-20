@@ -14,4 +14,3 @@ class MaintenanceAttemptEnding(StrEnum):
     MISSING = "missing"
     CANCELLED = "cancelled"
     SUBMIT_FAILED = "submit_failed"
-    ADMISSION_FAILED = "admission_failed"

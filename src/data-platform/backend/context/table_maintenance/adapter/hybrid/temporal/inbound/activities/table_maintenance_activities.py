@@ -6,22 +6,10 @@ from typing import TYPE_CHECKING, Any
 
 from temporalio import activity
 from temporalio.client import RPCError
-from temporalio.common import WorkflowIDConflictPolicy
 from temporalio.service import RPCStatusCode
 
-from context.table_maintenance.adapter.hybrid.temporal.contracts.shared import (
-    TASK_QUEUE,
-)
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance import (
     TableMaintenanceActivity,
-)
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission import (
-    TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
-    TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
-    AdmissionAcquireSignal,
-    TableMaintenanceAdmissionSignal,
-    TableMaintenanceAdmissionWorkflowInput,
-    table_maintenance_admission_summary,
 )
 from context.table_maintenance.adapter.hybrid.temporal.inbound.activities.activity_payload import (
     activity_payload,
@@ -54,15 +42,10 @@ if TYPE_CHECKING:
 
 
 class TableMaintenanceActivities:
-    """Run a table maintenance workflow: its run, its Spark jobs, its admission slot and its parent.
+    """Run a table maintenance workflow: its run, its Spark jobs and its parent.
 
     Each method wraps exactly one use case, except the signal wiring, which talks to
     the Temporal client. Inputs and outputs are primitive dicts.
-
-    The admission limit and lease only apply when this worker starts the admission
-    workflow; a running admission workflow keeps the values it was started with.
-    An acquire request that names its own ``lease_seconds`` is held for that lease
-    whatever the workflow was started with.
     """
 
     def __init__(
@@ -77,10 +60,8 @@ class TableMaintenanceActivities:
         record_running: RecordMaintenanceAttemptRunningUseCase,
         client: Client,
         callback_base_url: str,
-        admission_limit: int,
-        admission_lease_seconds: int,
     ) -> None:
-        """Bind the use cases, the client, the base URL Spark jobs call back to and the admission start values."""
+        """Bind the use cases, the client and the base URL Spark jobs call back to."""
         self._create_run = create_run
         self._record_result = record_result
         self._submit = submit
@@ -90,8 +71,6 @@ class TableMaintenanceActivities:
         self._record_running = record_running
         self._client = client
         self._callback_base_url = callback_base_url
-        self._admission_limit = admission_limit
-        self._admission_lease_seconds = admission_lease_seconds
 
     @activity.defn(name=TableMaintenanceActivity.CREATE_MAINTENANCE_RUN)
     def create_table_maintenance_run(self, request: dict[str, Any]) -> dict[str, Any]:
@@ -147,29 +126,6 @@ class TableMaintenanceActivities:
         with translate_application_errors():
             output = self._record_running.execute(RecordMaintenanceAttemptRunningUseCaseInput.from_primitives(request))
         return activity_payload(output)
-
-    @activity.defn(name=TableMaintenanceActivity.SIGNAL_ADMISSION_ACQUIRE)
-    async def signal_admission_acquire(self, request: dict[str, Any]) -> None:
-        """Signal-with-start the admission workflow with an acquire request."""
-        await self._client.start_workflow(
-            TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
-            TableMaintenanceAdmissionWorkflowInput(
-                limit=self._admission_limit,
-                lease_seconds=self._admission_lease_seconds,
-            ),
-            id=TABLE_MAINTENANCE_ADMISSION_WORKFLOW_ID,
-            static_summary=table_maintenance_admission_summary(self._admission_limit),
-            task_queue=TASK_QUEUE,
-            id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING,
-            start_signal=TableMaintenanceAdmissionSignal.ACQUIRE,
-            start_signal_args=[
-                AdmissionAcquireSignal(
-                    request_id=request["request_id"],
-                    requester_workflow_id=request["requester_workflow_id"],
-                    lease_seconds=request.get("lease_seconds"),
-                )
-            ],
-        )
 
     @activity.defn(name=TableMaintenanceActivity.SIGNAL_PARENT)
     async def signal_parent(self, request: dict[str, Any]) -> dict[str, bool]:

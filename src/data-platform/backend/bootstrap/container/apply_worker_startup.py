@@ -5,11 +5,9 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
-from bootstrap.container.admission_lease_seconds import admission_lease_seconds
 from context.table_maintenance.adapter.hybrid.temporal.inbound import (
     ensure_compaction_round_schedule,
     ensure_table_discovery_schedule,
-    ensure_table_maintenance_admission,
     require_table_search_attributes,
 )
 
@@ -26,11 +24,10 @@ async def apply_worker_startup(
     settings: AppSettings,
     *,
     ensure_schedule: Callable[..., Awaitable[None]] = ensure_table_discovery_schedule,
-    ensure_admission: Callable[..., Awaitable[None]] = ensure_table_maintenance_admission,
     ensure_rounds: Callable[..., Awaitable[None]] = ensure_compaction_round_schedule,
     require_attributes: Callable[..., Awaitable[None]] = require_table_search_attributes,
 ) -> None:
-    """Ensure the per-catalog discovery schedules, the admission workflow and the compaction round schedule.
+    """Ensure the per-catalog discovery schedules and the compaction round schedule.
 
     It first checks that the namespace has every search attribute the
     workflows set, and fails the start otherwise (``MissingTableSearchAttributes``
@@ -44,11 +41,6 @@ async def apply_worker_startup(
         client,
         list(settings.catalog.names),
         interval=timedelta(seconds=settings.discovery_interval_seconds),
-    )
-    await ensure_admission(
-        client,
-        limit=settings.admission_limit,
-        lease_seconds=admission_lease_seconds(settings),
     )
     await ensure_rounds(
         client,

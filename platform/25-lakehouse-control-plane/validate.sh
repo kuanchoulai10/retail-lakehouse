@@ -121,14 +121,17 @@ for catalog in ${CATALOGS}; do
     --schedule-id "table-discovery:catalog=${catalog}" >/dev/null
 done
 
-ADMISSION_STATUS="$(kubectl exec "${ADMIN_TOOLS}" \
+if RETIRED_WORKFLOW="$(kubectl exec "${ADMIN_TOOLS}" \
   --namespace temporal \
   --context "${KUBE_CONTEXT}" \
   -- temporal workflow describe \
   --address temporal-frontend.temporal.svc.cluster.local:7233 \
-  --workflow-id table-maintenance-admission \
-  --output json)"
-grep -q '"status": "WORKFLOW_EXECUTION_STATUS_RUNNING"' <<<"${ADMISSION_STATUS}"
+  --workflow-id table-maintenance-admission 2>&1)"; then
+  echo "workflow table-maintenance-admission exists, expected it to be gone" >&2
+  exit 1
+fi
+grep -qi 'not found' <<<"${RETIRED_WORKFLOW}" \
+  || { echo "describing workflow table-maintenance-admission failed for another reason: ${RETIRED_WORKFLOW}" >&2; exit 1; }
 
 CONSUMER_GROUP="$(kubectl exec kafka-cluster-dual-role-0 \
   --namespace kafka \

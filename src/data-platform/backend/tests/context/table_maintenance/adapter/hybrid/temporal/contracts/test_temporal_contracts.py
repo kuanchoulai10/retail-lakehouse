@@ -18,15 +18,7 @@ from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenan
     DEFAULT_MAX_ATTEMPTS,
     TABLE_MAINTENANCE_WORKFLOW,
     OperationResultSignal,
-    TableMaintenanceActivity,
     TableMaintenanceWorkflowInput,
-)
-from context.table_maintenance.adapter.hybrid.temporal.contracts.table_maintenance_admission import (
-    DEFAULT_ADMISSION_LEASE_SECONDS,
-    TABLE_MAINTENANCE_ADMISSION_WORKFLOW,
-    AdmissionAcquireSignal,
-    AdmissionReleaseSignal,
-    TableMaintenanceAdmissionWorkflowInput,
 )
 from context.table_maintenance.adapter.hybrid.temporal.contracts.table_reconciliation import (
     TABLE_RECONCILIATION_WORKFLOW,
@@ -63,20 +55,6 @@ def test_contracts_round_trip():
         TableDiscoveryWorkflowInput("iceberg"),
         TableDiscoveryWorkflowInput("iceberg", "sales"),
         TableMaintenanceWorkflowInput(RUN_ID, "u1", "table-reconciliation:table-uuid=u1", "scheduled", plan),
-        TableMaintenanceAdmissionWorkflowInput(2),
-        TableMaintenanceAdmissionWorkflowInput(
-            2,
-            60,
-            {
-                "r1": {
-                    "requester_workflow_id": "w1",
-                    "granted_at": "2026-10-24T00:00:00+00:00",
-                }
-            },
-            [{"request_id": "r2", "requester_workflow_id": "w2"}],
-        ),
-        AdmissionAcquireSignal("r1", "w1"),
-        AdmissionReleaseSignal("r1"),
         OperationResultSignal(RUN_ID, "x", 1, False, {"a": 1}, "err"),
     ]
     for value in values:
@@ -100,22 +78,6 @@ def test_reconciliation_input_defaults_the_in_flight_max_attempts():
     assert TableReconciliationWorkflowInput(table_uuid="u1").in_flight_max_attempts == DEFAULT_MAX_ATTEMPTS
 
 
-def test_admission_lease_outlives_the_attempt_deadline_by_15_minutes():
-    """The default admission lease is the attempt deadline plus 15 minutes."""
-    assert DEFAULT_ADMISSION_LEASE_SECONDS == DEFAULT_ATTEMPT_DEADLINE_SECONDS + 15 * 60
-    assert TableMaintenanceAdmissionWorkflowInput(1).lease_seconds == DEFAULT_ADMISSION_LEASE_SECONDS
-
-
-def test_admission_input_defaults():
-    """The admission workflow input starts with the default lease, no holders and an empty queue."""
-    admission = TableMaintenanceAdmissionWorkflowInput(1)
-    assert admission.lease_seconds == 22500
-    assert admission.holders == {}
-    assert admission.queue == []
-    assert admission.holders is not TableMaintenanceAdmissionWorkflowInput(1).holders
-    assert admission.queue is not TableMaintenanceAdmissionWorkflowInput(1).queue
-
-
 def test_table_reconcile_workflow_input_defaults():
     """The table reconciliation input starts with no in-flight run."""
     value = TableReconciliationWorkflowInput("u1")
@@ -132,9 +94,6 @@ def test_table_reconcile_workflow_input_defaults():
     "value",
     [
         TableReconciliationWorkflowInput("u1"),
-        AdmissionAcquireSignal("r1", "w1"),
-        TableMaintenanceAdmissionWorkflowInput(1),
-        AdmissionReleaseSignal("r1"),
         TableMaintenanceWorkflowInput(RUN_ID, "u1", "p", "scheduled", {}),
     ],
 )
@@ -150,9 +109,3 @@ def test_workflow_type_names():
     assert TABLE_DISCOVERY_WORKFLOW == "TableDiscoveryWorkflow"
     assert TABLE_RECONCILIATION_WORKFLOW == "TableReconciliationWorkflow"
     assert TABLE_MAINTENANCE_WORKFLOW == "TableMaintenanceWorkflow"
-    assert TABLE_MAINTENANCE_ADMISSION_WORKFLOW == "TableMaintenanceAdmissionWorkflow"
-
-
-def test_admission_activity_name():
-    """The admission acquire signal activity has its stable wire name."""
-    assert TableMaintenanceActivity.SIGNAL_ADMISSION_ACQUIRE == "signal_admission_acquire"

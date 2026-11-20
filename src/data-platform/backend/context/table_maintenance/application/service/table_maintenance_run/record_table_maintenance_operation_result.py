@@ -217,7 +217,7 @@ class RecordTableMaintenanceOperationResultService(RecordTableMaintenanceOperati
     ) -> ReadMaintenanceJobEvidenceGatewayOutput | None:
         """Return what the attempt's job left behind, or None when Spark did not end it or it cannot be read.
 
-        The platform's own endings (a timeout, a cancel, a vanished job, a failed submit or admission)
+        The platform's own endings (a timeout, a cancel, a vanished job, or a failed submit)
         leave nothing of Spark's worth reading.
         """
         if ending not in _ENDINGS_WITH_EVIDENCE:

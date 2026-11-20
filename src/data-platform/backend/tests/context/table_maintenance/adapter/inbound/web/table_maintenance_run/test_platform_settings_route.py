@@ -28,11 +28,11 @@ def _output() -> GetPlatformSettingsUseCaseOutput:
                 title="Execution capacity",
                 items=(
                     GetPlatformSettingsUseCaseOutput.Setting(
-                        key="admission_limit",
-                        label="Concurrent operations",
-                        value=2,
-                        unit="operations",
-                        description="How many operations run at once.",
+                        key="maintenance_max_attempts",
+                        label="Attempts per operation",
+                        value=3,
+                        unit="attempts",
+                        description="How many times an operation is tried.",
                     ),
                     GetPlatformSettingsUseCaseOutput.Setting(
                         key="compute_size_s_driver_memory",
@@ -61,11 +61,11 @@ def test_serves_the_platform_settings_grouped():
                 "title": "Execution capacity",
                 "items": [
                     {
-                        "key": "admission_limit",
-                        "label": "Concurrent operations",
-                        "value": 2,
-                        "unit": "operations",
-                        "description": "How many operations run at once.",
+                        "key": "maintenance_max_attempts",
+                        "label": "Attempts per operation",
+                        "value": 3,
+                        "unit": "attempts",
+                        "description": "How many times an operation is tried.",
                     },
                     {
                         "key": "compute_size_s_driver_memory",

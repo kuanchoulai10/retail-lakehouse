@@ -39,7 +39,7 @@ def test_defaults_follow_the_brief():
     assert settings.kafka.topic == "polaris-catalog-events"
     assert settings.spark.namespace == "lakehouse-maintenance-operations"
     assert settings.api.root_path == ""
-    assert settings.admission_limit == 2
+    assert "admission_limit" not in AppSettings.model_fields
     assert settings.discovery_interval_seconds == 600
 
 
@@ -63,7 +63,6 @@ def test_nested_env_vars_are_parsed(monkeypatch: pytest.MonkeyPatch):
         "GLAC_SPARK__IMAGE": "spark:1",
         "GLAC_SPARK__SIZE_S__EXECUTOR_INSTANCES": "3",
         "GLAC_CALLBACK_BASE_URL": "http://api:8000",
-        "GLAC_ADMISSION_LIMIT": "4",
         "GLAC_DISCOVERY_INTERVAL_SECONDS": "60",
         "GLAC_API__ROOT_PATH": "/api",
     }
@@ -91,7 +90,6 @@ def test_nested_env_vars_are_parsed(monkeypatch: pytest.MonkeyPatch):
     assert settings.spark.image == "spark:1"
     assert settings.spark.size_s.executor_instances == 3
     assert settings.callback_base_url == "http://api:8000"
-    assert settings.admission_limit == 4
     assert settings.discovery_interval_seconds == 60
     assert settings.api.root_path == "/api"
 

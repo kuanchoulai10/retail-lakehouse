@@ -40,7 +40,6 @@ class Activities:
             maintenance.delete_maintenance_job,
             maintenance.get_maintenance_job_pods,
             maintenance.record_maintenance_attempt_running,
-            maintenance.signal_admission_acquire,
             maintenance.signal_parent,
             self.discovery.sync_discovered_tables,
             self.compaction_round.schedule_compaction_round,

@@ -1130,8 +1130,8 @@ def test_oom_retry_keeps_the_planned_filters():
     _run(scenario)
 
 
-def test_attempt_submits_without_admission():
-    """An attempt is submitted right after the run is created: no admission is asked for and nothing is signalled."""
+def test_attempt_submits_right_after_the_run_is_created():
+    """An attempt is submitted right after the run is created and nothing is signalled before it."""
 
     async def scenario(h: Harness) -> None:
         h.fakes.callbacks = {(COMPACTION, 1): [(1, True, None)]}
@@ -1139,7 +1139,6 @@ def test_attempt_submits_without_admission():
 
         names = _names(await h.commands())
         assert names[:2] == ["create_maintenance_run", "submit_maintenance_operation"]
-        assert "signal_admission_acquire" not in names
         assert not [name for name in names if name.startswith("signal:")]
 
     _run(scenario)

@@ -55,7 +55,7 @@ The `migrate` Job is a regular Job named with the Helm release revision, so each
 
 ## Configuration
 
-All settings are `GLAC_*` environment variables rendered from `chart/values.yaml` into the ConfigMap `table-maintenance-config` (temporal address, catalog URI and names, S3 endpoint, Kafka, Spark, `GLAC_ADMISSION_LIMIT`, `GLAC_DISCOVERY_INTERVAL_SECONDS`, `GLAC_COMPACTION__*`, `GLAC_SCHEDULER__*`). Secrets come from `table-maintenance-db`, `table-maintenance-polaris-credential` and `table-maintenance-s3`.
+All settings are `GLAC_*` environment variables rendered from `chart/values.yaml` into the ConfigMap `table-maintenance-config` (temporal address, catalog URI and names, S3 endpoint, Kafka, Spark, `GLAC_DISCOVERY_INTERVAL_SECONDS`, `GLAC_COMPACTION__*`, `GLAC_SCHEDULER__*`). Secrets come from `table-maintenance-db`, `table-maintenance-polaris-credential` and `table-maintenance-s3`.
 
 ### Spark sizes
 
@@ -142,7 +142,6 @@ All run on task queue `table-maintenance` in Temporal namespace `default`. IDs a
 | `TableDiscoveryWorkflow` | schedule `table-discovery:catalog={catalog}` (Temporal appends the firing time); ad hoc `table-discovery:catalog={catalog}[:namespace={namespace}]:trigger=adhoc` | `{catalog}`; ad hoc `{catalog}[.{namespace}] · ad hoc` |
 | `TableReconciliationWorkflow` | `table-reconciliation:table-uuid={uuid}` | `{catalog}.{namespace}.{table}` at first start |
 | `TableMaintenanceWorkflow` | `table-maintenance:table={catalog}.{namespace}.{table}:run={run_id}` (table name as of the run start; stored on the run as `execution_ref`) | `{catalog}.{namespace}.{table} · {operations}` |
-| `TableMaintenanceAdmissionWorkflow` | `table-maintenance-admission` | `global Spark maintenance admission (limit={limit})` |
 | `CompactionRoundWorkflow` | schedule `compaction-rounds` (Temporal appends the firing time to the workflow ID; the workflow mints a `cr-` round ID once, which every retry of the schedule activity `schedule_compaction_round` reuses) | `compaction round · budget {budget} GB·h`; its current details read `round {cr-id} · granted {n} partitions of {m} tables`, and the search attribute `GrantedTableUuids` lists the tables it granted |
 
 ## Call the API

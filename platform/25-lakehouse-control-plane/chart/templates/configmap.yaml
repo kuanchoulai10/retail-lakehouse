@@ -40,7 +40,6 @@ data:
   GLAC_SPARK__SIZE_L__EXECUTOR_MEMORY: {{ .Values.spark.sizes.L.executorMemory | quote }}
   GLAC_SPARK__SIZE_L__EXECUTOR_INSTANCES: {{ .Values.spark.sizes.L.executorInstances | quote }}
   GLAC_CALLBACK_BASE_URL: http://table-maintenance-api.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.api.port }}
-  GLAC_ADMISSION_LIMIT: {{ .Values.worker.admissionLimit | quote }}
   GLAC_DISCOVERY_INTERVAL_SECONDS: {{ .Values.worker.discoveryIntervalSeconds | quote }}
   GLAC_MAINTENANCE_ATTEMPT_DEADLINE_SECONDS: {{ .Values.worker.attemptDeadlineSeconds | quote }}
   GLAC_MAINTENANCE_MAX_ATTEMPTS: {{ .Values.worker.maxAttempts | quote }}
